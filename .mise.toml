@@ -1,0 +1,51 @@
+# mise configuration for Roblox development tools
+# https://mise.jdx.dev/
+
+[tools]
+# Rojo for file sync between IDE and Roblox Studio
+rojo = "7.5.1"
+
+# Wally for package management
+wally = "0.3.2"
+
+# Selene for Lua linting
+selene = "0.25.0"
+
+# StyLua for code formatting
+stylua = "0.18.2"
+
+[env]
+# Environment variables for development
+ROJO_PORT = "34872"
+WALLY_REGISTRY = "https://github.com/UpliftGames/wally-index"
+
+[tasks.install]
+description = "Install all development dependencies"
+run = [
+    "mise install",
+    "wally install"
+]
+
+[tasks.serve]
+description = "Start Rojo file sync server"
+run = "rojo serve"
+
+[tasks.build]
+description = "Build the project for production"
+run = "rojo build --output game.rbxl"
+
+[tasks.test]
+description = "Run tests (requires Studio)"
+run = "echo 'Run tests/TestBootstrap.lua in Roblox Studio'"
+
+[tasks.lint]
+description = "Lint Lua files with Selene"
+run = "selene src/"
+
+[tasks.format]
+description = "Format Lua files with StyLua"
+run = "stylua src/"
+
+[tasks.dev]
+description = "Start development environment"
+depends = ["install", "serve"] 

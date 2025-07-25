@@ -1,0 +1,17 @@
+[package]
+name = "yourusername/game-template"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+[dependencies]
+# Only the most reliable packages from Wally
+TestEZ = "roblox/testez@0.4.1"
+Promise = "evaera/promise@4.0.0"
+
+# All other packages downloaded manually to avoid Wally registry issues:
+# ✅ Matter ECS - from matter-ecs/matter 
+# ✅ Reflex - from littensy/reflex
+# ✅ ProfileStore - from MadStudioRoblox/ProfileStore
+# ✅ Signal - from sleitnick/RbxUtil
+# ⬇️ Maid, TableUtil, Sift - downloading below 

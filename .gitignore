@@ -1,0 +1,57 @@
+# Roblox Studio files
+*.rbxlx.lock
+*.rbxl.lock
+
+# Build outputs
+/build/
+*.rbxm
+*.rbxl
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+.vscode/settings.json
+
+# Node modules (if using npm/yarn)
+node_modules/
+package-lock.json
+yarn.lock
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Local environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Tool-specific files
+.mise.local.toml
+.tool-versions
+
+# Rojo sourcemap (contains file system paths)
+sourcemap.json
+
+# Test outputs
+test-results/
+coverage/
+
+# Backup files
+*.bak
+*.backup 
