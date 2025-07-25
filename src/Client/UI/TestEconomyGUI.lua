@@ -501,6 +501,148 @@ task.spawn(function()
     updateCurrencyDisplay()
 end)
 
+-- Global Effects Test Buttons
+local globalEffectsLabel = Instance.new("TextLabel")
+globalEffectsLabel.Size = UDim2.new(1, 0, 0, 25)
+globalEffectsLabel.BackgroundTransparency = 1
+globalEffectsLabel.Text = "=== Global Effects Testing ==="
+globalEffectsLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+globalEffectsLabel.TextScaled = true
+globalEffectsLabel.Font = Enum.Font.GothamBold
+globalEffectsLabel.LayoutOrder = 6
+globalEffectsLabel.Parent = controlsFrame
+
+-- XP Weekend Button
+local xpWeekendButton = Instance.new("TextButton")
+xpWeekendButton.Size = UDim2.new(1, 0, 0, 25)
+xpWeekendButton.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+xpWeekendButton.Text = "🎉 Start XP Weekend (48h)"
+xpWeekendButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+xpWeekendButton.TextScaled = true
+xpWeekendButton.Font = Enum.Font.Gotham
+xpWeekendButton.LayoutOrder = 7
+xpWeekendButton.Parent = controlsFrame
+
+local xpCorner = Instance.new("UICorner")
+xpCorner.CornerRadius = UDim.new(0, 4)
+xpCorner.Parent = xpWeekendButton
+
+-- Speed Hour Button
+local speedHourButton = Instance.new("TextButton")
+speedHourButton.Size = UDim2.new(1, 0, 0, 25)
+speedHourButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+speedHourButton.Text = "⚡ Start Speed Hour (1h)"
+speedHourButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedHourButton.TextScaled = true
+speedHourButton.Font = Enum.Font.Gotham
+speedHourButton.LayoutOrder = 8
+speedHourButton.Parent = controlsFrame
+
+local speedCorner = Instance.new("UICorner")
+speedCorner.CornerRadius = UDim.new(0, 4)
+speedCorner.Parent = speedHourButton
+
+-- Luck Boost Button  
+local luckBoostButton = Instance.new("TextButton")
+luckBoostButton.Size = UDim2.new(1, 0, 0, 25)
+luckBoostButton.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+luckBoostButton.Text = "🍀 Start Luck Boost (2h)"
+luckBoostButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+luckBoostButton.TextScaled = true
+luckBoostButton.Font = Enum.Font.Gotham
+luckBoostButton.LayoutOrder = 9
+luckBoostButton.Parent = controlsFrame
+
+local luckCorner = Instance.new("UICorner")
+luckCorner.CornerRadius = UDim.new(0, 4)
+luckCorner.Parent = luckBoostButton
+
+-- Clear Global Effects Button
+local clearGlobalButton = Instance.new("TextButton")
+clearGlobalButton.Size = UDim2.new(1, 0, 0, 25)
+clearGlobalButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+clearGlobalButton.Text = "🧹 Clear All Global Effects"
+clearGlobalButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+clearGlobalButton.TextScaled = true
+clearGlobalButton.Font = Enum.Font.Gotham
+clearGlobalButton.LayoutOrder = 10
+clearGlobalButton.Parent = controlsFrame
+
+local clearCorner = Instance.new("UICorner")
+clearCorner.CornerRadius = UDim.new(0, 4)
+clearCorner.Parent = clearGlobalButton
+
+-- Global effect button handlers (purchase and use admin items)
+xpWeekendButton.Activated:Connect(function()
+    print("🎉 Purchasing and using XP Weekend Activator...")
+    economyBridge:Fire("server", "PurchaseItem", {
+        itemId = "admin_xp_weekend",
+        cost = 1,
+        currency = "gems"
+    })
+    task.wait(0.5)
+    economyBridge:Fire("server", "UseItem", {itemId = "admin_xp_weekend"})
+end)
+
+speedHourButton.Activated:Connect(function() 
+    print("⚡ Purchasing and using Speed Hour Activator...")
+    economyBridge:Fire("server", "PurchaseItem", {
+        itemId = "admin_speed_hour",
+        cost = 1,
+        currency = "gems"
+    })
+    task.wait(0.5)
+    economyBridge:Fire("server", "UseItem", {itemId = "admin_speed_hour"})
+end)
+
+luckBoostButton.Activated:Connect(function()
+    print("🍀 Purchasing and using Luck Boost Activator...")
+    economyBridge:Fire("server", "PurchaseItem", {
+        itemId = "admin_luck_boost",
+        cost = 1,
+        currency = "gems"
+    })
+    task.wait(0.5)
+    economyBridge:Fire("server", "UseItem", {itemId = "admin_luck_boost"})
+end)
+
+clearGlobalButton.Activated:Connect(function()
+    print("🧹 Purchasing and using Global Effects Clearer...")
+    economyBridge:Fire("server", "PurchaseItem", {
+        itemId = "admin_clear_global",
+        cost = 1,
+        currency = "coins"
+    })
+    task.wait(0.5)
+    economyBridge:Fire("server", "UseItem", {itemId = "admin_clear_global"})
+end)
+
+-- Alamantic Aluminum Test Button
+local aluminumButton = Instance.new("TextButton")
+aluminumButton.Size = UDim2.new(1, 0, 0, 25)
+aluminumButton.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+aluminumButton.Text = "🧪 Use Alamantic Aluminum (Clear Player Effects)"
+aluminumButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+aluminumButton.TextScaled = true
+aluminumButton.Font = Enum.Font.Gotham
+aluminumButton.LayoutOrder = 11
+aluminumButton.Parent = controlsFrame
+
+local aluminumCorner = Instance.new("UICorner")
+aluminumCorner.CornerRadius = UDim.new(0, 4)
+aluminumCorner.Parent = aluminumButton
+
+aluminumButton.Activated:Connect(function()
+    print("🧪 Purchasing and using Alamantic Aluminum...")
+    economyBridge:Fire("server", "PurchaseItem", {
+        itemId = "alamantic_aluminum",
+        cost = 1,
+        currency = "coins"
+    })
+    task.wait(0.5)
+    economyBridge:Fire("server", "UseItem", {itemId = "alamantic_aluminum"})
+end)
+
 print("💰 Enhanced Economy Test GUI loaded!")
 
 return {

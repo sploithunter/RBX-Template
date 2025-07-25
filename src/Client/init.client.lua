@@ -317,5 +317,6 @@ if game:GetService("RunService"):IsStudio() then
     task.spawn(function()
         require(script.UI.TestEconomyGUI)
         require(script.UI.SimpleEffectsGUI)
+        require(script.UI.GlobalEffectsGUI)
     end)
 end 

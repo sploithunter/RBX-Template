@@ -77,6 +77,55 @@ return {
             description = "VIP Pass: Permanent 50% faster economy actions",
             displayName = "💎 VIP Pass",
             icon = "💎"
+        },
+        
+        -- Global server-wide effects
+        global_xp_weekend = {
+            actions = {},  -- No specific actions, affects global XP
+            multiplier = 1.0,
+            duration = 172800,  -- 48 hours (weekend)
+            maxUses = -1,
+            consumeOnUse = false,
+            description = "Double XP Weekend: +100% experience gain for all players",
+            displayName = "🎉 Double XP Weekend",
+            icon = "🎉",
+            stacking = "extend_duration",
+            statModifiers = {
+                globalXPMultiplier = 1.0,  -- +100% XP (2x total)
+                globalLuckBoost = 0.1      -- +10% luck bonus too
+            }
+        },
+        
+        global_speed_hour = {
+            actions = {"CollectResource", "DealDamage"},
+            multiplier = 2.0,  -- 2x speed for actions
+            duration = 3600,   -- 1 hour
+            maxUses = -1,
+            consumeOnUse = false,
+            description = "Speed Hour: Double action speed for all players",
+            displayName = "⚡ Speed Hour",
+            icon = "⚡",
+            stacking = "extend_duration",
+            statModifiers = {
+                globalSpeedMultiplier = 1.0,  -- +100% speed (2x total)
+                globalDropRateBoost = 0.05    -- +5% drop rate bonus
+            }
+        },
+        
+        global_luck_boost = {
+            actions = {},
+            multiplier = 1.0,
+            duration = 7200,   -- 2 hours
+            maxUses = -1,
+            consumeOnUse = false,
+            description = "Global Luck Boost: Increased rare item drops for all players",
+            displayName = "🍀 Global Luck Boost",
+            icon = "🍀",
+            stacking = "extend_duration",
+            statModifiers = {
+                globalLuckBoost = 0.25,       -- +25% luck
+                globalDropRateBoost = 0.15    -- +15% drop rate
+            }
         }
     },
     

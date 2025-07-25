@@ -31,6 +31,7 @@ function EconomyService:Init()
     self._networkConfig = self._modules.NetworkConfig
     self._configLoader = self._modules.ConfigLoader
     self._playerEffectsService = self._modules.PlayerEffectsService
+    self._globalEffectsService = self._modules.GlobalEffectsService
     -- Backward-compatibility alias so existing effect code can reuse old variable names
     self._rateLimitService = self._playerEffectsService
     
@@ -258,7 +259,9 @@ function EconomyService:UseItem(player, data)
     if itemConfig.effects then
         if itemConfig.effects.rate_effect then
             self:_applyItemEffect(player, itemConfig)
-        elseif itemConfig.effects.special_effect == "clear_all_effects" then
+        elseif itemConfig.effects.global_effect then
+            self:_applyGlobalEffect(player, itemConfig)
+        elseif itemConfig.effects.special_effect then
             self:_applySpecialEffect(player, itemConfig)
         end
     end
@@ -770,21 +773,83 @@ function EconomyService:_applyItemEffect(player, itemConfig)
     return success
 end
 
-function EconomyService:_applySpecialEffect(player, itemConfig)
-    if not self._rateLimitService then
-        self._logger:Error("CRITICAL: Cannot apply special effects - RateLimitService not available", {
+function EconomyService:_applyGlobalEffect(player, itemConfig)
+    if not self._globalEffectsService then
+        self._logger:Error("CRITICAL: Cannot apply global effects - GlobalEffectsService not available", {
             player = player.Name,
             item = itemConfig.id,
-            effect = itemConfig.effects.special_effect
+            effect = itemConfig.effects.global_effect
         })
         return false
     end
     
     local effects = itemConfig.effects
+    if not effects.global_effect then
+        return false
+    end
+    
+    local duration = effects.duration or 3600 -- Default 1 hour
+    local reason = effects.reason or string.format("Triggered by %s using %s", player.Name, itemConfig.name)
+    
+    local success = self._globalEffectsService:ApplyGlobalEffect(effects.global_effect, duration, reason)
+    
+    if success then
+        self._logger:Info("Global effect applied", {
+            player = player.Name,
+            effect = effects.global_effect,
+            duration = duration,
+            reason = reason,
+            item = itemConfig.id
+        })
+    end
+    
+    return success
+end
+
+function EconomyService:_applySpecialEffect(player, itemConfig)
+    local effects = itemConfig.effects
+    
+    self._logger:Info("_applySpecialEffect called", {
+        player = player.Name,
+        item = itemConfig.id,
+        specialEffect = effects.special_effect
+    })
+    
     if effects.special_effect == "clear_all_effects" then
+        if not self._playerEffectsService then
+            self._logger:Error("CRITICAL: Cannot clear player effects - PlayerEffectsService not available", {
+                player = player.Name,
+                item = itemConfig.id
+            })
+            return false
+        end
+        
+        self._logger:Info("Calling ClearAllEffects", {
+            player = player.Name,
+            item = itemConfig.id
+        })
+        
         local effectsCleared = self._playerEffectsService:ClearAllEffects(player)
         
-        self._logger:Info("Special effect applied - all effects cleared", {
+        self._logger:Info("Special effect applied - player effects cleared", {
+            player = player.Name,
+            item = itemConfig.id,
+            effectsCleared = effectsCleared
+        })
+        
+        return true
+    elseif effects.special_effect == "clear_all_global_effects" then
+        if not self._globalEffectsService then
+            self._logger:Error("CRITICAL: Cannot clear global effects - GlobalEffectsService not available", {
+                player = player.Name,
+                item = itemConfig.id
+            })
+            return false
+        end
+        
+        local effectsCleared = self._globalEffectsService:ClearAllGlobalEffects()
+        
+        self._logger:Info("Special effect applied - global effects cleared", {
             player = player.Name,
             item = itemConfig.id,
             effectsCleared = effectsCleared

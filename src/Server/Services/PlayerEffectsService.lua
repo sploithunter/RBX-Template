@@ -314,24 +314,32 @@ end
 function PlayerEffectsService:ClearAllEffects(player)
     local timedBoosts = player:FindFirstChild("TimedBoosts")
     if not timedBoosts then
+        self._logger:Info("ClearAllEffects: No TimedBoosts folder found", {player = player.Name})
         return 0
     end
     
     local effectsCleared = 0
+    
+    -- Clear all effect folders (this should automatically reset aggregates)
     for _, effectFolder in ipairs(timedBoosts:GetChildren()) do
         if effectFolder:IsA("Folder") then
+            self._logger:Info("Clearing effect folder", {player = player.Name, effectId = effectFolder.Name})
             effectFolder:Destroy()
             effectsCleared = effectsCleared + 1
         end
     end
     
+    -- Recalculate aggregates from scratch (should be base values now)
+    self:_recalculateAggregates(player)
+    
     -- Clear from ProfileStore
     local data = self._dataService:GetData(player)
     if data and data.ActiveEffects then
         data.ActiveEffects = {}
+        self._logger:Info("Cleared ProfileStore ActiveEffects", {player = player.Name})
     end
     
-    self._logger:Info("All effects cleared", {
+    self._logger:Info("All effects cleared successfully", {
         player = player.Name,
         effectsCleared = effectsCleared
     })
