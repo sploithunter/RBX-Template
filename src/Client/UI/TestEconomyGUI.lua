@@ -166,6 +166,21 @@ local comprehensiveCorner = Instance.new("UICorner")
 comprehensiveCorner.CornerRadius = UDim.new(0, 4)
 comprehensiveCorner.Parent = comprehensiveTestButton
 
+-- Monetization Test Button
+local monetizationTestButton = Instance.new("TextButton")
+monetizationTestButton.Size = UDim2.new(1, 0, 0, 25)
+monetizationTestButton.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+monetizationTestButton.Text = "💎 TEST MONETIZATION SYSTEM"
+monetizationTestButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+monetizationTestButton.Font = Enum.Font.GothamBold
+monetizationTestButton.TextScaled = true
+monetizationTestButton.LayoutOrder = 0.5
+monetizationTestButton.Parent = controlsFrame
+
+local monetizationCorner = Instance.new("UICorner")
+monetizationCorner.CornerRadius = UDim.new(0, 4)
+monetizationCorner.Parent = monetizationTestButton
+
 comprehensiveTestButton.Activated:Connect(function()
     print("🚀 ===== COMPREHENSIVE ECONOMY TEST STARTING =====")
     
@@ -225,10 +240,36 @@ comprehensiveTestButton.Activated:Connect(function()
         economyBridge:Fire("server", "GetPlayerDebugInfo", {})
         task.wait(1)
         
-        -- Step 7: Test level requirement bypass (temporarily increase level)
-        print("🔧 Step 7: Testing level requirement system...")
-        print("   - Setting player level to 10 to test crystal_staff purchase...")
-        -- Note: This would require a test-only level adjustment function
+        -- Step 7: Test monetization system
+        print("💎 Step 7: Testing monetization system...")
+        local Locations = require(ReplicatedStorage.Shared.Locations)
+        local monetizationBridge = Locations.getBridge("Monetization")
+        if monetizationBridge then
+            print("   - Testing product info retrieval...")
+            monetizationBridge:Fire("server", "GetProductInfo", {productId = "small_gems"})
+            task.wait(0.5)
+            
+            print("   - Testing game pass ownership...")
+            monetizationBridge:Fire("server", "GetOwnedPasses", {})
+            task.wait(0.5)
+            
+            print("   - Testing test purchase (free in Studio)...")
+            monetizationBridge:Fire("server", "InitiatePurchase", {
+                productType = "product",
+                configId = "small_gems"
+            })
+            task.wait(1)
+        else
+            print("   ⚠️ Monetization bridge not available")
+        end
+        
+        -- Step 8: Test configuration validation
+        print("⚙️ Step 8: Testing configuration validation...")
+        local monetizationStatus = Locations.getConfigLoader():GetMonetizationStatus()
+        print("   - Monetization status:", monetizationStatus.hasFirstPurchaseBonus and "✅" or "❌")
+        print("   - Test mode:", monetizationStatus.testModeEnabled and "✅ Enabled" or "❌ Disabled")
+        print("   - Products configured:", monetizationStatus.productCount)
+        print("   - Game passes configured:", monetizationStatus.passCount)
         
         print("🏁 ===== COMPREHENSIVE TEST COMPLETED =====")
         print("✅ Check the logs above to verify all systems worked correctly!")
@@ -236,9 +277,112 @@ comprehensiveTestButton.Activated:Connect(function()
         print("   ✅ Steps 1-4: All purchases and sells should succeed")
         print("   ❌ Step 5: diamond_sword should fail (insufficient gems)")
         print("   ❌ Step 5.5: crystal_staff should fail (insufficient level)")
+        print("   ✅ Step 7: Monetization system should respond to requests")
+        print("   ✅ Step 8: Configuration should show valid monetization setup")
     end
     
     task.spawn(runTestSequence)
+end)
+
+monetizationTestButton.Activated:Connect(function()
+    print("💎 ===== MONETIZATION SYSTEM TEST STARTING =====")
+    
+    local function runMonetizationTest()
+        -- Test 1: Configuration validation
+        print("⚙️ Test 1: Configuration validation...")
+        local Locations = require(ReplicatedStorage.Shared.Locations)
+        local monetizationStatus = Locations.getConfigLoader():GetMonetizationStatus()
+        print("   ✅ Products configured:", monetizationStatus.productCount)
+        print("   ✅ Game passes configured:", monetizationStatus.passCount)
+        print("   ✅ Test mode:", monetizationStatus.testModeEnabled and "Enabled" or "Disabled")
+        print("   ✅ Premium benefits:", monetizationStatus.hasPremiumBenefits and "Available" or "Not configured")
+        task.wait(1)
+        
+        -- Test 2: ProductIdMapper functionality
+        print("🔧 Test 2: ProductIdMapper functionality...")
+        local success, productIdMapper = pcall(function()
+            return require(Locations.ProductIdMapper)
+        end)
+        
+        if success and productIdMapper then
+            print("   ✅ ProductIdMapper loaded")
+            print("   ✅ Test mode:", productIdMapper:IsTestMode() and "Enabled" or "Disabled")
+            
+            -- Test product config
+            local productConfig = productIdMapper:GetProductConfig("small_gems")
+            if productConfig then
+                print("   ✅ Product config available:", productConfig.name, "-", productConfig.price_robux, "R$")
+            end
+            
+            -- Test game pass config
+            local passConfig = productIdMapper:GetPassConfig("vip_pass")
+            if passConfig then
+                print("   ✅ Game pass config available:", passConfig.name, "-", passConfig.price_robux, "R$")
+            end
+        else
+            print("   ❌ ProductIdMapper not available")
+        end
+        task.wait(1)
+        
+        -- Test 3: Network bridge functionality
+        print("🌐 Test 3: Network bridge functionality...")
+        local monetizationBridge = Locations.getBridge("Monetization")
+        if monetizationBridge then
+            print("   ✅ Monetization bridge available")
+            
+            print("   📡 Testing product info request...")
+            monetizationBridge:Fire("server", "GetProductInfo", {productId = "small_gems"})
+            task.wait(0.5)
+            
+            print("   📡 Testing game pass ownership request...")
+            monetizationBridge:Fire("server", "GetOwnedPasses", {})
+            task.wait(0.5)
+            
+            if productIdMapper and productIdMapper:IsTestMode() then
+                print("   💰 Testing purchase in test mode (should be free)...")
+                monetizationBridge:Fire("server", "InitiatePurchase", {
+                    productType = "product", 
+                    configId = "small_gems"
+                })
+                task.wait(1)
+            else
+                print("   ⚠️ Skipping purchase test (not in test mode)")
+            end
+        else
+            print("   ❌ Monetization bridge not available")
+        end
+        task.wait(1)
+        
+        -- Test 4: Check for monetization services (if main server loaded)
+        print("🔧 Test 4: Server services check...")
+        local moduleLoaderSuccess, moduleLoader = pcall(function()
+            local ml = require(Locations.ModuleLoader)
+            return ml:Get("Logger") and ml -- Only return if Logger is available (indicating services are loaded)
+        end)
+        
+        if moduleLoaderSuccess and moduleLoader then
+            print("   ✅ Server services are loaded")
+            
+            local monetizationServiceSuccess = pcall(function()
+                return moduleLoader:Get("MonetizationService")
+            end)
+            
+            if monetizationServiceSuccess then
+                print("   ✅ MonetizationService accessible")
+            else
+                print("   ⚠️ MonetizationService not accessible yet")
+            end
+        else
+            print("   ⚠️ Server services not fully loaded yet")
+        end
+        
+        print("💎 ===== MONETIZATION TEST COMPLETED =====")
+        print("✅ All available monetization features tested!")
+        print("📋 Check above for any ❌ failures or ⚠️ warnings")
+        print("💡 In test mode, purchases should be free in Studio")
+    end
+    
+    task.spawn(runMonetizationTest)
 end)
 
 -- Get Shop Items Button
