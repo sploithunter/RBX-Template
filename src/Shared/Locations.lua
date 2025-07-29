@@ -1,0 +1,261 @@
+--[[
+    Locations - Single Source of Truth for Game Architecture
+    
+    This module provides centralized access to all game services, folders, and assets.
+    Prevents path errors and makes refactoring easier by having all locations in one place.
+    
+    Usage:
+    local Locations = require(ReplicatedStorage.Shared.Locations)
+    local economyService = Locations.getService("EconomyService")
+    local monetizationBridge = Locations.getBridge("Monetization")
+]]
+
+local Locations = {}
+
+-- === CORE ROBLOX SERVICES ===
+Locations.ReplicatedStorage = game:GetService("ReplicatedStorage")
+Locations.ServerScriptService = game:GetService("ServerScriptService")
+Locations.ServerStorage = game:GetService("ServerStorage")
+Locations.Players = game:GetService("Players")
+Locations.Workspace = game:GetService("Workspace")
+Locations.RunService = game:GetService("RunService")
+Locations.TweenService = game:GetService("TweenService")
+Locations.UserInputService = game:GetService("UserInputService")
+Locations.MarketplaceService = game:GetService("MarketplaceService")
+Locations.MessagingService = game:GetService("MessagingService")
+
+-- === PROJECT STRUCTURE ===
+-- Root folders
+Locations.Packages = Locations.ReplicatedStorage:WaitForChild("Packages", 5)
+Locations.Shared = Locations.ReplicatedStorage:WaitForChild("Shared", 5)
+
+-- Server folders (only on server)
+if Locations.RunService:IsServer() then
+    Locations.Server = Locations.ServerScriptService:WaitForChild("Server", 5)
+    if Locations.Server then
+        Locations.ServerServices = Locations.Server:WaitForChild("Services")
+        Locations.ServerSystems = Locations.Server:WaitForChild("Systems")
+        Locations.ServerMiddleware = Locations.Server:WaitForChild("Middleware")
+    end
+end
+
+-- Shared folders (available on both client and server)
+if Locations.Shared then
+    Locations.SharedLibraries = Locations.Shared:WaitForChild("Libraries")
+    Locations.SharedUtils = Locations.Shared:WaitForChild("Utils")
+    Locations.SharedConstants = Locations.Shared:WaitForChild("Constants")
+    Locations.SharedNetwork = Locations.Shared:WaitForChild("Network")
+    Locations.SharedState = Locations.Shared:WaitForChild("State")
+    Locations.SharedMatter = Locations.Shared:WaitForChild("Matter")
+end
+
+-- === CONFIGURATION FILES ===
+Locations.Configs = game:GetService("ReplicatedStorage"):WaitForChild("Configs", 5)
+Locations.ConfigFiles = {
+    Game = "game",
+    Currencies = "currencies", 
+    Items = "items",
+    Monetization = "monetization",
+    Network = "network",
+    Effects = "effects"
+}
+
+-- === CORE MODULES ===
+if Locations.SharedUtils then
+    Locations.ModuleLoader = Locations.SharedUtils:WaitForChild("ModuleLoader")
+    Locations.NetworkConfig = Locations.SharedUtils:WaitForChild("NetworkConfig")
+    Locations.Logger = Locations.SharedUtils:WaitForChild("Logger")
+    Locations.ProductIdMapper = Locations.SharedUtils:WaitForChild("ProductIdMapper")
+end
+
+if Locations.Shared then
+    Locations.ConfigLoader = Locations.Shared:WaitForChild("ConfigLoader")
+end
+
+if Locations.SharedNetwork then
+    Locations.NetworkBridge = Locations.SharedNetwork:WaitForChild("NetworkBridge")
+end
+
+-- === LIBRARIES ===
+Locations.Libraries = {}
+if Locations.SharedLibraries then
+    Locations.Libraries = {
+        Maid = Locations.SharedLibraries:WaitForChild("Maid"),
+        Promise = Locations.SharedLibraries:WaitForChild("Promise"),
+        ProfileStore = Locations.SharedLibraries:WaitForChild("ProfileStore"),
+        Matter = Locations.SharedLibraries:WaitForChild("Matter"),
+        Reflex = Locations.SharedLibraries:WaitForChild("Reflex")
+    }
+end
+
+-- === PACKAGES ===
+Locations.TestEZ = Locations.Packages and Locations.Packages:WaitForChild("TestEZ", 2)
+
+-- === SERVICES (Server-side) ===
+Locations.Services = {
+    DataService = "DataService",
+    EconomyService = "EconomyService", 
+    MonetizationService = "MonetizationService",
+    PlayerEffectsService = "PlayerEffectsService",
+    GlobalEffectsService = "GlobalEffectsService",
+    RateLimitService = "RateLimitService",
+    ServerClockService = "ServerClockService"
+}
+
+-- === NETWORK BRIDGES ===
+Locations.Bridges = {
+    Economy = "Economy",
+    Monetization = "Monetization",
+    Combat = "Combat",
+    PlayerData = "PlayerData"
+}
+
+-- === HELPER FUNCTIONS ===
+
+-- Get a service through ModuleLoader (server-side only)
+function Locations.getService(serviceName)
+    if not Locations.Services[serviceName] then
+        warn("Unknown service:", serviceName)
+        return nil
+    end
+    
+    if not Locations.ModuleLoader then
+        warn("ModuleLoader not available")
+        return nil
+    end
+    
+    local success, moduleLoader = pcall(function()
+        return require(Locations.ModuleLoader)
+    end)
+    
+    if success then
+        return moduleLoader:Get(serviceName)
+    else
+        warn("ModuleLoader not available for service:", serviceName)
+        return nil
+    end
+end
+
+-- Get a network bridge
+function Locations.getBridge(bridgeName)
+    if not Locations.Bridges[bridgeName] then
+        warn("Unknown bridge:", bridgeName)
+        return nil
+    end
+    
+    if not Locations.NetworkBridge then
+        warn("NetworkBridge not available")
+        return nil
+    end
+    
+    local success, networkBridge = pcall(function()
+        return require(Locations.NetworkBridge)
+    end)
+    
+    if success then
+        return networkBridge:CreateBridge(bridgeName)
+    else
+        warn("NetworkBridge not available for bridge:", bridgeName)
+        return nil
+    end
+end
+
+-- Get config loader
+function Locations.getConfigLoader()
+    if not Locations.ConfigLoader then
+        warn("ConfigLoader not available")
+        return nil
+    end
+    
+    local success, configLoader = pcall(function()
+        return require(Locations.ConfigLoader)
+    end)
+    
+    if success then
+        return configLoader
+    else
+        warn("ConfigLoader not available")
+        return nil
+    end
+end
+
+-- Load a configuration file
+function Locations.getConfig(configName)
+    local configLoader = Locations.getConfigLoader()
+    if configLoader then
+        return configLoader:LoadConfig(configName)
+    end
+    return nil
+end
+
+-- === PLAYER-SPECIFIC FUNCTIONS ===
+
+-- Get PlayerGui for a player
+function Locations.getPlayerGui(player)
+    return player:WaitForChild("PlayerGui", 5)
+end
+
+-- Get a player's character
+function Locations.getPlayerCharacter(player)
+    return player.Character or player.CharacterAdded:Wait()
+end
+
+-- Get a player's humanoid
+function Locations.getPlayerHumanoid(player)
+    local character = Locations.getPlayerCharacter(player)
+    return character and character:WaitForChild("Humanoid", 5)
+end
+
+-- === WORKSPACE LOCATIONS ===
+Locations.WorkspaceFolders = {
+    -- Add workspace folders as needed
+    -- Example: Effects = workspace:WaitForChild("Effects")
+}
+
+-- === VALIDATION ===
+
+-- Validate that all critical locations are available
+function Locations.validateCriticalPaths()
+    local critical = {
+        "ReplicatedStorage",
+        "ServerScriptService", 
+        "Shared",
+        "ModuleLoader",
+        "ConfigLoader",
+        "NetworkBridge"
+    }
+    
+    local missing = {}
+    
+    for _, path in ipairs(critical) do
+        if not Locations[path] then
+            table.insert(missing, path)
+        end
+    end
+    
+    if #missing > 0 then
+        error("Critical paths missing: " .. table.concat(missing, ", "))
+    end
+    
+    return true
+end
+
+-- === RUNTIME CHECKS ===
+function Locations.isServer()
+    return game:GetService("RunService"):IsServer()
+end
+
+function Locations.isClient()
+    return game:GetService("RunService"):IsClient()
+end
+
+function Locations.isStudio()
+    return game:GetService("RunService"):IsStudio()
+end
+
+-- Auto-validate on require
+if not pcall(Locations.validateCriticalPaths) then
+    warn("Some critical paths are missing - check game structure")
+end
+
+return Locations 
