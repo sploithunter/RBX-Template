@@ -25,67 +25,123 @@ local Promise = require(game.ReplicatedStorage.Packages.Promise)
 local DataService = {}
 DataService.__index = DataService
 
--- Default player data template
-local ProfileTemplate = {
-    -- Player info
-    JoinDate = 0,
-    LastLogin = 0,
-    PlayTime = 0,
-    
-    -- Currencies
-    Currencies = {
-        coins = 100,
-        gems = 0,
-        crystals = 0
-    },
-    
-    -- Inventory system
-    Inventory = {},
-    
-    -- Player stats
-    Stats = {
-        Level = 1,
-        Experience = 0,
-        Health = 100,
-        MaxHealth = 100
-    },
-    
-    -- Game-specific data
-    GameData = {
-        TutorialCompleted = false,
-        CurrentQuest = nil,
-        UnlockedAreas = {"starter_area"}
-    },
-    
-    -- Settings
-    Settings = {
-        MusicEnabled = true,
-        SFXEnabled = true,
-        GraphicsQuality = "Auto"
-    },
-    
-    -- Analytics data
-    Analytics = {
-        SessionCount = 0,
-        TotalPlayTime = 0,
-        LastSessionDuration = 0,
-        Purchases = {},
-        Achievements = {}
-    },
-    
-    -- Active Effects (persistent across sessions)
-    ActiveEffects = {
-        -- Format: effectId = { expiresAt = timestamp, usesRemaining = count, config = {} }
-    },
-    
-    -- Player Clock (for persistent time tracking)
-    PlayerClock = {
-        lastSaveTime = 0,  -- os.time() when last saved
-        totalPlayTime = 0  -- Total time played in seconds
+-- Configuration-driven player data template generator
+local function generateProfileTemplate(configLoader)
+    local template = {
+        -- Player info
+        JoinDate = 0,
+        LastLogin = 0,
+        PlayTime = 0,
+        
+        -- Currencies (generated from configuration)
+        Currencies = {},
+        
+        -- Inventory system
+        Inventory = {},
+        
+        -- Player stats
+        Stats = {
+            Level = 1,
+            Experience = 0,
+            Health = 100,
+            MaxHealth = 100
+        },
+        
+        -- Game-specific data
+        GameData = {
+            TutorialCompleted = false,
+            CurrentQuest = nil,
+            UnlockedAreas = {"starter_area"}
+        },
+        
+        -- Settings
+        Settings = {
+            MusicEnabled = true,
+            SFXEnabled = true,
+            GraphicsQuality = "Auto"
+        },
+        
+        -- Analytics data
+        Analytics = {
+            SessionCount = 0,
+            TotalPlayTime = 0,
+            LastSessionDuration = 0,
+            Purchases = {},
+            Achievements = {}
+        },
+        
+        -- Active Effects (persistent across sessions)
+        ActiveEffects = {},
+        
+        -- Player Clock (for persistent time tracking)
+        PlayerClock = {
+            lastSaveTime = 0,
+            totalPlayTime = 0
+        },
+        
+        -- Game Pass Benefits and Multipliers
+        Multipliers = {},
+        
+        -- Game Pass Features
+        Features = {},
+        
+        -- Game Pass Perks
+        Perks = {},
+        
+        -- Owned Game Passes
+        OwnedPasses = {},
+        
+        -- Purchase History
+        PurchaseHistory = {},
+        
+        -- Premium Status
+        PremiumStatus = {
+            isPremium = false,
+            premiumSince = 0
+        },
+        
+        -- Player Titles
+        Titles = {}
     }
-}
+    
+    -- Load currencies from configuration
+    if configLoader then
+        local success, currenciesConfig = pcall(function()
+            return configLoader:LoadConfig("currencies")
+        end)
+        
+        if success and currenciesConfig then
+            for _, currency in ipairs(currenciesConfig) do
+                template.Currencies[currency.id] = currency.defaultAmount or 0
+            end
+        else
+            -- Fallback currencies if config fails
+            template.Currencies = {
+                coins = 100,
+                gems = 0,
+                crystals = 0
+            }
+        end
+    end
+    
+    return template
+end
+
+-- Get the profile template (will be set during Init)
+local ProfileTemplate = {}
 
 function DataService:Init()
+    -- Get logger and config loader
+    self._logger = self._modules.Logger
+    self._configLoader = self._modules.ConfigLoader
+    
+    -- Generate configuration-driven ProfileTemplate
+    ProfileTemplate = generateProfileTemplate(self._configLoader)
+    
+    self._logger:Debug("ProfileTemplate generated from configuration", {
+        currencyCount = self._configLoader and #(self._configLoader:LoadConfig("currencies") or {}) or 0
+    })
+    
     -- Initialize ProfileStore
     self.ProfileStore = ProfileStore.New(
         "PlayerData_v1", -- Version the store for easier migrations
@@ -95,10 +151,6 @@ function DataService:Init()
     -- Track active profiles
     self.Profiles = {}
     self.LoadPromises = {}
-    
-    -- Get dependencies
-    self._logger = self._modules.Logger
-    self._configLoader = self._modules.ConfigLoader
     
     -- Connect to player events
     Players.PlayerAdded:Connect(function(player)
@@ -398,23 +450,133 @@ function DataService:AddToStat(player, statName, amount)
     return self:SetStat(player, statName, currentValue + amount)
 end
 
--- Data migration
+-- Configuration-driven data migration
 function DataService:MigrateProfile(profile)
     local data = profile.Data
+    local migrationCount = 0
     
-    -- Example migration: Add new currency if it doesn't exist
-    if not data.Currencies.gems then
-        data.Currencies.gems = 0
-        self._logger:Info("Migrated profile: Added gems currency")
+    -- 1. Migrate currencies from configuration
+    migrationCount = migrationCount + self:_migrateCurrencies(data)
+    
+    -- 2. Migrate monetization-related sections
+    migrationCount = migrationCount + self:_migrateMonetizationSections(data)
+    
+    -- 3. Migrate core data structure
+    migrationCount = migrationCount + self:_migrateCoreData(data)
+    
+    -- 4. SAFE Reconcile - only adds missing fields, never removes
+    profile:Reconcile()
+    
+    if migrationCount > 0 then
+        self._logger:Info("Profile migration completed", {
+            player = "Unknown", -- Called before player context
+            migrationsApplied = migrationCount
+        })
     end
+end
+
+function DataService:_migrateCurrencies(data)
+    local migrations = 0
+    
+    -- Load currencies from configuration
+    local success, currenciesConfig = pcall(function()
+        return self._configLoader:LoadConfig("currencies")
+    end)
+    
+    if success and currenciesConfig then
+        -- Ensure Currencies section exists
+        if not data.Currencies then
+            data.Currencies = {}
+            migrations = migrations + 1
+        end
+        
+        -- Add any new currencies from config (never remove existing ones)
+        for _, currency in ipairs(currenciesConfig) do
+            if not data.Currencies[currency.id] then
+                data.Currencies[currency.id] = currency.defaultAmount or 0
+                self._logger:Debug("Added new currency from config", {
+                    currency = currency.id,
+                    defaultAmount = currency.defaultAmount or 0
+                })
+                migrations = migrations + 1
+            end
+        end
+    end
+    
+    return migrations
+end
+
+function DataService:_migrateMonetizationSections(data)
+    local migrations = 0
+    
+    -- Add monetization sections if missing (never remove data)
+    local monetizationSections = {
+        "Multipliers",
+        "Features", 
+        "Perks",
+        "OwnedPasses",
+        "PurchaseHistory",
+        "PremiumStatus",
+        "Titles"
+    }
+    
+    for _, section in ipairs(monetizationSections) do
+        if not data[section] then
+            if section == "OwnedPasses" or section == "PurchaseHistory" or section == "Titles" then
+                data[section] = {}  -- Arrays
+            elseif section == "PremiumStatus" then
+                data[section] = {
+                    isPremium = false,
+                    premiumSince = 0
+                }
+            else
+                data[section] = {}  -- Objects
+            end
+            migrations = migrations + 1
+        end
+    end
+    
+    return migrations
+end
+
+function DataService:_migrateCoreData(data)
+    local migrations = 0
     
     -- Add join date if missing
     if not data.JoinDate or data.JoinDate == 0 then
         data.JoinDate = os.time()
+        migrations = migrations + 1
     end
     
-    -- Ensure all template fields exist
-    profile:Reconcile()
+    -- Ensure core sections exist
+    local coreSections = {
+        "Stats",
+        "GameData", 
+        "Settings",
+        "Analytics",
+        "ActiveEffects",
+        "PlayerClock",
+        "Inventory"
+    }
+    
+    for _, section in ipairs(coreSections) do
+        if not data[section] then
+            data[section] = {}
+            migrations = migrations + 1
+        end
+    end
+    
+    -- Ensure PlayerClock has required fields
+    if not data.PlayerClock.lastSaveTime then
+        data.PlayerClock.lastSaveTime = 0
+        migrations = migrations + 1
+    end
+    if not data.PlayerClock.totalPlayTime then
+        data.PlayerClock.totalPlayTime = 0
+        migrations = migrations + 1
+    end
+    
+    return migrations
 end
 
 -- Event handlers
@@ -526,6 +688,179 @@ function DataService:GetActivePlayerCount()
         count = count + 1
     end
     return count
+end
+
+-- Game Pass and Monetization Methods
+function DataService:SetMultiplier(player, statName, multiplier)
+    local data = self:GetData(player)
+    if not data then return false end
+    
+    if not data.Multipliers then
+        data.Multipliers = {}
+    end
+    
+    data.Multipliers[statName] = multiplier
+    self._logger:Debug("Set multiplier", {
+        player = player.Name,
+        stat = statName,
+        multiplier = multiplier
+    })
+    return true
+end
+
+function DataService:GetMultiplier(player, statName)
+    local data = self:GetData(player)
+    if not data or not data.Multipliers then
+        return 1.0  -- Default multiplier
+    end
+    return data.Multipliers[statName] or 1.0
+end
+
+function DataService:SetFeature(player, featureName, enabled)
+    local data = self:GetData(player)
+    if not data then return false end
+    
+    if not data.Features then
+        data.Features = {}
+    end
+    
+    data.Features[featureName] = enabled
+    self._logger:Debug("Set feature", {
+        player = player.Name,
+        feature = featureName,
+        enabled = enabled
+    })
+    return true
+end
+
+function DataService:GetFeature(player, featureName)
+    local data = self:GetData(player)
+    if not data or not data.Features then
+        return false
+    end
+    return data.Features[featureName] or false
+end
+
+function DataService:SetPerk(player, perkName, value)
+    local data = self:GetData(player)
+    if not data then return false end
+    
+    if not data.Perks then
+        data.Perks = {}
+    end
+    
+    data.Perks[perkName] = value
+    self._logger:Debug("Set perk", {
+        player = player.Name,
+        perk = perkName,
+        value = value
+    })
+    return true
+end
+
+function DataService:GetPerk(player, perkName)
+    local data = self:GetData(player)
+    if not data or not data.Perks then
+        return nil
+    end
+    return data.Perks[perkName]
+end
+
+function DataService:SetOwnedPasses(player, passes)
+    local data = self:GetData(player)
+    if not data then return false end
+    
+    data.OwnedPasses = passes or {}
+    self._logger:Debug("Set owned passes", {
+        player = player.Name,
+        passCount = #data.OwnedPasses
+    })
+    return true
+end
+
+function DataService:GetOwnedPasses(player)
+    local data = self:GetData(player)
+    if not data then return {} end
+    return data.OwnedPasses or {}
+end
+
+function DataService:RecordPurchase(player, purchaseData)
+    local data = self:GetData(player)
+    if not data then return false end
+    
+    if not data.PurchaseHistory then
+        data.PurchaseHistory = {}
+    end
+    
+    table.insert(data.PurchaseHistory, purchaseData)
+    self._logger:Info("Purchase recorded", {
+        player = player.Name,
+        purchaseType = purchaseData.type,
+        purchaseId = purchaseData.id
+    })
+    return true
+end
+
+function DataService:GetPurchaseHistory(player)
+    local data = self:GetData(player)
+    if not data then return {} end
+    return data.PurchaseHistory or {}
+end
+
+function DataService:HasMadeAnyPurchase(player)
+    local history = self:GetPurchaseHistory(player)
+    return #history > 0
+end
+
+function DataService:SetPremiumStatus(player, isPremium)
+    local data = self:GetData(player)
+    if not data then return false end
+    
+    if not data.PremiumStatus then
+        data.PremiumStatus = {
+            isPremium = false,
+            premiumSince = 0
+        }
+    end
+    
+    local wasntPremium = not data.PremiumStatus.isPremium
+    data.PremiumStatus.isPremium = isPremium
+    
+    if isPremium and wasntPremium then
+        data.PremiumStatus.premiumSince = os.time()
+    end
+    
+    self._logger:Debug("Set premium status", {
+        player = player.Name,
+        isPremium = isPremium
+    })
+    return true
+end
+
+function DataService:GetPremiumStatus(player)
+    local data = self:GetData(player)
+    if not data or not data.PremiumStatus then
+        return {isPremium = false, premiumSince = 0}
+    end
+    return data.PremiumStatus
+end
+
+function DataService:GrantTitle(player, title)
+    local data = self:GetData(player)
+    if not data then return false end
+    
+    if not data.Titles then
+        data.Titles = {}
+    end
+    
+    if not table.find(data.Titles, title) then
+        table.insert(data.Titles, title)
+        self._logger:Info("Title granted", {
+            player = player.Name,
+            title = title
+        })
+    end
+    return true
 end
 
 -- Graceful shutdown

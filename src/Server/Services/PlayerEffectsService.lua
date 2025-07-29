@@ -157,8 +157,9 @@ function PlayerEffectsService:_applyStatModifiers(player, effectConfig, sign)
 end
 
 -- Apply an effect to a player
-function PlayerEffectsService:ApplyEffect(player, effectId, duration)
-    local effectConfig = self._rateLimitConfig.effectModifiers[effectId]
+function PlayerEffectsService:ApplyEffect(player, effectId, duration, customEffectConfig)
+    -- Use custom config if provided, otherwise get from rate limit config
+    local effectConfig = customEffectConfig or self._rateLimitConfig.effectModifiers[effectId]
     if not effectConfig then
         self._logger:Warn("Unknown effect", {player = player.Name, effectId = effectId})
         return false
@@ -308,6 +309,43 @@ function PlayerEffectsService:RemoveEffect(player, effectId)
     end
     
     return false
+end
+
+-- Apply a permanent effect (for game passes)
+function PlayerEffectsService:ApplyPermanentEffect(player, effectId, stats)
+    -- Permanent effects are stored as "permanent_" prefix to avoid conflicts
+    local permanentEffectId = "permanent_" .. effectId
+    
+    -- Get the effect config if it exists
+    local effectConfig = self._rateLimitConfig.effectModifiers[effectId]
+    if not effectConfig then
+        -- Create a temporary config for the permanent effect
+        effectConfig = {
+            statModifiers = stats or {},
+            description = "Permanent effect from game pass",
+            displayName = effectId,
+            icon = "⭐"
+        }
+    end
+    
+    -- Apply the effect with a very long duration (effectively permanent)
+    local success = self:ApplyEffect(player, permanentEffectId, 999999999, effectConfig)
+    
+    if success then
+        self._logger:Info("Permanent effect applied", {
+            player = player.Name,
+            effectId = effectId,
+            permanentId = permanentEffectId,
+            stats = stats
+        })
+    else
+        self._logger:Warn("Failed to apply permanent effect", {
+            player = player.Name,
+            effectId = effectId
+        })
+    end
+    
+    return success
 end
 
 -- Clear all effects for a player
@@ -625,35 +663,47 @@ function PlayerEffectsService:_saveAllPlayerEffects(player)
     data.ActiveEffects = {}
     local effectsSaved = 0
     
-    for _, effectFolder in ipairs(timedBoosts:GetChildren()) do
-        if effectFolder:IsA("Folder") then
-            local effectId = effectFolder.Name
-            local timeRemaining = effectFolder:FindFirstChild("timeRemaining")
-            local effectConfig = self._rateLimitConfig.effectModifiers[effectId]
-            
-            if timeRemaining and effectConfig then
-                local effectData = {
-                    timeRemaining = timeRemaining.Value,
-                    usesRemaining = effectConfig.maxUses or -1,
-                    appliedAt = self._serverClock:GetServerTime()
-                }
-                data.ActiveEffects[effectId] = effectData
-                effectsSaved = effectsSaved + 1
+            for _, effectFolder in ipairs(timedBoosts:GetChildren()) do
+            if effectFolder:IsA("Folder") then
+                local effectId = effectFolder.Name
+                local timeRemaining = effectFolder:FindFirstChild("timeRemaining")
+                local effectConfig = self._rateLimitConfig.effectModifiers[effectId]
                 
-                self._logger:Info("Saving effect to profile", {
-                    player = player.Name,
-                    effectId = effectId,
-                    timeRemaining = timeRemaining.Value,
-                    effectData = effectData,
-                    dataTableAfterSave = data.ActiveEffects
-                })
-            else
-                self._logger:Warn("Cannot save effect - missing data", {
-                    player = player.Name,
-                    effectId = effectId,
-                    hasTimeRemaining = timeRemaining ~= nil,
-                    hasEffectConfig = effectConfig ~= nil
-                })
+                -- Handle both regular effects and custom permanent effects
+                local hasTimeRemaining = timeRemaining ~= nil
+                local hasEffectConfig = effectConfig ~= nil
+                
+                if hasTimeRemaining then
+                    -- For custom effects (like permanent ones), create a basic config
+                    if not hasEffectConfig then
+                        effectConfig = {
+                            maxUses = -1, -- Unlimited uses for permanent effects
+                            description = "Custom effect",
+                            stacking = "none"
+                        }
+                    end
+                    
+                    local effectData = {
+                        timeRemaining = timeRemaining.Value,
+                        usesRemaining = effectConfig.maxUses or -1,
+                        appliedAt = self._serverClock:GetServerTime()
+                    }
+                    data.ActiveEffects[effectId] = effectData
+                    effectsSaved = effectsSaved + 1
+                
+                    self._logger:Info("Saving effect to profile", {
+                        player = player.Name,
+                        effectId = effectId,
+                        timeRemaining = timeRemaining.Value,
+                        effectData = effectData,
+                        dataTableAfterSave = data.ActiveEffects
+                    })
+                else
+                    self._logger:Warn("Cannot save effect - missing timeRemaining", {
+                        player = player.Name,
+                        effectId = effectId,
+                        hasTimeRemaining = hasTimeRemaining
+                    })
             end
         end
     end
