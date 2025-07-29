@@ -40,7 +40,9 @@ loader:RegisterModule("DataService", ServerScriptService.Server.Services.DataSer
 loader:RegisterModule("RateLimitService", ServerScriptService.Server.Services.RateLimitService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
 loader:RegisterModule("PlayerEffectsService", ServerScriptService.Server.Services.PlayerEffectsService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
 loader:RegisterModule("GlobalEffectsService", ServerScriptService.Server.Services.GlobalEffectsService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
+loader:RegisterModule("ProductIdMapper", ReplicatedStorage.Shared.Utils.ProductIdMapper, {"Logger", "ConfigLoader"})
 loader:RegisterModule("EconomyService", ServerScriptService.Server.Services.EconomyService, {"Logger", "DataService", "NetworkConfig", "ConfigLoader", "PlayerEffectsService", "GlobalEffectsService"})
+loader:RegisterModule("MonetizationService", ServerScriptService.Server.Services.MonetizationService, {"Logger", "DataService", "EconomyService", "ProductIdMapper", "PlayerEffectsService", "NetworkConfig"})
 
 -- Register lazy services (loaded when needed)
 -- loader:RegisterLazyModule("TradeService", ServerScriptService.Server.Services.TradeService, {"EconomyService", "DataService", "NetworkBridge"}) -- TODO: Create TradeService
@@ -61,7 +63,7 @@ local loadOrder = loadOrderOrError
 print("✅ Modules loaded:", table.concat(loadOrder, ", "))
 
 -- Validate critical modules loaded
-local requiredModules = {"Logger", "ConfigLoader", "ServerClockService", "DataService", "PlayerEffectsService", "GlobalEffectsService", "EconomyService", "NetworkConfig"}
+local requiredModules = {"Logger", "ConfigLoader", "ServerClockService", "DataService", "PlayerEffectsService", "GlobalEffectsService", "EconomyService", "NetworkConfig", "ProductIdMapper", "MonetizationService"}
 for _, moduleName in ipairs(requiredModules) do
     local module = loader:Get(moduleName)
     if not module then
@@ -77,6 +79,7 @@ local ConfigLoader = loader:Get("ConfigLoader")
 local NetworkConfig = loader:Get("NetworkConfig")
 local DataService = loader:Get("DataService")
 local PlayerEffectsService = loader:Get("PlayerEffectsService")
+local MonetizationService = loader:Get("MonetizationService")
 
 -- Set up cross-references to avoid circular dependencies
 DataService:SetPlayerEffectsService(PlayerEffectsService)
@@ -84,7 +87,8 @@ DataService:SetPlayerEffectsService(PlayerEffectsService)
 -- Auto-connect network handlers based on configuration
 NetworkConfig:ConnectServerHandlers({
     EconomyService = loader:Get("EconomyService"),
-    DataService = loader:Get("DataService")
+    DataService = loader:Get("DataService"),
+    MonetizationService = loader:Get("MonetizationService")
 })
 
 -- Inject RateLimitService into NetworkBridge for advanced rate limiting
@@ -139,6 +143,23 @@ Logger:Info("Game configuration loaded", {
     enableTrading = gameConfig.EnableTrading,
     enablePvP = gameConfig.EnablePvP
 })
+
+-- Validate monetization setup
+local monetizationStatus = ConfigLoader:GetMonetizationStatus()
+Logger:Info("Monetization status", monetizationStatus)
+
+if #monetizationStatus.validation.errors > 0 then
+    Logger:Error("MONETIZATION SETUP ERRORS:", {errors = monetizationStatus.validation.errors})
+    error("Fix monetization configuration errors before starting")
+end
+
+if #monetizationStatus.validation.warnings > 0 then
+    Logger:Warn("MONETIZATION SETUP WARNINGS:", {warnings = monetizationStatus.validation.warnings})
+end
+
+if monetizationStatus.validation.hasPlaceholders then
+    Logger:Warn("⚠️  MONETIZATION: Replace placeholder IDs with actual Roblox product/pass IDs from Creator Dashboard")
+end
 
 -- Initialize Matter ECS World
 local world = Matter.World.new()

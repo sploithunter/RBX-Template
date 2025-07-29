@@ -299,6 +299,10 @@ local function loadConfigsFromStorage()
 end
 
 function ConfigLoader:Init()
+    -- Initialize caches
+    self._monetizationCache = nil
+    self._configCaches = {}
+    
     if self._modules and self._modules.Logger then
         self._modules.Logger:Info("ConfigLoader initialized", {
             configCount = self:_getConfigCount()
@@ -314,7 +318,15 @@ function ConfigLoader:LoadConfig(configName)
         error(string.format("Config '%s' not found", configName))
     end
     
-    return self:_deepCopy(configs[configName])
+    -- Validate config before returning
+    local config = configs[configName]
+    local isValid, errorMessage = self:ValidateConfig(configName, config)
+    
+    if not isValid then
+        error(string.format("Invalid config '%s': %s", configName, errorMessage or "Unknown validation error"))
+    end
+    
+    return self:_deepCopy(config)
 end
 
 function ConfigLoader:GetItem(itemId)
@@ -347,9 +359,18 @@ function ConfigLoader:GetCurrency(currencyId)
     return nil
 end
 
+-- Monetization-specific config methods with caching
 function ConfigLoader:GetProduct(productId)
-    local monetization = self:LoadConfig("monetization")
-    for _, product in ipairs(monetization.products or {}) do
+    if not self._monetizationCache then
+        self._monetizationCache = self:LoadConfig("monetization")
+    end
+    
+    local monetization = self._monetizationCache
+    if not monetization or not monetization.products then
+        return nil
+    end
+    
+    for _, product in ipairs(monetization.products) do
         if product.id == productId then
             return product
         end
@@ -358,8 +379,16 @@ function ConfigLoader:GetProduct(productId)
 end
 
 function ConfigLoader:GetGamePass(passId)
-    local monetization = self:LoadConfig("monetization")
-    for _, pass in ipairs(monetization.passes or {}) do
+    if not self._monetizationCache then
+        self._monetizationCache = self:LoadConfig("monetization")
+    end
+    
+    local monetization = self._monetizationCache
+    if not monetization or not monetization.passes then
+        return nil
+    end
+    
+    for _, pass in ipairs(monetization.passes) do
         if pass.id == passId then
             return pass
         end
@@ -367,14 +396,318 @@ function ConfigLoader:GetGamePass(passId)
     return nil
 end
 
+-- Get product by Roblox product ID
+function ConfigLoader:GetProductByRobloxId(robloxProductId)
+    if not self._monetizationCache then
+        self._monetizationCache = self:LoadConfig("monetization")
+    end
+    
+    local monetization = self._monetizationCache
+    if not monetization or not monetization.product_id_mapping then
+        return nil
+    end
+    
+    -- Find config ID that maps to this Roblox ID
+    local configId = nil
+    for id, productId in pairs(monetization.product_id_mapping) do
+        if productId == robloxProductId then
+            configId = id
+            break
+        end
+    end
+    
+    if configId then
+        return self:GetProduct(configId)
+    end
+    
+    return nil
+end
+
+-- Get all monetization products
+function ConfigLoader:GetAllProducts()
+    if not self._monetizationCache then
+        self._monetizationCache = self:LoadConfig("monetization")
+    end
+    
+    local monetization = self._monetizationCache
+    return (monetization and monetization.products) or {}
+end
+
+-- Get all game passes
+function ConfigLoader:GetAllGamePasses()
+    if not self._monetizationCache then
+        self._monetizationCache = self:LoadConfig("monetization")
+    end
+    
+    local monetization = self._monetizationCache
+    return (monetization and monetization.passes) or {}
+end
+
+-- Get product ID mapping
+function ConfigLoader:GetProductIdMapping()
+    if not self._monetizationCache then
+        self._monetizationCache = self:LoadConfig("monetization")
+    end
+    
+    local monetization = self._monetizationCache
+    return (monetization and monetization.product_id_mapping) or {}
+end
+
+-- Get Roblox product/pass ID from config ID
+function ConfigLoader:GetRobloxId(configId)
+    local mapping = self:GetProductIdMapping()
+    return mapping[configId]
+end
+
+-- Get premium benefits configuration
+function ConfigLoader:GetPremiumBenefits()
+    if not self._monetizationCache then
+        self._monetizationCache = self:LoadConfig("monetization")
+    end
+    
+    local monetization = self._monetizationCache
+    return (monetization and monetization.premium_benefits) or {}
+end
+
+-- Get first purchase bonus configuration
+function ConfigLoader:GetFirstPurchaseBonus()
+    if not self._monetizationCache then
+        self._monetizationCache = self:LoadConfig("monetization")
+    end
+    
+    local monetization = self._monetizationCache
+    return (monetization and monetization.first_purchase_bonus) or {}
+end
+
+-- Get validation rules
+function ConfigLoader:GetValidationRules()
+    if not self._monetizationCache then
+        self._monetizationCache = self:LoadConfig("monetization")
+    end
+    
+    local monetization = self._monetizationCache
+    return (monetization and monetization.validation_rules) or {}
+end
+
+-- Get error messages
+function ConfigLoader:GetErrorMessages()
+    if not self._monetizationCache then
+        self._monetizationCache = self:LoadConfig("monetization")
+    end
+    
+    local monetization = self._monetizationCache
+    return (monetization and monetization.error_messages) or {}
+end
+
+-- Get analytics configuration
+function ConfigLoader:GetAnalyticsConfig()
+    if not self._monetizationCache then
+        self._monetizationCache = self:LoadConfig("monetization")
+    end
+    
+    local monetization = self._monetizationCache
+    return (monetization and monetization.analytics) or {}
+end
+
+-- Clear monetization cache (for hot reloading)
+function ConfigLoader:ClearMonetizationCache()
+    self._monetizationCache = nil
+end
+
+-- Validate monetization setup and warn about placeholder IDs
+function ConfigLoader:ValidateMonetizationSetup()
+    local monetization = self:LoadConfig("monetization")
+    local warnings = {}
+    local errors = {}
+    
+    -- Check for placeholder product IDs
+    for configId, robloxId in pairs(monetization.product_id_mapping) do
+        if robloxId == 1234567890 or robloxId == 1234567891 or robloxId == 1234567892 then
+            table.insert(warnings, "Product '" .. configId .. "' still uses placeholder ID " .. robloxId)
+        elseif robloxId == 123456789 or robloxId == 123456790 or robloxId == 123456791 then
+            table.insert(warnings, "Game pass '" .. configId .. "' still uses placeholder ID " .. robloxId)
+        end
+        
+        if robloxId <= 0 then
+            table.insert(errors, "Invalid Roblox ID for '" .. configId .. "': " .. robloxId)
+        end
+    end
+    
+    -- Check test mode configuration
+    local validation = monetization.validation_rules
+    if validation and validation.test_mode and validation.test_mode.enabled then
+        table.insert(warnings, "Test mode is enabled - purchases will be free in Studio")
+    end
+    
+    return {
+        isValid = #errors == 0,
+        errors = errors,
+        warnings = warnings,
+        hasPlaceholders = #warnings > 0
+    }
+end
+
+-- Get monetization setup status for debugging
+function ConfigLoader:GetMonetizationStatus()
+    local status = self:ValidateMonetizationSetup()
+    local monetization = self:LoadConfig("monetization")
+    
+    return {
+        validation = status,
+        productCount = #monetization.products,
+        passCount = #monetization.passes,
+        hasPremiumBenefits = monetization.premium_benefits.enabled,
+        hasFirstPurchaseBonus = monetization.first_purchase_bonus.enabled,
+        testModeEnabled = monetization.validation_rules.test_mode.enabled
+    }
+end
+
 function ConfigLoader:ValidateConfig(configName, config)
-    -- TODO: Implement configuration validation
-    -- This would check required fields, data types, etc.
+    if configName == "monetization" then
+        return self:_validateMonetizationConfig(config)
+    elseif configName == "items" then
+        return self:_validateItemsConfig(config)
+    elseif configName == "currencies" then
+        return self:_validateCurrenciesConfig(config)
+    end
+    
+    -- Default validation for other configs
+    return true
+end
+
+function ConfigLoader:_validateMonetizationConfig(config)
+    if not config then
+        return false, "Monetization config is nil"
+    end
+    
+    -- Check required sections
+    local requiredSections = {"product_id_mapping", "products", "passes", "premium_benefits"}
+    for _, section in ipairs(requiredSections) do
+        if not config[section] then
+            return false, "Missing required section: " .. section
+        end
+    end
+    
+    -- Validate products
+    if type(config.products) ~= "table" then
+        return false, "Products must be a table"
+    end
+    
+    for i, product in ipairs(config.products) do
+        if not product.id or type(product.id) ~= "string" then
+            return false, "Product " .. i .. " missing or invalid id"
+        end
+        
+        if not product.name or type(product.name) ~= "string" then
+            return false, "Product " .. product.id .. " missing or invalid name"
+        end
+        
+        if not product.price_robux or type(product.price_robux) ~= "number" then
+            return false, "Product " .. product.id .. " missing or invalid price_robux"
+        end
+        
+        if not product.rewards or type(product.rewards) ~= "table" then
+            return false, "Product " .. product.id .. " missing or invalid rewards"
+        end
+        
+        -- Check if product ID exists in mapping
+        if not config.product_id_mapping[product.id] then
+            return false, "Product " .. product.id .. " not found in product_id_mapping"
+        end
+    end
+    
+    -- Validate game passes
+    if type(config.passes) ~= "table" then
+        return false, "Passes must be a table"
+    end
+    
+    for i, pass in ipairs(config.passes) do
+        if not pass.id or type(pass.id) ~= "string" then
+            return false, "Pass " .. i .. " missing or invalid id"
+        end
+        
+        if not pass.name or type(pass.name) ~= "string" then
+            return false, "Pass " .. pass.id .. " missing or invalid name"
+        end
+        
+        if not pass.price_robux or type(pass.price_robux) ~= "number" then
+            return false, "Pass " .. pass.id .. " missing or invalid price_robux"
+        end
+        
+        if not pass.benefits or type(pass.benefits) ~= "table" then
+            return false, "Pass " .. pass.id .. " missing or invalid benefits"
+        end
+        
+        -- Check if pass ID exists in mapping
+        if not config.product_id_mapping[pass.id] then
+            return false, "Pass " .. pass.id .. " not found in product_id_mapping"
+        end
+    end
+    
+    -- Validate product ID mapping
+    if type(config.product_id_mapping) ~= "table" then
+        return false, "Product ID mapping must be a table"
+    end
+    
+    for configId, robloxId in pairs(config.product_id_mapping) do
+        if type(configId) ~= "string" then
+            return false, "Config ID must be string: " .. tostring(configId)
+        end
+        
+        if type(robloxId) ~= "number" then
+            return false, "Roblox ID must be number for: " .. configId
+        end
+    end
+    
+    return true
+end
+
+function ConfigLoader:_validateItemsConfig(config)
+    if not config or type(config) ~= "table" then
+        return false, "Items config must be a table"
+    end
+    
+    for i, item in ipairs(config) do
+        if not item.id or type(item.id) ~= "string" then
+            return false, "Item " .. i .. " missing or invalid id"
+        end
+        
+        if not item.name or type(item.name) ~= "string" then
+            return false, "Item " .. item.id .. " missing or invalid name"
+        end
+    end
+    
+    return true
+end
+
+function ConfigLoader:_validateCurrenciesConfig(config)
+    if not config or type(config) ~= "table" then
+        return false, "Currencies config must be a table"
+    end
+    
+    for i, currency in ipairs(config) do
+        if not currency.id or type(currency.id) ~= "string" then
+            return false, "Currency " .. i .. " missing or invalid id"
+        end
+        
+        if not currency.name or type(currency.name) ~= "string" then
+            return false, "Currency " .. currency.id .. " missing or invalid name"
+        end
+    end
+    
     return true
 end
 
 function ConfigLoader:ReloadConfig(configName)
-    -- TODO: Implement hot reloading from files
+    -- Clear specific config cache
+    if configName == "monetization" then
+        self:ClearMonetizationCache()
+    end
+    
+    if self._configCaches then
+        self._configCaches[configName] = nil
+    end
+    
     if self._modules and self._modules.Logger then
         self._modules.Logger:Info("Config reloaded", {config = configName})
     end

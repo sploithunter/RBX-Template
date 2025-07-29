@@ -184,6 +184,120 @@ return {
                     handler = "CombatService.DealDamage"
                 }
             }
+        },
+        
+        Monetization = {
+            description = "Monetization system for Robux purchases and game passes",
+            packets = {
+                InitiatePurchase = {
+                    rateLimit = 10,  -- 10 purchase attempts per minute
+                    direction = "client_to_server",
+                    validation = {
+                        productId = "string",
+                        productType = "string"
+                    },
+                    handler = "MonetizationService.InitiatePurchase"
+                },
+                GetOwnedPasses = {
+                    rateLimit = 30,  -- 30 checks per minute
+                    direction = "client_to_server",
+                    validation = {},
+                    handler = "MonetizationService.GetOwnedPasses"
+                },
+                GetProductInfo = {
+                    rateLimit = 60,  -- 60 info requests per minute
+                    direction = "client_to_server",
+                    validation = {
+                        productId = "string"
+                    },
+                    handler = "MonetizationService.GetProductInfo"
+                },
+                PurchaseSuccess = {
+                    rateLimit = 20,
+                    direction = "server_to_client",
+                    validation = {
+                        type = "string",
+                        id = "string",
+                        rewards = "table"
+                    },
+                    handler = "client.showPurchaseSuccess"
+                },
+                PurchaseError = {
+                    rateLimit = 20,
+                    direction = "server_to_client",
+                    validation = {
+                        message = "string"
+                    },
+                    handler = "client.showPurchaseError"
+                },
+                OwnedPasses = {
+                    rateLimit = 10,
+                    direction = "server_to_client",
+                    validation = {
+                        passes = "table"
+                    },
+                    handler = "client.updateOwnedPasses"
+                },
+                ProductInfo = {
+                    rateLimit = 10,
+                    direction = "server_to_client",
+                    validation = {
+                        id = "string",
+                        name = "string",
+                        price_robux = "number"
+                    },
+                    handler = "client.showProductInfo"
+                },
+                FirstPurchaseBonus = {
+                    rateLimit = 5,
+                    direction = "server_to_client",
+                    validation = {
+                        gems = "number",
+                        coins = "number"
+                    },
+                    handler = "client.showFirstPurchaseBonus"
+                }
+            }
         }
+    },
+    
+    validators = {
+        -- Basic validation for packets with no required data
+        basicValidator = function(data)
+            return true
+        end,
+        
+        -- Validation for item purchases
+        itemPurchaseValidator = function(data)
+            return type(data.itemId) == "string" and
+                   data.itemId:match("^[a-z_]+$") and
+                   #data.itemId <= 50 and
+                   type(data.cost) == "number" and
+                   data.cost > 0 and
+                   type(data.currency) == "string"
+        end,
+        
+        -- Validation for item sales
+        itemSellValidator = function(data)
+            return type(data.itemId) == "string" and
+                   type(data.quantity) == "number" and
+                   data.quantity > 0 and
+                   data.quantity <= 100
+        end,
+        
+        -- Validation for Robux purchases
+        purchaseValidator = function(data)
+            return type(data.productId) == "string" and
+                   data.productId:match("^[a-z_]+$") and
+                   #data.productId <= 50 and
+                   (data.productType == "product" or data.productType == "gamepass")
+        end,
+        
+        -- Validation for product info requests
+        productInfoValidator = function(data)
+            return type(data.productId) == "string" and
+                   data.productId:match("^[a-z_]+$") and
+                   #data.productId <= 50
+        end
     }
 } 
