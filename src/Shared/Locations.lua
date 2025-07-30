@@ -77,7 +77,9 @@ Locations.ConfigFiles = {
     Monetization = "monetization",
     Network = "network",
     Effects = "effects",
-    UI = "ui"
+    ui = "ui",
+    pets = "pets",
+    egg_system = "egg_system"
 }
 
 -- === CORE MODULES ===
@@ -123,7 +125,9 @@ Locations.Services = {
     PlayerEffectsService = "PlayerEffectsService",
     GlobalEffectsService = "GlobalEffectsService",
     RateLimitService = "RateLimitService",
-    ServerClockService = "ServerClockService"
+    ServerClockService = "ServerClockService",
+    EggService = "EggService",
+    EggSpawner = "EggSpawner"
 }
 
 -- === NETWORK BRIDGES ===
@@ -205,9 +209,12 @@ end
 
 -- Load a configuration file
 function Locations.getConfig(configName)
+    -- Look up the actual config file name
+    local configFileName = Locations.ConfigFiles[configName]
+    
     local configLoader = Locations.getConfigLoader()
     if configLoader then
-        return configLoader:LoadConfig(configName)
+        return configLoader:LoadConfig(configFileName)
     end
     return nil
 end
