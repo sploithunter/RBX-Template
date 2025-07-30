@@ -38,11 +38,12 @@ loader:RegisterModule("NetworkConfig", ReplicatedStorage.Shared.Utils.NetworkCon
 
 -- Register server services
 loader:RegisterModule("DataService", ServerScriptService.Server.Services.DataService, {"Logger", "ConfigLoader"})
+loader:RegisterModule("AdminService", ServerScriptService.Server.Services.AdminService, {"Logger", "ConfigLoader"})
 loader:RegisterModule("RateLimitService", ServerScriptService.Server.Services.RateLimitService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
 loader:RegisterModule("PlayerEffectsService", ServerScriptService.Server.Services.PlayerEffectsService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
 loader:RegisterModule("GlobalEffectsService", ServerScriptService.Server.Services.GlobalEffectsService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
 loader:RegisterModule("ProductIdMapper", ReplicatedStorage.Shared.Utils.ProductIdMapper, {"Logger", "ConfigLoader"})
-loader:RegisterModule("EconomyService", ServerScriptService.Server.Services.EconomyService, {"Logger", "DataService", "NetworkConfig", "ConfigLoader", "PlayerEffectsService", "GlobalEffectsService"})
+loader:RegisterModule("EconomyService", ServerScriptService.Server.Services.EconomyService, {"Logger", "DataService", "NetworkConfig", "ConfigLoader", "PlayerEffectsService", "GlobalEffectsService", "AdminService"})
 loader:RegisterModule("MonetizationService", ServerScriptService.Server.Services.MonetizationService, {"Logger", "DataService", "EconomyService", "ProductIdMapper", "PlayerEffectsService", "NetworkConfig"})
 
 -- Register lazy services (loaded when needed)

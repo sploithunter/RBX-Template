@@ -856,7 +856,7 @@ local uiConfig = {
                 {type = "menu_button", config = {name = "Inventory", icon = "🎒", text = "Items", color = Color3.fromRGB(52, 152, 219), action = "inventory_action"}},
                 {type = "menu_button", config = {name = "Effects", icon = "⚡", text = "Effects", color = Color3.fromRGB(155, 89, 182), action = "effects_action"}},
                 {type = "menu_button", config = {name = "Settings", icon = "⚙️", text = "Settings", color = Color3.fromRGB(149, 165, 166), action = "settings_action"}},
-                {type = "menu_button", config = {name = "Admin", icon = "👑", text = "Admin", color = Color3.fromRGB(231, 76, 60), action = "admin_action"}},
+                {type = "menu_button", config = {name = "Admin", icon = "👑", text = "Admin", color = Color3.fromRGB(231, 76, 60), action = "admin_action", admin_only = true}},
                 -- Add more buttons with custom actions - automatically arranged in 4x2 grid
                 {type = "menu_button", config = {name = "Daily", icon = "📅", text = "Daily", color = Color3.fromRGB(255, 165, 0), action = "daily_login_action"}},
                 {type = "menu_button", config = {name = "Quest", icon = "🎯", text = "Quest", color = Color3.fromRGB(34, 139, 34), action = "quest_claim_action"}}

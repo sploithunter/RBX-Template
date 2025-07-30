@@ -799,11 +799,25 @@ function BaseUI:_createPaneElement(contentConfig, parent, layoutOrder, layoutCon
         return self:_createCurrencyElement(config, parent, layoutOrder)
         
     elseif elementType == "menu_button" then
+        self.logger:info("🔧 BaseUI: Creating menu button", {
+            buttonName = config.name,
+            hasAdminOnly = config.admin_only or false
+        })
         -- Check admin-only restriction
         if config.admin_only then
-            local player = Players.LocalPlayer
-            local ADMIN_USERS = { ["coloradoplays"] = true }
-            if not ADMIN_USERS[player.Name] then
+            -- Use centralized admin checking (single source of truth)
+            local Locations = require(ReplicatedStorage.Shared.Locations)
+            local AdminChecker = require(Locations.SharedUtils.AdminChecker)
+            local isAdmin = AdminChecker.IsCurrentPlayerAdmin()
+            self.logger:info("🔍 BaseUI: Admin check for menu button", {
+                buttonName = config.name,
+                isAdmin = isAdmin,
+                userId = Players.LocalPlayer.UserId
+            })
+            if not isAdmin then
+                self.logger:info("🚫 BaseUI: Skipping admin button - user not authorized", {
+                    buttonName = config.name
+                })
                 return nil  -- Skip admin button for non-admin users
             end
         end

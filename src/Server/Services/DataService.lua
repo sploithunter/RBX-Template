@@ -207,11 +207,57 @@ function DataService:LoadProfile(player)
             player:SetAttribute("Coins", data.Currencies.coins)
             player:SetAttribute("Gems", data.Currencies.gems)
             
+            -- COIN TRACING: Monitor all changes to Coins attribute
+            player:GetAttributeChangedSignal("Coins"):Connect(function()
+                local newValue = player:GetAttribute("Coins")
+                local stackTrace = debug.traceback("", 2)
+                
+                -- Determine if this change came from our DataService
+                local isFromDataService = stackTrace:find("DataService") ~= nil
+                local isFromSetCurrency = stackTrace:find("SetCurrency") ~= nil
+                
+                self._logger:Info("🪙 COIN TRACE - Coins attribute CHANGED", {
+                    player = player.Name,
+                    newCoinsValue = newValue,
+                    changeSource = isFromDataService and "DataService" or "EXTERNAL",
+                    viaSetCurrency = isFromSetCurrency,
+                    stackTrace = stackTrace:sub(1, 200) -- Truncate for readability
+                })
+                
+                -- If changed externally, this is likely the bug!
+                if not isFromDataService then
+                    self._logger:Warn("🚨 EXTERNAL COIN CHANGE DETECTED - This may be the bug!", {
+                        player = player.Name,
+                        externalValue = newValue,
+                        fullStackTrace = stackTrace
+                    })
+                end
+            end)
+            
+            -- Also monitor Gems for completeness
+            player:GetAttributeChangedSignal("Gems"):Connect(function()
+                local newValue = player:GetAttribute("Gems")
+                local stackTrace = debug.traceback("Gems attribute changed", 2)
+                self._logger:Info("💎 GEM TRACE - Gems attribute CHANGED", {
+                    player = player.Name,
+                    newGemsValue = newValue,
+                    stackTrace = stackTrace
+                })
+            end)
+            
             self._logger:Info("Profile loaded successfully", {
                 player = player.Name,
                 level = data.Stats.Level,
                 coins = data.Currencies.coins,
                 sessionCount = data.Analytics.SessionCount
+            })
+            
+            -- COIN TRACING: Log what was loaded from ProfileStore
+            self._logger:Info("🪙 LOADED FROM PROFILESTORE", {
+                player = player.Name,
+                coins = data.Currencies.coins,
+                gems = data.Currencies.gems,
+                session = data.Analytics.SessionCount
             })
             
             -- Trigger profile loaded event
@@ -239,17 +285,31 @@ function DataService:ReleaseProfile(player)
     local profile = self.Profiles[player]
     
     if profile then
+        -- COIN TRACING: Log what we're about to save
+        local data = profile.Data
+        self._logger:Info("🪙 SAVING TO PROFILESTORE", {
+            player = player.Name,
+            coins = data.Currencies.coins,
+            gems = data.Currencies.gems,
+            session = data.Analytics.SessionCount
+        })
+        
         -- Update session data
         local sessionDuration = tick() - self.SessionStartTime
         profile.Data.Analytics.LastSessionDuration = sessionDuration
         profile.Data.Analytics.TotalPlayTime = profile.Data.Analytics.TotalPlayTime + sessionDuration
         
-        -- End the session
+        -- End the session (this triggers the save)
         profile:EndSession()
         
-        self._logger:Info("Profile released", {
+        self._logger:Info("🪙 COIN TRACE - Profile save triggered via EndSession", {
             player = player.Name,
-            sessionDuration = sessionDuration
+            sessionDuration = sessionDuration,
+            finalCoinsValue = data.Currencies.coins
+        })
+    else
+        self._logger:Warn("🪙 COIN TRACE - No profile found for player during release", {
+            player = player.Name
         })
     end
     
@@ -286,33 +346,78 @@ function DataService:GetCurrency(player, currencyType)
 end
 
 function DataService:SetCurrency(player, currencyType, amount)
-    self._logger:Debug("DataService:SetCurrency called", {player = player.Name, currencyType = currencyType, amount = amount})
+    local currencyIcon = currencyType == "coins" and "🪙" or (currencyType == "gems" and "💎" or "💰")
+    self._logger:Info(currencyIcon .. " CURRENCY TRACE - SetCurrency called", {
+        player = player.Name, 
+        currencyType = currencyType, 
+        requestedAmount = amount
+    })
     
     local data = self:GetData(player)
     if not data then 
-        self._logger:Debug("DataService:SetCurrency - no data found")
+        self._logger:Error(currencyIcon .. " CURRENCY TRACE - SetCurrency FAILED - no profile data found")
         return false 
     end
+    
+    -- Log current state before change
+    local oldAmount = data.Currencies[currencyType] or 0
+    self._logger:Info(currencyIcon .. " CURRENCY TRACE - Current state before change", {
+        player = player.Name,
+        currency = currencyType,
+        currentProfileValue = oldAmount,
+        currentAttributeValue = player:GetAttribute(currencyType:gsub("^%l", string.upper)),
+        requestedNewValue = amount
+    })
     
     -- Validate amount
     local currencyConfig = self._configLoader:GetCurrency(currencyType)
     if currencyConfig and currencyConfig.maxAmount then
+        local originalAmount = amount
         amount = math.min(amount, currencyConfig.maxAmount)
+        if amount ~= originalAmount then
+            self._logger:Info(currencyIcon .. " CURRENCY TRACE - Currency capped to max", {
+                currency = currencyType, 
+                originalAmount = originalAmount, 
+                cappedAmount = amount,
+                maxAmount = currencyConfig.maxAmount
+            })
+        end
     end
     
     amount = math.max(0, amount) -- No negative currencies
     
-    local oldAmount = data.Currencies[currencyType] or 0
+    -- Make the changes
     data.Currencies[currencyType] = amount
     
     -- Update player attribute
-    player:SetAttribute(currencyType:gsub("^%l", string.upper), amount)
+    local attributeName = currencyType:gsub("^%l", string.upper)
+    player:SetAttribute(attributeName, amount)
     
-    self._logger:Debug("Currency set", {
+    self._logger:Info(currencyIcon .. " CURRENCY TRACE - Currency updated in profile and attribute", {
         player = player.Name,
         currency = currencyType,
         oldAmount = oldAmount,
-        newAmount = amount
+        newAmount = amount,
+        attributeName = attributeName,
+        profileValue = data.Currencies[currencyType],
+        attributeValue = player:GetAttribute(attributeName),
+        profileMatches = (data.Currencies[currencyType] == amount),
+        attributeMatches = (player:GetAttribute(attributeName) == amount)
+    })
+    
+    -- Verify the change took effect
+    task.wait(0.1)
+    local verifyAmount = self:GetCurrency(player, currencyType)
+    local verifyAttribute = player:GetAttribute(attributeName)
+    self._logger:Info(currencyIcon .. " CURRENCY TRACE - Post-change verification", {
+        player = player.Name,
+        currency = currencyType,
+        setAmount = amount,
+        retrievedFromProfile = verifyAmount,
+        retrievedFromAttribute = verifyAttribute,
+        profileMatches = (verifyAmount == amount),
+        attributeMatches = (verifyAttribute == amount),
+        allMatch = (verifyAmount == amount and verifyAttribute == amount)
     })
     
     return true
@@ -490,6 +595,50 @@ function DataService:_migrateCurrencies(data)
             migrations = migrations + 1
         end
         
+        -- ONE-TIME MIGRATION: Fix currencies that were incorrectly set by previous AI session
+        -- This fixes the issue where coins were set to 70 instead of the correct config value
+        if not data._migrations then
+            data._migrations = {}
+        end
+        
+        if not data._migrations.fixIncorrectCurrencies then
+            self._logger:Info("🪙 COIN TRACE - Running one-time currency fix migration")
+            for _, currency in ipairs(currenciesConfig) do
+                local configDefault = currency.defaultAmount or 0
+                local currentAmount = data.Currencies[currency.id] or 0
+                
+                self._logger:Info("🪙 COIN TRACE - Migration checking currency", {
+                    currency = currency.id,
+                    savedValue = currentAmount,
+                    configDefault = configDefault,
+                    needsFixing = (currentAmount ~= configDefault)
+                })
+                
+                -- Reset to config defaults for all currencies to fix previous AI errors
+                if currentAmount ~= configDefault then
+                    self._logger:Info("🪙 COIN TRACE - Migration FIXING currency", {
+                        currency = currency.id,
+                        oldIncorrectValue = currentAmount,
+                        newCorrectValue = configDefault
+                    })
+                    data.Currencies[currency.id] = configDefault
+                    migrations = migrations + 1
+                else
+                    self._logger:Info("🪙 COIN TRACE - Migration SKIPPING currency (already correct)", {
+                        currency = currency.id,
+                        value = currentAmount
+                    })
+                end
+            end
+            data._migrations.fixIncorrectCurrencies = true
+            migrations = migrations + 1
+            self._logger:Info("🪙 COIN TRACE - Currency fix migration completed", {
+                totalMigrations = migrations
+            })
+        else
+            self._logger:Info("🪙 COIN TRACE - Currency fix migration already completed, skipping")
+        end
+        
         -- Add any new currencies from config (never remove existing ones)
         for _, currency in ipairs(currenciesConfig) do
             if not data.Currencies[currency.id] then
@@ -602,59 +751,33 @@ function DataService:_onProfileLoaded(player, profile)
         self._logger:Debug("No player character found yet")
     end
     
-    -- AUTO-SETUP FOR TESTING: Give test items and coins if player has none
-    self._logger:Debug("Checking if in Studio", {isStudio = game:GetService("RunService"):IsStudio()})
-    if game:GetService("RunService"):IsStudio() then
-        self._logger:Debug("In Studio, starting auto-setup")
-        local data = profile.Data
-        self._logger:Debug("Profile data", {
-            coins = data.Currencies.coins,
-            inventory = data.Inventory,
-            testItem = data.Inventory.test_item
+    -- FIRST-TIME PLAYER SETUP: Only give currencies on actual first login (based on config defaults)
+    -- This replaces the old testing auto-setup that was overriding admin currency changes
+    local data = profile.Data
+    local isFirstLogin = (data.Analytics.SessionCount == 1)
+    
+    if isFirstLogin then
+        self._logger:Info("First-time player setup", {
+            player = player.Name,
+            sessionCount = data.Analytics.SessionCount
         })
         
-        -- Give starting coins if player has 0
-        if data.Currencies.coins == 0 then
-            self._logger:Debug("Player has 0 coins, giving 2000 for egg testing")
-            data.Currencies.coins = 2000
-            player:SetAttribute("Coins", 2000)
-            self._logger:Info("Auto-setup: Gave starting coins for egg testing", {player = player.Name})
-        else
-            self._logger:Debug("Player already has coins", {coins = data.Currencies.coins})
-        end
-        
-        -- Give starting gems for multi-currency testing
-        if data.Currencies.gems < 200 then
-            self._logger:Debug("Player has insufficient gems for testing, setting to 200")
-            data.Currencies.gems = 200
-            player:SetAttribute("Gems", 200)
-            self._logger:Info("Auto-setup: Set gems to 200 for comprehensive effect testing", {player = player.Name})
-        else
-            self._logger:Debug("Player already has sufficient gems", {gems = data.Currencies.gems})
-        end
-        
-        -- Give starting crystals for comprehensive currency testing
-        if not data.Currencies.crystals or data.Currencies.crystals == 0 then
-            self._logger:Debug("Player has 0 crystals, giving 10")
-            data.Currencies.crystals = 10
-            player:SetAttribute("Crystals", 10)
-            self._logger:Info("Auto-setup: Gave starting crystals for comprehensive testing", {player = player.Name})
-        else
-            self._logger:Debug("Player already has crystals", {crystals = data.Currencies.crystals})
-        end
-        
-        -- Give test item if player doesn't have one
-        if not data.Inventory.test_item or data.Inventory.test_item == 0 then
-            self._logger:Debug("Player has no test_item, giving 1")
-            data.Inventory.test_item = 1
-            self._logger:Info("Auto-setup: Gave test item for testing", {player = player.Name})
-        else
-            self._logger:Debug("Player already has test_item", {count = data.Inventory.test_item})
-        end
-        
-        self._logger:Debug("Auto-setup completed")
+        -- The currency defaults are already set from ProfileTemplate during profile creation
+        -- We don't need to override them here, just log what they started with
+        self._logger:Info("New player starting currencies", {
+            player = player.Name,
+            startingCoins = data.Currencies.coins,
+            startingGems = data.Currencies.gems,
+            startingCrystals = data.Currencies.crystals
+        })
     else
-        self._logger:Debug("Not in Studio, skipping auto-setup")
+        self._logger:Debug("Returning player - preserving existing currency values", {
+            player = player.Name,
+            sessionCount = data.Analytics.SessionCount,
+            currentCoins = data.Currencies.coins,
+            currentGems = data.Currencies.gems,
+            currentCrystals = data.Currencies.crystals
+        })
     end
     
             -- Load persistent effects if PlayerEffectsService is available

@@ -32,6 +32,7 @@ function EconomyService:Init()
     self._configLoader = self._modules.ConfigLoader
     self._playerEffectsService = self._modules.PlayerEffectsService
     self._globalEffectsService = self._modules.GlobalEffectsService
+    self._adminService = self._modules.AdminService
     -- Backward-compatibility alias so existing effect code can reuse old variable names
     self._rateLimitService = self._playerEffectsService
     
@@ -888,6 +889,159 @@ function EconomyService:GetActiveEffects(player, data)
             self._logger:Error("Failed to send active effects", {error = error, player = player.Name})
         end
     end
+end
+
+-- Admin Panel Handlers
+function EconomyService:AdjustCurrency(player, data)
+    -- SECURITY: Validate admin authorization
+    if not self._adminService then
+        self._logger:Error("🚨 SECURITY: AdminService not available for authorization check")
+        return
+    end
+    
+    local authorized, reason = self._adminService:ValidateAdminAction(player, "adjustCurrency", data, "client")
+    if not authorized then
+        self._logger:Warn("🚨 UNAUTHORIZED AdjustCurrency attempt blocked", {
+            player = player.Name,
+            userId = player.UserId,
+            reason = reason,
+            requestedCurrency = data.currency,
+            requestedAmount = data.amount
+        })
+        return
+    end
+    
+    self._logger:Info("🔧 Admin: AdjustCurrency called", {
+        player = player.Name,
+        currency = data.currency,
+        amount = data.amount
+    })
+    
+    local success = self:AddCurrency(player, data.currency, data.amount, "admin_adjustment")
+    
+    if success then
+        self._logger:Info("🔧 Admin: Currency adjusted successfully", {
+            player = player.Name,
+            currency = data.currency,
+            amount = data.amount
+        })
+    else
+        self._logger:Error("🔧 Admin: Currency adjustment failed", {
+            player = player.Name,
+            currency = data.currency,
+            amount = data.amount
+        })
+    end
+end
+
+function EconomyService:SetCurrency(player, data)
+    -- SECURITY: Validate admin authorization
+    if not self._adminService then
+        self._logger:Error("🚨 SECURITY: AdminService not available for authorization check")
+        return
+    end
+    
+    local authorized, reason = self._adminService:ValidateAdminAction(player, "setCurrency", data, "client")
+    if not authorized then
+        self._logger:Warn("🚨 UNAUTHORIZED SetCurrency attempt blocked", {
+            player = player.Name,
+            userId = player.UserId,
+            reason = reason,
+            requestedCurrency = data.currency,
+            requestedAmount = data.amount
+        })
+        return
+    end
+    
+    self._logger:Info("🧪 Admin: SetCurrency called", {
+        player = player.Name,
+        currency = data.currency,
+        amount = data.amount
+    })
+    
+    -- Use DataService directly to set absolute value
+    local success = self._dataService:SetCurrency(player, data.currency, data.amount)
+    
+    if success then
+        local newAmount = self:GetCurrency(player, data.currency)
+        
+        -- Log transaction
+        self:_logTransaction(player, {
+            type = "admin_set_currency",
+            currency = data.currency,
+            amount = data.amount,
+            reason = "admin_panel",
+            timestamp = os.time()
+        })
+        
+        -- Fire events
+        self.CurrencyChanged:Fire(player, data.currency, newAmount, 0)
+        
+        -- Sync to client
+        self._economyBridge:Fire(player, "CurrencyUpdate", {
+            currency = data.currency,
+            amount = newAmount,
+            change = data.amount
+        })
+        
+        self._logger:Info("🧪 Admin: Currency set successfully", {
+            player = player.Name,
+            currency = data.currency,
+            amount = data.amount,
+            actualValue = newAmount
+        })
+    else
+        self._logger:Error("🧪 Admin: Currency set failed", {
+            player = player.Name,
+            currency = data.currency,
+            amount = data.amount
+        })
+    end
+end
+
+function EconomyService:AdminPurchaseItem(player, data)
+    self._logger:Info("🔧 Admin: AdminPurchaseItem called", {
+        player = player.Name,
+        itemId = data.itemId,
+        cost = data.cost,
+        currency = data.currency
+    })
+    
+    -- Use the regular purchase flow
+    local success = self:PurchaseItem(player, data.itemId)
+    
+    if success then
+        self._logger:Info("🔧 Admin: Item purchase successful", {
+            player = player.Name,
+            itemId = data.itemId
+        })
+    else
+        self._logger:Error("🔧 Admin: Item purchase failed", {
+            player = player.Name,
+            itemId = data.itemId
+        })
+    end
+end
+
+function EconomyService:ResetCurrencies(player, data)
+    self._logger:Info("🔧 Admin: ResetCurrencies called", {player = player.Name})
+    
+    -- Reset to config defaults
+    local currenciesConfig = self._configLoader:LoadConfig("currencies")
+    
+    for _, currency in ipairs(currenciesConfig) do
+        local defaultAmount = currency.defaultAmount or 0
+        self._dataService:SetCurrency(player, currency.id, defaultAmount)
+        
+        -- Sync to client
+        self._economyBridge:Fire(player, "CurrencyUpdate", {
+            currency = currency.id,
+            amount = defaultAmount,
+            change = 0
+        })
+    end
+    
+    self._logger:Info("🔧 Admin: All currencies reset to defaults", {player = player.Name})
 end
 
 function EconomyService:GetTransactionHistory(player)

@@ -89,11 +89,9 @@ end
 local SettingsPanel = {}
 SettingsPanel.__index = SettingsPanel
 
--- Admin user list (in a real game, this would come from a secure server)
-local ADMIN_USERS = {
-    ["coloradoplays"] = true,
-    -- Add more admin usernames here
-}
+-- Use centralized admin checking via Locations
+local Locations = require(ReplicatedStorage.Shared.Locations)
+local AdminChecker = require(Locations.SharedUtils.AdminChecker)
 
 function SettingsPanel.new()
     local self = setmetatable({}, SettingsPanel)
@@ -131,8 +129,12 @@ function SettingsPanel.new()
         }
     }
     
-    -- Check if user is admin
-    self.isAdmin = ADMIN_USERS[Players.LocalPlayer.Name] == true
+    -- Check if user is admin (using centralized AdminChecker)
+    self.isAdmin = AdminChecker.IsCurrentPlayerAdmin()
+    
+    -- Log admin status for debugging
+    local adminStatus = AdminChecker.GetAdminStatus()
+    self.logger:info("Admin status determined", adminStatus)
     
     return self
 end
@@ -253,7 +255,13 @@ function SettingsPanel:_createUI(parent)
     
     -- Admin section (only for admin users)
     if self.isAdmin then
+        self.logger:info("Creating admin settings - user is authorized admin")
         self:_createAdminSettings()
+    else
+        self.logger:debug("Skipping admin settings - user is not authorized admin", {
+            userId = Players.LocalPlayer.UserId,
+            userName = Players.LocalPlayer.Name
+        })
     end
 end
 

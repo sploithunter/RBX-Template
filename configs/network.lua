@@ -63,6 +63,45 @@ return {
                     handler = "EconomyService.GetActiveEffects"
                 },
                 
+                -- Admin Panel Actions
+                adjust_currency = {
+                    rateLimit = 5,
+                    direction = "client_to_server",
+                    validation = {
+                        currency = "string",
+                        amount = "number"
+                    },
+                    handler = "EconomyService.AdjustCurrency"
+                },
+                
+                set_currency = {
+                    rateLimit = 5,
+                    direction = "client_to_server",
+                    validation = {
+                        currency = "string",
+                        amount = "number"
+                    },
+                    handler = "EconomyService.SetCurrency"
+                },
+                
+                purchase_item = {
+                    rateLimit = 5,
+                    direction = "client_to_server",
+                    validation = {
+                        itemId = "string",
+                        cost = "number",
+                        currency = "string"
+                    },
+                    handler = "EconomyService.AdminPurchaseItem"
+                },
+                
+                reset_currencies = {
+                    rateLimit = 2,
+                    direction = "client_to_server",
+                    validation = {},
+                    handler = "EconomyService.ResetCurrencies"
+                },
+                
                 EconomyError = {
                     rateLimit = 5,
                     direction = "server_to_client",

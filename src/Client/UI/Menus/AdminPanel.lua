@@ -129,6 +129,20 @@ local TEST_CATEGORIES = {
             {name = "Add 100 Gems", action = "add_gems_100"},
             {name = "Add 50 Crystals", action = "add_crystals_50"},
             {name = "Reset All Currencies", action = "reset_currencies"},
+        },
+        customInputs = {
+            {
+                label = "Adjust Coins (+ to add, - to remove):",
+                placeholder = "e.g. +1M, -500K, +2.5B, +42",
+                currency = "coins",
+                action = "adjust_coins_custom"
+            },
+            {
+                label = "Adjust Gems (+ to add, - to remove):",
+                placeholder = "e.g. +1M, -100K, +1T, +500",
+                currency = "gems", 
+                action = "adjust_gems_custom"
+            }
         }
     }
 }
@@ -286,13 +300,19 @@ function AdminPanel:_createTestCategories()
     local layoutOrder = 1
     
     for categoryKey, categoryData in pairs(TEST_CATEGORIES) do
-        self:_createCategorySection(categoryData.title, categoryData.tests, layoutOrder)
+        self:_createCategorySection(categoryData.title, categoryData, layoutOrder)
         layoutOrder = layoutOrder + 1
     end
 end
 
-function AdminPanel:_createCategorySection(title, tests, layoutOrder)
+function AdminPanel:_createCategorySection(title, categoryData, layoutOrder)
     local theme = uiConfig.helpers.get_theme(uiConfig)
+    local tests = categoryData.tests or categoryData  -- Support both old format and new format
+    local customInputs = categoryData.customInputs or {}
+    
+    -- Calculate total height needed
+    local totalItems = #tests + (#customInputs * 2)  -- Custom inputs take 2 rows each (label + input)
+    local containerHeight = totalItems * 45 + 10
     
     -- Category header
     local header = Instance.new("Frame")
@@ -321,7 +341,7 @@ function AdminPanel:_createCategorySection(title, tests, layoutOrder)
     -- Tests container
     local testsContainer = Instance.new("Frame")
     testsContainer.Name = title .. "Tests"
-    testsContainer.Size = UDim2.new(1, 0, 0, #tests * 45 + 10)
+    testsContainer.Size = UDim2.new(1, 0, 0, containerHeight)
     testsContainer.BackgroundColor3 = theme.primary.card or Color3.fromRGB(50, 50, 55)
     testsContainer.BorderSizePixel = 0
     testsContainer.LayoutOrder = layoutOrder + 0.5
@@ -344,9 +364,18 @@ function AdminPanel:_createCategorySection(title, tests, layoutOrder)
     testsPadding.PaddingRight = UDim.new(0, 10)
     testsPadding.Parent = testsContainer
     
+    local currentLayoutOrder = 1
+    
     -- Create test buttons
     for i, test in ipairs(tests) do
-        self:_createTestButton(test.name, test.action, i, testsContainer)
+        self:_createTestButton(test.name, test.action, currentLayoutOrder, testsContainer)
+        currentLayoutOrder = currentLayoutOrder + 1
+    end
+    
+    -- Create custom input fields
+    for i, inputConfig in ipairs(customInputs) do
+        self:_createCustomInput(inputConfig, currentLayoutOrder, testsContainer)
+        currentLayoutOrder = currentLayoutOrder + 2  -- Takes 2 layout orders (label + input)
     end
 end
 
@@ -391,6 +420,154 @@ function AdminPanel:_createTestButton(testName, action, layoutOrder, parent)
     button.Activated:Connect(function()
         self:_executeTestAction(action, testName)
     end)
+end
+
+function AdminPanel:_createCustomInput(inputConfig, layoutOrder, parent)
+    local theme = uiConfig.helpers.get_theme(uiConfig)
+    
+    -- Label
+    local label = Instance.new("TextLabel")
+    label.Name = inputConfig.action .. "Label"
+    label.Size = UDim2.new(1, 0, 0, 25)
+    label.BackgroundTransparency = 1
+    label.Text = inputConfig.label
+    label.TextColor3 = theme.text and theme.text.primary or Color3.fromRGB(255, 255, 255)
+    label.TextSize = 12
+    label.Font = Enum.Font.Gotham
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.LayoutOrder = layoutOrder
+    label.Parent = parent
+    
+    -- Input container frame
+    local inputFrame = Instance.new("Frame")
+    inputFrame.Name = inputConfig.action .. "InputFrame"
+    inputFrame.Size = UDim2.new(1, 0, 0, 35)
+    inputFrame.BackgroundColor3 = theme.input and theme.input.background or Color3.fromRGB(30, 30, 35)
+    inputFrame.BorderSizePixel = 0
+    inputFrame.LayoutOrder = layoutOrder + 1
+    inputFrame.Parent = parent
+    
+    local inputCorner = Instance.new("UICorner")
+    inputCorner.CornerRadius = UDim.new(0, 6)
+    inputCorner.Parent = inputFrame
+    
+    -- Text input
+    local textBox = Instance.new("TextBox")
+    textBox.Name = inputConfig.action .. "TextBox"
+    textBox.Size = UDim2.new(0.7, -10, 1, -6)
+    textBox.Position = UDim2.new(0, 5, 0, 3)
+    textBox.BackgroundTransparency = 1
+    textBox.Text = ""
+    textBox.PlaceholderText = inputConfig.placeholder
+    textBox.TextColor3 = theme.text and theme.text.primary or Color3.fromRGB(255, 255, 255)
+    textBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+    textBox.TextSize = 12
+    textBox.Font = Enum.Font.Gotham
+    textBox.TextXAlignment = Enum.TextXAlignment.Left
+    textBox.ClearTextOnFocus = false
+    textBox.Parent = inputFrame
+    
+    -- Set button
+    local setButton = Instance.new("TextButton")
+    setButton.Name = inputConfig.action .. "SetButton"
+    setButton.Size = UDim2.new(0.3, -5, 1, -6)
+    setButton.Position = UDim2.new(0.7, 0, 0, 3)
+    setButton.BackgroundColor3 = theme.button and theme.button.primary or Color3.fromRGB(0, 120, 180)
+    setButton.BorderSizePixel = 0
+    setButton.Text = "Adjust " .. inputConfig.currency:gsub("^%l", string.upper)
+    setButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    setButton.TextSize = 11
+    setButton.Font = Enum.Font.GothamBold
+    setButton.Parent = inputFrame
+    
+    local setButtonCorner = Instance.new("UICorner")
+    setButtonCorner.CornerRadius = UDim.new(0, 4)
+    setButtonCorner.Parent = setButton
+    
+    -- Shared function for both button click and enter key
+    local function handleCurrencyAdjust()
+        local amount = self:_parseAmount(textBox.Text)
+        if amount then  -- Allow negative numbers for decrement
+            self:_executeCustomCurrencyAdjust(inputConfig.currency, amount)
+            textBox.Text = ""  -- Clear after adjusting
+        else
+            self.logger:warn("Invalid amount entered:", textBox.Text)
+        end
+    end
+    
+    -- Button click handler
+    setButton.Activated:Connect(handleCurrencyAdjust)
+    
+    -- Enter key handler for text box
+    textBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            handleCurrencyAdjust()
+        end
+    end)
+end
+
+function AdminPanel:_parseAmount(input)
+    if not input or input == "" then
+        return nil
+    end
+    
+    local originalInput = input
+    
+    -- Clean up the input
+    input = string.upper(string.gsub(input, "%s+", "")) -- Remove spaces and convert to uppercase
+    
+    -- Handle sign
+    local sign = 1
+    if string.sub(input, 1, 1) == "+" then
+        input = string.sub(input, 2)
+    elseif string.sub(input, 1, 1) == "-" then
+        sign = -1
+        input = string.sub(input, 2)
+    end
+    
+    -- Suffix multipliers matching BaseUI:_formatNumber exactly
+    local suffixes = {
+        {1e15, "QA"},  -- Quadrillion
+        {1e12, "T"},   -- Trillion  
+        {1e9,  "B"},   -- Billion
+        {1e6,  "M"},   -- Million
+        {1e3,  "K"}    -- Thousand
+    }
+    
+    -- Find matching suffix
+    local multiplier = 1
+    local baseNumber = input
+    
+    for _, suffix in ipairs(suffixes) do
+        local suffixStr = suffix[2]
+        if string.sub(input, -string.len(suffixStr)) == suffixStr then
+            multiplier = suffix[1]
+            baseNumber = string.sub(input, 1, -string.len(suffixStr) - 1)
+            break
+        end
+    end
+    
+    -- Parse the base number
+    local numericValue = tonumber(baseNumber)
+    if not numericValue then
+        return nil
+    end
+    
+    -- Calculate final amount
+    local finalAmount = math.floor(numericValue * multiplier * sign)
+    
+    -- Log the parsing for debugging
+    self.logger:info("💰 Amount parsed", {
+        originalInput = originalInput,
+        cleanedInput = input,
+        baseNumber = baseNumber,
+        numericValue = numericValue,
+        multiplier = multiplier,
+        sign = sign,
+        parsedAs = finalAmount
+    })
+    
+    return finalAmount
 end
 
 function AdminPanel:_executeTestAction(action, testName)
@@ -444,7 +621,7 @@ function AdminPanel:_executePurchaseAction(action)
     
     local purchaseData = purchases[action]
     if purchaseData then
-        self.economyBridge:Fire("purchase_item", purchaseData)
+        self.economyBridge:Fire("server", "purchase_item", purchaseData)
         self.logger:info("Purchase request sent:", purchaseData.itemId)
     end
 end
@@ -463,9 +640,25 @@ function AdminPanel:_executeCurrencyAction(action)
     
     local adjustment = currencyAdjustments[action]
     if adjustment then
-        self.economyBridge:Fire("adjust_currency", adjustment)
+        self.economyBridge:Fire("server", "adjust_currency", adjustment)
         self.logger:info("Currency adjustment sent:", adjustment)
+        return
     end
+end
+
+function AdminPanel:_executeCustomCurrencyAdjust(currency, amount)
+    if not self.economyBridge then
+        self.logger:warn("Economy bridge not available")
+        return
+    end
+    
+    local adjustCurrencyData = {
+        currency = currency,
+        amount = amount
+    }
+    
+    self.economyBridge:Fire("server", "adjust_currency", adjustCurrencyData)
+    self.logger:info("🔧 Custom currency ADJUST action sent:", adjustCurrencyData)
 end
 
 function AdminPanel:_resetCurrencies()
@@ -474,7 +667,7 @@ function AdminPanel:_resetCurrencies()
         return
     end
     
-    self.economyBridge:Fire("reset_currencies", {})
+    self.economyBridge:Fire("server", "reset_currencies", {})
     self.logger:info("Currency reset requested")
 end
 
@@ -488,7 +681,7 @@ function AdminPanel:_testRateLimit()
     -- Spam requests to test rate limiting
     for i = 1, 10 do
         if self.economyBridge then
-            self.economyBridge:Fire("test_request", {iteration = i})
+            self.economyBridge:Fire("server", "test_request", {iteration = i})
         end
     end
 end

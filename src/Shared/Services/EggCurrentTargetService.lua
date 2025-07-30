@@ -113,6 +113,7 @@ function EggCurrentTargetService:CreateEggUI()
     frame.Size = UDim2.new(0, eggSystemConfig.ui.preview_size.width, 0, eggSystemConfig.ui.preview_size.height)
     frame.BackgroundColor3 = eggSystemConfig.ui.colors.background
     frame.BorderSizePixel = 0
+    frame.Visible = false  -- Start hidden until an egg is in range
     frame.Parent = screenGui
     
     local corner = Instance.new("UICorner")
