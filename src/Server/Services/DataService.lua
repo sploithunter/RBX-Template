@@ -615,10 +615,10 @@ function DataService:_onProfileLoaded(player, profile)
         
         -- Give starting coins if player has 0
         if data.Currencies.coins == 0 then
-            self._logger:Debug("Player has 0 coins, giving 500 for comprehensive testing")
-            data.Currencies.coins = 500
-            player:SetAttribute("Coins", 500)
-            self._logger:Info("Auto-setup: Gave starting coins for comprehensive testing", {player = player.Name})
+            self._logger:Debug("Player has 0 coins, giving 2000 for egg testing")
+            data.Currencies.coins = 2000
+            player:SetAttribute("Coins", 2000)
+            self._logger:Info("Auto-setup: Gave starting coins for egg testing", {player = player.Name})
         else
             self._logger:Debug("Player already has coins", {coins = data.Currencies.coins})
         end
