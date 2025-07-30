@@ -238,9 +238,30 @@ else
                 contents = {{type = "rewards_button", config = {icon = "🎁", text = "Rewards", color = Color3.fromRGB(255, 215, 0), badge_count = 3}}}
             }
         },
+        debug = {
+            show_bounds = false,
+            show_anchor_points = false,
+            show_backgrounds = false,
+            position_validation = false
+        },
         helpers = {
             get_theme = function(config) return config.themes.dark end,
-            get_scale_factor = function() return 1.0 end
+            get_scale_factor = function() return 1.0 end,
+            calculate_auto_grid = function(config, width, height, buttonCount, padding)
+                -- Simple fallback auto-grid calculation
+                return {
+                    columns = 4,
+                    rows = 2,
+                    cell_size = {width = 65, height = 65},
+                    spacing = 3,
+                    padding = padding or {top = 5, bottom = 5, left = 5, right = 5},
+                    info = {
+                        button_count = buttonCount,
+                        available_size = {width = width, height = height},
+                        calculated_button_size = {width = 65, height = 65}
+                    }
+                }
+            end
         }
     }
 end
@@ -253,6 +274,9 @@ function BaseUI.new()
     
     self.logger = LoggerWrapper.new("BaseUI")
     self.templateManager = TemplateManager.new()
+    
+    -- Store UI configuration in instance
+    self.uiConfig = uiConfig
     
     -- UI state
     self.isVisible = false
@@ -342,7 +366,7 @@ function BaseUI:_createUI()
     self.mainFrame.Size = UDim2.new(1, 0, 1, 0)
     self.mainFrame.Position = UDim2.new(0, 0, 0, 0)
     self.mainFrame.BackgroundTransparency = 1
-    self.mainFrame.ZIndex = uiConfig.z_index.content
+    self.mainFrame.ZIndex = self.uiConfig.z_index.content
     self.mainFrame.Parent = self.screenGui
     
     -- Create all UI using the new pane-based system
@@ -434,6 +458,75 @@ function BaseUI:_getSemanticPosition(alignment, size, offset)
     return result
 end
 
+-- Get semantic grid fill settings based on position
+function BaseUI:_getSemanticGridFill(position)
+    -- Define fill behavior based on semantic position for optimal aesthetics
+    local fillConfigs = {
+        -- TOP POSITIONS - Fill from top down
+        ["top-left"] = {
+            fillDirection = Enum.FillDirection.Horizontal,
+            horizontalAlignment = Enum.HorizontalAlignment.Left,
+            verticalAlignment = Enum.VerticalAlignment.Top,
+            startCorner = Enum.StartCorner.TopLeft
+        },
+        ["top-center"] = {
+            fillDirection = Enum.FillDirection.Horizontal,
+            horizontalAlignment = Enum.HorizontalAlignment.Center,
+            verticalAlignment = Enum.VerticalAlignment.Top,
+            startCorner = Enum.StartCorner.TopLeft
+        },
+        ["top-right"] = {
+            fillDirection = Enum.FillDirection.Horizontal,
+            horizontalAlignment = Enum.HorizontalAlignment.Right,
+            verticalAlignment = Enum.VerticalAlignment.Top,
+            startCorner = Enum.StartCorner.TopRight
+        },
+        
+        -- CENTER POSITIONS - Fill from center outward
+        ["center-left"] = {
+            fillDirection = Enum.FillDirection.Vertical,
+            horizontalAlignment = Enum.HorizontalAlignment.Left,
+            verticalAlignment = Enum.VerticalAlignment.Center,
+            startCorner = Enum.StartCorner.TopLeft
+        },
+        ["center"] = {
+            fillDirection = Enum.FillDirection.Horizontal,
+            horizontalAlignment = Enum.HorizontalAlignment.Center,
+            verticalAlignment = Enum.VerticalAlignment.Center,
+            startCorner = Enum.StartCorner.TopLeft
+        },
+        ["center-right"] = {
+            fillDirection = Enum.FillDirection.Vertical,
+            horizontalAlignment = Enum.HorizontalAlignment.Right,
+            verticalAlignment = Enum.VerticalAlignment.Center,
+            startCorner = Enum.StartCorner.TopRight
+        },
+        
+        -- BOTTOM POSITIONS - Fill from bottom up
+        ["bottom-left"] = {
+            fillDirection = Enum.FillDirection.Horizontal,
+            horizontalAlignment = Enum.HorizontalAlignment.Left,
+            verticalAlignment = Enum.VerticalAlignment.Bottom,
+            startCorner = Enum.StartCorner.BottomLeft
+        },
+        ["bottom-center"] = {
+            fillDirection = Enum.FillDirection.Horizontal,
+            horizontalAlignment = Enum.HorizontalAlignment.Center,
+            verticalAlignment = Enum.VerticalAlignment.Bottom,
+            startCorner = Enum.StartCorner.BottomLeft
+        },
+        ["bottom-right"] = {
+            fillDirection = Enum.FillDirection.Horizontal,
+            horizontalAlignment = Enum.HorizontalAlignment.Right,
+            verticalAlignment = Enum.VerticalAlignment.Bottom,
+            startCorner = Enum.StartCorner.BottomRight
+        }
+    }
+    
+    -- Return the appropriate config or default to top-left behavior
+    return fillConfigs[position] or fillConfigs["top-left"]
+end
+
 -- === PANE-BASED UI SYSTEM ===
 --[[
     CONFIGURATION-AS-CODE PANE ARCHITECTURE
@@ -473,13 +566,13 @@ end
 
 -- Create all panes from configuration
 function BaseUI:_createAllPanes()
-    if not uiConfig.panes then
+    if not self.uiConfig.panes then
         self.logger:warn("No panes configuration found, using fallback")
         return
     end
     
-    if type(uiConfig.panes) ~= "table" then
-        self.logger:error("Invalid panes configuration - expected table, got " .. type(uiConfig.panes))
+    if type(self.uiConfig.panes) ~= "table" then
+        self.logger:error("Invalid panes configuration - expected table, got " .. type(self.uiConfig.panes))
         return
     end
     
@@ -487,7 +580,7 @@ function BaseUI:_createAllPanes()
     local paneCount = 0
     
     -- Create each configured pane
-    for paneName, paneConfig in pairs(uiConfig.panes) do
+    for paneName, paneConfig in pairs(self.uiConfig.panes) do
         local paneStartTime = tick()
         self:_createPane(paneName, paneConfig)
         local paneEndTime = tick()
@@ -534,18 +627,43 @@ function BaseUI:_createPane(paneName, config)
     paneContainer.ZIndex = 12
     paneContainer.Parent = self.mainFrame
     
-    -- Create background if enabled
-    if config.background and config.background.enabled then
-        self:_createPaneBackground(paneContainer, config.background)
+    -- Create background if enabled OR if debug backgrounds are on
+    if (config.background and config.background.enabled) or (self.uiConfig.debug.show_backgrounds) then
+        local bgConfig = config.background
+        
+        -- If debug backgrounds are enabled but no background config exists, create debug background
+        if self.uiConfig.debug.show_backgrounds and (not bgConfig or not bgConfig.enabled) then
+            bgConfig = {
+                enabled = true,
+                color = Color3.fromRGB(50, 50, 50),
+                transparency = 0.8,
+                corner_radius = 8
+            }
+        end
+        
+        self:_createPaneBackground(paneContainer, bgConfig)
     else
         paneContainer.BackgroundTransparency = 1
     end
     
     -- Create layout container
-    local layoutContainer = self:_createPaneLayout(paneContainer, config.layout)
+    local layoutContainer = self:_createPaneLayout(paneContainer, config.layout, paneName, config)
     
     -- Create contents
     self:_createPaneContents(layoutContainer, config.contents, config.layout)
+    
+    -- Debug visualization (if enabled)
+    if self.uiConfig.debug.show_bounds then
+        self:_addDebugBounds(paneContainer, paneName)
+    end
+    
+    if self.uiConfig.debug.show_anchor_points then
+        self:_addDebugAnchorPoint(paneContainer, positionInfo.anchorPoint, paneName)
+    end
+    
+    if self.uiConfig.debug.position_validation then
+        self:_validatePanePosition(paneContainer, config, paneName)
+    end
     
     self.logger:debug("Created pane:", paneName)
 end
@@ -574,7 +692,7 @@ function BaseUI:_createPaneBackground(container, bgConfig)
 end
 
 -- Create layout container based on layout type
-function BaseUI:_createPaneLayout(container, layoutConfig)
+function BaseUI:_createPaneLayout(container, layoutConfig, paneName, paneConfig)
     local layoutContainer = container
     
     if layoutConfig.type == "list" then
@@ -593,14 +711,51 @@ function BaseUI:_createPaneLayout(container, layoutConfig)
         layout.Parent = layoutContainer
         
     elseif layoutConfig.type == "grid" then
-        -- Grid layout
+        -- Grid layout with auto-sizing support
+        local finalLayoutConfig = layoutConfig
+        
+        -- Check if we need auto-sizing (when auto_size is enabled)
+        if layoutConfig.auto_size then
+            local containerSize = container.Size
+            local containerWidth = containerSize.X.Offset
+            local containerHeight = containerSize.Y.Offset
+            local buttonCount = layoutConfig.button_count or 7 -- Default or calculate from contents
+            
+            local autoGrid = self.uiConfig.helpers.calculate_auto_grid(
+                self.uiConfig, 
+                containerWidth, 
+                containerHeight, 
+                buttonCount, 
+                layoutConfig.padding
+            )
+            
+            -- Log the auto-sizing calculation for debugging
+            self.logger:info("Auto-grid calculated:", autoGrid.info)
+            
+            -- Update layout config with calculated values
+            finalLayoutConfig = {
+                type = "grid",
+                columns = autoGrid.columns,
+                rows = autoGrid.rows,
+                cell_size = autoGrid.cell_size,
+                spacing = autoGrid.spacing,
+                padding = autoGrid.padding,
+                auto_size = true -- Keep the flag
+            }
+        end
+        
         local gridLayout = Instance.new("UIGridLayout")
-        gridLayout.CellSize = UDim2.new(0, layoutConfig.cell_size.width, 0, layoutConfig.cell_size.height)
-        gridLayout.CellPadding = UDim2.new(0, layoutConfig.spacing or 5, 0, layoutConfig.spacing or 5)
+        gridLayout.CellSize = UDim2.new(0, finalLayoutConfig.cell_size.width, 0, finalLayoutConfig.cell_size.height)
+        gridLayout.CellPadding = UDim2.new(0, finalLayoutConfig.spacing or 5, 0, finalLayoutConfig.spacing or 5)
         gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        gridLayout.FillDirection = Enum.FillDirection.Horizontal
-        gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-        gridLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+        
+        -- Apply contextual grid filling based on semantic position
+        local semanticFill = self:_getSemanticGridFill(paneConfig.position)
+        gridLayout.FillDirection = semanticFill.fillDirection
+        gridLayout.HorizontalAlignment = semanticFill.horizontalAlignment
+        gridLayout.VerticalAlignment = semanticFill.verticalAlignment
+        gridLayout.StartCorner = semanticFill.startCorner
+        
         gridLayout.Parent = layoutContainer
         
     elseif layoutConfig.type == "single" then
@@ -1264,7 +1419,7 @@ end
 -- Performance optimization: Cache theme lookups
 function BaseUI:_getCachedTheme()
     if not self.cachedTheme then
-        self.cachedTheme = uiConfig.helpers.get_theme(uiConfig)
+        self.cachedTheme = self.uiConfig.helpers.get_theme(self.uiConfig)
     end
     return self.cachedTheme
 end
@@ -1292,7 +1447,7 @@ end
 
 -- Create the top status bar
 function BaseUI:_createTopBar()
-    local theme = uiConfig.helpers.get_theme(uiConfig)
+    local theme = self.uiConfig.helpers.get_theme(self.uiConfig)
     
     -- Top bar background
     local topBar = Instance.new("Frame")
@@ -1450,11 +1605,56 @@ end
 function BaseUI:_onMenuButtonClicked(menuName)
     self.logger:info("Professional menu button clicked:", menuName)
     
-    if self.menuManager then
-        self.menuManager:TogglePanel(menuName)
-    else
+    if not self.menuManager then
         self.logger:warn("MenuManager not set")
+        return
     end
+    
+    -- Get transition effect from action configuration system
+    -- This integrates with our configuration-as-code animation system
+    local transitionEffect = self:_getTransitionForMenu(menuName)
+    
+    self.logger:info("Opening panel with transition:", transitionEffect)
+    self.menuManager:TogglePanel(menuName, transitionEffect)
+end
+
+-- Get transition effect for a menu based on action configuration and animation showcase
+-- This function implements a priority system for animation selection:
+-- 1. Animation showcase overrides (for testing/development)
+-- 2. Action configuration transitions (production settings)
+-- 3. Default fallback animation
+function BaseUI:_getTransitionForMenu(menuName)
+    -- Priority 1: Check animation showcase overrides first
+    -- This allows developers to easily test different animations without changing production config
+    if self.uiConfig.animation_showcase and self.uiConfig.animation_showcase.enabled then
+        if self.uiConfig.animation_showcase.override_animations then
+            local overrideEffect = self.uiConfig.animation_showcase.test_effects[menuName:lower()]
+            if overrideEffect then
+                self.logger:info("Using animation showcase override for", menuName, ":", overrideEffect)
+                return overrideEffect
+            end
+        end
+    end
+    
+    -- Priority 2: Get transition from action configuration
+    -- Each menu button can have its own unique transition defined in the action system
+    local actionName = menuName:lower() .. "_action"
+    local actionConfig = self.uiConfig.helpers.get_action_config(self.uiConfig, actionName)
+    
+    if actionConfig and actionConfig.transition then
+        self.logger:info("Using action transition for", menuName, ":", actionConfig.transition)
+        return actionConfig.transition
+    end
+    
+    -- Priority 3: Fallback to default
+    -- Ensures we always have a working animation even if configuration is incomplete
+    local defaultEffect = "slide_in_right"
+    if self.uiConfig.animations and self.uiConfig.animations.menu_transitions then
+        defaultEffect = self.uiConfig.animations.menu_transitions.default_effect or defaultEffect
+    end
+    
+    self.logger:info("Using default transition for", menuName, ":", defaultEffect)
+    return defaultEffect
 end
 
 function BaseUI:_onRewardsButtonClicked()
@@ -1671,6 +1871,87 @@ function BaseUI:_setupResponsiveScaling()
     
     camera:GetPropertyChangedSignal("ViewportSize"):Connect(onScreenSizeChanged)
     onScreenSizeChanged() -- Initial setup
+end
+
+-- === DEBUG VISUALIZATION METHODS ===
+
+-- Add visual bounds to see pane boundaries
+function BaseUI:_addDebugBounds(paneContainer, paneName)
+    local debugFrame = Instance.new("Frame")
+    debugFrame.Name = "DebugBounds_" .. paneName
+    debugFrame.Size = UDim2.new(1, 0, 1, 0)
+    debugFrame.Position = UDim2.new(0, 0, 0, 0)
+    debugFrame.BackgroundTransparency = 0.7
+    debugFrame.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red border
+    debugFrame.BorderSizePixel = 0
+    debugFrame.ZIndex = 999
+    debugFrame.Parent = paneContainer
+    
+    -- Add border stroke
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 255, 0) -- Yellow border
+    stroke.Thickness = 2
+    stroke.Transparency = 0
+    stroke.Parent = debugFrame
+    
+    -- Add pane name label
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, 0, 0, 20)
+    nameLabel.Position = UDim2.new(0, 0, 0, -25)
+    nameLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    nameLabel.BackgroundTransparency = 0.3
+    nameLabel.Text = paneName
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextScaled = true
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.ZIndex = 1000
+    nameLabel.Parent = debugFrame
+end
+
+-- Add visual indicator for anchor point
+function BaseUI:_addDebugAnchorPoint(paneContainer, anchorPoint, paneName)
+    local anchorIndicator = Instance.new("Frame")
+    anchorIndicator.Name = "DebugAnchor_" .. paneName
+    anchorIndicator.Size = UDim2.new(0, 10, 0, 10)
+    anchorIndicator.Position = UDim2.new(anchorPoint.X, -5, anchorPoint.Y, -5) -- Center on anchor point
+    anchorIndicator.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Green dot
+    anchorIndicator.BorderSizePixel = 0
+    anchorIndicator.ZIndex = 1001
+    anchorIndicator.Parent = paneContainer
+    
+    -- Make it circular
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 5)
+    corner.Parent = anchorIndicator
+    
+    -- Add anchor point coordinates label
+    local coordLabel = Instance.new("TextLabel")
+    coordLabel.Size = UDim2.new(0, 80, 0, 15)
+    coordLabel.Position = UDim2.new(0, 15, 0, -7)
+    coordLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    coordLabel.BackgroundTransparency = 0.3
+    coordLabel.Text = string.format("(%.1f, %.1f)", anchorPoint.X, anchorPoint.Y)
+    coordLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    coordLabel.TextScaled = true
+    coordLabel.Font = Enum.Font.Gotham
+    coordLabel.ZIndex = 1002
+    coordLabel.Parent = anchorIndicator
+end
+
+-- Validate and log position calculations
+function BaseUI:_validatePanePosition(paneContainer, config, paneName)
+    local actualPosition = paneContainer.Position
+    local actualAnchor = paneContainer.AnchorPoint
+    local actualSize = paneContainer.Size
+    
+    self.logger:info("Position Debug for", paneName, {
+        semantic_position = config.position,
+        offset = config.offset,
+        calculated_position = tostring(actualPosition),
+        anchor_point = string.format("(%.1f, %.1f)", actualAnchor.X, actualAnchor.Y),
+        size = string.format("(%d, %d)", actualSize.X.Offset, actualSize.Y.Offset),
+        context = "PositionValidation"
+    })
 end
 
 return BaseUI 

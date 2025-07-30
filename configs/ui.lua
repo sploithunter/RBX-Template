@@ -241,13 +241,15 @@ local uiConfig = {
             in_out_dir = Enum.EasingDirection.InOut,
         },
         
-        -- Menu transition effects
+        -- Menu transition effects - Professional Animation Showcase
         menu_transitions = {
             enabled = true,
-            default_effect = "slide_in", -- slide_in, fade_in, scale_in, bounce_in
+            default_effect = "slide_in_right", -- Default animation
             
             effects = {
-                slide_in = {
+                -- === DIRECTIONAL SLIDES ===
+                slide_in_right = {
+                    name = "Slide from Right",
                     duration = "normal",
                     easing = "ease_out",
                     direction = "out_dir",
@@ -258,7 +260,134 @@ local uiConfig = {
                     end_transparency = 0,
                 },
                 
+                slide_in_left = {
+                    name = "Slide from Left",
+                    duration = "normal",
+                    easing = "ease_out", 
+                    direction = "out_dir",
+                    start_position = UDim2.new(-0.2, 0, 0.5, 0), -- Off-screen left
+                    end_position = UDim2.new(0.5, 0, 0.5, 0),    -- Center
+                    anchor_point = Vector2.new(0.5, 0.5),
+                    start_transparency = 0,
+                    end_transparency = 0,
+                },
+                
+                slide_in_top = {
+                    name = "Slide from Top",
+                    duration = "normal",
+                    easing = "ease_out",
+                    direction = "out_dir", 
+                    start_position = UDim2.new(0.5, 0, -0.2, 0), -- Off-screen top
+                    end_position = UDim2.new(0.5, 0, 0.5, 0),    -- Center
+                    anchor_point = Vector2.new(0.5, 0.5),
+                    start_transparency = 0,
+                    end_transparency = 0,
+                },
+                
+                slide_in_bottom = {
+                    name = "Slide from Bottom",
+                    duration = "normal", 
+                    easing = "ease_out",
+                    direction = "out_dir",
+                    start_position = UDim2.new(0.5, 0, 1.2, 0),  -- Off-screen bottom
+                    end_position = UDim2.new(0.5, 0, 0.5, 0),    -- Center
+                    anchor_point = Vector2.new(0.5, 0.5),
+                    start_transparency = 0,
+                    end_transparency = 0,
+                },
+                
+                -- === SCALING EFFECTS ===
+                scale_in_small = {
+                    name = "Scale In (Small)",
+                    duration = "fast",
+                    easing = "ease_out",
+                    direction = "out_dir",
+                    start_position = UDim2.new(0.5, 0, 0.5, 0),
+                    end_position = UDim2.new(0.5, 0, 0.5, 0),
+                    anchor_point = Vector2.new(0.5, 0.5),
+                    start_scale = 0.3,
+                    end_scale = 1.0,
+                    start_transparency = 0.8,
+                    end_transparency = 0,
+                },
+                
+                scale_in_large = {
+                    name = "Scale In (Large)",
+                    duration = "normal",
+                    easing = "ease_out",
+                    direction = "out_dir",
+                    start_position = UDim2.new(0.5, 0, 0.5, 0),
+                    end_position = UDim2.new(0.5, 0, 0.5, 0),
+                    anchor_point = Vector2.new(0.5, 0.5),
+                    start_scale = 1.5,
+                    end_scale = 1.0,
+                    start_transparency = 0.5,
+                    end_transparency = 0,
+                },
+                
+                -- === ROTATION EFFECTS ===
+                spin_in = {
+                    name = "Spin In",
+                    duration = "normal",
+                    easing = "ease_out",
+                    direction = "out_dir",
+                    start_position = UDim2.new(0.5, 0, 0.5, 0),
+                    end_position = UDim2.new(0.5, 0, 0.5, 0),
+                    anchor_point = Vector2.new(0.5, 0.5),
+                    start_scale = 0.1,
+                    end_scale = 1.0,
+                    start_rotation = 180, -- Half rotation
+                    end_rotation = 0,
+                    start_transparency = 0.7,
+                    end_transparency = 0,
+                },
+                
+                flip_in = {
+                    name = "Flip In",
+                    duration = "normal",
+                    easing = "bounce",
+                    direction = "out_dir",
+                    start_position = UDim2.new(0.5, 0, 0.5, 0),
+                    end_position = UDim2.new(0.5, 0, 0.5, 0),
+                    anchor_point = Vector2.new(0.5, 0.5),
+                    start_scale = 0.01, -- Nearly invisible
+                    end_scale = 1.0,
+                    start_rotation = 90, -- Quarter rotation
+                    end_rotation = 0,
+                    start_transparency = 0.9,
+                    end_transparency = 0,
+                },
+                
+                -- === BOUNCE & ELASTIC ===
+                bounce_in = {
+                    name = "Bounce In",
+                    duration = "slow",
+                    easing = "bounce",
+                    direction = "out_dir",
+                    start_position = UDim2.new(0.5, 0, -0.3, 0), -- Off-screen top
+                    end_position = UDim2.new(0.5, 0, 0.5, 0),    -- Center
+                    anchor_point = Vector2.new(0.5, 0.5),
+                    start_transparency = 0,
+                    end_transparency = 0,
+                },
+                
+                elastic_in = {
+                    name = "Elastic In",
+                    duration = "slow",
+                    easing = "elastic",
+                    direction = "out_dir",
+                    start_position = UDim2.new(0.5, 0, 0.5, 0),
+                    end_position = UDim2.new(0.5, 0, 0.5, 0),
+                    anchor_point = Vector2.new(0.5, 0.5),
+                    start_scale = 0.2,
+                    end_scale = 1.0,
+                    start_transparency = 0.3,
+                    end_transparency = 0,
+                },
+                
+                -- === FADE VARIATIONS ===
                 fade_in = {
+                    name = "Fade In",
                     duration = "fast",
                     easing = "ease_in_out",
                     direction = "out_dir",
@@ -269,27 +398,48 @@ local uiConfig = {
                     end_transparency = 0,
                 },
                 
-                scale_in = {
+                fade_in_scale = {
+                    name = "Fade + Scale",
                     duration = "normal",
-                    easing = "bounce",
+                    easing = "ease_out",
                     direction = "out_dir",
                     start_position = UDim2.new(0.5, 0, 0.5, 0),
                     end_position = UDim2.new(0.5, 0, 0.5, 0),
                     anchor_point = Vector2.new(0.5, 0.5),
-                    start_scale = 0.1,
+                    start_scale = 0.8,
                     end_scale = 1.0,
-                    start_transparency = 0.5,
+                    start_transparency = 1,
                     end_transparency = 0,
                 },
                 
-                bounce_in = {
+                -- === SPECIAL EFFECTS ===
+                spiral_in = {
+                    name = "Spiral In",
                     duration = "slow",
-                    easing = "elastic",
+                    easing = "ease_out",
                     direction = "out_dir",
-                    start_position = UDim2.new(0.5, 0, -0.5, 0), -- Off-screen top
+                    start_position = UDim2.new(1.5, 0, -0.5, 0), -- Off-screen top-right
                     end_position = UDim2.new(0.5, 0, 0.5, 0),    -- Center
                     anchor_point = Vector2.new(0.5, 0.5),
-                    start_transparency = 0,
+                    start_scale = 0.3,
+                    end_scale = 1.0,
+                    start_rotation = 360, -- Full rotation
+                    end_rotation = 0,
+                    start_transparency = 0.8,
+                    end_transparency = 0,
+                },
+                
+                zoom_blur = {
+                    name = "Zoom Blur",
+                    duration = "fast",
+                    easing = "ease_in",
+                    direction = "in_dir",
+                    start_position = UDim2.new(0.5, 0, 0.5, 0),
+                    end_position = UDim2.new(0.5, 0, 0.5, 0),
+                    anchor_point = Vector2.new(0.5, 0.5),
+                    start_scale = 3.0, -- Very large
+                    end_scale = 1.0,
+                    start_transparency = 0.9,
                     end_transparency = 0,
                 }
             }
@@ -400,10 +550,191 @@ local uiConfig = {
     
     -- === DEBUG & DEVELOPMENT ===
     debug = {
-        show_bounds = false,
+        show_bounds = false,  -- Enable to visualize pane boundaries
+        show_anchor_points = false,  -- Show anchor point indicators
+        show_backgrounds = false,  -- Force show pane backgrounds for debugging
         log_interactions = false,
         performance_monitoring = true,
         component_inspector = false,
+        position_validation = false,  -- Validate positioning calculations
+    },
+    
+    -- === ANIMATION TESTING SYSTEM ===
+    -- Quick way to test different animations - just change the values below!
+    -- This system allows developers to easily prototype different animation effects
+    -- without modifying the main action configuration.
+    animation_showcase = {
+        enabled = true,
+        
+        -- Override animations for testing (set to false to use default action animations)
+        -- When true: Uses test_effects below instead of action configuration
+        -- When false: Uses the transition defined in each action (shop_action.transition, etc.)
+        override_animations = true,  -- ENABLED to showcase animation variety
+        
+        -- Test animations (when override_animations = true)
+        -- Each menu name (lowercase) maps to an animation effect name
+        test_effects = {
+            shop = "slide_in_left",      -- Try: slide_in_right, scale_in_small, spiral_in
+            inventory = "flip_in",       -- Try: bounce_in, elastic_in, zoom_blur
+            effects = "spin_in",         -- Try: slide_in_top, fade_in_scale, scale_in_large
+            settings = "slide_in_bottom",-- Try: fade_in, elastic_in, bounce_in
+            admin = "zoom_blur",         -- Try: spiral_in, spin_in, scale_in_large
+        },
+        
+        -- Available effects for easy copy/paste:
+        -- All effects are defined in animations.menu_transitions.effects below
+        -- SLIDES: slide_in_right, slide_in_left, slide_in_top, slide_in_bottom
+        -- SCALES: scale_in_small, scale_in_large, fade_in_scale  
+        -- ROTATION: spin_in, flip_in, spiral_in
+        -- BOUNCE: bounce_in, elastic_in
+        -- FADE: fade_in, fade_in_scale, zoom_blur
+        -- SPECIAL: spiral_in, zoom_blur
+    },
+    
+    -- === ACTION SYSTEM (Configuration-as-Code) ===
+    -- Define all button actions through configuration instead of hardcoded behavior
+    actions = {
+        -- Menu Panel Actions - Each with unique animation style
+        shop_action = {
+            type = "menu_panel",
+            panel = "Shop",
+            transition = "slide_in_right", -- Classic slide from right
+            sound = "button_click",
+            description = "Opens the shop panel with slide animation"
+        },
+        
+        inventory_action = {
+            type = "menu_panel", 
+            panel = "Inventory",
+            transition = "scale_in_small", -- Compact scale in
+            sound = "button_click",
+            description = "Opens inventory with scale animation"
+        },
+        
+        effects_action = {
+            type = "menu_panel",
+            panel = "Effects", 
+            transition = "spiral_in", -- Dramatic spiral effect
+            sound = "button_click",
+            description = "Opens effects panel with spiral animation"
+        },
+        
+        settings_action = {
+            type = "menu_panel",
+            panel = "Settings",
+            transition = "fade_in_scale", -- Subtle fade + scale
+            sound = "button_click",
+            description = "Opens settings panel with fade animation"
+        },
+        
+        admin_action = {
+            type = "menu_panel",
+            panel = "Admin",
+            transition = "bounce_in", -- Authority bounce
+            sound = "button_click",
+            conditions = {
+                admin_only = true
+            },
+            description = "Opens admin panel with bounce animation"
+        },
+        
+        -- Custom Script Actions
+        pets_action = {
+            type = "script_execute",
+            script = "PetsHandler", 
+            method = "TogglePetsUI",
+            parameters = {
+                animation = "slide_up"
+            },
+            sound = "success",
+            description = "Opens pets interface with custom logic"
+        },
+        
+        rewards_action = {
+            type = "script_execute", 
+            script = "RewardsHandler",
+            method = "ClaimAllRewards",
+            parameters = {
+                auto_claim = true,
+                show_notification = true
+            },
+            sound = "success",
+            description = "Claims all available rewards"
+        },
+        
+        -- Multi-step Action Sequences
+        daily_login_action = {
+            type = "action_sequence",
+            sequence = {
+                {type = "script_execute", script = "DailyRewards", method = "CheckAvailable"},
+                {type = "menu_panel", panel = "DailyRewards", transition = "elastic_in"}, -- Exciting daily reward
+                {type = "script_execute", script = "Analytics", method = "LogDailyLogin"}
+            },
+            description = "Daily login reward flow with elastic animation"
+        },
+        
+        -- Network/Remote Actions
+        purchase_gems_action = {
+            type = "network_call",
+            service = "EconomyService", 
+            method = "InitiatePurchase",
+            parameters = {
+                product_type = "gems",
+                package = "starter_pack"
+            },
+            confirmation = {
+                enabled = true,
+                title = "Purchase Confirmation",
+                message = "Buy starter gem pack for 99 Robux?"
+            },
+            description = "Initiates gem purchase flow"
+        },
+        
+        -- Conditional Actions
+        quest_claim_action = {
+            type = "conditional_action",
+            conditions = {
+                quest_completed = true,
+                not_claimed = true
+            },
+            success_action = {
+                type = "script_execute",
+                script = "QuestManager", 
+                method = "ClaimReward"
+            },
+            failure_action = {
+                type = "notification",
+                message = "Quest not completed yet!",
+                notification_type = "warning"
+            },
+            description = "Claims quest reward if eligible"
+        },
+        
+        -- Notification Actions  
+        achievement_action = {
+            type = "notification",
+            message = "Achievement unlocked!",
+            notification_type = "success",
+            duration = 3,
+            sound = "achievement",
+            description = "Shows achievement notification"
+        },
+        
+        -- Debug/Development Actions
+        debug_currencies_action = {
+            type = "script_execute",
+            script = "DebugConsole",
+            method = "AddCurrencies", 
+            parameters = {
+                coins = 1000,
+                gems = 100,
+                crystals = 50
+            },
+            conditions = {
+                debug_mode = true
+            },
+            description = "Adds test currencies (debug only)"
+        }
     },
     
     -- === PANE-BASED LAYOUT SYSTEM (Configuration-as-Code) ===
@@ -507,53 +838,51 @@ local uiConfig = {
         },
 
         
-        -- Menu Buttons Pane (bottom-left) - The 4x4 grid you requested!
+        -- Menu Buttons Pane (bottom-left) - Auto-sizing grid that adapts to content
         menu_buttons_pane = {
-            position = "bottom-left",
-            offset = {x = 0, y = -20},
-            size = {width = 320, height = 160},
-            background = {enabled = false},  -- Clear background like currency cards
+            position = "bottom-left", 
+            offset = {x = 10, y = -10}, -- Safe padding from edges
+            size = {width = 280, height = 140}, -- Container size - buttons will auto-fit
+            background = {enabled = false}, -- Debug backgrounds will handle visualization
             layout = {
                 type = "grid",
-                columns = 4,
-                rows = 2,
-                cell_size = {width = 75, height = 75},
-                spacing = 5,
-                padding = {top = 5, bottom = 5, left = 5, right = 5}
+                auto_size = true, -- Enable automatic sizing based on content
+                button_count = 7, -- Exact number of buttons for calculation
+                padding = {top = 5, bottom = 5, left = 5, right = 5} -- Padding for calculations
             },
             contents = {
-                -- Mix and match emoji and asset IDs! Examples:
-                {type = "menu_button", config = {name = "Shop", icon = "rbxassetid://7733920644", text = "Shop", color = Color3.fromRGB(46, 204, 113)}},  -- Asset ID
-                {type = "menu_button", config = {name = "Inventory", icon = "🎒", text = "Items", color = Color3.fromRGB(52, 152, 219)}},  -- Emoji
-                {type = "menu_button", config = {name = "Effects", icon = "⚡", text = "Effects", color = Color3.fromRGB(155, 89, 182)}},  -- Emoji
-                {type = "menu_button", config = {name = "Settings", icon = "⚙️", text = "Settings", color = Color3.fromRGB(149, 165, 166)}},  -- Emoji
-                {type = "menu_button", config = {name = "Admin", icon = "👑", text = "Admin", color = Color3.fromRGB(231, 76, 60), admin_only = true}}  -- Emoji
-                -- Can add more buttons here, automatically arranged in 4x2 grid
+                -- Now using configuration-driven actions! Mix and match emoji and asset IDs:
+                {type = "menu_button", config = {name = "Shop", icon = "rbxassetid://7733920644", text = "Shop", color = Color3.fromRGB(46, 204, 113), action = "shop_action"}},
+                {type = "menu_button", config = {name = "Inventory", icon = "🎒", text = "Items", color = Color3.fromRGB(52, 152, 219), action = "inventory_action"}},
+                {type = "menu_button", config = {name = "Effects", icon = "⚡", text = "Effects", color = Color3.fromRGB(155, 89, 182), action = "effects_action"}},
+                {type = "menu_button", config = {name = "Settings", icon = "⚙️", text = "Settings", color = Color3.fromRGB(149, 165, 166), action = "settings_action"}},
+                {type = "menu_button", config = {name = "Admin", icon = "👑", text = "Admin", color = Color3.fromRGB(231, 76, 60), action = "admin_action"}},
+                -- Add more buttons with custom actions - automatically arranged in 4x2 grid
+                {type = "menu_button", config = {name = "Daily", icon = "📅", text = "Daily", color = Color3.fromRGB(255, 165, 0), action = "daily_login_action"}},
+                {type = "menu_button", config = {name = "Quest", icon = "🎯", text = "Quest", color = Color3.fromRGB(34, 139, 34), action = "quest_claim_action"}}
             }
         },
         
-        -- Single Button Panes
+        -- Single Button Panes - All aligned to same bottom edge
         pets_button_pane = {
             position = "bottom-center",
-            offset = {x = 0, y = -70},  -- Adjusted for better spacing from bottom
-            size = {width = 120, height = 60},  -- Slightly larger for better proportions
-            background = {enabled = false},  -- No background for single button
+            offset = {x = 0, y = -10},  -- Standardized bottom alignment
+            size = {width = 120, height = 60},
+            background = {enabled = false},
             layout = {type = "single"},
             contents = {
-                -- Using correct asset ID with enhanced error handling and fallback
-                {type = "pets_button", config = {icon = "13262136255", text = "Pets", color = Color3.fromRGB(52, 152, 219)}}
+                {type = "pets_button", config = {icon = "13262136255", text = "Pets", color = Color3.fromRGB(52, 152, 219), action = "pets_action"}}
             }
         },
         
         rewards_button_pane = {
-            position = "bottom-right",
-            offset = {x = 0, y = -20},
+            position = "bottom-right", 
+            offset = {x = -10, y = -10},  -- Standardized bottom alignment + small right padding
             size = {width = 120, height = 60},
-            background = {enabled = false},  -- No background for single button
+            background = {enabled = false},
             layout = {type = "single"},
             contents = {
-                -- Supports both emoji and asset IDs: icon = "🎁" or icon = "7733686592"
-                {type = "rewards_button", config = {icon = "🎁", text = "Rewards", color = Color3.fromRGB(255, 215, 0), badge_count = 3}}
+                {type = "rewards_button", config = {icon = "🎁", text = "Rewards", color = Color3.fromRGB(255, 215, 0), badge_count = 3, action = "rewards_action"}}
             }
         }
         
@@ -673,6 +1002,134 @@ local uiConfig = {
                 return menu.views[viewName] or menu.views[menu.default_view]
             end
             return nil
+        end,
+        
+        -- === ACTION SYSTEM HELPERS ===
+        
+        -- Get action configuration by name
+        get_action_config = function(config, actionName)
+            return config.actions and config.actions[actionName] or nil
+        end,
+        
+        -- Get all available actions
+        get_all_actions = function(config)
+            return config.actions or {}
+        end,
+        
+        -- Check if action conditions are met
+        check_action_conditions = function(config, actionConfig, playerState)
+            if not actionConfig.conditions then
+                return true
+            end
+            
+            -- Check admin_only condition
+            if actionConfig.conditions.admin_only and not playerState.is_admin then
+                return false
+            end
+            
+            -- Check debug_mode condition
+            if actionConfig.conditions.debug_mode and not playerState.debug_mode then
+                return false
+            end
+            
+            -- Check quest completion
+            if actionConfig.conditions.quest_completed and not playerState.quest_completed then
+                return false
+            end
+            
+            -- Check if not claimed
+            if actionConfig.conditions.not_claimed and playerState.already_claimed then
+                return false
+            end
+            
+            return true
+        end,
+        
+        -- Execute action by name (helper for UI system)
+        execute_action = function(config, actionName, playerState, actionHandler)
+            local actionConfig = config.helpers.get_action_config(config, actionName)
+            if not actionConfig then
+                warn("Action not found:", actionName)
+                return false
+            end
+            
+            -- Check conditions
+            if not config.helpers.check_action_conditions(config, actionConfig, playerState or {}) then
+                warn("Action conditions not met:", actionName)
+                return false
+            end
+            
+            -- Execute action through handler
+            if actionHandler and actionHandler.executeAction then
+                return actionHandler:executeAction(actionConfig)
+            end
+            
+            warn("No action handler provided for:", actionName)
+            return false
+        end,
+        
+        -- Get actions by type
+        get_actions_by_type = function(config, actionType)
+            local actions = {}
+            for name, actionConfig in pairs(config.actions or {}) do
+                if actionConfig.type == actionType then
+                    actions[name] = actionConfig
+                end
+            end
+            return actions
+        end,
+        
+        -- === AUTO-SIZING GRID HELPERS ===
+        
+        -- Calculate optimal grid dimensions and button sizes for a given container and button count
+        calculate_auto_grid = function(config, containerWidth, containerHeight, buttonCount, padding)
+            padding = padding or {top = 3, bottom = 3, left = 3, right = 3}
+            local spacing = 3
+            
+            -- Calculate available space after padding
+            local availableWidth = containerWidth - padding.left - padding.right
+            local availableHeight = containerHeight - padding.top - padding.bottom
+            
+            -- Find optimal grid dimensions
+            local bestCols = 4 -- Start with 4 columns as preference
+            local bestRows = math.ceil(buttonCount / bestCols)
+            
+            -- Try different column counts to find best fit
+            for cols = 3, 5 do
+                local rows = math.ceil(buttonCount / cols)
+                if cols * rows >= buttonCount then
+                    -- Calculate required space for this configuration
+                    local reqWidth = cols * 50 + (cols - 1) * spacing -- minimum 50px buttons
+                    local reqHeight = rows * 50 + (rows - 1) * spacing
+                    
+                    if reqWidth <= availableWidth and reqHeight <= availableHeight then
+                        bestCols = cols
+                        bestRows = rows
+                        break
+                    end
+                end
+            end
+            
+            -- Calculate optimal button size
+            local buttonWidth = math.floor((availableWidth - (bestCols - 1) * spacing) / bestCols)
+            local buttonHeight = math.floor((availableHeight - (bestRows - 1) * spacing) / bestRows)
+            
+            -- Ensure minimum button size
+            buttonWidth = math.max(buttonWidth, 45)
+            buttonHeight = math.max(buttonHeight, 45)
+            
+            return {
+                columns = bestCols,
+                rows = bestRows,
+                cell_size = {width = buttonWidth, height = buttonHeight},
+                spacing = spacing,
+                padding = padding,
+                info = {
+                    button_count = buttonCount,
+                    available_size = {width = availableWidth, height = availableHeight},
+                    calculated_button_size = {width = buttonWidth, height = buttonHeight}
+                }
+            }
         end
     }
 }

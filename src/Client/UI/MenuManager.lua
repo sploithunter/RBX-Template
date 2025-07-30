@@ -258,6 +258,8 @@ function MenuManager:TogglePanel(panelName, transitionEffect)
 end
 
 -- Animate panel entrance with configurable effects
+-- Supports 15 different animation types including slides, scales, rotations, bounces, and fades
+-- Effects are defined in configs/ui.lua under animations.menu_transitions.effects
 function MenuManager:_animateEntrance(frame, effectName)
     if not frame then return end
     
@@ -272,11 +274,14 @@ function MenuManager:_animateEntrance(frame, effectName)
     
     -- Use specified effect or default
     effectName = effectName or transitions.default_effect
+    self.logger:info("Attempting to use transition effect:", effectName)
+    
     local effect = transitions.effects[effectName]
     
     if not effect then
         self.logger:warn("Unknown transition effect:", effectName, "using default")
-        effect = transitions.effects[transitions.default_effect] or transitions.effects.slide_in
+        self.logger:info("Available effects:", table.concat(self:_getAvailableEffects(), ", "))
+        effect = transitions.effects[transitions.default_effect] or transitions.effects.slide_in_right
     end
     
     if not effect then
@@ -304,6 +309,11 @@ function MenuManager:_animateEntrance(frame, effectName)
         uiScale.Scale = effect.start_scale
     end
     
+    -- Setup rotation for rotation effects (spin_in, flip_in, spiral_in, etc.)
+    if effect.start_rotation then
+        frame.Rotation = effect.start_rotation
+    end
+    
     -- Create tween properties
     local tweenProperties = {}
     
@@ -313,6 +323,11 @@ function MenuManager:_animateEntrance(frame, effectName)
     
     if effect.end_transparency then
         tweenProperties.BackgroundTransparency = effect.end_transparency
+    end
+    
+    -- Add rotation tween properties for spinning effects
+    if effect.end_rotation then
+        tweenProperties.Rotation = effect.end_rotation
     end
     
     -- Create main tween
@@ -383,6 +398,10 @@ function MenuManager:_animateExit(frame, callback, effectName)
     
     if effect.start_transparency then
         tweenProperties.BackgroundTransparency = effect.start_transparency
+    end
+    
+    if effect.start_rotation then
+        tweenProperties.Rotation = effect.start_rotation
     end
     
     -- Setup UIScale for scale effects
@@ -544,6 +563,19 @@ end
 -- Check if a panel is currently open
 function MenuManager:IsPanelOpen(panelName)
     return self.currentPanelName == panelName
+end
+
+-- Get available animation effects for debugging
+-- Returns a list of all configured animation effect names from the UI config
+function MenuManager:_getAvailableEffects()
+    local effects = {}
+    local transitions = uiConfig.animations and uiConfig.animations.menu_transitions
+    if transitions and transitions.effects then
+        for effectName, _ in pairs(transitions.effects) do
+            table.insert(effects, effectName)
+        end
+    end
+    return effects
 end
 
 -- Cleanup

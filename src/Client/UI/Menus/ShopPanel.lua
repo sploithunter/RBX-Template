@@ -722,9 +722,17 @@ function ShopPanel:_createShopItem(item, layoutOrder)
         originalPrice.TextColor3 = Color3.fromRGB(150, 150, 150)
         originalPrice.TextScaled = true
         originalPrice.Font = Enum.Font.Gotham
-        originalPrice.TextStrikethrough = true
         originalPrice.ZIndex = 105
         originalPrice.Parent = priceFrame
+        
+        -- Create strikethrough line effect
+        local strikethrough = Instance.new("Frame")
+        strikethrough.Size = UDim2.new(0.8, 0, 0, 1)
+        strikethrough.Position = UDim2.new(0.1, 0, 0.5, 0)
+        strikethrough.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+        strikethrough.BorderSizePixel = 0
+        strikethrough.ZIndex = 106
+        strikethrough.Parent = originalPrice
     end
     
     -- Buy button
