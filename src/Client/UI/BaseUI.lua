@@ -45,7 +45,7 @@ local Locations = require(ReplicatedStorage.Shared.Locations)
 -- Load Logger with fallback
 local Logger
 local loggerSuccess, loggerResult = pcall(function()
-    return require(ReplicatedStorage.Shared.Utils.Logger)
+    return require(Locations.Logger)
 end)
 
 -- Create logger wrapper to provide instance-like behavior

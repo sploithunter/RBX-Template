@@ -43,7 +43,7 @@ local Locations = require(ReplicatedStorage.Shared.Locations)
 -- Load Logger with wrapper (following the established pattern)
 local LoggerWrapper
 local loggerSuccess, loggerResult = pcall(function()
-    return require(ReplicatedStorage.Shared.Utils.Logger)
+    return require(Locations.Logger)
 end)
 
 if loggerSuccess and loggerResult then

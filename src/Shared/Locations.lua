@@ -102,20 +102,25 @@ if Locations.SharedServices then
     Locations.TemplateManager = Locations.SharedServices:WaitForChild("TemplateManager")
 end
 
--- === LIBRARIES ===
+-- === MANUAL LIBRARIES (Small utilities + Matter workaround) ===
 Locations.Libraries = {}
 if Locations.SharedLibraries then
     Locations.Libraries = {
         Maid = Locations.SharedLibraries:WaitForChild("Maid"),
-        Promise = Locations.SharedLibraries:WaitForChild("Promise"),
-        ProfileStore = Locations.SharedLibraries:WaitForChild("ProfileStore"),
-        Matter = Locations.SharedLibraries:WaitForChild("Matter"),
-        Reflex = Locations.SharedLibraries:WaitForChild("Reflex")
+        Signal = Locations.SharedLibraries:WaitForChild("Signal"),
+        Sift = Locations.SharedLibraries:WaitForChild("Sift"),
+        Matter = Locations.SharedLibraries:WaitForChild("Matter")  -- Manual copy due to Wally/Rojo issues
     }
 end
 
--- === PACKAGES ===
-Locations.TestEZ = Locations.Packages and Locations.Packages:WaitForChild("TestEZ", 2)
+-- === PACKAGES (Wally-managed) ===
+Locations.PackageFiles = {
+    TestEZ = "TestEZ",
+    Promise = "Promise", 
+    Matter = "Matter",
+    Reflex = "Reflex",
+    ProfileStore = "ProfileStore"
+}
 
 -- === SERVICES (Server-side) ===
 Locations.Services = {
@@ -217,6 +222,55 @@ function Locations.getConfig(configName)
         return configLoader:LoadConfig(configFileName)
     end
     return nil
+end
+
+-- Get a Wally package
+function Locations.getPackage(packageName)
+    if not Locations.PackageFiles[packageName] then
+        warn("Unknown package:", packageName)
+        return nil
+    end
+    
+    if not Locations.Packages then
+        warn("Packages folder not available")
+        return nil
+    end
+    
+    local packageModule = Locations.Packages:FindFirstChild(Locations.PackageFiles[packageName])
+    if not packageModule then
+        warn("Package not found:", packageName)
+        return nil
+    end
+    
+    local success, package = pcall(function()
+        return require(packageModule)
+    end)
+    
+    if success then
+        return package
+    else
+        warn("Failed to load package:", packageName, package)
+        return nil
+    end
+end
+
+-- Get a manual library
+function Locations.getLibrary(libraryName)
+    if not Locations.Libraries[libraryName] then
+        warn("Unknown library:", libraryName)
+        return nil
+    end
+    
+    local success, library = pcall(function()
+        return require(Locations.Libraries[libraryName])
+    end)
+    
+    if success then
+        return library
+    else
+        warn("Failed to load library:", libraryName)
+        return nil
+    end
 end
 
 -- === PLAYER-SPECIFIC FUNCTIONS ===

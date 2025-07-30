@@ -230,7 +230,7 @@ export type ProducerMap = { [string]: Producer }
 ]=]
 export type BroadcastAction = {
 	name: string,
-	arguments: { any },
+	arguments: {},
 }
 
 --[=[
@@ -298,7 +298,7 @@ export type BroadcastReceiverOptions = {
 		A function that, when called, should fire a remote that calls
 		`start(player)` on the server broadcaster.
 	]=]
-	start: () -> (),
+	start: () -> any,
 }
 
 --[=[

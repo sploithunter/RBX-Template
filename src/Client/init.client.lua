@@ -25,9 +25,10 @@ if not Shared then
 end
 
 -- Core dependencies
-local Matter = require(ReplicatedStorage.Shared.Libraries.Matter) -- Matter ECS framework
-local Reflex = require(ReplicatedStorage.Shared.Libraries.Reflex) -- Redux-like state management
-local ModuleLoader = require(Shared.Utils.ModuleLoader)
+local Locations = require(ReplicatedStorage.Shared.Locations)
+local Matter = Locations.getLibrary("Matter") -- Matter ECS framework (manual due to Wally/Rojo sync issues)
+local Reflex = Locations.getPackage("Reflex") -- Redux-like state management (via Wally)
+local ModuleLoader = require(Locations.SharedUtils.ModuleLoader)
 
 local localPlayer = Players.LocalPlayer
 

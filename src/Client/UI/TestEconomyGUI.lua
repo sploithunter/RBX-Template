@@ -6,7 +6,8 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- Get NetworkConfig (wait for it to be loaded)
-local NetworkConfig = require(ReplicatedStorage.Shared.Utils.NetworkConfig)
+local Locations = require(ReplicatedStorage.Shared.Locations)
+local NetworkConfig = require(Locations.NetworkConfig)
 
 -- Wait for NetworkConfig to initialize, then get the Economy bridge
 local economyBridge

@@ -16,7 +16,8 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- Get network bridge
-local NetworkBridge = require(ReplicatedStorage.Shared.Network.NetworkBridge)
+local Locations = require(ReplicatedStorage.Shared.Locations)
+local NetworkBridge = require(Locations.NetworkBridge)
 local economyBridge = NetworkBridge:CreateBridge("Economy")
 
 local EffectsStatusGUI = {}

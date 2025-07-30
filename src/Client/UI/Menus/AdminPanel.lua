@@ -21,12 +21,12 @@ local TweenService = game:GetService("TweenService")
 
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
-local NetworkConfig = require(ReplicatedStorage.Shared.Utils.NetworkConfig)
+local NetworkConfig = require(Locations.NetworkConfig)
 
 -- Load Logger with wrapper (following the established pattern)
 local LoggerWrapper
 local loggerSuccess, loggerResult = pcall(function()
-    return require(ReplicatedStorage.Shared.Utils.Logger)
+    return require(Locations.Logger)
 end)
 
 if loggerSuccess and loggerResult then

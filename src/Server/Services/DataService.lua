@@ -18,9 +18,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Shared = ReplicatedStorage.Shared
-local ProfileStore = require(game.ReplicatedStorage.Shared.Libraries.ProfileStore)
-local Promise = require(game.ReplicatedStorage.Packages.Promise)
+local Locations = require(game.ReplicatedStorage.Shared.Locations)
+local ProfileStore = Locations.getPackage("ProfileStore")
+local Promise = Locations.getPackage("Promise")
 
 local DataService = {}
 DataService.__index = DataService

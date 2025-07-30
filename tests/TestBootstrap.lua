@@ -20,7 +20,8 @@ if not Packages then
     error("Packages not found - run 'wally install' first")
 end
 
-local TestEZ = require(Packages.TestEZ)
+local Locations = require(ReplicatedStorage.Shared.Locations)
+local TestEZ = Locations.getPackage("TestEZ")
 
 print("🧪 Starting Game Template Tests...")
 

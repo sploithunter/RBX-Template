@@ -18,10 +18,11 @@ if not Packages then
     error("Packages not found - make sure 'wally install' has been run")
 end
 
--- Core dependencies
-local Matter = require(ReplicatedStorage.Shared.Libraries.Matter) -- Matter ECS framework
-local Reflex = require(ReplicatedStorage.Shared.Libraries.Reflex) -- Redux-like state management
-local ModuleLoader = require(ReplicatedStorage.Shared.Utils.ModuleLoader)
+-- Core dependencies  
+local Locations = require(ReplicatedStorage.Shared.Locations)
+local Matter = Locations.getLibrary("Matter") -- Matter ECS framework (manual due to Wally/Rojo sync issues)
+local Reflex = Locations.getPackage("Reflex") -- Redux-like state management (via Wally) 
+local ModuleLoader = require(Locations.SharedUtils.ModuleLoader)
 
 print("🚀 Starting Game Template Server...")
 
