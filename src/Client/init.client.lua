@@ -369,5 +369,38 @@ local baseUI = BaseUI.new()
 baseUI:SetMenuManager(menuManager)
 
 baseUI:Show()
+
+    end) -- Close the task.spawn(function() from line 325
+end
+
+-- Initialize EggCurrentTargetService (proximity detection and UI positioning)
+task.spawn(function()
+    task.wait(0.5) -- Small delay to ensure everything is loaded
+    
+    local success, eggCurrentTargetService = pcall(function()
+        return require(ReplicatedStorage.Shared.Services.EggCurrentTargetService)
     end)
-end 
+    
+    if success then
+        eggCurrentTargetService:Initialize()
+        Logger:Info("EggCurrentTargetService initialized")
+    else
+        Logger:Error("Failed to initialize EggCurrentTargetService", {error = tostring(eggCurrentTargetService)})
+    end
+end)
+
+-- Initialize EggInteractionService (E key handling)
+task.spawn(function()
+    task.wait(0.7) -- Small delay after CurrentTargetService
+    
+    local success, eggInteractionService = pcall(function()
+        return require(ReplicatedStorage.Shared.Services.EggInteractionService)
+    end)
+    
+    if success then
+        eggInteractionService:Initialize()
+        Logger:Info("EggInteractionService initialized")
+    else
+        Logger:Error("Failed to initialize EggInteractionService", {error = tostring(eggInteractionService)})
+    end
+end) 
