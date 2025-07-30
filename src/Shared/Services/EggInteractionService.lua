@@ -14,7 +14,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 -- Dependencies
-local petConfig = require(ReplicatedStorage.Configs.pets)
+local Locations = require(ReplicatedStorage.Shared.Locations)
+local petConfig = Locations.getConfig("pets")
+local eggSystemConfig = Locations.getConfig("egg_system")
 
 -- Local player reference
 local player = Players.LocalPlayer
@@ -102,9 +104,9 @@ function EggInteractionService:HandleEggPurchase(eggType)
     end
     
     local distance = (player.Character.HumanoidRootPart.Position - anchor.Position).Magnitude
-    if distance > 10 then
+    if distance > eggSystemConfig.proximity.max_distance then
         print("❌ Too far from egg:", distance)
-        self:ShowErrorMessage("You must be closer to the egg")
+        self:ShowErrorMessage(eggSystemConfig.messages.too_far_away)
         return
     end
     
@@ -196,9 +198,9 @@ function EggInteractionService:ShowErrorMessage(errorMessage)
     })
     tween:Play()
     
-    -- Auto-remove after 3 seconds
+    -- Auto-remove after configured time
     task.spawn(function()
-        task.wait(3)
+        task.wait(eggSystemConfig.cooldowns.ui_error_display_time)
         errorGui:Destroy()
     end)
 end
@@ -243,9 +245,9 @@ function EggInteractionService:ShowHatchingResults(result)
     details.Font = Enum.Font.Gotham
     details.Parent = frame
     
-    -- Auto-remove after 5 seconds
+    -- Auto-remove after configured time
     task.spawn(function()
-        task.wait(5)
+        task.wait(eggSystemConfig.cooldowns.success_notification_time)
         successGui:Destroy()
     end)
 end
@@ -273,7 +275,7 @@ function EggInteractionService:Initialize()
         if gameProcessed then return end
         
         if input.UserInputType == Enum.UserInputType.Keyboard then
-            if input.KeyCode == Enum.KeyCode.E then
+            if input.KeyCode == eggSystemConfig.proximity.interaction_key then
                 if UserInputService:GetFocusedTextBox() == nil then
                     self:OnEKeyPressed()
                 end

@@ -15,14 +15,18 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
+-- Dependencies
+local Locations = require(ReplicatedStorage.Shared.Locations)
+local eggSystemConfig = Locations.getConfig("egg_system")
+
 -- Get player and camera
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
--- Configuration  
-local MAX_MAGNITUDE = 10 -- Maximum distance to show egg UI (like working game)
-local UPDATE_INTERVAL = 0.05 -- Update every 0.05 seconds (like working game)
-local SERVER_UPDATE_THRESHOLD = 30 -- Call setLastEgg every 30 frames
+-- Configuration from config file
+local MAX_MAGNITUDE = eggSystemConfig.proximity.max_distance
+local UPDATE_INTERVAL = eggSystemConfig.performance.update_interval
+local SERVER_UPDATE_THRESHOLD = eggSystemConfig.performance.server_update_threshold
 
 -- Variables
 local timecounter = 0
@@ -106,18 +110,18 @@ function EggCurrentTargetService:CreateEggUI()
     
     local frame = Instance.new("Frame")
     frame.Name = "PreviewFrame"
-    frame.Size = UDim2.new(0, 200, 0, 100)
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.Size = UDim2.new(0, eggSystemConfig.ui.preview_size.width, 0, eggSystemConfig.ui.preview_size.height)
+    frame.BackgroundColor3 = eggSystemConfig.ui.colors.background
     frame.BorderSizePixel = 0
     frame.Parent = screenGui
     
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
+    corner.CornerRadius = UDim.new(0, eggSystemConfig.ui.corner_radius)
     corner.Parent = frame
     
     local stroke = Instance.new("UIStroke")
-    stroke.Thickness = 2
-    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Thickness = eggSystemConfig.ui.border_thickness
+    stroke.Color = eggSystemConfig.ui.colors.border
     stroke.Parent = frame
     
     local eggNameLabel = Instance.new("TextLabel")
@@ -126,9 +130,9 @@ function EggCurrentTargetService:CreateEggUI()
     eggNameLabel.Position = UDim2.new(0, 5, 0, 5)
     eggNameLabel.BackgroundTransparency = 1
     eggNameLabel.Text = "Basic Egg"
-    eggNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    eggNameLabel.TextColor3 = eggSystemConfig.ui.colors.text_primary
     eggNameLabel.TextScaled = true
-    eggNameLabel.Font = Enum.Font.GothamBold
+    eggNameLabel.Font = eggSystemConfig.ui.fonts.title
     eggNameLabel.Parent = frame
     
     local promptLabel = Instance.new("TextLabel")
@@ -136,10 +140,10 @@ function EggCurrentTargetService:CreateEggUI()
     promptLabel.Size = UDim2.new(1, -10, 0.4, 0)
     promptLabel.Position = UDim2.new(0, 5, 0.6, 0)
     promptLabel.BackgroundTransparency = 1
-    promptLabel.Text = "Press E to open"
-    promptLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    promptLabel.Text = "Press " .. eggSystemConfig.proximity.interaction_key.Name .. " to open"
+    promptLabel.TextColor3 = eggSystemConfig.ui.colors.text_secondary
     promptLabel.TextScaled = true
-    promptLabel.Font = Enum.Font.Gotham
+    promptLabel.Font = eggSystemConfig.ui.fonts.prompt
     promptLabel.Parent = frame
     
     -- Store CurrentTarget value
@@ -161,8 +165,20 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
     local currentTargetValue = frame.CurrentTarget
     
     if egg and eggType then
-        -- Position UI at egg's world position (like working game)
-        -- Use the EggSpawnPoint as anchor (referenced in SpawnPoint ObjectValue)
+        -- Only update if target has changed
+        if currentTarget ~= eggType then
+            if eggSystemConfig.debug.log_proximity_changes then
+                print("🎯 Now targeting egg:", eggType)
+            end
+            currentTarget = eggType
+            currentTargetValue.Value = eggType
+            
+            -- Update UI content only when target changes
+            frame.EggName.Text = eggType:gsub("_", " ") .. " Egg"
+            frame.Visible = true
+        end
+        
+        -- Always update position (player might be moving around the egg)
         local spawnPointRef = egg:FindFirstChild("SpawnPoint")
         local anchor = spawnPointRef and spawnPointRef.Value
         
@@ -173,21 +189,18 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
         
         if anchor then
             local screenPos = camera:WorldToScreenPoint(anchor.Position)
-            frame.Position = UDim2.new(0, screenPos.X - 100, 0, screenPos.Y - 50)
+            frame.Position = UDim2.new(0, screenPos.X + eggSystemConfig.ui.position_offset.x, 0, screenPos.Y + eggSystemConfig.ui.position_offset.y)
         end
-        
-        -- Update UI content
-        frame.EggName.Text = eggType:gsub("_", " ") .. " Egg"
-        frame.Visible = true
-        currentTargetValue.Value = eggType
-        currentTarget = eggType
-        
-        print("🎯 Now targeting egg:", eggType)
     else
-        -- No egg in range
-        frame.Visible = false
-        currentTargetValue.Value = "None"
-        currentTarget = "None"
+        -- No egg in range - only update if we had a target before
+        if currentTarget ~= "None" then
+            if eggSystemConfig.debug.log_proximity_changes then
+                print("🚫 No longer targeting egg")
+            end
+            currentTarget = "None"
+            currentTargetValue.Value = "None"
+            frame.Visible = false
+        end
     end
 end
 

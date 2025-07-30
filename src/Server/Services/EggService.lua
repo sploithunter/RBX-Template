@@ -11,7 +11,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Dependencies
-local petConfig = require(ReplicatedStorage.Configs.pets)
+local Locations = require(ReplicatedStorage.Shared.Locations)
+local petConfig = Locations.getConfig("pets")
+local eggSystemConfig = Locations.getConfig("egg_system")
 
 -- Logger setup using singleton pattern
 local Logger
@@ -44,7 +46,7 @@ local playerCurrentEggs = {}
 function EggService:IsOnCooldown(player)
     local playerId = player.UserId
     local lastPurchase = playerCooldowns[playerId] or 0
-    local cooldownTime = 3
+    local cooldownTime = eggSystemConfig.cooldowns.purchase_cooldown
     local currentTime = tick()
     
     if currentTime - lastPurchase < cooldownTime then
@@ -109,7 +111,7 @@ function EggService:IsPlayerNearEgg(player, eggType)
     end
     
     local distance = (playerPosition - anchor.Position).Magnitude
-    return distance <= 10
+    return distance <= eggSystemConfig.proximity.max_distance
 end
 
 -- === MAIN HANDLER (following working game pattern) ===

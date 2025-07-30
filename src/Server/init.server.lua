@@ -214,6 +214,7 @@ task.spawn(function()
     Logger:Info("Starting EggSpawner initialization...")
     
     local success, eggSpawnerOrError = pcall(function()
+        local Locations = require(ReplicatedStorage.Shared.Locations)
         return require(ReplicatedStorage.Shared.Services.EggSpawner)
     end)
     
@@ -241,6 +242,7 @@ task.spawn(function()
     Logger:Info("Starting EggService initialization...")
     
     local success, eggServiceOrError = pcall(function()
+        local Locations = require(ReplicatedStorage.Shared.Locations)
         return require(script.Services.EggService)
     end)
     

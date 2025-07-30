@@ -5,7 +5,7 @@
     Creates egg instances at specified spawn points based on configuration.
     
     Usage:
-    - Place "EggSpawnPoint" parts in Workspace where eggs should appear
+    - Place spawn point parts in Workspace where eggs should appear (configurable name)
     - Use EggSpawner:SpawnEgg() to create eggs dynamically
     - Eggs are loaded from asset IDs in pet configuration
 --]]
@@ -17,7 +17,9 @@ local TweenService = game:GetService("TweenService")
 local InsertService = game:GetService("InsertService")
 
 -- Dependencies
-local petConfig = require(ReplicatedStorage.Configs.pets)
+local Locations = require(ReplicatedStorage.Shared.Locations)
+local petConfig = Locations.getConfig("pets")
+local eggSystemConfig = Locations.getConfig("egg_system")
 
 -- Active eggs in the world
 local activeEggs = {}
@@ -141,7 +143,7 @@ function EggSpawner:GetSpawnPoints()
     -- Look for parts named "EggSpawnPoint" 
     local function searchForSpawnPoints(parent)
         for _, child in pairs(parent:GetChildren()) do
-            if child:IsA("BasePart") and child.Name == "EggSpawnPoint" then
+            if child:IsA("BasePart") and child.Name == eggSystemConfig.spawning.spawn_point_name then
                 table.insert(spawnPoints, child)
             end
             searchForSpawnPoints(child)
@@ -213,8 +215,8 @@ function EggSpawner:Initialize()
     print("EggSpawner: Found " .. #spawnPoints .. " spawn points")
     
     if #spawnPoints == 0 then
-        print("EggSpawner: ⚠️ No EggSpawnPoint parts found in workspace!")
-        print("EggSpawner: Create a part named 'EggSpawnPoint' and add 'EggType' attribute")
+        print("EggSpawner: ⚠️ No " .. eggSystemConfig.spawning.spawn_point_name .. " parts found in workspace!")
+        print("EggSpawner: Create a part named '" .. eggSystemConfig.spawning.spawn_point_name .. "' and add 'EggType' attribute")
         return
     end
     
