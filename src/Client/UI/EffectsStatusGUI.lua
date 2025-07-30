@@ -282,10 +282,10 @@ function EffectsStatusGUI:GetTimeColor(timeRemaining)
     end
 end
 
--- Initialize
-EffectsStatusGUI:Init()
+-- DISABLED: Auto-initialization removed to prevent UI overlap with new MenuManager system
+-- EffectsStatusGUI:Init()
 
--- Make globally accessible for packet handlers
+-- Make globally accessible for packet handlers (but no longer auto-initialized)
 _G.EffectsStatusGUI = EffectsStatusGUI
 
 return EffectsStatusGUI 

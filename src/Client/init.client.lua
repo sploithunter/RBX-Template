@@ -147,7 +147,15 @@ economyBridge:Connect(function(packetType, data)
         print("   Server Inventory:", data.inventory)
         print("   Server Currencies:", data.currencies)
     elseif packetType == "ActiveEffects" then
-        -- Update the effects status GUI (pass full data, not just data.effects)
+        -- Update the effects panel via MenuManager (new system)
+        if _G.MenuManager then
+            local effectsPanel = _G.MenuManager:GetPanel("Effects")
+            if effectsPanel and effectsPanel.UpdateEffects then
+                effectsPanel:UpdateEffects(data.effects)
+            end
+        end
+        
+        -- Legacy fallback for EffectsStatusGUI (if still needed)
         if _G.EffectsStatusGUI then
             _G.EffectsStatusGUI:UpdateFromServer(data)
         end
@@ -315,8 +323,51 @@ Logger:Info("🎯 Game Template Client started successfully!", {
 -- Load test GUI for economy testing (remove in production)
 if game:GetService("RunService"):IsStudio() then
     task.spawn(function()
-        require(script.UI.TestEconomyGUI)
-        require(script.UI.SimpleEffectsGUI)
-        require(script.UI.GlobalEffectsGUI)
+        -- OLD: require(script.UI.TestEconomyGUI) -- REMOVED: Replaced by AdminPanel
+        -- OLD: require(script.UI.SimpleEffectsGUI) -- REMOVED: Replaced by EffectsPanel in MenuManager
+        -- OLD: require(script.UI.GlobalEffectsGUI) -- REMOVED: Replaced by EffectsPanel in MenuManager
+        
+        -- Load proper game UI system
+task.wait(1) -- Wait a moment for other UIs to load
+
+-- Initialize MenuManager
+local MenuManager = require(script.UI.MenuManager)
+local menuManager = MenuManager.new()
+
+-- Make MenuManager globally accessible for network updates
+_G.MenuManager = menuManager
+
+-- Create and register menu panels
+local ShopPanel = require(script.UI.Menus.ShopPanel)
+local shopPanel = ShopPanel.new()
+menuManager:RegisterPanel("Shop", shopPanel)
+
+local InventoryPanel = require(script.UI.Menus.InventoryPanel)
+local inventoryPanel = InventoryPanel.new()
+menuManager:RegisterPanel("Inventory", inventoryPanel)
+
+local EffectsPanel = require(script.UI.Menus.EffectsPanel)
+local effectsPanel = EffectsPanel.new()
+menuManager:RegisterPanel("Effects", effectsPanel)
+
+local SettingsPanel = require(script.UI.Menus.SettingsPanel)
+local settingsPanel = SettingsPanel.new()
+menuManager:RegisterPanel("Settings", settingsPanel)
+
+-- Admin panel (only for admin users)
+if settingsPanel:IsAdmin() then
+    local AdminPanel = require(script.UI.Menus.AdminPanel)
+    local adminPanel = AdminPanel.new()
+    menuManager:RegisterPanel("Admin", adminPanel)
+end
+
+-- Initialize and show BaseUI
+local BaseUI = require(script.UI.BaseUI)
+local baseUI = BaseUI.new()
+
+-- Connect BaseUI with MenuManager
+baseUI:SetMenuManager(menuManager)
+
+baseUI:Show()
     end)
 end 

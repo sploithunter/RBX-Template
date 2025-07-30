@@ -211,6 +211,50 @@ local function loadConfigsFromStorage()
         }
     },
     
+    ui = {
+        -- Fallback UI configuration
+        version = "1.0.0",
+        active_theme = "dark",
+        themes = {
+            dark = {
+                primary = {
+                    background = Color3.fromRGB(30, 30, 35),
+                    surface = Color3.fromRGB(40, 40, 45),
+                    accent = Color3.fromRGB(0, 120, 180),
+                },
+                text = {
+                    primary = Color3.fromRGB(255, 255, 255),
+                    secondary = Color3.fromRGB(200, 200, 200),
+                },
+                button = {
+                    primary = Color3.fromRGB(0, 120, 180),
+                }
+            }
+        },
+        fonts = {
+            primary = Enum.Font.Gotham,
+            sizes = { md = 14 }
+        },
+        spacing = { md = 16 },
+        radius = { md = 8 },
+        animations = {
+            duration = { fast = 0.15 }
+        },
+        helpers = {
+            get_theme = function(config)
+                return config.themes[config.active_theme] or config.themes.dark
+            end,
+            get_spacing = function(config, key)
+                local value = config.spacing[key] or config.spacing.md
+                return UDim.new(0, value)
+            end,
+            get_radius = function(config, key)
+                local value = config.radius[key] or config.radius.md
+                return UDim.new(0, value)
+            end,
+        }
+    },
+    
     monetization = {
         products = {
             {
@@ -569,6 +613,8 @@ function ConfigLoader:ValidateConfig(configName, config)
         return self:_validateItemsConfig(config)
     elseif configName == "currencies" then
         return self:_validateCurrenciesConfig(config)
+    elseif configName == "ui" then
+        return self:_validateUIConfig(config)
     end
     
     -- Default validation for other configs
@@ -693,6 +739,36 @@ function ConfigLoader:_validateCurrenciesConfig(config)
         if not currency.name or type(currency.name) ~= "string" then
             return false, "Currency " .. currency.id .. " missing or invalid name"
         end
+    end
+    
+    return true
+end
+
+function ConfigLoader:_validateUIConfig(config)
+    if not config or type(config) ~= "table" then
+        return false, "UI config must be a table"
+    end
+    
+    -- Check required sections
+    local requiredSections = {"themes", "active_theme", "fonts", "spacing", "radius", "animations", "helpers"}
+    for _, section in ipairs(requiredSections) do
+        if not config[section] then
+            return false, "Missing required section: " .. section
+        end
+    end
+    
+    -- Validate themes
+    if not config.themes or type(config.themes) ~= "table" then
+        return false, "Themes must be a table"
+    end
+    
+    if not config.themes.dark or not config.themes.light then
+        return false, "Dark and light themes are required"
+    end
+    
+    -- Validate active theme exists
+    if not config.themes[config.active_theme] then
+        return false, "Active theme '" .. tostring(config.active_theme) .. "' not found in themes"
     end
     
     return true

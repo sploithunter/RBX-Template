@@ -47,6 +47,25 @@ if Locations.Shared then
     Locations.SharedNetwork = Locations.Shared:WaitForChild("Network")
     Locations.SharedState = Locations.Shared:WaitForChild("State")
     Locations.SharedMatter = Locations.Shared:WaitForChild("Matter")
+    Locations.SharedServices = Locations.Shared:WaitForChild("Services")
+end
+
+-- Client-specific folders (UI and Controllers)
+if Locations.RunService:IsClient() then
+    local starterPlayer = game:GetService("StarterPlayer")
+    local clientFolder = starterPlayer:WaitForChild("StarterPlayerScripts"):WaitForChild("Client", 5)
+    
+    if clientFolder then
+        Locations.ClientUI = clientFolder:WaitForChild("UI")
+        if Locations.ClientUI then
+            Locations.ClientUIComponents = Locations.ClientUI:WaitForChild("Components")
+            Locations.ClientUIScreens = Locations.ClientUI:WaitForChild("Screens")
+            Locations.ClientUIMenus = Locations.ClientUI:WaitForChild("Menus")
+        end
+        Locations.ClientControllers = clientFolder:WaitForChild("Controllers")
+        Locations.ClientSystems = clientFolder:WaitForChild("Systems")
+        Locations.ClientEffects = clientFolder:WaitForChild("Effects")
+    end
 end
 
 -- === CONFIGURATION FILES ===
@@ -57,7 +76,8 @@ Locations.ConfigFiles = {
     Items = "items",
     Monetization = "monetization",
     Network = "network",
-    Effects = "effects"
+    Effects = "effects",
+    UI = "ui"
 }
 
 -- === CORE MODULES ===
@@ -74,6 +94,10 @@ end
 
 if Locations.SharedNetwork then
     Locations.NetworkBridge = Locations.SharedNetwork:WaitForChild("NetworkBridge")
+end
+
+if Locations.SharedServices then
+    Locations.TemplateManager = Locations.SharedServices:WaitForChild("TemplateManager")
 end
 
 -- === LIBRARIES ===
