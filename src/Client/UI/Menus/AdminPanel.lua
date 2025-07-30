@@ -161,6 +161,12 @@ function AdminPanel.new()
     self.economyBridge = nil
     self.effectsBridge = nil
     
+    -- Player targeting state (NEW)
+    self.selectedTargetPlayerId = nil  -- nil = self, number = target player ID
+    self.playerList = {}
+    self.playerDropdown = nil
+    self.targetPlayerLabel = nil
+    
     self:_initializeNetworking()
     
     return self
@@ -267,11 +273,14 @@ function AdminPanel:_createUI(parent)
         self:Hide()
     end)
     
-    -- Scroll frame for test categories
+    -- Player Selection Section (NEW)
+    self:_createPlayerSelector()
+    
+    -- Scroll frame for test categories (adjusted position to make room for player selector)
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Name = "AdminScroll"
-    scrollFrame.Size = UDim2.new(1, -20, 1, -90)
-    scrollFrame.Position = UDim2.new(0, 10, 0, 80)
+    scrollFrame.Size = UDim2.new(1, -20, 1, -140)  -- Reduced height for player selector
+    scrollFrame.Position = UDim2.new(0, 10, 0, 130)  -- Moved down for player selector
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
     scrollFrame.ScrollBarThickness = 8
@@ -294,6 +303,9 @@ function AdminPanel:_createUI(parent)
     
     -- Create test category sections
     self:_createTestCategories()
+    
+    -- Load player list on panel open
+    self:_refreshPlayerList()
 end
 
 function AdminPanel:_createTestCategories()
@@ -621,8 +633,10 @@ function AdminPanel:_executePurchaseAction(action)
     
     local purchaseData = purchases[action]
     if purchaseData then
-        self.economyBridge:Fire("server", "purchase_item", purchaseData)
-        self.logger:info("Purchase request sent:", purchaseData.itemId)
+        -- Add target player data if selected
+        local actionData = self:_getAdminActionData(purchaseData)
+        self.economyBridge:Fire("server", "purchase_item", actionData)
+        self.logger:info("Purchase request sent:", {item = purchaseData.itemId, targetData = actionData})
     end
 end
 
@@ -640,8 +654,10 @@ function AdminPanel:_executeCurrencyAction(action)
     
     local adjustment = currencyAdjustments[action]
     if adjustment then
-        self.economyBridge:Fire("server", "adjust_currency", adjustment)
-        self.logger:info("Currency adjustment sent:", adjustment)
+        -- Add target player data if selected
+        local actionData = self:_getAdminActionData(adjustment)
+        self.economyBridge:Fire("server", "adjust_currency", actionData)
+        self.logger:info("Currency adjustment sent:", actionData)
         return
     end
 end
@@ -657,8 +673,10 @@ function AdminPanel:_executeCustomCurrencyAdjust(currency, amount)
         amount = amount
     }
     
-    self.economyBridge:Fire("server", "adjust_currency", adjustCurrencyData)
-    self.logger:info("🔧 Custom currency ADJUST action sent:", adjustCurrencyData)
+    -- Add target player data if selected
+    local actionData = self:_getAdminActionData(adjustCurrencyData)
+    self.economyBridge:Fire("server", "adjust_currency", actionData)
+    self.logger:info("🔧 Custom currency ADJUST action sent:", actionData)
 end
 
 function AdminPanel:_resetCurrencies()
@@ -667,8 +685,10 @@ function AdminPanel:_resetCurrencies()
         return
     end
     
-    self.economyBridge:Fire("server", "reset_currencies", {})
-    self.logger:info("Currency reset requested")
+    -- Add target player data if selected
+    local actionData = self:_getAdminActionData({})
+    self.economyBridge:Fire("server", "reset_currencies", actionData)
+    self.logger:info("Currency reset requested:", actionData)
 end
 
 function AdminPanel:_executeEffectAction(action)
@@ -765,6 +785,130 @@ end
 function AdminPanel:Destroy()
     self:Hide()
     self.logger:info("Admin panel destroyed")
+end
+
+-- Player Selection Methods (NEW)
+function AdminPanel:_createPlayerSelector()
+    local theme = uiConfig.helpers.get_theme(uiConfig)
+    
+    -- Player selector container
+    local selectorContainer = Instance.new("Frame")
+    selectorContainer.Name = "PlayerSelector"
+    selectorContainer.Size = UDim2.new(1, -20, 0, 40)
+    selectorContainer.Position = UDim2.new(0, 10, 0, 80)
+    selectorContainer.BackgroundColor3 = theme.primary.card or Color3.fromRGB(60, 60, 65)
+    selectorContainer.BorderSizePixel = 0
+    selectorContainer.Parent = self.frame
+    
+    local selectorCorner = Instance.new("UICorner")
+    selectorCorner.CornerRadius = UDim.new(0, 8)
+    selectorCorner.Parent = selectorContainer
+    
+    -- Label
+    local selectorLabel = Instance.new("TextLabel")
+    selectorLabel.Name = "Label"
+    selectorLabel.Size = UDim2.new(0, 120, 1, 0)
+    selectorLabel.Position = UDim2.new(0, 10, 0, 0)
+    selectorLabel.BackgroundTransparency = 1
+    selectorLabel.Text = "🎯 Target Player:"
+    selectorLabel.TextColor3 = theme.text.primary or Color3.fromRGB(255, 255, 255)
+    selectorLabel.TextSize = 14
+    selectorLabel.Font = Enum.Font.Gotham
+    selectorLabel.TextXAlignment = Enum.TextXAlignment.Left
+    selectorLabel.Parent = selectorContainer
+    
+    -- Current target display
+    self.targetPlayerLabel = Instance.new("TextLabel")
+    self.targetPlayerLabel.Name = "CurrentTarget"
+    self.targetPlayerLabel.Size = UDim2.new(0, 150, 1, 0)
+    self.targetPlayerLabel.Position = UDim2.new(0, 130, 0, 0)
+    self.targetPlayerLabel.BackgroundTransparency = 1
+    self.targetPlayerLabel.Text = "Self (You)"
+    self.targetPlayerLabel.TextColor3 = Color3.fromRGB(100, 200, 100)  -- Green for self
+    self.targetPlayerLabel.TextSize = 14
+    self.targetPlayerLabel.Font = Enum.Font.GothamBold
+    self.targetPlayerLabel.TextXAlignment = Enum.TextXAlignment.Left
+    self.targetPlayerLabel.Parent = selectorContainer
+    
+    -- Dropdown button
+    local dropdownButton = Instance.new("TextButton")
+    dropdownButton.Name = "DropdownButton"
+    dropdownButton.Size = UDim2.new(0, 120, 0, 30)
+    dropdownButton.Position = UDim2.new(1, -130, 0, 5)
+    dropdownButton.BackgroundColor3 = theme.primary.accent or Color3.fromRGB(0, 120, 180)
+    dropdownButton.BorderSizePixel = 0
+    dropdownButton.Text = "📝 Select Player"
+    dropdownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    dropdownButton.TextSize = 12
+    dropdownButton.Font = Enum.Font.Gotham
+    dropdownButton.Parent = selectorContainer
+    
+    local dropdownCorner = Instance.new("UICorner")
+    dropdownCorner.CornerRadius = UDim.new(0, 6)
+    dropdownCorner.Parent = dropdownButton
+    
+    dropdownButton.Activated:Connect(function()
+        self:_showPlayerDropdown()
+    end)
+    
+    self.playerDropdown = dropdownButton
+end
+
+function AdminPanel:_refreshPlayerList()
+    -- Request updated player list from server
+    if self.economyBridge then
+        self.economyBridge:Fire("server", "get_player_list", {})
+        self.logger:info("Requested player list from server")
+    else
+        self.logger:warn("Cannot refresh player list - economy bridge not available")
+    end
+end
+
+function AdminPanel:_showPlayerDropdown()
+    -- Simple implementation: cycle through available players
+    local players = game.Players:GetPlayers()
+    local currentIndex = 1
+    
+    -- Find current selection
+    if self.selectedTargetPlayerId then
+        for i, player in ipairs(players) do
+            if player.UserId == self.selectedTargetPlayerId then
+                currentIndex = i
+                break
+            end
+        end
+    end
+    
+    -- Move to next player (or back to self)
+    local nextIndex = currentIndex + 1
+    if nextIndex > #players then
+        -- Back to self
+        self.selectedTargetPlayerId = nil
+        self.targetPlayerLabel.Text = "Self (You)"
+        self.targetPlayerLabel.TextColor3 = Color3.fromRGB(100, 200, 100)  -- Green
+        self.logger:info("Target changed to: Self")
+    else
+        local targetPlayer = players[nextIndex]
+        self.selectedTargetPlayerId = targetPlayer.UserId
+        self.targetPlayerLabel.Text = targetPlayer.Name
+        self.targetPlayerLabel.TextColor3 = Color3.fromRGB(255, 200, 100)  -- Orange for others
+        self.logger:info("Target changed to: " .. targetPlayer.Name, {targetUserId = targetPlayer.UserId})
+    end
+end
+
+function AdminPanel:_getAdminActionData(baseData)
+    -- Add target player ID to action data if a target is selected
+    local actionData = {}
+    for key, value in pairs(baseData) do
+        actionData[key] = value
+    end
+    
+    -- Add target player if one is selected
+    if self.selectedTargetPlayerId then
+        actionData.targetPlayerId = self.selectedTargetPlayerId
+    end
+    
+    return actionData
 end
 
 return AdminPanel 

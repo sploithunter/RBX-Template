@@ -63,13 +63,14 @@ return {
                     handler = "EconomyService.GetActiveEffects"
                 },
                 
-                -- Admin Panel Actions
+                -- Admin Panel Actions (Self-targeting - existing functionality)
                 adjust_currency = {
                     rateLimit = 5,
                     direction = "client_to_server",
                     validation = {
                         currency = "string",
-                        amount = "number"
+                        amount = "number",
+                        targetPlayerId = "number?" -- Optional for backwards compatibility
                     },
                     handler = "EconomyService.AdjustCurrency"
                 },
@@ -79,7 +80,8 @@ return {
                     direction = "client_to_server",
                     validation = {
                         currency = "string",
-                        amount = "number"
+                        amount = "number",
+                        targetPlayerId = "number?" -- Optional for backwards compatibility
                     },
                     handler = "EconomyService.SetCurrency"
                 },
@@ -90,7 +92,8 @@ return {
                     validation = {
                         itemId = "string",
                         cost = "number",
-                        currency = "string"
+                        currency = "string",
+                        targetPlayerId = "number?" -- Optional for backwards compatibility
                     },
                     handler = "EconomyService.AdminPurchaseItem"
                 },
@@ -98,8 +101,47 @@ return {
                 reset_currencies = {
                     rateLimit = 2,
                     direction = "client_to_server",
-                    validation = {},
+                    validation = {
+                        targetPlayerId = "number?" -- Optional for backwards compatibility
+                    },
                     handler = "EconomyService.ResetCurrencies"
+                },
+                
+                -- Admin Player Management Actions (NEW)
+                get_player_list = {
+                    rateLimit = 10,
+                    direction = "client_to_server",
+                    validation = {},
+                    handler = "AdminService.GetAllPlayersForAdmin"
+                },
+                
+                get_player_data = {
+                    rateLimit = 10,
+                    direction = "client_to_server",
+                    validation = {
+                        targetPlayerId = "number"
+                    },
+                    handler = "DataService.GetPlayerData"
+                },
+                
+                teleport_player = {
+                    rateLimit = 5,
+                    direction = "client_to_server",
+                    validation = {
+                        targetPlayerId = "number",
+                        position = "table" -- {x, y, z}
+                    },
+                    handler = "AdminService.TeleportPlayer"
+                },
+                
+                kick_player = {
+                    rateLimit = 2,
+                    direction = "client_to_server",
+                    validation = {
+                        targetPlayerId = "number",
+                        reason = "string?"
+                    },
+                    handler = "AdminService.KickPlayer"
                 },
                 
                 EconomyError = {

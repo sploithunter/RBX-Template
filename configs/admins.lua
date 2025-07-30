@@ -15,11 +15,19 @@ return {
         -- 3. Add it to this list (uncomment and replace the example)
         
         3200870803,  -- jason (coloradoplays) - Primary admin
+        
+        -- Studio Test Players (for multi-player testing in Studio)
+        -1,  -- Player1 (Studio test player)
+        -2,  -- Player2 (Studio test player) 
+        -3,  -- Player3 (Studio test player)
+        -4,  -- Player4 (Studio test player)
+        
         -- 987654321,  -- Add more admin User IDs here
     },
     
     -- Admin permissions - what admins can do
     permissions = {
+        -- Self-targeting permissions (existing functionality)
         setCurrency = true,          -- Can set arbitrary currency amounts
         adjustCurrency = true,       -- Can add/remove currency amounts  
         giveItems = true,            -- Can give items to players
@@ -27,6 +35,20 @@ return {
         manageEffects = true,        -- Can start/stop effects
         viewDebugInfo = true,        -- Can view debug information
         testRateLimit = true,        -- Can test rate limiting
+        
+        -- Multi-player targeting permissions (NEW)
+        setCurrencyOthers = true,    -- Can set currency for other players
+        adjustCurrencyOthers = true, -- Can adjust currency for other players
+        giveItemsOthers = true,      -- Can give items to other players
+        resetDataOthers = true,      -- Can reset other players' data
+        manageEffectsOthers = true,  -- Can manage effects for other players
+        viewDebugInfoOthers = true,  -- Can view other players' debug info
+        kickPlayers = false,         -- Can kick players (disabled by default)
+        teleportPlayers = true,      -- Can teleport players
+        
+        -- Global permissions
+        globalEffects = true,        -- Can apply effects to all players
+        serverCommands = false,      -- Can execute server-wide commands (disabled by default)
     },
     
     -- Security settings

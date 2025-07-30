@@ -4,6 +4,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
 local AdminService = {}
 AdminService.__index = AdminService
@@ -75,17 +76,40 @@ function AdminService:HasPermission(player, permission)
     return self._adminConfig.permissions[permission] == true
 end
 
--- Validate an admin action request
+-- Validate an admin action request (supports both self and target player actions)
 function AdminService:ValidateAdminAction(player, action, data, source)
     -- Source can be "client" or "server"
     source = source or "unknown"
     
+    -- Determine if this is a multi-player action
+    local targetPlayerId = data and data.targetPlayerId
+    local isMultiPlayerAction = targetPlayerId ~= nil and targetPlayerId ~= player.UserId
+    local targetPlayer = nil
+    
+    -- If targeting another player, validate target exists
+    if isMultiPlayerAction then
+        targetPlayer = self:GetPlayerByUserId(targetPlayerId)
+        if not targetPlayer then
+            self._logger:Warn("🚨 ADMIN ACTION BLOCKED - INVALID TARGET", {
+                admin = player.Name,
+                adminId = player.UserId,
+                action = action,
+                targetUserId = targetPlayerId,
+                reason = "Target player not found"
+            })
+            return false, "Target player not found"
+        end
+    end
+    
     -- Log the admin action attempt
     if self._adminConfig.security.logAllAdminActions then
         self._logger:Info("🛡️ ADMIN ACTION ATTEMPT", {
-            player = player.Name,
-            userId = player.UserId,
+            admin = player.Name,
+            adminId = player.UserId,
             action = action,
+            targetPlayer = targetPlayer and targetPlayer.Name or "self",
+            targetUserId = targetPlayerId or player.UserId,
+            isMultiPlayer = isMultiPlayerAction,
             data = data,
             source = source,
             timestamp = os.time()
@@ -95,30 +119,42 @@ function AdminService:ValidateAdminAction(player, action, data, source)
     -- Check if player is authorized
     if not self:IsAuthorized(player) then
         self._logger:Warn("🚨 UNAUTHORIZED ADMIN ACTION BLOCKED", {
-            player = player.Name,
-            userId = player.UserId,
+            admin = player.Name,
+            adminId = player.UserId,
             action = action,
             reason = "Not authorized as admin"
         })
         return false, "Not authorized"
     end
     
+    -- Determine required permission based on target
+    local requiredPermission = action
+    if isMultiPlayerAction then
+        -- Check if there's a specific "Others" permission for this action
+        local othersPermission = action .. "Others"
+        if self._adminConfig.permissions[othersPermission] ~= nil then
+            requiredPermission = othersPermission
+        end
+    end
+    
     -- Check specific permission
-    if not self:HasPermission(player, action) then
+    if not self:HasPermission(player, requiredPermission) then
         self._logger:Warn("🚨 ADMIN ACTION BLOCKED - INSUFFICIENT PERMISSION", {
-            player = player.Name,
-            userId = player.UserId,
+            admin = player.Name,
+            adminId = player.UserId,
             action = action,
-            reason = "Missing permission: " .. tostring(action)
+            requiredPermission = requiredPermission,
+            isMultiPlayer = isMultiPlayerAction,
+            reason = "Missing permission: " .. tostring(requiredPermission)
         })
-        return false, "Insufficient permissions"
+        return false, "Insufficient permissions for target"
     end
     
     -- Check security restrictions
     if source == "client" and self._adminConfig.security.blockClientRequests then
-        self._logger:Warn("🚨 CLIENT ADMIN REQUEST BLOCKED", {
-            player = player.Name,
-            userId = player.UserId,
+        self._logger:Warn("🚨 ADMIN ACTION BLOCKED - CLIENT REQUESTS DISABLED", {
+            admin = player.Name,
+            adminId = player.UserId,
             action = action,
             reason = "Client requests blocked by security policy"
         })
@@ -126,14 +162,15 @@ function AdminService:ValidateAdminAction(player, action, data, source)
     end
     
     -- Check Studio requirement for sensitive operations
-    local sensitiveOps = {"resetData", "setCurrency"}
+    local sensitiveOps = {"resetData", "setCurrency", "resetDataOthers", "setCurrencyOthers", "kickPlayers"}
     if self._adminConfig.security.requireStudioForSensitiveOps then
         for _, sensitiveOp in ipairs(sensitiveOps) do
-            if action == sensitiveOp and not RunService:IsStudio() then
+            if (action == sensitiveOp or requiredPermission == sensitiveOp) and not RunService:IsStudio() then
                 self._logger:Warn("🚨 SENSITIVE ADMIN ACTION BLOCKED - NOT IN STUDIO", {
-                    player = player.Name,
-                    userId = player.UserId,
+                    admin = player.Name,
+                    adminId = player.UserId,
                     action = action,
+                    requiredPermission = requiredPermission,
                     reason = "Sensitive operation requires Studio environment"
                 })
                 return false, "Sensitive operations require Studio"
@@ -143,13 +180,45 @@ function AdminService:ValidateAdminAction(player, action, data, source)
     
     -- Action is authorized
     self._logger:Info("✅ ADMIN ACTION AUTHORIZED", {
-        player = player.Name,
-        userId = player.UserId,
+        admin = player.Name,
+        adminId = player.UserId,
         action = action,
+        requiredPermission = requiredPermission,
+        targetPlayer = targetPlayer and targetPlayer.Name or "self",
+        isMultiPlayer = isMultiPlayerAction,
         source = source
     })
     
-    return true, "Authorized"
+    return true, "Authorized", targetPlayer
+end
+
+-- Get a player by their user ID
+function AdminService:GetPlayerByUserId(userId)
+    if not userId then return nil end
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.UserId == userId then
+            return player
+        end
+    end
+    
+    return nil
+end
+
+-- Get list of all players for admin UI
+function AdminService:GetAllPlayers()
+    local playerList = {}
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        table.insert(playerList, {
+            userId = player.UserId,
+            username = player.Name,
+            displayName = player.DisplayName,
+            isAdmin = self:IsAuthorized(player)
+        })
+    end
+    
+    return playerList
 end
 
 -- Get admin status for a player
@@ -159,6 +228,110 @@ function AdminService:GetAdminStatus(player)
         permissions = self._adminConfig.permissions,
         userId = player.UserId
     }
+end
+
+-- Network handler: Get all players for admin UI (renamed to avoid conflict)
+function AdminService:GetAllPlayersForAdmin(adminPlayer, data)
+    local authorized, reason = self:ValidateAdminAction(adminPlayer, "viewDebugInfoOthers", data, "client")
+    if not authorized then
+        self._logger:Warn("🚨 UNAUTHORIZED GetAllPlayers attempt blocked", {
+            admin = adminPlayer.Name,
+            reason = reason
+        })
+        return
+    end
+    
+    local players = self:GetAllPlayers()
+    
+    -- Return via network bridge if available
+    if self._adminBridge then
+        self._adminBridge:Fire(adminPlayer, "PlayerListUpdate", {
+            players = players,
+            timestamp = os.time()
+        })
+    end
+    
+    return players
+end
+
+-- Teleport a player to a specific position
+function AdminService:TeleportPlayer(adminPlayer, data)
+    local authorized, reason, targetPlayer = self:ValidateAdminAction(adminPlayer, "teleportPlayers", data, "client")
+    if not authorized then
+        self._logger:Warn("🚨 UNAUTHORIZED TeleportPlayer attempt blocked", {
+            admin = adminPlayer.Name,
+            reason = reason,
+            targetUserId = data.targetPlayerId
+        })
+        return
+    end
+    
+    if not targetPlayer then
+        self._logger:Error("Target player not found for teleport", {
+            admin = adminPlayer.Name,
+            targetUserId = data.targetPlayerId
+        })
+        return
+    end
+    
+    -- Teleport the target player
+    local character = targetPlayer.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        local position = data.position
+        character.HumanoidRootPart.CFrame = CFrame.new(position.x, position.y, position.z)
+        
+        self._logger:Info("✅ Admin: Player teleported", {
+            admin = adminPlayer.Name,
+            target = targetPlayer.Name,
+            position = position
+        })
+    else
+        self._logger:Error("Cannot teleport player - no character or HumanoidRootPart", {
+            admin = adminPlayer.Name,
+            target = targetPlayer.Name
+        })
+    end
+end
+
+-- Kick a player from the game
+function AdminService:KickPlayer(adminPlayer, data)
+    local authorized, reason, targetPlayer = self:ValidateAdminAction(adminPlayer, "kickPlayers", data, "client")
+    if not authorized then
+        self._logger:Warn("🚨 UNAUTHORIZED KickPlayer attempt blocked", {
+            admin = adminPlayer.Name,
+            reason = reason,
+            targetUserId = data.targetPlayerId
+        })
+        return
+    end
+    
+    if not targetPlayer then
+        self._logger:Error("Target player not found for kick", {
+            admin = adminPlayer.Name,
+            targetUserId = data.targetPlayerId
+        })
+        return
+    end
+    
+    -- Prevent admins from kicking other admins
+    if self:IsAuthorized(targetPlayer) then
+        self._logger:Warn("🚨 ADMIN KICK BLOCKED - Cannot kick another admin", {
+            admin = adminPlayer.Name,
+            target = targetPlayer.Name
+        })
+        return
+    end
+    
+    local kickReason = data.reason or "Kicked by admin"
+    
+    self._logger:Info("🔨 Admin: Kicking player", {
+        admin = adminPlayer.Name,
+        target = targetPlayer.Name,
+        reason = kickReason
+    })
+    
+    -- Kick the player
+    targetPlayer:Kick(kickReason)
 end
 
 return AdminService

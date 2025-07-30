@@ -893,41 +893,49 @@ end
 
 -- Admin Panel Handlers
 function EconomyService:AdjustCurrency(player, data)
-    -- SECURITY: Validate admin authorization
+    -- SECURITY: Validate admin authorization (supports target players)
     if not self._adminService then
         self._logger:Error("🚨 SECURITY: AdminService not available for authorization check")
         return
     end
     
-    local authorized, reason = self._adminService:ValidateAdminAction(player, "adjustCurrency", data, "client")
+    local authorized, reason, targetPlayer = self._adminService:ValidateAdminAction(player, "adjustCurrency", data, "client")
     if not authorized then
         self._logger:Warn("🚨 UNAUTHORIZED AdjustCurrency attempt blocked", {
-            player = player.Name,
-            userId = player.UserId,
+            admin = player.Name,
+            adminId = player.UserId,
             reason = reason,
             requestedCurrency = data.currency,
-            requestedAmount = data.amount
+            requestedAmount = data.amount,
+            targetUserId = data.targetPlayerId
         })
         return
     end
     
+    -- Determine target player (self if no target specified)
+    local target = targetPlayer or player
+    
     self._logger:Info("🔧 Admin: AdjustCurrency called", {
-        player = player.Name,
+        admin = player.Name,
+        target = target.Name,
         currency = data.currency,
-        amount = data.amount
+        amount = data.amount,
+        isMultiPlayer = targetPlayer ~= nil
     })
     
-    local success = self:AddCurrency(player, data.currency, data.amount, "admin_adjustment")
+    local success = self:AddCurrency(target, data.currency, data.amount, "admin_adjustment")
     
     if success then
         self._logger:Info("🔧 Admin: Currency adjusted successfully", {
-            player = player.Name,
+            admin = player.Name,
+            target = target.Name,
             currency = data.currency,
             amount = data.amount
         })
     else
         self._logger:Error("🔧 Admin: Currency adjustment failed", {
-            player = player.Name,
+            admin = player.Name,
+            target = target.Name,
             currency = data.currency,
             amount = data.amount
         })
@@ -935,57 +943,65 @@ function EconomyService:AdjustCurrency(player, data)
 end
 
 function EconomyService:SetCurrency(player, data)
-    -- SECURITY: Validate admin authorization
+    -- SECURITY: Validate admin authorization (supports target players)
     if not self._adminService then
         self._logger:Error("🚨 SECURITY: AdminService not available for authorization check")
         return
     end
     
-    local authorized, reason = self._adminService:ValidateAdminAction(player, "setCurrency", data, "client")
+    local authorized, reason, targetPlayer = self._adminService:ValidateAdminAction(player, "setCurrency", data, "client")
     if not authorized then
         self._logger:Warn("🚨 UNAUTHORIZED SetCurrency attempt blocked", {
-            player = player.Name,
-            userId = player.UserId,
+            admin = player.Name,
+            adminId = player.UserId,
             reason = reason,
             requestedCurrency = data.currency,
-            requestedAmount = data.amount
+            requestedAmount = data.amount,
+            targetUserId = data.targetPlayerId
         })
         return
     end
     
+    -- Determine target player (self if no target specified)
+    local target = targetPlayer or player
+    
     self._logger:Info("🧪 Admin: SetCurrency called", {
-        player = player.Name,
+        admin = player.Name,
+        target = target.Name,
         currency = data.currency,
-        amount = data.amount
+        amount = data.amount,
+        isMultiPlayer = targetPlayer ~= nil
     })
     
     -- Use DataService directly to set absolute value
-    local success = self._dataService:SetCurrency(player, data.currency, data.amount)
+    local success = self._dataService:SetCurrency(target, data.currency, data.amount)
     
     if success then
-        local newAmount = self:GetCurrency(player, data.currency)
+        local newAmount = self:GetCurrency(target, data.currency)
         
         -- Log transaction
-        self:_logTransaction(player, {
+        self:_logTransaction(target, {
             type = "admin_set_currency",
             currency = data.currency,
             amount = data.amount,
             reason = "admin_panel",
+            adminUser = player.Name,
             timestamp = os.time()
         })
         
         -- Fire events
-        self.CurrencyChanged:Fire(player, data.currency, newAmount, 0)
+        self.CurrencyChanged:Fire(target, data.currency, newAmount, 0)
         
         -- Sync to client
-        self._economyBridge:Fire(player, "CurrencyUpdate", {
+        self._economyBridge:Fire(target, "CurrencyUpdate", {
             currency = data.currency,
             amount = newAmount,
             change = data.amount
         })
         
         self._logger:Info("🧪 Admin: Currency set successfully", {
-            player = player.Name,
+            admin = player.Name,
+            target = target.Name,
             currency = data.currency,
             amount = data.amount,
             actualValue = newAmount
