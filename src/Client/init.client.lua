@@ -41,7 +41,6 @@ local loader = ModuleLoader.new()
 loader:RegisterModule("Logger", Shared.Utils.Logger)
 loader:RegisterModule("ConfigLoader", Shared.ConfigLoader, {"Logger"})
 loader:RegisterModule("NetworkConfig", Shared.Utils.NetworkConfig, {"Logger", "ConfigLoader"})
-loader:RegisterModule("NetworkBridge", Shared.Network.NetworkBridge, {"Logger", "NetworkConfig"})
 
 -- Register client controllers
 -- loader:RegisterModule("InputController", StarterPlayer.StarterPlayerScripts.Client.Controllers.InputController, {"Logger"})
@@ -62,7 +61,6 @@ print("✅ Client modules loaded:", table.concat(loadOrder, ", "))
 local Logger = loader:Get("Logger")
 local ConfigLoader = loader:Get("ConfigLoader")
 local NetworkConfig = loader:Get("NetworkConfig")
-local NetworkBridge = loader:Get("NetworkBridge")
 
 -- Load client configuration
 local gameConfig = ConfigLoader:LoadConfig("game")

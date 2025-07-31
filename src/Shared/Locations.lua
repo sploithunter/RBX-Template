@@ -96,7 +96,7 @@ if Locations.Shared then
 end
 
 if Locations.SharedNetwork then
-    Locations.NetworkBridge = Locations.SharedNetwork:WaitForChild("NetworkBridge")
+    -- NetworkBridge deprecated; use Signals instead
 end
 
 if Locations.SharedServices then
@@ -171,28 +171,10 @@ function Locations.getService(serviceName)
     end
 end
 
--- Get a network bridge
+-- Get a network bridge (deprecated, now maps to sleitnick/Net Signals)
 function Locations.getBridge(bridgeName)
-    if not Locations.Bridges[bridgeName] then
-        warn("Unknown bridge:", bridgeName)
-        return nil
-    end
-    
-    if not Locations.NetworkBridge then
-        warn("NetworkBridge not available")
-        return nil
-    end
-    
-    local success, networkBridge = pcall(function()
-        return require(Locations.NetworkBridge)
-    end)
-    
-    if success then
-        return networkBridge:CreateBridge(bridgeName)
-    else
-        warn("NetworkBridge not available for bridge:", bridgeName)
-        return nil
-    end
+    local Signals = require(game:GetService("ReplicatedStorage").Shared.Network.Signals)
+    return Signals[bridgeName]
 end
 
 -- Get config loader

@@ -33,7 +33,6 @@ local loader = ModuleLoader.new()
 loader:RegisterModule("Logger", ReplicatedStorage.Shared.Utils.Logger)
 loader:RegisterModule("ConfigLoader", ReplicatedStorage.Shared.ConfigLoader, {"Logger"})
 loader:RegisterModule("ServerClockService", ServerScriptService.Server.Services.ServerClockService, {"Logger"})
-loader:RegisterModule("NetworkBridge", ReplicatedStorage.Shared.Network.NetworkBridge, {"Logger"})
 loader:RegisterModule("NetworkConfig", ReplicatedStorage.Shared.Utils.NetworkConfig, {"Logger", "ConfigLoader"})
 
 -- Register server services
@@ -98,49 +97,6 @@ NetworkConfig:ConnectServerHandlers({
     InventoryService = loader:Get("InventoryService")
 })
 
--- Inject RateLimitService into NetworkBridge for advanced rate limiting
-local NetworkBridge = loader:Get("NetworkBridge")
-local RateLimitService = loader:Get("RateLimitService")
-
-if not NetworkBridge then
-    Logger:Error("CRITICAL: NetworkBridge not available for rate limit injection")
-    error("NetworkBridge required for rate limiting integration")
-end
-
-if not RateLimitService then
-    Logger:Error("CRITICAL: RateLimitService not available for injection", {
-        suggestion = "Check RateLimitService loading and configuration"
-    })
-    error("RateLimitService required for advanced rate limiting")
-end
-
--- Inject the rate limit service into all existing bridges
-local bridges = NetworkConfig:GetBridges()
-if not bridges or next(bridges) == nil then
-    Logger:Error("CRITICAL: No network bridges available for rate limit injection")
-    error("Network bridges required for rate limiting")
-end
-
-local injectedCount = 0
-for bridgeName, bridge in pairs(bridges) do
-    bridge._rateLimitService = RateLimitService
-    injectedCount = injectedCount + 1
-    Logger:Info("Rate limiting injected into bridge", {bridge = bridgeName})
-end
-
-Logger:Info("Advanced rate limiting enabled successfully", {
-    serviceReady = true,
-    bridgesInjected = injectedCount,
-    totalBridges = injectedCount
-})
-
--- Inject economy bridge into RateLimitService for client broadcasting
-local economyBridge = bridges["Economy"]
-if economyBridge then
-    RateLimitService:InjectEconomyBridge(economyBridge)
-else
-    Logger:Error("Economy bridge not found for RateLimitService injection")
-end
 
 -- Load game configuration
 local gameConfig = ConfigLoader:LoadConfig("game")
