@@ -800,7 +800,8 @@ end
 -- Send unified effects update to client (single message with all effects)
 function RateLimitService:_sendUnifiedEffectsUpdate(player, activeEffects)
     local success, error = pcall(function()
-        self._economyBridge:Fire(player, "ActiveEffects", {
+        local Signals = require(game:GetService("ReplicatedStorage").Shared.Network.Signals)
+    Signals.ActiveEffects:FireClient(player, {
             effects = activeEffects,
             timestamp = self._serverClock:GetServerTime(), -- Use unified server clock
             playerClock = true -- Indicates this uses unified player clock

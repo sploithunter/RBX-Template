@@ -472,7 +472,7 @@ function EconomyService:PurchaseItem(player, data)
     
     -- Send success to client (with error handling)
     local purchaseSuccessResult, purchaseSuccessError = pcall(function()
-        self._economyBridge:Fire(player, "PurchaseSuccess", {
+        self._signals.PurchaseSuccess:FireClient(player, {
             itemId = itemId,
             price = price
         })
@@ -579,7 +579,7 @@ function EconomyService:SellItem(player, data)
     
     -- Send success to client (with error handling)
     local sellSuccessResult, sellSuccessError = pcall(function()
-        self._economyBridge:Fire(player, "SellSuccess", {
+        self._signals.SellSuccess:FireClient(player, {
             itemId = itemId,
             quantity = quantity,
             totalPrice = totalSellPrice
@@ -651,7 +651,7 @@ function EconomyService:SendShopItems(player)
     end
     
     local success, error = pcall(function()
-        self._economyBridge:Fire(player, "ShopItems", {items = shopItems})
+        self._signals.ShopItems:FireClient(player, {items = shopItems})
     end)
     
     if success then
@@ -678,7 +678,7 @@ function EconomyService:GetPlayerDebugInfo(player, data)
     })
     
     -- Send to client
-    self._economyBridge:Fire(player, "PlayerDebugInfo", {
+    self._signals.PlayerDebugInfo:FireClient(player, {
         inventory = inventory,
         currencies = currencies
     })
@@ -704,7 +704,7 @@ function EconomyService:GiveTestItem(player, data)
             self._logger:Info("Test coins given", {player = player.Name})
         end
         
-        self._economyBridge:Fire(player, "GiveItemSuccess", {
+        self._signals.GiveItemSuccess:FireClient(player, {
             itemId = "test_item",
             message = "Test item and coins given for testing!"
         })
@@ -839,7 +839,7 @@ function EconomyService:_sendError(player, message)
     end
     
     local success, error = pcall(function()
-        self._economyBridge:Fire(player, "EconomyError", {
+        self._signals.EconomyError:FireClient(player, {
             message = message,
             timestamp = tick()
         })

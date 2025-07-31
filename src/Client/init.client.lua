@@ -113,10 +113,40 @@ end
 Logger:Info("Client Matter ECS loop started", {systemCount = #systemsList})
 
 -- Set up economy networking
-local economyBridge = NetworkBridge:CreateBridge("Economy")
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
--- Define client-side packet handlers
-economyBridge:Connect(function(packetType, data)
+-- Map Net RemoteEvents to prior handler names
+local function onPurchaseResult(data) end -- placeholder
+
+Signals.CurrencyUpdate.OnClientEvent:Connect(function(data)
+    Logger:Debug("Currency updated", data)
+end)
+Signals.ShopItems.OnClientEvent:Connect(function(data)
+    Logger:Debug("Shop items received", {itemCount = #data.items})
+end)
+Signals.PurchaseSuccess.OnClientEvent:Connect(function(data)
+    Logger:Info("Purchase successful", data)
+end)
+Signals.SellSuccess.OnClientEvent:Connect(function(data)
+    Logger:Info("Sell successful", data)
+end)
+Signals.EconomyError.OnClientEvent:Connect(function(data)
+    Logger:Warn("Economy error", data)
+end)
+Signals.PlayerDebugInfo.OnClientEvent:Connect(function(data)
+    print("🔍 SERVER DEBUG INFO:", data)
+end)
+Signals.ActiveEffects.OnClientEvent:Connect(function(data)
+    if _G.MenuManager then
+        local effectsPanel = _G.MenuManager:GetPanel("Effects")
+        if effectsPanel and effectsPanel.UpdateEffects then
+            effectsPanel:UpdateEffects(data.effects)
+        end
+    end
+end)
+
+-- Remove old bridge connect block
+
     Logger:Debug("Client received packet", {packetType = packetType, data = data})
     
     if packetType == "CurrencyUpdate" then
