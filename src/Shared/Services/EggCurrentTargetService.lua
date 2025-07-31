@@ -19,6 +19,9 @@ local UserInputService = game:GetService("UserInputService")
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local eggSystemConfig = Locations.getConfig("egg_system")
 
+-- Services
+local eggPetPreviewService = nil
+
 -- Get player and camera
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -177,20 +180,27 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
             -- Update UI content only when target changes
             frame.EggName.Text = eggType:gsub("_", " ") .. " Egg"
             frame.Visible = true
+            
+            -- Show pet preview for new egg
+            if eggPetPreviewService then
+                local anchor = self:GetEggAnchor(egg)
+                if anchor then
+                    eggPetPreviewService:ShowPetPreview(eggType, anchor.Position)
+                end
+            end
         end
         
         -- Always update position (player might be moving around the egg)
-        local spawnPointRef = egg:FindFirstChild("SpawnPoint")
-        local anchor = spawnPointRef and spawnPointRef.Value
-        
-        -- Fallback to PrimaryPart or any Part if no SpawnPoint reference
-        if not anchor then
-            anchor = egg.PrimaryPart or egg:FindFirstChildOfClass("Part")
-        end
+        local anchor = self:GetEggAnchor(egg)
         
         if anchor then
             local screenPos = camera:WorldToScreenPoint(anchor.Position)
             frame.Position = UDim2.new(0, screenPos.X + eggSystemConfig.ui.position_offset.x, 0, screenPos.Y + eggSystemConfig.ui.position_offset.y)
+            
+            -- Update pet preview position
+            if eggPetPreviewService then
+                eggPetPreviewService:UpdatePreviewPosition(anchor.Position)
+            end
         end
     else
         -- No egg in range - only update if we had a target before
@@ -201,6 +211,11 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
             currentTarget = "None"
             currentTargetValue.Value = "None"
             frame.Visible = false
+            
+            -- Hide pet preview
+            if eggPetPreviewService then
+                eggPetPreviewService:HidePetPreview()
+            end
         end
     end
 end
@@ -327,6 +342,22 @@ function EggCurrentTargetService:FindEggByType(eggType)
     return nil
 end
 
+-- Helper function to get egg anchor position
+function EggCurrentTargetService:GetEggAnchor(egg)
+    if not egg then return nil end
+    
+    -- Use the EggSpawnPoint as anchor (referenced in SpawnPoint ObjectValue)
+    local spawnPointRef = egg:FindFirstChild("SpawnPoint")
+    local anchor = spawnPointRef and spawnPointRef.Value
+    
+    -- Fallback to PrimaryPart or any Part if no SpawnPoint reference
+    if not anchor then
+        anchor = egg.PrimaryPart or egg:FindFirstChildOfClass("Part")
+    end
+    
+    return anchor
+end
+
 function EggCurrentTargetService:GetCurrentTarget()
     return currentTarget
 end
@@ -335,6 +366,19 @@ end
 
 function EggCurrentTargetService:Initialize()
     Logger:Info("EggCurrentTargetService initializing...", {})
+    
+    -- Load pet preview service
+    local success, petPreviewService = pcall(function()
+        return require(ReplicatedStorage.Shared.Services.EggPetPreviewService)
+    end)
+    
+    if success then
+        eggPetPreviewService = petPreviewService
+        eggPetPreviewService:Initialize()
+        Logger:Info("Pet preview service loaded successfully", {})
+    else
+        Logger:Warn("Failed to load pet preview service", {error = tostring(petPreviewService)})
+    end
     
     -- Start the targeting update loop (like working game's VisibleHandler)
     heartbeatConnection = RunService.Heartbeat:Connect(function(step)
@@ -353,6 +397,11 @@ function EggCurrentTargetService:Destroy()
     if currentTargetUI then
         currentTargetUI:Destroy()
         currentTargetUI = nil
+    end
+    
+    if eggPetPreviewService then
+        eggPetPreviewService:Destroy()
+        eggPetPreviewService = nil
     end
     
     Logger:Info("EggCurrentTargetService destroyed", {})

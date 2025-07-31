@@ -34,11 +34,14 @@ local LogLevelNames = {
     [LogLevel.ERROR] = "ERROR"
 }
 
--- Default configuration
+-- Default configuration (will be updated from logging config)
 local Config = {
-    MinLogLevel = LogLevel.INFO, -- Always use INFO level now that systems are stable
+    MinLogLevel = LogLevel.INFO,
     EnableRemoteLogging = false,
-    MaxLogHistory = 100
+    MaxLogHistory = 100,
+    ConsoleOutput = true,
+    EnablePerformanceLogs = false,
+    ServiceLogLevels = {} -- Per-service log levels
 }
 
 -- Internal state
@@ -55,12 +58,105 @@ local Colors = {
 local ColorReset = "\27[0m"
 
 function Logger:Init()
+    -- Load logging configuration
+    self:LoadLoggingConfig()
+    
     -- Initialize logger
     self:Info("Logger initialized", {
         minLogLevel = LogLevelNames[Config.MinLogLevel],
+        consoleOutput = Config.ConsoleOutput,
+        performanceLogs = Config.EnablePerformanceLogs,
+        serviceLogLevels = #Config.ServiceLogLevels > 0 and "configured" or "default",
         isStudio = RunService:IsStudio(),
         isServer = RunService:IsServer()
     })
+end
+
+-- Load logging configuration from configs/logging.lua
+function Logger:LoadLoggingConfig()
+    local success, loggingConfig = pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Configs = ReplicatedStorage:WaitForChild("Configs", 5)
+        if Configs and Configs:FindFirstChild("logging") then
+            return require(Configs.logging)
+        end
+        return nil
+    end)
+    
+    if success and loggingConfig then
+        -- Apply global settings
+        if loggingConfig.global then
+            local global = loggingConfig.global
+            
+            if global.default_level then
+                Config.MinLogLevel = self:_stringToLogLevel(global.default_level)
+            end
+            
+            if global.console_output ~= nil then
+                Config.ConsoleOutput = global.console_output
+            end
+            
+            if global.enable_performance_logs ~= nil then
+                Config.EnablePerformanceLogs = global.enable_performance_logs
+            end
+            
+            if global.max_log_history then
+                Config.MaxLogHistory = global.max_log_history
+            end
+            
+            if global.enable_remote_logging ~= nil then
+                Config.EnableRemoteLogging = global.enable_remote_logging
+            end
+        end
+        
+        -- Apply service-specific log levels
+        if loggingConfig.services then
+            for serviceName, levelString in pairs(loggingConfig.services) do
+                Config.ServiceLogLevels[serviceName] = self:_stringToLogLevel(levelString)
+            end
+        end
+        
+        print("[Logger] Loaded logging configuration with", 
+            table.getn and #Config.ServiceLogLevels or "unknown", "service-specific levels")
+    else
+        print("[Logger] No logging configuration found, using defaults")
+    end
+end
+
+-- Convert string log level to LogLevel constant
+function Logger:_stringToLogLevel(levelString)
+    if not levelString then return LogLevel.INFO end
+    
+    local level = string.upper(levelString)
+    if level == "DEBUG" then
+        return LogLevel.DEBUG
+    elseif level == "INFO" then
+        return LogLevel.INFO
+    elseif level == "WARN" or level == "WARNING" then
+        return LogLevel.WARN
+    elseif level == "ERROR" then
+        return LogLevel.ERROR
+    elseif level == "DISABLED" or level == "OFF" then
+        return LogLevel.ERROR + 1 -- Higher than any real level = disabled
+    else
+        return LogLevel.INFO
+    end
+end
+
+-- Get effective log level for a service (checks service-specific config)
+function Logger:_getEffectiveLogLevel(context)
+    if not context or type(context) ~= "table" or not context.context then
+        return Config.MinLogLevel
+    end
+    
+    local serviceName = context.context
+    local serviceLevel = Config.ServiceLogLevels[serviceName]
+    
+    if serviceLevel then
+        return serviceLevel
+    else
+        return Config.MinLogLevel
+    end
 end
 
 function Logger:SetLogLevel(level)
@@ -69,7 +165,14 @@ function Logger:SetLogLevel(level)
 end
 
 function Logger:_log(level, message, context)
-    if level < Config.MinLogLevel then
+    -- Check if this log should be filtered based on service-specific levels
+    local effectiveLogLevel = self:_getEffectiveLogLevel(context)
+    if level < effectiveLogLevel then
+        return
+    end
+    
+    -- Skip console output if disabled
+    if not Config.ConsoleOutput then
         return
     end
     
@@ -140,11 +243,14 @@ function Logger:Performance(name, func, ...)
     local endTime = tick()
     local duration = endTime - startTime
     
-    self:Debug("Performance measurement", {
-        operation = name,
-        duration = duration,
-        durationMs = duration * 1000
-    })
+    -- Only log performance if enabled in config
+    if Config.EnablePerformanceLogs then
+        self:Debug("Performance measurement", {
+            operation = name,
+            duration = duration,
+            durationMs = duration * 1000
+        })
+    end
     
     return unpack(results)
 end
@@ -158,11 +264,16 @@ end
 
 function Logger:EndTimer(timer)
     local duration = tick() - timer.startTime
-    self:Debug("Timer completed", {
-        name = timer.name,
-        duration = duration,
-        durationMs = duration * 1000
-    })
+    
+    -- Only log timer if performance logging is enabled
+    if Config.EnablePerformanceLogs then
+        self:Debug("Timer completed", {
+            name = timer.name,
+            duration = duration,
+            durationMs = duration * 1000
+        })
+    end
+    
     return duration
 end
 
@@ -173,6 +284,54 @@ end
 function Logger:ClearHistory()
     LogHistory = {}
     self:Info("Log history cleared")
+end
+
+-- Set log level for a specific service at runtime
+function Logger:SetServiceLogLevel(serviceName, levelString)
+    local level = self:_stringToLogLevel(levelString)
+    Config.ServiceLogLevels[serviceName] = level
+    
+    self:Info("Service log level changed", {
+        service = serviceName,
+        newLevel = LogLevelNames[level] or "DISABLED"
+    })
+end
+
+-- Get current log level for a service
+function Logger:GetServiceLogLevel(serviceName)
+    local level = Config.ServiceLogLevels[serviceName] or Config.MinLogLevel
+    return LogLevelNames[level] or "DISABLED"
+end
+
+-- Enable/disable console output at runtime
+function Logger:SetConsoleOutput(enabled)
+    Config.ConsoleOutput = enabled
+    if enabled then
+        self:Info("Console output enabled")
+    end
+end
+
+-- Enable/disable performance logging at runtime
+function Logger:SetPerformanceLogging(enabled)
+    Config.EnablePerformanceLogs = enabled
+    self:Info("Performance logging " .. (enabled and "enabled" or "disabled"))
+end
+
+-- Get current logging configuration for debugging
+function Logger:GetConfig()
+    local serviceCount = 0
+    for _ in pairs(Config.ServiceLogLevels) do
+        serviceCount = serviceCount + 1
+    end
+    
+    return {
+        defaultLevel = LogLevelNames[Config.MinLogLevel],
+        consoleOutput = Config.ConsoleOutput,
+        performanceLogs = Config.EnablePerformanceLogs,
+        remoteLogging = Config.EnableRemoteLogging,
+        maxHistory = Config.MaxLogHistory,
+        serviceSpecificLevels = serviceCount
+    }
 end
 
 function Logger:_sendRemoteLog(logEntry)

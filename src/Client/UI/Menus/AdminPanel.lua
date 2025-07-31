@@ -144,6 +144,26 @@ local TEST_CATEGORIES = {
                 action = "adjust_gems_custom"
             }
         }
+    },
+    logging = {
+        title = "📊 Logging Controls",
+        tests = {
+            {name = "Show Current Log Config", action = "show_log_config"},
+            {name = "Set All to INFO", action = "set_all_info"},
+            {name = "Set All to DEBUG", action = "set_all_debug"},
+            {name = "Set All to WARN", action = "set_all_warn"},
+            {name = "Disable Console Output", action = "disable_console"},
+            {name = "Enable Console Output", action = "enable_console"},
+            {name = "Enable Performance Logs", action = "enable_performance"},
+            {name = "Disable Performance Logs", action = "disable_performance"},
+        },
+        customInputs = {
+            {
+                label = "Set Service Log Level (service:level):",
+                placeholder = "e.g. EggPetPreviewService:debug, BaseUI:warn",
+                action = "set_service_log_level"
+            }
+        }
     }
 }
 
@@ -486,7 +506,12 @@ function AdminPanel:_createCustomInput(inputConfig, layoutOrder, parent)
     setButton.Position = UDim2.new(0.7, 0, 0, 3)
     setButton.BackgroundColor3 = theme.button and theme.button.primary or Color3.fromRGB(0, 120, 180)
     setButton.BorderSizePixel = 0
-    setButton.Text = "Adjust " .. inputConfig.currency:gsub("^%l", string.upper)
+    -- Set button text based on input type
+    if inputConfig.currency then
+        setButton.Text = "Adjust " .. inputConfig.currency:gsub("^%l", string.upper)
+    else
+        setButton.Text = "Set"
+    end
     setButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     setButton.TextSize = 11
     setButton.Font = Enum.Font.GothamBold
@@ -497,23 +522,35 @@ function AdminPanel:_createCustomInput(inputConfig, layoutOrder, parent)
     setButtonCorner.Parent = setButton
     
     -- Shared function for both button click and enter key
-    local function handleCurrencyAdjust()
-        local amount = self:_parseAmount(textBox.Text)
-        if amount then  -- Allow negative numbers for decrement
-            self:_executeCustomCurrencyAdjust(inputConfig.currency, amount)
-            textBox.Text = ""  -- Clear after adjusting
+    local function handleCustomInput()
+        if inputConfig.currency then
+            -- Currency adjustment
+            local amount = self:_parseAmount(textBox.Text)
+            if amount then  -- Allow negative numbers for decrement
+                self:_executeCustomCurrencyAdjust(inputConfig.currency, amount)
+                textBox.Text = ""  -- Clear after adjusting
+            else
+                self.logger:warn("Invalid amount entered:", textBox.Text)
+            end
         else
-            self.logger:warn("Invalid amount entered:", textBox.Text)
+            -- Other custom actions (like logging)
+            local inputValue = textBox.Text
+            if inputValue and inputValue ~= "" then
+                self:_executeCustomAction(inputConfig.action, inputValue)
+                textBox.Text = ""  -- Clear after executing
+            else
+                self.logger:warn("Empty input provided")
+            end
         end
     end
     
     -- Button click handler
-    setButton.Activated:Connect(handleCurrencyAdjust)
+    setButton.Activated:Connect(handleCustomInput)
     
     -- Enter key handler for text box
     textBox.FocusLost:Connect(function(enterPressed)
         if enterPressed then
-            handleCurrencyAdjust()
+            handleCustomInput()
         end
     end)
 end
@@ -606,6 +643,10 @@ function AdminPanel:_executeTestAction(action, testName)
         self:_performanceTest()
     elseif action == "network_test" then
         self:_networkTest()
+    
+    -- Logging control actions
+    elseif action:find("log") or action:find("console") or action:find("performance") then
+        self:_executeLoggingAction(action)
     
     else
         self.logger:warn("Unknown action:", action)
@@ -750,6 +791,83 @@ function AdminPanel:_networkTest()
         self.logger:info("Effects bridge: CONNECTED")
     else
         self.logger:warn("Effects bridge: NOT CONNECTED")
+    end
+end
+
+function AdminPanel:_executeLoggingAction(action)
+    local Logger = loggerResult -- Access the actual Logger directly
+    
+    if action == "show_log_config" then
+        local config = Logger:GetConfig()
+        self.logger:info("Current Logging Configuration:", config)
+        print("📊 Current Logging Configuration:")
+        print("  Default Level:", config.defaultLevel)
+        print("  Console Output:", config.consoleOutput)
+        print("  Performance Logs:", config.performanceLogs)
+        print("  Remote Logging:", config.remoteLogging)
+        print("  Max History:", config.maxHistory)
+        print("  Service-Specific Levels:", config.serviceSpecificLevels, "configured")
+        
+    elseif action == "set_all_info" then
+        Logger:SetLogLevel(2) -- LogLevel.INFO
+        self.logger:info("All services set to INFO level")
+        
+    elseif action == "set_all_debug" then
+        Logger:SetLogLevel(1) -- LogLevel.DEBUG
+        self.logger:info("All services set to DEBUG level")
+        
+    elseif action == "set_all_warn" then
+        Logger:SetLogLevel(3) -- LogLevel.WARN
+        self.logger:info("All services set to WARN level")
+        
+    elseif action == "disable_console" then
+        Logger:SetConsoleOutput(false)
+        print("Console output disabled")
+        
+    elseif action == "enable_console" then
+        Logger:SetConsoleOutput(true)
+        self.logger:info("Console output enabled")
+        
+    elseif action == "enable_performance" then
+        Logger:SetPerformanceLogging(true)
+        self.logger:info("Performance logging enabled")
+        
+    elseif action == "disable_performance" then
+        Logger:SetPerformanceLogging(false)
+        self.logger:info("Performance logging disabled")
+        
+    else
+        self.logger:warn("Unknown logging action:", action)
+    end
+end
+
+function AdminPanel:_executeCustomAction(action, inputValue)
+    if action == "set_service_log_level" then
+        -- Parse input format: "ServiceName:level" or "ServiceName level"
+        local serviceName, levelString = inputValue:match("([^:]+):(.+)")
+        if not serviceName then
+            serviceName, levelString = inputValue:match("([^%s]+)%s+(.+)")
+        end
+        
+        if serviceName and levelString then
+            serviceName = serviceName:gsub("^%s*(.-)%s*$", "%1") -- Trim whitespace
+            levelString = levelString:gsub("^%s*(.-)%s*$", "%1") -- Trim whitespace
+            
+            local Logger = loggerResult
+            Logger:SetServiceLogLevel(serviceName, levelString)
+            self.logger:info("Set service log level", {
+                service = serviceName,
+                level = levelString
+            })
+        else
+            self.logger:warn("Invalid format. Use 'ServiceName:level' or 'ServiceName level'")
+            print("Invalid format. Examples:")
+            print("  EggPetPreviewService:debug")
+            print("  BaseUI warn")
+            print("  AssetPreloadService:info")
+        end
+    else
+        self.logger:warn("Unknown custom action:", action)
     end
 end
 

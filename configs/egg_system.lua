@@ -32,10 +32,22 @@ return {
             height = 100,
         },
         
+        -- Pet Preview UI Dimensions  
+        pet_preview_size = {
+            width = 400,
+            height = 300,
+        },
+        
         -- UI Positioning (offset from egg world position)
         position_offset = {
             x = -100,  -- Pixels left of egg center
             y = -50,   -- Pixels above egg center
+        },
+        
+        -- Pet Preview Positioning (offset from egg world position)
+        pet_preview_offset = {
+            x = -200,  -- Pixels left of egg center
+            y = -350,  -- Pixels above egg center (higher than basic preview)
         },
         
         -- Colors and Styling
@@ -46,6 +58,11 @@ return {
             text_secondary = Color3.fromRGB(200, 200, 200),
             success_bg = Color3.fromRGB(34, 139, 34),
             error_bg = Color3.fromRGB(220, 53, 69),
+            
+            -- Pet preview colors
+            pet_preview_bg = Color3.fromRGB(20, 20, 20),
+            pet_preview_border = Color3.fromRGB(100, 100, 255),
+            very_rare_text = Color3.fromRGB(255, 100, 100), -- For very low chances (<0.1%)
         },
         
         -- Corner Radius
@@ -57,6 +74,8 @@ return {
             title = Enum.Font.GothamBold,
             prompt = Enum.Font.Gotham,
             notification = Enum.Font.Gotham,
+            pet_name = Enum.Font.GothamBold,
+            pet_chance = Enum.Font.Gotham,
         },
         
         -- Animation Settings
@@ -65,6 +84,31 @@ return {
             slide_in_style = Enum.EasingStyle.Back,
             slide_in_direction = Enum.EasingDirection.Out,
         },
+    },
+    
+    -- === PET PREVIEW SETTINGS ===
+    pet_preview = {
+        enabled = true,                     -- Whether to show pet preview when approaching eggs
+        min_chance_to_show = 0.001,        -- Minimum chance (0.1%) to show pet, lower shows as "??"
+        max_pets_to_display = 8,           -- Maximum number of pets to show in preview
+        grid_columns = 4,                  -- Number of columns in pet grid
+        pet_icon_size = 60,                -- Size of each pet icon in pixels
+        chance_precision = 2,              -- Decimal places for percentage display (e.g., 2 = "5.25%")
+        
+        -- Display settings
+        show_variant_names = true,         -- Show "Golden Bear" vs just "Bear"
+        group_by_rarity = true,            -- Group pets by rarity in display
+        sort_by_chance = true,             -- Sort pets by chance (highest first)
+        
+        -- Asset loading
+        load_pet_icons = true,             -- Whether to load actual pet model icons (3D models)
+        fallback_to_emoji = true,          -- Use emoji if asset loading fails
+        icon_cache_time = 300,             -- Time to cache loaded icons (seconds)
+        
+        -- 3D Model display options
+        enable_model_spinning = true,      -- Whether 3D models should rotate/spin
+        model_rotation_speed = 1,          -- Rotation speed (degrees per frame)
+        static_camera_angle = 45,          -- Camera angle if spinning disabled (degrees)
     },
     
     -- === ERROR MESSAGES ===

@@ -79,7 +79,8 @@ Locations.ConfigFiles = {
     Effects = "effects",
     ui = "ui",
     pets = "pets",
-    egg_system = "egg_system"
+    egg_system = "egg_system",
+    logging = "logging"
 }
 
 -- === CORE MODULES ===
