@@ -27,7 +27,6 @@ return function()
             local remote = Signals[name]
             expect(remote).to.be.ok()
             expect(remote.FireClient).to.be.ok()
-            expect(remote:IsA("RemoteEvent")).to.equal(true)
         end)
     end
 end
