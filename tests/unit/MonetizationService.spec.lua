@@ -22,18 +22,33 @@ return function()
         
         -- Mock player object
         local function createMockPlayer(userId, name)
-            local player = {
+            local playerTable = {
                 UserId = userId or 12345,
                 Name = name or "TestPlayer",
                 MembershipType = Enum.MembershipType.None
             }
-            _G.__TEST_PLAYER = player
+            -- Register in global lookup tables that MonetizationService uses
+            _G.__TEST_PLAYER = playerTable
             _G.__TEST_PLAYERS_BY_ID = _G.__TEST_PLAYERS_BY_ID or {}
-            _G.__TEST_PLAYERS_BY_ID[player.UserId] = player
-            return player
+            _G.__TEST_PLAYERS_BY_ID[playerTable.UserId] = playerTable
+            return playerTable
         end
         
         beforeEach(function()
+            -- Stub RemoteEvents to prevent FireClient errors during tests
+            local Signals = require(game.ReplicatedStorage.Shared.Network.Signals)
+            local function stub(name)
+                local remote = Signals[name]
+                if remote and typeof(remote) == "Instance" then
+                    -- Replace with proxy table preserving FireClient
+                    Signals[name] = { FireClient = function() end }
+                else
+                    Signals[name] = { FireClient = function() end }
+                end
+            end
+            for _, n in ipairs({"PurchaseSuccess", "PurchaseError", "OwnedPasses", "ProductInfo", "FirstPurchaseBonus"}) do
+                stub(n)
+            end
             -- Create mocks
             mockLogger = {
                 Info = function() end,

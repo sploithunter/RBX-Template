@@ -93,24 +93,21 @@ function MonetizationService:Start()
 end
 
 function MonetizationService:_setupNetworking()
-    -- Create monetization bridge
-    self._monetizationBridge = self._networkConfig:GetBridge("Monetization")
-    
-    if not self._monetizationBridge then
-        -- Create it if it doesn't exist
-        local NetworkBridge = self._modules.NetworkBridge
-        self._monetizationBridge = NetworkBridge:CreateBridge("Monetization")
-    end
-    
-    -- Set up packet handlers
-    self._monetizationBridge:Connect(function(player, packetType, data)
-        if packetType == "InitiatePurchase" then
-            self:_handlePurchaseRequest(player, data)
-        elseif packetType == "GetOwnedPasses" then
-            self:_sendOwnedPasses(player)
-        elseif packetType == "GetProductInfo" then
-            self:_sendProductInfo(player, data)
-        end
+    -- Use Net RemoteEvents instead of legacy NetworkBridge
+    local Signals = require(game:GetService("ReplicatedStorage").Shared.Network.Signals)
+    self._signals = Signals
+
+    -- Client ➜ Server
+    Signals.InitiatePurchase.OnServerEvent:Connect(function(player, data)
+        self:_handlePurchaseRequest(player, data)
+    end)
+
+    Signals.GetOwnedPasses.OnServerEvent:Connect(function(player)
+        self:_sendOwnedPasses(player)
+    end)
+
+    Signals.GetProductInfo.OnServerEvent:Connect(function(player, data)
+        self:_sendProductInfo(player, data)
     end)
 end
 
@@ -274,7 +271,7 @@ function MonetizationService:_processProductPurchase(player, productConfig, rece
     self.ProductPurchased:Fire(player, productConfig)
     
     -- Send success to client
-    self._monetizationBridge:Fire(player, "PurchaseSuccess", {
+    self._signals.PurchaseSuccess:FireClient(player, {
         type = "product",
         id = productConfig.id,
         rewards = rewards
@@ -514,7 +511,7 @@ function MonetizationService:_simulateTestPassPurchase(player, passId)
     self._dataService:SetOwnedPasses(player, ownedPasses)
     
     -- Send success
-    self._monetizationBridge:Fire(player, "PurchaseSuccess", {
+    self._signals.PurchaseSuccess:FireClient(player, {
         type = "gamepass",
         id = passId
     })
@@ -569,7 +566,7 @@ function MonetizationService:_grantFirstPurchaseBonus(player)
     })
     
     -- Send notification
-    self._monetizationBridge:Fire(player, "FirstPurchaseBonus", rewards)
+    self._signals.FirstPurchaseBonus:FireClient(player, rewards)
 end
 
 function MonetizationService:_trackPurchase(player, productConfig, receiptInfo)
@@ -592,14 +589,14 @@ function MonetizationService:_trackPurchase(player, productConfig, receiptInfo)
 end
 
 function MonetizationService:_sendPurchaseError(player, message)
-    self._monetizationBridge:Fire(player, "PurchaseError", {
+    self._signals.PurchaseError:FireClient(player, {
         message = message
     })
 end
 
 function MonetizationService:_sendOwnedPasses(player)
     local ownedPasses = self._dataService:GetOwnedPasses(player) or {}
-    self._monetizationBridge:Fire(player, "OwnedPasses", {
+    self._signals.OwnedPasses:FireClient(player, {
         passes = ownedPasses
     })
 end
@@ -609,7 +606,7 @@ function MonetizationService:_sendProductInfo(player, data)
     local productConfig = self._productIdMapper:GetProductConfig(productId)
     
     if productConfig then
-        self._monetizationBridge:Fire(player, "ProductInfo", productConfig)
+        self._signals.ProductInfo:FireClient(player, productConfig)
     end
 end
 
@@ -622,7 +619,7 @@ function MonetizationService:GetProductInfo(player, data)
     
     local productConfig = self._productIdMapper:GetProductConfig(data.productId)
     if productConfig then
-        self._monetizationBridge:Fire(player, "ProductInfo", {
+        self._signals.ProductInfo:FireClient(player, {
             productId = data.productId,
             name = productConfig.name,
             description = productConfig.description,
@@ -636,7 +633,7 @@ function MonetizationService:GetProductInfo(player, data)
             player = player.Name,
             productId = data.productId
         })
-        self._monetizationBridge:Fire(player, "ProductInfo", {
+        self._signals.ProductInfo:FireClient(player, {
             productId = data.productId,
             available = false,
             error = "Product not found"
@@ -665,7 +662,7 @@ function MonetizationService:GetOwnedPasses(player, data)
         end
     end
     
-    self._monetizationBridge:Fire(player, "OwnedPasses", {
+    self._signals.OwnedPasses:FireClient(player, {
         passes = passDetails,
         count = #passDetails
     })
