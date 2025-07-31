@@ -301,6 +301,64 @@ function EggPetPreviewService:CreatePetPreviewUI()
     return frame
 end
 
+-- Get effective configuration with per-egg overrides
+function EggPetPreviewService:GetEffectiveConfig(eggType)
+    local baseConfig = eggSystemConfig
+    local eggOverrides = baseConfig.pet_preview.egg_display_overrides[eggType] or {}
+    
+    -- Create merged configuration
+    local effectiveConfig = {
+        ui = baseConfig.ui,
+        pet_preview = {}
+    }
+    
+    -- Merge base pet_preview with egg-specific overrides
+    for key, value in pairs(baseConfig.pet_preview) do
+        effectiveConfig.pet_preview[key] = eggOverrides[key] or value
+    end
+    
+    -- Merge UI colors with egg-specific overrides
+    effectiveConfig.ui.colors = {}
+    for key, value in pairs(baseConfig.ui.colors) do
+        effectiveConfig.ui.colors[key] = eggOverrides[key] or value
+    end
+    
+    return effectiveConfig
+end
+
+-- Smart percentage formatting - shows meaningful digits
+function EggPetPreviewService:FormatPercentage(chance, previewConfig)
+    local chancePercent = chance * 100
+    
+    if not previewConfig.smart_percentage_formatting then
+        -- Fallback to traditional fixed precision
+        return string.format("%." .. (previewConfig.fallback_precision or 2) .. "f%%", chancePercent)
+    end
+    
+    -- Smart formatting based on magnitude
+    if chancePercent >= 10 then
+        -- 10%+ : Show as whole numbers (25%, 67%)
+        return string.format("%.0f%%", chancePercent)
+    elseif chancePercent >= 1 then
+        -- 1-9.9% : Show one decimal if needed (5%, 2.5%, 1.2%) 
+        local rounded = math.floor(chancePercent * 10 + 0.5) / 10
+        if rounded == math.floor(rounded) then
+            return string.format("%.0f%%", rounded)
+        else
+            return string.format("%.1f%%", rounded)
+        end
+    elseif chancePercent >= 0.1 then
+        -- 0.1-0.99% : Show two decimals (0.25%, 0.50%)
+        return string.format("%.2f%%", chancePercent)
+    elseif chancePercent >= 0.01 then
+        -- 0.01-0.099% : Show three decimals (0.025%, 0.050%)
+        return string.format("%.3f%%", chancePercent)
+    else
+        -- Below 0.01% : This should be handled by min_chance_to_show threshold
+        return string.format("%.4f%%", chancePercent)
+    end
+end
+
 -- Update pet preview display
 function EggPetPreviewService:UpdatePetPreview(eggType, eggAnchor)
     if not eggSystemConfig.pet_preview.enabled then
@@ -313,7 +371,8 @@ function EggPetPreviewService:UpdatePetPreview(eggType, eggAnchor)
     
     local frame = petPreviewUI.PetPreviewFrame
     local container = frame.PetContainer
-    local previewConfig = eggSystemConfig.pet_preview
+    local effectiveConfig = self:GetEffectiveConfig(eggType)
+    local previewConfig = effectiveConfig.pet_preview
     
     if eggType and eggType ~= "None" and eggAnchor then
         -- Attach BillboardGui to the egg anchor (EggSpawnPoint)
@@ -335,7 +394,7 @@ function EggPetPreviewService:UpdatePetPreview(eggType, eggAnchor)
         local displayCount = math.min(#petChances, previewConfig.max_pets_to_display)
         
         -- Create pets with center-out positioning algorithm
-        self:CreateCenteredPetLayout(container, petChances, displayCount, previewConfig)
+        self:CreateCenteredPetLayout(container, petChances, displayCount, previewConfig, effectiveConfig)
         
         -- Show the frame
         frame.Visible = true
@@ -359,7 +418,7 @@ end
     
     SOLUTION: Use UDim2.fromScale for ALL sizing - everything scales together
 --]]
-function EggPetPreviewService:CreateCenteredPetLayout(container, petChances, displayCount, previewConfig)
+function EggPetPreviewService:CreateCenteredPetLayout(container, petChances, displayCount, previewConfig, effectiveConfig)
     if displayCount == 0 then return end
     
     local config = eggSystemConfig.ui
@@ -378,7 +437,7 @@ function EggPetPreviewService:CreateCenteredPetLayout(container, petChances, dis
         local petInfo = petChances[i]
         local xPositionScale = startX + ((i - 1) * (petWidthScale + spacingScale))
         
-        self:CreatePetDisplayAtPosition(container, petInfo, i, xPositionScale, petWidthScale, previewConfig, config)
+        self:CreatePetDisplayAtPosition(container, petInfo, i, xPositionScale, petWidthScale, previewConfig, effectiveConfig)
     end
 end
 
@@ -388,14 +447,28 @@ end
     IMPORTANT: All sizing uses UDim2.fromScale() to ensure consistent scaling
     with the parent BillboardGui at any camera distance.
 --]]
-function EggPetPreviewService:CreatePetDisplayAtPosition(parent, petInfo, layoutOrder, xPositionScale, petWidthScale, previewConfig, config)
+function EggPetPreviewService:CreatePetDisplayAtPosition(parent, petInfo, layoutOrder, xPositionScale, petWidthScale, previewConfig, effectiveConfig)
     -- Pet frame with scale-based dimensions (grows/shrinks with billboard)
     local petFrame = Instance.new("Frame")
     petFrame.Name = "Pet_" .. layoutOrder
-    petFrame.Size = UDim2.fromScale(petWidthScale, 1)  -- Width calculated dynamically, full height
-    petFrame.Position = UDim2.fromScale(xPositionScale, 0)  -- Horizontal position as percentage
-    petFrame.BackgroundColor3 = petInfo.petData.rarity.color
-    petFrame.BackgroundTransparency = 0.8
+    petFrame.Size = UDim2.fromScale(petWidthScale, 0.8)  -- Width calculated dynamically, 80% height
+    petFrame.Position = UDim2.new(xPositionScale, 0, 0.5, 0)  -- X calculated, Y centered
+    petFrame.AnchorPoint = Vector2.new(0, 0.5)  -- Anchor from left edge, vertical center
+    
+    -- Apply pet-specific display settings with fallbacks
+    local petData = petInfo.petData
+    local petDefaults = petConfig.viewport
+    
+    -- Background color (pet override > egg override > pet default > "rarity")
+    local bgColor = petData.display_container_bg or effectiveConfig.ui.colors.pet_container_bg or petDefaults.default_container_bg or "rarity"
+    if bgColor == "rarity" then
+        petFrame.BackgroundColor3 = petInfo.petData.rarity.color
+    else
+        petFrame.BackgroundColor3 = bgColor
+    end
+    
+    -- Transparency (pet override > egg override > pet default > fallback)
+    petFrame.BackgroundTransparency = petData.display_container_transparency or effectiveConfig.ui.colors.pet_container_transparency or petDefaults.default_container_transparency or 0.8
     petFrame.BorderSizePixel = 0
     petFrame.Parent = parent
     
@@ -404,7 +477,7 @@ function EggPetPreviewService:CreatePetDisplayAtPosition(parent, petInfo, layout
     petCorner.Parent = petFrame
     
     -- Call the pet content creation logic
-    self:CreatePetContent(petFrame, petInfo, previewConfig, config)
+    self:CreatePetContent(petFrame, petInfo, previewConfig, effectiveConfig)
 end
 
 --[[
@@ -413,15 +486,17 @@ end
     ALL ELEMENTS use UDim2.fromScale() to maintain proportions at any camera distance.
     This ensures ViewportFrames and text scale consistently with the BillboardGui.
 --]]
-function EggPetPreviewService:CreatePetContent(petFrame, petInfo, previewConfig, config)
+function EggPetPreviewService:CreatePetContent(petFrame, petInfo, previewConfig, effectiveConfig)
     -- Pet 3D model display using ViewportFrame
     if previewConfig.load_pet_icons and petInfo.petData.asset_id and petInfo.petData.asset_id ~= "rbxassetid://0" then
         -- Scale-based ViewportFrame (fixes the core scaling issue)
         local viewport = Instance.new("ViewportFrame")
         viewport.Name = "PetViewport"
-        viewport.Size = UDim2.fromScale(0.8, 0.6)  -- 80% width, 60% height (scales with frame)
-        viewport.Position = UDim2.fromScale(0.1, 0.05)  -- Centered with margins (scales with frame)
-        viewport.BackgroundTransparency = 1
+        viewport.Size = UDim2.fromScale(0.9, 0.65)  -- 90% width, 65% height - reserve space for text
+        viewport.Position = UDim2.fromScale(0.05, 0.05)  -- Back to 5% margins from top (a bit higher)
+        -- Viewport background with fallbacks
+        viewport.BackgroundColor3 = effectiveConfig.ui.colors.pet_icon_bg or Color3.fromRGB(0, 0, 0)
+        viewport.BackgroundTransparency = effectiveConfig.ui.colors.pet_icon_transparency or 1
         viewport.Parent = petFrame
         
         -- Create camera for the viewport
@@ -445,27 +520,35 @@ function EggPetPreviewService:CreatePetContent(petFrame, petInfo, previewConfig,
         })
         local petIcon = Instance.new("TextLabel")
         petIcon.Name = "Icon"
-        petIcon.Size = UDim2.fromScale(0.8, 0.6)  -- Match ViewportFrame scaling
-        petIcon.Position = UDim2.fromScale(0.1, 0.05)  -- Match ViewportFrame positioning
+        petIcon.Size = UDim2.fromScale(0.9, 0.65)  -- Match ViewportFrame scaling
+        petIcon.Position = UDim2.fromScale(0.05, 0.05)  -- Back to match ViewportFrame positioning
         petIcon.BackgroundTransparency = 1
         petIcon.Text = self:GetPetEmojiIcon(petInfo.petType)
         petIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
         petIcon.TextScaled = true
-        petIcon.Font = config.fonts.pet_icon_fallback
+        petIcon.Font = effectiveConfig.ui.fonts.pet_icon_fallback
         petIcon.Parent = petFrame
     end
     
-    -- Pet name (if enabled) - scale-based
-    if previewConfig.show_variant_names then
+    -- Pet name (if enabled) - scale-based and configurable per pet
+    local petData = petInfo.petData
+    local petDefaults = petConfig.viewport
+    local showName = petData.display_show_name
+    if showName == nil then  -- Check for nil explicitly since false is valid
+        showName = previewConfig.show_variant_names or petDefaults.default_show_name
+    end
+    
+    if showName then
         local petName = Instance.new("TextLabel")
         petName.Name = "Name"
-        petName.Size = UDim2.fromScale(1, 0.2)  -- Full width, 20% height
-        petName.Position = UDim2.fromScale(0, 0.65)  -- Below the icon area
+        petName.Size = UDim2.fromScale(1, 0.15)  -- Full width, 15% height  
+        petName.Position = UDim2.fromScale(0, 0.7)  -- Below the icon area (65% + 5% gap)
         petName.BackgroundTransparency = 1
         petName.Text = petInfo.petData.name
-        petName.TextColor3 = config.colors.text_primary
+        -- Apply pet-specific name color with fallbacks
+        petName.TextColor3 = petData.display_name_color or effectiveConfig.ui.colors.text_primary or petDefaults.default_name_color or Color3.fromRGB(0, 0, 139)
         petName.TextScaled = true
-        petName.Font = config.fonts.pet_name
+        petName.Font = effectiveConfig.ui.fonts.pet_name or Enum.Font.Gotham
         petName.Parent = petFrame
     end
     
@@ -475,17 +558,18 @@ function EggPetPreviewService:CreatePetContent(petFrame, petInfo, previewConfig,
     chanceLabel.Size = UDim2.fromScale(1, 0.15)  -- Full width, 15% height
     chanceLabel.Position = UDim2.fromScale(0, 0.85)  -- Bottom 15% of frame
     chanceLabel.BackgroundTransparency = 1
-    chanceLabel.Font = config.fonts.pet_chance
+    chanceLabel.Font = effectiveConfig.ui.fonts.pet_chance or Enum.Font.Bangers
     chanceLabel.Parent = petFrame
     
-    -- Format chance display
-    local chancePercent = petInfo.chance * 100
-    if chancePercent < previewConfig.min_chance_to_show * 100 then
+    -- Format chance display with smart formatting and configurable threshold
+    local minThreshold = effectiveConfig.pet_preview.min_chance_to_show or previewConfig.min_chance_to_show
+    
+    if petInfo.chance < minThreshold then
         chanceLabel.Text = "??"
-        chanceLabel.TextColor3 = config.colors.very_rare_text
+        chanceLabel.TextColor3 = petData.display_chance_color or effectiveConfig.ui.colors.very_rare_text or petDefaults.default_chance_color or Color3.fromRGB(139, 0, 0)
     else
-        chanceLabel.Text = string.format("%." .. previewConfig.chance_precision .. "f%%", chancePercent)
-        chanceLabel.TextColor3 = config.colors.text_secondary
+        chanceLabel.Text = self:FormatPercentage(petInfo.chance, effectiveConfig.pet_preview)
+        chanceLabel.TextColor3 = petData.display_chance_color or effectiveConfig.ui.colors.text_secondary or petDefaults.default_chance_color or Color3.fromRGB(139, 0, 0)
     end
     chanceLabel.TextScaled = true
 end

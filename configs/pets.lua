@@ -16,6 +16,13 @@ local petConfig = {
     -- === VIEWPORT DISPLAY SETTINGS ===
     viewport = {
         default_zoom = 1.5,  -- Default camera zoom for all pets (1.5x closer than original)
+        
+        -- Default display settings (can be overridden per pet variant)
+        default_show_name = true,          -- Show pet names by default
+        default_container_transparency = 0.8,  -- Default container transparency
+        default_container_bg = "rarity",   -- Default background ("rarity" or Color3)
+        default_name_color = Color3.fromRGB(0, 0, 139),  -- Dark blue name text color (contrast with white)
+        default_chance_color = Color3.fromRGB(139, 0, 0), -- Dark red chance text color
     },
     
     -- === RARITY SYSTEM (Visual/Organization Only) ===
@@ -95,6 +102,8 @@ local petConfig = {
                     health = 150,
                     abilities = {"scratch"},
                     -- Uses default viewport_zoom (1.5)
+                    
+                    -- Uses default display settings
                 },
                 golden = {
                     asset_id = "rbxassetid://107758879638540", 
@@ -130,6 +139,8 @@ local petConfig = {
                     health = 120,
                     abilities = {"hop_attack"},
                     viewport_zoom = 1.8,  -- Bunnies are smaller, zoom in more
+                    
+                    -- Uses default display settings
                 },
                 golden = {
                     asset_id = "rbxassetid://133150464787030",
@@ -165,6 +176,8 @@ local petConfig = {
                     health = 140, 
                     abilities = {"bark_stun"},
                     -- Uses default viewport_zoom (1.5)
+                    
+                    -- Uses default display settings
                 },
                 golden = {
                     asset_id = "rbxassetid://97337398672225",
@@ -216,6 +229,11 @@ local petConfig = {
                     health = 10000, 
                     abilities = {"prismatic_breath", "reality_burn", "cosmic_flight"},
                     viewport_zoom = 1.2,  -- Rainbow dragon zoom
+                    
+                    -- Display overrides (optional - overrides viewport defaults)
+                    display_container_bg = Color3.fromRGB(255, 0, 255),  -- Magenta bg for Rainbow Dragon
+                    display_container_transparency = 0.3,  -- More opaque for mythic pet
+                    display_show_name = true,  -- Always show name for rainbow variants
                 }
             }
         },
@@ -328,13 +346,13 @@ local petConfig = {
             icon_asset_id = "rbxassetid://77451518796778", -- Use same for icon for now
             unlock_requirement = nil, -- Always available
             
-            -- Stage 1: Pet Selection (which animal)
+            -- Stage 1: Pet Selection (which animal) - TESTING RARE PERCENTAGES
             pet_weights = {
-                bear = 25,    -- 25% chance to get a bear
-                bunny = 25,   -- 25% chance to get a bunny
-                doggy = 25,   -- 25% chance to get a doggy
-                kitty = 20,   -- 20% chance to get a kitty
-                dragon = 5,   -- 5% chance to get a dragon (rarest pet type)
+                bear = 24990,   -- ~25% chance to get a bear
+                bunny = 24990,  -- ~25% chance to get a bunny  
+                doggy = 24990,  -- ~25% chance to get a doggy
+                kitty = 10,     -- 0.01% chance to get a kitty (10/100000)
+                dragon = 1,     -- 0.001% chance to get a dragon (1/100000) - should show "??"
             },
             
             -- Stage 2: Rarity Calculation (basic/golden/rainbow)
@@ -436,7 +454,8 @@ function petConfig.getPet(petType, variant)
         local variantInfo = petConfig.variants[variant]
         local rarity = petConfig.rarities[variantInfo.rarity]
         
-        return {
+        -- Create base pet data
+        local petData = {
             -- Pet info
             name = petVariant.display_name,
             asset_id = petVariant.asset_id,
@@ -452,6 +471,16 @@ function petConfig.getPet(petType, variant)
             rarity = rarity,
             variant_info = variantInfo,
         }
+        
+        -- Include all additional variant properties (like display_* settings)
+        for key, value in pairs(petVariant) do
+            -- Don't override existing keys, but add any new ones
+            if petData[key] == nil then
+                petData[key] = value
+            end
+        end
+        
+        return petData
     end
     return nil
 end

@@ -52,17 +52,26 @@ return {
         
         -- Colors and Styling
         colors = {
-            background = Color3.fromRGB(30, 30, 30),
-            border = Color3.fromRGB(255, 255, 255),
-            text_primary = Color3.fromRGB(255, 255, 255),
-            text_secondary = Color3.fromRGB(200, 200, 200),
+            background = Color3.fromRGB(255, 255, 255),  -- White background for pet preview frame
+            border = Color3.fromRGB(0, 0, 0),  -- Black border for contrast
+            text_primary = Color3.fromRGB(0, 0, 0),  -- Black primary text
+            text_secondary = Color3.fromRGB(100, 100, 100),  -- Dark gray secondary text
             success_bg = Color3.fromRGB(34, 139, 34),
             error_bg = Color3.fromRGB(220, 53, 69),
             
             -- Pet preview colors
-            pet_preview_bg = Color3.fromRGB(20, 20, 20),
-            pet_preview_border = Color3.fromRGB(100, 100, 255),
-            very_rare_text = Color3.fromRGB(255, 100, 100), -- For very low chances (<0.1%)
+            pet_preview_bg = Color3.fromRGB(255, 255, 255),  -- White background (same as main background)
+            pet_preview_border = Color3.fromRGB(0, 100, 200),  -- Blue border
+            very_rare_text = Color3.fromRGB(150, 0, 0), -- Dark red for very low chances
+            
+            -- Pet container colors (individual pet frames)
+            pet_container_bg = "rarity",  -- "rarity" = use rarity color, or set Color3 for uniform
+            pet_container_transparency = 0.7,  -- Slightly more opaque for better visibility
+            pet_container_border = Color3.fromRGB(200, 200, 200),  -- Light gray border
+            
+            -- Pet icon/viewport colors
+            pet_icon_bg = Color3.fromRGB(240, 240, 240),  -- Light gray viewport background
+            pet_icon_transparency = 0.2,  -- Semi-transparent to show slight background
         },
         
         -- Corner Radius
@@ -129,17 +138,36 @@ return {
             -- ["legendary_egg"] = 10,       -- Legendary egg uses 10 studs (very tall egg)
         },
         
-        min_chance_to_show = 0.001,        -- Minimum chance (0.1%) to show pet, lower shows as "??"
+        min_chance_to_show = 0.0001,       -- Minimum chance (0.01%) to show pet, lower shows as "??"
         max_pets_to_display = 6,           -- Maximum number of pets to show in preview (fits horizontal layout)
         grid_columns = 5,                  -- Number of columns in pet grid (horizontal row)
         pet_icon_size = 60,                -- Size of each pet icon in pixels
         pet_spacing = 15,                  -- Horizontal spacing between pets in pixels
-        chance_precision = 2,              -- Decimal places for percentage display (e.g., 2 = "5.25%")
+        smart_percentage_formatting = true, -- Use intelligent digit formatting (25%, 1%, 0.01%)
+        fallback_precision = 2,            -- Fallback decimal places if smart formatting disabled
         
         -- Display settings
         show_variant_names = true,         -- Show "Golden Bear" vs just "Bear"
         group_by_rarity = true,            -- Group pets by rarity in display
         sort_by_chance = true,             -- Sort pets by chance (highest first)
+        
+        -- Per-egg display overrides (optional - overrides global settings)
+        egg_display_overrides = {
+            -- Per-egg customization examples:
+            -- ["basic_egg"] = {
+            --     show_variant_names = false,        -- Hide pet names for this egg
+            --     pet_container_transparency = 1.0,  -- Make containers fully transparent
+            --     pet_container_bg = Color3.fromRGB(50, 50, 50),  -- Custom bg color (overrides rarity)
+            -- },
+            -- ["golden_egg"] = {
+            --     pet_container_bg = Color3.fromRGB(255, 215, 0),  -- Golden background for golden egg
+            --     pet_container_transparency = 0.3,                -- More opaque for premium egg
+            --     min_chance_to_show = 0.00001,                   -- Show even rarer pets (0.001%)
+            -- },
+            -- ["legendary_egg"] = {
+            --     min_chance_to_show = 0.000001,                  -- Ultra rare threshold (0.0001%)
+            -- },
+        },
         
         -- Asset loading
         load_pet_icons = true,             -- Whether to load actual pet model icons (3D models)

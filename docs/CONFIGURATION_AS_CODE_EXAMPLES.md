@@ -289,3 +289,11 @@ action_name = {
 ```
 
 This configuration-as-code system provides **unlimited flexibility** while maintaining **professional quality** and **ease of use**!
+
+## See Also
+
+- **[Menu Modifications System](MENU_MODIFICATIONS_SYSTEM.md)** - Visual customization (colors, fonts, styling)
+- **[UI Layout System](UI_LAYOUT_SYSTEM.md)** - Layout and positioning configuration
+- **[EGG System Configuration](EGG_SYSTEM_CONFIGURATION.md)** - Egg interaction and preview settings
+
+This document covers **functional configuration** (buttons, actions, behaviors), while the Menu Modifications System covers **visual configuration** (colors, fonts, appearance). Together, they provide complete control over your UI without code changes!
