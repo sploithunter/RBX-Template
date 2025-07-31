@@ -634,6 +634,8 @@ function AdminPanel:_executeTestAction(action, testName)
         self:_resetCurrencies()
     
     -- Effects actions
+    elseif action == "run_diagnostics" then
+        self:_runDiagnostics()
     elseif action:find("effect") or action:find("start_") then
         self:_executeEffectAction(action)
     
@@ -762,12 +764,9 @@ end
 
 function AdminPanel:_testRateLimit()
     self.logger:info("Testing rate limits...")
-    -- Spam requests to test rate limiting
-    for i = 1, 10 do
-        if self.economyBridge then
-            self.economyBridge:Fire("server", "test_request", {iteration = i})
-        end
-    end
+    -- After migrating to sleitnick/Net, the legacy NetworkBridge is no longer available.
+    -- Temporarily disable this until a Net-based rate-limit test is implemented.
+    self.logger:warn("Rate-limit test disabled pending Net migration")
 end
 
 function AdminPanel:_debugPrintData()
@@ -800,6 +799,11 @@ function AdminPanel:_performanceTest()
     
     local endTime = tick()
     self.logger:info("Performance test completed in", endTime - startTime, "seconds")
+end
+
+function AdminPanel:_runDiagnostics()
+    self.logger:info("Running diagnostics...")
+    Signals.RunDiagnostics:FireServer()
 end
 
 function AdminPanel:_networkTest()
@@ -900,6 +904,11 @@ function AdminPanel:_initializeNetworking()
         
         if NetworkConfig then
             self.economyBridge = NetworkConfig:GetBridge("Economy")
+
+                    -- Listen for diagnostics result once
+                    Signals.RunDiagnostics.OnClientEvent:Connect(function(report)
+                        self:_showDiagnosticsPopup(report)
+                    end)
             self.effectsBridge = NetworkConfig:GetBridge("Effects")
             
             if self.economyBridge then
@@ -1050,6 +1059,17 @@ function AdminPanel:_getAdminActionData(baseData)
     end
     
     return actionData
+end
+
+-- Display diagnostics in a simple popup
+function AdminPanel:_showDiagnosticsPopup(report)
+    local message = string.format("Diagnostics completed: %d passed, %d failed", report.passed, report.failed)
+    if report.failed > 0 then
+        message ..= "\nFailures:\n" .. table.concat(report.failures, "\n")
+    end
+    -- Simple Roblox alert replacement
+    self.logger:info(message)
+    print(message)
 end
 
 return AdminPanel 

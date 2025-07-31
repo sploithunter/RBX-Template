@@ -22,6 +22,9 @@ local Signals = {
 
     -- Effects
     ActiveEffects     = Net:RemoteEvent("ActiveEffects"),    -- s->c unified list
+
+    -- Diagnostics
+    RunDiagnostics    = Net:RemoteEvent("RunDiagnostics"),      -- c->s request & s->c reply
 }
 
 return Signals
