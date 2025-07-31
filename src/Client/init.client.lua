@@ -145,56 +145,8 @@ Signals.ActiveEffects.OnClientEvent:Connect(function(data)
     end
 end)
 
--- Remove old bridge connect block
+-- Old NetworkBridge code removed
 
-    Logger:Debug("Client received packet", {packetType = packetType, data = data})
-    
-    if packetType == "CurrencyUpdate" then
-        Logger:Debug("Currency updated", data)
-        -- Update UI currency display
-        -- UIController:UpdateCurrency(data.currency, data.amount)
-    elseif packetType == "ShopItems" then
-        Logger:Debug("Shop items received", {itemCount = #data.items})
-        print("🏪 SHOP ITEMS:")
-        for i, item in ipairs(data.items) do
-            print(string.format("   %d. %s - %d %s (Can afford: %s)", 
-                i, item.name, item.price.amount, item.price.currency, tostring(item.canAfford)))
-        end
-    elseif packetType == "PurchaseSuccess" then
-        Logger:Info("Purchase successful", data)
-        print("✅ PURCHASE SUCCESS:", data.itemId)
-        -- Show purchase success UI
-        -- UIController:ShowPurchaseSuccess(data.itemId)
-    elseif packetType == "SellSuccess" then
-        Logger:Info("Sell successful", data)
-        print("✅ SELL SUCCESS:", data.itemId, "for", data.totalPrice, "currency")
-    elseif packetType == "EconomyError" then
-        Logger:Warn("Economy error", data)
-        print("❌ ECONOMY ERROR:", data.message)
-        -- Show error message to player
-        -- UIController:ShowError(data.message)
-    elseif packetType == "PlayerDebugInfo" then
-        print("🔍 SERVER DEBUG INFO:")
-        print("   Server Inventory:", data.inventory)
-        print("   Server Currencies:", data.currencies)
-    elseif packetType == "ActiveEffects" then
-        -- Update the effects panel via MenuManager (new system)
-        if _G.MenuManager then
-            local effectsPanel = _G.MenuManager:GetPanel("Effects")
-            if effectsPanel and effectsPanel.UpdateEffects then
-                effectsPanel:UpdateEffects(data.effects)
-            end
-        end
-        
-        -- Legacy fallback for EffectsStatusGUI (if still needed)
-        if _G.EffectsStatusGUI then
-            _G.EffectsStatusGUI:UpdateFromServer(data)
-        end
-        print("⚡ ACTIVE EFFECTS UPDATED:", data.effects)
-    elseif packetType == "GiveItemSuccess" then
-        print("🎁 ITEM GIVEN:", data.message)
-    end
-end)
 
 -- Set up input handling
 local function onInputBegan(input, gameProcessed)
@@ -209,7 +161,7 @@ local function onInputBegan(input, gameProcessed)
         Logger:Debug("Main menu toggle requested")
     elseif input.KeyCode == Enum.KeyCode.B then
         -- Open shop
-        economyBridge:Fire("GetShopItems", {})
+        Signals.ShopItems:FireServer({request = true})
         Logger:Debug("Shop requested")
     end
 end
