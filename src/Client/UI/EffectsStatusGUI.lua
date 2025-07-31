@@ -16,9 +16,7 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- Get network bridge
-local Locations = require(ReplicatedStorage.Shared.Locations)
-local NetworkBridge = require(Locations.NetworkBridge)
-local economyBridge = NetworkBridge:CreateBridge("Economy")
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local EffectsStatusGUI = {}
 
@@ -211,13 +209,15 @@ function EffectsStatusGUI:UpdateTimerDisplays()
 end
 
 function EffectsStatusGUI:ConnectToNetwork()
-    -- TODO: Add network packets for effect updates
-    -- For now, we'll request via debug info
+    -- Connect to ActiveEffects RemoteEvent
+    Signals.ActiveEffects.OnClientEvent:Connect(function(packetData)
+        self:UpdateFromServer(packetData)
+    end)
 end
 
 function EffectsStatusGUI:RequestEffectsUpdate()
     -- Request effect data from server using the new packet
-    economyBridge:Fire("server", "GetActiveEffects", {})
+    Signals.ActiveEffects:FireServer({request = true})
 end
 
 function EffectsStatusGUI:UpdateFromServer(packetData)

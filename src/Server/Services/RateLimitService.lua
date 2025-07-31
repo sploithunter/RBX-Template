@@ -105,7 +105,18 @@ function RateLimitService:Init()
     Players.PlayerRemoving:Connect(function(player)
         self:_cleanupPlayerData(player)
     end)
-    
+
+    -- Set up ActiveEffects request handler (client ➜ server)
+    do
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+        Signals.ActiveEffects.OnServerEvent:Connect(function(p, data)
+            if data and data.request then
+                self:_handleActiveEffectsRequest(p)
+            end
+        end)
+    end
+
     -- Effect expiration loop will be started after economy bridge injection
 end
 
@@ -839,6 +850,28 @@ function RateLimitService:_getTableSize(table)
         count = count + 1
     end
     return count
+end
+
+-- Handle client request for current active effects
+function RateLimitService:_handleActiveEffectsRequest(player)
+    local userId = player.UserId
+    local effects = playerEffects[userId]
+    local activeEffectsFormatted = {}
+
+    if effects then
+        for effectId, effectData in pairs(effects) do
+            local formatted = self:_formatEffectForClient(effectId, effectData)
+            if effectData.expiresAt == -1 then
+                formatted.timeRemaining = -1
+            else
+                formatted.timeRemaining = self._serverClock:CalculateTimeRemaining(effectData.expiresAt)
+            end
+            activeEffectsFormatted[effectId] = formatted
+        end
+    end
+
+    -- Send to client using unified method
+    self:_sendUnifiedEffectsUpdate(player, activeEffectsFormatted)
 end
 
 return RateLimitService 
