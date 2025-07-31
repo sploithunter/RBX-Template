@@ -13,6 +13,11 @@
 local petConfig = {
     version = "1.0.0",
     
+    -- === VIEWPORT DISPLAY SETTINGS ===
+    viewport = {
+        default_zoom = 1.5,  -- Default camera zoom for all pets (1.5x closer than original)
+    },
+    
     -- === RARITY SYSTEM (Visual/Organization Only) ===
     rarities = {
         common = {
@@ -89,6 +94,7 @@ local petConfig = {
                     power = 10,
                     health = 150,
                     abilities = {"scratch"},
+                    -- Uses default viewport_zoom (1.5)
                 },
                 golden = {
                     asset_id = "rbxassetid://107758879638540", 
@@ -96,6 +102,7 @@ local petConfig = {
                     power = 50,  -- base_power * golden multiplier
                     health = 750, -- base_health * golden multiplier  
                     abilities = {"golden_scratch", "coin_magnet"},
+                    -- Uses default viewport_zoom (1.5)
                 },
                 rainbow = {
                     asset_id = "rbxassetid://92437511216136",
@@ -103,6 +110,7 @@ local petConfig = {
                     power = 500, -- base_power * rainbow multiplier
                     health = 7500, -- base_health * rainbow multiplier
                     abilities = {"rainbow_scratch", "ultimate_magnet", "luck_aura"},
+                    -- Uses default viewport_zoom (1.5)
                 }
             }
         },
@@ -121,6 +129,7 @@ local petConfig = {
                     power = 8,
                     health = 120,
                     abilities = {"hop_attack"},
+                    viewport_zoom = 1.8,  -- Bunnies are smaller, zoom in more
                 },
                 golden = {
                     asset_id = "rbxassetid://133150464787030",
@@ -128,6 +137,7 @@ local petConfig = {
                     power = 40,
                     health = 600,
                     abilities = {"golden_hop", "speed_boost"},
+                    viewport_zoom = 1.8,  -- Golden bunny zoom
                 },
                 rainbow = {
                     asset_id = "rbxassetid://113112612195316",
@@ -135,6 +145,7 @@ local petConfig = {
                     power = 400, 
                     health = 6000,
                     abilities = {"rainbow_hop", "time_warp", "double_luck"},
+                    viewport_zoom = 1.8,  -- Rainbow bunny zoom
                 }
             }
         },
@@ -153,6 +164,7 @@ local petConfig = {
                     power = 12,
                     health = 140, 
                     abilities = {"bark_stun"},
+                    -- Uses default viewport_zoom (1.5)
                 },
                 golden = {
                     asset_id = "rbxassetid://97337398672225",
@@ -160,6 +172,7 @@ local petConfig = {
                     power = 60,
                     health = 700,
                     abilities = {"golden_bark", "loyalty_bonus"},
+                    -- Uses default viewport_zoom (1.5)
                 },
                 rainbow = {
                     asset_id = "rbxassetid://139772169909973", 
@@ -167,6 +180,7 @@ local petConfig = {
                     power = 600,
                     health = 7000,
                     abilities = {"rainbow_bark", "pack_leader", "infinite_loyalty"},
+                    -- Uses default viewport_zoom (1.5)
                 }
             }
         },
@@ -185,6 +199,7 @@ local petConfig = {
                     power = 25,
                     health = 200,
                     abilities = {"fire_breath"},
+                    viewport_zoom = 1.2,  -- Dragons are large, zoom out slightly
                 },
                 golden = {
                     asset_id = "rbxassetid://91261941530299",
@@ -192,6 +207,7 @@ local petConfig = {
                     power = 125,
                     health = 1000,
                     abilities = {"golden_flame", "treasure_sense"},
+                    viewport_zoom = 1.2,  -- Golden dragon zoom
                 },
                 rainbow = {
                     asset_id = "rbxassetid://120821607721730",
@@ -199,6 +215,7 @@ local petConfig = {
                     power = 1250,
                     health = 10000, 
                     abilities = {"prismatic_breath", "reality_burn", "cosmic_flight"},
+                    viewport_zoom = 1.2,  -- Rainbow dragon zoom
                 }
             }
         },
@@ -217,6 +234,7 @@ local petConfig = {
                     power = 9,
                     health = 110,
                     abilities = {"claw_swipe"},
+                    viewport_zoom = 1.6,  -- Kitties are small, zoom in more
                 },
                 golden = {
                     asset_id = "rbxassetid://131968646516737",
@@ -224,6 +242,7 @@ local petConfig = {
                     power = 45,
                     health = 550,
                     abilities = {"golden_claws", "stealth_bonus"},
+                    viewport_zoom = 1.6,  -- Golden kitty zoom
                 },
                 rainbow = {
                     asset_id = "rbxassetid://124744079930917",
@@ -231,6 +250,7 @@ local petConfig = {
                     power = 450,
                     health = 5500,
                     abilities = {"rainbow_claws", "nine_lives", "shadow_step"},
+                    viewport_zoom = 1.6,  -- Rainbow kitty zoom
                 }
             }
         }

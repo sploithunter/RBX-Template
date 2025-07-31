@@ -436,7 +436,7 @@ function EggPetPreviewService:CreatePetContent(petFrame, petInfo, previewConfig,
         })
         
         -- Load the 3D model asynchronously
-        self:Load3DPetModel(petInfo.petData.asset_id, viewport, camera, petInfo.petType, petInfo.variant)
+        self:Load3DPetModel(petInfo.petData.asset_id, viewport, camera, petInfo.petType, petInfo.variant, petInfo)
     else
         -- Use emoji fallback (scale-based)
         logger:debug("Using emoji fallback", {
@@ -490,8 +490,8 @@ function EggPetPreviewService:CreatePetContent(petFrame, petInfo, previewConfig,
     chanceLabel.TextScaled = true
 end
 
--- Load 3D pet model into ViewportFrame (using ReplicatedStorage.Assets)
-function EggPetPreviewService:Load3DPetModel(assetId, viewport, camera, petType, variant)
+-- Load 3D pet model into ViewportFrame with configurable zoom (using ReplicatedStorage.Assets)
+function EggPetPreviewService:Load3DPetModel(assetId, viewport, camera, petType, variant, petInfo)
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     
     task.spawn(function()
@@ -572,17 +572,36 @@ function EggPetPreviewService:Load3DPetModel(assetId, viewport, camera, petType,
             -- Parent to viewport
             modelClone.Parent = viewport
             
-            -- Calculate camera distance based on model size
+            --[[
+                Calculate camera distance with configurable zoom system
+                
+                ZOOM SYSTEM:
+                - Higher zoom values = closer camera = larger pet appearance
+                - zoom 1.0 = default distance, zoom 1.5 = 1.5x closer, zoom 2.0 = 2x closer
+                - Per-pet overrides allow fine-tuning for specific pets
+                - Distance = baseDistance / zoomMultiplier
+            --]]
             local modelSize = modelClone:GetExtentsSize()
-            local distance = math.max(modelSize.X, modelSize.Y, modelSize.Z) * 1.5
-            if distance < 4 then
-                distance = 4
+            local previewConfig = eggSystemConfig.pet_preview
+            
+            -- Get zoom multiplier from pet data with proper fallback to default
+            local zoomMultiplier = petInfo.petData.viewport_zoom or petConfig.viewport.default_zoom
+            
+            -- Calculate base distance (standard 1.5x model size) and apply zoom
+            local baseDistance = math.max(modelSize.X, modelSize.Y, modelSize.Z) * 1.5
+            local distance = baseDistance / zoomMultiplier  -- Higher zoom = closer camera = bigger pet
+            
+            -- Safety clamp for extreme zoom levels
+            if distance < 2 then
+                distance = 2  -- Prevent camera from getting too close and clipping
             end
             
             logger:info("3D model loaded successfully", {
                 petType = petType,
                 modelSize = modelSize,
-                cameraDistance = distance
+                baseDistance = baseDistance,
+                zoomMultiplier = zoomMultiplier,
+                finalCameraDistance = distance
             })
             
             -- Set up camera (spinning or static based on config)
