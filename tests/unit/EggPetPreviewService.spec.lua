@@ -47,15 +47,15 @@ return function()
                 end
             }
             
-            -- Mock the Players service LocalPlayer
-            game.Players.LocalPlayer = mockPlayer
+            -- Provide mock player for server-side tests
+            _G.__TEST_LOCAL_PLAYER = mockPlayer
             
             EggPetPreviewService = require(ReplicatedStorage.Shared.Services.EggPetPreviewService)
         end)
         
         describe("GetPlayerData", function()
             it("should gather player data including aggregates", function()
-                local playerData = EggPetPreviewService:GetPlayerData()
+                local playerData = EggPetPreviewService:GetPlayerData(mockPlayer)
                 
                 expect(playerData.level).to.equal(5)
                 expect(playerData.petsHatched).to.equal(10)
@@ -67,7 +67,7 @@ return function()
             
             it("should detect premium players", function()
                 mockPlayer.MembershipType = Enum.MembershipType.Premium
-                local playerData = EggPetPreviewService:GetPlayerData()
+                local playerData = EggPetPreviewService:GetPlayerData(mockPlayer)
                 expect(playerData.isVIP).to.equal(true)
             end)
         end)
@@ -77,13 +77,13 @@ return function()
                 local chances = EggPetPreviewService:CalculatePetChances("basic_egg")
                 
                 expect(chances).to.be.a("table")
-                expect(#chances).to.be.greaterThan(0)
+                expect(#chances > 0).to.equal(true)
                 
                 -- Should have different pet types
                 local petTypes = {}
                 for _, chance in ipairs(chances) do
                     petTypes[chance.petType] = true
-                    expect(chance.chance).to.be.greaterThan(0)
+                    expect(chance.chance > 0).to.equal(true)
                     expect(chance.petData).to.be.ok()
                 end
                 
@@ -99,7 +99,7 @@ return function()
                 for _, chance in ipairs(chances) do
                     expect(chance.variant).to.equal("basic")
                     -- Chance should be the raw pet type weight (no rarity calculation)
-                    expect(chance.chance).to.be.greaterThan(0)
+                    expect(chance.chance > 0).to.equal(true)
                 end
                 
                 -- Check specific pet type chance (bear should be 25% = 0.25)

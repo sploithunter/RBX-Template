@@ -736,21 +736,4 @@ function PlayerEffectsService:_cleanupPlayer(player)
     self._logger:Info("Player effects cleaned up successfully", {player = player.Name})
 end
 
--- Send current effects to client using Signals.ActiveEffects
-function PlayerEffectsService:_sendUnifiedEffectsUpdate(player, activeEffects)
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local Signals = require(ReplicatedStorage.Shared.Network.Signals)
-    local success, err = pcall(function()
-        Signals.ActiveEffects:FireClient(player, {
-            effects = activeEffects,
-            timestamp = os.time(),
-            playerClock = false
-        })
-    end)
-
-    if not success then
-        self._logger:Error("PlayerEffectsService: Failed to send ActiveEffects", {error = err, player = player.Name})
-    end
-end
-
 return PlayerEffectsService 

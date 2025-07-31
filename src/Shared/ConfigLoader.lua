@@ -560,7 +560,7 @@ end
 
 -- Validate monetization setup and warn about placeholder IDs
 function ConfigLoader:ValidateMonetizationSetup()
-    local monetization = self:LoadConfig("monetization")
+    local monetization = self._monetizationCache or self:LoadConfig("monetization")
     local warnings = {}
     local errors = {}
     
@@ -594,7 +594,7 @@ end
 -- Get monetization setup status for debugging
 function ConfigLoader:GetMonetizationStatus()
     local status = self:ValidateMonetizationSetup()
-    local monetization = self:LoadConfig("monetization")
+    local monetization = self._monetizationCache or self:LoadConfig("monetization")
     
     return {
         validation = status,

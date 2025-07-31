@@ -5,7 +5,10 @@
 ]]
 
 return function()
+    
     local ConfigLoader = require(game.ReplicatedStorage.Shared.ConfigLoader)
+    -- Save original loader for patches throughout this spec
+    local originalLoadConfig = ConfigLoader.LoadConfig
     
     describe("ConfigLoader", function()
         local configLoader
@@ -99,13 +102,17 @@ return function()
                 }
             }
             
-            -- Mock the LoadConfig method for testing
-            local originalLoadConfig = configLoader.LoadConfig
-            configLoader.LoadConfig = function(self, configName)
-                if configName == "monetization" then
-                    return mockMonetizationConfig
+            -- Apply monkey-patch only once for the whole test run
+
+            if not ConfigLoader.__TEST_PATCH_APPLIED then
+                ConfigLoader.__TEST_PATCH_APPLIED = true
+                -- duplicate patch block removed
+                ConfigLoader.LoadConfig = function(self, configName)
+                    if configName == "monetization" then
+                        return mockMonetizationConfig
+                    end
+                    return originalLoadConfig(self, configName)
                 end
-                return originalLoadConfig(self, configName)
             end
             
             it("should get product by ID", function()
@@ -250,7 +257,7 @@ return function()
                 
                 local isValid, error = configLoader:ValidateConfig("monetization", invalidConfig)
                 expect(isValid).to.equal(false)
-                expect(error).to.match("Missing required section: product_id_mapping")
+                expect(string.find(error, "Missing required section: product_id_mapping", 1, true)).to.be.ok()
             end)
             
             it("should reject product with missing ID", function()
@@ -269,7 +276,7 @@ return function()
                 
                 local isValid, error = configLoader:ValidateConfig("monetization", invalidConfig)
                 expect(isValid).to.equal(false)
-                expect(error).to.match("missing or invalid id")
+                expect(string.find(error, "missing or invalid id", 1, true)).to.be.ok()
             end)
             
             it("should reject product not in ID mapping", function()
@@ -289,7 +296,7 @@ return function()
                 
                 local isValid, error = configLoader:ValidateConfig("monetization", invalidConfig)
                 expect(isValid).to.equal(false)
-                expect(error).to.match("not found in product_id_mapping")
+                expect(string.find(error, "not found in product_id_mapping", 1, true)).to.be.ok()
             end)
         end)
         
@@ -314,9 +321,9 @@ return function()
                 expect(status.isValid).to.equal(true)
                 expect(status.hasPlaceholders).to.equal(true)
                 expect(#status.warnings).to.equal(3)  -- 2 placeholders + test mode
-                expect(status.warnings[1]).to.match("placeholder ID")
-                expect(status.warnings[2]).to.match("placeholder ID")
-                expect(status.warnings[3]).to.match("Test mode is enabled")
+                expect(string.find(status.warnings[1], "placeholder ID", 1, true)).to.be.ok()
+                expect(string.find(status.warnings[2], "placeholder ID", 1, true)).to.be.ok()
+                expect(string.find(status.warnings[3], "Test mode is enabled", 1, true)).to.be.ok()
             end)
             
             it("should detect invalid Roblox IDs", function()
@@ -336,7 +343,7 @@ return function()
                 
                 expect(status.isValid).to.equal(false)
                 expect(#status.errors).to.equal(1)
-                expect(status.errors[1]).to.match("Invalid Roblox ID")
+                expect(string.find(status.errors[1], "Invalid Roblox ID", 1, true)).to.be.ok()
             end)
             
             it("should get monetization status", function()
@@ -365,8 +372,8 @@ return function()
             it("should cache monetization config", function()
                 -- Mock the LoadConfig to track calls
                 local loadCalls = 0
-                local originalLoadConfig = configLoader.LoadConfig
-                configLoader.LoadConfig = function(self, configName)
+                -- duplicate patch block removed
+                ConfigLoader.LoadConfig = function(self, configName)
                     if configName == "monetization" then
                         loadCalls = loadCalls + 1
                         return {

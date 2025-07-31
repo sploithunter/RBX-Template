@@ -404,8 +404,14 @@ function EconomyService:PurchaseItem(player, data)
         obtained_at = os.time()
     }
     
-    -- Add quantity for stackable items
-    if itemConfig.stackable then
+    -- Determine bucket configuration (used to infer storage type)
+    local bucketConfig = nil
+    if self._inventoryService and self._inventoryService._inventoryConfig then
+        bucketConfig = self._inventoryService._inventoryConfig.buckets[bucketName]
+    end
+
+    -- Add quantity for stackable items (either explicitly marked stackable or bucket is stackable)
+    if itemConfig.stackable or (bucketConfig and bucketConfig.storage_type == "stackable") then
         itemData.quantity = 1
     end
     

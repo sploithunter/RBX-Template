@@ -123,6 +123,7 @@ local TEST_CATEGORIES = {
             {name = "Debug: Print Current Data", action = "debug_print_data"},
             {name = "Performance Test", action = "performance_test"},
             {name = "Network Bridge Test", action = "network_test"},
+            {name = "Run Diagnostics", action = "run_diagnostics"},
         }
     },
     currency = {

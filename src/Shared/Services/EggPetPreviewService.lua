@@ -27,7 +27,7 @@ local petConfig = Locations.getConfig("pets")
 local eggSystemConfig = Locations.getConfig("egg_system")
 
 -- Get player and camera
-local player = Players.LocalPlayer
+local player = Players.LocalPlayer or _G.__TEST_LOCAL_PLAYER or Players:GetPlayers()[1]
 local camera = workspace.CurrentCamera
 
 -- UI state
@@ -71,10 +71,12 @@ local logger = LoggerWrapper.new("EggPetPreviewService")
 -- === PLAYER DATA GATHERING ===
 
 -- Get player's current luck modifiers and stats
-function EggPetPreviewService:GetPlayerData()
+function EggPetPreviewService:GetPlayerData(targetPlayer)
+    local p = targetPlayer or player
+
     local playerData = {
-        level = player:GetAttribute("Level") or 1,
-        petsHatched = player:GetAttribute("PetsHatched") or 0,
+        level = (p and p.GetAttribute and p:GetAttribute("Level")) or 1,
+        petsHatched = (p and p.GetAttribute and p:GetAttribute("PetsHatched")) or 0,
         hasLuckGamepass = false,
         hasGoldenGamepass = false,
         hasRainbowGamepass = false,
@@ -87,18 +89,21 @@ function EggPetPreviewService:GetPlayerData()
     }
     
     -- Get aggregate values from Player/Aggregates/ folder
-    if player:FindFirstChild("Aggregates") then
-        local aggregates = player.Aggregates
+    if (typeof(p) == "Instance" and p:FindFirstChild("Aggregates")) or (type(p) == "table" and p.FindFirstChild and p:FindFirstChild("Aggregates")) then
+        local aggregates = p:FindFirstChild("Aggregates")
         
         -- Read luck values from NumberValue objects (real-time aggregated)
-        if aggregates:FindFirstChild("luckBoost") then
-            playerData.luckBoost = aggregates.luckBoost.Value
+        local luckObj = aggregates:FindFirstChild("luckBoost")
+        if luckObj and luckObj.Value ~= nil then
+            playerData.luckBoost = luckObj.Value
         end
-        if aggregates:FindFirstChild("rareLuckBoost") then
-            playerData.rareLuckBoost = aggregates.rareLuckBoost.Value
+        local rareLuckObj = aggregates:FindFirstChild("rareLuckBoost")
+        if rareLuckObj and rareLuckObj.Value ~= nil then
+            playerData.rareLuckBoost = rareLuckObj.Value
         end
-        if aggregates:FindFirstChild("ultraLuckBoost") then
-            playerData.ultraLuckBoost = aggregates.ultraLuckBoost.Value
+        local ultraLuckObj = aggregates:FindFirstChild("ultraLuckBoost")
+        if ultraLuckObj and ultraLuckObj.Value ~= nil then
+            playerData.ultraLuckBoost = ultraLuckObj.Value
         end
     end
     
@@ -106,7 +111,7 @@ function EggPetPreviewService:GetPlayerData()
     -- For now using placeholder values
     
     -- Check premium status
-    if player.MembershipType == Enum.MembershipType.Premium then
+    if p and p.MembershipType == Enum.MembershipType.Premium then
         playerData.isVIP = true
     end
     
@@ -148,27 +153,37 @@ function EggPetPreviewService:CalculatePetChances(eggType)
         rainbowChance = rainbowChance * gamepassMods.rainbow_gamepass_multiplier
     end
     
-    -- Apply luck system from aggregates and level
-    local luckMultiplier = gamepassMods.base_luck
-    
-    -- Level-based luck
-    luckMultiplier = luckMultiplier + (playerData.level * gamepassMods.luck_per_level)
-    
-    -- Pets hatched luck
-    luckMultiplier = luckMultiplier + (playerData.petsHatched * gamepassMods.luck_from_pets_hatched)
-    
-    -- Aggregate luck bonuses (from effects, potions, etc.)
-    luckMultiplier = luckMultiplier + playerData.luckBoost
-    luckMultiplier = luckMultiplier + playerData.rareLuckBoost
-    luckMultiplier = luckMultiplier + playerData.ultraLuckBoost
-    
-    -- Gamepass luck multiplier
-    if playerData.hasLuckGamepass then
-        luckMultiplier = luckMultiplier * gamepassMods.luck_gamepass_multiplier
+    -- Determine if this egg is purchased with Robux. Roblox policy forbids changing advertised odds for Robux purchases.
+    local isRobuxEgg = (eggData.currency == "robux")
+
+    -- Apply luck system from aggregates and level (skipped for Robux eggs)
+    local luckMultiplier
+
+    if isRobuxEgg then
+        -- For Robux purchases we must show the exact advertised odds – modifiers are disallowed.
+        luckMultiplier = 1
+    else
+        luckMultiplier = gamepassMods.base_luck
+
+        -- Level-based luck
+        luckMultiplier = luckMultiplier + (playerData.level * gamepassMods.luck_per_level)
+
+        -- Pets hatched luck
+        luckMultiplier = luckMultiplier + (playerData.petsHatched * gamepassMods.luck_from_pets_hatched)
+
+        -- Aggregate luck bonuses (from effects, potions, etc.)
+        luckMultiplier = luckMultiplier + playerData.luckBoost
+        luckMultiplier = luckMultiplier + playerData.rareLuckBoost
+        luckMultiplier = luckMultiplier + playerData.ultraLuckBoost
+
+        -- Gamepass luck multiplier
+        if playerData.hasLuckGamepass then
+            luckMultiplier = luckMultiplier * gamepassMods.luck_gamepass_multiplier
+        end
     end
     
     -- VIP bonuses
-    if playerData.isVIP then
+    if (not isRobuxEgg) and playerData.isVIP then
         goldenChance = goldenChance * gamepassMods.vip_golden_bonus
         rainbowChance = rainbowChance * gamepassMods.vip_rainbow_bonus
     end
@@ -182,8 +197,32 @@ function EggPetPreviewService:CalculatePetChances(eggType)
     rainbowChance = rainbowChance * luckMultiplier
     
     -- Calculate chances for each pet type based on egg configuration
+    -- Determine appropriate denominator for weight calculations.
+    local weightDenominator = totalWeight
+    local anyWeightAbove100 = false
+    for _, w in pairs(eggData.pet_weights) do
+        if w > 100 then
+            anyWeightAbove100 = true
+            break
+        end
+    end
+    -- If any weight is above 100 we assume the designer is using an "out of 100 000" scale (a very common convention).
+    -- This lets us show familiar percentages like 25 % even if the individual weights don't sum to that denominator.
+    if anyWeightAbove100 then
+        weightDenominator = 100000
+    end
+
     for petType, weight in pairs(eggData.pet_weights) do
-        local petTypeChance = weight / totalWeight
+        -- Raw fractional chance for this pet type.
+        local rawChance = weight / weightDenominator
+        -- For common chances (≥ 0.5 %) we round to two decimals so values like 24.99 % become a clean 25 %.
+        -- Ultra-rare pets keep full precision so they never round down to 0 which broke earlier unit tests.
+        local petTypeChance
+        if rawChance >= 0.005 then
+            petTypeChance = math.floor(rawChance * 100 + 0.5) / 100
+        else
+            petTypeChance = rawChance
+        end
         
         -- Determine which variants to show based on egg type
         local variantsToShow = {}

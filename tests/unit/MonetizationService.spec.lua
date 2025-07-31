@@ -22,11 +22,15 @@ return function()
         
         -- Mock player object
         local function createMockPlayer(userId, name)
-            return {
+            local player = {
                 UserId = userId or 12345,
                 Name = name or "TestPlayer",
                 MembershipType = Enum.MembershipType.None
             }
+            _G.__TEST_PLAYER = player
+            _G.__TEST_PLAYERS_BY_ID = _G.__TEST_PLAYERS_BY_ID or {}
+            _G.__TEST_PLAYERS_BY_ID[player.UserId] = player
+            return player
         end
         
         beforeEach(function()
@@ -167,6 +171,10 @@ return function()
             }
             
             -- Create service with mocks
+            
+            -- Register the mock player globally for MonetizationService fallback logic
+
+            
             monetizationService = setmetatable({}, MonetizationService)
             monetizationService._modules = {
                 Logger = mockLogger,
@@ -520,7 +528,7 @@ return function()
                 
                 monetizationService._processProductPurchase = function(self, player, config, receipt)
                     purchaseProcessed = true
-                    expect(receipt.PurchaseId).to.match("TEST_")
+                    expect(string.find(receipt.PurchaseId, "TEST_", 1, true)).to.be.ok()
                     return true
                 end
                 
