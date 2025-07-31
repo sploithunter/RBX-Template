@@ -17,6 +17,9 @@
       "Assets": {
         "$path": "assets"
       },
+      "Tests": {
+        "$path": "tests"
+      },
       "Configs": {
         "$path": "configs"
       }

@@ -41,60 +41,38 @@ function DiagnosticsService:Start() end -- nothing asynchronous
 ---------------------------------------------------------------------
 
 function DiagnosticsService:_runDiagnostics(player)
+    -- Run full TestEZ suite (tests mapped into ReplicatedStorage.Tests by Rojo)
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Packages = ReplicatedStorage:WaitForChild("Packages")
+
+    local TestEZ
+    local ok, err = pcall(function()
+        TestEZ = require(Packages._Index["roblox_testez@0.4.1"].testez)
+    end)
+    if not ok or not TestEZ then
+        self._logger:Error("Diagnostics: Unable to load TestEZ", {error = err})
+        Signals.RunDiagnostics:FireClient(player, {passed = 0, failed = 1, failures = {"TestEZ load failure: " .. tostring(err)}})
+        return
+    end
+
+    local testsContainer = ReplicatedStorage:FindFirstChild("Tests")
+    if not testsContainer then
+        self._logger:Warn("Diagnostics: Tests folder not replicated – returning quick-check only")
+    end
+
+    local results = TestEZ.TestBootstrap:run({testsContainer})
     local summary = {
-        passed   = 0,
-        failed   = 0,
-        failures = {},
+        passed = results.passedCount or 0,
+        failed = results.failureCount or 0,
+        total  = (results.passedCount or 0) + (results.failureCount or 0),
+        duration = results.duration,
+        failures = results.failureMessages or {},
         timestamp = os.time(),
     }
 
-    local function check(condition, description)
-        if condition then
-            summary.passed += 1
-        else
-            summary.failed += 1
-            table.insert(summary.failures, description)
-        end
-    end
-
-    -- Basic service presence
-    check(self._inventory ~= nil, "InventoryService missing")
-    check(self._economy   ~= nil, "EconomyService missing")
-    check(self._rateLimit ~= nil, "RateLimitService missing")
-
-    -- Inventory config sanity
-    if self._inventory and self._inventory._inventoryConfig then
-        local cfg = self._inventory._inventoryConfig
-        check(cfg.buckets ~= nil, "Inventory buckets config nil")
-        check(cfg.settings ~= nil, "Inventory settings config nil")
-    else
-        check(false, "Inventory config unavailable")
-    end
-
-    -- RateLimitService live clock
-    if self._rateLimit and self._rateLimit._serverClock then
-        local srvClock = self._rateLimit._serverClock:GetServerTime()
-        check(type(srvClock) == "number", "ServerClock invalid")
-    else
-        check(false, "RateLimitService ServerClock missing")
-    end
-
-    -- Simple data check on requesting player
-    if self._dataService then
-        local data = self._dataService:GetData(player)
-        check(data ~= nil, "Player data not loaded")
-        if data and data.Inventory then
-            check(type(data.Inventory) == "table", "Player inventory format invalid")
-        end
-    else
-        check(false, "DataService missing")
-    end
-
-    summary.total = summary.passed + summary.failed
-
     Signals.RunDiagnostics:FireClient(player, summary)
 
-    self._logger:Info("Diagnostics run for player", {player = player.Name, passed = summary.passed, failed = summary.failed})
+    self._logger:Info("Diagnostics (TestEZ) completed", {player = player.Name, passed = summary.passed, failed = summary.failed, duration = summary.duration})
 end
 
 return DiagnosticsService
