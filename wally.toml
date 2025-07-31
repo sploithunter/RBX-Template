@@ -15,4 +15,6 @@ Reflex = "littensy/reflex@4.3.1"           # State management
 ProfileStore = "vyon/profilestore@1.0.3"   # Data persistence (shared realm fork)
 
 # Note: Signal, Maid, and Sift still manually managed in src/Shared/Libraries/
+Net = "sleitnick/net@0.2.0"
+
 # Note: Matter requires workaround in Locations.getPackage() due to nested package structure 

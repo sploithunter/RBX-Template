@@ -132,6 +132,7 @@ Locations.Services = {
     GlobalEffectsService = "GlobalEffectsService",
     RateLimitService = "RateLimitService",
     ServerClockService = "ServerClockService",
+    InventoryService = "InventoryService",
     EggService = "EggService",
     EggSpawner = "EggSpawner"
 }

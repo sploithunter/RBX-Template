@@ -23,6 +23,11 @@ version = "0.4.1"
 dependencies = []
 
 [[package]]
+name = "sleitnick/net"
+version = "0.2.0"
+dependencies = []
+
+[[package]]
 name = "vyon/profilestore"
 version = "1.0.3"
 dependencies = []
@@ -30,4 +35,4 @@ dependencies = []
 [[package]]
 name = "yourusername/game-template"
 version = "0.1.0"
-dependencies = [["Matter", "matter-ecs/matter@0.8.5"], ["ProfileStore", "vyon/profilestore@1.0.3"], ["Promise", "evaera/promise@4.0.0"], ["Reflex", "littensy/reflex@4.3.1"], ["TestEZ", "roblox/testez@0.4.1"]]
+dependencies = [["Matter", "matter-ecs/matter@0.8.5"], ["Net", "sleitnick/net@0.2.0"], ["ProfileStore", "vyon/profilestore@1.0.3"], ["Promise", "evaera/promise@4.0.0"], ["Reflex", "littensy/reflex@4.3.1"], ["TestEZ", "roblox/testez@0.4.1"]]

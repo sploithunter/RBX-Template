@@ -131,10 +131,27 @@ function NetworkBridge:Connect(callback)
 end
 
 function NetworkBridge:Fire(target, packetType, data, options)
+    -- Handle client-side calls where target is actually packetType
+    if IS_CLIENT and typeof(target) == "string" and typeof(packetType) == "table" then
+        -- Client call: Fire(packetType, data, options)
+        options = data or {}
+        data = packetType
+        packetType = target
+        target = nil
+    end
+    
     options = options or {}
     
     local packetDef = self._packets[packetType]
     if not packetDef then
+        if self._logger then
+            self._logger:Error("🚨 PACKET NOT FOUND", {
+                bridge = self.name,
+                packetType = packetType,
+                packetTypeType = typeof(packetType),
+                availablePackets = self._packets and table.concat(self:_getPacketNames(), ", ") or "none"
+            })
+        end
         error(string.format("Undefined packet type '%s' for bridge '%s'", packetType, self.name))
     end
     
@@ -183,11 +200,25 @@ function NetworkBridge:Fire(target, packetType, data, options)
         end
     else
         -- Client to server
+        if self._logger then
+            self._logger:Debug("🔍 CLIENT - Attempting to send packet", {
+                bridge = self.name,
+                packetType = packetType,
+                data = data
+            })
+        end
+        
         if self:_checkRateLimit(packetType) then
+            if self._logger then
+                self._logger:Debug("🔍 CLIENT - Rate limit passed, sending packet", {
+                    bridge = self.name,
+                    packetType = packetType
+                })
+            end
             remoteEvent:FireServer(packetType, data, metadata)
         else
             if self._logger then
-                self._logger:Warn("Rate limit exceeded", {
+                self._logger:Warn("🚨 CLIENT - Rate limit exceeded", {
                     bridge = self.name,
                     packetType = packetType
                 })
@@ -414,6 +445,15 @@ if IS_SERVER then
         -- Clear batch queues
         batchQueues[tostring(player.UserId)] = nil
     end)
+end
+
+-- Helper method to get packet names for debugging
+function NetworkBridge:_getPacketNames()
+    local names = {}
+    for name, _ in pairs(self._packets) do
+        table.insert(names, name)
+    end
+    return names
 end
 
 return NetworkBridge 

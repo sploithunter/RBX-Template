@@ -23,6 +23,9 @@ local TweenService = game:GetService("TweenService")
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local NetworkConfig = require(Locations.NetworkConfig)
 
+-- New Net Signals
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+
 -- Load Logger with wrapper (following the established pattern)
 local LoggerWrapper
 local loggerSuccess, loggerResult = pcall(function()
@@ -676,7 +679,27 @@ function AdminPanel:_executePurchaseAction(action)
     if purchaseData then
         -- Add target player data if selected
         local actionData = self:_getAdminActionData(purchaseData)
-        self.economyBridge:Fire("server", "purchase_item", actionData)
+        
+        -- 🔍 DEBUG: Check if bridge exists and is callable
+        self.logger:info("🔍 ADMIN PANEL - About to call bridge Fire", {
+            hasBridge = self.economyBridge ~= nil,
+            bridgeType = typeof(self.economyBridge),
+            hasFireMethod = self.economyBridge and typeof(self.economyBridge.Fire) == "function",
+            item = purchaseData.itemId,
+            targetData = actionData
+        })
+        
+        if not self.economyBridge then
+            self.logger:warn("🚨 ADMIN PANEL - Economy bridge is nil!")
+            return
+        end
+        
+        if not self.economyBridge.Fire then
+            self.logger:warn("🚨 ADMIN PANEL - Economy bridge has no Fire method!")
+            return
+        end
+        
+        Signals.PurchaseItem:FireServer(actionData)
         self.logger:info("Purchase request sent:", {item = purchaseData.itemId, targetData = actionData})
     end
 end
@@ -697,7 +720,7 @@ function AdminPanel:_executeCurrencyAction(action)
     if adjustment then
         -- Add target player data if selected
         local actionData = self:_getAdminActionData(adjustment)
-        self.economyBridge:Fire("server", "adjust_currency", actionData)
+        Signals.AdjustCurrency:FireServer(actionData)
         self.logger:info("Currency adjustment sent:", actionData)
         return
     end
@@ -716,7 +739,7 @@ function AdminPanel:_executeCustomCurrencyAdjust(currency, amount)
     
     -- Add target player data if selected
     local actionData = self:_getAdminActionData(adjustCurrencyData)
-    self.economyBridge:Fire("server", "adjust_currency", actionData)
+    Signals.AdjustCurrency:FireServer(actionData)
     self.logger:info("🔧 Custom currency ADJUST action sent:", actionData)
 end
 
@@ -728,7 +751,7 @@ function AdminPanel:_resetCurrencies()
     
     -- Add target player data if selected
     local actionData = self:_getAdminActionData({})
-    self.economyBridge:Fire("server", "reset_currencies", actionData)
+            Signals.AdjustCurrency:FireServer({reset = true, target = actionData.target})
     self.logger:info("Currency reset requested:", actionData)
 end
 
@@ -975,7 +998,7 @@ end
 function AdminPanel:_refreshPlayerList()
     -- Request updated player list from server
     if self.economyBridge then
-        self.economyBridge:Fire("server", "get_player_list", {})
+        self.economyBridge:Fire("get_player_list", {})
         self.logger:info("Requested player list from server")
     else
         self.logger:warn("Cannot refresh player list - economy bridge not available")

@@ -162,13 +162,26 @@ function NetworkConfig:ConnectServerHandlers(services)
                     if serviceName and methodName then
                         local service = services[serviceName]
                         if service and service[methodName] then
+                            if self._logger then
+                                self._logger:Debug("🔍 NETWORK - Calling handler", {
+                                    service = serviceName,
+                                    method = methodName,
+                                    packet = packetType,
+                                    player = player.Name
+                                })
+                            end
                             service[methodName](service, player, data)
-                        elseif self._logger then
-                            self._logger:Warn("Handler not found", {
-                                service = serviceName,
-                                method = methodName,
-                                packet = packetType
-                            })
+                        else
+                            if self._logger then
+                                self._logger:Warn("Handler not found", {
+                                    service = serviceName,
+                                    method = methodName,
+                                    packet = packetType,
+                                    serviceExists = service ~= nil,
+                                    methodExists = service and service[methodName] ~= nil,
+                                    availableMethods = service and typeof(service) == "table" and #service or "not_table"
+                                })
+                            end
                         end
                     end
                 end

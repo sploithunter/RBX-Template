@@ -615,6 +615,8 @@ function ConfigLoader:ValidateConfig(configName, config)
         return self:_validateCurrenciesConfig(config)
     elseif configName == "ui" then
         return self:_validateUIConfig(config)
+    elseif configName == "inventory" then
+        return self:_validateInventoryConfig(config)
     end
     
     -- Default validation for other configs
@@ -826,6 +828,114 @@ end
 
 function ConfigLoader:IsDevelopment()
     return self:GetEnvironment() == "development"
+end
+
+function ConfigLoader:_validateInventoryConfig(config)
+    if not config then
+        return false, "Inventory config is nil"
+    end
+    
+    -- Check required top-level fields
+    local requiredFields = {"version", "enabled_buckets", "buckets", "settings"}
+    for _, field in ipairs(requiredFields) do
+        if not config[field] then
+            return false, "Missing required field: " .. field
+        end
+    end
+    
+    -- Validate version
+    if type(config.version) ~= "string" then
+        return false, "Version must be a string"
+    end
+    
+    -- Validate enabled_buckets
+    if type(config.enabled_buckets) ~= "table" then
+        return false, "enabled_buckets must be a table"
+    end
+    
+    -- Validate buckets
+    if type(config.buckets) ~= "table" then
+        return false, "buckets must be a table"
+    end
+    
+    -- Check that each enabled bucket has a corresponding bucket definition
+    for bucketName, enabled in pairs(config.enabled_buckets) do
+        if enabled and not config.buckets[bucketName] then
+            return false, "Enabled bucket '" .. bucketName .. "' has no bucket definition"
+        end
+        
+        if enabled then
+            local bucket = config.buckets[bucketName]
+            
+            -- Validate required bucket fields
+            local requiredBucketFields = {"display_name", "icon", "base_limit", "stack_size", "storage_type", "item_schema"}
+            for _, field in ipairs(requiredBucketFields) do
+                if not bucket[field] then
+                    return false, "Bucket '" .. bucketName .. "' missing required field: " .. field
+                end
+            end
+            
+            -- Validate bucket field types
+            if type(bucket.display_name) ~= "string" then
+                return false, "Bucket '" .. bucketName .. "' display_name must be a string"
+            end
+            
+            if type(bucket.base_limit) ~= "number" or bucket.base_limit <= 0 then
+                return false, "Bucket '" .. bucketName .. "' base_limit must be a positive number"
+            end
+            
+            if type(bucket.stack_size) ~= "number" or bucket.stack_size <= 0 then
+                return false, "Bucket '" .. bucketName .. "' stack_size must be a positive number"
+            end
+            
+            -- Validate storage_type
+            if bucket.storage_type ~= "unique" and bucket.storage_type ~= "stackable" then
+                return false, "Bucket '" .. bucketName .. "' storage_type must be 'unique' or 'stackable'"
+            end
+            
+            -- Validate item schema
+            if type(bucket.item_schema) ~= "table" then
+                return false, "Bucket '" .. bucketName .. "' item_schema must be a table"
+            end
+            
+            if not bucket.item_schema.required or type(bucket.item_schema.required) ~= "table" then
+                return false, "Bucket '" .. bucketName .. "' item_schema must have 'required' array"
+            end
+            
+            if not bucket.item_schema.optional or type(bucket.item_schema.optional) ~= "table" then
+                return false, "Bucket '" .. bucketName .. "' item_schema must have 'optional' array"  
+            end
+        end
+    end
+    
+    -- Validate equipped configuration
+    if config.equipped then
+        if type(config.equipped) ~= "table" then
+            return false, "equipped must be a table"
+        end
+        
+        for equipCategory, equipConfig in pairs(config.equipped) do
+            if type(equipConfig) ~= "table" then
+                return false, "Equipped category '" .. equipCategory .. "' must be a table"
+            end
+            
+            if not equipConfig.slots then
+                return false, "Equipped category '" .. equipCategory .. "' missing slots field"
+            end
+            
+            if not equipConfig.display_name or type(equipConfig.display_name) ~= "string" then
+                return false, "Equipped category '" .. equipCategory .. "' missing or invalid display_name"
+            end
+        end
+    end
+    
+    -- Validate settings
+    if type(config.settings) ~= "table" then
+        return false, "settings must be a table"
+    end
+    
+    print("✅ INVENTORY CONFIG VALIDATION - Inventory configuration is valid")
+    return true
 end
 
 return ConfigLoader 

@@ -355,6 +355,15 @@ if not _G.__LOGGER_ERROR_HANDLER_SET then
     if LogService then
         LogService.MessageOut:Connect(function(message, messageType)
             if messageType == Enum.MessageType.MessageError then
+                -- Filter out known non-critical asset loading errors
+                if message:find("Failed to load animation") or 
+                   message:find("Failed to load sound") or
+                   message:find("MeshContentProvider failed") or
+                   message:find("Failed to parse batch json response") or
+                   message:find("Unable to load plugin icon") then
+                    -- Suppress these non-critical asset errors
+                    return
+                end
                 globalErrorHandler(message)
             end
         end)

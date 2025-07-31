@@ -36,8 +36,11 @@ local function generateProfileTemplate(configLoader)
         -- Currencies (generated from configuration)
         Currencies = {},
         
-        -- Inventory system
+        -- Inventory system (generated from configuration)
         Inventory = {},
+        
+        -- Equipped items (generated from configuration)  
+        Equipped = {},
         
         -- Player stats
         Stats = {
@@ -120,6 +123,97 @@ local function generateProfileTemplate(configLoader)
                 coins = 100,
                 gems = 0,
                 crystals = 0
+            }
+        end
+        
+        -- Load inventory configuration and generate buckets
+        local inventorySuccess, inventoryConfig = pcall(function()
+            return configLoader:LoadConfig("inventory")
+        end)
+        
+        if inventorySuccess and inventoryConfig then
+            -- 🛡️ SAFETY PRINCIPLE: Only ADD new buckets from config, NEVER remove existing ones
+            -- This prevents accidental data loss if buckets are temporarily disabled in config
+            
+            for bucketName, enabled in pairs(inventoryConfig.enabled_buckets) do
+                if enabled and inventoryConfig.buckets[bucketName] then
+                    local bucketConfig = inventoryConfig.buckets[bucketName]
+                    
+                    -- Only create bucket if it doesn't exist (never overwrite)
+                    if not template.Inventory[bucketName] then
+                        template.Inventory[bucketName] = {
+                            items = {},  -- Will store item UID -> item data
+                            total_slots = bucketConfig.base_limit,
+                            used_slots = 0
+                        }
+                        
+                        print(string.format("📦 INVENTORY TRACE - Created NEW bucket: %s with %d slots", 
+                            bucketName, bucketConfig.base_limit))
+                    else
+                        print(string.format("🛡️ BUCKET SAFETY - Preserved existing bucket: %s (not overwritten)", 
+                            bucketName))
+                    end
+                end
+            end
+            
+            -- Log any buckets that exist in template but are not in current config
+            -- (This helps detect accidentally disabled buckets)
+            for existingBucket in pairs(template.Inventory) do
+                if not inventoryConfig.enabled_buckets[existingBucket] then
+                    print(string.format("⚠️ BUCKET SAFETY WARNING - Bucket '%s' exists but not enabled in config", 
+                        existingBucket))
+                end
+            end
+            
+            -- Generate equipped slots from configuration
+            for equipCategory, equipConfig in pairs(inventoryConfig.equipped or {}) do
+                if type(equipConfig.slots) == "number" then
+                    -- Simple slot count (e.g., pets = 3 slots)
+                    template.Equipped[equipCategory] = {}
+                    for i = 1, equipConfig.slots do
+                        template.Equipped[equipCategory]["slot_" .. i] = nil  -- Empty slot
+                    end
+                    
+                    print(string.format("⚔️ EQUIPPED TRACE - Generated %s with %d slots", 
+                        equipCategory, equipConfig.slots))
+                elseif type(equipConfig.slots) == "table" then
+                    -- Named slots (e.g., armor = {helmet=1, chest=1, etc.})
+                    template.Equipped[equipCategory] = {}
+                    for slotName, slotCount in pairs(equipConfig.slots) do
+                        if slotCount == 1 then
+                            template.Equipped[equipCategory][slotName] = nil  -- Single slot
+                        else
+                            -- Multiple slots (future expansion)
+                            for i = 1, slotCount do
+                                template.Equipped[equipCategory][slotName .. "_" .. i] = nil
+                            end
+                        end
+                    end
+                    
+                    print(string.format("⚔️ EQUIPPED TRACE - Generated %s with named slots", equipCategory))
+                end
+            end
+            
+            print("📦 INVENTORY TRACE - Profile template inventory generation completed", {
+                inventoryBuckets = template.Inventory,
+                equippedCategories = template.Equipped
+            })
+        else
+            warn("📦 INVENTORY TRACE - Failed to load inventory config, using minimal fallback")
+            -- Minimal fallback inventory structure
+            template.Inventory = {
+                pets = {
+                    items = {},
+                    total_slots = 50,
+                    used_slots = 0
+                }
+            }
+            template.Equipped = {
+                pets = {
+                    slot_1 = nil,
+                    slot_2 = nil,
+                    slot_3 = nil
+                }
             }
         end
     end
@@ -213,7 +307,7 @@ function DataService:LoadProfile(player)
                 local stackTrace = debug.traceback("", 2)
                 
                 -- Determine if this change came from our DataService
-                local isFromDataService = stackTrace:find("DataService") ~= nil
+                local isFromDataService = (stackTrace:find("DataService") or stackTrace:find("EconomyService") or stackTrace:find("AddCurrency") or stackTrace:find("RemoveCurrency")) ~= nil
                 local isFromSetCurrency = stackTrace:find("SetCurrency") ~= nil
                 
                 self._logger:Info("🪙 COIN TRACE - Coins attribute CHANGED", {
@@ -225,7 +319,8 @@ function DataService:LoadProfile(player)
                 })
                 
                 -- If changed externally, this is likely the bug!
-                if not isFromDataService then
+                local serverValue = self:GetCurrency(player, "coins")
+                if not isFromDataService and newValue ~= serverValue then
                     self._logger:Warn("🚨 EXTERNAL COIN CHANGE DETECTED - This may be the bug!", {
                         player = player.Name,
                         externalValue = newValue,
@@ -245,11 +340,65 @@ function DataService:LoadProfile(player)
                 })
             end)
             
+            -- INVENTORY TRACE: Log the inventory structure that was loaded/created
+            local inventoryInfo = {}
+            for bucketName, bucket in pairs(data.Inventory or {}) do
+                -- SAFETY CHECK: Handle both old format (numbers) and new format (bucket objects)
+                if type(bucket) == "table" and bucket.total_slots then
+                    -- New bucket format
+                    inventoryInfo[bucketName] = {
+                        total_slots = bucket.total_slots,
+                        used_slots = bucket.used_slots,
+                        item_count = 0,
+                        format = "new_bucket"
+                    }
+                    if bucket.items then
+                        for _ in pairs(bucket.items) do
+                            inventoryInfo[bucketName].item_count = inventoryInfo[bucketName].item_count + 1
+                        end
+                    end
+                else
+                    -- Old format (direct item counts) - preserve but mark for migration
+                    inventoryInfo[bucketName] = {
+                        total_slots = "unknown",
+                        used_slots = "unknown", 
+                        item_count = type(bucket) == "number" and bucket or 0,
+                        format = "legacy_count",
+                        legacy_value = bucket
+                    }
+                    
+                    self._logger:Warn("🚨 INVENTORY LEGACY FORMAT DETECTED", {
+                        player = player.Name,
+                        bucketName = bucketName,
+                        legacyValue = bucket,
+                        needsMigration = true
+                    })
+                end
+            end
+            
+            local equippedInfo = {}
+            for category, slots in pairs(data.Equipped or {}) do
+                equippedInfo[category] = {}
+                for slotName, itemUid in pairs(slots) do
+                    equippedInfo[category][slotName] = itemUid and "occupied" or "empty"
+                end
+            end
+            
             self._logger:Info("Profile loaded successfully", {
                 player = player.Name,
                 level = data.Stats.Level,
                 coins = data.Currencies.coins,
-                sessionCount = data.Analytics.SessionCount
+                sessionCount = data.Analytics.SessionCount,
+                inventoryStructure = inventoryInfo,
+                equippedStructure = equippedInfo
+            })
+            
+            self._logger:Info("📦 INVENTORY TRACE - Profile inventory structure loaded", {
+                player = player.Name,
+                inventoryBuckets = inventoryInfo,
+                equippedCategories = equippedInfo,
+                hasInventoryData = data.Inventory ~= nil,
+                hasEquippedData = data.Equipped ~= nil
             })
             
             -- COIN TRACING: Log what was loaded from ProfileStore
@@ -569,7 +718,10 @@ function DataService:MigrateProfile(profile)
     -- 3. Migrate core data structure
     migrationCount = migrationCount + self:_migrateCoreData(data)
     
-    -- 4. SAFE Reconcile - only adds missing fields, never removes
+    -- 4. Migrate inventory system safely (preserve all data)
+    migrationCount = migrationCount + self:_migrateInventoryBuckets(data)
+    
+    -- 5. SAFE Reconcile - only adds missing fields, never removes
     profile:Reconcile()
     
     if migrationCount > 0 then
@@ -723,6 +875,175 @@ function DataService:_migrateCoreData(data)
     if not data.PlayerClock.totalPlayTime then
         data.PlayerClock.totalPlayTime = 0
         migrations = migrations + 1
+    end
+    
+    return migrations
+end
+
+function DataService:_migrateInventoryBuckets(data)
+    local migrations = 0
+    
+    -- 🛡️ CRITICAL SAFETY PRINCIPLE: NEVER delete inventory buckets, only migrate/preserve
+    self._logger:Info("🛡️ INVENTORY MIGRATION - Starting safe inventory bucket migration")
+    
+    -- Ensure core inventory structure exists
+    if not data.Inventory then
+        data.Inventory = {}
+        migrations = migrations + 1
+        self._logger:Info("📦 INVENTORY MIGRATION - Created Inventory section")
+    end
+    
+    if not data.Equipped then
+        data.Equipped = {}
+        migrations = migrations + 1
+        self._logger:Info("⚔️ INVENTORY MIGRATION - Created Equipped section")
+    end
+    
+    -- Load current inventory configuration
+    local inventoryConfig = nil
+    local configSuccess, configResult = pcall(function()
+        return self._configLoader:LoadConfig("inventory")
+    end)
+    
+    if not configSuccess then
+        self._logger:Warn("🛡️ INVENTORY MIGRATION - Could not load config, preserving existing structure", {
+            error = configResult
+        })
+        return migrations
+    end
+    
+    inventoryConfig = configResult
+    
+    -- 🛡️ SAFETY RULE 1: Preserve ALL existing buckets regardless of current config
+    for existingBucketName, existingBucket in pairs(data.Inventory) do
+        if type(existingBucket) == "number" then
+            -- LEGACY FORMAT: Convert old item count to new bucket format
+            self._logger:Info("📦 INVENTORY MIGRATION - Converting legacy bucket", {
+                bucketName = existingBucketName,
+                oldFormat = "item_count",
+                oldValue = existingBucket
+            })
+            
+            data.Inventory[existingBucketName] = {
+                items = {},
+                total_slots = 50,  -- Default slot count for migrated buckets
+                used_slots = 0,
+                _migrated_from_legacy = true,
+                _legacy_item_count = existingBucket  -- Preserve original data for reference
+            }
+            migrations = migrations + 1
+            
+        elseif type(existingBucket) == "table" then
+            -- MODERN FORMAT: Ensure all required fields exist
+            if not existingBucket.items then
+                existingBucket.items = {}
+                migrations = migrations + 1
+            end
+            if not existingBucket.total_slots then
+                existingBucket.total_slots = 50  -- Default
+                migrations = migrations + 1
+            end
+            if existingBucket.used_slots == nil then
+                existingBucket.used_slots = 0
+                migrations = migrations + 1
+            end
+            
+            self._logger:Debug("📦 INVENTORY MIGRATION - Preserved modern bucket", {
+                bucketName = existingBucketName,
+                totalSlots = existingBucket.total_slots,
+                usedSlots = existingBucket.used_slots
+            })
+        end
+    end
+    
+    -- 🛡️ SAFETY RULE 2: Add new buckets from config (but never remove existing ones)
+    if inventoryConfig and inventoryConfig.enabled_buckets then
+        for bucketName, enabled in pairs(inventoryConfig.enabled_buckets) do
+            if enabled and inventoryConfig.buckets[bucketName] then
+                local bucketConfig = inventoryConfig.buckets[bucketName]
+                
+                if not data.Inventory[bucketName] then
+                    -- NEW BUCKET: Create from config
+                    data.Inventory[bucketName] = {
+                        items = {},
+                        total_slots = bucketConfig.base_limit,
+                        used_slots = 0
+                    }
+                    migrations = migrations + 1
+                    
+                    self._logger:Info("📦 INVENTORY MIGRATION - Added new bucket from config", {
+                        bucketName = bucketName,
+                        totalSlots = bucketConfig.base_limit
+                    })
+                else
+                    -- EXISTING BUCKET: Optionally update slot limits (but preserve data)
+                    local existingBucket = data.Inventory[bucketName]
+                    if type(existingBucket) == "table" and existingBucket.total_slots then
+                        -- Only increase slot limits, never decrease (prevent data loss)
+                        if bucketConfig.base_limit > existingBucket.total_slots then
+                            existingBucket.total_slots = bucketConfig.base_limit
+                            migrations = migrations + 1
+                            
+                            self._logger:Info("📦 INVENTORY MIGRATION - Increased bucket slot limit", {
+                                bucketName = bucketName,
+                                oldLimit = existingBucket.total_slots,
+                                newLimit = bucketConfig.base_limit
+                            })
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- Log any orphaned buckets (exist in profile but not in config)
+        for existingBucketName in pairs(data.Inventory) do
+            if not inventoryConfig.enabled_buckets[existingBucketName] then
+                self._logger:Warn("⚠️ ORPHANED BUCKET DETECTED", {
+                    bucketName = existingBucketName,
+                    message = "Bucket exists in profile but not enabled in current config",
+                    action = "PRESERVED (never deleted for safety)",
+                    recommendation = "Consider re-enabling in config or create explicit deletion process"
+                })
+            end
+        end
+    end
+    
+    -- Migrate equipped slots safely
+    if inventoryConfig and inventoryConfig.equipped then
+        for equipCategory, equipConfig in pairs(inventoryConfig.equipped) do
+            if not data.Equipped[equipCategory] then
+                data.Equipped[equipCategory] = {}
+                
+                if type(equipConfig.slots) == "number" then
+                    for i = 1, equipConfig.slots do
+                        data.Equipped[equipCategory]["slot_" .. i] = nil
+                    end
+                elseif type(equipConfig.slots) == "table" then
+                    for slotName, slotCount in pairs(equipConfig.slots) do
+                        if slotCount == 1 then
+                            data.Equipped[equipCategory][slotName] = nil
+                        else
+                            for i = 1, slotCount do
+                                data.Equipped[equipCategory][slotName .. "_" .. i] = nil
+                            end
+                        end
+                    end
+                end
+                
+                migrations = migrations + 1
+                self._logger:Info("⚔️ INVENTORY MIGRATION - Added equipped category", {
+                    equipCategory = equipCategory
+                })
+            end
+        end
+    end
+    
+    if migrations > 0 then
+        self._logger:Info("🛡️ INVENTORY MIGRATION - Safe migration completed", {
+            migrationsApplied = migrations,
+            preservedBuckets = true,
+            dataLossRisk = false
+        })
     end
     
     return migrations

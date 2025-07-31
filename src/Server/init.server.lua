@@ -44,8 +44,9 @@ loader:RegisterModule("AssetPreloadService", ServerScriptService.Server.Services
 loader:RegisterModule("PlayerEffectsService", ServerScriptService.Server.Services.PlayerEffectsService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
 loader:RegisterModule("GlobalEffectsService", ServerScriptService.Server.Services.GlobalEffectsService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
 loader:RegisterModule("ProductIdMapper", ReplicatedStorage.Shared.Utils.ProductIdMapper, {"Logger", "ConfigLoader"})
-loader:RegisterModule("EconomyService", ServerScriptService.Server.Services.EconomyService, {"Logger", "DataService", "NetworkConfig", "ConfigLoader", "PlayerEffectsService", "GlobalEffectsService", "AdminService"})
+loader:RegisterModule("EconomyService", ServerScriptService.Server.Services.EconomyService, {"Logger", "DataService", "NetworkConfig", "ConfigLoader", "PlayerEffectsService", "GlobalEffectsService", "AdminService", "InventoryService"})
 loader:RegisterModule("MonetizationService", ServerScriptService.Server.Services.MonetizationService, {"Logger", "DataService", "EconomyService", "ProductIdMapper", "PlayerEffectsService", "NetworkConfig"})
+loader:RegisterModule("InventoryService", ServerScriptService.Server.Services.InventoryService, {"Logger", "DataService", "ConfigLoader"})
 
 -- Register lazy services (loaded when needed)
 -- loader:RegisterLazyModule("TradeService", ServerScriptService.Server.Services.TradeService, {"EconomyService", "DataService", "NetworkBridge"}) -- TODO: Create TradeService
@@ -66,7 +67,7 @@ local loadOrder = loadOrderOrError
 print("✅ Modules loaded:", table.concat(loadOrder, ", "))
 
 -- Validate critical modules loaded
-local requiredModules = {"Logger", "ConfigLoader", "ServerClockService", "DataService", "PlayerEffectsService", "GlobalEffectsService", "EconomyService", "NetworkConfig", "ProductIdMapper", "MonetizationService"}
+local requiredModules = {"Logger", "ConfigLoader", "ServerClockService", "DataService", "PlayerEffectsService", "GlobalEffectsService", "EconomyService", "NetworkConfig", "ProductIdMapper", "MonetizationService", "InventoryService"}
 for _, moduleName in ipairs(requiredModules) do
     local module = loader:Get(moduleName)
     if not module then
@@ -91,7 +92,9 @@ DataService:SetPlayerEffectsService(PlayerEffectsService)
 NetworkConfig:ConnectServerHandlers({
     EconomyService = loader:Get("EconomyService"),
     DataService = loader:Get("DataService"),
-    MonetizationService = loader:Get("MonetizationService")
+    MonetizationService = loader:Get("MonetizationService"),
+    AdminService = loader:Get("AdminService"),
+    InventoryService = loader:Get("InventoryService")
 })
 
 -- Inject RateLimitService into NetworkBridge for advanced rate limiting

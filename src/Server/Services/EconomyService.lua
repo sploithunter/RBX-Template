@@ -33,6 +33,7 @@ function EconomyService:Init()
     self._playerEffectsService = self._modules.PlayerEffectsService
     self._globalEffectsService = self._modules.GlobalEffectsService
     self._adminService = self._modules.AdminService
+    self._inventoryService = self._modules.InventoryService
     -- Backward-compatibility alias so existing effect code can reuse old variable names
     self._rateLimitService = self._playerEffectsService
     
@@ -66,6 +67,14 @@ function EconomyService:Init()
         self._logger:Info("EconomyService: RateLimitService dependency loaded successfully")
     end
     
+    -- Validate InventoryService dependency
+    if not self._inventoryService then
+        self._logger:Error("CRITICAL: InventoryService dependency missing")
+        error("EconomyService: InventoryService dependency missing - check ModuleLoader configuration")
+    else
+        self._logger:Info("EconomyService: InventoryService dependency loaded successfully")
+    end
+    
     -- Create signals for economy events
     self.CurrencyChanged = Signal.new()
     self.ItemPurchased = Signal.new()
@@ -76,6 +85,8 @@ function EconomyService:Init()
     
     -- Set up networking
     self:_setupNetworking()
+    -- Set up Net signals
+    self:_setupNetSignals()
     
     -- Set up monetization
     self:_setupMonetization()
@@ -84,6 +95,50 @@ function EconomyService:Init()
 end
 
 function EconomyService:_setupNetworking()
+    -- legacy bridge setup kept for backwards compatibility
+    self._signals = require(game:GetService("ReplicatedStorage").Shared.Network.Signals)
+    self._economyBridge = {Fire = function() end}
+end
+
+-- New Net signal setup using sleitnick/Net
+function EconomyService:_setupNetSignals()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+    self._signals = Signals
+
+    -- Purchase item from client
+    Signals.PurchaseItem.OnServerEvent:Connect(function(player, data)
+        local ok, msg = self:PurchaseItem(player, data)
+        -- return result to client
+        Signals.PurchaseResult:FireClient(player, {success = ok, message = msg})
+    end)
+
+    -- Adjust currency (+/-)
+    Signals.AdjustCurrency.OnServerEvent:Connect(function(player, data)
+        if type(data) ~= "table" then return end
+        if data.reset then
+            -- Reset all currencies for player
+            local currencies = self._dataService:GetCurrencies(player)
+            for curr, value in pairs(currencies) do
+                if value > 0 then
+                    self:RemoveCurrency(player, curr, value, "admin_reset")
+                end
+            end
+            return
+        end
+        local currency = data.currency
+        local amount = data.amount
+        if not currency or not amount then return end
+        if amount >= 0 then
+            self:AddCurrency(player, currency, amount, "admin_adjust")
+        else
+            self:RemoveCurrency(player, currency, -amount, "admin_adjust")
+        end
+    end)
+end
+
+-- legacy networking code moved to _setupLegacyBridge
+--[[ LEGACY ECONOMY BRIDGE kept for backward compatibility
     -- Get the auto-configured Economy bridge from NetworkConfig
     self._economyBridge = self._networkConfig:GetBridge("Economy")
     
@@ -93,7 +148,8 @@ function EconomyService:_setupNetworking()
     end
     
     self._logger:Debug("Economy networking ready", {bridge = "Economy"})
-end
+--]]
+-- End of DebugExpose legacy block
 
 function EconomyService:_setupMonetization()
     -- Handle developer product purchases
@@ -138,7 +194,7 @@ function EconomyService:AddCurrency(player, currencyType, amount, reason)
         self.CurrencyChanged:Fire(player, currencyType, newAmount, oldAmount)
         
         -- Sync to client
-        self._economyBridge:Fire(player, "CurrencyUpdate", {
+        require(game:GetService("ReplicatedStorage").Shared.Network.Signals).CurrencyUpdate:FireClient(player, {
             currency = currencyType,
             amount = newAmount,
             change = amount
@@ -197,7 +253,7 @@ function EconomyService:RemoveCurrency(player, currencyType, amount, reason)
         
         -- Sync to client (with error handling)
         local bridgeSuccess, bridgeError = pcall(function()
-            self._economyBridge:Fire(player, "CurrencyUpdate", {
+            require(game:GetService("ReplicatedStorage").Shared.Network.Signals).CurrencyUpdate:FireClient(player, {
                 currency = currencyType,
                 amount = newAmount,
                 change = -amount
@@ -322,13 +378,56 @@ function EconomyService:PurchaseItem(player, data)
         return false
     end
     
-    -- Add item to inventory
+    -- Add item to inventory using new InventoryService
+    self._logger:Info("💰 PURCHASE - Adding item to new inventory system", {
+        player = player.Name,
+        itemId = itemId,
+        itemConfig = itemConfig
+    })
+    
+    -- Determine which bucket this item belongs to based on configuration
+    local bucketName = self:_determineItemBucket(itemConfig)
+    if not bucketName then
+        self._logger:Error("💰 PURCHASE - Could not determine bucket for item", {
+            itemId = itemId,
+            itemConfig = itemConfig
+        })
+        -- Refund 
+        self:AddCurrency(player, price.currency, price.amount, "purchase_refund_no_bucket")
+        self:_sendError(player, "Item configuration error")
+        return false
+    end
+    
+    -- Create item data for inventory
+    local itemData = {
+        id = itemId,
+        obtained_at = os.time()
+    }
+    
+    -- Add quantity for stackable items
+    if itemConfig.stackable then
+        itemData.quantity = 1
+    end
+    
+    -- Add any additional properties from the item config
+    if itemConfig.level then
+        itemData.level = itemConfig.level
+    end
+    if itemConfig.rarity then
+        itemData.rarity = itemConfig.rarity
+    end
+    
     local inventoryCallSuccess, inventoryResult = pcall(function()
-        return self._dataService:AddToInventory(player, itemId, 1)
+        return self._inventoryService:AddItem(player, bucketName, itemData)
     end)
     
     if not inventoryCallSuccess then
-        self._logger:Error("Error during inventory addition", {error = inventoryResult, itemId = itemId})
+        self._logger:Error("💰 PURCHASE - Error during inventory addition", {
+            error = inventoryResult, 
+            itemId = itemId,
+            bucketName = bucketName,
+            player = player.Name
+        })
         -- Refund if inventory add failed due to error
         self:AddCurrency(player, price.currency, price.amount, "purchase_refund_error")
         self:_sendError(player, "Inventory error")
@@ -336,11 +435,23 @@ function EconomyService:PurchaseItem(player, data)
     end
     
     if not inventoryResult then
+        self._logger:Warn("💰 PURCHASE - Inventory addition failed (no space)", {
+            itemId = itemId,
+            bucketName = bucketName,
+            player = player.Name
+        })
         -- Refund if inventory add failed
         self:AddCurrency(player, price.currency, price.amount, "purchase_refund")
         self:_sendError(player, "Inventory full")
         return false
     end
+    
+    self._logger:Info("💰 PURCHASE - Item successfully added to inventory", {
+        player = player.Name,
+        itemId = itemId,
+        uid = inventoryResult,
+        bucketName = bucketName
+    })
     
     -- Log transaction
     self:_logTransaction(player, {
@@ -993,7 +1104,7 @@ function EconomyService:SetCurrency(player, data)
         self.CurrencyChanged:Fire(target, data.currency, newAmount, 0)
         
         -- Sync to client
-        self._economyBridge:Fire(target, "CurrencyUpdate", {
+        require(game:GetService("ReplicatedStorage").Shared.Network.Signals).CurrencyUpdate:FireClient(target, {
             currency = data.currency,
             amount = newAmount,
             change = data.amount
@@ -1020,11 +1131,23 @@ function EconomyService:AdminPurchaseItem(player, data)
         player = player.Name,
         itemId = data.itemId,
         cost = data.cost,
-        currency = data.currency
+        currency = data.currency,
+        fullData = data
     })
     
-    -- Use the regular purchase flow
-    local success = self:PurchaseItem(player, data.itemId)
+    -- ❌ FIXED: PurchaseItem expects (player, data) not (player, itemId)
+    -- Create the proper data structure that PurchaseItem expects
+    local purchaseData = {
+        itemId = data.itemId
+    }
+    
+    self._logger:Info("🔧 Admin: Calling PurchaseItem with data", {
+        player = player.Name,
+        purchaseData = purchaseData
+    })
+    
+    -- Use the regular purchase flow with correct parameters
+    local success = self:PurchaseItem(player, purchaseData)
     
     if success then
         self._logger:Info("🔧 Admin: Item purchase successful", {
@@ -1050,7 +1173,7 @@ function EconomyService:ResetCurrencies(player, data)
         self._dataService:SetCurrency(player, currency.id, defaultAmount)
         
         -- Sync to client
-        self._economyBridge:Fire(player, "CurrencyUpdate", {
+        require(game:GetService("ReplicatedStorage").Shared.Network.Signals).CurrencyUpdate:FireClient(player, {
             currency = currency.id,
             amount = defaultAmount,
             change = 0
@@ -1062,6 +1185,74 @@ end
 
 function EconomyService:GetTransactionHistory(player)
     return self.TransactionHistory[player] or {}
+end
+
+-- Helper method to determine which inventory bucket an item belongs to
+function EconomyService:_determineItemBucket(itemConfig)
+    -- Get inventory configuration to know what buckets are available
+    local inventoryConfig = self._configLoader:LoadConfig("inventory")
+    if not inventoryConfig or not inventoryConfig.enabled_buckets then
+        return nil
+    end
+    
+    -- Determine bucket based on item properties
+    -- Priority order: explicit bucket, item type, fallback logic
+    
+    -- 1. Check if item explicitly specifies a bucket
+    if itemConfig.inventory_bucket and inventoryConfig.enabled_buckets[itemConfig.inventory_bucket] then
+        return itemConfig.inventory_bucket
+    end
+    
+    -- 2. Determine by item type/category
+    if itemConfig.type then
+        local typeMapping = {
+            consumable = "consumables",
+            potion = "consumables", 
+            resource = "resources",
+            material = "resources",
+            pet = "pets",
+            weapon = "weapons",
+            tool = "tools",
+            cosmetic = "cosmetics"
+        }
+        
+        local mappedBucket = typeMapping[itemConfig.type]
+        if mappedBucket and inventoryConfig.enabled_buckets[mappedBucket] then
+            return mappedBucket
+        end
+    end
+    
+    -- 3. Fallback based on item ID patterns
+    local itemId = itemConfig.id
+    if itemId then
+        if itemId:find("potion") or itemId:find("boost") or itemId:find("scroll") then
+            if inventoryConfig.enabled_buckets.consumables then
+                return "consumables"
+            end
+        elseif itemId:find("wood") or itemId:find("stone") or itemId:find("iron") or itemId:find("gold") then
+            if inventoryConfig.enabled_buckets.resources then
+                return "resources"
+            end
+        elseif itemId:find("sword") or itemId:find("pickaxe") or itemId:find("weapon") then
+            if inventoryConfig.enabled_buckets.weapons then
+                return "weapons"
+            end
+        end
+    end
+    
+    -- 4. Final fallback - use consumables if available (most items are consumable)
+    if inventoryConfig.enabled_buckets.consumables then
+        return "consumables"
+    end
+    
+    -- 5. Absolute fallback - use first available bucket
+    for bucketName, enabled in pairs(inventoryConfig.enabled_buckets) do
+        if enabled then
+            return bucketName
+        end
+    end
+    
+    return nil
 end
 
 -- Cleanup when players leave

@@ -87,7 +87,7 @@ return {
                 },
                 
                 purchase_item = {
-                    rateLimit = 5,
+                    rateLimit = 100,  -- 🔧 INCREASED FOR TESTING
                     direction = "client_to_server",
                     validation = {
                         itemId = "string",

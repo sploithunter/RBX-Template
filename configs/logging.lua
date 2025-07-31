@@ -33,15 +33,15 @@ return {
         Logger = "warn",                  -- Quiet startup
         ConfigLoader = "warn",            -- Only show config errors
         ModuleLoader = "warn",            -- Only show loading issues
-        NetworkBridge = "warn",           -- Only show connection problems
+        NetworkBridge = "debug",          -- 🔍 ENABLE NETWORK DEBUGGING
         NetworkConfig = "warn",           -- Only show config issues
         
         -- === CRITICAL SYSTEMS (Show important status) ===
         DataService = "info",             -- Profile loading is important
-        EconomyService = "warn",          -- Reduce transaction spam
+        EconomyService = "debug",         -- 🔍 ENABLE PURCHASE DEBUGGING
         MonetizationService = "warn",     -- Keep monetization quiet unless issues
         PlayerEffectsService = "warn",    -- Reduce effect application spam
-        AdminService = "warn",            -- Only show admin issues
+        AdminService = "debug",           -- 🔍 ENABLE ADMIN DEBUGGING
         RateLimitService = "warn",        -- Only show rate limit violations
         ServerClockService = "warn",      -- Clock sync issues only
         GlobalEffectsService = "warn",    -- Reduce effect noise
@@ -54,7 +54,7 @@ return {
         BaseUI = "error",                 -- Only show serious UI errors
         TemplateManager = "error",        -- Reduce template spam
         MenuManager = "error",            -- Only show menu failures
-        AdminPanel = "warn",              -- Admin tools can show warnings
+        AdminPanel = "debug",             -- 🔍 ENABLE ADMIN PANEL DEBUGGING
         EffectsPanel = "warn",            -- Effects debugging
         SettingsPanel = "error",          -- Settings are usually stable
         InventoryPanel = "error",         -- Inventory stable
@@ -64,6 +64,7 @@ return {
         EggCurrentTargetService = "warn", -- Reduce targeting spam 
         EggInteractionService = "warn",   -- Only show interaction issues
         EggService = "info",              -- Show egg system status
+        InventoryService = "debug",       -- 🔍 ENABLE INVENTORY DEBUGGING
         
         -- === EXTERNAL PACKAGES (Very quiet) ===
         Matter = "error",                 -- ECS system - only errors
