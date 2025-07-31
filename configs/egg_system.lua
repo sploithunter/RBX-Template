@@ -34,8 +34,8 @@ return {
         
         -- Pet Preview UI Dimensions  
         pet_preview_size = {
-            width = 400,
-            height = 300,
+            width = 600,
+            height = 100,
         },
         
         -- UI Positioning (offset from egg world position)
@@ -46,8 +46,8 @@ return {
         
         -- Pet Preview Positioning (offset from egg world position)
         pet_preview_offset = {
-            x = -200,  -- Pixels left of egg center
-            y = -350,  -- Pixels above egg center (higher than basic preview)
+            x = -300, -- Pixels left of egg center (centers 600px wide panel)
+            y = -250, -- Pixels above egg (enough space to clear egg interaction UI)
         },
         
         -- Colors and Styling
@@ -75,7 +75,34 @@ return {
             prompt = Enum.Font.Gotham,
             notification = Enum.Font.Gotham,
             pet_name = Enum.Font.GothamBold,
-            pet_chance = Enum.Font.Gotham,
+            pet_chance = Enum.Font.Bangers,
+            
+            -- Pet container fonts (for individual pet displays)
+            pet_icon_fallback = Enum.Font.GothamBold,      -- Font for emoji fallback icons (currently used)
+            pet_name_secondary = Enum.Font.Gotham,         -- Alternative pet name font (available for future use)
+            pet_stats = Enum.Font.RobotoMono,              -- For detailed pet stats (available for future use)
+            rarity_label = Enum.Font.GothamBold,           -- For rarity indicators (available for future use)
+            
+            -- Available font options (you can swap any of the above to these):
+            -- Standard fonts that work reliably:
+            -- Enum.Font.Gotham                         - Clean, readable (being replaced by Montserrat)
+            -- Enum.Font.GothamBold                     - Bold version of Gotham
+            -- Enum.Font.GothamBlack                    - Extra bold Gotham
+            -- Enum.Font.Montserrat                     - Replacement for Gotham
+            -- Enum.Font.MontserratBold                 - Bold Montserrat
+            -- Enum.Font.Arimo                          - Replacement for Arial
+            -- Enum.Font.ArimoBold                      - Bold Arimo
+            -- Enum.Font.SourceSans                     - Clean, readable
+            -- Enum.Font.SourceSansBold                 - Bold Source Sans
+            -- Enum.Font.RobotoMono                     - Monospace alternative
+            -- Enum.Font.SpecialElite                   - Typewriter style
+            -- Enum.Font.Creepster                      - Horror/spooky theme
+            -- Enum.Font.Bangers                        - Comic book style
+            -- Enum.Font.Kalam                          - Handwritten style
+            -- Enum.Font.PatrickHand                    - Casual handwritten
+            -- 
+            -- Note: Builder fonts may require special installation or may not be
+            -- available by default. Use the fonts listed above for guaranteed compatibility.
         },
         
         -- Animation Settings
@@ -89,10 +116,24 @@ return {
     -- === PET PREVIEW SETTINGS ===
     pet_preview = {
         enabled = true,                     -- Whether to show pet preview when approaching eggs
+        show_title = false,                 -- Whether to show title (saves space when false)
+        title_text = "Pet Chances",        -- Text to display in title (configurable)
+        height_above_egg = 7,               -- Default studs above egg to position billboard
+        billboard_size = {10, 2.5},        -- BillboardGui size in studs [width, height]
+        
+        -- Per-egg height adjustments (optional - overrides default height_above_egg)
+        -- Useful for eggs of different sizes that need custom spacing
+        egg_height_overrides = {
+            -- ["basic_egg"] = 2.5,          -- Basic egg uses 2.5 studs instead of default 7
+            -- ["rare_egg"] = 8,             -- Rare egg uses 8 studs (taller egg needs more space)
+            -- ["legendary_egg"] = 10,       -- Legendary egg uses 10 studs (very tall egg)
+        },
+        
         min_chance_to_show = 0.001,        -- Minimum chance (0.1%) to show pet, lower shows as "??"
-        max_pets_to_display = 8,           -- Maximum number of pets to show in preview
-        grid_columns = 4,                  -- Number of columns in pet grid
+        max_pets_to_display = 6,           -- Maximum number of pets to show in preview (fits horizontal layout)
+        grid_columns = 5,                  -- Number of columns in pet grid (horizontal row)
         pet_icon_size = 60,                -- Size of each pet icon in pixels
+        pet_spacing = 15,                  -- Horizontal spacing between pets in pixels
         chance_precision = 2,              -- Decimal places for percentage display (e.g., 2 = "5.25%")
         
         -- Display settings

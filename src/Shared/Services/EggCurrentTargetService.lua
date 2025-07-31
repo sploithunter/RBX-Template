@@ -185,7 +185,7 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
             if eggPetPreviewService then
                 local anchor = self:GetEggAnchor(egg)
                 if anchor then
-                    eggPetPreviewService:ShowPetPreview(eggType, anchor.Position)
+                    eggPetPreviewService:ShowPetPreview(eggType, anchor)
                 end
             end
         end
@@ -199,7 +199,7 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
             
             -- Update pet preview position
             if eggPetPreviewService then
-                eggPetPreviewService:UpdatePreviewPosition(anchor.Position)
+                eggPetPreviewService:UpdatePreviewPosition(anchor)
             end
         end
     else

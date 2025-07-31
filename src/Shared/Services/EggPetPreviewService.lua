@@ -228,7 +228,7 @@ end
 
 -- === PET PREVIEW UI ===
 
--- Create the pet preview UI
+-- Create the pet preview UI as BillboardGui
 function EggPetPreviewService:CreatePetPreviewUI()
     if petPreviewUI then
         petPreviewUI:Destroy()
@@ -237,19 +237,25 @@ function EggPetPreviewService:CreatePetPreviewUI()
     local config = eggSystemConfig.ui
     local previewConfig = eggSystemConfig.pet_preview
     
-    -- Create UI container
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "EggPetPreview"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = player.PlayerGui
+    -- Create BillboardGui for 3D world attachment
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Name = "EggPetPreview"
+    billboardGui.Size = UDim2.fromScale(previewConfig.billboard_size[1], previewConfig.billboard_size[2])  -- Configurable stud-based sizing
+    billboardGui.StudsOffsetWorldSpace = Vector3.new(0, previewConfig.height_above_egg or 3, 0)  -- Default height (will be updated per egg)
+    billboardGui.AlwaysOnTop = true  -- Always visible
+    billboardGui.LightInfluence = 0  -- Unaffected by lighting
+    billboardGui.Active = true  -- Allow interactions
+    billboardGui.StudsOffset = Vector3.new(0, 0, 0)  -- No additional offset
+    billboardGui.ClipsDescendants = false  -- Don't clip content at edges
+    billboardGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling  -- Proper layering
     
     local frame = Instance.new("Frame")
     frame.Name = "PetPreviewFrame"
-    frame.Size = UDim2.new(0, config.pet_preview_size.width, 0, config.pet_preview_size.height)
+    frame.Size = UDim2.fromScale(1, 1)  -- Fill the billboard
     frame.BackgroundColor3 = config.colors.pet_preview_bg
     frame.BorderSizePixel = 0
     frame.Visible = false
-    frame.Parent = screenGui
+    frame.Parent = billboardGui
     
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, config.corner_radius)
@@ -260,49 +266,43 @@ function EggPetPreviewService:CreatePetPreviewUI()
     stroke.Color = config.colors.pet_preview_border
     stroke.Parent = frame
     
-    -- Title
-    local title = Instance.new("TextLabel")
-    title.Name = "Title"
-    title.Size = UDim2.new(1, -20, 0, 30)
-    title.Position = UDim2.new(0, 10, 0, 10)
-    title.BackgroundTransparency = 1
-    title.Text = "Pet Chances"
-    title.TextColor3 = config.colors.text_primary
-    title.TextScaled = true
-    title.Font = config.fonts.title
-    title.Parent = frame
+    -- Title (optional, based on configuration)
+    local titleHeight = 0
+    if previewConfig.show_title then
+        local title = Instance.new("TextLabel")
+        title.Name = "Title"
+        title.Size = UDim2.new(1, -20, 0, 30)
+        title.Position = UDim2.new(0, 10, 0, 10)
+        title.BackgroundTransparency = 1
+        title.Text = previewConfig.title_text
+        title.TextColor3 = config.colors.text_primary
+        title.TextScaled = true
+        title.Font = config.fonts.title
+        title.Parent = frame
+        titleHeight = 40  -- 30px title + 10px spacing
+    end
     
-    -- Scrolling frame for pets
-    local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Name = "PetContainer"
-    scrollFrame.Size = UDim2.new(1, -20, 1, -50)
-    scrollFrame.Position = UDim2.new(0, 10, 0, 40)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.BorderSizePixel = 0
-    scrollFrame.ScrollBarThickness = 6
-    scrollFrame.ScrollBarImageColor3 = config.colors.border
-    scrollFrame.Parent = frame
+    -- Container frame for pets (no scrolling - fixed horizontal layout)
+    local petContainer = Instance.new("Frame")
+    petContainer.Name = "PetContainer"
+    petContainer.Size = UDim2.new(1, -20, 1, -titleHeight - 10)
+    petContainer.Position = UDim2.new(0, 10, 0, titleHeight)
+    petContainer.BackgroundTransparency = 1
+    petContainer.BorderSizePixel = 0
+    petContainer.Parent = frame
     
-    -- Grid layout for pets
-    local gridLayout = Instance.new("UIGridLayout")
-    gridLayout.CellSize = UDim2.new(0, previewConfig.pet_icon_size + 20, 0, previewConfig.pet_icon_size + 40)
-    gridLayout.CellPadding = UDim2.new(0, 5, 0, 5)
-    gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    gridLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-    gridLayout.Parent = scrollFrame
+    -- No grid layout - we'll manually position pets for perfect centering
     
-    -- Update canvas size when layout changes
-    gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, gridLayout.AbsoluteContentSize.Y + 10)
-    end)
+    -- Parent to PlayerGui for interactions while using Adornee for positioning
+    billboardGui.Parent = player.PlayerGui
     
-    petPreviewUI = screenGui
-    logger:info("Pet preview UI created")
+    petPreviewUI = billboardGui
+    logger:info("Pet preview BillboardGui created")
     return frame
 end
 
 -- Update pet preview display
-function EggPetPreviewService:UpdatePetPreview(eggType, eggPosition)
+function EggPetPreviewService:UpdatePetPreview(eggType, eggAnchor)
     if not eggSystemConfig.pet_preview.enabled then
         return
     end
@@ -315,70 +315,112 @@ function EggPetPreviewService:UpdatePetPreview(eggType, eggPosition)
     local container = frame.PetContainer
     local previewConfig = eggSystemConfig.pet_preview
     
-    if eggType and eggType ~= "None" then
+    if eggType and eggType ~= "None" and eggAnchor then
+        -- Attach BillboardGui to the egg anchor (EggSpawnPoint)
+        petPreviewUI.Adornee = eggAnchor
+        
+        -- Set height based on egg type (use override if configured, otherwise use default)
+        local height = previewConfig.egg_height_overrides[eggType] or previewConfig.height_above_egg
+        petPreviewUI.StudsOffsetWorldSpace = Vector3.new(0, height, 0)
+        
         -- Calculate chances for this egg
         local petChances = self:CalculatePetChances(eggType)
         
         -- Clear existing pet displays
         for _, child in ipairs(container:GetChildren()) do
-            if not child:IsA("UIGridLayout") then
-                child:Destroy()
-            end
+            child:Destroy()
         end
         
         -- Show pets up to max display limit
         local displayCount = math.min(#petChances, previewConfig.max_pets_to_display)
         
-        for i = 1, displayCount do
-            local petInfo = petChances[i]
-            self:CreatePetDisplay(container, petInfo, i)
-        end
+        -- Create pets with center-out positioning algorithm
+        self:CreateCenteredPetLayout(container, petChances, displayCount, previewConfig)
         
-        -- Update position and show
-        if eggPosition then
-            local screenPos = camera:WorldToScreenPoint(eggPosition)
-            frame.Position = UDim2.new(
-                0, screenPos.X + eggSystemConfig.ui.pet_preview_offset.x, 
-                0, screenPos.Y + eggSystemConfig.ui.pet_preview_offset.y
-            )
-        end
-        
+        -- Show the frame
         frame.Visible = true
         currentEggType = eggType
         
     else
         -- Hide when no egg in range
         frame.Visible = false
+        petPreviewUI.Adornee = nil
         currentEggType = nil
     end
 end
 
--- Create individual pet display element
-function EggPetPreviewService:CreatePetDisplay(parent, petInfo, layoutOrder)
-    local config = eggSystemConfig.ui
-    local previewConfig = eggSystemConfig.pet_preview
+--[[
+    Create centered pet layout with scale-based positioning
     
-    -- Create pet frame
+    CRITICAL FIX: This function solves the BillboardGui scaling issue where:
+    - BillboardGui scales with camera distance (grows when closer, shrinks when farther)
+    - Fixed pixel sizing (UDim2.new) doesn't scale with the billboard
+    - Result: Different numbers of pets visible at different distances
+    
+    SOLUTION: Use UDim2.fromScale for ALL sizing - everything scales together
+--]]
+function EggPetPreviewService:CreateCenteredPetLayout(container, petChances, displayCount, previewConfig)
+    if displayCount == 0 then return end
+    
+    local config = eggSystemConfig.ui
+    
+    -- Scale-based sizing calculations (percentages, not pixels)
+    -- This ensures all elements scale together with BillboardGui distance changes
+    local petWidthScale = 1 / displayCount * 0.9  -- Each pet: 90% of space divided by count
+    local spacingScale = 1 / displayCount * 0.1 / math.max(1, displayCount - 1)  -- 10% for spacing
+    
+    -- Calculate perfect centering for any number of pets (1-6)
+    local totalContentScale = (petWidthScale * displayCount) + (spacingScale * math.max(0, displayCount - 1))
+    local startX = (1 - totalContentScale) / 2  -- Center the entire group
+    
+    -- Create pets with scale-based positioning (maintains layout at any camera distance)
+    for i = 1, displayCount do
+        local petInfo = petChances[i]
+        local xPositionScale = startX + ((i - 1) * (petWidthScale + spacingScale))
+        
+        self:CreatePetDisplayAtPosition(container, petInfo, i, xPositionScale, petWidthScale, previewConfig, config)
+    end
+end
+
+--[[
+    Create individual pet display element with scale-based positioning
+    
+    IMPORTANT: All sizing uses UDim2.fromScale() to ensure consistent scaling
+    with the parent BillboardGui at any camera distance.
+--]]
+function EggPetPreviewService:CreatePetDisplayAtPosition(parent, petInfo, layoutOrder, xPositionScale, petWidthScale, previewConfig, config)
+    -- Pet frame with scale-based dimensions (grows/shrinks with billboard)
     local petFrame = Instance.new("Frame")
     petFrame.Name = "Pet_" .. layoutOrder
-    petFrame.Size = UDim2.new(0, previewConfig.pet_icon_size + 20, 0, previewConfig.pet_icon_size + 40)
+    petFrame.Size = UDim2.fromScale(petWidthScale, 1)  -- Width calculated dynamically, full height
+    petFrame.Position = UDim2.fromScale(xPositionScale, 0)  -- Horizontal position as percentage
     petFrame.BackgroundColor3 = petInfo.petData.rarity.color
     petFrame.BackgroundTransparency = 0.8
     petFrame.BorderSizePixel = 0
-    petFrame.LayoutOrder = layoutOrder
     petFrame.Parent = parent
     
     local petCorner = Instance.new("UICorner")
     petCorner.CornerRadius = UDim.new(0, 8)
     petCorner.Parent = petFrame
     
-    -- Pet 3D model display using ViewportFrame (like MCP game)
+    -- Call the pet content creation logic
+    self:CreatePetContent(petFrame, petInfo, previewConfig, config)
+end
+
+--[[
+    Create pet content (icon, name, chance) with scale-based layout
+    
+    ALL ELEMENTS use UDim2.fromScale() to maintain proportions at any camera distance.
+    This ensures ViewportFrames and text scale consistently with the BillboardGui.
+--]]
+function EggPetPreviewService:CreatePetContent(petFrame, petInfo, previewConfig, config)
+    -- Pet 3D model display using ViewportFrame
     if previewConfig.load_pet_icons and petInfo.petData.asset_id and petInfo.petData.asset_id ~= "rbxassetid://0" then
-        -- Create ViewportFrame for 3D model display
+        -- Scale-based ViewportFrame (fixes the core scaling issue)
         local viewport = Instance.new("ViewportFrame")
         viewport.Name = "PetViewport"
-        viewport.Size = UDim2.new(0, previewConfig.pet_icon_size, 0, previewConfig.pet_icon_size)
-        viewport.Position = UDim2.new(0.5, -previewConfig.pet_icon_size/2, 0, 5)
+        viewport.Size = UDim2.fromScale(0.8, 0.6)  -- 80% width, 60% height (scales with frame)
+        viewport.Position = UDim2.fromScale(0.1, 0.05)  -- Centered with margins (scales with frame)
         viewport.BackgroundTransparency = 1
         viewport.Parent = petFrame
         
@@ -396,29 +438,29 @@ function EggPetPreviewService:CreatePetDisplay(parent, petInfo, layoutOrder)
         -- Load the 3D model asynchronously
         self:Load3DPetModel(petInfo.petData.asset_id, viewport, camera, petInfo.petType, petInfo.variant)
     else
-        -- Use emoji fallback
+        -- Use emoji fallback (scale-based)
         logger:debug("Using emoji fallback", {
             petType = petInfo.petType, 
             reason = "3D loading disabled or invalid asset"
         })
         local petIcon = Instance.new("TextLabel")
         petIcon.Name = "Icon"
-        petIcon.Size = UDim2.new(0, previewConfig.pet_icon_size, 0, previewConfig.pet_icon_size)
-        petIcon.Position = UDim2.new(0.5, -previewConfig.pet_icon_size/2, 0, 5)
+        petIcon.Size = UDim2.fromScale(0.8, 0.6)  -- Match ViewportFrame scaling
+        petIcon.Position = UDim2.fromScale(0.1, 0.05)  -- Match ViewportFrame positioning
         petIcon.BackgroundTransparency = 1
         petIcon.Text = self:GetPetEmojiIcon(petInfo.petType)
         petIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
         petIcon.TextScaled = true
-        petIcon.Font = Enum.Font.GothamBold
+        petIcon.Font = config.fonts.pet_icon_fallback
         petIcon.Parent = petFrame
     end
     
-    -- Pet name (if enabled)
+    -- Pet name (if enabled) - scale-based
     if previewConfig.show_variant_names then
         local petName = Instance.new("TextLabel")
         petName.Name = "Name"
-        petName.Size = UDim2.new(1, -4, 0, 15)
-        petName.Position = UDim2.new(0, 2, 0, previewConfig.pet_icon_size + 5)
+        petName.Size = UDim2.fromScale(1, 0.2)  -- Full width, 20% height
+        petName.Position = UDim2.fromScale(0, 0.65)  -- Below the icon area
         petName.BackgroundTransparency = 1
         petName.Text = petInfo.petData.name
         petName.TextColor3 = config.colors.text_primary
@@ -427,11 +469,11 @@ function EggPetPreviewService:CreatePetDisplay(parent, petInfo, layoutOrder)
         petName.Parent = petFrame
     end
     
-    -- Chance percentage
+    -- Chance percentage - scale-based
     local chanceLabel = Instance.new("TextLabel")
     chanceLabel.Name = "Chance"
-    chanceLabel.Size = UDim2.new(1, -4, 0, 15)
-    chanceLabel.Position = UDim2.new(0, 2, 1, -17)
+    chanceLabel.Size = UDim2.fromScale(1, 0.15)  -- Full width, 15% height
+    chanceLabel.Position = UDim2.fromScale(0, 0.85)  -- Bottom 15% of frame
     chanceLabel.BackgroundTransparency = 1
     chanceLabel.Font = config.fonts.pet_chance
     chanceLabel.Parent = petFrame
@@ -446,8 +488,6 @@ function EggPetPreviewService:CreatePetDisplay(parent, petInfo, layoutOrder)
         chanceLabel.TextColor3 = config.colors.text_secondary
     end
     chanceLabel.TextScaled = true
-    
-    return petFrame
 end
 
 -- Load 3D pet model into ViewportFrame (using ReplicatedStorage.Assets)
@@ -589,7 +629,7 @@ function EggPetPreviewService:Load3DPetModel(assetId, viewport, camera, petType,
             fallbackIcon.Text = self:GetPetEmojiIcon(petType)
             fallbackIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
             fallbackIcon.TextScaled = true
-            fallbackIcon.Font = Enum.Font.GothamBold
+            fallbackIcon.Font = eggSystemConfig.ui.fonts.pet_icon_fallback
             fallbackIcon.Parent = viewport.Parent
         end
     end)
@@ -652,9 +692,9 @@ end
 
 -- === PUBLIC API ===
 
--- Show pet preview for an egg at given position
-function EggPetPreviewService:ShowPetPreview(eggType, eggPosition)
-    self:UpdatePetPreview(eggType, eggPosition)
+-- Show pet preview for an egg anchor (EggSpawnPoint)
+function EggPetPreviewService:ShowPetPreview(eggType, eggAnchor)
+    self:UpdatePetPreview(eggType, eggAnchor)
 end
 
 -- Hide pet preview
@@ -662,15 +702,11 @@ function EggPetPreviewService:HidePetPreview()
     self:UpdatePetPreview(nil, nil)
 end
 
--- Update preview position (for moving around egg)
-function EggPetPreviewService:UpdatePreviewPosition(eggPosition)
-    if petPreviewUI and currentEggType and eggPosition then
-        local frame = petPreviewUI.PetPreviewFrame
-        local screenPos = camera:WorldToScreenPoint(eggPosition)
-        frame.Position = UDim2.new(
-            0, screenPos.X + eggSystemConfig.ui.pet_preview_offset.x, 
-            0, screenPos.Y + eggSystemConfig.ui.pet_preview_offset.y
-        )
+-- Update preview position (BillboardGui handles this automatically via Adornee)
+function EggPetPreviewService:UpdatePreviewPosition(eggAnchor)
+    if petPreviewUI and currentEggType and eggAnchor then
+        -- BillboardGui automatically follows the Adornee, so just update the target
+        petPreviewUI.Adornee = eggAnchor
     end
 end
 
