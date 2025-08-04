@@ -86,7 +86,7 @@ Locations.ConfigFiles = {
 -- === CORE MODULES ===
 if Locations.SharedUtils then
     Locations.ModuleLoader = Locations.SharedUtils:WaitForChild("ModuleLoader")
-    Locations.NetworkConfig = Locations.SharedUtils:WaitForChild("NetworkConfig")
+    -- NetworkConfig removed - using Signals instead
     Locations.Logger = Locations.SharedUtils:WaitForChild("Logger")
     Locations.ProductIdMapper = Locations.SharedUtils:WaitForChild("ProductIdMapper")
 end
@@ -290,8 +290,8 @@ function Locations.validateCriticalPaths()
         "ServerScriptService", 
         "Shared",
         "ModuleLoader",
-        "ConfigLoader",
-        "NetworkBridge"
+        "ConfigLoader"
+        -- "NetworkBridge" removed - using Signals instead
     }
     
     local missing = {}

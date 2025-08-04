@@ -28,7 +28,7 @@ function EconomyService:Init()
     -- Get dependencies with validation
     self._logger = self._modules.Logger
     self._dataService = self._modules.DataService
-    self._networkConfig = self._modules.NetworkConfig
+    -- NetworkConfig removed - using Signals instead
     self._configLoader = self._modules.ConfigLoader
     self._playerEffectsService = self._modules.PlayerEffectsService
     self._globalEffectsService = self._modules.GlobalEffectsService
@@ -47,10 +47,7 @@ function EconomyService:Init()
         error("EconomyService: DataService dependency missing - check ModuleLoader configuration")
     end
     
-    if not self._networkConfig then
-        self._logger:Error("CRITICAL: NetworkConfig dependency missing")
-        error("EconomyService: NetworkConfig dependency missing - check ModuleLoader configuration")
-    end
+    -- NetworkConfig validation removed - using Signals instead
     
     if not self._configLoader then
         self._logger:Error("CRITICAL: ConfigLoader dependency missing")

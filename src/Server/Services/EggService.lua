@@ -58,17 +58,27 @@ function EggService:IsOnCooldown(player)
 end
 
 function EggService:HasEnoughCurrency(player, currency, cost)
-    local currentAmount = player:GetAttribute(currency) or 0
-    return currentAmount >= cost, currentAmount
+    if self._dataService then
+        return self._dataService:CanAfford(player, currency, cost), self._dataService:GetCurrency(player, currency)
+    else
+        -- Fallback to attributes if DataService not available
+        local currentAmount = player:GetAttribute(currency) or 0
+        return currentAmount >= cost, currentAmount
+    end
 end
 
 function EggService:DeductCurrency(player, currency, cost)
-    local currentAmount = player:GetAttribute(currency) or 0
-    if currentAmount >= cost then
-        player:SetAttribute(currency, currentAmount - cost)
-        return true
+    if self._dataService then
+        return self._dataService:RemoveCurrency(player, currency, cost)
+    else
+        -- Fallback to attributes if DataService not available
+        local currentAmount = player:GetAttribute(currency) or 0
+        if currentAmount >= cost then
+            player:SetAttribute(currency, currentAmount - cost)
+            return true
+        end
+        return false
     end
-    return false
 end
 
 function EggService:IsPlayerNearEgg(player, eggType)
@@ -145,8 +155,19 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
     
     -- Check currency
     local hasEnough, currentAmount = self:HasEnoughCurrency(player, eggData.currency, eggData.cost)
+    
+    Logger:Info("🪙 EGG PURCHASE - Currency check", {
+        player = player.Name,
+        eggType = eggType,
+        currency = eggData.currency,
+        required = eggData.cost,
+        current = currentAmount,
+        hasEnough = hasEnough,
+        dataServiceAvailable = self._dataService ~= nil
+    })
+    
     if not hasEnough then
-        Logger:Debug("Insufficient currency", {
+        Logger:Warn("🚫 INSUFFICIENT CURRENCY", {
             player = player.Name,
             currency = eggData.currency,
             required = eggData.cost,
@@ -189,6 +210,45 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         power = hatchResult.petData.power
     })
     
+    -- 🐾 ADD PET TO INVENTORY
+    if self._inventoryService then
+        local petData = {
+            id = hatchResult.pet,                    -- Pet type (bear, bunny, etc.)
+            variant = hatchResult.variant,           -- basic, golden, rainbow
+            obtained_at = tick(),                    -- Current timestamp
+            level = 1,                               -- Starting level
+            exp = 0,                                 -- Starting experience
+            stats = {
+                power = hatchResult.petData.power,   -- Power from pet config
+                health = hatchResult.petData.health or 100,
+                speed = hatchResult.petData.speed or 1.0
+            },
+            nickname = "",                           -- Empty by default
+            locked = false                           -- Not locked by default
+        }
+        
+        local uid = self._inventoryService:AddItem(player, "pets", petData)
+        if uid then
+            Logger:Info("Pet added to inventory", {
+                player = player.Name,
+                uid = uid,
+                pet = hatchResult.pet,
+                variant = hatchResult.variant
+            })
+        else
+            Logger:Error("Failed to add pet to inventory", {
+                player = player.Name,
+                pet = hatchResult.pet,
+                variant = hatchResult.variant
+            })
+        end
+    else
+        Logger:Warn("InventoryService not available - pet not saved to inventory", {
+            player = player.Name,
+            pet = hatchResult.pet
+        })
+    end
+    
     -- Return result in working game format
     return {
         Pet = hatchResult.pet,
@@ -223,8 +283,28 @@ end
 
 -- === INITIALIZATION ===
 
-function EggService:Initialize()
+function EggService:Initialize(moduleLoader)
     Logger:Info("EggService initializing...")
+    
+    -- Get services from the module loader
+    if moduleLoader then
+        self._inventoryService = moduleLoader:Get("InventoryService")
+        self._dataService = moduleLoader:Get("DataService")
+        
+        if self._inventoryService then
+            Logger:Info("EggService: InventoryService connection established")
+        else
+            Logger:Warn("EggService: InventoryService not available in module loader")
+        end
+        
+        if self._dataService then
+            Logger:Info("EggService: DataService connection established")
+        else
+            Logger:Warn("EggService: DataService not available in module loader")
+        end
+    else
+        Logger:Warn("EggService: No module loader provided")
+    end
     
     -- Create RemoteFunction (like working game)
     eggRemoteFunction = Instance.new("RemoteFunction")

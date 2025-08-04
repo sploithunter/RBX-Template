@@ -21,7 +21,7 @@ local TweenService = game:GetService("TweenService")
 
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
-local NetworkConfig = require(Locations.NetworkConfig)
+-- NetworkConfig removed - using Signals instead
 
 -- New Net Signals
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
@@ -167,6 +167,13 @@ local TEST_CATEGORIES = {
                 placeholder = "e.g. EggPetPreviewService:debug, BaseUI:warn",
                 action = "set_service_log_level"
             }
+        }
+    },
+    inventory = {
+        title = "🎒 Inventory Management",
+        tests = {
+            {name = "🗑️ Remove Orphaned Buckets", action = "cleanup_inventory"},
+            {name = "🔧 Fix Item Categories", action = "fix_item_categories"},
         }
     }
 }
@@ -654,6 +661,13 @@ function AdminPanel:_executeTestAction(action, testName)
     elseif action:find("log") or action:find("console") or action:find("performance") then
         self:_executeLoggingAction(action)
     
+    -- Inventory management actions
+    elseif action == "cleanup_inventory" then
+        self:_cleanupInventory()
+    elseif action == "fix_item_categories" then
+        self:_fixItemCategories()
+
+    
     else
         self.logger:warn("Unknown action:", action)
     end
@@ -901,26 +915,25 @@ end
 
 function AdminPanel:_initializeNetworking()
     task.spawn(function()
-        task.wait(2) -- Wait for NetworkConfig to initialize
+        task.wait(2) -- Wait for Signals to initialize
         
-        if NetworkConfig then
-            self.economyBridge = NetworkConfig:GetBridge("Economy")
+        -- Use new Signals system instead of old NetworkBridge
+        self.economyBridge = {
+            Fire = function(_, action, data)
+                if Signals.PurchaseItem then
+                    Signals.PurchaseItem:FireServer(data)
+                end
+            end
+        }
 
-                    -- Listen for diagnostics result once
-                    Signals.RunDiagnostics.OnClientEvent:Connect(function(report)
-                        self:_showDiagnosticsPopup(report)
-                    end)
-            self.effectsBridge = NetworkConfig:GetBridge("Effects")
-            
-            if self.economyBridge then
-                self.logger:info("Economy bridge connected")
-            end
-            if self.effectsBridge then
-                self.logger:info("Effects bridge connected")
-            end
-        else
-            self.logger:warn("NetworkConfig not available")
+        -- Listen for diagnostics result once
+        if Signals.RunDiagnostics then
+            Signals.RunDiagnostics.OnClientEvent:Connect(function(report)
+                self:_showDiagnosticsPopup(report)
+            end)
         end
+        
+        self.logger:info("Economy bridge connected via Signals")
     end)
 end
 
@@ -1072,5 +1085,28 @@ function AdminPanel:_showDiagnosticsPopup(report)
     self.logger:info(message)
     print(message)
 end
+
+-- 🔧 INVENTORY MANAGEMENT COMMANDS
+function AdminPanel:_cleanupInventory()
+    self.logger:info("🗑️ ADMIN: Removing orphaned buckets (preserves valid inventory from config)")
+    
+    Signals.CleanupInventory:FireServer({
+        action = "remove_orphaned_buckets",
+        targetPlayerId = self.selectedTargetPlayerId or Players.LocalPlayer.UserId
+    })
+    self.logger:info("✅ Orphaned bucket cleanup command sent via Signals")
+end
+
+function AdminPanel:_fixItemCategories()
+    self.logger:info("🔧 ADMIN: Fixing item categories (moving items to correct buckets)")
+    
+    Signals.FixItemCategories:FireServer({
+        action = "migrate_items_to_correct_buckets",
+        targetPlayerId = self.selectedTargetPlayerId or Players.LocalPlayer.UserId
+    })
+    self.logger:info("✅ Fix categories command sent via Signals")
+end
+
+
 
 return AdminPanel 

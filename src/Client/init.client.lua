@@ -40,7 +40,7 @@ local loader = ModuleLoader.new()
 -- Register shared utilities
 loader:RegisterModule("Logger", Shared.Utils.Logger)
 loader:RegisterModule("ConfigLoader", Shared.ConfigLoader, {"Logger"})
-loader:RegisterModule("NetworkConfig", Shared.Utils.NetworkConfig, {"Logger", "ConfigLoader"})
+-- NetworkConfig removed - using Signals instead
 
 -- Register client controllers
 -- loader:RegisterModule("InputController", StarterPlayer.StarterPlayerScripts.Client.Controllers.InputController, {"Logger"})
@@ -60,7 +60,7 @@ print("✅ Client modules loaded:", table.concat(loadOrder, ", "))
 -- Get loaded modules for easy access
 local Logger = loader:Get("Logger")
 local ConfigLoader = loader:Get("ConfigLoader")
-local NetworkConfig = loader:Get("NetworkConfig")
+-- NetworkConfig removed - using Signals instead
 
 -- Load client configuration
 local gameConfig = ConfigLoader:LoadConfig("game")

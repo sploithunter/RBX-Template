@@ -36,7 +36,7 @@ function MonetizationService:Init()
     self._economyService = self._modules.EconomyService
     self._productIdMapper = self._modules.ProductIdMapper
     self._playerEffectsService = self._modules.PlayerEffectsService
-    self._networkConfig = self._modules.NetworkConfig
+    -- NetworkConfig removed - using Signals instead
     
     -- Validate dependencies
     if not self._logger then

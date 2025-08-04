@@ -617,6 +617,8 @@ function ConfigLoader:ValidateConfig(configName, config)
         return self:_validateUIConfig(config)
     elseif configName == "inventory" then
         return self:_validateInventoryConfig(config)
+    elseif configName == "context_menus" then
+        return self:_validateContextMenusConfig(config)
     end
     
     -- Default validation for other configs
@@ -771,6 +773,46 @@ function ConfigLoader:_validateUIConfig(config)
     -- Validate active theme exists
     if not config.themes[config.active_theme] then
         return false, "Active theme '" .. tostring(config.active_theme) .. "' not found in themes"
+    end
+    
+    return true
+end
+
+function ConfigLoader:_validateContextMenusConfig(config)
+    if not config or type(config) ~= "table" then
+        return false, "Context menus config must be a table"
+    end
+    
+    -- Check required sections
+    if not config.global then
+        return false, "Missing required section: global"
+    end
+    
+    if not config.item_types then
+        return false, "Missing required section: item_types"
+    end
+    
+    if not config.fallback then
+        return false, "Missing required section: fallback"
+    end
+    
+    -- Validate item_types structure
+    if type(config.item_types) ~= "table" then
+        return false, "item_types must be a table"
+    end
+    
+    -- Check that each item type has actions
+    for itemType, typeConfig in pairs(config.item_types) do
+        if not typeConfig.actions or type(typeConfig.actions) ~= "table" then
+            return false, "Item type '" .. itemType .. "' must have actions table"
+        end
+        
+        -- Validate each action
+        for i, action in ipairs(typeConfig.actions) do
+            if not action.action or not action.text or not action.color then
+                return false, "Action " .. i .. " in item type '" .. itemType .. "' missing required fields (action, text, color)"
+            end
+        end
     end
     
     return true

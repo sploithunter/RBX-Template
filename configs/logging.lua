@@ -57,7 +57,7 @@ return {
         AdminPanel = "debug",             -- 🔍 ENABLE ADMIN PANEL DEBUGGING
         EffectsPanel = "warn",            -- Effects debugging
         SettingsPanel = "error",          -- Settings are usually stable
-        InventoryPanel = "error",         -- Inventory stable
+        InventoryPanel = "debug",         -- 🔍 ENABLE INVENTORY DEBUGGING
         
         -- === GAME SYSTEMS (Important for gameplay) ===
         EggSpawner = "info",              -- Show egg spawning (important for testing)

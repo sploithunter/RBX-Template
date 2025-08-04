@@ -9,7 +9,7 @@ return {
     enabled_buckets = {
         pets = true,
         weapons = false,      -- Disabled for pet simulator
-        tools = false,        -- Disabled for pet simulator
+        tools = true,         -- Enabled for pickaxes and mining tools
         consumables = true,
         resources = true,     -- NEW: For stackable resources like wood, ore, etc.
         cosmetics = false,
@@ -124,6 +124,34 @@ return {
                 max_quantity_per_stack = 10000,
                 min_quantity = 1
             }
+        },
+        
+        tools = {
+            display_name = "Tools",
+            icon = "🔧",
+            base_limit = 25,            -- 25 different tools
+            stack_size = 1,             -- Tools don't stack (each has durability)
+            allow_duplicates = true,    -- Can have multiple of same tool type
+            storage_type = "unique",    -- Each tool instance has unique properties
+            
+            item_schema = {
+                required = {
+                    "id",               -- Tool type (pickaxe, sword, etc.)
+                    "obtained_at"       -- When first obtained
+                },
+                optional = {
+                    "durability",       -- Current durability
+                    "max_durability",   -- Maximum durability
+                    "level",            -- Tool level/tier
+                    "enchantments",     -- Tool enchantments/modifiers
+                    "nickname"          -- Custom name
+                }
+            },
+            
+            validation = {
+                min_durability = 0,
+                max_level = 100
+            }
         }
     },
     
@@ -145,6 +173,21 @@ return {
                     gamepass_id = 789123456,  -- TODO: Replace with actual gamepass ID
                     additional_slots = 2,
                     name = "5th & 6th Pet Slots"
+                }
+            }
+        },
+        
+        tools = {
+            slots = 1,                  -- Number of equipped tool slots (active pickaxe)
+            display_name = "Active Tool",
+            icon = "🔧",
+            
+            -- Slot extensions via gamepasses (optional for premium players)
+            slot_extensions = {
+                {
+                    gamepass_id = 987654321,  -- TODO: Replace with actual gamepass ID
+                    additional_slots = 1,
+                    name = "2nd Tool Slot"
                 }
             }
         }
@@ -180,6 +223,80 @@ return {
         },
         consumables = {
             quantity = 1
+        }
+    },
+    
+    -- UI Display Categories Configuration
+    -- These define what tabs appear in the inventory UI and what folders they show
+    display_categories = {
+        {
+            name = "All",
+            icon = "📦",
+            description = "All items across all categories",
+            folders = {"pets", "consumables", "tools", "eggs", "resources"}, -- All enabled buckets
+            display_order = 1,
+            always_visible = true  -- Show even if no items
+        },
+        {
+            name = "Pets",
+            icon = "🐾", 
+            description = "Your collected pets and companions",
+            folders = {"pets"},
+            display_order = 2,
+            always_visible = true
+        },
+        {
+            name = "Items",
+            icon = "⚡",
+            description = "Consumable items and potions",
+            folders = {"consumables"},  -- Could be ["consumables", "potions"] if you had separate folders
+            display_order = 3,
+            always_visible = false  -- Hide if no items
+        },
+        {
+            name = "Eggs",
+            icon = "🥚",
+            description = "Eggs ready to hatch",
+            folders = {"eggs"},
+            display_order = 4,
+            always_visible = false
+        },
+        {
+            name = "Tools",
+            icon = "🔧",
+            description = "Tools and equipment",
+            folders = {"tools", "weapons"},  -- Group tools and weapons together
+            display_order = 5,
+            always_visible = false
+        },
+        {
+            name = "Resources",
+            icon = "🪨",
+            description = "Collected materials and resources",
+            folders = {"resources"},
+            display_order = 6,
+            always_visible = false
+        }
+    },
+    
+    -- Category display settings
+    category_settings = {
+        max_visible_categories = 8,     -- Don't overwhelm the UI
+        hide_empty_categories = true,   -- Hide categories with 0 items (unless always_visible)
+        show_item_counts = true,        -- Show "X items" next to category names
+        compact_mode = false,           -- Use smaller category tabs
+        
+        -- Category icons can fallback to bucket icons if not specified
+        use_bucket_icons_fallback = true,
+        
+        -- Custom category colors (optional)
+        category_colors = {
+            All = Color3.fromRGB(100, 100, 100),     -- Gray
+            Pets = Color3.fromRGB(255, 182, 193),    -- Pink
+            Items = Color3.fromRGB(135, 206, 250),   -- Light Blue
+            Eggs = Color3.fromRGB(255, 255, 224),    -- Light Yellow
+            Tools = Color3.fromRGB(210, 180, 140),   -- Tan
+            Resources = Color3.fromRGB(160, 82, 45)  -- Brown
         }
     }
 }

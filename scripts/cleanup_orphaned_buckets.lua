@@ -1,129 +1,127 @@
--- cleanup_orphaned_buckets.lua
--- DANGEROUS: This script deletes orphaned inventory buckets
--- Use with EXTREME caution - data cannot be recovered once deleted
--- Only run in Studio with full backup
+--[[
+    Orphaned Bucket Cleanup Script
+    
+    This script cleans up development/test buckets that are no longer configured
+    but still exist in player ProfileStore data.
+    
+    USAGE:
+    1. Paste this script in Studio Command Bar
+    2. Review the buckets to be deleted (they'll be listed)
+    3. Uncomment the actual deletion lines when ready
+    4. Run the script
+    
+    SAFETY:
+    - Script lists what will be deleted before doing anything
+    - Actual deletion is commented out by default
+    - Only cleans specific known orphaned buckets
+    - Does NOT touch active/configured buckets
+]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Import necessary services
-local Locations = require(ReplicatedStorage.Shared.Locations)
-local DataService = require(Locations.Services.DataService)
-local ConfigLoader = require(Locations.Services.ConfigLoader)
+-- Load required services
+local ProfileStore = require(game.ServerStorage.ProfileStore)
+local DataService = require(game.ServerScriptService.Server.Services.DataService)
 
-print("🚨 ORPHANED BUCKET CLEANUP TOOL")
-print("================================")
-print("⚠️  WARNING: This permanently deletes inventory data!")
-print("⚠️  Only run in Studio with backup!")
-print("⚠️  Check logs carefully before confirming!")
+-- Known orphaned buckets to clean up
+local ORPHANED_BUCKETS = {
+    "alamantic_aluminum",  -- Development test bucket
+    "health_potion",       -- Old potion system
+    "speed_potion",        -- Old potion system
+}
 
--- Configuration
-local DRY_RUN = true  -- Set to false to actually delete
-local TARGET_PLAYER_NAME = "coloradoplays"  -- Change this to target player
+-- Additional buckets that might be orphaned (review these)
+local REVIEW_BUCKETS = {
+    "test_item",
+    "debug_tool", 
+    "placeholder_item",
+    "temp_bucket",
+}
 
--- Find target player
-local targetPlayer = nil
-for _, player in pairs(Players:GetPlayers()) do
-    if player.Name == TARGET_PLAYER_NAME then
-        targetPlayer = player
-        break
-    end
-end
+print("🧹 ORPHANED BUCKET CLEANUP SCRIPT")
+print("==================================")
 
-if not targetPlayer then
-    error("❌ Player '" .. TARGET_PLAYER_NAME .. "' not found!")
-end
-
--- Load current inventory config
-local inventoryConfig = ConfigLoader:LoadConfig("inventory")
-if not inventoryConfig then
-    error("❌ Could not load inventory configuration!")
-end
-
--- Get player profile
-if not DataService:IsDataLoaded(targetPlayer) then
-    error("❌ Player data not loaded!")
-end
-
-local profile = DataService:GetProfile(targetPlayer)
-if not profile or not profile.Data then
-    error("❌ Could not access player profile!")
-end
-
-local inventoryData = profile.Data.Inventory
-if not inventoryData then
-    print("ℹ️  No inventory data found")
-    return
-end
-
-print("\n📋 INVENTORY ANALYSIS")
-print("====================")
-
--- Identify orphaned buckets
-local orphanedBuckets = {}
-local validBuckets = {}
-
-for bucketName, bucketData in pairs(inventoryData) do
-    local isEnabled = inventoryConfig.enabled_buckets and inventoryConfig.enabled_buckets[bucketName]
+-- Function to clean a player's orphaned buckets
+local function cleanupPlayerOrphanedBuckets(player)
+    print("\n👤 CLEANING PLAYER:", player.Name)
     
-    if isEnabled then
-        table.insert(validBuckets, bucketName)
-        print("✅ VALID BUCKET: " .. bucketName)
-    else
-        table.insert(orphanedBuckets, bucketName)
-        print("❌ ORPHANED BUCKET: " .. bucketName .. " (items: " .. (#bucketData.items or "unknown") .. ")")
+    -- Get player's ProfileStore profile
+    local profile = DataService:GetProfile(player)
+    if not profile then
+        print("❌ No profile found for", player.Name)
+        return
+    end
+    
+    local cleaned = false
+    local bucketsCleaned = {}
+    
+    -- Check inventory data
+    if profile.Data and profile.Data.inventory then
+        print("📦 Current inventory buckets:", table.concat(getTableKeys(profile.Data.inventory), ", "))
         
-        -- Show items in orphaned bucket
-        if bucketData.items then
-            for i, item in pairs(bucketData.items) do
-                print("   📦 Item " .. i .. ": " .. (item.id or "unknown"))
+        -- Clean known orphaned buckets
+        for _, bucketName in ipairs(ORPHANED_BUCKETS) do
+            if profile.Data.inventory[bucketName] then
+                local itemCount = 0
+                if type(profile.Data.inventory[bucketName]) == "table" then
+                    for _ in pairs(profile.Data.inventory[bucketName]) do
+                        itemCount = itemCount + 1
+                    end
+                end
+                
+                print("🗑️ FOUND ORPHANED BUCKET:", bucketName, "with", itemCount, "items")
+                table.insert(bucketsCleaned, bucketName .. " (" .. itemCount .. " items)")
+                
+                -- 🚨 UNCOMMENT THE NEXT LINE TO ACTUALLY DELETE
+                -- profile.Data.inventory[bucketName] = nil
+                
+                cleaned = true
+            end
+        end
+        
+        -- List buckets for review
+        for _, bucketName in ipairs(REVIEW_BUCKETS) do
+            if profile.Data.inventory[bucketName] then
+                local itemCount = 0
+                if type(profile.Data.inventory[bucketName]) == "table" then
+                    for _ in pairs(profile.Data.inventory[bucketName]) do
+                        itemCount = itemCount + 1
+                    end
+                end
+                print("❓ REVIEW BUCKET:", bucketName, "with", itemCount, "items (manual review needed)")
             end
         end
     end
+    
+    if cleaned then
+        print("✅ WOULD CLEAN:", table.concat(bucketsCleaned, ", "))
+        print("🚨 TO ACTUALLY DELETE: Uncomment the deletion line in the script")
+    else
+        print("✅ No orphaned buckets found for", player.Name)
+    end
 end
 
-print("\n📊 SUMMARY")
-print("==========")
-print("✅ Valid buckets: " .. #validBuckets)
-print("❌ Orphaned buckets: " .. #orphanedBuckets)
-
-if #orphanedBuckets == 0 then
-    print("🎉 No orphaned buckets found!")
-    return
+-- Function to get table keys
+function getTableKeys(t)
+    local keys = {}
+    for key in pairs(t) do
+        table.insert(keys, key)
+    end
+    return keys
 end
 
-print("\n🚨 ORPHANED BUCKETS TO DELETE:")
-for _, bucketName in ipairs(orphanedBuckets) do
-    print("   - " .. bucketName)
+-- Clean up all current players
+print("🎯 SCANNING ALL PLAYERS...")
+for _, player in pairs(Players:GetPlayers()) do
+    cleanupPlayerOrphanedBuckets(player)
 end
 
-if DRY_RUN then
-    print("\n🛡️  DRY RUN MODE - No changes made")
-    print("📝 To actually delete these buckets:")
-    print("   1. Set DRY_RUN = false")
-    print("   2. Make sure you have a backup")
-    print("   3. Run the script again")
-    return
-end
-
--- ACTUAL DELETION (only if DRY_RUN = false)
-print("\n💥 STARTING DELETION...")
-print("⚠️  This action cannot be undone!")
-
-wait(3)  -- Give time to cancel
-
-for _, bucketName in ipairs(orphanedBuckets) do
-    print("🗑️  Deleting bucket: " .. bucketName)
-    inventoryData[bucketName] = nil
-end
-
-print("✅ Deletion complete!")
-print("🔄 Saving profile...")
-
--- The profile will auto-save, but we can force it
-pcall(function()
-    profile:Save()
-end)
-
-print("💾 Profile saved!")
-print("🎉 Cleanup complete - restart server to see changes")
+print("\n" .. string.rep("=", 50))
+print("🔍 CLEANUP SUMMARY")
+print("Orphaned buckets targeted:", table.concat(ORPHANED_BUCKETS, ", "))
+print("Review buckets listed:", table.concat(REVIEW_BUCKETS, ", "))
+print("\n🚨 IMPORTANT: This script is in SAFE MODE")
+print("   To actually delete data, uncomment the deletion line")
+print("   Look for: -- profile.Data.inventory[bucketName] = nil")
+print("✅ Script completed safely")

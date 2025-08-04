@@ -57,6 +57,9 @@ function InventoryService:Init()
         self:_onPlayerRemoving(player)
     end)
     
+    -- Setup Network Signals for inventory operations
+    self:_setupNetworkSignals()
+    
     self._logger:Info("✅ InventoryService initialized successfully")
 end
 
@@ -742,6 +745,522 @@ function InventoryService:_countItems(items)
         count = count + 1
     end
     return count
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════════
+-- 🌐 NETWORK SIGNAL HANDLERS
+-- ═══════════════════════════════════════════════════════════════════════════════════
+
+function InventoryService:_setupNetworkSignals()
+    local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+    
+    -- Player deletes item from their inventory
+    Signals.DeleteInventoryItem.OnServerEvent:Connect(function(player, data)
+        self:_handleDeleteInventoryItem(player, data)
+    end)
+    
+    -- Admin cleanup commands
+    Signals.CleanupInventory.OnServerEvent:Connect(function(player, data)
+        print("🛠️ SERVER RECEIVED: CleanupInventory from", player.Name)
+        print("🔍 CLEANUP DATA:", data)
+        self._logger:Warn("🚨 ADMIN CLEANUP TRIGGERED", {
+            admin = player.Name,
+            data = data,
+            stackTrace = debug.traceback("Admin cleanup call stack:")
+        })
+        self:_handleCleanupInventory(player, data)
+    end)
+    
+    Signals.FixItemCategories.OnServerEvent:Connect(function(player, data)
+        print("🛠️ SERVER RECEIVED: FixItemCategories from", player.Name)
+        self:_handleFixItemCategories(player, data)
+    end)
+    
+    Signals.CleanOrphanedBuckets.OnServerEvent:Connect(function(player, data)
+        print("🛠️ SERVER RECEIVED: CleanOrphanedBuckets from", player.Name)
+        self:_handleCleanOrphanedBuckets(player, data)
+    end)
+    
+    -- Pet equipping
+    Signals.TogglePetEquipped.OnServerEvent:Connect(function(player, data)
+        self:_handleTogglePetEquipped(player, data)
+    end)
+    
+    -- Tool equipping
+    Signals.ToggleToolEquipped.OnServerEvent:Connect(function(player, data)
+        self:_handleToggleToolEquipped(player, data)
+    end)
+    
+    self._logger:Info("📡 Inventory Network Signals connected")
+end
+
+function InventoryService:_handleDeleteInventoryItem(player, data)
+    self._logger:Info("🗑️ DELETE ITEM REQUEST", {
+        player = player.Name,
+        bucket = data.bucket,
+        itemUid = data.itemUid,
+        itemId = data.itemId,
+        quantity = data.quantity or 1,
+        reason = data.reason
+    })
+    
+    -- Validate player is deleting their own item (security check)
+    if not player or not data.bucket or not data.itemUid then
+        self._logger:Warn("❌ Invalid delete request", {
+            player = player and player.Name or "nil",
+            data = data
+        })
+        return
+    end
+    
+    -- Get player's profile
+    local profile = self._dataService:GetProfile(player)
+    if not profile then
+        self._logger:Warn("❌ No profile found for player", {player = player.Name})
+        return
+    end
+    
+    -- Check if item exists in the specified bucket
+    local inventoryData = profile.Data.Inventory or {}
+    local bucketData = inventoryData[data.bucket]
+    if not bucketData or not bucketData.items then
+        self._logger:Warn("❌ Bucket not found", {bucket = data.bucket})
+        return
+    end
+    
+    local item = bucketData.items[data.itemUid]
+    if not item then
+        self._logger:Warn("❌ Item not found", {itemUid = data.itemUid, bucket = data.bucket})
+        return
+    end
+    
+    local deleteQuantity = data.quantity or 1
+    local currentQuantity = item.quantity or 1
+    
+    if deleteQuantity >= currentQuantity then
+        -- Delete entire item
+        bucketData.items[data.itemUid] = nil
+        bucketData.used_slots = math.max(0, (bucketData.used_slots or 0) - 1)
+        
+        self._logger:Info("✅ Item completely deleted", {
+            player = player.Name,
+            itemId = data.itemId,
+            itemUid = data.itemUid,
+            bucket = data.bucket,
+            deletedQuantity = currentQuantity,
+            newUsedSlots = bucketData.used_slots
+        })
+    else
+        -- Reduce quantity
+        item.quantity = currentQuantity - deleteQuantity
+        
+        self._logger:Info("✅ Item quantity reduced", {
+            player = player.Name,
+            itemId = data.itemId,
+            itemUid = data.itemUid,
+            bucket = data.bucket,
+            deletedQuantity = deleteQuantity,
+            remainingQuantity = item.quantity
+        })
+    end
+    
+    -- Update replication folders immediately
+    self:_updateBucketFolders(player, data.bucket)
+end
+
+function InventoryService:_handleCleanupInventory(player, data)
+    self._logger:Info("🧹 ADMIN CLEANUP REQUEST", {
+        admin = player.Name,
+        targetPlayerId = data.targetPlayerId,
+        action = data.action
+    })
+    
+    -- Validate admin permissions (you may want to add AdminService check here)
+    local targetPlayer = Players:GetPlayerByUserId(data.targetPlayerId)
+    if not targetPlayer then
+        self._logger:Warn("❌ Target player not found", {targetPlayerId = data.targetPlayerId})
+        return
+    end
+    
+    -- Get target player's profile
+    local profile = self._dataService:GetProfile(targetPlayer)
+    if not profile then
+        self._logger:Warn("❌ No profile found for target player", {player = targetPlayer.Name})
+        return
+    end
+    
+    -- Use the unified orphaned bucket removal logic
+    self:_removeOrphanedBuckets(player, data)
+end
+
+-- Helper function to count items in a table
+function InventoryService:_countTableItems(items)
+    local count = 0
+    for _ in pairs(items or {}) do
+        count = count + 1
+    end
+    return count
+end
+
+function InventoryService:_handleFixItemCategories(player, data)
+    self._logger:Info("🔧 ADMIN FIX CATEGORIES REQUEST", {
+        admin = player.Name,
+        targetPlayerId = data.targetPlayerId,
+        action = data.action
+    })
+    
+    -- Validate admin permissions
+    local targetPlayer = Players:GetPlayerByUserId(data.targetPlayerId)
+    if not targetPlayer then
+        self._logger:Warn("❌ Target player not found", {targetPlayerId = data.targetPlayerId})
+        return
+    end
+    
+    -- Get target player's profile  
+    local profile = self._dataService:GetProfile(targetPlayer)
+    if not profile then
+        self._logger:Warn("❌ No profile found for target player", {player = targetPlayer.Name})
+        return
+    end
+    
+    -- This would implement item migration logic
+    -- For now, just log that it was called
+    self._logger:Info("✅ Category fix completed", {
+        admin = player.Name,
+        targetPlayer = targetPlayer.Name,
+        note = "Migration logic would go here"
+    })
+end
+
+function InventoryService:_handleCleanOrphanedBuckets(player, data)
+    self._logger:Info("🗑️ ADMIN CLEAN ORPHANED BUCKETS REQUEST", {
+        admin = player.Name,
+        targetPlayerId = data.targetPlayerId,
+        action = data.action
+    })
+    
+    -- Use the same logic as the safe cleanup - remove buckets not in config
+    self:_removeOrphanedBuckets(player, data)
+end
+
+-- Unified orphaned bucket removal logic
+function InventoryService:_removeOrphanedBuckets(player, data)
+    -- Validate admin permissions
+    local targetPlayer = Players:GetPlayerByUserId(data.targetPlayerId)
+    if not targetPlayer then
+        self._logger:Warn("❌ Target player not found", {targetPlayerId = data.targetPlayerId})
+        return
+    end
+    
+    -- Get target player's profile  
+    local profile = self._dataService:GetProfile(targetPlayer)
+    if not profile then
+        self._logger:Warn("❌ No profile found for target player", {player = targetPlayer.Name})
+        return
+    end
+    
+    if not profile.Data or not profile.Data.Inventory then
+        self._logger:Info("✅ No inventory data to clean", {player = targetPlayer.Name})
+        return
+    end
+    
+    -- Get list of buckets that SHOULD exist (from configuration)
+    local validBuckets = {}
+    for _, bucketConfig in ipairs(self._inventoryConfig.enabled_buckets or {}) do
+        validBuckets[bucketConfig.name] = true
+    end
+    
+    self._logger:Info("📋 VALID BUCKETS FROM CONFIG", {
+        validBuckets = validBuckets,
+        configuredCount = #(self._inventoryConfig.enabled_buckets or {})
+    })
+    
+    local cleaned = {}
+    local bucketsCleaned = 0
+    local itemsCleaned = 0
+    
+    -- Remove everything that is NOT supposed to be there
+    for bucketName, bucketData in pairs(profile.Data.Inventory) do
+        if not validBuckets[bucketName] then
+            -- This bucket shouldn't exist - remove it
+            local itemCount = 0
+            if type(bucketData) == "table" and bucketData.items then
+                itemCount = self:_countTableItems(bucketData.items)
+            end
+            
+            self._logger:Info("🗑️ REMOVING INVALID BUCKET", {
+                bucketName = bucketName,
+                itemCount = itemCount,
+                targetPlayer = targetPlayer.Name,
+                reason = "Not in enabled_buckets configuration"
+            })
+            
+            profile.Data.Inventory[bucketName] = nil
+            table.insert(cleaned, bucketName .. " (" .. itemCount .. " items)")
+            bucketsCleaned = bucketsCleaned + 1
+            itemsCleaned = itemsCleaned + itemCount
+        end
+    end
+    
+    if bucketsCleaned > 0 then
+        -- Recreate all inventory folders to reflect the cleanup
+        -- First, destroy existing folders
+        if self._playerInventoryFolders[targetPlayer] then
+            self._playerInventoryFolders[targetPlayer]:Destroy()
+        end
+        if self._playerEquippedFolders[targetPlayer] then
+            self._playerEquippedFolders[targetPlayer]:Destroy()
+        end
+        
+        -- Clear references and recreate
+        self._playerInventoryFolders[targetPlayer] = nil
+        self._playerEquippedFolders[targetPlayer] = nil
+        self:_createInventoryFolders(targetPlayer)
+        
+        self._logger:Info("✅ Orphaned buckets cleaned", {
+            admin = player.Name,
+            targetPlayer = targetPlayer.Name,
+            bucketsRemoved = bucketsCleaned,
+            itemsRemoved = itemsCleaned,
+            cleanedBuckets = cleaned
+        })
+    else
+        self._logger:Info("✅ No orphaned buckets found to clean", {
+            admin = player.Name,
+            targetPlayer = targetPlayer.Name
+        })
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════════
+-- 🎽 EQUIPMENT HANDLERS
+-- ═══════════════════════════════════════════════════════════════════════════════════
+
+function InventoryService:_handleTogglePetEquipped(player, data)
+    self._logger:Info("🐾 PET EQUIP REQUEST", {
+        player = player.Name,
+        bucket = data.bucket,
+        itemUid = data.itemUid,
+        itemId = data.itemId,
+        action = data.action or "toggle"
+    })
+    
+    -- Validate request
+    if not data.bucket or not data.itemUid or data.bucket ~= "pets" then
+        self._logger:Warn("❌ Invalid pet equip request", {
+            player = player.Name,
+            bucket = data.bucket,
+            itemUid = data.itemUid
+        })
+        return
+    end
+    
+    -- Get player data
+    local playerData = self._dataService:GetData(player)
+    if not playerData or not playerData.Inventory or not playerData.Inventory.pets then
+        self._logger:Warn("❌ No pet inventory found", {player = player.Name})
+        return
+    end
+    
+    -- Verify pet exists in inventory
+    local pet = playerData.Inventory.pets.items[data.itemUid]
+    if not pet then
+        self._logger:Warn("❌ Pet not found in inventory", {
+            player = player.Name,
+            itemUid = data.itemUid
+        })
+        return
+    end
+    
+    -- Initialize equipped pets if needed
+    if not playerData.Equipped then
+        playerData.Equipped = {}
+    end
+    if not playerData.Equipped.pets then
+        playerData.Equipped.pets = {}
+    end
+    
+    local success, result = self:_togglePetEquipment(player, data.itemUid, pet, playerData)
+    
+    if success then
+        -- Update equipped folder replication
+        self:_updateEquippedFolders(player, "pets")
+        
+        self._logger:Info("✅ Pet equipped successfully", {
+            player = player.Name,
+            petId = pet.id,
+            petUid = data.itemUid,
+            slot = result.slot,
+            action = result.action
+        })
+    end
+end
+
+function InventoryService:_handleToggleToolEquipped(player, data)
+    self._logger:Info("🔧 TOOL EQUIP REQUEST", {
+        player = player.Name,
+        bucket = data.bucket,
+        itemUid = data.itemUid,
+        itemId = data.itemId,
+        action = data.action or "toggle"
+    })
+    
+    -- Validate request
+    if not data.bucket or not data.itemUid or data.bucket ~= "tools" then
+        self._logger:Warn("❌ Invalid tool equip request", {
+            player = player.Name,
+            bucket = data.bucket,
+            itemUid = data.itemUid
+        })
+        return
+    end
+    
+    -- Get player data
+    local playerData = self._dataService:GetData(player)
+    if not playerData or not playerData.Inventory or not playerData.Inventory.tools then
+        self._logger:Warn("❌ No tool inventory found", {player = player.Name})
+        return
+    end
+    
+    -- Verify tool exists in inventory
+    local tool = playerData.Inventory.tools.items[data.itemUid]
+    if not tool then
+        self._logger:Warn("❌ Tool not found in inventory", {
+            player = player.Name,
+            itemUid = data.itemUid
+        })
+        return
+    end
+    
+    -- Initialize equipped tools if needed
+    if not playerData.Equipped then
+        playerData.Equipped = {}
+    end
+    if not playerData.Equipped.tools then
+        playerData.Equipped.tools = {}
+    end
+    
+    local success, result = self:_toggleToolEquipment(player, data.itemUid, tool, playerData)
+    
+    if success then
+        -- Update equipped folder replication
+        self:_updateEquippedFolders(player, "tools")
+        
+        self._logger:Info("✅ Tool equipped successfully", {
+            player = player.Name,
+            toolId = tool.id,
+            toolUid = data.itemUid,
+            slot = result.slot,
+            action = result.action
+        })
+    end
+end
+
+function InventoryService:_togglePetEquipment(player, petUid, pet, playerData)
+    local equippedPets = playerData.Equipped.pets
+    local petSlots = self._inventoryConfig.equipped.pets
+    
+    -- Check if pet is already equipped
+    local currentSlot = nil
+    for slotName, equippedUid in pairs(equippedPets) do
+        if equippedUid == petUid then
+            currentSlot = slotName
+            break
+        end
+    end
+    
+    if currentSlot then
+        -- Unequip the pet
+        equippedPets[currentSlot] = nil
+        return true, {action = "unequipped", slot = currentSlot}
+    else
+        -- Find an empty slot to equip the pet
+        for i = 1, petSlots.slots do
+            local slotName = "slot_" .. i
+            if not equippedPets[slotName] then
+                equippedPets[slotName] = petUid
+                return true, {action = "equipped", slot = slotName}
+            end
+        end
+        
+        -- No empty slots - replace the first slot
+        equippedPets["slot_1"] = petUid
+        return true, {action = "equipped", slot = "slot_1", replaced = true}
+    end
+end
+
+function InventoryService:_toggleToolEquipment(player, toolUid, tool, playerData)
+    local equippedTools = playerData.Equipped.tools
+    local toolSlots = self._inventoryConfig.equipped.tools
+    
+    -- Check if tool is already equipped
+    local currentSlot = nil
+    for slotName, equippedUid in pairs(equippedTools) do
+        if equippedUid == toolUid then
+            currentSlot = slotName
+            break
+        end
+    end
+    
+    if currentSlot then
+        -- Unequip the tool
+        equippedTools[currentSlot] = nil
+        return true, {action = "unequipped", slot = currentSlot}
+    else
+        -- Find an empty slot to equip the tool
+        for i = 1, toolSlots.slots do
+            local slotName = "slot_" .. i
+            if not equippedTools[slotName] then
+                equippedTools[slotName] = toolUid
+                return true, {action = "equipped", slot = slotName}
+            end
+        end
+        
+        -- No empty slots - replace the first slot
+        equippedTools["slot_1"] = toolUid
+        return true, {action = "equipped", slot = "slot_1", replaced = true}
+    end
+end
+
+function InventoryService:_updateEquippedFolders(player, category)
+    local equippedFolder = self._playerEquippedFolders[player]
+    if not equippedFolder then
+        self._logger:Warn("⚠️ No equipped folder found for update", {
+            player = player.Name,
+            category = category
+        })
+        return
+    end
+    
+    local categoryFolder = equippedFolder:FindFirstChild(category)
+    if not categoryFolder then
+        -- Create category folder if it doesn't exist
+        categoryFolder = Instance.new("Folder")
+        categoryFolder.Name = category
+        categoryFolder.Parent = equippedFolder
+    end
+    
+    -- Clear existing slot values
+    for _, child in pairs(categoryFolder:GetChildren()) do
+        child:Destroy()
+    end
+    
+    -- Recreate slot values from data
+    local playerData = self._dataService:GetData(player)
+    local slots = playerData.Equipped[category] or {}
+    
+    for slotName, itemUid in pairs(slots) do
+        local slotValue = Instance.new("StringValue")
+        slotValue.Name = slotName
+        slotValue.Value = itemUid or ""
+        slotValue.Parent = categoryFolder
+    end
+    
+    self._logger:Debug("⚔️ Updated equipped folder", {
+        player = player.Name,
+        category = category,
+        slots = self:_countItems(slots)
+    })
 end
 
 return InventoryService

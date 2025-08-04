@@ -33,7 +33,7 @@ local loader = ModuleLoader.new()
 loader:RegisterModule("Logger", ReplicatedStorage.Shared.Utils.Logger)
 loader:RegisterModule("ConfigLoader", ReplicatedStorage.Shared.ConfigLoader, {"Logger"})
 loader:RegisterModule("ServerClockService", ServerScriptService.Server.Services.ServerClockService, {"Logger"})
-loader:RegisterModule("NetworkConfig", ReplicatedStorage.Shared.Utils.NetworkConfig, {"Logger", "ConfigLoader"})
+-- NetworkConfig removed - using Signals instead
 
 -- Register server services
 loader:RegisterModule("DataService", ServerScriptService.Server.Services.DataService, {"Logger", "ConfigLoader"})
@@ -43,8 +43,8 @@ loader:RegisterModule("AssetPreloadService", ServerScriptService.Server.Services
 loader:RegisterModule("PlayerEffectsService", ServerScriptService.Server.Services.PlayerEffectsService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
 loader:RegisterModule("GlobalEffectsService", ServerScriptService.Server.Services.GlobalEffectsService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
 loader:RegisterModule("ProductIdMapper", ReplicatedStorage.Shared.Utils.ProductIdMapper, {"Logger", "ConfigLoader"})
-loader:RegisterModule("EconomyService", ServerScriptService.Server.Services.EconomyService, {"Logger", "DataService", "NetworkConfig", "ConfigLoader", "PlayerEffectsService", "GlobalEffectsService", "AdminService", "InventoryService"})
-loader:RegisterModule("MonetizationService", ServerScriptService.Server.Services.MonetizationService, {"Logger", "DataService", "EconomyService", "ProductIdMapper", "PlayerEffectsService", "NetworkConfig"})
+loader:RegisterModule("EconomyService", ServerScriptService.Server.Services.EconomyService, {"Logger", "DataService", "ConfigLoader", "PlayerEffectsService", "GlobalEffectsService", "AdminService", "InventoryService"})
+loader:RegisterModule("MonetizationService", ServerScriptService.Server.Services.MonetizationService, {"Logger", "DataService", "EconomyService", "ProductIdMapper", "PlayerEffectsService"})
 loader:RegisterModule("InventoryService", ServerScriptService.Server.Services.InventoryService, {"Logger", "DataService", "ConfigLoader"})
 loader:RegisterModule("DiagnosticsService", ServerScriptService.Server.Services.DiagnosticsService, {"Logger", "InventoryService", "EconomyService", "RateLimitService", "DataService"})
 
@@ -67,7 +67,7 @@ local loadOrder = loadOrderOrError
 print("✅ Modules loaded:", table.concat(loadOrder, ", "))
 
 -- Validate critical modules loaded
-local requiredModules = {"Logger", "ConfigLoader", "ServerClockService", "DataService", "PlayerEffectsService", "GlobalEffectsService", "EconomyService", "NetworkConfig", "ProductIdMapper", "MonetizationService", "InventoryService", "DiagnosticsService"}
+local requiredModules = {"Logger", "ConfigLoader", "ServerClockService", "DataService", "PlayerEffectsService", "GlobalEffectsService", "EconomyService", "ProductIdMapper", "MonetizationService", "InventoryService", "DiagnosticsService"}
 for _, moduleName in ipairs(requiredModules) do
     local module = loader:Get(moduleName)
     if not module then
@@ -80,7 +80,7 @@ print("✅ All required modules validated")
 -- Get loaded modules for easy access
 local Logger = loader:Get("Logger")
 local ConfigLoader = loader:Get("ConfigLoader")
-local NetworkConfig = loader:Get("NetworkConfig")
+-- NetworkConfig removed - using Signals instead
 local DataService = loader:Get("DataService")
 local PlayerEffectsService = loader:Get("PlayerEffectsService")
 local MonetizationService = loader:Get("MonetizationService")
@@ -88,14 +88,7 @@ local MonetizationService = loader:Get("MonetizationService")
 -- Set up cross-references to avoid circular dependencies
 DataService:SetPlayerEffectsService(PlayerEffectsService)
 
--- Auto-connect network handlers based on configuration
-NetworkConfig:ConnectServerHandlers({
-    EconomyService = loader:Get("EconomyService"),
-    DataService = loader:Get("DataService"),
-    MonetizationService = loader:Get("MonetizationService"),
-    AdminService = loader:Get("AdminService"),
-    InventoryService = loader:Get("InventoryService")
-})
+-- Legacy network handler connection removed - using Signals directly
 
 
 -- Load game configuration
@@ -213,7 +206,7 @@ task.spawn(function()
         Logger:Info("EggService loaded successfully")
         local EggService = eggServiceOrError
         local initSuccess, initError = pcall(function()
-            EggService:Initialize()
+            EggService:Initialize(loader) -- Pass loader so EggService can access other services
         end)
         
         if initSuccess then
