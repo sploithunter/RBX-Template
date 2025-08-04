@@ -29,7 +29,7 @@ return {
         -- Egg Preview UI Dimensions
         preview_size = {
             width = 200,
-            height = 100,
+            height = 120,  -- Increased height for three-line layout (name, price, prompt)
         },
         
         -- Pet Preview UI Dimensions  

@@ -35,7 +35,7 @@ function EggSpawner:SpawnEgg(eggType, position, spawnPoint)
     end
     
     -- Get the egg model asset ID
-    local assetId = eggData.egg_model_asset_id
+    local assetId = eggData.asset_id
     if not assetId or assetId == "rbxassetid://0" then
         warn("No asset ID configured for egg type: " .. eggType)
         return nil

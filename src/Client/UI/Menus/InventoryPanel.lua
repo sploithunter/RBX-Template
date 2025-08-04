@@ -991,9 +991,121 @@ function InventoryPanel:_extractEggDataFromFolder(itemFolder)
     return itemData
 end
 
--- 🎮 3D PET ICON CREATION
+-- 🖼️ PET IMAGE ICON CREATION (Using Pre-generated Images)
+function InventoryPanel:_createPetImageIcon(parent, item)
+    self.logger:info("🖼️ CREATING PET IMAGE", {itemId = item.id, petType = item.petType, variant = item.variant})
+    
+    -- Try to get pre-generated image from AssetPreloadService
+    local imageViewport = self:_getPetImageFromAssets(item.petType, item.variant)
+    
+    if imageViewport then
+        -- Use the pre-generated ViewportFrame
+        imageViewport.Name = "PetImage"
+        imageViewport.Size = UDim2.new(1, 0, 1, 0)  -- Fill the iconBG
+        imageViewport.Position = UDim2.new(0, 0, 0, 0)
+        imageViewport.BackgroundTransparency = 1
+        imageViewport.ZIndex = 104
+        imageViewport.Parent = parent
+        
+        self.logger:info("✅ PET IMAGE LOADED", {
+            itemId = item.id, 
+            petType = item.petType, 
+            variant = item.variant,
+            source = "pre-generated"
+        })
+        
+        return imageViewport
+    else
+        -- Fallback to emoji if image not available
+        self.logger:warn("❌ PET IMAGE NOT FOUND, using emoji fallback", {
+            itemId = item.id,
+            petType = item.petType,
+            variant = item.variant
+        })
+        
+        local fallbackIcon = Instance.new("TextLabel")
+        fallbackIcon.Name = "PetEmojiFallback"
+        fallbackIcon.Size = UDim2.new(0.8, 0, 0.8, 0)
+        fallbackIcon.Position = UDim2.new(0.1, 0, 0.1, 0)
+        fallbackIcon.BackgroundTransparency = 1
+        fallbackIcon.Text = item.icon or "🐾"
+        fallbackIcon.TextScaled = true
+        fallbackIcon.Font = Enum.Font.GothamBold
+        fallbackIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+        fallbackIcon.ZIndex = 104
+        fallbackIcon.Parent = parent
+        
+        return fallbackIcon
+    end
+end
+
+-- 🎛️ GET UI DISPLAY METHOD (User preference + Configuration-based)
+function InventoryPanel:_getDisplayMethod(context)
+    local Players = game:GetService("Players")
+    local player = Players.LocalPlayer
+    
+    if not player then
+        return "images"  -- Safe fallback
+    end
+    
+    -- Use simplified DisplayPreferences utility
+    local DisplayPreferences = require(script.Parent.Parent.Parent.Utils.DisplayPreferences)
+    local result = DisplayPreferences.GetDisplayMethod(context)
+    
+    self.logger:info("Using display preference", {
+        context = context,
+        method = result,
+        source = "SettingsService"
+    })
+    
+    return result
+end
+
+-- 🔍 GET PET IMAGE FROM ASSETS (Helper function)
+function InventoryPanel:_getPetImageFromAssets(petType, variant)
+    -- Try to get image from ReplicatedStorage.Assets.Images.Pets
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    
+    local success, imageViewport = pcall(function()
+        local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
+        if not assetsFolder then return nil end
+        
+        local imagesFolder = assetsFolder:FindFirstChild("Images")
+        if not imagesFolder then return nil end
+        
+        local petsImagesFolder = imagesFolder:FindFirstChild("Pets")
+        if not petsImagesFolder then return nil end
+        
+        local petTypeFolder = petsImagesFolder:FindFirstChild(petType)
+        if not petTypeFolder then return nil end
+        
+        local petImageViewport = petTypeFolder:FindFirstChild(variant)
+        if not petImageViewport then return nil end
+        
+        -- Clone the ViewportFrame to avoid "Parent property is locked" errors
+        return petImageViewport:Clone()
+    end)
+    
+    if success and imageViewport then
+        self.logger:info("🎯 PET IMAGE FOUND", {
+            petType = petType,
+            variant = variant,
+            path = "ReplicatedStorage.Assets.Images.Pets." .. petType .. "." .. variant
+        })
+        return imageViewport
+    else
+        self.logger:warn("🚫 PET IMAGE NOT FOUND", {
+            petType = petType,
+            variant = variant,
+            error = success and "Image not found" or imageViewport
+        })
+        return nil
+    end
+end
+
+-- 🎮 3D VIEWPORT CREATION (For ViewportFrame display mode)
 function InventoryPanel:_create3DPetIcon(parent, item)
-    self.logger:info("🎮 CREATING VIEWPORT", {itemId = item.id, petType = item.petType, variant = item.variant})
+    self.logger:info("🎮 CREATING 3D VIEWPORT", {itemId = item.id, petType = item.petType, variant = item.variant})
     
     -- Create ViewportFrame for 3D model
     local viewport = Instance.new("ViewportFrame")
@@ -1004,14 +1116,10 @@ function InventoryPanel:_create3DPetIcon(parent, item)
     viewport.ZIndex = 104
     viewport.Parent = parent
     
-    self.logger:info("📹 VIEWPORT CREATED", {itemId = item.id})
-    
     -- Create camera
     local camera = Instance.new("Camera")
     camera.Parent = viewport
     viewport.CurrentCamera = camera
-    
-    self.logger:info("📷 CAMERA CREATED", {itemId = item.id})
     
     -- Load the 3D model
     self:_load3DPetModel(viewport, camera, item)
@@ -1033,6 +1141,7 @@ function InventoryPanel:_createEmojiFallback(viewport, item)
     fallbackIcon.Parent = viewport
 end
 
+-- 🎮 3D PET MODEL LOADING (For ViewportFrame display mode)
 function InventoryPanel:_load3DPetModel(viewport, camera, item)
     local InsertService = game:GetService("InsertService")
     local Locations = require(game:GetService("ReplicatedStorage").Shared.Locations)
@@ -1396,9 +1505,25 @@ function InventoryPanel:_createItemFrame(item, layoutOrder)
     })
     
     if item.use3DModel then
-        -- Create 3D ViewportFrame
-        self.logger:info("🎮 CREATING 3D MODEL", {itemId = item.id, petType = item.petType})
-        local viewport = self:_create3DPetIcon(iconBG, item)
+        -- Check configuration to determine display method
+        local displayMethod = self:_getDisplayMethod("inventory")
+        
+        if displayMethod == "images" then
+            -- Use pre-generated pet image
+            self.logger:info("🖼️ USING PET IMAGE", {itemId = item.id, petType = item.petType, config = "images"})
+            local imageIcon = self:_createPetImageIcon(iconBG, item)
+        elseif displayMethod == "viewports" then
+            -- Use 3D ViewportFrame
+            self.logger:info("🎮 USING 3D VIEWPORT", {itemId = item.id, petType = item.petType, config = "viewports"})
+            local viewport = self:_create3DPetIcon(iconBG, item)
+        else
+            -- Unknown config, default to images
+            self.logger:warn("🚨 UNKNOWN DISPLAY METHOD, defaulting to images", {
+                displayMethod = displayMethod,
+                itemId = item.id
+            })
+            local imageIcon = self:_createPetImageIcon(iconBG, item)
+        end
     else
         -- Use emoji fallback
         self.logger:info("🎭 USING EMOJI FALLBACK", {itemId = item.id, icon = item.icon})

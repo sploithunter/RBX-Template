@@ -25,6 +25,95 @@ local petConfig = {
         default_chance_color = Color3.fromRGB(139, 0, 0), -- Dark red chance text color
     },
     
+    -- === UI DISPLAY CONFIGURATION ===
+    ui_display = {
+        -- Choose display method for different UI contexts
+        -- "images" = Use pre-generated images (fast, consistent, good for animations)
+        -- "viewports" = Use 3D ViewportFrames (dynamic, real-time 3D)
+        -- "user" = Let player choose in settings (respects user_preferences)
+        
+        inventory = "user",             -- Let players choose display method
+        egg_preview = "user",           -- Let players choose display method
+        shop_display = "images",        -- Developer-controlled (always images)
+        animations = "images",          -- Always use images for animations (performance)
+        
+        -- User preference system
+        user_preferences = {
+            -- Default preferences for new players
+            defaults = {
+                inventory = "images",           -- Default to images for performance
+                egg_preview = "images",         -- Default to images for consistency
+                shop_display = "images",        -- Not user-configurable anyway
+            },
+            
+            -- Developer control over user preferences
+            allow_user_control = {
+                inventory = true,               -- Players can change inventory display
+                egg_preview = true,             -- Players can change egg preview display
+                shop_display = false,           -- Developer forces shop to use images
+                animations = false,             -- Developer forces animations to use images
+            },
+            
+            -- Performance warnings (shown when user picks viewports)
+            performance_warnings = {
+                enabled = true,
+                viewport_warning = "3D models may reduce performance on lower-end devices",
+                show_fps_warning = true,        -- Show FPS impact warning
+            },
+            
+            -- Auto-detect performance mode
+            auto_performance = {
+                enabled = true,
+                force_images_below_fps = 30,    -- Force images if FPS drops below 30
+                monitor_duration = 10,          -- Monitor FPS for 10 seconds after change
+            }
+        },
+        
+        -- Per-context override settings (developer can still force specific methods)
+        context_overrides = {
+            -- inventory = "viewports",      -- Force inventory to use 3D ViewportFrames
+            -- egg_preview = "images",       -- Force egg preview to use images
+            -- animations = "images",        -- This is already enforced above
+        }
+    },
+    
+    -- === ASSET IMAGE GENERATION SETTINGS ===
+    asset_images = {
+        -- Default camera settings for pets without specific config
+        default_camera = {
+            distance = 3.5,
+            angle_y = 0,
+            angle_x = 180,
+            offset = Vector3.new(0, 0, 0),
+            lighting = "default"
+        },
+        
+        -- Default camera settings for eggs without specific config
+        default_egg_camera = {
+            distance = 4.0,
+            angle_y = 25,
+            angle_x = 160,
+            offset = Vector3.new(0, 0, 0),
+            lighting = "default"
+        },
+        
+        -- Image generation settings
+        image_size = 512,  -- 512x512 for high quality
+        background_color = Color3.fromRGB(0, 0, 0),  -- Transparent background
+        lighting_presets = {
+            default = {
+                ambient = Color3.fromRGB(100, 100, 100),
+                directional = Color3.fromRGB(255, 255, 255),
+                directional_angle = Vector3.new(-45, 45, 0)
+            },
+            dramatic = {
+                ambient = Color3.fromRGB(50, 50, 80),
+                directional = Color3.fromRGB(255, 240, 200),
+                directional_angle = Vector3.new(-60, 30, 0)
+            }
+        }
+    },
+    
     -- === RARITY SYSTEM (Visual/Organization Only) ===
     rarities = {
         common = {
@@ -94,9 +183,19 @@ local petConfig = {
             base_power = 10,
             base_health = 150,
             
+            -- Camera configuration for image generation
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180, 
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default"
+            },
+            
             variants = {
                 basic = {
                     asset_id = "rbxassetid://102676279378350",
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Bear",
                     power = 10,
                     health = 150,
@@ -107,6 +206,7 @@ local petConfig = {
                 },
                 golden = {
                     asset_id = "rbxassetid://107758879638540", 
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Golden Bear",
                     power = 50,  -- base_power * golden multiplier
                     health = 750, -- base_health * golden multiplier  
@@ -115,6 +215,7 @@ local petConfig = {
                 },
                 rainbow = {
                     asset_id = "rbxassetid://92437511216136",
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Rainbow Bear", 
                     power = 500, -- base_power * rainbow multiplier
                     health = 7500, -- base_health * rainbow multiplier
@@ -131,9 +232,19 @@ local petConfig = {
             base_power = 8,
             base_health = 120,
             
+            -- Camera configuration for image generation
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, -0.5, 0),
+                lighting = "default"
+            },
+            
             variants = {
                 basic = {
                     asset_id = "rbxassetid://119448221139567",
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Bunny",
                     power = 8,
                     health = 120,
@@ -144,6 +255,7 @@ local petConfig = {
                 },
                 golden = {
                     asset_id = "rbxassetid://133150464787030",
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Golden Bunny", 
                     power = 40,
                     health = 600,
@@ -152,6 +264,7 @@ local petConfig = {
                 },
                 rainbow = {
                     asset_id = "rbxassetid://113112612195316",
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Rainbow Bunny",
                     power = 400, 
                     health = 6000,
@@ -168,9 +281,19 @@ local petConfig = {
             base_power = 12,
             base_health = 140,
             
+            -- Camera configuration for image generation
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default"
+            },
+            
             variants = {
                 basic = {
                     asset_id = "rbxassetid://95584496209726",
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Doggy",
                     power = 12,
                     health = 140, 
@@ -181,6 +304,7 @@ local petConfig = {
                 },
                 golden = {
                     asset_id = "rbxassetid://97337398672225",
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Golden Doggy",
                     power = 60,
                     health = 700,
@@ -189,6 +313,7 @@ local petConfig = {
                 },
                 rainbow = {
                     asset_id = "rbxassetid://139772169909973", 
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Rainbow Doggy",
                     power = 600,
                     health = 7000,
@@ -205,30 +330,42 @@ local petConfig = {
             base_power = 25,
             base_health = 200,
             
+            -- Camera configuration for image generation
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 1, 0),
+                lighting = "dramatic"
+            },
+            
             variants = {
                 basic = {
                     asset_id = "rbxassetid://71645322477288",
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Dragon",
                     power = 25,
                     health = 200,
                     abilities = {"fire_breath"},
-                    viewport_zoom = 1.2,  -- Dragons are large, zoom out slightly
+                    viewport_zoom = 2.0,  -- Dragons need higher zoom to appear properly sized
                 },
                 golden = {
                     asset_id = "rbxassetid://91261941530299",
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Golden Dragon", 
                     power = 125,
                     health = 1000,
                     abilities = {"golden_flame", "treasure_sense"},
-                    viewport_zoom = 1.2,  -- Golden dragon zoom
+                    viewport_zoom = 2.0,  -- Golden dragon zoom (increased for proper size)
                 },
                 rainbow = {
                     asset_id = "rbxassetid://120821607721730",
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Rainbow Dragon",
                     power = 1250,
                     health = 10000, 
                     abilities = {"prismatic_breath", "reality_burn", "cosmic_flight"},
-                    viewport_zoom = 1.2,  -- Rainbow dragon zoom
+                    viewport_zoom = 2.0,  -- Rainbow dragon zoom (increased for proper size)
                     
                     -- Display overrides (optional - overrides viewport defaults)
                     display_container_bg = Color3.fromRGB(255, 0, 255),  -- Magenta bg for Rainbow Dragon
@@ -245,9 +382,19 @@ local petConfig = {
             base_power = 9,
             base_health = 110,
             
+            -- Camera configuration for image generation
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, -0.3, 0),
+                lighting = "default"
+            },
+            
             variants = {
                 basic = {
                     asset_id = "rbxassetid://73405612786363",
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Kitty", 
                     power = 9,
                     health = 110,
@@ -256,6 +403,7 @@ local petConfig = {
                 },
                 golden = {
                     asset_id = "rbxassetid://131968646516737",
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Golden Kitty",
                     power = 45,
                     health = 550,
@@ -264,6 +412,7 @@ local petConfig = {
                 },
                 rainbow = {
                     asset_id = "rbxassetid://124744079930917",
+                    image_id = "rbxassetid://0",  -- TODO: Generate from 3D model
                     display_name = "Rainbow Kitty", 
                     power = 450,
                     health = 5500,
@@ -342,9 +491,18 @@ local petConfig = {
             description = "Contains all your favorite pets in Basic, Golden, and Rainbow variants!",
             cost = 100,
             currency = "coins",
-            egg_model_asset_id = "rbxassetid://77451518796778", -- BasicEgg model
-            icon_asset_id = "rbxassetid://77451518796778", -- Use same for icon for now
+            asset_id = "rbxassetid://77451518796778", -- 3D BasicEgg model for import
+            image_id = "rbxassetid://0", -- Generated from 3D model
             unlock_requirement = nil, -- Always available
+            
+            -- Camera configuration for egg image generation
+            camera = {
+                distance = 4.0,
+                angle_y = 25,    -- Slight angle to show egg shape
+                angle_x = 160,   -- Elevated view similar to pets
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default"
+            },
             
             -- Stage 1: Pet Selection (which animal) - TESTING RARE PERCENTAGES
             pet_weights = {
@@ -381,9 +539,18 @@ local petConfig = {
             description = "Premium egg - Only Golden and Rainbow pets, no Basic variants!",
             cost = 1000, 
             currency = "gems",
-            egg_model_asset_id = "rbxassetid://83992435784076", -- Golden_BasicEgg model
-            icon_asset_id = "rbxassetid://83992435784076", -- Use same for icon for now
+            asset_id = "rbxassetid://83992435784076", -- 3D Golden_BasicEgg model for import
+            image_id = "rbxassetid://0", -- Generated from 3D model
             unlock_requirement = {type = "pets_hatched", amount = 10},
+            
+            -- Camera configuration for egg image generation
+            camera = {
+                distance = 4.2,
+                angle_y = 30,    -- Slightly different angle for golden egg
+                angle_x = 165,   -- Show the golden shine
+                offset = Vector3.new(0, 0.2, 0),
+                lighting = "dramatic"  -- Use dramatic lighting for golden egg
+            },
             
             -- Stage 1: Pet Selection (same animals as BasicEgg)
             pet_weights = {
@@ -422,9 +589,18 @@ local petConfig = {
             description = "Mythical rainbow pets with ultimate power",
             cost = 10000,
             currency = "gems", 
-            egg_model_asset_id = "rbxassetid://0", -- Add when you have rainbow egg model
-            icon_asset_id = "rbxassetid://0",
+            asset_id = "rbxassetid://0", -- Add when you have rainbow egg model
+            image_id = "rbxassetid://0", -- Generated from 3D model
             unlock_requirement = {type = "golden_pets_hatched", amount = 5},
+            
+            -- Camera configuration for egg image generation
+            camera = {
+                distance = 4.5,
+                angle_y = 35,    -- Different angle for rainbow egg
+                angle_x = 170,   -- Show the rainbow effect
+                offset = Vector3.new(0, 0.3, 0),
+                lighting = "dramatic"  -- Special lighting for rainbow egg
+            },
             
             possible_pets = {
                 {pet = "bear", variant = "rainbow", weight = 20, display_rate = "20%"},

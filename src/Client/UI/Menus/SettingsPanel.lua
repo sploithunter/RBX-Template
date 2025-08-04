@@ -114,7 +114,10 @@ function SettingsPanel.new()
         graphics = {
             quality = "medium", -- low, medium, high
             performanceMode = false,
-            reducedMotion = false
+            reducedMotion = false,
+            -- Display method preferences
+            inventoryDisplay = "images",    -- images, viewports
+            eggPreviewDisplay = "images",   -- images, viewports
         },
         ui = {
             scale = 1.0,
@@ -480,6 +483,94 @@ function SettingsPanel:_createButtonSetting(name, buttonText, layoutOrder, callb
     end)
 end
 
+function SettingsPanel:_createDropdownSetting(title, currentValue, options, layoutOrder, callback)
+    local container = Instance.new("Frame")
+    container.Name = title:gsub(" ", "")
+    container.Size = UDim2.new(1, 0, 0, 50)
+    container.BackgroundTransparency = 1
+    container.LayoutOrder = layoutOrder
+    container.Parent = self.scrollFrame
+    
+    -- Title label
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Name = "Title"
+    titleLabel.Size = UDim2.new(0.5, -10, 1, 0)
+    titleLabel.Position = UDim2.new(0, 0, 0, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = title
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.TextSize = 16
+    titleLabel.Font = Enum.Font.Gotham
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = container
+    
+    -- Dropdown button (changed from Frame to TextButton to support clicking)
+    local dropdownFrame = Instance.new("TextButton")
+    dropdownFrame.Name = "Dropdown"
+    dropdownFrame.Size = UDim2.new(0.5, -10, 0, 32)
+    dropdownFrame.Position = UDim2.new(0.5, 10, 0.5, -16)
+    dropdownFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    dropdownFrame.BorderSizePixel = 0
+    dropdownFrame.Text = ""  -- No text on the button itself
+    dropdownFrame.Parent = container
+    
+    local dropdownCorner = Instance.new("UICorner")
+    dropdownCorner.CornerRadius = UDim.new(0, 6)
+    dropdownCorner.Parent = dropdownFrame
+    
+    -- Current value label
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Name = "ValueLabel"
+    valueLabel.Size = UDim2.new(1, -40, 1, 0)
+    valueLabel.Position = UDim2.new(0, 10, 0, 0)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.Text = currentValue
+    valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    valueLabel.TextSize = 14
+    valueLabel.Font = Enum.Font.Gotham
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+    valueLabel.Parent = dropdownFrame
+    
+    -- Arrow icon
+    local arrowLabel = Instance.new("TextLabel")
+    arrowLabel.Name = "Arrow"
+    arrowLabel.Size = UDim2.new(0, 20, 1, 0)
+    arrowLabel.Position = UDim2.new(1, -30, 0, 0)
+    arrowLabel.BackgroundTransparency = 1
+    arrowLabel.Text = "▼"
+    arrowLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    arrowLabel.TextSize = 12
+    arrowLabel.Font = Enum.Font.Gotham
+    arrowLabel.TextXAlignment = Enum.TextXAlignment.Center
+    arrowLabel.Parent = dropdownFrame
+    
+    -- Click to cycle through options
+    local currentIndex = 1
+    for i, option in ipairs(options) do
+        if option.value == currentValue then
+            currentIndex = i
+            break
+        end
+    end
+    
+    local clickConnection
+    clickConnection = dropdownFrame.Activated:Connect(function()
+        currentIndex = currentIndex + 1
+        if currentIndex > #options then
+            currentIndex = 1
+        end
+        
+        local selectedOption = options[currentIndex]
+        valueLabel.Text = selectedOption.display
+        
+        if callback then
+            callback(selectedOption.value)
+        end
+    end)
+    
+    return container
+end
+
 function SettingsPanel:_createAudioSettings()
     self:_createSectionHeader("🔊 Audio Settings", 1)
     
@@ -515,38 +606,115 @@ function SettingsPanel:_createGraphicsSettings()
         self.settings.graphics.reducedMotion = value
         -- Disable/reduce animations
     end)
+    
+    -- Display Method Preferences (only show if user control is allowed)
+    self:_createDisplayPreferences()
+end
+
+function SettingsPanel:_createDisplayPreferences()
+    -- Use simplified DisplayPreferences utility
+    local DisplayPreferences = require(script.Parent.Parent.Parent.Utils.DisplayPreferences)
+    
+    -- Get controllable contexts
+    local controllableContexts = DisplayPreferences.GetControllableContexts()
+    
+    if #controllableContexts == 0 then
+        self.logger:debug("No user-controllable display contexts available")
+        return
+    end
+    
+    -- Create dropdown options
+    local displayOptions = {
+        {value = "images", display = "📷 Images (Fast)"},
+        {value = "viewports", display = "🎮 3D Models (High Quality)"}
+    }
+    
+    local Players = game:GetService("Players")
+    local player = Players.LocalPlayer
+    
+    -- Add dropdown for each controllable context
+    local layoutOrder = 9
+    for _, context in ipairs(controllableContexts) do
+        -- Get current user preference
+        local currentPref = DisplayPreferences.GetDisplayMethod(context)
+        
+        -- Create friendly context name
+        local contextDisplayNames = {
+            inventory = "Inventory Display",
+            egg_preview = "Egg Preview Display",
+            shop_display = "Shop Display"
+        }
+        
+        local contextTitle = contextDisplayNames[context] or (context .. " Display")
+        
+        -- Create dropdown
+        self:_createDropdownSetting(contextTitle, currentPref, displayOptions, layoutOrder, function(value)
+            -- Set the preference via DisplayPreferences utility
+            DisplayPreferences.SetDisplayMethod(context, value)
+            
+            self.logger:info("Display preference updated", {
+                context = context,
+                value = value
+            })
+            
+            -- Show performance warning if switching to viewports
+            if value == "viewports" then
+                -- Simple performance warning
+                self:_showPerformanceWarning("Viewports may impact performance on older devices. Switch to Images if you experience frame drops.")
+            end
+            
+            -- Update local settings cache
+            if context == "inventory" then
+                self.settings.graphics.inventoryDisplay = value
+            elseif context == "egg_preview" then
+                self.settings.graphics.eggPreviewDisplay = value
+            end
+            
+            self:_saveSettings()
+        end)
+        
+        layoutOrder = layoutOrder + 1
+    end
+end
+
+function SettingsPanel:_showPerformanceWarning(message)
+    -- Create a temporary warning message
+    self.logger:warn("Performance Warning: " .. message)
+    
+    -- TODO: Could add a proper warning UI here
+    -- For now, just log the warning
 end
 
 function SettingsPanel:_createUISettings()
-    self:_createSectionHeader("📱 UI Settings", 9)
+    self:_createSectionHeader("📱 UI Settings", 20)
     
-    self:_createSliderSetting("UI Scale", self.settings.ui.scale, 0.8, 1.2, 10, function(value)
+    self:_createSliderSetting("UI Scale", self.settings.ui.scale, 0.8, 1.2, 21, function(value)
         self.settings.ui.scale = value
         -- Apply UI scaling
     end)
     
-    self:_createToggleSetting("Show Tooltips", self.settings.ui.showTooltips, 11, function(value)
+    self:_createToggleSetting("Show Tooltips", self.settings.ui.showTooltips, 22, function(value)
         self.settings.ui.showTooltips = value
     end)
     
-    self:_createToggleSetting("Compact Mode", self.settings.ui.compactMode, 12, function(value)
+    self:_createToggleSetting("Compact Mode", self.settings.ui.compactMode, 23, function(value)
         self.settings.ui.compactMode = value
     end)
 end
 
 function SettingsPanel:_createAdminSettings()
-    self:_createSectionHeader("🛠️ Admin Tools", 13)
+    self:_createSectionHeader("🛠️ Admin Tools", 30)
     
-    self:_createButtonSetting("Test Menu Access", "Open Admin Panel", 14, function()
+    self:_createButtonSetting("Test Menu Access", "Open Admin Panel", 31, function()
         self:_openAdminPanel()
     end)
     
-    self:_createButtonSetting("Debug Mode", "Toggle Debug UI", 15, function()
+    self:_createButtonSetting("Debug Mode", "Toggle Debug UI", 32, function()
         -- Toggle debug overlays
         self.logger:info("Debug mode toggled")
     end)
     
-    self:_createButtonSetting("Performance Monitor", "Show Stats", 16, function()
+    self:_createButtonSetting("Performance Monitor", "Show Stats", 33, function()
         -- Show performance statistics
         self.logger:info("Performance monitor toggled")
     end)

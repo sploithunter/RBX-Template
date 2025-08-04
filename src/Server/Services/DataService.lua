@@ -61,7 +61,13 @@ local function generateProfileTemplate(configLoader)
         Settings = {
             MusicEnabled = true,
             SFXEnabled = true,
-            GraphicsQuality = "Auto"
+            GraphicsQuality = "Auto",
+            -- Display preferences for UI elements
+            DisplayPreferences = {
+                inventory = "images",
+                egg_preview = "images",
+                shop_display = "images"
+            }
         },
         
         -- Analytics data

@@ -46,6 +46,7 @@ loader:RegisterModule("ProductIdMapper", ReplicatedStorage.Shared.Utils.ProductI
 loader:RegisterModule("EconomyService", ServerScriptService.Server.Services.EconomyService, {"Logger", "DataService", "ConfigLoader", "PlayerEffectsService", "GlobalEffectsService", "AdminService", "InventoryService"})
 loader:RegisterModule("MonetizationService", ServerScriptService.Server.Services.MonetizationService, {"Logger", "DataService", "EconomyService", "ProductIdMapper", "PlayerEffectsService"})
 loader:RegisterModule("InventoryService", ServerScriptService.Server.Services.InventoryService, {"Logger", "DataService", "ConfigLoader"})
+loader:RegisterModule("SettingsService", ServerScriptService.Server.Services.SettingsService, {"Logger", "DataService", "ConfigLoader"})
 loader:RegisterModule("DiagnosticsService", ServerScriptService.Server.Services.DiagnosticsService, {"Logger", "InventoryService", "EconomyService", "RateLimitService", "DataService"})
 
 -- Register lazy services (loaded when needed)
@@ -67,7 +68,7 @@ local loadOrder = loadOrderOrError
 print("✅ Modules loaded:", table.concat(loadOrder, ", "))
 
 -- Validate critical modules loaded
-local requiredModules = {"Logger", "ConfigLoader", "ServerClockService", "DataService", "PlayerEffectsService", "GlobalEffectsService", "EconomyService", "ProductIdMapper", "MonetizationService", "InventoryService", "DiagnosticsService"}
+local requiredModules = {"Logger", "ConfigLoader", "ServerClockService", "DataService", "PlayerEffectsService", "GlobalEffectsService", "EconomyService", "ProductIdMapper", "MonetizationService", "InventoryService", "SettingsService", "DiagnosticsService"}
 for _, moduleName in ipairs(requiredModules) do
     local module = loader:Get(moduleName)
     if not module then
@@ -191,9 +192,11 @@ task.spawn(function()
     end
 end)
 
+-- UserDisplayPreferences is now handled by SettingsService via ModuleLoader
+
 -- Initialize EggService (following working game pattern)
 task.spawn(function()
-    task.wait(0.1) -- Small delay after EggSpawner
+    task.wait(0.1) -- Small delay after UserDisplayPreferences
     
     Logger:Info("Starting EggService initialization...")
     

@@ -526,47 +526,75 @@ end
     This ensures ViewportFrames and text scale consistently with the BillboardGui.
 --]]
 function EggPetPreviewService:CreatePetContent(petFrame, petInfo, previewConfig, effectiveConfig)
-    -- Pet 3D model display using ViewportFrame
-    if previewConfig.load_pet_icons and petInfo.petData.asset_id and petInfo.petData.asset_id ~= "rbxassetid://0" then
-        -- Scale-based ViewportFrame (fixes the core scaling issue)
-        local viewport = Instance.new("ViewportFrame")
-        viewport.Name = "PetViewport"
-        viewport.Size = UDim2.fromScale(0.9, 0.65)  -- 90% width, 65% height - reserve space for text
-        viewport.Position = UDim2.fromScale(0.05, 0.05)  -- Back to 5% margins from top (a bit higher)
-        -- Viewport background with fallbacks
-        viewport.BackgroundColor3 = effectiveConfig.ui.colors.pet_icon_bg or Color3.fromRGB(0, 0, 0)
-        viewport.BackgroundTransparency = effectiveConfig.ui.colors.pet_icon_transparency or 1
-        viewport.Parent = petFrame
+    -- Pet display using preloaded images from ReplicatedStorage.Assets
+    if previewConfig.load_pet_icons then
+        -- Check configuration to determine display method
+        local displayMethod = self:GetDisplayMethod("egg_preview")
         
-        -- Create camera for the viewport
-        local camera = Instance.new("Camera")
-        camera.Parent = viewport
-        viewport.CurrentCamera = camera
-        
-        logger:info("Loading 3D pet model", {
-            petType = petInfo.petType,
-            variant = petInfo.variant,
-            assetId = petInfo.petData.asset_id
-        })
-        
-        -- Load the 3D model asynchronously
-        self:Load3DPetModel(petInfo.petData.asset_id, viewport, camera, petInfo.petType, petInfo.variant, petInfo)
+        if displayMethod == "images" then
+            -- Try to get preloaded image from assets first
+            local image = self:GetPetImageFromAssets(petInfo.petType, petInfo.variant)
+            
+            if image then
+                -- Use the preloaded image (ViewportFrame)
+                image.Name = "PetImage"
+                image.Size = UDim2.fromScale(0.9, 0.65)
+                image.Position = UDim2.fromScale(0.05, 0.05)
+                image.Parent = petFrame
+                
+                logger:info("Loaded preloaded pet image", {
+                    petType = petInfo.petType,
+                    variant = petInfo.variant,
+                    source = "ReplicatedStorage.Assets.Images"
+                })
+            else
+                -- Fallback to emoji if preloaded image not available
+                self:CreateEmojiPetIcon(petFrame, petInfo, effectiveConfig)
+            end
+        elseif displayMethod == "viewports" then
+            -- 3D ViewportFrame creation (restored from working implementation)
+            if petInfo.petData.asset_id and petInfo.petData.asset_id ~= "rbxassetid://0" then
+                -- Scale-based ViewportFrame (fixes the core scaling issue)
+                local viewport = Instance.new("ViewportFrame")
+                viewport.Name = "PetViewport"
+                viewport.Size = UDim2.fromScale(0.9, 0.65)  -- 90% width, 65% height - reserve space for text
+                viewport.Position = UDim2.fromScale(0.05, 0.05)  -- 5% margins from top
+                -- Viewport background with fallbacks
+                viewport.BackgroundColor3 = effectiveConfig.ui.colors.pet_icon_bg or Color3.fromRGB(0, 0, 0)
+                viewport.BackgroundTransparency = effectiveConfig.ui.colors.pet_icon_transparency or 1
+                viewport.Parent = petFrame
+                
+                -- Create camera for the viewport
+                local camera = Instance.new("Camera")
+                camera.Parent = viewport
+                viewport.CurrentCamera = camera
+                
+                logger:info("Loading 3D pet model for viewport", {
+                    petType = petInfo.petType,
+                    variant = petInfo.variant,
+                    assetId = petInfo.petData.asset_id
+                })
+                
+                -- Load the 3D model asynchronously
+                self:Load3DPetModel(petInfo.petData.asset_id, viewport, camera, petInfo.petType, petInfo.variant, petInfo)
+            else
+                -- No valid asset ID, use emoji fallback
+                self:CreateEmojiPetIcon(petFrame, petInfo, effectiveConfig)
+            end
+        else
+            -- Unknown config, default to images
+            logger:warn("Unknown display method, defaulting to emoji", {
+                displayMethod = displayMethod,
+                petType = petInfo.petType
+            })
+            self:CreateEmojiPetIcon(petFrame, petInfo, effectiveConfig)
+        end
     else
-        -- Use emoji fallback (scale-based)
-        logger:debug("Using emoji fallback", {
-            petType = petInfo.petType, 
-            reason = "3D loading disabled or invalid asset"
+        -- Icons disabled in config - use emoji fallback
+        logger:debug("Pet icons disabled in config", {
+            petType = petInfo.petType
         })
-        local petIcon = Instance.new("TextLabel")
-        petIcon.Name = "Icon"
-        petIcon.Size = UDim2.fromScale(0.9, 0.65)  -- Match ViewportFrame scaling
-        petIcon.Position = UDim2.fromScale(0.05, 0.05)  -- Back to match ViewportFrame positioning
-        petIcon.BackgroundTransparency = 1
-        petIcon.Text = self:GetPetEmojiIcon(petInfo.petType)
-        petIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-        petIcon.TextScaled = true
-        petIcon.Font = effectiveConfig.ui.fonts.pet_icon_fallback
-        petIcon.Parent = petFrame
+        self:CreateEmojiPetIcon(petFrame, petInfo, effectiveConfig)
     end
     
     -- Pet name (if enabled) - scale-based and configurable per pet
@@ -832,6 +860,35 @@ function EggPetPreviewService:GetPetEmojiIcon(petType)
     return petIcons[petType] or "🐾"
 end
 
+-- Get pet image from preloaded assets
+function EggPetPreviewService:GetPetImageFromAssets(petType, variant)
+    -- Try to get from ReplicatedStorage.Assets.Images.Pets first
+    local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
+    if assetsFolder then
+        local imagesFolder = assetsFolder:FindFirstChild("Images")
+        if imagesFolder then
+            local petsFolder = imagesFolder:FindFirstChild("Pets")
+            if petsFolder then
+                local petTypeFolder = petsFolder:FindFirstChild(petType)
+                if petTypeFolder then
+                    local image = petTypeFolder:FindFirstChild(variant)
+                    if image then
+                        return image:Clone()
+                    end
+                end
+            end
+        end
+    end
+    
+    logger:debug("Preloaded image not found in assets", {
+        petType = petType,
+        variant = variant,
+        path = "ReplicatedStorage.Assets.Images.Pets." .. petType .. "." .. variant
+    })
+    
+    return nil
+end
+
 -- === PUBLIC API ===
 
 -- Show pet preview for an egg anchor (EggSpawnPoint)
@@ -855,6 +912,102 @@ end
 -- Get current preview state
 function EggPetPreviewService:GetCurrentEggType()
     return currentEggType
+end
+
+-- Get UI display method based on user preferences + configuration
+function EggPetPreviewService:GetDisplayMethod(context)
+    local Players = game:GetService("Players")
+    local player = Players.LocalPlayer
+    
+    if not player then
+        -- Server-side or no player, use config fallback
+        if petConfig.ui_display.context_overrides[context] then
+            return petConfig.ui_display.context_overrides[context]
+        end
+        return petConfig.ui_display[context] or "images"
+    end
+    
+    -- Client-side: Read from replicated player folders
+    if RunService:IsClient() then
+        local success, result = pcall(function()
+            -- Read from replicated Settings folders (same logic as DisplayPreferences utility)
+            local settingsFolder = player:FindFirstChild("Settings")
+            if settingsFolder then
+                local displayPrefFolder = settingsFolder:FindFirstChild("DisplayPreferences")
+                if displayPrefFolder then
+                    local contextValue = displayPrefFolder:FindFirstChild(context)
+                    if contextValue and contextValue.Value ~= "" then
+                        return contextValue.Value
+                    end
+                end
+            end
+            
+            -- Fallback to config defaults
+            if petConfig.ui_display and petConfig.ui_display[context] then
+                local contextConfig = petConfig.ui_display[context]
+                
+                if contextConfig == "images" or contextConfig == "viewports" then
+                    return contextConfig
+                elseif contextConfig == "user" then
+                    -- User choice - check defaults
+                    local userPrefs = petConfig.ui_display.user_preferences
+                    if userPrefs and userPrefs.defaults and userPrefs.defaults[context] then
+                        return userPrefs.defaults[context]
+                    end
+                end
+            end
+            
+            -- Final fallback
+            return "images"
+        end)
+        
+        if success then
+            logger:info("Using display preference", {
+                context = context,
+                method = result,
+                player = player.Name,
+                source = "SettingsService"
+            })
+            return result
+        else
+            logger:warn("Error reading display preferences, using config fallback", {
+                context = context,
+                error = result
+            })
+        end
+    else
+        -- Server-side fallback to configuration-only
+        logger:info("Server-side, using config fallback", {
+            context = context
+        })
+        
+        -- Check for context override first
+        if petConfig.ui_display.context_overrides[context] then
+            return petConfig.ui_display.context_overrides[context]
+        end
+        
+        -- Use default setting for context
+        return petConfig.ui_display[context] or "images"  -- Default to images
+    end
+end
+
+-- Create emoji pet icon (extracted from inline code)
+function EggPetPreviewService:CreateEmojiPetIcon(petFrame, petInfo, effectiveConfig)
+    logger:debug("Creating emoji pet icon", {
+        petType = petInfo.petType,
+        variant = petInfo.variant
+    })
+    
+    local petIcon = Instance.new("TextLabel")
+    petIcon.Name = "Icon"
+    petIcon.Size = UDim2.fromScale(0.9, 0.65)
+    petIcon.Position = UDim2.fromScale(0.05, 0.05)
+    petIcon.BackgroundTransparency = 1
+    petIcon.Text = self:GetPetEmojiIcon(petInfo.petType)
+    petIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+    petIcon.TextScaled = true
+    petIcon.Font = effectiveConfig.ui.fonts.pet_icon_fallback
+    petIcon.Parent = petFrame
 end
 
 -- Initialize service

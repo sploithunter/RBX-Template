@@ -70,19 +70,51 @@ function AssetPreloadService:CreateAssetFolders()
     })
 end
 
--- Load all pet models into ReplicatedStorage.Assets.Models.Pets
+-- Load all pet models and generate images into ReplicatedStorage.Assets
 function AssetPreloadService:LoadAllModelsIntoAssets()
     local startTime = tick()
-    local successCount = 0
-    local failureCount = 0
+    local modelSuccessCount = 0
+    local modelFailureCount = 0
+    local imageSuccessCount = 0
+    local imageFailureCount = 0
     local totalAssets = 0
     
     local petsFolder = ReplicatedStorage.Assets.Models.Pets
     
-    -- Load pet models
+    -- Create eggs folder if it doesn't exist
+    local eggsFolder = ReplicatedStorage.Assets.Models:FindFirstChild("Eggs")
+    if not eggsFolder then
+        eggsFolder = Instance.new("Folder")
+        eggsFolder.Name = "Eggs"
+        eggsFolder.Parent = ReplicatedStorage.Assets.Models
+    end
+    
+    -- Create Images folder structure if it doesn't exist
+    local imagesRoot = ReplicatedStorage.Assets:FindFirstChild("Images")
+    if not imagesRoot then
+        imagesRoot = Instance.new("Folder")
+        imagesRoot.Name = "Images"
+        imagesRoot.Parent = ReplicatedStorage.Assets
+    end
+    
+    local petImagesFolder = imagesRoot:FindFirstChild("Pets")
+    if not petImagesFolder then
+        petImagesFolder = Instance.new("Folder")
+        petImagesFolder.Name = "Pets"
+        petImagesFolder.Parent = imagesRoot
+    end
+    
+    local eggImagesFolder = imagesRoot:FindFirstChild("Eggs")
+    if not eggImagesFolder then
+        eggImagesFolder = Instance.new("Folder")
+        eggImagesFolder.Name = "Eggs"
+        eggImagesFolder.Parent = imagesRoot
+    end
+    
+    -- Load pet models and generate images
     for petType, petData in pairs(petConfig.pets or {}) do
         if petData.variants then
-            -- Create pet type folder (e.g., "Bear")
+            -- Create pet type folders (e.g., "Bear")
             local petTypeFolder = petsFolder:FindFirstChild(petType)
             if not petTypeFolder then
                 petTypeFolder = Instance.new("Folder")
@@ -90,36 +122,109 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                 petTypeFolder.Parent = petsFolder
             end
             
+            local petImageTypeFolder = petImagesFolder:FindFirstChild(petType)
+            if not petImageTypeFolder then
+                petImageTypeFolder = Instance.new("Folder")
+                petImageTypeFolder.Name = petType
+                petImageTypeFolder.Parent = petImagesFolder
+            end
+            
             for variant, variantData in pairs(petData.variants) do
                 totalAssets = totalAssets + 1
                 
                 if variantData.asset_id and variantData.asset_id ~= "rbxassetid://0" then
-                    local success = self:LoadModelIntoFolder(
+                    -- Load 3D model
+                    local modelSuccess = self:LoadModelIntoFolder(
                         variantData.asset_id,
                         petTypeFolder,
                         variant,
                         petType .. "_" .. variant
                     )
                     
-                    if success then
-                        successCount = successCount + 1
+                    if modelSuccess then
+                        modelSuccessCount = modelSuccessCount + 1
+                        
+                        -- Generate image from the loaded model
+                        local imageSuccess = self:GenerateImageFromModel(
+                            petTypeFolder:FindFirstChild(variant),
+                            petImageTypeFolder,
+                            variant,
+                            petType,
+                            variant
+                        )
+                        
+                        if imageSuccess then
+                            imageSuccessCount = imageSuccessCount + 1
+                        else
+                            imageFailureCount = imageFailureCount + 1
+                        end
                     else
-                        failureCount = failureCount + 1
+                        modelFailureCount = modelFailureCount + 1
+                        imageFailureCount = imageFailureCount + 1  -- Can't generate image without model
                     end
                 else
                     logger:Warn("Pet has no valid asset ID", {
                         petType = petType,
                         variant = variant
                     })
-                    failureCount = failureCount + 1
+                    modelFailureCount = modelFailureCount + 1
+                    imageFailureCount = imageFailureCount + 1
                 end
             end
         end
     end
     
-    logger:Info("Pet model loading completed", {
-        successful = successCount,
-        failed = failureCount,
+    -- Load egg models and generate images
+    for eggType, eggData in pairs(petConfig.egg_sources or {}) do
+        totalAssets = totalAssets + 1
+        
+        if eggData.asset_id and eggData.asset_id ~= "rbxassetid://0" then
+            -- Load 3D egg model
+            local modelSuccess = self:LoadModelIntoFolder(
+                eggData.asset_id,
+                eggsFolder,
+                eggType,
+                eggType .. "_egg"
+            )
+            
+            if modelSuccess then
+                modelSuccessCount = modelSuccessCount + 1
+                
+                -- Generate image from the loaded egg model
+                local imageSuccess = self:GenerateEggImageFromModel(
+                    eggsFolder:FindFirstChild(eggType),
+                    eggImagesFolder,
+                    eggType,
+                    eggType
+                )
+                
+                if imageSuccess then
+                    imageSuccessCount = imageSuccessCount + 1
+                else
+                    imageFailureCount = imageFailureCount + 1
+                end
+            else
+                modelFailureCount = modelFailureCount + 1
+                imageFailureCount = imageFailureCount + 1  -- Can't generate image without model
+            end
+        else
+            logger:Warn("Egg has no valid asset ID", {
+                eggType = eggType
+            })
+            modelFailureCount = modelFailureCount + 1
+            imageFailureCount = imageFailureCount + 1
+        end
+    end
+    
+    logger:Info("Asset loading completed", {
+        models = {
+            successful = modelSuccessCount,
+            failed = modelFailureCount
+        },
+        images = {
+            successful = imageSuccessCount,
+            failed = imageFailureCount
+        },
         total = totalAssets,
         duration = tick() - startTime
     })
@@ -183,6 +288,195 @@ function AssetPreloadService:LoadModelIntoFolder(assetId, parentFolder, folderNa
     return true
 end
 
+-- Generate a ViewportFrame image from a loaded model
+function AssetPreloadService:GenerateImageFromModel(model, parentFolder, folderName, petType, variant)
+    if not model or not model:IsA("Model") then
+        logger:Warn("Invalid model for image generation", {
+            petType = petType,
+            variant = variant,
+            modelExists = model ~= nil,
+            modelType = model and model.ClassName or "nil"
+        })
+        return false
+    end
+    
+    local success, result = pcall(function()
+        -- Get camera configuration from pet config
+        local cameraConfig = self:GetCameraConfig(petType)
+        
+        -- Position model for image capture
+        local modelClone = model:Clone()
+        local modelCFrame, modelSize = modelClone:GetBoundingBox()
+        
+        if modelClone.PrimaryPart then
+            modelClone:SetPrimaryPartCFrame(CFrame.new(0, 0, 0))
+        else
+            modelClone:MoveTo(Vector3.new(0, 0, 0))
+        end
+        
+        -- Calculate camera position based on configuration using proper spherical coordinates
+        local angleYRad = math.rad(cameraConfig.angle_y)  -- Horizontal rotation (around Y-axis)
+        local angleXRad = math.rad(cameraConfig.angle_x)  -- Vertical rotation (elevation)
+        
+        -- Use spherical coordinates: distance, horizontal angle, vertical angle
+        local cameraOffset = Vector3.new(
+            math.sin(angleYRad) * math.cos(angleXRad) * cameraConfig.distance,  -- X: affected by both angles
+            math.sin(angleXRad) * cameraConfig.distance,                       -- Y: vertical elevation
+            math.cos(angleYRad) * math.cos(angleXRad) * cameraConfig.distance   -- Z: affected by both angles
+        )
+        
+        local cameraPosition = cameraOffset + cameraConfig.offset
+        
+        -- Remove existing ViewportFrame if it exists (for regeneration)
+        local existingViewport = parentFolder:FindFirstChild(folderName)
+        if existingViewport then
+            existingViewport:Destroy()
+        end
+        
+        -- Create ViewportFrame for this pet
+        local viewport = Instance.new("ViewportFrame")
+        viewport.Name = folderName
+        viewport.Size = UDim2.new(1, 0, 1, 0)  -- Full size, will be scaled by UI
+        viewport.BackgroundTransparency = 1
+        viewport.Parent = parentFolder
+        
+        -- Create and configure camera
+        local camera = Instance.new("Camera")
+        camera.CFrame = CFrame.lookAt(cameraPosition, Vector3.new(0, 0, 0))
+        camera.Parent = viewport
+        viewport.CurrentCamera = camera
+        
+        -- Add model to viewport
+        modelClone.Parent = viewport
+        
+        logger:Info("Generated image for pet", {
+            petType = petType,
+            variant = variant,
+            cameraConfig = {
+                distance = cameraConfig.distance,
+                angle_y = cameraConfig.angle_y,
+                angle_x = cameraConfig.angle_x,
+                offset = cameraConfig.offset
+            },
+            calculatedPosition = cameraPosition,
+            modelSize = modelSize,
+            storagePath = "ReplicatedStorage.Assets.Images.Pets." .. petType .. "." .. folderName
+        })
+        
+        return true
+    end)
+    
+    if success then
+        return true
+    else
+        logger:Error("Failed to generate image", {
+            petType = petType,
+            variant = variant,
+            error = result
+        })
+        return false
+    end
+end
+
+-- Generate a ViewportFrame image from a loaded egg model
+function AssetPreloadService:GenerateEggImageFromModel(model, parentFolder, eggType, folderName)
+    if not model or not model:IsA("Model") then
+        logger:Warn("Invalid egg model for image generation", {
+            eggType = eggType,
+            modelExists = model ~= nil,
+            modelType = model and model.ClassName or "nil"
+        })
+        return false
+    end
+    
+    local success, result = pcall(function()
+        -- Get camera configuration from egg config (or use default)
+        local eggData = petConfig.egg_sources[eggType]
+        local cameraConfig = (eggData and eggData.camera) or petConfig.asset_images.default_egg_camera
+        
+        -- Position model for image capture
+        local modelClone = model:Clone()
+        local modelCFrame, modelSize = modelClone:GetBoundingBox()
+        
+        if modelClone.PrimaryPart then
+            modelClone:SetPrimaryPartCFrame(CFrame.new(0, 0, 0))
+        else
+            modelClone:MoveTo(Vector3.new(0, 0, 0))
+        end
+        
+        -- Calculate camera position using spherical coordinates (same as pets)
+        local angleYRad = math.rad(cameraConfig.angle_y)  -- Horizontal rotation (around Y-axis)
+        local angleXRad = math.rad(cameraConfig.angle_x)  -- Vertical rotation (elevation)
+        
+        local cameraOffset = Vector3.new(
+            math.sin(angleYRad) * math.cos(angleXRad) * cameraConfig.distance,
+            math.sin(angleXRad) * cameraConfig.distance,
+            math.cos(angleYRad) * math.cos(angleXRad) * cameraConfig.distance
+        )
+        
+        local cameraPosition = cameraOffset + cameraConfig.offset
+        
+        -- Remove existing ViewportFrame if it exists (for regeneration)
+        local existingViewport = parentFolder:FindFirstChild(folderName)
+        if existingViewport then
+            existingViewport:Destroy()
+        end
+        
+        -- Create ViewportFrame for this egg
+        local viewport = Instance.new("ViewportFrame")
+        viewport.Name = folderName
+        viewport.Size = UDim2.new(1, 0, 1, 0)  -- Full size, will be scaled by UI
+        viewport.BackgroundTransparency = 1
+        viewport.Parent = parentFolder
+        
+        -- Create and configure camera
+        local camera = Instance.new("Camera")
+        camera.CFrame = CFrame.lookAt(cameraPosition, Vector3.new(0, 0, 0))
+        camera.Parent = viewport
+        viewport.CurrentCamera = camera
+        
+        -- Add model to viewport
+        modelClone.Parent = viewport
+        
+        logger:Info("Generated image for egg", {
+            eggType = eggType,
+            cameraConfig = {
+                distance = cameraConfig.distance,
+                angle_y = cameraConfig.angle_y,
+                angle_x = cameraConfig.angle_x,
+                offset = cameraConfig.offset,
+                lighting = cameraConfig.lighting
+            },
+            calculatedPosition = cameraPosition,
+            modelSize = modelSize,
+            storagePath = "ReplicatedStorage.Assets.Images.Eggs." .. folderName
+        })
+        
+        return true
+    end)
+    
+    if success then
+        return true
+    else
+        logger:Error("Failed to generate egg image", {
+            eggType = eggType,
+            error = result
+        })
+        return false
+    end
+end
+
+-- Get camera configuration for pet type
+function AssetPreloadService:GetCameraConfig(petType)
+    local assetImageConfig = petConfig.asset_images
+    
+    -- Get camera config from the pet's definition, fallback to default
+    local petData = petConfig.pets[petType]
+    local cameraConfig = (petData and petData.camera) or assetImageConfig.default_camera
+    
+    return cameraConfig
+end
+
 -- Get model from ReplicatedStorage.Assets (for external access if needed)
 function AssetPreloadService:GetModelFromAssets(petType, variant)
     local petsFolder = ReplicatedStorage.Assets.Models.Pets
@@ -209,6 +503,74 @@ function AssetPreloadService:IsModelInAssets(petType, variant)
     local petsFolder = ReplicatedStorage.Assets.Models.Pets
     local petTypeFolder = petsFolder:FindFirstChild(petType)
     
+    if petTypeFolder then
+        return petTypeFolder:FindFirstChild(variant) ~= nil
+    end
+    
+    return false
+end
+
+-- Get image from ReplicatedStorage.Assets (for external access)
+function AssetPreloadService:GetImageFromAssets(petType, variant)
+    local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
+    if not assetsFolder then return nil end
+    
+    local imagesRoot = assetsFolder:FindFirstChild("Images")
+    if not imagesRoot then return nil end
+    
+    local imagesFolder = imagesRoot:FindFirstChild("Pets")
+    if not imagesFolder then return nil end
+    
+    local petTypeFolder = imagesFolder:FindFirstChild(petType)
+    if petTypeFolder then
+        local image = petTypeFolder:FindFirstChild(variant)
+        if image then
+            return image:Clone()
+        end
+    end
+    
+    logger:Warn("Image not found in assets", {
+        petType = petType,
+        variant = variant,
+        path = "ReplicatedStorage.Assets.Images.Pets." .. petType .. "." .. variant
+    })
+    
+    return nil
+end
+
+-- Get egg image from ReplicatedStorage.Assets (for external access)
+function AssetPreloadService:GetEggImageFromAssets(eggType)
+    local imagesRoot = ReplicatedStorage.Assets:FindFirstChild("Images")
+    if not imagesRoot then return nil end
+    
+    local eggImagesFolder = imagesRoot:FindFirstChild("Eggs")
+    if not eggImagesFolder then return nil end
+    
+    local eggImage = eggImagesFolder:FindFirstChild(eggType)
+    if eggImage then
+        return eggImage:Clone()
+    end
+    
+    logger:Warn("Egg image not found in assets", {
+        eggType = eggType,
+        path = "ReplicatedStorage.Assets.Images.Eggs." .. eggType
+    })
+    
+    return nil
+end
+
+-- Check if an image is available in assets
+function AssetPreloadService:IsImageInAssets(petType, variant)
+    local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
+    if not assetsFolder then return false end
+    
+    local imagesRoot = assetsFolder:FindFirstChild("Images")
+    if not imagesRoot then return false end
+    
+    local imagesFolder = imagesRoot:FindFirstChild("Pets")
+    if not imagesFolder then return false end
+    
+    local petTypeFolder = imagesFolder:FindFirstChild(petType)
     if petTypeFolder then
         return petTypeFolder:FindFirstChild(variant) ~= nil
     end

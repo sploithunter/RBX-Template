@@ -130,8 +130,8 @@ function EggCurrentTargetService:CreateEggUI()
     
     local eggNameLabel = Instance.new("TextLabel")
     eggNameLabel.Name = "EggName"
-    eggNameLabel.Size = UDim2.new(1, -10, 0.6, 0)
-    eggNameLabel.Position = UDim2.new(0, 5, 0, 5)
+    eggNameLabel.Size = UDim2.new(1, -10, 0.4, 0)
+    eggNameLabel.Position = UDim2.new(0, 5, 0, 2)
     eggNameLabel.BackgroundTransparency = 1
     eggNameLabel.Text = "Basic Egg"
     eggNameLabel.TextColor3 = eggSystemConfig.ui.colors.text_primary
@@ -139,12 +139,24 @@ function EggCurrentTargetService:CreateEggUI()
     eggNameLabel.Font = eggSystemConfig.ui.fonts.title
     eggNameLabel.Parent = frame
     
+    -- Price display
+    local priceLabel = Instance.new("TextLabel")
+    priceLabel.Name = "Price"
+    priceLabel.Size = UDim2.new(1, -10, 0.3, 0)
+    priceLabel.Position = UDim2.new(0, 5, 0.4, 0)
+    priceLabel.BackgroundTransparency = 1
+    priceLabel.Text = "💰 100 Coins"  -- Will be dynamically set
+    priceLabel.TextColor3 = eggSystemConfig.ui.colors.text_secondary
+    priceLabel.TextScaled = true
+    priceLabel.Font = eggSystemConfig.ui.fonts.prompt
+    priceLabel.Parent = frame
+    
     local promptLabel = Instance.new("TextLabel")
     promptLabel.Name = "Prompt"
-    promptLabel.Size = UDim2.new(1, -10, 0.4, 0)
-    promptLabel.Position = UDim2.new(0, 5, 0.6, 0)
+    promptLabel.Size = UDim2.new(1, -10, 0.3, 0)
+    promptLabel.Position = UDim2.new(0, 5, 0.7, 0)
     promptLabel.BackgroundTransparency = 1
-    promptLabel.Text = "Press " .. eggSystemConfig.proximity.interaction_key.Name .. " to open"
+    promptLabel.Text = "Press " .. eggSystemConfig.proximity.interaction_key.Name .. " to purchase"
     promptLabel.TextColor3 = eggSystemConfig.ui.colors.text_secondary
     promptLabel.TextScaled = true
     promptLabel.Font = eggSystemConfig.ui.fonts.prompt
@@ -177,8 +189,28 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
             currentTarget = eggType
             currentTargetValue.Value = eggType
             
+            -- Get egg configuration for price display
+            local eggConfig = self:GetEggConfig(eggType)
+            local displayName = "Basic Egg"
+            local priceText = "💰 100 Coins"
+            
+            if eggConfig then
+                displayName = eggConfig.name or (eggType:gsub("_", " ")):gsub("(%l)(%w*)", function(a,b) return string.upper(a)..b end)
+                
+                -- Format price with currency icon
+                local currencyIcon = "💰"
+                if eggConfig.currency == "gems" then
+                    currencyIcon = "💎"
+                elseif eggConfig.currency == "crystals" then
+                    currencyIcon = "🔮"
+                end
+                
+                priceText = currencyIcon .. " " .. self:FormatNumber(eggConfig.cost) .. " " .. eggConfig.currency:gsub("(%l)(%w*)", function(a,b) return string.upper(a)..b end)
+            end
+            
             -- Update UI content only when target changes
-            frame.EggName.Text = eggType:gsub("_", " ") .. " Egg"
+            frame.EggName.Text = displayName
+            frame.Price.Text = priceText
             frame.Visible = true
             
             -- Show pet preview for new egg
@@ -405,6 +437,35 @@ function EggCurrentTargetService:Destroy()
     end
     
     Logger:Info("EggCurrentTargetService destroyed", {})
+end
+
+-- === HELPER FUNCTIONS FOR PRICE DISPLAY ===
+
+function EggCurrentTargetService:GetEggConfig(eggType)
+    -- Get the pet configuration
+    local success, petConfig = pcall(function()
+        return require(Locations.getConfig("pets"))
+    end)
+    
+    if success and petConfig and petConfig.egg_sources then
+        return petConfig.egg_sources[eggType]
+    end
+    
+    return nil
+end
+
+function EggCurrentTargetService:FormatNumber(number)
+    if not number then return "0" end
+    
+    if number >= 1000000000 then
+        return string.format("%.1fB", number / 1000000000)
+    elseif number >= 1000000 then
+        return string.format("%.1fM", number / 1000000)
+    elseif number >= 1000 then
+        return string.format("%.1fK", number / 1000)
+    else
+        return tostring(number)
+    end
 end
 
 return EggCurrentTargetService

@@ -44,6 +44,9 @@ local Signals = {
     ConsumeItem        = Net:RemoteEvent("ConsumeItem"),         -- c->s consume consumable
     TogglePetEquipped  = Net:RemoteEvent("TogglePetEquipped"),   -- c->s equip/unequip pet
     ToggleToolEquipped = Net:RemoteEvent("ToggleToolEquipped"),  -- c->s equip/unequip tool
+    
+    -- User Display Preferences
+    SaveDisplayPreferences = Net:RemoteEvent("SaveDisplayPreferences"), -- c->s save user display preferences
 }
 
 return Signals

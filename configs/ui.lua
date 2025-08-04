@@ -811,11 +811,11 @@ local uiConfig = {
             }
         },
         
-        -- Player Info + Quest Tracker Pane (top-center combined)
+        -- Player Info Pane (top-center - Colorado Plays, Level, XP)
         player_info_pane = {
             position = "top-center",
             offset = {x = 0, y = 35},
-            size = {width = 400, height = 160},  -- Increased height for both elements
+            size = {width = 300, height = 80},
             background = {
                 enabled = true,
                 color = Color3.fromRGB(0, 0, 0),
@@ -829,10 +829,25 @@ local uiConfig = {
                 }
             },
             layout = {
-                type = "custom"  -- Custom layout for combined content
+                type = "single"
             },
             contents = {
-                {type = "player_info", config = {}},
+                {type = "player_info", config = {}}
+            }
+        },
+
+        -- Quest Tracker Pane (center-right with completely clear background)
+        quest_tracker_pane = {
+            position = "center-right",
+            offset = {x = -15, y = 0},
+            size = {width = 350, height = 120},
+            background = {
+                enabled = false  -- Completely disabled background for full transparency
+            },
+            layout = {
+                type = "single"
+            },
+            contents = {
                 {type = "quest_tracker", config = {}}
             }
         },
