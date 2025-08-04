@@ -816,4 +816,47 @@ function petConfig.testHatching()
     end
 end
 
+-- ═══════════════════════════════════════════════════════════════════════════════════
+-- EGG HATCHING ANIMATION CONFIG
+-- ═══════════════════════════════════════════════════════════════════════════════════
+
+petConfig.hatching_animation = {
+    -- Animation timing settings
+    timing = {
+        shake_duration = 2.0,           -- How long eggs shake before hatching
+        flash_duration = 0.5,           -- Duration of flash effect
+        reveal_duration = 1.0,          -- Duration of pet reveal animation
+        stagger_delay = 0.2,            -- Delay between each egg in sequence
+    },
+    
+    -- Visual effects settings
+    effects = {
+        shake_rotation = 5,             -- Degrees of rotation during shake
+        shake_frequency = 0.1,          -- Time between shake movements
+        flash_color = Color3.fromRGB(255, 255, 255),
+        flash_intensity = 1.0,          -- Flash transparency (0 = invisible, 1 = opaque)
+    },
+    
+    -- Grid layout settings
+    grid = {
+        padding = 20,                   -- Space between eggs in pixels
+        min_egg_size = 60,             -- Minimum size for each egg
+        max_egg_size = 120,            -- Maximum size for each egg
+        container_padding = 40,         -- Padding around entire grid
+    },
+    
+    -- Performance settings
+    performance = {
+        max_simultaneous_animations = 25,  -- Limit concurrent animations
+        use_images_only = true,            -- Always use images for animations (never viewports)
+        enable_sound_effects = true,       -- Enable hatching sound effects
+    },
+    
+    -- Grid layouts for different egg counts (auto-calculated but can be overridden)
+    custom_layouts = {
+        -- Example: Force specific layout for certain counts
+        -- [5] = {columns = 3, rows = 2, name = "custom_5"},
+    }
+}
+
 return petConfig

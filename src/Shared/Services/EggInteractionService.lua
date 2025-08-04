@@ -208,7 +208,43 @@ end
 function EggInteractionService:ShowHatchingResults(result)
     print("🎉 You hatched a", result.Type, result.Pet, "with", result.Power, "power!")
     
-    -- Create simple success notification
+    -- Use the full egg hatching animation system instead of simple notification
+    local success, hatchingService = pcall(function()
+        return require(ReplicatedStorage.Shared.Services.EggHatchingService)
+    end)
+    
+    if success and hatchingService then
+        -- Prepare egg data for animation
+        local eggData = {
+            petType = result.Pet,
+            variant = result.Type,
+            power = result.Power,
+            eggType = result.EggType or "basic_egg", -- Add egg type for proper image lookup
+            imageId = self:GetEggImageId(result.EggType or "basic_egg"),
+            petImageId = self:GetPetImageId(result.Pet, result.Type)
+        }
+        
+        -- Start the hatching animation
+        print("🎬 Starting hatching animation for:", result.Pet, result.Type)
+        local animationResult = hatchingService:StartHatchingAnimation({eggData})
+        
+        -- Auto-cleanup after animation completes
+        task.spawn(function()
+            task.wait(8) -- Give enough time for full animation sequence + reveal time
+            if animationResult and animationResult.cleanup then
+                animationResult.cleanup()
+                print("✅ Hatching animation completed and cleaned up")
+            end
+        end)
+    else
+        -- Fallback to simple notification if animation service fails
+        warn("Failed to load EggHatchingService, falling back to simple notification")
+        self:ShowSimpleHatchingNotification(result)
+    end
+end
+
+-- Fallback simple notification (moved from original function)
+function EggInteractionService:ShowSimpleHatchingNotification(result)
     local successGui = Instance.new("ScreenGui")
     successGui.Name = "HatchingSuccess"
     successGui.ResetOnSpawn = false
@@ -250,6 +286,54 @@ function EggInteractionService:ShowHatchingResults(result)
         task.wait(eggSystemConfig.cooldowns.success_notification_time)
         successGui:Destroy()
     end)
+end
+
+-- Helper functions to get image IDs for animations
+function EggInteractionService:GetEggImageId(eggType)
+    -- Try to get egg image from generated assets
+    local success, imageId = pcall(function()
+        local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
+        if assetsFolder then
+            local imagesFolder = assetsFolder:FindFirstChild("Images")
+            if imagesFolder then
+                local eggsFolder = imagesFolder:FindFirstChild("Eggs")
+                if eggsFolder then
+                    local eggImage = eggsFolder:FindFirstChild(eggType)
+                    if eggImage then
+                        return "generated_image" -- Special flag for cloned ViewportFrame
+                    end
+                end
+            end
+        end
+        return "rbxasset://textures/face.png" -- Fallback
+    end)
+    
+    return success and imageId or "rbxasset://textures/face.png"
+end
+
+function EggInteractionService:GetPetImageId(petType, variant)
+    -- Try to get pet image from generated assets
+    local success, imageId = pcall(function()
+        local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
+        if assetsFolder then
+            local imagesFolder = assetsFolder:FindFirstChild("Images")
+            if imagesFolder then
+                local petsFolder = imagesFolder:FindFirstChild("Pets")
+                if petsFolder then
+                    local petTypeFolder = petsFolder:FindFirstChild(petType)
+                    if petTypeFolder then
+                        local petImage = petTypeFolder:FindFirstChild(variant)
+                        if petImage then
+                            return "generated_image" -- Special flag for cloned ViewportFrame
+                        end
+                    end
+                end
+            end
+        end
+        return "rbxasset://textures/face.png" -- Fallback
+    end)
+    
+    return success and imageId or "rbxasset://textures/face.png"
 end
 
 -- === INITIALIZATION ===
