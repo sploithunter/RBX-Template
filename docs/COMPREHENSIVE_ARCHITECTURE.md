@@ -42,7 +42,7 @@ This architecture is built on four fundamental principles that guide every desig
 - **Reflex**: Redux-like state management (**via Wally**)  
 - **ProfileStore**: Enterprise-grade data persistence with session locking (**via Wally**)
 - **Wally**: Package manager for Roblox dependencies (**primary package manager**)
-- **Custom Libraries**: ModuleLoader, NetworkBridge, ConfigLoader, Locations
+- **Custom Libraries**: ModuleLoader, Signals (sleittnick/Net), ConfigLoader, Locations
 
 ---
 
@@ -165,7 +165,7 @@ local Maid = Locations.getLibrary("Maid")
 
 -- Core utilities via Locations
 local Logger = require(Locations.Logger)
-local NetworkBridge = require(Locations.NetworkBridge)
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local ConfigLoader = require(Locations.ConfigLoader)
 ```
 

@@ -39,7 +39,7 @@ This template provides a production-ready, configuration-driven foundation for b
 - **Reflex**: Redux-like state management (prepared for advanced state)
 - **ProfileStore**: Enterprise-grade data persistence with session locking
 - **Wally**: Package manager for Roblox dependencies
-- **Custom Libraries**: ModuleLoader, NetworkBridge, ConfigLoader
+- **Custom Libraries**: ModuleLoader, Signals (sleittnick/Net), ConfigLoader
 
 ---
 
@@ -102,7 +102,7 @@ GameTemplate1/
 ```lua
 -- Registration with dependencies
 loader:RegisterModule("DataService", path, {"Logger", "ConfigLoader"})
-loader:RegisterModule("EconomyService", path, {"DataService", "NetworkBridge"})
+loader:RegisterModule("EconomyService", path, {"DataService", "NetworkConfig"})
 
 -- Automatic dependency resolution
 local loadOrder = loader:LoadAll()
@@ -195,7 +195,7 @@ EconomyService:PurchaseItem(player, "speed_potion")
 ```
 
 ### 6. Networking System
-**File**: `src/Shared/Network/NetworkBridge.lua`
+**Network Layer**: Signals registry (`src/Shared/Network/Signals.lua`)
 
 **Configuration-Driven Networking**:
 - **Packet definitions in config** auto-generate bridges
@@ -211,7 +211,7 @@ Economy = {
 }
 
 -- Auto-generated bridge and handlers
-local economyBridge = networkBridge:CreateBridge("Economy")
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 economyBridge:Connect(function(player, packetType, data)
     -- Handles PurchaseItem, SellItem automatically
 end)
@@ -224,7 +224,7 @@ end)
 ### Purchase Flow Example
 ```
 1. Client clicks "Buy Speed Potion"
-2. NetworkBridge validates packet + rate limit
+2. Signals layer validates packet + rate limit
 3. EconomyService validates currency + item exists
 4. DataService performs atomic currency deduction
 5. PlayerEffectsService applies effect with aggregates
