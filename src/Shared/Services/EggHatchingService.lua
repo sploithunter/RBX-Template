@@ -25,6 +25,41 @@ local TweenService = game:GetService("TweenService")
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
+-- Load flash effects configuration
+local flashEffectsConfig
+local configSuccess, configResult = pcall(function()
+    return require(ReplicatedStorage.Configs.flash_effects)
+end)
+if configSuccess and configResult then
+    flashEffectsConfig = configResult
+else
+    -- Fallback configuration
+    flashEffectsConfig = {
+        default_effect = "starburst",
+        effects = {
+            starburst = {
+                config = {
+                    star_count = 8,
+                    min_size = 20,
+                    max_size = 80,
+                    expansion_distance = 200,
+                    duration = 0.8,
+                    colors = {
+                        Color3.fromRGB(255, 255, 255),
+                        Color3.fromRGB(255, 255, 150),
+                        Color3.fromRGB(255, 200, 100),
+                        Color3.fromRGB(255, 150, 50),
+                    },
+                    rotation_speed = 360,
+                    fade_in_time = 0.1,
+                    fade_out_time = 0.3,
+                    scale_overshoot = 1.2,
+                }
+            }
+        }
+    }
+end
+
 local EggHatchingService = {}
 EggHatchingService.__index = EggHatchingService
 
@@ -251,17 +286,14 @@ function EggHatchingService:CreateEggFrame(position, eggData)
     
     eggImage.Parent = frame
     
-    -- Remove the timing-sensitive debug from here - will be done after parenting
-    
-    -- Flash effect (initially hidden)
-    local flashEffect = Instance.new("Frame")
-    flashEffect.Name = "FlashEffect"
-    flashEffect.Size = UDim2.new(1.2, 0, 1.2, 0)
-    flashEffect.Position = UDim2.new(-0.1, 0, -0.1, 0)
-    flashEffect.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    flashEffect.BorderSizePixel = 0
-    flashEffect.BackgroundTransparency = 1
-    flashEffect.Parent = frame
+    -- Flash effect container (will be populated by flash effect system)
+    local flashContainer = Instance.new("Frame")
+    flashContainer.Name = "FlashContainer"
+    flashContainer.Size = UDim2.new(6, 0, 6, 0) -- Much larger container for full-screen star burst
+    flashContainer.Position = UDim2.new(-2.5, 0, -2.5, 0) -- Centered around egg, extends far beyond
+    flashContainer.BackgroundTransparency = 1
+    flashContainer.BorderSizePixel = 0
+    flashContainer.Parent = frame
     
     -- Pet reveal (initially hidden)
     local petReveal = Instance.new("ImageLabel")
@@ -280,7 +312,7 @@ function EggHatchingService:CreateEggFrame(position, eggData)
     
     return frame, {
         egg = eggImage,
-        flash = flashEffect,
+        flash = flashContainer,
         reveal = petReveal,
         state = ANIMATION_STATE.IDLE
     }
@@ -347,39 +379,197 @@ function EggHatchingService:AnimateShake(eggComponents, duration)
     return true
 end
 
--- Flash animation (bright explosion effect)
+-- Flash animation (starburst effect)
 function EggHatchingService:AnimateFlash(eggComponents, duration)
-    duration = duration or 0.5
-    local flashEffect = eggComponents.flash
+    local effectConfig = flashEffectsConfig.effects[flashEffectsConfig.default_effect]
+    if not effectConfig then
+        print("⚠️ Flash effect config not found, using fallback")
+        effectConfig = flashEffectsConfig.effects.starburst
+    end
+    
+    -- Debug config loading
+    print("🔍 FLASH CONFIG DEBUG:")
+    print("  📊 flashEffectsConfig exists:", flashEffectsConfig ~= nil)
+    print("  📊 default_effect:", flashEffectsConfig.default_effect)
+    print("  📊 effectConfig exists:", effectConfig ~= nil)
+    if effectConfig then
+        print("  📊 effectConfig.name:", effectConfig.name)
+        print("  📊 effectConfig.config exists:", effectConfig.config ~= nil)
+    end
+    
+    duration = duration or (effectConfig and effectConfig.config.duration) or 0.8
+    local flashContainer = eggComponents.flash
     local eggImage = eggComponents.egg
     
     eggComponents.state = ANIMATION_STATE.FLASH
     
-    -- Flash in
-    local flashIn = TweenService:Create(flashEffect, TweenInfo.new(0.1), {
+    print("🌟 Creating starburst effect with config:", effectConfig and effectConfig.name or "FALLBACK")
+    
+    -- Hide egg during flash (handle both ImageLabel and ViewportFrame)
+    print("🫥 HIDING EGG DEBUG:")
+    print("  📊 eggImage.ClassName:", eggImage.ClassName)
+    print("  📊 eggImage.Name:", eggImage.Name)
+    print("  📊 Current Visible:", eggImage.Visible)
+    
+    local hideEggProps = {}
+    if eggImage.ClassName == "ViewportFrame" then
+        -- ViewportFrames need to be hidden by setting Visible to false
+        -- BackgroundTransparency doesn't affect the 3D content inside
+        hideEggProps.Visible = false
+        print("  🔧 Setting ViewportFrame Visible = false")
+    else
+        hideEggProps.ImageTransparency = 1
+        print("  🔧 Setting ImageLabel ImageTransparency = 1")
+    end
+    
+    -- For immediate hide, don't use tween for Visible property
+    if eggImage.ClassName == "ViewportFrame" then
+        eggImage.Visible = false
+        print("  ✅ ViewportFrame immediately hidden")
+    else
+        local hideEgg = TweenService:Create(eggImage, TweenInfo.new(0.1), hideEggProps)
+        hideEgg:Play()
+        print("  ✅ ImageLabel fade-out tween started")
+    end
+    
+    -- Create starburst effect
+    local config = (effectConfig and effectConfig.config) or {
+        star_count = 8,
+        min_size = 20,
+        max_size = 80,
+        expansion_distance = 400, -- Increased for larger impact across screen
+        duration = 0.8,
+        colors = {
+            Color3.fromRGB(255, 255, 255),
+            Color3.fromRGB(255, 255, 150),
+            Color3.fromRGB(255, 200, 100),
+            Color3.fromRGB(255, 150, 50),
+        },
+        rotation_speed = 360,
+        fade_in_time = 0.1,
+        fade_out_time = 0.3,
+        scale_overshoot = 1.2,
+    }
+    
+    self:CreateStarburstEffect(flashContainer, config)
+    
+    task.wait(duration)
+    
+    return true
+end
+
+-- Create starburst effect with multiple expanding stars
+function EggHatchingService:CreateStarburstEffect(container, config)
+    -- Clear any existing effects
+    for _, child in pairs(container:GetChildren()) do
+        child:Destroy()
+    end
+    
+    print("⭐ Creating", config.star_count, "stars for starburst effect")
+    print("🔍 CONTAINER DEBUG:")
+    print("  📦 Container name:", container.Name)
+    print("  📦 Container size:", container.AbsoluteSize.X, "x", container.AbsoluteSize.Y)
+    print("  📦 Container position:", container.AbsolutePosition.X, ",", container.AbsolutePosition.Y)
+    
+    -- Create stars
+    for i = 1, config.star_count do
+        local star = self:CreateStar(container, config, i)
+        task.spawn(function()
+            self:AnimateStar(star, config, i)
+        end)
+    end
+end
+
+-- Create a single star for the starburst
+function EggHatchingService:CreateStar(container, config, index)
+    local star = Instance.new("Frame")
+    star.Name = "Star_" .. index
+    star.Size = UDim2.new(0, config.min_size, 0, config.min_size)
+    star.Position = UDim2.new(0.5, -config.min_size/2, 0.5, -config.min_size/2) -- Center of container
+    star.BorderSizePixel = 0
+    star.BackgroundTransparency = 1
+    
+    -- Create visible star shape using a bright colored circle for now
+    local starShape = Instance.new("Frame")
+    starShape.Name = "StarShape"
+    starShape.Size = UDim2.new(1, 0, 1, 0)
+    starShape.Position = UDim2.new(0, 0, 0, 0)
+    starShape.BorderSizePixel = 0
+    starShape.BackgroundTransparency = 1 -- Start invisible
+    
+    -- Random color from config
+    local colorIndex = math.random(1, #config.colors)
+    starShape.BackgroundColor3 = config.colors[colorIndex]
+    
+    -- Make it round
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0.5, 0) -- Make it circular
+    corner.Parent = starShape
+    
+    starShape.Parent = star
+    star.Parent = container
+    
+    print("🌟 Created star", index, "at position:", star.AbsolutePosition.X, ",", star.AbsolutePosition.Y, "size:", star.AbsoluteSize.X)
+    
+    return star
+end
+
+-- Animate a single star in the burst
+function EggHatchingService:AnimateStar(star, config, index)
+    local starShape = star:FindFirstChild("StarShape")
+    if not starShape then
+        print("❌ StarShape not found for star", index)
+        return
+    end
+    
+    -- Calculate angle for this star (evenly distributed around circle)
+    local angle = (index - 1) * (360 / config.star_count)
+    local angleRad = math.rad(angle)
+    
+    -- Calculate end position (relative to container center)
+    local endX = math.cos(angleRad) * config.expansion_distance
+    local endY = math.sin(angleRad) * config.expansion_distance
+    
+    print("🚀 Animating star", index, "angle:", angle, "end position:", endX, endY)
+    
+    -- Fade in quickly
+    local fadeIn = TweenService:Create(starShape, TweenInfo.new(config.fade_in_time), {
         BackgroundTransparency = 0
     })
     
-    -- Flash out
-    local flashOut = TweenService:Create(flashEffect, TweenInfo.new(0.4), {
+    -- Scale and move outward with rotation
+    local expandTween = TweenService:Create(star, TweenInfo.new(
+        config.duration - config.fade_out_time,
+        Enum.EasingStyle.Quad,
+        Enum.EasingDirection.Out
+    ), {
+        Size = UDim2.new(0, config.max_size, 0, config.max_size),
+        Position = UDim2.new(0.5, endX - config.max_size/2, 0.5, endY - config.max_size/2),
+        Rotation = angle + (config.rotation_speed * config.duration / 360 * 360)
+    })
+    
+    -- Fade out at the end
+    local fadeOut = TweenService:Create(starShape, TweenInfo.new(config.fade_out_time), {
         BackgroundTransparency = 1
     })
     
-    -- Hide egg during flash
-    local hideEgg = TweenService:Create(eggImage, TweenInfo.new(0.1), {
-        ImageTransparency = 1
-    })
+    -- Execute animation sequence
+    fadeIn:Play()
     
-    -- Execute flash sequence
-    flashIn:Play()
-    hideEgg:Play()
-    
-    task.wait(0.1)
-    flashOut:Play()
-    
-    task.wait(0.4)
-    
-    return true
+    fadeIn.Completed:Connect(function()
+        expandTween:Play()
+        
+        -- Start fade out near the end
+        task.wait(config.duration - config.fade_out_time - config.fade_in_time)
+        fadeOut:Play()
+        
+        -- Clean up when done
+        fadeOut.Completed:Connect(function()
+            if star and star.Parent then
+                star:Destroy()
+            end
+        end)
+    end)
 end
 
 -- Reveal animation (pet appears with effects)
@@ -524,13 +714,12 @@ function EggHatchingService:InitializePersistentGui()
     screenGui.DisplayOrder = 100  -- Ensure it's on top
     screenGui.Enabled = false  -- Start disabled
     
-    -- Full-screen transparent container for cinematic effect
+    -- Full-screen completely transparent container for cinematic effect
     local container = Instance.new("Frame")
     container.Name = "HatchingContainer"
     container.Size = UDim2.new(1, 0, 1, 0)  -- Full screen
     container.Position = UDim2.new(0, 0, 0, 0)  -- Top-left corner
-    container.BackgroundColor3 = Color3.fromRGB(0, 0, 0)  -- Pure black background
-    container.BackgroundTransparency = 0.8  -- Much more transparent so eggs are visible
+    container.BackgroundTransparency = 1  -- Completely transparent
     container.BorderSizePixel = 0
     container.Parent = screenGui
     
