@@ -139,6 +139,19 @@ function EggHatchingService:CalculateGridLayout(eggCount, containerWidth, contai
     -- Keep eggs square (use smaller dimension)
     local eggSize = math.min(cellWidth, cellHeight)
     
+    -- Enforce minimum and maximum egg sizes for visibility
+    local minEggSize = 100  -- Minimum 100 pixels
+    local maxEggSize = 300  -- Maximum 300 pixels
+    local originalEggSize = eggSize
+    eggSize = math.max(minEggSize, math.min(maxEggSize, eggSize))
+    
+    print("🔢 SIZE CALCULATION TRACE:")
+    print("  📊 Container:", containerWidth .. "x" .. containerHeight)
+    print("  📐 Available space:", availableWidth .. "x" .. availableHeight) 
+    print("  📏 Cell size:", cellWidth .. "x" .. cellHeight)
+    print("  🥚 Original egg size:", originalEggSize)
+    print("  ✅ Final egg size:", eggSize, "(min:", minEggSize, "max:", maxEggSize .. ")")
+    
     -- Calculate starting position to center the grid
     local gridWidth = (eggSize * layout.columns) + (padding * (layout.columns - 1))
     local gridHeight = (eggSize * layout.rows) + (padding * (layout.rows - 1))
@@ -202,23 +215,31 @@ function EggHatchingService:CreateEggFrame(position, eggData)
     frame.Name = "EggFrame_" .. position.index
     frame.Size = UDim2.new(0, position.size, 0, position.size)
     frame.Position = UDim2.new(0, position.x, 0, position.y)
-    frame.BackgroundTransparency = 1
+    frame.BackgroundTransparency = 1  -- Transparent
     frame.BorderSizePixel = 0
     
-    -- Egg image (support both regular images and generated ViewportFrames)
-    local eggImage
+    print("🖼️ Creating egg frame at position:", position.x, position.y, "| Size:", position.size)
+    print("📏 Frame UDim2 size:", frame.Size.X.Scale, frame.Size.X.Offset, frame.Size.Y.Scale, frame.Size.Y.Offset)
+    print("📍 Frame UDim2 position:", frame.Position.X.Scale, frame.Position.X.Offset, frame.Position.Y.Scale, frame.Position.Y.Offset)
+    
+    -- Egg image - use the generated ViewportFrames from asset generation system
+    local eggImage = nil
+    
     if eggData.imageId == "generated_image" then
-        -- Try to get generated egg image from assets
-        eggImage = self:GetGeneratedEggImage(eggData.eggType or "basic_egg")
-        if not eggImage then
-            -- Fallback to regular ImageLabel
-            eggImage = Instance.new("ImageLabel")
-            eggImage.Image = "rbxasset://textures/face.png"
+        -- Get the actual generated ViewportFrame (same as inventory/egg preview)
+        eggImage = self:GetGeneratedEggViewport(eggData.eggType or "basic_egg")
+        if eggImage then
+            print("🖼️ Using generated ViewportFrame for:", eggData.eggType)
+        else
+            print("⚠️ No generated ViewportFrame found, using fallback")
         end
-    else
-        -- Regular ImageLabel with asset ID
+    end
+    
+    -- Fallback if no generated image available
+    if not eggImage then
         eggImage = Instance.new("ImageLabel")
         eggImage.Image = eggData.imageId or "rbxasset://textures/face.png"
+        print("🖼️ Using fallback ImageLabel:", eggImage.Image)
     end
     
     eggImage.Name = "EggImage"
@@ -226,7 +247,11 @@ function EggHatchingService:CreateEggFrame(position, eggData)
     eggImage.Position = UDim2.new(0, 0, 0, 0)
     eggImage.BackgroundTransparency = 1
     eggImage.BorderSizePixel = 0
+    print("🖼️ Created egg image element:", eggImage.ClassName)
+    
     eggImage.Parent = frame
+    
+    -- Remove the timing-sensitive debug from here - will be done after parenting
     
     -- Flash effect (initially hidden)
     local flashEffect = Instance.new("Frame")
@@ -244,10 +269,14 @@ function EggHatchingService:CreateEggFrame(position, eggData)
     petReveal.Size = UDim2.new(0.8, 0, 0.8, 0)
     petReveal.Position = UDim2.new(0.1, 0, 0.1, 0)
     petReveal.BackgroundTransparency = 1
+    petReveal.BackgroundColor3 = Color3.fromRGB(255, 255, 255)  -- Set to white (will be transparent)
     petReveal.BorderSizePixel = 0
     petReveal.ImageTransparency = 1
     petReveal.Image = "" -- Will be set when revealing
     petReveal.Parent = frame
+    
+    -- Ensure the parent frame has a transparent background for the reveal
+    frame.BackgroundTransparency = 1
     
     return frame, {
         egg = eggImage,
@@ -261,6 +290,16 @@ end
 function EggHatchingService:AnimateShake(eggComponents, duration)
     duration = duration or 2.0
     local eggImage = eggComponents.egg
+    
+    -- DEBUG: Log detailed size information during shake
+    print("🔍 SHAKE DEBUG START:")
+    print("  📏 EggImage AbsoluteSize:", eggImage.AbsoluteSize.X .. "x" .. eggImage.AbsoluteSize.Y)
+    print("  📏 EggImage Size UDim2:", eggImage.Size.X.Scale, eggImage.Size.X.Offset, eggImage.Size.Y.Scale, eggImage.Size.Y.Offset)
+    print("  📍 EggImage AbsolutePosition:", eggImage.AbsolutePosition.X .. "," .. eggImage.AbsolutePosition.Y)
+    print("  📍 EggImage Position UDim2:", eggImage.Position.X.Scale, eggImage.Position.X.Offset, eggImage.Position.Y.Scale, eggImage.Position.Y.Offset)
+    print("  🏠 Parent AbsoluteSize:", eggImage.Parent.AbsoluteSize.X .. "x" .. eggImage.Parent.AbsoluteSize.Y)
+    print("  🏠 Parent Size UDim2:", eggImage.Parent.Size.X.Scale, eggImage.Parent.Size.X.Offset, eggImage.Parent.Size.Y.Scale, eggImage.Parent.Size.Y.Offset)
+    print("  🔍 EggImage ClassName:", eggImage.ClassName)
     
     eggComponents.state = ANIMATION_STATE.SHAKE
     
@@ -283,6 +322,19 @@ function EggHatchingService:AnimateShake(eggComponents, duration)
     
     -- Start shaking
     leftShake:Play()
+    
+    -- EXTENDED DEBUG: Check size every 10 seconds during shake
+    local startTime = tick()
+    task.spawn(function()
+        while tick() - startTime < duration do
+            task.wait(10)
+            local elapsed = tick() - startTime
+            print("🔍 SHAKE SIZE CHECK @", math.floor(elapsed), "s:")
+            print("  📏 Current AbsoluteSize:", eggImage.AbsoluteSize.X .. "x" .. eggImage.AbsoluteSize.Y)
+            print("  📍 Current AbsolutePosition:", eggImage.AbsolutePosition.X .. "," .. eggImage.AbsolutePosition.Y)
+            print("  🔄 Current Rotation:", eggImage.Rotation)
+        end
+    end)
     
     -- Stop after duration and proceed to flash
     task.wait(duration)
@@ -333,52 +385,124 @@ end
 -- Reveal animation (pet appears with effects)
 function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, duration)
     duration = duration or 1.0
+    
+    print("🎭 REVEAL DEBUG START:")
+    print("  📊 petImageId:", petImageId)
+    print("  📊 petData:", petData and "EXISTS" or "NIL")
+    if petData then
+        print("  📊 petData.petType:", petData.petType)
+        print("  📊 petData.variant:", petData.variant)
+    end
+    print("  📊 duration:", duration)
+    print("  📊 eggComponents.reveal exists:", eggComponents.reveal ~= nil)
+    if eggComponents.reveal then
+        print("  📊 eggComponents.reveal.ClassName:", eggComponents.reveal.ClassName)
+        print("  📊 eggComponents.reveal.Name:", eggComponents.reveal.Name)
+    end
+    
     local petReveal = eggComponents.reveal
     
     eggComponents.state = ANIMATION_STATE.REVEAL
     
     -- Handle generated images vs regular asset IDs
     if petImageId == "generated_image" and petData then
+        print("  🔄 Using generated image path")
         -- Try to get generated pet image
         local generatedImage = self:GetGeneratedPetImage(petData.petType, petData.variant)
+        print("  📊 generatedImage found:", generatedImage ~= nil)
         if generatedImage then
+            print("  📊 generatedImage.ClassName:", generatedImage.ClassName)
+            print("  📊 generatedImage.Name:", generatedImage.Name)
+            
+            -- Store parent before destroying
+            local parent = petReveal.Parent
+            print("  📊 Parent before destroy:", parent and parent.Name or "NIL")
+            
             -- Replace the ImageLabel with the generated ViewportFrame
             petReveal:Destroy()
+            print("  ✅ Original petReveal destroyed")
+            
             petReveal = generatedImage:Clone()
             petReveal.Name = "PetReveal"
-            petReveal.Parent = eggComponents.reveal.Parent
+            petReveal.BackgroundTransparency = 1  -- Ensure ViewportFrame is transparent
+            petReveal.BackgroundColor3 = Color3.fromRGB(255, 255, 255)  -- Set to white (will be transparent)
+            petReveal.Parent = parent
             eggComponents.reveal = petReveal
+            print("  ✅ New petReveal created and parented with transparency")
+            print("  📊 petReveal.ClassName:", petReveal.ClassName)
+            print("  📊 petReveal.BackgroundTransparency:", petReveal.BackgroundTransparency)
+            print("  📊 petReveal.BackgroundColor3:", tostring(petReveal.BackgroundColor3))
+        else
+            print("  ❌ Failed to get generated pet image!")
         end
     else
+        print("  🔄 Using regular image path")
         -- Set regular image
         petReveal.Image = petImageId or "rbxasset://textures/face.png"
+        print("  📊 Set Image to:", petReveal.Image)
+    end
+    
+    print("  📊 Final petReveal.ClassName:", petReveal.ClassName)
+    print("  📊 Final petReveal.Name:", petReveal.Name)
+    print("  📊 Final petReveal.Parent:", petReveal.Parent and petReveal.Parent.Name or "NIL")
+    
+    -- Give ViewportFrame a moment to render before starting animation
+    if petReveal.ClassName == "ViewportFrame" then
+        task.wait(0.05)  -- Very short wait for render
+    end
+    
+    -- Ensure transparency is set correctly regardless of element type
+    petReveal.BackgroundTransparency = 1
+    if petReveal.ClassName == "Frame" then
+        print("  📊 Setting Frame BackgroundTransparency to 1")
+    elseif petReveal.ClassName == "ViewportFrame" then
+        print("  📊 Setting ViewportFrame BackgroundTransparency to 1")
+    else
+        print("  📊 Setting", petReveal.ClassName, "BackgroundTransparency to 1")
     end
     
     -- Scale and fade in effect
     petReveal.Size = UDim2.new(0.3, 0, 0.3, 0)
     petReveal.Position = UDim2.new(0.35, 0, 0.35, 0)
+    print("  📊 Set initial Size:", tostring(petReveal.Size))
+    print("  📊 Set initial Position:", tostring(petReveal.Position))
     
     -- Handle transparency for both ImageLabel and ViewportFrame
     local transparencyProperty = "ImageTransparency"
     if petReveal.ClassName == "ViewportFrame" then
         transparencyProperty = "BackgroundTransparency"
         petReveal.BackgroundTransparency = 1
+        print("  📊 Using BackgroundTransparency for ViewportFrame")
     else
         petReveal.ImageTransparency = 1
+        print("  📊 Using ImageTransparency for ImageLabel")
+    end
+    
+    -- Ensure the reveal element itself has a clear background
+    if petReveal.ClassName == "Frame" then
+        petReveal.BackgroundTransparency = 1
+        print("  📊 Set Frame BackgroundTransparency to 1")
     end
     
     local tweenProperties = {
         Size = UDim2.new(0.8, 0, 0.8, 0),
         Position = UDim2.new(0.1, 0, 0.1, 0)
     }
-    tweenProperties[transparencyProperty] = 0
+    -- REMOVED: Don't tween transparency - keep it transparent
+    -- tweenProperties[transparencyProperty] = 0
+    
+    print("  📊 Tween target Size:", tostring(tweenProperties.Size))
+    print("  📊 Tween target Position:", tostring(tweenProperties.Position))
+    print("  📊 Tween target transparency: KEEPING TRANSPARENT (no tween)")
     
     local revealTween = TweenService:Create(petReveal, TweenInfo.new(duration, Enum.EasingStyle.Back, Enum.EasingDirection.Out), tweenProperties)
     
+    print("  🎬 Starting reveal tween for", duration, "seconds...")
     revealTween:Play()
     
     task.wait(duration)
     
+    print("  ✅ Reveal tween complete")
     eggComponents.state = ANIMATION_STATE.COMPLETE
     return true
 end
@@ -406,7 +530,7 @@ function EggHatchingService:InitializePersistentGui()
     container.Size = UDim2.new(1, 0, 1, 0)  -- Full screen
     container.Position = UDim2.new(0, 0, 0, 0)  -- Top-left corner
     container.BackgroundColor3 = Color3.fromRGB(0, 0, 0)  -- Pure black background
-    container.BackgroundTransparency = 0.2  -- Slight tint for cinematic feel
+    container.BackgroundTransparency = 0.8  -- Much more transparent so eggs are visible
     container.BorderSizePixel = 0
     container.Parent = screenGui
     
@@ -485,6 +609,9 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
     local positions = self:GenerateEggPositions(eggCount, gridInfo)
     
     print("🥚 Phase 2: Starting hatching animation for", eggCount, "eggs using", gridInfo.layout.name, "grid")
+    print("📐 Container size:", containerSize.X, "x", containerSize.Y)
+    print("🥚 Calculated egg size:", gridInfo.eggSize, "pixels")
+    print("📍 First egg position:", positions[1] and (positions[1].x .. ", " .. positions[1].y) or "none")
     
     -- Create egg frames
     local eggFrames = {}
@@ -496,6 +623,14 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
         
         local frame, components = self:CreateEggFrame(position, eggData)
         frame.Parent = container
+        
+        -- Debug after parenting
+        task.wait() -- Let positioning take effect
+        print("📐 ACTUAL SIZES (after parenting):")
+        print("  📦 Frame AbsoluteSize:", frame.AbsoluteSize.X .. "x" .. frame.AbsoluteSize.Y)
+        print("  📦 Frame AbsolutePosition:", frame.AbsolutePosition.X .. ", " .. frame.AbsolutePosition.Y)
+        print("  🏠 Container AbsoluteSize:", container.AbsoluteSize.X .. "x" .. container.AbsoluteSize.Y)
+        print("  🏠 Container AbsolutePosition:", container.AbsolutePosition.X .. ", " .. container.AbsolutePosition.Y)
         
         table.insert(eggFrames, frame)
         table.insert(eggComponents, components)
@@ -565,6 +700,8 @@ function EggHatchingService:ExecuteHatchingSequence(eggComponents, eggsData)
             self:AnimateFlash(components, 0.5)
             -- Reveal (pass the full eggData for pet info)
             self:AnimateReveal(components, eggData.petImageId, eggData, 1.0)
+            
+
         end)
     end
     
@@ -579,6 +716,181 @@ end
 -- ═══════════════════════════════════════════════════════════════════════════════════
 -- DEBUG/TESTING FUNCTIONS
 -- ═══════════════════════════════════════════════════════════════════════════════════
+
+-- DEBUG: Create a viewer to inspect egg ViewportFrames
+function EggHatchingService:CreateEggViewportDebugger()
+    local Players = game:GetService("Players")
+    local player = Players.LocalPlayer
+    if not player then return end
+    
+    -- Create debug GUI
+    local debugGui = Instance.new("ScreenGui")
+    debugGui.Name = "EggViewportDebugger"
+    debugGui.ResetOnSpawn = false
+    debugGui.Parent = player:WaitForChild("PlayerGui")
+    
+    -- Main frame
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "DebugFrame"
+    mainFrame.Size = UDim2.new(0, 800, 0, 600)
+    mainFrame.Position = UDim2.new(0.5, -400, 0.5, -300)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    mainFrame.BorderSizePixel = 2
+    mainFrame.BorderColor3 = Color3.fromRGB(255, 255, 255)
+    mainFrame.Parent = debugGui
+    
+    -- Title
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    title.Text = "EGG VIEWPORT DEBUGGER"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextScaled = true
+    title.Font = Enum.Font.GothamBold
+    title.Parent = mainFrame
+    
+    -- Egg display area
+    local eggContainer = Instance.new("Frame")
+    eggContainer.Name = "EggContainer"
+    eggContainer.Size = UDim2.new(0.6, 0, 1, -100)
+    eggContainer.Position = UDim2.new(0, 10, 0, 50)
+    eggContainer.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    eggContainer.BorderSizePixel = 1
+    eggContainer.BorderColor3 = Color3.fromRGB(200, 200, 200)
+    eggContainer.Parent = mainFrame
+    
+    -- Info panel
+    local infoPanel = Instance.new("Frame")
+    infoPanel.Name = "InfoPanel"
+    infoPanel.Size = UDim2.new(0.35, -20, 1, -100)
+    infoPanel.Position = UDim2.new(0.65, 0, 0, 50)
+    infoPanel.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    infoPanel.BorderSizePixel = 1
+    infoPanel.BorderColor3 = Color3.fromRGB(200, 200, 200)
+    infoPanel.Parent = mainFrame
+    
+    -- Info text
+    local infoText = Instance.new("TextLabel")
+    infoText.Name = "InfoText"
+    infoText.Size = UDim2.new(1, -10, 1, -10)
+    infoText.Position = UDim2.new(0, 5, 0, 5)
+    infoText.BackgroundTransparency = 1
+    infoText.Text = "Loading egg viewport..."
+    infoText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    infoText.TextSize = 14
+    infoText.TextWrapped = true
+    infoText.TextXAlignment = Enum.TextXAlignment.Left
+    infoText.TextYAlignment = Enum.TextYAlignment.Top
+    infoText.Font = Enum.Font.SourceSans
+    infoText.Parent = infoPanel
+    
+    -- Close button
+    local closeButton = Instance.new("TextButton")
+    closeButton.Name = "CloseButton"
+    closeButton.Size = UDim2.new(0, 100, 0, 30)
+    closeButton.Position = UDim2.new(1, -110, 1, -40)
+    closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    closeButton.Text = "CLOSE"
+    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeButton.TextScaled = true
+    closeButton.Font = Enum.Font.GothamBold
+    closeButton.Parent = mainFrame
+    
+    closeButton.Activated:Connect(function()
+        debugGui:Destroy()
+    end)
+    
+    -- Load and display egg viewports
+    task.spawn(function()
+        local eggTypes = {"basic_egg", "golden_egg"} -- Add more as needed
+        local yOffset = 10
+        
+        for i, eggType in ipairs(eggTypes) do
+            local eggViewport = self:GetGeneratedEggViewport(eggType)
+            
+            if eggViewport then
+                -- Create container for this egg
+                local eggFrame = Instance.new("Frame")
+                eggFrame.Name = eggType .. "_Frame"
+                eggFrame.Size = UDim2.new(1, -20, 0, 200)
+                eggFrame.Position = UDim2.new(0, 10, 0, yOffset)
+                eggFrame.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+                eggFrame.BorderSizePixel = 1
+                eggFrame.BorderColor3 = Color3.fromRGB(255, 255, 255)
+                eggFrame.Parent = eggContainer
+                
+                -- Label
+                local label = Instance.new("TextLabel")
+                label.Name = "Label"
+                label.Size = UDim2.new(1, 0, 0, 30)
+                label.Position = UDim2.new(0, 0, 0, 0)
+                label.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+                label.Text = eggType
+                label.TextColor3 = Color3.fromRGB(255, 255, 255)
+                label.TextScaled = true
+                label.Font = Enum.Font.GothamBold
+                label.Parent = eggFrame
+                
+                -- Display the viewport at different sizes for comparison
+                local sizes = {
+                    {name = "Small", size = UDim2.new(0, 50, 0, 50)},
+                    {name = "Medium", size = UDim2.new(0, 100, 0, 100)},
+                    {name = "Large", size = UDim2.new(0, 150, 0, 150)}
+                }
+                
+                for j, sizeData in ipairs(sizes) do
+                    local clonedViewport = eggViewport:Clone()
+                    clonedViewport.Name = eggType .. "_" .. sizeData.name
+                    clonedViewport.Size = sizeData.size
+                    clonedViewport.Position = UDim2.new(0, 10 + (j-1) * 160, 0, 35)
+                    clonedViewport.Parent = eggFrame
+                    
+                    -- Size label
+                    local sizeLabel = Instance.new("TextLabel")
+                    sizeLabel.Size = UDim2.new(0, 150, 0, 20)
+                    sizeLabel.Position = UDim2.new(0, 10 + (j-1) * 160, 0, 190)
+                    sizeLabel.BackgroundTransparency = 1
+                    sizeLabel.Text = sizeData.name .. " (" .. sizeData.size.X.Offset .. "x" .. sizeData.size.Y.Offset .. ")"
+                    sizeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    sizeLabel.TextSize = 12
+                    sizeLabel.Font = Enum.Font.SourceSans
+                    sizeLabel.Parent = eggFrame
+                end
+                
+                yOffset = yOffset + 220
+                
+                -- Update info text
+                local infoLines = {
+                    "EGG TYPE: " .. eggType,
+                    "VIEWPORT FOUND: YES",
+                    "ORIGINAL SIZE: " .. eggViewport.Size.X.Scale .. "," .. eggViewport.Size.X.Offset .. " | " .. eggViewport.Size.Y.Scale .. "," .. eggViewport.Size.Y.Offset,
+                    "",
+                    "Compare the different sizes above.",
+                    "The egg should be clearly visible.",
+                    "If it's tiny in all sizes, the",
+                    "camera config needs adjustment.",
+                    "",
+                    "Check configs/pets.lua:",
+                    "- egg_sources['" .. eggType .. "'].camera",
+                    "- default_egg_camera settings",
+                    "",
+                    "Adjust distance, angle_x, angle_y",
+                    "to make the egg fill the viewport."
+                }
+                infoText.Text = table.concat(infoLines, "\n")
+                
+            else
+                -- Show error info
+                infoText.Text = "ERROR: No viewport found for " .. eggType .. "\n\nCheck if AssetPreloadService\ngenerated the egg images.\n\nPath should be:\nAssets.Images.Eggs." .. eggType
+            end
+        end
+    end)
+    
+    print("🔍 Egg Viewport Debugger created! Check your screen.")
+    return debugGui
+end
 
 function EggHatchingService:TestCleanup()
     -- Force cleanup any existing GUIs for testing
@@ -630,6 +942,50 @@ function EggHatchingService:GetPersistentGuiStatus()
     end
 end
 
+function EggHatchingService:TestVisibility()
+    -- Test the GUI visibility with a simple test egg
+    self:InitializePersistentGui()
+    
+    print("🧪 Testing egg visibility...")
+    
+    -- Enable GUI
+    self._persistentGui.Enabled = true
+    
+    -- Create a test egg frame right in the center
+    local screenSize = workspace.CurrentCamera.ViewportSize
+    local testFrame = Instance.new("Frame")
+    testFrame.Name = "TestEggFrame"
+    testFrame.Size = UDim2.new(0, 200, 0, 200)  -- Fixed 200x200 size
+    testFrame.Position = UDim2.new(0.5, -100, 0.5, -100)  -- Centered
+    testFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 0)  -- Bright yellow
+    testFrame.BackgroundTransparency = 0.3
+    testFrame.BorderSizePixel = 5
+    testFrame.BorderColor3 = Color3.fromRGB(255, 0, 255)  -- Magenta border
+    testFrame.Parent = self._persistentContainer
+    
+    -- Add test text
+    local testLabel = Instance.new("TextLabel")
+    testLabel.Text = "TEST EGG\nVISIBLE?"
+    testLabel.Size = UDim2.new(1, 0, 1, 0)
+    testLabel.BackgroundTransparency = 1
+    testLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+    testLabel.TextScaled = true
+    testLabel.Font = Enum.Font.GothamBold
+    testLabel.Parent = testFrame
+    
+    print("✨ Test egg created - should be bright yellow square in center of screen")
+    print("💡 Screen size:", screenSize.X .. "x" .. screenSize.Y)
+    print("🎯 Test frame at:", testFrame.AbsolutePosition.X, testFrame.AbsolutePosition.Y)
+    
+    -- Auto-cleanup after 5 seconds
+    task.spawn(function()
+        task.wait(5)
+        testFrame:Destroy()
+        self._persistentGui.Enabled = false
+        print("🧹 Test visibility cleanup complete")
+    end)
+end
+
 -- ═══════════════════════════════════════════════════════════════════════════════════
 -- PUBLIC API
 -- ═══════════════════════════════════════════════════════════════════════════════════
@@ -645,17 +1001,18 @@ end
 -- HELPER FUNCTIONS FOR GENERATED IMAGES
 -- ═══════════════════════════════════════════════════════════════════════════════════
 
-function EggHatchingService:GetGeneratedEggImage(eggType)
-    local success, image = pcall(function()
+function EggHatchingService:GetGeneratedEggViewport(eggType)
+    local success, viewport = pcall(function()
         local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
         if assetsFolder then
             local imagesFolder = assetsFolder:FindFirstChild("Images")
             if imagesFolder then
                 local eggsFolder = imagesFolder:FindFirstChild("Eggs")
                 if eggsFolder then
-                    local eggImage = eggsFolder:FindFirstChild(eggType)
-                    if eggImage then
-                        return eggImage:Clone() -- Clone the generated ViewportFrame
+                    local eggViewport = eggsFolder:FindFirstChild(eggType)
+                    if eggViewport and eggViewport:IsA("ViewportFrame") then
+                        -- Clone the ViewportFrame (same as inventory/egg preview)
+                        return eggViewport:Clone()
                     end
                 end
             end
@@ -663,8 +1020,10 @@ function EggHatchingService:GetGeneratedEggImage(eggType)
         return nil
     end)
     
-    return success and image or nil
+    return success and viewport or nil
 end
+
+-- Note: Bear debug function removed - no longer needed
 
 function EggHatchingService:GetGeneratedPetImage(petType, variant)
     local success, image = pcall(function()
@@ -691,6 +1050,11 @@ function EggHatchingService:GetGeneratedPetImage(petType, variant)
 end
 
 -- Auto-initialize the persistent GUI when the service is required
+-- QUICK ACCESS: Debug egg viewports
+function EggHatchingService:DebugEggViewports()
+    return self:CreateEggViewportDebugger()
+end
+
 task.spawn(function()
     task.wait(1) -- Wait a moment for PlayerGui to be ready
     local service = EggHatchingService

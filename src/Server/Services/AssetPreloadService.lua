@@ -40,6 +40,9 @@ function AssetPreloadService:Start()
     task.spawn(function()
         self:LoadAllModelsIntoAssets()
     end)
+    
+    -- Set up admin regeneration signal
+    self:SetupAdminRegenerationSignal()
 end
 
 -- Create folder structure in ReplicatedStorage.Assets
@@ -190,12 +193,13 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
             if modelSuccess then
                 modelSuccessCount = modelSuccessCount + 1
                 
-                -- Generate image from the loaded egg model
-                local imageSuccess = self:GenerateEggImageFromModel(
+                -- Generate image from the loaded egg model (same as pets)
+                local imageSuccess = self:GenerateImageFromModel(
                     eggsFolder:FindFirstChild(eggType),
                     eggImagesFolder,
                     eggType,
-                    eggType
+                    eggType,  -- petType parameter (for eggs, use eggType)
+                    "egg"     -- variant parameter (all eggs are "egg" variant)
                 )
                 
                 if imageSuccess then
@@ -288,31 +292,43 @@ function AssetPreloadService:LoadModelIntoFolder(assetId, parentFolder, folderNa
     return true
 end
 
--- Generate a ViewportFrame image from a loaded model
-function AssetPreloadService:GenerateImageFromModel(model, parentFolder, folderName, petType, variant)
-    if not model or not model:IsA("Model") then
-        logger:Warn("Invalid model for image generation", {
-            petType = petType,
-            variant = variant,
-            modelExists = model ~= nil,
-            modelType = model and model.ClassName or "nil"
-        })
-        return false
-    end
-    
-    local success, result = pcall(function()
-        -- Get camera configuration from pet config
-        local cameraConfig = self:GetCameraConfig(petType)
-        
-        -- Position model for image capture
-        local modelClone = model:Clone()
-        local modelCFrame, modelSize = modelClone:GetBoundingBox()
-        
-        if modelClone.PrimaryPart then
-            modelClone:SetPrimaryPartCFrame(CFrame.new(0, 0, 0))
-        else
-            modelClone:MoveTo(Vector3.new(0, 0, 0))
+    -- Generate a ViewportFrame image from a loaded model (works for both pets and eggs)
+    function AssetPreloadService:GenerateImageFromModel(model, parentFolder, folderName, itemType, variant)
+        if not model or not model:IsA("Model") then
+            logger:Warn("Invalid model for image generation", {
+                itemType = itemType,
+                variant = variant,
+                modelExists = model ~= nil,
+                modelType = model and model.ClassName or "nil"
+            })
+            return false
         end
+        
+        local success, result = pcall(function()
+            -- Get camera configuration (works for both pets and eggs)
+            local cameraConfig = self:GetCameraConfig(itemType)
+            
+            -- Position model for image capture - RESET BOTH POSITION AND ROTATION
+            local modelClone = model:Clone()
+            local modelCFrame, modelSize = modelClone:GetBoundingBox()
+            
+            -- Always reset to identity CFrame (0,0,0 position + no rotation)
+            if modelClone.PrimaryPart then
+                modelClone:SetPrimaryPartCFrame(CFrame.identity)
+            else
+                -- For models without PrimaryPart, manually set each part to origin with no rotation
+                local modelCenter = modelClone:GetBoundingBox()
+                
+                -- Set each part to identity CFrame (0,0,0 position, no rotation)
+                for _, part in pairs(modelClone:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        -- Calculate offset from model center
+                        local offset = part.Position - modelCenter.Position
+                        -- Set to origin plus offset, with no rotation
+                        part.CFrame = CFrame.new(offset)
+                    end
+                end
+            end
         
         -- Calculate camera position based on configuration using proper spherical coordinates
         local angleYRad = math.rad(cameraConfig.angle_y)  -- Horizontal rotation (around Y-axis)
@@ -349,8 +365,8 @@ function AssetPreloadService:GenerateImageFromModel(model, parentFolder, folderN
         -- Add model to viewport
         modelClone.Parent = viewport
         
-        logger:Info("Generated image for pet", {
-            petType = petType,
+        logger:Info("Generated ViewportFrame image", {
+            itemType = itemType,
             variant = variant,
             cameraConfig = {
                 distance = cameraConfig.distance,
@@ -360,7 +376,7 @@ function AssetPreloadService:GenerateImageFromModel(model, parentFolder, folderN
             },
             calculatedPosition = cameraPosition,
             modelSize = modelSize,
-            storagePath = "ReplicatedStorage.Assets.Images.Pets." .. petType .. "." .. folderName
+            isEgg = petConfig.egg_sources[itemType] ~= nil
         })
         
         return true
@@ -370,7 +386,7 @@ function AssetPreloadService:GenerateImageFromModel(model, parentFolder, folderN
         return true
     else
         logger:Error("Failed to generate image", {
-            petType = petType,
+            itemType = itemType,
             variant = variant,
             error = result
         })
@@ -378,100 +394,21 @@ function AssetPreloadService:GenerateImageFromModel(model, parentFolder, folderN
     end
 end
 
--- Generate a ViewportFrame image from a loaded egg model
-function AssetPreloadService:GenerateEggImageFromModel(model, parentFolder, eggType, folderName)
-    if not model or not model:IsA("Model") then
-        logger:Warn("Invalid egg model for image generation", {
-            eggType = eggType,
-            modelExists = model ~= nil,
-            modelType = model and model.ClassName or "nil"
-        })
-        return false
-    end
-    
-    local success, result = pcall(function()
-        -- Get camera configuration from egg config (or use default)
-        local eggData = petConfig.egg_sources[eggType]
-        local cameraConfig = (eggData and eggData.camera) or petConfig.asset_images.default_egg_camera
-        
-        -- Position model for image capture
-        local modelClone = model:Clone()
-        local modelCFrame, modelSize = modelClone:GetBoundingBox()
-        
-        if modelClone.PrimaryPart then
-            modelClone:SetPrimaryPartCFrame(CFrame.new(0, 0, 0))
-        else
-            modelClone:MoveTo(Vector3.new(0, 0, 0))
-        end
-        
-        -- Calculate camera position using spherical coordinates (same as pets)
-        local angleYRad = math.rad(cameraConfig.angle_y)  -- Horizontal rotation (around Y-axis)
-        local angleXRad = math.rad(cameraConfig.angle_x)  -- Vertical rotation (elevation)
-        
-        local cameraOffset = Vector3.new(
-            math.sin(angleYRad) * math.cos(angleXRad) * cameraConfig.distance,
-            math.sin(angleXRad) * cameraConfig.distance,
-            math.cos(angleYRad) * math.cos(angleXRad) * cameraConfig.distance
-        )
-        
-        local cameraPosition = cameraOffset + cameraConfig.offset
-        
-        -- Remove existing ViewportFrame if it exists (for regeneration)
-        local existingViewport = parentFolder:FindFirstChild(folderName)
-        if existingViewport then
-            existingViewport:Destroy()
-        end
-        
-        -- Create ViewportFrame for this egg
-        local viewport = Instance.new("ViewportFrame")
-        viewport.Name = folderName
-        viewport.Size = UDim2.new(1, 0, 1, 0)  -- Full size, will be scaled by UI
-        viewport.BackgroundTransparency = 1
-        viewport.Parent = parentFolder
-        
-        -- Create and configure camera
-        local camera = Instance.new("Camera")
-        camera.CFrame = CFrame.lookAt(cameraPosition, Vector3.new(0, 0, 0))
-        camera.Parent = viewport
-        viewport.CurrentCamera = camera
-        
-        -- Add model to viewport
-        modelClone.Parent = viewport
-        
-        logger:Info("Generated image for egg", {
-            eggType = eggType,
-            cameraConfig = {
-                distance = cameraConfig.distance,
-                angle_y = cameraConfig.angle_y,
-                angle_x = cameraConfig.angle_x,
-                offset = cameraConfig.offset,
-                lighting = cameraConfig.lighting
-            },
-            calculatedPosition = cameraPosition,
-            modelSize = modelSize,
-            storagePath = "ReplicatedStorage.Assets.Images.Eggs." .. folderName
-        })
-        
-        return true
-    end)
-    
-    if success then
-        return true
-    else
-        logger:Error("Failed to generate egg image", {
-            eggType = eggType,
-            error = result
-        })
-        return false
-    end
-end
+-- Note: Eggs now use the same GenerateImageFromModel function as pets
 
--- Get camera configuration for pet type
-function AssetPreloadService:GetCameraConfig(petType)
+-- Get camera configuration for pet type or egg type
+function AssetPreloadService:GetCameraConfig(itemType)
     local assetImageConfig = petConfig.asset_images
     
-    -- Get camera config from the pet's definition, fallback to default
-    local petData = petConfig.pets[petType]
+    -- Check if it's an egg first
+    local eggData = petConfig.egg_sources[itemType]
+    if eggData then
+        -- It's an egg - use egg camera config or egg default
+        return (eggData and eggData.camera) or assetImageConfig.default_egg_camera
+    end
+    
+    -- It's a pet - use pet camera config or pet default
+    local petData = petConfig.pets[itemType]
     local cameraConfig = (petData and petData.camera) or assetImageConfig.default_camera
     
     return cameraConfig
@@ -600,6 +537,30 @@ function AssetPreloadService:GetLoadingStats()
         totalVariants = variantCount,
         folderPath = petsFolder:GetFullName()
     }
+end
+
+-- Set up admin signal for force regeneration
+function AssetPreloadService:SetupAdminRegenerationSignal()
+    local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+    local AdminChecker = require(ReplicatedStorage.Shared.Utils.AdminChecker)
+    
+    Signals.ForceRegenerateAssets.OnServerEvent:Connect(function(player, data)
+        if not AdminChecker:IsAdmin(player) then
+            logger:Warn("Non-admin attempted asset regeneration", {
+                player = player.Name,
+                userId = player.UserId
+            })
+            return
+        end
+        
+        logger:Info("Admin force regeneration triggered", {
+            player = player.Name,
+            userId = player.UserId
+        })
+        
+        -- Force regenerate all assets
+        self:LoadAllModelsIntoAssets()
+    end)
 end
 
 return AssetPreloadService

@@ -175,6 +175,16 @@ local TEST_CATEGORIES = {
             {name = "🗑️ Remove Orphaned Buckets", action = "cleanup_inventory"},
             {name = "🔧 Fix Item Categories", action = "fix_item_categories"},
         }
+    },
+    assets = {
+        title = "🖼️ Asset Debugging",
+        tests = {
+            {name = "🔍 View All Generated Images", action = "view_all_assets"},
+            {name = "🥚 Debug Egg ViewportFrames", action = "debug_egg_viewports"},
+            {name = "🐾 Debug Pet ViewportFrames", action = "debug_pet_viewports"},
+            {name = "📊 Asset Generation Stats", action = "asset_stats"},
+            {name = "🔄 Force Regenerate Assets", action = "force_regenerate_assets"},
+        }
     }
 }
 
@@ -666,7 +676,18 @@ function AdminPanel:_executeTestAction(action, testName)
         self:_cleanupInventory()
     elseif action == "fix_item_categories" then
         self:_fixItemCategories()
-
+    
+    -- Asset debugging actions
+    elseif action == "view_all_assets" then
+        self:_viewAllAssets()
+    elseif action == "debug_egg_viewports" then
+        self:_debugEggViewports()
+    elseif action == "debug_pet_viewports" then
+        self:_debugPetViewports()
+    elseif action == "asset_stats" then
+        self:_showAssetStats()
+    elseif action == "force_regenerate_assets" then
+        self:_forceRegenerateAssets()
     
     else
         self.logger:warn("Unknown action:", action)
@@ -1107,6 +1128,117 @@ function AdminPanel:_fixItemCategories()
     self.logger:info("✅ Fix categories command sent via Signals")
 end
 
+-- ═══════════════════════════════════════════════════════════════════════════════════
+-- ASSET DEBUGGING FUNCTIONS
+-- ═══════════════════════════════════════════════════════════════════════════════════
 
+function AdminPanel:_viewAllAssets()
+    self.logger:info("🔍 ADMIN: Opening comprehensive asset viewer")
+    
+    local success, viewer = pcall(function()
+        return self:_createComprehensiveAssetViewer()
+    end)
+    
+    if success and viewer then
+        self.logger:info("✅ Asset viewer opened successfully")
+    else
+        self.logger:error("❌ Failed to open asset viewer:", viewer)
+    end
+end
+
+function AdminPanel:_debugEggViewports()
+    self.logger:info("🥚 ADMIN: Opening egg ViewportFrame debugger")
+    
+    local success, debugger = pcall(function()
+        local EggHatchingService = require(ReplicatedStorage.Shared.Services.EggHatchingService)
+        return EggHatchingService:DebugEggViewports()
+    end)
+    
+    if success and debugger then
+        self.logger:info("✅ Egg debugger opened successfully")
+    else
+        self.logger:error("❌ Failed to open egg debugger:", debugger)
+    end
+end
+
+function AdminPanel:_debugPetViewports()
+    self.logger:info("🐾 ADMIN: Opening pet ViewportFrame debugger - Coming Soon!")
+    -- Placeholder for now
+end
+
+function AdminPanel:_showAssetStats()
+    self.logger:info("📊 ADMIN: Showing asset generation statistics")
+    
+    -- Quick stats display
+    local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
+    if not assetsFolder then
+        self.logger:error("Assets folder not found!")
+        return
+    end
+    
+    local stats = {}
+    table.insert(stats, "📊 ASSET GENERATION STATISTICS")
+    table.insert(stats, "════════════════════════════════")
+    
+    -- Count eggs
+    local eggsFolder = assetsFolder:FindFirstChild("Images") and assetsFolder.Images:FindFirstChild("Eggs")
+    local eggCount = 0
+    if eggsFolder then
+        for _, child in pairs(eggsFolder:GetChildren()) do
+            if child:IsA("ViewportFrame") then
+                eggCount = eggCount + 1
+            end
+        end
+    end
+    table.insert(stats, "🥚 Generated Eggs: " .. eggCount)
+    
+    -- Count pets  
+    local petsFolder = assetsFolder:FindFirstChild("Images") and assetsFolder.Images:FindFirstChild("Pets")
+    local petCount = 0
+    local variantCount = 0
+    if petsFolder then
+        for _, petTypeFolder in pairs(petsFolder:GetChildren()) do
+            if petTypeFolder:IsA("Folder") then
+                petCount = petCount + 1
+                for _, variant in pairs(petTypeFolder:GetChildren()) do
+                    if variant:IsA("ViewportFrame") then
+                        variantCount = variantCount + 1
+                    end
+                end
+            end
+        end
+    end
+    table.insert(stats, "🐾 Pet Types: " .. petCount)
+    table.insert(stats, "🎨 Pet Variants: " .. variantCount)
+    table.insert(stats, "📁 Total Generated Images: " .. (eggCount + variantCount))
+    
+    self.logger:info(table.concat(stats, "\n"))
+end
+
+function AdminPanel:_createComprehensiveAssetViewer()
+    -- Placeholder - will implement the full scrollable viewer
+    self.logger:info("📋 Comprehensive asset viewer - placeholder implementation")
+    self.logger:info("Use 'Debug Egg ViewportFrames' button for now")
+    return true
+end
+
+function AdminPanel:_forceRegenerateAssets()
+    self.logger:info("🔄 ADMIN: Force regenerating all assets with updated positioning")
+    
+    -- Send signal to server to trigger AssetPreloadService regeneration
+    local success = pcall(function()
+        Signals.ForceRegenerateAssets:FireServer({
+            requestedBy = Players.LocalPlayer.UserId,
+            reason = "Admin debug - fixing egg positioning"
+        })
+    end)
+    
+    if success then
+        self.logger:info("✅ Asset regeneration request sent to server")
+        self.logger:info("⏱️ Check server console for regeneration progress")
+    else
+        self.logger:error("❌ Failed to send regeneration request")
+    end
+end
 
 return AdminPanel 

@@ -90,9 +90,9 @@ local petConfig = {
         
         -- Default camera settings for eggs without specific config
         default_egg_camera = {
-            distance = 4.0,
-            angle_y = 25,
-            angle_x = 160,
+            distance = 3.5,
+            angle_y = 0,
+            angle_x = 180,
             offset = Vector3.new(0, 0, 0),
             lighting = "default"
         },
@@ -497,9 +497,9 @@ local petConfig = {
             
             -- Camera configuration for egg image generation
             camera = {
-                distance = 4.0,
-                angle_y = 25,    -- Slight angle to show egg shape
-                angle_x = 160,   -- Elevated view similar to pets
+                distance = 3.5,
+                angle_y = 0,    -- Same as working pets
+                angle_x = 180,  -- Same as working pets
                 offset = Vector3.new(0, 0, 0),
                 lighting = "default"
             },
@@ -545,11 +545,11 @@ local petConfig = {
             
             -- Camera configuration for egg image generation
             camera = {
-                distance = 4.2,
-                angle_y = 30,    -- Slightly different angle for golden egg
-                angle_x = 165,   -- Show the golden shine
-                offset = Vector3.new(0, 0.2, 0),
-                lighting = "dramatic"  -- Use dramatic lighting for golden egg
+                distance = 3.5,
+                angle_y = 0,     -- Same as working pets  
+                angle_x = 180,   -- Same as working pets
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default"  -- Use same lighting for consistency
             },
             
             -- Stage 1: Pet Selection (same animals as BasicEgg)

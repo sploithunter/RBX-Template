@@ -46,7 +46,8 @@ local Signals = {
     ToggleToolEquipped = Net:RemoteEvent("ToggleToolEquipped"),  -- c->s equip/unequip tool
     
     -- User Display Preferences
-    SaveDisplayPreferences = Net:RemoteEvent("SaveDisplayPreferences"), -- c->s save user display preferences
+    SaveDisplayPreferences = Net:RemoteEvent("SaveDisplayPreferences"),
+    ForceRegenerateAssets = Net:RemoteEvent("ForceRegenerateAssets"),  -- c->s admin force asset regeneration
 }
 
 return Signals
