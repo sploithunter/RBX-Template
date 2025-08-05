@@ -34,94 +34,28 @@ EggHatchingService.__index = EggHatchingService
 
 function EggHatchingService:ClearScreen()
     local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-    local screenSize = workspace.CurrentCamera.ViewportSize
-    local animatedElements = {}
+    local animatedGUIs = {}
     
     print("🎬 Clearing screen for cinematic egg hatching...")
     
-    -- Find all visible GUI elements to animate out
+    -- Simple approach: Just fade out entire ScreenGuis (not individual elements)
     for _, gui in pairs(playerGui:GetChildren()) do
         if gui:IsA("ScreenGui") and gui.Name ~= "EggHatchingGui" and gui.Enabled then
-            for _, element in pairs(gui:GetDescendants()) do
-                if element:IsA("GuiObject") and element.Visible and element.Parent and element.AbsoluteSize.X > 0 then
-                    -- Store original properties
-                    local originalPos = element.Position
-                    local originalSize = element.Size
-                    local originalTransparency = element.BackgroundTransparency
-                    
-                    -- Calculate exit direction based on current position
-                    local centerX = element.AbsolutePosition.X + element.AbsoluteSize.X / 2
-                    local centerY = element.AbsolutePosition.Y + element.AbsoluteSize.Y / 2
-                    local screenCenterX = screenSize.X / 2
-                    local screenCenterY = screenSize.Y / 2
-                    
-                    -- Determine exit direction (which edge/corner to animate towards)
-                    local exitPos
-                    if centerX < screenCenterX * 0.33 and centerY < screenCenterY * 0.33 then
-                        -- Top-left corner
-                        exitPos = UDim2.new(0, -element.AbsoluteSize.X - 100, 0, -element.AbsoluteSize.Y - 100)
-                    elseif centerX > screenCenterX * 1.66 and centerY < screenCenterY * 0.33 then
-                        -- Top-right corner  
-                        exitPos = UDim2.new(0, screenSize.X + 100, 0, -element.AbsoluteSize.Y - 100)
-                    elseif centerX < screenCenterX * 0.33 and centerY > screenCenterY * 1.66 then
-                        -- Bottom-left corner
-                        exitPos = UDim2.new(0, -element.AbsoluteSize.X - 100, 0, screenSize.Y + 100)
-                    elseif centerX > screenCenterX * 1.66 and centerY > screenCenterY * 1.66 then
-                        -- Bottom-right corner
-                        exitPos = UDim2.new(0, screenSize.X + 100, 0, screenSize.Y + 100)
-                    elseif centerY < screenCenterY * 0.5 then
-                        -- Top edge
-                        exitPos = UDim2.new(originalPos.X.Scale, originalPos.X.Offset, 0, -element.AbsoluteSize.Y - 100)
-                    elseif centerY > screenCenterY * 1.5 then
-                        -- Bottom edge
-                        exitPos = UDim2.new(originalPos.X.Scale, originalPos.X.Offset, 0, screenSize.Y + 100)
-                    elseif centerX < screenCenterX * 0.5 then
-                        -- Left edge
-                        exitPos = UDim2.new(0, -element.AbsoluteSize.X - 100, originalPos.Y.Scale, originalPos.Y.Offset)
-                    else
-                        -- Right edge
-                        exitPos = UDim2.new(0, screenSize.X + 100, originalPos.Y.Scale, originalPos.Y.Offset)
-                    end
-                    
-                    -- Store element data for restoration
-                    table.insert(animatedElements, {
-                        element = element,
-                        originalPos = originalPos,
-                        originalSize = originalSize,
-                        originalTransparency = originalTransparency,
-                        gui = gui
-                    })
-                    
-                    -- Create exit animation
-                    local exitTween = TweenService:Create(element, 
-                        TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.In),
-                        {
-                            Position = exitPos,
-                            Size = UDim2.new(originalSize.X.Scale * 0.3, originalSize.X.Offset * 0.3, 
-                                           originalSize.Y.Scale * 0.3, originalSize.Y.Offset * 0.3)
-                        }
-                    )
-                    exitTween:Play()
-                    
-                    -- Also fade out if it has background
-                    if element.BackgroundTransparency < 1 then
-                        local fadeTween = TweenService:Create(element,
-                            TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                            { BackgroundTransparency = 1 }
-                        )
-                        fadeTween:Play()
-                    end
-                end
-            end
+            -- Store original enabled state
+            table.insert(animatedGUIs, {
+                gui = gui,
+                originalEnabled = gui.Enabled
+            })
+            
+            -- Simply disable the GUI (much safer than complex animations)
+            gui.Enabled = false
         end
     end
     
-    print("🎭 Animated", #animatedElements, "UI elements off-screen")
+    print("🎭 Disabled", #animatedGUIs, "ScreenGuis for cinematic mode")
     
-    -- Wait for animations to complete
-    task.wait(1.0)
-    
-    return animatedElements
+    -- No wait needed since this is instant
+    return animatedGUIs
 end
 
 function EggHatchingService:RestoreScreen(animatedElements)
@@ -132,37 +66,19 @@ function EggHatchingService:RestoreScreen(animatedElements)
     
     print("🎬 Restoring screen UI elements...")
     
-    -- Animate all elements back to their original positions
-    for _, elementData in pairs(animatedElements) do
-        local element = elementData.element
+    -- Simply re-enable the GUIs
+    for _, guiData in pairs(animatedElements) do
+        local gui = guiData.gui
         
-        -- Check if element still exists
-        if element and element.Parent then
-            -- Create return animation
-            local returnTween = TweenService:Create(element,
-                TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-                {
-                    Position = elementData.originalPos,
-                    Size = elementData.originalSize
-                }
-            )
-            returnTween:Play()
-            
-            -- Restore transparency
-            if elementData.originalTransparency < 1 then
-                local fadeInTween = TweenService:Create(element,
-                    TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                    { BackgroundTransparency = elementData.originalTransparency }
-                )
-                fadeInTween:Play()
-            end
+        -- Check if GUI still exists and restore its enabled state
+        if gui and gui.Parent then
+            gui.Enabled = guiData.originalEnabled
         end
     end
     
     print("✨ Screen restoration complete!")
     
-    -- Wait for restoration to complete
-    task.wait(1.0)
+    -- No wait needed since this is instant
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
@@ -547,12 +463,12 @@ function EggHatchingService:StartHatchingAnimation(eggsData, containerGui)
         self:ExecuteHatchingSequence(eggComponents, eggsData)
         
         -- PHASE 4: After animations complete, wait a moment then restore screen
-        task.wait(2) -- Let player enjoy the result
+        task.wait(1) -- Let player enjoy the result
         print("🎬 Phase 4: Restoring screen...")
         self:RestoreScreen(animatedElements)
         
         -- PHASE 5: Auto cleanup after a short delay
-        task.wait(2) -- Brief pause to see the restoration
+        task.wait(1) -- Brief pause to see the restoration
         print("🧹 Auto-cleanup: Destroying hatching GUI...")
         if container and container.Parent then
             container.Parent:Destroy() -- Destroy the entire ScreenGui
