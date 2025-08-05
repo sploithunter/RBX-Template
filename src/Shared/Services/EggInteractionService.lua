@@ -224,18 +224,11 @@ function EggInteractionService:ShowHatchingResults(result)
             petImageId = self:GetPetImageId(result.Pet, result.Type)
         }
         
-        -- Start the hatching animation
+        -- Start the hatching animation (it handles its own cleanup automatically)
         print("🎬 Starting hatching animation for:", result.Pet, result.Type)
         local animationResult = hatchingService:StartHatchingAnimation({eggData})
         
-        -- Auto-cleanup after animation completes
-        task.spawn(function()
-            task.wait(12) -- Give enough time for screen clear + animation + reveal + screen restore
-            if animationResult and animationResult.cleanup then
-                animationResult.cleanup()
-                print("✅ Hatching animation completed and cleaned up")
-            end
-        end)
+        print("✅ Hatching animation started - auto-cleanup enabled")
     else
         -- Fallback to simple notification if animation service fails
         warn("Failed to load EggHatchingService, falling back to simple notification")

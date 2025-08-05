@@ -464,11 +464,35 @@ function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, du
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
+-- CLEANUP UTILITIES
+-- ═══════════════════════════════════════════════════════════════════════════════════
+
+function EggHatchingService:CleanupExistingHatchingGUIs()
+    local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+    local cleanedCount = 0
+    
+    -- Remove any existing EggHatchingGui instances
+    for _, gui in pairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Name == "EggHatchingGui" then
+            gui:Destroy()
+            cleanedCount = cleanedCount + 1
+        end
+    end
+    
+    if cleanedCount > 0 then
+        print("🧹 Cleaned up", cleanedCount, "existing hatching GUIs")
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════════
 -- MAIN HATCHING INTERFACE
 -- ═══════════════════════════════════════════════════════════════════════════════════
 
 function EggHatchingService:StartHatchingAnimation(eggsData, containerGui)
     local eggCount = #eggsData
+    
+    -- PHASE 0: Clean up any existing hatching GUIs first
+    self:CleanupExistingHatchingGUIs()
     
     -- PHASE 1: Clear the screen cinematically
     print("🎬 Phase 1: Clearing screen for cinematic experience...")
@@ -510,6 +534,15 @@ function EggHatchingService:StartHatchingAnimation(eggsData, containerGui)
     end
     
     -- PHASE 3: Execute animations in sequence with staggered timing
+    local cleanupResult = {
+        frames = eggFrames,
+        components = eggComponents,
+        gridInfo = gridInfo,
+        container = container,
+        animatedElements = animatedElements,
+        isComplete = false
+    }
+    
     task.spawn(function()
         self:ExecuteHatchingSequence(eggComponents, eggsData)
         
@@ -517,36 +550,18 @@ function EggHatchingService:StartHatchingAnimation(eggsData, containerGui)
         task.wait(2) -- Let player enjoy the result
         print("🎬 Phase 4: Restoring screen...")
         self:RestoreScreen(animatedElements)
+        
+        -- PHASE 5: Auto cleanup after a short delay
+        task.wait(2) -- Brief pause to see the restoration
+        print("🧹 Auto-cleanup: Destroying hatching GUI...")
+        if container and container.Parent then
+            container.Parent:Destroy() -- Destroy the entire ScreenGui
+            print("✅ Auto-cleanup complete")
+        end
+        cleanupResult.isComplete = true
     end)
     
-    return {
-        frames = eggFrames,
-        components = eggComponents,
-        gridInfo = gridInfo,
-        container = container,
-        animatedElements = animatedElements,
-        cleanup = function()
-            print("🧹 Cleaning up hatching animation GUI...")
-            -- Restore screen first if not already done
-            if animatedElements and #animatedElements > 0 then
-                task.spawn(function()
-                    self:RestoreScreen(animatedElements)
-                end)
-            end
-            
-            -- Destroy all egg frames first
-            for _, frame in ipairs(eggFrames) do
-                if frame and frame.Parent then
-                    frame:Destroy()
-                end
-            end
-            -- Destroy the main container (ScreenGui)
-            if container and container.Parent then
-                container:Destroy()
-                print("✅ Hatching animation GUI destroyed")
-            end
-        end
-    }
+    return cleanupResult
 end
 
 function EggHatchingService:ExecuteHatchingSequence(eggComponents, eggsData)
@@ -611,6 +626,35 @@ function EggHatchingService:CreateCinematicContainer()
     screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
     
     return container
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════════
+-- DEBUG/TESTING FUNCTIONS
+-- ═══════════════════════════════════════════════════════════════════════════════════
+
+function EggHatchingService:TestCleanup()
+    -- Force cleanup any existing GUIs for testing
+    self:CleanupExistingHatchingGUIs()
+    print("🧪 Test cleanup completed")
+end
+
+function EggHatchingService:CheckForLeakedGUIs()
+    local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+    local leakedCount = 0
+    
+    for _, gui in pairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Name == "EggHatchingGui" then
+            leakedCount = leakedCount + 1
+        end
+    end
+    
+    if leakedCount > 0 then
+        print("⚠️ Found", leakedCount, "leaked EggHatchingGui instances")
+    else
+        print("✅ No leaked EggHatchingGui instances found")
+    end
+    
+    return leakedCount
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
