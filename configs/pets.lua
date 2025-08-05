@@ -823,9 +823,12 @@ end
 petConfig.hatching_animation = {
     -- Animation timing settings
     timing = {
+        screen_clear_duration = 1.0,    -- How long to animate UI elements off-screen
         shake_duration = 2.0,           -- How long eggs shake before hatching
         flash_duration = 0.5,           -- Duration of flash effect
         reveal_duration = 1.0,          -- Duration of pet reveal animation
+        result_display_time = 2.0,      -- How long to show result before restoring screen
+        screen_restore_duration = 1.0,  -- How long to animate UI elements back
         stagger_delay = 0.2,            -- Delay between each egg in sequence
     },
     

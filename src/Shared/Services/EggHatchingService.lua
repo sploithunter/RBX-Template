@@ -8,11 +8,14 @@
 -- - Multi-stage animations: shake -> flash -> reveal
 -- - Performance optimized with image assets
 -- - Scales to 99+ eggs with overflow handling
+-- - Cinematic screen clearing: UI elements animate off-screen directionally
 -- 
 -- ANIMATION STAGES:
--- 1. SHAKE: Egg wobbles back and forth
--- 2. FLASH: Bright flash/explosion effect 
--- 3. REVEAL: Pet image appears with scale/fade effect
+-- 1. SCREEN CLEAR: All UI elements animate off-screen in natural directions
+-- 2. SHAKE: Egg wobbles back and forth on clean screen
+-- 3. FLASH: Bright flash/explosion effect 
+-- 4. REVEAL: Pet image appears with scale/fade effect
+-- 5. SCREEN RESTORE: All UI elements animate back to original positions
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -24,6 +27,143 @@ local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local EggHatchingService = {}
 EggHatchingService.__index = EggHatchingService
+
+-- ═══════════════════════════════════════════════════════════════════════════════════
+-- CINEMATIC SCREEN MANAGEMENT SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════════════════
+
+function EggHatchingService:ClearScreen()
+    local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+    local screenSize = workspace.CurrentCamera.ViewportSize
+    local animatedElements = {}
+    
+    print("🎬 Clearing screen for cinematic egg hatching...")
+    
+    -- Find all visible GUI elements to animate out
+    for _, gui in pairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Name ~= "EggHatchingGui" and gui.Enabled then
+            for _, element in pairs(gui:GetDescendants()) do
+                if element:IsA("GuiObject") and element.Visible and element.Parent and element.AbsoluteSize.X > 0 then
+                    -- Store original properties
+                    local originalPos = element.Position
+                    local originalSize = element.Size
+                    local originalTransparency = element.BackgroundTransparency
+                    
+                    -- Calculate exit direction based on current position
+                    local centerX = element.AbsolutePosition.X + element.AbsoluteSize.X / 2
+                    local centerY = element.AbsolutePosition.Y + element.AbsoluteSize.Y / 2
+                    local screenCenterX = screenSize.X / 2
+                    local screenCenterY = screenSize.Y / 2
+                    
+                    -- Determine exit direction (which edge/corner to animate towards)
+                    local exitPos
+                    if centerX < screenCenterX * 0.33 and centerY < screenCenterY * 0.33 then
+                        -- Top-left corner
+                        exitPos = UDim2.new(0, -element.AbsoluteSize.X - 100, 0, -element.AbsoluteSize.Y - 100)
+                    elseif centerX > screenCenterX * 1.66 and centerY < screenCenterY * 0.33 then
+                        -- Top-right corner  
+                        exitPos = UDim2.new(0, screenSize.X + 100, 0, -element.AbsoluteSize.Y - 100)
+                    elseif centerX < screenCenterX * 0.33 and centerY > screenCenterY * 1.66 then
+                        -- Bottom-left corner
+                        exitPos = UDim2.new(0, -element.AbsoluteSize.X - 100, 0, screenSize.Y + 100)
+                    elseif centerX > screenCenterX * 1.66 and centerY > screenCenterY * 1.66 then
+                        -- Bottom-right corner
+                        exitPos = UDim2.new(0, screenSize.X + 100, 0, screenSize.Y + 100)
+                    elseif centerY < screenCenterY * 0.5 then
+                        -- Top edge
+                        exitPos = UDim2.new(originalPos.X.Scale, originalPos.X.Offset, 0, -element.AbsoluteSize.Y - 100)
+                    elseif centerY > screenCenterY * 1.5 then
+                        -- Bottom edge
+                        exitPos = UDim2.new(originalPos.X.Scale, originalPos.X.Offset, 0, screenSize.Y + 100)
+                    elseif centerX < screenCenterX * 0.5 then
+                        -- Left edge
+                        exitPos = UDim2.new(0, -element.AbsoluteSize.X - 100, originalPos.Y.Scale, originalPos.Y.Offset)
+                    else
+                        -- Right edge
+                        exitPos = UDim2.new(0, screenSize.X + 100, originalPos.Y.Scale, originalPos.Y.Offset)
+                    end
+                    
+                    -- Store element data for restoration
+                    table.insert(animatedElements, {
+                        element = element,
+                        originalPos = originalPos,
+                        originalSize = originalSize,
+                        originalTransparency = originalTransparency,
+                        gui = gui
+                    })
+                    
+                    -- Create exit animation
+                    local exitTween = TweenService:Create(element, 
+                        TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+                        {
+                            Position = exitPos,
+                            Size = UDim2.new(originalSize.X.Scale * 0.3, originalSize.X.Offset * 0.3, 
+                                           originalSize.Y.Scale * 0.3, originalSize.Y.Offset * 0.3)
+                        }
+                    )
+                    exitTween:Play()
+                    
+                    -- Also fade out if it has background
+                    if element.BackgroundTransparency < 1 then
+                        local fadeTween = TweenService:Create(element,
+                            TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            { BackgroundTransparency = 1 }
+                        )
+                        fadeTween:Play()
+                    end
+                end
+            end
+        end
+    end
+    
+    print("🎭 Animated", #animatedElements, "UI elements off-screen")
+    
+    -- Wait for animations to complete
+    task.wait(1.0)
+    
+    return animatedElements
+end
+
+function EggHatchingService:RestoreScreen(animatedElements)
+    if not animatedElements or #animatedElements == 0 then
+        print("⚠️ No animated elements to restore")
+        return
+    end
+    
+    print("🎬 Restoring screen UI elements...")
+    
+    -- Animate all elements back to their original positions
+    for _, elementData in pairs(animatedElements) do
+        local element = elementData.element
+        
+        -- Check if element still exists
+        if element and element.Parent then
+            -- Create return animation
+            local returnTween = TweenService:Create(element,
+                TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                {
+                    Position = elementData.originalPos,
+                    Size = elementData.originalSize
+                }
+            )
+            returnTween:Play()
+            
+            -- Restore transparency
+            if elementData.originalTransparency < 1 then
+                local fadeInTween = TweenService:Create(element,
+                    TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                    { BackgroundTransparency = elementData.originalTransparency }
+                )
+                fadeInTween:Play()
+            end
+        end
+    end
+    
+    print("✨ Screen restoration complete!")
+    
+    -- Wait for restoration to complete
+    task.wait(1.0)
+end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
 -- DYNAMIC GRID LAYOUT SYSTEM
@@ -329,7 +469,13 @@ end
 
 function EggHatchingService:StartHatchingAnimation(eggsData, containerGui)
     local eggCount = #eggsData
-    local container = containerGui or self:CreateDefaultContainer()
+    
+    -- PHASE 1: Clear the screen cinematically
+    print("🎬 Phase 1: Clearing screen for cinematic experience...")
+    local animatedElements = self:ClearScreen()
+    
+    -- PHASE 2: Set up the animation container
+    local container = containerGui or self:CreateCinematicContainer()
     
     -- Wait for the GUI to be properly sized
     task.wait()  -- Give a frame for the GUI to be parented and sized
@@ -346,7 +492,7 @@ function EggHatchingService:StartHatchingAnimation(eggsData, containerGui)
     local gridInfo = self:CalculateGridLayout(eggCount, containerSize.X, containerSize.Y)
     local positions = self:GenerateEggPositions(eggCount, gridInfo)
     
-    print("🥚 Starting hatching animation for", eggCount, "eggs using", gridInfo.layout.name, "grid")
+    print("🥚 Phase 2: Starting hatching animation for", eggCount, "eggs using", gridInfo.layout.name, "grid")
     
     -- Create egg frames
     local eggFrames = {}
@@ -363,9 +509,14 @@ function EggHatchingService:StartHatchingAnimation(eggsData, containerGui)
         table.insert(eggComponents, components)
     end
     
-    -- Execute animations in sequence with staggered timing
+    -- PHASE 3: Execute animations in sequence with staggered timing
     task.spawn(function()
         self:ExecuteHatchingSequence(eggComponents, eggsData)
+        
+        -- PHASE 4: After animations complete, wait a moment then restore screen
+        task.wait(2) -- Let player enjoy the result
+        print("🎬 Phase 4: Restoring screen...")
+        self:RestoreScreen(animatedElements)
     end)
     
     return {
@@ -373,8 +524,16 @@ function EggHatchingService:StartHatchingAnimation(eggsData, containerGui)
         components = eggComponents,
         gridInfo = gridInfo,
         container = container,
+        animatedElements = animatedElements,
         cleanup = function()
             print("🧹 Cleaning up hatching animation GUI...")
+            -- Restore screen first if not already done
+            if animatedElements and #animatedElements > 0 then
+                task.spawn(function()
+                    self:RestoreScreen(animatedElements)
+                end)
+            end
+            
             -- Destroy all egg frames first
             for _, frame in ipairs(eggFrames) do
                 if frame and frame.Parent then
@@ -433,31 +592,21 @@ function EggHatchingService:ExecuteHatchingSequence(eggComponents, eggsData)
     print("✅ Hatching animation sequence complete!")
 end
 
-function EggHatchingService:CreateDefaultContainer()
+function EggHatchingService:CreateCinematicContainer()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "EggHatchingGui"
     screenGui.ResetOnSpawn = false
+    screenGui.DisplayOrder = 100  -- Ensure it's on top
     
+    -- Full-screen transparent container for cinematic effect
     local container = Instance.new("Frame")
     container.Name = "HatchingContainer"
-    container.Size = UDim2.new(0.6, 0, 0.6, 0)  -- Smaller, more centered
-    container.Position = UDim2.new(0.2, 0, 0.2, 0)  -- Centered
-    container.BackgroundColor3 = Color3.fromRGB(20, 20, 30)  -- Dark blue background
-    container.BackgroundTransparency = 0.1  -- More visible
+    container.Size = UDim2.new(1, 0, 1, 0)  -- Full screen
+    container.Position = UDim2.new(0, 0, 0, 0)  -- Top-left corner
+    container.BackgroundColor3 = Color3.fromRGB(0, 0, 0)  -- Pure black background
+    container.BackgroundTransparency = 0.2  -- Slight tint for cinematic feel
     container.BorderSizePixel = 0
     container.Parent = screenGui
-    
-    -- Add rounded corners
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 20)
-    corner.Parent = container
-    
-    -- Add a subtle glow effect
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(100, 150, 255)
-    stroke.Thickness = 3
-    stroke.Transparency = 0.5
-    stroke.Parent = container
     
     screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
     

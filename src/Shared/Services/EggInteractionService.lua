@@ -230,7 +230,7 @@ function EggInteractionService:ShowHatchingResults(result)
         
         -- Auto-cleanup after animation completes
         task.spawn(function()
-            task.wait(8) -- Give enough time for full animation sequence + reveal time
+            task.wait(12) -- Give enough time for screen clear + animation + reveal + screen restore
             if animationResult and animationResult.cleanup then
                 animationResult.cleanup()
                 print("✅ Hatching animation completed and cleaned up")
