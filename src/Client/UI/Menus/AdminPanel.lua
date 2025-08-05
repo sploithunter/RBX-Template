@@ -185,6 +185,30 @@ local TEST_CATEGORIES = {
             {name = "📊 Asset Generation Stats", action = "asset_stats"},
             {name = "🔄 Force Regenerate Assets", action = "force_regenerate_assets"},
         }
+    },
+    eggHatching = {
+        title = "🥚 Egg Hatching Simulation",
+        tests = {
+            {name = "🥚 Hatch 1 Egg (Random Pet)", action = "hatch_1_egg"},
+            {name = "🥚🥚 Hatch 3 Eggs (Random Pets)", action = "hatch_3_eggs"},
+            {name = "🥚🥚🥚 Hatch 5 Eggs (Random Pets)", action = "hatch_5_eggs"},
+            {name = "🥚🥚🥚🥚 Hatch 10 Eggs (Random Pets)", action = "hatch_10_eggs"},
+            {name = "🥚🥚🥚🥚🥚 Hatch 25 Eggs (Random Pets)", action = "hatch_25_eggs"},
+            {name = "🥚🥚🥚🥚🥚🥚 Hatch 42 Eggs (Random Pets)", action = "hatch_42_eggs"},
+            {name = "🎲 Hatch 99 Eggs (Random Pets)", action = "hatch_99_eggs"},
+        },
+        customInputs = {
+            {
+                label = "Custom Egg Count (1-99):",
+                placeholder = "e.g. 15, 50, 99",
+                action = "hatch_custom_eggs"
+            },
+            {
+                label = "Specific Pet (petType:variant):",
+                placeholder = "e.g. bear:basic, dragon:golden, kitty:rainbow",
+                action = "hatch_specific_pet"
+            }
+        }
     }
 }
 
@@ -689,6 +713,10 @@ function AdminPanel:_executeTestAction(action, testName)
     elseif action == "force_regenerate_assets" then
         self:_forceRegenerateAssets()
     
+    -- Egg hatching simulation actions
+    elseif action:find("hatch_") then
+        self:_executeEggHatchingAction(action)
+    
     else
         self.logger:warn("Unknown action:", action)
     end
@@ -929,6 +957,12 @@ function AdminPanel:_executeCustomAction(action, inputValue)
             print("  BaseUI warn")
             print("  AssetPreloadService:info")
         end
+    elseif action == "hatch_custom_eggs" or action == "hatch_specific_pet" then
+        -- Handle egg hatching custom inputs
+        self:_executeCustomEggHatching({
+            action = action,
+            value = inputValue
+        })
     else
         self.logger:warn("Unknown custom action:", action)
     end
@@ -1238,6 +1272,162 @@ function AdminPanel:_forceRegenerateAssets()
         self.logger:info("⏱️ Check server console for regeneration progress")
     else
         self.logger:error("❌ Failed to send regeneration request")
+    end
+end
+
+function AdminPanel:_executeEggHatchingAction(action)
+    self.logger:info("🥚 ADMIN: Executing egg hatching action:", action)
+    
+    -- Load the EggHatchingService
+    local EggHatchingService = require(ReplicatedStorage.Shared.Services.EggHatchingService)
+    
+    -- Available pet types and variants
+    local petTypes = {"bear", "bunny", "doggy", "dragon", "kitty"}
+    local variants = {"basic", "golden", "rainbow"}
+    
+    -- Generate test eggs based on action
+    local testEggs = {}
+    local eggCount = 1
+    
+    if action == "hatch_1_egg" then
+        eggCount = 1
+    elseif action == "hatch_3_eggs" then
+        eggCount = 3
+    elseif action == "hatch_5_eggs" then
+        eggCount = 5
+    elseif action == "hatch_10_eggs" then
+        eggCount = 10
+    elseif action == "hatch_25_eggs" then
+        eggCount = 25
+    elseif action == "hatch_42_eggs" then
+        eggCount = 42
+    elseif action == "hatch_99_eggs" then
+        eggCount = 99
+    elseif action == "hatch_custom_eggs" then
+        -- This will be handled by custom input
+        return
+    elseif action == "hatch_specific_pet" then
+        -- This will be handled by custom input
+        return
+    else
+        self.logger:warn("Unknown egg hatching action:", action)
+        return
+    end
+    
+    -- Generate random eggs
+    for i = 1, eggCount do
+        table.insert(testEggs, {
+            eggType = "basic_egg",
+            petType = petTypes[math.random(1, #petTypes)],
+            variant = variants[math.random(1, #variants)],
+            imageId = "generated_image",
+            petImageId = "generated_image"
+        })
+    end
+    
+    -- Start the animation
+    local success, result = pcall(function()
+        return EggHatchingService:StartHatchingAnimation(testEggs)
+    end)
+    
+    if success then
+        self.logger:info("✅ Egg hatching animation started for", eggCount, "eggs")
+    else
+        self.logger:error("❌ Failed to start egg hatching animation:", result)
+    end
+end
+
+function AdminPanel:_executeCustomEggHatching(inputData)
+    self.logger:info("🥚 ADMIN: Executing custom egg hatching with input:", inputData)
+    
+    -- Load the EggHatchingService
+    local EggHatchingService = require(ReplicatedStorage.Shared.Services.EggHatchingService)
+    
+    -- Available pet types and variants
+    local petTypes = {"bear", "bunny", "doggy", "dragon", "kitty"}
+    local variants = {"basic", "golden", "rainbow"}
+    
+    local testEggs = {}
+    
+    if inputData.action == "hatch_custom_eggs" then
+        -- Parse custom egg count
+        local eggCount = tonumber(inputData.value)
+        if not eggCount or eggCount < 1 or eggCount > 99 then
+            self.logger:warn("Invalid egg count:", inputData.value, "- must be 1-99")
+            return
+        end
+        
+        -- Generate random eggs
+        for i = 1, eggCount do
+            table.insert(testEggs, {
+                eggType = "basic_egg",
+                petType = petTypes[math.random(1, #petTypes)],
+                variant = variants[math.random(1, #variants)],
+                imageId = "generated_image",
+                petImageId = "generated_image"
+            })
+        end
+        
+        self.logger:info("🥚 Generating", eggCount, "random eggs")
+        
+    elseif inputData.action == "hatch_specific_pet" then
+        -- Parse specific pet (format: petType:variant)
+        local petType, variant = inputData.value:match("([^:]+):([^:]+)")
+        if not petType or not variant then
+            self.logger:warn("Invalid pet format:", inputData.value, "- use format: petType:variant")
+            return
+        end
+        
+        -- Validate pet type and variant
+        local validPetType = false
+        for _, validType in ipairs(petTypes) do
+            if validType == petType then
+                validPetType = true
+                break
+            end
+        end
+        
+        local validVariant = false
+        for _, validVar in ipairs(variants) do
+            if validVar == variant then
+                validVariant = true
+                break
+            end
+        end
+        
+        if not validPetType then
+            self.logger:warn("Invalid pet type:", petType, "- valid types:", table.concat(petTypes, ", "))
+            return
+        end
+        
+        if not validVariant then
+            self.logger:warn("Invalid variant:", variant, "- valid variants:", table.concat(variants, ", "))
+            return
+        end
+        
+        -- Generate single egg with specific pet
+        table.insert(testEggs, {
+            eggType = "basic_egg",
+            petType = petType,
+            variant = variant,
+            imageId = "generated_image",
+            petImageId = "generated_image"
+        })
+        
+        self.logger:info("🥚 Generating 1 egg with specific pet:", petType, variant)
+    end
+    
+    -- Start the animation
+    if #testEggs > 0 then
+        local success, result = pcall(function()
+            return EggHatchingService:StartHatchingAnimation(testEggs)
+        end)
+        
+        if success then
+            self.logger:info("✅ Custom egg hatching animation started for", #testEggs, "eggs")
+        else
+            self.logger:error("❌ Failed to start custom egg hatching animation:", result)
+        end
     end
 end
 
