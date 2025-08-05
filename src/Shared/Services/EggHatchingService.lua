@@ -204,10 +204,20 @@ function EggHatchingService:CalculateGridLayout(eggCount, containerWidth, contai
     }
 end
 
--- Generate positions for all eggs in the grid
+-- Generate positions for all eggs in the grid with centered partial rows
 function EggHatchingService:GenerateEggPositions(eggCount, gridInfo)
     local positions = {}
     local layout = gridInfo.layout
+    
+    -- Calculate how many eggs are in each row
+    local fullRows = math.floor(eggCount / layout.columns)
+    local remainingEggs = eggCount % layout.columns
+    
+    print("🎯 CENTERING DEBUG:")
+    print("  📊 Total eggs:", eggCount)
+    print("  📊 Grid columns:", layout.columns)
+    print("  📊 Full rows:", fullRows)
+    print("  📊 Remaining eggs:", remainingEggs)
     
     for i = 1, math.min(eggCount, layout.maxItems) do
         -- Convert linear index to grid coordinates (0-based)
@@ -215,18 +225,33 @@ function EggHatchingService:GenerateEggPositions(eggCount, gridInfo)
         local col = gridIndex % layout.columns
         local row = math.floor(gridIndex / layout.columns)
         
-        -- Calculate pixel position
-        local x = gridInfo.startX + (col * (gridInfo.eggSize + gridInfo.padding))
+        -- Adjust column position if this is a partial row (center it)
+        local adjustedCol = col
+        local isPartialRow = (row == fullRows and remainingEggs > 0)
+        
+        if isPartialRow then
+            -- Center the partial row by shifting it
+            local emptySpaces = layout.columns - remainingEggs
+            local offset = emptySpaces / 2
+            adjustedCol = col + offset
+            print("  🎯 Row", row, "is partial - centering", remainingEggs, "eggs with offset", offset)
+        end
+        
+        -- Calculate pixel position using adjusted column
+        local x = gridInfo.startX + (adjustedCol * (gridInfo.eggSize + gridInfo.padding))
         local y = gridInfo.startY + (row * (gridInfo.eggSize + gridInfo.padding))
         
         table.insert(positions, {
             x = x,
             y = y,
             size = gridInfo.eggSize,
-            gridCol = col,
+            gridCol = adjustedCol,
             gridRow = row,
-            index = i
+            index = i,
+            isPartialRow = isPartialRow
         })
+        
+        print("  📍 Egg", i, "at grid (", adjustedCol, ",", row, ") -> pixel (", math.floor(x), ",", math.floor(y), ")")
     end
     
     return positions
