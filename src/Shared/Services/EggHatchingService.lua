@@ -28,6 +28,10 @@ local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local EggHatchingService = {}
 EggHatchingService.__index = EggHatchingService
 
+-- Persistent GUI that gets created once and reused
+EggHatchingService._persistentGui = nil
+EggHatchingService._persistentContainer = nil
+
 -- ═══════════════════════════════════════════════════════════════════════════════════
 -- CINEMATIC SCREEN MANAGEMENT SYSTEM
 -- ═══════════════════════════════════════════════════════════════════════════════════
@@ -383,20 +387,71 @@ end
 -- CLEANUP UTILITIES
 -- ═══════════════════════════════════════════════════════════════════════════════════
 
+function EggHatchingService:InitializePersistentGui()
+    if self._persistentGui then
+        return -- Already initialized
+    end
+    
+    print("🏗️ Creating persistent egg hatching GUI...")
+    
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "EggHatchingGui"
+    screenGui.ResetOnSpawn = false
+    screenGui.DisplayOrder = 100  -- Ensure it's on top
+    screenGui.Enabled = false  -- Start disabled
+    
+    -- Full-screen transparent container for cinematic effect
+    local container = Instance.new("Frame")
+    container.Name = "HatchingContainer"
+    container.Size = UDim2.new(1, 0, 1, 0)  -- Full screen
+    container.Position = UDim2.new(0, 0, 0, 0)  -- Top-left corner
+    container.BackgroundColor3 = Color3.fromRGB(0, 0, 0)  -- Pure black background
+    container.BackgroundTransparency = 0.2  -- Slight tint for cinematic feel
+    container.BorderSizePixel = 0
+    container.Parent = screenGui
+    
+    screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+    
+    -- Store references
+    self._persistentGui = screenGui
+    self._persistentContainer = container
+    
+    print("✅ Persistent egg hatching GUI created and ready")
+end
+
 function EggHatchingService:CleanupExistingHatchingGUIs()
+    -- Remove any old/duplicate GUIs, but not our persistent one
     local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
     local cleanedCount = 0
     
-    -- Remove any existing EggHatchingGui instances
     for _, gui in pairs(playerGui:GetChildren()) do
-        if gui:IsA("ScreenGui") and gui.Name == "EggHatchingGui" then
+        if gui:IsA("ScreenGui") and gui.Name == "EggHatchingGui" and gui ~= self._persistentGui then
             gui:Destroy()
             cleanedCount = cleanedCount + 1
         end
     end
     
     if cleanedCount > 0 then
-        print("🧹 Cleaned up", cleanedCount, "existing hatching GUIs")
+        print("🧹 Cleaned up", cleanedCount, "duplicate hatching GUIs")
+    end
+end
+
+function EggHatchingService:ClearEggFrames()
+    if not self._persistentContainer then
+        return
+    end
+    
+    -- Remove all existing egg frames from the container
+    local removedCount = 0
+    for _, child in pairs(self._persistentContainer:GetChildren()) do
+        if child.Name:match("EggFrame_") then
+            child:Destroy()
+            removedCount = removedCount + 1
+        end
+    end
+    
+    if removedCount > 0 then
+        print("🧹 Cleared", removedCount, "egg frames from persistent container")
     end
 end
 
@@ -404,30 +459,27 @@ end
 -- MAIN HATCHING INTERFACE
 -- ═══════════════════════════════════════════════════════════════════════════════════
 
-function EggHatchingService:StartHatchingAnimation(eggsData, containerGui)
+function EggHatchingService:StartHatchingAnimation(eggsData)
     local eggCount = #eggsData
     
-    -- PHASE 0: Clean up any existing hatching GUIs first
+    -- PHASE 0: Initialize persistent GUI if needed
+    self:InitializePersistentGui()
     self:CleanupExistingHatchingGUIs()
     
     -- PHASE 1: Clear the screen cinematically
     print("🎬 Phase 1: Clearing screen for cinematic experience...")
     local animatedElements = self:ClearScreen()
     
-    -- PHASE 2: Set up the animation container
-    local container = containerGui or self:CreateCinematicContainer()
+    -- PHASE 2: Clear any existing egg frames and prepare container
+    self:ClearEggFrames()
+    local container = self._persistentContainer
     
-    -- Wait for the GUI to be properly sized
-    task.wait()  -- Give a frame for the GUI to be parented and sized
+    -- Enable the persistent GUI
+    self._persistentGui.Enabled = true
     
     -- Calculate grid layout using proper screen dimensions
-    local containerSize = container.AbsoluteSize
-    if containerSize.X == 0 or containerSize.Y == 0 then
-        -- Fallback to reasonable screen dimensions
-        local screenSize = workspace.CurrentCamera.ViewportSize
-        containerSize = Vector2.new(screenSize.X * 0.8, screenSize.Y * 0.8)
-        print("⚠️ Using fallback container size:", containerSize)
-    end
+    local screenSize = workspace.CurrentCamera.ViewportSize
+    local containerSize = Vector2.new(screenSize.X, screenSize.Y)
     
     local gridInfo = self:CalculateGridLayout(eggCount, containerSize.X, containerSize.Y)
     local positions = self:GenerateEggPositions(eggCount, gridInfo)
@@ -467,13 +519,12 @@ function EggHatchingService:StartHatchingAnimation(eggsData, containerGui)
         print("🎬 Phase 4: Restoring screen...")
         self:RestoreScreen(animatedElements)
         
-        -- PHASE 5: Auto cleanup after a short delay
+        -- PHASE 5: Auto cleanup after a short delay - just disable the GUI
         task.wait(1) -- Brief pause to see the restoration
-        print("🧹 Auto-cleanup: Destroying hatching GUI...")
-        if container and container.Parent then
-            container.Parent:Destroy() -- Destroy the entire ScreenGui
-            print("✅ Auto-cleanup complete")
-        end
+        print("🧹 Auto-cleanup: Disabling hatching GUI...")
+        self._persistentGui.Enabled = false
+        self:ClearEggFrames() -- Clean up egg frames for next use
+        print("✅ Auto-cleanup complete - GUI ready for reuse")
         cleanupResult.isComplete = true
     end)
     
@@ -523,26 +574,7 @@ function EggHatchingService:ExecuteHatchingSequence(eggComponents, eggsData)
     print("✅ Hatching animation sequence complete!")
 end
 
-function EggHatchingService:CreateCinematicContainer()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "EggHatchingGui"
-    screenGui.ResetOnSpawn = false
-    screenGui.DisplayOrder = 100  -- Ensure it's on top
-    
-    -- Full-screen transparent container for cinematic effect
-    local container = Instance.new("Frame")
-    container.Name = "HatchingContainer"
-    container.Size = UDim2.new(1, 0, 1, 0)  -- Full screen
-    container.Position = UDim2.new(0, 0, 0, 0)  -- Top-left corner
-    container.BackgroundColor3 = Color3.fromRGB(0, 0, 0)  -- Pure black background
-    container.BackgroundTransparency = 0.2  -- Slight tint for cinematic feel
-    container.BorderSizePixel = 0
-    container.Parent = screenGui
-    
-    screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-    
-    return container
-end
+
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
 -- DEBUG/TESTING FUNCTIONS
@@ -551,26 +583,51 @@ end
 function EggHatchingService:TestCleanup()
     -- Force cleanup any existing GUIs for testing
     self:CleanupExistingHatchingGUIs()
+    if self._persistentGui then
+        self._persistentGui.Enabled = false
+        self:ClearEggFrames()
+    end
     print("🧪 Test cleanup completed")
 end
 
 function EggHatchingService:CheckForLeakedGUIs()
     local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-    local leakedCount = 0
+    local totalCount = 0
+    local persistentCount = 0
     
     for _, gui in pairs(playerGui:GetChildren()) do
         if gui:IsA("ScreenGui") and gui.Name == "EggHatchingGui" then
-            leakedCount = leakedCount + 1
+            totalCount = totalCount + 1
+            if gui == self._persistentGui then
+                persistentCount = persistentCount + 1
+            end
         end
     end
     
+    local leakedCount = totalCount - persistentCount
+    
     if leakedCount > 0 then
-        print("⚠️ Found", leakedCount, "leaked EggHatchingGui instances")
+        print("⚠️ Found", leakedCount, "leaked EggHatchingGui instances (should only have 1 persistent)")
     else
-        print("✅ No leaked EggHatchingGui instances found")
+        print("✅ Only persistent GUI found - no leaks detected")
     end
     
+    print("📊 GUI Status: Total =", totalCount, "| Persistent =", persistentCount, "| Leaks =", leakedCount)
+    
     return leakedCount
+end
+
+function EggHatchingService:GetPersistentGuiStatus()
+    if not self._persistentGui then
+        print("❌ No persistent GUI created yet")
+        return "not_created"
+    elseif self._persistentGui.Enabled then
+        print("🟢 Persistent GUI is ENABLED")
+        return "enabled"
+    else
+        print("🔴 Persistent GUI is DISABLED")
+        return "disabled"
+    end
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
@@ -632,5 +689,14 @@ function EggHatchingService:GetGeneratedPetImage(petType, variant)
     
     return success and image or nil
 end
+
+-- Auto-initialize the persistent GUI when the service is required
+task.spawn(function()
+    task.wait(1) -- Wait a moment for PlayerGui to be ready
+    local service = EggHatchingService
+    if Players.LocalPlayer then
+        service:InitializePersistentGui()
+    end
+end)
 
 return EggHatchingService

@@ -224,11 +224,11 @@ function EggInteractionService:ShowHatchingResults(result)
             petImageId = self:GetPetImageId(result.Pet, result.Type)
         }
         
-        -- Start the hatching animation (it handles its own cleanup automatically)
+        -- Start the hatching animation (uses persistent reusable GUI)
         print("🎬 Starting hatching animation for:", result.Pet, result.Type)
         local animationResult = hatchingService:StartHatchingAnimation({eggData})
         
-        print("✅ Hatching animation started - auto-cleanup enabled")
+        print("✅ Hatching animation started - using persistent GUI")
     else
         -- Fallback to simple notification if animation service fails
         warn("Failed to load EggHatchingService, falling back to simple notification")
