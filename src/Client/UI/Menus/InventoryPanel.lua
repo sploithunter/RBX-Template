@@ -81,6 +81,20 @@ else
         },
         helpers = {
             get_theme = function(config) return config.themes.dark end
+        },
+        defaults = {
+            panel = {
+                header = {
+                    close_button = {
+                        icon = "89257673063270",
+                        size = {width = 30, height = 30},
+                        offset = {x = 10, y = -10},
+                        background_color = Color3.fromRGB(220, 60, 60),
+                        hover_color = Color3.fromRGB(180, 40, 40),
+                        corner_radius = 8
+                    }
+                }
+            }
         }
     }
 end
@@ -154,9 +168,9 @@ function InventoryPanel:Show(parent)
     
     self:_createUI(parent)
     self:_loadRealInventoryData() -- Load real data first
-    self:_refreshCategoryTabs() -- Update category tabs with real counts
+    self:_updateItemsDisplay() -- Update items display with real data
+    self:_refreshCategoryTabs() -- Update category tabs with real counts (after data is loaded)
     self:_setupEquippedFolderListeners() -- Listen for equipped changes
-    self:_updateItemsDisplay()
     self:SetupRealTimeUpdates() -- Listen for inventory changes
     
     self.isVisible = true
@@ -179,40 +193,81 @@ end
 function InventoryPanel:_createUI(parent)
     local theme = uiConfig.helpers.get_theme(uiConfig)
     
-    -- Main panel frame
-    self.frame = Instance.new("Frame")
+    -- Create image-based panel using BaseUI system (like Settings panel)
+    local BaseUI = require(script.Parent.Parent.BaseUI)
+    local baseUI = BaseUI.new()
+    
+    -- Create professional image-based inventory panel
+    local panelResult = baseUI:CreateImagePanel("inventory_panel", {
+        size = UDim2.new(0.8, 0, 0.85, 0),
+        position = UDim2.new(0.5, 0, 0.5, 0),
+        anchor_point = Vector2.new(0.5, 0.5)
+    }, parent)
+    
+    self.frame = panelResult.panel
     self.frame.Name = "InventoryPanel"
     self.frame.Size = UDim2.new(0.8, 0, 0.85, 0)
     self.frame.Position = UDim2.new(0.5, 0, 0.5, 0)
     self.frame.AnchorPoint = Vector2.new(0.5, 0.5)
-    self.frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    self.frame.BorderSizePixel = 0
-    self.frame.ZIndex = 100
-    self.frame.Parent = parent
     
-    -- Rounded corners
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 20)
-    corner.Parent = self.frame
+    -- Store references
+    self.header = panelResult.header
+    self.content = panelResult.content
+    self.baseUI = baseUI
     
-    -- Border glow
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(52, 152, 219)
-    stroke.Thickness = 3
-    stroke.Transparency = 0.3
-    stroke.Parent = self.frame
-    
-    -- Background gradient
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 40)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 25))
-    }
-    gradient.Rotation = 45
-    gradient.Parent = self.frame
-    
-    -- Header section
-    self:_createHeader()
+    -- Add close button to header if it exists (same as Settings panel)
+    if self.header then
+        -- Get close button config from global defaults with safety checks
+        local config = nil
+        if uiConfig and uiConfig.defaults and uiConfig.defaults.panel and 
+           uiConfig.defaults.panel.header and uiConfig.defaults.panel.header.close_button then
+            config = uiConfig.defaults.panel.header.close_button
+        else
+            -- Fallback configuration if config not found
+            config = {
+                icon = "89257673063270",
+                size = {width = 30, height = 30},
+                offset = {x = 10, y = -10},
+                background_color = Color3.fromRGB(220, 60, 60),
+                hover_color = Color3.fromRGB(180, 40, 40),
+                corner_radius = 8
+            }
+            self.logger:warn("Close button config not found, using fallback")
+        end
+        
+        local closeButton = Instance.new("ImageButton")
+        closeButton.Name = "CloseButton"
+        closeButton.Size = UDim2.new(0, config.size.width, 0, config.size.height)
+        
+        -- Position in top-right-corner with offset (extends outside bounds)
+        closeButton.Position = UDim2.new(1, config.offset.x, 0, config.offset.y)
+        closeButton.AnchorPoint = Vector2.new(1, 0)  -- Anchor to top-right
+        
+        closeButton.BackgroundColor3 = config.background_color
+        closeButton.BorderSizePixel = 0
+        closeButton.Image = "rbxassetid://" .. config.icon
+        closeButton.ScaleType = Enum.ScaleType.Fit
+        closeButton.ZIndex = 117
+        closeButton.Parent = self.header
+        
+        local closeCorner = Instance.new("UICorner")
+        closeCorner.CornerRadius = UDim.new(0, config.corner_radius)
+        closeCorner.Parent = closeButton
+        
+        -- Add hover effect
+        closeButton.MouseEnter:Connect(function()
+            closeButton.BackgroundColor3 = config.hover_color
+        end)
+        
+        closeButton.MouseLeave:Connect(function()
+            closeButton.BackgroundColor3 = config.background_color
+        end)
+        
+        -- Connect close functionality
+        closeButton.MouseButton1Click:Connect(function()
+            self:Hide()
+        end)
+    end
     
     -- Category tabs
     self:_createCategoryTabs()
@@ -227,85 +282,7 @@ function InventoryPanel:_createUI(parent)
     self:_animateEntrance()
 end
 
-function InventoryPanel:_createHeader()
-    local theme = uiConfig.helpers.get_theme(uiConfig)
-    
-    -- Header background
-    local header = Instance.new("Frame")
-    header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 70)
-    header.Position = UDim2.new(0, 0, 0, 0)
-    header.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
-    header.BorderSizePixel = 0
-    header.ZIndex = 101
-    header.Parent = self.frame
-    
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 20)
-    headerCorner.Parent = header
-    
-    -- Header gradient
-    local headerGradient = Instance.new("UIGradient")
-    headerGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(52, 152, 219)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(41, 128, 185))
-    }
-    headerGradient.Rotation = 90
-    headerGradient.Parent = header
-    
-    -- Title
-    local title = Instance.new("TextLabel")
-    title.Name = "Title"
-    title.Size = UDim2.new(1, -120, 1, 0)
-    title.Position = UDim2.new(0, 20, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "🎒 Inventory"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextScaled = true
-    title.Font = Enum.Font.GothamBold
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.ZIndex = 102
-    title.Parent = header
-    
-    -- Team indicator
-    local teamInfo = Instance.new("TextLabel")
-    teamInfo.Name = "TeamInfo"
-    teamInfo.Size = UDim2.new(0, 200, 0, 25)
-    teamInfo.Position = UDim2.new(1, -220, 0, 10)
-    teamInfo.BackgroundTransparency = 1
-    teamInfo.Text = "🐾 Your Team: 99/99"
-    teamInfo.TextColor3 = Color3.fromRGB(255, 255, 255)
-    teamInfo.TextScaled = true
-    teamInfo.Font = Enum.Font.Gotham
-    teamInfo.TextXAlignment = Enum.TextXAlignment.Right
-    teamInfo.ZIndex = 102
-    teamInfo.Parent = header
-    
-    -- Close button
-    local closeButton = Instance.new("TextButton")
-    closeButton.Name = "CloseButton"
-    closeButton.Size = UDim2.new(0, 50, 0, 50)
-    closeButton.Position = UDim2.new(1, -60, 0, 10)
-    closeButton.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
-    closeButton.BorderSizePixel = 0
-    closeButton.Text = "✕"
-    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeButton.TextScaled = true
-    closeButton.Font = Enum.Font.GothamBold
-    closeButton.ZIndex = 102
-    closeButton.Parent = header
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 25)
-    closeCorner.Parent = closeButton
-    
-    -- Close button effects
-    self:_addButtonHoverEffect(closeButton, Color3.fromRGB(231, 76, 60))
-    
-    closeButton.Activated:Connect(function()
-        self:Hide()
-    end)
-end
+
 
 function InventoryPanel:_createCategoryTabs()
     local theme = uiConfig.helpers.get_theme(uiConfig)
@@ -313,11 +290,11 @@ function InventoryPanel:_createCategoryTabs()
     -- Category container
     local categoryContainer = Instance.new("Frame")
     categoryContainer.Name = "CategoryContainer"
-    categoryContainer.Size = UDim2.new(1, -40, 0, 50)
-    categoryContainer.Position = UDim2.new(0, 20, 0, 80)
+    categoryContainer.Size = UDim2.new(0.95, 0, 0.08, 0)  -- 95% width, 8% height (scales with screen)
+    categoryContainer.Position = UDim2.new(0.025, 0, 0.02, 0)  -- 2.5% from left, 2% from top (scales with screen)
     categoryContainer.BackgroundTransparency = 1
     categoryContainer.ZIndex = 101
-    categoryContainer.Parent = self.frame
+    categoryContainer.Parent = self.content
     
     -- Layout
     local layout = Instance.new("UIListLayout")
@@ -337,7 +314,7 @@ end
 
 function InventoryPanel:_refreshCategoryTabs()
     -- Find the category container and update the counts
-    local categoryContainer = self.frame:FindFirstChild("CategoryContainer")
+    local categoryContainer = self.content and self.content:FindFirstChild("CategoryContainer") or self.frame:FindFirstChild("CategoryContainer")
     if not categoryContainer then return end
     
     -- Get configured categories with updated counts
@@ -454,11 +431,11 @@ function InventoryPanel:_createSearchSection()
     -- Search container
     local searchContainer = Instance.new("Frame")
     searchContainer.Name = "SearchContainer"
-    searchContainer.Size = UDim2.new(1, -40, 0, 50)
-    searchContainer.Position = UDim2.new(0, 20, 0, 140)
+    searchContainer.Size = UDim2.new(0.95, 0, 0.08, 0)  -- 95% width, 8% height (scales with screen)
+    searchContainer.Position = UDim2.new(0.025, 0, 0.11, 0)  -- 2.5% from left, 11% from top (scales with screen)
     searchContainer.BackgroundTransparency = 1
     searchContainer.ZIndex = 101
-    searchContainer.Parent = self.frame
+    searchContainer.Parent = self.content
     
     -- Search box background
     local searchBG = Instance.new("Frame")
@@ -514,15 +491,15 @@ function InventoryPanel:_createItemsGrid()
     -- Items scroll frame
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Name = "ItemsScroll"
-    scrollFrame.Size = UDim2.new(1, -40, 1, -210)
-    scrollFrame.Position = UDim2.new(0, 20, 0, 200)
+    scrollFrame.Size = UDim2.new(0.95, 0, 0.75, 0)  -- 95% width, 75% height (accounts for later start position)
+    scrollFrame.Position = UDim2.new(0.025, 0, 0.21, 0)  -- 2.5% from left, 21% from top (after search box)
     scrollFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     scrollFrame.BorderSizePixel = 0
     scrollFrame.ScrollBarThickness = 8
     scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(52, 152, 219)
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     scrollFrame.ZIndex = 101
-    scrollFrame.Parent = self.frame
+    scrollFrame.Parent = self.content
     
     local scrollCorner = Instance.new("UICorner")
     scrollCorner.CornerRadius = UDim.new(0, 15)
@@ -1739,7 +1716,7 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
     -- Global right-click detection (but only act if over this frame)
     local userInputService = game:GetService("UserInputService")
     local rightClickConnection = userInputService.InputBegan:Connect(function(input, gameProcessed)
-        print("🔍 RIGHT CLICK INPUT:", input.UserInputType, "gameProcessed:", gameProcessed, "isMouseOver:", isMouseOverFrame, "for item:", item.id)
+        -- print("🔍 RIGHT CLICK INPUT:", input.UserInputType, "gameProcessed:", gameProcessed, "isMouseOver:", isMouseOverFrame, "for item:", item.id)
         
         -- For right-clicks, we ignore gameProcessed because we want to handle custom context menus
         -- For left-clicks, we still respect gameProcessed to avoid conflicts with normal UI

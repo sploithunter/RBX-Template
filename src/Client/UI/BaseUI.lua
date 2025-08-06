@@ -960,6 +960,11 @@ end
 
 -- Create professional image-based menu button element with layered components
 function BaseUI:_createMenuButtonElement(config, parent, layoutOrder)
+    -- Merge the main button config with global defaults
+    local mergedConfig = self:_mergeButtonWithDefaults(config)
+    -- Use the merged config for the main button properties, but keep the original for sub-components
+    config = mergedConfig or config
+    
     print("🎨 Creating professional button for:", config.name)
     print("   📄 Background image:", config.background_image or "None (using fallback)")
     print("   🔔 Notification enabled:", config.notification and config.notification.enabled or false)
@@ -1300,6 +1305,30 @@ function BaseUI:_createButtonLabel(config, parent)
     return label
 end
 
+-- Merge button configuration with global defaults (for main button properties)
+function BaseUI:_mergeButtonWithDefaults(buttonConfig)
+    -- Load UI configuration
+    local ConfigLoader = require(game.ReplicatedStorage.Shared.ConfigLoader)
+    local uiConfig = ConfigLoader:LoadConfig("ui")
+    
+    -- Get global menu_button defaults
+    local defaults = uiConfig.defaults and uiConfig.defaults.menu_button or {}
+    
+    -- Create a merged config that preserves specific button properties
+    -- but adds missing properties from defaults
+    local merged = self:_deepCopy(buttonConfig)
+    
+    -- Only add default properties that are missing in the specific config
+    if not merged.color and defaults.color then
+        merged.color = defaults.color
+    end
+    if not merged.background_image and defaults.background_image then
+        merged.background_image = defaults.background_image
+    end
+    
+    return merged
+end
+
 -- Merge specific configuration with global defaults
 function BaseUI:_mergeWithDefaults(specificConfig, elementType, configType)
     -- Load UI configuration
@@ -1396,6 +1425,334 @@ function BaseUI:_addImageButtonHoverEffect(button)
         })
         leaveTween:Play()
     end)
+end
+
+-- ========== IMAGE-BASED PANEL SYSTEM ==========
+
+-- Create professional image-based panel with configurable components
+function BaseUI:CreateImagePanel(panelName, config, parent)
+    print("🎨 Creating professional image panel:", panelName)
+    
+    -- Merge configuration with global defaults
+    local panelConfig = self:_mergeWithDefaults(config, "panel", "background")
+    local headerConfig = self:_mergeWithDefaults(config and config.header, "panel", "header")
+    local contentConfig = self:_mergeWithDefaults(config and config.content, "panel", "content")
+    
+    -- Get specific panel configuration if available
+    local ConfigLoader = require(game.ReplicatedStorage.Shared.ConfigLoader)
+    local uiConfig = ConfigLoader:LoadConfig("ui")
+    local specificConfig = uiConfig.panel_configs and uiConfig.panel_configs[panelName] or {}
+    
+    print("   📄 Panel config found:", specificConfig ~= nil)
+    print("   🖼️ Background image:", specificConfig.background and specificConfig.background.image or "None")
+    
+    -- Create main panel container
+    local panel = self:_createPanelBackground(panelConfig, specificConfig.background, parent)
+    
+    -- Create header if configured
+    local header = nil
+    if headerConfig or (specificConfig and specificConfig.header) then
+        header = self:_createPanelHeader(panel, headerConfig, specificConfig.header)
+    end
+    
+    -- Create content area
+    local content = self:_createPanelContent(panel, contentConfig, specificConfig.content, header)
+    
+    print("   ✅ Professional panel created successfully")
+    
+    return {
+        panel = panel,
+        header = header,
+        content = content,
+        config = specificConfig
+    }
+end
+
+-- Create panel background (ImageLabel or Frame)
+function BaseUI:_createPanelBackground(defaultConfig, specificConfig, parent)
+    local config = specificConfig or defaultConfig
+    local backgroundImage = config and config.image
+    local panel
+    
+    if backgroundImage then
+        print("   ✨ Using ImageLabel mode (professional panel)")
+        panel = Instance.new("ImageLabel")
+        panel.Image = self:_processAssetId(backgroundImage)
+        panel.ScaleType = Enum.ScaleType.Stretch
+        panel.ImageColor3 = Color3.fromRGB(255, 255, 255)
+        panel.BackgroundTransparency = 1
+    else
+        print("   🔄 Using Frame mode (fallback panel)")
+        panel = Instance.new("Frame")
+        panel.BackgroundColor3 = config and config.color or defaultConfig.color
+        panel.BackgroundTransparency = 0
+    end
+    
+    -- Common properties
+    panel.Name = "ImagePanel"
+    panel.BorderSizePixel = 0
+    panel.Parent = parent
+    
+    -- Add corner radius if not using image
+    if not backgroundImage and config and config.corner_radius then
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, config.corner_radius)
+        corner.Parent = panel
+    end
+    
+    return panel
+end
+
+-- Create panel header with icon and title
+function BaseUI:_createPanelHeader(panel, defaultConfig, specificConfig)
+    local config = specificConfig or defaultConfig
+    if not config then return nil end
+    
+    print("   📋 Creating panel header")
+    
+    local header
+    local headerImage = config.background_image
+    
+    if headerImage then
+        header = Instance.new("ImageLabel")
+        header.Image = self:_processAssetId(headerImage)
+        header.ScaleType = Enum.ScaleType.Stretch
+        header.BackgroundTransparency = 1
+    else
+        header = Instance.new("Frame")
+        header.BackgroundColor3 = config.background_color or defaultConfig.background_color
+        header.BackgroundTransparency = 0
+        
+        -- Add corner radius for frame headers
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 12)
+        corner.Parent = header
+    end
+    
+    header.Name = "Header"
+    header.Size = UDim2.new(1, 0, 0, config.height or defaultConfig.height)
+    header.Position = UDim2.new(0, 0, 0, 0)
+    header.BorderSizePixel = 0
+    header.ZIndex = 15
+    header.Parent = panel
+    
+    -- Add header icon if configured
+    if config.icon then
+        self:_createHeaderIcon(header, config)
+    end
+    
+    -- Add header title if configured
+    if config.title_text then
+        self:_createHeaderTitle(header, config)
+    end
+    
+    return header
+end
+
+-- Create header icon
+function BaseUI:_createHeaderIcon(header, config)
+    local iconValue = config.icon
+    local fallbackValue = config.icon_fallback
+    local assetId = self:_processAssetId(iconValue)
+    local icon
+    
+    if assetId then
+        -- Try to create ImageLabel with primary icon
+        icon = Instance.new("ImageLabel")
+        icon.Image = assetId
+        icon.ScaleType = Enum.ScaleType.Fit
+        icon.BackgroundTransparency = 1
+    else
+        -- Fallback to text/emoji if no valid asset ID
+        local displayText = iconValue
+        if not displayText and fallbackValue then
+            displayText = fallbackValue
+        end
+        
+        icon = Instance.new("TextLabel")
+        icon.Text = displayText or "?"
+        icon.TextScaled = true
+        icon.Font = Enum.Font.GothamBold
+        icon.BackgroundTransparency = 1
+        icon.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end
+    
+    icon.Name = "HeaderIcon"
+    
+    -- Size based on header scale - both width and height use the same scale
+    local iconSize = config.icon_size or {scale = 0.8}  -- Default 80% of header height
+    local scale = iconSize.scale or 0.8
+    icon.Size = UDim2.new(scale, 0, scale, 0)  -- Both width and height use the scale (e.g., 1.15 for 115%)
+    
+    -- Add aspect ratio constraint to make it square
+    local aspectRatio = Instance.new("UIAspectRatioConstraint")
+    aspectRatio.AspectRatio = 1  -- Square (1:1 ratio)
+    aspectRatio.AspectType = Enum.AspectType.FitWithinMaxSize
+    aspectRatio.Parent = icon
+    
+    -- Position based on icon_position
+    local position = config.icon_position or "left"
+    if position == "top-left-corner" then
+        icon.Position = UDim2.new(0, -10, 0, -10)  -- Extends outside bounds
+        icon.AnchorPoint = Vector2.new(0, 0)
+    elseif position == "top-left" then
+        icon.Position = UDim2.new(0, 0, 0, 0)  -- Exactly at corner
+        icon.AnchorPoint = Vector2.new(0, 0)
+    elseif position == "left" then
+        icon.Position = UDim2.new(0.02, 0, 0.5, 0)  -- 2% from left edge, vertically centered
+        icon.AnchorPoint = Vector2.new(0, 0.5)
+    elseif position == "center" then
+        icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+        icon.AnchorPoint = Vector2.new(0.5, 0.5)
+    end
+    
+    icon.ZIndex = 16
+    icon.Parent = header
+    return icon
+end
+
+-- Create header title
+function BaseUI:_createHeaderTitle(header, config)
+    local title = Instance.new("TextLabel")
+    title.Name = "HeaderTitle"
+    title.Size = UDim2.new(0.75, 0, 1, 0)
+    title.Position = UDim2.new(0.15, 0, 0, 0)  -- 15% from left, allowing space for scalable icon
+    title.BackgroundTransparency = 1
+    title.Text = config.title_text
+    title.TextColor3 = config.title_color or Color3.fromRGB(255, 255, 255)
+    title.TextSize = config.title_size or 32  -- Increased from 24 to 32 for better visibility
+    title.Font = config.title_font or Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.TextYAlignment = Enum.TextYAlignment.Center
+    title.ZIndex = 16
+    title.Parent = header
+    
+    return title
+end
+
+-- Create panel content area
+function BaseUI:_createPanelContent(panel, defaultConfig, specificConfig, header)
+    local config = specificConfig or defaultConfig
+    local content
+    
+    if config and config.background_image then
+        content = Instance.new("ImageLabel")
+        content.Image = self:_processAssetId(config.background_image)
+        content.ScaleType = Enum.ScaleType.Stretch
+        content.BackgroundTransparency = 1
+    else
+        content = Instance.new("Frame")
+        content.BackgroundColor3 = config and config.background_color or defaultConfig.background_color
+        content.BackgroundTransparency = 0.1  -- Slight transparency for layering
+        
+        -- Add corner radius
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, config and config.corner_radius or defaultConfig.corner_radius)
+        corner.Parent = content
+    end
+    
+    content.Name = "Content"
+    content.BorderSizePixel = 0
+    content.ZIndex = 14
+    
+    -- Position based on whether header exists
+    local headerHeight = header and (header.Size.Y.Offset + 10) or 0
+    content.Size = UDim2.new(1, -20, 1, -(headerHeight + 20))
+    content.Position = UDim2.new(0, 10, 0, headerHeight + 10)
+    content.Parent = panel
+    
+    return content
+end
+
+-- Create image-based toggle setting
+function BaseUI:CreateImageToggle(name, currentValue, config, parent, callback)
+    print("   🔘 Creating image toggle:", name)
+    
+    -- Merge with defaults
+    local toggleConfig = self:_mergeWithDefaults(config, "setting_item", "toggle")
+    local backgroundConfig = self:_mergeWithDefaults(config, "setting_item", "background")
+    local labelConfig = self:_mergeWithDefaults(config, "setting_item", "label")
+    
+    -- Safety checks
+    if not toggleConfig or not toggleConfig.on_image then
+        print("   ⚠️ WARNING: Toggle config missing, using fallbacks")
+        toggleConfig = {
+            on_image = "5533192672",
+            off_image = "5533209494", 
+            size = {width = 60, height = 30},
+            position = "right"
+        }
+    end
+    
+    -- Create setting container
+    local container = Instance.new("Frame")
+    container.Name = name .. "Toggle"
+    container.Size = UDim2.new(1, 0, 0, backgroundConfig.height or 50)
+    container.BackgroundColor3 = backgroundConfig.color or Color3.fromRGB(50, 52, 58)
+    container.BorderSizePixel = 0
+    container.Parent = parent
+    
+    -- Add corner radius
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, backgroundConfig.corner_radius or 8)
+    corner.Parent = container
+    
+    -- Create label
+    local label = Instance.new("TextLabel")
+    label.Name = "Label"
+    label.Size = UDim2.new(0.7, 0, 1, 0)
+    label.Position = UDim2.new(0, 15, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = name
+    label.TextColor3 = labelConfig.color or Color3.fromRGB(255, 255, 255)
+    label.TextSize = labelConfig.size or 14
+    label.Font = labelConfig.font or Enum.Font.Gotham
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextYAlignment = Enum.TextYAlignment.Center
+    label.ZIndex = 15
+    label.Parent = container
+    
+    -- Create toggle button (ImageButton)
+    local toggleButton = Instance.new("ImageButton")
+    toggleButton.Name = "ToggleButton"
+    toggleButton.Size = UDim2.new(0, toggleConfig.size.width, 0, toggleConfig.size.height)
+    toggleButton.Position = UDim2.new(1, -toggleConfig.size.width - 15, 0.5, 0)
+    toggleButton.AnchorPoint = Vector2.new(0, 0.5)
+    toggleButton.BackgroundTransparency = 1
+    toggleButton.BorderSizePixel = 0
+    toggleButton.ScaleType = Enum.ScaleType.Fit
+    toggleButton.ZIndex = 15
+    toggleButton.Parent = container
+    
+    -- Set initial state
+    local function updateToggleState()
+        local imageId = currentValue and toggleConfig.on_image or toggleConfig.off_image
+        toggleButton.Image = self:_processAssetId(imageId)
+        print("     🔄 Toggle state:", currentValue and "ON" or "OFF", "Image:", imageId)
+    end
+    
+    updateToggleState()
+    
+    -- Handle toggle interaction
+    toggleButton.Activated:Connect(function()
+        currentValue = not currentValue
+        updateToggleState()
+        
+        if callback then
+            callback(currentValue)
+        end
+    end)
+    
+    return {
+        container = container,
+        label = label,
+        toggle = toggleButton,
+        getValue = function() return currentValue end,
+        setValue = function(value) 
+            currentValue = value
+            updateToggleState()
+        end
+    }
 end
 
 -- Create player info element for panes

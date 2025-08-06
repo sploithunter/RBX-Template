@@ -82,7 +82,21 @@ else
     uiConfig = {
         themes = { dark = { primary = { surface = Color3.fromRGB(40, 40, 45) }, text = { primary = Color3.fromRGB(255, 255, 255) } } },
         active_theme = "dark",
-        helpers = { get_theme = function(config) return config.themes.dark end }
+        helpers = { get_theme = function(config) return config.themes.dark end },
+        defaults = {
+            panel = {
+                header = {
+                    close_button = {
+                        icon = "89257673063270",
+                        size = {width = 30, height = 30},
+                        offset = {x = 10, y = -10},
+                        background_color = Color3.fromRGB(220, 60, 60),
+                        hover_color = Color3.fromRGB(180, 40, 40),
+                        corner_radius = 8
+                    }
+                }
+            }
+        }
     }
 end
 
@@ -167,75 +181,92 @@ end
 function SettingsPanel:_createUI(parent)
     local theme = uiConfig.helpers.get_theme(uiConfig)
     
-    -- Create main panel using template
-    self.frame = self.templateManager:CreatePanel("panel_scroll", {
+    -- Create image-based panel using BaseUI system
+    local BaseUI = require(script.Parent.Parent.BaseUI)
+    local baseUI = BaseUI.new()
+    
+    -- Create professional image-based settings panel
+    local panelResult = baseUI:CreateImagePanel("settings_panel", {
         size = UDim2.new(0.7, 0, 0.85, 0),
         position = UDim2.new(0.5, 0, 0.5, 0),
-        anchor_point = Vector2.new(0.5, 0.5),
-        parent = parent
-    })
+        anchor_point = Vector2.new(0.5, 0.5)
+    }, parent)
     
-    if not self.frame then
-        -- Fallback frame creation
-        self.frame = Instance.new("Frame")
-        self.frame.Size = UDim2.new(0.7, 0, 0.85, 0)
-        self.frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-        self.frame.AnchorPoint = Vector2.new(0.5, 0.5)
-        self.frame.BackgroundColor3 = theme.primary.surface
-        self.frame.BorderSizePixel = 0
-        self.frame.Parent = parent
+    self.frame = panelResult.panel
+    self.frame.Name = "SettingsPanel"
+    self.frame.Size = UDim2.new(0.7, 0, 0.85, 0)
+    self.frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    self.frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    
+    -- Store references
+    self.header = panelResult.header
+    self.content = panelResult.content
+    self.baseUI = baseUI
+    
+    -- Add close button to header if it exists
+    if self.header then
+        -- Get close button config from global defaults with safety checks
+        local config = nil
+        if uiConfig and uiConfig.defaults and uiConfig.defaults.panel and 
+           uiConfig.defaults.panel.header and uiConfig.defaults.panel.header.close_button then
+            config = uiConfig.defaults.panel.header.close_button
+        else
+            -- Fallback configuration if config not found
+            config = {
+                icon = "89257673063270",
+                size = {width = 30, height = 30},
+                offset = {x = 10, y = -10},
+                background_color = Color3.fromRGB(220, 60, 60),
+                hover_color = Color3.fromRGB(180, 40, 40),
+                corner_radius = 8
+            }
+            self.logger:warn("Close button config not found, using fallback")
+        end
         
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 16)
-        corner.Parent = self.frame
+        local closeButton = Instance.new("ImageButton")
+        closeButton.Name = "CloseButton"
+        closeButton.Size = UDim2.new(0, config.size.width, 0, config.size.height)
+        
+        -- Position in top-right-corner with offset (extends outside bounds)
+        closeButton.Position = UDim2.new(1, config.offset.x, 0, config.offset.y)
+        closeButton.AnchorPoint = Vector2.new(1, 0)  -- Anchor to top-right
+        
+        closeButton.BackgroundColor3 = config.background_color
+        closeButton.BorderSizePixel = 0
+        closeButton.Image = "rbxassetid://" .. config.icon
+        closeButton.ScaleType = Enum.ScaleType.Fit
+        closeButton.ZIndex = 17
+        closeButton.Parent = self.header
+        
+        local closeCorner = Instance.new("UICorner")
+        closeCorner.CornerRadius = UDim.new(0, config.corner_radius)
+        closeCorner.Parent = closeButton
+        
+        -- Add hover effect
+        closeButton.MouseEnter:Connect(function()
+            closeButton.BackgroundColor3 = config.hover_color
+        end)
+        
+        closeButton.MouseLeave:Connect(function()
+            closeButton.BackgroundColor3 = config.background_color
+        end)
+        
+        closeButton.Activated:Connect(function()
+            self:Hide()
+        end)
     end
     
-    self.frame.Name = "SettingsPanel"
-    
-    -- Title
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Name = "Title"
-    titleLabel.Size = UDim2.new(1, 0, 0, 50)
-    titleLabel.Position = UDim2.new(0, 0, 0, 0)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = "⚙️ Settings" .. (self.isAdmin and " (Admin)" or "")
-    titleLabel.TextColor3 = theme.text.primary
-    titleLabel.TextSize = 24
-    titleLabel.Font = uiConfig.fonts and uiConfig.fonts.primary or Enum.Font.Gotham
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Center
-    titleLabel.Parent = self.frame
-    
-    -- Close button
-    local closeButton = Instance.new("TextButton")
-    closeButton.Name = "CloseButton"
-    closeButton.Size = UDim2.new(0, 40, 0, 40)
-    closeButton.Position = UDim2.new(1, -50, 0, 10)
-    closeButton.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-    closeButton.BorderSizePixel = 0
-    closeButton.Text = "✕"
-    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeButton.TextSize = 20
-    closeButton.Font = Enum.Font.GothamBold
-    closeButton.Parent = self.frame
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 8)
-    closeCorner.Parent = closeButton
-    
-    closeButton.Activated:Connect(function()
-        self:Hide()
-    end)
-    
-    -- Scroll frame for settings
+    -- Scroll frame for settings (use content area)
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Name = "SettingsScroll"
-    scrollFrame.Size = UDim2.new(1, -20, 1, -70)
-    scrollFrame.Position = UDim2.new(0, 10, 0, 60)
+    scrollFrame.Size = UDim2.new(1, -10, 1, -10)
+    scrollFrame.Position = UDim2.new(0, 5, 0, 5)
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
     scrollFrame.ScrollBarThickness = 8
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    scrollFrame.Parent = self.frame
+    scrollFrame.ZIndex = 15
+    scrollFrame.Parent = self.content or self.frame  -- Use content if available, fallback to frame
     
     -- Layout for settings
     local layout = Instance.new("UIListLayout")
@@ -380,57 +411,70 @@ function SettingsPanel:_createSliderSetting(name, currentValue, minValue, maxVal
 end
 
 function SettingsPanel:_createToggleSetting(name, currentValue, layoutOrder, callback)
-    local theme = uiConfig.helpers.get_theme(uiConfig)
-    
-    local settingFrame = Instance.new("Frame")
-    settingFrame.Name = name .. "Setting"
-    settingFrame.Size = UDim2.new(1, 0, 0, 40)
-    settingFrame.BackgroundColor3 = theme.primary.card or Color3.fromRGB(50, 50, 55)
-    settingFrame.BorderSizePixel = 0
-    settingFrame.LayoutOrder = layoutOrder
-    settingFrame.Parent = self.scrollFrame
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = settingFrame
-    
-    -- Label
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.7, 0, 1, 0)
-    label.Position = UDim2.new(0, 15, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = name
-    label.TextColor3 = theme.text.primary
-    label.TextSize = 14
-    label.Font = Enum.Font.Gotham
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = settingFrame
-    
-    -- Toggle button
-    local toggleButton = Instance.new("TextButton")
-    toggleButton.Size = UDim2.new(0, 60, 0, 25)
-    toggleButton.Position = UDim2.new(1, -75, 0.5, -12.5)
-    toggleButton.BackgroundColor3 = currentValue and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(120, 120, 120)
-    toggleButton.BorderSizePixel = 0
-    toggleButton.Text = currentValue and "ON" or "OFF"
-    toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleButton.TextSize = 12
-    toggleButton.Font = Enum.Font.GothamBold
-    toggleButton.Parent = settingFrame
-    
-    local toggleCorner = Instance.new("UICorner")
-    toggleCorner.CornerRadius = UDim.new(0, 12)
-    toggleCorner.Parent = toggleButton
-    
-    toggleButton.Activated:Connect(function()
-        currentValue = not currentValue
-        toggleButton.BackgroundColor3 = currentValue and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(120, 120, 120)
-        toggleButton.Text = currentValue and "ON" or "OFF"
+    -- Create image-based toggle using BaseUI system
+    if self.baseUI then
+        local toggleElement = self.baseUI:CreateImageToggle(name, currentValue, nil, self.scrollFrame, callback)
         
-        if callback then
-            callback(currentValue)
-        end
-    end)
+        -- Set layout order for proper positioning
+        toggleElement.container.LayoutOrder = layoutOrder
+        
+        return toggleElement
+    else
+        -- Fallback to old system if BaseUI not available
+        local theme = uiConfig.helpers.get_theme(uiConfig)
+        
+        local settingFrame = Instance.new("Frame")
+        settingFrame.Name = name .. "Setting"
+        settingFrame.Size = UDim2.new(1, 0, 0, 40)
+        settingFrame.BackgroundColor3 = theme.primary.card or Color3.fromRGB(50, 50, 55)
+        settingFrame.BorderSizePixel = 0
+        settingFrame.LayoutOrder = layoutOrder
+        settingFrame.Parent = self.scrollFrame
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 8)
+        corner.Parent = settingFrame
+        
+        -- Label
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(0.7, 0, 1, 0)
+        label.Position = UDim2.new(0, 15, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = name
+        label.TextColor3 = theme.text.primary
+        label.TextSize = 14
+        label.Font = Enum.Font.Gotham
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = settingFrame
+        
+        -- Toggle button
+        local toggleButton = Instance.new("TextButton")
+        toggleButton.Size = UDim2.new(0, 60, 0, 25)
+        toggleButton.Position = UDim2.new(1, -75, 0.5, -12.5)
+        toggleButton.BackgroundColor3 = currentValue and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(120, 120, 120)
+        toggleButton.BorderSizePixel = 0
+        toggleButton.Text = currentValue and "ON" or "OFF"
+        toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        toggleButton.TextSize = 12
+        toggleButton.Font = Enum.Font.GothamBold
+        toggleButton.Parent = settingFrame
+        
+        local toggleCorner = Instance.new("UICorner")
+        toggleCorner.CornerRadius = UDim.new(0, 12)
+        toggleCorner.Parent = toggleButton
+        
+        toggleButton.Activated:Connect(function()
+            currentValue = not currentValue
+            toggleButton.BackgroundColor3 = currentValue and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(120, 120, 120)
+            toggleButton.Text = currentValue and "ON" or "OFF"
+            
+            if callback then
+                callback(currentValue)
+            end
+        end)
+        
+        return {container = settingFrame, toggle = toggleButton}
+    end
 end
 
 function SettingsPanel:_createButtonSetting(name, buttonText, layoutOrder, callback)

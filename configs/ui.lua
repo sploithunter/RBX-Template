@@ -29,8 +29,8 @@
 --]]
 
 -- 🐛 DEBUG: UI Config loading started
-print("🔍 [DEBUG] UI Config: Starting to load ui.lua at", tick())
-print("🔍 [DEBUG] UI Config: File location:", debug.getinfo(1, "S").source)
+-- 🎉 UNIVERSAL CONSISTENCY SYSTEM ACTIVE!
+-- One image rules all buttons: Global defaults working perfectly!
 
 local uiConfig = {
     version = "2.0.0", -- Updated for template system
@@ -71,70 +71,82 @@ local uiConfig = {
                 position = "top-right"                      -- Default position
             },
             
-                    -- Button defaults - APPLIES TO ALL BUTTONS GLOBALLY
-        color = Color3.fromRGB(100, 100, 100),          -- Default button color (fallback mode)
-        background_image = "16809347055"                -- 🎨 GLOBAL: Teal panel for ALL buttons
-    },
-    
-    -- Panel defaults (for settings panel, inventory panel, etc.)
-    -- 🌟 UNIVERSAL PANEL SYSTEM - ONE IMAGE RULES ALL PANELS! 🌟
-    panel = {
-        -- Panel background defaults - APPLIES TO ALL PANELS GLOBALLY
-        background = {
-            image = "6208057940",                       -- 🎨 GLOBAL: Blue panel for ALL panels
-            color = Color3.fromRGB(40, 42, 48),         -- Fallback color if image fails
-            corner_radius = 16,                         -- Default corner radius
-            padding = {top = 20, bottom = 20, left = 20, right = 20}  -- Default padding
+            -- Button defaults - APPLIES TO ALL BUTTONS GLOBALLY
+            color = Color3.fromRGB(100, 100, 100),          -- Default button color (fallback mode)
+            background_image = "16809347055"                -- 🎨 GLOBAL: Teal panel for ALL buttons
         },
         
-        -- Panel header defaults - APPLIES TO ALL PANEL HEADERS GLOBALLY  
-        header = {
-            height = 70,                                -- Default header height
-            background_image = "16809347055",           -- 🎨 GLOBAL: Teal panel for ALL headers
-            background_color = Color3.fromRGB(35, 37, 43),  -- Fallback color if image fails
-            title_font = Enum.Font.GothamBold,          -- Default title font
-            title_size = 24,                            -- Default title size
-            title_color = Color3.fromRGB(255, 255, 255), -- Default title color
-            icon_size = {width = 32, height = 32},      -- Default header icon size
-            icon_position = "top-left-corner"           -- Default icon position
+        -- Panel defaults (for settings panel, inventory panel, etc.)
+        -- 🌟 UNIVERSAL PANEL SYSTEM - ONE IMAGE RULES ALL PANELS! 🌟
+        panel = {
+            -- Panel background defaults - APPLIES TO ALL PANELS GLOBALLY
+            background = {
+                image = "6208057940",                       -- 🎨 GLOBAL: Blue panel for ALL panels
+                color = Color3.fromRGB(40, 42, 48),         -- Fallback color if image fails
+                corner_radius = 16,                         -- Default corner radius
+                padding = {top = 20, bottom = 20, left = 20, right = 20}  -- Default padding
+            },
+            
+            -- Panel header defaults - APPLIES TO ALL PANEL HEADERS GLOBALLY  
+            header = {
+                height = 70,                                -- Default header height
+                background_image = "16809347055",           -- 🎨 GLOBAL: Teal panel for ALL headers
+                background_color = Color3.fromRGB(35, 37, 43),  -- Fallback color if image fails
+                title_font = Enum.Font.GothamBold,          -- Default title font
+                title_size = 24,                            -- Default title size
+                title_color = Color3.fromRGB(255, 255, 255), -- Default title color
+                icon_size = {width = 32, height = 32},      -- Default header icon size
+                icon_position = "top-left-corner",          -- Default icon position
+                
+                -- Close button defaults - APPLIES TO ALL POPUP PANELS GLOBALLY
+                -- 🎯 AUTO-APPLIED: Every panel gets this close button unless explicitly disabled
+                close_button = {
+                    icon = "89257673063270",                -- 🎨 GLOBAL: New X button icon for ALL panels
+                    size = {width = 30, height = 30},       -- Default close button size
+                    position = "top-right-corner",          -- Position in top-right corner
+                    offset = {x = 10, y = -10},             -- Offset from corner (extends outside bounds)
+                    background_color = Color3.fromRGB(220, 60, 60),  -- Default red background
+                    hover_color = Color3.fromRGB(180, 40, 40),       -- Darker red on hover
+                    corner_radius = 8                       -- Default corner radius
+                }
+            },
+            
+            -- Panel content defaults
+            content = {
+                background_image = nil,                     -- Keep content transparent for layering
+                background_color = Color3.fromRGB(45, 47, 53),  -- Subtle content color
+                corner_radius = 12,                         -- Default content corner radius
+                padding = {top = 15, bottom = 15, left = 15, right = 15}  -- Default content padding
+            }
         },
         
-        -- Panel content defaults
-        content = {
-            background_image = nil,                     -- Keep content transparent for layering
-            background_color = Color3.fromRGB(45, 47, 53),  -- Subtle content color
-            corner_radius = 12,                         -- Default content corner radius
-            padding = {top = 15, bottom = 15, left = 15, right = 15}  -- Default content padding
+        -- Setting item defaults (for individual settings like toggles, sliders)
+        setting_item = {
+            -- Setting background defaults
+            background = {
+                image = nil,                                -- Default no setting background
+                color = Color3.fromRGB(50, 52, 58),         -- Default setting color
+                corner_radius = 8,                          -- Default setting corner radius
+                height = 50                                 -- Default setting height
+            },
+            
+            -- Setting label defaults
+            label = {
+                font = Enum.Font.Gotham,                    -- Default label font
+                size = 14,                                  -- Default label size
+                color = Color3.fromRGB(255, 255, 255),      -- Default label color
+                position = "left"                           -- Default label position
+            },
+            
+            -- Toggle defaults
+            toggle = {
+                on_image = "5533192672",                    -- Default ON toggle image
+                off_image = "5533209494",                   -- Default OFF toggle image
+                size = {width = 60, height = 30},           -- Default toggle size
+                position = "right"                          -- Default toggle position
+            }
         }
     },
-    
-    -- Setting item defaults (for individual settings like toggles, sliders)
-    setting_item = {
-        -- Setting background defaults
-        background = {
-            image = nil,                                -- Default no setting background
-            color = Color3.fromRGB(50, 52, 58),         -- Default setting color
-            corner_radius = 8,                          -- Default setting corner radius
-            height = 50                                 -- Default setting height
-        },
-        
-        -- Setting label defaults
-        label = {
-            font = Enum.Font.Gotham,                    -- Default label font
-            size = 14,                                  -- Default label size
-            color = Color3.fromRGB(255, 255, 255),      -- Default label color
-            position = "left"                           -- Default label position
-        },
-        
-        -- Toggle defaults
-        toggle = {
-            on_image = "5533192672",                    -- Default ON toggle image
-            off_image = "5533209494",                   -- Default OFF toggle image
-            size = {width = 60, height = 30},           -- Default toggle size
-            position = "right"                          -- Default toggle position
-        }
-    },
-    
     -- Template System Configuration
     templates = {
         -- Template storage path
@@ -177,36 +189,7 @@ local uiConfig = {
             text_display = "TextLabelStyle",
         },
         
-        -- Default template configurations
-        defaults = {
-            currency_display = {
-                size = UDim2.new(0, 120, 0, 40),
-                position = UDim2.new(0, 0, 0, 0),
-                anchor_point = Vector2.new(0, 0),
-                currency_type = "coins", -- Maps to assets.currency_icons
-            },
-            
-            menu_button = {
-                size = UDim2.new(0, 80, 0, 80),
-                corner_radius = 12,
-                icon_size = UDim2.new(0, 40, 0, 40),
-                text_size = 14,
-            },
-            
-            generic_item = {
-                size = UDim2.new(0, 100, 0, 100),
-                corner_radius = 8,
-                stroke_thickness = 2,
-                gradient_enabled = true,
-            },
-            
-            large_panel = {
-                size = UDim2.new(0.8, 0, 0.8, 0),
-                position = UDim2.new(0.5, 0, 0.5, 0),
-                anchor_point = Vector2.new(0.5, 0.5),
-                corner_radius = 16,
-            }
-        }
+        -- Template configurations moved to template_helpers section below
     },
 
     -- === THEMES ===
@@ -566,51 +549,8 @@ local uiConfig = {
         wide = 0.9,
     },
     
-    -- === COMPONENT DEFAULTS ===
-    defaults = {
-        button = {
-            size = UDim2.new(0, 100, 0, 32),
-            corner_radius = "md",
-            font = "primary",
-            font_size = "sm",
-            padding = "md",
-            sound_enabled = true,
-            hover_scale = 1.05,
-            press_scale = 0.95,
-        },
-        
-        panel = {
-            background_transparency = 0,
-            border_size = 0,
-            corner_radius = "md",
-            shadow_enabled = true,
-            shadow_size = 4,
-            shadow_transparency = 0.3,
-        },
-        
-        text_input = {
-            size = UDim2.new(0, 180, 0, 30),
-            corner_radius = "sm",
-            font = "primary",
-            font_size = "sm",
-            padding = "sm",
-            placeholder_transparency = 0.5,
-        },
-        
-        modal = {
-            backdrop_transparency = 0.3,
-            animation_duration = 0.25,
-            corner_radius = "lg",
-            shadow_enabled = true,
-        },
-        
-        toast = {
-            duration = 3, -- seconds
-            corner_radius = "md",
-            shadow_enabled = true,
-            animation_duration = 0.3,
-        },
-    },
+    -- === COMPONENT DEFAULTS REMOVED ===
+    -- These were unused and have been consolidated into the main defaults section above
     
     -- === SOUND EFFECTS ===
     sounds = {
@@ -998,7 +938,8 @@ local uiConfig = {
                 -- 🟢 MINIMAL CONFIG: Uses 95% global defaults (teal background, default styling)
                 {type = "menu_button", config = {
                     name = "Inventory", 
-                    icon = "🎒", 
+                    icon = "85179217604910",                   -- 🎨 NEW: Custom inventory bag icon
+                    icon_fallback = "🎒",                      -- 🔄 FALLBACK: Backpack emoji if asset fails
                     text = "Items", 
                     action = "inventory_action"
                     -- 🎨 Automatically gets: teal background, default icon size/position, default text styling!
@@ -1052,7 +993,7 @@ local uiConfig = {
                     action = "daily_login_action",
                     notification = {
                         enabled = true,
-                        text = "!"
+                        text = "!",
                         -- 🎨 Inherits: default red background, white text, default position
                     }
                     -- 🎨 Automatically gets: teal background, default icon/text styling!
@@ -1104,6 +1045,18 @@ local uiConfig = {
     -- === PANEL CONFIGURATIONS (Image-based panels) ===
     -- 🎯 OVERRIDE EXAMPLES: How to customize specific panels when needed
     -- Most panels will automatically use the global defaults above ⬆️
+    -- 
+    -- ✨ STANDARDIZED CLOSE BUTTON SYSTEM:
+    -- ALL panels automatically get the close button from global defaults unless explicitly disabled
+    -- - Icon: 89257673063270 (new X button asset)
+    -- - Position: top-right-corner extending outside panel bounds  
+    -- - Hover effects: automatic red -> darker red transitions
+    -- - No additional configuration needed per panel!
+    --
+    -- 🔄 ICON FALLBACK SYSTEM:
+    -- Use 'icon' for asset ID and 'icon_fallback' for emoji/text backup
+    -- - If asset fails to load, automatically switches to fallback
+    -- - Example: icon = "12345", icon_fallback = "🎒"
     panel_configs = {
         -- 🟢 USES GLOBAL DEFAULTS: Settings panel inherits everything from defaults
         settings_panel = {
@@ -1120,12 +1073,15 @@ local uiConfig = {
             }
         },
         
-        -- 🟡 PARTIAL OVERRIDE: Inventory uses mostly defaults, custom icon
+        -- 🟢 USES GLOBAL DEFAULTS: Inventory panel inherits everything including close button
         inventory_panel = {
             header = {
-                icon = "🎒",                               -- Custom inventory icon
+                icon = "85179217604910",                   -- 🎨 NEW: Custom inventory bag icon
+                icon_fallback = "🎒",                      -- 🔄 FALLBACK: Backpack emoji if asset fails
+                icon_size = {scale = 1.0},                -- 🎨 BIGGER: 115% of header height (scales with screen)
+                icon_position = "top-left-corner",         -- 🎯 POSITION: Top-left corner with anchor (0,0)
                 title_text = "Inventory"                   -- Custom title
-                -- Background images come from global defaults!
+                -- Background images and close button come from global defaults!
             }
         },
         
@@ -1157,7 +1113,7 @@ local uiConfig = {
                 title_text = "Shop",
                 title_color = Color3.fromRGB(255, 215, 0)  -- Gold text for shop
             }
-        }
+        },
         
         -- 💡 HOW IT WORKS:
         -- • panels with NO CONFIG = 100% global defaults (blue panel + teal header)
@@ -1406,10 +1362,8 @@ local uiConfig = {
     } -- Close helpers table
 } -- Close the main uiConfig table
 
--- 🐛 DEBUG: UI Config loading completed
-print("🔍 [DEBUG] UI Config: Successfully loaded complete config at", tick())
-print("🔍 [DEBUG] UI Config: Global defaults available:", uiConfig.defaults ~= nil)
-print("🔍 [DEBUG] UI Config: Panel configs available:", uiConfig.panel_configs ~= nil)
-print("🔍 [DEBUG] UI Config: Button background default:", uiConfig.defaults and uiConfig.defaults.menu_button and uiConfig.defaults.menu_button.background_image)
+
+-- 🎉 UNIVERSAL CONSISTENCY SYSTEM - Successfully loaded!
 
 return uiConfig 
+
