@@ -60,6 +60,40 @@ else
     }
 end
 
+-- Load egg hatching timing configuration
+local hatchingConfig
+local hatchingConfigSuccess, hatchingConfigResult = pcall(function()
+    return require(ReplicatedStorage.Configs.egg_hatching)
+end)
+if hatchingConfigSuccess and hatchingConfigResult then
+    hatchingConfig = hatchingConfigResult
+    print("✅ Loaded egg hatching timing config - preset:", hatchingConfig.current_preset)
+else
+    -- Fallback configuration
+    hatchingConfig = {
+        current_preset = "normal",
+        timing = {
+            shake_duration = 2.0,
+            shake_wait_duration = 2.0,
+            flash_duration = 0.5,
+            reveal_duration = 1.0,
+            stagger_delay = 0.2,
+            reveal_completion_wait = 1.5,
+            result_enjoyment_time = 1.0,
+            cleanup_pause_time = 1.0,
+        },
+        helpers = {
+            get_speed_multiplier = function()
+                return 1.0
+            end,
+            get_adjusted_timing = function(timing_key)
+                return hatchingConfig.timing[timing_key] or 1.0
+            end,
+        }
+    }
+    print("⚠️ Using fallback egg hatching timing config")
+end
+
 local EggHatchingService = {}
 EggHatchingService.__index = EggHatchingService
 
@@ -864,12 +898,14 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
         self:ExecuteHatchingSequence(eggComponents, eggsData)
         
         -- PHASE 4: After animations complete, wait a moment then restore screen
-        task.wait(1) -- Let player enjoy the result
+        local resultEnjoymentTime = hatchingConfig.helpers.get_adjusted_timing("result_enjoyment_time")
+        task.wait(resultEnjoymentTime) -- Let player enjoy the result
         print("🎬 Phase 4: Restoring screen...")
         self:RestoreScreen(animatedElements)
         
         -- PHASE 5: Auto cleanup after a short delay - just disable the GUI
-        task.wait(1) -- Brief pause to see the restoration
+        local cleanupPauseTime = hatchingConfig.helpers.get_adjusted_timing("cleanup_pause_time")
+        task.wait(cleanupPauseTime) -- Brief pause to see the restoration
         print("🧹 Auto-cleanup: Disabling hatching GUI...")
         self._persistentGui.Enabled = false
         self:ClearEggFrames() -- Clean up egg frames for next use
@@ -883,20 +919,31 @@ end
 function EggHatchingService:ExecuteHatchingSequence(eggComponents, eggsData)
     local eggCount = #eggComponents
     
+    -- Get adjusted timings based on current speed preset
+    local shakeDuration = hatchingConfig.helpers.get_adjusted_timing("shake_duration")
+    local shakeWaitDuration = hatchingConfig.helpers.get_adjusted_timing("shake_wait_duration")
+    local flashDuration = hatchingConfig.helpers.get_adjusted_timing("flash_duration")
+    local revealDuration = hatchingConfig.helpers.get_adjusted_timing("reveal_duration")
+    local staggerDelay = hatchingConfig.helpers.get_adjusted_timing("stagger_delay")
+    local completionWait = hatchingConfig.helpers.get_adjusted_timing("reveal_completion_wait")
+    
+    print("⚡ Using", hatchingConfig.current_preset, "speed preset (", hatchingConfig.helpers.get_speed_multiplier(), "x)")
+    print("📊 Timings: shake=" .. shakeDuration .. "s, flash=" .. flashDuration .. "s, reveal=" .. revealDuration .. "s")
+    
     -- PHASE 1: All eggs shake simultaneously
     print("🔄 Phase 1: Shaking", eggCount, "eggs")
     local shakeCoroutines = {}
     
     for i, components in ipairs(eggComponents) do
         local co = coroutine.create(function()
-            self:AnimateShake(components, 2.0)
+            self:AnimateShake(components, shakeDuration)
         end)
         coroutine.resume(co)
         table.insert(shakeCoroutines, co)
     end
     
     -- Wait for all shaking to complete
-    task.wait(2.0)
+    task.wait(shakeWaitDuration)
     
     -- PHASE 2: Staggered flash and reveal
     print("💥 Phase 2: Flash and reveal sequence")
@@ -906,21 +953,21 @@ function EggHatchingService:ExecuteHatchingSequence(eggComponents, eggsData)
         
         -- Small delay between each egg (creates wave effect)
         if i > 1 then
-            task.wait(0.2)
+            task.wait(staggerDelay)
         end
         
         task.spawn(function()
             -- Flash
-            self:AnimateFlash(components, 0.5)
+            self:AnimateFlash(components, flashDuration)
             -- Reveal (pass the full eggData for pet info)
-            self:AnimateReveal(components, eggData.petImageId, eggData, 1.0)
+            self:AnimateReveal(components, eggData.petImageId, eggData, revealDuration)
             
 
         end)
     end
     
     -- Wait for all reveals to complete
-    task.wait(1.5)
+    task.wait(completionWait)
     
     print("✅ Hatching animation sequence complete!")
 end

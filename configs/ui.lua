@@ -31,6 +31,48 @@
 local uiConfig = {
     version = "2.0.0", -- Updated for template system
     
+    -- GLOBAL DEFAULTS for all UI elements
+    -- These defaults are applied to any element that doesn't override them
+    defaults = {
+        menu_button = {
+            -- Icon defaults
+            icon_config = {
+                size = {scale_x = 0.4, scale_y = 0.4},      -- Default 40% of button size
+                position = {scale_x = 0.5, scale_y = 0.5},  -- Default center position
+                offset = {x = 0, y = 0}                     -- Default no offset
+            },
+            
+            -- Text defaults
+            text_config = {
+                font = Enum.Font.GothamBold,                -- Default font
+                size = {height = 20, margin = 10},          -- Default text area size
+                color = Color3.fromRGB(255, 255, 255),      -- Default white text
+                text_scaled = true,                         -- Default auto-scale text
+                text_size = 14,                             -- Default font size when not scaled
+                position = {bottom_offset = 25, side_margin = 5},  -- Default text position
+                shadow = {
+                    enabled = true,                         -- Default shadow enabled
+                    color = Color3.fromRGB(0, 0, 0),        -- Default black shadow
+                    thickness = 2,                          -- Default shadow thickness
+                    transparency = 0.5                      -- Default shadow transparency
+                }
+            },
+            
+            -- Notification defaults
+            notification = {
+                enabled = false,                            -- Default no notification
+                text = "!",                                 -- Default notification text
+                background_color = Color3.fromRGB(255, 0, 0),  -- Default red background
+                text_color = Color3.fromRGB(255, 255, 255), -- Default white text
+                position = "top-right"                      -- Default position
+            },
+            
+            -- Button defaults
+            color = Color3.fromRGB(100, 100, 100),          -- Default button color (fallback mode)
+            background_image = nil                          -- Default no background image (uses fallback)
+        }
+    },
+    
     -- Template System Configuration
     templates = {
         -- Template storage path
@@ -866,15 +908,129 @@ local uiConfig = {
                 padding = {top = 5, bottom = 5, left = 5, right = 5} -- Padding for calculations
             },
             contents = {
-                -- Now using configuration-driven actions! Mix and match emoji and asset IDs:
-                {type = "menu_button", config = {name = "Shop", icon = "rbxassetid://7733920644", text = "Shop", color = Color3.fromRGB(46, 204, 113), action = "shop_action"}},
-                {type = "menu_button", config = {name = "Inventory", icon = "🎒", text = "Items", color = Color3.fromRGB(52, 152, 219), action = "inventory_action"}},
-                {type = "menu_button", config = {name = "Effects", icon = "⚡", text = "Effects", color = Color3.fromRGB(155, 89, 182), action = "effects_action"}},
-                {type = "menu_button", config = {name = "Settings", icon = "⚙️", text = "Settings", color = Color3.fromRGB(149, 165, 166), action = "settings_action"}},
-                {type = "menu_button", config = {name = "Admin", icon = "👑", text = "Admin", color = Color3.fromRGB(231, 76, 60), action = "admin_action", admin_only = true}},
-                -- Add more buttons with custom actions - automatically arranged in 4x2 grid
-                {type = "menu_button", config = {name = "Daily", icon = "📅", text = "Daily", color = Color3.fromRGB(255, 165, 0), action = "daily_login_action"}},
-                {type = "menu_button", config = {name = "Quest", icon = "🎯", text = "Quest", color = Color3.fromRGB(34, 139, 34), action = "quest_claim_action"}}
+                -- NEW IMAGE-BASED BUTTON SYSTEM with Professional Layout
+                -- Each button now supports:
+                -- 1. background_image: Asset ID for button background (if provided, uses ImageButton)
+                -- 2. icon: Symbol/icon (emoji or asset ID) 
+                -- 3. notification: Badge system for alerts/discounts/counts
+                -- 4. text: Bottom label name
+                -- 5. Fallback: If no background_image, uses current TextButton system
+                
+                {type = "menu_button", config = {
+                    name = "Shop", 
+                    background_image =  "rbxassetid://18852000893", -- Will use fallback TextButton for now
+                    icon = "6031075938", 
+                    icon_config = {
+                        size = {scale_x = 0.5, scale_y = 0.5},  -- 50% of button size (1.0 = 100%)
+                        position = {scale_x = 0.5, scale_y = 0.5},  -- Center position (0.5,0.5 = center)
+                        offset = {x = 0, y = -5}  -- Pixel offset (shift up 5 pixels)
+                    },
+                    text = "Shop", 
+                    text_config = {
+                        font = Enum.Font.SourceSansBold,  -- Available: GothamBold, SourceSans, Roboto, etc.
+                        size = {height = 25, margin = 8},  -- Height of text area, margin from sides
+                        color = Color3.fromRGB(255, 255, 255),  -- Text color
+                        text_scaled = true,  -- Auto-scale text to fit (true/false)
+                        text_size = 16,  -- Only used if text_scaled = false
+                        position = {bottom_offset = 30, side_margin = 5},  -- Position from bottom/sides
+                        shadow = {
+                            enabled = true,
+                            color = Color3.fromRGB(0, 0, 0),
+                            thickness = 2,
+                            transparency = 0.5
+                        }
+                    },
+                    color = Color3.fromRGB(46, 204, 113), 
+                    action = "shop_action",
+                    notification = {
+                        enabled = true,
+                        text = "-25%",
+                        background_color = Color3.fromRGB(255, 200, 0),
+                        text_color = Color3.fromRGB(0, 0, 0),
+                        position = "top-left-corner" -- NEW CORNER POSITIONS: top-left-corner, top-right-corner, bottom-left-corner, bottom-right-corner
+                                                     -- INSIDE POSITIONS: top-left, top-right, bottom-left, bottom-right
+                    }
+                }},
+                
+                {type = "menu_button", config = {
+                    name = "Inventory", 
+                    icon = "🎒", 
+                    text = "Items", 
+                    color = Color3.fromRGB(52, 152, 219), 
+                    action = "inventory_action"
+                    -- Uses all defaults from uiConfig.defaults.menu_button
+                }},
+                
+                {type = "menu_button", config = {
+                    name = "Effects", 
+                    background_image = nil,
+                    icon = "⚡", 
+                    icon_config = {
+                        size = {scale_x = 0.6, scale_y = 0.6},  -- Larger icon (60% of button)
+                        position = {scale_x = 0.5, scale_y = 0.4},  -- Positioned higher up (0.4 instead of 0.5)
+                        offset = {x = 0, y = 0}  -- No pixel offset
+                    },
+                    text = "Effects", 
+                    text_config = {
+                        font = Enum.Font.Roboto,  -- Different font example
+                        size = {height = 18, margin = 5},  -- Smaller text, less margin
+                        color = Color3.fromRGB(255, 255, 255),
+                        text_scaled = false,  -- Use fixed size instead of scaling
+                        text_size = 12,  -- 12pt font when not scaled
+                        position = {bottom_offset = 20, side_margin = 3},  -- Closer to bottom
+                        shadow = {enabled = false}  -- No shadow
+                    },
+                    color = Color3.fromRGB(155, 89, 182), 
+                    action = "effects_action",
+                    notification = {
+                        enabled = true,
+                        text = "3",
+                        background_color = Color3.fromRGB(255, 0, 0),
+                        text_color = Color3.fromRGB(255, 255, 255),
+                        position = "top-right-corner" -- Example of corner position extending outside button
+                    }
+                }},
+                
+                {type = "menu_button", config = {
+                    name = "Settings", 
+                    icon = "⚙️", 
+                    text = "Settings", 
+                    color = Color3.fromRGB(149, 165, 166), 
+                    action = "settings_action"
+                    -- Uses all defaults (notification disabled by default)
+                }},
+                
+                {type = "menu_button", config = {
+                    name = "Admin", 
+                    icon = "6031068421", 
+                    text = "Admin", 
+                    color = Color3.fromRGB(231, 76, 60), 
+                    action = "admin_action", 
+                    admin_only = true
+                    -- Uses all defaults (notification disabled by default)
+                }},
+                
+                {type = "menu_button", config = {
+                    name = "Daily", 
+                    icon = "📅", 
+                    text = "Daily", 
+                    color = Color3.fromRGB(255, 165, 0), 
+                    action = "daily_login_action",
+                    notification = {
+                        enabled = true,
+                        text = "!"
+                        -- Other notification properties inherit from defaults
+                    }
+                }},
+                
+                {type = "menu_button", config = {
+                    name = "Quest", 
+                    icon = "🎯", 
+                    text = "Quest", 
+                    color = Color3.fromRGB(34, 139, 34), 
+                    action = "quest_claim_action"
+                    -- Uses all defaults (notification disabled by default)
+                }}
             }
         },
         

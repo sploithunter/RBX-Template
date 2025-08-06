@@ -958,130 +958,444 @@ function BaseUI:_createCurrencyElement(config, parent, layoutOrder)
     return frame
 end
 
--- Create menu button element for panes
+-- Create professional image-based menu button element with layered components
 function BaseUI:_createMenuButtonElement(config, parent, layoutOrder)
-    -- Button frame (grid layout will handle sizing)
-    local button = Instance.new("TextButton")
-    button.Name = config.name .. "Button" 
-    button.BackgroundColor3 = config.color
-    button.BorderSizePixel = 0
-    button.Text = ""
+    print("🎨 Creating professional button for:", config.name)
+    print("   📄 Background image:", config.background_image or "None (using fallback)")
+    print("   🔔 Notification enabled:", config.notification and config.notification.enabled or false)
+    
+    -- Determine button type: ImageButton vs TextButton
+    local button
+    local processedBackgroundImage = self:_processAssetId(config.background_image)
+    local hasBackgroundImage = processedBackgroundImage ~= nil
+    
+    print("   🔍 Debug asset processing:")
+    print("     Raw value:", config.background_image, "Type:", type(config.background_image))
+    print("     Processed:", processedBackgroundImage)
+    print("     HasBackgroundImage:", hasBackgroundImage)
+    
+    if hasBackgroundImage then
+        -- PROFESSIONAL MODE: ImageButton with custom background
+        print("   ✨ Using ImageButton mode (professional)")
+        button = Instance.new("ImageButton")
+        button.Name = config.name .. "Button"
+        button.Image = processedBackgroundImage
+        button.ScaleType = Enum.ScaleType.Stretch
+        button.ImageColor3 = Color3.fromRGB(255, 255, 255)
+        button.BackgroundTransparency = 1 -- Let the image handle the background
+        button.BorderSizePixel = 0
+    else
+        -- FALLBACK MODE: TextButton with programmatic styling  
+        print("   🔄 Using TextButton mode (fallback)")
+        button = Instance.new("TextButton")
+        button.Name = config.name .. "Button" 
+        button.BackgroundColor3 = config.color
+        button.BorderSizePixel = 0
+        
+        -- Rounded corners for fallback mode
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 15)
+        corner.Parent = button
+        
+        -- Gradient effect for fallback mode
+        local gradient = Instance.new("UIGradient")
+        gradient.Color = ColorSequence.new{
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(1, config.color)
+        }
+        gradient.Rotation = 45
+        gradient.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.3),
+            NumberSequenceKeypoint.new(1, 0)
+        }
+        gradient.Parent = button
+        
+        -- Border glow for fallback mode
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromRGB(255, 255, 255)
+        stroke.Thickness = 2
+        stroke.Transparency = 0.8
+        stroke.Parent = button
+    end
+    
+    -- Common button properties
+    if not hasBackgroundImage then
+        -- Only TextButton has Text property
+        button.Text = ""
+    end
     button.LayoutOrder = layoutOrder
     button.ZIndex = 13
     button.Parent = parent
     
-    -- Rounded corners
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 15)
-    corner.Parent = button
+    -- LAYER 1: ICON (Center of button)
+    local icon = self:_createButtonIcon(config, button)
     
-    -- Gradient effect
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-        ColorSequenceKeypoint.new(1, config.color)
-    }
-    gradient.Rotation = 45
-    gradient.Transparency = NumberSequence.new{
-        NumberSequenceKeypoint.new(0, 0.3),
-        NumberSequenceKeypoint.new(1, 0)
-    }
-    gradient.Parent = button
+    -- LAYER 2: NOTIFICATION BADGE (Top-right corner or configured position)
+    local notification = self:_createButtonNotification(config, button)
     
-    -- Border glow
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Thickness = 2
-    stroke.Transparency = 0.8
-    stroke.Parent = button
+    -- LAYER 3: TEXT LABEL (Bottom of button)
+    local label = self:_createButtonLabel(config, button)
     
-    -- Icon (supports both emoji and Roblox asset IDs)
-    local icon
-    local iconValue = config.icon or ""
-    
-    -- Check if icon is a Roblox asset ID (number or rbxassetid format)
-    local assetId = nil
-    if string.match(iconValue, "^rbxassetid://(%d+)$") then
-        assetId = iconValue
-    elseif string.match(iconValue, "^%d+$") then
-        assetId = "rbxassetid://" .. iconValue
-    end
-    
-    if assetId then
-        -- Use ImageLabel for Roblox assets with error handling
-        local success, result = pcall(function()
-            icon = Instance.new("ImageLabel")
-            icon.Name = "Icon"
-            icon.Size = UDim2.new(0, 30, 0, 30)
-            icon.Position = UDim2.new(0.5, -15, 0, 3)
-            icon.BackgroundTransparency = 1
-            icon.Image = assetId
-            icon.ImageColor3 = Color3.fromRGB(255, 255, 255)  -- Tint to white
-            icon.ScaleType = Enum.ScaleType.Fit
-            return icon
-        end)
-        
-        if not success then
-            self.logger:warn("Failed to create ImageLabel for menu button asset '" .. tostring(assetId) .. "': " .. tostring(result))
-            self.logger:warn("Falling back to emoji icon for menu button: " .. tostring(config.name))
-            -- Fallback to generic icon or original emoji
-            local fallbackIcon = config.name == "Shop" and "🛒" or 
-                                config.name == "Inventory" and "🎒" or 
-                                config.name == "Effects" and "⚡" or 
-                                config.name == "Settings" and "⚙️" or 
-                                config.name == "Admin" and "👑" or "📋"
-            icon = Instance.new("TextLabel")
-            icon.Name = "Icon"
-            icon.Size = UDim2.new(0, 25, 0, 25)
-            icon.Position = UDim2.new(0.5, -12, 0, 5)
-            icon.BackgroundTransparency = 1
-            icon.Text = fallbackIcon
-            icon.TextColor3 = Color3.fromRGB(255, 255, 255)
-            icon.TextScaled = true
-            icon.Font = Enum.Font.GothamBold
-        end
-    else
-        -- Use TextLabel for emoji/text icons
-        icon = Instance.new("TextLabel")
-        icon.Name = "Icon"
-        icon.Size = UDim2.new(0, 25, 0, 25)
-        icon.Position = UDim2.new(0.5, -12, 0, 5)
-        icon.BackgroundTransparency = 1
-        icon.Text = iconValue
-        icon.TextColor3 = Color3.fromRGB(255, 255, 255)
-        icon.TextScaled = true
-        icon.Font = Enum.Font.GothamBold
-    end
-    
-    icon.ZIndex = 14
-    icon.Parent = button
-    
-    -- Text label
-    local label = Instance.new("TextLabel")
-    label.Name = "Label"
-    label.Size = UDim2.new(1, 0, 0, 15)
-    label.Position = UDim2.new(0, 0, 1, -18)
-    label.BackgroundTransparency = 1
-    label.Text = config.text
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextScaled = true
-    label.Font = Enum.Font.GothamBold
-    label.ZIndex = 14
-    label.Parent = button
-    
-    -- Click handling
+    -- Interactive effects
     button.Activated:Connect(function()
         self:_onMenuButtonClicked(config.name)
         self:_animateButtonPress(button)
     end)
     
-    -- Hover effects
-    self:_addButtonHoverEffect(button, config.color)
+    -- Hover effects (different for image vs text buttons)
+    if hasBackgroundImage then
+        self:_addImageButtonHoverEffect(button)
+    else
+        self:_addButtonHoverEffect(button, config.color)
+    end
     
     -- Store reference
     self.menuButtons[config.name] = button
     
+    print("   ✅ Professional button created successfully")
     return button
+end
+
+-- Create button icon layer (supports emoji and asset IDs with configurable sizing/positioning)
+function BaseUI:_createButtonIcon(config, parent)
+    local iconValue = config.icon or ""
+    local assetId = self:_processAssetId(iconValue)
+    local icon
+    
+    -- Get icon configuration with global defaults
+    local iconConfig = self:_mergeWithDefaults(config.icon_config, "menu_button", "icon_config")
+    
+    -- Safety check and fallback to hardcoded defaults if merging failed
+    if not iconConfig or not iconConfig.size then
+        print("   ⚠️ WARNING: Defaults merging failed, using hardcoded fallbacks")
+        iconConfig = {
+            size = {scale_x = 0.4, scale_y = 0.4},
+            position = {scale_x = 0.5, scale_y = 0.5},
+            offset = {x = 0, y = 0}
+        }
+    end
+    
+    local iconSize = iconConfig.size
+    local iconPosition = iconConfig.position  
+    local iconOffset = iconConfig.offset
+    
+    print("   🎯 Icon configuration:")
+    print("     Size: " .. (iconSize and iconSize.scale_x or "nil") .. "x" .. (iconSize and iconSize.scale_y or "nil") .. " (relative to button)")
+    print("     Position: " .. (iconPosition and iconPosition.scale_x or "nil") .. "," .. (iconPosition and iconPosition.scale_y or "nil") .. " (relative)")
+    print("     Offset: " .. (iconOffset and iconOffset.x or "nil") .. "," .. (iconOffset and iconOffset.y or "nil") .. " (pixels)")
+    
+    if assetId then
+        print("   🖼️ Creating ImageLabel icon:", assetId)
+        -- Use ImageLabel for Roblox assets with error handling
+        local success, result = pcall(function()
+            icon = Instance.new("ImageLabel")
+            icon.Name = "Icon"
+            icon.Size = UDim2.new(iconSize.scale_x, 0, iconSize.scale_y, 0)  -- Relative sizing
+            icon.Position = UDim2.new(iconPosition.scale_x, iconOffset.x, iconPosition.scale_y, iconOffset.y)  -- Relative + offset
+            icon.AnchorPoint = Vector2.new(0.5, 0.5)  -- Always center anchor as requested
+            icon.BackgroundTransparency = 1
+            icon.Image = assetId
+            icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+            icon.ScaleType = Enum.ScaleType.Fit
+            return icon
+        end)
+        
+        if not success then
+            print("   ❌ Icon asset failed, using emoji fallback")
+            icon = self:_createEmojiIcon(config, parent, iconSize, iconPosition, iconOffset)
+        end
+    else
+        print("   😀 Creating emoji icon:", iconValue)
+        icon = self:_createEmojiIcon(config, parent, iconSize, iconPosition, iconOffset)
+    end
+    
+    if icon then
+        icon.ZIndex = 15
+        icon.Parent = parent
+    end
+    
+    return icon
+end
+
+-- Create emoji icon fallback with configurable sizing/positioning
+function BaseUI:_createEmojiIcon(config, parent, iconSize, iconPosition, iconOffset)
+    local iconValue = config.icon or ""
+    local fallbackIcon = config.name == "Shop" and "🛒" or 
+                        config.name == "Inventory" and "🎒" or 
+                        config.name == "Effects" and "⚡" or 
+                        config.name == "Settings" and "⚙️" or 
+                        config.name == "Admin" and "👑" or 
+                        iconValue ~= "" and iconValue or "📋"
+    
+    -- Use provided size/position or fallback to defaults
+    iconSize = iconSize or {scale_x = 0.4, scale_y = 0.4}
+    iconPosition = iconPosition or {scale_x = 0.5, scale_y = 0.5}
+    iconOffset = iconOffset or {x = 0, y = 0}
+                        
+    local icon = Instance.new("TextLabel")
+    icon.Name = "Icon"
+    icon.Size = UDim2.new(iconSize.scale_x, 0, iconSize.scale_y, 0)  -- Relative sizing
+    icon.Position = UDim2.new(iconPosition.scale_x, iconOffset.x, iconPosition.scale_y, iconOffset.y)  -- Relative + offset
+    icon.AnchorPoint = Vector2.new(0.5, 0.5)  -- Always center anchor as requested
+    icon.BackgroundTransparency = 1
+    icon.Text = fallbackIcon
+    icon.TextColor3 = Color3.fromRGB(255, 255, 255)
+    icon.TextScaled = true
+    icon.Font = Enum.Font.GothamBold
+    
+    return icon
+end
+
+-- Create notification badge layer
+function BaseUI:_createButtonNotification(config, parent)
+    local notifConfig = config.notification
+    if not notifConfig or not notifConfig.enabled then
+        return nil
+    end
+    
+    print("   🔔 Creating notification badge:", notifConfig.text)
+    
+    -- Notification badge background
+    local notification = Instance.new("Frame")
+    notification.Name = "Notification"
+    notification.BackgroundColor3 = notifConfig.background_color or Color3.fromRGB(255, 0, 0)
+    notification.BorderSizePixel = 0
+    notification.ZIndex = 16
+    
+    -- Position based on config (default: top-right)
+    local position = notifConfig.position or "top-right"
+    
+    -- INSIDE POSITIONS (traditional, within button boundaries)
+    if position == "top-right" then
+        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Position = UDim2.new(1, -5, 0, 5)
+        notification.AnchorPoint = Vector2.new(1, 0)
+    elseif position == "top-left" then
+        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Position = UDim2.new(0, 5, 0, 5)
+        notification.AnchorPoint = Vector2.new(0, 0)
+    elseif position == "bottom-right" then
+        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Position = UDim2.new(1, -5, 1, -5)
+        notification.AnchorPoint = Vector2.new(1, 1)
+    elseif position == "bottom-left" then
+        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Position = UDim2.new(0, 5, 1, -5)
+        notification.AnchorPoint = Vector2.new(0, 1)
+        
+    -- CORNER POSITIONS (extended outside button boundaries for prominence)
+    elseif position == "top-right-corner" then
+        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Position = UDim2.new(1, 5, 0, -5)  -- Extends outside
+        notification.AnchorPoint = Vector2.new(1, 0)  -- Fixed: Right edge, top edge
+    elseif position == "top-left-corner" then
+        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Position = UDim2.new(0, -5, 0, -5)  -- Extends outside
+        notification.AnchorPoint = Vector2.new(0, 0)  -- Fixed: Left edge, top edge
+    elseif position == "bottom-right-corner" then
+        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Position = UDim2.new(1, 5, 1, 5)  -- Extends outside
+        notification.AnchorPoint = Vector2.new(1, 1)  -- Fixed: Right edge, bottom edge
+    elseif position == "bottom-left-corner" then
+        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Position = UDim2.new(0, -5, 1, 5)  -- Extends outside
+        notification.AnchorPoint = Vector2.new(0, 1)  -- Fixed: Left edge, bottom edge
+    end
+    
+    notification.Parent = parent
+    
+    -- Rounded corners for notification
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0.5, 0) -- Perfect circle
+    corner.Parent = notification
+    
+    -- Notification text
+    local text = Instance.new("TextLabel")
+    text.Name = "NotificationText"
+    text.Size = UDim2.new(1, 0, 1, 0)
+    text.Position = UDim2.new(0, 0, 0, 0)
+    text.BackgroundTransparency = 1
+    text.Text = tostring(notifConfig.text or "!")
+    text.TextColor3 = notifConfig.text_color or Color3.fromRGB(255, 255, 255)
+    text.TextScaled = true
+    text.Font = Enum.Font.GothamBold
+    text.ZIndex = 17
+    text.Parent = notification
+    
+    -- Add subtle glow effect
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Thickness = 1
+    stroke.Transparency = 0.5
+    stroke.Parent = notification
+    
+    return notification
+end
+
+-- Create button text label layer with configurable font and sizing
+function BaseUI:_createButtonLabel(config, parent)
+    -- Get text configuration with global defaults
+    local textConfig = self:_mergeWithDefaults(config.text_config, "menu_button", "text_config")
+    
+    -- Safety check and fallback to hardcoded defaults if merging failed
+    if not textConfig or not textConfig.font then
+        print("   ⚠️ WARNING: Text defaults merging failed, using hardcoded fallbacks")
+        textConfig = {
+            font = Enum.Font.GothamBold,
+            size = {height = 20, margin = 10},
+            color = Color3.fromRGB(255, 255, 255),
+            text_scaled = true,
+            text_size = 14,
+            position = {bottom_offset = 25, side_margin = 5},
+            shadow = {
+                enabled = true,
+                color = Color3.fromRGB(0, 0, 0),
+                thickness = 2,
+                transparency = 0.5
+            }
+        }
+    end
+    
+    local font = textConfig.font
+    local textSize = textConfig.size
+    local textColor = textConfig.color
+    local useTextScaled = textConfig.text_scaled
+    local textPosition = textConfig.position
+    
+    print("   📝 Text configuration:")
+    print("     Font: " .. tostring(font))
+    print("     Height: " .. textSize.height .. "px, Margin: " .. textSize.margin .. "px")
+    print("     Color: " .. tostring(textColor))
+    print("     Text Scaled: " .. tostring(useTextScaled))
+    
+    local label = Instance.new("TextLabel")
+    label.Name = "Label"
+    label.Size = UDim2.new(1, -textSize.margin * 2, 0, textSize.height)  -- Configurable size
+    label.Position = UDim2.new(0, textPosition.side_margin, 1, -textPosition.bottom_offset)  -- Configurable position
+    label.AnchorPoint = Vector2.new(0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = config.text or config.name
+    label.TextColor3 = textColor  -- Configurable color
+    label.TextScaled = useTextScaled  -- Configurable scaling
+    label.Font = font  -- Configurable font
+    label.ZIndex = 15
+    
+    -- If TextScaled is disabled, set a specific text size
+    if not useTextScaled then
+        label.TextSize = textConfig.text_size or 14  -- Default 14pt when not scaled
+    end
+    
+    label.Parent = parent
+    
+    -- Add text shadow for better readability (configurable)
+    local shadowConfig = textConfig.shadow
+    if shadowConfig.enabled then
+        local shadow = Instance.new("UIStroke")
+        shadow.Color = shadowConfig.color
+        shadow.Thickness = shadowConfig.thickness
+        shadow.Transparency = shadowConfig.transparency
+        shadow.Parent = label
+    end
+    
+    return label
+end
+
+-- Merge specific configuration with global defaults
+function BaseUI:_mergeWithDefaults(specificConfig, elementType, configType)
+    -- Load UI configuration
+    local ConfigLoader = require(game.ReplicatedStorage.Shared.ConfigLoader)
+    local uiConfig = ConfigLoader:LoadConfig("ui")
+    
+    print("   🔍 DEBUG _mergeWithDefaults:")
+    print("     elementType:", elementType, "configType:", configType)
+    print("     uiConfig.defaults exists:", uiConfig.defaults ~= nil)
+    
+    -- Get global defaults
+    local defaults = uiConfig.defaults and uiConfig.defaults[elementType] and uiConfig.defaults[elementType][configType] or {}
+    
+    print("     defaults found:", defaults ~= nil, "defaults empty:", next(defaults) == nil)
+    print("     specificConfig provided:", specificConfig ~= nil)
+    
+    -- If no specific config provided, return deep copy of defaults
+    if not specificConfig then
+        local result = self:_deepCopy(defaults)
+        print("     returning defaults copy, has size:", result.size ~= nil)
+        return result
+    end
+    
+    -- Merge specific config with defaults (specific overrides defaults)
+    local result = self:_deepMerge(defaults, specificConfig)
+    print("     returning merged config, has size:", result.size ~= nil)
+    return result
+end
+
+-- Deep copy a table
+function BaseUI:_deepCopy(original)
+    if type(original) ~= 'table' then return original end
+    local copy = {}
+    for key, value in pairs(original) do
+        copy[key] = self:_deepCopy(value)
+    end
+    return copy
+end
+
+-- Deep merge two tables (second overrides first)
+function BaseUI:_deepMerge(default, override)
+    local result = self:_deepCopy(default)
+    
+    if type(override) ~= 'table' then
+        return override
+    end
+    
+    for key, value in pairs(override) do
+        if type(value) == 'table' and type(result[key]) == 'table' then
+            result[key] = self:_deepMerge(result[key], value)
+        else
+            result[key] = value
+        end
+    end
+    
+    return result
+end
+
+-- Process asset ID (handles various formats: numbers, strings, rbxassetid://)
+function BaseUI:_processAssetId(value)
+    if not value or value == "" then
+        return nil
+    end
+    
+    -- Convert number to string if needed
+    local valueStr = tostring(value)
+    
+    if string.match(valueStr, "^rbxassetid://(%d+)$") then
+        return valueStr
+    elseif string.match(valueStr, "^%d+$") then
+        return "rbxassetid://" .. valueStr
+    end
+    
+    return nil
+end
+
+-- Add hover effect for ImageButtons
+function BaseUI:_addImageButtonHoverEffect(button)
+    local tweenService = game:GetService("TweenService")
+    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    
+    button.MouseEnter:Connect(function()
+        local hoverTween = tweenService:Create(button, tweenInfo, {
+            ImageColor3 = Color3.fromRGB(200, 200, 200),
+            Size = button.Size + UDim2.new(0, 4, 0, 4)
+        })
+        hoverTween:Play()
+    end)
+    
+    button.MouseLeave:Connect(function()
+        local leaveTween = tweenService:Create(button, tweenInfo, {
+            ImageColor3 = Color3.fromRGB(255, 255, 255),
+            Size = button.Size - UDim2.new(0, 4, 0, 4)
+        })
+        leaveTween:Play()
+    end)
 end
 
 -- Create player info element for panes
