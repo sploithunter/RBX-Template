@@ -67,9 +67,67 @@ local uiConfig = {
                 position = "top-right"                      -- Default position
             },
             
-            -- Button defaults
-            color = Color3.fromRGB(100, 100, 100),          -- Default button color (fallback mode)
-            background_image = nil                          -- Default no background image (uses fallback)
+                    -- Button defaults - APPLIES TO ALL BUTTONS GLOBALLY
+        color = Color3.fromRGB(100, 100, 100),          -- Default button color (fallback mode)
+        background_image = "16809347055"                -- 🎨 GLOBAL: Teal panel for ALL buttons
+    },
+    
+    -- Panel defaults (for settings panel, inventory panel, etc.)
+    -- 🌟 UNIVERSAL PANEL SYSTEM - ONE IMAGE RULES ALL PANELS! 🌟
+    panel = {
+        -- Panel background defaults - APPLIES TO ALL PANELS GLOBALLY
+        background = {
+            image = "6208057940",                       -- 🎨 GLOBAL: Blue panel for ALL panels
+            color = Color3.fromRGB(40, 42, 48),         -- Fallback color if image fails
+            corner_radius = 16,                         -- Default corner radius
+            padding = {top = 20, bottom = 20, left = 20, right = 20}  -- Default padding
+        },
+        
+        -- Panel header defaults - APPLIES TO ALL PANEL HEADERS GLOBALLY  
+        header = {
+            height = 70,                                -- Default header height
+            background_image = "16809347055",           -- 🎨 GLOBAL: Teal panel for ALL headers
+            background_color = Color3.fromRGB(35, 37, 43),  -- Fallback color if image fails
+            title_font = Enum.Font.GothamBold,          -- Default title font
+            title_size = 24,                            -- Default title size
+            title_color = Color3.fromRGB(255, 255, 255), -- Default title color
+            icon_size = {width = 32, height = 32},      -- Default header icon size
+            icon_position = "top-left-corner"           -- Default icon position
+        },
+        
+        -- Panel content defaults
+        content = {
+            background_image = nil,                     -- Keep content transparent for layering
+            background_color = Color3.fromRGB(45, 47, 53),  -- Subtle content color
+            corner_radius = 12,                         -- Default content corner radius
+            padding = {top = 15, bottom = 15, left = 15, right = 15}  -- Default content padding
+        }
+    },
+    
+    -- Setting item defaults (for individual settings like toggles, sliders)
+    setting_item = {
+        -- Setting background defaults
+        background = {
+            image = nil,                                -- Default no setting background
+            color = Color3.fromRGB(50, 52, 58),         -- Default setting color
+            corner_radius = 8,                          -- Default setting corner radius
+            height = 50                                 -- Default setting height
+        },
+        
+        -- Setting label defaults
+        label = {
+            font = Enum.Font.Gotham,                    -- Default label font
+            size = 14,                                  -- Default label size
+            color = Color3.fromRGB(255, 255, 255),      -- Default label color
+            position = "left"                           -- Default label position
+        },
+        
+        -- Toggle defaults
+        toggle = {
+            on_image = "5533192672",                    -- Default ON toggle image
+            off_image = "5533209494",                   -- Default OFF toggle image
+            size = {width = 60, height = 30},           -- Default toggle size
+            position = "right"                          -- Default toggle position
         }
     },
     
@@ -908,128 +966,101 @@ local uiConfig = {
                 padding = {top = 5, bottom = 5, left = 5, right = 5} -- Padding for calculations
             },
             contents = {
-                -- NEW IMAGE-BASED BUTTON SYSTEM with Professional Layout
-                -- Each button now supports:
-                -- 1. background_image: Asset ID for button background (if provided, uses ImageButton)
-                -- 2. icon: Symbol/icon (emoji or asset ID) 
-                -- 3. notification: Badge system for alerts/discounts/counts
-                -- 4. text: Bottom label name
-                -- 5. Fallback: If no background_image, uses current TextButton system
+                -- 🌟 UNIVERSAL CONSISTENCY SYSTEM! 🌟
+                -- 🎨 ONE IMAGE RULES ALL: Every button gets teal panel background (16809347055) automatically!
+                -- 📏 GLOBAL DEFAULTS: Consistent icon sizing, text styling, positioning across ALL buttons
+                -- ⚡ MINIMAL CONFIG: Most buttons need only 4 lines (name, icon, text, action)!
+                -- 🎯 SELECTIVE OVERRIDES: Still allows custom styling when needed (shop, admin, special buttons)
+                --
+                -- RESULT: 90% consistency with 10% customization effort! Perfect for importing professional GUIs.
                 
+                -- 🔥 SPECIAL SHOP: Override global default for unique shop styling
                 {type = "menu_button", config = {
                     name = "Shop", 
-                    background_image =  "rbxassetid://18852000893", -- Will use fallback TextButton for now
+                    background_image = "18852000893",      -- 🎨 OVERRIDE: Special shop background 
                     icon = "6031075938", 
-                    icon_config = {
-                        size = {scale_x = 0.5, scale_y = 0.5},  -- 50% of button size (1.0 = 100%)
-                        position = {scale_x = 0.5, scale_y = 0.5},  -- Center position (0.5,0.5 = center)
-                        offset = {x = 0, y = -5}  -- Pixel offset (shift up 5 pixels)
-                    },
                     text = "Shop", 
-                    text_config = {
-                        font = Enum.Font.SourceSansBold,  -- Available: GothamBold, SourceSans, Roboto, etc.
-                        size = {height = 25, margin = 8},  -- Height of text area, margin from sides
-                        color = Color3.fromRGB(255, 255, 255),  -- Text color
-                        text_scaled = true,  -- Auto-scale text to fit (true/false)
-                        text_size = 16,  -- Only used if text_scaled = false
-                        position = {bottom_offset = 30, side_margin = 5},  -- Position from bottom/sides
-                        shadow = {
-                            enabled = true,
-                            color = Color3.fromRGB(0, 0, 0),
-                            thickness = 2,
-                            transparency = 0.5
-                        }
-                    },
-                    color = Color3.fromRGB(46, 204, 113), 
                     action = "shop_action",
                     notification = {
                         enabled = true,
                         text = "-25%",
                         background_color = Color3.fromRGB(255, 200, 0),
                         text_color = Color3.fromRGB(0, 0, 0),
-                        position = "top-left-corner" -- NEW CORNER POSITIONS: top-left-corner, top-right-corner, bottom-left-corner, bottom-right-corner
-                                                     -- INSIDE POSITIONS: top-left, top-right, bottom-left, bottom-right
+                        position = "top-left-corner"
                     }
+                    -- Everything else (icon size, text style, etc.) comes from GLOBAL defaults! 🎉
                 }},
                 
+                -- 🟢 MINIMAL CONFIG: Uses 95% global defaults (teal background, default styling)
                 {type = "menu_button", config = {
                     name = "Inventory", 
                     icon = "🎒", 
                     text = "Items", 
-                    color = Color3.fromRGB(52, 152, 219), 
                     action = "inventory_action"
-                    -- Uses all defaults from uiConfig.defaults.menu_button
+                    -- 🎨 Automatically gets: teal background, default icon size/position, default text styling!
                 }},
                 
+                -- 🟡 SELECTIVE OVERRIDES: Uses global teal background + custom styling
                 {type = "menu_button", config = {
                     name = "Effects", 
-                    background_image = nil,
                     icon = "⚡", 
                     icon_config = {
-                        size = {scale_x = 0.6, scale_y = 0.6},  -- Larger icon (60% of button)
-                        position = {scale_x = 0.5, scale_y = 0.4},  -- Positioned higher up (0.4 instead of 0.5)
-                        offset = {x = 0, y = 0}  -- No pixel offset
+                        size = {scale_x = 0.6, scale_y = 0.6}   -- 🎨 OVERRIDE: Larger icon
                     },
                     text = "Effects", 
                     text_config = {
-                        font = Enum.Font.Roboto,  -- Different font example
-                        size = {height = 18, margin = 5},  -- Smaller text, less margin
-                        color = Color3.fromRGB(255, 255, 255),
-                        text_scaled = false,  -- Use fixed size instead of scaling
-                        text_size = 12,  -- 12pt font when not scaled
-                        position = {bottom_offset = 20, side_margin = 3},  -- Closer to bottom
-                        shadow = {enabled = false}  -- No shadow
+                        color = Color3.fromRGB(255, 255, 0)     -- 🎨 OVERRIDE: Yellow text
                     },
-                    color = Color3.fromRGB(155, 89, 182), 
                     action = "effects_action",
                     notification = {
                         enabled = true,
                         text = "3",
                         background_color = Color3.fromRGB(255, 0, 0),
-                        text_color = Color3.fromRGB(255, 255, 255),
-                        position = "top-right-corner" -- Example of corner position extending outside button
+                        position = "top-right-corner"
                     }
+                    -- 🎨 Still gets: global teal background, default text font/size, default icon anchor!
                 }},
                 
+                -- 🔵 ULTRA-MINIMAL: Just icon, text, action - everything else from global defaults
                 {type = "menu_button", config = {
                     name = "Settings", 
                     icon = "⚙️", 
                     text = "Settings", 
-                    color = Color3.fromRGB(149, 165, 166), 
                     action = "settings_action"
-                    -- Uses all defaults (notification disabled by default)
+                    -- 🎨 Automatically gets: teal background, default colors, default layout!
                 }},
                 
+                -- 🟣 MINIMAL WITH OVERRIDE: Custom icon but inherits everything else
                 {type = "menu_button", config = {
                     name = "Admin", 
                     icon = "6031068421", 
                     text = "Admin", 
-                    color = Color3.fromRGB(231, 76, 60), 
                     action = "admin_action", 
                     admin_only = true
-                    -- Uses all defaults (notification disabled by default)
+                    -- 🎨 Automatically gets: teal background, default text styling, default layout!
                 }},
                 
+                -- ⭐ NOTIFICATION EXAMPLE: Simple notification that inherits default styling  
                 {type = "menu_button", config = {
                     name = "Daily", 
                     icon = "📅", 
                     text = "Daily", 
-                    color = Color3.fromRGB(255, 165, 0), 
                     action = "daily_login_action",
                     notification = {
                         enabled = true,
                         text = "!"
-                        -- Other notification properties inherit from defaults
+                        -- 🎨 Inherits: default red background, white text, default position
                     }
+                    -- 🎨 Automatically gets: teal background, default icon/text styling!
                 }},
                 
+                -- 🚀 ABSOLUTE MINIMAL: 4 lines = professional button!
                 {type = "menu_button", config = {
                     name = "Quest", 
                     icon = "🎯", 
                     text = "Quest", 
-                    color = Color3.fromRGB(34, 139, 34), 
                     action = "quest_claim_action"
-                    -- Uses all defaults (notification disabled by default)
+                    -- 🎨 100% global defaults = instant professional styling!
                 }}
             }
         },
@@ -1064,6 +1095,72 @@ local uiConfig = {
         -- Layout types: "list", "grid", "single", "custom"
         -- Background: Fully configurable colors, transparency, borders
         -- Contents: Array of UI elements with their own configurations
+    },
+    
+    -- === PANEL CONFIGURATIONS (Image-based panels) ===
+    -- 🎯 OVERRIDE EXAMPLES: How to customize specific panels when needed
+    -- Most panels will automatically use the global defaults above ⬆️
+    panel_configs = {
+        -- 🟢 USES GLOBAL DEFAULTS: Settings panel inherits everything from defaults
+        settings_panel = {
+            header = {
+                icon = "1003379313",                        -- Gear icon (only override needed)
+                title_text = "Settings"                     -- Title text (only override needed)
+                -- Everything else comes from global defaults!
+            },
+            settings = {
+                -- Settings-specific overrides for toggles
+                toggle_on = "5533192672",                   -- ON button toggle
+                toggle_off = "5533209494",                  -- OFF button toggle
+                setting_height = 55
+            }
+        },
+        
+        -- 🟡 PARTIAL OVERRIDE: Inventory uses mostly defaults, custom icon
+        inventory_panel = {
+            header = {
+                icon = "🎒",                               -- Custom inventory icon
+                title_text = "Inventory"                   -- Custom title
+                -- Background images come from global defaults!
+            }
+        },
+        
+        -- 🔴 FULL OVERRIDE EXAMPLE: Admin panel completely different styling
+        admin_panel = {
+            background = {
+                image = "16809347055",                      -- 🎨 OVERRIDE: Teal instead of blue
+                corner_radius = 20                          -- 🎨 OVERRIDE: Different corner radius
+            },
+            header = {
+                height = 80,                                -- 🎨 OVERRIDE: Taller header
+                background_image = "6208057940",            -- 🎨 OVERRIDE: Blue header for contrast
+                icon = "👑",                               -- 🎨 OVERRIDE: Admin crown icon
+                icon_position = "center",                   -- 🎨 OVERRIDE: Centered icon
+                title_text = "Admin Panel",
+                title_color = Color3.fromRGB(255, 215, 0)  -- 🎨 OVERRIDE: Gold title
+            }
+        },
+        
+        -- 🟣 SPECIAL THEME EXAMPLE: Shop panel with unique styling
+        shop_panel = {
+            background = {
+                image = "18852000893",                      -- 🎨 OVERRIDE: Special shop background
+                corner_radius = 12
+            },
+            header = {
+                background_image = "18852000893",           -- 🎨 OVERRIDE: Match background
+                icon = "🛒",
+                title_text = "Shop",
+                title_color = Color3.fromRGB(255, 215, 0)  -- Gold text for shop
+            }
+        }
+        
+        -- 💡 HOW IT WORKS:
+        -- • panels with NO CONFIG = 100% global defaults (blue panel + teal header)
+        -- • panels with PARTIAL CONFIG = global defaults + your overrides
+        -- • panels with FULL CONFIG = completely custom (but still inherits unspecified properties)
+        --
+        -- This means 90% of your panels will be visually consistent with ZERO configuration! 🎉
     },
     
     -- === COMPLEX MENU VIEWS (Multi-view Panes) ===
@@ -1303,6 +1400,6 @@ local uiConfig = {
             }
         end
     }
-}
+} -- Close the main uiConfig table
 
 return uiConfig 
