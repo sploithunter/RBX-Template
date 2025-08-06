@@ -1403,7 +1403,7 @@ local uiConfig = {
                 }
             }
         end
-    }
+    } -- Close helpers table
 } -- Close the main uiConfig table
 
 -- 🐛 DEBUG: UI Config loading completed
