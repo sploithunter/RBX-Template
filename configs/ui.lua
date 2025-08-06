@@ -28,6 +28,10 @@
     and generates the UI automatically.
 --]]
 
+-- 🐛 DEBUG: UI Config loading started
+print("🔍 [DEBUG] UI Config: Starting to load ui.lua at", tick())
+print("🔍 [DEBUG] UI Config: File location:", debug.getinfo(1, "S").source)
+
 local uiConfig = {
     version = "2.0.0", -- Updated for template system
     
@@ -1401,5 +1405,11 @@ local uiConfig = {
         end
     }
 } -- Close the main uiConfig table
+
+-- 🐛 DEBUG: UI Config loading completed
+print("🔍 [DEBUG] UI Config: Successfully loaded complete config at", tick())
+print("🔍 [DEBUG] UI Config: Global defaults available:", uiConfig.defaults ~= nil)
+print("🔍 [DEBUG] UI Config: Panel configs available:", uiConfig.panel_configs ~= nil)
+print("🔍 [DEBUG] UI Config: Button background default:", uiConfig.defaults and uiConfig.defaults.menu_button and uiConfig.defaults.menu_button.background_image)
 
 return uiConfig 
