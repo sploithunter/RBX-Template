@@ -46,7 +46,7 @@ if Locations.Shared then
     Locations.SharedConstants = Locations.Shared:WaitForChild("Constants")
     Locations.SharedNetwork = Locations.Shared:WaitForChild("Network")
     Locations.SharedState = Locations.Shared:WaitForChild("State")
-    Locations.SharedMatter = Locations.Shared:WaitForChild("Matter")
+    -- Matter is managed by Wally - access via Packages.Matter instead of Shared.Matter
     Locations.SharedServices = Locations.Shared:WaitForChild("Services")
 end
 
