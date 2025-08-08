@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local UserInputService = game:GetService("UserInputService")
+local ContentProvider = game:GetService("ContentProvider")
 
 -- Wait for packages and shared modules
 local Packages = ReplicatedStorage:WaitForChild("Packages", 10)
@@ -32,7 +33,7 @@ local ModuleLoader = require(Locations.SharedUtils.ModuleLoader)
 
 local localPlayer = Players.LocalPlayer
 
-print("🎮 Starting Game Template Client...")
+-- Console noise reduction: defer logging until Logger is initialized
 
 -- Create module loader for client
 local loader = ModuleLoader.new()
@@ -53,9 +54,7 @@ loader:RegisterModule("ConfigLoader", Shared.ConfigLoader, {"Logger"})
 -- loader:RegisterLazyModule("ParticleSystem", StarterPlayer.StarterPlayerScripts.Client.Systems.ParticleSystem, {"Logger"})
 
 -- Load all modules
-print("📦 Loading client modules...")
 local loadOrder = loader:LoadAll()
-print("✅ Client modules loaded:", table.concat(loadOrder, ", "))
 
 -- Get loaded modules for easy access
 local Logger = loader:Get("Logger")
@@ -144,6 +143,30 @@ Signals.ActiveEffects.OnClientEvent:Connect(function(data)
 end)
 
 -- Old NetworkBridge code removed
+
+-- Preload sounds client-side for instant playback
+task.spawn(function()
+    local soundsFolder = ReplicatedStorage:WaitForChild("Assets", 10) and ReplicatedStorage.Assets:FindFirstChild("Sounds")
+    if soundsFolder then
+        local soundInstances = {}
+        for _, child in ipairs(soundsFolder:GetChildren()) do
+            if child:IsA("Sound") then
+                table.insert(soundInstances, child)
+            end
+        end
+        if #soundInstances > 0 then
+            local ok, err = pcall(function()
+                ContentProvider:PreloadAsync(soundInstances)
+            end)
+            if ok then
+                Logger:Info("Preloaded sounds", {count = #soundInstances})
+            else
+                Logger:Warn("Failed to preload sounds", {error = tostring(err)})
+            end
+        end
+    end
+end)
+
 
 
 -- Set up input handling

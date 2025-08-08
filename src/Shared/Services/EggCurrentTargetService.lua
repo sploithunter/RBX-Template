@@ -184,7 +184,7 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
         -- Only update if target has changed
         if currentTarget ~= eggType then
             if eggSystemConfig.debug.log_proximity_changes then
-                print("🎯 Now targeting egg:", eggType)
+                Logger:Info("Now targeting egg", {context = "EggCurrentTargetService", eggType = eggType})
             end
             currentTarget = eggType
             currentTargetValue.Value = eggType
@@ -238,7 +238,7 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
         -- No egg in range - only update if we had a target before
         if currentTarget ~= "None" then
             if eggSystemConfig.debug.log_proximity_changes then
-                print("🚫 No longer targeting egg")
+                Logger:Info("No longer targeting egg", {context = "EggCurrentTargetService"})
             end
             currentTarget = "None"
             currentTargetValue.Value = "None"
@@ -397,7 +397,7 @@ end
 -- === INITIALIZATION ===
 
 function EggCurrentTargetService:Initialize()
-    Logger:Info("EggCurrentTargetService initializing...", {})
+    Logger:Info("EggCurrentTargetService initializing...", {context = "EggCurrentTargetService"})
     
     -- Load pet preview service
     local success, petPreviewService = pcall(function()
@@ -407,9 +407,9 @@ function EggCurrentTargetService:Initialize()
     if success then
         eggPetPreviewService = petPreviewService
         eggPetPreviewService:Initialize()
-        Logger:Info("Pet preview service loaded successfully", {})
+        Logger:Info("Pet preview service loaded successfully", {context = "EggCurrentTargetService"})
     else
-        Logger:Warn("Failed to load pet preview service", {error = tostring(petPreviewService)})
+        Logger:Warn("Failed to load pet preview service", {error = tostring(petPreviewService), context = "EggCurrentTargetService"})
     end
     
     -- Start the targeting update loop (like working game's VisibleHandler)
@@ -417,7 +417,7 @@ function EggCurrentTargetService:Initialize()
         self:UpdateTargeting(step)
     end)
     
-    Logger:Info("EggCurrentTargetService initialized - targeting system active", {})
+    Logger:Info("EggCurrentTargetService initialized - targeting system active", {context = "EggCurrentTargetService"})
 end
 
 function EggCurrentTargetService:Destroy()

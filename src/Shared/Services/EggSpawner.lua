@@ -18,6 +18,17 @@ local InsertService = game:GetService("InsertService")
 
 -- Dependencies
 local Locations = require(ReplicatedStorage.Shared.Locations)
+local Logger
+do
+    local ok, mod = pcall(function()
+        return require(ReplicatedStorage.Shared.Utils.Logger)
+    end)
+    if ok and mod then
+        Logger = mod
+    else
+        Logger = { Info = function() end, Warn = function(_, ...) warn(...) end }
+    end
+end
 local petConfig = Locations.getConfig("pets")
 local eggSystemConfig = Locations.getConfig("egg_system")
 
@@ -81,7 +92,7 @@ function EggSpawner:SpawnEgg(eggType, position, spawnPoint)
     spawnPointRef.Value = spawnPoint
     spawnPointRef.Parent = egg
     
-    print("EggSpawner: Spawned", eggData.name, "at", spawnPoint.Name, "position")
+    Logger:Info("Egg spawned", {context = "EggSpawner", name = eggData.name, spawnPoint = spawnPoint.Name})
     
     -- Add to active eggs
     activeEggs[egg] = {
@@ -207,23 +218,23 @@ end
 
 -- Initialize the system
 function EggSpawner:Initialize()
-    print("EggSpawner: Initializing...")
+    Logger:Info("Initializing", {context = "EggSpawner"})
     
     -- Check workspace first
-    print("EggSpawner: Searching for spawn points...")
+    Logger:Info("Searching for spawn points...", {context = "EggSpawner"})
     local spawnPoints = self:GetSpawnPoints()
-    print("EggSpawner: Found " .. #spawnPoints .. " spawn points")
+    Logger:Info("Found spawn points", {context = "EggSpawner", count = #spawnPoints})
     
     if #spawnPoints == 0 then
-        print("EggSpawner: ⚠️ No " .. eggSystemConfig.spawning.spawn_point_name .. " parts found in workspace!")
-        print("EggSpawner: Create a part named '" .. eggSystemConfig.spawning.spawn_point_name .. "' and add 'EggType' attribute")
+        Logger:Warn("No spawn points found", {context = "EggSpawner", name = eggSystemConfig.spawning.spawn_point_name})
+        Logger:Warn("Create a part with required name and 'EggType' attribute", {context = "EggSpawner"})
         return
     end
     
     -- Populate initial spawn points
     self:PopulateSpawnPoints()
     
-    print("EggSpawner: Initialized with " .. #spawnPoints .. " spawn points")
+    Logger:Info("Initialized", {context = "EggSpawner", spawnPointCount = #spawnPoints})
 end
 
 return EggSpawner

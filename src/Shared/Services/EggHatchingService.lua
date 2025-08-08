@@ -21,9 +21,11 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
 
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local EggHatchFX = require(ReplicatedStorage.Shared.Effects.EggHatchFX)
 
 -- Load flash effects configuration
 local flashEffectsConfig
@@ -58,6 +60,25 @@ else
             }
         }
     }
+end
+
+-- Hot-reload helper: re-require flash effects config by cloning to bypass cache
+local function reloadFlashEffectsConfig()
+    local ok, res = pcall(function()
+        local cfgFolder = ReplicatedStorage:FindFirstChild("Configs")
+        local mod = cfgFolder and cfgFolder:FindFirstChild("flash_effects")
+        if mod and mod:IsA("ModuleScript") then
+            local clone = mod:Clone()
+            clone.Parent = nil
+            local cfg = require(clone)
+            clone:Destroy()
+            return cfg
+        end
+        return nil
+    end)
+    if ok and res and type(res) == "table" then
+        flashEffectsConfig = res
+    end
 end
 
 -- Load egg hatching timing configuration
@@ -440,6 +461,8 @@ end
 
 -- Flash animation (starburst effect)
 function EggHatchingService:AnimateFlash(eggComponents, duration)
+    -- Attempt to hot-reload the flash effects config each time
+    reloadFlashEffectsConfig()
     local effectConfig = flashEffectsConfig.effects[flashEffectsConfig.default_effect]
     if not effectConfig then
         print("⚠️ Flash effect config not found, using fallback")
@@ -462,7 +485,7 @@ function EggHatchingService:AnimateFlash(eggComponents, duration)
     
     eggComponents.state = ANIMATION_STATE.FLASH
     
-    print("🌟 Creating starburst effect with config:", effectConfig and effectConfig.name or "FALLBACK")
+    print("🌟 Creating effect:", effectConfig and effectConfig.name or "FALLBACK")
     
     -- Hide egg during flash (handle both ImageLabel and ViewportFrame)
     print("🫥 HIDING EGG DEBUG:")
@@ -491,7 +514,47 @@ function EggHatchingService:AnimateFlash(eggComponents, duration)
         print("  ✅ ImageLabel fade-out tween started")
     end
     
-    -- Create starburst effect
+    -- Play configured sound effect (prefer preloaded named sound)
+    local soundSettings = (flashEffectsConfig and flashEffectsConfig.sound) or {}
+    local named = (effectConfig and effectConfig.sound_name) or soundSettings.sound_name
+    local soundId = (effectConfig and effectConfig.sound_id) or soundSettings.sound_id
+    local volume = (effectConfig and effectConfig.volume) or soundSettings.volume or 0.8
+    local speed = (effectConfig and effectConfig.playback_speed) or soundSettings.playback_speed or 1.0
+
+    local played = false
+    local SoundService = game:GetService("SoundService")
+    if named then
+        local soundsFolder = ReplicatedStorage:FindFirstChild("Assets") and ReplicatedStorage.Assets:FindFirstChild("Sounds")
+        if soundsFolder then
+            local template = soundsFolder:FindFirstChild(named)
+            if template and template:IsA("Sound") then
+                local s = template:Clone()
+                s.Volume = volume
+                s.PlaybackSpeed = speed
+                s.RollOffMaxDistance = 100
+                s.Parent = SoundService
+                s:Play()
+                played = true
+                task.delay(duration + 0.5, function()
+                    if s and s.Parent then s:Destroy() end
+                end)
+            end
+        end
+    end
+    if (not played) and soundId then
+        local s = Instance.new("Sound")
+        s.SoundId = soundId
+        s.Volume = volume
+        s.PlaybackSpeed = speed
+        s.RollOffMaxDistance = 100
+        s.Parent = SoundService
+        s:Play()
+        task.delay(duration + 0.5, function()
+            if s and s.Parent then s:Destroy() end
+        end)
+    end
+
+    -- Create visual effect (always create; do not short-circuit)
     local config = (effectConfig and effectConfig.config) or {
         star_count = 8,
         min_size = 20,
@@ -510,7 +573,15 @@ function EggHatchingService:AnimateFlash(eggComponents, duration)
         scale_overshoot = 1.2,
     }
     
-    self:CreateStarburstEffect(flashContainer, config)
+    if (effectConfig and effectConfig.type) == "shockwave" then
+        self:CreateShockwaveEffect(flashContainer, config)
+    elseif (effectConfig and effectConfig.type) == "confetti" then
+        self:CreateConfettiEffect(flashContainer, config)
+    elseif (effectConfig and effectConfig.type) == "sparkle" then
+        self:CreateSparkleEffect(flashContainer, config)
+    else
+        self:CreateStarburstEffect(flashContainer, config)
+    end
     
     task.wait(duration)
     
@@ -535,6 +606,151 @@ function EggHatchingService:CreateStarburstEffect(container, config)
         local star = self:CreateStar(container, config, i)
         task.spawn(function()
             self:AnimateStar(star, config, i)
+        end)
+    end
+end
+
+-- Shockwave ring(s) expanding outward
+function EggHatchingService:CreateShockwaveEffect(container, config)
+    for _, child in pairs(container:GetChildren()) do child:Destroy() end
+    local function createRing(delay)
+        task.delay(delay or 0, function()
+            local ring = Instance.new("Frame")
+            ring.Name = "Shockwave"
+            ring.Size = UDim2.new(0, config.start_radius * 2, 0, config.start_radius * 2)
+            ring.Position = UDim2.new(0.5, -config.start_radius, 0.5, -config.start_radius)
+            ring.BackgroundTransparency = 1
+            ring.BorderSizePixel = 0
+
+            local stroke = Instance.new("UIStroke")
+            stroke.Thickness = config.stroke_thickness or 6
+            stroke.Color = config.color or Color3.fromRGB(255,255,255)
+            stroke.Transparency = 0
+            stroke.Parent = ring
+
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0.5, 0)
+            corner.Parent = ring
+
+            ring.Parent = container
+
+            TweenService:Create(ring, TweenInfo.new(config.duration or 0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.new(0, (config.end_radius or 400) * 2, 0, (config.end_radius or 400) * 2),
+                Position = UDim2.new(0.5, -(config.end_radius or 400), 0.5, -(config.end_radius or 400))
+            }):Play()
+            TweenService:Create(stroke, TweenInfo.new(config.fade_out_time or 0.25), {Transparency = 1}):Play()
+
+            task.delay((config.duration or 0.7) + (config.fade_out_time or 0.25), function()
+                if ring and ring.Parent then ring:Destroy() end
+            end)
+        end)
+    end
+
+    local rings = math.max(1, config.rings or 1)
+    for r = 0, rings - 1 do
+        createRing(r * (config.ring_delay or 0.08))
+    end
+end
+
+-- Confetti pieces bursting outward and falling
+function EggHatchingService:CreateConfettiEffect(container, config)
+    for _, child in pairs(container:GetChildren()) do child:Destroy() end
+    local count = config.piece_count or 30
+    for i = 1, count do
+        task.spawn(function()
+            local piece = Instance.new("Frame")
+            piece.Name = "Confetti"
+            local sz = math.random(config.piece_size and config.piece_size.Min or 6, config.piece_size and config.piece_size.Max or 12)
+            piece.Size = UDim2.new(0, sz, 0, sz)
+            piece.AnchorPoint = Vector2.new(0.5, 0.5)
+            piece.Position = UDim2.new(0.5, 0, 0.5, 0)
+            piece.BackgroundColor3 = config.colors and config.colors[math.random(1, #config.colors)] or Color3.fromRGB(255,255,255)
+            piece.BorderSizePixel = 0
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0.25, 0)
+            corner.Parent = piece
+            piece.Parent = container
+
+            local angle = math.random() * math.pi * 2
+            local spread = config.spread_distance or 250
+            local fall = config.fall_distance or 120
+            local targetX = math.cos(angle) * spread
+            local targetY = math.sin(angle) * spread + fall
+
+            local tw = TweenService:Create(piece, TweenInfo.new(config.duration or 1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0.5, targetX, 0.5, targetY),
+                Rotation = math.random(180, 540),
+                BackgroundTransparency = 0.15
+            })
+            tw:Play()
+            task.delay(config.duration or 1.0, function()
+                if piece and piece.Parent then piece:Destroy() end
+            end)
+        end)
+    end
+end
+
+-- Sparkle burst: small squares/diamonds that flicker as they radiate out
+function EggHatchingService:CreateSparkleEffect(container, config)
+    for _, child in pairs(container:GetChildren()) do child:Destroy() end
+    local count = config.sparkle_count or 24
+    local pulsate = config.pulsate ~= false
+    local rate = config.pulsate_rate or 0.16
+    local scaleMin = config.pulsate_scale_min or 0.85
+    local scaleMax = config.pulsate_scale_max or 1.2
+    local alphaMin = config.alpha_min or 0.1
+    local alphaMax = config.alpha_max or 0.45
+    for i = 1, count do
+        task.spawn(function()
+            local spark = Instance.new("Frame")
+            spark.Name = "Sparkle"
+            local minS = (config.size and config.size.Min) or 6
+            local maxS = (config.size and config.size.Max) or 12
+            local sz = math.random(minS, maxS)
+            spark.Size = UDim2.new(0, sz, 0, sz)
+            spark.AnchorPoint = Vector2.new(0.5, 0.5)
+            spark.Position = UDim2.new(0.5, 0, 0.5, 0)
+            spark.BackgroundColor3 = config.colors and config.colors[math.random(1, #config.colors)] or Color3.fromRGB(255,255,255)
+            spark.BorderSizePixel = 0
+            spark.Rotation = math.random(0, 45) -- slight diamond tilt
+
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0.2, 0)
+            corner.Parent = spark
+            spark.Parent = container
+
+            local angle = math.random() * math.pi * 2
+            local spread = config.spread_distance or 220
+            local targetX = math.cos(angle) * spread
+            local targetY = math.sin(angle) * spread
+
+            local dur = config.duration or 0.9
+            local move = TweenService:Create(spark, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0.5, targetX, 0.5, targetY),
+                BackgroundTransparency = alphaMin
+            })
+            move:Play()
+
+            if pulsate then
+                task.spawn(function()
+                    local t0 = tick()
+                    while tick() - t0 < dur do
+                        -- oscillate between size and alpha bounds
+                        local phase = ((tick() - t0) / rate) % 2
+                        local forward = phase < 1
+                        local factor = forward and phase or (2 - phase) -- 0..1..0
+                        local scale = scaleMin + (scaleMax - scaleMin) * factor
+                        local alpha = alphaMax - (alphaMax - alphaMin) * factor
+                        spark.Size = UDim2.new(0, math.floor(sz * scale), 0, math.floor(sz * scale))
+                        spark.BackgroundTransparency = alpha
+                        task.wait(0.03)
+                    end
+                end)
+            end
+
+            task.delay(dur, function()
+                if spark and spark.Parent then spark:Destroy() end
+            end)
         end)
     end
 end
@@ -883,6 +1099,26 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
         table.insert(eggFrames, frame)
         table.insert(eggComponents, components)
     end
+
+    -- Start rolling snare as eggs appear (from config), stop on first pop
+    local rollSound
+    do
+        local adv = hatchingConfig.advanced or {}
+        local rollName = adv.egg_roll_sound_name
+        if rollName then
+            local soundsFolder = ReplicatedStorage:FindFirstChild("Assets") and ReplicatedStorage.Assets:FindFirstChild("Sounds")
+            if soundsFolder then
+                local template = soundsFolder:FindFirstChild(rollName)
+                if template and template:IsA("Sound") then
+                    rollSound = template:Clone()
+                    rollSound.Volume = adv.egg_roll_volume or template.Volume
+                    rollSound.Looped = true
+                    rollSound.Parent = SoundService
+                    rollSound:Play()
+                end
+            end
+        end
+    end
     
     -- PHASE 3: Execute animations in sequence with staggered timing
     local cleanupResult = {
@@ -895,7 +1131,7 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
     }
     
     task.spawn(function()
-        self:ExecuteHatchingSequence(eggComponents, eggsData)
+        self:ExecuteHatchingSequence(eggComponents, eggsData, eggFrames, gridInfo, rollSound)
         
         -- PHASE 4: After animations complete, wait a moment then restore screen
         local resultEnjoymentTime = hatchingConfig.helpers.get_adjusted_timing("result_enjoyment_time")
@@ -916,7 +1152,7 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
     return cleanupResult
 end
 
-function EggHatchingService:ExecuteHatchingSequence(eggComponents, eggsData)
+function EggHatchingService:ExecuteHatchingSequence(eggComponents, eggsData, eggFrames, gridInfo, rollSound)
     local eggCount = #eggComponents
     
     -- Get adjusted timings based on current speed preset
@@ -925,6 +1161,10 @@ function EggHatchingService:ExecuteHatchingSequence(eggComponents, eggsData)
     local flashDuration = hatchingConfig.helpers.get_adjusted_timing("flash_duration")
     local revealDuration = hatchingConfig.helpers.get_adjusted_timing("reveal_duration")
     local staggerDelay = hatchingConfig.helpers.get_adjusted_timing("stagger_delay")
+    local doStagger = true
+    if hatchingConfig.advanced and hatchingConfig.advanced.batch_reveal_mode == "simultaneous" then
+        doStagger = false
+    end
     local completionWait = hatchingConfig.helpers.get_adjusted_timing("reveal_completion_wait")
     
     print("⚡ Using", hatchingConfig.current_preset, "speed preset (", hatchingConfig.helpers.get_speed_multiplier(), "x)")
@@ -951,14 +1191,74 @@ function EggHatchingService:ExecuteHatchingSequence(eggComponents, eggsData)
     for i, components in ipairs(eggComponents) do
         local eggData = eggsData[i]
         
-        -- Small delay between each egg (creates wave effect)
-        if i > 1 then
+        -- Optional stagger between eggs
+        if doStagger and i > 1 then
             task.wait(staggerDelay)
         end
         
         task.spawn(function()
-            -- Flash
-            self:AnimateFlash(components, flashDuration)
+            -- annotate batch info for sound throttling
+            components._batchCount = eggCount
+            components._indexInBatch = i
+            -- Flash (non-yielding) and play sound immediately
+            self:AnimateFlash(components, math.max(flashDuration, 0.01))
+            -- Stop the rolling snare on first pop
+            if rollSound then
+                local adv = hatchingConfig.advanced or {}
+                local fade = adv.egg_roll_fade_out or 0.15
+                local s = rollSound
+                rollSound = nil
+                task.spawn(function()
+                    local startVol = s.Volume
+                    local t0 = tick()
+                    while tick() - t0 < fade and s.Parent do
+                        local alpha = (tick() - t0) / fade
+                        s.Volume = startVol * math.max(0, 1 - alpha)
+                        task.wait()
+                    end
+                    if s.Parent then s:Stop() end
+                    if s.Parent then s:Destroy() end
+                end)
+            end
+            -- Optional: 3D world effect if the egg has a world part reference or is special rarity
+            local shouldPlayWorldFX = false
+            local worldPart = eggData and eggData.worldPart
+            if eggData then
+                if eggData.worldPart and typeof(eggData.worldPart) == "Instance" then
+                    shouldPlayWorldFX = true
+                elseif eggData.petType == "dragon" or (eggData.petData and eggData.petData.rarity_id == "secret") then
+                    -- Create a temporary local anchor near the player for special pets
+                    local player = Players.LocalPlayer
+                    local hrp = player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        local offset = CFrame.new(0, 3, -6)
+                        local anchor = Instance.new("Part")
+                        anchor.Name = "SecretHatchAnchor"
+                        anchor.Size = Vector3.new(0.5, 0.5, 0.5)
+                        anchor.Transparency = 1
+                        anchor.Anchored = true
+                        anchor.CanCollide = false
+                        anchor.CanQuery = false
+                        anchor.CanTouch = false
+                        anchor.CFrame = hrp.CFrame * offset
+                        anchor.Parent = workspace
+                        worldPart = anchor
+                        shouldPlayWorldFX = true
+                        -- Cleanup
+                        task.delay(8, function()
+                            if anchor and anchor.Parent then anchor:Destroy() end
+                        end)
+                    end
+                end
+            end
+            if shouldPlayWorldFX and worldPart then
+                local playDuration = math.max(flashDuration, 0.2) + math.max(revealDuration, 0)
+                task.spawn(function()
+                    pcall(function()
+                        EggHatchFX.Play(worldPart, playDuration)
+                    end)
+                end)
+            end
             -- Reveal (pass the full eggData for pet info)
             self:AnimateReveal(components, eggData.petImageId, eggData, revealDuration)
             
@@ -968,6 +1268,11 @@ function EggHatchingService:ExecuteHatchingSequence(eggComponents, eggsData)
     
     -- Wait for all reveals to complete
     task.wait(completionWait)
+
+    -- PHASE 3.5: Stack identical results (group by petType+variant)
+    pcall(function()
+        self:AnimateStackedResults(eggFrames, eggComponents, eggsData, gridInfo)
+    end)
     
     print("✅ Hatching animation sequence complete!")
 end
@@ -977,6 +1282,176 @@ end
 -- ═══════════════════════════════════════════════════════════════════════════════════
 -- DEBUG/TESTING FUNCTIONS
 -- ═══════════════════════════════════════════════════════════════════════════════════
+
+-- Group identical pets and animate them stacking into a single representative per group
+function EggHatchingService:AnimateStackedResults(eggFrames, eggComponents, eggsData, gridInfo)
+    if not eggFrames or #eggFrames == 0 then return end
+
+    -- Build groups keyed by petType+variant
+    local groups = {}
+    for i, eggData in ipairs(eggsData) do
+        local petType = eggData.petType or (eggData.petData and eggData.petData.petType)
+        local variant = eggData.variant or (eggData.petData and eggData.petData.variant) or "basic"
+        if petType then
+            local key = petType .. ":" .. variant
+            groups[key] = groups[key] or {indices = {}, petType = petType, variant = variant}
+            table.insert(groups[key].indices, i)
+        end
+    end
+
+    -- Choose initial stack targets as current representative positions
+    local targets = {}
+    for key, group in pairs(groups) do
+        local firstIndex = group.indices[1]
+        local frame = eggFrames[firstIndex]
+        if frame then
+            targets[key] = Vector2.new(frame.Position.X.Offset, frame.Position.Y.Offset)
+        end
+    end
+
+    -- Create name + count labels as children of representatives so they follow during tweens
+    local createdLabels = {}
+    for key, group in pairs(groups) do
+        local repFrame = eggFrames[group.indices[1]]
+        if repFrame and repFrame.Parent then
+            -- Compute display name
+            local sample = eggsData[group.indices[1]]
+            local displayName = nil
+            if sample and sample.petData and sample.petData.name then
+                displayName = sample.petData.name
+            else
+                local petType = group.petType or (sample and sample.petType) or "pet"
+                local variant = group.variant or (sample and sample.variant) or "basic"
+                local petName = petType:gsub("^%l", string.upper)
+                if variant ~= "basic" then
+                    local variantName = variant:gsub("^%l", string.upper)
+                    displayName = variantName .. " " .. petName
+                else
+                    displayName = petName
+                end
+            end
+
+            local nameHeight = 18
+            local nameLabel = Instance.new("TextLabel")
+            nameLabel.Name = "StackName"
+            nameLabel.Size = UDim2.new(0, math.max(60, repFrame.AbsoluteSize.X), 0, nameHeight)
+            nameLabel.AnchorPoint = Vector2.new(0.5, 0)
+            nameLabel.Position = UDim2.new(0.5, 0, 1, 2)
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.Text = displayName
+            nameLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+            nameLabel.TextStrokeTransparency = 0.2
+            nameLabel.Font = Enum.Font.GothamMedium
+            nameLabel.TextScaled = true
+            nameLabel.ZIndex = (repFrame.ZIndex or 1) + 5
+            nameLabel.Parent = repFrame
+
+            local count = #group.indices
+            local countLabel = Instance.new("TextLabel")
+            countLabel.Name = "StackCount"
+            countLabel.Size = UDim2.new(0, math.max(50, repFrame.AbsoluteSize.X * 0.5), 0, 18)
+            countLabel.AnchorPoint = Vector2.new(0.5, 0)
+            countLabel.Position = UDim2.new(0.5, 0, 1, 2 + nameHeight + 2)
+            countLabel.BackgroundTransparency = 1
+            countLabel.Text = "x" .. tostring(count)
+            countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            countLabel.TextStrokeTransparency = 0.2
+            countLabel.Font = Enum.Font.GothamBold
+            countLabel.TextScaled = true
+            countLabel.ZIndex = (repFrame.ZIndex or 1) + 6
+            countLabel.Parent = repFrame
+
+            createdLabels[key] = { name = nameLabel, count = countLabel }
+        end
+    end
+
+    -- Tween non-representatives to the representative position and fade out
+    local tweens = {}
+    for key, group in pairs(groups) do
+        local indices = group.indices
+        if #indices > 1 then
+            local repIndex = indices[1]
+            local targetPos = targets[key]
+            for idx = 2, #indices do
+                local i = indices[idx]
+                local frame = eggFrames[i]
+                if frame then
+                    local guiObj = frame:FindFirstChild("EggImage") or frame
+                    local tween = TweenService:Create(frame, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        Position = UDim2.new(0, targetPos.X, 0, targetPos.Y),
+                        Size = UDim2.new(0, frame.AbsoluteSize.X * 0.6, 0, frame.AbsoluteSize.Y * 0.6)
+                    })
+                    tween:Play()
+                    table.insert(tweens, tween)
+                    -- Also fade the image for visual clarity
+                    if guiObj and guiObj:IsA("ImageLabel") then
+                        TweenService:Create(guiObj, TweenInfo.new(0.35), {ImageTransparency = 1}):Play()
+                    end
+                end
+            end
+        end
+    end
+
+    task.wait(0.4)
+
+    -- Hide non-representatives; keep representatives and labels on screen briefly
+    for key, group in pairs(groups) do
+        if #group.indices > 1 then
+            for idx = 2, #group.indices do
+                local i = group.indices[idx]
+                local frame = eggFrames[i]
+                if frame then
+                    frame.Visible = false
+                end
+            end
+        end
+    end
+
+    -- Re-center representatives using a compact grid in the middle of the screen
+    local containerSize = workspace.CurrentCamera.ViewportSize
+    local groupKeys = {}
+    for key, _ in pairs(groups) do table.insert(groupKeys, key) end
+    table.sort(groupKeys) -- stable order
+    local groupCount = #groupKeys
+    if groupCount > 0 then
+        local newGrid = self:CalculateGridLayout(groupCount, containerSize.X, containerSize.Y)
+        local newPositions = self:GenerateEggPositions(groupCount, newGrid)
+        for index, key in ipairs(groupKeys) do
+            local repIndex = groups[key].indices[1]
+            local repFrame = eggFrames[repIndex]
+            local pos = newPositions[index]
+            if repFrame and pos then
+                TweenService:Create(repFrame, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Position = UDim2.new(0, pos.x, 0, pos.y),
+                    Size = UDim2.new(0, pos.size, 0, pos.size)
+                }):Play()
+                -- Resize count label relative to new size
+                local labels = createdLabels[key]
+                if labels then
+                    if labels.name and labels.name.Parent == repFrame then
+                        labels.name.Size = UDim2.new(0, math.max(60, pos.size), 0, math.max(18, math.floor(pos.size * 0.2)))
+                        labels.name.Position = UDim2.new(0.5, 0, 1, 2)
+                    end
+                    if labels.count and labels.count.Parent == repFrame then
+                        labels.count.Size = UDim2.new(0, math.max(50, math.floor(pos.size * 0.45)), 0, math.max(16, math.floor(pos.size * 0.18)))
+                        labels.count.Position = UDim2.new(0.5, 0, 1, 2 + math.max(18, math.floor(pos.size * 0.2)) + 2)
+                    end
+                end
+            end
+        end
+    end
+
+    -- Hold briefly to let players read counts
+    task.wait(1.0)
+
+    -- Clean up labels
+    for _, pair in pairs(createdLabels) do
+        if pair then
+            if pair.name and pair.name.Parent then pair.name:Destroy() end
+            if pair.count and pair.count.Parent then pair.count:Destroy() end
+        end
+    end
+end
 
 -- DEBUG: Create a viewer to inspect egg ViewportFrames
 function EggHatchingService:CreateEggViewportDebugger()

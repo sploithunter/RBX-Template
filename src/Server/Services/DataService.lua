@@ -153,11 +153,9 @@ local function generateProfileTemplate(configLoader)
                             used_slots = 0
                         }
                         
-                        print(string.format("📦 INVENTORY TRACE - Created NEW bucket: %s with %d slots", 
-                            bucketName, bucketConfig.base_limit))
+                        -- Quiet console: keep traces disabled by default
                     else
-                        print(string.format("🛡️ BUCKET SAFETY - Preserved existing bucket: %s (not overwritten)", 
-                            bucketName))
+                        -- Quiet console: keep traces disabled by default
                     end
                 end
             end
@@ -166,8 +164,7 @@ local function generateProfileTemplate(configLoader)
             -- (This helps detect accidentally disabled buckets)
             for existingBucket in pairs(template.Inventory) do
                 if not inventoryConfig.enabled_buckets[existingBucket] then
-                    print(string.format("⚠️ BUCKET SAFETY WARNING - Bucket '%s' exists but not enabled in config", 
-                        existingBucket))
+                    -- Quiet console: keep traces disabled by default
                 end
             end
             
@@ -180,8 +177,7 @@ local function generateProfileTemplate(configLoader)
                         template.Equipped[equipCategory]["slot_" .. i] = nil  -- Empty slot
                     end
                     
-                    print(string.format("⚔️ EQUIPPED TRACE - Generated %s with %d slots", 
-                        equipCategory, equipConfig.slots))
+                    -- Quiet console: keep traces disabled by default
                 elseif type(equipConfig.slots) == "table" then
                     -- Named slots (e.g., armor = {helmet=1, chest=1, etc.})
                     template.Equipped[equipCategory] = {}
@@ -196,14 +192,11 @@ local function generateProfileTemplate(configLoader)
                         end
                     end
                     
-                    print(string.format("⚔️ EQUIPPED TRACE - Generated %s with named slots", equipCategory))
+                    -- Quiet console: keep traces disabled by default
                 end
             end
             
-            print("📦 INVENTORY TRACE - Profile template inventory generation completed", {
-                inventoryBuckets = template.Inventory,
-                equippedCategories = template.Equipped
-            })
+            -- Quiet console: keep traces disabled by default
         else
             warn("📦 INVENTORY TRACE - Failed to load inventory config, using minimal fallback")
             -- Minimal fallback inventory structure

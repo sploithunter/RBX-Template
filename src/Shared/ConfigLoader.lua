@@ -976,7 +976,9 @@ function ConfigLoader:_validateInventoryConfig(config)
         return false, "settings must be a table"
     end
     
-    print("✅ INVENTORY CONFIG VALIDATION - Inventory configuration is valid")
+    if self._modules and self._modules.Logger then
+        self._modules.Logger:Info("Inventory config validated", {context = "ConfigLoader"})
+    end
     return true
 end
 

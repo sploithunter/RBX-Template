@@ -25,14 +25,14 @@ local SettingsService = {}
 SettingsService.__index = SettingsService
 
 function SettingsService:Init()
-    print("🚀 SettingsService:Init() called")
+    -- Console cleanup: route through Logger only
     
     -- Get injected dependencies
     self._logger = self._modules.Logger
     self._dataService = self._modules.DataService
     self._configLoader = self._modules.ConfigLoader
     
-    print("⚙️ SettingsService dependencies injected")
+    -- Dependencies injected
     
     -- Track player settings folders for replication
     self._playerSettingsFolders = {}
@@ -55,18 +55,18 @@ function SettingsService:Init()
 end
 
 function SettingsService:Start()
-    print("🚀 SettingsService:Start() called")
+    -- Startup handled via Logger
     
     -- Create folders for any players already in game
     for _, player in pairs(Players:GetPlayers()) do
         if self._dataService:IsDataLoaded(player) then
-            print("⚙️ Creating settings folders for existing player:", player.Name)
+            self._logger:Info("Creating settings folders for existing player", {player = player.Name})
             self:_createSettingsFolders(player)
         end
     end
     
     self._logger:Info("🚀 SettingsService started")
-    print("✅ SettingsService fully started and ready")
+    -- Ready
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════

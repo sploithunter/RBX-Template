@@ -24,7 +24,7 @@ local Matter = Locations.getLibrary("Matter") -- Matter ECS framework (manual du
 local Reflex = Locations.getPackage("Reflex") -- Redux-like state management (via Wally) 
 local ModuleLoader = require(Locations.SharedUtils.ModuleLoader)
 
-print("🚀 Starting Game Template Server...")
+-- Console noise reduction: defer logging until Logger is initialized
 
 -- Create module loader
 local loader = ModuleLoader.new()
@@ -55,7 +55,7 @@ loader:RegisterModule("DiagnosticsService", ServerScriptService.Server.Services.
 -- loader:RegisterLazyModule("MatchmakingService", ServerScriptService.Server.Services.MatchmakingService, {"DataService", "NetworkBridge"}) -- TODO: Create MatchmakingService
 
 -- Load all modules with error handling
-print("📦 Loading server modules...")
+-- Loading will be reported via Logger after initialization
 local loadSuccess, loadOrderOrError = pcall(function()
     return loader:LoadAll()
 end)
@@ -65,15 +65,14 @@ if not loadSuccess then
 end
 
 local loadOrder = loadOrderOrError
-print("✅ Modules loaded:", table.concat(loadOrder, ", "))
 
 -- Start services that need to be started
-print("🚀 Starting services...")
+-- Service startup logs will be handled via Logger
 local AssetPreloadService = loader:Get("AssetPreloadService")
 if AssetPreloadService then
-    print("✅ AssetPreloadService found (ModuleLoader.Init/Start lifecycle will manage it)")
+    -- noisy confirmation removed
 else
-    print("❌ AssetPreloadService not found")
+    -- noisy warning removed (Logger will report if issues occur)
 end
 
 -- Validate critical modules loaded
@@ -85,7 +84,7 @@ for _, moduleName in ipairs(requiredModules) do
     end
 end
 
-print("✅ All required modules validated")
+-- Validation complete
 
 -- Get loaded modules for easy access
 local Logger = loader:Get("Logger")

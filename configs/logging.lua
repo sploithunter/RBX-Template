@@ -33,39 +33,40 @@ return {
         Logger = "warn",                  -- Quiet startup
         ConfigLoader = "warn",            -- Only show config errors
         ModuleLoader = "warn",            -- Only show loading issues
-        NetworkBridge = "debug",          -- 🔍 ENABLE NETWORK DEBUGGING
+        NetworkBridge = "warn",           -- Reduce network noise
         NetworkConfig = "warn",           -- Only show config issues
-        
-        -- === CRITICAL SYSTEMS (Show important status) ===
+
+        -- === CRITICAL SYSTEMS (Keep quiet unless needed) ===
         DataService = "info",             -- Profile loading is important
-        EconomyService = "debug",         -- 🔍 ENABLE PURCHASE DEBUGGING
+        EconomyService = "warn",          -- Suppress purchase spam
         MonetizationService = "warn",     -- Keep monetization quiet unless issues
         PlayerEffectsService = "warn",    -- Reduce effect application spam
-        AdminService = "debug",           -- 🔍 ENABLE ADMIN DEBUGGING
+        AdminService = "warn",            -- Suppress admin debug unless issues
         RateLimitService = "warn",        -- Only show rate limit violations
         ServerClockService = "warn",      -- Clock sync issues only
         GlobalEffectsService = "warn",    -- Reduce effect noise
-        
+
         -- === ASSET & MODEL SYSTEMS ===
         AssetPreloadService = "info",     -- Show model loading progress (important)
-        EggPetPreviewService = "warn",    -- Quiet unless debugging UI
-        
+        EggPetPreviewService = "info",    -- Keep egg UI previews visible
+
         -- === UI SYSTEMS (Very noisy - keep quiet) ===
         BaseUI = "error",                 -- Only show serious UI errors
         TemplateManager = "error",        -- Reduce template spam
         MenuManager = "error",            -- Only show menu failures
-        AdminPanel = "debug",             -- 🔍 ENABLE ADMIN PANEL DEBUGGING
+        AdminPanel = "warn",              -- Suppress admin panel chatter
         EffectsPanel = "warn",            -- Effects debugging
         SettingsPanel = "error",          -- Settings are usually stable
-        InventoryPanel = "debug",         -- 🔍 ENABLE INVENTORY DEBUGGING
-        
-        -- === GAME SYSTEMS (Important for gameplay) ===
+        InventoryPanel = "error",         -- Keep inventory UI silent
+
+        -- === GAME SYSTEMS (Prioritize egg-related output) ===
         EggSpawner = "info",              -- Show egg spawning (important for testing)
-        EggCurrentTargetService = "warn", -- Reduce targeting spam 
-        EggInteractionService = "warn",   -- Only show interaction issues
+        EggCurrentTargetService = "info", -- Keep targeting info visible
+        EggInteractionService = "info",   -- Keep interaction info visible
         EggService = "info",              -- Show egg system status
-        InventoryService = "debug",       -- 🔍 ENABLE INVENTORY DEBUGGING
-        
+        EggHatchingService = "info",      -- Future-proof if service switches to Logger
+        InventoryService = "warn",        -- Suppress inventory chatter
+
         -- === EXTERNAL PACKAGES (Very quiet) ===
         Matter = "error",                 -- ECS system - only errors
         Reflex = "error",                 -- State management - only errors  

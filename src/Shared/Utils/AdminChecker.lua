@@ -26,16 +26,12 @@ local function loadAdminConfig()
     if success and result then
         adminConfig = result
         configLoaded = true
-        print("📋 AdminChecker: Loaded admin config", {
-            authorizedUserCount = #result.authorizedUsers,
-            authorizedUsers = result.authorizedUsers
-        })
+        -- quiet: config loaded
     else
         -- Fallback to empty config if loading fails
         adminConfig = { authorizedUsers = {} }
         configLoaded = true
-        warn("⚠️ AdminChecker: Failed to load admin config, using empty fallback")
-        warn("⚠️ AdminChecker: Error details:", result)
+        -- quiet: error suppressed in console
     end
     
     return adminConfig
@@ -47,28 +43,20 @@ function AdminChecker.IsCurrentPlayerAdmin()
     local player = Players.LocalPlayer
     
     if not player or not config then
-        print("🚫 AdminChecker: No player or config available")
         return false
     end
     
     local userId = player.UserId
     
-    print("🔍 AdminChecker: Checking admin status", {
-        userId = userId,
-        userName = player.Name,
-        authorizedUsers = config.authorizedUsers,
-        authorizedUserCount = #config.authorizedUsers
-    })
+    -- quiet: status check
     
     -- Check if user is in authorized list
     for _, authorizedUserId in ipairs(config.authorizedUsers) do
         if userId == authorizedUserId then
-            print("✅ AdminChecker: User is authorized admin")
             return true
         end
     end
     
-    print("❌ AdminChecker: User is NOT authorized admin")
     return false
 end
 

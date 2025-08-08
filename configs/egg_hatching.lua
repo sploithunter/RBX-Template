@@ -68,7 +68,7 @@ local config = {
     
     -- === CURRENT ACTIVE PRESET ===
     -- Change this to use different speed presets
-    current_preset = "normal",  -- Options: "normal", "fast", "very_fast", "ultra_fast", "slow"
+    current_preset = "very_fast",  -- Options: "normal", "fast", "very_fast", "ultra_fast", "slow"
     
     -- === ADVANCED SETTINGS ===
     advanced = {
@@ -78,8 +78,13 @@ local config = {
         
         -- Multi-egg behavior
         max_simultaneous_reveals = 5,        -- Maximum eggs revealing at once (performance)
-        batch_reveal_mode = "staggered",      -- "staggered" or "simultaneous" 
+        batch_reveal_mode = "staggered",     -- "staggered" or "simultaneous" 
         
+        -- Audio cues
+        egg_roll_sound_name = "egg_roll_snare",   -- optional rolling snare while eggs appear
+        egg_roll_volume = 0.6,
+        egg_roll_fade_out = 0.15,                  -- seconds fade-out when first pop happens
+
         -- Debug options
         enable_timing_debug = false,         -- Show detailed timing debug in console
         show_speed_multiplier = false,       -- Display current speed in UI

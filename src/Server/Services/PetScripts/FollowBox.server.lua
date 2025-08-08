@@ -1,20 +1,32 @@
 local Disabled = false
-local Player = game.Players:FindFirstChild(script.Parent.Parent.Name)
-local breakables = game.Workspace:WaitForChild("Game"):WaitForChild("Breakables")
 
--- DEBUG: Check if FollowBox script is running
-print("🔍 DEBUG FollowBox: Script started for control box", script.Parent.Name)
-print("  - Player found:", Player ~= nil)
-if Player then
-    print("  - Player name:", Player.Name)
-    print("  - Player character:", Player.Character ~= nil)
-    if Player.Character then
-        print("  - HumanoidRootPart:", Player.Character:FindFirstChild("HumanoidRootPart") ~= nil)
-        if Player.Character:FindFirstChild("HumanoidRootPart") then
-            print("  - attachmentFar exists:", Player.Character.HumanoidRootPart:FindFirstChild("attachmentFar") ~= nil)
-        end
+-- Suppress verbose debug prints in this script unless explicitly enabled
+local __RAW_PRINT = print
+local __PRINT_ENABLED = false
+local function print(...)
+    if __PRINT_ENABLED then
+        __RAW_PRINT(...)
     end
 end
+local Player = game.Players:FindFirstChild(script.Parent.Parent.Name)
+
+-- Create Game folder if it doesn't exist
+local gameFolder = game.Workspace:FindFirstChild("Game")
+if not gameFolder then
+    gameFolder = Instance.new("Folder")
+    gameFolder.Name = "Game"
+    gameFolder.Parent = game.Workspace
+end
+
+-- Create Breakables folder if it doesn't exist
+local breakables = gameFolder:FindFirstChild("Breakables")
+if not breakables then
+    breakables = Instance.new("Folder")
+    breakables.Name = "Breakables"
+    breakables.Parent = gameFolder
+end
+
+-- DEBUG: follow setup prints are suppressed unless __PRINT_ENABLED=true above
 
 local function scanForID(folder, id, TargetType, TargetWorld)
 	local target = nil

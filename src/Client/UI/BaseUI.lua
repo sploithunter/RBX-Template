@@ -965,9 +965,7 @@ function BaseUI:_createMenuButtonElement(config, parent, layoutOrder)
     -- Use the merged config for the main button properties, but keep the original for sub-components
     config = mergedConfig or config
     
-    print("🎨 Creating professional button for:", config.name)
-    print("   📄 Background image:", config.background_image or "None (using fallback)")
-    print("   🔔 Notification enabled:", config.notification and config.notification.enabled or false)
+    -- noisy UI prints removed
     
     -- Determine button type: ImageButton vs TextButton
     local button
@@ -988,7 +986,7 @@ function BaseUI:_createMenuButtonElement(config, parent, layoutOrder)
         button.BorderSizePixel = 0
     else
         -- FALLBACK MODE: TextButton with programmatic styling  
-        print("   🔄 Using TextButton mode (fallback)")
+        -- noisy UI prints removed
         button = Instance.new("TextButton")
         button.Name = config.name .. "Button" 
         button.BackgroundColor3 = config.color
@@ -1054,7 +1052,7 @@ function BaseUI:_createMenuButtonElement(config, parent, layoutOrder)
     -- Store reference
     self.menuButtons[config.name] = button
     
-    print("   ✅ Professional button created successfully")
+    -- noisy UI prints removed
     return button
 end
 
@@ -1069,7 +1067,7 @@ function BaseUI:_createButtonIcon(config, parent)
     
     -- Safety check and fallback to hardcoded defaults if merging failed
     if not iconConfig or not iconConfig.size then
-        print("   ⚠️ WARNING: Defaults merging failed, using hardcoded fallbacks")
+        -- noisy UI prints removed
         iconConfig = {
             size = {scale_x = 0.4, scale_y = 0.4},
             position = {scale_x = 0.5, scale_y = 0.5},
@@ -1341,7 +1339,7 @@ function BaseUI:_mergeWithDefaults(specificConfig, elementType, configType)
     
     -- Merge specific config with defaults (specific overrides defaults)
     local result = self:_deepMerge(defaults, specificConfig)
-    print("     returning merged config, has size:", result.size ~= nil)
+    -- noisy UI prints removed
     return result
 end
 
@@ -1418,7 +1416,7 @@ end
 
 -- Create professional image-based panel with configurable components
 function BaseUI:CreateImagePanel(panelName, config, parent)
-    print("🎨 Creating professional image panel:", panelName)
+    -- noisy UI prints removed
     
     -- Merge configuration with global defaults
     local panelConfig = self:_mergeWithDefaults(config, "panel", "background")
@@ -1430,8 +1428,7 @@ function BaseUI:CreateImagePanel(panelName, config, parent)
     local uiConfig = ConfigLoader:LoadConfig("ui")
     local specificConfig = uiConfig.panel_configs and uiConfig.panel_configs[panelName] or {}
     
-    print("   📄 Panel config found:", specificConfig ~= nil)
-    print("   🖼️ Background image:", specificConfig.background and specificConfig.background.image or "None")
+    -- noisy UI prints removed
     
     -- Create main panel container
     local panel = self:_createPanelBackground(panelConfig, specificConfig.background, parent)
@@ -1445,7 +1442,7 @@ function BaseUI:CreateImagePanel(panelName, config, parent)
     -- Create content area
     local content = self:_createPanelContent(panel, contentConfig, specificConfig.content, header)
     
-    print("   ✅ Professional panel created successfully")
+    -- noisy UI prints removed
     
     return {
         panel = panel,
@@ -1462,14 +1459,14 @@ function BaseUI:_createPanelBackground(defaultConfig, specificConfig, parent)
     local panel
     
     if backgroundImage then
-        print("   ✨ Using ImageLabel mode (professional panel)")
+        -- noisy UI prints removed
         panel = Instance.new("ImageLabel")
         panel.Image = self:_processAssetId(backgroundImage)
         panel.ScaleType = Enum.ScaleType.Stretch
         panel.ImageColor3 = Color3.fromRGB(255, 255, 255)
         panel.BackgroundTransparency = 1
     else
-        print("   🔄 Using Frame mode (fallback panel)")
+        -- noisy UI prints removed
         panel = Instance.new("Frame")
         panel.BackgroundColor3 = config and config.color or defaultConfig.color
         panel.BackgroundTransparency = 0
@@ -1495,7 +1492,7 @@ function BaseUI:_createPanelHeader(panel, defaultConfig, specificConfig)
     local config = specificConfig or defaultConfig
     if not config then return nil end
     
-    print("   📋 Creating panel header")
+    -- noisy UI prints removed
     
     local header
     local headerImage = config.background_image
@@ -1653,7 +1650,7 @@ end
 
 -- Create image-based toggle setting
 function BaseUI:CreateImageToggle(name, currentValue, config, parent, callback)
-    print("   🔘 Creating image toggle:", name)
+    -- noisy UI prints removed
     
     -- Merge with defaults
     local toggleConfig = self:_mergeWithDefaults(config, "setting_item", "toggle")
@@ -1662,7 +1659,7 @@ function BaseUI:CreateImageToggle(name, currentValue, config, parent, callback)
     
     -- Safety checks
     if not toggleConfig or not toggleConfig.on_image then
-        print("   ⚠️ WARNING: Toggle config missing, using fallbacks")
+        -- noisy UI prints removed
         toggleConfig = {
             on_image = "5533192672",
             off_image = "5533209494", 
@@ -1715,7 +1712,6 @@ function BaseUI:CreateImageToggle(name, currentValue, config, parent, callback)
     local function updateToggleState()
         local imageId = currentValue and toggleConfig.on_image or toggleConfig.off_image
         toggleButton.Image = self:_processAssetId(imageId)
-        print("     🔄 Toggle state:", currentValue and "ON" or "OFF", "Image:", imageId)
     end
     
     updateToggleState()

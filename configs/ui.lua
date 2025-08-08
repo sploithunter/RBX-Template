@@ -189,6 +189,14 @@ local uiConfig = {
             text_display = "TextLabelStyle",
         },
         
+        -- Optional per-template defaults (safe to be empty)
+        defaults = {
+            -- Examples (uncomment and customize as needed):
+            -- menu_button = { corner_radius = 12 },
+            -- panel_large = { corner_radius = 16 },
+            -- panel_scroll = { corner_radius = 16 },
+        },
+        
         -- Template configurations moved to template_helpers section below
     },
 
@@ -1202,7 +1210,12 @@ local uiConfig = {
         end,
         
         get_template_config = function(config, template_type)
-            return config.templates.defaults[template_type] or {}
+            local templates = config and config.templates
+            local defaults = templates and templates.defaults
+            if defaults and defaults[template_type] then
+                return defaults[template_type]
+            end
+            return {}
         end,
         
         format_currency = function(config, amount)

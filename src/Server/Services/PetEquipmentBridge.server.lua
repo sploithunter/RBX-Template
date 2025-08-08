@@ -10,6 +10,15 @@
 --]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Silence verbose prints unless enabled
+local __RAW_PRINT = print
+local __PRINT_ENABLED = false
+local function print(...)
+    if __PRINT_ENABLED then
+        __RAW_PRINT(...)
+    end
+end
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 

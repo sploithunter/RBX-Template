@@ -22,10 +22,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Service dependencies (injected)
 local logger
 local petConfig
+local soundsConfig
 
 function AssetPreloadService:Init()
     logger = self._modules.Logger
     petConfig = self._modules.ConfigLoader:LoadConfig("pets")
+    soundsConfig = self._modules.ConfigLoader:LoadConfig("sounds")
     
     logger:Info("AssetPreloadService initialized")
 end
@@ -49,6 +51,7 @@ function AssetPreloadService:Start()
     task.spawn(function()
         logger:Info("🔄 AssetPreloadService: LoadAllModelsIntoAssets task started")
         self:LoadAllModelsIntoAssets()
+        self:LoadAllSoundsIntoAssets()
         logger:Info("✅ AssetPreloadService: LoadAllModelsIntoAssets task completed")
     end)
     
@@ -105,8 +108,16 @@ function AssetPreloadService:CreateAssetFolders()
         logger:Info("✅ CreateAssetFolders: Pets folder created")
     end
     
+    -- Ensure Sounds folder exists
+    local sounds = assets:FindFirstChild("Sounds")
+    if not sounds then
+        sounds = Instance.new("Folder")
+        sounds.Name = "Sounds"
+        sounds.Parent = assets
+    end
+
     logger:Info("✅ CreateAssetFolders: Asset folder structure complete", {
-        path = "ReplicatedStorage.Assets.Models.Pets"
+        path = "ReplicatedStorage.Assets"
     })
 end
 
@@ -315,6 +326,34 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
     if _G.AssetsLoadedEvent then
         _G.AssetsLoadedEvent:Fire()
     end
+end
+
+-- Preload all configured sounds into ReplicatedStorage.Assets.Sounds
+function AssetPreloadService:LoadAllSoundsIntoAssets()
+    logger:Info("🔊 LoadAllSoundsIntoAssets: Starting...")
+    local soundsFolder = ReplicatedStorage.Assets:FindFirstChild("Sounds")
+    if not soundsFolder then
+        logger:Error("❌ LoadAllSoundsIntoAssets: Sounds folder missing")
+        return
+    end
+
+    local count = 0
+    for name, soundData in pairs(soundsConfig or {}) do
+        if type(soundData) == "table" and soundData.id then
+            local sound = soundsFolder:FindFirstChild(name)
+            if sound then
+                sound:Destroy()
+            end
+            local s = Instance.new("Sound")
+            s.Name = name
+            s.SoundId = soundData.id
+            if soundData.volume then s.Volume = soundData.volume end
+            if soundData.playback_speed then s.PlaybackSpeed = soundData.playback_speed end
+            s.Parent = soundsFolder
+            count += 1
+        end
+    end
+    logger:Info("🔊 LoadAllSoundsIntoAssets: Completed", {count = count})
 end
 
 -- Load a single model into a folder

@@ -1,226 +1,97 @@
--- Flash Effects Configuration
--- Configuration-driven flash effects for egg hatching animations
--- Following the "Configuration as Code" principle from COMPREHENSIVE_ARCHITECTURE.md
+-- Flash effects configuration for egg reveal phase
+-- These effects are lightweight UI-based animations rendered inside the egg frame.
 
-return {
-    version = "1.0.0",
+local config = {
+    default_effect = "sparkle", -- Options: starburst, shockwave, confetti
     
-    -- Default flash effect to use
-    default_effect = "starburst",
-    
-    -- Effect definitions
+    -- Global sound settings for egg open (prefer named asset preloads)
+    sound = {
+        sound_name = "egg_hatch_pop",  -- references configs/sounds.lua and Assets.Sounds
+        sound_id = "rbxassetid://98548849463653", -- fallback if not preloaded
+        volume = 0.8,
+        playback_speed = 1.0
+    },
+
     effects = {
-        -- ⭐ Star Burst Effect (IMPLEMENTED)
         starburst = {
-            name = "Star Burst",
-            description = "Multiple expanding stars radiating from center",
             type = "starburst",
-            enabled = true,
-            
-            -- Visual configuration
+            name = "Starburst",
             config = {
-                star_count = 8,                    -- Number of stars
-                min_size = 20,                     -- Minimum star size
-                max_size = 80,                     -- Maximum star size
-                expansion_distance = 400,           -- How far stars travel
-                duration = 0.8,                    -- Total animation duration
-                
-                -- Colors (gradient from center to edge)
+                star_count = 20,
+                min_size = 18,
+                max_size = 90,
+                expansion_distance = 320,
+                duration = 0.85,
                 colors = {
-                    Color3.fromRGB(255, 255, 255), -- White center
-                    Color3.fromRGB(255, 255, 150), -- Light yellow
-                    Color3.fromRGB(255, 200, 100), -- Golden
-                    Color3.fromRGB(255, 150, 50),  -- Orange edge
+                    Color3.fromRGB(255,255,255),
+                    Color3.fromRGB(255,240,160),
+                    Color3.fromRGB(255,200,120),
+                    Color3.fromRGB(255,150,60),
                 },
-                
-                -- Animation properties
-                rotation_speed = 360,              -- Degrees per second
-                fade_in_time = 0.1,               -- Time to fade in
-                fade_out_time = 0.3,              -- Time to fade out
-                scale_overshoot = 1.2,            -- Scale overshoot factor
+                rotation_speed = 360,
+                fade_in_time = 0.1,
+                fade_out_time = 0.3,
             }
         },
-        
-        -- 💥 Explosion Effect (PLACEHOLDER)
-        explosion = {
-            name = "Explosion",
-            description = "Particle explosion with debris flying outward",
-            type = "explosion",
-            enabled = false, -- Not implemented yet
-            
+
+        sparkle = {
+            type = "sparkle",
+            name = "Sparkle Burst",
             config = {
-                particle_count = 50,
-                explosion_radius = 150,
-                debris_types = {"spark", "smoke", "fire"},
-                gravity_effect = true,
+                duration = 0.9,
+                sparkle_count = 36,
+                size = NumberRange.new(8, 18),
+                spread_distance = 240,
+                colors = {
+                    Color3.fromRGB(255,255,255),
+                    Color3.fromRGB(255,240,200),
+                    Color3.fromRGB(200,220,255)
+                },
+                -- Pulsating sparkle brightness (size + transparency oscillation)
+                pulsate = true,
+                pulsate_rate = 0.16,        -- seconds per half-cycle
+                pulsate_scale_min = 0.8,    -- min scale vs base size
+                pulsate_scale_max = 1.25,   -- max scale vs base size
+                alpha_min = 0.1,            -- brightest (less transparent)
+                alpha_max = 0.4             -- dimmest (more transparent)
+            }
+        },
+
+        shockwave = {
+            type = "shockwave",
+            name = "Shockwave Ring",
+            config = {
+                duration = 0.7,
+                start_radius = 40,
+                end_radius = 420,
+                stroke_thickness = 6,
+                color = Color3.fromRGB(255,255,255),
+                fade_out_time = 0.25,
+                rings = 2,
+                ring_delay = 0.08
+            }
+        },
+
+        confetti = {
+            type = "confetti",
+            name = "Confetti Pop",
+            config = {
                 duration = 1.2,
-                
+                piece_count = 40,
+                piece_size = NumberRange.new(6, 12),
+                spread_distance = 280,
+                fall_distance = 160,
                 colors = {
-                    Color3.fromRGB(255, 100, 0),   -- Orange fire
-                    Color3.fromRGB(255, 200, 0),   -- Yellow flame
-                    Color3.fromRGB(255, 255, 255), -- White hot
-                },
-                
-                shockwave_enabled = true,
-                shockwave_size = 300,
-                screen_shake = {
-                    enabled = true,
-                    intensity = 5,
-                    duration = 0.3
+                    Color3.fromRGB(255, 99, 71),
+                    Color3.fromRGB(255, 215, 0),
+                    Color3.fromRGB(50, 205, 50),
+                    Color3.fromRGB(64, 224, 208),
+                    Color3.fromRGB(30, 144, 255),
+                    Color3.fromRGB(218, 112, 214),
                 }
-            }
-        },
-        
-        -- ✨ Magic Sparkle Burst (PLACEHOLDER)
-        sparkle_burst = {
-            name = "Magic Sparkle Burst",
-            description = "Hundreds of small sparkles exploding outward",
-            type = "sparkle_burst",
-            enabled = false, -- Not implemented yet
-            
-            config = {
-                sparkle_count = 200,
-                sparkle_size = {min = 3, max = 12},
-                burst_radius = 180,
-                twinkle_frequency = 8, -- Sparkles per second
-                duration = 1.5,
-                
-                colors = {
-                    Color3.fromRGB(255, 255, 255), -- White
-                    Color3.fromRGB(255, 200, 255), -- Pink
-                    Color3.fromRGB(200, 255, 255), -- Cyan
-                    Color3.fromRGB(255, 255, 200), -- Yellow
-                    Color3.fromRGB(200, 255, 200), -- Green
-                },
-                
-                gravity_enabled = false,
-                fade_pattern = "twinkle", -- "linear", "twinkle", "pulse"
-                trail_enabled = true,
-                trail_length = 10
-            }
-        },
-        
-        -- 🌊 Energy Wave (PLACEHOLDER)
-        energy_wave = {
-            name = "Energy Wave",
-            description = "Concentric circles expanding from center",
-            type = "energy_wave",
-            enabled = false, -- Not implemented yet
-            
-            config = {
-                wave_count = 3,
-                wave_spacing = 0.2, -- Time between waves
-                max_radius = 250,
-                wave_thickness = 8,
-                duration = 1.0,
-                
-                colors = {
-                    Color3.fromRGB(100, 200, 255), -- Blue energy
-                    Color3.fromRGB(200, 255, 255), -- Cyan
-                    Color3.fromRGB(255, 255, 255), -- White
-                },
-                
-                distortion_enabled = true,
-                particle_trail = true,
-                pulse_frequency = 4, -- Pulses per second
-                transparency_gradient = true
-            }
-        },
-        
-        -- 🔥 Fire Burst (PLACEHOLDER)
-        fire_burst = {
-            name = "Fire Burst",
-            description = "Flame particles shooting upward with smoke trails",
-            type = "fire_burst",
-            enabled = false, -- Not implemented yet
-            
-            config = {
-                flame_count = 30,
-                flame_height = {min = 50, max = 150},
-                spread_angle = 60, -- Degrees
-                duration = 1.8,
-                
-                colors = {
-                    Color3.fromRGB(255, 50, 0),    -- Red fire
-                    Color3.fromRGB(255, 150, 0),   -- Orange
-                    Color3.fromRGB(255, 255, 0),   -- Yellow
-                    Color3.fromRGB(100, 100, 100), -- Smoke
-                },
-                
-                smoke_enabled = true,
-                smoke_rise_speed = 50,
-                heat_distortion = true,
-                ember_particles = true,
-                wind_effect = {
-                    enabled = true,
-                    direction = Vector3.new(1, 0, 0),
-                    strength = 0.3
-                }
-            }
-        },
-        
-        -- 🎆 Rainbow Burst (PLACEHOLDER)
-        rainbow_burst = {
-            name = "Rainbow Burst",
-            description = "Colorful rainbow explosion with prismatic effects",
-            type = "rainbow_burst",
-            enabled = false, -- Not implemented yet
-            
-            config = {
-                ray_count = 12,
-                ray_length = 200,
-                color_cycle_speed = 2, -- Cycles per second
-                duration = 1.2,
-                
-                colors = {
-                    Color3.fromRGB(255, 0, 0),     -- Red
-                    Color3.fromRGB(255, 127, 0),   -- Orange
-                    Color3.fromRGB(255, 255, 0),   -- Yellow
-                    Color3.fromRGB(0, 255, 0),     -- Green
-                    Color3.fromRGB(0, 0, 255),     -- Blue
-                    Color3.fromRGB(75, 0, 130),    -- Indigo
-                    Color3.fromRGB(148, 0, 211),   -- Violet
-                },
-                
-                prism_effect = true,
-                sparkle_overlay = true,
-                color_blend_mode = "additive",
-                rotation_enabled = true,
-                rotation_speed = 180 -- Degrees per second
-            }
-        }
-    },
-    
-    -- Effect categories for UI organization
-    categories = {
-        magical = {"starburst", "sparkle_burst", "rainbow_burst"},
-        realistic = {"explosion", "fire_burst"},
-        energy = {"energy_wave"},
-    },
-    
-    -- Performance settings
-    performance = {
-        max_particles_per_effect = 500,
-        reduce_effects_on_mobile = true,
-        fps_threshold_for_reduction = 30,
-        
-        -- Quality levels
-        quality_levels = {
-            low = {
-                particle_multiplier = 0.5,
-                duration_multiplier = 0.8,
-                color_complexity = "simple"
-            },
-            medium = {
-                particle_multiplier = 0.8,
-                duration_multiplier = 0.9,
-                color_complexity = "medium"
-            },
-            high = {
-                particle_multiplier = 1.0,
-                duration_multiplier = 1.0,
-                color_complexity = "full"
             }
         }
     }
 }
+
+return config

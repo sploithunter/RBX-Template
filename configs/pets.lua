@@ -116,6 +116,13 @@ local petConfig = {
     
     -- === RARITY SYSTEM (Visual/Organization Only) ===
     rarities = {
+        secret = {
+            name = "Secret",
+            color = Color3.fromRGB(255, 140, 0),  -- Orange-gold
+            glow = true,
+            glow_color = Color3.fromRGB(255, 220, 120),
+            particle_effects = true,
+        },
         common = {
             name = "Common",
             color = Color3.fromRGB(150, 150, 150),  -- Gray
@@ -348,6 +355,7 @@ local petConfig = {
                     health = 200,
                     abilities = {"fire_breath"},
                     viewport_zoom = 2.0,  -- Dragons need higher zoom to appear properly sized
+                    rarity_override = "secret", -- SPECIAL: Dragon basic is a Secret rarity
                 },
                 golden = {
                     asset_id = "rbxassetid://91261941530299",
@@ -628,7 +636,11 @@ function petConfig.getPet(petType, variant)
         local pet = petConfig.pets[petType]
         local petVariant = pet.variants[variant]
         local variantInfo = petConfig.variants[variant]
-        local rarity = petConfig.rarities[variantInfo.rarity]
+        local rarityKey = variantInfo.rarity
+        if petVariant.rarity_override and petConfig.rarities[petVariant.rarity_override] then
+            rarityKey = petVariant.rarity_override
+        end
+        local rarity = petConfig.rarities[rarityKey]
         
         -- Create base pet data
         local petData = {
@@ -645,6 +657,7 @@ function petConfig.getPet(petType, variant)
             -- Meta info
             variant = variant,
             rarity = rarity,
+            rarity_id = rarityKey,
             variant_info = variantInfo,
         }
         

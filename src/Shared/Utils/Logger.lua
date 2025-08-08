@@ -116,10 +116,13 @@ function Logger:LoadLoggingConfig()
             end
         end
         
-        print("[Logger] Loaded logging configuration with", 
-            table.getn and #Config.ServiceLogLevels or "unknown", "service-specific levels")
+        -- Use logger output instead of raw print to respect log levels
+        self:Info("[Logger] Loaded logging configuration", {
+            context = "Logger",
+            serviceSpecificLevels = (table.getn and #Config.ServiceLogLevels) or 0
+        })
     else
-        print("[Logger] No logging configuration found, using defaults")
+        self:Warn("[Logger] No logging configuration found, using defaults", { context = "Logger" })
     end
 end
 

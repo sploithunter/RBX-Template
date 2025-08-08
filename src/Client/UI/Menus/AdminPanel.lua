@@ -1314,14 +1314,45 @@ function AdminPanel:_executeEggHatchingAction(action)
         return
     end
     
-    -- Generate random eggs
+    -- Optionally create local anchor parts so 3D FX can play during tests
+    local anchors = {}
+    local maxAnchors = math.min(eggCount, 5) -- limit FX to avoid spam
+    local player = Players.LocalPlayer
+    local hrp = player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local basePos = hrp.Position + Vector3.new(0, 3, 0)
+        local radius = 6
+        for i = 1, maxAnchors do
+            local theta = (i / maxAnchors) * math.pi * 2
+            local anchor = Instance.new("Part")
+            anchor.Name = "LocalEggFXAnchor_" .. i
+            anchor.Size = Vector3.new(0.5, 0.5, 0.5)
+            anchor.Transparency = 1
+            anchor.Anchored = true
+            anchor.CanCollide = false
+            anchor.CanQuery = false
+            anchor.CanTouch = false
+            anchor.CFrame = CFrame.new(basePos + Vector3.new(math.cos(theta) * radius, 0, math.sin(theta) * radius))
+            anchor.Parent = workspace
+            table.insert(anchors, anchor)
+        end
+        -- Cleanup anchors after a short delay
+        task.delay(8, function()
+            for _, a in ipairs(anchors) do
+                if a and a.Parent then a:Destroy() end
+            end
+        end)
+    end
+
+    -- Generate random eggs and attach worldPart for first few
     for i = 1, eggCount do
         table.insert(testEggs, {
             eggType = "basic_egg",
             petType = petTypes[math.random(1, #petTypes)],
             variant = variants[math.random(1, #variants)],
             imageId = "generated_image",
-            petImageId = "generated_image"
+            petImageId = "generated_image",
+            worldPart = anchors[i] -- nil beyond maxAnchors
         })
     end
     
@@ -1357,14 +1388,43 @@ function AdminPanel:_executeCustomEggHatching(inputData)
             return
         end
         
-        -- Generate random eggs
+        -- Create local anchors (limit to first few) and generate eggs
+        local anchors = {}
+        local maxAnchors = math.min(eggCount, 5)
+        local player = Players.LocalPlayer
+        local hrp = player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local basePos = hrp.Position + Vector3.new(0, 3, 0)
+            local radius = 6
+            for i = 1, maxAnchors do
+                local theta = (i / maxAnchors) * math.pi * 2
+                local anchor = Instance.new("Part")
+                anchor.Name = "LocalEggFXAnchor_" .. i
+                anchor.Size = Vector3.new(0.5, 0.5, 0.5)
+                anchor.Transparency = 1
+                anchor.Anchored = true
+                anchor.CanCollide = false
+                anchor.CanQuery = false
+                anchor.CanTouch = false
+                anchor.CFrame = CFrame.new(basePos + Vector3.new(math.cos(theta) * radius, 0, math.sin(theta) * radius))
+                anchor.Parent = workspace
+                table.insert(anchors, anchor)
+            end
+            task.delay(8, function()
+                for _, a in ipairs(anchors) do
+                    if a and a.Parent then a:Destroy() end
+                end
+            end)
+        end
+
         for i = 1, eggCount do
             table.insert(testEggs, {
                 eggType = "basic_egg",
                 petType = petTypes[math.random(1, #petTypes)],
                 variant = variants[math.random(1, #variants)],
                 imageId = "generated_image",
-                petImageId = "generated_image"
+                petImageId = "generated_image",
+                worldPart = anchors[i]
             })
         end
         

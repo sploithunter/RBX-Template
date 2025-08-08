@@ -46,36 +46,36 @@ end
 function EggInteractionService:OnEKeyPressed()
     -- Get current target from the targeting service
     if not currentTargetService then
-        print("❌ CurrentTargetService not available")
+        Logger:Warn("CurrentTargetService not available", {context = "EggInteractionService"})
         return
     end
     
     local currentTarget = currentTargetService:GetCurrentTarget()
     if currentTarget == "None" or not currentTarget then
-        print("No egg currently targeted")
+        Logger:Debug("No egg currently targeted", {context = "EggInteractionService"})
         return
     end
     
-    print("E key pressed - attempting to purchase:", currentTarget)
+    Logger:Info("E pressed - attempting purchase", {context = "EggInteractionService", eggType = currentTarget})
     self:HandleEggPurchase(currentTarget)
 end
 
 -- === EGG PURCHASE HANDLING ===
 
 function EggInteractionService:HandleEggPurchase(eggType)
-    print("Requesting egg purchase:", eggType)
+    Logger:Info("Requesting egg purchase", {context = "EggInteractionService", eggType = eggType})
     
     -- Validate egg type
     local eggData = petConfig.egg_sources[eggType]
     if not eggData then
-        print("❌ Invalid egg type:", eggType)
+        Logger:Warn("Invalid egg type", {context = "EggInteractionService", eggType = eggType})
         self:ShowErrorMessage("Invalid egg type")
         return
     end
     
     -- Client-side distance check (like working game)
     if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-        print("❌ No character or root part")
+        Logger:Warn("No character or root part", {context = "EggInteractionService"})
         self:ShowErrorMessage("Character not ready")
         return
     end
@@ -83,7 +83,7 @@ function EggInteractionService:HandleEggPurchase(eggType)
     -- Find egg in workspace
     local eggInWorkspace = self:FindEggByType(eggType)
     if not eggInWorkspace then
-        print("❌ Egg not found in workspace")
+        Logger:Warn("Egg not found in workspace", {context = "EggInteractionService"})
         self:ShowErrorMessage("Egg not found")
         return
     end
@@ -98,24 +98,24 @@ function EggInteractionService:HandleEggPurchase(eggType)
     end
     
     if not anchor then
-        print("❌ No anchor found on egg")
+        Logger:Warn("No anchor found on egg", {context = "EggInteractionService"})
         self:ShowErrorMessage("Egg configuration error")
         return
     end
     
     local distance = (player.Character.HumanoidRootPart.Position - anchor.Position).Magnitude
     if distance > eggSystemConfig.proximity.max_distance then
-        print("❌ Too far from egg:", distance)
+        Logger:Info("Too far from egg", {context = "EggInteractionService", distance = distance})
         self:ShowErrorMessage(eggSystemConfig.messages.too_far_away)
         return
     end
     
-    print("✅ Distance check passed:", distance)
+    Logger:Debug("Distance check passed", {context = "EggInteractionService", distance = distance})
     
     -- Call server using RemoteFunction (like working game)
     local eggRemote = ReplicatedStorage:FindFirstChild("EggOpened")
     if not eggRemote then
-        print("❌ EggOpened RemoteFunction not found")
+        Logger:Error("EggOpened RemoteFunction not found", {context = "EggInteractionService"})
         self:ShowErrorMessage("Server not ready, please restart game")
         return
     end
@@ -125,23 +125,23 @@ function EggInteractionService:HandleEggPurchase(eggType)
     end)
     
     if success then
-        print("Server call successful - Result:", result, "Message:", message)
+        Logger:Info("Server call successful", {context = "EggInteractionService", resultType = typeof(result)})
         if type(result) == "table" and result.success then
-            print("✅ Purchase successful!")
+            Logger:Info("Purchase successful", {context = "EggInteractionService"})
             self:ShowHatchingResults(result)
         elseif result == "Error" then
-            print("❌ Purchase failed:", message or "Unknown error")
+            Logger:Warn("Purchase failed", {context = "EggInteractionService", message = message or "Unknown error"})
             self:ShowErrorMessage(message or "Purchase failed")
         elseif type(result) == "table" and result.Pet then
             -- Handle successful result without explicit success flag
-            print("✅ Purchase successful (legacy format)!")
+            Logger:Info("Purchase successful (legacy format)", {context = "EggInteractionService"})
             self:ShowHatchingResults(result)
         else
-            print("❌ Unexpected result format:", type(result), result)
+            Logger:Warn("Unexpected result format", {context = "EggInteractionService", resultType = typeof(result)})
             self:ShowErrorMessage("Unexpected server response")
         end
     else
-        print("❌ Server call failed:", result)
+        Logger:Error("Server call failed", {context = "EggInteractionService", error = tostring(result)})
         self:ShowErrorMessage("Connection error")
     end
 end
@@ -206,7 +206,11 @@ function EggInteractionService:ShowErrorMessage(errorMessage)
 end
 
 function EggInteractionService:ShowHatchingResults(result)
-    print("🎉 You hatched a", result.Type, result.Pet, "with", result.Power, "power!")
+    -- Reduce console noise: keep egg-related logs through Logger only
+    local Logger = self._modules and self._modules.Logger
+    if Logger and Logger.Info then
+        Logger:Info("Hatched pet", {pet = result.Pet, variant = result.Type, power = result.Power})
+    end
     
     -- Use the full egg hatching animation system instead of simple notification
     local success, hatchingService = pcall(function()
@@ -225,10 +229,13 @@ function EggInteractionService:ShowHatchingResults(result)
         }
         
         -- Start the hatching animation (uses persistent reusable GUI)
-        print("🎬 Starting hatching animation for:", result.Pet, result.Type)
+        if Logger and Logger.Info then
+            Logger:Info("Starting egg hatching animation", {pet = result.Pet, variant = result.Type})
+        end
         local animationResult = hatchingService:StartHatchingAnimation({eggData})
-        
-        print("✅ Hatching animation started - using persistent GUI")
+        if Logger and Logger.Info then
+            Logger:Info("Hatching animation started (persistent GUI)")
+        end
     else
         -- Fallback to simple notification if animation service fails
         warn("Failed to load EggHatchingService, falling back to simple notification")
@@ -332,7 +339,7 @@ end
 -- === INITIALIZATION ===
 
 function EggInteractionService:Initialize()
-    print("EggInteractionService: Initializing with CurrentTarget system...")
+    Logger:Info("Initializing with CurrentTarget system", {context = "EggInteractionService"})
     
     -- Get reference to CurrentTargetService
     local success, currentTargetServiceOrError = pcall(function()
@@ -341,7 +348,7 @@ function EggInteractionService:Initialize()
     
     if success then
         currentTargetService = currentTargetServiceOrError
-        print("EggInteractionService: Got CurrentTargetService reference")
+        Logger:Info("Got CurrentTargetService reference", {context = "EggInteractionService"})
     else
         Logger:Error("Failed to get CurrentTargetService", {error = tostring(currentTargetServiceOrError)})
         return
@@ -360,7 +367,7 @@ function EggInteractionService:Initialize()
         end
     end)
     
-    print("EggInteractionService: Initialized with E key listening")
+    Logger:Info("Initialized with E key listening", {context = "EggInteractionService"})
 end
 
 return EggInteractionService

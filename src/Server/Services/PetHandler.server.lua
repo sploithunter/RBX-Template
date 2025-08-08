@@ -13,6 +13,15 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+
+-- Suppress verbose debug prints in this script unless explicitly enabled
+local __RAW_PRINT = print
+local __PRINT_ENABLED = false
+local function print(...)
+    if __PRINT_ENABLED then
+        __RAW_PRINT(...)
+    end
+end
 local RunService = game:GetService("RunService")
 local workspace = game:GetService("Workspace")
 
