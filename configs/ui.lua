@@ -957,7 +957,7 @@ local uiConfig = {
         -- Menu Buttons Pane (bottom-left) - Auto-sizing grid that adapts to content
         menu_buttons_pane = {
             position = "bottom-left", 
-            offset = {x = 10, y = -10}, -- Safe padding from edges
+            offset = {x = 10, y = -10}, -- restore original placement
             size = {width = 280, height = 140}, -- Container size - buttons will auto-fit
             background = {enabled = false}, -- Debug backgrounds will handle visualization
             layout = {
@@ -1082,22 +1082,22 @@ local uiConfig = {
         -- Auto-target buttons flanking the Pets button
         auto_low_button_pane = {
             position = "bottom-center",
-            offset = {x = -170, y = -10},
-            size = {width = 120, height = 60},
+            offset = {x = -140, y = -10},
+            size = {width = 60, height = 60},
             background = {enabled = false},
             layout = {type = "single"},
             contents = {
-                {type = "menu_button", config = {name = "AutoLow", icon = "18852000893", text = "Low", action = "autolow_action"}}
+                {type = "menu_button", config = {name = "AutoLow", icon = "70726573", text = "Low", action = "autolow_action"}}
             }
         },
         auto_high_button_pane = {
             position = "bottom-center",
-            offset = {x = 170, y = -10},
-            size = {width = 120, height = 60},
+            offset = {x = 140, y = -10},
+            size = {width = 60, height = 60},
             background = {enabled = false},
             layout = {type = "single"},
             contents = {
-                {type = "menu_button", config = {name = "AutoHigh", icon = "18852000893", text = "High", action = "autohigh_action"}}
+                {type = "menu_button", config = {name = "AutoHigh", icon = "70726573", text = "High", action = "autohigh_action"}}
             }
         },
         

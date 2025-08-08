@@ -1350,14 +1350,16 @@ function BaseUI:_createButtonLabel(config, parent)
     
     local label = Instance.new("TextLabel")
     label.Name = "Label"
-    label.Size = UDim2.new(1, -textSize.margin * 2, 0, textSize.height)  -- Configurable size
-    label.Position = UDim2.new(0, textPosition.side_margin, 1, -textPosition.bottom_offset)  -- Configurable position
-    label.AnchorPoint = Vector2.new(0, 0)
+    -- Make the label span the full button width and center it horizontally
+    label.Size = UDim2.new(1, 0, 0, textSize.height)
+    label.Position = UDim2.new(0.5, 0, 1, -textPosition.bottom_offset)
+    label.AnchorPoint = Vector2.new(0.5, 0)
     label.BackgroundTransparency = 1
     label.Text = config.text or config.name
     label.TextColor3 = textColor  -- Configurable color
     label.TextScaled = useTextScaled  -- Configurable scaling
     label.Font = font  -- Configurable font
+    label.TextXAlignment = Enum.TextXAlignment.Center  -- Center text horizontally within full-width label
     label.ZIndex = 15
     
     -- If TextScaled is disabled, set a specific text size
