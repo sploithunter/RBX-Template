@@ -974,14 +974,11 @@ function BaseUI:_createMenuButtonElement(config, parent, layoutOrder)
     local processedBackgroundImage = self:_processAssetId(config.background_image)
     local hasBackgroundImage = processedBackgroundImage ~= nil
     
-    print("   🔍 Debug asset processing:")
-    print("     Raw value:", config.background_image, "Type:", type(config.background_image))
-    print("     Processed:", processedBackgroundImage)
-    print("     HasBackgroundImage:", hasBackgroundImage)
+
     
     if hasBackgroundImage then
         -- PROFESSIONAL MODE: ImageButton with custom background
-        print("   ✨ Using ImageButton mode (professional)")
+
         button = Instance.new("ImageButton")
         button.Name = config.name .. "Button"
         button.Image = processedBackgroundImage
@@ -1084,13 +1081,10 @@ function BaseUI:_createButtonIcon(config, parent)
     local iconPosition = iconConfig.position  
     local iconOffset = iconConfig.offset
     
-    print("   🎯 Icon configuration:")
-    print("     Size: " .. (iconSize and iconSize.scale_x or "nil") .. "x" .. (iconSize and iconSize.scale_y or "nil") .. " (relative to button)")
-    print("     Position: " .. (iconPosition and iconPosition.scale_x or "nil") .. "," .. (iconPosition and iconPosition.scale_y or "nil") .. " (relative)")
-    print("     Offset: " .. (iconOffset and iconOffset.x or "nil") .. "," .. (iconOffset and iconOffset.y or "nil") .. " (pixels)")
+
     
     if assetId then
-        print("   🖼️ Creating ImageLabel icon:", assetId)
+
         -- Use ImageLabel for Roblox assets with error handling
         local success, result = pcall(function()
             icon = Instance.new("ImageLabel")
@@ -1110,7 +1104,7 @@ function BaseUI:_createButtonIcon(config, parent)
             icon = self:_createEmojiIcon(config, parent, iconSize, iconPosition, iconOffset)
         end
     else
-        print("   😀 Creating emoji icon:", iconValue)
+
         icon = self:_createEmojiIcon(config, parent, iconSize, iconPosition, iconOffset)
     end
     
@@ -1158,7 +1152,7 @@ function BaseUI:_createButtonNotification(config, parent)
         return nil
     end
     
-    print("   🔔 Creating notification badge:", notifConfig.text)
+    
     
     -- Notification badge background
     local notification = Instance.new("Frame")
@@ -1267,11 +1261,7 @@ function BaseUI:_createButtonLabel(config, parent)
     local useTextScaled = textConfig.text_scaled
     local textPosition = textConfig.position
     
-    print("   📝 Text configuration:")
-    print("     Font: " .. tostring(font))
-    print("     Height: " .. textSize.height .. "px, Margin: " .. textSize.margin .. "px")
-    print("     Color: " .. tostring(textColor))
-    print("     Text Scaled: " .. tostring(useTextScaled))
+
     
     local label = Instance.new("TextLabel")
     label.Name = "Label"
@@ -1335,20 +1325,17 @@ function BaseUI:_mergeWithDefaults(specificConfig, elementType, configType)
     local ConfigLoader = require(game.ReplicatedStorage.Shared.ConfigLoader)
     local uiConfig = ConfigLoader:LoadConfig("ui")
     
-    print("   🔍 DEBUG _mergeWithDefaults:")
-    print("     elementType:", elementType, "configType:", configType)
-    print("     uiConfig.defaults exists:", uiConfig.defaults ~= nil)
+
     
     -- Get global defaults
     local defaults = uiConfig.defaults and uiConfig.defaults[elementType] and uiConfig.defaults[elementType][configType] or {}
     
-    print("     defaults found:", defaults ~= nil, "defaults empty:", next(defaults) == nil)
-    print("     specificConfig provided:", specificConfig ~= nil)
+
     
     -- If no specific config provided, return deep copy of defaults
     if not specificConfig then
         local result = self:_deepCopy(defaults)
-        print("     returning defaults copy, has size:", result.size ~= nil)
+
         return result
     end
     

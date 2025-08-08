@@ -14,9 +14,6 @@
       "Packages": {
         "$path": "Packages"
       },
-      "Assets": {
-        "$path": "assets"
-      },
       "Tests": {
         "$path": "tests"
       },

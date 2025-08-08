@@ -531,22 +531,40 @@ end
 function InventoryService:_createEquippedFolder(player, category, parentFolder)
     local data = self._dataService:GetData(player)
     local slots = data.Equipped[category]
+    local configured = self._inventoryConfig.equipped[category]
+    local configuredSlots = (configured and type(configured.slots) == "number") and configured.slots or nil
     
     local categoryFolder = Instance.new("Folder")
     categoryFolder.Name = category
     categoryFolder.Parent = parentFolder
     
-    for slotName, itemUid in pairs(slots or {}) do
-        local slotValue = Instance.new("StringValue")
-        slotValue.Name = slotName
-        slotValue.Value = itemUid or ""
-        slotValue.Parent = categoryFolder
+    local createdCount = 0
+    if configuredSlots then
+        local maxSlots = self:_getMaxEquippedSlots(player, category, configuredSlots)
+        for i = 1, maxSlots do
+            local slotName = "slot_" .. i
+            local itemUid = slots and slots[slotName] or nil
+            local slotValue = Instance.new("StringValue")
+            slotValue.Name = slotName
+            slotValue.Value = itemUid or ""
+            slotValue.Parent = categoryFolder
+            createdCount = createdCount + 1
+        end
+    else
+        -- Fallback: create only declared keys
+        for slotName, itemUid in pairs(slots or {}) do
+            local slotValue = Instance.new("StringValue")
+            slotValue.Name = slotName
+            slotValue.Value = itemUid or ""
+            slotValue.Parent = categoryFolder
+            createdCount = createdCount + 1
+        end
     end
     
     self._logger:Debug("⚔️ REPLICATION - Created equipped folder", {
         player = player.Name,
         category = category,
-        slots = self:_countItems(slots or {})
+        slots = createdCount
     })
 end
 
@@ -745,6 +763,16 @@ function InventoryService:_countItems(items)
         count = count + 1
     end
     return count
+end
+
+-- Determine maximum equipped slots for a category.
+-- Stub: returns 99 for pets; defaults to configured count for others.
+function InventoryService:_getMaxEquippedSlots(player, category, configuredSlots)
+    if category == "pets" then
+        -- Future: compute from Player/Aggregates (e.g., base + gamepasses + effects)
+        return 99
+    end
+    return configuredSlots or 1
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
@@ -1159,6 +1187,9 @@ end
 function InventoryService:_togglePetEquipment(player, petUid, pet, playerData)
     local equippedPets = playerData.Equipped.pets
     local petSlots = self._inventoryConfig.equipped.pets
+
+    -- Compute max slots via aggregate stub (returns 99 for now)
+    local maxSlots = self:_getMaxEquippedSlots(player, "pets", petSlots.slots)
     
     -- Check if pet is already equipped
     local currentSlot = nil
@@ -1174,8 +1205,8 @@ function InventoryService:_togglePetEquipment(player, petUid, pet, playerData)
         equippedPets[currentSlot] = nil
         return true, {action = "unequipped", slot = currentSlot}
     else
-        -- Find an empty slot to equip the pet
-        for i = 1, petSlots.slots do
+        -- Find an empty slot to equip the pet (respect runtime maxSlots)
+        for i = 1, maxSlots do
             local slotName = "slot_" .. i
             if not equippedPets[slotName] then
                 equippedPets[slotName] = petUid
@@ -1240,26 +1271,39 @@ function InventoryService:_updateEquippedFolders(player, category)
         categoryFolder.Parent = equippedFolder
     end
     
-    -- Clear existing slot values
-    for _, child in pairs(categoryFolder:GetChildren()) do
-        child:Destroy()
-    end
-    
-    -- Recreate slot values from data
+    -- Incrementally update slot values up to runtime max slots
     local playerData = self._dataService:GetData(player)
     local slots = playerData.Equipped[category] or {}
-    
-    for slotName, itemUid in pairs(slots) do
-        local slotValue = Instance.new("StringValue")
-        slotValue.Name = slotName
-        slotValue.Value = itemUid or ""
-        slotValue.Parent = categoryFolder
+    local configured = self._inventoryConfig.equipped[category]
+    local configuredSlots = (configured and type(configured.slots) == "number") and configured.slots or 0
+    local maxSlots = self:_getMaxEquippedSlots(player, category, configuredSlots)
+
+    local createdCount = 0
+    local updatedCount = 0
+    for i = 1, maxSlots do
+        local slotName = "slot_" .. i
+        local desiredValue = slots[slotName] or ""
+        local slotValue = categoryFolder:FindFirstChild(slotName)
+        if not slotValue then
+            slotValue = Instance.new("StringValue")
+            slotValue.Name = slotName
+            slotValue.Value = desiredValue
+            slotValue.Parent = categoryFolder
+            createdCount = createdCount + 1
+        else
+            if slotValue.Value ~= desiredValue then
+                slotValue.Value = desiredValue
+                updatedCount = updatedCount + 1
+            end
+        end
     end
     
     self._logger:Debug("⚔️ Updated equipped folder", {
         player = player.Name,
         category = category,
-        slots = self:_countItems(slots)
+        createdSlots = createdCount,
+        updatedSlots = updatedCount,
+        maxSlots = maxSlots
     })
 end
 

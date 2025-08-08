@@ -67,6 +67,15 @@ end
 local loadOrder = loadOrderOrError
 print("✅ Modules loaded:", table.concat(loadOrder, ", "))
 
+-- Start services that need to be started
+print("🚀 Starting services...")
+local AssetPreloadService = loader:Get("AssetPreloadService")
+if AssetPreloadService then
+    print("✅ AssetPreloadService found (ModuleLoader.Init/Start lifecycle will manage it)")
+else
+    print("❌ AssetPreloadService not found")
+end
+
 -- Validate critical modules loaded
 local requiredModules = {"Logger", "ConfigLoader", "ServerClockService", "DataService", "PlayerEffectsService", "GlobalEffectsService", "EconomyService", "ProductIdMapper", "MonetizationService", "InventoryService", "SettingsService", "DiagnosticsService"}
 for _, moduleName in ipairs(requiredModules) do
