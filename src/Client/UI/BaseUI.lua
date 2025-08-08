@@ -1059,6 +1059,8 @@ function BaseUI:_createMenuButtonElement(config, parent, layoutOrder)
         -- Only TextButton has Text property
         button.Text = ""
     end
+    -- Ensure button fills its pane container (prevents 0,0 sizing in single-pane layouts)
+    button.Size = UDim2.new(1, 0, 1, 0)
     button.LayoutOrder = layoutOrder
     button.ZIndex = 13
     button.Parent = parent
@@ -1087,6 +1089,55 @@ function BaseUI:_createMenuButtonElement(config, parent, layoutOrder)
     
     -- Store reference
     self.menuButtons[config.name] = button
+
+    -- AutoTarget visual indicator (server-driven via BoolValues on Player)
+    if config.name == "AutoLow" or config.name == "AutoHigh" then
+        -- Small state bar at top of button: orange = off, green = on
+        local stateBar = Instance.new("Frame")
+        stateBar.Name = "StateBar"
+        stateBar.Size = UDim2.new(0.6, 0, 0, 8)
+        stateBar.Position = UDim2.new(0.5, 0, 0, 6)
+        stateBar.AnchorPoint = Vector2.new(0.5, 0)
+        stateBar.BackgroundColor3 = Color3.fromRGB(255, 165, 0) -- off (orange)
+        stateBar.BorderSizePixel = 0
+        stateBar.ZIndex = button.ZIndex + 1
+        stateBar.Parent = button
+
+        local stateCorner = Instance.new("UICorner")
+        stateCorner.CornerRadius = UDim.new(0, 4)
+        stateCorner.Parent = stateBar
+
+        local function setOn(on)
+            stateBar.BackgroundColor3 = on and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(255, 165, 0)
+        end
+
+        local function bindToPlayerFlag(flagName)
+            local player = Players.LocalPlayer
+            local function attach(valueObj)
+                if not valueObj then return end
+                setOn(valueObj.Value)
+                valueObj:GetPropertyChangedSignal("Value"):Connect(function()
+                    setOn(valueObj.Value)
+                end)
+            end
+            local existing = player:FindFirstChild(flagName)
+            if existing then
+                attach(existing)
+            else
+                player.ChildAdded:Connect(function(child)
+                    if child.Name == flagName then
+                        attach(child)
+                    end
+                end)
+            end
+        end
+
+        if config.name == "AutoLow" then
+            bindToPlayerFlag("FreeTarget")
+        else
+            bindToPlayerFlag("PaidTarget")
+        end
+    end
     
     -- noisy UI prints removed
     return button
@@ -1919,6 +1970,7 @@ function BaseUI:_createPetsButtonElement(config, parent)
         petsButton.ScaleType = Enum.ScaleType.Fit
         petsButton.ZIndex = 15
         petsButton.Parent = parent
+        petsButton.Size = UDim2.new(1, 0, 1, 0)
     else
         -- Use TextButton for emoji/text
         petsButton = Instance.new("TextButton")
@@ -2319,6 +2371,30 @@ function BaseUI:_onMenuButtonClicked(menuName)
     local transitionEffect = self:_getTransitionForMenu(menuName)
     
     self.logger:info("Opening panel with transition:", transitionEffect)
+    -- If the menuName matches a special UI-less action, execute it instead of opening a panel
+    local actionName = menuName:lower() .. "_action"
+    local actionConfig = self.uiConfig.helpers.get_action_config(self.uiConfig, actionName)
+    if not actionConfig then
+        -- Try explicit auto-target action names
+        if menuName == "AutoLow" then actionConfig = self.uiConfig.helpers.get_action_config(self.uiConfig, "auto_target_low") end
+        if menuName == "AutoHigh" then actionConfig = self.uiConfig.helpers.get_action_config(self.uiConfig, "auto_target_high") end
+    end
+    if actionConfig and actionConfig.type == "script_execute" and actionConfig.script == "AutoTargetActions" then
+        -- Dispatch to client script action handler
+        local ok, handler = pcall(function()
+            return require(script.Parent.Parent.Systems.AutoTarget)
+        end)
+        if ok and handler then
+            local at = handler._singleton or handler
+            if actionConfig.method == "ToggleLow" and at.ToggleFree then
+                at:ToggleFree()
+                return
+            elseif actionConfig.method == "ToggleHigh" and at.TogglePaid then
+                at:TogglePaid()
+                return
+            end
+        end
+    end
     self.menuManager:TogglePanel(menuName, transitionEffect)
 end
 

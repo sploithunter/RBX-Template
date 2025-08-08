@@ -51,6 +51,13 @@ local Signals = {
 
     -- Breakables
     Breakables_Attack = Net:RemoteEvent("Breakables_Attack"),  -- c->s attack a crystal by BreakableID
+
+    -- Auto-target toggles
+    -- Server validates and flips Player BoolValues (FreeTarget/PaidTarget).
+    -- Client UI reflects state via AutoTarget_Status and Player value listeners.
+    AutoTarget_ToggleFree = Net:RemoteEvent("AutoTarget_ToggleFree"),   -- c->s request toggle free (low) targeting
+    AutoTarget_TogglePaid = Net:RemoteEvent("AutoTarget_TogglePaid"),   -- c->s request toggle paid (high) targeting
+    AutoTarget_Status = Net:RemoteEvent("AutoTarget_Status"),           -- s->c push current auto-target status
 }
 
 return Signals

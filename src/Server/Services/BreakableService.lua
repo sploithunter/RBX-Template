@@ -1,5 +1,8 @@
 --[[
-    BreakableService - Handles targeting, damage, and breaking of crystals
+    BreakableService
+    - Handles c->s Breakables_Attack events from clients (auto-target or clicks)
+    - Assigns player's pets to the target model by setting TargetType/World/ID
+    - Applies damage by reducing target HP (death/awards handled by spawner)
 ]]
 
 local BreakableService = {}
@@ -35,6 +38,49 @@ local function findBreakableById(id)
     return nil
 end
 
+local function assignPlayerPetsToTarget(player, breakableModel)
+    if not player or not breakableModel then return end
+    local petInstancesFolder = workspace:FindFirstChild("PlayerPets")
+    if not petInstancesFolder then return end
+    local playerPets = petInstancesFolder:FindFirstChild(player.Name)
+    if not playerPets then return end
+
+    -- Determine world name from ancestry: ...Breakables/<Type>/<World>/Items/<Model>
+    local worldName = ""
+    do
+        local parent = breakableModel.Parent
+        local worldFolder = parent and parent.Parent
+        worldName = worldFolder and worldFolder.Name or ""
+    end
+
+    local targetId = breakableModel:FindFirstChild("BreakableID") and breakableModel.BreakableID.Value or 0
+    for _, petInst in ipairs(playerPets:GetChildren()) do
+        local petIdVal = petInst:FindFirstChild("PetID")
+        local targetIdVal = petInst:FindFirstChild("TargetID")
+        local targetTypeVal = petInst:FindFirstChild("TargetType")
+        local targetWorldVal = petInst:FindFirstChild("TargetWorld")
+        if petIdVal and targetIdVal and targetTypeVal and targetWorldVal then
+            targetTypeVal.Value = "Crystals"
+            targetWorldVal.Value = worldName
+            targetIdVal.Value = targetId
+        end
+    end
+
+    -- Mirror MCP: add an entry to crystal's Pets folder (optional, helpful for effects)
+    local petsFolder = breakableModel:FindFirstChild("Pets") or Instance.new("Folder")
+    petsFolder.Name = "Pets"
+    petsFolder.Parent = breakableModel
+    -- Add a consolidated marker per player to avoid N duplicates
+    local key = "P_" .. tostring(player.UserId)
+    local existing = petsFolder:FindFirstChild(key)
+    if not existing then
+        existing = Instance.new("NumberValue")
+        existing.Name = key
+        existing.Value = 1
+        existing.Parent = petsFolder
+    end
+end
+
 function BreakableService:Init()
     logger = self._modules.Logger
     configLoader = self._modules.ConfigLoader
@@ -68,17 +114,16 @@ function BreakableService:_onAttack(player, payload)
     local target = findBreakableById(id)
     if not target or not target:GetAttribute("HP") then return end
 
+    -- Ensure pets are assigned to this target for follow/damage behavior
+    assignPlayerPetsToTarget(player, target)
+
     -- Reduce HP
     local hp = tonumber(target:GetAttribute("HP")) or 0
     local maxHp = tonumber(target:GetAttribute("MaxHP")) or hp
     hp = math.max(0, hp - dmg)
     target:SetAttribute("HP", hp)
 
-    if hp <= 0 then
-        -- Reward logic (simple placeholder; can expand later)
-        -- Fire sounds/cleanup handled by spawner in MCP; here we just destroy
-        target:Destroy()
-    end
+    -- Do not destroy here; BreakableSpawner listens to HP attribute and handles death/awards
 end
 
 return BreakableService

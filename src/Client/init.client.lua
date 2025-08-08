@@ -83,6 +83,17 @@ if gameConfig.GameMode == "Simulator" then
     Logger:Info("Loading Simulator client systems")
     -- systems.PetFollowSystem = require(...)
     -- systems.CollectionEffectsSystem = require(...)
+    do
+        local AutoTarget = require(script.Systems.AutoTarget)
+        -- Start immediately (do not rely on systems loop)
+        local ok, err = pcall(function()
+            local at = AutoTarget.new()
+            at:Start()
+        end)
+        if not ok then
+            Logger:Warn("Failed to start AutoTarget client system", { error = tostring(err) })
+        end
+    end
 elseif gameConfig.GameMode == "FPS" then
     Logger:Info("Loading FPS client systems")
     -- systems.WeaponRenderSystem = require(...)

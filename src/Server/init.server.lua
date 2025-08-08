@@ -50,6 +50,7 @@ loader:RegisterModule("MonetizationService", ServerScriptService.Server.Services
 loader:RegisterModule("InventoryService", ServerScriptService.Server.Services.InventoryService, {"Logger", "DataService", "ConfigLoader"})
 loader:RegisterModule("SettingsService", ServerScriptService.Server.Services.SettingsService, {"Logger", "DataService", "ConfigLoader"})
 loader:RegisterModule("DiagnosticsService", ServerScriptService.Server.Services.DiagnosticsService, {"Logger", "InventoryService", "EconomyService", "RateLimitService", "DataService"})
+loader:RegisterModule("AutoTargetService", ServerScriptService.Server.Services.AutoTargetService, {"Logger", "ConfigLoader", "MonetizationService", "ProductIdMapper"})
 
 -- Register lazy services (loaded when needed)
 -- loader:RegisterLazyModule("TradeService", ServerScriptService.Server.Services.TradeService, {"EconomyService", "DataService", "NetworkBridge"}) -- TODO: Create TradeService

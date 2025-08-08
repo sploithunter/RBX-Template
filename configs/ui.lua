@@ -654,6 +654,30 @@ local uiConfig = {
             sound = "button_click",
             description = "Opens the shop panel with slide animation"
         },
+
+        -- Auto-Target Actions (server-driven visual state; UI calls script actions to toggle)
+        auto_target_low = {
+            type = "script_execute",
+            script = "AutoTargetActions",
+            method = "ToggleLow"
+        },
+        auto_target_high = {
+            type = "script_execute",
+            script = "AutoTargetActions",
+            method = "ToggleHigh"
+        },
+
+        -- Aliases to match BaseUI name->action convention (menuName:lower() .. "_action")
+        autolow_action = {
+            type = "script_execute",
+            script = "AutoTargetActions",
+            method = "ToggleLow"
+        },
+        autohigh_action = {
+            type = "script_execute",
+            script = "AutoTargetActions",
+            method = "ToggleHigh"
+        },
         
         inventory_action = {
             type = "menu_panel", 
@@ -819,7 +843,7 @@ local uiConfig = {
                     icon_config = {
                         size = {width = 32, height = 32},
                         position = "left_outside", -- allow big icon to protrude outside
-                        offset = {x = -20, y = 0},  -- negative X to push further left
+                        offset = {x = -10, y = 0},  -- negative X to push further left
                         tint_with_color = true
                     }
                 }}
@@ -849,9 +873,9 @@ local uiConfig = {
                     icon = "136309678310342",
                     color = Color3.fromRGB(138, 43, 226),
                     icon_config = {
-                        size = {width = 30, height = 30},
+                        size = {width = 32, height = 32},
                         position = "left_outside",
-                        offset = {x = -18, y = 0}
+                        offset = {x = -10, y = 0}
                     }
                 }}
             }
@@ -880,9 +904,9 @@ local uiConfig = {
                     icon = "138067583",
                     color = Color3.fromRGB(0, 255, 255),
                     icon_config = {
-                        size = {width = 30, height = 30},
+                        size = {width = 32, height = 32},
                         position = "left_outside",
-                        offset = {x = -18, y = 0}
+                        offset = {x = -10, y = 0}
                     }
                 }}
             }
@@ -1052,6 +1076,28 @@ local uiConfig = {
             layout = {type = "single"},
             contents = {
                 {type = "pets_button", config = {icon = "13262136255", text = "Pets", color = Color3.fromRGB(52, 152, 219), action = "pets_action"}}
+            }
+        },
+        
+        -- Auto-target buttons flanking the Pets button
+        auto_low_button_pane = {
+            position = "bottom-center",
+            offset = {x = -170, y = -10},
+            size = {width = 120, height = 60},
+            background = {enabled = false},
+            layout = {type = "single"},
+            contents = {
+                {type = "menu_button", config = {name = "AutoLow", icon = "18852000893", text = "Low", action = "autolow_action"}}
+            }
+        },
+        auto_high_button_pane = {
+            position = "bottom-center",
+            offset = {x = 170, y = -10},
+            size = {width = 120, height = 60},
+            background = {enabled = false},
+            layout = {type = "single"},
+            contents = {
+                {type = "menu_button", config = {name = "AutoHigh", icon = "18852000893", text = "High", action = "autohigh_action"}}
             }
         },
         
