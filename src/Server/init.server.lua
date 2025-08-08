@@ -265,24 +265,59 @@ LogService.MessageOut:Connect(function(message, messageType)
     end
 end)
 
--- Performance monitoring
+-- Performance monitoring (configurable)
 task.spawn(function()
+    local loggingConfig = nil
+    -- Safely attempt to load logging config from ReplicatedStorage.Configs.logging
+    local ok, result = pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Configs = ReplicatedStorage:WaitForChild("Configs", 5)
+        if Configs and Configs:FindFirstChild("logging") then
+            return require(Configs.logging)
+        end
+        return nil
+    end)
+    if ok then loggingConfig = result end
+
+    local perfCfg = (loggingConfig and loggingConfig.performance_monitor and loggingConfig.performance_monitor.server) or {
+        enabled = true,
+        interval_seconds = 30,
+        target_frame_time_seconds = 1/60,
+        warn_frame_time_seconds = 1/30,
+        error_frame_time_seconds = 0.0667,
+    }
+
+    if not perfCfg.enabled then
+        return
+    end
+
     while true do
-        task.wait(30) -- Log performance every 30 seconds
-        
+        task.wait(perfCfg.interval_seconds or 30)
+
+        local heartbeatTime = game:GetService("RunService").Heartbeat:Wait()
         local stats = {
             playerCount = #Players:GetPlayers(),
             memoryUsage = game:GetService("Stats"):GetTotalMemoryUsageMb(),
-            heartbeatTime = game:GetService("RunService").Heartbeat:Wait()
+            heartbeatTime = heartbeatTime,
         }
-        
+
         Logger:Debug("Server performance", stats)
-        
-        -- Warn if performance is poor
-        if stats.heartbeatTime > 0.016 then -- > 60 FPS
+
+        local target = perfCfg.target_frame_time_seconds or (1/60)
+        local warnAt = perfCfg.warn_frame_time_seconds or (1/30)
+        local errorAt = perfCfg.error_frame_time_seconds or 0.0667
+
+        if heartbeatTime > errorAt then
+            Logger:Error("Server performance severely degraded", {
+                frameTime = heartbeatTime,
+                targetFrameTime = target,
+                threshold = errorAt
+            })
+        elseif heartbeatTime > warnAt then
             Logger:Warn("Server performance degraded", {
-                frameTime = stats.heartbeatTime,
-                targetFrameTime = 0.016
+                frameTime = heartbeatTime,
+                targetFrameTime = target,
+                threshold = warnAt
             })
         end
     end

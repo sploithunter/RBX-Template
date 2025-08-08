@@ -27,6 +27,19 @@ return {
         enable_remote_logging = false,   -- Send logs to external services
     },
     
+    -- === PERFORMANCE MONITOR SETTINGS ===
+    -- Controls server/client performance warning thresholds
+    performance_monitor = {
+        server = {
+            enabled = true,                             -- Enable server performance monitoring
+            interval_seconds = 30,                      -- How often to sample and report
+            target_frame_time_seconds = 1/60,           -- Ideal target (≈0.0167s, 60 FPS)
+            warn_frame_time_seconds = 1/30,             -- Warn when slower than ~30 FPS (≈0.0333s)
+            error_frame_time_seconds = 0.0667,          -- Error when slower than ~15 FPS (≈0.0667s)
+        },
+        -- Future: add client settings if needed
+    },
+    
     -- === SERVICE-SPECIFIC LOG LEVELS ===
     services = {
         -- === STARTUP & CORE (Minimal logging for clean boot) ===
