@@ -23,11 +23,22 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local logger
 local petConfig
 local soundsConfig
+local breakablesConfig
 
 function AssetPreloadService:Init()
     logger = self._modules.Logger
     petConfig = self._modules.ConfigLoader:LoadConfig("pets")
     soundsConfig = self._modules.ConfigLoader:LoadConfig("sounds")
+    
+    -- Optional: breakables (crystals, etc.)
+    local ok, cfg = pcall(function()
+        return self._modules.ConfigLoader:LoadConfig("breakables")
+    end)
+    if ok then
+        breakablesConfig = cfg
+    else
+        breakablesConfig = nil
+    end
     
     logger:Info("AssetPreloadService initialized")
 end
@@ -51,6 +62,8 @@ function AssetPreloadService:Start()
     task.spawn(function()
         logger:Info("🔄 AssetPreloadService: LoadAllModelsIntoAssets task started")
         self:LoadAllModelsIntoAssets()
+        -- Load breakable models (e.g., crystals)
+        self:LoadAllBreakableModelsIntoAssets()
         self:LoadAllSoundsIntoAssets()
         logger:Info("✅ AssetPreloadService: LoadAllModelsIntoAssets task completed")
     end)
@@ -108,6 +121,20 @@ function AssetPreloadService:CreateAssetFolders()
         logger:Info("✅ CreateAssetFolders: Pets folder created")
     end
     
+    -- Ensure Breakables/Crystals folder exists
+    local breakables = models:FindFirstChild("Breakables")
+    if not breakables then
+        breakables = Instance.new("Folder")
+        breakables.Name = "Breakables"
+        breakables.Parent = models
+    end
+    local crystals = breakables:FindFirstChild("Crystals")
+    if not crystals then
+        crystals = Instance.new("Folder")
+        crystals.Name = "Crystals"
+        crystals.Parent = breakables
+    end
+    
     -- Ensure Sounds folder exists
     local sounds = assets:FindFirstChild("Sounds")
     if not sounds then
@@ -118,6 +145,76 @@ function AssetPreloadService:CreateAssetFolders()
 
     logger:Info("✅ CreateAssetFolders: Asset folder structure complete", {
         path = "ReplicatedStorage.Assets"
+    })
+end
+
+-- Load all breakable (non-pet) models such as crystals
+function AssetPreloadService:LoadAllBreakableModelsIntoAssets()
+    logger:Info("🔄 LoadAllBreakableModelsIntoAssets: Starting...")
+    
+    if not breakablesConfig then
+        logger:Warn("LoadAllBreakableModelsIntoAssets: No breakables config found; skipping")
+        return
+    end
+    
+    local modelsRoot = ReplicatedStorage.Assets and ReplicatedStorage.Assets:FindFirstChild("Models")
+    if not modelsRoot then
+        logger:Error("LoadAllBreakableModelsIntoAssets: Models root missing")
+        return
+    end
+    
+    local breakablesFolder = modelsRoot:FindFirstChild("Breakables")
+    if not breakablesFolder then
+        breakablesFolder = Instance.new("Folder")
+        breakablesFolder.Name = "Breakables"
+        breakablesFolder.Parent = modelsRoot
+    end
+    
+    local crystalsFolder = breakablesFolder:FindFirstChild("Crystals")
+    if not crystalsFolder then
+        crystalsFolder = Instance.new("Folder")
+        crystalsFolder.Name = "Crystals"
+        crystalsFolder.Parent = breakablesFolder
+    end
+    
+    local successCount = 0
+    local failureCount = 0
+    
+    -- Iterate crystals in config
+    for crystalName, crystalData in pairs(breakablesConfig.crystals or {}) do
+        if type(crystalData) == "table" and crystalData.asset_id and crystalData.asset_id ~= "rbxassetid://0" then
+            -- Replace any existing model with same name
+            local existing = crystalsFolder:FindFirstChild(crystalName)
+            if existing then existing:Destroy() end
+            
+            local transformCF
+            if crystalData.default_orientation and type(crystalData.default_orientation) == "table" then
+                local ori = crystalData.default_orientation
+                transformCF = CFrame.Angles(math.rad(ori.x or 0), math.rad(ori.y or 0), math.rad(ori.z or 0))
+            end
+            local ok = self:LoadModelIntoFolder(
+                crystalData.asset_id,
+                crystalsFolder,
+                crystalName,
+                "crystal_" .. crystalName,
+                { transformCF = transformCF }
+            )
+            if ok then
+                successCount += 1
+            else
+                failureCount += 1
+            end
+        else
+            logger:Warn("LoadAllBreakableModelsIntoAssets: Crystal missing valid asset_id", {name = tostring(crystalName)})
+            failureCount += 1
+        end
+    end
+    
+    logger:Info("🔄 LoadAllBreakableModelsIntoAssets: Completed", {
+        crystals = {
+            successful = successCount,
+            failed = failureCount,
+        }
     })
 end
 
@@ -229,6 +326,48 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                     
                     if modelSuccess then
                         modelSuccessCount = modelSuccessCount + 1
+                        
+                        -- Inject per-variant stats (power/health/type/variant) for runtime use
+                        do
+                            local variantModel = petTypeFolder:FindFirstChild(variant)
+                            if variantModel then
+                                local powerValue = (variantData.power or petData.base_power or 1)
+                                local healthValue = (variantData.health or petData.base_health or 100)
+                                -- Set as attributes for quick access and clone carryover
+                                variantModel:SetAttribute("PetType", petType)
+                                variantModel:SetAttribute("Variant", variant)
+                                variantModel:SetAttribute("Power", powerValue)
+                                variantModel:SetAttribute("BaseHealth", healthValue)
+                                -- Also create NumberValues for scripts that expect Values on the model
+                                local powerNV = variantModel:FindFirstChild("Power")
+                                if not powerNV then
+                                    powerNV = Instance.new("NumberValue")
+                                    powerNV.Name = "Power"
+                                    powerNV.Value = powerValue
+                                    powerNV.Parent = variantModel
+                                else
+                                    powerNV.Value = powerValue
+                                end
+                                local typeSV = variantModel:FindFirstChild("PetType")
+                                if not typeSV then
+                                    typeSV = Instance.new("StringValue")
+                                    typeSV.Name = "PetType"
+                                    typeSV.Value = petType
+                                    typeSV.Parent = variantModel
+                                else
+                                    typeSV.Value = petType
+                                end
+                                local varSV = variantModel:FindFirstChild("Variant")
+                                if not varSV then
+                                    varSV = Instance.new("StringValue")
+                                    varSV.Name = "Variant"
+                                    varSV.Value = variant
+                                    varSV.Parent = variantModel
+                                else
+                                    varSV.Value = variant
+                                end
+                            end
+                        end
                         
                         -- Generate image from the loaded model
                         local imageSuccess = self:GenerateImageFromModel(
@@ -357,7 +496,7 @@ function AssetPreloadService:LoadAllSoundsIntoAssets()
 end
 
 -- Load a single model into a folder
-function AssetPreloadService:LoadModelIntoFolder(assetId, parentFolder, folderName, debugName)
+function AssetPreloadService:LoadModelIntoFolder(assetId, parentFolder, folderName, debugName, options)
     logger:Info("🔄 LoadModelIntoFolder: Starting", {
         assetId = assetId,
         debugName = debugName,
@@ -419,6 +558,16 @@ function AssetPreloadService:LoadModelIntoFolder(assetId, parentFolder, folderNa
         -- Weld all parts together to prevent falling apart
         logger:Info("🔧 LoadModelIntoFolder: Welding model parts...")
         self:WeldModelParts(modelClone)
+
+        -- Optional transform (e.g., default orientation for breakables)
+        if options and options.transformCF then
+            logger:Info("🔧 LoadModelIntoFolder: Applying transformCF", {
+                hasPrimaryPart = modelClone.PrimaryPart ~= nil
+            })
+            pcall(function()
+                modelClone:PivotTo(options.transformCF)
+            end)
+        end
         
         -- If this is a pet model, add all the required pet system components
         local isPetFolder = false

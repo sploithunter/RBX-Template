@@ -242,7 +242,9 @@ function GameStructureService:Initialize()
     print("✅ GameStructureService: Initialized!")
 end
 
--- Auto-initialize
-GameStructureService:Initialize()
+-- Auto-initialize only if no prebuilt structure exists (avoid overwriting Studio-placed spawners)
+if not workspace:FindFirstChild("Game") then
+    GameStructureService:Initialize()
+end
 
 return GameStructureService

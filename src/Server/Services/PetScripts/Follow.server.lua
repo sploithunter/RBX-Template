@@ -301,17 +301,32 @@ local function setAttack()
 		script.Parent.PrimaryPart.BodyPosition:Destroy()
 	end
 
-	local modelBox, modelSize = GetBoundingBox(script.Parent)
-	modelSize = script.Parent.PetSize.Value
-	local PosNum = ((script.Parent.PositionNumber.Value + tonumber(Player.UserId)) % 18 ) + 1
-	local PosNumString = tostring(PosNum)
-	local BoxName = "StarBox"..PosNumString
-	local targetID = scanForID(breakables,TargetID.Value, TargetType.Value, TargetWorld.Value)
+    local modelBox, modelSize = GetBoundingBox(script.Parent)
+    modelSize = script.Parent.PetSize.Value
+    -- Determine star point count dynamically and choose a distributed slot index
+    local targetID = scanForID(breakables,TargetID.Value, TargetType.Value, TargetWorld.Value)
     if targetID == nil then
         return setFollowType()
 	end
 	local target = targetID.Parent
-	local box = target:WaitForChild("Star"):WaitForChild(BoxName)
+    local star = target:WaitForChild("Star")
+    local pointCount = star:GetAttribute("PointCount") or 108
+    -- Use pet's PositionNumber and PetID (or Player.UserId fallback) to spread selection
+    local petIdVal = script.Parent:FindFirstChild("PetID")
+    local seed = (script.Parent.PositionNumber.Value) + (petIdVal and petIdVal.Value or tonumber(Player.UserId))
+    local baseIdx = (seed % pointCount) + 1
+    local chosenIdx = baseIdx
+    -- Try a few offsets using a coprime step to avoid clustering
+    local step = 7
+    for tries = 0, 10 do
+        local idx = 1 + ((baseIdx + tries * step) % pointCount)
+        local candidate = star:FindFirstChild("StarBox"..tostring(idx))
+        if candidate then
+            chosenIdx = idx
+            break
+        end
+    end
+    local box = star:WaitForChild("StarBox"..tostring(chosenIdx))
 	
 	-- Always use Align method for attack positioning
 		while(script.Parent.PositionNumber.Value == 0 ) do
@@ -321,7 +336,7 @@ local function setAttack()
 		local attachmentBox
 		local attachmentPet
 
-		attachmentBox = box.Pet
+        attachmentBox = box.Pet
 
 		attachmentBox.Position = Vector3.new(0,0,0) + Vector3.new(0,modelSize.Y/4,0)
 		attachmentBox.Visible = false
@@ -395,12 +410,56 @@ if Player then
 		end
 	end)
 	
-	script.Parent.TargetID:GetPropertyChangedSignal("Value"):Connect(function()
+    script.Parent.TargetID:GetPropertyChangedSignal("Value"):Connect(function()
 		if TargetID.Value ~= 0 then
 		--	print("Set Attack")
-			setAttack(1)
+            setAttack(1)
+            -- Always (re)start damage loop when acquiring a target
+            local existing = script:FindFirstChild("_DamageLoopConn")
+            if existing then existing:Destroy() end
+            local function doDamage()
+                local TargetIDValue = TargetID.Value
+                if TargetIDValue == 0 then return end
+                local targetIdObj = scanForID(breakables, TargetIDValue, TargetType.Value, TargetWorld.Value)
+                local breakable = targetIdObj and targetIdObj.Parent
+                if not breakable then return end
+                -- Apply small periodic damage per pet
+                local hp = breakable:GetAttribute("HP") or 0
+                if hp <= 0 then return end
+                -- Use pet Power directly as damage per tick (default 1)
+                local powerNV = script.Parent:FindFirstChild("Power")
+                local power = tonumber(powerNV and powerNV.Value) or 1
+                local dmg = math.max(1, math.floor(power))
+                local newHp = math.max(0, hp - dmg)
+                breakable:SetAttribute("HP", newHp)
+                -- Record contribution on the crystal if folder exists
+                local contrib = breakable:FindFirstChild("Contrib")
+                if contrib then
+                    local key = tostring(Player.UserId)
+                    local nv = contrib:FindFirstChild(key)
+                    if not nv then
+                        nv = Instance.new("NumberValue")
+                        nv.Name = key
+                        nv.Value = 0
+                        nv.Parent = contrib
+                    end
+                    nv.Value += (hp - newHp)
+                end
+            end
+            local conn = Instance.new("BindableEvent")
+            conn.Name = "_DamageLoopConn"
+            conn.Parent = script
+            task.spawn(function()
+                while conn.Parent and script.Parent and TargetID.Value ~= 0 do
+                    task.wait(1)
+                    doDamage()
+                end
+                if conn.Parent then conn:Destroy() end
+            end)
 		else
 		--	print("Quit Attack")
+            local existing = script:FindFirstChild("_DamageLoopConn")
+            if existing then existing:Destroy() end
 			followType = data:WaitForChild("FollowType").Value
 			setFollowType(followType)
 		end

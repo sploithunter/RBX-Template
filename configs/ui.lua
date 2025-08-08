@@ -813,7 +813,7 @@ local uiConfig = {
             layout = {type = "single"},
             contents = {
                 -- Supports both emoji and asset IDs: icon = "💰" or icon = "7733686592"
-                {type = "currency_display", config = {currency = "coins", icon = "💰", color = Color3.fromRGB(255, 215, 0)}}
+                {type = "currency_display", config = {currency = "coins", icon = "6995302957", color = Color3.fromRGB(255, 215, 0)}}
             }
         },
         
@@ -836,7 +836,7 @@ local uiConfig = {
             layout = {type = "single"},
             contents = {
                 -- Supports both emoji and asset IDs: icon = "💎" or icon = "7733686592" 
-                {type = "currency_display", config = {currency = "gems", icon = "💎", color = Color3.fromRGB(138, 43, 226)}}
+                {type = "currency_display", config = {currency = "gems", icon = "136309678310342", color = Color3.fromRGB(138, 43, 226)}}
             }
         },
         
@@ -859,7 +859,7 @@ local uiConfig = {
             layout = {type = "single"},
             contents = {
                 -- Supports both emoji and asset IDs: icon = "🔮" or icon = "7733686592"
-                {type = "currency_display", config = {currency = "crystals", icon = "🔮", color = Color3.fromRGB(0, 255, 255)}}
+                {type = "currency_display", config = {currency = "crystals", icon = "138067583", color = Color3.fromRGB(0, 255, 255)}}
             }
         },
         

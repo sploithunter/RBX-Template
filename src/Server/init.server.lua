@@ -40,6 +40,8 @@ loader:RegisterModule("DataService", ServerScriptService.Server.Services.DataSer
 loader:RegisterModule("AdminService", ServerScriptService.Server.Services.AdminService, {"Logger", "ConfigLoader"})
 loader:RegisterModule("RateLimitService", ServerScriptService.Server.Services.RateLimitService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
 loader:RegisterModule("AssetPreloadService", ServerScriptService.Server.Services.AssetPreloadService, {"Logger", "ConfigLoader"})
+loader:RegisterModule("BreakableSpawner", ServerScriptService.Server.Services.BreakableSpawner, {"Logger", "ConfigLoader"})
+loader:RegisterModule("BreakableService", ServerScriptService.Server.Services.BreakableService, {"Logger", "ConfigLoader"})
 loader:RegisterModule("PlayerEffectsService", ServerScriptService.Server.Services.PlayerEffectsService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
 loader:RegisterModule("GlobalEffectsService", ServerScriptService.Server.Services.GlobalEffectsService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
 loader:RegisterModule("ProductIdMapper", ReplicatedStorage.Shared.Utils.ProductIdMapper, {"Logger", "ConfigLoader"})

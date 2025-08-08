@@ -244,6 +244,7 @@ function DataService:Init()
     -- Track active profiles
     self.Profiles = {}
     self.LoadPromises = {}
+    self.CurrencySignalConnections = {}
     
     -- Connect to player events
     Players.PlayerAdded:Connect(function(player)
@@ -297,47 +298,36 @@ function DataService:LoadProfile(player)
             -- Set player attributes for quick access
             player:SetAttribute("DataLoaded", true)
             player:SetAttribute("Level", data.Stats.Level)
-            player:SetAttribute("Coins", data.Currencies.coins)
-            player:SetAttribute("Gems", data.Currencies.gems)
+            -- Expose ALL currencies from configuration/profile dynamically
+            for currencyId, amount in pairs(data.Currencies or {}) do
+                local attrName = currencyId:gsub("^%l", string.upper)
+                player:SetAttribute(attrName, amount or 0)
+            end
             
-            -- COIN TRACING: Monitor all changes to Coins attribute
-            player:GetAttributeChangedSignal("Coins"):Connect(function()
-                local newValue = player:GetAttribute("Coins")
-                local stackTrace = debug.traceback("", 2)
-                
-                -- Determine if this change came from our DataService
-                local isFromDataService = (stackTrace:find("DataService") or stackTrace:find("EconomyService") or stackTrace:find("AddCurrency") or stackTrace:find("RemoveCurrency")) ~= nil
-                local isFromSetCurrency = stackTrace:find("SetCurrency") ~= nil
-                
-                self._logger:Info("🪙 COIN TRACE - Coins attribute CHANGED", {
-                    player = player.Name,
-                    newCoinsValue = newValue,
-                    changeSource = isFromDataService and "DataService" or "EXTERNAL",
-                    viaSetCurrency = isFromSetCurrency,
-                    stackTrace = stackTrace:sub(1, 200) -- Truncate for readability
-                })
-                
-                -- If changed externally, this is likely the bug!
-                local serverValue = self:GetCurrency(player, "coins")
-                if not isFromDataService and newValue ~= serverValue then
-                    self._logger:Warn("🚨 EXTERNAL COIN CHANGE DETECTED - This may be the bug!", {
-                        player = player.Name,
-                        externalValue = newValue,
-                        fullStackTrace = stackTrace
-                    })
+            -- Attach attribute change listeners for ALL currencies dynamically
+            self.CurrencySignalConnections[player] = self.CurrencySignalConnections[player] or {}
+            for currencyId, _ in pairs(data.Currencies or {}) do
+                local attrName = currencyId:gsub("^%l", string.upper)
+                -- Avoid duplicate connections
+                if not self.CurrencySignalConnections[player][attrName] then
+                    local conn = player:GetAttributeChangedSignal(attrName):Connect(function()
+                        local newValue = player:GetAttribute(attrName)
+                        local serverValue = self:GetCurrency(player, currencyId)
+                        -- Only log when mismatched (external change)
+                        if newValue ~= serverValue then
+                            self._logger:Warn("🪙 CURRENCY ATTRIBUTE CHANGED EXTERNALLY", {
+                                player = player.Name,
+                                currency = currencyId,
+                                attributeValue = newValue,
+                                profileValue = serverValue
+                            })
+                        end
+                    end)
+                    self.CurrencySignalConnections[player][attrName] = conn
                 end
-            end)
+            end
             
-            -- Also monitor Gems for completeness
-            player:GetAttributeChangedSignal("Gems"):Connect(function()
-                local newValue = player:GetAttribute("Gems")
-                local stackTrace = debug.traceback("Gems attribute changed", 2)
-                self._logger:Info("💎 GEM TRACE - Gems attribute CHANGED", {
-                    player = player.Name,
-                    newGemsValue = newValue,
-                    stackTrace = stackTrace
-                })
-            end)
+            -- (Coins/Gems specific handlers removed; replaced by dynamic currency loop above)
             
             -- INVENTORY TRACE: Log the inventory structure that was loaded/created
             local inventoryInfo = {}
@@ -464,6 +454,12 @@ function DataService:ReleaseProfile(player)
     -- Cleanup
     self.Profiles[player] = nil
     self.LoadPromises[player] = nil
+    if self.CurrencySignalConnections[player] then
+        for _, conn in pairs(self.CurrencySignalConnections[player]) do
+            pcall(function() conn:Disconnect() end)
+        end
+        self.CurrencySignalConnections[player] = nil
+    end
 end
 
 function DataService:GetProfile(player)
@@ -748,47 +744,10 @@ function DataService:_migrateCurrencies(data)
         
         -- ONE-TIME MIGRATION: Fix currencies that were incorrectly set by previous AI session
         -- This fixes the issue where coins were set to 70 instead of the correct config value
-        if not data._migrations then
-            data._migrations = {}
-        end
-        
-        if not data._migrations.fixIncorrectCurrencies then
-            self._logger:Info("🪙 COIN TRACE - Running one-time currency fix migration")
-            for _, currency in ipairs(currenciesConfig) do
-                local configDefault = currency.defaultAmount or 0
-                local currentAmount = data.Currencies[currency.id] or 0
-                
-                self._logger:Info("🪙 COIN TRACE - Migration checking currency", {
-                    currency = currency.id,
-                    savedValue = currentAmount,
-                    configDefault = configDefault,
-                    needsFixing = (currentAmount ~= configDefault)
-                })
-                
-                -- Reset to config defaults for all currencies to fix previous AI errors
-                if currentAmount ~= configDefault then
-                    self._logger:Info("🪙 COIN TRACE - Migration FIXING currency", {
-                        currency = currency.id,
-                        oldIncorrectValue = currentAmount,
-                        newCorrectValue = configDefault
-                    })
-                    data.Currencies[currency.id] = configDefault
-                    migrations = migrations + 1
-                else
-                    self._logger:Info("🪙 COIN TRACE - Migration SKIPPING currency (already correct)", {
-                        currency = currency.id,
-                        value = currentAmount
-                    })
-                end
-            end
-            data._migrations.fixIncorrectCurrencies = true
-            migrations = migrations + 1
-            self._logger:Info("🪙 COIN TRACE - Currency fix migration completed", {
-                totalMigrations = migrations
-            })
-        else
-            self._logger:Info("🪙 COIN TRACE - Currency fix migration already completed, skipping")
-        end
+        -- IMPORTANT: do NOT reset currencies to defaults. Only add missing keys.
+        -- Older debug code that overwrote player balances has been removed to prevent data loss.
+        if not data._migrations then data._migrations = {} end
+        data._migrations.fixIncorrectCurrencies = true
         
         -- Add any new currencies from config (never remove existing ones)
         for _, currency in ipairs(currenciesConfig) do

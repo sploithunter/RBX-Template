@@ -48,6 +48,9 @@ local Signals = {
     -- User Display Preferences
     SaveDisplayPreferences = Net:RemoteEvent("SaveDisplayPreferences"),
     ForceRegenerateAssets = Net:RemoteEvent("ForceRegenerateAssets"),  -- c->s admin force asset regeneration
+
+    -- Breakables
+    Breakables_Attack = Net:RemoteEvent("Breakables_Attack"),  -- c->s attack a crystal by BreakableID
 }
 
 return Signals

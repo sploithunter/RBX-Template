@@ -450,6 +450,18 @@ function loadEquipped(Player)
         -- Pet model already has all components from AssetPreloadService
         print("🔨 PetHandler: Setting up pet system for", basePetName)
         
+        -- Apply stats from asset model if present
+        do
+            local powerAttr = PetModel:GetAttribute("Power")
+            local powerNV = PetModel:FindFirstChild("Power")
+            if powerAttr and (not powerNV) then
+                powerNV = Instance.new("NumberValue")
+                powerNV.Name = "Power"
+                powerNV.Value = powerAttr
+                powerNV.Parent = PetModel
+            end
+        end
+
         -- Replace the placeholder Follow script with the real one
         local placeholderFollow = PetModel:FindFirstChild("Follow")
         if placeholderFollow then
