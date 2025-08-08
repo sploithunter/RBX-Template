@@ -812,8 +812,17 @@ local uiConfig = {
             },
             layout = {type = "single"},
             contents = {
-                -- Supports both emoji and asset IDs: icon = "💰" or icon = "7733686592"
-                {type = "currency_display", config = {currency = "coins", icon = "6995302957", color = Color3.fromRGB(255, 215, 0)}}
+                {type = "currency_display", config = {
+                    currency = "coins",
+                    icon = "6995302957",
+                    color = Color3.fromRGB(255, 215, 0),
+                    icon_config = {
+                        size = {width = 32, height = 32},
+                        position = "left_outside", -- allow big icon to protrude outside
+                        offset = {x = -20, y = 0},  -- negative X to push further left
+                        tint_with_color = true
+                    }
+                }}
             }
         },
         
@@ -835,8 +844,16 @@ local uiConfig = {
             },
             layout = {type = "single"},
             contents = {
-                -- Supports both emoji and asset IDs: icon = "💎" or icon = "7733686592" 
-                {type = "currency_display", config = {currency = "gems", icon = "136309678310342", color = Color3.fromRGB(138, 43, 226)}}
+                {type = "currency_display", config = {
+                    currency = "gems",
+                    icon = "136309678310342",
+                    color = Color3.fromRGB(138, 43, 226),
+                    icon_config = {
+                        size = {width = 30, height = 30},
+                        position = "left_outside",
+                        offset = {x = -18, y = 0}
+                    }
+                }}
             }
         },
         
@@ -858,8 +875,16 @@ local uiConfig = {
             },
             layout = {type = "single"},
             contents = {
-                -- Supports both emoji and asset IDs: icon = "🔮" or icon = "7733686592"
-                {type = "currency_display", config = {currency = "crystals", icon = "138067583", color = Color3.fromRGB(0, 255, 255)}}
+                {type = "currency_display", config = {
+                    currency = "crystals",
+                    icon = "138067583",
+                    color = Color3.fromRGB(0, 255, 255),
+                    icon_config = {
+                        size = {width = 30, height = 30},
+                        position = "left_outside",
+                        offset = {x = -18, y = 0}
+                    }
+                }}
             }
         },
         

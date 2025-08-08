@@ -856,9 +856,14 @@ function BaseUI:_createCurrencyElement(config, parent, layoutOrder)
     frame.LayoutOrder = layoutOrder
     frame.Parent = parent
     
-    -- Icon (supports both emoji and Roblox asset IDs)
+    -- Icon (supports both emoji and Roblox asset IDs) with configurable sizing/position
     local icon
     local iconValue = config.icon or ""
+    local iconConfig = config.icon_config or {}
+    local iconSizePx = iconConfig.size or {width = 22, height = 22}
+    local iconPositionKind = iconConfig.position or "left" -- left | left_outside | center | right | right_outside
+    local iconOffset = iconConfig.offset or {x = 8, y = 0}
+    local tintWithColor = (iconConfig.tint_with_color ~= false)
     
     -- Check if icon is a Roblox asset ID (number or rbxassetid format)
     local assetId = nil
@@ -868,16 +873,38 @@ function BaseUI:_createCurrencyElement(config, parent, layoutOrder)
         assetId = "rbxassetid://" .. iconValue
     end
     
+    -- Helper to compute absolute position from kind
+    local function computeIconPosition()
+        if iconPositionKind == "center" then
+            return UDim2.new(0.5, iconOffset.x, 0.5, iconOffset.y), Vector2.new(0.5, 0.5)
+        end
+        if iconPositionKind == "right" then
+            return UDim2.new(1, - (iconOffset.x + math.floor(iconSizePx.width/2) + 6), 0.5, iconOffset.y), Vector2.new(0.5, 0.5)
+        end
+        if iconPositionKind == "right_outside" then
+            return UDim2.new(1, iconOffset.x, 0.5, iconOffset.y), Vector2.new(0, 0.5)
+        end
+        if iconPositionKind == "left_outside" then
+            return UDim2.new(0, iconOffset.x, 0.5, iconOffset.y), Vector2.new(0, 0.5)
+        end
+        -- default: left
+        return UDim2.new(0, iconOffset.x + 8, 0.5, iconOffset.y), Vector2.new(0, 0.5)
+    end
+
     if assetId then
         -- Use ImageLabel for Roblox assets with error handling
         local success, result = pcall(function()
             icon = Instance.new("ImageLabel")
             icon.Name = "Icon"
-            icon.Size = UDim2.new(0, 22, 0, 22)
-            icon.Position = UDim2.new(0, 8, 0.5, -11)
+            icon.Size = UDim2.new(0, iconSizePx.width, 0, iconSizePx.height)
+            local pos, anchor = computeIconPosition()
+            icon.Position = pos
+            icon.AnchorPoint = anchor
             icon.BackgroundTransparency = 1
             icon.Image = assetId
-            icon.ImageColor3 = config.color  -- Tint the asset
+            if tintWithColor then
+                icon.ImageColor3 = config.color  -- Optional tint
+            end
             icon.ScaleType = Enum.ScaleType.Fit
             icon.Parent = frame
             return icon
@@ -892,8 +919,10 @@ function BaseUI:_createCurrencyElement(config, parent, layoutOrder)
                                 config.currency == "crystals" and "🔮" or "💰"
             icon = Instance.new("TextLabel")
             icon.Name = "Icon"
-            icon.Size = UDim2.new(0, 22, 0, 22)
-            icon.Position = UDim2.new(0, 8, 0.5, -11)
+            icon.Size = UDim2.new(0, iconSizePx.width, 0, iconSizePx.height)
+            local pos, anchor = computeIconPosition()
+            icon.Position = pos
+            icon.AnchorPoint = anchor
             icon.BackgroundTransparency = 1
             icon.Text = fallbackEmoji
             icon.TextColor3 = config.color
@@ -905,8 +934,10 @@ function BaseUI:_createCurrencyElement(config, parent, layoutOrder)
         -- Use TextLabel for emoji
         icon = Instance.new("TextLabel")
         icon.Name = "Icon"
-        icon.Size = UDim2.new(0, 22, 0, 22)
-        icon.Position = UDim2.new(0, 8, 0.5, -11)
+        icon.Size = UDim2.new(0, iconSizePx.width, 0, iconSizePx.height)
+        local pos, anchor = computeIconPosition()
+        icon.Position = pos
+        icon.AnchorPoint = anchor
         icon.BackgroundTransparency = 1
         icon.Text = iconValue
         icon.TextColor3 = config.color
@@ -918,8 +949,13 @@ function BaseUI:_createCurrencyElement(config, parent, layoutOrder)
     -- Amount label (optimized for floating card)
     local amount = Instance.new("TextLabel")
     amount.Name = "Amount"
-    amount.Size = UDim2.new(1, -35, 1, 0)  -- Fill remaining space
-    amount.Position = UDim2.new(0, 35, 0, 0)
+    -- Compute left padding based on icon width (ensure minimum padding)
+    local leftPadding = math.max(35, (iconSizePx.width + 13))
+    if iconPositionKind == "left_outside" then
+        leftPadding = 35 -- Icon sits outside; keep standard padding
+    end
+    amount.Size = UDim2.new(1, -leftPadding, 1, 0)
+    amount.Position = UDim2.new(0, leftPadding, 0, 0)
     amount.BackgroundTransparency = 1
     local realAmount = self.player:GetAttribute(config.currency:gsub("^%l", string.upper)) or 0
     amount.Text = self:_formatNumber(realAmount)
