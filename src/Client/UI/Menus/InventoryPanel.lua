@@ -1562,8 +1562,26 @@ function InventoryPanel:_createItemFrame(item, layoutOrder)
     local isEquipped = self:_isItemEquipped(item)
     self:_applyEquippedStyling(itemFrame, isEquipped, item.color)
     
-    -- Store reference
+    -- Store reference and bind to Inventory/<uid>/Equipped BoolValue if available
     table.insert(self.itemFrames, itemFrame)
+
+    -- Live-equipped icon binding: reflects server-driven Equipped BoolValue on the pet folder
+    task.spawn(function()
+        local inv = self.player:FindFirstChild("Inventory")
+        local petsFolder = inv and inv:FindFirstChild("pets")
+        local petFolder = petsFolder and petsFolder:FindFirstChild(item.uid)
+        if not petFolder then return end
+        local equippedBV = petFolder:FindFirstChild("Equipped")
+        if not equippedBV then return end
+
+        local function applyFromBool()
+            local isEq = equippedBV.Value == true
+            self:_applyEquippedStyling(itemFrame, isEq, item.color)
+        end
+
+        applyFromBool()
+        equippedBV:GetPropertyChangedSignal("Value"):Connect(applyFromBool)
+    end)
 end
 
 function InventoryPanel:_selectCategory(categoryName)
@@ -2725,17 +2743,16 @@ function InventoryPanel:_setupCategoryEquippedListener(categoryFolder, categoryN
         end
     end)
     
-    -- Listen for value changes within slots
+    -- Listen for value changes within slots (use explicit Value signal)
     for _, slotValue in pairs(categoryFolder:GetChildren()) do
         if slotValue:IsA("StringValue") then
-            slotValue.Changed:Connect(function(newValue)
-                local oldValue = slotValue.Value
+            slotValue:GetPropertyChangedSignal("Value"):Connect(function()
+                local valueNow = slotValue.Value
                 self.logger:info("📍 Value changed in " .. categoryName, {
                     slotName = slotValue.Name,
-                    oldValue = oldValue,
-                    newValue = newValue
+                    newValue = valueNow
                 })
-                self:_onEquippedChanged(categoryName, newValue, slotValue.Name, newValue ~= "" and "equipped" or "unequipped")
+                self:_onEquippedChanged(categoryName, valueNow, slotValue.Name, valueNow ~= "" and "equipped" or "unequipped")
             end)
         end
     end
