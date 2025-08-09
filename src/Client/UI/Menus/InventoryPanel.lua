@@ -147,6 +147,8 @@ function InventoryPanel.new()
     self.searchBox = nil
     self.itemsGrid = nil
     self.itemFrames = {}
+    self.itemFramesByUid = {}
+    self.itemColorsByUid = {}
     self.selectedCategory = "All"
     self.searchTerm = ""
     
@@ -1343,6 +1345,8 @@ function InventoryPanel:_updateItemsDisplay()
         frame:Destroy()
     end
     self.itemFrames = {}
+    self.itemFramesByUid = {}
+    self.itemColorsByUid = {}
     
     -- Get current category folders for filtering
     local categoryFolders = self:_getCategoryFolders(self.selectedCategory)
@@ -1564,6 +1568,8 @@ function InventoryPanel:_createItemFrame(item, layoutOrder)
     
     -- Store reference and bind to Inventory/<uid>/Equipped BoolValue if available
     table.insert(self.itemFrames, itemFrame)
+    self.itemFramesByUid[item.uid] = itemFrame
+    self.itemColorsByUid[item.uid] = item.color
 
     -- Live-equipped icon binding: reflects server-driven Equipped BoolValue on the pet folder
     task.spawn(function()
@@ -2780,9 +2786,15 @@ function InventoryPanel:_onEquippedChanged(categoryName, itemUid, slotName, acti
         self.logger:info("❌ Removed from equipped items", {itemUid = itemUid})
     end
     
-    -- Refresh the UI to update equipped styling
-    self.logger:info("🔄 Refreshing UI for equipped change")
-    self:_updateItemsDisplay()
+    -- Incremental UI update for the affected card (avoid full rebuild)
+    local frame = self.itemFramesByUid[itemUid]
+    if frame then
+        local originalColor = self.itemColorsByUid[itemUid]
+        local isEquipped = (action == "equipped") and (itemUid ~= "")
+        self:_applyEquippedStyling(frame, isEquipped, originalColor)
+    else
+        self.logger:debug("Equipped change for non-visible item; skipping rebuild", {itemUid = itemUid})
+    end
 end
 
 -- Debug function to manually check equipped items
