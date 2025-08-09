@@ -4,6 +4,12 @@
 
 The Pet System allows players to equip and use pets that follow them around the game world. Pets provide visual appeal and assist in gameplay by attacking breakable objects. The system supports 0-99 pets per player with intelligent formation algorithms and customizable visibility settings.
 
+Inventory Design Update:
+- Normal pets (all pets that are not special) are stackable and identical. They cannot level or be enchanted. Their stats come from configuration as a single source of truth. Example: owning 15 `bear:basic` and 20 `bear:golden` creates two stacks rather than 35 unique instances.
+- Special pets (rarities: secret, exclusive) are unique, individualized items that may carry levels, enchantments, nicknames, etc. These remain one-per-UID.
+- Equipped state is part of the inventory's single source of truth. Equipping a normal pet temporarily “individualizes” one unit from its stack only for equip management; unequipping returns it to the stack.
+- UI builds once at bootstrap, then applies incremental updates (no full refresh) for add/remove/equip/unequip/quantity changes.
+
 ## Core Requirements
 
 1. **Pet Spawning & Management**
@@ -33,16 +39,78 @@ The Pet System allows players to equip and use pets that follow them around the 
 
 ### 1. **Folder Structure & Replication**
 
+Single Source of Truth is the player's Inventory. Equipped mirrors live inside the Inventory structure and are also exposed via an Equipped/pets folder for ease of consumption by visualization systems.
+
+Replicated structure:
 ```
 Player/
-├── Equipped/
+├── Inventory/
 │   └── pets/
-│       ├── slot_1 (StringValue: "pet_uid_123")
-│       ├── slot_2 (StringValue: "pet_uid_456")
-│       └── ... (up to configured max slots)
+│       ├── Stacks/
+│       │   ├── bear:basic/
+│       │   │   └── Quantity (IntValue: 15)
+│       │   ├── bear:golden/
+│       │   │   └── Quantity (IntValue: 20)
+│       │   └── ...
+│       ├── Special/
+│       │   ├── pet_uid_abc123/ (Folder with per-item values: PetType, Variant, Power, etc.)
+│       │   └── ...
+│       └── Equipped/
+│           └── pets/
+│               ├── slot_1 (StringValue: "stack|bear:basic|eph_1")
+│               ├── slot_2 (StringValue: "special|pet_uid_abc123")
+│               └── ...
+└── Equipped/
+    └── pets/
+        ├── slot_1 (StringValue: "stack|bear:basic|eph_1")
+        ├── slot_2 (StringValue: "special|pet_uid_abc123")
+        └── ...
 ```
 
-The Equipped/pets folder is already replicated to all clients via InventoryService. We'll use folder change events to spawn/despawn pets.
+Notes:
+- `Stacks/<id:variant>/Quantity` represents stack counts for normal pets. Instance count stays low regardless of quantity.
+- `Special/<uid>` holds folders for unique pets (secret/exclusive). These retain individualized attributes.
+- `Equipped/pets/slot_N` StringValue encodes either a stack-backed equip or a special UID:
+  - `stack|<id:variant>|<ephemeralUid>`
+  - `special|<uid>`
+- The top-level `Player/Equipped/pets` is maintained as a convenience bridge for systems that already watch that path. Long-term, consumers can read from `Player/Inventory/pets/Equipped/pets` directly.
+
+Equip/Unequip mutation only touches a few Values (slot StringValue and affected Quantity), avoiding any full folder rebuilds.
+
+### 2. **Inventory Data Model (ProfileStore v2)**
+
+```
+Inventory = {
+  pets = {
+    version = 2,
+    stacks = {
+      ["bear:basic"] = { id = "bear", variant = "basic", quantity = 15 },
+      ["bear:golden"] = { id = "bear", variant = "golden", quantity = 20 },
+      -- ...
+    },
+    special = {
+      ["pet_uid_abc123"] = {
+        id = "hydra", variant = "secret", nickname = "", obtained_at = 1701234567,
+        stats = { power = 5000 }, enchantments = { /* optional */ }
+      },
+      -- ...
+    },
+    equipped = {
+      slots = {
+        slot_1 = { kind = "stack", stackKey = "bear:basic", ephemeralUid = "eph_1" },
+        slot_2 = { kind = "special", uid = "pet_uid_abc123" },
+        -- ...
+      }
+    }
+  }
+}
+```
+
+Rules:
+- Normal pets (non-secret, non-exclusive) persist in `stacks` and cannot be leveled or enchanted.
+- Special pets (secret, exclusive) persist in `special` with full per-item data.
+- Equipping a stack decrements its `quantity` and creates a transient equipped entry; unequipping increments quantity.
+- All stats for normal pets derive from configuration at runtime.
 
 ### 2. **Component Architecture**
 
@@ -57,7 +125,7 @@ The Equipped/pets folder is already replicated to all clients via InventoryServi
 
 Key Methods:
 - InitializeService()
-- OnPetEquipped(player, slotName, petUid)
+- OnPetEquipped(player, slotName, slotData)  -- slotData.kind="stack"/"special"; for stack: {stackKey, ephemeralUid}
 - OnPetUnequipped(player, slotName)
 - UpdateVisibilitySettings(setting)
 - CreatePetModel(owner, petData) → Model
@@ -206,6 +274,24 @@ function UpdatePetPosition(pet, owner, formationOffset, deltaTime)
 end
 ```
 
+### 6. **Inventory UI (Stacking & Incremental Updates)**
+
+Principles:
+- Build the inventory UI once at bootstrap.
+- Incrementally update UI on specific events:
+  - `Stacks.ChildAdded/Removed` → add/remove stack rows.
+  - `Quantity.Changed` → update count badge and (if configured) re-sort affected rows.
+  - `Special.ChildAdded/Removed` → add/remove unique item rows.
+  - `Equipped/pets` slot changes → update the equipped strip at the top and adjust visible stack counts as `visibleCount = Quantity - equippedFromStack`.
+- Sort order: equipped first, then by strength (normal stacks use config power; special use per-UID power). 
+- Normal stacks show a count badge; special pets render as individual items.
+
+Networking:
+- Equip/Unequip toggles send a command payload:
+  - Stack: `{ bucket = "pets", kind = "stack", stackKey = "bear:basic" }`
+  - Special: `{ bucket = "pets", kind = "special", uid = "pet_uid_abc123" }`
+- State replication is folder/value-based; network events are only for commands or toasts.
+
 ### 6. **Combat System Integration**
 
 ```lua
@@ -307,6 +393,11 @@ end
 4. **Batch Operations**: Group pet updates to reduce overhead
 5. **Streaming**: Only show pets within range (e.g., 200 studs)
 
+Additional performance gains from stacking:
+- Instance count scales with distinct pet types/variants and equipped slots rather than total quantity.
+- Equip/unequip touches only small Value sets (slot and quantity), avoiding full tree churn.
+- UI uses debounced re-sorts and targeted frame updates instead of full panel rebuilds.
+
 ## Configuration Integration
 
 The system will use existing configurations:
@@ -335,3 +426,13 @@ The system will use existing configurations:
 3. **Formation Presets**: Save custom formations
 4. **Pet Abilities**: Special movement abilities (flying, swimming)
 5. **Pet Customization**: Colors, accessories, names
+
+## Migration Plan (Profile v1 → v2)
+
+1. Detect old per-pet unique inventory. For each pet instance, compute rarity from `configs/pets.lua`.
+2. If rarity is `secret` or `exclusive`, keep as unique in `special` with same UID; otherwise fold into `stacks[id:variant].quantity += 1` and drop unique-only fields (level/enchantments).
+3. Derive equipped slots:
+   - If an equipped UID maps to a special pet, keep it as `special|<uid>`.
+   - If it maps to a normal pet, allocate a stack-backed equip entry and decrement its stack quantity.
+4. Write `Inventory.pets.version = 2` and replicate `Stacks`, `Special`, and `Equipped/pets` as described.
+5. Maintain `Player/Equipped/pets` bridge values during rollout; switch consumers to `Inventory/pets/Equipped/pets` when convenient and remove bridge later.
