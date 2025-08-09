@@ -149,6 +149,9 @@ function InventoryPanel.new()
     self.itemFrames = {}
     self.itemFramesByUid = {}
     self.itemColorsByUid = {}
+    self.inventoryDataByUid = {}
+    self.itemFramesByUid = {}
+    self.itemColorsByUid = {}
     self.selectedCategory = "All"
     self.searchTerm = ""
     
@@ -778,19 +781,11 @@ end
 function InventoryPanel:_loadPetsFromFolder(petsFolder)
     -- Get rarity colors for display
     local rarityColors = {
-        basic = Color3.fromRGB(150, 150, 150),    -- Gray
-        golden = Color3.fromRGB(255, 215, 0),     -- Gold  
-        rainbow = Color3.fromRGB(255, 0, 255)     -- Magenta
+        basic = Color3.fromRGB(150, 150, 150),
+        golden = Color3.fromRGB(255, 215, 0),
+        rainbow = Color3.fromRGB(255, 0, 255)
     }
-    
-    -- Get pet emoji mapping
-    local petIcons = {
-        bear = "🐻",
-        bunny = "🐰", 
-        doggy = "🐶",
-        kitty = "🐱",
-        dragon = "🐉"
-    }
+    local petIcons = { bear = "🐻", bunny = "🐰", doggy = "🐶", kitty = "🐱", dragon = "🐉" }
     
     -- Iterate through all pet folders
     for _, petFolder in pairs(petsFolder:GetChildren()) do
@@ -819,6 +814,7 @@ function InventoryPanel:_loadPetsFromFolder(petsFolder)
                 }
                 
                 table.insert(self.inventoryData, displayData)
+                self.inventoryDataByUid[displayData.uid] = displayData
                 self.logger:info("🐾 LOADED PET", {
                     name = displayData.name,
                     folder_source = displayData.folder_source,
@@ -1556,11 +1552,12 @@ function InventoryPanel:_createItemFrame(item, layoutOrder)
     infoLabel.Parent = itemFrame
     
     -- Add interaction system (includes hover effects)
-    print("🔧 ABOUT TO ADD INTERACTIONS FOR:", item.id, item.name)
-    self.logger:info("🔧 ABOUT TO ADD INTERACTIONS", {itemId = item.id, itemName = item.name})
+    -- Reduce verbose logging; keep a single concise line in debug builds only
+    -- print("🔧 ABOUT TO ADD INTERACTIONS FOR:", item.id, item.name)
+    -- self.logger:info("🔧 ABOUT TO ADD INTERACTIONS", {itemId = item.id, itemName = item.name})
     self:_addItemInteractions(itemFrame, item)
-    print("✅ INTERACTIONS ADDED FOR:", item.id)
-    self.logger:info("✅ INTERACTIONS ADDED", {itemId = item.id})
+    -- print("✅ INTERACTIONS ADDED FOR:", item.id)
+    -- self.logger:info("✅ INTERACTIONS ADDED", {itemId = item.id})
     
     -- Apply equipped styling if item is equipped
     local isEquipped = self:_isItemEquipped(item)
@@ -1713,12 +1710,7 @@ end
 
 -- 🖱️ ITEM INTERACTION SYSTEM
 function InventoryPanel:_addItemInteractions(itemFrame, item)
-    print("🖱️ INSIDE _addItemInteractions FOR:", item.id, "hasSignals:", self.signals ~= nil)
-    self.logger:info("🔧 ADDING INTERACTIONS", {
-        itemId = item.id,
-        itemName = item.name,
-        hasSignals = self.signals ~= nil
-    })
+    -- print("🖱️ INSIDE _addItemInteractions FOR:", item.id, "hasSignals:", self.signals ~= nil)
     
     -- Left-click: Primary action (consume/equip)
     local leftClickDetection = Instance.new("TextButton")
@@ -1765,12 +1757,12 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
     end
     self._rightClickConnections[item.id] = rightClickConnection
     
-    print("🔧 RIGHT CLICK CONNECTION CREATED FOR:", item.id)
+    -- print("🔧 RIGHT CLICK CONNECTION CREATED FOR:", item.id)
     
     -- CONSOLIDATED: Enhanced hover effects for visual feedback
     local originalSize = itemFrame.Size
     local stroke = itemFrame:FindFirstChild("UIStroke")
-    print("🎨 SETTING UP HOVER FOR:", item.id, "hasStroke:", stroke ~= nil)
+    -- print("🎨 SETTING UP HOVER FOR:", item.id, "hasStroke:", stroke ~= nil)
     
     -- UPDATED MouseEnter to include BOTH tracking AND hover effects
     itemFrame.MouseEnter:Connect(function()
@@ -2793,7 +2785,13 @@ function InventoryPanel:_onEquippedChanged(categoryName, itemUid, slotName, acti
         local isEquipped = (action == "equipped") and (itemUid ~= "")
         self:_applyEquippedStyling(frame, isEquipped, originalColor)
     else
-        self.logger:debug("Equipped change for non-visible item; skipping rebuild", {itemUid = itemUid})
+        -- If the item just switched visibility due to filter/search, rebuild that one frame lazily
+        local data = self.inventoryDataByUid[itemUid]
+        if data and self:_itemMatchesCategory(data, self.selectedCategory, self:_getCategoryFolders(self.selectedCategory)) then
+            self:_createItemFrame(data, #self.itemFrames + 1)
+        else
+            self.logger:debug("Equipped change for non-visible item; skipping rebuild", {itemUid = itemUid})
+        end
     end
 end
 
