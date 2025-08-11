@@ -1747,18 +1747,25 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     -- Item icon background
     local iconBG = Instance.new("Frame")
     local configuredIconSize: Vector2? = nil
+    local configuredIconScale: number? = nil
     do
+        -- Load UI config via Locations to avoid scope issues with ConfigLoader
         local okUI, uiCfg = pcall(function()
-            return ConfigLoader:LoadConfig("ui")
+            return Locations.getConfig("ui")
         end)
         if okUI and uiCfg and uiCfg.panel_configs and uiCfg.panel_configs.inventory_panel and uiCfg.panel_configs.inventory_panel.grid then
             local g = uiCfg.panel_configs.inventory_panel.grid
             if g.icon_size and typeof(g.icon_size) == "Vector2" then
                 configuredIconSize = g.icon_size
             end
+            if typeof(g.icon_scale) == "number" then
+                configuredIconScale = g.icon_scale
+            end
         end
     end
-    local iconSize = configuredIconSize and configuredIconSize.X or math.floor(self.cardSize.X * 0.5)
+    local iconSize = configuredIconSize and configuredIconSize.X
+        or (configuredIconScale and math.floor(self.cardSize.X * math.clamp(configuredIconScale, 0.1, 1.2)))
+        or math.floor(self.cardSize.X * 0.5)
     iconBG.Size = UDim2.new(0, iconSize, 0, iconSize)
     iconBG.Position = UDim2.new(0.5, -math.floor(iconSize/2), 0, math.floor(self.cardSize.Y*0.08))
     iconBG.BackgroundColor3 = item.color
@@ -1804,7 +1811,13 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
         -- Use emoji fallback
         self.logger:info("🎭 USING EMOJI FALLBACK", {itemId = item.id, icon = item.icon})
         local icon = Instance.new("TextLabel")
-        local ti = math.max(8, math.floor((configuredIconSize and configuredIconSize.Y or iconSize)*0.8))
+        local calcBase = iconSize
+        if configuredIconSize then
+            calcBase = configuredIconSize.Y
+        elseif configuredIconScale then
+            calcBase = math.floor(self.cardSize.Y * math.clamp(configuredIconScale, 0.1, 1.2))
+        end
+        local ti = math.max(8, math.floor(calcBase*0.8))
         icon.Size = UDim2.new(0, ti, 0, ti)
         icon.Position = UDim2.new(0.5, -math.floor(ti/2), 0.5, -math.floor(ti/2))
         icon.BackgroundTransparency = 1
@@ -1854,27 +1867,62 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     equippedIcon.ZIndex = 105
     equippedIcon.Parent = itemFrame
 
-    -- Name (center bottom) and strength below it
+    -- Name (center bottom) and strength below it (configurable spacing)
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1, -8, 0, math.max(8, math.floor(self.cardSize.Y*0.17)))
-    nameLabel.Position = UDim2.new(0, 4, 1, -math.max(12, math.floor(self.cardSize.Y*0.31)))
+    local powerLabel = Instance.new("TextLabel")
+
+    local nameHeightScale = 0.17
+    local nameBottomOffsetScale = 0.31
+    local powerHeightScale = 0.14
+    local powerBottomOffsetScale = 0.17
+    local nameFont = Enum.Font.GothamBold
+    local nameColor = Color3.fromRGB(255, 255, 255)
+    local powerFont = Enum.Font.Gotham
+    local powerPrefix = "⚡ "
+    local powerColorOverride: Color3? = nil
+    local useRarityColorForPower = true
+
+    do
+        local okUI, uiCfg = pcall(function()
+            return ConfigLoader:LoadConfig("ui")
+        end)
+        if okUI and uiCfg and uiCfg.panel_configs and uiCfg.panel_configs.inventory_panel and uiCfg.panel_configs.inventory_panel.grid then
+            local g = uiCfg.panel_configs.inventory_panel.grid
+            if typeof(g.name_label) == "table" then
+                nameHeightScale = typeof(g.name_label.height_scale) == "number" and g.name_label.height_scale or nameHeightScale
+                nameBottomOffsetScale = typeof(g.name_label.bottom_offset_scale) == "number" and g.name_label.bottom_offset_scale or nameBottomOffsetScale
+                if typeof(g.name_label.font) == "EnumItem" then nameFont = g.name_label.font end
+                if typeof(g.name_label.color) == "Color3" then nameColor = g.name_label.color end
+            end
+            if typeof(g.power_label) == "table" then
+                powerHeightScale = typeof(g.power_label.height_scale) == "number" and g.power_label.height_scale or powerHeightScale
+                powerBottomOffsetScale = typeof(g.power_label.bottom_offset_scale) == "number" and g.power_label.bottom_offset_scale or powerBottomOffsetScale
+                if typeof(g.power_label.font) == "EnumItem" then powerFont = g.power_label.font end
+                if typeof(g.power_label.prefix) == "string" then powerPrefix = g.power_label.prefix end
+                if typeof(g.power_label.color) == "Color3" then powerColorOverride = g.power_label.color end
+                if typeof(g.power_label.color_from_rarity) == "boolean" then useRarityColorForPower = g.power_label.color_from_rarity end
+            end
+        end
+    end
+
+    nameLabel.Size = UDim2.new(1, -8, 0, math.max(8, math.floor(self.cardSize.Y*nameHeightScale)))
+    nameLabel.Position = UDim2.new(0, 4, 1, -math.max(12, math.floor(self.cardSize.Y*nameBottomOffsetScale)))
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = item.name
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextColor3 = nameColor
     nameLabel.TextScaled = true
-    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.Font = nameFont
     nameLabel.ZIndex = 103
     nameLabel.Parent = itemFrame
-
-    local powerLabel = Instance.new("TextLabel")
+    
     powerLabel.Name = "PowerLabel"
-    powerLabel.Size = UDim2.new(1, -8, 0, math.max(6, math.floor(self.cardSize.Y*0.14)))
-    powerLabel.Position = UDim2.new(0, 4, 1, -math.max(8, math.floor(self.cardSize.Y*0.17)))
+    powerLabel.Size = UDim2.new(1, -8, 0, math.max(6, math.floor(self.cardSize.Y*powerHeightScale)))
+    powerLabel.Position = UDim2.new(0, 4, 1, -math.max(8, math.floor(self.cardSize.Y*powerBottomOffsetScale)))
     powerLabel.BackgroundTransparency = 1
-    powerLabel.Text = (item.power and ("⚡ " .. tostring(item.power))) or ""
-    powerLabel.TextColor3 = item.color
+    powerLabel.Text = (item.power and (powerPrefix .. tostring(item.power))) or ""
+    powerLabel.TextColor3 = (useRarityColorForPower and item.color) or powerColorOverride or item.color
     powerLabel.TextScaled = true
-    powerLabel.Font = Enum.Font.Gotham
+    powerLabel.Font = powerFont
     powerLabel.ZIndex = 103
     powerLabel.Parent = itemFrame
     

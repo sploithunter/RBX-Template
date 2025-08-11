@@ -1169,7 +1169,26 @@ local uiConfig = {
                 card_size = Vector2.new(65, 65),
                 card_padding = Vector2.new(8, 8),
                 -- Absolute icon size (inside each card). If omitted, icon scales with card.
-                icon_size = Vector2.new(65, 65),
+                -- You can also use `icon_scale` to size the icon as a percentage of the card
+                -- (takes precedence if provided here; see InventoryPanel for logic).
+                -- Explicit size overrides scale if provided
+                --icon_size = Vector2.new(56, 56),
+                icon_scale = 0.85, -- used when icon_size is not provided
+
+                -- NEW: Label layout controls for better separation and readability
+                name_label = {
+                    height_scale = 0.18,            -- portion of card height reserved for name text
+                    bottom_offset_scale = 0.40,      -- distance from bottom of card
+                    font = Enum.Font.GothamBold,
+                    color = Color3.fromRGB(255, 255, 255)
+                },
+                power_label = {
+                    height_scale = 0.14,
+                    bottom_offset_scale = 0.14,
+                    font = Enum.Font.Gotham,
+                    prefix = "⚡ ",
+                    color_from_rarity = true
+                }
             }
         },
         
