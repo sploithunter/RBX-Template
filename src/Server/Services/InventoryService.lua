@@ -24,6 +24,15 @@ local Locations = require(ReplicatedStorage.Shared.Locations)
 local InventoryService = {}
 InventoryService.__index = InventoryService
 
+-- Helper to safely require configs
+local function tryLoadConfig(configLoader, name)
+    local ok, result = pcall(function()
+        return configLoader:LoadConfig(name)
+    end)
+    if ok then return result end
+    return nil
+end
+
 function InventoryService:Init()
     print("🚀 InventoryService:Init() called")
     
@@ -36,6 +45,8 @@ function InventoryService:Init()
     
     -- Load inventory configuration
     self._inventoryConfig = self._configLoader:LoadConfig("inventory")
+    -- Pets config (for rarity lookup)
+    self._petsConfig = tryLoadConfig(self._configLoader, "pets")
     
     print("📋 InventoryService config loaded")
     
@@ -151,11 +162,22 @@ function InventoryService:AddItem(player, bucketName, itemData)
     
     local uid = nil
     local success = false
-    
-    if bucketConfig.storage_type == "stackable" then
-        uid, success = self:_addStackableItem(player, bucketName, itemData, bucket, bucketConfig)
+
+    -- Mixed behavior for pets: normal variants stack, special variants are unique
+    if bucketName == "pets" then
+        local variant = itemData.variant or "basic"
+        local isSpecial = self:_isSpecialPet(itemData.id, variant)
+        if isSpecial then
+            uid, success = self:_addPetSpecialUnique(player, bucketName, itemData, bucket, bucketConfig)
+        else
+            uid, success = self:_addPetStack(player, itemData, bucket)
+        end
     else
-        uid, success = self:_addUniqueItem(player, bucketName, itemData, bucket, bucketConfig)
+        if bucketConfig.storage_type == "stackable" then
+            uid, success = self:_addStackableItem(player, bucketName, itemData, bucket, bucketConfig)
+        else
+            uid, success = self:_addUniqueItem(player, bucketName, itemData, bucket, bucketConfig)
+        end
     end
     
     if success then
@@ -273,6 +295,65 @@ function InventoryService:_addUniqueItem(player, bucketName, itemData, bucket, b
     })
     
     return uid, true
+end
+
+-- Determine if a pet should be treated as special (unique)
+function InventoryService:_isSpecialPet(petId, variant)
+    if not self._petsConfig then return false end
+    local petData = self._petsConfig.getPet and self._petsConfig.getPet(petId, variant) or nil
+    if not petData then return false end
+    local rarityId = petData.rarity_id or (petData.rarity and petData.rarity.name and string.lower(petData.rarity.name))
+    if not rarityId then return false end
+    local specialList = (self._inventoryConfig and self._inventoryConfig.buckets and self._inventoryConfig.buckets.pets and self._inventoryConfig.buckets.pets.special_rarities) or {"secret","exclusive"}
+    for _, r in ipairs(specialList) do
+        if r == rarityId then
+            return true
+        end
+    end
+    return false
+end
+
+-- Compute stack key for pets: id:variant
+function InventoryService:_petStackKey(petId, variant)
+    variant = variant or "basic"
+    return string.format("%s:%s", petId, variant)
+end
+
+-- Add a normal pet to stacks structure (quantity increments)
+function InventoryService:_addPetStack(player, itemData, bucket)
+    local stackKey = self:_petStackKey(itemData.id, itemData.variant)
+    local stackEntry = bucket.items[stackKey]
+    local maxStack = (self._inventoryConfig and self._inventoryConfig.buckets and self._inventoryConfig.buckets.pets and (self._inventoryConfig.buckets.pets.max_stack_size or 99999)) or 99999
+
+    if stackEntry then
+        local newQty = (stackEntry.quantity or 0) + (itemData.quantity or 1)
+        if newQty > maxStack then
+            return nil, false
+        end
+        stackEntry.quantity = newQty
+    else
+        bucket.items[stackKey] = {
+            id = itemData.id,
+            variant = itemData.variant or "basic",
+            quantity = itemData.quantity or 1,
+            obtained_at = os.time(),
+            _kind = "stack"
+        }
+        bucket.used_slots = (bucket.used_slots or 0) + 1
+    end
+
+    self._logger:Debug("📦 PET STACK ADD", {player = player.Name, stackKey = stackKey, quantity = bucket.items[stackKey].quantity})
+    return stackKey, true
+end
+
+-- Add a special pet as unique (delegates to unique path)
+function InventoryService:_addPetSpecialUnique(player, bucketName, itemData, bucket, bucketConfig)
+    local uid, ok = self:_addUniqueItem(player, bucketName, itemData, bucket, bucketConfig)
+    if ok then
+        local entry = bucket.items[uid]
+        entry._kind = "special"
+    end
+    return uid, ok
 end
 
 function InventoryService:RemoveItem(player, bucketName, uid, quantity)
@@ -479,9 +560,28 @@ function InventoryService:_createBucketFolder(player, bucketName, parentFolder)
     storageType.Value = bucketConfig and bucketConfig.storage_type or "unique"
     storageType.Parent = infoFolder
     
-    -- Create item folders
-    for uid, itemData in pairs(bucket.items or {}) do
-        self:_createItemFolder(bucketFolder, uid, itemData, bucketConfig)
+    -- Pets use mixed replication: Stacks and Special subfolders
+    if bucketName == "pets" then
+        local stacksFolder = Instance.new("Folder")
+        stacksFolder.Name = "Stacks"
+        stacksFolder.Parent = bucketFolder
+
+        local specialFolder = Instance.new("Folder")
+        specialFolder.Name = "Special"
+        specialFolder.Parent = bucketFolder
+
+        for key, itemData in pairs(bucket.items or {}) do
+            if itemData and (itemData._kind == "stack" or itemData.quantity) then
+                self:_createPetStackFolder(stacksFolder, key, itemData)
+            else
+                self:_createPetSpecialFolder(specialFolder, key, itemData)
+            end
+        end
+    else
+        -- Create item folders (legacy buckets)
+        for uid, itemData in pairs(bucket.items or {}) do
+            self:_createItemFolder(bucketFolder, uid, itemData, bucketConfig)
+        end
     end
     
     self._logger:Debug("📂 REPLICATION - Created bucket folder", {
@@ -599,17 +699,34 @@ function InventoryService:_updateBucketFolders(player, bucketName)
         end
     end
     
-    -- Remove old item folders
+    -- Remove old item folders (preserve Info)
     for _, child in pairs(bucketFolder:GetChildren()) do
         if child.Name ~= "Info" then
             child:Destroy()
         end
     end
-    
-    -- Recreate item folders
+
     local bucketConfig = self._inventoryConfig.buckets[bucketName]
-    for uid, itemData in pairs(bucket.items or {}) do
-        self:_createItemFolder(bucketFolder, uid, itemData, bucketConfig)
+    if bucketName == "pets" then
+        local stacksFolder = Instance.new("Folder")
+        stacksFolder.Name = "Stacks"
+        stacksFolder.Parent = bucketFolder
+
+        local specialFolder = Instance.new("Folder")
+        specialFolder.Name = "Special"
+        specialFolder.Parent = bucketFolder
+
+        for key, itemData in pairs(bucket.items or {}) do
+            if itemData and (itemData._kind == "stack" or itemData.quantity) then
+                self:_createPetStackFolder(stacksFolder, key, itemData)
+            else
+                self:_createPetSpecialFolder(specialFolder, key, itemData)
+            end
+        end
+    else
+        for uid, itemData in pairs(bucket.items or {}) do
+            self:_createItemFolder(bucketFolder, uid, itemData, bucketConfig)
+        end
     end
     
     if self._inventoryConfig.settings.trace_operations then
@@ -619,6 +736,55 @@ function InventoryService:_updateBucketFolders(player, bucketName)
             usedSlots = bucket.used_slots,
             itemCount = self:_countItems(bucket.items or {})
         })
+    end
+end
+
+-- Create a stack folder for a normal pet
+function InventoryService:_createPetStackFolder(parentFolder, stackKey, itemData)
+    local stackFolder = Instance.new("Folder")
+    stackFolder.Name = stackKey
+    stackFolder.Parent = parentFolder
+
+    local itemId = Instance.new("StringValue")
+    itemId.Name = "ItemId"
+    itemId.Value = itemData.id or "unknown"
+    itemId.Parent = stackFolder
+
+    local variant = Instance.new("StringValue")
+    variant.Name = "Variant"
+    variant.Value = itemData.variant or "basic"
+    variant.Parent = stackFolder
+
+    local qty = Instance.new("IntValue")
+    qty.Name = "Quantity"
+    qty.Value = itemData.quantity or 1
+    qty.Parent = stackFolder
+end
+
+-- Create a folder for a special pet (unique)
+function InventoryService:_createPetSpecialFolder(parentFolder, uid, itemData)
+    local itemFolder = Instance.new("Folder")
+    itemFolder.Name = uid
+    itemFolder.Parent = parentFolder
+
+    local itemId = Instance.new("StringValue")
+    itemId.Name = "ItemId"
+    itemId.Value = itemData.id or "unknown"
+    itemId.Parent = itemFolder
+
+    local obtainedAt = Instance.new("NumberValue")
+    obtainedAt.Name = "ObtainedAt"
+    obtainedAt.Value = itemData.obtained_at or 0
+    obtainedAt.Parent = itemFolder
+
+    -- Copy primitive/table fields to values/folders (excluding id/obtained_at)
+    for key, value in pairs(itemData) do
+        if key ~= "id" and key ~= "obtained_at" and key ~= "_kind" then
+            local valueObj = self:_createValueObject(key, value)
+            if valueObj then
+                valueObj.Parent = itemFolder
+            end
+        end
     end
 end
 
@@ -701,9 +867,19 @@ function InventoryService:_validateAddItem(player, bucketName, itemData)
     end
     
     -- Validate required fields
-    for _, requiredField in ipairs(bucketConfig.item_schema.required or {}) do
-        if requiredField ~= "obtained_at" and not itemData[requiredField] then
-            return false, "Item missing required field: " .. requiredField
+    if bucketConfig.storage_type == "mixed" and bucketName == "pets" then
+        -- Mixed pets require id and variant
+        if not itemData.id then
+            return false, "Item missing required field: id"
+        end
+        if not itemData.variant then
+            return false, "Item missing required field: variant"
+        end
+    else
+        for _, requiredField in ipairs(bucketConfig.item_schema and bucketConfig.item_schema.required or {}) do
+            if requiredField ~= "obtained_at" and not itemData[requiredField] then
+                return false, "Item missing required field: " .. requiredField
+            end
         end
     end
     
@@ -1090,14 +1266,46 @@ function InventoryService:_handleTogglePetEquipped(player, data)
         return
     end
     
-    -- Verify pet exists in inventory
-    local pet = playerData.Inventory.pets.items[data.itemUid]
-    if not pet then
-        self._logger:Warn("❌ Pet not found in inventory", {
-            player = player.Name,
-            itemUid = data.itemUid
-        })
-        return
+    -- Parse stack-equip UIDs: "stack|<id:variant>|<eph>"
+    local isStackEquip = false
+    local stackKey, ephId = nil, nil
+    if type(data.itemUid) == "string" then
+        local parts = string.split(data.itemUid, "|")
+        if #parts >= 3 and parts[1] == "stack" then
+            isStackEquip = true
+            stackKey = parts[2]
+            ephId = parts[3]
+        elseif #parts == 2 and parts[1] == "stack" then
+            -- client may send without eph; generate one
+            isStackEquip = true
+            stackKey = parts[2]
+            ephId = tostring(os.clock()):gsub("%.", "")
+            data.itemUid = string.format("stack|%s|%s", stackKey, ephId)
+        end
+    end
+
+    local pet
+    if isStackEquip then
+        -- Resolve stack entry
+        local bucket = playerData.Inventory.pets
+        if not bucket or not bucket.items[stackKey] then
+            self._logger:Warn("❌ Stack not found for equip", {player = player.Name, stackKey = stackKey})
+            return
+        end
+        pet = bucket.items[stackKey]
+        -- Allow equipping even when quantity reaches zero during session, but not below zero
+        if (pet.quantity or 0) <= 0 then
+            -- If this is an unequip (detected below), it will increment back.
+            -- For an equip request with zero quantity, reject.
+            -- We detect equip vs unequip after toggling result below, so pre-check cannot differentiate.
+        end
+    else
+        -- Unique pet path
+        pet = playerData.Inventory.pets.items[data.itemUid]
+        if not pet then
+            self._logger:Warn("❌ Pet not found in inventory", {player = player.Name, itemUid = data.itemUid})
+            return
+        end
     end
     
     -- Initialize equipped pets if needed
@@ -1111,16 +1319,48 @@ function InventoryService:_handleTogglePetEquipped(player, data)
     local success, result = self:_togglePetEquipment(player, data.itemUid, pet, playerData)
     
     if success then
+        -- Adjust stack quantities for stack equips
+        if isStackEquip then
+            local stackEntry = playerData.Inventory.pets.items[stackKey]
+            if result.action == "equipped" then
+                if (stackEntry.quantity or 0) <= 0 then
+                    -- Guard: don't go below zero (reject equip and revert slot)
+                    self._logger:Warn("❌ Stack has zero quantity", {player = player.Name, stackKey = stackKey})
+                    -- Revert: remove the slot we just set
+                    for slotName, uid in pairs(playerData.Equipped.pets) do
+                        if uid == data.itemUid then
+                            playerData.Equipped.pets[slotName] = nil
+                            break
+                        end
+                    end
+                    -- Refresh folders and exit
+                    self:_updateEquippedFolders(player, "pets")
+                    return
+                end
+                stackEntry.quantity = math.max(0, (stackEntry.quantity or 0) - 1)
+            elseif result.action == "unequipped" then
+                stackEntry.quantity = (stackEntry.quantity or 0) + 1
+            end
+            -- Replicate pets bucket so clients receive updated stack quantities
+            self:_updateBucketFolders(player, "pets")
+        end
         -- Update equipped folder replication
         self:_updateEquippedFolders(player, "pets")
         
         self._logger:Info("✅ Pet equipped successfully", {
             player = player.Name,
-            petId = pet.id,
+            petId = pet.id or stackKey,
             petUid = data.itemUid,
             slot = result.slot,
             action = result.action
         })
+        
+        -- Debug snapshot of equipped slots after update
+        local slotsDebug = {}
+        for slotName, uid in pairs(playerData.Equipped.pets or {}) do
+            table.insert(slotsDebug, string.format("%s=%s", slotName, uid))
+        end
+        self._logger:Info("📋 EQUIPPED SLOTS SNAPSHOT", {player = player.Name, slots = table.concat(slotsDebug, ", ")})
     end
 end
 

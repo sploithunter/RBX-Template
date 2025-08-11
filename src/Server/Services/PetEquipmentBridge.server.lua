@@ -13,7 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Silence verbose prints unless enabled
 local __RAW_PRINT = print
-local __PRINT_ENABLED = false
+local __PRINT_ENABLED = false -- default silent
 local function print(...)
     if __PRINT_ENABLED then
         __RAW_PRINT(...)
@@ -23,7 +23,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 -- This will be populated when ImportedPetHandler initializes
-local loadEquippedFunction = nil
+local loadEquippedFunctions = {}
 
 -- Cache for tracking equipped pets per player
 local equippedPets = {}
@@ -32,7 +32,7 @@ local loadDebounce = {}
 
 -- Function to set the loadEquipped function from ImportedPetHandler
 _G.SetPetLoadEquippedFunction = function(func)
-    loadEquippedFunction = func
+    table.insert(loadEquippedFunctions, func)
     print("✅ PetEquipmentBridge: LoadEquipped function registered")
 end
 
@@ -71,25 +71,90 @@ local function updatePetBooleanStates(player)
     
     local petsDataFolder = inventoryFolder:FindFirstChild("pets")
     if petsDataFolder then
-        for _, petFolder in ipairs(petsDataFolder:GetChildren()) do
-            if petFolder:IsA("Folder") then
-                -- Find or create the Equipped BoolValue
-                local equippedValue = petFolder:FindFirstChild("Equipped")
-                if not equippedValue then
-                    equippedValue = Instance.new("BoolValue")
-                    equippedValue.Name = "Equipped"
-                    equippedValue.Parent = petFolder
-                end
-                
-                -- Set based on whether this pet's UID is in our equipped set
-                local petUid = petFolder:GetAttribute("uid") or petFolder.Name
+        local function ensureAndSet(folder)
+            if not folder or not folder:IsA("Folder") then return end
+            local equippedValue = folder:FindFirstChild("Equipped")
+            if not equippedValue then
+                equippedValue = Instance.new("BoolValue")
+                equippedValue.Name = "Equipped"
+                equippedValue.Parent = folder
+            end
+            local petUid = folder:GetAttribute("uid") or folder.Name
+            if string.sub(folder.Name, 1, 6) == "equip_" then
+                equippedValue.Value = true
+            else
                 equippedValue.Value = equippedUids[petUid] == true
-                
+            end
+        end
 
+        for _, child in ipairs(petsDataFolder:GetChildren()) do
+            if child:IsA("Folder") then
+                if child.Name == "Special" then
+                    for _, specialPet in ipairs(child:GetChildren()) do
+                        if specialPet:IsA("Folder") then
+                            ensureAndSet(specialPet)
+                        end
+                    end
+                else
+                    ensureAndSet(child)
+                end
             end
         end
     else
         warn("PetEquipmentBridge: No pets folder found in Inventory for", player.Name)
+    end
+end
+
+-- Helpers for stack-backed equips
+local function parseSlotValue(value)
+    -- Patterns:
+    -- special|<uid>
+    -- stack|<id:variant>|<ephemeralUid>
+    if typeof(value) ~= "string" or value == "" then return {kind = "none"} end
+    local parts = string.split(value, "|")
+    if #parts >= 2 and parts[1] == "special" then
+        return {kind = "special", uid = parts[2]}
+    elseif #parts >= 3 and parts[1] == "stack" then
+        return {kind = "stack", stackKey = parts[2], eph = parts[3]}
+    elseif string.find(value, ":") then
+        -- Legacy mixed: slot directly stores id:variant
+        return {kind = "stack", stackKey = value, eph = value}
+    else
+        return {kind = "legacy", raw = value}
+    end
+end
+
+local function ensureEquipFolderForStack(player, stackKey, eph)
+    local inventoryFolder = player:FindFirstChild("Inventory"); if not inventoryFolder then return nil end
+    local petsFolder = inventoryFolder:FindFirstChild("pets"); if not petsFolder then return nil end
+    local equipName = "equip_" .. tostring(eph or stackKey)
+    local equipFolder = petsFolder:FindFirstChild(equipName)
+    if not equipFolder then
+        equipFolder = Instance.new("Folder")
+        equipFolder.Name = equipName
+        equipFolder.Parent = petsFolder
+        -- Derive itemId and variant from stackKey
+        local id, variant = stackKey:match("([^:]+):([^:]+)")
+        id = id or stackKey; variant = variant or "basic"
+        print("🧩 Bridge: creating equip folder for stack", id, variant, "->", equipName)
+        local itemId = Instance.new("StringValue"); itemId.Name = "ItemId"; itemId.Value = id; itemId.Parent = equipFolder
+        local variantVal = Instance.new("StringValue"); variantVal.Name = "Variant"; variantVal.Value = variant; variantVal.Parent = equipFolder
+        -- Add PetID for compatibility
+        local petId = Instance.new("NumberValue"); petId.Name = "PetID"; petId.Value = math.abs(string.len(equipName) * 9176 + (#id * 131) + (#variant * 97)); petId.Parent = equipFolder
+    end
+    -- Ensure Equipped bool exists and true
+    local eq = equipFolder:FindFirstChild("Equipped"); if not eq then eq = Instance.new("BoolValue"); eq.Name = "Equipped"; eq.Parent = equipFolder end
+    eq.Value = true
+    return equipFolder
+end
+
+local function clearEquipFolders(player)
+    local inventoryFolder = player:FindFirstChild("Inventory"); if not inventoryFolder then return end
+    local petsFolder = inventoryFolder:FindFirstChild("pets"); if not petsFolder then return end
+    for _, child in ipairs(petsFolder:GetChildren()) do
+        if child:IsA("Folder") and string.sub(child.Name, 1, 6) == "equip_" then
+            child:Destroy()
+        end
     end
 end
 
@@ -106,20 +171,57 @@ local function triggerLoadEquipped(player)
         loadDebounce[player] = nil
         
         print("🔄 PetEquipmentBridge: Triggering loadEquipped for", player.Name, "with", getEquippedCount(player), "pets")
+        -- Snapshot what's in Inventory/pets
+        local inv = player:FindFirstChild("Inventory")
+        if inv and inv:FindFirstChild("pets") then
+            local pf = inv.pets
+            local names = {}
+            for _, c in ipairs(pf:GetChildren()) do
+                if c:IsA("Folder") then
+                    local eq = c:FindFirstChild("Equipped")
+                    table.insert(names, string.format("%s(eq=%s)", c.Name, eq and tostring(eq.Value) or "nil"))
+                    if c.Name == "Special" then
+                        for _, sp in ipairs(c:GetChildren()) do
+                            if sp:IsA("Folder") then
+                                local eqs = sp:FindFirstChild("Equipped")
+                                table.insert(names, string.format("  └─%s(eq=%s)", sp.Name, eqs and tostring(eqs.Value) or "nil"))
+                            end
+                        end
+                    end
+                end
+            end
+            print("📦 Bridge: Inventory/pets contains:", table.concat(names, ", "))
+        else
+            print("⚠️ Bridge: Inventory/pets not found for", player.Name)
+        end
         
-        -- Call the imported loadEquipped function
-        if loadEquippedFunction then
+        -- Call all registered loadEquipped functions (native + fallback if present)
+        if #loadEquippedFunctions > 0 then
             -- The imported function expects pets to have Equipped.Value set
             -- We need to update pet data before calling
             updatePetBooleanStates(player)
             
-            -- Now call the imported function
-            local success, err = pcall(loadEquippedFunction, player)
-            if not success then
-                warn("❌ PetEquipmentBridge: Failed to call loadEquipped -", err)
+            for idx, f in ipairs(loadEquippedFunctions) do
+                print("🚚 Bridge: Calling loadEquippedFunction #" .. idx .. "...")
+                local success, err = pcall(f, player)
+                if not success then
+                    warn("❌ PetEquipmentBridge: Failed to call loadEquipped #" .. idx .. " -", err)
+                else
+                    print("✅ Bridge: loadEquippedFunction #" .. idx .. " completed")
+                end
             end
         else
-            warn("⚠️ PetEquipmentBridge: No loadEquipped function set! Waiting for ImportedPetHandler...")
+            warn("⚠️ PetEquipmentBridge: No loadEquipped function set! Waiting for handler...")
+            if _G.SetPetLoadEquippedFunction then
+                print("🔁 Bridge: registering handler lazily now")
+                _G.SetPetLoadEquippedFunction(function(plr)
+                    if workspace:FindFirstChild("PlayerPets") == nil then
+                        local f = Instance.new("Folder"); f.Name = "PlayerPets"; f.Parent = workspace
+                    end
+                    print("🧪 Lazy handler: (no-op) received call for", plr.Name)
+                    return "Success"
+                end)
+            end
         end
     end)
 end
@@ -148,11 +250,20 @@ local function setupSlotListener(player, slotValue)
             equippedPets[player][uid] = nil
         end
         
-        -- Rebuild from all current slots
+        -- Rebuild from all current slots and construct temp equip folders for stacks
+        clearEquipFolders(player)
         local petsFolder = slotValue.Parent
         for _, slot in ipairs(petsFolder:GetChildren()) do
             if slot:IsA("StringValue") and slot.Value ~= "" then
-                equippedPets[player][slot.Value] = true
+                local parsed = parseSlotValue(slot.Value)
+                if parsed.kind == "special" then
+                    equippedPets[player][parsed.uid] = true
+                elseif parsed.kind == "stack" then
+                    print("🔗 Bridge: slot", slot.Name, "stack equip", parsed.stackKey, parsed.eph)
+                    ensureEquipFolderForStack(player, parsed.stackKey, parsed.eph)
+                else
+                    equippedPets[player][slot.Value] = true
+                end
             end
         end
         
@@ -168,9 +279,17 @@ local function setupPetsFolder(player, petsFolder)
     
     -- Initial scan of equipped pets
     equippedPets[player] = {}
+    clearEquipFolders(player)
     for _, slotValue in ipairs(petsFolder:GetChildren()) do
         if slotValue:IsA("StringValue") and slotValue.Value ~= "" then
-            equippedPets[player][slotValue.Value] = true
+            local parsed = parseSlotValue(slotValue.Value)
+            if parsed.kind == "special" then
+                equippedPets[player][parsed.uid] = true
+            elseif parsed.kind == "stack" then
+                ensureEquipFolderForStack(player, parsed.stackKey, parsed.eph)
+            else
+                equippedPets[player][slotValue.Value] = true
+            end
         end
     end
     

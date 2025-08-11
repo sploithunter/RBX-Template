@@ -125,6 +125,44 @@ function InventoryPanel.new()
         self.inventoryConfig = nil
     end
     
+    -- Configurable card sizing (with safe defaults)
+    self.cardSize = Vector2.new(45, 45)
+    self.cardPadding = Vector2.new(8, 8)
+
+    -- Prefer UI.lua settings if present (hot-reload in Studio for live tuning)
+    pcall(function()
+        if game:GetService("RunService"):IsStudio() then
+            ConfigLoader:ReloadConfig("ui")
+        end
+    end)
+    local okUI, uiConfig = pcall(function()
+        return ConfigLoader:LoadConfig("ui")
+    end)
+    local uiAppliedSize = false
+    local uiAppliedPadding = false
+    if okUI and uiConfig and uiConfig.panel_configs and uiConfig.panel_configs.inventory_panel and uiConfig.panel_configs.inventory_panel.grid then
+        local invGrid = uiConfig.panel_configs.inventory_panel.grid
+        if invGrid.card_size and typeof(invGrid.card_size) == "Vector2" then
+            self.cardSize = invGrid.card_size
+            uiAppliedSize = true
+        end
+        if invGrid.card_padding and typeof(invGrid.card_padding) == "Vector2" then
+            self.cardPadding = invGrid.card_padding
+            uiAppliedPadding = true
+        end
+    end
+
+    -- Fallback to inventory.lua overrides
+    local invUi = self.inventoryConfig and self.inventoryConfig.ui
+    if invUi and typeof(invUi) == "table" then
+        if (not uiAppliedSize) and invUi.card_size and typeof(invUi.card_size) == "Vector2" then
+            self.cardSize = invUi.card_size
+        end
+        if (not uiAppliedPadding) and invUi.card_padding and typeof(invUi.card_padding) == "Vector2" then
+            self.cardPadding = invUi.card_padding
+        end
+    end
+    
     -- Load context menu configuration
     local contextSuccess, contextResult = pcall(function()
         return ConfigLoader:LoadConfig("context_menus")
@@ -505,12 +543,13 @@ function InventoryPanel:_createItemsGrid()
     scrollCorner.CornerRadius = UDim.new(0, 15)
     scrollCorner.Parent = scrollFrame
     
-    -- Grid layout
-    local gridLayout = Instance.new("UIGridLayout")
-    gridLayout.CellSize = UDim2.new(0, 110, 0, 110)
-    gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
-    gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    gridLayout.Parent = scrollFrame
+    -- Vertical list layout for sections
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.FillDirection = Enum.FillDirection.Vertical
+    listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Padding = UDim.new(0, 10)
+    listLayout.Parent = scrollFrame
     
     -- Padding
     local padding = Instance.new("UIPadding")
@@ -520,12 +559,85 @@ function InventoryPanel:_createItemsGrid()
     padding.PaddingRight = UDim.new(0, 15)
     padding.Parent = scrollFrame
     
-    -- Update canvas size when layout changes
-    gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, gridLayout.AbsoluteContentSize.Y + 30)
-    end)
+    -- Equipped section
+    local eqLabel = Instance.new("TextLabel")
+    eqLabel.Name = "EquippedLabel"
+    eqLabel.Size = UDim2.new(1, -20, 0, 20)
+    eqLabel.BackgroundTransparency = 1
+    eqLabel.Text = "Equipped"
+    eqLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+    eqLabel.Font = Enum.Font.GothamBold
+    eqLabel.TextScaled = true
+    eqLabel.LayoutOrder = 1
+    eqLabel.Parent = scrollFrame
+
+    local eqGridContainer = Instance.new("Frame")
+    eqGridContainer.Name = "EquippedContainer"
+    eqGridContainer.Size = UDim2.new(1, -20, 0, 0)
+    eqGridContainer.BackgroundTransparency = 1
+    eqGridContainer.LayoutOrder = 2
+    eqGridContainer.Parent = scrollFrame
+
+    local eqGrid = Instance.new("UIGridLayout")
+    eqGrid.CellSize = UDim2.new(0, self.cardSize.X, 0, self.cardSize.Y)
+    print("card size in eqgrid", self.cardSize)
+    eqGrid.CellPadding = UDim2.new(0, self.cardPadding.X, 0, self.cardPadding.Y)
+    eqGrid.SortOrder = Enum.SortOrder.LayoutOrder
+    eqGrid.Parent = eqGridContainer
+
+    -- Unequipped section
+    local invLabel = Instance.new("TextLabel")
+    invLabel.Name = "InventoryLabel"
+    invLabel.Size = UDim2.new(1, -20, 0, 20)
+    invLabel.BackgroundTransparency = 1
+    invLabel.Text = "Inventory"
+    invLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
+    invLabel.Font = Enum.Font.GothamBold
+    invLabel.TextScaled = true
+    invLabel.LayoutOrder = 3
+    invLabel.Parent = scrollFrame
+
+    local invGridContainer = Instance.new("Frame")
+    invGridContainer.Name = "InventoryContainer"
+    invGridContainer.Size = UDim2.new(1, -20, 0, 0)
+    invGridContainer.BackgroundTransparency = 1
+    invGridContainer.LayoutOrder = 4
+    invGridContainer.Parent = scrollFrame
+
+    local invGrid = Instance.new("UIGridLayout")
+    invGrid.CellSize = UDim2.new(0, self.cardSize.X, 0, self.cardSize.Y)
+    print("card size in grid", self.cardSize)
+    invGrid.CellPadding = UDim2.new(0, self.cardPadding.X, 0, self.cardPadding.Y)
+    invGrid.SortOrder = Enum.SortOrder.LayoutOrder
+    invGrid.Parent = invGridContainer
+
+    local function updateSectionHeights()
+        -- Expand containers to fit all grid rows
+        local eqH = eqGrid.AbsoluteContentSize.Y
+        local invH = invGrid.AbsoluteContentSize.Y
+        eqGridContainer.Size = UDim2.new(1, -20, 0, eqH)
+        invGridContainer.Size = UDim2.new(1, -20, 0, invH)
+        
+        -- Recompute scroll canvas
+        local total = eqH + invH + eqLabel.AbsoluteSize.Y + invLabel.AbsoluteSize.Y + 60
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(0, total))
+    end
     
-    self.itemsGrid = scrollFrame
+    local function recomputeCanvas()
+        updateSectionHeights()
+    end
+    
+    eqGrid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSectionHeights)
+    invGrid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSectionHeights)
+    listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(recomputeCanvas)
+    
+    -- Initial sizing
+    task.defer(updateSectionHeights)
+
+    -- Store references
+    self.equippedGrid = eqGridContainer
+    self.inventoryGrid = invGridContainer
+    self.itemsGrid = invGridContainer -- backward compat for any code referencing itemsGrid
 end
 
 function InventoryPanel:_generateSampleData()
@@ -648,15 +760,19 @@ end
 
 function InventoryPanel:_calculateFolderCounts()
     local folderCounts = {}
-    
-    -- Count items by their folder origin
+    local settings = self.inventoryConfig and self.inventoryConfig.category_settings or {}
+    local countStacksAsSingle = settings.count_stacks_as_single ~= false -- default true
+
     for _, item in ipairs(self.inventoryData) do
         local folderName = item.folder_source or "unknown"
-        folderCounts[folderName] = (folderCounts[folderName] or 0) + 1
+        local increment = 1
+        if item.category == "Pets" and not countStacksAsSingle then
+            increment = item.count or 1
+        end
+        folderCounts[folderName] = (folderCounts[folderName] or 0) + increment
     end
-    
+
     self.logger:info("📊 FOLDER COUNTS DEBUG", folderCounts)
-    
     return folderCounts
 end
 
@@ -774,6 +890,12 @@ function InventoryPanel:_loadRealInventoryData()
 end
 
 function InventoryPanel:_loadPetsFromFolder(petsFolder)
+    -- Mixed storage support: prefer Stacks/Special structure if present
+    local stacksFolder = petsFolder:FindFirstChild("Stacks")
+    local specialFolder = petsFolder:FindFirstChild("Special")
+    if stacksFolder or specialFolder then
+        return self:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
+    end
     -- Get rarity colors for display
     local rarityColors = {
         basic = Color3.fromRGB(150, 150, 150),    -- Gray
@@ -823,6 +945,116 @@ function InventoryPanel:_loadPetsFromFolder(petsFolder)
                     category = displayData.category,
                     petType = displayData.petType
                 })
+            end
+        end
+    end
+end
+
+-- Mixed storage loader (Stacks + Special)
+function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
+    local rarityColors = {
+        basic = Color3.fromRGB(150, 150, 150),
+        golden = Color3.fromRGB(255, 215, 0),
+        rainbow = Color3.fromRGB(255, 0, 255)
+    }
+
+    local petIcons = {
+        bear = "🐻", bunny = "🐰", doggy = "🐶", kitty = "🐱", dragon = "🐉"
+    }
+
+    -- Load pet config for power lookup
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local petConfigModule = ReplicatedStorage:FindFirstChild("Configs") and ReplicatedStorage.Configs:FindFirstChild("pets")
+    local petConfig = nil
+    if petConfigModule then
+        local ok, mod = pcall(function()
+            return require(petConfigModule)
+        end)
+        if ok then petConfig = mod end
+    end
+
+    -- Stacks
+    if stacksFolder then
+        for _, stackFolder in ipairs(stacksFolder:GetChildren()) do
+            if stackFolder:IsA("Folder") then
+                local itemId = stackFolder:FindFirstChild("ItemId")
+                local variantValue = stackFolder:FindFirstChild("Variant")
+                local qtyValue = stackFolder:FindFirstChild("Quantity")
+                if itemId and variantValue and qtyValue then
+                    local petType = itemId.Value
+                    local variant = variantValue.Value
+                    local power = 0
+                    if petConfig and petConfig.getPet then
+                        local pdata = petConfig.getPet(petType, variant)
+                        power = pdata and pdata.power or 0
+                    end
+                    -- Always cache stack display data so ghost cards can render even at quantity 0
+                    self._stackDataByKey = self._stackDataByKey or {}
+                    self._stackDataByKey[stackFolder.Name] = {
+                        id = "stack|" .. stackFolder.Name,
+                        name = petType:gsub("^%l", string.upper),
+                        icon = petIcons[petType] or "🐾",
+                        rarity = variant:gsub("^%l", string.upper),
+                        color = rarityColors[variant] or rarityColors.basic,
+                        category = "Pets",
+                        count = qtyValue.Value,
+                        power = power,
+                        uid = stackFolder.Name,
+                        folder_source = "pets",
+                        petType = petType,
+                        variant = variant,
+                        use3DModel = true
+                    }
+                    -- Only create a visible inventory card when count > 0
+                    if (qtyValue.Value or 0) > 0 then
+                        table.insert(self.inventoryData, self._stackDataByKey[stackFolder.Name])
+                    end
+                end
+            end
+        end
+    end
+
+    -- Special (unique)
+    if specialFolder then
+        for _, uidFolder in ipairs(specialFolder:GetChildren()) do
+            if uidFolder:IsA("Folder") then
+                local itemId = uidFolder:FindFirstChild("ItemId")
+                if itemId then
+                    local petType = itemId.Value
+                    -- Try to read Variant if present in unique folder
+                    local variant = "basic"
+                    local variantVal = uidFolder:FindFirstChild("Variant") or uidFolder:FindFirstChild("variant")
+                    if variantVal and variantVal:IsA("StringValue") then
+                        variant = variantVal.Value
+                    end
+                    -- Determine power from stats or config
+                    local power = 0
+                    local statsFolder = uidFolder:FindFirstChild("Stats") or uidFolder:FindFirstChild("stats")
+                    if statsFolder then
+                        local p = statsFolder:FindFirstChild("power") or statsFolder:FindFirstChild("Power")
+                        if p and p.Value then power = tonumber(p.Value) or 0 end
+                    end
+                    if power == 0 and petConfig and petConfig.getPet then
+                        local pdata = petConfig.getPet(petType, variant)
+                        power = pdata and pdata.power or 0
+                    end
+                    local item = {
+                        id = "special|" .. uidFolder.Name,
+                        name = petType:gsub("^%l", string.upper),
+                        icon = petIcons[petType] or "🐾",
+                        rarity = variant:gsub("^%l", string.upper),
+                        color = rarityColors[variant] or rarityColors.basic,
+                        category = "Pets",
+                        count = 1,
+                        power = power,
+                        uid = uidFolder.Name,
+                        folder_source = "pets",
+                        petType = petType,
+                        variant = variant,
+                        use3DModel = true
+                    }
+                    table.insert(self.inventoryData, item)
+                end
             end
         end
     end
@@ -1338,10 +1570,16 @@ function InventoryPanel:_updateItemsDisplay()
         self._rightClickConnections = {}
     end
     
-    -- Clear existing items
-    for _, frame in pairs(self.itemFrames) do
-        frame:Destroy()
+    -- Clear existing items in both grids
+    local function clearChildren(container)
+        if container then
+            for _, child in ipairs(container:GetChildren()) do
+                if child:IsA("Frame") then child:Destroy() end
+            end
+        end
     end
+    clearChildren(self.equippedGrid)
+    clearChildren(self.inventoryGrid)
     self.itemFrames = {}
     
     -- Get current category folders for filtering
@@ -1358,9 +1596,55 @@ function InventoryPanel:_updateItemsDisplay()
         end
     end
     
-    -- Create item frames
-    for i, item in ipairs(filteredItems) do
-        self:_createItemFrame(item, i)
+    -- Sort: equipped first, then by power desc, then by count desc, then name
+    table.sort(filteredItems, function(a, b)
+        local aEquipped = self:_isItemEquipped(a)
+        local bEquipped = self:_isItemEquipped(b)
+        if aEquipped ~= bEquipped then
+            return aEquipped and not bEquipped
+        end
+        local ap = tonumber(a.power) or 0
+        local bp = tonumber(b.power) or 0
+        if ap == bp then
+            -- tie-break: stacks with higher count first
+            local ac = tonumber(a.count) or 1
+            local bc = tonumber(b.count) or 1
+            if ac ~= bc then return ac > bc end
+            return tostring(a.name) < tostring(b.name)
+        end
+        return ap > bp
+    end)
+
+    -- Create item frames into equipped or inventory sections
+    local eqIndex, invIndex = 1, 1
+    for _, item in ipairs(filteredItems) do
+        local isStack = typeof(item.id) == "string" and string.sub(item.id, 1, 6) == "stack|"
+        local isEquipped = self:_isItemEquipped(item)
+        if isStack then isEquipped = false end -- keep the stack in inventory
+        local container = isEquipped and self.equippedGrid or self.inventoryGrid
+        self:_createItemFrameInto(item, isEquipped and eqIndex or invIndex, container)
+        if isEquipped then eqIndex += 1 else invIndex += 1 end
+    end
+
+    -- Add ghost cards for equipped instances drawn from stacks (one per equipped UID)
+    if self.equippedItems and self.equippedItems.pets then
+        for equippedUid, _ in pairs(self.equippedItems.pets) do
+            if typeof(equippedUid) == "string" then
+                local parts = string.split(equippedUid, "|")
+                if #parts >= 2 and parts[1] == "stack" then
+                    local stackKey = parts[2]
+                    local stackData = self._stackDataByKey and self._stackDataByKey[stackKey]
+                    if stackData then
+                        local ghost = table.clone(stackData)
+                        ghost.id = "equipped_instance|" .. equippedUid
+                        ghost.uid = equippedUid
+                        ghost.count = 1
+                        self:_createItemFrameInto(ghost, eqIndex, self.equippedGrid)
+                        eqIndex += 1
+                    end
+                end
+            end
+        end
     end
 end
 
@@ -1428,7 +1712,7 @@ function InventoryPanel:_itemMatchesCategory(item, categoryName, categoryFolders
     return legacyMatch
 end
 
-function InventoryPanel:_createItemFrame(item, layoutOrder)
+function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     -- Item frame
     local itemFrame = Instance.new("Frame")
     itemFrame.Name = item.id
@@ -1436,7 +1720,9 @@ function InventoryPanel:_createItemFrame(item, layoutOrder)
     itemFrame.BorderSizePixel = 0
     itemFrame.LayoutOrder = layoutOrder
     itemFrame.ZIndex = 102
-    itemFrame.Parent = self.itemsGrid
+    itemFrame.Size = UDim2.new(0, self.cardSize.X, 0, self.cardSize.Y)
+    print("cardSize", self.cardSize)
+    itemFrame.Parent = parentContainer or self.itemsGrid
     
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 12)
@@ -1460,8 +1746,21 @@ function InventoryPanel:_createItemFrame(item, layoutOrder)
     
     -- Item icon background
     local iconBG = Instance.new("Frame")
-    iconBG.Size = UDim2.new(0, 60, 0, 60)
-    iconBG.Position = UDim2.new(0.5, -30, 0, 10)
+    local configuredIconSize: Vector2? = nil
+    do
+        local okUI, uiCfg = pcall(function()
+            return ConfigLoader:LoadConfig("ui")
+        end)
+        if okUI and uiCfg and uiCfg.panel_configs and uiCfg.panel_configs.inventory_panel and uiCfg.panel_configs.inventory_panel.grid then
+            local g = uiCfg.panel_configs.inventory_panel.grid
+            if g.icon_size and typeof(g.icon_size) == "Vector2" then
+                configuredIconSize = g.icon_size
+            end
+        end
+    end
+    local iconSize = configuredIconSize and configuredIconSize.X or math.floor(self.cardSize.X * 0.5)
+    iconBG.Size = UDim2.new(0, iconSize, 0, iconSize)
+    iconBG.Position = UDim2.new(0.5, -math.floor(iconSize/2), 0, math.floor(self.cardSize.Y*0.08))
     iconBG.BackgroundColor3 = item.color
     iconBG.BackgroundTransparency = 0.8
     iconBG.BorderSizePixel = 0
@@ -1469,7 +1768,7 @@ function InventoryPanel:_createItemFrame(item, layoutOrder)
     iconBG.Parent = itemFrame
     
     local iconCorner = Instance.new("UICorner")
-    iconCorner.CornerRadius = UDim.new(0, 30)
+    iconCorner.CornerRadius = UDim.new(0, math.floor(self.cardSize.X * 0.3))
     iconCorner.Parent = iconBG
     
     -- Item icon (3D model or emoji fallback)
@@ -1505,8 +1804,9 @@ function InventoryPanel:_createItemFrame(item, layoutOrder)
         -- Use emoji fallback
         self.logger:info("🎭 USING EMOJI FALLBACK", {itemId = item.id, icon = item.icon})
         local icon = Instance.new("TextLabel")
-        icon.Size = UDim2.new(0, 40, 0, 40)
-        icon.Position = UDim2.new(0.5, -20, 0.5, -20)
+        local ti = math.max(8, math.floor((configuredIconSize and configuredIconSize.Y or iconSize)*0.8))
+        icon.Size = UDim2.new(0, ti, 0, ti)
+        icon.Position = UDim2.new(0.5, -math.floor(ti/2), 0.5, -math.floor(ti/2))
         icon.BackgroundTransparency = 1
         icon.Text = item.icon
         icon.TextScaled = true
@@ -1515,10 +1815,49 @@ function InventoryPanel:_createItemFrame(item, layoutOrder)
         icon.Parent = iconBG
     end
     
-    -- Item name
+    -- Quantity badge (top-right)
+    local qty = tonumber(item.count) or 1
+    if qty > 1 then
+        local qtyLabel = Instance.new("TextLabel")
+        qtyLabel.Name = "QtyLabel"
+        local qW = math.max(12, math.floor(self.cardSize.X * 0.28))
+        local qH = math.max(10, math.floor(self.cardSize.Y * 0.22))
+        local qM = math.max(2, math.floor(self.cardSize.X * 0.06))
+        qtyLabel.Size = UDim2.new(0, qW, 0, qH)
+        qtyLabel.Position = UDim2.new(1, -qW - qM, 0, qM)
+        qtyLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        qtyLabel.BorderSizePixel = 0
+        qtyLabel.Text = "×" .. tostring(qty)
+        qtyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        qtyLabel.TextScaled = true
+        qtyLabel.Font = Enum.Font.GothamBold
+        qtyLabel.ZIndex = 105
+        qtyLabel.Parent = itemFrame
+        local qc = Instance.new("UICorner")
+        qc.CornerRadius = UDim.new(0, 6)
+        qc.Parent = qtyLabel
+    end
+
+    -- Equipped icon (top-left)
+    local equippedIcon = Instance.new("TextLabel")
+    equippedIcon.Name = "EquippedIcon"
+    local eW = math.max(12, math.floor(self.cardSize.X * 0.28))
+    local eH = math.max(10, math.floor(self.cardSize.Y * 0.22))
+    local eM = math.max(2, math.floor(self.cardSize.X * 0.06))
+    equippedIcon.Size = UDim2.new(0, eW, 0, eH)
+    equippedIcon.Position = UDim2.new(0, eM, 0, eM)
+    equippedIcon.BackgroundTransparency = 1
+    equippedIcon.Text = self:_isItemEquipped(item) and "✓" or ""
+    equippedIcon.TextColor3 = Color3.fromRGB(255, 215, 0)
+    equippedIcon.TextScaled = true
+    equippedIcon.Font = Enum.Font.GothamBold
+    equippedIcon.ZIndex = 105
+    equippedIcon.Parent = itemFrame
+
+    -- Name (center bottom) and strength below it
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1, -10, 0, 20)
-    nameLabel.Position = UDim2.new(0, 5, 0, 75)
+    nameLabel.Size = UDim2.new(1, -8, 0, math.max(8, math.floor(self.cardSize.Y*0.17)))
+    nameLabel.Position = UDim2.new(0, 4, 1, -math.max(12, math.floor(self.cardSize.Y*0.31)))
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = item.name
     nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1526,37 +1865,23 @@ function InventoryPanel:_createItemFrame(item, layoutOrder)
     nameLabel.Font = Enum.Font.GothamBold
     nameLabel.ZIndex = 103
     nameLabel.Parent = itemFrame
-    
-    -- Power/stats or quantity display
-    local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(1, -10, 0, 15)
-    infoLabel.Position = UDim2.new(0, 5, 1, -20)
-    infoLabel.BackgroundTransparency = 1
-    
-    -- Display different info based on item type
-    if item.power then
-        -- Pets and tools show power
-        infoLabel.Text = "⚡ " .. tostring(item.power)
-    elseif item.count and item.count > 1 then
-        -- Consumables show quantity
-        infoLabel.Text = "×" .. tostring(item.count)
-    else
-        -- Default for single items
-        infoLabel.Text = "×1"
-    end
-    
-    infoLabel.TextColor3 = item.color
-    infoLabel.TextScaled = true
-    infoLabel.Font = Enum.Font.Gotham
-    infoLabel.ZIndex = 103
-    infoLabel.Parent = itemFrame
+
+    local powerLabel = Instance.new("TextLabel")
+    powerLabel.Name = "PowerLabel"
+    powerLabel.Size = UDim2.new(1, -8, 0, math.max(6, math.floor(self.cardSize.Y*0.14)))
+    powerLabel.Position = UDim2.new(0, 4, 1, -math.max(8, math.floor(self.cardSize.Y*0.17)))
+    powerLabel.BackgroundTransparency = 1
+    powerLabel.Text = (item.power and ("⚡ " .. tostring(item.power))) or ""
+    powerLabel.TextColor3 = item.color
+    powerLabel.TextScaled = true
+    powerLabel.Font = Enum.Font.Gotham
+    powerLabel.ZIndex = 103
+    powerLabel.Parent = itemFrame
     
     -- Add interaction system (includes hover effects)
-    print("🔧 ABOUT TO ADD INTERACTIONS FOR:", item.id, item.name)
-    self.logger:info("🔧 ABOUT TO ADD INTERACTIONS", {itemId = item.id, itemName = item.name})
+    -- DEBUG SPAM SUPPRESSED
     self:_addItemInteractions(itemFrame, item)
-    print("✅ INTERACTIONS ADDED FOR:", item.id)
-    self.logger:info("✅ INTERACTIONS ADDED", {itemId = item.id})
+    -- DEBUG SPAM SUPPRESSED
     
     -- Apply equipped styling if item is equipped
     local isEquipped = self:_isItemEquipped(item)
@@ -1564,6 +1889,14 @@ function InventoryPanel:_createItemFrame(item, layoutOrder)
     
     -- Store reference
     table.insert(self.itemFrames, itemFrame)
+    -- Index by stack key for live count updates
+    if item.id:sub(1,6) == "stack|" then
+        self._stackFrames = self._stackFrames or {}
+        self._stackDataByKey = self._stackDataByKey or {}
+        local key = item.uid or item.id:sub(7)
+        self._stackFrames[key] = itemFrame
+        self._stackDataByKey[key] = item
+    end
 end
 
 function InventoryPanel:_selectCategory(categoryName)
@@ -1689,7 +2022,7 @@ end
 
 -- 🖱️ ITEM INTERACTION SYSTEM
 function InventoryPanel:_addItemInteractions(itemFrame, item)
-    print("🖱️ INSIDE _addItemInteractions FOR:", item.id, "hasSignals:", self.signals ~= nil)
+    -- DEBUG SPAM SUPPRESSED
     self.logger:info("🔧 ADDING INTERACTIONS", {
         itemId = item.id,
         itemName = item.name,
@@ -1705,8 +2038,7 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
     leftClickDetection.Parent = itemFrame
     
     leftClickDetection.Activated:Connect(function()
-        print("🖱️ LEFT CLICK DETECTED ON:", item.id)
-        self.logger:info("🖱️ LEFT CLICK DETECTED", {itemId = item.id})
+        -- DEBUG SPAM SUPPRESSED
         self:_handlePrimaryAction(item)
     end)
     
@@ -1724,14 +2056,14 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
             return -- Only handle right-clicks in this listener
         end
         
-        print("✅ RIGHT CLICK INPUT DETECTED")
+        -- right-click debug removed (noisy)
         if isMouseOverFrame then
             print("🖱️ RIGHT CLICK DETECTED ON:", item.id)
             local mouse = Players.LocalPlayer:GetMouse()
             self.logger:info("🖱️ RIGHT CLICK ON ITEM", {itemId = item.id, x = mouse.X, y = mouse.Y})
             self:_showAdvancedContextMenu(item, mouse.X, mouse.Y)
         else
-            print("❌ RIGHT CLICK NOT OVER THIS FRAME:", item.id)
+            -- skip noisy spam
         end
     end)
     
@@ -1741,17 +2073,17 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
     end
     self._rightClickConnections[item.id] = rightClickConnection
     
-    print("🔧 RIGHT CLICK CONNECTION CREATED FOR:", item.id)
+    -- DEBUG SPAM SUPPRESSED
     
     -- CONSOLIDATED: Enhanced hover effects for visual feedback
     local originalSize = itemFrame.Size
     local stroke = itemFrame:FindFirstChild("UIStroke")
-    print("🎨 SETTING UP HOVER FOR:", item.id, "hasStroke:", stroke ~= nil)
+    -- DEBUG SPAM SUPPRESSED
     
     -- UPDATED MouseEnter to include BOTH tracking AND hover effects
     itemFrame.MouseEnter:Connect(function()
         isMouseOverFrame = true
-        print("🖱️ MOUSE ENTERED FRAME:", item.id)
+        -- DEBUG SPAM SUPPRESSED
         
         -- Background color change
         local bgTween = TweenService:Create(itemFrame,
@@ -1780,7 +2112,7 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
     -- UPDATED MouseLeave to include BOTH tracking AND hover effects
     itemFrame.MouseLeave:Connect(function()
         isMouseOverFrame = false
-        print("🖱️ MOUSE LEFT FRAME:", item.id)
+        -- DEBUG SPAM SUPPRESSED
         
         -- Background color reset
         local bgTween = TweenService:Create(itemFrame,
@@ -1945,7 +2277,7 @@ end
 
 -- 🎮 PRIMARY ACTIONS (Left-click)
 function InventoryPanel:_handlePrimaryAction(item)
-    print("🎮 HANDLING PRIMARY ACTION FOR:", item.id, "folder_source:", item.folder_source)
+    -- DEBUG SPAM SUPPRESSED
     self.logger:info("🖱️ PRIMARY ACTION", {
         itemId = item.id,
         itemName = item.name,
@@ -1988,11 +2320,35 @@ function InventoryPanel:_togglePetEquipped(item)
     self.logger:info("🐾 TOGGLING PET EQUIPPED", {itemId = item.id, itemName = item.name})
     
     if self.signals then
-        self.signals.TogglePetEquipped:FireServer({
-            bucket = item.folder_source,
-            itemUid = item.uid,
-            itemId = item.id
-        })
+        local payload = { bucket = item.folder_source, itemId = item.id }
+        -- If this is a ghost equipped instance from a stack, send its uid directly to toggle (unequip)
+        if typeof(item.id) == "string" and string.sub(item.id,1,18) == "equipped_instance|" then
+            payload.itemUid = item.uid
+        elseif typeof(item.id) == "string" and string.sub(item.id,1,6) == "stack|" then
+            local stackKey = string.sub(item.id, 7)
+            payload.itemUid = "stack|" .. stackKey .. "|" .. game:GetService("HttpService"):GenerateGUID(false)
+            payload.isStackEquip = true
+        elseif typeof(item.uid) == "string" and string.sub(item.uid,1,6) == "stack|" then
+            -- Only generate a new instance if this is NOT a ghost equipped instance
+            if not (typeof(item.id) == "string" and string.sub(item.id,1,18) == "equipped_instance|") then
+            local stackKey = string.sub(item.uid, 7)
+            payload.itemUid = "stack|" .. stackKey .. "|" .. game:GetService("HttpService"):GenerateGUID(false)
+            payload.isStackEquip = true
+            else
+                payload.itemUid = item.uid -- toggle existing equipped instance
+            end
+        elseif typeof(item.uid) == "string" and string.find(item.uid, ":", 1, true) then
+            -- Legacy stack key (id:variant)
+            payload.itemUid = "stack|" .. item.uid .. "|" .. game:GetService("HttpService"):GenerateGUID(false)
+            payload.isStackEquip = true
+        elseif typeof(item.id) == "string" and string.find(item.id, ":", 1, true) then
+            payload.itemUid = "stack|" .. item.id .. "|" .. game:GetService("HttpService"):GenerateGUID(false)
+            payload.isStackEquip = true
+        else
+            -- Unique/special: use exact UID
+            payload.itemUid = item.uid
+        end
+        self.signals.TogglePetEquipped:FireServer(payload)
         self.logger:info("✅ Toggle pet request sent to server")
     else
         self.logger:warn("❌ Signals not available for pet equipping")
@@ -2605,17 +2961,61 @@ function InventoryPanel:SetupRealTimeUpdates()
         local petsFolder = inventoryFolder:FindFirstChild("pets")
         if petsFolder then
             -- Listen for new pets being added
+            -- Mixed structure incremental listeners
+            local stacks = petsFolder:FindFirstChild("Stacks")
+            local special = petsFolder:FindFirstChild("Special")
+
+            if stacks then
+                stacks.ChildAdded:Connect(function(stackFolder)
+                    if stackFolder:IsA("Folder") then
+                        task.wait(0.05)
+                        self:RefreshFromRealData()
+                    end
+                end)
+                stacks.ChildRemoved:Connect(function()
+                    self:RefreshFromRealData()
+                end)
+                -- Quantity change listener per existing stack
+                for _, sf in ipairs(stacks:GetChildren()) do
+                    local qty = sf:FindFirstChild("Quantity")
+                    if qty then
+                        qty:GetPropertyChangedSignal("Value"):Connect(function()
+                            self:RefreshFromRealData()
+                        end)
+                    end
+                end
+                stacks.ChildAdded:Connect(function(sf)
+                    local qty = sf:FindFirstChild("Quantity")
+                    if qty then
+                        qty:GetPropertyChangedSignal("Value"):Connect(function()
+                            self:RefreshFromRealData()
+                        end)
+                    end
+                end)
+            end
+
+            if special then
+                special.ChildAdded:Connect(function()
+                    task.wait(0.05)
+                    self:RefreshFromRealData()
+                end)
+                special.ChildRemoved:Connect(function()
+                    self:RefreshFromRealData()
+                end)
+            end
+            
+            -- Legacy fallback
             petsFolder.ChildAdded:Connect(function(child)
-                if child:IsA("Folder") and child.Name ~= "Info" then
+                if child:IsA("Folder") and child.Name ~= "Info" and not stacks and not special then
                     self.logger:info("New pet detected in inventory", {petFolder = child.Name})
-                    task.wait(0.1) -- Small delay to ensure folder is fully created
+                    task.wait(0.1)
                     self:RefreshFromRealData()
                 end
             end)
             
             -- Listen for pets being removed
             petsFolder.ChildRemoved:Connect(function(child)
-                if child:IsA("Folder") and child.Name ~= "Info" then
+                if child:IsA("Folder") and child.Name ~= "Info" and not stacks and not special then
                     self.logger:info("Pet removed from inventory", {petFolder = child.Name})
                     self:RefreshFromRealData()
                 end
@@ -2684,6 +3084,8 @@ function InventoryPanel:_setupEquippedFolderListeners()
         end)
         
         self.logger:info("⚔️ Equipped folder listeners setup complete")
+    -- Force an initial display refresh after listeners are attached
+    self:_updateItemsDisplay()
     end)
 end
 
@@ -2711,7 +3113,28 @@ function InventoryPanel:_setupCategoryEquippedListener(categoryFolder, categoryN
                 slotName = slotValue.Name,
                 slotValue = slotValue.Value
             })
-            self:_onEquippedChanged(categoryName, slotValue.Value, slotValue.Name, "equipped")
+            -- Treat as equip of current value
+            if slotValue.Value ~= "" then
+                self:_onEquippedChanged(categoryName, slotValue.Value, slotValue.Name, "equipped")
+            end
+            -- Attach change watcher with last-value tracking for accurate unequip
+            local last = slotValue.Value
+            slotValue.Changed:Connect(function(newValue)
+                self.logger:info("📍 Value changed in " .. categoryName, {
+                    slotName = slotValue.Name,
+                    oldValue = last,
+                    newValue = newValue
+                })
+                if newValue ~= "" then
+                    self:_onEquippedChanged(categoryName, newValue, slotValue.Name, "equipped")
+                else
+                    -- Use previous value for unequip mapping removal
+                    if last and last ~= "" then
+                        self:_onEquippedChanged(categoryName, last, slotValue.Name, "unequipped")
+                    end
+                end
+                last = newValue
+            end)
         end
     end)
     
@@ -2728,14 +3151,21 @@ function InventoryPanel:_setupCategoryEquippedListener(categoryFolder, categoryN
     -- Listen for value changes within slots
     for _, slotValue in pairs(categoryFolder:GetChildren()) do
         if slotValue:IsA("StringValue") then
+            local last = slotValue.Value
             slotValue.Changed:Connect(function(newValue)
-                local oldValue = slotValue.Value
                 self.logger:info("📍 Value changed in " .. categoryName, {
                     slotName = slotValue.Name,
-                    oldValue = oldValue,
+                    oldValue = last,
                     newValue = newValue
                 })
-                self:_onEquippedChanged(categoryName, newValue, slotValue.Name, newValue ~= "" and "equipped" or "unequipped")
+                if newValue ~= "" then
+                    self:_onEquippedChanged(categoryName, newValue, slotValue.Name, "equipped")
+                else
+                    if last and last ~= "" then
+                        self:_onEquippedChanged(categoryName, last, slotValue.Name, "unequipped")
+                    end
+                end
+                last = newValue
             end)
         end
     end
@@ -2745,6 +3175,12 @@ function InventoryPanel:_setupCategoryEquippedListener(categoryFolder, categoryN
         initialEquipped = initialCount,
         totalSlots = #categoryFolder:GetChildren()
     })
+
+    -- Ensure UI reflects initial equipped state immediately
+    -- Without this, the first open may not show equipped badges until the panel is reopened
+    if initialCount > 0 then
+        self:_updateItemsDisplay()
+    end
 end
 
 function InventoryPanel:_onEquippedChanged(categoryName, itemUid, slotName, action)
@@ -2763,7 +3199,34 @@ function InventoryPanel:_onEquippedChanged(categoryName, itemUid, slotName, acti
         self.logger:info("❌ Removed from equipped items", {itemUid = itemUid})
     end
     
-    -- Refresh the UI to update equipped styling
+    -- Debug: print occupied slots snapshot after every change
+    if categoryName == "pets" then
+        local occupied = {}
+        local equippedFolder = Players.LocalPlayer:FindFirstChild("Equipped")
+        if equippedFolder and equippedFolder:FindFirstChild("pets") then
+            for _, slot in ipairs(equippedFolder.pets:GetChildren()) do
+                if slot:IsA("StringValue") then
+                    table.insert(occupied, slot.Name .. "=" .. (slot.Value ~= "" and slot.Value or "<empty>"))
+                end
+            end
+        end
+        print("[EQUIPPED SLOTS] " .. table.concat(occupied, ", "))
+    end
+    
+    -- If this is a stack-backed equip value (bridge format), adjust just that stack card
+    if categoryName == "pets" and type(itemUid) == "string" then
+        local parts = string.split(itemUid, "|")
+        if #parts >= 3 and parts[1] == "stack" then
+            local stackKey = parts[2] -- id:variant
+            self._stackFrames = self._stackFrames or {}
+            self._stackDataByKey = self._stackDataByKey or {}
+            -- Avoid manual local count math to prevent double-decrement; refresh from replicated data
+            self:RefreshFromRealData()
+            return
+        end
+    end
+    
+    -- Fallback: refresh full display
     self.logger:info("🔄 Refreshing UI for equipped change")
     self:_updateItemsDisplay()
 end
@@ -2807,6 +3270,10 @@ function InventoryPanel:_isItemEquipped(item)
     if not self.equippedItems then return false end
     
     if item.folder_source == "pets" then
+        -- If this is a ghost equipped instance from a stack, uid will be the equippedUid
+        if typeof(item.uid) == "string" and string.sub(item.uid,1,17) == "stackInstance|" then
+            return true
+        end
         return self.equippedItems.pets[item.uid] ~= nil
     elseif item.folder_source == "tools" then
         return self.equippedItems.tools[item.uid] ~= nil

@@ -13,7 +13,7 @@ local Players = game:GetService("Players")
 local PetCompatibilityService = {}
 
 -- Default values for imported pet system
-local DEFAULT_FOLLOW_TYPE = "follow" -- Options: "follow", "stay", "aggressive"
+local DEFAULT_FOLLOW_TYPE = "align" -- Use Align constraints (legacy followType == 1)
 local DEFAULT_CURRENT_WORLD = "Spawn" -- Default world for pets
 
 function PetCompatibilityService:CreatePlayerDataStructure(player)
@@ -34,6 +34,9 @@ function PetCompatibilityService:CreatePlayerDataStructure(player)
         followType.Name = "FollowType"
         followType.Value = DEFAULT_FOLLOW_TYPE
         followType.Parent = dataFolder
+    else
+        -- Force-align for physics parity with legacy until configurable
+        followType.Value = DEFAULT_FOLLOW_TYPE
     end
     
     -- Create CurrentWorld StringValue (directly under player, not in Data)

@@ -92,10 +92,12 @@ end
 -- Get loaded modules for easy access
 local Logger = loader:Get("Logger")
 local ConfigLoader = loader:Get("ConfigLoader")
+local Players = game:GetService("Players")
 -- NetworkConfig removed - using Signals instead
 local DataService = loader:Get("DataService")
 local PlayerEffectsService = loader:Get("PlayerEffectsService")
 local MonetizationService = loader:Get("MonetizationService")
+local InventoryService = loader:Get("InventoryService")
 
 -- Set up cross-references to avoid circular dependencies
 DataService:SetPlayerEffectsService(PlayerEffectsService)
@@ -156,6 +158,63 @@ elseif gameConfig.GameMode == "TowerDefense" then
     Logger:Info("Loading Tower Defense systems")
     -- systems.WaveSystem = require(...)
     -- systems.TowerSystem = require(...)
+end
+
+local ENABLE_LEGACY_GOLDEN_BEAR_CLEANUP = false
+
+-- === Boot-time cleanup: remove legacy golden bear remnants ===
+local function cleanupLegacyGoldenBear(player)
+    local DataService = loader:Get("DataService")
+    local profile = DataService and DataService:GetProfile(player)
+    if not profile then return end
+    local data = profile.Data
+    if not data then return end
+    local changed = false
+
+    -- Delete persisted node Inventory/pets/items["equip_bear:golden"]
+    local inv = data.Inventory and data.Inventory.pets
+    if inv and inv.items and inv.items["equip_bear:golden"] then
+        inv.items["equip_bear:golden"] = nil
+        changed = true
+    end
+
+    -- Clear any Equipped slot that references golden bear (legacy or stack instance)
+    local eq = data.Equipped and data.Equipped.pets
+    if eq then
+        for slotName, uid in pairs(eq) do
+            if type(uid) == "string" then
+                if uid == "bear:golden" or uid:match("^stack|bear:golden") or uid == "equip_bear:golden" then
+                    eq[slotName] = nil
+                    changed = true
+                end
+            end
+        end
+    end
+
+    if changed then
+        Logger:Info("🧹 Cleanup: Removed legacy golden bear data", {player = player.Name})
+        if InventoryService and InventoryService._updateBucketFolders and InventoryService._updateEquippedFolders then
+            InventoryService:_updateBucketFolders(player, "pets")
+            InventoryService:_updateEquippedFolders(player, "pets")
+        end
+    end
+end
+
+if ENABLE_LEGACY_GOLDEN_BEAR_CLEANUP then
+    -- Run cleanup for players once their data is loaded
+    Players.PlayerAdded:Connect(function(player)
+        -- DataService sets attribute DataLoaded when profile is ready
+        player:GetAttributeChangedSignal("DataLoaded"):Connect(function()
+            local ready = player:GetAttribute("DataLoaded")
+            if ready then
+                cleanupLegacyGoldenBear(player)
+            end
+        end)
+        -- If already loaded (e.g., re-run), perform cleanup
+        if player:GetAttribute("DataLoaded") then
+            cleanupLegacyGoldenBear(player)
+        end
+    end)
 end
 
 -- Start Matter loop with systems

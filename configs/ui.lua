@@ -549,6 +549,8 @@ local uiConfig = {
         wide = 1600,      -- Wide screens
     },
     
+    -- Inventory grid configuration has moved under panel_configs.inventory_panel.grid
+    
     -- Responsive scaling factors
     scale_factors = {
         mobile = 0.6,
@@ -1161,6 +1163,13 @@ local uiConfig = {
                 icon_position = "top-left-corner",         -- 🎯 POSITION: Top-left corner with anchor (0,0)
                 title_text = "Inventory"                   -- Custom title
                 -- Background images and close button come from global defaults!
+            },
+            -- Card/grid sizing controls used by InventoryPanel
+            grid = {
+                card_size = Vector2.new(65, 65),
+                card_padding = Vector2.new(8, 8),
+                -- Absolute icon size (inside each card). If omitted, icon scales with card.
+                icon_size = Vector2.new(65, 65),
             }
         },
         

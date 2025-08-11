@@ -193,6 +193,23 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         isVIP = false,
     }
     
+    -- Allow runtime forcing via player attributes for quick testing
+    if petConfig.test_mode and petConfig.test_mode.enabled then
+        local attrForcePet = player:GetAttribute("ForcePet")
+        local attrForceVariant = player:GetAttribute("ForceVariant")
+        if attrForcePet or attrForceVariant then
+            petConfig.test_mode.force_pet = attrForcePet
+            petConfig.test_mode.force_variant = attrForceVariant
+            Logger:Info("🐣 Hatch override active", {
+                player = player.Name,
+                force_pet = attrForcePet,
+                force_variant = attrForceVariant
+            })
+        else
+            Logger:Debug("No hatch override attributes set", {player = player.Name})
+        end
+    end
+
     local hatchResult = petConfig.simulateHatch(eggType, playerData)
     if not hatchResult then
         Logger:Error("Hatching failed", {player = player.Name, eggType = eggType})

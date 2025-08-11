@@ -909,14 +909,42 @@ function ConfigLoader:_validateInventoryConfig(config)
         if enabled then
             local bucket = config.buckets[bucketName]
             
-            -- Validate required bucket fields
-            local requiredBucketFields = {"display_name", "icon", "base_limit", "stack_size", "storage_type", "item_schema"}
-            for _, field in ipairs(requiredBucketFields) do
+            -- Validate required bucket fields (support mixed storage type)
+            local requiredBaseFields = {"display_name", "icon", "base_limit", "storage_type"}
+            for _, field in ipairs(requiredBaseFields) do
                 if not bucket[field] then
                     return false, "Bucket '" .. bucketName .. "' missing required field: " .. field
                 end
             end
-            
+
+            -- Per-storage-type validation
+            if bucket.storage_type == "unique" or bucket.storage_type == "stackable" then
+                if not bucket.stack_size then
+                    return false, "Bucket '" .. bucketName .. "' missing required field: stack_size"
+                end
+                if type(bucket.item_schema) ~= "table" then
+                    return false, "Bucket '" .. bucketName .. "' item_schema must be a table"
+                end
+                if not bucket.item_schema.required or type(bucket.item_schema.required) ~= "table" then
+                    return false, "Bucket '" .. bucketName .. "' item_schema must have 'required' array"
+                end
+                if not bucket.item_schema.optional or type(bucket.item_schema.optional) ~= "table" then
+                    return false, "Bucket '" .. bucketName .. "' item_schema must have 'optional' array"
+                end
+            elseif bucket.storage_type == "mixed" then
+                if type(bucket.schema) ~= "table" then
+                    return false, "Bucket '" .. bucketName .. "' missing or invalid 'schema' for mixed storage"
+                end
+                if type(bucket.schema.stacks) ~= "table" or type(bucket.schema.special) ~= "table" then
+                    return false, "Bucket '" .. bucketName .. "' schema must contain 'stacks' and 'special' tables"
+                end
+                if bucket.stack_key_fields and type(bucket.stack_key_fields) ~= "table" then
+                    return false, "Bucket '" .. bucketName .. "' stack_key_fields must be an array when provided"
+                end
+            else
+                return false, "Bucket '" .. bucketName .. "' storage_type must be 'unique', 'stackable', or 'mixed'"
+            end
+
             -- Validate bucket field types
             if type(bucket.display_name) ~= "string" then
                 return false, "Bucket '" .. bucketName .. "' display_name must be a string"
@@ -925,28 +953,7 @@ function ConfigLoader:_validateInventoryConfig(config)
             if type(bucket.base_limit) ~= "number" or bucket.base_limit <= 0 then
                 return false, "Bucket '" .. bucketName .. "' base_limit must be a positive number"
             end
-            
-            if type(bucket.stack_size) ~= "number" or bucket.stack_size <= 0 then
-                return false, "Bucket '" .. bucketName .. "' stack_size must be a positive number"
-            end
-            
-            -- Validate storage_type
-            if bucket.storage_type ~= "unique" and bucket.storage_type ~= "stackable" then
-                return false, "Bucket '" .. bucketName .. "' storage_type must be 'unique' or 'stackable'"
-            end
-            
-            -- Validate item schema
-            if type(bucket.item_schema) ~= "table" then
-                return false, "Bucket '" .. bucketName .. "' item_schema must be a table"
-            end
-            
-            if not bucket.item_schema.required or type(bucket.item_schema.required) ~= "table" then
-                return false, "Bucket '" .. bucketName .. "' item_schema must have 'required' array"
-            end
-            
-            if not bucket.item_schema.optional or type(bucket.item_schema.optional) ~= "table" then
-                return false, "Bucket '" .. bucketName .. "' item_schema must have 'optional' array"  
-            end
+            -- Additional checks handled per storage type above
         end
     end
     

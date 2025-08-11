@@ -22,9 +22,11 @@ return {
             display_name = "Pets",
             icon = "🐾",
             base_limit = 50,
-            stack_size = 1,              -- Pets don't stack
-            allow_duplicates = true,     -- Can have multiple of same pet type
-            storage_type = "unique",     -- NEW: Each pet has unique properties
+            storage_type = "mixed",
+            stack_key_fields = {"id", "variant"},
+            max_stack_size = 99999,
+            special_rarities = {"secret", "exclusive"},
+            equip_individualization = "ephemeral", -- equipping pulls 1 from stack, tracked per-slot
             
             -- Limit extensions via gamepasses
             limit_extensions = {
@@ -40,21 +42,10 @@ return {
                 }
             },
             
-            -- Schema for pet instances
-            item_schema = {
-                required = {
-                    "id",               -- Pet type from pet config
-                    "variant",          -- basic/golden/rainbow
-                    "obtained_at"       -- Timestamp
-                },
-                optional = {
-                    "level",            -- Default: 1
-                    "exp",              -- Default: 0
-                    "nickname",         -- Default: ""
-                    "stats",            -- Default: base stats from pet config
-                    "enchantments",     -- Default: {}
-                    "locked"            -- Default: false (for trade protection)
-                }
+            -- Mixed schema definition
+            schema = {
+                stacks = { required = {"id", "variant", "quantity"}, optional = {"obtained_at"} },
+                special = { required = {"id", "variant", "obtained_at"}, optional = {"level", "exp", "nickname", "stats", "enchantments", "locked"} }
             },
             
             -- Validation rules
@@ -62,7 +53,10 @@ return {
                 max_nickname_length = 20,
                 allowed_characters = "^[%w%s]+$",  -- Alphanumeric + spaces
                 max_level = 100,
-                max_enchantments = 5
+                max_enchantments = 5,
+                -- Mixed-specific rules
+                forbid_enchants_on_stacks = true,
+                forbid_levels_on_stacks = true
             }
         },
         
@@ -212,6 +206,14 @@ return {
         trace_operations = true,        -- Trace all inventory operations
         validate_on_load = true         -- Validate inventory structure on player join
     },
+
+    -- UI overrides for InventoryPanel
+    ui = {
+        -- Grid cell/card size and padding. Adjust these to resolve overlap or fit more per row.
+        -- InventoryPanel.lua will fall back to 96x96 and 8x8 if these are not provided.
+        card_size = Vector2.new(96, 96),
+        card_padding = Vector2.new(8, 8),
+    },
     
     -- Default values for new items
     defaults = {
@@ -286,6 +288,8 @@ return {
         max_visible_categories = 8,     -- Don't overwhelm the UI
         hide_empty_categories = true,   -- Hide categories with 0 items (unless always_visible)
         show_item_counts = true,        -- Show "X items" next to category names
+        -- For mixed pets: if true, each stack counts as 1 item; if false, counts use Quantity
+        count_stacks_as_single = true,
         compact_mode = false,           -- Use smaller category tabs
         
         -- Category icons can fallback to bucket icons if not specified

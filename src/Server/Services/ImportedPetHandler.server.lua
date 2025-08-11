@@ -11,7 +11,13 @@
 -- This legacy handler spawned placeholder neon-blue boxes with pet names.
 -- We now use the real `PetHandler.server.lua`. Disable this script to avoid
 -- duplicate/placeholder visuals.
-do return end
+-- fallback is disabled by default; keep callable for debug
+
+local ENABLE_LEGACY_HANDLER = false
+if not ENABLE_LEGACY_HANDLER then
+    print("⏸️ ImportedPetHandler: Disabled (using native PetHandler)")
+    return
+end
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -72,15 +78,15 @@ local function getEquippedPets(player)
         if petFolder:IsA("Folder") then
             local equippedValue = petFolder:FindFirstChild("Equipped")
             if equippedValue and equippedValue:IsA("BoolValue") and equippedValue.Value then
-                -- Extract pet data needed for spawning
                 local petData = {
                     folder = petFolder,
                     uid = petFolder:GetAttribute("uid") or petFolder.Name,
                     petId = petFolder:FindFirstChild("PetID") and petFolder.PetID.Value,
-                    type = petFolder:FindFirstChild("Type") and petFolder.Type.Value,
+                    type = (petFolder:FindFirstChild("ItemId") and petFolder.ItemId.Value) or (petFolder:FindFirstChild("Type") and petFolder.Type.Value) or petFolder.Name,
+                    variant = petFolder:FindFirstChild("Variant") and petFolder.Variant.Value,
                     name = petFolder.Name,
-                    -- Add other needed properties from the pet folder
                 }
+                print("📦 ImportedPetHandler: equipped folder ->", petData.name, "type=", petData.type, "variant=", petData.variant)
                 table.insert(equipped, petData)
             end
         end
@@ -287,6 +293,18 @@ end
 -- Main function called by the bridge
 local function loadEquipped(player)
     print("🔄 ImportedPetHandler: Loading equipped pets for", player.Name)
+    local inv = player:FindFirstChild("Inventory")
+    if inv and inv:FindFirstChild("pets") then
+        local list = {}
+        for _, c in ipairs(inv.pets:GetChildren()) do
+            if c:IsA("Folder") then
+                table.insert(list, c.Name .. "(eq=" .. tostring(c:FindFirstChild("Equipped") and c.Equipped.Value) .. ")")
+            end
+        end
+        print("📦 ImportedPetHandler: Inventory/pets:", table.concat(list, ", "))
+    else
+        print("⚠️ ImportedPetHandler: No Inventory/pets found")
+    end
     
     local char = player.Character
     if not char then

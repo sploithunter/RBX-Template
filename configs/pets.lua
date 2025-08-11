@@ -13,6 +13,18 @@
 local petConfig = {
     version = "1.0.0",
     
+    -- === TEST MODE (for Studio/dev validation) ===
+    -- Enable to dramatically increase chances to obtain rare variants and pets
+    -- so designers can validate stacking and special handling quickly.
+    test_mode = {
+        enabled = false,
+        super_luck = false,
+        force_pet = nil,
+        force_variant = nil,
+        pet_weight_overrides = nil,
+        rarity_overrides = nil,
+    },
+    
     -- === VIEWPORT DISPLAY SETTINGS ===
     viewport = {
         default_zoom = 1.5,  -- Default camera zoom for all pets (1.5x closer than original)
@@ -116,13 +128,7 @@ local petConfig = {
     
     -- === RARITY SYSTEM (Visual/Organization Only) ===
     rarities = {
-        secret = {
-            name = "Secret",
-            color = Color3.fromRGB(255, 140, 0),  -- Orange-gold
-            glow = true,
-            glow_color = Color3.fromRGB(255, 220, 120),
-            particle_effects = true,
-        },
+        -- Normal tiers (stackable)
         common = {
             name = "Common",
             color = Color3.fromRGB(150, 150, 150),  -- Gray
@@ -151,11 +157,26 @@ local petConfig = {
             glow = true,
             glow_color = Color3.fromRGB(255, 255, 150),
         },
-        mythic = {
+        mythic = { -- aka "Mythical"
             name = "Mythic",
             color = Color3.fromRGB(255, 0, 255),    -- Magenta
             glow = true,
             glow_color = Color3.fromRGB(255, 150, 255),
+            particle_effects = true,
+        },
+        -- Special tiers (unique pets)
+        secret = {
+            name = "Secret",
+            color = Color3.fromRGB(255, 140, 0),  -- Orange-gold
+            glow = true,
+            glow_color = Color3.fromRGB(255, 220, 120),
+            particle_effects = true,
+        },
+        exclusive = {
+            name = "Exclusive",
+            color = Color3.fromRGB(0, 255, 255),  -- Cyan
+            glow = true,
+            glow_color = Color3.fromRGB(150, 255, 255),
             particle_effects = true,
         }
     },
@@ -355,7 +376,7 @@ local petConfig = {
                     health = 200,
                     abilities = {"fire_breath"},
                     viewport_zoom = 2.0,  -- Dragons need higher zoom to appear properly sized
-                    rarity_override = "secret", -- SPECIAL: Dragon basic is a Secret rarity
+                    rarity_override = "secret", -- SPECIAL: Dragon is a Secret pet (unique)
                 },
                 golden = {
                     asset_id = "rbxassetid://91261941530299",
@@ -365,6 +386,7 @@ local petConfig = {
                     health = 1000,
                     abilities = {"golden_flame", "treasure_sense"},
                     viewport_zoom = 2.0,  -- Golden dragon zoom (increased for proper size)
+                    rarity_override = "secret", -- Golden variant remains Secret (unique)
                 },
                 rainbow = {
                     asset_id = "rbxassetid://120821607721730",
@@ -374,6 +396,7 @@ local petConfig = {
                     health = 10000, 
                     abilities = {"prismatic_breath", "reality_burn", "cosmic_flight"},
                     viewport_zoom = 2.0,  -- Rainbow dragon zoom (increased for proper size)
+                    rarity_override = "secret", -- Rainbow variant remains Secret (unique)
                     
                     -- Display overrides (optional - overrides viewport defaults)
                     display_container_bg = Color3.fromRGB(255, 0, 255),  -- Magenta bg for Rainbow Dragon
@@ -518,7 +541,7 @@ local petConfig = {
                 bunny = 24990,  -- ~25% chance to get a bunny  
                 doggy = 24990,  -- ~25% chance to get a doggy
                 kitty = 10,     -- 0.01% chance to get a kitty (10/100000)
-                dragon = 1,     -- 0.001% chance to get a dragon (1/100000) - should show "??"
+                dragon = 1     -- 0.001% chance to get a dragon (1/100000) - should show "??"
             },
             
             -- Stage 2: Rarity Calculation (basic/golden/rainbow)
@@ -719,9 +742,38 @@ function petConfig.simulateHatch(eggType, playerData)
     local eggData = petConfig.egg_sources[eggType]
     if not eggData then return nil end
     
+    -- Test mode hard override (force outcome)
+    if petConfig.test_mode and petConfig.test_mode.enabled then
+        local forcedPet = petConfig.test_mode.force_pet
+        local forcedVariant = petConfig.test_mode.force_variant
+        if forcedPet or forcedVariant then
+            local pet = forcedPet or next(eggData.pet_weights) -- fallback to first
+            local variant = forcedVariant or "basic"
+            return {
+                pet = pet,
+                variant = variant,
+                finalGoldenChance = 0,
+                finalRainbowChance = 0,
+                luckMultiplier = 1,
+                petData = petConfig.getPet(pet, variant)
+            }
+        end
+    end
+
     -- Stage 1: Select pet type based on weights
     local totalWeight = 0
-    for _, weight in pairs(eggData.pet_weights) do
+    local petWeights = eggData.pet_weights
+
+    -- Apply test mode weight overrides
+    if petConfig.test_mode and petConfig.test_mode.enabled and petConfig.test_mode.pet_weight_overrides and petConfig.test_mode.pet_weight_overrides[eggType] then
+        local overrides = petConfig.test_mode.pet_weight_overrides[eggType]
+        petWeights = table.clone(eggData.pet_weights)
+        for pet, w in pairs(overrides) do
+            petWeights[pet] = w
+        end
+    end
+
+    for _, weight in pairs(petWeights) do
         totalWeight = totalWeight + weight
     end
     
@@ -729,7 +781,7 @@ function petConfig.simulateHatch(eggType, playerData)
     local currentWeight = 0
     local selectedPet = nil
     
-    for petType, weight in pairs(eggData.pet_weights) do
+    for petType, weight in pairs(petWeights) do
         currentWeight = currentWeight + weight
         if randomValue <= currentWeight then
             selectedPet = petType
@@ -742,6 +794,13 @@ function petConfig.simulateHatch(eggType, playerData)
     -- Stage 2: Calculate rarity with modifiers
     local goldenChance = eggData.rarity_rates.golden_chance
     local rainbowChance = eggData.rarity_rates.rainbow_chance
+
+    -- Test mode rarity overrides
+    if petConfig.test_mode and petConfig.test_mode.enabled and petConfig.test_mode.rarity_overrides and petConfig.test_mode.rarity_overrides[eggType] then
+        local ro = petConfig.test_mode.rarity_overrides[eggType]
+        goldenChance = ro.golden_chance or goldenChance
+        rainbowChance = ro.rainbow_chance or rainbowChance
+    end
     
     -- Apply gamepass modifiers
     local gamepassMods = petConfig.gamepass_modifiers
@@ -760,7 +819,7 @@ function petConfig.simulateHatch(eggType, playerData)
     if playerData.petsHatched then
         luckMultiplier = luckMultiplier + (playerData.petsHatched * gamepassMods.luck_from_pets_hatched)
     end
-    if playerData.hasLuckGamepass then
+    if playerData.hasLuckGamepass or (petConfig.test_mode and petConfig.test_mode.enabled and petConfig.test_mode.super_luck) then
         luckMultiplier = luckMultiplier * gamepassMods.luck_gamepass_multiplier
     end
     if playerData.isVIP then

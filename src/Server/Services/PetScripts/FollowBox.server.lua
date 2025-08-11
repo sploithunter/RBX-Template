@@ -1,13 +1,8 @@
 local Disabled = false
 
 -- Suppress verbose debug prints in this script unless explicitly enabled
-local __RAW_PRINT = print
-local __PRINT_ENABLED = false
-local function print(...)
-    if __PRINT_ENABLED then
-        __RAW_PRINT(...)
-    end
-end
+-- Silence debug output; keep default Roblox print behavior off
+local function print(...) end
 local Player = game.Players:FindFirstChild(script.Parent.Parent.Name)
 
 -- Create Game folder if it doesn't exist
@@ -57,37 +52,38 @@ local followType = 0
 if Player then
 	local frontAttachment
 	local centerAttachment = script.Parent.Center
-	local alignP = script.Parent.AlignPosition
-	local alignO = script.Parent.AlignOrientation
+    local alignP = script.Parent.AlignPosition
+    local alignO = script.Parent.AlignOrientation
+    -- Use legacy defaults; do not cap force/velocity here
 	local followeeNumber = tonumber(script.Parent.Name) - 1
 	local originalPosition = Vector3.new(0,0,15)
-	       if followeeNumber == 0 then
+           if followeeNumber == 0 then
                print("🔍 DEBUG FollowBox: Setting up first pet (followeeNumber = 0)")
-               print("  - attachmentFar position:", Player.Character.HumanoidRootPart.attachmentFar.WorldCFrame.Position)
-               -- Use an attachment behind the player for the lead pet rather than in front
                local hrp = Player.Character.HumanoidRootPart
-               -- Create or reuse a behind attachment once
-               local behind = hrp:FindFirstChild("attachmentBehind")
-               if not behind then
-                   behind = Instance.new("Attachment")
-                   behind.Name = "attachmentBehind"
-                   behind.Parent = hrp
-                   behind.Position = Vector3.new(0, 0, 12) -- behind player along +Z
+               -- Ensure attachmentFar exists (normally created by PetCharacterAttachments)
+               local far = hrp:FindFirstChild("attachmentFar")
+               if not far then
+                   far = Instance.new("Attachment")
+                   far.Name = "attachmentFar"
+                   far.Parent = hrp
+                   far.Position = Vector3.new(0, 0, 30)
                end
-               Pos = behind.WorldCFrame.Position
-               frontAttachment = behind
+               print("[FOLLOWBOX] First box:")
+               print("  - HRP path:", hrp:GetFullName())
+               print("  - attachmentFar path:", far:GetFullName())
+               print("  - attachmentFar position:", tostring(far.WorldCFrame.Position))
+               frontAttachment = far
                alignP.Attachment0 = centerAttachment
-               alignP.Attachment1 =  frontAttachment
+               alignP.Attachment1 = frontAttachment
                alignO.Attachment0 = centerAttachment
-               alignO.Attachment1 =  frontAttachment
+               alignO.Attachment1 = frontAttachment
                print("  - AlignPosition connected: Center -> attachmentFar")
                print("  - AlignOrientation connected: Center -> attachmentFar")
                       else
-               print("🔍 DEBUG FollowBox: Setting up pet", followeeNumber, "(following previous pet)")
+               print("[FOLLOWBOX] Box ", tostring(followeeNumber+1), " following previous pet")
                local frontAttachmentPart = workspace.PlayerPetControl:WaitForChild(Player.Name):WaitForChild(tostring(followeeNumber))
-               print("  - Found front attachment part:", frontAttachmentPart ~= nil)
+               print("  - Front box path:", frontAttachmentPart and frontAttachmentPart:GetFullName() or "<nil>")
                if frontAttachmentPart then
-                   print("  - Front attachment part name:", frontAttachmentPart.Name)
                    print("  - Has Back attachment:", frontAttachmentPart:FindFirstChild("Back") ~= nil)
                end
                -- Chain to the back of the previous pet's control box
@@ -96,6 +92,7 @@ if Player then
                alignP.Attachment1 = frontAttachment
                alignO.Attachment0 = centerAttachment
                alignO.Attachment1 =  frontAttachment
+               print("  - Back attachment path:", frontAttachment and frontAttachment:GetFullName() or "<nil>")
                print("  - AlignPosition connected: Center -> Back")
                print("  - AlignOrientation connected: Center -> Back")
            end

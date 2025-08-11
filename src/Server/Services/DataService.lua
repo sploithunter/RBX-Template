@@ -237,7 +237,7 @@ function DataService:Init()
     
     -- Initialize ProfileStore
     self.ProfileStore = ProfileStore.New(
-        "PlayerData_v1", -- Version the store for easier migrations
+        "PlayerData_v2_mixedPets", -- New store version to start fresh with mixed pet storage
         ProfileTemplate
     )
     
