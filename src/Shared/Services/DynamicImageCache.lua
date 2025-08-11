@@ -511,6 +511,11 @@ function DynamicImageCache:LoadPetModel(assetId)
             assetId = assetId,
             error = result
         })
+        -- In Studio, re-warn with the raw error to expose clickable permission prompts
+        local RunService = game:GetService("RunService")
+        if RunService:IsStudio() then
+            warn(result)
+        end
         return nil
     end
 end

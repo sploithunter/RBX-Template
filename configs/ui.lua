@@ -41,19 +41,29 @@ local uiConfig = {
         menu_button = {
             -- Icon defaults
             icon_config = {
-                size = {scale_x = 0.4, scale_y = 0.4},      -- Default 40% of button size
-                position = {scale_x = 0.5, scale_y = 0.5},  -- Default center position
-                offset = {x = 0, y = 0}                     -- Default no offset
+                size = {scale_x = 0.894, scale_y = 0.733},  -- MCP icon sizing (relative to button)
+                position = {scale_x = 0.5, scale_y = 0.5},  -- Center
+                offset = {x = 0, y = 0}
             },
             
             -- Text defaults
             text_config = {
-                font = Enum.Font.GothamBold,                -- Default font
-                size = {height = 20, margin = 10},          -- Default text area size
+                font = Enum.Font.FredokaOne,                -- Default font for button text
+                size = {height = 20, margin = 10},          -- Default text area size (ignored when height_scale set)
                 color = Color3.fromRGB(255, 255, 255),      -- Default white text
                 text_scaled = true,                         -- Default auto-scale text
                 text_size = 14,                             -- Default font size when not scaled
                 position = {bottom_offset = 25, side_margin = 5},  -- Default text position
+                -- Semantic default: bottom_center_edge
+                position_kind = "bottom_center_edge",
+                anchor_point = {x = 0.5, y = 0.5},
+                position_scale = {x = 0.5, y = 0.925},
+                height_scale = 0.258,
+                -- MCP stroke defaults
+                stroke_color = Color3.fromRGB(0, 53, 76),
+                stroke_thickness = 3,
+                stroke_transparency = 0,
+                stroke_line_join = Enum.LineJoinMode.Miter,
                 shadow = {
                     enabled = true,                         -- Default shadow enabled
                     color = Color3.fromRGB(0, 0, 0),        -- Default black shadow
@@ -73,7 +83,7 @@ local uiConfig = {
             
             -- Button defaults - APPLIES TO ALL BUTTONS GLOBALLY
             color = Color3.fromRGB(100, 100, 100),          -- Default button color (fallback mode)
-            background_image = "16809347055"                -- 🎨 GLOBAL: Teal panel for ALL buttons
+            background_image = "16992268172"                -- 🎨 GLOBAL: Teal panel for ALL buttons
         },
         
         -- Panel defaults (for settings panel, inventory panel, etc.)
@@ -81,7 +91,7 @@ local uiConfig = {
         panel = {
             -- Panel background defaults - APPLIES TO ALL PANELS GLOBALLY
             background = {
-                image = "6208057940",                       -- 🎨 GLOBAL: Blue panel for ALL panels
+                image = "16992268172",                       -- 🎨 GLOBAL: Blue panel for ALL panels
                 color = Color3.fromRGB(40, 42, 48),         -- Fallback color if image fails
                 corner_radius = 16,                         -- Default corner radius
                 padding = {top = 20, bottom = 20, left = 20, right = 20}  -- Default padding
@@ -90,7 +100,7 @@ local uiConfig = {
             -- Panel header defaults - APPLIES TO ALL PANEL HEADERS GLOBALLY  
             header = {
                 height = 70,                                -- Default header height
-                background_image = "16809347055",           -- 🎨 GLOBAL: Teal panel for ALL headers
+                background_image = "16992268172",           -- 🎨 GLOBAL: Teal panel for ALL headers
                 background_color = Color3.fromRGB(35, 37, 43),  -- Fallback color if image fails
                 title_font = Enum.Font.GothamBold,          -- Default title font
                 title_size = 24,                            -- Default title size
@@ -606,7 +616,7 @@ local uiConfig = {
     debug = {
         show_bounds = false,  -- Enable to visualize pane boundaries
         show_anchor_points = false,  -- Show anchor point indicators
-        show_backgrounds = false,  -- Force show pane backgrounds for debugging
+        show_backgrounds = true,  -- Force show pane backgrounds for debugging
         log_interactions = false,
         performance_monitoring = true,
         component_inspector = false,
@@ -821,6 +831,7 @@ local uiConfig = {
     panes = {
         -- Individual Floating Currency Cards (like reference game)
         coins_pane = {
+            enabled = false,
             position = "center-left",
             offset = {x = 15, y = -40},
             size = {width = 120, height = 35},
@@ -853,6 +864,7 @@ local uiConfig = {
         },
         
         gems_pane = {
+            enabled = false,
             position = "center-left",
             offset = {x = 15, y = 0},
             size = {width = 120, height = 35},
@@ -884,6 +896,7 @@ local uiConfig = {
         },
         
         crystals_pane = {
+            enabled = false,
             position = "center-left",
             offset = {x = 15, y = 40},
             size = {width = 120, height = 35},
@@ -980,8 +993,8 @@ local uiConfig = {
                 -- 🔥 SPECIAL SHOP: Override global default for unique shop styling
                 {type = "menu_button", config = {
                     name = "Shop", 
-                    background_image = "18852000893",      -- 🎨 OVERRIDE: Special shop background 
-                    icon = "6031075938", 
+                    background_image = "16992152563",      -- 🎨 OVERRIDE: Special shop background 
+                    icon = "17684357501", 
                     text = "Shop", 
                     action = "shop_action",
                     notification = {
@@ -1112,6 +1125,80 @@ local uiConfig = {
             contents = {
                 {type = "rewards_button", config = {icon = "🎁", text = "Rewards", color = Color3.fromRGB(255, 215, 0), badge_count = 3, action = "rewards_action"}}
             }
+        },
+
+        -- === IMPORTED LAYOUT ANCHORS (from external game's StarterGui.Guis.Layout) ===
+        imported_top_bar = {
+            position_scale = {x = 0.5, y = 0.0112233441},
+            size = {scaleX = 0.428944618, scaleY = 0.113355778},
+            anchor = "top-center",
+            background = {enabled = true, color = Color3.fromRGB(235, 87, 87), transparency = 0.5}, -- red
+            layout = {type = "list", direction = "horizontal", spacing = 8},
+            contents = {
+                {type = "label", config = {text = "TOP", color = Color3.fromRGB(255,255,255)}}
+            }
+        },
+        imported_bottom_bar = {
+            position_scale = {x = 0.5, y = 0.99},
+            size = {scaleX = 0.529887676, scaleY = 0.154213503},
+            anchor = "bottom-center",
+            background = {enabled = true, color = Color3.fromRGB(39, 174, 96), transparency = 0.5}, -- green
+            layout = {type = "list", direction = "horizontal", spacing = 10},
+            contents = {
+                {type = "label", config = {text = "BOTTOM", color = Color3.fromRGB(255,255,255)}}
+            }
+        },
+        imported_left_rail = {
+            position_scale = {x = 0.00522466097, y = 0.5},
+            size = {scaleX = 0.0966562182, scaleY = 0.44893378},
+            anchor = "center-left",
+            background = {enabled = true, color = Color3.fromRGB(52, 152, 219), transparency = 0.5}, -- blue
+            -- Even spacing like InventoryPanel: 3 stacked rows, each row hosts 2 buttons centered
+            layout = {type = "list", direction = "vertical", spacing = 6, padding = {top = 4, bottom = 4, left = 4, right = 4}},
+            contents = {
+                {type = "row", config = {height_scale = 0.166, spacing = 8, contents = {
+                    {type = "menu_button", config = {name = "Store", text = "Store", icon = "rbxassetid://17684357501", action = "shop_action", aspect = {ratio = 1.0, dominant_axis = "width"}, notification = { enabled = true, text = "-25%", position = "top-left-corner" }, icon_config = { size = {scale_x = 0.55, scale_y = 0.55}, position = {scale_x = 0.5, scale_y = 0.45}, offset = {x = 0, y = 0} }, text_config = { position = { bottom_offset = 18, side_margin = 6 }, shadow = {enabled = true, color = Color3.fromRGB(0,0,0), thickness = 2, transparency = 0.5 } } }},
+                    {type = "menu_button", config = {name = "Invite", text = "Invite", icon = "rbxassetid://16992260427", action = "rewards_action", aspect = {ratio = 1.0, dominant_axis = "width"}}}
+                }}},
+                {type = "row", config = {height_scale = 0.166, spacing = 8, contents = {
+                    {type = "menu_button", config = {name = "Settings", text = "Settings", icon = "rbxassetid://17214007349", action = "settings_action", aspect = {ratio = 1.0, dominant_axis = "width"}}},
+                    {type = "menu_button", config = {name = "Rebirth", text = "Rebirth", icon = "rbxassetid://16992290821", action = "quest_claim_action", aspect = {ratio = 1.0, dominant_axis = "width"}}}
+                }}},
+                {type = "row", config = {height_scale = 0.166, spacing = 8, contents = {
+                    {type = "menu_button", config = {name = "Pet", text = "Pets", icon = "rbxassetid://16992283947", action = "pets_action", aspect = {ratio = 1.0, dominant_axis = "width"}}},
+                    {type = "menu_button", config = {name = "Spins", text = "Spins", icon = "rbxassetid://16992338584", action = "daily_login_action", aspect = {ratio = 1.0, dominant_axis = "width"}}}
+                }}}
+            }
+        },
+        imported_right_cluster = {
+            position_scale = {x = 0.995, y = 0.5},
+            size = {scaleX = 0.22100313, scaleY = 0.261503935},
+            anchor = "center-right",
+            background = {enabled = true, color = Color3.fromRGB(241, 196, 15), transparency = 0.5}, -- yellow
+            layout = {type = "list", direction = "vertical", spacing = 6},
+            contents = {
+                {type = "label", config = {text = "RIGHT", color = Color3.fromRGB(0,0,0)}}
+            }
+        },
+        imported_boosts_stack = {
+            position_scale = {x = 0.00522465771, y = 0.740112424},
+            size = {scaleX = 0.248757988, scaleY = 0.246622533},
+            anchor = "top-left",
+            background = {enabled = true, color = Color3.fromRGB(155, 89, 182), transparency = 0.5}, -- purple
+            layout = {type = "list", direction = "vertical", spacing = 6},
+            contents = {
+                {type = "label", config = {text = "BOOSTS", color = Color3.fromRGB(255,255,255)}}
+            }
+        },
+        imported_notifications = {
+            position_scale = {x = 0.5, y = 0.34},
+            size = {scaleX = 0.600000024, scaleY = 1.0},
+            anchor = "center",
+            background = {enabled = true, color = Color3.fromRGB(230, 126, 34), transparency = 0.5}, -- orange
+            layout = {type = "list", direction = "vertical", spacing = 8},
+            contents = {
+                {type = "label", config = {text = "NOTICES", color = Color3.fromRGB(255,255,255)}}
+            }
         }
         
         -- Available positions: "top-left", "top-center", "top-right",
@@ -1121,6 +1208,38 @@ local uiConfig = {
         -- Layout types: "list", "grid", "single", "custom"
         -- Background: Fully configurable colors, transparency, borders
         -- Contents: Array of UI elements with their own configurations
+    },
+
+    -- === OVERLAYS AND SINGLETON ELEMENTS (from imported GUI) ===
+    overlays = {
+        overlay_buying = {
+            position = "center",
+            size = {scaleX = 1.0, scaleY = 1.0},
+            background = {enabled = true, color = Color3.fromRGB(0,0,0), transparency = 0.3},
+            layout = {type = "single"},
+            contents = {
+                {type = "template", config = {template_type = "panel_large", props = {}}}
+            }
+        },
+        pet_hover_tooltip = {
+            position = "center",
+            size = {pxX = 100, pxY = 78},
+            layout = {type = "single"},
+            contents = {
+                {type = "template", config = {template_type = "panel_large", props = {}}}
+            }
+        }
+    },
+
+    singletons = {
+        robux_icon = {
+            position = "top-right",
+            size = {pxX = 64, pxY = 64},
+            layout = {type = "single"},
+            contents = {
+                {type = "image", config = {assetId = "rbxassetid://17120958513"}}
+            }
+        }
     },
     
     -- === PANEL CONFIGURATIONS (Image-based panels) ===

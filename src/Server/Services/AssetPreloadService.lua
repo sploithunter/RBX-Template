@@ -599,16 +599,20 @@ function AssetPreloadService:LoadModelIntoFolder(assetId, parentFolder, folderNa
         
         return true
     end)
-    
+
     if not success then
         logger:Warn("Failed to load model", {
             assetId = assetId,
             debugName = debugName,
             error = tostring(result)
         })
+        -- In Studio, also surface the original engine error so the clickable "Grant access" link appears
+        local RunService = game:GetService("RunService")
+        if RunService:IsStudio() then
+            warn(result)
+        end
         return false
     end
-    
     return true
 end
 

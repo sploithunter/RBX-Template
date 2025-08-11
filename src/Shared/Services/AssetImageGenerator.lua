@@ -270,6 +270,11 @@ function AssetImageGenerator:LoadPetModel(assetId)
             assetId = assetId,
             error = result
         })
+        -- In Studio, echo the raw engine error so Studio shows the clickable permission grant
+        local RunService = game:GetService("RunService")
+        if RunService:IsStudio() then
+            warn(result)
+        end
         return nil
     end
 end

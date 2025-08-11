@@ -369,9 +369,13 @@ function BaseUI:_createUI()
     self.mainFrame.ZIndex = self.uiConfig.z_index.content
     self.mainFrame.Parent = self.screenGui
     
-    -- Create all UI using the new pane-based system
+    -- Create all UI using the pane-based system
     self:_createTopBar()
     self:_createAllPanes()  -- Create all panes from configuration
+
+    -- Create overlays and singleton elements if configured
+    self:_createOverlays()
+    self:_createSingletons()
     
     self.logger:info("Professional UI structure created with pane-based architecture")
 end
@@ -581,12 +585,16 @@ function BaseUI:_createAllPanes()
     
     -- Create each configured pane
     for paneName, paneConfig in pairs(self.uiConfig.panes) do
-        local paneStartTime = tick()
-        self:_createPane(paneName, paneConfig)
-        local paneEndTime = tick()
-        
-        paneCount = paneCount + 1
-        self.logger:debug("Created pane '" .. paneName .. "' in " .. string.format("%.2f", (paneEndTime - paneStartTime) * 1000) .. "ms")
+        if paneConfig.enabled == false then
+            self.logger:debug("Skipping disabled pane:", paneName)
+        else
+            local paneStartTime = tick()
+            self:_createPane(paneName, paneConfig)
+            local paneEndTime = tick()
+            
+            paneCount = paneCount + 1
+            self.logger:debug("Created pane '" .. paneName .. "' in " .. string.format("%.2f", (paneEndTime - paneStartTime) * 1000) .. "ms")
+        end
     end
     
     local totalTime = tick() - startTime
@@ -601,16 +609,23 @@ function BaseUI:_createPane(paneName, config)
         return
     end
     
-    if not config.size or type(config.size) ~= "table" or not config.size.width or not config.size.height then
+    if not config.size or type(config.size) ~= "table" then
         self.logger:error("Invalid size configuration for pane '" .. tostring(paneName) .. "'")
         return
     end
+
+    -- Build UDim2 size using provided scale and/or pixel offsets (no viewport conversion)
+    local sizeConfig = config.size
+    local sizeScaleX = tonumber(sizeConfig.scaleX or 0)
+    local sizeScaleY = tonumber(sizeConfig.scaleY or 0)
+    local sizeOffsetX = tonumber(sizeConfig.pxX or sizeConfig.width or 0)
+    local sizeOffsetY = tonumber(sizeConfig.pxY or sizeConfig.height or 0)
     
     -- Create pane container with semantic positioning
     local success, paneContainer = pcall(function()
         local container = Instance.new("Frame")
         container.Name = paneName
-        container.Size = UDim2.new(0, config.size.width, 0, config.size.height)
+        container.Size = UDim2.new(sizeScaleX, sizeOffsetX, sizeScaleY, sizeOffsetY)
         return container
     end)
     
@@ -619,25 +634,77 @@ function BaseUI:_createPane(paneName, config)
         return
     end
     
-    -- Apply semantic positioning
-    local positionInfo = self:_getSemanticPosition(config.position, nil, config.offset)
-    paneContainer.Position = positionInfo.position
-    paneContainer.AnchorPoint = positionInfo.anchorPoint
+    -- Apply positioning: either absolute scale-based or semantic
+    if config.position_scale then
+        local ps = config.position_scale
+        local scaleX = tonumber(ps.x or 0)
+        local scaleY = tonumber(ps.y or 0)
+        local pixelX = (config.offset and tonumber(config.offset.x)) or 0
+        local pixelY = (config.offset and tonumber(config.offset.y)) or 0
+        -- optional additive scale offset
+        local addScaleX = (config.offset_scale and tonumber(config.offset_scale.x)) or 0
+        local addScaleY = (config.offset_scale and tonumber(config.offset_scale.y)) or 0
+        paneContainer.Position = UDim2.new(scaleX + addScaleX, pixelX, scaleY + addScaleY, pixelY)
+        -- Default to top-left anchor for raw scale positions (matches MCP defaults)
+        paneContainer.AnchorPoint = Vector2.new(0, 0)
+        if config.anchor_point then
+            paneContainer.AnchorPoint = Vector2.new(config.anchor_point.x or 0, config.anchor_point.y or 0)
+        elseif config.anchor then
+            -- support semantic anchors like "top-left", "top-center", "center", etc.
+            local anchorMap = {
+                ["top-left"] = Vector2.new(0, 0),
+                ["top-center"] = Vector2.new(0.5, 0),
+                ["top-right"] = Vector2.new(1, 0),
+                ["center-left"] = Vector2.new(0, 0.5),
+                ["center"] = Vector2.new(0.5, 0.5),
+                ["center-right"] = Vector2.new(1, 0.5),
+                ["bottom-left"] = Vector2.new(0, 1),
+                ["bottom-center"] = Vector2.new(0.5, 1),
+                ["bottom-right"] = Vector2.new(1, 1)
+            }
+            local a = anchorMap[string.lower(config.anchor)]
+            if a then paneContainer.AnchorPoint = a end
+        end
+    else
+        local positionInfo = self:_getSemanticPosition(config.position, nil, config.offset)
+        paneContainer.Position = positionInfo.position
+        paneContainer.AnchorPoint = positionInfo.anchorPoint
+    end
     
     paneContainer.ZIndex = 12
     paneContainer.Parent = self.mainFrame
     
+    -- Optional aspect ratio constraint
+    if config.aspect and tonumber(config.aspect.ratio) then
+        local arc = Instance.new("UIAspectRatioConstraint")
+        arc.AspectRatio = tonumber(config.aspect.ratio)
+        if type(config.aspect.dominant_axis) == "string" then
+            local axisLower = string.lower(config.aspect.dominant_axis)
+            if axisLower == "width" then
+                arc.DominantAxis = Enum.DominantAxis.Width
+            elseif axisLower == "height" then
+                arc.DominantAxis = Enum.DominantAxis.Height
+            else
+                arc.DominantAxis = Enum.DominantAxis.Width
+            end
+        end
+        arc.Parent = paneContainer
+    end
+
     -- Create background if enabled OR if debug backgrounds are on
     if (config.background and config.background.enabled) or (self.uiConfig.debug.show_backgrounds) then
         local bgConfig = config.background
         
         -- If debug backgrounds are enabled but no background config exists, create debug background
         if self.uiConfig.debug.show_backgrounds and (not bgConfig or not bgConfig.enabled) then
+            -- Generate a unique color per pane for easy identification
+            local debugColor = self:_getDebugColor(paneName)
             bgConfig = {
                 enabled = true,
-                color = Color3.fromRGB(50, 50, 50),
-                transparency = 0.8,
-                corner_radius = 8
+                color = debugColor,
+                transparency = 0.75,
+                corner_radius = 8,
+                border = { enabled = true, color = Color3.fromRGB(0,0,0), thickness = 1, transparency = 0.1 }
             }
         end
         
@@ -666,6 +733,19 @@ function BaseUI:_createPane(paneName, config)
     end
     
     self.logger:debug("Created pane:", paneName)
+end
+
+-- Deterministic debug color per pane name for visualization
+function BaseUI:_getDebugColor(name)
+    local hash = 0
+    for i = 1, #tostring(name) do
+        hash = (hash * 31 + string.byte(name, i)) % 9973
+    end
+    -- Map hash to a color palette (pastel-like)
+    local r = ((hash % 5) * 40 + 80) % 256
+    local g = (((math.floor(hash / 5)) % 5) * 40 + 80) % 256
+    local b = (((math.floor(hash / 25)) % 5) * 40 + 80) % 256
+    return Color3.fromRGB(r, g, b)
 end
 
 -- Create pane background styling
@@ -744,6 +824,27 @@ function BaseUI:_createPaneLayout(container, layoutConfig, paneName, paneConfig)
             }
         end
         
+        -- If no explicit cell_size provided and paneConfig.contents define scale-based sizes,
+        -- compute pixel cell size from container.AbsoluteSize and the first content's size
+        if (not finalLayoutConfig.cell_size) and paneConfig and paneConfig.contents and paneConfig.contents[1] then
+            local first = paneConfig.contents[1]
+            local sz = first.config and first.config.size
+            if sz and (sz.scaleX or sz.scaleY) then
+                local abs = container.AbsoluteSize
+                local cw = math.max(1, math.floor(abs.X * (tonumber(sz.scaleX or 0))))
+                local ch = math.max(1, math.floor(abs.Y * (tonumber(sz.scaleY or 0))))
+                finalLayoutConfig = finalLayoutConfig or {}
+                -- Respect rows when provided to ensure even vertical spacing
+                if finalLayoutConfig.rows and finalLayoutConfig.rows > 0 then
+                    local spacing = finalLayoutConfig.spacing or 0
+                    ch = math.floor((abs.Y - ((finalLayoutConfig.rows - 1) * spacing)) / finalLayoutConfig.rows)
+                end
+                finalLayoutConfig.cell_size = { width = cw, height = ch }
+                -- default spacing if none provided
+                if not finalLayoutConfig.spacing then finalLayoutConfig.spacing = 0 end
+            end
+        end
+        
         local gridLayout = Instance.new("UIGridLayout")
         gridLayout.CellSize = UDim2.new(0, finalLayoutConfig.cell_size.width, 0, finalLayoutConfig.cell_size.height)
         gridLayout.CellPadding = UDim2.new(0, finalLayoutConfig.spacing or 5, 0, finalLayoutConfig.spacing or 5)
@@ -786,6 +887,15 @@ function BaseUI:_createPaneContents(container, contents, layoutConfig)
         local element = self:_createPaneElement(contentConfig, container, i, layoutConfig)
         if element then
             element.LayoutOrder = i
+            -- Support manual position within custom layout using relative scales
+            if layoutConfig.type == "custom" and contentConfig.config and contentConfig.config.position_scale then
+                local ps = contentConfig.config.position_scale
+                local px = (contentConfig.config.offset and contentConfig.config.offset.x) or 0
+                local py = (contentConfig.config.offset and contentConfig.config.offset.y) or 0
+                element.Position = UDim2.new(ps.x or 0, px, ps.y or 0, py)
+                -- Keep anchor centered by default for buttons
+                element.AnchorPoint = Vector2.new(0.5, 0.5)
+            end
         end
     end
 end
@@ -835,9 +945,79 @@ function BaseUI:_createPaneElement(contentConfig, parent, layoutOrder, layoutCon
     elseif elementType == "rewards_button" then
         return self:_createRewardsButtonElement(config, parent)
         
+    elseif elementType == "template" then
+        return self:_createTemplateElement(config, parent)
+        
+    elseif elementType == "image" then
+        return self:_createImageElement(config, parent)
+        
+    elseif elementType == "label" then
+        return self:_createLabelElement(config, parent)
+        
+    elseif elementType == "row" then
+        return self:_createRowContainer(config, parent)
+        
     else
         self.logger:warn("Unknown pane element type:", elementType)
         return nil
+    end
+end
+
+-- Create overlays defined in config.overlays as absolute panes above content
+function BaseUI:_createOverlays()
+    local overlays = self.uiConfig.overlays
+    if not overlays then return end
+    for name, overlayConfig in pairs(overlays) do
+        local overlayFrame = Instance.new("Frame")
+        overlayFrame.Name = name
+        overlayFrame.BackgroundTransparency = 1
+        overlayFrame.ZIndex = self.uiConfig.z_index.modal
+        overlayFrame.Visible = false -- start hidden to avoid blocking view while mapping panes
+        overlayFrame.Parent = self.mainFrame
+
+        local camera = workspace.CurrentCamera
+        local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+        local width = overlayConfig.size and overlayConfig.size.scaleX and math.floor(viewport.X * overlayConfig.size.scaleX) or (overlayConfig.size and overlayConfig.size.pxX) or viewport.X
+        local height = overlayConfig.size and overlayConfig.size.scaleY and math.floor(viewport.Y * overlayConfig.size.scaleY) or (overlayConfig.size and overlayConfig.size.pxY) or viewport.Y
+        overlayFrame.Size = UDim2.new(0, width, 0, height)
+
+        local pos = self:_getSemanticPosition(overlayConfig.position or "center", nil, nil)
+        overlayFrame.Position = pos.position
+        overlayFrame.AnchorPoint = pos.anchorPoint
+
+        if overlayConfig.background and overlayConfig.background.enabled then
+            overlayFrame.BackgroundTransparency = overlayConfig.background.transparency or 0
+            overlayFrame.BackgroundColor3 = overlayConfig.background.color or Color3.new(0,0,0)
+        end
+
+        local layoutContainer = self:_createPaneLayout(overlayFrame, overlayConfig.layout or {type = "single",}, name, overlayConfig)
+        self:_createPaneContents(layoutContainer, overlayConfig.contents or {}, overlayConfig.layout or {type = "single"})
+    end
+end
+
+-- Create singleton elements like images/icons
+function BaseUI:_createSingletons()
+    local singletons = self.uiConfig.singletons
+    if not singletons then return end
+    for name, conf in pairs(singletons) do
+        local container = Instance.new("Frame")
+        container.Name = name
+        container.BackgroundTransparency = 1
+        container.ZIndex = self.uiConfig.z_index.content
+        container.Parent = self.mainFrame
+
+        local camera = workspace.CurrentCamera
+        local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+        local width = conf.size and (conf.size.pxX or (conf.size.width)) or 64
+        local height = conf.size and (conf.size.pxY or (conf.size.height)) or 64
+        container.Size = UDim2.new(0, width, 0, height)
+
+        local pos = self:_getSemanticPosition(conf.position or "top-right", nil, conf.offset)
+        container.Position = pos.position
+        container.AnchorPoint = pos.anchorPoint
+
+        local layoutContainer = self:_createPaneLayout(container, conf.layout or {type = "single"}, name, conf)
+        self:_createPaneContents(layoutContainer, conf.contents or {}, conf.layout or {type = "single"})
     end
 end
 
@@ -1059,36 +1239,81 @@ function BaseUI:_createMenuButtonElement(config, parent, layoutOrder)
         -- Only TextButton has Text property
         button.Text = ""
     end
-    -- Ensure button fills its pane container (prevents 0,0 sizing in single-pane layouts)
-    button.Size = UDim2.new(1, 0, 1, 0)
+    -- Size: respect config.size when provided; otherwise fill container
+    do
+        local s = config.size
+        if s then
+            local sx = tonumber(s.scaleX or 0)
+            local sy = tonumber(s.scaleY or 0)
+            local px = tonumber(s.pxX or s.width or 0)
+            local py = tonumber(s.pxY or s.height or 0)
+            button.Size = UDim2.new(sx, px, sy, py)
+        else
+            -- default: fill
+            button.Size = UDim2.new(1, 0, 1, 0)
+        end
+    end
     button.LayoutOrder = layoutOrder
     button.ZIndex = 13
     button.Parent = parent
+
+    -- Optional per-button aspect ratio constraint
+    if config.aspect and tonumber(config.aspect.ratio) then
+        local arc = Instance.new("UIAspectRatioConstraint")
+        arc.AspectRatio = tonumber(config.aspect.ratio)
+        if type(config.aspect.dominant_axis) == "string" then
+            local axisLower = string.lower(config.aspect.dominant_axis)
+            if axisLower == "width" then
+                arc.DominantAxis = Enum.DominantAxis.Width
+            elseif axisLower == "height" then
+                arc.DominantAxis = Enum.DominantAxis.Height
+            else
+                arc.DominantAxis = Enum.DominantAxis.Width
+            end
+        end
+        arc.Parent = button
+    end
     
-    -- LAYER 1: ICON (Center of button)
-    local icon = self:_createButtonIcon(config, button)
+    -- LAYER 1: FRAME (optional inner frame for styling consistency with imported UI)
+    local rootButton = button
+    local contentParent = rootButton
+    local innerFrame
+    if config.inner_frame ~= false then
+        innerFrame = Instance.new("Frame")
+        innerFrame.Name = "Inner"
+        innerFrame.Size = UDim2.new(1, 0, 1, 0)
+        innerFrame.BackgroundTransparency = 1
+        innerFrame.Parent = rootButton
+        contentParent = innerFrame -- attach sub-layers to inner frame
+    end
+
+    -- LAYER 2: ICON (Center of button)
+    local icon = self:_createButtonIcon(config, contentParent)
     
-    -- LAYER 2: NOTIFICATION BADGE (Top-right corner or configured position)
-    local notification = self:_createButtonNotification(config, button)
+    -- LAYER 3: NOTIFICATION BADGE (Top-right corner or configured position)
+    local notification = self:_createButtonNotification(config, contentParent)
     
-    -- LAYER 3: TEXT LABEL (Bottom of button)
-    local label = self:_createButtonLabel(config, button)
+    -- LAYER 4: TEXT LABEL
+    local label = self:_createButtonLabel(config, contentParent)
+    -- (Stroke and size constraint are handled inside _createButtonLabel via text_config)
     
     -- Interactive effects
-    button.Activated:Connect(function()
-        self:_onMenuButtonClicked(config.name)
-        self:_animateButtonPress(button)
-    end)
+    if rootButton and rootButton:IsA("GuiButton") then
+        rootButton.Activated:Connect(function()
+            self:_onMenuButtonClicked(config.name)
+            self:_animateButtonPress(rootButton)
+        end)
+    end
     
     -- Hover effects (different for image vs text buttons)
     if hasBackgroundImage then
-        self:_addImageButtonHoverEffect(button)
+        self:_addImageButtonHoverEffect(rootButton)
     else
-        self:_addButtonHoverEffect(button, config.color)
+        self:_addButtonHoverEffect(rootButton, config.color)
     end
     
     -- Store reference
-    self.menuButtons[config.name] = button
+    self.menuButtons[config.name] = rootButton
 
     -- AutoTarget visual indicator (server-driven via BoolValues on Player)
     if config.name == "AutoLow" or config.name == "AutoHigh" then
@@ -1100,8 +1325,8 @@ function BaseUI:_createMenuButtonElement(config, parent, layoutOrder)
         stateBar.AnchorPoint = Vector2.new(0.5, 0)
         stateBar.BackgroundColor3 = Color3.fromRGB(255, 165, 0) -- off (orange)
         stateBar.BorderSizePixel = 0
-        stateBar.ZIndex = button.ZIndex + 1
-        stateBar.Parent = button
+        stateBar.ZIndex = rootButton.ZIndex + 1
+        stateBar.Parent = contentParent
 
         local stateCorner = Instance.new("UICorner")
         stateCorner.CornerRadius = UDim.new(0, 4)
@@ -1239,9 +1464,9 @@ function BaseUI:_createButtonNotification(config, parent)
     
     
     
-    -- Notification badge background
+    -- Notification badge background (match MCP naming)
     local notification = Instance.new("Frame")
-    notification.Name = "Notification"
+    notification.Name = "Noti"
     notification.BackgroundColor3 = notifConfig.background_color or Color3.fromRGB(255, 0, 0)
     notification.BorderSizePixel = 0
     notification.ZIndex = 16
@@ -1287,15 +1512,21 @@ function BaseUI:_createButtonNotification(config, parent)
     end
     
     notification.Parent = parent
+
+    -- Maintain aspect ratio like MCP (UIAspectRatioConstraint)
+    local arc = Instance.new("UIAspectRatioConstraint")
+    arc.AspectRatio = tonumber(notifConfig.aspect_ratio or 1.6)
+    arc.DominantAxis = Enum.DominantAxis.Width
+    arc.Parent = notification
     
     -- Rounded corners for notification
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0.5, 0) -- Perfect circle
     corner.Parent = notification
     
-    -- Notification text
+    -- Notification text (match MCP naming "Txt")
     local text = Instance.new("TextLabel")
-    text.Name = "NotificationText"
+    text.Name = "Txt"
     text.Size = UDim2.new(1, 0, 1, 0)
     text.Position = UDim2.new(0, 0, 0, 0)
     text.BackgroundTransparency = 1
@@ -1306,12 +1537,16 @@ function BaseUI:_createButtonNotification(config, parent)
     text.ZIndex = 17
     text.Parent = notification
     
-    -- Add subtle glow effect
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Thickness = 1
-    stroke.Transparency = 0.5
-    stroke.Parent = notification
+    -- Text stroke + size constraint like MCP
+    local tStroke = Instance.new("UIStroke")
+    tStroke.Color = (notifConfig.text_stroke_color or Color3.fromRGB(0,0,0))
+    tStroke.Thickness = tonumber(notifConfig.text_stroke_thickness or 2)
+    tStroke.Transparency = tonumber(notifConfig.text_stroke_transparency or 0.2)
+    tStroke.Parent = text
+
+    local tsc = Instance.new("UITextSizeConstraint")
+    tsc.MaxTextSize = tonumber(notifConfig.text_max_size or 18)
+    tsc.Parent = text
     
     return notification
 end
@@ -1340,6 +1575,17 @@ function BaseUI:_createButtonLabel(config, parent)
         }
     end
     
+    -- Semantic label positioning kinds (e.g., "bottom_center_edge")
+    do
+        local kind = textConfig.position_kind
+        if kind == "bottom_center_edge" then
+            -- MCP-style: wraps at bottom with stroke, centered
+            textConfig.anchor_point = textConfig.anchor_point or {x = 0.5, y = 0.5}
+            textConfig.position_scale = textConfig.position_scale or {x = 0.5, y = 0.925}
+            textConfig.height_scale = textConfig.height_scale or 0.258
+        end
+    end
+
     local font = textConfig.font
     local textSize = textConfig.size
     local textColor = textConfig.color
@@ -1350,10 +1596,22 @@ function BaseUI:_createButtonLabel(config, parent)
     
     local label = Instance.new("TextLabel")
     label.Name = "Label"
-    -- Make the label span the full button width and center it horizontally
-    label.Size = UDim2.new(1, 0, 0, textSize.height)
-    label.Position = UDim2.new(0.5, 0, 1, -textPosition.bottom_offset)
-    label.AnchorPoint = Vector2.new(0.5, 0)
+    -- Prefer MCP-style scale-driven sizing/positioning when provided
+    if textConfig.height_scale then
+        label.Size = UDim2.new(1, 0, tonumber(textConfig.height_scale), 0)
+    else
+        label.Size = UDim2.new(1, 0, 0, textSize.height)
+    end
+    if textConfig.position_scale then
+        label.Position = UDim2.new(tonumber(textConfig.position_scale.x or 0.5), 0, tonumber(textConfig.position_scale.y or 0.925), 0)
+    else
+        label.Position = UDim2.new(0.5, 0, 1, -textPosition.bottom_offset)
+    end
+    if textConfig.anchor_point then
+        label.AnchorPoint = Vector2.new(tonumber(textConfig.anchor_point.x or 0.5), tonumber(textConfig.anchor_point.y or 0.5))
+    else
+        label.AnchorPoint = Vector2.new(0.5, 0)
+    end
     label.BackgroundTransparency = 1
     label.Text = config.text or config.name
     label.TextColor3 = textColor  -- Configurable color
@@ -1369,14 +1627,31 @@ function BaseUI:_createButtonLabel(config, parent)
     
     label.Parent = parent
     
-    -- Add text shadow for better readability (configurable)
-    local shadowConfig = textConfig.shadow
-    if shadowConfig.enabled then
-        local shadow = Instance.new("UIStroke")
-        shadow.Color = shadowConfig.color
-        shadow.Thickness = shadowConfig.thickness
-        shadow.Transparency = shadowConfig.transparency
-        shadow.Parent = label
+    -- Label stroke: use MCP stroke when provided, else use shadow config
+    do
+        local strokeColor = textConfig.stroke_color or textConfig.shadow and textConfig.shadow.color
+        local strokeThickness = tonumber(textConfig.stroke_thickness or (textConfig.shadow and textConfig.shadow.thickness)) or 3
+        local strokeTransparency = tonumber(textConfig.stroke_transparency or (textConfig.shadow and textConfig.shadow.transparency)) or 0
+        local lineJoin = textConfig.stroke_line_join or "Miter"
+        if strokeColor then
+            local stroke = Instance.new("UIStroke")
+            stroke.Color = strokeColor
+            stroke.Thickness = strokeThickness
+            stroke.Transparency = strokeTransparency
+            if typeof(lineJoin) == "EnumItem" then
+                stroke.LineJoinMode = lineJoin
+            else
+                stroke.LineJoinMode = Enum.LineJoinMode.Miter
+            end
+            stroke.Parent = label
+        end
+    end
+    
+    -- Text size constraint
+    if not label:FindFirstChildOfClass("UITextSizeConstraint") then
+        local tsc = Instance.new("UITextSizeConstraint")
+        tsc.MaxTextSize = tonumber(textConfig.max_text_size or 48)
+        tsc.Parent = label
     end
     
     return label
@@ -2172,6 +2447,96 @@ function BaseUI:_createRewardsButtonElement(config, parent)
     self:_addButtonHoverEffect(rewardsButton, config.color)
     
     return rewardsButton
+end
+
+-- Create a generic template-based element using TemplateManager
+function BaseUI:_createTemplateElement(config, parent)
+    if not self.templateManager or not config or not config.template_type then
+        return nil
+    end
+    local instance = self.templateManager:CreateFromTemplate(config.template_type, config.props or {})
+    if instance then
+        instance.Parent = parent
+    end
+    return instance
+end
+
+-- Create a simple ImageLabel element
+function BaseUI:_createImageElement(config, parent)
+    local imageId = config and (config.assetId or config.image or config.id)
+    if not imageId then
+        return nil
+    end
+    local image = Instance.new("ImageLabel")
+    image.Name = config.name or "Image"
+    image.BackgroundTransparency = 1
+    image.Image = tostring(imageId)
+    if config.size then
+        if config.size.width and config.size.height then
+            image.Size = UDim2.new(0, config.size.width, 0, config.size.height)
+        elseif config.size.pxX and config.size.pxY then
+            image.Size = UDim2.new(0, config.size.pxX, 0, config.size.pxY)
+        end
+    end
+    if config.positionUDim2 then
+        image.Position = config.positionUDim2
+    end
+    if config.anchor_point then
+        image.AnchorPoint = config.anchor_point
+    end
+    image.Parent = parent
+    return image
+end
+
+-- Create a horizontal row container that hosts child contents and consumes vertical space evenly
+function BaseUI:_createRowContainer(config, parent)
+    local row = Instance.new("Frame")
+    row.Name = config.name or "Row"
+    local heightScale = tonumber(config.height_scale or 0.33)
+    row.Size = UDim2.new(1, 0, heightScale, 0)
+    row.BackgroundTransparency = 1
+    row.Parent = parent
+    
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.FillDirection = Enum.FillDirection.Horizontal
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Padding = UDim.new(0, config.spacing or 0)
+    listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    listLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    listLayout.Parent = row
+    
+    if config.padding then
+        local pad = Instance.new("UIPadding")
+        pad.PaddingTop = UDim.new(0, config.padding.top or 0)
+        pad.PaddingBottom = UDim.new(0, config.padding.bottom or 0)
+        pad.PaddingLeft = UDim.new(0, config.padding.left or 0)
+        pad.PaddingRight = UDim.new(0, config.padding.right or 0)
+        pad.Parent = row
+    end
+    
+    local innerLayoutConfig = { type = "list", direction = "horizontal", spacing = config.spacing or 0 }
+    if config.contents then
+        self:_createPaneContents(row, config.contents, innerLayoutConfig)
+    end
+    
+    return row
+end
+
+-- Create a simple TextLabel element for debugging/labels
+function BaseUI:_createLabelElement(config, parent)
+    local text = (config and config.text) or "Label"
+    local label = Instance.new("TextLabel")
+    label.Name = config and (config.name or "Label") or "Label"
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.Text = text
+    label.TextScaled = true
+    label.Font = (self.uiConfig and self.uiConfig.fonts and self.uiConfig.fonts.bold) or Enum.Font.GothamBold
+    label.TextColor3 = (config and config.color) or Color3.fromRGB(255,255,255)
+    label.TextXAlignment = Enum.TextXAlignment.Center
+    label.TextYAlignment = Enum.TextYAlignment.Center
+    label.Parent = parent
+    return label
 end
 
 -- Performance optimization: Cache theme lookups

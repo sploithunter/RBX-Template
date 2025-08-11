@@ -19,6 +19,9 @@
       },
       "Configs": {
         "$path": "configs"
+      },
+      "UI_Templates": {
+        "$path": "src/UI_Templates"
       }
     },
     "StarterPlayer": {
