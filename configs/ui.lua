@@ -954,6 +954,7 @@ local uiConfig = {
 
         -- Quest Tracker Pane (center-right with completely clear background)
         quest_tracker_pane = {
+            enabled = false,
             position = "center-right",
             offset = {x = -15, y = 0},
             size = {width = 350, height = 120},
@@ -1157,7 +1158,11 @@ local uiConfig = {
             layout = {type = "list", direction = "vertical", spacing = 6, padding = {top = 4, bottom = 4, left = 4, right = 4}},
             contents = {
                 {type = "row", config = {height_scale = 0.166, spacing = 8, contents = {
-                    {type = "menu_button", config = {name = "Store", text = "Store", icon = "rbxassetid://17684357501", action = "shop_action", aspect = {ratio = 1.0, dominant_axis = "width"}, notification = { enabled = true, text = "-25%", position = "top-left-corner" }, icon_config = { size = {scale_x = 0.55, scale_y = 0.55}, position = {scale_x = 0.5, scale_y = 0.45}, offset = {x = 0, y = 0} }, text_config = { position = { bottom_offset = 18, side_margin = 6 }, shadow = {enabled = true, color = Color3.fromRGB(0,0,0), thickness = 2, transparency = 0.5 } } }},
+                    {type = "menu_button", config = {name = "Store", text = "Store", background_image = "rbxassetid://16992152563", icon = "rbxassetid://17684357501", action = "shop_action", aspect = {ratio = 1.0, dominant_axis = "width"}, 
+                    notification = { enabled = true, text = "-25%", position = "top-left-corner" }, 
+                    icon_config = { size = {scale_x = 0.85, scale_y = 0.85}, position = {scale_x = 0.5, scale_y = 0.45}, offset = {x = 0, y = 0} }, 
+                    text_config = { position = { bottom_offset = 18, side_margin = 6 }, stroke_color = Color3.fromRGB(76, 42, 1), shadow = {enabled = true, color = Color3.fromRGB(0,0,0), thickness = 2, transparency = 0.5 } } 
+                }},
                     {type = "menu_button", config = {name = "Invite", text = "Invite", icon = "rbxassetid://16992260427", action = "rewards_action", aspect = {ratio = 1.0, dominant_axis = "width"}}}
                 }}},
                 {type = "row", config = {height_scale = 0.166, spacing = 8, contents = {
@@ -1172,12 +1177,33 @@ local uiConfig = {
         },
         imported_right_cluster = {
             position_scale = {x = 0.995, y = 0.5},
-            size = {scaleX = 0.22100313, scaleY = 0.261503935},
+            -- Match left rail size for consistent look
+            size = {scaleX = 0.0966562182, scaleY = 0.44893378},
             anchor = "center-right",
-            background = {enabled = true, color = Color3.fromRGB(241, 196, 15), transparency = 0.5}, -- yellow
-            layout = {type = "list", direction = "vertical", spacing = 6},
+            background = {enabled = true, color = Color3.fromRGB(52, 152, 219), transparency = 0.5}, -- debug blue like left
+            layout = {type = "list", direction = "vertical", spacing = 6, padding = {top = 4, bottom = 4, left = 4, right = 4}},
             contents = {
-                {type = "label", config = {text = "RIGHT", color = Color3.fromRGB(0,0,0)}}
+                -- Row 1: Follow US (single)
+                {type = "row", config = {height_scale = 0.166, spacing = 8, contents = {
+                    {type = "menu_button", config = {name = "FollowUs", text = "Follow US", background_image = "rbxassetid://17016922306", icon = "rbxassetid://113655698755065", icon_config = { position_kind = "left_center_edge", size = {scale_x = 0.65, scale_y = 0.65}, offset = {x = 0, y = 0} }, action = "rewards_action", aspect = {ratio = 2.0, dominant_axis = "width"}, text_config = { position_kind = "manual", anchor_point = {x = 0.5, y = 0.5}, position_scale = {x = 0.5, y = 0.5}, position_offset = {x = 10, y = 0} }}}
+                }}},
+
+                -- Row 2: Free Rewards (single)
+                {type = "row", config = {height_scale = 0.166, spacing = 8, contents = {
+                    {type = "menu_button", config = {name = "FreeRewards", text = "Free Rewards", background_image = "rbxassetid://17016922306", icon = "rbxassetid://17016933050", icon_config = { position_kind = "left_center_edge", size = {scale_x = 0.5, scale_y = 0.5}, offset = {x = 0, y = 0} }, action = "rewards_action", aspect = {ratio = 2.0, dominant_axis = "width"}, text_config = { position_kind = "manual", anchor_point = {x = 0.5, y = 0.5}, position_scale = {x = 0.5, y = 0.5}, position_offset = {x = 10, y = 0} }}}
+                }}},
+
+                -- Row 3: Gifts + Trade
+                {type = "row", config = {height_scale = 0.166, spacing = 8, contents = {
+                    {type = "menu_button", config = {name = "Gifts", text = "Gifts", icon = "rbxassetid://17016894485", icon_config = { size = {scale_x = 0.9, scale_y = 0.9} }, action = "rewards_action", background_image = "rbxassetid://16992152563", aspect = {ratio = 1.0, dominant_axis = "width"}, notification = {enabled = true, text = "1", position = "top-left-corner"}}},
+                    {type = "menu_button", config = {name = "Trade", text = "Trade", icon = "rbxassetid://17016842399", action = "inventory_action", aspect = {ratio = 1.0, dominant_axis = "width"}}}
+                }}},
+
+                -- Row 4: Worlds + Codes
+                {type = "row", config = {height_scale = 0.166, spacing = 8, contents = {
+                    {type = "menu_button", config = {name = "Worlds", text = "Worlds", icon = "rbxassetid://17016840352", action = "effects_action", aspect = {ratio = 1.0, dominant_axis = "width"}}},
+                    {type = "menu_button", config = {name = "Codes", text = "Codes", icon = "rbxassetid://17017213702", action = "daily_login_action", aspect = {ratio = 1.0, dominant_axis = "width"}}}
+                }}}
             }
         },
         imported_boosts_stack = {

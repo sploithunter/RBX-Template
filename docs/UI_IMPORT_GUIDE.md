@@ -43,7 +43,7 @@ Use the MCP server (Explorer-like queries) to inspect the live game:
 - Read properties for layout containers:
   - `Position` (use scale components)
   - `Size` (use scale components)
-  - `AnchorPoint` (assume 0,0 if not customized)
+  - `AnchorPoint` (Don't make assumptions here.  This value is always set even though it's defaulted by studio.  You should always be able to read it.)
 - Read per-button info:
   - `Icon.Image` asset IDs (these go into `config.icon = "rbxassetid://..."`)
   - If badges exist, note their text (e.g., "-25%") and placement (typically top-left-corner)
@@ -116,3 +116,77 @@ You can also map to script calls, network calls, etc., as already demonstrated i
 5) Preview and nudge offsets only if necessary. The defaults match MCP proportions.
 
 With these defaults and `BaseUI`, reproducing this button layout in any pane is configuration-only and repeatable.
+
+## Quick reference and patterns
+
+### Icon and text positioning
+
+- **icon_config.position_kind**: `left_center_edge`, `right_center_edge`, `top_center_edge`, `bottom_center_edge`
+  - These keep the icon's AnchorPoint at (0.5, 0.5) and snap to the chosen edge using relative scale.
+  - Optional: `icon_config.offset = { x = 0, y = 0 }` to nudge in pixels.
+
+- **text_config.position_kind**:
+  - `bottom_center_edge` (default): label spans the bottom area MCP-style.
+  - `right_center`: Anchor (1, 0.5), Position (1, 0.5). Add inset with `text_config.position.side_margin` (pixels).
+  - `manual`: provide exact `anchor_point`, `position_scale` and `position_offset`.
+
+### Aspect ratios (per button)
+
+- Square: `aspect = { ratio = 1.0, dominant_axis = "width" }`
+- Wide: `aspect = { ratio = 2.0, dominant_axis = "width" }`
+- Avoid uneven ratios like 2.2 unless intentionally stretched.
+
+### Backgrounds vs icons
+
+- `background_image` sets the ImageButton’s background (full button skin).
+- `icon` is a foreground ImageLabel/emoji layered above the background.
+- Scale icons with `icon_config.size = { scale_x, scale_y }` (relative to button).
+- Asset IDs may be `"rbxassetid://123"` or just `"123"` (auto-normalized).
+
+### Patterns
+
+- Wide button with left-edge icon and right-justified text
+```lua
+{type = "menu_button", config = {
+  name = "FollowUs",
+  text = "Follow US",
+  background_image = "rbxassetid://17016922306",
+  icon = "rbxassetid://113655698755065",
+  icon_config = { position_kind = "left_center_edge", size = {scale_x = 0.65, scale_y = 0.65} },
+  text_config = { position_kind = "right_center", position = { side_margin = 10 } },
+  aspect = { ratio = 2.0, dominant_axis = "width" },
+  action = "rewards_action"
+}}
+```
+
+- Square button with badge
+```lua
+{type = "menu_button", config = {
+  name = "Gifts",
+  text = "Gifts",
+  background_image = "rbxassetid://16992152563",
+  icon = "rbxassetid://17016894485",
+  icon_config = { size = {scale_x = 0.9, scale_y = 0.9} },
+  aspect = { ratio = 1.0, dominant_axis = "width" },
+  notification = { enabled = true, text = "1", position = "top-left-corner" },
+  action = "rewards_action"
+}}
+```
+
+### MCP → config checklist
+
+- Pane: `Position` (scale), `Size` (scale), `AnchorPoint`
+- Button: `background_image`, `icon` asset, `text_config.position_kind` (e.g., `right_center` or `bottom_center_edge`), `notification`
+- Layout: list/grid rows and `height_scale` per row
+
+### Common pitfalls
+
+- Using non-square aspect for square buttons
+- Forgetting `background_image` for buttons that use baked art
+- Icon looks tiny: increase `icon_config.size` (0.6–0.9 typical)
+- Right-justified text done with offsets only; prefer `position_kind = "right_center"` plus `side_margin`
+
+### Troubleshooting
+
+- If text AnchorPoint/Position don’t match the kind, ensure the kind is one of the supported values and avoid overriding `anchor_point`/`position_scale` unless using `manual`.
+- If images appear stretched, confirm `aspect.ratio` and `dominant_axis`.

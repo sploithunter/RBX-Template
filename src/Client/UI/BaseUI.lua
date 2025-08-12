@@ -1390,6 +1390,21 @@ function BaseUI:_createButtonIcon(config, parent)
     local iconSize = iconConfig.size
     local iconPosition = iconConfig.position  
     local iconOffset = iconConfig.offset
+    local iconAnchor = Vector2.new(0.5, 0.5)
+
+    -- Semantic icon positioning kinds (mirrors text label kinds)
+    do
+        local kind = iconConfig.position_kind
+        if kind == "left_center_edge" then
+            iconPosition = {scale_x = 0, scale_y = 0.5}
+        elseif kind == "right_center_edge" then
+            iconPosition = {scale_x = 1.0, scale_y = 0.5}
+        elseif kind == "top_center_edge" then
+            iconPosition = {scale_x = 0.5, scale_y = 0}
+        elseif kind == "bottom_center_edge" then
+            iconPosition = {scale_x = 0.5, scale_y = 1.0}
+        end
+    end
     
 
     
@@ -1401,7 +1416,7 @@ function BaseUI:_createButtonIcon(config, parent)
             icon.Name = "Icon"
             icon.Size = UDim2.new(iconSize.scale_x, 0, iconSize.scale_y, 0)  -- Relative sizing
             icon.Position = UDim2.new(iconPosition.scale_x, iconOffset.x, iconPosition.scale_y, iconOffset.y)  -- Relative + offset
-            icon.AnchorPoint = Vector2.new(0.5, 0.5)  -- Always center anchor as requested
+            icon.AnchorPoint = iconAnchor
             icon.BackgroundTransparency = 1
             icon.Image = assetId
             icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
@@ -1411,11 +1426,11 @@ function BaseUI:_createButtonIcon(config, parent)
         
         if not success then
             print("   ❌ Icon asset failed, using emoji fallback")
-            icon = self:_createEmojiIcon(config, parent, iconSize, iconPosition, iconOffset)
+            icon = self:_createEmojiIcon(config, parent, iconSize, iconPosition, iconOffset, iconAnchor)
         end
     else
 
-        icon = self:_createEmojiIcon(config, parent, iconSize, iconPosition, iconOffset)
+        icon = self:_createEmojiIcon(config, parent, iconSize, iconPosition, iconOffset, iconAnchor)
     end
     
     if icon then
@@ -1427,7 +1442,7 @@ function BaseUI:_createButtonIcon(config, parent)
 end
 
 -- Create emoji icon fallback with configurable sizing/positioning
-function BaseUI:_createEmojiIcon(config, parent, iconSize, iconPosition, iconOffset)
+function BaseUI:_createEmojiIcon(config, parent, iconSize, iconPosition, iconOffset, iconAnchor)
     local iconValue = config.icon or ""
     local fallbackIcon = config.name == "Shop" and "🛒" or 
                         config.name == "Inventory" and "🎒" or 
@@ -1445,7 +1460,7 @@ function BaseUI:_createEmojiIcon(config, parent, iconSize, iconPosition, iconOff
     icon.Name = "Icon"
     icon.Size = UDim2.new(iconSize.scale_x, 0, iconSize.scale_y, 0)  -- Relative sizing
     icon.Position = UDim2.new(iconPosition.scale_x, iconOffset.x, iconPosition.scale_y, iconOffset.y)  -- Relative + offset
-    icon.AnchorPoint = Vector2.new(0.5, 0.5)  -- Always center anchor as requested
+    icon.AnchorPoint = iconAnchor or Vector2.new(0.5, 0.5)
     icon.BackgroundTransparency = 1
     icon.Text = fallbackIcon
     icon.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1580,9 +1595,23 @@ function BaseUI:_createButtonLabel(config, parent)
         local kind = textConfig.position_kind
         if kind == "bottom_center_edge" then
             -- MCP-style: wraps at bottom with stroke, centered
-            textConfig.anchor_point = textConfig.anchor_point or {x = 0.5, y = 0.5}
-            textConfig.position_scale = textConfig.position_scale or {x = 0.5, y = 0.925}
+            textConfig.anchor_point = {x = 0.5, y = 0.5}
+            textConfig.position_scale = {x = 0.5, y = 0.925}
             textConfig.height_scale = textConfig.height_scale or 0.258
+            textConfig.position_offset = {x = 0, y = 0}
+        elseif kind == "right_center" then
+            -- Right-justified midline (edge align, optional side margin via position_offset)
+            textConfig.anchor_point = {x = 1.0, y = 0.5}
+            textConfig.position_scale = {x = 1.0, y = 0.5}
+            textConfig.height_scale = textConfig.height_scale or 0.34
+            local sideMargin = (textConfig.position and tonumber(textConfig.position.side_margin)) or 0
+            textConfig.position_offset = {x = -sideMargin, y = 0}
+        elseif kind == "manual" then
+            -- Respect provided anchor/scale/offset verbatim
+            textConfig.anchor_point = textConfig.anchor_point or {x = 0.5, y = 0.5}
+            textConfig.position_scale = textConfig.position_scale or {x = 0.5, y = 0.5}
+            textConfig.position_offset = textConfig.position_offset or {x = 0, y = 0}
+            textConfig.height_scale = textConfig.height_scale or 0.34
         end
     end
 
@@ -1603,21 +1632,23 @@ function BaseUI:_createButtonLabel(config, parent)
         label.Size = UDim2.new(1, 0, 0, textSize.height)
     end
     if textConfig.position_scale then
-        label.Position = UDim2.new(tonumber(textConfig.position_scale.x or 0.5), 0, tonumber(textConfig.position_scale.y or 0.925), 0)
+        local px = (textConfig.position_offset and tonumber(textConfig.position_offset.x)) or 0
+        local py = (textConfig.position_offset and tonumber(textConfig.position_offset.y)) or 0
+        label.Position = UDim2.new(textConfig.position_scale.x, px, textConfig.position_scale.y, py)
     else
         label.Position = UDim2.new(0.5, 0, 1, -textPosition.bottom_offset)
     end
-    if textConfig.anchor_point then
-        label.AnchorPoint = Vector2.new(tonumber(textConfig.anchor_point.x or 0.5), tonumber(textConfig.anchor_point.y or 0.5))
-    else
-        label.AnchorPoint = Vector2.new(0.5, 0)
-    end
+    label.AnchorPoint = Vector2.new(textConfig.anchor_point and textConfig.anchor_point.x or 0.5, textConfig.anchor_point and textConfig.anchor_point.y or 0.5)
     label.BackgroundTransparency = 1
     label.Text = config.text or config.name
     label.TextColor3 = textColor  -- Configurable color
     label.TextScaled = useTextScaled  -- Configurable scaling
     label.Font = font  -- Configurable font
-    label.TextXAlignment = Enum.TextXAlignment.Center  -- Center text horizontally within full-width label
+    if textConfig.position_kind == "right_center" then
+        label.TextXAlignment = Enum.TextXAlignment.Right
+    else
+        label.TextXAlignment = Enum.TextXAlignment.Center  -- Center text horizontally within full-width label
+    end
     label.ZIndex = 15
     
     -- If TextScaled is disabled, set a specific text size
