@@ -38,6 +38,26 @@ local uiConfig = {
     -- GLOBAL DEFAULTS for all UI elements
     -- These defaults are applied to any element that doesn't override them
     defaults = {
+        -- Reusable stroked + inner-offset label used across imported UIs
+        text_label_with_depth = {
+            font = Enum.Font.FredokaOne,
+            text_color = Color3.fromRGB(255, 255, 255),
+            -- inner duplicate offset (relative, centered origin)
+            depth_offset = { x = 0, y = -0.031 },
+            -- stroke defaults (bold outline like MCP)
+            stroke = {
+                enabled = true,
+                color = Color3.fromRGB(0, 55, 70),
+                thickness = 4,
+                transparency = 0
+            },
+            -- sizing defaults
+            text_size_constraint = {
+                enabled = true,
+                max_text_size = 48,
+                min_text_size = 12
+            }
+        },
         menu_button = {
             -- Icon defaults
             icon_config = {
@@ -834,6 +854,15 @@ local uiConfig = {
                 debug_mode = true
             },
             description = "Adds test currencies (debug only)"
+        },
+        
+        -- Codes Panel Action
+        codes_action = {
+            type = "show_pane",
+            pane = "imported_codes_frame",
+            transition = "fade_in_scale",
+            sound = "button_click",
+            description = "Shows the codes input panel"
         }
     },
     
@@ -978,6 +1007,119 @@ local uiConfig = {
             }
         },
 
+        -- === IMPORTED FRAMES FROM MCP ===
+        -- These frames are imported from the reference game and serve as anchors for content
+        
+        -- Codes Frame (Modal Dialog) - Imported from MCP
+        imported_codes_frame = {
+            enabled = false,
+            position_scale = {x = 0.5, y = 0.5},  -- Center of screen
+            size = {scaleX = 1, scaleY = 1},       -- Full screen (modal overlay)
+            anchor = "center",
+            background = {enabled = false},        -- Transparent overlay
+            layout = {type = "single"},
+            contents = {
+                {type = "codes_panel", config = {
+                    -- Panel background
+                    background_image = "17071449512",  -- ContentFrame background
+                    size = {scaleX = 0.249738768, scaleY = 0.228956223},
+                    position_scale = {x = 0.5, y = 0.492578864},
+                    anchor = "center",
+                    
+                    -- Panel components
+                    title = {
+                        type = "text_label_with_depth",
+                        text = "Codes",
+                        position_scale = {x = 0.273966759, y = 0.021070892},
+                        size = {scaleX = 0.305439323, scaleY = 0.450980395},
+                        rotation = -2,
+                        font = Enum.Font.FredokaOne,
+                        text_color = Color3.fromRGB(255, 255, 255),
+                        stroke = {
+                            enabled = true,
+                            color = Color3.fromRGB(0, 55, 70),  -- From MCP: 0, 0.215686, 0.27451
+                            thickness = 4,  -- From MCP: UIStroke thickness = 4
+                            transparency = 0
+                        },
+                        text_size_constraint = {
+                            enabled = true,
+                            max_text_size = 48,  -- From MCP: MaxTextSize = 48
+                            min_text_size = 12   -- Default fallback
+                        },
+                        depth_offset = {x = 0, y = -0.031}  -- From MCP: Inner position offset
+                    },
+                    
+                    icon = {
+                        image = "17071458116",
+                        position_scale = {x = 0.0292340517, y = 0.0484354347},
+                        size = {scaleX = 0.142259419, scaleY = 0.323529422},
+                        rotation = -3
+                    },
+                    
+                    requirement_text = {
+                        type = "text_label_with_depth",
+                        text = "Follow @Kade_builder on Twitter For EXCLUSIVE Rewards!",
+                        position_scale = {x = 0.50611335, y = 0.389401615},
+                        size = {scaleX = 0.947698772, scaleY = 0.470588237},
+                        text_color = Color3.fromRGB(255, 255, 255),
+                        font = Enum.Font.FredokaOne,
+                        stroke = {
+                            enabled = true,
+                            color = Color3.fromRGB(0, 55, 70),  -- Same as title stroke
+                            thickness = 4,
+                            transparency = 0
+                        },
+                        text_size_constraint = {
+                            enabled = true,
+                            max_text_size = 48,
+                            min_text_size = 12
+                        }
+                    },
+                    
+                    input_field = {
+                        background_image = "17071473495",
+                        position_scale = {x = 0.293120325, y = 0.765417039},
+                        size = {scaleX = 0.508368194, scaleY = 0.264705896},
+                        placeholder_text = "Enter code here...",
+                        text_color = Color3.fromRGB(188, 188, 188)
+                    },
+                    
+                    submit_button = {
+                        background_image = "17071444555",
+                        position_scale = {x = 0.769999981, y = 0.762000024},
+                        size = {scaleX = 0.402157158, scaleY = 0.279011279},
+                        text = "Submit",
+                        text_color = Color3.fromRGB(255, 255, 255),
+                        font = Enum.Font.FredokaOne,
+                        text_config = {
+                            position_scale = {x = 0.569601715, y = 0.515717089},
+                            size = {scaleX = 0.519647062, scaleY = 0.866248071},
+                            rotation = 1,
+                            stroke = {
+                                enabled = true,
+                                color = Color3.fromRGB(0, 55, 70),  -- Same as other text elements
+                                thickness = 4,
+                                transparency = 0
+                            },
+                            text_size_constraint = {
+                                enabled = true,
+                                max_text_size = 48,
+                                min_text_size = 12
+                            }
+                        }
+                    },
+                    
+                    close_button = {
+                        background_image = "17017087069",
+                        position_scale = {x = 0.976928711, y = 0.0552650914},
+                        size = {scaleX = 0.10251046, scaleY = 0.25},
+                        text = "X",
+                        text_color = Color3.fromRGB(255, 255, 255)
+                    }
+                }}
+            }
+        },
+
         
         -- Menu Buttons Pane (bottom-left) - Auto-sizing grid that adapts to content
         menu_buttons_pane = {
@@ -1084,10 +1226,10 @@ local uiConfig = {
                 
                 -- 🚀 ABSOLUTE MINIMAL: 4 lines = professional button!
                 {type = "menu_button", config = {
-                    name = "Quest", 
-                    icon = "🎯", 
-                    text = "Quest", 
-                    action = "quest_claim_action"
+                    name = "Codes", 
+                    icon = "🔑", 
+                    text = "Codes", 
+                    action = "codes_action"
                     -- 🎨 100% global defaults = instant professional styling!
                 }}
             }
@@ -1234,7 +1376,7 @@ local uiConfig = {
             position_scale = {x = 0.5, y = 0.99},
             size = {scaleX = 0.428944618, scaleY = 0.113355778},
             anchor = "bottom-center",
-            background = {enabled = true, color = Color3.fromRGB(39, 174, 96), transparency = 0.5},
+            background = {enabled = false},
             layout = {type = "list", direction = "horizontal", spacing = 12, horizontal_alignment = "center", vertical_alignment = "center", padding = {left = 6, right = 6}},
             contents = {
                 {type = "menu_button", config = {
@@ -1439,6 +1581,7 @@ local uiConfig = {
             }
         },
         imported_notifications = {
+            enabled = false,  -- Disabled to clear debug notices
             position_scale = {x = 0.5, y = 0.34},
             size = {scaleX = 0.600000024, scaleY = 1.0},
             anchor = "center",

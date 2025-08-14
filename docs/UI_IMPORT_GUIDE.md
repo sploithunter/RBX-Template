@@ -49,6 +49,38 @@ These live under `defaults.menu_button` in `configs/ui.lua` and apply to every `
   - Child text Txt (with UIStroke + UITextSizeConstraint)
   - Corner positions like "top-left-corner" place the badge partly outside the button (sticker look)
 
+### New: Text label with depth (Inner duplicate)
+
+- Pattern name in config: `text_label_with_depth`
+- Where it shows up in MCP:
+  - A `TextLabel` with a child `TextLabel` named `Inner`
+  - Both have the same text, font, and colors
+  - The child `Inner` has `Size = {1,0},{1,0}` (fills the parent) and a slight positional offset (scale-based), commonly around Y ≈ 0.469 vs parent 0.5
+  - Both usually have a bold `UIStroke` (thickness ~4) and a `UITextSizeConstraint`
+- In our config-as-code, you just declare:
+
+```lua
+{ type = "text_label_with_depth", config = {
+  text = "Codes",
+  position_scale = { x = 0.27, y = 0.021 },
+  size = { scaleX = 0.305, scaleY = 0.451 },
+  rotation = -2,
+  -- Most values come from global defaults (see defaults.text_label_with_depth)
+  -- Only override when MCP differs
+}}
+```
+
+- Global defaults (set in `configs/ui.lua.defaults.text_label_with_depth`):
+  - `font = FredokaOne`
+  - `stroke = { color = Color3.fromRGB(0,55,70), thickness = 4 }`
+  - `text_size_constraint = { max_text_size = 48, min_text_size = 12 }`
+  - `depth_offset = { x = 0, y = -0.031 }` (applied to the Inner child)
+
+- Recognizing it quickly in MCP:
+  - If a title or big label appears to “pop”, check for a child `Inner` TextLabel
+  - Confirm both labels have `UIStroke`; inner is positioned slightly offset from center
+  - Prefer capturing scale components for `Position`/`Size`; avoid pixel offsets
+
 ## Accessing MCP (what to read)
 
 Use the MCP server (Explorer-like queries) to inspect the live game:
@@ -143,6 +175,13 @@ With these defaults and `BaseUI`, reproducing this button layout in any pane is 
   - Stroke: color `Color3.fromRGB(102,56,0)`, thickness `2.5`
   - Gradient: Use the console snippet below to extract `ColorSequence` as keypoints. Paste into `amount_config.gradient.keypoints`.
 - Plus buttons: Note which currencies have a `+`. Our builder auto-reserves right padding when a plus is present so centered labels stay visually centered.
+
+### Things we wish we knew upfront (Codes import)
+
+- Close buttons in MCP are typically pure ImageButtons with an image asset (no TextLabel child). Do not add a text child.
+- The submit button text also uses the same depth pattern as titles; replicate it with `text_label_with_depth` rather than a plain label.
+- For parity, always prefer scale-based `Position`/`Size` from MCP over pixel offsets; it matches across resolutions.
+- When importing titles/labels, check for `UIStroke` thickness on both parent and `Inner` (often 4). Capture `MaxTextSize` when present.
 
 ### UI builder features to leverage
 

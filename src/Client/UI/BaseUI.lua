@@ -970,6 +970,12 @@ function BaseUI:_createPaneElement(contentConfig, parent, layoutOrder, layoutCon
     elseif elementType == "row" then
         return self:_createRowContainer(config, parent)
         
+    elseif elementType == "codes_panel" then
+        return self:_createCodesPanelElement(config, parent)
+        
+    elseif elementType == "text_label_with_depth" then
+        return self:_createTextLabelWithDepthElement(config, parent)
+        
     else
         self.logger:warn("Unknown pane element type:", elementType)
         return nil
@@ -2908,6 +2914,349 @@ function BaseUI:_createLabelElement(config, parent)
     return label
 end
 
+-- Create Codes Panel Element (Modal Dialog)
+function BaseUI:_createCodesPanelElement(config, parent)
+    -- Create main panel container
+    local panel = Instance.new("ImageLabel")
+    panel.Name = "CodesPanel"
+    panel.BackgroundTransparency = 1
+    panel.BorderSizePixel = 0
+    
+    -- Set panel background image
+    if config.background_image then
+        panel.Image = self:_processAssetId(config.background_image)
+        panel.ScaleType = Enum.ScaleType.Stretch
+        panel.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    end
+    
+    -- Set panel size and position
+    if config.size then
+        local sx = tonumber(config.size.scaleX or 0)
+        local sy = tonumber(config.size.scaleY or 0)
+        panel.Size = UDim2.new(sx, 0, sy, 0)
+    end
+    
+    if config.position_scale then
+        local px = tonumber(config.position_scale.x or 0.5)
+        local py = tonumber(config.position_scale.y or 0.5)
+        panel.Position = UDim2.new(px, 0, py, 0)
+    end
+    
+    if config.anchor then
+        local anchorMap = {
+            ["top-left"] = Vector2.new(0, 0),
+            ["top-center"] = Vector2.new(0.5, 0),
+            ["top-right"] = Vector2.new(1, 0),
+            ["center-left"] = Vector2.new(0, 0.5),
+            ["center"] = Vector2.new(0.5, 0.5),
+            ["center-right"] = Vector2.new(1, 0.5),
+            ["bottom-left"] = Vector2.new(0, 1),
+            ["bottom-center"] = Vector2.new(0.5, 1),
+            ["bottom-right"] = Vector2.new(1, 1)
+        }
+        panel.AnchorPoint = anchorMap[config.anchor] or Vector2.new(0.5, 0.5)
+    end
+    
+    panel.ZIndex = 20  -- High z-index for modal
+    panel.Parent = parent
+    
+    -- Create title
+    if config.title then
+        local title = Instance.new("TextLabel")
+        title.Name = "Title"
+        title.Size = UDim2.new(config.title.size.scaleX or 0, 0, config.title.size.scaleY or 0, 0)
+        title.Position = UDim2.new(config.title.position_scale.x or 0, 0, config.title.position_scale.y or 0, 0)
+        title.AnchorPoint = Vector2.new(0.5, 0.5)
+        title.BackgroundTransparency = 1
+        title.Text = config.title.text or "Codes"
+        title.TextColor3 = config.title.text_color or Color3.fromRGB(255, 255, 255)
+        title.TextScaled = true
+        title.Font = config.title.font or Enum.Font.FredokaOne
+        title.ZIndex = 21
+        title.Parent = panel
+        
+        -- Add stroke if configured
+        if config.title.stroke and config.title.stroke.enabled then
+            local stroke = Instance.new("UIStroke")
+            stroke.Color = config.title.stroke.color or Color3.fromRGB(0, 0, 0)
+            stroke.Thickness = config.title.stroke.thickness or 2
+            stroke.Transparency = config.title.stroke.transparency or 0
+            stroke.Parent = title
+        end
+        
+        -- Add text size constraint if configured
+        if config.title.text_size_constraint and config.title.text_size_constraint.enabled then
+            local tsc = Instance.new("UITextSizeConstraint")
+            tsc.MaxTextSize = config.title.text_size_constraint.max_text_size or 48
+            tsc.MinTextSize = config.title.text_size_constraint.min_text_size or 12
+            tsc.Parent = title
+        end
+        
+        if config.title.rotation then
+            title.Rotation = tonumber(config.title.rotation)
+        end
+        
+        -- Create Inner text label (duplicate with same styling)
+        local inner = Instance.new("TextLabel")
+        inner.Name = "Inner"
+        inner.Size = title.Size
+        inner.Position = title.Position
+        inner.AnchorPoint = title.AnchorPoint
+        inner.BackgroundTransparency = 1
+        inner.Text = title.Text
+        inner.TextColor3 = title.TextColor3
+        inner.TextScaled = title.TextScaled
+        inner.Font = title.Font
+        inner.ZIndex = title.ZIndex + 1  -- Slightly higher z-index
+        inner.Parent = panel
+        
+        -- Add stroke to inner text
+        if config.title.stroke and config.title.stroke.enabled then
+            local innerStroke = Instance.new("UIStroke")
+            innerStroke.Color = config.title.stroke.color or Color3.fromRGB(0, 0, 0)
+            innerStroke.Thickness = config.title.stroke.thickness or 2
+            innerStroke.Transparency = config.title.stroke.transparency or 0
+            innerStroke.Parent = inner
+        end
+        
+        -- Add text size constraint to inner text
+        if config.title.text_size_constraint and config.title.text_size_constraint.enabled then
+            local innerTsc = Instance.new("UITextSizeConstraint")
+            innerTsc.MaxTextSize = config.title.text_size_constraint.max_text_size or 48
+            innerTsc.MinTextSize = config.title.text_size_constraint.min_text_size or 12
+            innerTsc.Parent = inner
+        end
+        
+        if config.title.rotation then
+            inner.Rotation = tonumber(config.title.rotation)
+        end
+    end
+    
+    -- Create icon
+    if config.icon then
+        local icon = Instance.new("ImageLabel")
+        icon.Name = "Icon"
+        icon.Size = UDim2.new(config.icon.size.scaleX or 0, 0, config.icon.size.scaleY or 0, 0)
+        icon.Position = UDim2.new(config.icon.position_scale.x or 0, 0, config.icon.position_scale.y or 0, 0)
+        icon.AnchorPoint = Vector2.new(0.5, 0.5)
+        icon.BackgroundTransparency = 1
+        icon.Image = self:_processAssetId(config.icon.image)
+        icon.ScaleType = Enum.ScaleType.Fit
+        icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+        icon.ZIndex = 21
+        icon.Parent = panel
+        
+        if config.icon.rotation then
+            icon.Rotation = tonumber(config.icon.rotation)
+        end
+    end
+    
+    -- Create requirement text (using text_label_with_depth pattern)
+    if config.requirement_text then
+        local reqTextElement = self:_createTextLabelWithDepthElement(config.requirement_text, panel)
+        if reqTextElement then
+            reqTextElement.Name = "RequirementText"
+            reqTextElement.ZIndex = 21
+        end
+    end
+    
+    -- Create input field
+    if config.input_field then
+        local inputContainer = Instance.new("ImageLabel")
+        inputContainer.Name = "InputContainer"
+        inputContainer.Size = UDim2.new(config.input_field.size.scaleX or 0, 0, config.input_field.size.scaleY or 0, 0)
+        inputContainer.Position = UDim2.new(config.input_field.position_scale.x or 0, 0, config.input_field.position_scale.y or 0, 0)
+        inputContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+        inputContainer.BackgroundTransparency = 1
+        inputContainer.Image = self:_processAssetId(config.input_field.background_image)
+        inputContainer.ScaleType = Enum.ScaleType.Stretch
+        inputContainer.ImageColor3 = Color3.fromRGB(255, 255, 255)
+        inputContainer.ZIndex = 21
+        inputContainer.Parent = panel
+        
+        local textBox = Instance.new("TextBox")
+        textBox.Name = "TextBox"
+        textBox.Size = UDim2.new(0.624836385, 0, 0.892194271, 0)  -- From MCP
+        textBox.Position = UDim2.new(0.54673183, 0, 0.513685107, 0)  -- From MCP
+        textBox.AnchorPoint = Vector2.new(0.5, 0.5)
+        textBox.BackgroundTransparency = 1
+        textBox.Text = ""
+        textBox.PlaceholderText = config.input_field.placeholder_text or "Enter code here..."
+        textBox.TextColor3 = config.input_field.text_color or Color3.fromRGB(188, 188, 188)
+        textBox.TextScaled = true
+        textBox.Font = Enum.Font.Gotham
+        textBox.ZIndex = 22
+        textBox.Parent = inputContainer
+    end
+    
+    -- Create submit button
+    if config.submit_button then
+        local submitButton = Instance.new("ImageButton")
+        submitButton.Name = "SubmitButton"
+        submitButton.Size = UDim2.new(config.submit_button.size.scaleX or 0, 0, config.submit_button.size.scaleY or 0, 0)
+        submitButton.Position = UDim2.new(config.submit_button.position_scale.x or 0, 0, config.submit_button.position_scale.y or 0, 0)
+        submitButton.AnchorPoint = Vector2.new(0.5, 0.5)
+        submitButton.BackgroundTransparency = 1
+        submitButton.Image = self:_processAssetId(config.submit_button.background_image)
+        submitButton.ScaleType = Enum.ScaleType.Stretch
+        submitButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
+        submitButton.ZIndex = 21
+        submitButton.Parent = panel
+        
+        -- Add submit button text with depth effect
+        if config.submit_button.text_config then
+            -- Create text with depth effect using the same pattern
+            local textConfig = {
+                type = "text_label_with_depth",
+                text = config.submit_button.text or "Submit",
+                text_color = config.submit_button.text_color or Color3.fromRGB(255, 255, 255),
+                font = config.submit_button.font or Enum.Font.FredokaOne,
+                position_scale = config.submit_button.text_config.position_scale or {x = 0.5, y = 0.5},
+                size = config.submit_button.text_config.size or {scaleX = 1, scaleY = 1},
+                rotation = config.submit_button.text_config.rotation,
+                stroke = config.submit_button.text_config.stroke,
+                text_size_constraint = config.submit_button.text_config.text_size_constraint
+            }
+            local submitTextElement = self:_createTextLabelWithDepthElement(textConfig, submitButton)
+            if submitTextElement then
+                submitTextElement.Name = "SubmitText"
+                submitTextElement.ZIndex = 22
+            end
+        else
+            -- Fallback to simple text label
+            local submitText = Instance.new("TextLabel")
+            submitText.Name = "SubmitText"
+            submitText.Size = UDim2.new(1, 0, 1, 0)
+            submitText.Position = UDim2.new(0, 0, 0, 0)
+            submitText.BackgroundTransparency = 1
+            submitText.Text = config.submit_button.text or "Submit"
+            submitText.TextColor3 = config.submit_button.text_color or Color3.fromRGB(255, 255, 255)
+            submitText.TextScaled = true
+            submitText.Font = config.submit_button.font or Enum.Font.FredokaOne
+            submitText.ZIndex = 22
+            submitText.Parent = submitButton
+        end
+        
+        -- Add click handler
+        submitButton.Activated:Connect(function()
+            self:_onCodesSubmitClicked(panel)
+        end)
+    end
+    
+    -- Create close button
+    if config.close_button then
+        local closeButton = Instance.new("ImageButton")
+        closeButton.Name = "CloseButton"
+        closeButton.Size = UDim2.new(config.close_button.size.scaleX or 0, 0, config.close_button.size.scaleY or 0, 0)
+        closeButton.Position = UDim2.new(config.close_button.position_scale.x or 0, 0, config.close_button.position_scale.y or 0, 0)
+        closeButton.AnchorPoint = Vector2.new(0.5, 0.5)
+        closeButton.BackgroundTransparency = 1
+        closeButton.Image = self:_processAssetId(config.close_button.background_image)
+        closeButton.ScaleType = Enum.ScaleType.Stretch
+        closeButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
+        closeButton.ZIndex = 21
+        closeButton.Parent = panel
+        
+        -- Close button is just an ImageButton with image, no text label needed
+        
+        -- Add click handler
+        closeButton.Activated:Connect(function()
+            self:_onCodesCloseClicked(panel)
+        end)
+    end
+    
+    return panel
+end
+
+-- Create Text Label with Depth Effect (Professional UI Pattern)
+-- This creates a main text label with a slightly offset inner text label
+-- to create a "pop out" effect commonly used by professional UI builders
+function BaseUI:_createTextLabelWithDepthElement(config, parent)
+    -- Merge with global defaults for this element type if available
+    local merged = self:_mergeWithDefaults(config, "text_label_with_depth", nil)
+    config = merged or config
+    -- Create main text label (the "Name" or "Title")
+    local mainLabel = Instance.new("TextLabel")
+    mainLabel.Name = "Title"
+    mainLabel.Size = UDim2.new(config.size.scaleX or 0, 0, config.size.scaleY or 0, 0)
+    mainLabel.Position = UDim2.new(config.position_scale.x or 0, 0, config.position_scale.y or 0, 0)
+    mainLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    mainLabel.BackgroundTransparency = 1
+    mainLabel.Text = config.text or "Text"
+    mainLabel.TextColor3 = config.text_color or Color3.fromRGB(255, 255, 255)
+    mainLabel.TextScaled = true
+    mainLabel.Font = config.font or Enum.Font.FredokaOne
+    mainLabel.ZIndex = 21
+    mainLabel.Parent = parent
+    
+    -- Apply rotation if specified
+    if config.rotation then
+        mainLabel.Rotation = tonumber(config.rotation)
+    end
+    
+    -- Add stroke to main label if configured
+    if config.stroke and config.stroke.enabled then
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = config.stroke.color or Color3.fromRGB(0, 0, 0)
+        stroke.Thickness = config.stroke.thickness or 2
+        stroke.Transparency = config.stroke.transparency or 0
+        stroke.Parent = mainLabel
+    end
+    
+    -- Add text size constraint to main label if configured
+    if config.text_size_constraint and config.text_size_constraint.enabled then
+        local tsc = Instance.new("UITextSizeConstraint")
+        tsc.MaxTextSize = config.text_size_constraint.max_text_size or 48
+        tsc.MinTextSize = config.text_size_constraint.min_text_size or 12
+        tsc.Parent = mainLabel
+    end
+    
+    -- Create inner text label (the "Inner" - child of main label)
+    local innerLabel = Instance.new("TextLabel")
+    innerLabel.Name = "Inner"
+    innerLabel.Size = UDim2.new(1, 0, 1, 0)  -- Same size as parent
+    innerLabel.Position = UDim2.new(0.5, 0, 0.469, 0)  -- default offset; may be overridden by config.depth_offset
+    innerLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    innerLabel.BackgroundTransparency = 1
+    innerLabel.Text = config.text or "Text"  -- Same text as main label
+    innerLabel.TextColor3 = config.text_color or Color3.fromRGB(255, 255, 255)
+    innerLabel.TextScaled = true
+    innerLabel.Font = config.font or Enum.Font.FredokaOne
+    innerLabel.ZIndex = mainLabel.ZIndex + 1  -- Slightly higher z-index
+    innerLabel.Parent = mainLabel  -- Child of main label
+    
+    -- Apply same rotation to inner label
+    if config.rotation then
+        innerLabel.Rotation = tonumber(config.rotation)
+    end
+    
+    -- Add stroke to inner label (same as main label)
+    if config.stroke and config.stroke.enabled then
+        local innerStroke = Instance.new("UIStroke")
+        innerStroke.Color = config.stroke.color or Color3.fromRGB(0, 0, 0)
+        innerStroke.Thickness = config.stroke.thickness or 2
+        innerStroke.Transparency = config.stroke.transparency or 0
+        innerStroke.Parent = innerLabel
+    end
+    
+    -- Add text size constraint to inner label (same as main label)
+    if config.text_size_constraint and config.text_size_constraint.enabled then
+        local innerTsc = Instance.new("UITextSizeConstraint")
+        innerTsc.MaxTextSize = config.text_size_constraint.max_text_size or 48
+        innerTsc.MinTextSize = config.text_size_constraint.min_text_size or 12
+        innerTsc.Parent = innerLabel
+    end
+    
+    -- Apply custom depth offset if specified
+    if config.depth_offset then
+        local offsetX = config.depth_offset.x or 0
+        local offsetY = config.depth_offset.y or 0
+        innerLabel.Position = UDim2.new(0.5 + offsetX, 0, 0.5 + offsetY, 0)
+    end
+    
+    return mainLabel
+end
+
 -- Performance optimization: Cache theme lookups
 function BaseUI:_getCachedTheme()
     if not self.cachedTheme then
@@ -3115,20 +3464,26 @@ function BaseUI:_onMenuButtonClicked(menuName)
         if menuName == "AutoLow" then actionConfig = self.uiConfig.helpers.get_action_config(self.uiConfig, "auto_target_low") end
         if menuName == "AutoHigh" then actionConfig = self.uiConfig.helpers.get_action_config(self.uiConfig, "auto_target_high") end
     end
-    if actionConfig and actionConfig.type == "script_execute" and actionConfig.script == "AutoTargetActions" then
-        -- Dispatch to client script action handler
-        local ok, handler = pcall(function()
-            return require(script.Parent.Parent.Systems.AutoTarget)
-        end)
-        if ok and handler then
-            local at = handler._singleton or handler
-            if actionConfig.method == "ToggleLow" and at.ToggleFree then
-                at:ToggleFree()
-                return
-            elseif actionConfig.method == "ToggleHigh" and at.TogglePaid then
-                at:TogglePaid()
-                return
+    if actionConfig then
+        if actionConfig.type == "script_execute" and actionConfig.script == "AutoTargetActions" then
+            -- Dispatch to client script action handler
+            local ok, handler = pcall(function()
+                return require(script.Parent.Parent.Systems.AutoTarget)
+            end)
+            if ok and handler then
+                local at = handler._singleton or handler
+                if actionConfig.method == "ToggleLow" and at.ToggleFree then
+                    at:ToggleFree()
+                    return
+                elseif actionConfig.method == "ToggleHigh" and at.TogglePaid then
+                    at:TogglePaid()
+                    return
+                end
             end
+        elseif actionConfig.type == "show_pane" then
+            -- Handle show_pane action type
+            self:_showPane(actionConfig.pane, actionConfig.transition)
+            return
         end
     end
     self.menuManager:TogglePanel(menuName, transitionEffect)
@@ -3176,6 +3531,96 @@ end
 function BaseUI:_onRewardsButtonClicked()
     self.logger:info("Rewards button clicked")
     -- Handle rewards logic here
+end
+
+-- Codes Panel Event Handlers
+function BaseUI:_onCodesSubmitClicked(panel)
+    self.logger:info("Codes submit button clicked")
+    
+    -- Get the text from the input field
+    local inputContainer = panel:FindFirstChild("InputContainer")
+    if inputContainer then
+        local textBox = inputContainer:FindFirstChild("TextBox")
+        if textBox then
+            local code = textBox.Text
+            self.logger:info("Submitting code:", code)
+            
+            -- TODO: Implement code submission logic
+            -- This would typically send a network request to the server
+            -- For now, just log the code
+            
+            -- Clear the input field
+            textBox.Text = ""
+        end
+    end
+end
+
+function BaseUI:_onCodesCloseClicked(panel)
+    self.logger:info("Codes close button clicked")
+    
+    -- Hide the codes panel
+    if panel then
+        panel.Visible = false
+    end
+    
+    -- Also hide the parent frame (the modal overlay)
+    local parent = panel and panel.Parent
+    if parent then
+        parent.Visible = false
+    end
+end
+
+-- Show a specific pane by name
+function BaseUI:_showPane(paneName, transition)
+    self.logger:info("Showing pane:", paneName, "with transition:", transition)
+    
+    -- Find the pane in the main frame
+    local pane = self.mainFrame:FindFirstChild(paneName)
+    if not pane then
+        self.logger:warn("Pane not found:", paneName)
+        return
+    end
+    
+    -- Show the pane
+    pane.Visible = true
+    
+    -- Apply transition animation if specified
+    if transition then
+        self:_applyTransition(pane, transition)
+    end
+end
+
+-- Apply transition animation to a pane
+function BaseUI:_applyTransition(pane, transitionName)
+    local transitionConfig = self.uiConfig.animations.menu_transitions.effects[transitionName]
+    if not transitionConfig then
+        self.logger:warn("Transition not found:", transitionName)
+        return
+    end
+    
+    -- Get animation parameters
+    local duration = self.uiConfig.animations.duration[transitionConfig.duration] or 0.25
+    local easing = self.uiConfig.animations.easing[transitionConfig.easing] or Enum.EasingStyle.Quad
+    local direction = self.uiConfig.animations.direction[transitionConfig.direction] or Enum.EasingDirection.Out
+    
+    -- Create tween info
+    local tweenInfo = TweenInfo.new(duration, easing, direction)
+    
+    -- Set initial position and properties
+    pane.Position = transitionConfig.start_position
+    pane.AnchorPoint = transitionConfig.anchor_point
+    pane.BackgroundTransparency = transitionConfig.start_transparency
+    
+    -- Create and play tween
+    local tween = TweenService:Create(pane, tweenInfo, {
+        Position = transitionConfig.end_position,
+        BackgroundTransparency = transitionConfig.end_transparency
+    })
+    
+    tween:Play()
+    
+    -- Store animation reference
+    table.insert(self.animations, tween)
 end
 
 -- Update methods for real-time data (now uses player attributes automatically)
