@@ -186,13 +186,14 @@ amount_config = {
 
 ### Icon and text positioning
 
-- **icon_config.position_kind**: `left_center_edge`, `right_center_edge`, `top_center_edge`, `bottom_center_edge`
+- **icon_config.position_kind**: `left_center_edge`, `right_center_edge`, `top_center_edge`, `bottom_center_edge`, `center`
   - These keep the icon's AnchorPoint at (0.5, 0.5) and snap to the chosen edge using relative scale.
   - Optional: `icon_config.offset = { x = 0, y = 0 }` to nudge in pixels.
 
 - **text_config.position_kind**:
   - `bottom_center_edge` (default): label spans the bottom area MCP-style.
   - `right_center`: Anchor (1, 0.5), Position (1, 0.5). Add inset with `text_config.position.side_margin` (pixels).
+  - `center`: Anchor (0.5, 0.5), Position (0.5, 0.5). Use `position_offset` to nudge (e.g., `{ x = -10, y = 0 }`).
   - `manual`: provide exact `anchor_point`, `position_scale` and `position_offset`.
 
 ### Aspect ratios (per button)
@@ -201,12 +202,34 @@ amount_config = {
 - Wide: `aspect = { ratio = 2.0, dominant_axis = "width" }`
 - Avoid uneven ratios like 2.2 unless intentionally stretched.
 
+### Button lists and child sizing (important for imported bottom bars)
+
+- In horizontal list layouts, a child without an explicit `size` will try to fill available space.
+- For wide buttons in a bar, set both axes so height doesn't collapse or overfill:
+  - `size = { scaleX = 0.40–0.50, scaleY = 0.45–0.55 }`
+  - Combine with `aspect = { ratio = 2.0, dominant_axis = "width" }` for rounded-rect skins.
+- Use list `spacing` and `padding.left/right` to fine tune gaps between buttons.
+
 ### Backgrounds vs icons
 
 - `background_image` sets the ImageButton’s background (full button skin).
 - `icon` is a foreground ImageLabel/emoji layered above the background.
 - Scale icons with `icon_config.size = { scale_x, scale_y }` (relative to button).
 - Asset IDs may be `"rbxassetid://123"` or just `"123"` (auto-normalized).
+
+### Notification badge sizing (FREE, counts, stickers)
+
+- Prefer scale-based badge sizing so it scales with the button:
+  - `notification.size = { scale_x = 0.25–0.35, scale_y = 0.25–0.35 }`
+- Use `aspect_ratio` to make pills vs squares (e.g., 2.0 for a small "FREE" pill).
+- Avoid pixel sizes for badges except for tiny nudges; scale keeps parity across resolutions.
+
+### Label text sizing defaults
+
+- The builder applies a `UITextSizeConstraint` to button labels:
+  - `MaxTextSize = 48`
+  - `MinTextSize = 13`
+  - Override with `text_config.max_text_size` / `text_config.min_text_size` if needed.
 
 ### Patterns
 

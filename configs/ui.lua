@@ -690,6 +690,18 @@ local uiConfig = {
             script = "AutoTargetActions",
             method = "ToggleHigh"
         },
+
+        -- Bottom bar auto actions (placeholder script hooks; visuals toggle via state later)
+        auto_tap_action = {
+            type = "script_execute",
+            script = "AutoActions",
+            method = "ToggleAutoTap"
+        },
+        auto_grind_action = {
+            type = "script_execute",
+            script = "AutoActions",
+            method = "ToggleAutoGrind"
+        },
         
         inventory_action = {
             type = "menu_panel", 
@@ -1083,6 +1095,7 @@ local uiConfig = {
         
         -- Single Button Panes - All aligned to same bottom edge
         pets_button_pane = {
+            enabled = false,
             position = "bottom-center",
             offset = {x = 0, y = -10},  -- Standardized bottom alignment
             size = {width = 120, height = 60},
@@ -1095,6 +1108,7 @@ local uiConfig = {
         
         -- Auto-target buttons flanking the Pets button
         auto_low_button_pane = {
+            enabled = false,
             position = "bottom-center",
             offset = {x = -140, y = -10},
             size = {width = 60, height = 60},
@@ -1105,6 +1119,7 @@ local uiConfig = {
             }
         },
         auto_high_button_pane = {
+            enabled = false,
             position = "bottom-center",
             offset = {x = 140, y = -10},
             size = {width = 60, height = 60},
@@ -1217,12 +1232,67 @@ local uiConfig = {
         },
         imported_bottom_bar = {
             position_scale = {x = 0.5, y = 0.99},
-            size = {scaleX = 0.529887676, scaleY = 0.154213503},
+            size = {scaleX = 0.428944618, scaleY = 0.113355778},
             anchor = "bottom-center",
-            background = {enabled = true, color = Color3.fromRGB(39, 174, 96), transparency = 0.5}, -- green
-            layout = {type = "list", direction = "horizontal", spacing = 10},
+            background = {enabled = true, color = Color3.fromRGB(39, 174, 96), transparency = 0.5},
+            layout = {type = "list", direction = "horizontal", spacing = 12, horizontal_alignment = "center", vertical_alignment = "center", padding = {left = 6, right = 6}},
             contents = {
-                {type = "label", config = {text = "BOTTOM", color = Color3.fromRGB(255,255,255)}}
+                {type = "menu_button", config = {
+                    name = "AutoTap",
+                    text = "Auto Tap",
+                    background_image = "rbxassetid://17016850717", -- red skin
+                    icon = "rbxassetid://17016861779", -- flex arm
+                    action = "auto_tap_action",
+                    aspect = { ratio = 2.0, dominant_axis = "width" },
+                    size = { scaleX = 0.45, scaleY = 0.5 },
+                    icon_config = { position_kind = "left_center_edge", size = { scale_x = 0.36, scale_y = 0.95 }, offset = { x = 0, y = 0 } },
+                    text_config = {
+                        position_kind = "center",
+                        position_offset = { x = -10, y = 0 },
+                        stroke_color = Color3.fromRGB(100, 11, 12)
+                    },
+                    notification = {
+                        enabled = true,
+                        text = "FREE",
+                        position = "top-right-corner",
+                        aspect_ratio = 2.0,
+                        size = { scale_x = 0.3, scale_y = 0.3 },
+                        corner_radius = 9,
+                        background_color = Color3.fromRGB(85, 214, 99),
+                        text_color = Color3.fromRGB(255, 255, 255),
+                        text_stroke_color = Color3.fromRGB(14, 107, 0),
+                        text_stroke_thickness = 2,
+                        text_max_size = 16
+                    }
+                }},
+                {type = "menu_button", config = {
+                    name = "AutoGrind",
+                    text = "Auto Grind",
+                    background_image = "rbxassetid://17016883477", -- green skin
+                    icon = "rbxassetid://17016861779", -- flex arm
+                    action = "auto_grind_action",
+                    aspect = { ratio = 2.0, dominant_axis = "width" },
+                    size = { scaleX = 0.45, scaleY = 0.5 },
+                    icon_config = { position_kind = "left_center_edge", size = { scale_x = 0.36, scale_y = 0.95 }, offset = { x = 0, y = 0 } },
+                    text_config = {
+                        position_kind = "center",
+                        position_offset = { x = -10, y = 0 },
+                        stroke_color = Color3.fromRGB(76, 42, 1)
+                    },
+                    notification = {
+                        enabled = true,
+                        text = "FREE",
+                        position = "top-right-corner",
+                        aspect_ratio = 2.0,
+                        size = { scale_x = 0.3, scale_y = 0.3 },
+                        corner_radius = 9,
+                        background_color = Color3.fromRGB(85, 214, 99),
+                        text_color = Color3.fromRGB(255, 255, 255),
+                        text_stroke_color = Color3.fromRGB(14, 107, 0),
+                        text_stroke_thickness = 2,
+                        text_max_size = 16
+                    }
+                }}
             }
         },
         imported_left_rail = {

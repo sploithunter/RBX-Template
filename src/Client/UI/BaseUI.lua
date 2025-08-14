@@ -1755,7 +1755,7 @@ function BaseUI:_createButtonNotification(config, parent)
     
     
     
-    -- Notification badge background (match MCP naming)
+	-- Notification badge background (match MCP naming)
     local notification = Instance.new("Frame")
     notification.Name = "Noti"
     notification.BackgroundColor3 = notifConfig.background_color or Color3.fromRGB(255, 0, 0)
@@ -1765,46 +1765,58 @@ function BaseUI:_createButtonNotification(config, parent)
     if notifConfig.rotation then
         notification.Rotation = tonumber(notifConfig.rotation) or 0
     end
-    -- Support configurable badge size (defaults to 25x25 px)
-    local badgeWidth = (notifConfig.size and (notifConfig.size.pxX or notifConfig.size.width)) or 25
-    local badgeHeight = (notifConfig.size and (notifConfig.size.pxY or notifConfig.size.height)) or 25
+	-- Support configurable badge size
+	-- Prefer scale sizing when provided; fall back to pixels
+	local sizeUDim
+	if notifConfig.size then
+		local s = notifConfig.size
+		if s.scale_x or s.scale_y then
+			sizeUDim = UDim2.new(tonumber(s.scale_x or 0), 0, tonumber(s.scale_y or 0), 0)
+		else
+			local bw = tonumber(s.pxX or s.width or 25)
+			local bh = tonumber(s.pxY or s.height or 25)
+			sizeUDim = UDim2.new(0, bw, 0, bh)
+		end
+	else
+		sizeUDim = UDim2.new(0, 25, 0, 25)
+	end
     
     -- Position based on config (default: top-right)
     local position = notifConfig.position or "top-right"
     
     -- INSIDE POSITIONS (traditional, within button boundaries)
-    if position == "top-right" then
-        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
+	if position == "top-right" then
+		notification.Size = sizeUDim
         notification.Position = UDim2.new(1, -5, 0, 5)
         notification.AnchorPoint = Vector2.new(1, 0)
     elseif position == "top-left" then
-        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
+		notification.Size = sizeUDim
         notification.Position = UDim2.new(0, 5, 0, 5)
         notification.AnchorPoint = Vector2.new(0, 0)
     elseif position == "bottom-right" then
-        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
+		notification.Size = sizeUDim
         notification.Position = UDim2.new(1, -5, 1, -5)
         notification.AnchorPoint = Vector2.new(1, 1)
     elseif position == "bottom-left" then
-        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
+		notification.Size = sizeUDim
         notification.Position = UDim2.new(0, 5, 1, -5)
         notification.AnchorPoint = Vector2.new(0, 1)
         
     -- CORNER POSITIONS (extended outside button boundaries for prominence)
     elseif position == "top-right-corner" then
-        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
+		notification.Size = sizeUDim
         notification.Position = UDim2.new(1, 5, 0, -5)  -- Extends outside
         notification.AnchorPoint = Vector2.new(1, 0)  -- Fixed: Right edge, top edge
     elseif position == "top-left-corner" then
-        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
+		notification.Size = sizeUDim
         notification.Position = UDim2.new(0, -5, 0, -5)  -- Extends outside
         notification.AnchorPoint = Vector2.new(0, 0)  -- Fixed: Left edge, top edge
     elseif position == "bottom-right-corner" then
-        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
+		notification.Size = sizeUDim
         notification.Position = UDim2.new(1, 5, 1, 5)  -- Extends outside
         notification.AnchorPoint = Vector2.new(1, 1)  -- Fixed: Right edge, bottom edge
     elseif position == "bottom-left-corner" then
-        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
+		notification.Size = sizeUDim
         notification.Position = UDim2.new(0, -5, 1, 5)  -- Extends outside
         notification.AnchorPoint = Vector2.new(0, 1)  -- Fixed: Left edge, bottom edge
     end
@@ -1920,6 +1932,12 @@ function BaseUI:_createButtonLabel(config, parent)
             textConfig.height_scale = textConfig.height_scale or 0.34
             local sideMargin = (textConfig.position and tonumber(textConfig.position.side_margin)) or 0
             textConfig.position_offset = {x = -sideMargin, y = 0}
+        elseif kind == "center" then
+            -- True center: AnchorPoint (0.5, 0.5), Position (0.5, 0.5)
+            textConfig.anchor_point = {x = 0.5, y = 0.5}
+            textConfig.position_scale = {x = 0.5, y = 0.5}
+            textConfig.position_offset = {x = 0, y = 0}
+            textConfig.height_scale = textConfig.height_scale or 0.34
         elseif kind == "manual" then
             -- Respect provided anchor/scale/offset verbatim
             textConfig.anchor_point = textConfig.anchor_point or {x = 0.5, y = 0.5}
@@ -1996,6 +2014,7 @@ function BaseUI:_createButtonLabel(config, parent)
     if not label:FindFirstChildOfClass("UITextSizeConstraint") then
         local tsc = Instance.new("UITextSizeConstraint")
         tsc.MaxTextSize = tonumber(textConfig.max_text_size or 48)
+        tsc.MinTextSize = tonumber(textConfig.min_text_size or 13)
         tsc.Parent = label
     end
     
