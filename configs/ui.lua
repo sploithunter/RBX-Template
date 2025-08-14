@@ -616,7 +616,7 @@ local uiConfig = {
     debug = {
         show_bounds = false,  -- Enable to visualize pane boundaries
         show_anchor_points = false,  -- Show anchor point indicators
-        show_backgrounds = true,  -- Force show pane backgrounds for debugging
+        show_backgrounds = false,  -- Off: keep pane containers clear
         log_interactions = false,
         performance_monitoring = true,
         component_inspector = false,
@@ -927,8 +927,9 @@ local uiConfig = {
             }
         },
         
-        -- Player Info Pane (top-center - Colorado Plays, Level, XP)
+        -- Player Info Pane (hidden while building imported top bar currencies)
         player_info_pane = {
+            enabled = false,
             position = "top-center",
             offset = {x = 0, y = 35},
             size = {width = 300, height = 80},
@@ -944,12 +945,8 @@ local uiConfig = {
                     transparency = 0.7
                 }
             },
-            layout = {
-                type = "single"
-            },
-            contents = {
-                {type = "player_info", config = {}}
-            }
+            layout = { type = "single" },
+            contents = { {type = "player_info", config = {}} }
         },
 
         -- Quest Tracker Pane (center-right with completely clear background)
@@ -972,6 +969,7 @@ local uiConfig = {
         
         -- Menu Buttons Pane (bottom-left) - Auto-sizing grid that adapts to content
         menu_buttons_pane = {
+            enabled = false,
             position = "bottom-left", 
             offset = {x = 10, y = -10}, -- restore original placement
             size = {width = 280, height = 140}, -- Container size - buttons will auto-fit
@@ -1118,6 +1116,7 @@ local uiConfig = {
         },
         
         rewards_button_pane = {
+            enabled = false,
             position = "bottom-right", 
             offset = {x = -10, y = -10},  -- Standardized bottom alignment + small right padding
             size = {width = 120, height = 60},
@@ -1133,10 +1132,87 @@ local uiConfig = {
             position_scale = {x = 0.5, y = 0.0112233441},
             size = {scaleX = 0.428944618, scaleY = 0.113355778},
             anchor = "top-center",
-            background = {enabled = true, color = Color3.fromRGB(235, 87, 87), transparency = 0.5}, -- red
-            layout = {type = "list", direction = "horizontal", spacing = 8},
+            background = {enabled = false},
+            layout = {type = "list", direction = "horizontal", spacing = 12, horizontal_alignment = "center", vertical_alignment = "center", padding = {left = 12, right = 12}},
             contents = {
-                {type = "label", config = {text = "TOP", color = Color3.fromRGB(255,255,255)}}
+                {type = "currency_display", config = {
+                    currency = "crystals",
+                    background_image = "rbxassetid://17016939569",
+                    icon = "rbxassetid://85121058596566",
+                    icon_config = { position_kind = "left_center_edge", size = {scale_x = 0.307, scale_y = 1.107}, offset = {x = 3, y = 0} },
+                    aspect = { ratio = 3.8, dominant_axis = "width" },
+                    amount_config = {
+                        alignment = "center",
+                        color = Color3.fromRGB(255,255,255),
+                        font = Enum.Font.FredokaOne,
+                        stroke = { color = Color3.fromRGB(102, 56, 0), thickness = 2.5, transparency = 0 },
+                        gradient = {
+                            rotation = -90,
+                            keypoints = {
+                                { t = 0, color = { r = 255, g = 191, b = 0 } },   -- golden yellow top
+                                { t = 1, color = { r = 255, g = 247, b = 0 } }    -- bright yellow bottom
+                            },
+                            transparency = NumberSequence.new{
+                                NumberSequenceKeypoint.new(0, 0),
+                                NumberSequenceKeypoint.new(1, 0)
+                            }
+                        },
+                        left_padding_px = 60
+                    },
+                    plus_button = { enabled = true, icon = "rbxassetid://17016956685", size = {pxX = 22, pxY = 22}, offset = {x = -6, y = 0} }
+                }},
+                {type = "currency_display", config = {
+                    currency = "gems",
+                    background_image = "rbxassetid://17016939569",
+                    icon = "rbxassetid://124465574877924",
+                    icon_config = { position_kind = "left_center_edge", size = {scale_x = 0.338, scale_y = 1.219}, offset = {x = 3, y = 0} },
+                    aspect = { ratio = 3.8, dominant_axis = "width" },
+                    amount_config = {
+                        alignment = "center",
+                        color = Color3.fromRGB(255,255,255),
+                        font = Enum.Font.FredokaOne,
+                        stroke = { color = Color3.fromRGB(102, 56, 0), thickness = 2.5, transparency = 0 },
+                        gradient = {
+                            rotation = -90,
+                            keypoints = {
+                                { t = 0, color = { r = 255, g = 191, b = 0 } },
+                                { t = 1, color = { r = 255, g = 247, b = 0 } }
+                            },
+                            transparency = NumberSequence.new{
+                                NumberSequenceKeypoint.new(0, 0),
+                                NumberSequenceKeypoint.new(1, 0)
+                            }
+                        },
+                        left_padding_px = 60
+                    },
+                    plus_button = { enabled = true, icon = "rbxassetid://17016956685", size = {pxX = 22, pxY = 22}, offset = {x = -6, y = 0} }
+                }},
+                {type = "currency_display", config = {
+                    currency = "coins",
+                    background_image = "rbxassetid://17016939569",
+                    icon = "rbxassetid://17016991150",
+                    icon_config = { position_kind = "left_center_edge", size = {scale_x = 0.30, scale_y = 1.05}, offset = {x = 3, y = 0} },
+                    aspect = { ratio = 3.8, dominant_axis = "width" },
+                    amount_config = {
+                        alignment = "center",
+                        color = Color3.fromRGB(255,255,255),
+                        font = Enum.Font.FredokaOne,
+                        stroke = { color = Color3.fromRGB(102, 56, 0), thickness = 2.5, transparency = 0 },
+                        gradient = {
+                            rotation = -90,
+                            keypoints = {
+                                { t = 0, color = { r = 255, g = 191, b = 0 } },
+                                { t = 1, color = { r = 255, g = 247, b = 0 } }
+                            },
+                            transparency = NumberSequence.new{
+                                NumberSequenceKeypoint.new(0, 0),
+                                NumberSequenceKeypoint.new(1, 0)
+                            }
+                        },
+                        left_padding_px = 60
+                    },
+                    plus_button = { enabled = false }
+                }},
             }
         },
         imported_bottom_bar = {
@@ -1153,7 +1229,7 @@ local uiConfig = {
             position_scale = {x = 0.00522466097, y = 0.5},
             size = {scaleX = 0.0966562182, scaleY = 0.44893378},
             anchor = "center-left",
-            background = {enabled = true, color = Color3.fromRGB(52, 152, 219), transparency = 0.5}, -- blue
+            background = {enabled = false},
             -- Even spacing like InventoryPanel: 3 stacked rows, each row hosts 2 buttons centered
             layout = {type = "list", direction = "vertical", spacing = 6, padding = {top = 4, bottom = 4, left = 4, right = 4}},
             contents = {
@@ -1180,7 +1256,7 @@ local uiConfig = {
             -- Match left rail size for consistent look
             size = {scaleX = 0.0966562182, scaleY = 0.44893378},
             anchor = "center-right",
-            background = {enabled = true, color = Color3.fromRGB(52, 152, 219), transparency = 0.5}, -- debug blue like left
+            background = {enabled = false},
             layout = {type = "list", direction = "vertical", spacing = 6, padding = {top = 4, bottom = 4, left = 4, right = 4}},
             contents = {
                 -- Row 1: Follow US (single)
@@ -1210,10 +1286,86 @@ local uiConfig = {
             position_scale = {x = 0.00522465771, y = 0.740112424},
             size = {scaleX = 0.248757988, scaleY = 0.246622533},
             anchor = "top-left",
-            background = {enabled = true, color = Color3.fromRGB(155, 89, 182), transparency = 0.5}, -- purple
-            layout = {type = "list", direction = "vertical", spacing = 6},
+            -- Semantic position only used for grid fill and alignment (not absolute placement)
+            position = "bottom-left",
+            -- Keep visible while developing
+            -- Keep background config for developers, but default to invisible in production
+            background = { enabled = false, color = Color3.fromRGB(155, 89, 182), transparency = 0.5 },
+            -- MCP uses UIGridLayout here; mirror with our grid and auto sizing
+            -- For a bottom-left anchored stack we want rows to fill from bottom-left visually.
+            -- Use grid and let BaseUI adjust StartCorner via semantic position.
+            layout = { type = "grid", auto_size = true, button_count = 2, padding = { top = 4, bottom = 4, left = 4, right = 4 } },
             contents = {
-                {type = "label", config = {text = "BOOSTS", color = Color3.fromRGB(255,255,255)}}
+                -- Premium boost button (lock icon + +50% label)
+                {type = "menu_button", config = {
+                    name = "PremiumBoost",
+                    icon = "rbxassetid://18666999677", -- Lock icon from MCP
+                    text = "+50%",
+                    action = "rewards_action",
+                    -- Square button constraint
+                    aspect = { ratio = 1.0, dominant_axis = "width" },
+                    icon_config = {
+                        size = { scale_x = 0.69, scale_y = 0.69 },
+                        position = { scale_x = 0.5, scale_y = 0.5 },
+                        offset = { x = 0, y = -4 }
+                    },
+                    text_config = {
+                        -- Dark stroke like MCP bottom text
+                        stroke_color = Color3.fromRGB(25, 25, 25)
+                    },
+                    -- Mirror MCP inner TextLabel overlay (cyan->white gradient, blue-gray stroke)
+                    overlay_label = {
+                        enabled = true,
+                        text = "", -- MCP glyph (PUA)
+                        position_kind = "center",
+                        height_scale = 1.0,
+                        -- small nudge to align the glyph visually while staying relative
+                        position_offset = { x = -5, y = 0 },
+                        stroke = { color = Color3.fromRGB(49, 64, 88), thickness = 2, transparency = 0 },
+                        gradient = {
+                            rotation = -90,
+                            keypoints = {
+                                { t = 0.000, color = { r = 165, g = 197, b = 255 } },
+                                { t = 1.000, color = { r = 255, g = 255, b = 255 } }
+                            }
+                        },
+                        text_max_size = 36,
+                        aspect_ratio = 1.0
+                    }
+                }},
+                -- Kade button (avatar headshot in MCP; use person emoji placeholder)
+                {type = "menu_button", config = {
+                    name = "KadeBoost",
+                    -- Use avatar headshot thumbnail directly; BaseUI now supports rbxthumb://
+                    icon = "rbxthumb://type=AvatarHeadShot&id=536245038&w=420&h=420",
+                    text = "Kade",
+                    action = "rewards_action",
+                    aspect = { ratio = 1.0, dominant_axis = "width" },
+                    icon_config = {
+                        size = { scale_x = 0.69, scale_y = 0.69 },
+                        position = { scale_x = 0.5, scale_y = 0.5 },
+                        offset = { x = 0, y = -4 }
+                    },
+                    text_config = {
+                        stroke_color = Color3.fromRGB(25, 25, 25)
+                    },
+                    -- Add check-mark style text badge in top-right corner with MCP-like styling
+                    notification = {
+                        enabled = true,
+                        text = "✓",
+                        position = "top-right-corner",
+                        aspect_ratio = 1.0,
+                        -- Smaller square badge with rounded corners
+                        size = { pxX = 18, pxY = 18 },
+                        corner_radius = 4,
+                        background_color = Color3.fromRGB(41, 121, 255), -- blue box
+                        text_color = Color3.fromRGB(255, 255, 255), -- white check
+                        text_stroke_color = Color3.fromRGB(0, 0, 0),
+                        text_stroke_thickness = 1.5,
+                        text_max_size = 14,
+                        rotation = 15
+                    }
+                }}
             }
         },
         imported_notifications = {
@@ -1624,3 +1776,26 @@ local uiConfig = {
 
 return uiConfig 
 
+
+--[[
+MCP IMPORT SNIPPETS
+Extract UIGradient ColorSequence keypoints from MCP (Studio console):
+
+  local g = game.StarterGui.Guis.Layout.Boosts.Container.Premium.TextLabel:FindFirstChildOfClass("UIGradient")
+  local out = {}
+  for _, kp in ipairs(g.Color.Keypoints) do
+      local c = kp.Value
+      table.insert(out, string.format("{ t = %.3f, color = { r = %d, g = %d, b = %d } }",
+          kp.Time, math.floor(c.R*255+0.5), math.floor(c.G*255+0.5), math.floor(c.B*255+0.5)))
+  end
+  print("keypoints = {"..table.concat(out, ", ").."}")
+
+Paste the printed table into an element's amount_config.gradient.keypoints, e.g.:
+
+  amount_config = {
+      gradient = {
+          rotation = -90,
+          keypoints = { { t = 0.000, color = { r = 255, g = 162, b = 0 } }, { t = 1.000, color = { r = 255, g = 247, b = 0 } } },
+      }
+  }
+]]

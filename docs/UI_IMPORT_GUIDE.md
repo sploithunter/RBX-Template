@@ -9,6 +9,13 @@ This guide explains how to import UI from a classic Studio game (via MCP) into t
 - `default.project.json` — Rojo mapping (optionally maps `src/UI_Templates` → `ReplicatedStorage.UI_Templates`)
 - Optional: `src/UI_Templates/` — template instances if you use TemplateManager (not required for this button pattern)
 
+## Imported layout convention
+
+- The first step of an import is to mirror the target game's major layout frames as configuration-only anchors. These are created under `ui.panes` and are always prefixed with `imported_`.
+- Examples: `imported_top_bar`, `imported_bottom_bar`, `imported_left_rail`, `imported_right_cluster`, `imported_boosts_stack`, `imported_notifications`.
+- Each imported pane records only the MCP container’s relative Position (scale), Size (scale), and AnchorPoint. Their purpose is to act as anchors/containers for subsequent UI we reconstruct via config.
+- Follow-up passes then replace the placeholder contents inside these `imported_*` panes with real elements (`currency_display`, `menu_button`, `row`, etc.) while preserving their position/size semantics.
+
 ## What’s standardized (global defaults you can rely on)
 
 These live under `defaults.menu_button` in `configs/ui.lua` and apply to every `menu_button` unless overridden.
@@ -31,6 +38,13 @@ These live under `defaults.menu_button` in `configs/ui.lua` and apply to every `
     - lineJoin = Miter
   - UITextSizeConstraint applied automatically
 - Optional badge (decorator)
+- Aspect constraints
+  - Most imported buttons and currency cards use `UIAspectRatioConstraint`. Capture:
+    - `AspectRatio` (width/height)
+    - `DominantAxis` (usually width)
+  - In config, set per element:
+    - `aspect = { ratio = <number>, dominant_axis = "width" | "height" }`
+  - This preserves MCP shapes across different resolutions.
   - Container name Noti (with UIAspectRatioConstraint, dominant axis = width)
   - Child text Txt (with UIStroke + UITextSizeConstraint)
   - Corner positions like "top-left-corner" place the badge partly outside the button (sticker look)
@@ -117,6 +131,57 @@ You can also map to script calls, network calls, etc., as already demonstrated i
 
 With these defaults and `BaseUI`, reproducing this button layout in any pane is configuration-only and repeatable.
 
+## Practical advice from recent imports
+
+### What to capture from MCP (and how)
+
+- Pane anchors: Record Position (scale), Size (scale), AnchorPoint for each major container; create `imported_*` panes that mirror those anchors.
+- Aspect ratios: Most buttons/cards use `UIAspectRatioConstraint`. Copy `AspectRatio` and `DominantAxis`.
+- Icons: Asset IDs from `Icon.Image` (normalize to `rbxassetid://123`). Prefer semantic positions: `icon_config.position_kind = "left_center_edge"` with minimal offset.
+- Amount text: Font, stroke, gradient.
+  - Font: FredokaOne
+  - Stroke: color `Color3.fromRGB(102,56,0)`, thickness `2.5`
+  - Gradient: Use the console snippet below to extract `ColorSequence` as keypoints. Paste into `amount_config.gradient.keypoints`.
+- Plus buttons: Note which currencies have a `+`. Our builder auto-reserves right padding when a plus is present so centered labels stay visually centered.
+
+### UI builder features to leverage
+
+- Centering and spacing: In list layouts set `horizontal_alignment = "center"` and use `layout.padding.left/right` to avoid edge crowding. Use `spacing` to spread siblings evenly.
+- Auto-fit sizing: For horizontal lists, if an element has `aspect = { ratio, dominant_axis }` and no explicit size, the builder will size each child to fill available width (minus spacing and padding) while respecting the pane height and aspect ratio.
+- Gradients in config: You can specify either a `ColorSequence` directly or a portable `keypoints` table:
+
+```lua
+amount_config = {
+  gradient = {
+    rotation = -90,
+    keypoints = {
+      { t = 0.000, color = { r = 255, g = 162, b = 0 } },
+      { t = 1.000, color = { r = 255, g = 247, b = 0 } },
+    },
+  }
+}
+```
+
+### Quick checklist (top currencies example)
+
+1. Create/verify `imported_top_bar` with Position/Size/Anchor from MCP.
+2. Add three `currency_display` items with:
+   - `background_image` (panel art)
+   - `icon_config = { position_kind = "left_center_edge", size = { scale_x, scale_y } }`
+   - `aspect = { ratio = 3.8, dominant_axis = "width" }` (or from MCP)
+   - `amount_config` with `font = FredokaOne`, `stroke` (102,56,0, thickness 2.5), and `gradient.keypoints` (yellow range)
+   - `plus_button` for premium currencies
+3. Set `layout = { type = "list", direction = "horizontal", horizontal_alignment = "center", spacing = 10–12, padding = { left = 8–16, right = 8–16 } }`.
+4. Ensure any legacy debug backgrounds are disabled (`debug.show_backgrounds = false`, pane `background.enabled = false`).
+
+### Common pitfalls (and fixes)
+
+- Forgetting aspect constraints → Buttons look stretched; add `aspect = { ratio, dominant_axis }` from MCP.
+- Text not centered with plus button → Our builder now reserves right padding when `plus_button.enabled` is true.
+- Left/right fill misaligned → Use `horizontal_alignment = "center"` and set `layout.padding.left/right`.
+- Wrong icon anchoring → Prefer `icon_config.position_kind` over manual X offsets; keep offset small (0–3 px) for parity.
+- Overlays showing debug backgrounds → Set `debug.show_backgrounds = false` and disable pane backgrounds.
+
 ## Quick reference and patterns
 
 ### Icon and text positioning
@@ -190,3 +255,92 @@ With these defaults and `BaseUI`, reproducing this button layout in any pane is 
 
 - If text AnchorPoint/Position don’t match the kind, ensure the kind is one of the supported values and avoid overriding `anchor_point`/`position_scale` unless using `manual`.
 - If images appear stretched, confirm `aspect.ratio` and `dominant_axis`.
+
+### Extracting ColorSequence gradients from MCP
+
+To copy a UIGradient's colors from the MCP game into config-as-code, run this in the Studio console:
+
+```lua
+local g = game.StarterGui.Guis.Layout.Top.Currencies.Crystals.Amt:FindFirstChildOfClass("UIGradient")
+local out = {}
+for _,kp in ipairs(g.Color.Keypoints) do
+  local c = kp.Value
+  table.insert(out, string.format("{ t = %.3f, color = { r = %d, g = %d, b = %d } }",
+    kp.Time, math.floor(c.R*255+0.5), math.floor(c.G*255+0.5), math.floor(c.B*255+0.5)))
+end
+print("keypoints = {"..table.concat(out, ", ").."}")
+```
+
+Then paste the printed table into your element config:
+
+```lua
+amount_config = {
+  gradient = {
+    rotation = -90,
+    keypoints = { { t = 0.000, color = { r = 255, g = 162, b = 0 } }, { t = 1.000, color = { r = 255, g = 247, b = 0 } } },
+  }
+}
+```
+
+The UI builder understands both direct `ColorSequence` values and this `keypoints` table format.
+
+### Why we prefix anchors with imported_
+
+Imported panes represent raw frame anchors from the reference game. Keeping them under `imported_*` makes the import process repeatable and keeps anchor discovery separate from semantic content. Replace each placeholder’s contents with real elements (`currency_display`, `menu_button`, `row`), not the anchors themselves.
+
+### MCP overlays, thumbnails, and badges (advanced)
+
+- **rbxthumb icons**: You can use Roblox thumbnails directly in `icon`.
+  - Example: `"rbxthumb://type=AvatarHeadShot&id=USER_ID&w=420&h=420"`.
+  - Useful for creator/profile badges and dynamic images.
+
+- **Grid fill when using absolute anchors**: If a pane uses `position_scale` (MCP-style absolute position), also set a semantic `position` so grids fill from the expected corner.
+  - Example: `position = "bottom-left"` + `position_scale = { x = ..., y = ... }` → grid `StartCorner = BottomLeft`.
+
+- **Square aspect for imported buttons**: MCP buttons that should look square need `aspect = { ratio = 1.0, dominant_axis = "width" }` on each `menu_button`.
+
+- **Notification badge controls**: The badge decorator supports size, corner radius, and tilt.
+  - Fields: `size {pxX, pxY}`, `corner_radius`, `rotation`, `text_stroke_*`, and optional `gradient` on the badge text.
+  - Example (tilted blue square with a white check):
+
+```lua
+notification = {
+  enabled = true,
+  text = "✓",
+  position = "top-right-corner",
+  size = { pxX = 18, pxY = 18 },
+  corner_radius = 4,
+  rotation = 15,
+  background_color = Color3.fromRGB(41, 121, 255),
+  text_color = Color3.fromRGB(255, 255, 255),
+  text_stroke_color = Color3.fromRGB(0, 0, 0),
+  text_stroke_thickness = 1.5
+}
+```
+
+- **Overlay label pattern for MCP glyphs**: Builders often layer a TextLabel with gradient + stroke on top of the button. Use `overlay_label` on a `menu_button`:
+
+```lua
+overlay_label = {
+  enabled = true,
+  text = "", -- MCP PUA glyph
+  height_scale = 1.0,
+  position_kind = "center",
+  -- Small nudge keeps it visually centered while staying relative
+  position_offset = { x = -5, y = 0 },
+  stroke = { color = Color3.fromRGB(49, 64, 88), thickness = 2, transparency = 0 },
+  gradient = {
+    rotation = -90,
+    keypoints = {
+      { t = 0.000, color = { r = 165, g = 197, b = 255 } },
+      { t = 1.000, color = { r = 255, g = 255, b = 255 } },
+    }
+  },
+  aspect_ratio = 1.0,
+  text_max_size = 36
+}
+```
+
+- **Extract both gradient and stroke**: When copying from MCP, capture `UIGradient` keypoints and `UIStroke` color/thickness from the source TextLabel for 1:1 visuals.
+
+- **Dev visibility when mapping**: During import, enable pane backgrounds or set `ui.debug.show_backgrounds = true` to see bounds and layout while adjusting anchors.

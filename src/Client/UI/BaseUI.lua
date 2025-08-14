@@ -691,26 +691,35 @@ function BaseUI:_createPane(paneName, config)
         arc.Parent = paneContainer
     end
 
-    -- Create background if enabled OR if debug backgrounds are on
-    if (config.background and config.background.enabled) or (self.uiConfig.debug.show_backgrounds) then
-        local bgConfig = config.background
-        
-        -- If debug backgrounds are enabled but no background config exists, create debug background
-        if self.uiConfig.debug.show_backgrounds and (not bgConfig or not bgConfig.enabled) then
-            -- Generate a unique color per pane for easy identification
-            local debugColor = self:_getDebugColor(paneName)
-            bgConfig = {
-                enabled = true,
-                color = debugColor,
-                transparency = 0.75,
-                corner_radius = 8,
-                border = { enabled = true, color = Color3.fromRGB(0,0,0), thickness = 1, transparency = 0.1 }
-            }
+    -- Create background if pane or global debug says so, with per-pane override
+    do
+        local globalDebug = (self.uiConfig and self.uiConfig.debug and self.uiConfig.debug.show_backgrounds) or false
+        local paneDebugOverride = (config.debug and (config.debug.show_backgrounds))
+        local paneHasBackground = (config.background and config.background.enabled) or false
+        local shouldShow
+        if paneDebugOverride ~= nil then
+            shouldShow = paneDebugOverride or paneHasBackground
+        else
+            shouldShow = paneHasBackground or globalDebug
         end
-        
-        self:_createPaneBackground(paneContainer, bgConfig)
-    else
-        paneContainer.BackgroundTransparency = 1
+
+        if shouldShow then
+            local bgConfig = config.background
+            -- If showing only for debug and no explicit background is enabled, synthesize one
+            if (not paneHasBackground) then
+                local debugColor = self:_getDebugColor(paneName)
+                bgConfig = {
+                    enabled = true,
+                    color = debugColor,
+                    transparency = 0.75,
+                    corner_radius = 8,
+                    border = { enabled = true, color = Color3.fromRGB(0,0,0), thickness = 1, transparency = 0.1 }
+                }
+            end
+            self:_createPaneBackground(paneContainer, bgConfig)
+        else
+            paneContainer.BackgroundTransparency = 1
+        end
     end
     
     -- Create layout container
@@ -782,11 +791,15 @@ function BaseUI:_createPaneLayout(container, layoutConfig, paneName, paneConfig)
         layout.SortOrder = Enum.SortOrder.LayoutOrder
         layout.Padding = UDim.new(0, layoutConfig.spacing or 4)
         
-        if layoutConfig.direction == "vertical" then
-            layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-        else
-            layout.VerticalAlignment = Enum.VerticalAlignment.Center
-        end
+        -- Honor optional alignment settings; default center both directions
+        local horizAlign = layoutConfig.horizontal_alignment or "center"
+        local vertAlign = layoutConfig.vertical_alignment or "center"
+        layout.HorizontalAlignment = (horizAlign == "left" and Enum.HorizontalAlignment.Left)
+            or (horizAlign == "right" and Enum.HorizontalAlignment.Right)
+            or Enum.HorizontalAlignment.Center
+        layout.VerticalAlignment = (vertAlign == "top" and Enum.VerticalAlignment.Top)
+            or (vertAlign == "bottom" and Enum.VerticalAlignment.Bottom)
+            or Enum.VerticalAlignment.Center
         
         layout.Parent = layoutContainer
         
@@ -884,7 +897,7 @@ end
 -- Create contents within a pane
 function BaseUI:_createPaneContents(container, contents, layoutConfig)
     for i, contentConfig in ipairs(contents) do
-        local element = self:_createPaneElement(contentConfig, container, i, layoutConfig)
+        local element = self:_createPaneElement(contentConfig, container, i, layoutConfig, #contents)
         if element then
             element.LayoutOrder = i
             -- Support manual position within custom layout using relative scales
@@ -901,12 +914,12 @@ function BaseUI:_createPaneContents(container, contents, layoutConfig)
 end
 
 -- Factory for creating different types of pane elements
-function BaseUI:_createPaneElement(contentConfig, parent, layoutOrder, layoutConfig)
+function BaseUI:_createPaneElement(contentConfig, parent, layoutOrder, layoutConfig, siblingsCount)
     local elementType = contentConfig.type
     local config = contentConfig.config
     
     if elementType == "currency_display" then
-        return self:_createCurrencyElement(config, parent, layoutOrder)
+        return self:_createCurrencyElement(config, parent, layoutOrder, layoutConfig, siblingsCount)
         
     elseif elementType == "menu_button" then
         self.logger:info("🔧 BaseUI: Creating menu button", {
@@ -1023,27 +1036,75 @@ end
 
 -- === PANE ELEMENT FACTORIES ===
 -- Create currency display element for panes (optimized for floating cards)
-function BaseUI:_createCurrencyElement(config, parent, layoutOrder)
+function BaseUI:_createCurrencyElement(config, parent, layoutOrder, layoutConfig, totalCount)
     local theme = self:_getCachedTheme()
     
     -- Currency frame (fills entire pane for floating card look)
     local frame = Instance.new("Frame")
     frame.Name = config.currency .. "Frame"
-    frame.Size = UDim2.new(1, 0, 1, 0)  -- Fill entire pane
+	-- Respect optional size from config; otherwise auto-fit inside list containers
+	if config.size then
+		local sx = tonumber(config.size.scaleX or 0)
+		local sy = tonumber(config.size.scaleY or 0)
+		local px = tonumber(config.size.pxX or config.size.width or 0)
+		local py = tonumber(config.size.pxY or config.size.height or 0)
+		frame.Size = UDim2.new(sx, px, sy, py)
+	else
+		-- If this element lives in a horizontal list and has an aspect ratio,
+		-- compute width/height to fit the container without overflow.
+		local canAutoFit = layoutConfig and layoutConfig.type == "list" and layoutConfig.direction == "horizontal" and config.aspect and tonumber(config.aspect.ratio)
+		if canAutoFit then
+			local parentSize = parent.AbsoluteSize
+			local n = tonumber(totalCount or 0)
+			if n <= 0 then n = 1 end
+			local spacing = tonumber(layoutConfig.spacing or 0)
+			local padLeft, padRight = 0, 0
+			if layoutConfig.padding then
+				padLeft = tonumber(layoutConfig.padding.left or 0)
+				padRight = tonumber(layoutConfig.padding.right or 0)
+			end
+			local ratio = tonumber(config.aspect.ratio)
+			local availableWidth = math.max(0, parentSize.X - (n - 1) * spacing - padLeft - padRight)
+			local targetHeight = parentSize.Y
+			if ratio > 0 and availableWidth > 0 then
+				targetHeight = math.min(parentSize.Y, math.floor(availableWidth / (n * ratio)))
+			end
+			local targetWidth = math.floor(targetHeight * ratio)
+			frame.Size = UDim2.new(0, targetWidth, 0, targetHeight)
+		else
+			frame.Size = UDim2.new(1, 0, 1, 0)  -- Default: fill
+		end
+	end
     frame.Position = UDim2.new(0, 0, 0, 0)
     frame.BackgroundTransparency = 1  -- Pane provides background
     frame.BorderSizePixel = 0
     frame.LayoutOrder = layoutOrder
     frame.Parent = parent
+
+	-- Optional background image to mimic MCP currency panels
+	if config.background_image then
+		local bgImage = self:_processAssetId(config.background_image)
+		if bgImage then
+			local bg = Instance.new("ImageLabel")
+			bg.Name = "Background"
+			bg.BackgroundTransparency = 1
+			bg.BorderSizePixel = 0
+			bg.Image = bgImage
+			bg.ScaleType = Enum.ScaleType.Stretch
+			bg.Size = UDim2.new(1, 0, 1, 0)
+			bg.Parent = frame
+		end
+	end
     
     -- Icon (supports both emoji and Roblox asset IDs) with configurable sizing/position
     local icon
     local iconValue = config.icon or ""
     local iconConfig = config.icon_config or {}
-    local iconSizePx = iconConfig.size or {width = 22, height = 22}
-    local iconPositionKind = iconConfig.position or "left" -- left | left_outside | center | right | right_outside
+	local iconSizeConf = iconConfig.size or {width = 22, height = 22}
+    local iconPositionKind = iconConfig.position or "left" -- legacy kinds: left | left_outside | center | right | right_outside
     local iconOffset = iconConfig.offset or {x = 8, y = 0}
     local tintWithColor = (iconConfig.tint_with_color ~= false)
+    local currencyColor = config.color or Color3.fromRGB(255, 255, 255)
     
     -- Check if icon is a Roblox asset ID (number or rbxassetid format)
     local assetId = nil
@@ -1052,14 +1113,46 @@ function BaseUI:_createCurrencyElement(config, parent, layoutOrder)
     elseif string.match(iconValue, "^%d+$") then
         assetId = "rbxassetid://" .. iconValue
     end
+
+    -- Optional aspect ratio constraint (keep consistent shape like MCP)
+    if config.aspect and tonumber(config.aspect.ratio) then
+        local arc = Instance.new("UIAspectRatioConstraint")
+        arc.AspectRatio = tonumber(config.aspect.ratio)
+        if type(config.aspect.dominant_axis) == "string" then
+            local lower = string.lower(config.aspect.dominant_axis)
+            if lower == "width" then
+                arc.DominantAxis = Enum.DominantAxis.Width
+            elseif lower == "height" then
+                arc.DominantAxis = Enum.DominantAxis.Height
+            end
+        end
+        arc.Parent = frame
+    end
     
-    -- Helper to compute absolute position from kind
+    -- Semantic edge positioning (preferred)
+    local semanticPosScale
+    local semanticAnchor = Vector2.new(0.5, 0.5)
+    do
+        local kind = iconConfig.position_kind
+        if kind == "left_center_edge" then
+            semanticPosScale = {x = 0, y = 0.5}
+        elseif kind == "right_center_edge" then
+            semanticPosScale = {x = 1.0, y = 0.5}
+        elseif kind == "top_center_edge" then
+            semanticPosScale = {x = 0.5, y = 0}
+        elseif kind == "bottom_center_edge" then
+            semanticPosScale = {x = 0.5, y = 1.0}
+        end
+    end
+
+    -- Helper to compute absolute position from legacy kind
     local function computeIconPosition()
         if iconPositionKind == "center" then
             return UDim2.new(0.5, iconOffset.x, 0.5, iconOffset.y), Vector2.new(0.5, 0.5)
         end
         if iconPositionKind == "right" then
-            return UDim2.new(1, - (iconOffset.x + math.floor(iconSizePx.width/2) + 6), 0.5, iconOffset.y), Vector2.new(0.5, 0.5)
+            local half = math.floor((iconSizeConf.width or 0) / 2)
+            return UDim2.new(1, - (iconOffset.x + half + 6), 0.5, iconOffset.y), Vector2.new(0.5, 0.5)
         end
         if iconPositionKind == "right_outside" then
             return UDim2.new(1, iconOffset.x, 0.5, iconOffset.y), Vector2.new(0, 0.5)
@@ -1071,19 +1164,29 @@ function BaseUI:_createCurrencyElement(config, parent, layoutOrder)
         return UDim2.new(0, iconOffset.x + 8, 0.5, iconOffset.y), Vector2.new(0, 0.5)
     end
 
-    if assetId then
+	if assetId then
         -- Use ImageLabel for Roblox assets with error handling
         local success, result = pcall(function()
             icon = Instance.new("ImageLabel")
             icon.Name = "Icon"
-            icon.Size = UDim2.new(0, iconSizePx.width, 0, iconSizePx.height)
-            local pos, anchor = computeIconPosition()
-            icon.Position = pos
-            icon.AnchorPoint = anchor
+			-- Support pixel or scale sizing
+			if iconSizeConf.scale_x or iconSizeConf.scale_y then
+				icon.Size = UDim2.new(iconSizeConf.scale_x or 0, 0, iconSizeConf.scale_y or 0, 0)
+			else
+				icon.Size = UDim2.new(0, iconSizeConf.width, 0, iconSizeConf.height)
+			end
+            if semanticPosScale then
+                icon.Position = UDim2.new(semanticPosScale.x, iconOffset.x, semanticPosScale.y, iconOffset.y)
+                icon.AnchorPoint = semanticAnchor
+            else
+                local pos, anchor = computeIconPosition()
+                icon.Position = pos
+                icon.AnchorPoint = anchor
+            end
             icon.BackgroundTransparency = 1
             icon.Image = assetId
             if tintWithColor then
-                icon.ImageColor3 = config.color  -- Optional tint
+                icon.ImageColor3 = currencyColor  -- Optional tint
             end
             icon.ScaleType = Enum.ScaleType.Fit
             icon.Parent = frame
@@ -1099,13 +1202,23 @@ function BaseUI:_createCurrencyElement(config, parent, layoutOrder)
                                 config.currency == "crystals" and "🔮" or "💰"
             icon = Instance.new("TextLabel")
             icon.Name = "Icon"
-            icon.Size = UDim2.new(0, iconSizePx.width, 0, iconSizePx.height)
-            local pos, anchor = computeIconPosition()
-            icon.Position = pos
-            icon.AnchorPoint = anchor
+			-- Support pixel or scale sizing
+			if iconSizeConf.scale_x or iconSizeConf.scale_y then
+				icon.Size = UDim2.new(iconSizeConf.scale_x or 0, 0, iconSizeConf.scale_y or 0, 0)
+			else
+				icon.Size = UDim2.new(0, iconSizeConf.width, 0, iconSizeConf.height)
+			end
+            if semanticPosScale then
+                icon.Position = UDim2.new(semanticPosScale.x, iconOffset.x, semanticPosScale.y, iconOffset.y)
+                icon.AnchorPoint = semanticAnchor
+            else
+                local pos, anchor = computeIconPosition()
+                icon.Position = pos
+                icon.AnchorPoint = anchor
+            end
             icon.BackgroundTransparency = 1
             icon.Text = fallbackEmoji
-            icon.TextColor3 = config.color
+            icon.TextColor3 = currencyColor
             icon.TextScaled = true
             icon.Font = Enum.Font.GothamBold
             icon.Parent = frame
@@ -1114,61 +1227,155 @@ function BaseUI:_createCurrencyElement(config, parent, layoutOrder)
         -- Use TextLabel for emoji
         icon = Instance.new("TextLabel")
         icon.Name = "Icon"
-        icon.Size = UDim2.new(0, iconSizePx.width, 0, iconSizePx.height)
-        local pos, anchor = computeIconPosition()
-        icon.Position = pos
-        icon.AnchorPoint = anchor
+		if iconSizeConf.scale_x or iconSizeConf.scale_y then
+			icon.Size = UDim2.new(iconSizeConf.scale_x or 0, 0, iconSizeConf.scale_y or 0, 0)
+		else
+			icon.Size = UDim2.new(0, iconSizeConf.width, 0, iconSizeConf.height)
+		end
+        if semanticPosScale then
+            icon.Position = UDim2.new(semanticPosScale.x, iconOffset.x, semanticPosScale.y, iconOffset.y)
+            icon.AnchorPoint = semanticAnchor
+        else
+            local pos, anchor = computeIconPosition()
+            icon.Position = pos
+            icon.AnchorPoint = anchor
+        end
         icon.BackgroundTransparency = 1
         icon.Text = iconValue
-        icon.TextColor3 = config.color
+        icon.TextColor3 = currencyColor
         icon.TextScaled = true
         icon.Font = Enum.Font.GothamBold
         icon.Parent = frame
     end
     
-    -- Amount label (optimized for floating card)
+    -- Amount label (supports alignment, stroke, gradient)
     local amount = Instance.new("TextLabel")
     amount.Name = "Amount"
-    -- Compute left padding based on icon width (ensure minimum padding)
-    local leftPadding = math.max(35, (iconSizePx.width + 13))
+	-- Compute left padding based on icon width (ensure minimum padding)
+	local leftPadding = 35
+	if not (iconSizeConf.scale_x or iconSizeConf.scale_y) then
+		leftPadding = math.max(35, ((iconSizeConf.width or 22) + 13))
+	end
+	-- Allow override via config.amount_config.left_padding_px
+	if config.amount_config and tonumber(config.amount_config.left_padding_px) then
+		leftPadding = tonumber(config.amount_config.left_padding_px)
+	end
     if iconPositionKind == "left_outside" then
         leftPadding = 35 -- Icon sits outside; keep standard padding
     end
-    amount.Size = UDim2.new(1, -leftPadding, 1, 0)
+    -- Right padding: reserve space if a plus button is present
+    local rightPadding = 0
+    if config.plus_button and (config.plus_button.enabled ~= false) then
+        local psize = config.plus_button.size or {pxX = 24, pxY = 24}
+        if psize.pxX or psize.width then
+            rightPadding = (psize.pxX or psize.width or 24) + 8
+        end
+    end
+    amount.Size = UDim2.new(1, -(leftPadding + rightPadding), 1, 0)
     amount.Position = UDim2.new(0, leftPadding, 0, 0)
     amount.BackgroundTransparency = 1
     local realAmount = self.player:GetAttribute(config.currency:gsub("^%l", string.upper)) or 0
     amount.Text = self:_formatNumber(realAmount)
-    amount.TextColor3 = Color3.fromRGB(255, 255, 255)  -- Clean white text
+	amount.TextColor3 = (config.amount_config and config.amount_config.color) or Color3.fromRGB(255, 255, 255)
     amount.TextScaled = true
-    amount.Font = Enum.Font.GothamBold
-    amount.TextXAlignment = Enum.TextXAlignment.Center  -- Center align for cards
+	amount.Font = (config.amount_config and config.amount_config.font) or Enum.Font.GothamBold
+	local alignment = config.amount_config and string.lower(tostring(config.amount_config.alignment or "center")) or "center"
+	if alignment == "right" then
+		amount.TextXAlignment = Enum.TextXAlignment.Right
+	elseif alignment == "left" then
+		amount.TextXAlignment = Enum.TextXAlignment.Left
+	else
+		amount.TextXAlignment = Enum.TextXAlignment.Center
+	end
     amount.Parent = frame
     
-    -- Add subtle drop shadow effect for depth
-    local shadow = Instance.new("TextLabel")
-    shadow.Name = "Shadow"
-    shadow.Size = amount.Size
-    shadow.Position = UDim2.new(amount.Position.X.Scale, amount.Position.X.Offset + 1, amount.Position.Y.Scale, amount.Position.Y.Offset + 1)
-    shadow.BackgroundTransparency = 1
-    shadow.Text = amount.Text
-    shadow.TextColor3 = Color3.fromRGB(0, 0, 0)
-    shadow.TextTransparency = 0.5
-    shadow.TextScaled = true
-    shadow.Font = Enum.Font.GothamBold
-    shadow.TextXAlignment = Enum.TextXAlignment.Center
-    shadow.ZIndex = amount.ZIndex - 1
-    shadow.Parent = frame
+	-- Optional stroke for amount text
+	if config.amount_config and config.amount_config.stroke then
+		local s = Instance.new("UIStroke")
+		s.Color = config.amount_config.stroke.color or Color3.fromRGB(0, 53, 76)
+		s.Thickness = tonumber(config.amount_config.stroke.thickness or 2)
+		s.Transparency = tonumber(config.amount_config.stroke.transparency or 0)
+		s.Parent = amount
+	end
+	-- Optional gradient for amount text
+    if config.amount_config and config.amount_config.gradient then
+        local g = Instance.new("UIGradient")
+        local grad = config.amount_config.gradient
+        -- Support direct ColorSequence or keypoint table in config
+        if grad.color then
+            g.Color = grad.color
+        elseif grad.keypoints and type(grad.keypoints) == "table" then
+            local kps = {}
+            for _, kp in ipairs(grad.keypoints) do
+                local t = tonumber(kp.time or kp.t or 0)
+                local c = kp.color or kp.c or {r = 255, g = 255, b = 255}
+                local r = (c.r or 255) / 255
+                local gval = (c.g or 255) / 255
+                local b = (c.b or 255) / 255
+                table.insert(kps, ColorSequenceKeypoint.new(t, Color3.new(r, gval, b)))
+            end
+            if #kps > 0 then
+                g.Color = ColorSequence.new(kps)
+            end
+        end
+        if grad.transparency then
+            g.Transparency = grad.transparency
+        end
+        g.Rotation = tonumber(grad.rotation or 0)
+        g.Parent = amount
+    end
+
+	-- Optional subtle shadow (kept for depth if configured)
+	local shadow
+	if not (config.amount_config and config.amount_config.disable_shadow) then
+		shadow = Instance.new("TextLabel")
+		shadow.Name = "Shadow"
+		shadow.Size = amount.Size
+		shadow.Position = UDim2.new(amount.Position.X.Scale, amount.Position.X.Offset + 1, amount.Position.Y.Scale, amount.Position.Y.Offset + 1)
+		shadow.BackgroundTransparency = 1
+		shadow.Text = amount.Text
+		shadow.TextColor3 = Color3.fromRGB(0, 0, 0)
+		shadow.TextTransparency = 0.5
+		shadow.TextScaled = true
+		shadow.Font = amount.Font
+		shadow.TextXAlignment = amount.TextXAlignment
+		shadow.ZIndex = (amount.ZIndex or 1) - 1
+		shadow.Parent = frame
+	end
     
     -- Store reference for updates (include shadow for animations)
-    self.currencyDisplays[config.currency] = {
+	self.currencyDisplays[config.currency] = {
         frame = frame,
         amount = amount,
         shadow = shadow,
         icon = icon
     }
     
-    -- Add subtle floating card hover effect
+	-- Optional plus button (e.g., for premium currencies)
+	if config.plus_button and (config.plus_button.enabled ~= false) then
+		local plusAsset = self:_processAssetId(config.plus_button.asset_id or config.plus_button.icon)
+		if plusAsset then
+			local plus = Instance.new("ImageButton")
+			plus.Name = "Plus"
+			plus.BackgroundTransparency = 1
+			plus.Image = plusAsset
+			-- Size: support scale or pixels
+			local psize = config.plus_button.size or {pxX = 24, pxY = 24}
+			if psize.scale_x or psize.scale_y then
+				plus.Size = UDim2.new(psize.scale_x or 0, 0, psize.scale_y or 0, 0)
+			else
+				plus.Size = UDim2.new(0, psize.pxX or psize.width or 24, 0, psize.pxY or psize.height or 24)
+			end
+			-- Position: default right-center with optional offset
+			local po = config.plus_button.offset or {x = -6, y = 0}
+			plus.AnchorPoint = Vector2.new(1, 0.5)
+			plus.Position = UDim2.new(1, po.x, 0.5, po.y)
+			plus.ZIndex = (amount.ZIndex or 1) + 1
+			plus.Parent = frame
+		end
+	end
+
+	-- Add subtle floating card hover effect
     self:_addHoverEffect(frame)
     
     return frame
@@ -1293,6 +1500,75 @@ function BaseUI:_createMenuButtonElement(config, parent, layoutOrder)
     -- LAYER 3: NOTIFICATION BADGE (Top-right corner or configured position)
     local notification = self:_createButtonNotification(config, contentParent)
     
+    -- OPTIONAL OVERLAY LABEL (MCP-like glyph with gradient + stroke)
+    if config.overlay_label and config.overlay_label.enabled then
+        local ol = Instance.new("TextLabel")
+        ol.Name = "OverlayLabel"
+        ol.BackgroundTransparency = 1
+        ol.Text = config.overlay_label.text or ""
+        ol.TextColor3 = Color3.fromRGB(255,255,255)
+        ol.TextScaled = true
+        -- Fill button unless height_scale provided
+        if config.overlay_label.height_scale then
+            ol.Size = UDim2.new(1, 0, config.overlay_label.height_scale, 0)
+        else
+            ol.Size = UDim2.new(1, 0, 1, 0)
+        end
+        -- Center positioning by default
+        local apx, apy = 0.5, 0.5
+        local psx, psy = 0.5, 0.5
+        local offx, offy = 0, 0
+        if config.overlay_label.position_scale then
+            psx, psy = config.overlay_label.position_scale.x or 0.5, config.overlay_label.position_scale.y or 0.5
+        end
+        if config.overlay_label.position_offset then
+            offx = tonumber(config.overlay_label.position_offset.x or 0) or 0
+            offy = tonumber(config.overlay_label.position_offset.y or 0) or 0
+        end
+        ol.Position = UDim2.new(psx, offx, psy, offy)
+        ol.AnchorPoint = Vector2.new(apx, apy)
+        ol.ZIndex = button.ZIndex + 1
+        ol.Parent = contentParent
+
+        -- Stroke
+        if config.overlay_label.stroke then
+            local s = Instance.new("UIStroke")
+            s.Color = config.overlay_label.stroke.color or Color3.fromRGB(49,64,88)
+            s.Thickness = tonumber(config.overlay_label.stroke.thickness or 2)
+            s.Transparency = tonumber(config.overlay_label.stroke.transparency or 0)
+            s.Parent = ol
+        end
+        -- Gradient
+        if config.overlay_label.gradient then
+            local g = Instance.new("UIGradient")
+            local grad = config.overlay_label.gradient
+            if grad.keypoints then
+                local kps = {}
+                for _, kp in ipairs(grad.keypoints) do
+                    local t = tonumber(kp.t or kp.time or 0)
+                    local c = kp.color or {r=255,g=255,b=255}
+                    table.insert(kps, ColorSequenceKeypoint.new(t, Color3.fromRGB(c.r or 255, c.g or 255, c.b or 255)))
+                end
+                if #kps > 0 then g.Color = ColorSequence.new(kps) end
+            elseif grad.color then
+                g.Color = grad.color
+            end
+            if grad.transparency then g.Transparency = grad.transparency end
+            g.Rotation = tonumber(grad.rotation or 0)
+            g.Parent = ol
+        end
+        -- Aspect ratio + text size constraint
+        if tonumber(config.overlay_label.aspect_ratio or 0) and config.overlay_label.aspect_ratio > 0 then
+            local arc = Instance.new("UIAspectRatioConstraint")
+            arc.AspectRatio = tonumber(config.overlay_label.aspect_ratio)
+            arc.DominantAxis = Enum.DominantAxis.Width
+            arc.Parent = ol
+        end
+        local tsc = Instance.new("UITextSizeConstraint")
+        tsc.MaxTextSize = tonumber(config.overlay_label.text_max_size or 36)
+        tsc.Parent = ol
+    end
+
     -- LAYER 4: TEXT LABEL
     local label = self:_createButtonLabel(config, contentParent)
     -- (Stroke and size constraint are handled inside _createButtonLabel via text_config)
@@ -1485,43 +1761,50 @@ function BaseUI:_createButtonNotification(config, parent)
     notification.BackgroundColor3 = notifConfig.background_color or Color3.fromRGB(255, 0, 0)
     notification.BorderSizePixel = 0
     notification.ZIndex = 16
+    -- Optional rotation (cant the badge)
+    if notifConfig.rotation then
+        notification.Rotation = tonumber(notifConfig.rotation) or 0
+    end
+    -- Support configurable badge size (defaults to 25x25 px)
+    local badgeWidth = (notifConfig.size and (notifConfig.size.pxX or notifConfig.size.width)) or 25
+    local badgeHeight = (notifConfig.size and (notifConfig.size.pxY or notifConfig.size.height)) or 25
     
     -- Position based on config (default: top-right)
     local position = notifConfig.position or "top-right"
     
     -- INSIDE POSITIONS (traditional, within button boundaries)
     if position == "top-right" then
-        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
         notification.Position = UDim2.new(1, -5, 0, 5)
         notification.AnchorPoint = Vector2.new(1, 0)
     elseif position == "top-left" then
-        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
         notification.Position = UDim2.new(0, 5, 0, 5)
         notification.AnchorPoint = Vector2.new(0, 0)
     elseif position == "bottom-right" then
-        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
         notification.Position = UDim2.new(1, -5, 1, -5)
         notification.AnchorPoint = Vector2.new(1, 1)
     elseif position == "bottom-left" then
-        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
         notification.Position = UDim2.new(0, 5, 1, -5)
         notification.AnchorPoint = Vector2.new(0, 1)
         
     -- CORNER POSITIONS (extended outside button boundaries for prominence)
     elseif position == "top-right-corner" then
-        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
         notification.Position = UDim2.new(1, 5, 0, -5)  -- Extends outside
         notification.AnchorPoint = Vector2.new(1, 0)  -- Fixed: Right edge, top edge
     elseif position == "top-left-corner" then
-        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
         notification.Position = UDim2.new(0, -5, 0, -5)  -- Extends outside
         notification.AnchorPoint = Vector2.new(0, 0)  -- Fixed: Left edge, top edge
     elseif position == "bottom-right-corner" then
-        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
         notification.Position = UDim2.new(1, 5, 1, 5)  -- Extends outside
         notification.AnchorPoint = Vector2.new(1, 1)  -- Fixed: Right edge, bottom edge
     elseif position == "bottom-left-corner" then
-        notification.Size = UDim2.new(0, 25, 0, 25)
+        notification.Size = UDim2.new(0, badgeWidth, 0, badgeHeight)
         notification.Position = UDim2.new(0, -5, 1, 5)  -- Extends outside
         notification.AnchorPoint = Vector2.new(0, 1)  -- Fixed: Left edge, bottom edge
     end
@@ -1536,7 +1819,11 @@ function BaseUI:_createButtonNotification(config, parent)
     
     -- Rounded corners for notification
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0.5, 0) -- Perfect circle
+    if notifConfig.corner_radius then
+        corner.CornerRadius = UDim.new(0, tonumber(notifConfig.corner_radius))
+    else
+        corner.CornerRadius = UDim.new(0.5, 0) -- Default: circle
+    end
     corner.Parent = notification
     
     -- Notification text (match MCP naming "Txt")
@@ -1562,6 +1849,33 @@ function BaseUI:_createButtonNotification(config, parent)
     local tsc = Instance.new("UITextSizeConstraint")
     tsc.MaxTextSize = tonumber(notifConfig.text_max_size or 18)
     tsc.Parent = text
+    
+    -- Optional gradient on notification text (parity with MCP)
+    if notifConfig.gradient then
+        local g = Instance.new("UIGradient")
+        local grad = notifConfig.gradient
+        if grad.color then
+            g.Color = grad.color
+        elseif grad.keypoints and type(grad.keypoints) == "table" then
+            local kps = {}
+            for _, kp in ipairs(grad.keypoints) do
+                local t = tonumber(kp.time or kp.t or 0)
+                local c = kp.color or kp.c or {r = 255, g = 255, b = 255}
+                local r = (c.r or 255) / 255
+                local gv = (c.g or 255) / 255
+                local b = (c.b or 255) / 255
+                table.insert(kps, ColorSequenceKeypoint.new(t, Color3.new(r, gv, b)))
+            end
+            if #kps > 0 then
+                g.Color = ColorSequence.new(kps)
+            end
+        end
+        if grad.transparency then
+            g.Transparency = grad.transparency
+        end
+        g.Rotation = tonumber(grad.rotation or 0)
+        g.Parent = text
+    end
     
     return notification
 end
@@ -1776,6 +2090,11 @@ function BaseUI:_processAssetId(value)
     -- Convert number to string if needed
     local valueStr = tostring(value)
     
+    -- Support Roblox thumbnail URLs (rbxthumb) directly
+    if string.match(valueStr, "^rbxthumb://") then
+        return valueStr
+    end
+
     if string.match(valueStr, "^rbxassetid://(%d+)$") then
         return valueStr
     elseif string.match(valueStr, "^%d+$") then
