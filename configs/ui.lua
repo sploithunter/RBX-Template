@@ -863,6 +863,15 @@ local uiConfig = {
             transition = "fade_in_scale",
             sound = "button_click",
             description = "Shows the codes input panel"
+        },
+        
+        -- Egg Hatch Panel Action
+        egg_hatch_action = {
+            type = "show_pane",
+            pane = "imported_egg_hatch_frame",
+            transition = "scale_in_large",
+            sound = "button_click",
+            description = "Shows the egg hatching interface"
         }
     },
     
@@ -1012,7 +1021,8 @@ local uiConfig = {
         
         -- Codes Frame (Modal Dialog) - Imported from MCP
         imported_codes_frame = {
-            enabled = false,
+            enabled = true,  -- Create the frame but start invisible
+            initially_visible = false,  -- Modal pop-up behavior
             position_scale = {x = 0.5, y = 0.5},  -- Center of screen
             size = {scaleX = 1, scaleY = 1},       -- Full screen (modal overlay)
             anchor = "center",
@@ -1120,10 +1130,237 @@ local uiConfig = {
             }
         },
 
+        -- Egg Hatch Frame (Modal Dialog) - Imported from MCP
+        imported_egg_hatch_frame = {
+            enabled = true,  -- Create the frame but start invisible
+            initially_visible = true,  -- Visible while we're working on it
+            position_scale = {x = 0.5, y = 0.5},  -- Center of screen
+            size = {scaleX = 1, scaleY = 1},       -- Full screen (modal overlay)
+            anchor = "center",
+            background = {enabled = false},        -- Transparent overlay
+            layout = {type = "single"},
+            contents = {
+                {type = "egg_hatch_panel", config = {
+                    -- Main ContentFrame background
+                    background_image = "17135013889",  -- ContentFrame background from MCP
+                    size = {scaleX = 0.223615468, scaleY = 0.309764296},  -- From MCP properties
+                    position_scale = {x = 0.5, y = 0.5},  -- Center
+                    anchor = "center",
+                    aspect_ratio = 1.5,  -- Updated aspect ratio for egg hatch panel
+                    
+                    -- Auto Hatch Button (center edge below panel)
+                    auto_hatch_button = {
+                        background_image = "17135255214",  -- Auto Hatch button background (red/green)
+                        position_scale = {x = 0.521, y = 1.112},  -- Center edge below panel
+                        anchor = "center",  -- Center anchor point
+                        size = {scaleX = 0.429906547, scaleY = 0.19927536},  -- From MCP properties
+                        aspect_ratio = 3.345,  -- UI Aspect ratio constraint
+                        text = "Auto Hatch",
+                        text_color = Color3.fromRGB(255, 255, 255),
+                        font = Enum.Font.GothamBold,
+                        text_config = {
+                            position_scale = {x = 0.5, y = 0.5},  -- Center position
+                            anchor = "center",  -- Center anchor
+                            size = {scaleX = 0.9, scaleY = 0.9},  -- 90% of button size
+                            stroke = {
+                                enabled = true,
+                                color = Color3.fromRGB(0, 0, 0),
+                                thickness = 2,
+                                transparency = 0
+                            }
+                        }
+                    },
+                    
+                    -- Open 1 Button (top-right)
+                    open_1_button = {
+                        background_image = "17135109178",  -- Same background as other buttons
+                        position_scale = {x = 0.808, y = 0.453},  -- From actual game position
+                        anchor = "center",  -- Center anchor point
+                        size = {scaleX = 0.287383169, scaleY = 0.177536234},
+                        aspect_ratio = 2.5,  -- UI Aspect ratio constraint
+                        text = "E-Open 1",
+                        text_color = Color3.fromRGB(255, 255, 255),
+                        font = Enum.Font.GothamBold,
+                        text_config = {
+                            position_scale = {x = 0.504753351, y = 0.484140635},
+                            size = {scaleX = 0.863165259, scaleY = 0.476484895},
+                            stroke = {
+                                enabled = true,
+                                color = Color3.fromRGB(0, 0, 0),
+                                thickness = 2,
+                                transparency = 0
+                            }
+                        }
+                    },
+                    
+                    -- Open 3 Button (middle-right)
+                    open_3_button = {
+                        background_image = "17135109178",
+                        position_scale = {x = 0.808411241, y = 0.655797124},  -- From MCP properties
+                        anchor = "center",  -- Center anchor point
+                        size = {scaleX = 0.287383169, scaleY = 0.177536234},
+                        aspect_ratio = 2.5,  -- UI Aspect ratio constraint
+                        text = "E-Open 3",
+                        text_color = Color3.fromRGB(255, 255, 255),
+                        font = Enum.Font.GothamBold,
+                        text_config = {
+                            position_scale = {x = 0.504753351, y = 0.484140635},
+                            size = {scaleX = 0.863165259, scaleY = 0.476484895},
+                            stroke = {
+                                enabled = true,
+                                color = Color3.fromRGB(0, 0, 0),
+                                thickness = 2,
+                                transparency = 0
+                            }
+                        }
+                    },
+                    
+                    -- Open 8 Button (bottom-right)
+                    open_8_button = {
+                        background_image = "17135109178",
+                        position_scale = {x = 0.808411241, y = 0.855072439},  -- From MCP properties
+                        anchor = "center",  -- Center anchor point
+                        size = {scaleX = 0.287383169, scaleY = 0.177536234},
+                        aspect_ratio = 2.5,  -- UI Aspect ratio constraint
+                        text = "E-Open 8",
+                        text_color = Color3.fromRGB(255, 255, 255),
+                        font = Enum.Font.GothamBold,
+                        text_config = {
+                            position_scale = {x = 0.504753351, y = 0.484140635},
+                            size = {scaleX = 0.863165259, scaleY = 0.476484895},
+                            stroke = {
+                                enabled = true,
+                                color = Color3.fromRGB(0, 0, 0),
+                                thickness = 2,
+                                transparency = 0
+                            }
+                        }
+                    },
+                    
+                    -- Currency Display (top-right)
+                    currency_display = {
+                        background_image = "17135040134",  -- Updated currency background from MCP
+                        position_scale = {x = 0.810607493, y = 0.249898493},  -- From MCP properties
+                        anchor = "center",  -- Center anchor point
+                        size = {scaleX = 0.301401883, scaleY = 0.184782609},  -- From MCP properties
+                        aspect_ratio = 2.5,  -- UI Aspect ratio constraint
+                        icon = "rbxassetid://85121058596566",  -- Crystal asset ID (crystals)
+                        amount = "2.5K",  -- Default amount
+                        icon_config = {
+                            size = {scale_x = 0.3, scale_y = 0.8}
+                        },
+                        amount_config = {
+                            alignment = "center",
+                            color = Color3.fromRGB(255, 255, 255),
+                            font = Enum.Font.FredokaOne,
+                            stroke = { color = Color3.fromRGB(102, 56, 0), thickness = 2.5, transparency = 0 },
+                            gradient = {
+                                rotation = -90,
+                                keypoints = {
+                                    { t = 0, color = { r = 255, g = 191, b = 0 } },
+                                    { t = 1, color = { r = 255, g = 247, b = 0 } }
+                                },
+                                transparency = NumberSequence.new{
+                                    NumberSequenceKeypoint.new(0, 0),
+                                    NumberSequenceKeypoint.new(1, 0)
+                                }
+                            }
+                        }
+                    },
+                    
+                    -- Pet Grid Holder (center area)
+                    pet_grid_holder = {
+                        background_image = "17135022231",  -- Updated holder background from MCP
+                        position_scale = {x = 0.07, y = 0.55},  -- Left-center with 0.07 and 0.05 scootch
+                        anchor = "center-left",
+                        size = {scaleX = 0.67, scaleY = 0.8},  -- Updated size from MCP
+                        
+                        -- Grid configuration
+                        grid_config = {
+                            columns = 3,  -- 3 columns across
+                            rows = 2,     -- 2 rows down
+                            spacing = 5,
+                            padding = {top = 10, bottom = 10, left = 10, right = 10}
+                        },
+                        
+                        -- Template for pet items
+                        pet_template = {
+                            background_image = "17135109178",  -- Pet item background
+                            size = {scaleX = 0.2, scaleY = 0.25},  -- Individual pet item size
+                            
+                            -- Pet icon
+                            pet_icon = {
+                                position_scale = {x = 0.5, y = 0.4},
+                                size = {scaleX = 0.6, scaleY = 0.6},
+                                image = "🐾"  -- Default pet icon
+                            },
+                            
+                            -- Pet name
+                            pet_name = {
+                                position_scale = {x = 0.487804294, y = 0.748752713},
+                                size = {scaleX = 0.659775436, scaleY = 0.302005261},
+                                text = "Bear",  -- Default pet name
+                                color = Color3.fromRGB(255, 255, 255),
+                                font = Enum.Font.GothamBold,
+                                stroke = {
+                                    enabled = true,
+                                    color = Color3.fromRGB(0, 0, 0),
+                                    thickness = 2,
+                                    transparency = 0
+                                }
+                            },
+                            
+                            -- Chance percentage
+                            chance = {
+                                position_scale = {x = 0.5, y = 0.9},
+                                size = {scaleX = 0.8, scaleY = 0.2},
+                                text = "25%",  -- Default chance
+                                color = Color3.fromRGB(255, 255, 0),  -- Yellow for chance
+                                font = Enum.Font.GothamBold,
+                                stroke = {
+                                    enabled = true,
+                                    color = Color3.fromRGB(0, 0, 0),
+                                    thickness = 1,
+                                    transparency = 0
+                                }
+                            },
+                            
+                            -- X button (close/remove)
+                            x_button = {
+                                position_scale = {x = 0.9, y = 0.1},
+                                size = {scaleX = 0.2, scaleY = 0.2},
+                                image = "❌",  -- X icon
+                                background_color = Color3.fromRGB(255, 0, 0)
+                            }
+                        },
+                        
+                        -- Auto Delete counter
+                        auto_delete = {
+                            background_image = "17135013889",
+                            position_scale = {x = 0.5, y = 0.95},
+                            size = {scaleX = 0.3, scaleY = 0.1},
+                            text = "Auto: 5",  -- Default auto delete count
+                            text_config = {
+                                position_scale = {x = 0.5, y = 0.5},
+                                size = {scaleX = 0.8, scaleY = 0.8},
+                                color = Color3.fromRGB(255, 255, 255),
+                                font = Enum.Font.GothamBold,
+                                stroke = {
+                                    enabled = true,
+                                    color = Color3.fromRGB(0, 0, 0),
+                                    thickness = 2,
+                                    transparency = 0
+                                }
+                            }
+                        }
+                    }
+                }}
+            }
+        },
         
         -- Menu Buttons Pane (bottom-left) - Auto-sizing grid that adapts to content
         menu_buttons_pane = {
-            enabled = false,
+            enabled = false,  -- Disabled - not needed for current game
             position = "bottom-left", 
             offset = {x = 10, y = -10}, -- restore original placement
             size = {width = 280, height = 140}, -- Container size - buttons will auto-fit
@@ -1131,7 +1368,7 @@ local uiConfig = {
             layout = {
                 type = "grid",
                 auto_size = true, -- Enable automatic sizing based on content
-                button_count = 7, -- Exact number of buttons for calculation
+                button_count = 8, -- Exact number of buttons for calculation (updated for new egg hatch button)
                 padding = {top = 5, bottom = 5, left = 5, right = 5} -- Padding for calculations
             },
             contents = {
@@ -1230,6 +1467,15 @@ local uiConfig = {
                     icon = "🔑", 
                     text = "Codes", 
                     action = "codes_action"
+                    -- 🎨 100% global defaults = instant professional styling!
+                }},
+                
+                -- 🥚 EGG HATCH TEST: Test button for egg hatch frame
+                {type = "menu_button", config = {
+                    name = "EggHatch", 
+                    icon = "🥚", 
+                    text = "Egg Hatch", 
+                    action = "egg_hatch_action"
                     -- 🎨 100% global defaults = instant professional styling!
                 }}
             }

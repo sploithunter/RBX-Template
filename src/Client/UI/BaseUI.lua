@@ -674,6 +674,11 @@ function BaseUI:_createPane(paneName, config)
     paneContainer.ZIndex = 12
     paneContainer.Parent = self.mainFrame
     
+    -- Set initial visibility based on configuration
+    if config.initially_visible ~= nil then
+        paneContainer.Visible = config.initially_visible
+    end
+    
     -- Optional aspect ratio constraint
     if config.aspect and tonumber(config.aspect.ratio) then
         local arc = Instance.new("UIAspectRatioConstraint")
@@ -975,6 +980,9 @@ function BaseUI:_createPaneElement(contentConfig, parent, layoutOrder, layoutCon
         
     elseif elementType == "text_label_with_depth" then
         return self:_createTextLabelWithDepthElement(config, parent)
+        
+    elseif elementType == "egg_hatch_panel" then
+        return self:_createEggHatchPanelElement(config, parent)
         
     else
         self.logger:warn("Unknown pane element type:", elementType)
@@ -3257,6 +3265,733 @@ function BaseUI:_createTextLabelWithDepthElement(config, parent)
     return mainLabel
 end
 
+-- Create Egg Hatch Panel Element (Complex Modal Dialog)
+function BaseUI:_createEggHatchPanelElement(config, parent)
+    print("🔍 Creating egg hatch panel with config:", config)  -- Debug: Panel config
+    -- Create main panel container
+    local panel = Instance.new("ImageLabel")
+    panel.Name = "EggHatchPanel"
+    panel.BackgroundTransparency = 1
+    panel.BorderSizePixel = 0
+    
+    -- Set panel background image
+    if config.background_image then
+        panel.Image = self:_processAssetId(config.background_image)
+        panel.ScaleType = Enum.ScaleType.Stretch
+        panel.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    end
+    
+    -- Set panel size and position
+    if config.size then
+        local sx = tonumber(config.size.scaleX or 0)
+        local sy = tonumber(config.size.scaleY or 0)
+        panel.Size = UDim2.new(sx, 0, sy, 0)
+    end
+    
+    if config.position_scale then
+        local px = tonumber(config.position_scale.x or 0.5)
+        local py = tonumber(config.position_scale.y or 0.5)
+        panel.Position = UDim2.new(px, 0, py, 0)
+    end
+    
+    if config.anchor then
+        local anchorMap = {
+            ["top-left"] = Vector2.new(0, 0),
+            ["top-center"] = Vector2.new(0.5, 0),
+            ["top-right"] = Vector2.new(1, 0),
+            ["center-left"] = Vector2.new(0, 0.5),
+            ["center"] = Vector2.new(0.5, 0.5),
+            ["center-right"] = Vector2.new(1, 0.5),
+            ["bottom-left"] = Vector2.new(0, 1),
+            ["bottom-center"] = Vector2.new(0.5, 1),
+            ["bottom-right"] = Vector2.new(1, 1)
+        }
+        panel.AnchorPoint = anchorMap[config.anchor] or Vector2.new(0.5, 0.5)
+    end
+    
+    -- Add aspect ratio constraint if specified
+    if config.aspect_ratio then
+        local arc = Instance.new("UIAspectRatioConstraint")
+        arc.AspectRatio = tonumber(config.aspect_ratio)
+        arc.DominantAxis = Enum.DominantAxis.Width
+        arc.Parent = panel
+    end
+    
+    panel.ZIndex = 20  -- High z-index for modal
+    panel.Parent = parent
+    
+    -- Create Auto Hatch Button
+    if config.auto_hatch_button then
+        local autoHatch = self:_createEggHatchButton(config.auto_hatch_button, panel, "AutoHatch")
+        -- Positioning is handled within _createEggHatchButton based on config
+    end
+    
+    -- Create Open 1 Button
+    if config.open_1_button then
+        local open1 = self:_createEggHatchButton(config.open_1_button, panel, "Open1")
+        -- Positioning is handled within _createEggHatchButton based on config
+    end
+    
+    -- Create Open 3 Button
+    if config.open_3_button then
+        local open3 = self:_createEggHatchButton(config.open_3_button, panel, "Open3")
+        -- Positioning is handled within _createEggHatchButton based on config
+    end
+    
+    -- Create Open 8 Button
+    if config.open_8_button then
+        local open8 = self:_createEggHatchButton(config.open_8_button, panel, "Open8")
+        -- Positioning is handled within _createEggHatchButton based on config
+    end
+    
+    -- Create Currency Display
+    print("🔍 Checking for currency_display config:", config.currency_display)  -- Debug: Check if config exists
+    if config.currency_display then
+        print("🔍 Found currency_display config, calling _createEggHatchCurrency")  -- Debug: Config found
+        local currency = self:_createEggHatchCurrency(config.currency_display, panel)
+        -- Positioning is handled within _createEggHatchCurrency based on config
+    else
+        print("🔍 No currency_display config found")  -- Debug: No config
+    end
+    
+    -- Create Pet Grid Holder (positioning handled internally via semantic labels)
+    if config.pet_grid_holder then
+        self:_createEggHatchPetGrid(config.pet_grid_holder, panel)
+    end
+    
+    -- No close button needed for proximity-driven egg hatch panel
+    
+    return panel
+end
+
+-- Create egg hatch currency display
+function BaseUI:_createEggHatchCurrency(currencyConfig, parent)
+    print("🔍 Creating egg hatch currency with config:", currencyConfig)  -- Debug: Check config
+    
+    local frame = Instance.new("Frame")
+    frame.Name = "CurrencyDisplay"
+    frame.BackgroundTransparency = 1
+    frame.BorderSizePixel = 0
+    frame.ZIndex = 21
+    frame.Parent = parent
+    
+    -- Set position and anchor
+    if currencyConfig.position_scale then
+        local anchorX, anchorY = 0.5, 0.5  -- Default center anchor
+        if currencyConfig.anchor == "center" then
+            anchorX, anchorY = 0.5, 0.5
+        elseif currencyConfig.anchor == "center-left" then
+            anchorX, anchorY = 0, 0.5
+        elseif currencyConfig.anchor == "center-right" then
+            anchorX, anchorY = 1, 0.5
+        end
+        
+        frame.AnchorPoint = Vector2.new(anchorX, anchorY)
+        frame.Position = UDim2.new(currencyConfig.position_scale.x, 0, currencyConfig.position_scale.y, 0)
+    end
+    
+    -- Set size
+    if currencyConfig.size then
+        local sx = tonumber(currencyConfig.size.scaleX or 0)
+        local sy = tonumber(currencyConfig.size.scaleY or 0)
+        frame.Size = UDim2.new(sx, 0, sy, 0)
+    end
+    
+    -- Add aspect ratio constraint
+    if currencyConfig.aspect_ratio then
+        local arc = Instance.new("UIAspectRatioConstraint")
+        arc.AspectRatio = currencyConfig.aspect_ratio
+        arc.DominantAxis = Enum.DominantAxis.Width
+        arc.Parent = frame
+    end
+    
+    -- Create background image
+    if currencyConfig.background_image then
+        local bgImage = Instance.new("ImageLabel")
+        bgImage.Name = "Background"
+        bgImage.BackgroundTransparency = 1
+        bgImage.BorderSizePixel = 0
+        bgImage.Image = self:_processAssetId(currencyConfig.background_image)
+        bgImage.ScaleType = Enum.ScaleType.Stretch
+        bgImage.Size = UDim2.new(1, 0, 1, 0)
+        bgImage.ZIndex = 22
+        bgImage.Parent = frame
+    end
+    
+    -- Create icon
+    if currencyConfig.icon then
+        local iconValue = currencyConfig.icon
+        print("🔍 Processing icon value:", iconValue)  -- Debug: Check icon value
+        
+        local assetId = nil
+        
+        -- Check if it's already a full asset ID
+        if string.match(iconValue, "^rbxassetid://(%d+)$") then
+            assetId = iconValue
+            print("🔍 Found full asset ID:", assetId)  -- Debug: Full asset ID
+        -- Check if it's just a number (asset ID)
+        elseif string.match(iconValue, "^%d+$") then
+            assetId = "rbxassetid://" .. iconValue
+            print("🔍 Created asset ID from number:", assetId)  -- Debug: Created asset ID
+        end
+        
+        if assetId then
+            print("🔍 Creating ImageLabel with asset ID:", assetId)  -- Debug: Creating ImageLabel
+            -- Create ImageLabel for asset ID
+            local icon = Instance.new("ImageLabel")
+            icon.Name = "Icon"
+            icon.BackgroundTransparency = 1
+            icon.BorderSizePixel = 0
+            icon.Image = assetId
+            icon.ScaleType = Enum.ScaleType.Stretch
+            icon.ZIndex = 23
+            icon.Parent = frame
+            
+            -- Set icon size and position
+            local iconConfig = currencyConfig.icon_config or {}
+            local iconSize = iconConfig.size or {scale_x = 0.3, scale_y = 0.8}
+            icon.Size = UDim2.new(iconSize.scale_x or 0.3, 0, iconSize.scale_y or 0.8, 0)
+            icon.AnchorPoint = Vector2.new(0, 0.5)
+            icon.Position = UDim2.new(0.05, 0, 0.5, 0)  -- Left side with minimal margin for proper left-justification
+        else
+            print("🔍 Creating TextLabel for emoji/text:", iconValue)  -- Debug: Creating TextLabel
+            -- Create TextLabel for emoji/text
+            local textIcon = Instance.new("TextLabel")
+            textIcon.Name = "Icon"
+            textIcon.BackgroundTransparency = 1
+            textIcon.BorderSizePixel = 0
+            textIcon.Text = iconValue
+            textIcon.Font = Enum.Font.GothamBold
+            textIcon.TextScaled = true
+            textIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+            textIcon.ZIndex = 23
+            textIcon.Parent = frame
+            
+            -- Set icon size and position for text icon
+            local iconConfig = currencyConfig.icon_config or {}
+            local iconSize = iconConfig.size or {scale_x = 0.3, scale_y = 0.8}
+            textIcon.Size = UDim2.new(iconSize.scale_x or 0.3, 0, iconSize.scale_y or 0.8, 0)
+            textIcon.AnchorPoint = Vector2.new(0, 0.5)
+            textIcon.Position = UDim2.new(0.1, 0, 0.5, 0)  -- Left side with small margin
+        end
+    end
+    
+    -- Create amount text
+    local amountText = Instance.new("TextLabel")
+    amountText.Name = "Amount"
+    amountText.BackgroundTransparency = 1
+    amountText.BorderSizePixel = 0
+    amountText.Text = currencyConfig.amount or "2.5K"
+    amountText.ZIndex = 23
+    amountText.Parent = frame
+    
+    -- Apply amount_config styling
+    local amountConfig = currencyConfig.amount_config or {}
+    print("Amount config:", amountConfig)  -- Debug: Check if amount_config exists
+    
+    if amountConfig.font then
+        amountText.Font = amountConfig.font
+    else
+        amountText.Font = Enum.Font.FredokaOne  -- Default font
+    end
+    
+    if amountConfig.color then
+        amountText.TextColor3 = amountConfig.color
+    else
+        amountText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end
+    
+    -- Apply stroke if configured
+    if amountConfig.stroke then
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = amountConfig.stroke.color or Color3.fromRGB(0, 0, 0)
+        stroke.Thickness = amountConfig.stroke.thickness or 2
+        stroke.Transparency = amountConfig.stroke.transparency or 0
+        stroke.Parent = amountText
+    end
+    
+    -- Apply gradient if configured
+    if amountConfig.gradient then
+        print("🔍 Applying gradient to amount text")  -- Debug: Gradient found
+        local gradient = Instance.new("UIGradient")
+        gradient.Rotation = amountConfig.gradient.rotation or 0
+        
+        -- Convert keypoints to ColorSequence
+        if amountConfig.gradient.keypoints then
+            print("🔍 Processing gradient keypoints:", amountConfig.gradient.keypoints)  -- Debug: Keypoints
+            local keypoints = {}
+            for _, kp in ipairs(amountConfig.gradient.keypoints) do
+                local color = Color3.fromRGB(kp.color.r, kp.color.g, kp.color.b)
+                table.insert(keypoints, ColorSequenceKeypoint.new(kp.t, color))
+            end
+            gradient.Color = ColorSequence.new(keypoints)
+            print("🔍 Created ColorSequence with", #keypoints, "keypoints")  -- Debug: Keypoints count
+        end
+        
+        -- Apply transparency if configured
+        if amountConfig.gradient.transparency then
+            gradient.Transparency = amountConfig.gradient.transparency
+        end
+        
+        gradient.Parent = amountText
+        print("🔍 Applied gradient to amount text:", amountText.Text)  -- Debug: Gradient applied
+    else
+        print("🔍 No gradient found in amount_config")  -- Debug: No gradient
+    end
+    
+    -- Position amount text on right side
+    amountText.AnchorPoint = Vector2.new(1, 0.5)
+    amountText.Position = UDim2.new(0.9, 0, 0.5, 0)  -- Right side with small margin
+    amountText.Size = UDim2.new(0.6, 0, 0.8, 0)  -- Take up most of the right side
+    
+    -- Apply text scaling
+    amountText.TextScaled = true
+    
+    return frame
+end
+
+-- Create individual egg hatch button
+function BaseUI:_createEggHatchButton(buttonConfig, parent, buttonName)
+    local button = Instance.new("ImageButton")
+    button.Name = buttonName
+    button.BackgroundTransparency = 1
+    button.BorderSizePixel = 0
+    
+    -- Set button background image
+    if buttonConfig.background_image then
+        button.Image = self:_processAssetId(buttonConfig.background_image)
+        button.ScaleType = Enum.ScaleType.Stretch
+        button.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    end
+    
+    -- Set button position and anchor
+    if buttonConfig.position_scale then
+        local anchorX, anchorY = 0.5, 0.5  -- Default center anchor
+        if buttonConfig.anchor == "center" then
+            anchorX, anchorY = 0.5, 0.5
+        elseif buttonConfig.anchor == "center-left" then
+            anchorX, anchorY = 0, 0.5
+        elseif buttonConfig.anchor == "center-right" then
+            anchorX, anchorY = 1, 0.5
+        end
+        
+        button.AnchorPoint = Vector2.new(anchorX, anchorY)
+        button.Position = UDim2.new(buttonConfig.position_scale.x, 0, buttonConfig.position_scale.y, 0)
+    end
+    
+    -- Set button size
+    if buttonConfig.size then
+        local sx = tonumber(buttonConfig.size.scaleX or 0)
+        local sy = tonumber(buttonConfig.size.scaleY or 0)
+        button.Size = UDim2.new(sx, 0, sy, 0)
+    end
+    
+    button.ZIndex = 21
+    button.Parent = parent
+    
+    -- Add aspect ratio constraint
+    local arc = Instance.new("UIAspectRatioConstraint")
+    arc.AspectRatio = buttonConfig.aspect_ratio or 1.6  -- Use config aspect ratio or default
+    arc.DominantAxis = Enum.DominantAxis.Width
+    arc.Parent = button
+    
+    -- Create text label
+    if buttonConfig.text then
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Name = "TextLabel"
+        
+        -- Set text label position and anchor
+        if buttonConfig.text_config then
+            local textAnchorX, textAnchorY = 0.5, 0.5  -- Default center anchor
+            if buttonConfig.text_config.anchor == "center" then
+                textAnchorX, textAnchorY = 0.5, 0.5
+            elseif buttonConfig.text_config.anchor == "center-left" then
+                textAnchorX, textAnchorY = 0, 0.5
+            elseif buttonConfig.text_config.anchor == "center-right" then
+                textAnchorX, textAnchorY = 1, 0.5
+            end
+            
+            textLabel.AnchorPoint = Vector2.new(textAnchorX, textAnchorY)
+            textLabel.Position = UDim2.new(buttonConfig.text_config.position_scale.x, 0, buttonConfig.text_config.position_scale.y, 0)
+            
+            -- Set size from config
+            if buttonConfig.text_config.size then
+                local sx = tonumber(buttonConfig.text_config.size.scaleX or 1)
+                local sy = tonumber(buttonConfig.text_config.size.scaleY or 1)
+                textLabel.Size = UDim2.new(sx, 0, sy, 0)
+            else
+                textLabel.Size = UDim2.new(1, 0, 1, 0)  -- Default full size
+            end
+        else
+            textLabel.Size = UDim2.new(1, 0, 1, 0)
+            textLabel.Position = UDim2.new(0, 0, 0, 0)
+        end
+        
+        textLabel.BackgroundTransparency = 1
+        textLabel.Text = buttonConfig.text
+        textLabel.TextColor3 = buttonConfig.text_color or Color3.fromRGB(255, 255, 255)
+        textLabel.TextScaled = true
+        textLabel.Font = buttonConfig.font or Enum.Font.GothamBold
+        textLabel.ZIndex = 22
+        textLabel.Parent = button
+        
+        -- Add stroke if configured
+        if buttonConfig.text_config and buttonConfig.text_config.stroke then
+            local stroke = Instance.new("UIStroke")
+            stroke.Color = buttonConfig.text_config.stroke.color or Color3.fromRGB(0, 0, 0)
+            stroke.Thickness = buttonConfig.text_config.stroke.thickness or 2
+            stroke.Transparency = buttonConfig.text_config.stroke.transparency or 0
+            stroke.Parent = textLabel
+        end
+    end
+    
+    -- Add click handler
+    button.Activated:Connect(function()
+        self:_onEggHatchButtonClicked(buttonName)
+    end)
+    
+    return button
+end
+
+-- Duplicate _createEggHatchCurrency implementation removed. Earlier definition
+-- (above) is the single source of truth and supports ImageLabel icons and
+-- gradient-styled amount text.
+
+-- Create pet grid holder
+function BaseUI:_createEggHatchPetGrid(gridConfig, parent)
+    local gridHolder = Instance.new("ImageLabel")
+    gridHolder.Name = "PetGridHolder"
+    gridHolder.BackgroundTransparency = 1
+    gridHolder.BorderSizePixel = 0
+    
+    -- Set background image
+    if gridConfig.background_image then
+        gridHolder.Image = self:_processAssetId(gridConfig.background_image)
+        gridHolder.ScaleType = Enum.ScaleType.Stretch
+        gridHolder.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    end
+    
+    -- Set size
+    if gridConfig.size then
+        local sx = tonumber(gridConfig.size.scaleX or 0)
+        local sy = tonumber(gridConfig.size.scaleY or 0)
+        gridHolder.Size = UDim2.new(sx, 0, sy, 0)
+    end
+    
+    -- Semantic positioning for Holder (default: left_center)
+    do
+        local anchorX, anchorY, posX, posY = 0.5, 0.5, 0.5, 0.5
+        
+        -- Check if explicit position_scale is provided
+        if gridConfig.position_scale then
+            -- Use explicit positioning from config
+            anchorX, anchorY = 0, 0.5  -- Left-center anchor
+            posX = gridConfig.position_scale.x or 0
+            posY = gridConfig.position_scale.y or 0.5
+            print("[EggHatch] Using explicit position_scale:", posX, posY)
+        else
+            -- Fall back to semantic positioning
+            local kind = (gridConfig.position_kind or "left_center")
+            if kind == "left_center" then
+                anchorX, anchorY, posX, posY = 0, 0.5, 0, 0.5
+            elseif kind == "center" then
+                anchorX, anchorY, posX, posY = 0.5, 0.5, 0.5, 0.5
+            elseif kind == "top_left" then
+                anchorX, anchorY, posX, posY = 0, 0, 0, 0
+            elseif kind == "top_center" then
+                anchorX, anchorY, posX, posY = 0.5, 0, 0.5, 0
+            elseif kind == "bottom_left" then
+                anchorX, anchorY, posX, posY = 0, 1, 0, 1
+            elseif kind == "bottom_center" then
+                anchorX, anchorY, posX, posY = 0.5, 1, 0.5, 1
+            end
+            print("[EggHatch] Using semantic positioning:", kind, "Anchor:", anchorX, anchorY, "Position:", posX, posY)
+        end
+        
+        gridHolder.AnchorPoint = Vector2.new(anchorX, anchorY)
+        gridHolder.Position = UDim2.new(posX, 0, posY, 0)
+        print("[EggHatch] Final Holder Anchor:", gridHolder.AnchorPoint, "Position:", gridHolder.Position)
+    end
+    
+    gridHolder.ZIndex = 21
+    gridHolder.Parent = parent
+
+    -- Match MCP structure: Holder has a UIAspectRatioConstraint
+    do
+        local aspectRatioValue
+        if gridConfig.aspect_ratio then
+            aspectRatioValue = tonumber(gridConfig.aspect_ratio)
+        elseif gridConfig.aspect and tonumber(gridConfig.aspect.ratio) then
+            aspectRatioValue = tonumber(gridConfig.aspect.ratio)
+        end
+        local holderArc = Instance.new("UIAspectRatioConstraint")
+        holderArc.AspectRatio = aspectRatioValue or 1.11
+        holderArc.DominantAxis = Enum.DominantAxis.Width
+        holderArc.Parent = gridHolder
+    end
+    
+    -- Create inner Grid frame (mirrors MCP hierarchy: Holder -> Grid -> UIGridLayout + Template)
+    local gridFrame = Instance.new("Frame")
+    gridFrame.Name = "Grid"
+    gridFrame.BackgroundTransparency = 1
+    gridFrame.Size = UDim2.new(0.86, 0, 0.7, 0)  -- Reduced height to make room for auto delete button
+    -- Adjusted position to accommodate auto delete button below
+    gridFrame.Position = UDim2.new(0.07, 0, 0.4, 0)
+    gridFrame.AnchorPoint = Vector2.new(0, 0.5)
+    print("[EggHatch] Grid frame Anchor:", gridFrame.AnchorPoint, "Position:", gridFrame.Position)
+    gridFrame.ZIndex = 22
+    gridFrame.Parent = gridHolder
+
+    -- Create grid layout under Grid frame
+    if gridConfig.grid_config then
+        local gridLayout = Instance.new("UIGridLayout")
+        
+        -- Calculate cell size based on columns and rows
+        local columns = gridConfig.grid_config.columns or 3
+        local rows = gridConfig.grid_config.rows or 2
+        local spacing = gridConfig.grid_config.spacing or 5
+        
+        -- Calculate cell size to fit the specified grid
+        local cellWidth = (1.0 - (spacing * (columns - 1) / 100)) / columns
+        local cellHeight = (1.0 - (spacing * (rows - 1) / 100)) / rows
+        
+        gridLayout.CellSize = UDim2.new(cellWidth, 0, cellHeight, 0)
+        gridLayout.CellPadding = UDim2.new(0, spacing, 0, spacing)
+        gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        gridLayout.FillDirection = Enum.FillDirection.Horizontal
+        gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+        gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+        gridLayout.Parent = gridFrame
+        
+        print("[EggHatch] Grid layout: columns=", columns, "rows=", rows, "cellSize=", cellWidth, cellHeight)
+
+        -- Only test with 6 template items (spec: max 6 pets)
+        local testCount = 6
+        for i = 1, testCount do
+            local petItem = self:_createPetItem(gridConfig.pet_template, gridFrame, i)
+            if petItem then
+                petItem.LayoutOrder = i
+            end
+        end
+    end
+    
+    -- Auto delete counter removed - was a mistake
+    
+    -- Create auto delete image label (below the grid but inside the holder)
+    local autoDeleteLabel = Instance.new("ImageLabel")
+    autoDeleteLabel.Name = "AutoDelete"
+    autoDeleteLabel.Size = UDim2.new(0.917012453, 0, 0.170506909, 0)  -- From MCP
+    autoDeleteLabel.Position = UDim2.new(0.497925311, 0, 0.880184293, 0)  -- From MCP
+    autoDeleteLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    autoDeleteLabel.BackgroundTransparency = 1
+    autoDeleteLabel.BorderSizePixel = 0
+    autoDeleteLabel.Image = self:_processAssetId("17135086824")  -- From MCP
+    autoDeleteLabel.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    autoDeleteLabel.ImageTransparency = 0
+    autoDeleteLabel.ZIndex = 22
+    autoDeleteLabel.Parent = gridHolder
+    
+    -- Add aspect ratio constraint
+    local autoDeleteArc = Instance.new("UIAspectRatioConstraint")
+    autoDeleteArc.AspectRatio = 5.7  -- Correct aspect ratio from MCP
+    autoDeleteArc.DominantAxis = Enum.DominantAxis.Width
+    autoDeleteArc.Parent = autoDeleteLabel
+    
+    -- Create text label with stroke
+    local autoDeleteText = Instance.new("TextLabel")
+    autoDeleteText.Name = "Amt"
+    autoDeleteText.Size = UDim2.new(0.937407494, 0, 0.515629351, 0)  -- From MCP
+    autoDeleteText.Position = UDim2.new(0.497182995, 0, 0.492580622, 0)  -- From MCP
+    autoDeleteText.AnchorPoint = Vector2.new(0.5, 0.5)
+    autoDeleteText.BackgroundTransparency = 1
+    autoDeleteText.BorderSizePixel = 0
+    autoDeleteText.Text = "Click any Pet to AUTO Delete!"
+    autoDeleteText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    autoDeleteText.TextTransparency = 0
+    autoDeleteText.TextScaled = true
+    autoDeleteText.Font = Enum.Font.GothamBold
+    autoDeleteText.ZIndex = 23
+    autoDeleteText.Parent = autoDeleteLabel
+    
+    -- Add UI stroke
+    local autoDeleteStroke = Instance.new("UIStroke")
+    autoDeleteStroke.Color = Color3.fromRGB(118, 63, 0)  -- From MCP: 0.462745, 0.247059, 0
+    autoDeleteStroke.Transparency = 0
+    autoDeleteStroke.Parent = autoDeleteText
+    
+    return gridHolder
+end
+
+-- Create individual pet item
+function BaseUI:_createPetItem(templateConfig, parent, index)
+    local petItem = Instance.new("ImageButton")
+    petItem.Name = "PetItem" .. index
+    petItem.BackgroundTransparency = 1
+    petItem.BorderSizePixel = 0
+    
+    -- Set background image
+    if templateConfig.background_image then
+        petItem.Image = self:_processAssetId(templateConfig.background_image)
+        petItem.ScaleType = Enum.ScaleType.Stretch
+        petItem.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    end
+    
+    -- Set size
+    if templateConfig.size then
+        local sx = tonumber(templateConfig.size.scaleX or 0)
+        local sy = tonumber(templateConfig.size.scaleY or 0)
+        petItem.Size = UDim2.new(sx, 0, sy, 0)
+    end
+    
+    petItem.ZIndex = 22
+    petItem.Parent = parent
+    
+    -- Add aspect ratio constraint
+    local arc = Instance.new("UIAspectRatioConstraint")
+    arc.AspectRatio = 1  -- Updated aspect ratio for pet items
+    arc.DominantAxis = Enum.DominantAxis.Width
+    arc.Parent = petItem
+    
+    -- Create pet icon
+    if templateConfig.pet_icon then
+        local icon = Instance.new("TextLabel")
+        icon.Name = "PetIcon"
+        icon.Size = UDim2.new(0.6, 0, 0.6, 0)
+        icon.Position = UDim2.new(0.2, 0, 0.1, 0)
+        icon.BackgroundTransparency = 1
+        icon.Text = templateConfig.pet_icon.image or "🐾"
+        icon.TextScaled = true
+        icon.Font = Enum.Font.GothamBold
+        icon.ZIndex = 23
+        icon.Parent = petItem
+    end
+    
+    -- Create pet name
+    if templateConfig.pet_name then
+        local name = Instance.new("TextLabel")
+        name.Name = "PetName"
+        name.Size = UDim2.new(0.8, 0, 0.2, 0)
+        name.Position = UDim2.new(0.1, 0, 0.75, 0)
+        name.BackgroundTransparency = 1
+        name.Text = templateConfig.pet_name.text or "Pet"
+        name.TextColor3 = templateConfig.pet_name.color or Color3.fromRGB(255, 255, 255)
+        name.TextScaled = true
+        name.Font = templateConfig.pet_name.font or Enum.Font.GothamBold
+        name.ZIndex = 23
+        name.Parent = petItem
+        
+        -- Add stroke if configured
+        if templateConfig.pet_name.stroke then
+            local stroke = Instance.new("UIStroke")
+            stroke.Color = templateConfig.pet_name.stroke.color or Color3.fromRGB(0, 0, 0)
+            stroke.Thickness = templateConfig.pet_name.stroke.thickness or 2
+            stroke.Transparency = templateConfig.pet_name.stroke.transparency or 0
+            stroke.Parent = name
+        end
+    end
+    
+    -- Create chance percentage
+    if templateConfig.chance then
+        local chance = Instance.new("TextLabel")
+        chance.Name = "Chance"
+        chance.Size = UDim2.new(0.8, 0, 0.15, 0)
+        chance.Position = UDim2.new(0.1, 0, 0.9, 0)
+        chance.BackgroundTransparency = 1
+        chance.Text = templateConfig.chance.text or "25%"
+        chance.TextColor3 = templateConfig.chance.color or Color3.fromRGB(255, 255, 0)
+        chance.TextScaled = true
+        chance.Font = templateConfig.chance.font or Enum.Font.GothamBold
+        chance.ZIndex = 23
+        chance.Parent = petItem
+        
+        -- Add stroke if configured
+        if templateConfig.chance.stroke then
+            local stroke = Instance.new("UIStroke")
+            stroke.Color = templateConfig.chance.stroke.color or Color3.fromRGB(0, 0, 0)
+            stroke.Thickness = templateConfig.chance.stroke.thickness or 1
+            stroke.Transparency = templateConfig.chance.stroke.transparency or 0
+            stroke.Parent = chance
+        end
+    end
+    
+    -- Create X button
+    if templateConfig.x_button then
+        local xButton = Instance.new("TextButton")
+        xButton.Name = "XButton"
+        xButton.Size = UDim2.new(0.2, 0, 0.2, 0)
+        xButton.Position = UDim2.new(0.8, 0, 0, 0)
+        xButton.BackgroundColor3 = templateConfig.x_button.background_color or Color3.fromRGB(255, 0, 0)
+        xButton.Text = templateConfig.x_button.image or "❌"
+        xButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        xButton.TextScaled = true
+        xButton.Font = Enum.Font.GothamBold
+        xButton.ZIndex = 24
+        xButton.Parent = petItem
+        
+        -- Add corner radius
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0.5, 0)
+        corner.Parent = xButton
+        
+        -- Add click handler
+        xButton.Activated:Connect(function()
+            self:_onPetItemRemoveClicked(petItem, index)
+        end)
+    end
+    
+    return petItem
+end
+
+-- Egg Hatch Event Handlers
+function BaseUI:_onEggHatchButtonClicked(buttonName)
+    self.logger:info("Egg hatch button clicked:", buttonName)
+    
+    -- Handle different button actions
+    if buttonName == "AutoHatch" then
+        -- Toggle auto hatching
+        self.logger:info("Auto hatch toggled")
+    elseif buttonName == "Open1" then
+        -- Open 1 egg
+        self.logger:info("Opening 1 egg")
+    elseif buttonName == "Open3" then
+        -- Open 3 eggs
+        self.logger:info("Opening 3 eggs")
+    elseif buttonName == "Open8" then
+        -- Open 8 eggs
+        self.logger:info("Opening 8 eggs")
+    end
+end
+
+function BaseUI:_onPetItemRemoveClicked(petItem, index)
+    self.logger:info("Pet item remove clicked:", index)
+    
+    -- Remove the pet item with animation
+    local tween = TweenService:Create(petItem,
+        TweenInfo.new(0.3, Enum.EasingStyle.Quad),
+        {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1}
+    )
+    tween:Play()
+    
+    tween.Completed:Connect(function()
+        petItem:Destroy()
+    end)
+end
+
+function BaseUI:_onEggHatchCloseClicked()
+    self.logger:info("Egg hatch close button clicked")
+    
+    -- Hide the entire egg hatch frame
+    self:_hidePane("imported_egg_hatch_frame")
+end
+
+function BaseUI:_onAutoDeleteButtonClicked()
+    self.logger:info("Auto delete button clicked")
+    
+    -- TODO: Implement auto delete functionality
+    -- This would typically enable a mode where clicking on pet items triggers auto-delete
+    print("[EggHatch] Auto delete mode activated - click on pets to auto-delete them")
+end
+
 -- Performance optimization: Cache theme lookups
 function BaseUI:_getCachedTheme()
     if not self.cachedTheme then
@@ -3558,16 +4293,8 @@ end
 function BaseUI:_onCodesCloseClicked(panel)
     self.logger:info("Codes close button clicked")
     
-    -- Hide the codes panel
-    if panel then
-        panel.Visible = false
-    end
-    
-    -- Also hide the parent frame (the modal overlay)
-    local parent = panel and panel.Parent
-    if parent then
-        parent.Visible = false
-    end
+    -- Hide the entire codes frame
+    self:_hidePane("imported_codes_frame")
 end
 
 -- Show a specific pane by name
@@ -3588,6 +4315,21 @@ function BaseUI:_showPane(paneName, transition)
     if transition then
         self:_applyTransition(pane, transition)
     end
+end
+
+-- Hide a specific pane by name
+function BaseUI:_hidePane(paneName)
+    self.logger:info("Hiding pane:", paneName)
+    
+    -- Find the pane in the main frame
+    local pane = self.mainFrame:FindFirstChild(paneName)
+    if not pane then
+        self.logger:warn("Pane not found:", paneName)
+        return
+    end
+    
+    -- Hide the pane
+    pane.Visible = false
 end
 
 -- Apply transition animation to a pane
