@@ -2,6 +2,8 @@
 
 A configuration-as-code Roblox pet/clicker template built with Rojo. The project is designed so code owns reusable game systems and Studio/world builders own map geometry, art, and invisible gameplay markers.
 
+![RBX Template gameplay screenshot](RBX-Template.png)
+
 ## Current Checkpoint
 
 Phase 4 is complete for the current baseline. Phase 5 auto systems are the next planned phase.
