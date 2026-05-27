@@ -814,6 +814,86 @@ return function()
                 expect(string.find(error, "must reference economy.modifier_pipeline.stages", 1, true)).to.be.ok()
             end)
 
+            it("should validate auto systems target modes and delete filters", function()
+                local validConfig = {
+                    version = "1.0.0",
+                    enabled = true,
+                    auto_target = {
+                        enabled = true,
+                        default_enabled = false,
+                        default_mode = "nearest",
+                        default_selected_currency = "crystals",
+                        current_world_only = true,
+                        request_interval_seconds = 0.3,
+                        modes = {
+                            nearest = {
+                                display_name = "Nearest",
+                                sort = "distance_asc",
+                            },
+                            highest_value = {
+                                display_name = "Highest Value",
+                                sort = "value_desc",
+                            },
+                        },
+                        compatibility_toggles = {
+                            free_mode = "nearest",
+                            paid_mode = "highest_value",
+                        },
+                    },
+                    auto_delete = {
+                        enabled = true,
+                        default_enabled = false,
+                        protect_unique = true,
+                        protected_rarities = {
+                            secret = true,
+                            exclusive = true,
+                            huge = true,
+                        },
+                        defaults = {
+                            rarities = {
+                                common = true,
+                            },
+                            pet_types = {
+                                bear = true,
+                            },
+                            variants = {
+                                basic = true,
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("auto_systems", validConfig)
+                expect(isValid).to.equal(true)
+                expect(error).to.equal(nil)
+            end)
+
+            it("should reject auto systems mode typos", function()
+                local invalidConfig = {
+                    version = "1.0.0",
+                    enabled = true,
+                    auto_target = {
+                        enabled = true,
+                        default_mode = "nearest_typo",
+                        default_selected_currency = "crystals",
+                        modes = {
+                            nearest = {
+                                display_name = "Nearest",
+                                sort = "distance_asc",
+                            },
+                        },
+                    },
+                    auto_delete = {
+                        enabled = true,
+                        defaults = {},
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("auto_systems", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "must reference auto_target.modes", 1, true)).to.be.ok()
+            end)
+
             it("should validate config-driven enchant roll profiles", function()
                 local validConfig = {
                     version = "1.0.0",

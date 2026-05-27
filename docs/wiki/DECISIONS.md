@@ -52,6 +52,10 @@ Pet XP and levels are unique-pet progression state. Stack records do not gain XP
 
 Player level must affect gameplay. It should not be cosmetic-only. Player-level team power and level milestone rewards live in `configs/player_progression.lua`; the service feeds the shared modifier path and inventory equip-limit path rather than special-case consumers. The first reward pattern is additional equipped-pet slots every configured number of levels.
 
+## Auto Systems
+
+Auto-target choice and hatch auto-delete filters are profile settings, but valid modes, default choices, protected rarities, and filter dimensions live in `configs/auto_systems.lua`. Auto-target selection should be server-authoritative: the client can request work, but the server chooses the breakable. Hatch auto-delete happens before `PetGrantService` so filtered pets never enter inventory, and protected special rarities are not deleted by default.
+
 ## Pet Provenance
 
 Valuable pet provenance and internal grant audit tags are separate. `grant_source` records the system reason a pet was created and should not be displayed as player-facing tooltip content. `hatcher_name` and `hatcher_user_id` record the player who created a valuable copy and may be displayed, traded, and preserved with the unique pet record.

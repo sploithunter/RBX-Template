@@ -157,8 +157,11 @@ Container naming convention: `<HookKind>_<Place>` (e.g. `CrystalSpawnZone_SpawnI
 
 ### Phase 5 — Auto systems
 
-- Extend `AutoTargetService` with modes (nearest, highest value, weakest, strongest, selected currency); persist choice (FR-AUTO-1).
-- Auto‑delete hatch filters by rarity/type as validated player settings; enforce at hatch (FR-AUTO-2, FR-EGG-3).
+- `configs/auto_systems.lua` + `AutoTargetService` — server-selected modes (nearest, highest value, weakest, strongest, selected currency), persisted under `Settings.AutoSystems.auto_target` (FR-AUTO-1).
+- Hatch auto-delete filters by rarity/type/variant are persisted under `Settings.AutoSystems.auto_delete`, validated against pet config, and enforced inside `EggService` before `PetGrantService` (FR-AUTO-2, FR-EGG-3).
+- Existing Low/High UI buttons remain compatibility toggles for configured modes. Richer settings UI controls are follow-up polish.
+
+**DoD:** target selection is server-authoritative and smoke-tested; hatch auto-delete never bypasses configured protected special rarities; choices persist as profile settings; config validation catches invalid modes, currencies, rarities, pet ids, and variants.
 
 ### Phase 6 — Cadence & events
 

@@ -6,13 +6,14 @@ A configuration-as-code Roblox pet/clicker template built with Rojo. The project
 
 ## Current Checkpoint
 
-Phase 4 is complete for the current baseline. Phase 5 auto systems are the next planned phase.
+Phase 5 has its first server-authoritative auto systems slice. The pet follow/mining feel refactor is intentionally deferred until hands-on playtesting.
 
 - Phase 0: foundations complete.
 - Phase 1: map integration contract complete for synthetic and partial authored maps.
 - Phase 2: economy depth complete for the current baseline.
 - Phase 3: stats-derived wins complete: pet index, achievements, and live leaderboards.
 - Phase 4: progression depth complete for the current baseline: unique pet XP/levels, enchant-slot unlock milestones, hatch-time enchant rolls, manual reroll service hooks, enchant modifier providers, player-level team power, configurable level rewards, eternal/huge pet handling, source-of-truth pet power, and offline balance tooling.
+- Phase 5: first auto-system slice active: server-selected auto-target modes, persisted auto settings, and server-enforced hatch auto-delete filters.
 
 ## Current Implemented Features
 
@@ -36,6 +37,8 @@ The playable baseline currently includes:
 - Paid area unlocks, locked-gate prompts/notices, and server-authoritative portal/pad travel.
 - Active-zone breakable spawning so inactive areas stay dormant until entered.
 - Pet index milestones, achievements, and live leaderboard service over shared stats.
+- Config-driven auto-target modes: nearest, highest value, weakest, strongest, and selected currency.
+- Config-driven hatch auto-delete filters by rarity, pet family, and variant, with protected special rarities.
 - Admin panel tools and Studio MCP smoke-test tooling for repeatable validation.
 
 ## In Process / Partially Implemented
@@ -45,6 +48,7 @@ These systems exist but still need polish or later-phase expansion:
 - Player-level and enchant balance values are intentionally first-pass and need tuning from real playtesting.
 - Pet follow/mining still runs through a stabilized legacy cloned script. Phase 4 now routes its damage/cadence through the modifier pipeline, but a cleaner PetWork/Combat service should replace that script.
 - Enchanter UI works and now explains config descriptions, but richer player education such as signs/help panels is still future polish.
+- Auto systems currently have server/config/smoke coverage and compatibility with the existing Low/High buttons; richer settings UI controls are still future polish.
 - Offline balance tooling reads the current player-level curve, but it remains a rough calculator rather than a full economy simulator.
 - Authored-map workflow works through markers, but visible production map fixtures/gate art are still early.
 
@@ -53,7 +57,7 @@ These systems exist but still need polish or later-phase expansion:
 Planned or intentionally deferred work:
 
 - Potions, boosts, shops, and other player enhancements that feed the shared modifier pipeline.
-- Auto systems such as richer auto-targeting modes and auto-delete hatch filters.
+- Richer auto-system UI controls and player-facing explanations.
 - Daily gifts, reward tracks, codes, stock/limited items, and Pet of the Day style rotations.
 - Chaseables, seasonal/event currencies, and more authored-world content.
 - Trading/marketplace with Roblox-native escrow and anti-duplication guarantees.
@@ -73,6 +77,7 @@ Important configs:
 - `configs/pet_progression.lua`: unique-pet XP curves, level caps, power growth, and enchant-slot unlocks.
 - `configs/player_progression.lua`: player-level team-power scaling and level reward milestones.
 - `configs/enchants.lua`: enchant effects, rarity roll profiles, roll counts, chance weights, strength ranges, reroll costs, and modifier mappings.
+- `configs/auto_systems.lua`: auto-target modes, default auto settings, and hatch auto-delete filter rules.
 - `configs/areas.lua`: zone tree and area unlock requirements.
 - `configs/markers.lua`: Studio-authored map marker contract.
 - `configs/breakables.lua`: crystals, spawn tables, and world/area spawner settings.
@@ -142,6 +147,7 @@ return require(game:GetService("ReplicatedStorage").Tests.studio.BackfillPetHatc
 return require(game:GetService("ReplicatedStorage").Tests.studio.BackfillPetPowerSourceOfTruth).runText()
 return require(game:GetService("ReplicatedStorage").Tests.studio.EternalPowerSmoke).runText()
 return require(game:GetService("ReplicatedStorage").Tests.studio.Phase4PetProgressionSmoke).runText()
+return require(game:GetService("ReplicatedStorage").Tests.studio.Phase5AutoSystemsSmoke).runText()
 ```
 
 ## Project Structure
@@ -168,9 +174,10 @@ Latest local checkpoint:
 - `git diff --check`: passes.
 - Phase 3 Studio smoke coverage exists for pet index, achievements, leaderboards, and Phase 2 regressions.
 - `Phase4PetProgressionSmoke`: passes in Studio for hatch enchants, breakable XP, manual reroll, player-level slot rewards, hatch/secret luck, pet damage, team power, pet efficiency, and profile restoration.
+- `Phase5AutoSystemsSmoke`: passes in Studio for server-selected nearest/highest/weakest/strongest/selected-currency targets, hatch auto-delete filters, protected special rarity behavior, and profile restoration.
 
 See `docs/wiki/CURRENT_STATUS.md` for detailed verification history and `docs/IMPLEMENTATION_PLAN.md` for the phase roadmap.
 
-## Next Phase
+## Next Work
 
-Phase 5 is the next planned lane: auto-targeting modes and hatch auto-delete filters. The legacy pet follow/mining script should be replaced with a service-owned PetWork/Combat loop before building much more automation on top of pet work.
+The next big hands-on lane is replacing the legacy pet follow/mining script with a service-owned PetWork/Combat loop. That should wait for play-feel testing; smaller MCP-friendly work can continue around settings UI, auto-system polish, and docs.

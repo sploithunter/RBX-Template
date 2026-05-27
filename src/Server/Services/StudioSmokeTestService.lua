@@ -35,6 +35,7 @@ local petProgressionService
 local enchantService
 local modifierService
 local playerProgressionService
+local autoTargetService
 
 local sessions = {}
 local travelSessions = {}
@@ -133,6 +134,7 @@ function StudioSmokeTestService:Init()
     enchantService = self._modules.EnchantService
     modifierService = self._modules.ModifierService
     playerProgressionService = self._modules.PlayerProgressionService
+    autoTargetService = self._modules.AutoTargetService
 end
 
 function StudioSmokeTestService:Start()
@@ -207,6 +209,8 @@ function StudioSmokeTestService:_handleRequest(player, action, payload)
         return self:_checkEternalPowerSmoke(player)
     elseif action == "RunPhase4PetProgressionSmoke" then
         return self:_runPhase4PetProgressionSmoke(player, payload)
+    elseif action == "RunPhase5AutoSystemsSmoke" then
+        return self:_runPhase5AutoSystemsSmoke(player, payload)
     elseif action == "CleanupColoradoGrantOrphans" then
         return self:_cleanupColoradoGrantOrphans(player)
     end
@@ -214,6 +218,221 @@ function StudioSmokeTestService:_handleRequest(player, action, payload)
     return {
         ok = false,
         error = "Unknown smoke action: " .. tostring(action),
+    }
+end
+
+local function ensureFolder(parent, name)
+    local folder = parent:FindFirstChild(name)
+    if not folder then
+        folder = Instance.new("Folder")
+        folder.Name = name
+        folder.Parent = parent
+    end
+    return folder
+end
+
+local function createSmokeBreakable(parent, name, id, position, hp, maxHp, value, currency)
+    local model = Instance.new("Model")
+    model.Name = name
+
+    local part = Instance.new("Part")
+    part.Name = "Primary"
+    part.Size = Vector3.new(2, 2, 2)
+    part.Anchored = true
+    part.Position = position
+    part.Parent = model
+    model.PrimaryPart = part
+
+    local idValue = Instance.new("NumberValue")
+    idValue.Name = "BreakableID"
+    idValue.Value = id
+    idValue.Parent = model
+
+    model:SetAttribute("HP", hp)
+    model:SetAttribute("MaxHP", maxHp)
+    model:SetAttribute("Value", value)
+    model:SetAttribute("Currency", currency)
+    model.Parent = parent
+
+    return model
+end
+
+function StudioSmokeTestService:_runPhase5AutoSystemsSmoke(player, payload)
+    payload = type(payload) == "table" and payload or {}
+    if not dataService:IsDataLoaded(player) then
+        return {
+            ok = false,
+            error = "Player data is not loaded",
+        }
+    end
+    if not autoTargetService then
+        return {
+            ok = false,
+            error = "AutoTargetService unavailable",
+        }
+    end
+
+    local data = dataService:GetData(player)
+    local snapshot = {
+        Settings = deepCopy(data.Settings),
+    }
+
+    local currentWorld = player:FindFirstChild("CurrentWorld")
+    local oldCurrentWorldValue = currentWorld and currentWorld.Value or nil
+    if not currentWorld then
+        currentWorld = Instance.new("StringValue")
+        currentWorld.Name = "CurrentWorld"
+        currentWorld.Parent = player
+    end
+
+    local root = workspace:FindFirstChild("Game") or ensureFolder(workspace, "Game")
+    local breakables = ensureFolder(root, "Breakables")
+    local crystals = ensureFolder(breakables, "Crystals")
+    local smokeWorld = ensureFolder(crystals, "Phase5Smoke")
+    local oldSmokeWorld = {}
+    for _, child in ipairs(smokeWorld:GetChildren()) do
+        table.insert(oldSmokeWorld, child)
+        child.Parent = nil
+    end
+    local items = ensureFolder(smokeWorld, "Items")
+
+    local function restore()
+        data.Settings = snapshot.Settings
+        if oldCurrentWorldValue == nil then
+            currentWorld:Destroy()
+        else
+            currentWorld.Value = oldCurrentWorldValue
+        end
+        smokeWorld:ClearAllChildren()
+        for _, child in ipairs(oldSmokeWorld) do
+            child.Parent = smokeWorld
+        end
+    end
+
+    local ok, result = pcall(function()
+        currentWorld.Value = "Phase5Smoke"
+        createSmokeBreakable(items, "NearLow", 5101, Vector3.new(0, 3, 0), 20, 100, 10, "crystals")
+        createSmokeBreakable(
+            items,
+            "FarHighValue",
+            5102,
+            Vector3.new(80, 3, 0),
+            80,
+            100,
+            500,
+            "crystals"
+        )
+        createSmokeBreakable(
+            items,
+            "StrongCoin",
+            5103,
+            Vector3.new(40, 3, 0),
+            900,
+            1000,
+            250,
+            "coins"
+        )
+
+        local modeResults = {}
+        local function expectMode(mode, expectedId, payloadForMode)
+            autoTargetService:SetAutoTargetMode(player, payloadForMode or {
+                enabled = true,
+                mode = mode,
+            })
+            local _, info = autoTargetService:SelectTarget(player, mode)
+            if not info or info.id ~= expectedId then
+                error(
+                    string.format(
+                        "mode %s expected %s got %s",
+                        tostring(mode),
+                        tostring(expectedId),
+                        tostring(info and info.id)
+                    )
+                )
+            end
+            modeResults[mode] = info.id
+        end
+
+        expectMode("nearest", 5101)
+        expectMode("highest_value", 5102)
+        expectMode("weakest", 5101)
+        expectMode("strongest", 5103)
+        expectMode("selected_currency", 5103, {
+            enabled = true,
+            mode = "selected_currency",
+            selected_currency = "coins",
+        })
+
+        local settings = data.Settings.AutoSystems
+        if
+            not settings
+            or not settings.auto_target
+            or settings.auto_target.mode ~= "selected_currency"
+            or settings.auto_target.selected_currency ~= "coins"
+        then
+            error("Expected auto-target mode settings to persist in profile data")
+        end
+
+        autoTargetService:SetAutoDeleteFilters(player, {
+            enabled = true,
+            rarities = {
+                common = true,
+            },
+            pet_types = {
+                doggy = true,
+            },
+            variants = {
+                golden = true,
+            },
+        })
+
+        local deleteBear = autoTargetService:ShouldAutoDeleteHatch(player, {
+            pet = "bear",
+            variant = "basic",
+        })
+        local deleteDoggy = autoTargetService:ShouldAutoDeleteHatch(player, {
+            pet = "doggy",
+            variant = "basic",
+        })
+        local deleteGolden = autoTargetService:ShouldAutoDeleteHatch(player, {
+            pet = "bunny",
+            variant = "golden",
+        })
+        local deleteProtected = autoTargetService:ShouldAutoDeleteHatch(player, {
+            pet = "colorado",
+            variant = "basic",
+        })
+        if deleteBear ~= true or deleteDoggy ~= true or deleteGolden ~= true then
+            error("Expected common/type/variant auto-delete filters to match")
+        end
+        if deleteProtected == true then
+            error("Expected protected exclusive pet not to auto-delete")
+        end
+
+        return {
+            modeResults = modeResults,
+            autoDelete = {
+                commonBear = deleteBear,
+                doggy = deleteDoggy,
+                goldenBunny = deleteGolden,
+                protectedColorado = deleteProtected,
+            },
+        }
+    end)
+
+    restore()
+
+    if not ok then
+        return {
+            ok = false,
+            error = tostring(result),
+        }
+    end
+
+    return {
+        ok = true,
+        restored = true,
+        result = result,
     }
 end
 

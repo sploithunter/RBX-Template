@@ -81,6 +81,9 @@ local Signals = {
     -- Client UI reflects state via AutoTarget_Status and Player value listeners.
     AutoTarget_ToggleFree = Net:RemoteEvent("AutoTarget_ToggleFree"), -- c->s request toggle free (low) targeting
     AutoTarget_TogglePaid = Net:RemoteEvent("AutoTarget_TogglePaid"), -- c->s request toggle paid (high) targeting
+    AutoTarget_SetMode = Net:RemoteEvent("AutoTarget_SetMode"), -- c->s persist selected target mode
+    AutoTarget_RequestAttack = Net:RemoteEvent("AutoTarget_RequestAttack"), -- c->s ask server to select/attack
+    AutoDelete_SetFilters = Net:RemoteEvent("AutoDelete_SetFilters"), -- c->s persist hatch auto-delete filters
     AutoTarget_Status = Net:RemoteEvent("AutoTarget_Status"), -- s->c push current auto-target status
 }
 

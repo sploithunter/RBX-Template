@@ -262,8 +262,24 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         power = hatchResult.petData.power,
     })
 
+    local autoDeleted = false
+    local autoDeleteReason = nil
+    if self._autoTargetService and self._autoTargetService.ShouldAutoDeleteHatch then
+        autoDeleted, autoDeleteReason = self._autoTargetService:ShouldAutoDeleteHatch(
+            player,
+            hatchResult
+        )
+    end
+
     -- 🐾 ADD PET TO INVENTORY THROUGH THE SINGLE GRANT BOUNDARY
-    if self._petGrantService then
+    if autoDeleted then
+        Logger:Info("Hatched pet auto-deleted by player filter", {
+            player = player.Name,
+            pet = hatchResult.pet,
+            variant = hatchResult.variant,
+            reason = autoDeleteReason,
+        })
+    elseif self._petGrantService then
         local grantResult = self._petGrantService:GrantPet(player, {
             petType = hatchResult.pet,
             variant = hatchResult.variant,
@@ -313,6 +329,8 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         Type = hatchResult.variant,
         Power = hatchResult.petData.power,
         EggType = eggType,
+        AutoDeleted = autoDeleted,
+        AutoDeleteReason = autoDeleteReason,
         success = true,
     }
 end
@@ -352,6 +370,7 @@ function EggService:Initialize(moduleLoader)
         self._statsService = moduleLoader:Get("StatsService")
         self._petGrantService = moduleLoader:Get("PetGrantService")
         self._modifierService = moduleLoader:Get("ModifierService")
+        self._autoTargetService = moduleLoader:Get("AutoTargetService")
 
         if self._inventoryService then
             Logger:Info("EggService: InventoryService connection established")
@@ -387,6 +406,12 @@ function EggService:Initialize(moduleLoader)
             Logger:Info("EggService: ModifierService connection established")
         else
             Logger:Warn("EggService: ModifierService not available in module loader")
+        end
+
+        if self._autoTargetService then
+            Logger:Info("EggService: AutoTargetService connection established")
+        else
+            Logger:Warn("EggService: AutoTargetService not available in module loader")
         end
     else
         Logger:Warn("EggService: No module loader provided")

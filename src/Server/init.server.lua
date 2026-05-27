@@ -330,6 +330,7 @@ if RunService:IsStudio() then
     appendIfEnabled(studioSmokeDeps, "leaderboards", "LeaderboardService")
     appendIfEnabled(studioSmokeDeps, "pet_progression", "PetProgressionService")
     appendIfEnabled(studioSmokeDeps, "enchants", "EnchantService")
+    appendIfEnabled(studioSmokeDeps, "auto_target", "AutoTargetService")
     table.insert(studioSmokeDeps, "PetGrantService")
 
     loader:RegisterModule(
@@ -342,7 +343,14 @@ registerFeatureModule(
     "auto_target",
     "AutoTargetService",
     ServerScriptService.Server.Services.AutoTargetService,
-    { "Logger", "ConfigLoader", "MonetizationService", "ProductIdMapper" }
+    {
+        "Logger",
+        "ConfigLoader",
+        "DataService",
+        "BreakableService",
+        "MonetizationService",
+        "ProductIdMapper",
+    }
 )
 
 -- Register lazy services (loaded when needed)

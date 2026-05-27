@@ -31,7 +31,7 @@ local DEFAULT_SAVE_DEBOUNCE_SECONDS = 15
 local CRITICAL_SAVE_DEBOUNCE_SECONDS = 1
 local PERIODIC_SAVE_SECONDS = 60
 local SAVE_CONFIRM_TIMEOUT_SECONDS = 10
-local CURRENT_SCHEMA_VERSION = 3
+local CURRENT_SCHEMA_VERSION = 4
 
 local function countInventoryItems(inventory)
     local counts = {}
@@ -109,6 +109,19 @@ local function generateProfileTemplate(configLoader)
                 inventory = "images",
                 egg_preview = "images",
                 shop_display = "images",
+            },
+            AutoSystems = {
+                auto_target = {
+                    enabled = false,
+                    mode = "nearest",
+                    selected_currency = "crystals",
+                },
+                auto_delete = {
+                    enabled = false,
+                    rarities = {},
+                    pet_types = {},
+                    variants = {},
+                },
             },
         },
 
@@ -268,6 +281,27 @@ local function generateProfileTemplate(configLoader)
             end
         end
 
+        local autoSuccess, autoConfig = pcall(function()
+            return configLoader:LoadConfig("auto_systems")
+        end)
+        if autoSuccess and autoConfig then
+            local autoTarget = autoConfig.auto_target or {}
+            local autoDelete = autoConfig.auto_delete or {}
+            template.Settings.AutoSystems = {
+                auto_target = {
+                    enabled = autoTarget.default_enabled == true,
+                    mode = autoTarget.default_mode or "nearest",
+                    selected_currency = autoTarget.default_selected_currency or "crystals",
+                },
+                auto_delete = {
+                    enabled = autoDelete.default_enabled == true,
+                    rarities = autoDelete.defaults and autoDelete.defaults.rarities or {},
+                    pet_types = autoDelete.defaults and autoDelete.defaults.pet_types or {},
+                    variants = autoDelete.defaults and autoDelete.defaults.variants or {},
+                },
+            }
+        end
+
         local upgradesSuccess, upgradesConfig = pcall(function()
             return configLoader:LoadConfig("upgrades")
         end)
@@ -331,6 +365,12 @@ end
 SchemaMigrations[2] = function(self, data)
     local migrations = self:_migratePhase3Collections(data)
     data.SchemaVersion = 3
+    return migrations + 1
+end
+
+SchemaMigrations[3] = function(self, data)
+    local migrations = self:_migrateAutoSystemSettings(data)
+    data.SchemaVersion = 4
     return migrations + 1
 end
 
@@ -1244,6 +1284,7 @@ function DataService:MigrateProfile(profile)
     migrationCount = migrationCount + self:_migrateUpgrades(data)
     migrationCount = migrationCount + self:_migrateLedger(data)
     migrationCount = migrationCount + self:_migratePhase3Collections(data)
+    migrationCount = migrationCount + self:_migrateAutoSystemSettings(data)
 
     -- 4. Migrate inventory system safely (preserve all data)
     migrationCount = migrationCount + self:_migrateInventoryBuckets(data)
@@ -1490,6 +1531,67 @@ function DataService:_migratePhase3Collections(data)
     end
     if not data.Achievements.Completed then
         data.Achievements.Completed = {}
+        migrations += 1
+    end
+
+    return migrations
+end
+
+function DataService:_migrateAutoSystemSettings(data)
+    local migrations = 0
+
+    data.Settings = data.Settings or {}
+    if not data.Settings.AutoSystems then
+        data.Settings.AutoSystems = {}
+        migrations += 1
+    end
+
+    local autoConfig
+    local success = pcall(function()
+        autoConfig = self._configLoader:LoadConfig("auto_systems")
+    end)
+    autoConfig = success and autoConfig or {}
+
+    local targetConfig = autoConfig.auto_target or {}
+    local deleteConfig = autoConfig.auto_delete or {}
+
+    local autoSystems = data.Settings.AutoSystems
+    if type(autoSystems.auto_target) ~= "table" then
+        autoSystems.auto_target = {}
+        migrations += 1
+    end
+    if autoSystems.auto_target.enabled == nil then
+        autoSystems.auto_target.enabled = targetConfig.default_enabled == true
+        migrations += 1
+    end
+    if type(autoSystems.auto_target.mode) ~= "string" then
+        autoSystems.auto_target.mode = targetConfig.default_mode or "nearest"
+        migrations += 1
+    end
+    if type(autoSystems.auto_target.selected_currency) ~= "string" then
+        autoSystems.auto_target.selected_currency = targetConfig.default_selected_currency
+            or "crystals"
+        migrations += 1
+    end
+
+    if type(autoSystems.auto_delete) ~= "table" then
+        autoSystems.auto_delete = {}
+        migrations += 1
+    end
+    if autoSystems.auto_delete.enabled == nil then
+        autoSystems.auto_delete.enabled = deleteConfig.default_enabled == true
+        migrations += 1
+    end
+    if type(autoSystems.auto_delete.rarities) ~= "table" then
+        autoSystems.auto_delete.rarities = {}
+        migrations += 1
+    end
+    if type(autoSystems.auto_delete.pet_types) ~= "table" then
+        autoSystems.auto_delete.pet_types = {}
+        migrations += 1
+    end
+    if type(autoSystems.auto_delete.variants) ~= "table" then
+        autoSystems.auto_delete.variants = {}
         migrations += 1
     end
 

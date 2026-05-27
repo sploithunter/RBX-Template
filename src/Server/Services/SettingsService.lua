@@ -123,13 +123,17 @@ function SettingsService:_createSettingsFolders(player)
             MusicEnabled = true,
             SFXEnabled = true,
             GraphicsQuality = "Auto",
-            DisplayPreferences = {}
+            DisplayPreferences = {},
+            AutoSystems = {},
         }
     end
     
     -- Ensure DisplayPreferences exists
     if not data.Settings.DisplayPreferences then
         data.Settings.DisplayPreferences = {}
+    end
+    if not data.Settings.AutoSystems then
+        data.Settings.AutoSystems = {}
     end
     
     -- Create main Settings folder (will replicate to client)
@@ -152,11 +156,65 @@ function SettingsService:_createSettingsFolders(player)
         prefValue.Value = method
         prefValue.Parent = displayPrefFolder
     end
+
+    local autoSystemsFolder = Instance.new("Folder")
+    autoSystemsFolder.Name = "AutoSystems"
+    autoSystemsFolder.Parent = settingsFolder
+
+    self:_replicateAutoSystemSettings(player)
     
     self._logger:Info("✅ SETTINGS - Settings folders created successfully", {
         player = player.Name,
         displayPreferences = data.Settings.DisplayPreferences
     })
+end
+
+function SettingsService:_replicateAutoSystemSettings(player)
+    local data = self._dataService:GetData(player)
+    local settingsFolder = self._playerSettingsFolders[player]
+    if not data or not data.Settings or not settingsFolder then
+        return
+    end
+
+    local autoSystems = data.Settings.AutoSystems or {}
+    local autoFolder = settingsFolder:FindFirstChild("AutoSystems")
+    if not autoFolder then
+        autoFolder = Instance.new("Folder")
+        autoFolder.Name = "AutoSystems"
+        autoFolder.Parent = settingsFolder
+    end
+
+    local targetSettings = autoSystems.auto_target or {}
+    local targetFolder = autoFolder:FindFirstChild("AutoTarget") or Instance.new("Folder")
+    targetFolder.Name = "AutoTarget"
+    targetFolder.Parent = autoFolder
+    self:_upsertValue(targetFolder, "Enabled", "BoolValue", targetSettings.enabled == true)
+    self:_upsertValue(targetFolder, "Mode", "StringValue", targetSettings.mode or "nearest")
+    self:_upsertValue(
+        targetFolder,
+        "SelectedCurrency",
+        "StringValue",
+        targetSettings.selected_currency or "crystals"
+    )
+
+    local deleteSettings = autoSystems.auto_delete or {}
+    local deleteFolder = autoFolder:FindFirstChild("AutoDelete") or Instance.new("Folder")
+    deleteFolder.Name = "AutoDelete"
+    deleteFolder.Parent = autoFolder
+    self:_upsertValue(deleteFolder, "Enabled", "BoolValue", deleteSettings.enabled == true)
+end
+
+function SettingsService:_upsertValue(parent, name, className, value)
+    local instance = parent:FindFirstChild(name)
+    if not instance or instance.ClassName ~= className then
+        if instance then
+            instance:Destroy()
+        end
+        instance = Instance.new(className)
+        instance.Name = name
+        instance.Parent = parent
+    end
+    instance.Value = value
 end
 
 function SettingsService:_updateDisplayPreference(player, context, method)

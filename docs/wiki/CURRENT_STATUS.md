@@ -4,7 +4,7 @@ Status: current
 
 ## Summary
 
-This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code template. Phase 0 is complete, Phase 1 map integration is complete for the current synthetic/partial-authored baseline, Phase 2 economy depth is complete for the current baseline, Phase 3 stats-derived wins are complete for pet index, achievements, and live leaderboards, and Phase 4 progression depth is complete for the current baseline. Phase 4 includes unique-pet progression, enchant-slot unlocks, hatch-time enchant rolls, manual reroll service hooks, enchant modifier providers, player-level team power, level milestone rewards, eternal/huge pet handling, config-only pet power, and offline team-power balancing. The playable loop includes breakable crystals, coin generation, eggs, hatching, persistent player data, imported pet assets, an admin panel, configurable currency conversion, basic global events/effects work, multi-area map hooks, server-authoritative area travel, active-zone spawner dormancy, config-driven upgrades, paid area unlocks, area-gated stronger breakables, first-time pet indexing, achievement rewards, and K1-backed leaderboards.
+This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code template. Phase 0 is complete, Phase 1 map integration is complete for the current synthetic/partial-authored baseline, Phase 2 economy depth is complete for the current baseline, Phase 3 stats-derived wins are complete for pet index, achievements, and live leaderboards, and Phase 4 progression depth is complete for the current baseline. Phase 5 has started with server-authoritative auto-target mode selection and hatch auto-delete filters. The playable loop includes breakable crystals, coin generation, eggs, hatching, persistent player data, imported pet assets, an admin panel, configurable currency conversion, basic global events/effects work, multi-area map hooks, server-authoritative area travel, active-zone spawner dormancy, config-driven upgrades, paid area unlocks, area-gated stronger breakables, first-time pet indexing, achievement rewards, K1-backed leaderboards, unique pet progression, enchant systems, player-level power, and first-pass auto systems.
 
 ## Working Systems
 
@@ -57,6 +57,8 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Pet inventory cards now distinguish rarity/specialness and variant separately. Rarity rings are config-driven and can animate around the card using a `UIGradient`; the default rarity ladder currently includes Common, Uncommon, Rare, Epic, Legendary, Mythical, Secret, Exclusive, and Huge. Variant backgrounds are also config-driven, including darker gold and rainbow fills. Inventory display reads rarity names/colors from `configs/pets.lua`.
 - Generated pet/egg thumbnails are cached as ViewportFrames, not uploaded image assets. `AssetPreloadService` publishes `PetThumbnailsReady`, `PetThumbnailCount`, and `PetThumbnailFailures` on `ReplicatedStorage.Assets`; the Studio client prewarms those ViewportFrames offscreen before showing the menu UI, and inventory cards still retry fallback icons if a thumbnail arrives late.
 - Pet power is now config-only durable data. `configs/pets.lua` defines family base power plus global Basic/Golden/Rainbow multipliers, while grant/progression/inventory save paths avoid writing per-copy power or stats power. `tests/studio/BackfillPetPowerSourceOfTruth.lua` can strip legacy saved power fields for the current Studio player.
+- `configs/auto_systems.lua` and `AutoTargetService` now provide the first Phase 5 auto-system slice. Target mode choices persist under `Settings.AutoSystems.auto_target`; clients request auto-target work and the server selects the breakable. The configured default modes are nearest, highest value, weakest, strongest, and selected currency.
+- Hatch auto-delete filters persist under `Settings.AutoSystems.auto_delete` and are enforced in `EggService` before `PetGrantService` writes inventory. Filters can match rarity, pet family, or variant, and Secret/Exclusive/Huge are protected by default.
 
 ## Phase 0 Verification
 
@@ -121,6 +123,16 @@ Last checked: 2026-05-27
 - `git diff --check`: passes.
 - `Phase4PetProgressionSmoke` passes through Studio MCP after Rojo sync/restart. It granted a Huge Rainbow Colorado, verified a hatch-time enchant, awarded `25` pet XP from a `BigBlueCrystal` breakable context, rerolled enchant slot `1`, verified player-level slot bonus `1`, verified live hatch luck `0.1`, secret luck `0.05`, pet damage about `115`, team power `131.1`, pet efficiency `1.1`, and restored profile state.
 
+## Phase 5 Verification
+
+Last checked: 2026-05-27
+
+- Rojo 7.6.1 build: passes with `mise exec -- rojo build --output /tmp/rbx-template-phase5-auto.rbxl`.
+- Targeted Selene for touched Phase 5 files/configs/tests: 0 errors, existing warnings only in older bootstrap/data/settings/breakable files.
+- Targeted StyLua check for the new/clean Phase 5 files passes.
+- `git diff --check`: passes.
+- `Phase5AutoSystemsSmoke` passes through Studio MCP after Rojo edit-mode sync. It creates a temporary `Phase5Smoke` breakable world, verifies nearest/highest value/weakest/strongest/selected-currency server target selection, verifies auto-delete rarity/type/variant matches, verifies protected Exclusive Colorado is not auto-deleted, and restores profile/map state.
+
 ## Admin/Map Test Verification
 
 Last checked: 2026-05-27
@@ -139,10 +151,10 @@ Those documents define the planned foundation work: stats, modifier pipeline, sa
 
 ## Next Likely Work
 
-Move into Phase 5 and follow-up polish while keeping cleanup space for Studio and tooling warnings:
+Continue Phase 5 and follow-up polish while keeping cleanup space for Studio and tooling warnings:
 
-1. Start Phase 5 auto systems: richer auto-targeting modes and hatch auto-delete filters.
-2. Replace the legacy pet follow/mining script with a service-owned PetWork/Combat loop before adding much more pet-work automation.
+1. Add richer UI controls for auto-target modes, selected currency, and hatch auto-delete filters.
+2. Replace the legacy pet follow/mining script with a service-owned PetWork/Combat loop when hands-on play-feel testing is available.
 3. Improve the first enchanter UI with richer result animation, better before/after messaging, and future enchant lock/protection options.
 4. Improve enchant education/discoverability beyond the first config-sourced description text.
 5. Expand the authored-map workflow with visible gate art/fixtures attached to the invisible `TeleportPad`/`Portal` hooks.

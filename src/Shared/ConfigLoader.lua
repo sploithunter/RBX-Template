@@ -725,6 +725,8 @@ function ConfigLoader:ValidateConfig(configName, config)
         return self:_validatePetProgressionConfig(config)
     elseif configName == "player_progression" then
         return self:_validatePlayerProgressionConfig(config)
+    elseif configName == "auto_systems" then
+        return self:_validateAutoSystemsConfig(config)
     elseif configName == "enchants" then
         return self:_validateEnchantsConfig(config)
     elseif configName == "achievements" then
@@ -2737,6 +2739,184 @@ function ConfigLoader:_validatePlayerProgressionConfig(config)
         )
         if not ok then
             return ok, err
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_validateAutoSystemsConfig(config)
+    local ok, err = self:_requireType("auto_systems", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    ok, err = self:_requireType("auto_systems", config.version, "string", "version")
+    if not ok then
+        return ok, err
+    end
+
+    if config.enabled ~= nil and type(config.enabled) ~= "boolean" then
+        return self:_configError("auto_systems", "enabled", "expected boolean")
+    end
+
+    local pets = self:_rawConfig("pets") or {}
+    local currencies = {}
+    local currencyConfig = self:_rawConfig("currencies") or {}
+    for _, currency in ipairs(currencyConfig) do
+        currencies[currency.id] = true
+    end
+
+    local autoTarget = config.auto_target
+    if type(autoTarget) ~= "table" then
+        return self:_configError("auto_systems", "auto_target", "expected table")
+    end
+    if autoTarget.enabled ~= nil and type(autoTarget.enabled) ~= "boolean" then
+        return self:_configError("auto_systems", "auto_target.enabled", "expected boolean")
+    end
+    if autoTarget.default_enabled ~= nil and type(autoTarget.default_enabled) ~= "boolean" then
+        return self:_configError("auto_systems", "auto_target.default_enabled", "expected boolean")
+    end
+    if autoTarget.current_world_only ~= nil and type(autoTarget.current_world_only) ~= "boolean" then
+        return self:_configError("auto_systems", "auto_target.current_world_only", "expected boolean")
+    end
+    if type(autoTarget.default_selected_currency) ~= "string" or not currencies[autoTarget.default_selected_currency] then
+        return self:_configError(
+            "auto_systems",
+            "auto_target.default_selected_currency",
+            "must reference currencies"
+        )
+    end
+    ok, err = self:_requirePositiveNumber(
+        "auto_systems",
+        autoTarget.request_interval_seconds or 0.3,
+        "auto_target.request_interval_seconds"
+    )
+    if not ok then
+        return ok, err
+    end
+
+    local modes = autoTarget.modes
+    if type(modes) ~= "table" then
+        return self:_configError("auto_systems", "auto_target.modes", "expected table")
+    end
+    if type(autoTarget.default_mode) ~= "string" or not modes[autoTarget.default_mode] then
+        return self:_configError(
+            "auto_systems",
+            "auto_target.default_mode",
+            "must reference auto_target.modes"
+        )
+    end
+    local validSorts = {
+        distance_asc = true,
+        value_desc = true,
+        hp_asc = true,
+        hp_desc = true,
+    }
+    for modeId, modeConfig in pairs(modes) do
+        local path = "auto_target.modes." .. tostring(modeId)
+        if not tostring(modeId):match(STABLE_CONFIG_ID_PATTERN) then
+            return self:_configError("auto_systems", path, "expected stable snake_case id")
+        end
+        if type(modeConfig) ~= "table" then
+            return self:_configError("auto_systems", path, "expected table")
+        end
+        if type(modeConfig.display_name) ~= "string" or modeConfig.display_name == "" then
+            return self:_configError("auto_systems", path .. ".display_name", "expected non-empty string")
+        end
+        if type(modeConfig.sort) ~= "string" or not validSorts[modeConfig.sort] then
+            return self:_configError("auto_systems", path .. ".sort", "expected supported sort")
+        end
+        if modeConfig.requires_currency ~= nil and type(modeConfig.requires_currency) ~= "boolean" then
+            return self:_configError("auto_systems", path .. ".requires_currency", "expected boolean")
+        end
+    end
+
+    local toggles = autoTarget.compatibility_toggles or {}
+    if type(toggles) ~= "table" then
+        return self:_configError("auto_systems", "auto_target.compatibility_toggles", "expected table")
+    end
+    for _, key in ipairs({ "free_mode", "paid_mode" }) do
+        if toggles[key] ~= nil and not modes[toggles[key]] then
+            return self:_configError(
+                "auto_systems",
+                "auto_target.compatibility_toggles." .. key,
+                "must reference auto_target.modes"
+            )
+        end
+    end
+
+    local autoDelete = config.auto_delete
+    if type(autoDelete) ~= "table" then
+        return self:_configError("auto_systems", "auto_delete", "expected table")
+    end
+    for _, key in ipairs({
+        "enabled",
+        "default_enabled",
+        "allow_rarity_filters",
+        "allow_pet_type_filters",
+        "allow_variant_filters",
+        "protect_unique",
+    }) do
+        if autoDelete[key] ~= nil and type(autoDelete[key]) ~= "boolean" then
+            return self:_configError("auto_systems", "auto_delete." .. key, "expected boolean")
+        end
+    end
+
+    local protectedRarities = autoDelete.protected_rarities or {}
+    if type(protectedRarities) ~= "table" then
+        return self:_configError("auto_systems", "auto_delete.protected_rarities", "expected table")
+    end
+    for rarityId, enabled in pairs(protectedRarities) do
+        if not (pets.rarities and pets.rarities[rarityId]) then
+            return self:_configError(
+                "auto_systems",
+                "auto_delete.protected_rarities." .. tostring(rarityId),
+                "must reference pets.rarities"
+            )
+        end
+        if type(enabled) ~= "boolean" then
+            return self:_configError(
+                "auto_systems",
+                "auto_delete.protected_rarities." .. tostring(rarityId),
+                "expected boolean"
+            )
+        end
+    end
+
+    local defaults = autoDelete.defaults or {}
+    if type(defaults) ~= "table" then
+        return self:_configError("auto_systems", "auto_delete.defaults", "expected table")
+    end
+    local defaultSets = {
+        rarities = pets.rarities or {},
+        pet_types = pets.pets or {},
+        variants = pets.variants or {},
+    }
+    for setName, allowed in pairs(defaultSets) do
+        local set = defaults[setName] or {}
+        if type(set) ~= "table" then
+            return self:_configError(
+                "auto_systems",
+                "auto_delete.defaults." .. setName,
+                "expected table"
+            )
+        end
+        for id, enabled in pairs(set) do
+            if not allowed[id] then
+                return self:_configError(
+                    "auto_systems",
+                    "auto_delete.defaults." .. setName .. "." .. tostring(id),
+                    "must reference pets config"
+                )
+            end
+            if enabled ~= true then
+                return self:_configError(
+                    "auto_systems",
+                    "auto_delete.defaults." .. setName .. "." .. tostring(id),
+                    "expected true"
+                )
+            end
         end
     end
 

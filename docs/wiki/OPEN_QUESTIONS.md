@@ -16,6 +16,7 @@ Status: current
 - What should the first live pet XP sources be? The data/service foundation exists for unique pets, but breakable damage, breakable destroy, daycare/offline, and consumable XP items still need balancing decisions.
 - What player-level-to-team-power curve feels good in real play? The implementation is config-driven and active, but the current +1% per level / +1 equipped slot per 10 levels defaults are first-pass tuning values.
 - What should replace the legacy pet `Follow` mining script? Phase 4 now routes damage and cadence modifiers through it, but the long-term design should be a service-owned pet assignment/work loop.
+- What player-facing controls should expose Phase 5 auto-target modes and auto-delete filters? The server/config/persistence path exists, but the richer UI is still open.
 - Should high-power pets be normalized by player progression, area tier, or both?
 - Should forever/eternal pets use the reference-style percentage-of-current-best-power model, and what percent range keeps them prestigious without breaking early progression?
 - What is the long-term automated Meshi-to-Roblox asset workflow?

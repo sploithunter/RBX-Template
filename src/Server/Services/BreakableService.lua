@@ -126,6 +126,9 @@ function BreakableService:_onAttack(player, payload)
     -- Do not destroy here; BreakableSpawner listens to HP attribute and handles death/awards
 end
 
-return BreakableService
+function BreakableService:Attack(player, payload)
+    return self:_onAttack(player, payload)
+end
 
+return BreakableService
 

@@ -16,6 +16,7 @@ return {
         monetization = true,
         admin_tools = true,
         auto_target = true,
+        auto_systems = true,
         inventory = true,
         settings = true,
         diagnostics = true,
