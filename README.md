@@ -44,7 +44,7 @@ Important configs:
 
 Durable pet power has a single source of truth in `configs/pets.lua`: family base power plus variant multipliers. Saved pet inventory records should store identity and mutable per-copy state such as level, XP, enchants, serials, hatcher metadata, lock state, and Huge/Eternal traits, but not power values.
 
-Enchant chance also has a single source of truth in `configs/enchants.lua`. Services read configured rarity profiles, weighted chance entries, slot counts, and strength ranges; saved pets store the rolled enchant identity/strength, while modifier semantics remain configurable.
+Enchant chance and behavior also have a single source of truth in `configs/enchants.lua`. Services read configured rarity profiles, weighted chance entries, slot counts, strength ranges, and modifier mappings; saved pets store only the rolled enchant identity/strength. Changing what `scholar`, `crystal_finder`, or any future enchant does should not require editing pet records or pet configs.
 
 ## AI And Wiki Workflow
 

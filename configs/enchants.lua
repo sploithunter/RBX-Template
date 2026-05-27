@@ -1,8 +1,17 @@
 -- Pet enchant configuration.
 --
--- This is the single source of truth for enchant roll chances, roll counts,
--- strength ranges, and effect mappings. Services should interpret this table;
--- they should not own hidden enchant odds or hardcoded balance values.
+-- This is the single source of truth for both:
+-- 1. how enchants roll: rarity profiles, roll counts, weights, strength ranges;
+-- 2. what enchants do: modifier stage/kind/currency/combine/amount mappings.
+--
+-- Saved pets should store only rolled state such as `{ id = "scholar",
+-- strength = 2 }`. Do not put enchant behavior on pet configs or individual pet
+-- records. To rebalance or redefine an enchant, edit `effects` below.
+--
+-- For an effect to be live, some gameplay system must resolve the matching
+-- modifier context through ModifierService. Current live contexts include
+-- `kind = "breakable_reward"` and `kind = "pet_xp"`. Other example kinds are
+-- template contracts for future systems.
 
 return {
     version = "1.0.0",
