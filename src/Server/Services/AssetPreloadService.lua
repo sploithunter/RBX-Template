@@ -18,6 +18,7 @@ AssetPreloadService.__index = AssetPreloadService
 
 local InsertService = game:GetService("InsertService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PetVariantVisuals = require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
 
 -- Service dependencies (injected)
 local logger
@@ -29,7 +30,7 @@ function AssetPreloadService:Init()
     logger = self._modules.Logger
     petConfig = self._modules.ConfigLoader:LoadConfig("pets")
     soundsConfig = self._modules.ConfigLoader:LoadConfig("sounds")
-    
+
     -- Optional: breakables (crystals, etc.)
     local ok, cfg = pcall(function()
         return self._modules.ConfigLoader:LoadConfig("breakables")
@@ -39,24 +40,29 @@ function AssetPreloadService:Init()
     else
         breakablesConfig = nil
     end
-    
+
     logger:Info("AssetPreloadService initialized")
 end
 
 function AssetPreloadService:Start()
     -- Guard against multiple Start() calls (ModuleLoader already calls Start)
     if self._started then
-        logger:Warn("⚠️ AssetPreloadService:Start() called more than once - ignoring subsequent call")
+        logger:Warn(
+            "⚠️ AssetPreloadService:Start() called more than once - ignoring subsequent call"
+        )
         return
     end
     self._started = true
 
     logger:Info("🚀 AssetPreloadService:Start() called")
-    
+
     -- Create folder structure for assets
     logger:Info("📁 AssetPreloadService: Creating asset folders...")
     self:CreateAssetFolders()
-    
+    ReplicatedStorage.Assets:SetAttribute("PetThumbnailsReady", false)
+    ReplicatedStorage.Assets:SetAttribute("PetThumbnailCount", 0)
+    ReplicatedStorage.Assets:SetAttribute("PetThumbnailFailures", 0)
+
     -- Start loading models into ReplicatedStorage.Assets
     logger:Info("🔄 AssetPreloadService: Spawning LoadAllModelsIntoAssets task...")
     task.spawn(function()
@@ -67,24 +73,24 @@ function AssetPreloadService:Start()
         self:LoadAllSoundsIntoAssets()
         logger:Info("✅ AssetPreloadService: LoadAllModelsIntoAssets task completed")
     end)
-    
+
     -- Set up admin regeneration signal
     logger:Info("🔧 AssetPreloadService: Setting up admin regeneration signal...")
     self:SetupAdminRegenerationSignal()
-    
+
     logger:Info("✅ AssetPreloadService:Start() completed")
 end
 
 -- Create folder structure in ReplicatedStorage.Assets
 function AssetPreloadService:CreateAssetFolders()
     logger:Info("📁 CreateAssetFolders: Starting...")
-    
+
     local assets = ReplicatedStorage:FindFirstChild("Assets")
     logger:Info("📁 CreateAssetFolders: Assets folder", {
         exists = assets ~= nil,
-        path = assets and assets:GetFullName() or "nil"
+        path = assets and assets:GetFullName() or "nil",
     })
-    
+
     if not assets then
         logger:Info("📁 CreateAssetFolders: Creating Assets folder...")
         assets = Instance.new("Folder")
@@ -92,27 +98,27 @@ function AssetPreloadService:CreateAssetFolders()
         assets.Parent = ReplicatedStorage
         logger:Info("✅ CreateAssetFolders: Assets folder created")
     end
-    
+
     local models = assets:FindFirstChild("Models")
     logger:Info("📁 CreateAssetFolders: Models folder", {
         exists = models ~= nil,
-        path = models and models:GetFullName() or "nil"
+        path = models and models:GetFullName() or "nil",
     })
-    
+
     if not models then
         logger:Info("📁 CreateAssetFolders: Creating Models folder...")
-        models = Instance.new("Folder") 
+        models = Instance.new("Folder")
         models.Name = "Models"
         models.Parent = assets
         logger:Info("✅ CreateAssetFolders: Models folder created")
     end
-    
+
     local pets = models:FindFirstChild("Pets")
     logger:Info("📁 CreateAssetFolders: Pets folder", {
         exists = pets ~= nil,
-        path = pets and pets:GetFullName() or "nil"
+        path = pets and pets:GetFullName() or "nil",
     })
-    
+
     if not pets then
         logger:Info("📁 CreateAssetFolders: Creating Pets folder...")
         pets = Instance.new("Folder")
@@ -120,7 +126,7 @@ function AssetPreloadService:CreateAssetFolders()
         pets.Parent = models
         logger:Info("✅ CreateAssetFolders: Pets folder created")
     end
-    
+
     -- Ensure Breakables/Crystals folder exists
     local breakables = models:FindFirstChild("Breakables")
     if not breakables then
@@ -134,7 +140,7 @@ function AssetPreloadService:CreateAssetFolders()
         crystals.Name = "Crystals"
         crystals.Parent = breakables
     end
-    
+
     -- Ensure Sounds folder exists
     local sounds = assets:FindFirstChild("Sounds")
     if not sounds then
@@ -144,7 +150,7 @@ function AssetPreloadService:CreateAssetFolders()
     end
 
     logger:Info("✅ CreateAssetFolders: Asset folder structure complete", {
-        path = "ReplicatedStorage.Assets"
+        path = "ReplicatedStorage.Assets",
     })
 end
 
@@ -223,43 +229,164 @@ local function createProceduralBreakableModel(kind)
     return nil
 end
 
+local function normalizedAssetTransform(transform)
+    if type(transform) ~= "table" then
+        return {}
+    end
+
+    local normalized = {}
+    if tonumber(transform.scale) then
+        normalized.scale = tonumber(transform.scale)
+    end
+    if tonumber(transform.huge_scale) then
+        normalized.hugeScale = tonumber(transform.huge_scale)
+    elseif tonumber(transform.hugeScale) then
+        normalized.hugeScale = tonumber(transform.hugeScale)
+    end
+
+    if type(transform.orientation) == "table" then
+        normalized.orientation = {
+            x = tonumber(transform.orientation.x) or 0,
+            y = tonumber(transform.orientation.y) or 0,
+            z = tonumber(transform.orientation.z) or 0,
+        }
+    end
+
+    return normalized
+end
+
+local function mergeAssetTransforms(baseTransform, overrideTransform)
+    local merged = normalizedAssetTransform(baseTransform)
+    local override = normalizedAssetTransform(overrideTransform)
+
+    if override.scale ~= nil then
+        merged.scale = override.scale
+    end
+    if override.hugeScale ~= nil then
+        merged.hugeScale = override.hugeScale
+    end
+    if override.orientation ~= nil then
+        merged.orientation = override.orientation
+    end
+
+    merged.scale = merged.scale or 1
+    merged.hugeScale = merged.hugeScale or 1
+    merged.orientation = merged.orientation or { x = 0, y = 0, z = 0 }
+    return merged
+end
+
+function AssetPreloadService:ResolvePetAssetTransform(petData, variantData)
+    return mergeAssetTransforms(
+        petData and petData.asset_transform,
+        variantData and variantData.asset_transform
+    )
+end
+
+function AssetPreloadService:ApplyConfiguredModelTransform(model, options)
+    if not model or not model:IsA("Model") or type(options) ~= "table" then
+        return
+    end
+
+    local scale = tonumber(options.scale)
+    if scale and scale > 0 and math.abs(scale - 1) > 0.001 then
+        local ok, err = pcall(function()
+            model:ScaleTo(scale)
+        end)
+        if not ok then
+            logger:Warn("Failed to apply configured model scale", {
+                model = model.Name,
+                scale = scale,
+                error = tostring(err),
+            })
+        end
+    end
+
+    local transformCF = options.transformCF
+    if not transformCF and type(options.orientation) == "table" then
+        local orientation = options.orientation
+        transformCF = CFrame.Angles(
+            math.rad(orientation.x or 0),
+            math.rad(orientation.y or 0),
+            math.rad(orientation.z or 0)
+        )
+    end
+
+    if transformCF then
+        pcall(function()
+            model:PivotTo(transformCF)
+        end)
+    end
+end
+
+function AssetPreloadService:ApplyPetTransformAttributes(model, transformOptions)
+    if not model or not model:IsA("Model") or type(transformOptions) ~= "table" then
+        return
+    end
+
+    local orientation = transformOptions.orientation or {}
+    model:SetAttribute("AssetScale", tonumber(transformOptions.scale) or 1)
+    model:SetAttribute("HugeScale", tonumber(transformOptions.hugeScale) or 1)
+    model:SetAttribute("OrientationX", tonumber(orientation.x) or 0)
+    model:SetAttribute("OrientationY", tonumber(orientation.y) or 0)
+    model:SetAttribute("OrientationZ", tonumber(orientation.z) or 0)
+end
+
+function AssetPreloadService:NormalizePetModelParts(model)
+    if not model or not model:IsA("Model") then
+        return
+    end
+
+    for _, descendant in ipairs(model:GetDescendants()) do
+        if descendant:IsA("BasePart") then
+            descendant.CanCollide = false
+            descendant.CanTouch = false
+            descendant.Massless = true
+            descendant.AssemblyLinearVelocity = Vector3.new()
+            descendant.AssemblyAngularVelocity = Vector3.new()
+        end
+    end
+end
+
 -- Load all breakable (non-pet) models such as crystals
 function AssetPreloadService:LoadAllBreakableModelsIntoAssets()
     logger:Info("🔄 LoadAllBreakableModelsIntoAssets: Starting...")
-    
+
     if not breakablesConfig then
         logger:Warn("LoadAllBreakableModelsIntoAssets: No breakables config found; skipping")
         return
     end
-    
-    local modelsRoot = ReplicatedStorage.Assets and ReplicatedStorage.Assets:FindFirstChild("Models")
+
+    local modelsRoot = ReplicatedStorage.Assets
+        and ReplicatedStorage.Assets:FindFirstChild("Models")
     if not modelsRoot then
         logger:Error("LoadAllBreakableModelsIntoAssets: Models root missing")
         return
     end
-    
+
     local breakablesFolder = modelsRoot:FindFirstChild("Breakables")
     if not breakablesFolder then
         breakablesFolder = Instance.new("Folder")
         breakablesFolder.Name = "Breakables"
         breakablesFolder.Parent = modelsRoot
     end
-    
+
     local crystalsFolder = breakablesFolder:FindFirstChild("Crystals")
     if not crystalsFolder then
         crystalsFolder = Instance.new("Folder")
         crystalsFolder.Name = "Crystals"
         crystalsFolder.Parent = breakablesFolder
     end
-    
+
     local successCount = 0
     local failureCount = 0
-    
+
     -- Iterate crystals/breakables in config
     for crystalName, crystalData in pairs(breakablesConfig.crystals or {}) do
         if type(crystalData) == "table" and crystalData.procedural_asset then
             local existing = crystalsFolder:FindFirstChild(crystalName)
-            if existing then existing:Destroy() end
+            if existing then
+                existing:Destroy()
+            end
 
             local model = createProceduralBreakableModel(crystalData.procedural_asset)
             if model then
@@ -273,15 +400,25 @@ function AssetPreloadService:LoadAllBreakableModelsIntoAssets()
                 })
                 failureCount += 1
             end
-        elseif type(crystalData) == "table" and crystalData.asset_id and crystalData.asset_id ~= "rbxassetid://0" then
+        elseif
+            type(crystalData) == "table"
+            and crystalData.asset_id
+            and crystalData.asset_id ~= "rbxassetid://0"
+        then
             -- Replace any existing model with same name
             local existing = crystalsFolder:FindFirstChild(crystalName)
-            if existing then existing:Destroy() end
-            
+            if existing then
+                existing:Destroy()
+            end
+
             local transformCF
-            if crystalData.default_orientation and type(crystalData.default_orientation) == "table" then
+            if
+                crystalData.default_orientation
+                and type(crystalData.default_orientation) == "table"
+            then
                 local ori = crystalData.default_orientation
-                transformCF = CFrame.Angles(math.rad(ori.x or 0), math.rad(ori.y or 0), math.rad(ori.z or 0))
+                transformCF =
+                    CFrame.Angles(math.rad(ori.x or 0), math.rad(ori.y or 0), math.rad(ori.z or 0))
             end
             local ok = self:LoadModelIntoFolder(
                 crystalData.asset_id,
@@ -296,42 +433,48 @@ function AssetPreloadService:LoadAllBreakableModelsIntoAssets()
                 failureCount += 1
             end
         else
-            logger:Warn("LoadAllBreakableModelsIntoAssets: Crystal missing valid asset_id", {name = tostring(crystalName)})
+            logger:Warn(
+                "LoadAllBreakableModelsIntoAssets: Crystal missing valid asset_id",
+                { name = tostring(crystalName) }
+            )
             failureCount += 1
         end
     end
-    
+
     logger:Info("🔄 LoadAllBreakableModelsIntoAssets: Completed", {
         crystals = {
             successful = successCount,
             failed = failureCount,
-        }
+        },
     })
 end
 
 -- Load all pet models and generate images into ReplicatedStorage.Assets
 function AssetPreloadService:LoadAllModelsIntoAssets()
     logger:Info("🔄 LoadAllModelsIntoAssets: Starting...")
-    
+    ReplicatedStorage.Assets:SetAttribute("PetThumbnailsReady", false)
+    ReplicatedStorage.Assets:SetAttribute("PetThumbnailCount", 0)
+    ReplicatedStorage.Assets:SetAttribute("PetThumbnailFailures", 0)
+
     local startTime = tick()
     local modelSuccessCount = 0
     local modelFailureCount = 0
     local imageSuccessCount = 0
     local imageFailureCount = 0
     local totalAssets = 0
-    
+
     logger:Info("🔄 LoadAllModelsIntoAssets: Checking dependencies...")
     logger:Info("🔄 LoadAllModelsIntoAssets: petConfig", {
         exists = petConfig ~= nil,
-        type = petConfig and type(petConfig) or "nil"
+        type = petConfig and type(petConfig) or "nil",
     })
-    
+
     local petsFolder = ReplicatedStorage.Assets.Models.Pets
     logger:Info("🔄 LoadAllModelsIntoAssets: Pets folder found", {
         petsFolderExists = petsFolder ~= nil,
-        petsFolderPath = petsFolder and petsFolder:GetFullName() or "nil"
+        petsFolderPath = petsFolder and petsFolder:GetFullName() or "nil",
     })
-    
+
     -- Create eggs folder if it doesn't exist
     local eggsFolder = ReplicatedStorage.Assets.Models:FindFirstChild("Eggs")
     if not eggsFolder then
@@ -339,7 +482,7 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
         eggsFolder.Name = "Eggs"
         eggsFolder.Parent = ReplicatedStorage.Assets.Models
     end
-    
+
     -- Create Images folder structure if it doesn't exist
     local imagesRoot = ReplicatedStorage.Assets:FindFirstChild("Images")
     if not imagesRoot then
@@ -347,41 +490,41 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
         imagesRoot.Name = "Images"
         imagesRoot.Parent = ReplicatedStorage.Assets
     end
-    
+
     local petImagesFolder = imagesRoot:FindFirstChild("Pets")
     if not petImagesFolder then
         petImagesFolder = Instance.new("Folder")
         petImagesFolder.Name = "Pets"
         petImagesFolder.Parent = imagesRoot
     end
-    
+
     local eggImagesFolder = imagesRoot:FindFirstChild("Eggs")
     if not eggImagesFolder then
         eggImagesFolder = Instance.new("Folder")
         eggImagesFolder.Name = "Eggs"
         eggImagesFolder.Parent = imagesRoot
     end
-    
+
     -- Load pet models and generate images
     logger:Info("🔄 LoadAllModelsIntoAssets: Pet config loaded", {
         petConfigExists = petConfig ~= nil,
         petsTableExists = petConfig and petConfig.pets ~= nil,
-        petCount = petConfig and petConfig.pets and #petConfig.pets or 0
+        petCount = petConfig and petConfig.pets and #petConfig.pets or 0,
     })
-    
+
     if not petConfig or not petConfig.pets then
         logger:Error("❌ LoadAllModelsIntoAssets: No pet config found!")
         return
     end
-    
+
     logger:Info("🔄 LoadAllModelsIntoAssets: Starting pet loop...")
     for petType, petData in pairs(petConfig.pets) do
         logger:Info("🔄 LoadAllModelsIntoAssets: Processing pet type", {
             petType = petType,
             hasVariants = petData.variants ~= nil,
-            variantsCount = petData.variants and #petData.variants or 0
+            variantsCount = petData.variants and #petData.variants or 0,
         })
-        
+
         if petData.variants then
             -- Create pet type folders (e.g., "Bear")
             local petTypeFolder = petsFolder:FindFirstChild(petType)
@@ -390,38 +533,41 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                 petTypeFolder.Name = petType
                 petTypeFolder.Parent = petsFolder
             end
-            
+
             local petImageTypeFolder = petImagesFolder:FindFirstChild(petType)
             if not petImageTypeFolder then
                 petImageTypeFolder = Instance.new("Folder")
                 petImageTypeFolder.Name = petType
                 petImageTypeFolder.Parent = petImagesFolder
             end
-            
+
             for variant, variantData in pairs(petData.variants) do
                 totalAssets = totalAssets + 1
-                
+                local transformOptions = self:ResolvePetAssetTransform(petData, variantData)
+
                 if variantData.asset_id and variantData.asset_id ~= "rbxassetid://0" then
                     local existingVariant = petTypeFolder:FindFirstChild(variant)
                     local modelSuccess
-                    
+
                     if variantData.asset_source == "rojo" then
                         if existingVariant and existingVariant:IsA("Model") then
                             logger:Info("Using Rojo-managed pet model", {
                                 petType = petType,
                                 variant = variant,
-                                path = existingVariant:GetFullName()
+                                path = existingVariant:GetFullName(),
                             })
                             self:SetPreferredPrimaryPart(existingVariant)
                             existingVariant:PivotTo(CFrame.identity)
+                            self:ApplyConfiguredModelTransform(existingVariant, transformOptions)
                             self:WeldModelParts(existingVariant)
+                            self:NormalizePetModelParts(existingVariant)
                             self:AddPetSystemComponents(existingVariant)
                             modelSuccess = true
                         else
                             logger:Warn("Rojo-managed pet model missing", {
                                 petType = petType,
                                 variant = variant,
-                                expectedPath = petTypeFolder:GetFullName() .. "." .. variant
+                                expectedPath = petTypeFolder:GetFullName() .. "." .. variant,
                             })
                             modelSuccess = false
                         end
@@ -435,24 +581,32 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                             variantData.asset_id,
                             petTypeFolder,
                             variant,
-                            petType .. "_" .. variant
+                            petType .. "_" .. variant,
+                            transformOptions
                         )
                     end
-                    
+
                     if modelSuccess then
                         modelSuccessCount = modelSuccessCount + 1
-                        
+
                         -- Inject per-variant stats (power/health/type/variant) for runtime use
                         do
                             local variantModel = petTypeFolder:FindFirstChild(variant)
                             if variantModel then
-                                local powerValue = (variantData.power or petData.base_power or 1)
-                                local healthValue = (variantData.health or petData.base_health or 100)
+                                local resolvedPetData = petConfig.getPet
+                                    and petConfig.getPet(petType, variant)
+                                local powerValue = (resolvedPetData and resolvedPetData.power)
+                                    or petData.base_power
+                                    or 1
+                                local healthValue = (resolvedPetData and resolvedPetData.health)
+                                    or petData.base_health
+                                    or 100
                                 -- Set as attributes for quick access and clone carryover
                                 variantModel:SetAttribute("PetType", petType)
                                 variantModel:SetAttribute("Variant", variant)
                                 variantModel:SetAttribute("Power", powerValue)
                                 variantModel:SetAttribute("BaseHealth", healthValue)
+                                self:ApplyPetTransformAttributes(variantModel, transformOptions)
                                 -- Also create NumberValues for scripts that expect Values on the model
                                 local powerNV = variantModel:FindFirstChild("Power")
                                 if not powerNV then
@@ -483,7 +637,7 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                                 end
                             end
                         end
-                        
+
                         -- Generate image from the loaded model
                         local imageSuccess = self:GenerateImageFromModel(
                             petTypeFolder:FindFirstChild(variant),
@@ -492,7 +646,7 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                             petType,
                             variant
                         )
-                        
+
                         if imageSuccess then
                             imageSuccessCount = imageSuccessCount + 1
                         else
@@ -500,12 +654,12 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                         end
                     else
                         modelFailureCount = modelFailureCount + 1
-                        imageFailureCount = imageFailureCount + 1  -- Can't generate image without model
+                        imageFailureCount = imageFailureCount + 1 -- Can't generate image without model
                     end
                 else
                     logger:Warn("Pet has no valid asset ID", {
                         petType = petType,
-                        variant = variant
+                        variant = variant,
                     })
                     modelFailureCount = modelFailureCount + 1
                     imageFailureCount = imageFailureCount + 1
@@ -513,11 +667,11 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
             end
         end
     end
-    
+
     -- Load egg models and generate images
     for eggType, eggData in pairs(petConfig.egg_sources or {}) do
         totalAssets = totalAssets + 1
-        
+
         if eggData.asset_id and eggData.asset_id ~= "rbxassetid://0" then
             -- Replace existing egg model to avoid duplicates
             local existingEgg = eggsFolder:FindFirstChild(eggType)
@@ -525,25 +679,21 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                 existingEgg:Destroy()
             end
             -- Load 3D egg model
-            local modelSuccess = self:LoadModelIntoFolder(
-                eggData.asset_id,
-                eggsFolder,
-                eggType,
-                eggType .. "_egg"
-            )
-            
+            local modelSuccess =
+                self:LoadModelIntoFolder(eggData.asset_id, eggsFolder, eggType, eggType .. "_egg")
+
             if modelSuccess then
                 modelSuccessCount = modelSuccessCount + 1
-                
+
                 -- Generate image from the loaded egg model (same as pets)
                 local imageSuccess = self:GenerateImageFromModel(
                     eggsFolder:FindFirstChild(eggType),
                     eggImagesFolder,
                     eggType,
-                    eggType,  -- petType parameter (for eggs, use eggType)
-                    "egg"     -- variant parameter (all eggs are "egg" variant)
+                    eggType, -- petType parameter (for eggs, use eggType)
+                    "egg" -- variant parameter (all eggs are "egg" variant)
                 )
-                
+
                 if imageSuccess then
                     imageSuccessCount = imageSuccessCount + 1
                 else
@@ -551,30 +701,34 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                 end
             else
                 modelFailureCount = modelFailureCount + 1
-                imageFailureCount = imageFailureCount + 1  -- Can't generate image without model
+                imageFailureCount = imageFailureCount + 1 -- Can't generate image without model
             end
         else
             logger:Warn("Egg has no valid asset ID", {
-                eggType = eggType
+                eggType = eggType,
             })
             modelFailureCount = modelFailureCount + 1
             imageFailureCount = imageFailureCount + 1
         end
     end
-    
+
     logger:Info("Asset loading completed", {
         models = {
             successful = modelSuccessCount,
-            failed = modelFailureCount
+            failed = modelFailureCount,
         },
         images = {
             successful = imageSuccessCount,
-            failed = imageFailureCount
+            failed = imageFailureCount,
         },
         total = totalAssets,
-        duration = tick() - startTime
+        duration = tick() - startTime,
     })
-    
+
+    ReplicatedStorage.Assets:SetAttribute("PetThumbnailsReady", true)
+    ReplicatedStorage.Assets:SetAttribute("PetThumbnailCount", imageSuccessCount)
+    ReplicatedStorage.Assets:SetAttribute("PetThumbnailFailures", imageFailureCount)
+
     -- Signal that asset loading is complete
     _G.AssetsLoadingComplete = true
     if _G.AssetsLoadedEvent then
@@ -601,135 +755,142 @@ function AssetPreloadService:LoadAllSoundsIntoAssets()
             local s = Instance.new("Sound")
             s.Name = name
             s.SoundId = soundData.id
-            if soundData.volume then s.Volume = soundData.volume end
-            if soundData.playback_speed then s.PlaybackSpeed = soundData.playback_speed end
+            if soundData.volume then
+                s.Volume = soundData.volume
+            end
+            if soundData.playback_speed then
+                s.PlaybackSpeed = soundData.playback_speed
+            end
             s.Parent = soundsFolder
             count += 1
         end
     end
-    logger:Info("🔊 LoadAllSoundsIntoAssets: Completed", {count = count})
+    logger:Info("🔊 LoadAllSoundsIntoAssets: Completed", { count = count })
 end
 
 -- Load a single model into a folder
-function AssetPreloadService:LoadModelIntoFolder(assetId, parentFolder, folderName, debugName, options)
+function AssetPreloadService:LoadModelIntoFolder(
+    assetId,
+    parentFolder,
+    folderName,
+    debugName,
+    options
+)
     logger:Info("🔄 LoadModelIntoFolder: Starting", {
         assetId = assetId,
         debugName = debugName,
         targetFolder = folderName,
-        parentFolder = parentFolder and parentFolder.Name or "nil"
+        parentFolder = parentFolder and parentFolder.Name or "nil",
     })
-    
+
     local cleanId = assetId:match("%d+")
     if not cleanId then
         logger:Error("❌ LoadModelIntoFolder: Invalid asset ID format", {
             assetId = assetId,
-            debugName = debugName
+            debugName = debugName,
         })
         return false
     end
-    
+
     logger:Info("🔄 LoadModelIntoFolder: Clean ID extracted", {
         cleanId = cleanId,
-        assetId = assetId
+        assetId = assetId,
     })
-    
+
     local success, result = pcall(function()
         logger:Info("🔄 LoadModelIntoFolder: Loading asset via InsertService", {
-            cleanId = cleanId
+            cleanId = cleanId,
         })
-        
+
         local loadedAsset = InsertService:LoadAsset(tonumber(cleanId))
         if not loadedAsset then
             error("Failed to load asset: " .. cleanId)
         end
-        
+
         logger:Info("✅ LoadModelIntoFolder: Asset loaded successfully", {
             cleanId = cleanId,
-            loadedAssetExists = loadedAsset ~= nil
+            loadedAssetExists = loadedAsset ~= nil,
         })
-        
+
         local model = loadedAsset:FindFirstChildOfClass("Model")
         if not model then
             error("No Model found in asset: " .. cleanId)
         end
-        
+
         logger:Info("✅ LoadModelIntoFolder: Model found in asset", {
             modelName = model.Name,
-            modelType = model.ClassName
+            modelType = model.ClassName,
         })
-        
+
         -- Clone and organize the model
         local modelClone = model:Clone()
         modelClone.Name = folderName
-        
+
         logger:Info("✅ LoadModelIntoFolder: Model cloned", {
             originalName = model.Name,
-            newName = modelClone.Name
+            newName = modelClone.Name,
         })
-        
+
         -- Choose a stable PrimaryPart and pivot model to origin before welding
         self:SetPreferredPrimaryPart(modelClone)
         modelClone:PivotTo(CFrame.identity)
+
+        self:ApplyConfiguredModelTransform(modelClone, options)
+
         -- Weld all parts together to prevent falling apart
         logger:Info("🔧 LoadModelIntoFolder: Welding model parts...")
         self:WeldModelParts(modelClone)
 
-        -- Optional transform (e.g., default orientation for breakables)
-        if options and options.transformCF then
-            logger:Info("🔧 LoadModelIntoFolder: Applying transformCF", {
-                hasPrimaryPart = modelClone.PrimaryPart ~= nil
-            })
-            pcall(function()
-                modelClone:PivotTo(options.transformCF)
-            end)
-        end
-        
         -- If this is a pet model, add all the required pet system components
         local isPetFolder = false
         if parentFolder then
             -- We are called with parentFolder either being `Pets` or a child of it (pet type folder)
-            isPetFolder = (parentFolder.Name == "Pets") or (parentFolder.Parent and parentFolder.Parent.Name == "Pets")
+            isPetFolder = (parentFolder.Name == "Pets")
+                or (parentFolder.Parent and parentFolder.Parent.Name == "Pets")
         end
         if isPetFolder then
+            self:NormalizePetModelParts(modelClone)
             logger:Info("🔧 LoadModelIntoFolder: Adding pet system components...")
             self:AddPetSystemComponents(modelClone)
         end
-        
+
         modelClone.Parent = parentFolder
-        
+
         logger:Info("✅ LoadModelIntoFolder: Model parented to folder", {
             modelName = modelClone.Name,
-            parentFolder = parentFolder.Name
+            parentFolder = parentFolder.Name,
         })
-        
+
         -- Clean up the original asset
         loadedAsset:Destroy()
-        
+
         logger:Info("✅ LoadModelIntoFolder: Model successfully loaded into folder", {
             assetId = assetId,
             debugName = debugName,
             modelName = modelClone.Name,
-            path = parentFolder:GetFullName() .. "." .. folderName
+            path = parentFolder:GetFullName() .. "." .. folderName,
         })
-        
+
         return true
     end)
-    
+
     if not success then
         logger:Warn("Failed to load model", {
             assetId = assetId,
             debugName = debugName,
-            error = tostring(result)
+            error = tostring(result),
         })
         return false
     end
-    
+
     return true
 end
 
 -- Prefer Face/Head as PrimaryPart when available
 function AssetPreloadService:SetPreferredPrimaryPart(model)
-    if not model or not model:IsA("Model") then return end
+    if not model or not model:IsA("Model") then
+        return
+    end
     local chosen = model.PrimaryPart
     local firstPart = nil
     for _, d in ipairs(model:GetDescendants()) do
@@ -748,79 +909,89 @@ function AssetPreloadService:SetPreferredPrimaryPart(model)
     end
 end
 
-    -- Generate a ViewportFrame image from a loaded model (works for both pets and eggs)
-    function AssetPreloadService:GenerateImageFromModel(model, parentFolder, folderName, itemType, variant)
-        if not model or not model:IsA("Model") then
-            logger:Warn("Invalid model for image generation", {
-                itemType = itemType,
-                variant = variant,
-                modelExists = model ~= nil,
-                modelType = model and model.ClassName or "nil"
-            })
-            return false
+-- Generate a ViewportFrame image from a loaded model (works for both pets and eggs)
+function AssetPreloadService:GenerateImageFromModel(
+    model,
+    parentFolder,
+    folderName,
+    itemType,
+    variant
+)
+    if not model or not model:IsA("Model") then
+        logger:Warn("Invalid model for image generation", {
+            itemType = itemType,
+            variant = variant,
+            modelExists = model ~= nil,
+            modelType = model and model.ClassName or "nil",
+        })
+        return false
+    end
+
+    local success, result = pcall(function()
+        -- Get camera configuration (works for both pets and eggs)
+        local cameraConfig = self:GetCameraConfig(itemType)
+
+        -- Position model for image capture - RESET BOTH POSITION AND ROTATION
+        local modelClone = model:Clone()
+        if petConfig.pets[itemType] then
+            PetVariantVisuals.ApplyServerMetadata(modelClone, itemType, variant)
+            PetVariantVisuals.ApplyStaticVisuals(modelClone)
         end
-        
-        local success, result = pcall(function()
-            -- Get camera configuration (works for both pets and eggs)
-            local cameraConfig = self:GetCameraConfig(itemType)
-            
-            -- Position model for image capture - RESET BOTH POSITION AND ROTATION
-            local modelClone = model:Clone()
-            local modelCFrame, modelSize = modelClone:GetBoundingBox()
-            
-            -- Always reset to identity CFrame (0,0,0 position + no rotation)
-            if modelClone.PrimaryPart then
-                modelClone:SetPrimaryPartCFrame(CFrame.identity)
-            else
-                -- For models without PrimaryPart, manually set each part to origin with no rotation
-                local modelCenter = modelClone:GetBoundingBox()
-                
-                -- Set each part to identity CFrame (0,0,0 position, no rotation)
-                for _, part in pairs(modelClone:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        -- Calculate offset from model center
-                        local offset = part.Position - modelCenter.Position
-                        -- Set to origin plus offset, with no rotation
-                        part.CFrame = CFrame.new(offset)
-                    end
+        local modelCFrame, modelSize = modelClone:GetBoundingBox()
+
+        -- Always reset to identity CFrame (0,0,0 position + no rotation)
+        if modelClone.PrimaryPart then
+            modelClone:SetPrimaryPartCFrame(CFrame.identity)
+        else
+            -- For models without PrimaryPart, manually set each part to origin with no rotation
+            local modelCenter = modelClone:GetBoundingBox()
+
+            -- Set each part to identity CFrame (0,0,0 position, no rotation)
+            for _, part in pairs(modelClone:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    -- Calculate offset from model center
+                    local offset = part.Position - modelCenter.Position
+                    -- Set to origin plus offset, with no rotation
+                    part.CFrame = CFrame.new(offset)
                 end
             end
-        
+        end
+
         -- Calculate camera position based on configuration using proper spherical coordinates
-        local angleYRad = math.rad(cameraConfig.angle_y)  -- Horizontal rotation (around Y-axis)
-        local angleXRad = math.rad(cameraConfig.angle_x)  -- Vertical rotation (elevation)
-        
+        local angleYRad = math.rad(cameraConfig.angle_y) -- Horizontal rotation (around Y-axis)
+        local angleXRad = math.rad(cameraConfig.angle_x) -- Vertical rotation (elevation)
+
         -- Use spherical coordinates: distance, horizontal angle, vertical angle
         local cameraOffset = Vector3.new(
-            math.sin(angleYRad) * math.cos(angleXRad) * cameraConfig.distance,  -- X: affected by both angles
-            math.sin(angleXRad) * cameraConfig.distance,                       -- Y: vertical elevation
-            math.cos(angleYRad) * math.cos(angleXRad) * cameraConfig.distance   -- Z: affected by both angles
+            math.sin(angleYRad) * math.cos(angleXRad) * cameraConfig.distance, -- X: affected by both angles
+            math.sin(angleXRad) * cameraConfig.distance, -- Y: vertical elevation
+            math.cos(angleYRad) * math.cos(angleXRad) * cameraConfig.distance -- Z: affected by both angles
         )
-        
+
         local cameraPosition = cameraOffset + cameraConfig.offset
-        
+
         -- Remove existing ViewportFrame if it exists (for regeneration)
         local existingViewport = parentFolder:FindFirstChild(folderName)
         if existingViewport then
             existingViewport:Destroy()
         end
-        
+
         -- Create ViewportFrame for this pet
         local viewport = Instance.new("ViewportFrame")
         viewport.Name = folderName
-        viewport.Size = UDim2.new(1, 0, 1, 0)  -- Full size, will be scaled by UI
+        viewport.Size = UDim2.new(1, 0, 1, 0) -- Full size, will be scaled by UI
         viewport.BackgroundTransparency = 1
         viewport.Parent = parentFolder
-        
+
         -- Create and configure camera
         local camera = Instance.new("Camera")
         camera.CFrame = CFrame.lookAt(cameraPosition, Vector3.new(0, 0, 0))
         camera.Parent = viewport
         viewport.CurrentCamera = camera
-        
+
         -- Add model to viewport
         modelClone.Parent = viewport
-        
+
         logger:Info("Generated ViewportFrame image", {
             itemType = itemType,
             variant = variant,
@@ -828,23 +999,23 @@ end
                 distance = cameraConfig.distance,
                 angle_y = cameraConfig.angle_y,
                 angle_x = cameraConfig.angle_x,
-                offset = cameraConfig.offset
+                offset = cameraConfig.offset,
             },
             calculatedPosition = cameraPosition,
             modelSize = modelSize,
-            isEgg = petConfig.egg_sources[itemType] ~= nil
+            isEgg = petConfig.egg_sources[itemType] ~= nil,
         })
-        
+
         return true
     end)
-    
+
     if success then
         return true
     else
         logger:Error("Failed to generate image", {
             itemType = itemType,
             variant = variant,
-            error = result
+            error = result,
         })
         return false
     end
@@ -855,18 +1026,18 @@ end
 -- Get camera configuration for pet type or egg type
 function AssetPreloadService:GetCameraConfig(itemType)
     local assetImageConfig = petConfig.asset_images
-    
+
     -- Check if it's an egg first
     local eggData = petConfig.egg_sources[itemType]
     if eggData then
         -- It's an egg - use egg camera config or egg default
         return (eggData and eggData.camera) or assetImageConfig.default_egg_camera
     end
-    
+
     -- It's a pet - use pet camera config or pet default
     local petData = petConfig.pets[itemType]
     local cameraConfig = (petData and petData.camera) or assetImageConfig.default_camera
-    
+
     return cameraConfig
 end
 
@@ -874,20 +1045,20 @@ end
 function AssetPreloadService:GetModelFromAssets(petType, variant)
     local petsFolder = ReplicatedStorage.Assets.Models.Pets
     local petTypeFolder = petsFolder:FindFirstChild(petType)
-    
+
     if petTypeFolder then
         local model = petTypeFolder:FindFirstChild(variant)
         if model then
             return model:Clone()
         end
     end
-    
+
     logger:Warn("Model not found in assets", {
         petType = petType,
         variant = variant,
-        path = "ReplicatedStorage.Assets.Models.Pets." .. petType .. "." .. variant
+        path = "ReplicatedStorage.Assets.Models.Pets." .. petType .. "." .. variant,
     })
-    
+
     return nil
 end
 
@@ -895,25 +1066,31 @@ end
 function AssetPreloadService:IsModelInAssets(petType, variant)
     local petsFolder = ReplicatedStorage.Assets.Models.Pets
     local petTypeFolder = petsFolder:FindFirstChild(petType)
-    
+
     if petTypeFolder then
         return petTypeFolder:FindFirstChild(variant) ~= nil
     end
-    
+
     return false
 end
 
 -- Get image from ReplicatedStorage.Assets (for external access)
 function AssetPreloadService:GetImageFromAssets(petType, variant)
     local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
-    if not assetsFolder then return nil end
-    
+    if not assetsFolder then
+        return nil
+    end
+
     local imagesRoot = assetsFolder:FindFirstChild("Images")
-    if not imagesRoot then return nil end
-    
+    if not imagesRoot then
+        return nil
+    end
+
     local imagesFolder = imagesRoot:FindFirstChild("Pets")
-    if not imagesFolder then return nil end
-    
+    if not imagesFolder then
+        return nil
+    end
+
     local petTypeFolder = imagesFolder:FindFirstChild(petType)
     if petTypeFolder then
         local image = petTypeFolder:FindFirstChild(variant)
@@ -921,53 +1098,63 @@ function AssetPreloadService:GetImageFromAssets(petType, variant)
             return image:Clone()
         end
     end
-    
+
     logger:Warn("Image not found in assets", {
         petType = petType,
         variant = variant,
-        path = "ReplicatedStorage.Assets.Images.Pets." .. petType .. "." .. variant
+        path = "ReplicatedStorage.Assets.Images.Pets." .. petType .. "." .. variant,
     })
-    
+
     return nil
 end
 
 -- Get egg image from ReplicatedStorage.Assets (for external access)
 function AssetPreloadService:GetEggImageFromAssets(eggType)
     local imagesRoot = ReplicatedStorage.Assets:FindFirstChild("Images")
-    if not imagesRoot then return nil end
-    
+    if not imagesRoot then
+        return nil
+    end
+
     local eggImagesFolder = imagesRoot:FindFirstChild("Eggs")
-    if not eggImagesFolder then return nil end
-    
+    if not eggImagesFolder then
+        return nil
+    end
+
     local eggImage = eggImagesFolder:FindFirstChild(eggType)
     if eggImage then
         return eggImage:Clone()
     end
-    
+
     logger:Warn("Egg image not found in assets", {
         eggType = eggType,
-        path = "ReplicatedStorage.Assets.Images.Eggs." .. eggType
+        path = "ReplicatedStorage.Assets.Images.Eggs." .. eggType,
     })
-    
+
     return nil
 end
 
 -- Check if an image is available in assets
 function AssetPreloadService:IsImageInAssets(petType, variant)
     local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
-    if not assetsFolder then return false end
-    
+    if not assetsFolder then
+        return false
+    end
+
     local imagesRoot = assetsFolder:FindFirstChild("Images")
-    if not imagesRoot then return false end
-    
+    if not imagesRoot then
+        return false
+    end
+
     local imagesFolder = imagesRoot:FindFirstChild("Pets")
-    if not imagesFolder then return false end
-    
+    if not imagesFolder then
+        return false
+    end
+
     local petTypeFolder = imagesFolder:FindFirstChild(petType)
     if petTypeFolder then
         return petTypeFolder:FindFirstChild(variant) ~= nil
     end
-    
+
     return false
 end
 
@@ -976,7 +1163,7 @@ function AssetPreloadService:GetLoadingStats()
     local petsFolder = ReplicatedStorage.Assets.Models.Pets
     local petCount = 0
     local variantCount = 0
-    
+
     for _, petTypeFolder in ipairs(petsFolder:GetChildren()) do
         if petTypeFolder:IsA("Folder") then
             petCount = petCount + 1
@@ -987,11 +1174,11 @@ function AssetPreloadService:GetLoadingStats()
             end
         end
     end
-    
+
     return {
         petTypes = petCount,
         totalVariants = variantCount,
-        folderPath = petsFolder:GetFullName()
+        folderPath = petsFolder:GetFullName(),
     }
 end
 
@@ -999,21 +1186,21 @@ end
 function AssetPreloadService:SetupAdminRegenerationSignal()
     local Signals = require(ReplicatedStorage.Shared.Network.Signals)
     local AdminChecker = require(ReplicatedStorage.Shared.Utils.AdminChecker)
-    
+
     Signals.ForceRegenerateAssets.OnServerEvent:Connect(function(player, data)
         if not AdminChecker:IsAdmin(player) then
             logger:Warn("Non-admin attempted asset regeneration", {
                 player = player.Name,
-                userId = player.UserId
+                userId = player.UserId,
             })
             return
         end
-        
+
         logger:Info("Admin force regeneration triggered", {
             player = player.Name,
-            userId = player.UserId
+            userId = player.UserId,
         })
-        
+
         -- Force regenerate all assets
         self:LoadAllModelsIntoAssets()
     end)
@@ -1024,7 +1211,7 @@ function AssetPreloadService:WeldModelParts(model)
     if not model or not model:IsA("Model") then
         return
     end
-    
+
     -- Get all BaseParts in the model
     local parts = {}
     for _, descendant in pairs(model:GetDescendants()) do
@@ -1032,14 +1219,14 @@ function AssetPreloadService:WeldModelParts(model)
             table.insert(parts, descendant)
         end
     end
-    
+
     if #parts <= 1 then
         return -- Nothing to weld
     end
-    
+
     -- Determine the root part to weld everything to
     local rootPart = model.PrimaryPart
-    
+
     -- If no PrimaryPart, try to find a part named "Head", "Face", or use the first part
     if not rootPart then
         for _, part in pairs(parts) do
@@ -1048,20 +1235,20 @@ function AssetPreloadService:WeldModelParts(model)
                 break
             end
         end
-        
+
         -- If still no root part, use the first part
         if not rootPart and #parts > 0 then
             rootPart = parts[1]
         end
     end
-    
+
     if not rootPart then
         logger:Warn("Could not determine root part for welding", {
-            modelName = model.Name
+            modelName = model.Name,
         })
         return
     end
-    
+
     -- Weld all other parts to the root part
     local weldCount = 0
     for _, part in pairs(parts) do
@@ -1076,27 +1263,27 @@ function AssetPreloadService:WeldModelParts(model)
             weld.Part0 = rootPart
             weld.Part1 = part
             weld.Parent = rootPart
-            
+
             -- Unanchor the part since it's now welded
             part.Anchored = false
-            
+
             weldCount = weldCount + 1
         end
     end
-    
+
     -- Ensure the root part is unanchored so the whole model can move
     rootPart.Anchored = false
-    
+
     -- Set the PrimaryPart if it wasn't already set
     if not model.PrimaryPart then
         model.PrimaryPart = rootPart
     end
-    
+
     logger:Debug("Welded model parts", {
         modelName = model.Name,
         rootPart = rootPart.Name,
         totalParts = #parts,
-        weldsCreated = weldCount
+        weldsCreated = weldCount,
     })
 end
 
@@ -1105,35 +1292,35 @@ function AssetPreloadService:AddPetSystemComponents(petModel)
     logger:Info("🔧 AddPetSystemComponents: Starting...", {
         modelExists = petModel ~= nil,
         modelType = petModel and petModel.ClassName or "nil",
-        modelName = petModel and petModel.Name or "nil"
+        modelName = petModel and petModel.Name or "nil",
     })
-    
+
     if not petModel or not petModel:IsA("Model") then
         logger:Error("❌ AddPetSystemComponents: Invalid pet model for component addition", {
             modelExists = petModel ~= nil,
-            modelType = petModel and petModel.ClassName or "nil"
+            modelType = petModel and petModel.ClassName or "nil",
         })
         return
     end
-    
+
     logger:Info("🔧 AddPetSystemComponents: Adding components to model", {
-        modelName = petModel.Name
+        modelName = petModel.Name,
     })
-    
+
     -- 1. Create all required values on the pet model
     local values = {
-        {name = "TargetID", class = "NumberValue", value = 0},
-        {name = "PetID", class = "NumberValue", value = 0},
-        {name = "PetSize", class = "Vector3Value", value = Vector3.new(1,1,1)},
-        {name = "Pos", class = "Vector3Value", value = Vector3.new(0,0,0)},
-        {name = "PositionNumber", class = "NumberValue", value = 0},
-        {name = "Refresh", class = "BoolValue", value = false},
-        {name = "TargetType", class = "StringValue", value = ""},
-        {name = "TargetWorld", class = "StringValue", value = ""},
-        {name = "Timer", class = "NumberValue", value = 0},
-        {name = "AttackPos", class = "StringValue", value = ""}
+        { name = "TargetID", class = "NumberValue", value = 0 },
+        { name = "PetID", class = "NumberValue", value = 0 },
+        { name = "PetSize", class = "Vector3Value", value = Vector3.new(1, 1, 1) },
+        { name = "Pos", class = "Vector3Value", value = Vector3.new(0, 0, 0) },
+        { name = "PositionNumber", class = "NumberValue", value = 0 },
+        { name = "Refresh", class = "BoolValue", value = false },
+        { name = "TargetType", class = "StringValue", value = "" },
+        { name = "TargetWorld", class = "StringValue", value = "" },
+        { name = "Timer", class = "NumberValue", value = 0 },
+        { name = "AttackPos", class = "StringValue", value = "" },
     }
-    
+
     for _, valueData in pairs(values) do
         local value = petModel:FindFirstChild(valueData.name)
         if not value or not value:IsA(valueData.class) then
@@ -1146,7 +1333,7 @@ function AssetPreloadService:AddPetSystemComponents(petModel)
         end
         value.Value = valueData.value
     end
-    
+
     -- 2. Add Follow script placeholder to the pet model (disabled)
     -- NOTE: Do not set `Script.Source` at runtime; it is read-only in live games.
     local followScript = petModel:FindFirstChild("Follow")
@@ -1159,7 +1346,7 @@ function AssetPreloadService:AddPetSystemComponents(petModel)
         followScript.Parent = petModel
     end
     followScript.Disabled = true
-    
+
     -- 3. Add attachmentPet to the pet model's PrimaryPart
     if petModel.PrimaryPart then
         local attachmentPet = petModel.PrimaryPart:FindFirstChild("attachmentPet")
@@ -1172,16 +1359,17 @@ function AssetPreloadService:AddPetSystemComponents(petModel)
             attachmentPet.Parent = petModel.PrimaryPart
         end
     end
-    
+
     -- 4. Set initial pet size
     petModel.PetSize.Value = petModel:GetExtentsSize()
-    
+
     logger:Info("✅ AddPetSystemComponents: Pet system components added to model", {
         modelName = petModel.Name,
         valuesCreated = #values,
         hasFollowScript = petModel:FindFirstChild("Follow") ~= nil,
-        hasAttachmentPet = petModel.PrimaryPart and petModel.PrimaryPart:FindFirstChild("attachmentPet") ~= nil,
-        totalChildren = #petModel:GetChildren()
+        hasAttachmentPet = petModel.PrimaryPart
+            and petModel.PrimaryPart:FindFirstChild("attachmentPet") ~= nil,
+        totalChildren = #petModel:GetChildren(),
     })
 end
 

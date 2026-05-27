@@ -242,40 +242,39 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         power = hatchResult.petData.power,
     })
 
-    -- 🐾 ADD PET TO INVENTORY
-    if self._inventoryService then
-        local petData = {
-            id = hatchResult.pet, -- Pet type (bear, bunny, etc.)
-            variant = hatchResult.variant, -- basic, golden, rainbow
-            obtained_at = tick(), -- Current timestamp
-            level = 1, -- Starting level
-            exp = 0, -- Starting experience
-            stats = {
-                power = hatchResult.petData.power, -- Power from pet config
-                health = hatchResult.petData.health or 100,
-                speed = hatchResult.petData.speed or 1.0,
-            },
-            nickname = "", -- Empty by default
-            locked = false, -- Not locked by default
-        }
-
-        local uid = self._inventoryService:AddItem(player, "pets", petData)
-        if uid then
-            Logger:Info("Pet added to inventory", {
+    -- 🐾 ADD PET TO INVENTORY THROUGH THE SINGLE GRANT BOUNDARY
+    if self._petGrantService then
+        local grantResult = self._petGrantService:GrantPet(player, {
+            petType = hatchResult.pet,
+            variant = hatchResult.variant,
+            source = "egg_hatch",
+        })
+        if grantResult.ok then
+            Logger:Info("Pet granted from egg hatch", {
                 player = player.Name,
-                uid = uid,
+                uid = grantResult.uid,
                 pet = hatchResult.pet,
                 variant = hatchResult.variant,
             })
         else
-            Logger:Error("Failed to add pet to inventory", {
+            Logger:Error("Failed to grant hatched pet", {
                 player = player.Name,
                 pet = hatchResult.pet,
                 variant = hatchResult.variant,
+                error = grantResult.error,
             })
+            if self._dataService then
+                self._dataService:AddCurrency(
+                    player,
+                    eggData.currency,
+                    eggData.cost,
+                    "egg_hatch_refund"
+                )
+            end
+            return "Error", "Failed to grant pet"
         end
     else
-        Logger:Warn("InventoryService not available - pet not saved to inventory", {
+        Logger:Warn("PetGrantService not available - pet not saved to inventory", {
             player = player.Name,
             pet = hatchResult.pet,
         })
@@ -331,6 +330,7 @@ function EggService:Initialize(moduleLoader)
         self._dataService = moduleLoader:Get("DataService")
         self._eventService = moduleLoader:Get("EventService")
         self._statsService = moduleLoader:Get("StatsService")
+        self._petGrantService = moduleLoader:Get("PetGrantService")
 
         if self._inventoryService then
             Logger:Info("EggService: InventoryService connection established")
@@ -354,6 +354,12 @@ function EggService:Initialize(moduleLoader)
             Logger:Info("EggService: StatsService connection established")
         else
             Logger:Warn("EggService: StatsService not available in module loader")
+        end
+
+        if self._petGrantService then
+            Logger:Info("EggService: PetGrantService connection established")
+        else
+            Logger:Warn("EggService: PetGrantService not available in module loader")
         end
     else
         Logger:Warn("EggService: No module loader provided")

@@ -26,9 +26,17 @@ local function print(...)
 end
 local RunService = game:GetService("RunService")
 local workspace = game:GetService("Workspace")
+local petsConfig = nil
+pcall(function()
+    petsConfig = require(ReplicatedStorage.Configs.pets)
+end)
+local petProgressionConfig = nil
+pcall(function()
+    petProgressionConfig = require(ReplicatedStorage.Configs.pet_progression)
+end)
 
 -- Prevent concurrent loadEquipped runs per-player (which can destroy freshly spawned models)
-local activeLoads: {[Player]: boolean} = {}
+local activeLoads: { [Player]: boolean } = {}
 
 -- Create event for asset loading completion
 if not _G.AssetsLoadedEvent then
@@ -83,19 +91,34 @@ local DIAG_REFERENCE_ID = "bunny"
 local DIAG_REFERENCE_VARIANT = "basic"
 local STABILITY_WATCH_ENABLED = false
 local STABILITY_WATCH_DURATION_SEC = 2.0
+local extractIdAndVariantFromFolder
+
+local function normalizeRuntimePetPart(part)
+    part.CanCollide = false
+    part.CanTouch = false
+    part.Massless = true
+end
 
 -- Utility functions from original
 function GetPointOnCircle(CircleRadius, Degrees)
-    return Vector3.new(math.cos(math.rad(Degrees)) * CircleRadius, 1, math.sin(math.rad(Degrees)) * CircleRadius)
+    return Vector3.new(
+        math.cos(math.rad(Degrees)) * CircleRadius,
+        1,
+        math.sin(math.rad(Degrees)) * CircleRadius
+    )
 end
 
 function GetFolderFromPetID(Player, PetID)
     local inventoryFolder = Player:FindFirstChild("Inventory")
-    if not inventoryFolder then return nil end
-    
+    if not inventoryFolder then
+        return nil
+    end
+
     local petsFolder = inventoryFolder:FindFirstChild("pets")
-    if not petsFolder then return nil end
-    
+    if not petsFolder then
+        return nil
+    end
+
     for _, petFolder in pairs(petsFolder:GetChildren()) do
         if petFolder:IsA("Folder") then
             local petIdValue = petFolder:FindFirstChild("PetID")
@@ -120,7 +143,9 @@ end
 
 -- Collect detailed model diagnostics for comparison
 local function collectModelDiagnostics(model)
-    if not model or not model:IsA("Model") then return { valid = false } end
+    if not model or not model:IsA("Model") then
+        return { valid = false }
+    end
     local primary = model.PrimaryPart
     local stats = {
         valid = true,
@@ -138,19 +163,25 @@ local function collectModelDiagnostics(model)
         extremeOffsets = {}, -- list of {part, distance}
         maxOffset = 0,
     }
-    local primaryPos = primary and primary.Position or (model:GetPivot().Position)
+    local primaryPos = primary and primary.Position or model:GetPivot().Position
     local function hasDirectWeldToPrimary(p)
-        if not primary or not p or p == primary then return true end
+        if not primary or not p or p == primary then
+            return true
+        end
         for _, d in ipairs(primary:GetDescendants()) do
             if d:IsA("WeldConstraint") then
-                if (d.Part0 == primary and d.Part1 == p) or (d.Part1 == primary and d.Part0 == p) then
+                if
+                    (d.Part0 == primary and d.Part1 == p) or (d.Part1 == primary and d.Part0 == p)
+                then
                     return true
                 end
             end
         end
         for _, d in ipairs(p:GetDescendants()) do
             if d:IsA("WeldConstraint") then
-                if (d.Part0 == primary and d.Part1 == p) or (d.Part1 == primary and d.Part0 == p) then
+                if
+                    (d.Part0 == primary and d.Part1 == p) or (d.Part1 == primary and d.Part0 == p)
+                then
                     return true
                 end
             end
@@ -160,11 +191,17 @@ local function collectModelDiagnostics(model)
     for _, d in ipairs(model:GetDescendants()) do
         if d:IsA("BasePart") then
             stats.totalParts += 1
-            if d.Anchored then stats.anchoredParts += 1 end
-            if d.CanCollide then stats.canCollideParts += 1 end
+            if d.Anchored then
+                stats.anchoredParts += 1
+            end
+            if d.CanCollide then
+                stats.canCollideParts += 1
+            end
             if primaryPos then
                 local dist = (d.Position - primaryPos).Magnitude
-                if dist > stats.maxOffset then stats.maxOffset = dist end
+                if dist > stats.maxOffset then
+                    stats.maxOffset = dist
+                end
                 if dist > 150 then
                     table.insert(stats.extremeOffsets, { part = d:GetFullName(), distance = dist })
                 end
@@ -180,7 +217,12 @@ local function collectModelDiagnostics(model)
             stats.alignOrientations += 1
         elseif d:IsA("Attachment") then
             stats.attachments += 1
-        elseif d:IsA("BodyMover") or d:IsA("BodyGyro") or d:IsA("BodyPosition") or d:IsA("BodyVelocity") then
+        elseif
+            d:IsA("BodyMover")
+            or d:IsA("BodyGyro")
+            or d:IsA("BodyPosition")
+            or d:IsA("BodyVelocity")
+        then
             stats.bodyMovers += 1
         end
     end
@@ -195,22 +237,26 @@ local function printDiagnostics(tag, stats)
         print("🔎 DIAG", tag, "invalid model")
         return
     end
-    print(string.format(
-        "🔎 DIAG %s %s prim=%s parts=%d anchored=%d collide=%d welds=%d alignP=%d alignO=%d bodyMovers=%d attach=%d maxOffset=%.1f bbox=(%.1f,%.1f,%.1f)",
-        tag,
-        tostring(stats.name),
-        tostring(stats.primaryPart),
-        stats.totalParts,
-        stats.anchoredParts,
-        stats.canCollideParts,
-        stats.weldConstraints,
-        stats.alignPositions,
-        stats.alignOrientations,
-        stats.bodyMovers,
-        stats.attachments,
-        stats.maxOffset,
-        stats.boundingSize.X, stats.boundingSize.Y, stats.boundingSize.Z
-    ))
+    print(
+        string.format(
+            "🔎 DIAG %s %s prim=%s parts=%d anchored=%d collide=%d welds=%d alignP=%d alignO=%d bodyMovers=%d attach=%d maxOffset=%.1f bbox=(%.1f,%.1f,%.1f)",
+            tag,
+            tostring(stats.name),
+            tostring(stats.primaryPart),
+            stats.totalParts,
+            stats.anchoredParts,
+            stats.canCollideParts,
+            stats.weldConstraints,
+            stats.alignPositions,
+            stats.alignOrientations,
+            stats.bodyMovers,
+            stats.attachments,
+            stats.maxOffset,
+            stats.boundingSize.X,
+            stats.boundingSize.Y,
+            stats.boundingSize.Z
+        )
+    )
     if stats.partsWithoutDirectWeldToPrimary > 0 then
         print("   • partsWithoutDirectWeldToPrimary=", stats.partsWithoutDirectWeldToPrimary)
     end
@@ -224,7 +270,9 @@ local function printDiagnostics(tag, stats)
 end
 
 local function compareDiagnostics(refStats, suspectStats)
-    if not refStats or not refStats.valid or not suspectStats or not suspectStats.valid then return end
+    if not refStats or not refStats.valid or not suspectStats or not suspectStats.valid then
+        return
+    end
     print("🧪 DIAG COMPARE:")
     local function diff(label, a, b)
         if a ~= b then
@@ -235,19 +283,251 @@ local function compareDiagnostics(refStats, suspectStats)
     diff("anchoredParts", refStats.anchoredParts, suspectStats.anchoredParts)
     diff("canCollideParts", refStats.canCollideParts, suspectStats.canCollideParts)
     diff("weldConstraints", refStats.weldConstraints, suspectStats.weldConstraints)
-    diff("partsWithoutDirectWeldToPrimary", refStats.partsWithoutDirectWeldToPrimary, suspectStats.partsWithoutDirectWeldToPrimary)
+    diff(
+        "partsWithoutDirectWeldToPrimary",
+        refStats.partsWithoutDirectWeldToPrimary,
+        suspectStats.partsWithoutDirectWeldToPrimary
+    )
     if math.abs(refStats.maxOffset - suspectStats.maxOffset) > 5 then
-        print(string.format("   maxOffset: ref=%.1f vs suspect=%.1f", refStats.maxOffset, suspectStats.maxOffset))
+        print(
+            string.format(
+                "   maxOffset: ref=%.1f vs suspect=%.1f",
+                refStats.maxOffset,
+                suspectStats.maxOffset
+            )
+        )
     end
-    local function sz(s) return string.format("(%.1f,%.1f,%.1f)", s.X, s.Y, s.Z) end
+    local function sz(s)
+        return string.format("(%.1f,%.1f,%.1f)", s.X, s.Y, s.Z)
+    end
     if (refStats.boundingSize - suspectStats.boundingSize).Magnitude > 5 then
         print("   boundingSize:", sz(refStats.boundingSize), "vs", sz(suspectStats.boundingSize))
     end
 end
 
+local function isHugePetFolder(petFolder)
+    if not petFolder then
+        return false
+    end
+
+    for _, name in ipairs({ "huge", "Huge" }) do
+        local value = petFolder:FindFirstChild(name)
+        if value and value:IsA("BoolValue") then
+            return value.Value == true
+        end
+    end
+
+    return false
+end
+
+local function getValueObjectNumber(parent, names)
+    if not parent then
+        return nil
+    end
+
+    for _, name in ipairs(names) do
+        local value = parent:FindFirstChild(name)
+        if value and (value:IsA("NumberValue") or value:IsA("IntValue")) then
+            return tonumber(value.Value)
+        end
+    end
+
+    return nil
+end
+
+local function getPetConfigData(petIdName, petVariantName)
+    if petsConfig and petsConfig.getPet and petIdName then
+        local ok, petData = pcall(function()
+            return petsConfig.getPet(petIdName, petVariantName or "basic")
+        end)
+        if ok then
+            return petData
+        end
+    end
+
+    return nil
+end
+
+local function getPetProgressionPowerMultiplier(level)
+    if not petProgressionConfig or petProgressionConfig.enabled == false then
+        return 1
+    end
+
+    level = math.max(1, math.floor(tonumber(level) or 1))
+    local scaling = petProgressionConfig.power_scaling or {}
+    local perLevel = tonumber(scaling.percent_per_level) or 0
+    local maxBonus = tonumber(scaling.max_bonus_percent) or 0
+    local bonus = math.min(maxBonus, math.max(0, (level - 1) * perLevel))
+    return 1 + bonus
+end
+
+local function getPetFolderLevel(petFolder)
+    return math.max(1, math.floor(getValueObjectNumber(petFolder, { "level", "Level" }) or 1))
+end
+
+local function getConfiguredPetPower(petIdName, petVariantName, level)
+    local petData = getPetConfigData(petIdName, petVariantName)
+    local configuredPower = tonumber(petData and petData.power) or 1
+    return math.max(1, math.floor(configuredPower * getPetProgressionPowerMultiplier(level)))
+end
+
+local function getPetFolderBasePower(petFolder, petIdName, petVariantName)
+    local level = getPetFolderLevel(petFolder)
+    return getConfiguredPetPower(petIdName, petVariantName, level)
+end
+
+local function getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
+    local storedPercent =
+        getValueObjectNumber(petFolder, { "eternal_percent", "EternalPercent", "Eternal" })
+    if storedPercent and storedPercent > 0 then
+        if isHugePetFolder(petFolder) then
+            return math.max(100, storedPercent)
+        end
+        return storedPercent
+    end
+
+    local eternalValue = petFolder
+        and (petFolder:FindFirstChild("eternal") or petFolder:FindFirstChild("Eternal"))
+    if eternalValue and eternalValue:IsA("BoolValue") and eternalValue.Value ~= true then
+        return 0
+    end
+
+    local petData = getPetConfigData(petIdName, petVariantName)
+    local eternalConfig = petData and petData.eternal
+    if type(eternalConfig) == "table" and eternalConfig.enabled == true then
+        local configuredPercent = tonumber(eternalConfig.power_percent) or 0
+        if isHugePetFolder(petFolder) then
+            return math.max(100, configuredPercent)
+        end
+        return configuredPercent
+    end
+
+    if isHugePetFolder(petFolder) then
+        return 100
+    end
+
+    return 0
+end
+
+local function getEquippedTeamCapacity(player, fallback)
+    local equippedFolder = player and player:FindFirstChild("Equipped")
+    local petsFolder = equippedFolder and equippedFolder:FindFirstChild("pets")
+    local slotCount = 0
+    if petsFolder then
+        for _, child in ipairs(petsFolder:GetChildren()) do
+            if child:IsA("StringValue") and string.match(child.Name, "^slot_%d+$") then
+                slotCount += 1
+            end
+        end
+    end
+
+    return math.max(1, slotCount, tonumber(fallback) or 0)
+end
+
+local function calculateTopTeamAverage(basePowerValues, teamCapacity)
+    table.sort(basePowerValues, function(a, b)
+        return a > b
+    end)
+
+    local limit = math.min(math.max(1, tonumber(teamCapacity) or 1), #basePowerValues)
+    if limit <= 0 then
+        return 1
+    end
+
+    local total = 0
+    for index = 1, limit do
+        total += basePowerValues[index] or 0
+    end
+
+    return math.max(1, total / limit)
+end
+
+local function calculateTeamPowerContext(equippedFolders, teamCapacity)
+    local strongestBasePower = 1
+    local topTeamAverageBasePower = 1
+    local basePowers = {}
+    local eternalPercents = {}
+    local basePowerValues = {}
+
+    for _, petFolder in ipairs(equippedFolders) do
+        local petIdName, petVariantName = extractIdAndVariantFromFolder(petFolder)
+        petIdName = petIdName or (petFolder.Name:match("^([^_]+)") or petFolder.Name)
+        petVariantName = petVariantName or "basic"
+
+        local basePower = getPetFolderBasePower(petFolder, petIdName, petVariantName)
+        local eternalPercent = getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
+        basePowers[petFolder] = basePower
+        eternalPercents[petFolder] = eternalPercent
+        table.insert(basePowerValues, basePower)
+        strongestBasePower = math.max(strongestBasePower, basePower)
+    end
+    topTeamAverageBasePower = calculateTopTeamAverage(basePowerValues, teamCapacity)
+
+    return {
+        strongestBasePower = strongestBasePower,
+        topTeamAverageBasePower = topTeamAverageBasePower,
+        teamCapacity = math.max(1, tonumber(teamCapacity) or #equippedFolders),
+        basePowers = basePowers,
+        eternalPercents = eternalPercents,
+    }
+end
+
+local function resolveEffectivePetPower(basePower, eternalPercent, teamContext)
+    basePower = math.max(1, tonumber(basePower) or 1)
+    eternalPercent = tonumber(eternalPercent) or 0
+    if eternalPercent <= 0 then
+        return basePower
+    end
+
+    local baseline = math.max(1, tonumber(teamContext and teamContext.topTeamAverageBasePower) or 1)
+    local eternalPower = math.floor((baseline * eternalPercent / 100) + 0.5)
+    return math.max(basePower, eternalPower)
+end
+
+local function upsertNumberValue(parent, name, value)
+    local numberValue = parent:FindFirstChild(name)
+    if not numberValue or not numberValue:IsA("NumberValue") then
+        if numberValue then
+            numberValue:Destroy()
+        end
+        numberValue = Instance.new("NumberValue")
+        numberValue.Name = name
+        numberValue.Parent = parent
+    end
+    numberValue.Value = tonumber(value) or 0
+    return numberValue
+end
+
+local function applyHugePetScale(petModel)
+    if not petModel or not petModel:IsA("Model") then
+        return
+    end
+
+    local assetScale = tonumber(petModel:GetAttribute("AssetScale")) or 1
+    local hugeScale = tonumber(petModel:GetAttribute("HugeScale")) or 1
+    if hugeScale <= 0 then
+        hugeScale = 1
+    end
+
+    if math.abs(hugeScale - 1) <= 0.001 then
+        return
+    end
+
+    local ok, err = pcall(function()
+        petModel:ScaleTo(assetScale * hugeScale)
+    end)
+    if ok then
+        petModel:SetAttribute("Huge", true)
+    else
+        warn("PetHandler: Failed to apply huge pet scale", petModel.Name, tostring(err))
+    end
+end
+
 -- Watch for weld/anchor/offset changes shortly after parenting to catch transient issues
 local function watchModelStability(model, tag)
-    if not STABILITY_WATCH_ENABLED or not model or not model.PrimaryPart then return end
+    if not STABILITY_WATCH_ENABLED or not model or not model.PrimaryPart then
+        return
+    end
     local startTime = os.clock()
     local last = {
         welds = 0,
@@ -261,28 +541,70 @@ local function watchModelStability(model, tag)
         local primaryPos = primary.Position
         local maxOffset = 0
         for _, d in ipairs(model:GetDescendants()) do
-            if d:IsA("WeldConstraint") then welds += 1 end
+            if d:IsA("WeldConstraint") then
+                welds += 1
+            end
             if d:IsA("BasePart") then
-                if d.Anchored then anchored += 1 end
-                if d.CanCollide then collide += 1 end
+                if d.Anchored then
+                    anchored += 1
+                end
+                if d.CanCollide then
+                    collide += 1
+                end
                 local dist = (d.Position - primaryPos).Magnitude
-                if dist > maxOffset then maxOffset = dist end
+                if dist > maxOffset then
+                    maxOffset = dist
+                end
             end
         end
         return welds, anchored, collide, maxOffset
     end
     local function maybeLog()
         local w, a, c, m = snapshot()
-        if w ~= last.welds or a ~= last.anchored or c ~= last.collide or math.abs(m - last.maxOffset) > 0.5 then
-            print(string.format("🧷 DIAG STABILITY %s t=%.2f welds=%d anchored=%d collide=%d maxOffset=%.1f owner=%s",
-                tag, os.clock() - startTime, w, a, c, m,
-                tostring((pcall(function() return game:GetService('Players'):GetPlayerFromCharacter(primary:GetNetworkOwner()) end)) and primary:GetNetworkOwner() and primary:GetNetworkOwner().Name or "nil")))
+        if
+            w ~= last.welds
+            or a ~= last.anchored
+            or c ~= last.collide
+            or math.abs(m - last.maxOffset) > 0.5
+        then
+            print(
+                string.format(
+                    "🧷 DIAG STABILITY %s t=%.2f welds=%d anchored=%d collide=%d maxOffset=%.1f owner=%s",
+                    tag,
+                    os.clock() - startTime,
+                    w,
+                    a,
+                    c,
+                    m,
+                    tostring(
+                        (
+                            pcall(function()
+                                return game:GetService("Players")
+                                    :GetPlayerFromCharacter(primary:GetNetworkOwner())
+                            end)
+                        )
+                                and primary:GetNetworkOwner()
+                                and primary:GetNetworkOwner().Name
+                            or "nil"
+                    )
+                )
+            )
             last.welds, last.anchored, last.collide, last.maxOffset = w, a, c, m
         end
     end
     -- Initial
     last.welds, last.anchored, last.collide, last.maxOffset = snapshot()
-    print(string.format("🧷 DIAG STABILITY %s t=%.2f welds=%d anchored=%d collide=%d maxOffset=%.1f (start)", tag, 0, last.welds, last.anchored, last.collide, last.maxOffset))
+    print(
+        string.format(
+            "🧷 DIAG STABILITY %s t=%.2f welds=%d anchored=%d collide=%d maxOffset=%.1f (start)",
+            tag,
+            0,
+            last.welds,
+            last.anchored,
+            last.collide,
+            last.maxOffset
+        )
+    )
     -- DescendantRemoving hook to catch weld deletions
     local remConn = model.DescendantRemoving:Connect(function(inst)
         if inst:IsA("WeldConstraint") then
@@ -295,16 +617,28 @@ local function watchModelStability(model, tag)
             task.wait(0.1)
             maybeLog()
         end
-        if remConn.Connected then remConn:Disconnect() end
+        if remConn.Connected then
+            remConn:Disconnect()
+        end
         local w, a, c, m = snapshot()
-        print(string.format("🧷 DIAG STABILITY %s t=%.2f welds=%d anchored=%d collide=%d maxOffset=%.1f (end)", tag, os.clock() - startTime, w, a, c, m))
+        print(
+            string.format(
+                "🧷 DIAG STABILITY %s t=%.2f welds=%d anchored=%d collide=%d maxOffset=%.1f (end)",
+                tag,
+                os.clock() - startTime,
+                w,
+                a,
+                c,
+                m
+            )
+        )
     end)
 end
 
 -- Extract logical pet identifier and variant from an equipped pet folder
 -- Prefers explicit `ItemId` and `Variant` values set by the bridge, and
 -- falls back to parsing folders named like `equip_<id>:<variant>`.
-local function extractIdAndVariantFromFolder(petFolder)
+function extractIdAndVariantFromFolder(petFolder)
     local idValue = petFolder:FindFirstChild("ItemId")
     local variantValue = petFolder:FindFirstChild("Variant") or petFolder:FindFirstChild("variant")
     local petIdName = idValue and idValue.Value or nil
@@ -324,22 +658,42 @@ end
 
 -- Geometry logger for troubleshooting model offsets across lifecycle
 local function logModelGeometry(stage, model)
-    if not model or not model:IsA("Model") then return end
+    if not model or not model:IsA("Model") then
+        return
+    end
     local cf, size = model:GetBoundingBox()
-    print("🧭 PET GEOM", stage, model.Name, "parent=", model.Parent and model.Parent:GetFullName() or "nil",
-        "center=("..string.format("%.2f,%.2f,%.2f", cf.Position.X, cf.Position.Y, cf.Position.Z)..")",
-        "size=("..string.format("%.2f,%.2f,%.2f", size.X, size.Y, size.Z)..")")
+    print(
+        "🧭 PET GEOM",
+        stage,
+        model.Name,
+        "parent=",
+        model.Parent and model.Parent:GetFullName() or "nil",
+        "center=("
+            .. string.format("%.2f,%.2f,%.2f", cf.Position.X, cf.Position.Y, cf.Position.Z)
+            .. ")",
+        "size=(" .. string.format("%.2f,%.2f,%.2f", size.X, size.Y, size.Z) .. ")"
+    )
     for _, d in ipairs(model:GetDescendants()) do
         if d:IsA("BasePart") then
-            print(string.format("   • %s pos=(%.2f,%.2f,%.2f) anchored=%s",
-                d:GetFullName(), d.Position.X, d.Position.Y, d.Position.Z, tostring(d.Anchored)))
+            print(
+                string.format(
+                    "   • %s pos=(%.2f,%.2f,%.2f) anchored=%s",
+                    d:GetFullName(),
+                    d.Position.X,
+                    d.Position.Y,
+                    d.Position.Z,
+                    tostring(d.Anchored)
+                )
+            )
         end
     end
 end
 
 -- Ensure all BaseParts are welded to the model's PrimaryPart
 local function ensureWeldsToPrimary(model)
-    if not model or not model:IsA("Model") or not model.PrimaryPart then return 0 end
+    if not model or not model:IsA("Model") or not model.PrimaryPart then
+        return 0
+    end
     local primary = model.PrimaryPart
     local created = 0
     local function hasDirectWeld(a, b)
@@ -372,19 +726,22 @@ local function ensureWeldsToPrimary(model)
                 created += 1
             end
             -- Leave anchoring as-is until Follow binds constraints
-            d.CanCollide = false
+            normalizeRuntimePetPart(d)
         end
     end
     -- Keep PrimaryPart anchored until Follow binds constraints
-    primary.CanCollide = false
+    normalizeRuntimePetPart(primary)
     return created
 end
 
 -- Set all BaseParts to Massless and zero out velocities (apply before parenting)
 local function forceMasslessAndZeroVelocity(model)
-    if not model or not model:IsA("Model") then return end
+    if not model or not model:IsA("Model") then
+        return
+    end
     for _, d in ipairs(model:GetDescendants()) do
         if d:IsA("BasePart") then
+            normalizeRuntimePetPart(d)
             d.Massless = true
             d.AssemblyLinearVelocity = Vector3.new()
             d.AssemblyAngularVelocity = Vector3.new()
@@ -394,20 +751,35 @@ end
 
 -- Remove any physics movers or stray constraints inside the asset model that can fight our Aligns
 local function sanitizeModelConstraints(model)
-    if not model or not model:IsA("Model") then return end
+    if not model or not model:IsA("Model") then
+        return
+    end
     for _, d in ipairs(model:GetDescendants()) do
-        if d:IsA("AlignPosition") or d:IsA("AlignOrientation")
-            or d:IsA("BodyMover") or d:IsA("BodyForce") or d:IsA("BodyGyro")
-            or d:IsA("BodyPosition") or d:IsA("BodyVelocity")
-            or d:IsA("LinearVelocity") or d:IsA("AngularVelocity")
+        if
+            d:IsA("AlignPosition")
+            or d:IsA("AlignOrientation")
+            or d:IsA("BodyMover")
+            or d:IsA("BodyForce")
+            or d:IsA("BodyGyro")
+            or d:IsA("BodyPosition")
+            or d:IsA("BodyVelocity")
+            or d:IsA("LinearVelocity")
+            or d:IsA("AngularVelocity")
             or (d:IsA("Constraint") and not d:IsA("WeldConstraint"))
-            or d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript")
+            or d:IsA("Script")
+            or d:IsA("LocalScript")
+            or d:IsA("ModuleScript")
         then
             d:Destroy()
         elseif d:IsA("Weld") or d:IsA("Motor6D") then
             local p0 = d.Part0 or d.Part1
             local p1 = d.Part1 or d.Part0
-            if typeof(p0) == "Instance" and typeof(p1) == "Instance" and p0:IsA("BasePart") and p1:IsA("BasePart") then
+            if
+                typeof(p0) == "Instance"
+                and typeof(p1) == "Instance"
+                and p0:IsA("BasePart")
+                and p1:IsA("BasePart")
+            then
                 local wc = Instance.new("WeldConstraint")
                 wc.Part0 = p0
                 wc.Part1 = p1
@@ -423,7 +795,7 @@ end
 -- Create control box components (pet models now come complete from AssetPreloadService)
 function createPetSetupComponents()
     local components = {}
-    
+
     -- PetBox (control part)
     components.PetBox = Instance.new("Part")
     components.PetBox.Name = "PetBox"
@@ -431,14 +803,14 @@ function createPetSetupComponents()
     components.PetBox.Material = Enum.Material.Neon
     components.PetBox.BrickColor = BrickColor.new("Really blue")
     components.PetBox.Anchored = true
-    components.PetBox.CanCollide = false
+    normalizeRuntimePetPart(components.PetBox)
     components.PetBox.Transparency = 1 -- Make invisible
-    
+
     -- CRITICAL: Add Pet attachment for AlignPosition to work
     local petAttachment = Instance.new("Attachment")
     petAttachment.Name = "Pet"
     petAttachment.Parent = components.PetBox
-    
+
     return components
 end
 
@@ -461,25 +833,31 @@ function loadEquipped(Player)
     inProgress.Value = true
     -- Local guard as a fallback
     if activeLoads[Player] then
-        print("⏭️ PetHandler: loadEquipped (local) already running for", Player.Name, "- skipping")
+        print(
+            "⏭️ PetHandler: loadEquipped (local) already running for",
+            Player.Name,
+            "- skipping"
+        )
         inProgress.Value = false
         return "Skipped"
     end
     activeLoads[Player] = true
     local function cleanup()
         activeLoads[Player] = nil
-        if inProgress then inProgress.Value = false end
+        if inProgress then
+            inProgress.Value = false
+        end
     end
     local ok, result = pcall(function()
         print("🔄 PetHandler: Loading equipped pets for", Player.Name)
-        
+
         -- Wait for assets to finish loading if they haven't already
         if not _G.AssetsLoadingComplete then
             print("⏳ PetHandler: Waiting for asset loading to complete...")
             _G.AssetsLoadedEvent.Event:Wait()
             print("✅ PetHandler: Assets loaded, proceeding with pet spawn")
         end
-        
+
         -- Create player folders if they don't exist
         local petLocation = workspace.PlayerPetControl:FindFirstChild(Player.Name)
         if not petLocation then
@@ -487,14 +865,14 @@ function loadEquipped(Player)
             petLocation.Name = Player.Name
             petLocation.Parent = workspace.PlayerPetControl
         end
-        
+
         local petModelsLocation = workspace.PlayerPets:FindFirstChild(Player.Name)
         if not petModelsLocation then
             petModelsLocation = Instance.new("Folder")
             petModelsLocation.Name = Player.Name
             petModelsLocation.Parent = workspace.PlayerPets
         end
-        
+
         -- Clear existing boxes
         for _, box in pairs(petLocation:GetChildren()) do
             box:Destroy()
@@ -505,7 +883,7 @@ function loadEquipped(Player)
                 model:Destroy()
             end
         end
-        
+
         -- Get equipped pets (those with Equipped.Value = true)
         local CurrentlyEquipped = {}
         local inventoryFolder = Player:FindFirstChild("Inventory")
@@ -513,420 +891,553 @@ function loadEquipped(Player)
             warn("PetHandler: No Inventory folder found for", Player.Name)
             return "Error"
         end
-        
+
         local petsFolder = inventoryFolder:FindFirstChild("pets")
         if not petsFolder then
             warn("PetHandler: No pets folder found in Inventory for", Player.Name)
             return "Error"
         end
-    
-    local function considerFolder(folder)
-        if not folder or not folder:IsA("Folder") then return end
-        local name = folder.Name or ""
-        local equippedValue = folder:FindFirstChild("Equipped")
-        -- Treat explicit Equipped=true OR ephemeral equip_<id> folders as equipped sources
-        if (equippedValue and equippedValue:IsA("BoolValue") and equippedValue.Value)
-            or (string.sub(name, 1, 6) == "equip_") then
-            table.insert(CurrentlyEquipped, folder)
-        else
-            -- Do not destroy here; unique pets may be equipped via ephemeral equip_ folders.
-            -- Cleanup of prior instances happens per-PetID before spawning below.
-        end
-    end
 
-    for _, child in pairs(petsFolder:GetChildren()) do
-        if child:IsA("Folder") then
-            if child.Name == "Special" then
-                for _, specialFolder in ipairs(child:GetChildren()) do
-                    considerFolder(specialFolder)
-                end
+        local function considerFolder(folder)
+            if not folder or not folder:IsA("Folder") then
+                return
+            end
+            local name = folder.Name or ""
+            local equippedValue = folder:FindFirstChild("Equipped")
+            -- Treat explicit Equipped=true OR ephemeral equip_<id> folders as equipped sources
+            if
+                (equippedValue and equippedValue:IsA("BoolValue") and equippedValue.Value)
+                or (string.sub(name, 1, 6) == "equip_")
+            then
+                table.insert(CurrentlyEquipped, folder)
             else
-                considerFolder(child)
+                -- Do not destroy here; unique pets may be equipped via ephemeral equip_ folders.
+                -- Cleanup of prior instances happens per-PetID before spawning below.
             end
         end
-    end
-    
-    -- Mirror legacy side-effect for UI/metrics
-    local currentEquipValue = Player:FindFirstChild("CurrentEquip")
-    if currentEquipValue then
-        currentEquipValue.Value = #CurrentlyEquipped
-    end
-    print("🎯 PetHandler: Found", #CurrentlyEquipped, "equipped pets for", Player.Name)
-    for _, pf in ipairs(CurrentlyEquipped) do
-        local id = pf:FindFirstChild("ItemId") and pf.ItemId.Value or pf.Name
-        local variant = pf:FindFirstChild("Variant") and pf.Variant.Value or "?"
-        print("  • Equipped ->", pf.Name, "id=", id, "variant=", variant)
-    end
-    
-    -- Create pets
-    local Increment = 360 / math.max(#CurrentlyEquipped, 1)
-    local skip = math.floor(36 / math.max(#CurrentlyEquipped, 1))
-    if skip < 1 then skip = 1 end
-    
-    for i, petFolder in pairs(CurrentlyEquipped) do
-        -- Create control box with ALL required components
-        local components = createPetSetupComponents()
-        local box = components.PetBox:Clone()
-        box.Name = tostring(i)
-        box.Anchored = true  -- Anchor during setup to prevent initial fall
-        
-        -- Add Center attachment to the control box
-        local centerAttachment = Instance.new("Attachment")
-        centerAttachment.Name = "Center"
-        centerAttachment.Parent = box
-        
-        -- Add AlignPosition to the control box
-        local alignPosition = Instance.new("AlignPosition")
-        alignPosition.Name = "AlignPosition"
-        alignPosition.Parent = box
-        
-        -- Add AlignOrientation to the control box
-        local alignOrientation = Instance.new("AlignOrientation")
-        alignOrientation.Name = "AlignOrientation"
-        alignOrientation.Parent = box
-        
-        -- Add Back attachment to the control box (for chaining)
-        local backAttachment = Instance.new("Attachment")
-        backAttachment.Name = "Back"
-        -- Positive Z is behind the character (Roblox forward is -Z),
-        -- so place subsequent pets further behind the previous box
-        backAttachment.Position = Vector3.new(0, 0, FOLLOW_SPACING)
-        backAttachment.Parent = box
-        
-        box.Parent = petLocation
-        -- Defer network ownership until box is unanchored later in setup
-        
-        -- DEBUG: Check if control box has required components
-        print("🔍 DEBUG PetHandler: Control box", box.Name, "for pet", i)
-        print("  - Box has Center attachment:", box:FindFirstChild("Center") ~= nil)
-        print("  - Box has AlignPosition:", box:FindFirstChild("AlignPosition") ~= nil)
-        print("  - Box has AlignOrientation:", box:FindFirstChild("AlignOrientation") ~= nil)
-        print("  - Box has FollowBox script:", box:FindFirstChild("FollowBox") ~= nil)
-        print("  - Box has Pet attachment:", box:FindFirstChild("Pet") ~= nil)
-        print("  - Box has Back attachment:", box:FindFirstChild("Back") ~= nil)
-        
-        -- Ensure compatibility folder that Follow script clones from exists at
-        -- ServerScriptService.PetHandler.PetSetup (matches original game's path)
-        local sss = game.ServerScriptService
-        local petHandlerFolder = sss:FindFirstChild("PetHandler")
-        if not petHandlerFolder then
-            petHandlerFolder = Instance.new("Folder")
-            petHandlerFolder.Name = "PetHandler"
-            petHandlerFolder.Parent = sss
-        end
-        local petSetup = petHandlerFolder:FindFirstChild("PetSetup")
-        if not petSetup then
-            petSetup = Instance.new("Folder")
-            petSetup.Name = "PetSetup"
-            petSetup.Parent = petHandlerFolder
-        end
-        -- Only the physics movers are required in this template; values live on the pet model
-        if not petSetup:FindFirstChild("BodyGyro") then
-            local bodyGyro = Instance.new("BodyGyro")
-            bodyGyro.Name = "BodyGyro"
-            bodyGyro.Parent = petSetup
-        end
-        if not petSetup:FindFirstChild("BodyPosition") then
-            local bodyPosition = Instance.new("BodyPosition")
-            bodyPosition.Name = "BodyPosition"
-            bodyPosition.Parent = petSetup
-        end
-        
-        -- Pet system will be built AFTER the pet model is created
-        
-        -- Ensure our pet folder has the numeric PetID that the original game expects
-        local petId = petFolder:FindFirstChild("PetID")
-        if not petId then
-            -- Create the missing PetID NumberValue
-            petId = Instance.new("NumberValue")
-            petId.Name = "PetID"
-            -- Generate unique numeric ID from UUID hash
-            local uuid = petFolder.Name
-            local hash = 0
-            for i = 1, #uuid do
-                hash = (hash * 31 + string.byte(uuid, i)) % 2147483647
+
+        for _, child in pairs(petsFolder:GetChildren()) do
+            if child:IsA("Folder") then
+                if child.Name == "Special" then
+                    for _, specialFolder in ipairs(child:GetChildren()) do
+                        considerFolder(specialFolder)
+                    end
+                else
+                    considerFolder(child)
+                end
             end
-            petId.Value = hash
-            petId.Parent = petFolder
-            print("✅ PetHandler: Created missing PetID", hash, "for", petFolder.Name)
-        end
-        
-        -- No per-PetID de-duplication here; we cleared the folder above to support multiple stack instances
-        
-        -- Load the REAL pet model from ReplicatedStorage.Assets
-        -- Determine pet id and variant from explicit values or equip_ naming
-        local petIdName, petVariantName = extractIdAndVariantFromFolder(petFolder)
-        if not petIdName then
-            -- Legacy fallback: try using the folder name directly (pre-mixed system)
-            petIdName = petFolder.Name:match("^([^_]+)") or petFolder.Name
-        end
-        if not petVariantName then
-            local petType = petFolder:FindFirstChild("Type")
-            petVariantName = (petType and petType.Value) or "basic"
         end
 
-        -- Apply temporary override if enabled
-        local effectiveIdName = petIdName
-        local effectiveVariantName = petVariantName
-        if TEMP_MODEL_OVERRIDE_ENABLED and effectiveIdName and TEMP_MODEL_OVERRIDES[string.lower(effectiveIdName)] then
-            local target = TEMP_MODEL_OVERRIDES[string.lower(effectiveIdName)]
-            print("🧪 TEMP OVERRIDE: Swapping pet id", effectiveIdName, "->", target, "(variant:", effectiveVariantName, ")")
-            effectiveIdName = target
+        -- Mirror legacy side-effect for UI/metrics
+        local currentEquipValue = Player:FindFirstChild("CurrentEquip")
+        if currentEquipValue then
+            currentEquipValue.Value = #CurrentlyEquipped
+        end
+        print("🎯 PetHandler: Found", #CurrentlyEquipped, "equipped pets for", Player.Name)
+        for _, pf in ipairs(CurrentlyEquipped) do
+            local id = pf:FindFirstChild("ItemId") and pf.ItemId.Value or pf.Name
+            local variant = pf:FindFirstChild("Variant") and pf.Variant.Value or "?"
+            print("  • Equipped ->", pf.Name, "id=", id, "variant=", variant)
+        end
+        local teamCapacity = getEquippedTeamCapacity(Player, #CurrentlyEquipped)
+        local teamPowerContext = calculateTeamPowerContext(CurrentlyEquipped, teamCapacity)
+
+        -- Create pets
+        local Increment = 360 / math.max(#CurrentlyEquipped, 1)
+        local skip = math.floor(36 / math.max(#CurrentlyEquipped, 1))
+        if skip < 1 then
+            skip = 1
         end
 
-        print("🐾 PetHandler: Loading REAL pet model", effectiveIdName, "variant", effectiveVariantName, "(from folder:", petFolder.Name, ")")
-        
-        -- Get the pet model from ReplicatedStorage.Assets.Models.Pets
-        local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
-        local PetModel = nil
-        
-        if assetsFolder then
-            local modelsFolder = assetsFolder:FindFirstChild("Models")
-            if modelsFolder then
-                local petsFolder = modelsFolder:FindFirstChild("Pets")
-                if petsFolder then
-                    local petTypeFolder = petsFolder:FindFirstChild(effectiveIdName)
-                    if petTypeFolder then
-                        local petVariantModel = petTypeFolder:FindFirstChild(effectiveVariantName)
-                        -- Fallback to basic variant if requested one doesn't exist on overridden type
-                        if not petVariantModel then
-                            petVariantModel = petTypeFolder:FindFirstChild("basic")
-                        end
-                        if petVariantModel then
-                            -- Log geometry straight from ReplicatedStorage before we touch it
-                            logModelGeometry("PRE_CLONE_RS", petVariantModel)
-                            -- Count existing welds
-                            do
-                                local welds = 0
-                                for _, d in ipairs(petVariantModel:GetDescendants()) do
-                                    if d:IsA("WeldConstraint") then welds += 1 end
-                                end
-                                print("   • RS welds:", welds)
+        for i, petFolder in pairs(CurrentlyEquipped) do
+            -- Create control box with ALL required components
+            local components = createPetSetupComponents()
+            local box = components.PetBox:Clone()
+            box.Name = tostring(i)
+            box.Anchored = true -- Anchor during setup to prevent initial fall
+
+            -- Add Center attachment to the control box
+            local centerAttachment = Instance.new("Attachment")
+            centerAttachment.Name = "Center"
+            centerAttachment.Parent = box
+
+            -- Add AlignPosition to the control box
+            local alignPosition = Instance.new("AlignPosition")
+            alignPosition.Name = "AlignPosition"
+            alignPosition.Parent = box
+
+            -- Add AlignOrientation to the control box
+            local alignOrientation = Instance.new("AlignOrientation")
+            alignOrientation.Name = "AlignOrientation"
+            alignOrientation.Parent = box
+
+            -- Add Back attachment to the control box (for chaining)
+            local backAttachment = Instance.new("Attachment")
+            backAttachment.Name = "Back"
+            -- Positive Z is behind the character (Roblox forward is -Z),
+            -- so place subsequent pets further behind the previous box
+            backAttachment.Position = Vector3.new(0, 0, FOLLOW_SPACING)
+            backAttachment.Parent = box
+
+            box.Parent = petLocation
+            -- Defer network ownership until box is unanchored later in setup
+
+            -- DEBUG: Check if control box has required components
+            print("🔍 DEBUG PetHandler: Control box", box.Name, "for pet", i)
+            print("  - Box has Center attachment:", box:FindFirstChild("Center") ~= nil)
+            print("  - Box has AlignPosition:", box:FindFirstChild("AlignPosition") ~= nil)
+            print("  - Box has AlignOrientation:", box:FindFirstChild("AlignOrientation") ~= nil)
+            print("  - Box has FollowBox script:", box:FindFirstChild("FollowBox") ~= nil)
+            print("  - Box has Pet attachment:", box:FindFirstChild("Pet") ~= nil)
+            print("  - Box has Back attachment:", box:FindFirstChild("Back") ~= nil)
+
+            -- Ensure compatibility folder that Follow script clones from exists at
+            -- ServerScriptService.PetHandler.PetSetup (matches original game's path)
+            local sss = game.ServerScriptService
+            local petHandlerFolder = sss:FindFirstChild("PetHandler")
+            if not petHandlerFolder then
+                petHandlerFolder = Instance.new("Folder")
+                petHandlerFolder.Name = "PetHandler"
+                petHandlerFolder.Parent = sss
+            end
+            local petSetup = petHandlerFolder:FindFirstChild("PetSetup")
+            if not petSetup then
+                petSetup = Instance.new("Folder")
+                petSetup.Name = "PetSetup"
+                petSetup.Parent = petHandlerFolder
+            end
+            -- Only the physics movers are required in this template; values live on the pet model
+            if not petSetup:FindFirstChild("BodyGyro") then
+                local bodyGyro = Instance.new("BodyGyro")
+                bodyGyro.Name = "BodyGyro"
+                bodyGyro.Parent = petSetup
+            end
+            if not petSetup:FindFirstChild("BodyPosition") then
+                local bodyPosition = Instance.new("BodyPosition")
+                bodyPosition.Name = "BodyPosition"
+                bodyPosition.Parent = petSetup
+            end
+
+            -- Pet system will be built AFTER the pet model is created
+
+            -- Ensure our pet folder has the numeric PetID that the original game expects
+            local petId = petFolder:FindFirstChild("PetID")
+            if not petId then
+                -- Create the missing PetID NumberValue
+                petId = Instance.new("NumberValue")
+                petId.Name = "PetID"
+                -- Generate unique numeric ID from UUID hash
+                local uuid = petFolder.Name
+                local hash = 0
+                for i = 1, #uuid do
+                    hash = (hash * 31 + string.byte(uuid, i)) % 2147483647
+                end
+                petId.Value = hash
+                petId.Parent = petFolder
+                print("✅ PetHandler: Created missing PetID", hash, "for", petFolder.Name)
+            end
+
+            -- No per-PetID de-duplication here; we cleared the folder above to support multiple stack instances
+
+            -- Load the REAL pet model from ReplicatedStorage.Assets
+            -- Determine pet id and variant from explicit values or equip_ naming
+            local petIdName, petVariantName = extractIdAndVariantFromFolder(petFolder)
+            if not petIdName then
+                -- Legacy fallback: try using the folder name directly (pre-mixed system)
+                petIdName = petFolder.Name:match("^([^_]+)") or petFolder.Name
+            end
+            if not petVariantName then
+                local petType = petFolder:FindFirstChild("Type")
+                petVariantName = (petType and petType.Value) or "basic"
+            end
+            local basePower = teamPowerContext.basePowers[petFolder]
+                or getPetFolderBasePower(petFolder, petIdName, petVariantName)
+            local eternalPercent = teamPowerContext.eternalPercents[petFolder]
+                or getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
+            local effectivePower =
+                resolveEffectivePetPower(basePower, eternalPercent, teamPowerContext)
+
+            -- Apply temporary override if enabled
+            local effectiveIdName = petIdName
+            local effectiveVariantName = petVariantName
+            if
+                TEMP_MODEL_OVERRIDE_ENABLED
+                and effectiveIdName
+                and TEMP_MODEL_OVERRIDES[string.lower(effectiveIdName)]
+            then
+                local target = TEMP_MODEL_OVERRIDES[string.lower(effectiveIdName)]
+                print(
+                    "🧪 TEMP OVERRIDE: Swapping pet id",
+                    effectiveIdName,
+                    "->",
+                    target,
+                    "(variant:",
+                    effectiveVariantName,
+                    ")"
+                )
+                effectiveIdName = target
+            end
+
+            print(
+                "🐾 PetHandler: Loading REAL pet model",
+                effectiveIdName,
+                "variant",
+                effectiveVariantName,
+                "(from folder:",
+                petFolder.Name,
+                ")"
+            )
+
+            -- Get the pet model from ReplicatedStorage.Assets.Models.Pets
+            local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
+            local PetModel = nil
+
+            if assetsFolder then
+                local modelsFolder = assetsFolder:FindFirstChild("Models")
+                if modelsFolder then
+                    local petsFolder = modelsFolder:FindFirstChild("Pets")
+                    if petsFolder then
+                        local petTypeFolder = petsFolder:FindFirstChild(effectiveIdName)
+                        if petTypeFolder then
+                            local petVariantModel =
+                                petTypeFolder:FindFirstChild(effectiveVariantName)
+                            -- Fallback to basic variant if requested one doesn't exist on overridden type
+                            if not petVariantModel then
+                                petVariantModel = petTypeFolder:FindFirstChild("basic")
                             end
-                            PetModel = petVariantModel:Clone()
-                            PetVariantVisuals.ApplyServerMetadata(PetModel, effectiveIdName, effectiveVariantName)
-                            PetVariantVisuals.ApplyStaticVisuals(PetModel)
-                            -- Log geometry immediately after clone, before any changes
-                            logModelGeometry("POST_CLONE_PREPARENT", PetModel)
-                            if DIAGNOSTICS_ENABLED then
-                                printDiagnostics("PRE_SANITIZE", collectModelDiagnostics(PetModel))
-                                -- If suspect (e.g., dragon), compare to reference (bunny/basic) for a baseline
-                                if string.lower(effectiveIdName) ~= string.lower(DIAG_REFERENCE_ID) then
-                                    local refType = modelsFolder and modelsFolder:FindFirstChild("Pets") and modelsFolder.Pets:FindFirstChild(DIAG_REFERENCE_ID)
-                                    local refModel = refType and refType:FindFirstChild(DIAG_REFERENCE_VARIANT)
-                                    if refModel then
-                                        printDiagnostics("REF_"..DIAG_REFERENCE_ID, collectModelDiagnostics(refModel))
-                                        compareDiagnostics(collectModelDiagnostics(refModel), collectModelDiagnostics(PetModel))
+                            if petVariantModel then
+                                -- Log geometry straight from ReplicatedStorage before we touch it
+                                logModelGeometry("PRE_CLONE_RS", petVariantModel)
+                                -- Count existing welds
+                                do
+                                    local welds = 0
+                                    for _, d in ipairs(petVariantModel:GetDescendants()) do
+                                        if d:IsA("WeldConstraint") then
+                                            welds += 1
+                                        end
+                                    end
+                                    print("   • RS welds:", welds)
+                                end
+                                PetModel = petVariantModel:Clone()
+                                PetVariantVisuals.ApplyServerMetadata(
+                                    PetModel,
+                                    effectiveIdName,
+                                    effectiveVariantName
+                                )
+                                PetVariantVisuals.ApplyStaticVisuals(PetModel)
+                                if isHugePetFolder(petFolder) then
+                                    applyHugePetScale(PetModel)
+                                end
+                                -- Log geometry immediately after clone, before any changes
+                                logModelGeometry("POST_CLONE_PREPARENT", PetModel)
+                                if DIAGNOSTICS_ENABLED then
+                                    printDiagnostics(
+                                        "PRE_SANITIZE",
+                                        collectModelDiagnostics(PetModel)
+                                    )
+                                    -- If suspect (e.g., dragon), compare to reference (bunny/basic) for a baseline
+                                    if
+                                        string.lower(effectiveIdName)
+                                        ~= string.lower(DIAG_REFERENCE_ID)
+                                    then
+                                        local refType = modelsFolder
+                                            and modelsFolder:FindFirstChild("Pets")
+                                            and modelsFolder.Pets:FindFirstChild(DIAG_REFERENCE_ID)
+                                        local refModel = refType
+                                            and refType:FindFirstChild(DIAG_REFERENCE_VARIANT)
+                                        if refModel then
+                                            printDiagnostics(
+                                                "REF_" .. DIAG_REFERENCE_ID,
+                                                collectModelDiagnostics(refModel)
+                                            )
+                                            compareDiagnostics(
+                                                collectModelDiagnostics(refModel),
+                                                collectModelDiagnostics(PetModel)
+                                            )
+                                        end
                                     end
                                 end
-                            end
-                            do
-                                local welds = 0
-                                for _, d in ipairs(PetModel:GetDescendants()) do
-                                    if d:IsA("WeldConstraint") then welds += 1 end
+                                do
+                                    local welds = 0
+                                    for _, d in ipairs(PetModel:GetDescendants()) do
+                                        if d:IsA("WeldConstraint") then
+                                            welds += 1
+                                        end
+                                    end
+                                    print("   • Clone welds:", welds)
                                 end
-                                print("   • Clone welds:", welds)
+                                print(
+                                    "✅ PetHandler: Successfully cloned REAL pet model",
+                                    petIdName,
+                                    petVariantName
+                                )
                             end
-                            print("✅ PetHandler: Successfully cloned REAL pet model", petIdName, petVariantName)
                         end
                     end
                 end
             end
-        end
-        
-        -- ERROR if model not found - don't hide this with fallbacks!
-        if not PetModel then
-            error("❌ PetHandler: CRITICAL ERROR - Could not find pet model for " .. tostring(petIdName) .. " variant " .. tostring(petVariantName) .. 
-                  " at path ReplicatedStorage.Assets.Models.Pets." .. tostring(petIdName) .. "." .. tostring(petVariantName))
-        end
-        
-        -- Ensure the model has a sensible PrimaryPart (prefer Face/Head)
-        if not PetModel.PrimaryPart then
-            local candidate
-            for _, child in pairs(PetModel:GetDescendants()) do
-                if child:IsA("BasePart") then
-                    local n = string.lower(child.Name)
-                    if string.find(n, "face") or string.find(n, "head") then
-                        candidate = child
-                        break
-                    end
-                    candidate = candidate or child
-                end
-            end
-            PetModel.PrimaryPart = candidate
-        end
 
-        -- Validate required parts and add missing ones if necessary
-        if not PetModel.PrimaryPart then
-            error("❌ PetHandler: Pet model has no PrimaryPart after setup: " .. tostring(PetModel.Name))
-        end
-        -- Ensure attachmentPet exists on PrimaryPart for follow constraints
-        if not PetModel.PrimaryPart:FindFirstChild("attachmentPet") then
-            local ap = Instance.new("Attachment")
-            ap.Name = "attachmentPet"
-            ap.Parent = PetModel.PrimaryPart
-        end
-        -- Remove any non-weld constraints left and purge collision/anchored on all parts
-        for _, bp in ipairs(PetModel:GetDescendants()) do
-            if bp:IsA("BasePart") then
-                -- Do not unanchor individual parts here; Follow will manage after attachments
-                bp.CanCollide = false
-            elseif bp:IsA("Constraint") and not bp:IsA("WeldConstraint") then
-                bp:Destroy()
+            -- ERROR if model not found - don't hide this with fallbacks!
+            if not PetModel then
+                error(
+                    "❌ PetHandler: CRITICAL ERROR - Could not find pet model for "
+                        .. tostring(petIdName)
+                        .. " variant "
+                        .. tostring(petVariantName)
+                        .. " at path ReplicatedStorage.Assets.Models.Pets."
+                        .. tostring(petIdName)
+                        .. "."
+                        .. tostring(petVariantName)
+                )
             end
-        end
 
-        -- DEBUG: print part sample positions before any runtime weld changes
-        do
-            local function partByName(n)
-                for _, d in ipairs(PetModel:GetDescendants()) do
-                    if d:IsA("BasePart") and string.lower(d.Name) == string.lower(n) then
-                        return d
+            -- Ensure the model has a sensible PrimaryPart (prefer Face/Head)
+            if not PetModel.PrimaryPart then
+                local candidate
+                for _, child in pairs(PetModel:GetDescendants()) do
+                    if child:IsA("BasePart") then
+                        local n = string.lower(child.Name)
+                        if string.find(n, "face") or string.find(n, "head") then
+                            candidate = child
+                            break
+                        end
+                        candidate = candidate or child
                     end
                 end
+                PetModel.PrimaryPart = candidate
             end
-            local face = partByName("Face")
-            local base = partByName("Base")
-            local outline = partByName("Outline")
-            local function fmt(p)
-                if not p then return "nil" end
-                return string.format("(%.2f,%.2f,%.2f)", p.Position.X, p.Position.Y, p.Position.Z)
-            end
-            print("🧪 PET PRE-CLONE POS SAMPLE", PetModel.Name, "primary=", PetModel.PrimaryPart and PetModel.PrimaryPart.Name or "nil", "face=", fmt(face), "base=", fmt(base), "outline=", fmt(outline))
-        end
-        
-        -- Rely on AssetPreloadService to deliver welded, cleaned models.
-        -- Do minimal safety: make massless and zero velocities BEFORE parenting so physics won't explode
-        forceMasslessAndZeroVelocity(PetModel)
-        
-        -- Pet model already has all components from AssetPreloadService
-        print("🔨 PetHandler: Setting up pet system for", petIdName)
-        
-        -- Apply stats from asset model if present
-        do
-            local powerAttr = PetModel:GetAttribute("Power")
-            local powerNV = PetModel:FindFirstChild("Power")
-            if powerAttr and (not powerNV) then
-                powerNV = Instance.new("NumberValue")
-                powerNV.Name = "Power"
-                powerNV.Value = powerAttr
-                powerNV.Parent = PetModel
-            end
-        end
 
-        -- Replace the placeholder Follow script with the real one
-        local placeholderFollow = PetModel:FindFirstChild("Follow")
-        if placeholderFollow then
-            placeholderFollow:Destroy()
-        end
-        
-        local followScript = game.ServerScriptService.Server.Services.PetScripts.Follow:Clone()
-        followScript.Parent = PetModel
-        -- Match legacy: enable Follow prior to parenting
-        followScript.Disabled = false
-        
-        -- Add FollowBox script to control box
-        local followBoxScript = game.ServerScriptService.Server.Services.PetScripts.FollowBox:Clone()
-        followBoxScript.Parent = box
-        
-        -- Do not add alignment here; the Follow script manages AlignPosition/AlignOrientation
-        
-        -- Set pet properties (ensure compatibility values exist)
-        PetModel.PositionNumber.Value = i
-        PetModel.AttackPos.Value = "Pos" .. tostring((i * skip) % 36)
-        PetModel.Pos.Value = GetPointOnCircle(PET_CIRCLE_RADIUS, Increment * i)
-        do
-            local petIdNv = PetModel:FindFirstChild("PetID")
-            if not petIdNv then
-                petIdNv = Instance.new("NumberValue")
-                petIdNv.Name = "PetID"
-                petIdNv.Parent = PetModel
+            -- Validate required parts and add missing ones if necessary
+            if not PetModel.PrimaryPart then
+                error(
+                    "❌ PetHandler: Pet model has no PrimaryPart after setup: "
+                        .. tostring(PetModel.Name)
+                )
             end
-            petIdNv.Value = petId.Value
-        end
-        
-        -- Position model by PrimaryPart to the box position (legacy behavior)
-        if PetModel.PrimaryPart then
-            PetModel.PrimaryPart.Position = box.Position
-            logModelGeometry("POST_SET_POSITION_PREPARENT", PetModel)
-        end
-        
-        print("✅ PetHandler: Pet system set up for", petIdName)
-        
-        -- DEBUG: Check if pet model has required components
-        print("🔍 DEBUG PetHandler: Pet model", PetModel.Name)
-        print("  - Pet has PrimaryPart:", PetModel.PrimaryPart ~= nil)
-        print("  - Pet has PetSetup:", PetModel:FindFirstChild("PetSetup") ~= nil)
-        print("  - Pet has Follow script:", PetModel:FindFirstChild("Follow") ~= nil)
-        if PetModel.PrimaryPart then
-            print("  - PrimaryPart anchored:", PetModel.PrimaryPart.Anchored)
-            print("  - PrimaryPart can collide:", PetModel.PrimaryPart.CanCollide)
-        end
-        
-        -- Set timer value if it exists
-        local timerValue = petFolder:FindFirstChild("Timer")
-        if timerValue then
-            PetModel.Timer.Value = timerValue.Value
-        end
-        
-        -- NOW parent everything to workspace (AFTER everything is built)
-        PetModel.Parent = petModelsLocation
-        box.Parent = petLocation
-        -- Match legacy: set pet model network owner immediately after parenting
-        if PetModel.PrimaryPart then
-            pcall(function()
-                -- Keep anchored until Follow unanchors; prevents initial clump
-                PetModel.PrimaryPart.Anchored = true
-                PetModel.PrimaryPart:SetNetworkOwner(Player)
-            end)
-        end
-        -- Trigger refresh like legacy
-        if PetModel:FindFirstChild("Refresh") and PetModel.Refresh:IsA("BoolValue") then
-            PetModel.Refresh.Value = true
-        end
-        
-        -- Immediate spawn position log (full geometry after parent). Physics settles next frame; sample again shortly.
-        logModelGeometry("POST_PARENT", PetModel)
-        if DIAGNOSTICS_ENABLED then
-            printDiagnostics("POST_PARENT", collectModelDiagnostics(PetModel))
-            watchModelStability(PetModel, string.format("%s:%s", tostring(effectiveIdName), tostring(effectiveVariantName)))
-        end
-        do
-            local capturedModel = PetModel
-            task.defer(function()
-                task.wait()
-                if capturedModel and capturedModel.Parent then
-                    logModelGeometry("POST_PARENT_AFTER_STEP", capturedModel)
-                    if DIAGNOSTICS_ENABLED then
-                        printDiagnostics("POST_PARENT_AFTER_STEP", collectModelDiagnostics(capturedModel))
+            -- Ensure attachmentPet exists on PrimaryPart for follow constraints
+            if not PetModel.PrimaryPart:FindFirstChild("attachmentPet") then
+                local ap = Instance.new("Attachment")
+                ap.Name = "attachmentPet"
+                ap.Parent = PetModel.PrimaryPart
+            end
+            -- Remove any non-weld constraints left and purge collision/anchored on all parts
+            for _, bp in ipairs(PetModel:GetDescendants()) do
+                if bp:IsA("BasePart") then
+                    -- Do not unanchor individual parts here; Follow will manage after attachments
+                    normalizeRuntimePetPart(bp)
+                elseif bp:IsA("Constraint") and not bp:IsA("WeldConstraint") then
+                    bp:Destroy()
+                end
+            end
+
+            -- DEBUG: print part sample positions before any runtime weld changes
+            do
+                local function partByName(n)
+                    for _, d in ipairs(PetModel:GetDescendants()) do
+                        if d:IsA("BasePart") and string.lower(d.Name) == string.lower(n) then
+                            return d
+                        end
                     end
                 end
-            end)
-        end
+                local face = partByName("Face")
+                local base = partByName("Base")
+                local outline = partByName("Outline")
+                local function fmt(p)
+                    if not p then
+                        return "nil"
+                    end
+                    return string.format(
+                        "(%.2f,%.2f,%.2f)",
+                        p.Position.X,
+                        p.Position.Y,
+                        p.Position.Z
+                    )
+                end
+                print(
+                    "🧪 PET PRE-CLONE POS SAMPLE",
+                    PetModel.Name,
+                    "primary=",
+                    PetModel.PrimaryPart and PetModel.PrimaryPart.Name or "nil",
+                    "face=",
+                    fmt(face),
+                    "base=",
+                    fmt(base),
+                    "outline=",
+                    fmt(outline)
+                )
+            end
 
-        -- Legacy: box unanchored & network owner set; pet model anchoring handled by Follow
-        box.Anchored = false
-        -- Set network owner for the control box only; PetModel owner will be set by Follow after constraints bind
-        box:SetNetworkOwner(Player)
-        
-        -- Do not toggle Refresh here; it causes duplicate setFollowType runs and dueling constraints
-        
-        -- Finally enable Follow after everything is live and networked
-        local followScript = PetModel:FindFirstChild("Follow")
-        if followScript then
+            -- Rely on AssetPreloadService to deliver welded, cleaned models.
+            -- Do minimal safety: make massless and zero velocities BEFORE parenting so physics won't explode
+            forceMasslessAndZeroVelocity(PetModel)
+
+            -- Pet model already has all components from AssetPreloadService
+            print("🔨 PetHandler: Setting up pet system for", petIdName)
+
+            -- Apply stats from asset model if present
+            do
+                local powerAttr = PetModel:GetAttribute("Power")
+                local powerNV = PetModel:FindFirstChild("Power")
+                if not powerNV then
+                    powerNV = Instance.new("NumberValue")
+                    powerNV.Name = "Power"
+                    powerNV.Parent = PetModel
+                end
+                powerNV.Value = effectivePower or powerAttr or basePower or 1
+                upsertNumberValue(PetModel, "BasePower", basePower)
+                upsertNumberValue(PetModel, "EffectivePower", effectivePower)
+                upsertNumberValue(PetModel, "EternalPercent", eternalPercent)
+                upsertNumberValue(
+                    PetModel,
+                    "EternalBaselinePower",
+                    teamPowerContext.topTeamAverageBasePower
+                )
+                PetModel:SetAttribute("BasePower", basePower)
+                PetModel:SetAttribute("EffectivePower", effectivePower)
+                PetModel:SetAttribute("EternalPercent", eternalPercent)
+                PetModel:SetAttribute(
+                    "EternalBaselinePower",
+                    teamPowerContext.topTeamAverageBasePower
+                )
+                PetModel:SetAttribute("TeamCapacity", teamPowerContext.teamCapacity)
+            end
+
+            -- Replace the placeholder Follow script with the real one
+            local placeholderFollow = PetModel:FindFirstChild("Follow")
+            if placeholderFollow then
+                placeholderFollow:Destroy()
+            end
+
+            local followScript = game.ServerScriptService.Server.Services.PetScripts.Follow:Clone()
+            followScript.Parent = PetModel
+            -- Match legacy: enable Follow prior to parenting
             followScript.Disabled = false
+
+            -- Add FollowBox script to control box
+            local followBoxScript =
+                game.ServerScriptService.Server.Services.PetScripts.FollowBox:Clone()
+            followBoxScript.Parent = box
+
+            -- Do not add alignment here; the Follow script manages AlignPosition/AlignOrientation
+
+            -- Set pet properties (ensure compatibility values exist)
+            PetModel.PositionNumber.Value = i
+            PetModel.AttackPos.Value = "Pos" .. tostring((i * skip) % 36)
+            PetModel.Pos.Value = GetPointOnCircle(PET_CIRCLE_RADIUS, Increment * i)
+            do
+                local petIdNv = PetModel:FindFirstChild("PetID")
+                if not petIdNv then
+                    petIdNv = Instance.new("NumberValue")
+                    petIdNv.Name = "PetID"
+                    petIdNv.Parent = PetModel
+                end
+                petIdNv.Value = petId.Value
+            end
+
+            -- Position model by PrimaryPart to the box position (legacy behavior)
+            if PetModel.PrimaryPart then
+                PetModel.PrimaryPart.Position = box.Position
+                logModelGeometry("POST_SET_POSITION_PREPARENT", PetModel)
+            end
+
+            print("✅ PetHandler: Pet system set up for", petIdName)
+
+            -- DEBUG: Check if pet model has required components
+            print("🔍 DEBUG PetHandler: Pet model", PetModel.Name)
+            print("  - Pet has PrimaryPart:", PetModel.PrimaryPart ~= nil)
+            print("  - Pet has PetSetup:", PetModel:FindFirstChild("PetSetup") ~= nil)
+            print("  - Pet has Follow script:", PetModel:FindFirstChild("Follow") ~= nil)
+            if PetModel.PrimaryPart then
+                print("  - PrimaryPart anchored:", PetModel.PrimaryPart.Anchored)
+                print("  - PrimaryPart can collide:", PetModel.PrimaryPart.CanCollide)
+            end
+
+            -- Set timer value if it exists
+            local timerValue = petFolder:FindFirstChild("Timer")
+            if timerValue then
+                PetModel.Timer.Value = timerValue.Value
+            end
+
+            -- NOW parent everything to workspace (AFTER everything is built)
+            PetModel.Parent = petModelsLocation
+            box.Parent = petLocation
+            -- Match legacy: set pet model network owner immediately after parenting
+            if PetModel.PrimaryPart then
+                pcall(function()
+                    -- Keep anchored until Follow unanchors; prevents initial clump
+                    PetModel.PrimaryPart.Anchored = true
+                    PetModel.PrimaryPart:SetNetworkOwner(Player)
+                end)
+            end
+            -- Trigger refresh like legacy
+            if PetModel:FindFirstChild("Refresh") and PetModel.Refresh:IsA("BoolValue") then
+                PetModel.Refresh.Value = true
+            end
+
+            -- Immediate spawn position log (full geometry after parent). Physics settles next frame; sample again shortly.
+            logModelGeometry("POST_PARENT", PetModel)
+            if DIAGNOSTICS_ENABLED then
+                printDiagnostics("POST_PARENT", collectModelDiagnostics(PetModel))
+                watchModelStability(
+                    PetModel,
+                    string.format(
+                        "%s:%s",
+                        tostring(effectiveIdName),
+                        tostring(effectiveVariantName)
+                    )
+                )
+            end
+            do
+                local capturedModel = PetModel
+                task.defer(function()
+                    task.wait()
+                    if capturedModel and capturedModel.Parent then
+                        logModelGeometry("POST_PARENT_AFTER_STEP", capturedModel)
+                        if DIAGNOSTICS_ENABLED then
+                            printDiagnostics(
+                                "POST_PARENT_AFTER_STEP",
+                                collectModelDiagnostics(capturedModel)
+                            )
+                        end
+                    end
+                end)
+            end
+
+            -- Legacy: box unanchored & network owner set; pet model anchoring handled by Follow
+            box.Anchored = false
+            -- Set network owner for the control box only; PetModel owner will be set by Follow after constraints bind
+            box:SetNetworkOwner(Player)
+
+            -- Do not toggle Refresh here; it causes duplicate setFollowType runs and dueling constraints
+
+            -- Finally enable Follow after everything is live and networked
+            local followScript = PetModel:FindFirstChild("Follow")
+            if followScript then
+                followScript.Disabled = false
+            end
+
+            -- Watch for unexpected deletion to debug fast-despawn
+            PetModel.AncestryChanged:Connect(function(_, newParent)
+                if newParent == nil then
+                    print(
+                        "⚠️ PetHandler: Pet model removed from workspace:",
+                        PetModel.Name,
+                        "PetID=",
+                        PetModel:FindFirstChild("PetID") and PetModel.PetID.Value
+                    )
+                end
+            end)
+
+            print(
+                "✅ PetHandler: Created REAL pet",
+                i,
+                "for",
+                Player.Name,
+                "at",
+                PetModel.PrimaryPart and PetModel.PrimaryPart.Position or "unknown position"
+            )
         end
 
-        -- Watch for unexpected deletion to debug fast-despawn
-        PetModel.AncestryChanged:Connect(function(_, newParent)
-            if newParent == nil then
-                print("⚠️ PetHandler: Pet model removed from workspace:", PetModel.Name, "PetID=", PetModel:FindFirstChild("PetID") and PetModel.PetID.Value)
-            end
-        end)
-        
-        print("✅ PetHandler: Created REAL pet", i, "for", Player.Name, "at", PetModel.PrimaryPart and PetModel.PrimaryPart.Position or "unknown position")
-    end
-    
         print("🎉 PetHandler: loadEquipped completed for", Player.Name)
         return "Success"
     end)
@@ -961,7 +1472,7 @@ Players.PlayerAdded:Connect(function(player)
             petFolder.Name = player.Name
             petFolder.Parent = workspace.PlayerPets
         end
-        
+
         local controlFolder = workspace.PlayerPetControl:FindFirstChild(player.Name)
         if not controlFolder then
             controlFolder = Instance.new("Folder")
@@ -977,7 +1488,7 @@ Players.PlayerRemoving:Connect(function(player)
     if petFolder then
         petFolder:Destroy()
     end
-    
+
     local controlFolder = workspace.PlayerPetControl:FindFirstChild(player.Name)
     if controlFolder then
         controlFolder:Destroy()
@@ -1073,7 +1584,7 @@ end))
 
 coroutine.resume(coroutine.create(function()
     local looper = 1
-    while task.wait(.2) do
+    while task.wait(0.2) do
         looper = looper + 1
         if looper > 36 then
             looper = 1

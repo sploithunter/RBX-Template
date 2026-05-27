@@ -13,6 +13,31 @@
 local petConfig = {
     version = "1.0.0",
 
+    serials = {
+        store_name = "PetSerials_v1",
+    },
+
+    enchanting = {
+        -- Stackable pets stay compact. Enchants are only applied to unique pets
+        -- whose rarity has slots here, or to stack pets after a future promotion flow.
+        -- Add future rarities here to change capacity without touching services.
+        max_enchantments_by_rarity = {
+            mythic = 1,
+            secret = 2,
+            exclusive = 2,
+            huge = 3,
+        },
+        default_max_enchantments = 0,
+        hatch_rolls_enabled = false,
+    },
+
+    provenance = {
+        -- Valuable pets should remember who created the copy. This uses enchant
+        -- capacity so future tiers above Huge inherit the rule by config.
+        hatcher_source_min_enchantments = 3,
+        hatcher_source_rarities = {},
+    },
+
     -- === TEST MODE (for Studio/dev validation) ===
     -- Enable to dramatically increase chances to obtain rare variants and pets
     -- so designers can validate stacking and special handling quickly.
@@ -157,8 +182,8 @@ local petConfig = {
             glow = true,
             glow_color = Color3.fromRGB(255, 255, 150),
         },
-        mythic = { -- aka "Mythical"
-            name = "Mythic",
+        mythic = { -- internal id; display name is fully configurable
+            name = "Mythical",
             color = Color3.fromRGB(255, 0, 255), -- Magenta
             glow = true,
             glow_color = Color3.fromRGB(255, 150, 255),
@@ -179,24 +204,39 @@ local petConfig = {
             glow_color = Color3.fromRGB(150, 255, 255),
             particle_effects = true,
         },
+        huge = {
+            name = "Huge",
+            color = Color3.fromRGB(255, 90, 210),
+            glow = true,
+            glow_color = Color3.fromRGB(255, 180, 245),
+            particle_effects = true,
+        },
     },
 
     -- === VARIANT TYPES ===
     variants = {
+        -- `rarity` is a fallback for simple configs. Project pets should set
+        -- family-level `pets.<id>.rarity`; variants are visual/stat treatments.
         basic = {
             name = "Basic",
             rarity = "common",
+            power_multiplier = 1,
+            health_multiplier = 1,
             special_effects = false,
         },
         golden = {
             name = "Golden",
             rarity = "epic",
+            power_multiplier = 1.5,
+            health_multiplier = 1.5,
             special_effects = true,
             effects = { "golden_sparkle", "coin_bonus" },
         },
         rainbow = {
             name = "Rainbow",
             rarity = "mythic",
+            power_multiplier = 2,
+            health_multiplier = 2,
             special_effects = true,
             effects = { "rainbow_trail", "all_bonus", "luck_boost" },
         },
@@ -206,8 +246,9 @@ local petConfig = {
     pets = {
         -- BEAR FAMILY
         bear = {
-            name = "Bear",
+            display_name = "Bear",
             category = "forest",
+            rarity = "common",
             base_power = 10,
             base_health = 150,
 
@@ -225,8 +266,6 @@ local petConfig = {
                     asset_id = "rbxassetid://102676279378350",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Bear",
-                    power = 10,
-                    health = 150,
                     abilities = { "scratch" },
                     -- Uses default viewport_zoom (1.5)
 
@@ -236,8 +275,6 @@ local petConfig = {
                     asset_id = "rbxassetid://107758879638540",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Golden Bear",
-                    power = 50, -- base_power * golden multiplier
-                    health = 750, -- base_health * golden multiplier
                     abilities = { "golden_scratch", "coin_magnet" },
                     -- Uses default viewport_zoom (1.5)
                 },
@@ -245,8 +282,6 @@ local petConfig = {
                     asset_id = "rbxassetid://92437511216136",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Rainbow Bear",
-                    power = 500, -- base_power * rainbow multiplier
-                    health = 7500, -- base_health * rainbow multiplier
                     abilities = { "rainbow_scratch", "ultimate_magnet", "luck_aura" },
                     -- Uses default viewport_zoom (1.5)
                 },
@@ -255,8 +290,9 @@ local petConfig = {
 
         -- BUNNY FAMILY
         bunny = {
-            name = "Bunny",
+            display_name = "Bunny",
             category = "meadow",
+            rarity = "common",
             base_power = 8,
             base_health = 120,
 
@@ -274,8 +310,6 @@ local petConfig = {
                     asset_id = "rbxassetid://119448221139567",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Bunny",
-                    power = 8,
-                    health = 120,
                     abilities = { "hop_attack" },
                     viewport_zoom = 1.8, -- Bunnies are smaller, zoom in more
 
@@ -285,8 +319,6 @@ local petConfig = {
                     asset_id = "rbxassetid://133150464787030",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Golden Bunny",
-                    power = 40,
-                    health = 600,
                     abilities = { "golden_hop", "speed_boost" },
                     viewport_zoom = 1.8, -- Golden bunny zoom
                 },
@@ -294,8 +326,6 @@ local petConfig = {
                     asset_id = "rbxassetid://113112612195316",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Rainbow Bunny",
-                    power = 400,
-                    health = 6000,
                     abilities = { "rainbow_hop", "time_warp", "double_luck" },
                     viewport_zoom = 1.8, -- Rainbow bunny zoom
                 },
@@ -304,8 +334,9 @@ local petConfig = {
 
         -- DOGGY FAMILY
         doggy = {
-            name = "Doggy",
+            display_name = "Doggy",
             category = "domestic",
+            rarity = "common",
             base_power = 12,
             base_health = 140,
 
@@ -323,8 +354,6 @@ local petConfig = {
                     asset_id = "rbxassetid://95584496209726",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Doggy",
-                    power = 12,
-                    health = 140,
                     abilities = { "bark_stun" },
                     -- Uses default viewport_zoom (1.5)
 
@@ -334,8 +363,6 @@ local petConfig = {
                     asset_id = "rbxassetid://97337398672225",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Golden Doggy",
-                    power = 60,
-                    health = 700,
                     abilities = { "golden_bark", "loyalty_bonus" },
                     -- Uses default viewport_zoom (1.5)
                 },
@@ -343,8 +370,6 @@ local petConfig = {
                     asset_id = "rbxassetid://139772169909973",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Rainbow Doggy",
-                    power = 600,
-                    health = 7000,
                     abilities = { "rainbow_bark", "pack_leader", "infinite_loyalty" },
                     -- Uses default viewport_zoom (1.5)
                 },
@@ -353,8 +378,9 @@ local petConfig = {
 
         -- DRAGON FAMILY
         dragon = {
-            name = "Dragon",
+            display_name = "Dragon",
             category = "mythical",
+            rarity = "secret",
             base_power = 25,
             base_health = 200,
 
@@ -372,31 +398,22 @@ local petConfig = {
                     asset_id = "rbxassetid://71645322477288",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Dragon",
-                    power = 25,
-                    health = 200,
                     abilities = { "fire_breath" },
                     viewport_zoom = 2.0, -- Dragons need higher zoom to appear properly sized
-                    rarity_override = "secret", -- SPECIAL: Dragon is a Secret pet (unique)
                 },
                 golden = {
                     asset_id = "rbxassetid://91261941530299",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Golden Dragon",
-                    power = 125,
-                    health = 1000,
                     abilities = { "golden_flame", "treasure_sense" },
                     viewport_zoom = 2.0, -- Golden dragon zoom (increased for proper size)
-                    rarity_override = "secret", -- Golden variant remains Secret (unique)
                 },
                 rainbow = {
                     asset_id = "rbxassetid://120821607721730",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Rainbow Dragon",
-                    power = 1250,
-                    health = 10000,
                     abilities = { "prismatic_breath", "reality_burn", "cosmic_flight" },
                     viewport_zoom = 2.0, -- Rainbow dragon zoom (increased for proper size)
-                    rarity_override = "secret", -- Rainbow variant remains Secret (unique)
 
                     -- Display overrides (optional - overrides viewport defaults)
                     display_container_bg = Color3.fromRGB(255, 0, 255), -- Magenta bg for Rainbow Dragon
@@ -408,8 +425,9 @@ local petConfig = {
 
         -- KITTY FAMILY
         kitty = {
-            name = "Kitty",
+            display_name = "Kitty",
             category = "domestic",
+            rarity = "common",
             base_power = 9,
             base_health = 110,
 
@@ -427,8 +445,6 @@ local petConfig = {
                     asset_id = "rbxassetid://73405612786363",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Kitty",
-                    power = 9,
-                    health = 110,
                     abilities = { "claw_swipe" },
                     viewport_zoom = 1.6, -- Kitties are small, zoom in more
                 },
@@ -436,8 +452,6 @@ local petConfig = {
                     asset_id = "rbxassetid://131968646516737",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Golden Kitty",
-                    power = 45,
-                    health = 550,
                     abilities = { "golden_claws", "stealth_bonus" },
                     viewport_zoom = 1.6, -- Golden kitty zoom
                 },
@@ -445,10 +459,60 @@ local petConfig = {
                     asset_id = "rbxassetid://124744079930917",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Rainbow Kitty",
-                    power = 450,
-                    health = 5500,
                     abilities = { "rainbow_claws", "nine_lives", "shadow_step" },
                     viewport_zoom = 1.6, -- Rainbow kitty zoom
+                },
+            },
+        },
+
+        -- CREATOR / MEET REWARD FAMILY
+        colorado = {
+            display_name = "Colorado Plays",
+            category = "creator",
+            rarity = "exclusive",
+            base_power = 100,
+            base_health = 500,
+            eternal = {
+                enabled = true,
+                power_percent = 80,
+                baseline = "top_team_average",
+            },
+
+            -- Imported avatar-like models often arrive with different facing/scale.
+            -- `scale` is the normal model multiplier, `huge_scale` is applied to
+            -- owned pets marked with the huge trait, and `orientation` is degrees.
+            asset_transform = {
+                scale = 1,
+                huge_scale = 3,
+                orientation = { x = 0, y = 0, z = 0 },
+            },
+
+            camera = {
+                distance = 4,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://100466492312776",
+                    image_id = "rbxassetid://0",
+                    display_name = "Colorado Plays",
+                    abilities = { "creator_wave" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://121192248833075",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Colorado Plays",
+                    abilities = { "creator_wave", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://100466492312776",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Colorado Plays",
+                    abilities = { "creator_wave", "luck_aura" },
                 },
             },
         },
@@ -462,6 +526,7 @@ local petConfig = {
         bark_stun = { stun_duration = 1, damage_multiplier = 1.0, cooldown = 4 },
         fire_breath = { damage_multiplier = 2.0, area_damage = true, cooldown = 5 },
         claw_swipe = { damage_multiplier = 1.3, crit_chance = 0.2, cooldown = 2 },
+        creator_wave = { damage_multiplier = 2.0, luck_boost = 0.25, cooldown = 3 },
 
         -- Golden Abilities
         golden_scratch = { damage_multiplier = 1.5, coin_bonus = 2.0, cooldown = 2 },
@@ -693,29 +758,45 @@ function petConfig.getPet(petType, variant)
         local pet = petConfig.pets[petType]
         local petVariant = pet.variants[variant]
         local variantInfo = petConfig.variants[variant]
-        local rarityKey = variantInfo.rarity
+        local rarityKey = pet.rarity or variantInfo.rarity
         if petVariant.rarity_override and petConfig.rarities[petVariant.rarity_override] then
             rarityKey = petVariant.rarity_override
         end
         local rarity = petConfig.rarities[rarityKey]
+        local powerMultiplier = petVariant.power_multiplier or variantInfo.power_multiplier or 1
+        local healthMultiplier = petVariant.health_multiplier or variantInfo.health_multiplier or 1
+        local power = petVariant.power
+            or math.max(1, math.floor((pet.base_power or 1) * powerMultiplier + 0.5))
+        local health = petVariant.health
+            or math.max(1, math.floor((pet.base_health or 1) * healthMultiplier + 0.5))
 
         -- Create base pet data
         local petData = {
             -- Pet info
-            name = petVariant.display_name,
+            id = petType,
+            family_display_name = pet.display_name or pet.name,
+            name = pet.display_name or pet.name,
+            variant_display_name = petVariant.display_name,
             asset_id = petVariant.asset_id,
             category = pet.category,
+            camera = petVariant.camera or pet.camera,
 
             -- Stats
-            power = petVariant.power,
-            health = petVariant.health,
+            power = power,
+            health = health,
+            base_power = pet.base_power,
+            base_health = pet.base_health,
+            power_multiplier = powerMultiplier,
+            health_multiplier = healthMultiplier,
             abilities = petVariant.abilities,
+            eternal = petVariant.eternal or pet.eternal,
 
             -- Meta info
             variant = variant,
             rarity = rarity,
             rarity_id = rarityKey,
             variant_info = variantInfo,
+            asset_transform = petVariant.asset_transform or pet.asset_transform,
         }
 
         -- Include all additional variant properties (like display_* settings)
@@ -749,9 +830,9 @@ function petConfig.getPetsByRarity(targetRarity)
     local pets = {}
     for petType, petData in pairs(petConfig.pets) do
         for variant, _ in pairs(petData.variants) do
-            local variantInfo = petConfig.variants[variant]
-            if variantInfo.rarity == targetRarity then
-                table.insert(pets, petConfig.getPet(petType, variant))
+            local pet = petConfig.getPet(petType, variant)
+            if pet and pet.rarity_id == targetRarity then
+                table.insert(pets, pet)
             end
         end
     end
@@ -767,7 +848,15 @@ function petConfig.getEffectivePower(petType, variant, level)
     end
 
     local basePower = pet.power
-    local levelMultiplier = 1 + (level - 1) * 0.1 -- 10% per level
+    local progressionConfig = nil
+    pcall(function()
+        progressionConfig = require(script.Parent.pet_progression)
+    end)
+    local scaling = progressionConfig and progressionConfig.power_scaling or {}
+    local perLevel = tonumber(scaling.percent_per_level) or 0
+    local maxBonus = tonumber(scaling.max_bonus_percent) or 0
+    local bonus = math.min(maxBonus, math.max(0, (level - 1) * perLevel))
+    local levelMultiplier = 1 + bonus
 
     return math.floor(basePower * levelMultiplier)
 end

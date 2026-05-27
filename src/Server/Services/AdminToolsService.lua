@@ -13,6 +13,8 @@ function AdminToolsService.new()
     self._inventoryService = nil
     self._configLoader = nil
     self._eventService = nil
+    self._zoneService = nil
+    self._petGrantService = nil
     self._petsConfig = nil
     self._inventoryConfig = nil
     return self
@@ -25,6 +27,8 @@ function AdminToolsService:Init()
     self._inventoryService = self._modules.InventoryService
     self._configLoader = self._modules.ConfigLoader
     self._eventService = self._modules.EventService
+    self._zoneService = self._modules.ZoneService
+    self._petGrantService = self._modules.PetGrantService
 
     self._petsConfig = self._configLoader:LoadConfig("pets")
     self._inventoryConfig = self._configLoader:LoadConfig("inventory")
@@ -41,6 +45,10 @@ function AdminToolsService:Init()
         self:_handleGrantPet(player, data)
     end)
 
+    Signals.Admin_SetZoneLock.OnServerEvent:Connect(function(player, data)
+        self:_handleSetZoneLock(player, data)
+    end)
+
     Signals.Admin_EventCommand.OnServerEvent:Connect(function(player, data)
         self:_handleEventCommand(player, data)
     end)
@@ -51,12 +59,13 @@ end
 function AdminToolsService:_handleEventCommand(adminPlayer, data)
     data = type(data) == "table" and data or {}
 
-    local authorized, reason = self._adminService:ValidateAdminAction(adminPlayer, "globalEffects", data, "client")
+    local authorized, reason =
+        self._adminService:ValidateAdminAction(adminPlayer, "globalEffects", data, "client")
     if not authorized then
         self:_sendResult(adminPlayer, {
             kind = "event_command",
             success = false,
-            message = reason or "Not authorized"
+            message = reason or "Not authorized",
         })
         return
     end
@@ -65,7 +74,7 @@ function AdminToolsService:_handleEventCommand(adminPlayer, data)
         self:_sendResult(adminPlayer, {
             kind = "event_command",
             success = false,
-            message = "EventService unavailable"
+            message = "EventService unavailable",
         })
         return
     end
@@ -78,7 +87,7 @@ function AdminToolsService:_handleEventCommand(adminPlayer, data)
     if command == "start" then
         success, message = self._eventService:StartGlobalEvent(eventId, {
             durationSeconds = tonumber(data.durationSeconds),
-            reason = data.reason or ("Admin: " .. adminPlayer.Name)
+            reason = data.reason or ("Admin: " .. adminPlayer.Name),
         })
         if success then
             message = "Started global event: " .. eventId
@@ -102,7 +111,7 @@ function AdminToolsService:_handleEventCommand(adminPlayer, data)
         success = success == true,
         message = message,
         events = self._eventService:GetActiveGlobalEvents(),
-        modifiers = self._eventService:GetAllModifiers()
+        modifiers = self._eventService:GetAllModifiers(),
     })
 end
 
@@ -115,7 +124,8 @@ end
 function AdminToolsService:_resolveTarget(adminPlayer, actionName, data)
     data = type(data) == "table" and data or {}
 
-    local authorized, reason, targetPlayer = self._adminService:ValidateAdminAction(adminPlayer, actionName, data, "client")
+    local authorized, reason, targetPlayer =
+        self._adminService:ValidateAdminAction(adminPlayer, actionName, data, "client")
     if not authorized then
         return nil, reason or "Not authorized"
     end
@@ -166,7 +176,8 @@ end
 
 function AdminToolsService:_buildSnapshot(targetPlayer)
     local playerData = self._dataService:GetData(targetPlayer)
-    local saveState = self._dataService.SaveRequests and self._dataService.SaveRequests[targetPlayer]
+    local saveState = self._dataService.SaveRequests
+        and self._dataService.SaveRequests[targetPlayer]
     local totalPets, petEntries = self:_countPets(playerData or {})
     local equippedPets = self:_countEquippedPets(playerData or {})
     local freeTarget = targetPlayer:FindFirstChild("FreeTarget")
@@ -187,7 +198,7 @@ function AdminToolsService:_buildSnapshot(targetPlayer)
         extraPetSlots = playerData and playerData.Perks and playerData.Perks.extra_pet_slots or 0,
         autoTarget = {
             low = freeTarget and freeTarget.Value == true or false,
-            high = paidTarget and paidTarget.Value == true or false
+            high = paidTarget and paidTarget.Value == true or false,
         },
         save = {
             dirty = saveState and saveState.dirty == true or false,
@@ -195,8 +206,8 @@ function AdminToolsService:_buildSnapshot(targetPlayer)
             inFlight = saveState and saveState.inFlight == true or false,
             lastReason = saveState and saveState.lastReason or "none",
             lastRequestedAt = saveState and saveState.lastRequestedAt or nil,
-            lastConfirmedAt = saveState and saveState.lastConfirmedAt or nil
-        }
+            lastConfirmedAt = saveState and saveState.lastConfirmedAt or nil,
+        },
     }
 end
 
@@ -206,7 +217,7 @@ function AdminToolsService:_handleSnapshot(adminPlayer, data)
         self:_sendResult(adminPlayer, {
             kind = "snapshot",
             success = false,
-            message = errorMessage
+            message = errorMessage,
         })
         return
     end
@@ -215,7 +226,7 @@ function AdminToolsService:_handleSnapshot(adminPlayer, data)
         kind = "snapshot",
         success = true,
         message = "Snapshot loaded for " .. targetPlayer.Name,
-        snapshot = self:_buildSnapshot(targetPlayer)
+        snapshot = self:_buildSnapshot(targetPlayer),
     })
 end
 
@@ -225,21 +236,22 @@ function AdminToolsService:_handleForceSave(adminPlayer, data)
         self:_sendResult(adminPlayer, {
             kind = "force_save",
             success = false,
-            message = errorMessage
+            message = errorMessage,
         })
         return
     end
 
     local ok = self._dataService:RequestSave(targetPlayer, "admin_force_save", {
         debounceSeconds = 0,
-        critical = true
+        critical = true,
     })
 
     self:_sendResult(adminPlayer, {
         kind = "force_save",
         success = ok == true,
-        message = ok and ("Force save requested for " .. targetPlayer.Name) or ("Force save failed for " .. targetPlayer.Name),
-        snapshot = self:_buildSnapshot(targetPlayer)
+        message = ok and ("Force save requested for " .. targetPlayer.Name)
+            or ("Force save failed for " .. targetPlayer.Name),
+        snapshot = self:_buildSnapshot(targetPlayer),
     })
 end
 
@@ -248,8 +260,11 @@ function AdminToolsService:_parseGrantData(data)
     local petType = tostring(data.petType or ""):lower()
     local variant = tostring(data.variant or "basic"):lower()
     local quantity = math.clamp(math.floor(tonumber(data.quantity) or 1), 1, 99)
+    local traits = {
+        huge = data.huge == true,
+    }
 
-    return petType, variant, quantity
+    return petType, variant, quantity, traits
 end
 
 function AdminToolsService:_handleGrantPet(adminPlayer, data)
@@ -258,52 +273,39 @@ function AdminToolsService:_handleGrantPet(adminPlayer, data)
         self:_sendResult(adminPlayer, {
             kind = "grant_pet",
             success = false,
-            message = errorMessage
+            message = errorMessage,
         })
         return
     end
 
-    local petType, variant, quantity = self:_parseGrantData(data)
-    local petConfig = self._petsConfig.getPet and self._petsConfig.getPet(petType, variant)
-    if not petConfig then
+    local petType, variant, quantity, traits = self:_parseGrantData(data)
+    if not (self._petsConfig.getPet and self._petsConfig.getPet(petType, variant)) then
         self:_sendResult(adminPlayer, {
             kind = "grant_pet",
             success = false,
-            message = "Unknown pet: " .. tostring(petType) .. ":" .. tostring(variant)
+            message = "Unknown pet: " .. tostring(petType) .. ":" .. tostring(variant),
         })
         return
     end
 
-    local petData = {
-        id = petType,
+    local result = self._petGrantService:GrantPet(targetPlayer, {
+        petType = petType,
         variant = variant,
-        quantity = quantity,
-        obtained_at = tick(),
-        level = 1,
-        exp = 0,
-        stats = {
-            power = petConfig.power or 1,
-            health = petConfig.health or 100,
-            speed = petConfig.speed or 1.0
-        },
-        nickname = "",
-        locked = false
-    }
-
-    local uid, addError = self._inventoryService:AddItem(targetPlayer, "pets", petData)
-    if not uid then
+        quantity = traits.huge and 1 or quantity,
+        huge = traits.huge,
+        source = "admin_grant_pet",
+    })
+    if not result.ok then
         self:_sendResult(adminPlayer, {
             kind = "grant_pet",
             success = false,
-            message = addError or "Failed to grant pet",
-            snapshot = self:_buildSnapshot(targetPlayer)
+            message = result.error or "Failed to grant pet",
+            snapshot = self:_buildSnapshot(targetPlayer),
         })
         return
     end
 
-    self._dataService:RequestSave(targetPlayer, "admin_grant_pet", {
-        critical = true
-    })
+    local petData = result.petData
 
     self._logger:Info("Admin pet granted", {
         admin = adminPlayer.Name,
@@ -311,20 +313,107 @@ function AdminToolsService:_handleGrantPet(adminPlayer, data)
         petType = petType,
         variant = variant,
         quantity = quantity,
-        uid = uid
+        huge = traits.huge == true,
+        serial = petData.serial,
+        serialKey = petData.serial_key,
+        uid = result.uid,
     })
 
     self:_sendResult(adminPlayer, {
         kind = "grant_pet",
         success = true,
-        message = string.format("Granted %dx %s %s to %s", quantity, variant, petType, targetPlayer.Name),
+        message = string.format(
+            "Granted %dx %s%s %s%s to %s",
+            traits.huge and 1 or quantity,
+            variant,
+            traits.huge and " huge" or "",
+            petType,
+            petData.serial and (" #" .. tostring(petData.serial)) or "",
+            targetPlayer.Name
+        ),
         granted = {
             petType = petType,
             variant = variant,
             quantity = quantity,
-            uid = uid
+            uid = result.uid,
+            huge = traits.huge == true,
+            serial = petData.serial,
+            serialKey = petData.serial_key,
         },
-        snapshot = self:_buildSnapshot(targetPlayer)
+        snapshot = self:_buildSnapshot(targetPlayer),
+    })
+end
+
+function AdminToolsService:_handleSetZoneLock(adminPlayer, data)
+    local targetPlayer, errorMessage = self:_resolveTarget(adminPlayer, "unlockZones", data)
+    if not targetPlayer then
+        self:_sendResult(adminPlayer, {
+            kind = "zone_lock",
+            success = false,
+            message = errorMessage,
+        })
+        return
+    end
+
+    if not self._zoneService then
+        self:_sendResult(adminPlayer, {
+            kind = "zone_lock",
+            success = false,
+            message = "ZoneService unavailable",
+            snapshot = self:_buildSnapshot(targetPlayer),
+        })
+        return
+    end
+
+    data = type(data) == "table" and data or {}
+    local zoneId = tostring(data.zoneId or "")
+    if zoneId == "" then
+        self:_sendResult(adminPlayer, {
+            kind = "zone_lock",
+            success = false,
+            message = "Missing zone id",
+            snapshot = self:_buildSnapshot(targetPlayer),
+        })
+        return
+    end
+
+    local currentUnlocked = self._zoneService:IsZoneUnlocked(targetPlayer, zoneId)
+    local locked = data.locked
+    if locked == nil then
+        locked = currentUnlocked == true
+    end
+
+    local result = self._zoneService:SetZoneLocked(targetPlayer, zoneId, locked == true, {
+        bypassRequirements = data.bypassRequirements == true,
+    })
+
+    local success = result and result.ok == true
+    local unlockedAreas = self._zoneService:GetUnlockedZones(targetPlayer)
+    local message
+    if success then
+        if locked == true then
+            message = string.format("Locked %s for %s", zoneId, targetPlayer.Name)
+        elseif result.alreadyUnlocked then
+            message = string.format("%s already has %s unlocked", targetPlayer.Name, zoneId)
+        else
+            message = string.format("Unlocked %s for %s", zoneId, targetPlayer.Name)
+        end
+    else
+        message = string.format(
+            "Failed to unlock %s for %s: %s",
+            zoneId,
+            targetPlayer.Name,
+            tostring(result and result.reason or "unknown")
+        )
+    end
+
+    self:_sendResult(adminPlayer, {
+        kind = "zone_lock",
+        success = success,
+        message = message,
+        zoneLock = result,
+        unlockedAreas = unlockedAreas,
+        snapshot = self:_buildSnapshot(targetPlayer),
     })
 end
 

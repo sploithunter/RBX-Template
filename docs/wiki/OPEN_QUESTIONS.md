@@ -8,10 +8,13 @@ Status: current
 - How many currencies should ship in the template baseline?
 - What should the first balanced economy loop target: crystals to coins, coins to eggs, or a clearer soft/premium split?
 - Should direct player-to-player trade be in scope, or only auction-style marketplace?
+- What is the minimum safe first trading contract? It should move unique pet records whole, preserve huge serials/enchantments/locks/signed metadata, and avoid minting new serials during transfer.
 
 ## Content And Pets
 
-- What exact modifier semantics should each enchant have? Storage direction is decided: enchanting a stackable pet should promote one copy into a unique special instance; enchants live on that instance and feed the `enchants` modifier pipeline stage.
+- What exact modifier semantics should each enchant have? Storage direction is decided: enchanting a stackable pet should promote one copy into a unique special instance; enchants live on that instance and feed the `enchants` modifier pipeline stage. Capacity is now config-driven by rarity.
+- What should the first live pet XP sources be? The data/service foundation exists for unique pets, but breakable damage, breakable destroy, daycare/offline, and consumable XP items still need balancing decisions.
+- Should player level/XP directly modify team power, only gate content, or only affect luck/unlocks? The offline calculator can model a temporary direct multiplier, but no gameplay multiplier is committed yet.
 - Should high-power pets be normalized by player progression, area tier, or both?
 - Should forever/eternal pets use the reference-style percentage-of-current-best-power model, and what percent range keeps them prestigious without breaking early progression?
 - What is the long-term automated Meshi-to-Roblox asset workflow?

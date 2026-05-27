@@ -26,6 +26,7 @@ local Signals = {
     Admin_GetPlayerSnapshot = Net:RemoteEvent("Admin_GetPlayerSnapshot"), -- c->s admin player state request
     Admin_ForceSave = Net:RemoteEvent("Admin_ForceSave"), -- c->s admin force save
     Admin_GrantPet = Net:RemoteEvent("Admin_GrantPet"), -- c->s admin grant configured pet
+    Admin_SetZoneLock = Net:RemoteEvent("Admin_SetZoneLock"), -- c->s admin lock/unlock configured zone
     Admin_EventCommand = Net:RemoteEvent("Admin_EventCommand"), -- c->s admin global event command
     AdminToolResult = Net:RemoteEvent("AdminToolResult"), -- s->c admin action result
 

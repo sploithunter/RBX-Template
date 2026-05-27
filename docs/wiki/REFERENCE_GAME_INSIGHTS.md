@@ -12,8 +12,11 @@ The newer reference game at `/Users/jason/Documents/ColorfulClickers_exchange-ro
 - Achievements over tracked counters.
 - Rebirths as a reset-for-permanent-progress loop.
 - Egg configs with costs, currencies, odds, secret/huge outcomes, and special pets.
+- The reference developer-meet reward used a one-off `RewardPlayerForMeet` script that checks for `coloradoplays` on the server, then calls a special `DeveloperColorado` egg with Mini/normal/Huge Colorado outcomes. In this project, keep that as a config/service reward instead of a Workspace script.
 - Pet team calculation with stats and enchants.
 - Eternal/forever pet semantics: the newer reference game's equip-best logic treated an `Eternal` value as a percentage of the player's current top damage for the relevant damage type, rather than as a huge fixed stat. This keeps ultra-rare pets valuable forever without letting a traded/gifted endgame pet erase early progression.
+- Huge Colorado in the reference was tied to rarity/eternal metadata, and the newer pet handler had scale helpers even though the active scaling call was commented out. In this project, model huge as an ownership trait with config-driven `huge_scale` so normal/golden/rainbow art can be reused.
+- The reference spawner normalized spawned model parts by anchoring where needed and disabling `CanTouch` on non-star parts. For imported pet art in this project, keep a reusable normalizer instead of fixing each asset manually.
 - Enchants such as HomeWorld, Efficiency, Tactics, Luck, Leadership, and SecretLuck.
 - Reference enchants are tier-gated by rarity (`Legendary`, `Mythical`, `Secret`, `Exclusive`, `Huge`, `Colossal`) with `MaxEnchant`, `DefaultEnchant`, weighted chances, low/high value ranges, and a scale value. Keep that data shape, but add config-declared modifier semantics and store enchants only on unique pet instances.
 - Pet of the Day selected deterministically and displayed on a podium.

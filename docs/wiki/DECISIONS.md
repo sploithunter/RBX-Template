@@ -30,9 +30,29 @@ The project should support multiple currencies, but the template baseline should
 
 Pet models should be referenced by asset id where possible. Meshi can be used for asset creation, but current import is manual download followed by project-side upload/import. Automation is desired later.
 
+## Pet Rarity And Variants
+
+Pet rarity belongs to the pet family. Variants such as Basic, Golden, and Rainbow are visual/stat treatments and should not automatically promote a normal pet into Mythical/Secret/etc. For example, Rainbow Bear is still a Common Bear with the Rainbow variant treatment; Dragon is Secret because the Dragon family declares `rarity = "secret"`, and Colorado is Exclusive because the Colorado family declares `rarity = "exclusive"`. Startup config validation requires every pet family to declare a valid rarity so content typos fail early.
+
+Inventory card visuals should communicate both rarity and variant without letting one erase the other. Rarity controls data, tooltip text, special/unique rules, and the outer card frame. Variant treatments such as Golden and Rainbow layer animated inset rings and background treatments inside that frame, so a Common Rainbow pet still looks Rainbow while remaining visibly Common.
+
+## Pet Identity
+
+Pet config table keys are durable save IDs and must be treated as migration-sensitive. Player inventory stores IDs such as `bear` plus variant IDs such as `rainbow`, not display labels. Pet families and variants use `display_name` for player-facing names so typo fixes and renames do not corrupt inventories. Startup validation rejects malformed pet/variant/rarity IDs and missing display names, but changing an existing pet key still requires an explicit migration/backfill plan.
+
+Inventory and hatch-facing pet titles should prefer the pet family display name, not the variant display name. Variant identity remains visible through card effects and tooltip fields, while traits that materially change identity, such as Huge, may prefix the family name.
+
+Pet power has a single durable source of truth: `configs/pets.lua`. Pet families declare base power, variants apply configured multipliers, and per-copy inventory records must not store power/base-power/effective-power values. Inventory may store identity and mutable per-copy state such as level, XP, enchants, serials, hatcher metadata, lock state, and Huge/Eternal flags. Runtime systems may cache computed power on spawned models or transient folders, but saved profile data should be backfilled when legacy power fields are found.
+
 ## Pet Storage And Enchants
 
-Normal pets should remain stack-count records keyed by canonical pet id + variant. Any pet with per-copy state that affects gameplay or ownership value, such as enchantments, serials, signatures, huge/eternal status, nickname, lock state, or custom progression, should be promoted to a unique special instance before that state is applied. Enchants should be stored on the pet instance and contribute through the `enchants` modifier pipeline stage; stack records must stay free of enchant/progression fields.
+Normal pets should remain stack-count records keyed by canonical pet id + variant. Any pet with per-copy state that affects gameplay or ownership value, such as enchantments, serials, signatures, huge/eternal status, nickname, lock state, or custom progression, should be promoted to a unique special instance before that state is applied. Enchants should be stored on the pet instance and contribute through the `enchants` modifier pipeline stage; stack records must stay free of enchant/progression fields. Enchant capacity is declared by rarity in pet config so tiers such as Mythic, Exclusive, Huge, or future larger tiers can change slot counts without service edits.
+
+Pet XP and levels are unique-pet progression state. Stack records do not gain XP or levels. Unique pets may scale power from a config-driven XP curve and capped per-level multiplier. Enchant capacity remains the pet's potential slot count, while `unlocked_enchant_slots` is progression-driven; unique enchantable pets start with one unlocked slot and unlock remaining slots at configured level milestones.
+
+## Pet Provenance
+
+Valuable pet provenance and internal grant audit tags are separate. `grant_source` records the system reason a pet was created and should not be displayed as player-facing tooltip content. `hatcher_name` and `hatcher_user_id` record the player who created a valuable copy and may be displayed, traded, and preserved with the unique pet record.
 
 ## Stats-Derived Features
 

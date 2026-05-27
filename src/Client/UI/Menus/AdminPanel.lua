@@ -36,23 +36,39 @@ if loggerSuccess and loggerResult then
     LoggerWrapper = {
         new = function(name)
             return {
-                info = function(self, ...) loggerResult:Info("[" .. name .. "] " .. tostring((...)), {context = name}) end,
-                warn = function(self, ...) loggerResult:Warn("[" .. name .. "] " .. tostring((...)), {context = name}) end,
-                error = function(self, ...) loggerResult:Error("[" .. name .. "] " .. tostring((...)), {context = name}) end,
-                debug = function(self, ...) loggerResult:Debug("[" .. name .. "] " .. tostring((...)), {context = name}) end,
+                info = function(self, ...)
+                    loggerResult:Info("[" .. name .. "] " .. tostring((...)), { context = name })
+                end,
+                warn = function(self, ...)
+                    loggerResult:Warn("[" .. name .. "] " .. tostring((...)), { context = name })
+                end,
+                error = function(self, ...)
+                    loggerResult:Error("[" .. name .. "] " .. tostring((...)), { context = name })
+                end,
+                debug = function(self, ...)
+                    loggerResult:Debug("[" .. name .. "] " .. tostring((...)), { context = name })
+                end,
             }
-        end
+        end,
     }
 else
     LoggerWrapper = {
         new = function(name)
             return {
-                info = function(self, ...) print("[" .. name .. "] INFO:", ...) end,
-                warn = function(self, ...) warn("[" .. name .. "] WARN:", ...) end,
-                error = function(self, ...) warn("[" .. name .. "] ERROR:", ...) end,
-                debug = function(self, ...) print("[" .. name .. "] DEBUG:", ...) end,
+                info = function(self, ...)
+                    print("[" .. name .. "] INFO:", ...)
+                end,
+                warn = function(self, ...)
+                    warn("[" .. name .. "] WARN:", ...)
+                end,
+                error = function(self, ...)
+                    warn("[" .. name .. "] ERROR:", ...)
+                end,
+                debug = function(self, ...)
+                    print("[" .. name .. "] DEBUG:", ...)
+                end,
             }
-        end
+        end,
     }
 end
 
@@ -65,12 +81,16 @@ if templateSuccess and templateResult then
     TemplateManager = templateResult
 else
     TemplateManager = {
-        new = function() 
+        new = function()
             return {
-                CreatePanel = function() return nil end,
-                CreateFromTemplate = function() return nil end
-            } 
-        end 
+                CreatePanel = function()
+                    return nil
+                end,
+                CreateFromTemplate = function()
+                    return nil
+                end,
+            }
+        end,
     }
 end
 
@@ -83,9 +103,18 @@ if configSuccess and configResult then
     uiConfig = configResult
 else
     uiConfig = {
-        themes = { dark = { primary = { surface = Color3.fromRGB(40, 40, 45) }, text = { primary = Color3.fromRGB(255, 255, 255) } } },
+        themes = {
+            dark = {
+                primary = { surface = Color3.fromRGB(40, 40, 45) },
+                text = { primary = Color3.fromRGB(255, 255, 255) },
+            },
+        },
         active_theme = "dark",
-        helpers = { get_theme = function(config) return config.themes.dark end }
+        helpers = {
+            get_theme = function(config)
+                return config.themes.dark
+            end,
+        },
     }
 end
 
@@ -97,200 +126,220 @@ local TEST_CATEGORIES = {
     economy = {
         title = "💰 Economy Testing",
         tests = {
-            {name = "Buy Test Item (50 coins)", action = "buy_test_item"},
-            {name = "Buy Health Potion (25 coins)", action = "buy_health_potion"},
-            {name = "Buy Wooden Sword (100 coins)", action = "buy_wooden_sword"},
-            {name = "Buy Iron Sword (500 coins)", action = "buy_iron_sword"},
-            {name = "Buy Basic Pickaxe (200 coins)", action = "buy_basic_pickaxe"},
-            {name = "Buy Premium XP Boost (10 gems)", action = "buy_premium_xp_boost"},
-            {name = "Buy Diamond Sword (25 gems)", action = "buy_diamond_sword"},
-            {name = "Buy ⚡ Speed Potion (5 gems)", action = "buy_speed_potion"},
-            {name = "Buy 📜 Trader Scroll (150 coins)", action = "buy_trader_scroll"},
-        }
+            { name = "Buy Test Item (50 coins)", action = "buy_test_item" },
+            { name = "Buy Health Potion (25 coins)", action = "buy_health_potion" },
+            { name = "Buy Wooden Sword (100 coins)", action = "buy_wooden_sword" },
+            { name = "Buy Iron Sword (500 coins)", action = "buy_iron_sword" },
+            { name = "Buy Basic Pickaxe (200 coins)", action = "buy_basic_pickaxe" },
+            { name = "Buy Premium XP Boost (10 gems)", action = "buy_premium_xp_boost" },
+            { name = "Buy Diamond Sword (25 gems)", action = "buy_diamond_sword" },
+            { name = "Buy ⚡ Speed Potion (5 gems)", action = "buy_speed_potion" },
+            { name = "Buy 📜 Trader Scroll (150 coins)", action = "buy_trader_scroll" },
+        },
     },
     effects = {
         title = "⚡ Effects Testing",
         tests = {
-            {name = "Test Effect Stacking", action = "test_effect_stacking"},
-            {name = "Start Hatch Luck Hour", action = "start_hatch_luck_hour"},
-            {name = "Start Double Rewards Hour", action = "start_double_rewards_hour"},
-            {name = "Start Crystal Rush", action = "start_crystal_rush"},
-            {name = "Start Coin Shower", action = "start_coin_shower"},
-            {name = "Show Active Global Events", action = "show_global_events"},
-            {name = "Clear Global Events", action = "clear_global_events"},
-        }
+            { name = "Test Effect Stacking", action = "test_effect_stacking" },
+            { name = "Start Hatch Luck Hour", action = "start_hatch_luck_hour" },
+            { name = "Start Double Rewards Hour", action = "start_double_rewards_hour" },
+            { name = "Start Crystal Rush", action = "start_crystal_rush" },
+            { name = "Start Coin Shower", action = "start_coin_shower" },
+            { name = "Show Active Global Events", action = "show_global_events" },
+            { name = "Clear Global Events", action = "clear_global_events" },
+        },
     },
     system = {
         title = "🔧 System Testing",
         tests = {
-            {name = "Test Rate Limiting", action = "test_rate_limiting"},
-            {name = "Debug: Print Current Data", action = "debug_print_data"},
-            {name = "Performance Test", action = "performance_test"},
-            {name = "Network Bridge Test", action = "network_test"},
-            {name = "Run Diagnostics", action = "run_diagnostics"},
-        }
+            { name = "Test Rate Limiting", action = "test_rate_limiting" },
+            { name = "Debug: Print Current Data", action = "debug_print_data" },
+            { name = "Performance Test", action = "performance_test" },
+            { name = "Network Bridge Test", action = "network_test" },
+            { name = "Run Diagnostics", action = "run_diagnostics" },
+        },
     },
     currency = {
         title = "💎 Currency Management",
         tests = {
-            {name = "Add 1000 Coins", action = "add_coins_1000"},
-            {name = "Add 100 Gems", action = "add_gems_100"},
-            {name = "Add 50 Crystals", action = "add_crystals_50"},
-            {name = "Reset All Currencies", action = "reset_currencies"},
+            { name = "Add 1000 Coins", action = "add_coins_1000" },
+            { name = "Add 100 Gems", action = "add_gems_100" },
+            { name = "Add 50 Crystals", action = "add_crystals_50" },
+            { name = "Reset All Currencies", action = "reset_currencies" },
         },
         customInputs = {
             {
                 label = "Adjust Coins (+ to add, - to remove):",
                 placeholder = "e.g. +1M, -500K, +2.5B, +42",
                 currency = "coins",
-                action = "adjust_coins_custom"
+                action = "adjust_coins_custom",
             },
             {
                 label = "Adjust Gems (+ to add, - to remove):",
                 placeholder = "e.g. +1M, -100K, +1T, +500",
-                currency = "gems", 
-                action = "adjust_gems_custom"
-            }
-        }
+                currency = "gems",
+                action = "adjust_gems_custom",
+            },
+        },
     },
     developer = {
         title = "🧰 Developer Tools",
         tests = {
-            {name = "📋 Snapshot Target Player", action = "admin_snapshot"},
-            {name = "💾 Force Save Target Player", action = "admin_force_save"},
-            {name = "🐻 Grant Bear Basic", action = "grant_bear_basic"},
-            {name = "🐉 Grant Dragon Basic", action = "grant_dragon_basic"},
-            {name = "🐻 Grant Golden Bear", action = "grant_bear_golden"},
+            { name = "📋 Snapshot Target Player", action = "admin_snapshot" },
+            { name = "💾 Force Save Target Player", action = "admin_force_save" },
+            { name = "🐻 Grant Bear Basic", action = "grant_bear_basic" },
+            { name = "🐉 Grant Dragon Basic", action = "grant_dragon_basic" },
+            { name = "🐻 Grant Golden Bear", action = "grant_bear_golden" },
+            { name = "👤 Grant Colorado", action = "grant_colorado_basic" },
+            { name = "👑 Grant Golden Colorado", action = "grant_colorado_golden" },
+            { name = "🌈 Grant Rainbow Colorado", action = "grant_colorado_rainbow" },
+            { name = "⬆ Grant Huge Rainbow Colorado", action = "grant_colorado_huge" },
+            { name = "🗺️ Toggle Meadow Lock", action = "toggle_zone_meadow" },
+            { name = "🗺️ Lock Meadow", action = "lock_zone_meadow" },
+            { name = "🗺️ Unlock Meadow", action = "unlock_zone_meadow" },
+            { name = "🗺️ Bypass Unlock Meadow", action = "unlock_zone_meadow_bypass" },
         },
         customInputs = {
             {
-                label = "Grant Pet (pet:variant:quantity):",
-                placeholder = "e.g. bear:basic:3, dragon:golden:1",
-                action = "grant_pet_custom"
-            }
-        }
+                label = "Grant Pet (pet:variant:quantity[:huge]):",
+                placeholder = "e.g. bear:basic:3, colorado:basic:1:huge",
+                action = "grant_pet_custom",
+            },
+            {
+                label = "Set Zone Lock (zoneId:toggle|lock|unlock|bypass):",
+                placeholder = "e.g. Meadow:toggle, Meadow:lock, meadow_island:bypass",
+                action = "set_zone_lock_custom",
+            },
+        },
     },
     logging = {
         title = "📊 Logging Controls",
         tests = {
-            {name = "Show Current Log Config", action = "show_log_config"},
-            {name = "Set All to INFO", action = "set_all_info"},
-            {name = "Set All to DEBUG", action = "set_all_debug"},
-            {name = "Set All to WARN", action = "set_all_warn"},
-            {name = "Disable Console Output", action = "disable_console"},
-            {name = "Enable Console Output", action = "enable_console"},
-            {name = "Enable Performance Logs", action = "enable_performance"},
-            {name = "Disable Performance Logs", action = "disable_performance"},
+            { name = "Show Current Log Config", action = "show_log_config" },
+            { name = "Set All to INFO", action = "set_all_info" },
+            { name = "Set All to DEBUG", action = "set_all_debug" },
+            { name = "Set All to WARN", action = "set_all_warn" },
+            { name = "Disable Console Output", action = "disable_console" },
+            { name = "Enable Console Output", action = "enable_console" },
+            { name = "Enable Performance Logs", action = "enable_performance" },
+            { name = "Disable Performance Logs", action = "disable_performance" },
         },
         customInputs = {
             {
                 label = "Set Service Log Level (service:level):",
                 placeholder = "e.g. EggPetPreviewService:debug, BaseUI:warn",
-                action = "set_service_log_level"
-            }
-        }
+                action = "set_service_log_level",
+            },
+        },
     },
     inventory = {
         title = "🎒 Inventory Management",
         tests = {
-            {name = "🗑️ Remove Orphaned Buckets", action = "cleanup_inventory"},
-            {name = "🔧 Fix Item Categories", action = "fix_item_categories"},
-        }
+            { name = "🗑️ Remove Orphaned Buckets", action = "cleanup_inventory" },
+            { name = "🔧 Fix Item Categories", action = "fix_item_categories" },
+        },
     },
     assets = {
         title = "🖼️ Asset Debugging",
         tests = {
-            {name = "🔍 View All Generated Images", action = "view_all_assets"},
-            {name = "🥚 Debug Egg ViewportFrames", action = "debug_egg_viewports"},
-            {name = "🐾 Debug Pet ViewportFrames", action = "debug_pet_viewports"},
-            {name = "📊 Asset Generation Stats", action = "asset_stats"},
-            {name = "🔄 Force Regenerate Assets", action = "force_regenerate_assets"},
-        }
+            { name = "🔍 View All Generated Images", action = "view_all_assets" },
+            { name = "🥚 Debug Egg ViewportFrames", action = "debug_egg_viewports" },
+            { name = "🐾 Debug Pet ViewportFrames", action = "debug_pet_viewports" },
+            { name = "📊 Asset Generation Stats", action = "asset_stats" },
+            { name = "🔄 Force Regenerate Assets", action = "force_regenerate_assets" },
+        },
     },
     eggHatching = {
         title = "🥚 Egg Hatching Simulation",
         tests = {
-            {name = "🥚 Hatch 1 Egg (Random Pet)", action = "hatch_1_egg"},
-            {name = "🥚🥚 Hatch 3 Eggs (Random Pets)", action = "hatch_3_eggs"},
-            {name = "🥚🥚🥚 Hatch 5 Eggs (Random Pets)", action = "hatch_5_eggs"},
-            {name = "🥚🥚🥚🥚 Hatch 10 Eggs (Random Pets)", action = "hatch_10_eggs"},
-            {name = "🥚🥚🥚🥚🥚 Hatch 25 Eggs (Random Pets)", action = "hatch_25_eggs"},
-            {name = "🥚🥚🥚🥚🥚🥚 Hatch 42 Eggs (Random Pets)", action = "hatch_42_eggs"},
-            {name = "🎲 Hatch 99 Eggs (Random Pets)", action = "hatch_99_eggs"},
+            { name = "🥚 Hatch 1 Egg (Random Pet)", action = "hatch_1_egg" },
+            { name = "🥚🥚 Hatch 3 Eggs (Random Pets)", action = "hatch_3_eggs" },
+            { name = "🥚🥚🥚 Hatch 5 Eggs (Random Pets)", action = "hatch_5_eggs" },
+            { name = "🥚🥚🥚🥚 Hatch 10 Eggs (Random Pets)", action = "hatch_10_eggs" },
+            { name = "🥚🥚🥚🥚🥚 Hatch 25 Eggs (Random Pets)", action = "hatch_25_eggs" },
+            {
+                name = "🥚🥚🥚🥚🥚🥚 Hatch 42 Eggs (Random Pets)",
+                action = "hatch_42_eggs",
+            },
+            { name = "🎲 Hatch 99 Eggs (Random Pets)", action = "hatch_99_eggs" },
         },
         customInputs = {
             {
                 label = "Custom Egg Count (1-99):",
                 placeholder = "e.g. 15, 50, 99",
-                action = "hatch_custom_eggs"
+                action = "hatch_custom_eggs",
             },
             {
                 label = "Specific Pet (petType:variant):",
                 placeholder = "e.g. bear:basic, dragon:golden, kitty:rainbow",
-                action = "hatch_specific_pet"
-            }
-        }
-    }
+                action = "hatch_specific_pet",
+            },
+        },
+    },
 }
 
 function AdminPanel.new()
     local self = setmetatable({}, AdminPanel)
-    
+
     self.logger = LoggerWrapper.new("AdminPanel")
     self.templateManager = TemplateManager.new()
-    
+
     -- Panel state
     self.isVisible = false
     self.frame = nil
-    
+
     -- Network bridges
     self.economyBridge = nil
     self.effectsBridge = nil
-    
+
     -- Player targeting state (NEW)
-    self.selectedTargetPlayerId = nil  -- nil = self, number = target player ID
+    self.selectedTargetPlayerId = nil -- nil = self, number = target player ID
     self.playerList = {}
     self.playerDropdown = nil
     self.targetPlayerLabel = nil
     self.resultLabel = nil
-    
+
     self:_initializeNetworking()
-    
+
     return self
 end
 
 function AdminPanel:Show(parent)
-    if self.isVisible then return end
-    
+    if self.isVisible then
+        return
+    end
+
     self:_createUI(parent)
-    
+
     self.isVisible = true
     self.logger:info("Admin panel shown")
 end
 
 function AdminPanel:Hide()
-    if not self.isVisible then return end
-    
+    if not self.isVisible then
+        return
+    end
+
     if self.frame then
         self.frame:Destroy()
         self.frame = nil
     end
-    
+
     self.isVisible = false
     self.logger:info("Admin panel hidden")
 end
 
 function AdminPanel:_createUI(parent)
     local theme = uiConfig.helpers.get_theme(uiConfig)
-    
+
     -- Create main panel using template
     self.frame = self.templateManager:CreatePanel("panel_scroll", {
         size = UDim2.new(0.8, 0, 0.9, 0),
         position = UDim2.new(0.5, 0, 0.5, 0),
         anchor_point = Vector2.new(0.5, 0.5),
-        parent = parent
+        parent = parent,
     })
-    
+
     if not self.frame then
         -- Fallback frame creation
         self.frame = Instance.new("Frame")
@@ -300,14 +349,14 @@ function AdminPanel:_createUI(parent)
         self.frame.BackgroundColor3 = theme.primary.surface
         self.frame.BorderSizePixel = 0
         self.frame.Parent = parent
-        
+
         local corner = Instance.new("UICorner")
         corner.CornerRadius = UDim.new(0, 16)
         corner.Parent = self.frame
     end
-    
+
     self.frame.Name = "AdminPanel"
-    
+
     -- Warning header
     local warningLabel = Instance.new("TextLabel")
     warningLabel.Name = "Warning"
@@ -321,11 +370,11 @@ function AdminPanel:_createUI(parent)
     warningLabel.Font = Enum.Font.GothamBold
     warningLabel.TextXAlignment = Enum.TextXAlignment.Center
     warningLabel.Parent = self.frame
-    
+
     local warningCorner = Instance.new("UICorner")
     warningCorner.CornerRadius = UDim.new(0, 8)
     warningCorner.Parent = warningLabel
-    
+
     -- Title
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "Title"
@@ -338,7 +387,7 @@ function AdminPanel:_createUI(parent)
     titleLabel.Font = uiConfig.fonts and uiConfig.fonts.primary or Enum.Font.Gotham
     titleLabel.TextXAlignment = Enum.TextXAlignment.Center
     titleLabel.Parent = self.frame
-    
+
     -- Close button
     local closeButton = Instance.new("TextButton")
     closeButton.Name = "CloseButton"
@@ -351,19 +400,19 @@ function AdminPanel:_createUI(parent)
     closeButton.TextSize = 20
     closeButton.Font = Enum.Font.GothamBold
     closeButton.Parent = self.frame
-    
+
     local closeCorner = Instance.new("UICorner")
     closeCorner.CornerRadius = UDim.new(0, 8)
     closeCorner.Parent = closeButton
-    
+
     closeButton.Activated:Connect(function()
         self:Hide()
     end)
-    
+
     -- Player Selection Section (NEW)
     self:_createPlayerSelector()
     self:_createResultDisplay()
-    
+
     -- Scroll frame for test categories (adjusted position to make room for player selector)
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Name = "AdminScroll"
@@ -374,31 +423,31 @@ function AdminPanel:_createUI(parent)
     scrollFrame.ScrollBarThickness = 8
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     scrollFrame.Parent = self.frame
-    
+
     -- Layout for test categories
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, 15)
     layout.Parent = scrollFrame
-    
+
     -- Update canvas size when layout changes
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         scrollFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
     end)
-    
+
     self.scrollFrame = scrollFrame
-    
+
     -- Create test category sections
     self:_createTestCategories()
-    
+
     -- Load player list on panel open
     self:_refreshPlayerList()
 end
 
 function AdminPanel:_createTestCategories()
     local layoutOrder = 1
-    
+
     for categoryKey, categoryData in pairs(TEST_CATEGORIES) do
         self:_createCategorySection(categoryData.title, categoryData, layoutOrder)
         layoutOrder = layoutOrder + 1
@@ -407,13 +456,13 @@ end
 
 function AdminPanel:_createCategorySection(title, categoryData, layoutOrder)
     local theme = uiConfig.helpers.get_theme(uiConfig)
-    local tests = categoryData.tests or categoryData  -- Support both old format and new format
+    local tests = categoryData.tests or categoryData -- Support both old format and new format
     local customInputs = categoryData.customInputs or {}
-    
+
     -- Calculate total height needed
-    local totalItems = #tests + (#customInputs * 2)  -- Custom inputs take 2 rows each (label + input)
+    local totalItems = #tests + (#customInputs * 2) -- Custom inputs take 2 rows each (label + input)
     local containerHeight = totalItems * 45 + 10
-    
+
     -- Category header
     local header = Instance.new("Frame")
     header.Name = title .. "Header"
@@ -422,11 +471,11 @@ function AdminPanel:_createCategorySection(title, categoryData, layoutOrder)
     header.BorderSizePixel = 0
     header.LayoutOrder = layoutOrder
     header.Parent = self.scrollFrame
-    
+
     local headerCorner = Instance.new("UICorner")
     headerCorner.CornerRadius = UDim.new(0, 8)
     headerCorner.Parent = header
-    
+
     local headerLabel = Instance.new("TextLabel")
     headerLabel.Size = UDim2.new(1, -20, 1, 0)
     headerLabel.Position = UDim2.new(0, 10, 0, 0)
@@ -437,7 +486,7 @@ function AdminPanel:_createCategorySection(title, categoryData, layoutOrder)
     headerLabel.Font = Enum.Font.GothamBold
     headerLabel.TextXAlignment = Enum.TextXAlignment.Left
     headerLabel.Parent = header
-    
+
     -- Tests container
     local testsContainer = Instance.new("Frame")
     testsContainer.Name = title .. "Tests"
@@ -446,42 +495,42 @@ function AdminPanel:_createCategorySection(title, categoryData, layoutOrder)
     testsContainer.BorderSizePixel = 0
     testsContainer.LayoutOrder = layoutOrder + 0.5
     testsContainer.Parent = self.scrollFrame
-    
+
     local testsCorner = Instance.new("UICorner")
     testsCorner.CornerRadius = UDim.new(0, 8)
     testsCorner.Parent = testsContainer
-    
+
     local testsLayout = Instance.new("UIListLayout")
     testsLayout.FillDirection = Enum.FillDirection.Vertical
     testsLayout.SortOrder = Enum.SortOrder.LayoutOrder
     testsLayout.Padding = UDim.new(0, 5)
     testsLayout.Parent = testsContainer
-    
+
     local testsPadding = Instance.new("UIPadding")
     testsPadding.PaddingTop = UDim.new(0, 10)
     testsPadding.PaddingBottom = UDim.new(0, 5)
     testsPadding.PaddingLeft = UDim.new(0, 10)
     testsPadding.PaddingRight = UDim.new(0, 10)
     testsPadding.Parent = testsContainer
-    
+
     local currentLayoutOrder = 1
-    
+
     -- Create test buttons
     for i, test in ipairs(tests) do
         self:_createTestButton(test.name, test.action, currentLayoutOrder, testsContainer)
         currentLayoutOrder = currentLayoutOrder + 1
     end
-    
+
     -- Create custom input fields
     for i, inputConfig in ipairs(customInputs) do
         self:_createCustomInput(inputConfig, currentLayoutOrder, testsContainer)
-        currentLayoutOrder = currentLayoutOrder + 2  -- Takes 2 layout orders (label + input)
+        currentLayoutOrder = currentLayoutOrder + 2 -- Takes 2 layout orders (label + input)
     end
 end
 
 function AdminPanel:_createTestButton(testName, action, layoutOrder, parent)
     local theme = uiConfig.helpers.get_theme(uiConfig)
-    
+
     local button = Instance.new("TextButton")
     button.Name = action .. "Button"
     button.Size = UDim2.new(1, 0, 0, 35)
@@ -493,30 +542,28 @@ function AdminPanel:_createTestButton(testName, action, layoutOrder, parent)
     button.Font = Enum.Font.Gotham
     button.LayoutOrder = layoutOrder
     button.Parent = parent
-    
+
     local buttonCorner = Instance.new("UICorner")
     buttonCorner.CornerRadius = UDim.new(0, 6)
     buttonCorner.Parent = button
-    
+
     -- Hover effects
     button.MouseEnter:Connect(function()
         local tween = TweenService:Create(
             button,
             TweenInfo.new(0.15, Enum.EasingStyle.Quad),
-            {BackgroundColor3 = Color3.fromRGB(0, 140, 200)}
+            { BackgroundColor3 = Color3.fromRGB(0, 140, 200) }
         )
         tween:Play()
     end)
-    
+
     button.MouseLeave:Connect(function()
-        local tween = TweenService:Create(
-            button,
-            TweenInfo.new(0.15, Enum.EasingStyle.Quad),
-            {BackgroundColor3 = theme.button and theme.button.primary or Color3.fromRGB(0, 120, 180)}
-        )
+        local tween = TweenService:Create(button, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+            BackgroundColor3 = theme.button and theme.button.primary or Color3.fromRGB(0, 120, 180),
+        })
         tween:Play()
     end)
-    
+
     button.Activated:Connect(function()
         self:_executeTestAction(action, testName)
     end)
@@ -524,7 +571,7 @@ end
 
 function AdminPanel:_createCustomInput(inputConfig, layoutOrder, parent)
     local theme = uiConfig.helpers.get_theme(uiConfig)
-    
+
     -- Label
     local label = Instance.new("TextLabel")
     label.Name = inputConfig.action .. "Label"
@@ -537,20 +584,21 @@ function AdminPanel:_createCustomInput(inputConfig, layoutOrder, parent)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.LayoutOrder = layoutOrder
     label.Parent = parent
-    
+
     -- Input container frame
     local inputFrame = Instance.new("Frame")
     inputFrame.Name = inputConfig.action .. "InputFrame"
     inputFrame.Size = UDim2.new(1, 0, 0, 35)
-    inputFrame.BackgroundColor3 = theme.input and theme.input.background or Color3.fromRGB(30, 30, 35)
+    inputFrame.BackgroundColor3 = theme.input and theme.input.background
+        or Color3.fromRGB(30, 30, 35)
     inputFrame.BorderSizePixel = 0
     inputFrame.LayoutOrder = layoutOrder + 1
     inputFrame.Parent = parent
-    
+
     local inputCorner = Instance.new("UICorner")
     inputCorner.CornerRadius = UDim.new(0, 6)
     inputCorner.Parent = inputFrame
-    
+
     -- Text input
     local textBox = Instance.new("TextBox")
     textBox.Name = inputConfig.action .. "TextBox"
@@ -566,13 +614,14 @@ function AdminPanel:_createCustomInput(inputConfig, layoutOrder, parent)
     textBox.TextXAlignment = Enum.TextXAlignment.Left
     textBox.ClearTextOnFocus = false
     textBox.Parent = inputFrame
-    
+
     -- Set button
     local setButton = Instance.new("TextButton")
     setButton.Name = inputConfig.action .. "SetButton"
     setButton.Size = UDim2.new(0.3, -5, 1, -6)
     setButton.Position = UDim2.new(0.7, 0, 0, 3)
-    setButton.BackgroundColor3 = theme.button and theme.button.primary or Color3.fromRGB(0, 120, 180)
+    setButton.BackgroundColor3 = theme.button and theme.button.primary
+        or Color3.fromRGB(0, 120, 180)
     setButton.BorderSizePixel = 0
     -- Set button text based on input type
     if inputConfig.currency then
@@ -584,19 +633,19 @@ function AdminPanel:_createCustomInput(inputConfig, layoutOrder, parent)
     setButton.TextSize = 11
     setButton.Font = Enum.Font.GothamBold
     setButton.Parent = inputFrame
-    
+
     local setButtonCorner = Instance.new("UICorner")
     setButtonCorner.CornerRadius = UDim.new(0, 4)
     setButtonCorner.Parent = setButton
-    
+
     -- Shared function for both button click and enter key
     local function handleCustomInput()
         if inputConfig.currency then
             -- Currency adjustment
             local amount = self:_parseAmount(textBox.Text)
-            if amount then  -- Allow negative numbers for decrement
+            if amount then -- Allow negative numbers for decrement
                 self:_executeCustomCurrencyAdjust(inputConfig.currency, amount)
-                textBox.Text = ""  -- Clear after adjusting
+                textBox.Text = "" -- Clear after adjusting
             else
                 self.logger:warn("Invalid amount entered:", textBox.Text)
             end
@@ -605,16 +654,16 @@ function AdminPanel:_createCustomInput(inputConfig, layoutOrder, parent)
             local inputValue = textBox.Text
             if inputValue and inputValue ~= "" then
                 self:_executeCustomAction(inputConfig.action, inputValue)
-                textBox.Text = ""  -- Clear after executing
+                textBox.Text = "" -- Clear after executing
             else
                 self.logger:warn("Empty input provided")
             end
         end
     end
-    
+
     -- Button click handler
     setButton.Activated:Connect(handleCustomInput)
-    
+
     -- Enter key handler for text box
     textBox.FocusLost:Connect(function(enterPressed)
         if enterPressed then
@@ -627,12 +676,12 @@ function AdminPanel:_parseAmount(input)
     if not input or input == "" then
         return nil
     end
-    
+
     local originalInput = input
-    
+
     -- Clean up the input
     input = string.upper(string.gsub(input, "%s+", "")) -- Remove spaces and convert to uppercase
-    
+
     -- Handle sign
     local sign = 1
     if string.sub(input, 1, 1) == "+" then
@@ -641,20 +690,20 @@ function AdminPanel:_parseAmount(input)
         sign = -1
         input = string.sub(input, 2)
     end
-    
+
     -- Suffix multipliers matching BaseUI:_formatNumber exactly
     local suffixes = {
-        {1e15, "QA"},  -- Quadrillion
-        {1e12, "T"},   -- Trillion  
-        {1e9,  "B"},   -- Billion
-        {1e6,  "M"},   -- Million
-        {1e3,  "K"}    -- Thousand
+        { 1e15, "QA" }, -- Quadrillion
+        { 1e12, "T" }, -- Trillion
+        { 1e9, "B" }, -- Billion
+        { 1e6, "M" }, -- Million
+        { 1e3, "K" }, -- Thousand
     }
-    
+
     -- Find matching suffix
     local multiplier = 1
     local baseNumber = input
-    
+
     for _, suffix in ipairs(suffixes) do
         local suffixStr = suffix[2]
         if string.sub(input, -string.len(suffixStr)) == suffixStr then
@@ -663,16 +712,16 @@ function AdminPanel:_parseAmount(input)
             break
         end
     end
-    
+
     -- Parse the base number
     local numericValue = tonumber(baseNumber)
     if not numericValue then
         return nil
     end
-    
+
     -- Calculate final amount
     local finalAmount = math.floor(numericValue * multiplier * sign)
-    
+
     -- Log the parsing for debugging
     self.logger:info("💰 Amount parsed", {
         originalInput = originalInput,
@@ -681,15 +730,15 @@ function AdminPanel:_parseAmount(input)
         numericValue = numericValue,
         multiplier = multiplier,
         sign = sign,
-        parsedAs = finalAmount
+        parsedAs = finalAmount,
     })
-    
+
     return finalAmount
 end
 
 function AdminPanel:_executeTestAction(action, testName)
     self.logger:info("Executing test action:", action)
-    
+
     -- Economy actions
     if action:find("buy_") then
         self:_executePurchaseAction(action)
@@ -703,13 +752,19 @@ function AdminPanel:_executeTestAction(action, testName)
         self:_requestForceSave()
     elseif action:find("^grant_") then
         self:_executePetGrantAction(action)
-    
+    elseif
+        action:find("^toggle_zone_")
+        or action:find("^lock_zone_")
+        or action:find("^unlock_zone_")
+    then
+        self:_executeZoneLockAction(action)
+
     -- Effects actions
     elseif action == "run_diagnostics" then
         self:_runDiagnostics()
     elseif action:find("effect") or action:find("start_") then
         self:_executeEffectAction(action)
-    
+
     -- System actions
     elseif action == "test_rate_limiting" then
         self:_testRateLimit()
@@ -719,17 +774,17 @@ function AdminPanel:_executeTestAction(action, testName)
         self:_performanceTest()
     elseif action == "network_test" then
         self:_networkTest()
-    
+
     -- Logging control actions
     elseif action:find("log") or action:find("console") or action:find("performance") then
         self:_executeLoggingAction(action)
-    
+
     -- Inventory management actions
     elseif action == "cleanup_inventory" then
         self:_cleanupInventory()
     elseif action == "fix_item_categories" then
         self:_fixItemCategories()
-    
+
     -- Asset debugging actions
     elseif action == "view_all_assets" then
         self:_viewAllAssets()
@@ -741,11 +796,10 @@ function AdminPanel:_executeTestAction(action, testName)
         self:_showAssetStats()
     elseif action == "force_regenerate_assets" then
         self:_forceRegenerateAssets()
-    
+
     -- Egg hatching simulation actions
     elseif action:find("hatch_") then
         self:_executeEggHatchingAction(action)
-    
     else
         self.logger:warn("Unknown action:", action)
     end
@@ -756,46 +810,49 @@ function AdminPanel:_executePurchaseAction(action)
         self.logger:warn("Economy bridge not available")
         return
     end
-    
+
     -- Map actions to purchase data
     local purchases = {
-        buy_test_item = {itemId = "test_item", cost = 50, currency = "coins"},
-        buy_health_potion = {itemId = "health_potion", cost = 25, currency = "coins"},
-        buy_wooden_sword = {itemId = "wooden_sword", cost = 100, currency = "coins"},
-        buy_iron_sword = {itemId = "iron_sword", cost = 500, currency = "coins"},
-        buy_basic_pickaxe = {itemId = "basic_pickaxe", cost = 200, currency = "coins"},
-        buy_premium_xp_boost = {itemId = "premium_xp_boost", cost = 10, currency = "gems"},
-        buy_diamond_sword = {itemId = "diamond_sword", cost = 25, currency = "gems"},
-        buy_speed_potion = {itemId = "speed_potion", cost = 5, currency = "gems"},
-        buy_trader_scroll = {itemId = "trader_scroll", cost = 150, currency = "coins"},
+        buy_test_item = { itemId = "test_item", cost = 50, currency = "coins" },
+        buy_health_potion = { itemId = "health_potion", cost = 25, currency = "coins" },
+        buy_wooden_sword = { itemId = "wooden_sword", cost = 100, currency = "coins" },
+        buy_iron_sword = { itemId = "iron_sword", cost = 500, currency = "coins" },
+        buy_basic_pickaxe = { itemId = "basic_pickaxe", cost = 200, currency = "coins" },
+        buy_premium_xp_boost = { itemId = "premium_xp_boost", cost = 10, currency = "gems" },
+        buy_diamond_sword = { itemId = "diamond_sword", cost = 25, currency = "gems" },
+        buy_speed_potion = { itemId = "speed_potion", cost = 5, currency = "gems" },
+        buy_trader_scroll = { itemId = "trader_scroll", cost = 150, currency = "coins" },
     }
-    
+
     local purchaseData = purchases[action]
     if purchaseData then
         -- Add target player data if selected
         local actionData = self:_getAdminActionData(purchaseData)
-        
+
         -- 🔍 DEBUG: Check if bridge exists and is callable
         self.logger:info("🔍 ADMIN PANEL - About to call bridge Fire", {
             hasBridge = self.economyBridge ~= nil,
             bridgeType = typeof(self.economyBridge),
             hasFireMethod = self.economyBridge and typeof(self.economyBridge.Fire) == "function",
             item = purchaseData.itemId,
-            targetData = actionData
+            targetData = actionData,
         })
-        
+
         if not self.economyBridge then
             self.logger:warn("🚨 ADMIN PANEL - Economy bridge is nil!")
             return
         end
-        
+
         if not self.economyBridge.Fire then
             self.logger:warn("🚨 ADMIN PANEL - Economy bridge has no Fire method!")
             return
         end
-        
+
         Signals.PurchaseItem:FireServer(actionData)
-        self.logger:info("Purchase request sent:", {item = purchaseData.itemId, targetData = actionData})
+        self.logger:info(
+            "Purchase request sent:",
+            { item = purchaseData.itemId, targetData = actionData }
+        )
     end
 end
 
@@ -804,13 +861,13 @@ function AdminPanel:_executeCurrencyAction(action)
         self.logger:warn("Economy bridge not available")
         return
     end
-    
+
     local currencyAdjustments = {
-        add_coins_1000 = {currency = "coins", amount = 1000},
-        add_gems_100 = {currency = "gems", amount = 100},
-        add_crystals_50 = {currency = "crystals", amount = 50},
+        add_coins_1000 = { currency = "coins", amount = 1000 },
+        add_gems_100 = { currency = "gems", amount = 100 },
+        add_crystals_50 = { currency = "crystals", amount = 50 },
     }
-    
+
     local adjustment = currencyAdjustments[action]
     if adjustment then
         -- Add target player data if selected
@@ -826,12 +883,12 @@ function AdminPanel:_executeCustomCurrencyAdjust(currency, amount)
         self.logger:warn("Economy bridge not available")
         return
     end
-    
+
     local adjustCurrencyData = {
         currency = currency,
-        amount = amount
+        amount = amount,
     }
-    
+
     -- Add target player data if selected
     local actionData = self:_getAdminActionData(adjustCurrencyData)
     Signals.AdjustCurrency:FireServer(actionData)
@@ -843,10 +900,10 @@ function AdminPanel:_resetCurrencies()
         self.logger:warn("Economy bridge not available")
         return
     end
-    
+
     -- Add target player data if selected
     local actionData = self:_getAdminActionData({})
-            Signals.AdjustCurrency:FireServer({reset = true, target = actionData.target})
+    Signals.AdjustCurrency:FireServer({ reset = true, target = actionData.target })
     self.logger:info("Currency reset requested:", actionData)
 end
 
@@ -854,15 +911,19 @@ function AdminPanel:_executeEffectAction(action)
     self.logger:info("Effect action:", action)
 
     local eventActions = {
-        test_effect_stacking = {command = "start", eventId = "hatch_luck_hour", durationSeconds = 300},
-        start_xp_weekend = {command = "start", eventId = "double_rewards_hour"},
-        start_speed_hour = {command = "start", eventId = "crystal_rush"},
-        start_hatch_luck_hour = {command = "start", eventId = "hatch_luck_hour"},
-        start_double_rewards_hour = {command = "start", eventId = "double_rewards_hour"},
-        start_crystal_rush = {command = "start", eventId = "crystal_rush"},
-        start_coin_shower = {command = "start", eventId = "coin_shower"},
-        show_global_events = {command = "snapshot"},
-        clear_global_events = {command = "clear"},
+        test_effect_stacking = {
+            command = "start",
+            eventId = "hatch_luck_hour",
+            durationSeconds = 300,
+        },
+        start_xp_weekend = { command = "start", eventId = "double_rewards_hour" },
+        start_speed_hour = { command = "start", eventId = "crystal_rush" },
+        start_hatch_luck_hour = { command = "start", eventId = "hatch_luck_hour" },
+        start_double_rewards_hour = { command = "start", eventId = "double_rewards_hour" },
+        start_crystal_rush = { command = "start", eventId = "crystal_rush" },
+        start_coin_shower = { command = "start", eventId = "coin_shower" },
+        show_global_events = { command = "snapshot" },
+        clear_global_events = { command = "clear" },
     }
 
     local command = eventActions[action]
@@ -902,7 +963,7 @@ end
 function AdminPanel:_performanceTest()
     self.logger:info("Running performance test...")
     local startTime = tick()
-    
+
     -- Create and destroy many UI elements
     for i = 1, 1000 do
         local testFrame = Instance.new("Frame")
@@ -910,7 +971,7 @@ function AdminPanel:_performanceTest()
         testFrame.Parent = workspace
         testFrame:Destroy()
     end
-    
+
     local endTime = tick()
     self.logger:info("Performance test completed in", endTime - startTime, "seconds")
 end
@@ -927,7 +988,7 @@ function AdminPanel:_networkTest()
     else
         self.logger:warn("Economy bridge: NOT CONNECTED")
     end
-    
+
     if self.effectsBridge then
         self.logger:info("Effects bridge: CONNECTED")
     else
@@ -937,7 +998,7 @@ end
 
 function AdminPanel:_executeLoggingAction(action)
     local Logger = loggerResult -- Access the actual Logger directly
-    
+
     if action == "show_log_config" then
         local config = Logger:GetConfig()
         self.logger:info("Current Logging Configuration:", config)
@@ -948,35 +1009,27 @@ function AdminPanel:_executeLoggingAction(action)
         print("  Remote Logging:", config.remoteLogging)
         print("  Max History:", config.maxHistory)
         print("  Service-Specific Levels:", config.serviceSpecificLevels, "configured")
-        
     elseif action == "set_all_info" then
         Logger:SetLogLevel(2) -- LogLevel.INFO
         self.logger:info("All services set to INFO level")
-        
     elseif action == "set_all_debug" then
         Logger:SetLogLevel(1) -- LogLevel.DEBUG
         self.logger:info("All services set to DEBUG level")
-        
     elseif action == "set_all_warn" then
         Logger:SetLogLevel(3) -- LogLevel.WARN
         self.logger:info("All services set to WARN level")
-        
     elseif action == "disable_console" then
         Logger:SetConsoleOutput(false)
         print("Console output disabled")
-        
     elseif action == "enable_console" then
         Logger:SetConsoleOutput(true)
         self.logger:info("Console output enabled")
-        
     elseif action == "enable_performance" then
         Logger:SetPerformanceLogging(true)
         self.logger:info("Performance logging enabled")
-        
     elseif action == "disable_performance" then
         Logger:SetPerformanceLogging(false)
         self.logger:info("Performance logging disabled")
-        
     else
         self.logger:warn("Unknown logging action:", action)
     end
@@ -989,16 +1042,16 @@ function AdminPanel:_executeCustomAction(action, inputValue)
         if not serviceName then
             serviceName, levelString = inputValue:match("([^%s]+)%s+(.+)")
         end
-        
+
         if serviceName and levelString then
             serviceName = serviceName:gsub("^%s*(.-)%s*$", "%1") -- Trim whitespace
             levelString = levelString:gsub("^%s*(.-)%s*$", "%1") -- Trim whitespace
-            
+
             local Logger = loggerResult
             Logger:SetServiceLogLevel(serviceName, levelString)
             self.logger:info("Set service log level", {
                 service = serviceName,
-                level = levelString
+                level = levelString,
             })
         else
             self.logger:warn("Invalid format. Use 'ServiceName:level' or 'ServiceName level'")
@@ -1009,11 +1062,13 @@ function AdminPanel:_executeCustomAction(action, inputValue)
         end
     elseif action == "grant_pet_custom" then
         self:_executeCustomPetGrant(inputValue)
+    elseif action == "set_zone_lock_custom" then
+        self:_executeCustomZoneLock(inputValue)
     elseif action == "hatch_custom_eggs" or action == "hatch_specific_pet" then
         -- Handle egg hatching custom inputs
         self:_executeCustomEggHatching({
             action = action,
-            value = inputValue
+            value = inputValue,
         })
     else
         self.logger:warn("Unknown custom action:", action)
@@ -1023,14 +1078,14 @@ end
 function AdminPanel:_initializeNetworking()
     task.spawn(function()
         task.wait(2) -- Wait for Signals to initialize
-        
+
         -- Use new Signals system instead of old NetworkBridge
         self.economyBridge = {
             Fire = function(_, action, data)
                 if Signals.PurchaseItem then
                     Signals.PurchaseItem:FireServer(data)
                 end
-            end
+            end,
         }
 
         -- Listen for diagnostics result once
@@ -1045,7 +1100,7 @@ function AdminPanel:_initializeNetworking()
                 self:_handleAdminToolResult(result)
             end)
         end
-        
+
         self.logger:info("Economy bridge connected via Signals")
     end)
 end
@@ -1067,7 +1122,7 @@ end
 -- Player Selection Methods (NEW)
 function AdminPanel:_createPlayerSelector()
     local theme = uiConfig.helpers.get_theme(uiConfig)
-    
+
     -- Player selector container
     local selectorContainer = Instance.new("Frame")
     selectorContainer.Name = "PlayerSelector"
@@ -1076,11 +1131,11 @@ function AdminPanel:_createPlayerSelector()
     selectorContainer.BackgroundColor3 = theme.primary.card or Color3.fromRGB(60, 60, 65)
     selectorContainer.BorderSizePixel = 0
     selectorContainer.Parent = self.frame
-    
+
     local selectorCorner = Instance.new("UICorner")
     selectorCorner.CornerRadius = UDim.new(0, 8)
     selectorCorner.Parent = selectorContainer
-    
+
     -- Label
     local selectorLabel = Instance.new("TextLabel")
     selectorLabel.Name = "Label"
@@ -1093,7 +1148,7 @@ function AdminPanel:_createPlayerSelector()
     selectorLabel.Font = Enum.Font.Gotham
     selectorLabel.TextXAlignment = Enum.TextXAlignment.Left
     selectorLabel.Parent = selectorContainer
-    
+
     -- Current target display
     self.targetPlayerLabel = Instance.new("TextLabel")
     self.targetPlayerLabel.Name = "CurrentTarget"
@@ -1101,12 +1156,12 @@ function AdminPanel:_createPlayerSelector()
     self.targetPlayerLabel.Position = UDim2.new(0, 130, 0, 0)
     self.targetPlayerLabel.BackgroundTransparency = 1
     self.targetPlayerLabel.Text = "Self (You)"
-    self.targetPlayerLabel.TextColor3 = Color3.fromRGB(100, 200, 100)  -- Green for self
+    self.targetPlayerLabel.TextColor3 = Color3.fromRGB(100, 200, 100) -- Green for self
     self.targetPlayerLabel.TextSize = 14
     self.targetPlayerLabel.Font = Enum.Font.GothamBold
     self.targetPlayerLabel.TextXAlignment = Enum.TextXAlignment.Left
     self.targetPlayerLabel.Parent = selectorContainer
-    
+
     -- Dropdown button
     local dropdownButton = Instance.new("TextButton")
     dropdownButton.Name = "DropdownButton"
@@ -1119,15 +1174,15 @@ function AdminPanel:_createPlayerSelector()
     dropdownButton.TextSize = 12
     dropdownButton.Font = Enum.Font.Gotham
     dropdownButton.Parent = selectorContainer
-    
+
     local dropdownCorner = Instance.new("UICorner")
     dropdownCorner.CornerRadius = UDim.new(0, 6)
     dropdownCorner.Parent = dropdownButton
-    
+
     dropdownButton.Activated:Connect(function()
         self:_showPlayerDropdown()
     end)
-    
+
     self.playerDropdown = dropdownButton
 end
 
@@ -1164,7 +1219,8 @@ end
 function AdminPanel:_showAdminResult(message, success)
     if self.resultLabel then
         self.resultLabel.Text = message
-        self.resultLabel.TextColor3 = success == false and Color3.fromRGB(255, 120, 120) or Color3.fromRGB(170, 255, 170)
+        self.resultLabel.TextColor3 = success == false and Color3.fromRGB(255, 120, 120)
+            or Color3.fromRGB(170, 255, 170)
     end
 
     if success == false then
@@ -1188,7 +1244,7 @@ function AdminPanel:_showPlayerDropdown()
     -- Simple implementation: cycle through available players
     local players = game.Players:GetPlayers()
     local currentIndex = 1
-    
+
     -- Find current selection
     if self.selectedTargetPlayerId then
         for i, player in ipairs(players) do
@@ -1198,21 +1254,24 @@ function AdminPanel:_showPlayerDropdown()
             end
         end
     end
-    
+
     -- Move to next player (or back to self)
     local nextIndex = currentIndex + 1
     if nextIndex > #players then
         -- Back to self
         self.selectedTargetPlayerId = nil
         self.targetPlayerLabel.Text = "Self (You)"
-        self.targetPlayerLabel.TextColor3 = Color3.fromRGB(100, 200, 100)  -- Green
+        self.targetPlayerLabel.TextColor3 = Color3.fromRGB(100, 200, 100) -- Green
         self.logger:info("Target changed to: Self")
     else
         local targetPlayer = players[nextIndex]
         self.selectedTargetPlayerId = targetPlayer.UserId
         self.targetPlayerLabel.Text = targetPlayer.Name
-        self.targetPlayerLabel.TextColor3 = Color3.fromRGB(255, 200, 100)  -- Orange for others
-        self.logger:info("Target changed to: " .. targetPlayer.Name, {targetUserId = targetPlayer.UserId})
+        self.targetPlayerLabel.TextColor3 = Color3.fromRGB(255, 200, 100) -- Orange for others
+        self.logger:info(
+            "Target changed to: " .. targetPlayer.Name,
+            { targetUserId = targetPlayer.UserId }
+        )
     end
 end
 
@@ -1222,12 +1281,12 @@ function AdminPanel:_getAdminActionData(baseData)
     for key, value in pairs(baseData) do
         actionData[key] = value
     end
-    
+
     -- Add target player if one is selected
     if self.selectedTargetPlayerId then
         actionData.targetPlayerId = self.selectedTargetPlayerId
     end
-    
+
     return actionData
 end
 
@@ -1243,9 +1302,18 @@ end
 
 function AdminPanel:_executePetGrantAction(action)
     local quickGrants = {
-        grant_bear_basic = {petType = "bear", variant = "basic", quantity = 1},
-        grant_dragon_basic = {petType = "dragon", variant = "basic", quantity = 1},
-        grant_bear_golden = {petType = "bear", variant = "golden", quantity = 1},
+        grant_bear_basic = { petType = "bear", variant = "basic", quantity = 1 },
+        grant_dragon_basic = { petType = "dragon", variant = "basic", quantity = 1 },
+        grant_bear_golden = { petType = "bear", variant = "golden", quantity = 1 },
+        grant_colorado_basic = { petType = "colorado", variant = "basic", quantity = 1 },
+        grant_colorado_golden = { petType = "colorado", variant = "golden", quantity = 1 },
+        grant_colorado_rainbow = { petType = "colorado", variant = "rainbow", quantity = 1 },
+        grant_colorado_huge = {
+            petType = "colorado",
+            variant = "rainbow",
+            quantity = 1,
+            huge = true,
+        },
     }
 
     local grantData = quickGrants[action]
@@ -1255,27 +1323,107 @@ function AdminPanel:_executePetGrantAction(action)
     end
 
     Signals.Admin_GrantPet:FireServer(self:_getAdminActionData(grantData))
-    self:_showAdminResult("Pet grant requested: " .. grantData.petType .. ":" .. grantData.variant, true)
+    self:_showAdminResult(
+        "Pet grant requested: " .. grantData.petType .. ":" .. grantData.variant,
+        true
+    )
 end
 
 function AdminPanel:_executeCustomPetGrant(inputValue)
-    local petType, variant, quantity = inputValue:match("^%s*([^:%s]+)%s*:%s*([^:%s]+)%s*:%s*(%d+)%s*$")
+    local petType, variant, quantity, trait =
+        inputValue:match("^%s*([^:%s]+)%s*:%s*([^:%s]+)%s*:%s*(%d+)%s*:%s*([^:%s]+)%s*$")
+    if not petType then
+        petType, variant, trait =
+            inputValue:match("^%s*([^:%s]+)%s*:%s*([^:%s]+)%s*:%s*([^:%s%d]+)%s*$")
+        quantity = 1
+    end
+    if not petType then
+        petType, variant, quantity =
+            inputValue:match("^%s*([^:%s]+)%s*:%s*([^:%s]+)%s*:%s*(%d+)%s*$")
+    end
     if not petType then
         petType, variant = inputValue:match("^%s*([^:%s]+)%s*:%s*([^:%s]+)%s*$")
         quantity = 1
     end
 
     if not petType or not variant then
-        self:_showAdminResult("Invalid pet grant format. Use pet:variant:quantity", false)
+        self:_showAdminResult("Invalid pet grant format. Use pet:variant:quantity[:huge]", false)
         return
     end
+    local huge = trait and string.lower(trait) == "huge"
 
     Signals.Admin_GrantPet:FireServer(self:_getAdminActionData({
         petType = petType,
         variant = variant,
-        quantity = tonumber(quantity) or 1
+        quantity = tonumber(quantity) or 1,
+        huge = huge,
     }))
-    self:_showAdminResult("Pet grant requested: " .. petType .. ":" .. variant, true)
+    self:_showAdminResult(
+        "Pet grant requested: " .. petType .. ":" .. variant .. (huge and " huge" or ""),
+        true
+    )
+end
+
+function AdminPanel:_executeZoneLockAction(action)
+    local quickActions = {
+        toggle_zone_meadow = {
+            zoneId = "Meadow",
+        },
+        lock_zone_meadow = {
+            zoneId = "Meadow",
+            locked = true,
+        },
+        unlock_zone_meadow = {
+            zoneId = "Meadow",
+            locked = false,
+            bypassRequirements = false,
+        },
+        unlock_zone_meadow_bypass = {
+            zoneId = "Meadow",
+            locked = false,
+            bypassRequirements = true,
+        },
+    }
+
+    local lockData = quickActions[action]
+    if not lockData then
+        self.logger:warn("Unknown zone lock action:", action)
+        return
+    end
+
+    Signals.Admin_SetZoneLock:FireServer(self:_getAdminActionData(lockData))
+    self:_showAdminResult("Zone lock change requested: " .. lockData.zoneId, true)
+end
+
+function AdminPanel:_executeCustomZoneLock(inputValue)
+    local zoneId, mode = inputValue:match("^%s*([^:%s]+)%s*:?(.-)%s*$")
+    if not zoneId or zoneId == "" then
+        self:_showAdminResult(
+            "Invalid zone lock format. Use zoneId:toggle|lock|unlock|bypass",
+            false
+        )
+        return
+    end
+
+    mode = tostring(mode or ""):lower()
+    local lockData = {
+        zoneId = zoneId,
+    }
+
+    if mode == "lock" or mode == "locked" then
+        lockData.locked = true
+    elseif mode == "unlock" or mode == "unlocked" then
+        lockData.locked = false
+    elseif mode == "bypass" or mode == "free" then
+        lockData.locked = false
+        lockData.bypassRequirements = true
+    elseif mode ~= "" and mode ~= "toggle" then
+        self:_showAdminResult("Invalid zone mode. Use toggle, lock, unlock, or bypass", false)
+        return
+    end
+
+    Signals.Admin_SetZoneLock:FireServer(self:_getAdminActionData(lockData))
+    self:_showAdminResult("Zone lock change requested: " .. zoneId, true)
 end
 
 function AdminPanel:_formatSnapshot(snapshot)
@@ -1296,7 +1444,8 @@ function AdminPanel:_formatSnapshot(snapshot)
         tostring(autoTarget.low == true),
         tostring(autoTarget.high == true),
         snapshot.dataLoaded and "loaded" or "not loaded",
-        snapshot.persistenceEnabled and tostring(snapshot.dataStoreState or "Access") or "no persistence",
+        snapshot.persistenceEnabled and tostring(snapshot.dataStoreState or "Access")
+            or "no persistence",
         tostring(save.dirty == true),
         tostring(save.scheduled == true),
         tostring(save.inFlight == true),
@@ -1333,7 +1482,8 @@ end
 
 -- Display diagnostics in a simple popup
 function AdminPanel:_showDiagnosticsPopup(report)
-    local message = string.format("Diagnostics completed: %d passed, %d failed", report.passed, report.failed)
+    local message =
+        string.format("Diagnostics completed: %d passed, %d failed", report.passed, report.failed)
     if report.failed > 0 then
         message ..= "\nFailures:\n" .. table.concat(report.failures, "\n")
     end
@@ -1344,21 +1494,23 @@ end
 
 -- 🔧 INVENTORY MANAGEMENT COMMANDS
 function AdminPanel:_cleanupInventory()
-    self.logger:info("🗑️ ADMIN: Removing orphaned buckets (preserves valid inventory from config)")
-    
+    self.logger:info(
+        "🗑️ ADMIN: Removing orphaned buckets (preserves valid inventory from config)"
+    )
+
     Signals.CleanupInventory:FireServer({
         action = "remove_orphaned_buckets",
-        targetPlayerId = self.selectedTargetPlayerId or Players.LocalPlayer.UserId
+        targetPlayerId = self.selectedTargetPlayerId or Players.LocalPlayer.UserId,
     })
     self.logger:info("✅ Orphaned bucket cleanup command sent via Signals")
 end
 
 function AdminPanel:_fixItemCategories()
     self.logger:info("🔧 ADMIN: Fixing item categories (moving items to correct buckets)")
-    
+
     Signals.FixItemCategories:FireServer({
         action = "migrate_items_to_correct_buckets",
-        targetPlayerId = self.selectedTargetPlayerId or Players.LocalPlayer.UserId
+        targetPlayerId = self.selectedTargetPlayerId or Players.LocalPlayer.UserId,
     })
     self.logger:info("✅ Fix categories command sent via Signals")
 end
@@ -1369,11 +1521,11 @@ end
 
 function AdminPanel:_viewAllAssets()
     self.logger:info("🔍 ADMIN: Opening comprehensive asset viewer")
-    
+
     local success, viewer = pcall(function()
         return self:_createComprehensiveAssetViewer()
     end)
-    
+
     if success and viewer then
         self.logger:info("✅ Asset viewer opened successfully")
     else
@@ -1383,12 +1535,12 @@ end
 
 function AdminPanel:_debugEggViewports()
     self.logger:info("🥚 ADMIN: Opening egg ViewportFrame debugger")
-    
+
     local success, debugger = pcall(function()
         local EggHatchingService = require(ReplicatedStorage.Shared.Services.EggHatchingService)
         return EggHatchingService:DebugEggViewports()
     end)
-    
+
     if success and debugger then
         self.logger:info("✅ Egg debugger opened successfully")
     else
@@ -1403,20 +1555,24 @@ end
 
 function AdminPanel:_showAssetStats()
     self.logger:info("📊 ADMIN: Showing asset generation statistics")
-    
+
     -- Quick stats display
     local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
     if not assetsFolder then
         self.logger:error("Assets folder not found!")
         return
     end
-    
+
     local stats = {}
     table.insert(stats, "📊 ASSET GENERATION STATISTICS")
-    table.insert(stats, "════════════════════════════════")
-    
+    table.insert(
+        stats,
+        "════════════════════════════════"
+    )
+
     -- Count eggs
-    local eggsFolder = assetsFolder:FindFirstChild("Images") and assetsFolder.Images:FindFirstChild("Eggs")
+    local eggsFolder = assetsFolder:FindFirstChild("Images")
+        and assetsFolder.Images:FindFirstChild("Eggs")
     local eggCount = 0
     if eggsFolder then
         for _, child in pairs(eggsFolder:GetChildren()) do
@@ -1426,9 +1582,10 @@ function AdminPanel:_showAssetStats()
         end
     end
     table.insert(stats, "🥚 Generated Eggs: " .. eggCount)
-    
-    -- Count pets  
-    local petsFolder = assetsFolder:FindFirstChild("Images") and assetsFolder.Images:FindFirstChild("Pets")
+
+    -- Count pets
+    local petsFolder = assetsFolder:FindFirstChild("Images")
+        and assetsFolder.Images:FindFirstChild("Pets")
     local petCount = 0
     local variantCount = 0
     if petsFolder then
@@ -1446,7 +1603,7 @@ function AdminPanel:_showAssetStats()
     table.insert(stats, "🐾 Pet Types: " .. petCount)
     table.insert(stats, "🎨 Pet Variants: " .. variantCount)
     table.insert(stats, "📁 Total Generated Images: " .. (eggCount + variantCount))
-    
+
     self.logger:info(table.concat(stats, "\n"))
 end
 
@@ -1459,15 +1616,15 @@ end
 
 function AdminPanel:_forceRegenerateAssets()
     self.logger:info("🔄 ADMIN: Force regenerating all assets with updated positioning")
-    
+
     -- Send signal to server to trigger AssetPreloadService regeneration
     local success = pcall(function()
         Signals.ForceRegenerateAssets:FireServer({
             requestedBy = Players.LocalPlayer.UserId,
-            reason = "Admin debug - fixing egg positioning"
+            reason = "Admin debug - fixing egg positioning",
         })
     end)
-    
+
     if success then
         self.logger:info("✅ Asset regeneration request sent to server")
         self.logger:info("⏱️ Check server console for regeneration progress")
@@ -1478,18 +1635,18 @@ end
 
 function AdminPanel:_executeEggHatchingAction(action)
     self.logger:info("🥚 ADMIN: Executing egg hatching action:", action)
-    
+
     -- Load the EggHatchingService
     local EggHatchingService = require(ReplicatedStorage.Shared.Services.EggHatchingService)
-    
+
     -- Available pet types and variants
-    local petTypes = {"bear", "bunny", "doggy", "dragon", "kitty"}
-    local variants = {"basic", "golden", "rainbow"}
-    
+    local petTypes = { "bear", "bunny", "doggy", "dragon", "kitty" }
+    local variants = { "basic", "golden", "rainbow" }
+
     -- Generate test eggs based on action
     local testEggs = {}
     local eggCount = 1
-    
+
     if action == "hatch_1_egg" then
         eggCount = 1
     elseif action == "hatch_3_eggs" then
@@ -1514,7 +1671,7 @@ function AdminPanel:_executeEggHatchingAction(action)
         self.logger:warn("Unknown egg hatching action:", action)
         return
     end
-    
+
     -- Optionally create local anchor parts so 3D FX can play during tests
     local anchors = {}
     local maxAnchors = math.min(eggCount, 5) -- limit FX to avoid spam
@@ -1533,14 +1690,18 @@ function AdminPanel:_executeEggHatchingAction(action)
             anchor.CanCollide = false
             anchor.CanQuery = false
             anchor.CanTouch = false
-            anchor.CFrame = CFrame.new(basePos + Vector3.new(math.cos(theta) * radius, 0, math.sin(theta) * radius))
+            anchor.CFrame = CFrame.new(
+                basePos + Vector3.new(math.cos(theta) * radius, 0, math.sin(theta) * radius)
+            )
             anchor.Parent = workspace
             table.insert(anchors, anchor)
         end
         -- Cleanup anchors after a short delay
         task.delay(8, function()
             for _, a in ipairs(anchors) do
-                if a and a.Parent then a:Destroy() end
+                if a and a.Parent then
+                    a:Destroy()
+                end
             end
         end)
     end
@@ -1553,15 +1714,15 @@ function AdminPanel:_executeEggHatchingAction(action)
             variant = variants[math.random(1, #variants)],
             imageId = "generated_image",
             petImageId = "generated_image",
-            worldPart = anchors[i] -- nil beyond maxAnchors
+            worldPart = anchors[i], -- nil beyond maxAnchors
         })
     end
-    
+
     -- Start the animation
     local success, result = pcall(function()
         return EggHatchingService:StartHatchingAnimation(testEggs)
     end)
-    
+
     if success then
         self.logger:info("✅ Egg hatching animation started for", eggCount, "eggs")
     else
@@ -1571,16 +1732,16 @@ end
 
 function AdminPanel:_executeCustomEggHatching(inputData)
     self.logger:info("🥚 ADMIN: Executing custom egg hatching with input:", inputData)
-    
+
     -- Load the EggHatchingService
     local EggHatchingService = require(ReplicatedStorage.Shared.Services.EggHatchingService)
-    
+
     -- Available pet types and variants
-    local petTypes = {"bear", "bunny", "doggy", "dragon", "kitty"}
-    local variants = {"basic", "golden", "rainbow"}
-    
+    local petTypes = { "bear", "bunny", "doggy", "dragon", "kitty" }
+    local variants = { "basic", "golden", "rainbow" }
+
     local testEggs = {}
-    
+
     if inputData.action == "hatch_custom_eggs" then
         -- Parse custom egg count
         local eggCount = tonumber(inputData.value)
@@ -1588,12 +1749,14 @@ function AdminPanel:_executeCustomEggHatching(inputData)
             self.logger:warn("Invalid egg count:", inputData.value, "- must be 1-99")
             return
         end
-        
+
         -- Create local anchors (limit to first few) and generate eggs
         local anchors = {}
         local maxAnchors = math.min(eggCount, 5)
         local player = Players.LocalPlayer
-        local hrp = player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        local hrp = player
+            and player.Character
+            and player.Character:FindFirstChild("HumanoidRootPart")
         if hrp then
             local basePos = hrp.Position + Vector3.new(0, 3, 0)
             local radius = 6
@@ -1607,13 +1770,17 @@ function AdminPanel:_executeCustomEggHatching(inputData)
                 anchor.CanCollide = false
                 anchor.CanQuery = false
                 anchor.CanTouch = false
-                anchor.CFrame = CFrame.new(basePos + Vector3.new(math.cos(theta) * radius, 0, math.sin(theta) * radius))
+                anchor.CFrame = CFrame.new(
+                    basePos + Vector3.new(math.cos(theta) * radius, 0, math.sin(theta) * radius)
+                )
                 anchor.Parent = workspace
                 table.insert(anchors, anchor)
             end
             task.delay(8, function()
                 for _, a in ipairs(anchors) do
-                    if a and a.Parent then a:Destroy() end
+                    if a and a.Parent then
+                        a:Destroy()
+                    end
                 end
             end)
         end
@@ -1625,20 +1792,23 @@ function AdminPanel:_executeCustomEggHatching(inputData)
                 variant = variants[math.random(1, #variants)],
                 imageId = "generated_image",
                 petImageId = "generated_image",
-                worldPart = anchors[i]
+                worldPart = anchors[i],
             })
         end
-        
+
         self.logger:info("🥚 Generating", eggCount, "random eggs")
-        
     elseif inputData.action == "hatch_specific_pet" then
         -- Parse specific pet (format: petType:variant)
         local petType, variant = inputData.value:match("([^:]+):([^:]+)")
         if not petType or not variant then
-            self.logger:warn("Invalid pet format:", inputData.value, "- use format: petType:variant")
+            self.logger:warn(
+                "Invalid pet format:",
+                inputData.value,
+                "- use format: petType:variant"
+            )
             return
         end
-        
+
         -- Validate pet type and variant
         local validPetType = false
         for _, validType in ipairs(petTypes) do
@@ -1647,7 +1817,7 @@ function AdminPanel:_executeCustomEggHatching(inputData)
                 break
             end
         end
-        
+
         local validVariant = false
         for _, validVar in ipairs(variants) do
             if validVar == variant then
@@ -1655,35 +1825,45 @@ function AdminPanel:_executeCustomEggHatching(inputData)
                 break
             end
         end
-        
+
         if not validPetType then
-            self.logger:warn("Invalid pet type:", petType, "- valid types:", table.concat(petTypes, ", "))
+            self.logger:warn(
+                "Invalid pet type:",
+                petType,
+                "- valid types:",
+                table.concat(petTypes, ", ")
+            )
             return
         end
-        
+
         if not validVariant then
-            self.logger:warn("Invalid variant:", variant, "- valid variants:", table.concat(variants, ", "))
+            self.logger:warn(
+                "Invalid variant:",
+                variant,
+                "- valid variants:",
+                table.concat(variants, ", ")
+            )
             return
         end
-        
+
         -- Generate single egg with specific pet
         table.insert(testEggs, {
             eggType = "basic_egg",
             petType = petType,
             variant = variant,
             imageId = "generated_image",
-            petImageId = "generated_image"
+            petImageId = "generated_image",
         })
-        
+
         self.logger:info("🥚 Generating 1 egg with specific pet:", petType, variant)
     end
-    
+
     -- Start the animation
     if #testEggs > 0 then
         local success, result = pcall(function()
             return EggHatchingService:StartHatchingAnimation(testEggs)
         end)
-        
+
         if success then
             self.logger:info("✅ Custom egg hatching animation started for", #testEggs, "eggs")
         else
@@ -1692,4 +1872,4 @@ function AdminPanel:_executeCustomEggHatching(inputData)
     end
 end
 
-return AdminPanel 
+return AdminPanel

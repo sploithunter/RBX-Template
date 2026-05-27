@@ -1,0 +1,225 @@
+--[[
+    PetGrantService
+
+    Single boundary for turning a selected pet outcome into durable inventory.
+    Egg rolls, admin tools, creator rewards, and scripts should call this service
+    instead of writing pet inventory records directly.
+]]
+
+local PetGrantService = {}
+PetGrantService.__index = PetGrantService
+
+function PetGrantService.new()
+    local self = setmetatable({}, PetGrantService)
+    self._logger = nil
+    self._configLoader = nil
+    self._dataService = nil
+    self._inventoryService = nil
+    self._petSerialService = nil
+    self._petProgressionService = nil
+    self._petsConfig = nil
+    return self
+end
+
+function PetGrantService:Init()
+    self._logger = self._modules.Logger
+    self._configLoader = self._modules.ConfigLoader
+    self._dataService = self._modules.DataService
+    self._inventoryService = self._modules.InventoryService
+    self._petSerialService = self._modules.PetSerialService
+    self._petProgressionService = self._modules.PetProgressionService
+    self._petsConfig = self._configLoader:LoadConfig("pets")
+
+    self._logger:Info("PetGrantService initialized", {
+        context = "PetGrantService",
+    })
+end
+
+function PetGrantService:_getMaxEnchantmentsForRarity(rarityId)
+    local enchanting = self._petsConfig and self._petsConfig.enchanting
+    if type(rarityId) ~= "string" or type(enchanting) ~= "table" then
+        return 0
+    end
+
+    local byRarity = enchanting.max_enchantments_by_rarity
+    local maxEnchantments = type(byRarity) == "table" and byRarity[rarityId]
+    if maxEnchantments == nil then
+        maxEnchantments = enchanting.default_max_enchantments
+    end
+    return tonumber(maxEnchantments) or 0
+end
+
+function PetGrantService:_applyEnchantDefaults(petData)
+    local rarityId = petData.rarity_id or petData.rarity_override
+    local maxEnchantments = self:_getMaxEnchantmentsForRarity(rarityId)
+    if maxEnchantments <= 0 then
+        return
+    end
+
+    petData.enchantable = true
+    petData.max_enchantments = maxEnchantments
+    petData.enchantments = petData.enchantments or {}
+end
+
+function PetGrantService:_shouldAttachHatcherSource(rarityId, maxEnchantments)
+    local provenance = self._petsConfig and self._petsConfig.provenance
+    if type(provenance) ~= "table" then
+        return false
+    end
+
+    local explicitRarities = provenance.hatcher_source_rarities
+    if type(rarityId) == "string" and type(explicitRarities) == "table" then
+        for _, explicitRarity in ipairs(explicitRarities) do
+            if explicitRarity == rarityId then
+                return true
+            end
+        end
+    end
+
+    local threshold = tonumber(provenance.hatcher_source_min_enchantments) or 0
+    return threshold > 0 and (tonumber(maxEnchantments) or 0) >= threshold
+end
+
+function PetGrantService:_applyProvenance(petData, player)
+    local rarityId = petData.rarity_id or petData.rarity_override
+    local maxEnchantments = tonumber(petData.max_enchantments)
+        or self:_getMaxEnchantmentsForRarity(rarityId)
+    if not self:_shouldAttachHatcherSource(rarityId, maxEnchantments) then
+        return
+    end
+    if not player then
+        return
+    end
+
+    local hatcherName = tostring(player.Name or "")
+    if hatcherName == "" then
+        return
+    end
+
+    petData.hatcher_name = hatcherName
+    petData.hatcher_user_id = player.UserId
+end
+
+function PetGrantService:_normalizeGrant(request)
+    request = type(request) == "table" and request or {}
+    return {
+        petType = tostring(request.petType or request.id or ""):lower(),
+        variant = tostring(request.variant or "basic"):lower(),
+        quantity = math.clamp(math.floor(tonumber(request.quantity) or 1), 1, 99),
+        huge = request.huge == true,
+        locked = request.locked,
+        nickname = request.nickname,
+        source = request.source or "pet_grant",
+    }
+end
+
+function PetGrantService:BuildPetData(request, player)
+    local grant = self:_normalizeGrant(request)
+    local petConfig = self._petsConfig.getPet
+        and self._petsConfig.getPet(grant.petType, grant.variant)
+    if not petConfig then
+        return nil, "Unknown pet: " .. tostring(grant.petType) .. ":" .. tostring(grant.variant)
+    end
+
+    local petData = {
+        id = grant.petType,
+        variant = grant.variant,
+        quantity = grant.huge and 1 or grant.quantity,
+        obtained_at = tick(),
+        level = 1,
+        exp = 0,
+        nickname = grant.nickname or "",
+        locked = grant.locked ~= nil and grant.locked == true or grant.huge == true,
+        grant_source = grant.source,
+    }
+
+    if petConfig.rarity_id then
+        petData.rarity_id = petConfig.rarity_id
+    end
+
+    if type(petConfig.eternal) == "table" and petConfig.eternal.enabled == true then
+        petData.eternal = true
+        petData.eternal_percent = tonumber(petConfig.eternal.power_percent) or 0
+    end
+
+    if grant.huge then
+        local serial, serialInfo =
+            self._petSerialService:NextHugeSerial(grant.petType, grant.variant)
+        if not serial then
+            return nil,
+                "Failed to allocate huge serial: " .. tostring(
+                    serialInfo and serialInfo.error or "unknown"
+                )
+        end
+
+        petData.huge = true
+        petData.serial = serial
+        petData.serial_key = serialInfo.key
+        petData.serial_source = serialInfo.source
+        petData.rarity_id = "huge"
+    end
+
+    self:_applyEnchantDefaults(petData)
+    if petData.enchantable == true then
+        petData.quantity = 1
+    end
+    if self._petProgressionService then
+        self._petProgressionService:ApplyProgression(petData, petConfig)
+    end
+    self:_applyProvenance(petData, player)
+
+    return petData, nil, petConfig
+end
+
+function PetGrantService:GrantPet(player, request)
+    if not player or not player.Parent then
+        return {
+            ok = false,
+            error = "Invalid player",
+        }
+    end
+
+    local petData, errorMessage, petConfig = self:BuildPetData(request, player)
+    if not petData then
+        return {
+            ok = false,
+            error = errorMessage,
+        }
+    end
+
+    local uid, addError = self._inventoryService:AddItem(player, "pets", petData)
+    if not uid then
+        return {
+            ok = false,
+            error = addError or "Failed to add pet",
+            petData = petData,
+        }
+    end
+
+    self._dataService:RequestSave(
+        player,
+        "pet_grant_" .. tostring(request and request.source or "generic"),
+        { critical = true }
+    )
+
+    self._logger:Info("Pet granted", {
+        context = "PetGrantService",
+        player = player.Name,
+        uid = uid,
+        petType = petData.id,
+        variant = petData.variant,
+        quantity = petData.quantity,
+        huge = petData.huge == true,
+        serial = petData.serial,
+        source = petData.grant_source,
+    })
+
+    return {
+        ok = true,
+        uid = uid,
+        petData = petData,
+        petConfig = petConfig,
+    }
+end
+
+return PetGrantService

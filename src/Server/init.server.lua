@@ -227,6 +227,26 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.InventoryService,
     appendIfEnabled({ "Logger", "DataService", "ConfigLoader" }, "upgrades", "UpgradeService")
 )
+registerFeatureModule(
+    "pet_progression",
+    "PetProgressionService",
+    ServerScriptService.Server.Services.PetProgressionService,
+    { "Logger", "ConfigLoader", "DataService", "InventoryService" }
+)
+loader:RegisterModule(
+    "PetSerialService",
+    ServerScriptService.Server.Services.PetSerialService,
+    { "Logger", "ConfigLoader" }
+)
+loader:RegisterModule(
+    "PetGrantService",
+    ServerScriptService.Server.Services.PetGrantService,
+    appendIfEnabled(
+        { "Logger", "ConfigLoader", "DataService", "InventoryService", "PetSerialService" },
+        "pet_progression",
+        "PetProgressionService"
+    )
+)
 loader:RegisterModule(
     "SettingsService",
     ServerScriptService.Server.Services.SettingsService,
@@ -242,9 +262,16 @@ registerFeatureModule(
     "AdminToolsService",
     ServerScriptService.Server.Services.AdminToolsService,
     appendIfEnabled(
-        { "Logger", "AdminService", "DataService", "InventoryService", "ConfigLoader" },
-        "global_events",
-        "EventService"
+        appendIfEnabled({
+            "Logger",
+            "AdminService",
+            "DataService",
+            "InventoryService",
+            "ConfigLoader",
+            "PetGrantService",
+        }, "global_events", "EventService"),
+        "map_binding",
+        "ZoneService"
     )
 )
 if RunService:IsStudio() then
@@ -263,6 +290,7 @@ if RunService:IsStudio() then
     appendIfEnabled(studioSmokeDeps, "pet_index", "PetIndexService")
     appendIfEnabled(studioSmokeDeps, "achievements", "AchievementsService")
     appendIfEnabled(studioSmokeDeps, "leaderboards", "LeaderboardService")
+    table.insert(studioSmokeDeps, "PetGrantService")
 
     loader:RegisterModule(
         "StudioSmokeTestService",
@@ -315,6 +343,8 @@ local requiredModules = {
     "ProductIdMapper",
     "MonetizationService",
     "InventoryService",
+    "PetSerialService",
+    "PetGrantService",
     "SettingsService",
     "DiagnosticsService",
 }

@@ -25,6 +25,8 @@ local configs = {}
 local configsLoaded = false
 local configsValidated = false
 
+local STABLE_CONFIG_ID_PATTERN = "^[a-z][a-z0-9_]*$"
+
 local function isArray(value)
     if type(value) ~= "table" then
         return false
@@ -45,6 +47,10 @@ local function isArray(value)
     end
 
     return true
+end
+
+local function isStableConfigId(value)
+    return type(value) == "string" and value:match(STABLE_CONFIG_ID_PATTERN) ~= nil
 end
 
 local function hasId(list, id)
@@ -715,6 +721,8 @@ function ConfigLoader:ValidateConfig(configName, config)
         return self:_validateMarkersConfig(config)
     elseif configName == "pet_index" then
         return self:_validatePetIndexConfig(config)
+    elseif configName == "pet_progression" then
+        return self:_validatePetProgressionConfig(config)
     elseif configName == "achievements" then
         return self:_validateAchievementsConfig(config)
     elseif configName == "leaderboards" then
@@ -1530,6 +1538,180 @@ function ConfigLoader:_validateMarkersConfig(config)
     return true
 end
 
+function ConfigLoader:_validatePetAssetTransform(transform, path)
+    if transform == nil then
+        return true
+    end
+    if type(transform) ~= "table" then
+        return self:_configError("pets", path, "expected table")
+    end
+
+    local ok, err
+    if transform.scale ~= nil then
+        ok, err = self:_requirePositiveNumber("pets", transform.scale, path .. ".scale")
+        if not ok then
+            return ok, err
+        end
+    end
+    if transform.huge_scale ~= nil then
+        ok, err = self:_requirePositiveNumber("pets", transform.huge_scale, path .. ".huge_scale")
+        if not ok then
+            return ok, err
+        end
+    end
+
+    if transform.orientation ~= nil then
+        if type(transform.orientation) ~= "table" then
+            return self:_configError("pets", path .. ".orientation", "expected table")
+        end
+        for _, axis in ipairs({ "x", "y", "z" }) do
+            local value = transform.orientation[axis]
+            if value ~= nil and type(value) ~= "number" then
+                return self:_configError("pets", path .. ".orientation." .. axis, "expected number")
+            end
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_validatePetEternalConfig(eternalConfig, path)
+    if eternalConfig == nil then
+        return true
+    end
+    if type(eternalConfig) ~= "table" then
+        return self:_configError("pets", path, "expected table")
+    end
+    if eternalConfig.enabled ~= nil and type(eternalConfig.enabled) ~= "boolean" then
+        return self:_configError("pets", path .. ".enabled", "expected boolean")
+    end
+
+    local ok, err
+    if eternalConfig.power_percent ~= nil then
+        ok, err = self:_requirePositiveNumber(
+            "pets",
+            eternalConfig.power_percent,
+            path .. ".power_percent"
+        )
+        if not ok then
+            return ok, err
+        end
+    end
+    if
+        eternalConfig.baseline ~= nil
+        and eternalConfig.baseline ~= "strongest_equipped"
+        and eternalConfig.baseline ~= "top_team_average"
+    then
+        return self:_configError(
+            "pets",
+            path .. ".baseline",
+            "must be strongest_equipped or top_team_average"
+        )
+    end
+
+    return true
+end
+
+function ConfigLoader:_validatePetEnchantingConfig(config)
+    if config.enchanting == nil then
+        return true
+    end
+    if type(config.enchanting) ~= "table" then
+        return self:_configError("pets", "enchanting", "expected table")
+    end
+
+    local maxByRarity = config.enchanting.max_enchantments_by_rarity
+    if type(maxByRarity) ~= "table" then
+        return self:_configError("pets", "enchanting.max_enchantments_by_rarity", "expected table")
+    end
+    for rarityId, maxEnchantments in pairs(maxByRarity) do
+        if type(rarityId) ~= "string" or not config.rarities[rarityId] then
+            return self:_configError(
+                "pets",
+                "enchanting.max_enchantments_by_rarity." .. tostring(rarityId),
+                "must reference rarities"
+            )
+        end
+        if
+            type(maxEnchantments) ~= "number"
+            or maxEnchantments < 0
+            or math.floor(maxEnchantments) ~= maxEnchantments
+        then
+            return self:_configError(
+                "pets",
+                "enchanting.max_enchantments_by_rarity." .. rarityId,
+                "expected non-negative integer"
+            )
+        end
+    end
+
+    local maxEnchantments = config.enchanting.default_max_enchantments
+    if maxEnchantments ~= nil then
+        if
+            type(maxEnchantments) ~= "number"
+            or maxEnchantments < 0
+            or math.floor(maxEnchantments) ~= maxEnchantments
+        then
+            return self:_configError(
+                "pets",
+                "enchanting.default_max_enchantments",
+                "expected non-negative integer"
+            )
+        end
+    end
+
+    if
+        config.enchanting.hatch_rolls_enabled ~= nil
+        and type(config.enchanting.hatch_rolls_enabled) ~= "boolean"
+    then
+        return self:_configError("pets", "enchanting.hatch_rolls_enabled", "expected boolean")
+    end
+
+    return true
+end
+
+function ConfigLoader:_validatePetProvenanceConfig(config)
+    if config.provenance == nil then
+        return true
+    end
+    if type(config.provenance) ~= "table" then
+        return self:_configError("pets", "provenance", "expected table")
+    end
+
+    local minEnchantments = config.provenance.hatcher_source_min_enchantments
+    if minEnchantments ~= nil then
+        if
+            type(minEnchantments) ~= "number"
+            or minEnchantments < 0
+            or math.floor(minEnchantments) ~= minEnchantments
+        then
+            return self:_configError(
+                "pets",
+                "provenance.hatcher_source_min_enchantments",
+                "expected non-negative integer"
+            )
+        end
+    end
+
+    local explicitRarities = config.provenance.hatcher_source_rarities
+    if explicitRarities ~= nil then
+        if not isArray(explicitRarities) then
+            return self:_configError("pets", "provenance.hatcher_source_rarities", "expected array")
+        end
+        for index, rarityId in ipairs(explicitRarities) do
+            if type(rarityId) ~= "string" or not config.rarities[rarityId] then
+                return self:_configError(
+                    "pets",
+                    "provenance.hatcher_source_rarities[" .. index .. "]",
+                    "must reference rarities"
+                )
+            end
+        end
+    end
+
+    return true
+end
+
 function ConfigLoader:_validatePetsConfig(config)
     local ok, err = self:_requireType("pets", config, "table", "<root>")
     if not ok then
@@ -1544,8 +1726,23 @@ function ConfigLoader:_validatePetsConfig(config)
         end
     end
 
+    if config.serials ~= nil then
+        if type(config.serials) ~= "table" then
+            return self:_configError("pets", "serials", "expected table")
+        end
+        if
+            config.serials.store_name ~= nil
+            and (type(config.serials.store_name) ~= "string" or config.serials.store_name == "")
+        then
+            return self:_configError("pets", "serials.store_name", "expected non-empty string")
+        end
+    end
+
     for rarityId, rarity in pairs(config.rarities) do
         local path = "rarities." .. tostring(rarityId)
+        if not isStableConfigId(rarityId) then
+            return self:_configError("pets", path, "id must match " .. STABLE_CONFIG_ID_PATTERN)
+        end
         if type(rarity) ~= "table" then
             return self:_configError("pets", path, "expected table")
         end
@@ -1554,8 +1751,20 @@ function ConfigLoader:_validatePetsConfig(config)
         end
     end
 
+    ok, err = self:_validatePetEnchantingConfig(config)
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_validatePetProvenanceConfig(config)
+    if not ok then
+        return ok, err
+    end
+
     for variantId, variant in pairs(config.variants) do
         local path = "variants." .. tostring(variantId)
+        if not isStableConfigId(variantId) then
+            return self:_configError("pets", path, "id must match " .. STABLE_CONFIG_ID_PATTERN)
+        end
         if type(variant) ~= "table" then
             return self:_configError("pets", path, "expected table")
         end
@@ -1565,15 +1774,38 @@ function ConfigLoader:_validatePetsConfig(config)
         if type(variant.rarity) ~= "string" or not config.rarities[variant.rarity] then
             return self:_configError("pets", path .. ".rarity", "must reference rarities")
         end
+        if variant.power_multiplier ~= nil then
+            ok, err = self:_requirePositiveNumber(
+                "pets",
+                variant.power_multiplier,
+                path .. ".power_multiplier"
+            )
+            if not ok then
+                return ok, err
+            end
+        end
+        if variant.health_multiplier ~= nil then
+            ok, err = self:_requirePositiveNumber(
+                "pets",
+                variant.health_multiplier,
+                path .. ".health_multiplier"
+            )
+            if not ok then
+                return ok, err
+            end
+        end
     end
 
     for petId, pet in pairs(config.pets) do
         local basePath = "pets." .. tostring(petId)
+        if not isStableConfigId(petId) then
+            return self:_configError("pets", basePath, "id must match " .. STABLE_CONFIG_ID_PATTERN)
+        end
         if type(pet) ~= "table" then
             return self:_configError("pets", basePath, "expected table")
         end
 
-        for _, key in ipairs({ "name", "category" }) do
+        for _, key in ipairs({ "display_name", "category" }) do
             if type(pet[key]) ~= "string" or pet[key] == "" then
                 return self:_configError(
                     "pets",
@@ -1582,12 +1814,28 @@ function ConfigLoader:_validatePetsConfig(config)
                 )
             end
         end
+        if pet.name ~= nil and type(pet.name) ~= "string" then
+            return self:_configError("pets", basePath .. ".name", "expected string")
+        end
 
         ok, err = self:_requirePositiveNumber("pets", pet.base_power, basePath .. ".base_power")
         if not ok then
             return ok, err
         end
         ok, err = self:_requirePositiveNumber("pets", pet.base_health, basePath .. ".base_health")
+        if not ok then
+            return ok, err
+        end
+        if type(pet.rarity) ~= "string" or not config.rarities[pet.rarity] then
+            return self:_configError("pets", basePath .. ".rarity", "must reference rarities")
+        end
+
+        ok, err =
+            self:_validatePetAssetTransform(pet.asset_transform, basePath .. ".asset_transform")
+        if not ok then
+            return ok, err
+        end
+        ok, err = self:_validatePetEternalConfig(pet.eternal, basePath .. ".eternal")
         if not ok then
             return ok, err
         end
@@ -1614,12 +1862,48 @@ function ConfigLoader:_validatePetsConfig(config)
                     "expected non-empty string"
                 )
             end
-            ok, err = self:_requirePositiveNumber("pets", petVariant.power, variantPath .. ".power")
+            if petVariant.power ~= nil then
+                ok, err =
+                    self:_requirePositiveNumber("pets", petVariant.power, variantPath .. ".power")
+                if not ok then
+                    return ok, err
+                end
+            end
+            if petVariant.health ~= nil then
+                ok, err =
+                    self:_requirePositiveNumber("pets", petVariant.health, variantPath .. ".health")
+                if not ok then
+                    return ok, err
+                end
+            end
+            if petVariant.power_multiplier ~= nil then
+                ok, err = self:_requirePositiveNumber(
+                    "pets",
+                    petVariant.power_multiplier,
+                    variantPath .. ".power_multiplier"
+                )
+                if not ok then
+                    return ok, err
+                end
+            end
+            if petVariant.health_multiplier ~= nil then
+                ok, err = self:_requirePositiveNumber(
+                    "pets",
+                    petVariant.health_multiplier,
+                    variantPath .. ".health_multiplier"
+                )
+                if not ok then
+                    return ok, err
+                end
+            end
+            ok, err = self:_validatePetAssetTransform(
+                petVariant.asset_transform,
+                variantPath .. ".asset_transform"
+            )
             if not ok then
                 return ok, err
             end
-            ok, err =
-                self:_requirePositiveNumber("pets", petVariant.health, variantPath .. ".health")
+            ok, err = self:_validatePetEternalConfig(petVariant.eternal, variantPath .. ".eternal")
             if not ok then
                 return ok, err
             end
@@ -2135,6 +2419,205 @@ function ConfigLoader:_validatePetIndexConfig(config)
         ok, err = self:_validateReward("pet_index", milestone.reward, path .. ".reward")
         if not ok then
             return ok, err
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_validatePetProgressionConfig(config)
+    local ok, err = self:_requireType("pet_progression", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    ok, err = self:_requireType("pet_progression", config.version, "string", "version")
+    if not ok then
+        return ok, err
+    end
+
+    if config.enabled ~= nil and type(config.enabled) ~= "boolean" then
+        return self:_configError("pet_progression", "enabled", "expected boolean")
+    end
+    if config.unique_only ~= nil and type(config.unique_only) ~= "boolean" then
+        return self:_configError("pet_progression", "unique_only", "expected boolean")
+    end
+    ok, err = self:_requirePositiveNumber(
+        "pet_progression",
+        config.default_max_level or 1,
+        "default_max_level"
+    )
+    if not ok then
+        return ok, err
+    end
+    if (config.default_max_level or 1) % 1 ~= 0 then
+        return self:_configError(
+            "pet_progression",
+            "default_max_level",
+            "expected positive integer"
+        )
+    end
+
+    local pets = self:_rawConfig("pets")
+    local rarities = pets and pets.rarities or {}
+    if type(config.max_level_by_rarity) ~= "table" then
+        return self:_configError("pet_progression", "max_level_by_rarity", "expected table")
+    end
+    for rarityId, maxLevel in pairs(config.max_level_by_rarity) do
+        if not rarities[rarityId] then
+            return self:_configError(
+                "pet_progression",
+                "max_level_by_rarity." .. tostring(rarityId),
+                "must reference pets.rarities"
+            )
+        end
+        ok, err = self:_requirePositiveNumber(
+            "pet_progression",
+            maxLevel,
+            "max_level_by_rarity." .. tostring(rarityId)
+        )
+        if not ok then
+            return ok, err
+        end
+        if maxLevel % 1 ~= 0 then
+            return self:_configError(
+                "pet_progression",
+                "max_level_by_rarity." .. tostring(rarityId),
+                "expected positive integer"
+            )
+        end
+    end
+
+    local curve = config.xp_curve
+    if type(curve) ~= "table" then
+        return self:_configError("pet_progression", "xp_curve", "expected table")
+    end
+    if curve.type ~= "linear" and curve.type ~= "exponential" then
+        return self:_configError(
+            "pet_progression",
+            "xp_curve.type",
+            "expected linear or exponential"
+        )
+    end
+    ok, err = self:_requirePositiveNumber("pet_progression", curve.base, "xp_curve.base")
+    if not ok then
+        return ok, err
+    end
+    if curve.type == "exponential" then
+        ok, err = self:_requirePositiveNumber("pet_progression", curve.growth, "xp_curve.growth")
+        if not ok then
+            return ok, err
+        end
+    elseif curve.increment ~= nil then
+        ok, err =
+            self:_requireNonNegativeNumber("pet_progression", curve.increment, "xp_curve.increment")
+        if not ok then
+            return ok, err
+        end
+    end
+
+    local powerScaling = config.power_scaling
+    if type(powerScaling) ~= "table" then
+        return self:_configError("pet_progression", "power_scaling", "expected table")
+    end
+    if powerScaling.type ~= "percent_per_level" then
+        return self:_configError(
+            "pet_progression",
+            "power_scaling.type",
+            "expected percent_per_level"
+        )
+    end
+    ok, err = self:_requireNonNegativeNumber(
+        "pet_progression",
+        powerScaling.percent_per_level,
+        "power_scaling.percent_per_level"
+    )
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requireNonNegativeNumber(
+        "pet_progression",
+        powerScaling.max_bonus_percent,
+        "power_scaling.max_bonus_percent"
+    )
+    if not ok then
+        return ok, err
+    end
+
+    local enchantSlots = config.enchant_slots
+    if type(enchantSlots) ~= "table" then
+        return self:_configError("pet_progression", "enchant_slots", "expected table")
+    end
+    ok, err = self:_requireNonNegativeNumber(
+        "pet_progression",
+        enchantSlots.default_unlocked_slots or 0,
+        "enchant_slots.default_unlocked_slots"
+    )
+    if not ok then
+        return ok, err
+    end
+    if (enchantSlots.default_unlocked_slots or 0) % 1 ~= 0 then
+        return self:_configError(
+            "pet_progression",
+            "enchant_slots.default_unlocked_slots",
+            "expected non-negative integer"
+        )
+    end
+    local unlocksByRarity = enchantSlots.unlocks_by_rarity or {}
+    if type(unlocksByRarity) ~= "table" then
+        return self:_configError(
+            "pet_progression",
+            "enchant_slots.unlocks_by_rarity",
+            "expected table"
+        )
+    end
+    for rarityId, unlocks in pairs(unlocksByRarity) do
+        if not rarities[rarityId] then
+            return self:_configError(
+                "pet_progression",
+                "enchant_slots.unlocks_by_rarity." .. tostring(rarityId),
+                "must reference pets.rarities"
+            )
+        end
+        if not isArray(unlocks) then
+            return self:_configError(
+                "pet_progression",
+                "enchant_slots.unlocks_by_rarity." .. tostring(rarityId),
+                "expected array"
+            )
+        end
+        for index, unlock in ipairs(unlocks) do
+            local path = "enchant_slots.unlocks_by_rarity."
+                .. tostring(rarityId)
+                .. "["
+                .. index
+                .. "]"
+            if type(unlock) ~= "table" then
+                return self:_configError("pet_progression", path, "expected table")
+            end
+            ok, err = self:_requirePositiveNumber("pet_progression", unlock.level, path .. ".level")
+            if not ok then
+                return ok, err
+            end
+            if unlock.level % 1 ~= 0 then
+                return self:_configError(
+                    "pet_progression",
+                    path .. ".level",
+                    "expected positive integer"
+                )
+            end
+            ok, err =
+                self:_requireNonNegativeNumber("pet_progression", unlock.slots, path .. ".slots")
+            if not ok then
+                return ok, err
+            end
+            if unlock.slots % 1 ~= 0 then
+                return self:_configError(
+                    "pet_progression",
+                    path .. ".slots",
+                    "expected non-negative integer"
+                )
+            end
         end
     end
 

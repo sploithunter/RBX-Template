@@ -334,8 +334,9 @@ return function()
                     },
                     pets = {
                         bear = {
-                            name = "Bear",
+                            display_name = "Bear",
                             category = "forest",
+                            rarity = "common",
                             base_power = 10,
                             base_health = 10,
                             variants = {
@@ -364,6 +365,144 @@ return function()
                 local isValid, error = configLoader:ValidateConfig("pets", invalidConfig)
                 expect(isValid).to.equal(false)
                 expect(string.find(error, "must reference configs/currencies.lua", 1, true)).to.be.ok()
+            end)
+
+            it("should reject pet family rarity ids that are not configured", function()
+                local invalidConfig = {
+                    version = "1.0.0",
+                    rarities = {
+                        common = { name = "Common" },
+                    },
+                    variants = {
+                        basic = { name = "Basic", rarity = "common" },
+                    },
+                    pets = {
+                        bear = {
+                            display_name = "Bear",
+                            category = "forest",
+                            rarity = "missing_rarity",
+                            base_power = 10,
+                            base_health = 10,
+                            variants = {
+                                basic = {
+                                    asset_id = "rbxassetid://1",
+                                    display_name = "Bear",
+                                    power = 10,
+                                    health = 10,
+                                },
+                            },
+                        },
+                    },
+                    abilities = {},
+                    egg_sources = {},
+                }
+
+                local isValid, error = configLoader:ValidateConfig("pets", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "pets.bear.rarity", 1, true)).to.be.ok()
+            end)
+
+            it("should require pet families to declare a rarity", function()
+                local invalidConfig = {
+                    version = "1.0.0",
+                    rarities = {
+                        common = { name = "Common" },
+                    },
+                    variants = {
+                        basic = { name = "Basic", rarity = "common" },
+                    },
+                    pets = {
+                        bear = {
+                            display_name = "Bear",
+                            category = "forest",
+                            base_power = 10,
+                            base_health = 10,
+                            variants = {
+                                basic = {
+                                    asset_id = "rbxassetid://1",
+                                    display_name = "Bear",
+                                    power = 10,
+                                    health = 10,
+                                },
+                            },
+                        },
+                    },
+                    abilities = {},
+                    egg_sources = {},
+                }
+
+                local isValid, error = configLoader:ValidateConfig("pets", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "pets.bear.rarity", 1, true)).to.be.ok()
+            end)
+
+            it("should require pet family display names separate from stable ids", function()
+                local invalidConfig = {
+                    version = "1.0.0",
+                    rarities = {
+                        common = { name = "Common" },
+                    },
+                    variants = {
+                        basic = { name = "Basic", rarity = "common" },
+                    },
+                    pets = {
+                        bear = {
+                            category = "forest",
+                            rarity = "common",
+                            base_power = 10,
+                            base_health = 10,
+                            variants = {
+                                basic = {
+                                    asset_id = "rbxassetid://1",
+                                    display_name = "Bear",
+                                    power = 10,
+                                    health = 10,
+                                },
+                            },
+                        },
+                    },
+                    abilities = {},
+                    egg_sources = {},
+                }
+
+                local isValid, error = configLoader:ValidateConfig("pets", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "pets.bear.display_name", 1, true)).to.be.ok()
+            end)
+
+            it("should reject malformed pet family ids", function()
+                local invalidConfig = {
+                    version = "1.0.0",
+                    rarities = {
+                        common = { name = "Common" },
+                    },
+                    variants = {
+                        basic = { name = "Basic", rarity = "common" },
+                    },
+                    pets = {
+                        ["Bear Basic"] = {
+                            display_name = "Bear",
+                            category = "forest",
+                            rarity = "common",
+                            base_power = 10,
+                            base_health = 10,
+                            variants = {
+                                basic = {
+                                    asset_id = "rbxassetid://1",
+                                    display_name = "Bear",
+                                    power = 10,
+                                    health = 10,
+                                },
+                            },
+                        },
+                    },
+                    abilities = {},
+                    egg_sources = {},
+                }
+
+                local isValid, error = configLoader:ValidateConfig("pets", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "pets.Bear Basic", 1, true)).to.be.ok()
             end)
 
             it("should reject scheduled events with unknown event ids", function()
@@ -542,6 +681,77 @@ return function()
                 local isValid, error = configLoader:ValidateConfig("upgrades", invalidConfig)
                 expect(isValid).to.equal(false)
                 expect(string.find(error, "inventory.equipped", 1, true)).to.be.ok()
+            end)
+
+            it("should validate pet progression tuning", function()
+                local validConfig = {
+                    version = "1.0.0",
+                    enabled = true,
+                    unique_only = true,
+                    default_max_level = 1,
+                    max_level_by_rarity = {
+                        exclusive = 75,
+                        huge = 100,
+                    },
+                    xp_curve = {
+                        type = "exponential",
+                        base = 100,
+                        growth = 1.18,
+                    },
+                    power_scaling = {
+                        type = "percent_per_level",
+                        percent_per_level = 0.02,
+                        max_bonus_percent = 1,
+                    },
+                    enchant_slots = {
+                        default_unlocked_slots = 1,
+                        unlocks_by_rarity = {
+                            exclusive = {
+                                { level = 1, slots = 1 },
+                                { level = 25, slots = 2 },
+                            },
+                            huge = {
+                                { level = 1, slots = 1 },
+                                { level = 25, slots = 2 },
+                                { level = 75, slots = 3 },
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("pet_progression", validConfig)
+                expect(isValid).to.equal(true)
+                expect(error).to.equal(nil)
+            end)
+
+            it("should reject pet progression rarity typos", function()
+                local invalidConfig = {
+                    version = "1.0.0",
+                    enabled = true,
+                    unique_only = true,
+                    default_max_level = 1,
+                    max_level_by_rarity = {
+                        exclusive_typo = 75,
+                    },
+                    xp_curve = {
+                        type = "linear",
+                        base = 100,
+                        increment = 25,
+                    },
+                    power_scaling = {
+                        type = "percent_per_level",
+                        percent_per_level = 0.02,
+                        max_bonus_percent = 1,
+                    },
+                    enchant_slots = {
+                        default_unlocked_slots = 1,
+                        unlocks_by_rarity = {},
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("pet_progression", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "must reference pets.rarities", 1, true)).to.be.ok()
             end)
 
             it("should validate marker tag schemas", function()

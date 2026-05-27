@@ -72,6 +72,10 @@ The current synthetic baseline creates:
 
 `ZoneService` consumes the zone tree plus bound `TeleportPad`/`Portal` hooks. It validates unlocks on the server, persists `GameData.UnlockedAreas`, moves the character to the target zone spawn, and updates the active area through `WorldBindingService`.
 
+Travel hooks also get a server-created `ProximityPrompt` named `ZoneTravelPrompt` for paid locked destinations. The client hides this prompt for destinations the local player already owns, so normal unlocked travel remains touch-only. Pressing `E` on a visible locked prompt attempts the paid unlock before travel. Touching a locked hook still returns `ZoneTravelResult.reason = "locked"` and the client shows a visible locked-area notice with the configured cost.
+
+For manual portal testing, use the admin panel's developer controls to toggle, lock, paid-unlock, or bypass-unlock `Meadow`. Admin locking removes the persisted unlocked area without refunding, which lets the same player repeatedly test locked and unlocked portal states.
+
 Spawn placement is resolved from the live map before falling back to configured synthetic coordinates. `WorldBindingService:GetSpawnCFrameForZone` uses the area's authored `AreaZone` center, raycasts down to real floor geometry while excluding marker parts, and returns a safe above-floor CFrame. If no floor hit is found, it falls back to the area's `SpawnZone`, then finally to config `synthetic.spawn_position`. This keeps Studio-authored maps portable when islands move.
 
 Active-zone dormancy is implemented for breakable spawning: Spawn is live for the starter loop, while non-default configured areas stay dormant until a player enters/travels there. Entering/traveling to an area fills that area's configured spawner.

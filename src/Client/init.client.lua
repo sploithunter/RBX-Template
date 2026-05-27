@@ -9,10 +9,13 @@
 ]]
 
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local UserInputService = game:GetService("UserInputService")
 local ContentProvider = game:GetService("ContentProvider")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 -- Wait for packages and shared modules
 local Packages = ReplicatedStorage:WaitForChild("Packages", 10)
@@ -32,6 +35,8 @@ local Reflex = Locations.getPackage("Reflex") -- Redux-like state management (vi
 local ModuleLoader = require(Locations.SharedUtils.ModuleLoader)
 
 local localPlayer = Players.LocalPlayer
+local TRAVEL_PROMPT_NAME = "ZoneTravelPrompt"
+local UNLOCKED_AREAS_ATTRIBUTE = "UnlockedAreasJson"
 
 -- Console noise reduction: defer logging until Logger is initialized
 
@@ -144,6 +149,177 @@ local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 -- Map Net RemoteEvents to prior handler names
 local function onPurchaseResult(data) end -- placeholder
 
+local noticeGui
+local noticeTween
+local unlockedAreas = {}
+local watchedPrompts = {}
+
+local function showNotice(message, isWarning)
+    local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
+    if not playerGui then
+        return
+    end
+
+    if not noticeGui then
+        noticeGui = Instance.new("ScreenGui")
+        noticeGui.Name = "GameplayNoticeGui"
+        noticeGui.ResetOnSpawn = false
+        noticeGui.IgnoreGuiInset = true
+
+        local label = Instance.new("TextLabel")
+        label.Name = "Notice"
+        label.AnchorPoint = Vector2.new(0.5, 0)
+        label.Position = UDim2.new(0.5, 0, 0, 96)
+        label.Size = UDim2.new(0, 420, 0, 44)
+        label.BackgroundTransparency = 0.12
+        label.BorderSizePixel = 0
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 18
+        label.TextWrapped = true
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.Visible = false
+        label.Parent = noticeGui
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 8)
+        corner.Parent = label
+
+        noticeGui.Parent = playerGui
+    end
+
+    local label = noticeGui:FindFirstChild("Notice")
+    if not label then
+        return
+    end
+
+    if noticeTween then
+        noticeTween:Cancel()
+        noticeTween = nil
+    end
+
+    label.Text = message
+    label.BackgroundColor3 = isWarning and Color3.fromRGB(190, 70, 40)
+        or Color3.fromRGB(30, 120, 80)
+    label.TextTransparency = 0
+    label.BackgroundTransparency = 0.12
+    label.Visible = true
+
+    task.delay(2.8, function()
+        if label.Text ~= message then
+            return
+        end
+        noticeTween = TweenService:Create(label, TweenInfo.new(0.25), {
+            TextTransparency = 1,
+            BackgroundTransparency = 1,
+        })
+        noticeTween:Play()
+        noticeTween.Completed:Once(function()
+            if label.Text == message then
+                label.Visible = false
+            end
+        end)
+    end)
+end
+
+local function refreshUnlockedAreas()
+    table.clear(unlockedAreas)
+
+    local rawValue = localPlayer:GetAttribute(UNLOCKED_AREAS_ATTRIBUTE)
+    if type(rawValue) ~= "string" or rawValue == "" then
+        return
+    end
+
+    local ok, decoded = pcall(function()
+        return HttpService:JSONDecode(rawValue)
+    end)
+    if not ok or type(decoded) ~= "table" then
+        return
+    end
+
+    for _, areaId in ipairs(decoded) do
+        if type(areaId) == "string" then
+            unlockedAreas[areaId] = true
+        end
+    end
+end
+
+local function updateZoneTravelPrompt(prompt)
+    if not prompt:IsA("ProximityPrompt") or prompt.Name ~= TRAVEL_PROMPT_NAME then
+        return
+    end
+
+    local targetAreaId = prompt:GetAttribute("TargetAreaId")
+    local requiresUnlockPrompt = prompt:GetAttribute("RequiresUnlockPrompt") == true
+    prompt.Enabled = requiresUnlockPrompt
+        and type(targetAreaId) == "string"
+        and unlockedAreas[targetAreaId] ~= true
+end
+
+local function updateAllZoneTravelPrompts()
+    for _, instance in ipairs(workspace:GetDescendants()) do
+        if instance:IsA("ProximityPrompt") and instance.Name == TRAVEL_PROMPT_NAME then
+            updateZoneTravelPrompt(instance)
+        end
+    end
+end
+
+local function watchZoneTravelPrompt(prompt)
+    if not prompt:IsA("ProximityPrompt") or prompt.Name ~= TRAVEL_PROMPT_NAME then
+        return
+    end
+
+    updateZoneTravelPrompt(prompt)
+    if watchedPrompts[prompt] then
+        return
+    end
+
+    local connections = {}
+    watchedPrompts[prompt] = connections
+
+    for _, attributeName in ipairs({ "TargetAreaId", "RequiresUnlockPrompt" }) do
+        table.insert(
+            connections,
+            prompt:GetAttributeChangedSignal(attributeName):Connect(function()
+                updateZoneTravelPrompt(prompt)
+            end)
+        )
+    end
+
+    table.insert(
+        connections,
+        prompt.AncestryChanged:Connect(function(_, parent)
+            if parent then
+                return
+            end
+
+            for _, connection in ipairs(connections) do
+                connection:Disconnect()
+            end
+            watchedPrompts[prompt] = nil
+        end)
+    )
+end
+
+refreshUnlockedAreas()
+updateAllZoneTravelPrompts()
+
+workspace.DescendantAdded:Connect(function(instance)
+    if instance:IsA("ProximityPrompt") and instance.Name == TRAVEL_PROMPT_NAME then
+        watchZoneTravelPrompt(instance)
+    end
+end)
+
+for _, instance in ipairs(workspace:GetDescendants()) do
+    if instance:IsA("ProximityPrompt") and instance.Name == TRAVEL_PROMPT_NAME then
+        watchZoneTravelPrompt(instance)
+    end
+end
+
+localPlayer:GetAttributeChangedSignal(UNLOCKED_AREAS_ATTRIBUTE):Connect(function()
+    refreshUnlockedAreas()
+    updateAllZoneTravelPrompts()
+end)
+
 Signals.CurrencyUpdate.OnClientEvent:Connect(function(data)
     Logger:Debug("Currency updated", data)
 end)
@@ -164,9 +340,60 @@ Signals.UpgradeResult.OnClientEvent:Connect(function(data)
 end)
 Signals.ZoneUnlockResult.OnClientEvent:Connect(function(data)
     Logger:Info("Zone unlock result", data)
+    if data and data.ok == true then
+        local displayName = data.unlock and data.unlock.displayName
+            or data.zoneId
+            or data.areaId
+            or "Zone"
+        if data.areaId then
+            unlockedAreas[tostring(data.areaId)] = true
+            updateAllZoneTravelPrompts()
+        end
+        showNotice("Unlocked " .. tostring(displayName), false)
+    elseif data and data.reason then
+        local unlock = data.unlock or {}
+        local displayName = unlock.displayName or data.zoneId or "that area"
+        if data.reason == "insufficient_currency" and unlock.currency and unlock.cost then
+            showNotice(
+                string.format(
+                    "Need %d %s to unlock %s.",
+                    unlock.cost,
+                    unlock.currency,
+                    tostring(displayName)
+                ),
+                true
+            )
+        elseif data.reason == "required_zone_locked" and data.requiredZoneId then
+            showNotice(
+                string.format(
+                    "Unlock %s before %s.",
+                    tostring(data.requiredZoneId),
+                    tostring(displayName)
+                ),
+                true
+            )
+        else
+            showNotice("Zone unlock failed: " .. tostring(data.reason), true)
+        end
+    end
 end)
 Signals.ZoneTravelResult.OnClientEvent:Connect(function(data)
     Logger:Info("Zone travel result", data)
+    if not data or data.ok == true then
+        return
+    end
+
+    if data.reason == "locked" then
+        local unlock = data.unlock or {}
+        local displayName = unlock.displayName or data.targetZoneId or "That area"
+        local costText = ""
+        if unlock.currency and unlock.cost and unlock.cost > 0 then
+            costText = string.format(" Cost: %d %s.", unlock.cost, unlock.currency)
+        end
+        showNotice(tostring(displayName) .. " is locked." .. costText, true)
+    else
+        showNotice("Travel failed: " .. tostring(data.reason or "unknown"), true)
+    end
 end)
 Signals.PlayerDebugInfo.OnClientEvent:Connect(function(data)
     print("🔍 SERVER DEBUG INFO:", data)
@@ -363,6 +590,127 @@ Logger:Info("🎯 Game Template Client started successfully!", {
     player = localPlayer.Name,
 })
 
+local function waitForPetThumbnailsReady(timeoutSeconds)
+    local assets = ReplicatedStorage:WaitForChild("Assets", timeoutSeconds or 10)
+    if not assets then
+        Logger:Warn("Asset prewarm skipped; Assets folder did not replicate")
+        return nil
+    end
+
+    if assets:GetAttribute("PetThumbnailsReady") == true then
+        return assets
+    end
+
+    local completed = false
+    local connection = assets:GetAttributeChangedSignal("PetThumbnailsReady"):Connect(function()
+        completed = assets:GetAttribute("PetThumbnailsReady") == true
+    end)
+
+    local startedAt = os.clock()
+    while not completed and os.clock() - startedAt < (timeoutSeconds or 10) do
+        task.wait(0.1)
+    end
+    connection:Disconnect()
+
+    if completed or assets:GetAttribute("PetThumbnailsReady") == true then
+        return assets
+    end
+
+    Logger:Warn("Asset prewarm timed out waiting for pet thumbnails", {
+        timeout = timeoutSeconds or 10,
+        thumbnailCount = assets:GetAttribute("PetThumbnailCount"),
+        thumbnailFailures = assets:GetAttribute("PetThumbnailFailures"),
+    })
+    return assets
+end
+
+local function collectViewportFrames(root)
+    local viewports = {}
+    if not root then
+        return viewports
+    end
+
+    for _, descendant in ipairs(root:GetDescendants()) do
+        if descendant:IsA("ViewportFrame") then
+            table.insert(viewports, descendant)
+        end
+    end
+    return viewports
+end
+
+local function prewarmPetThumbnailViewports()
+    local assets = waitForPetThumbnailsReady(12)
+    if not assets then
+        return
+    end
+
+    local images = assets:FindFirstChild("Images")
+    if not images then
+        Logger:Warn("Asset prewarm skipped; Images folder missing")
+        return
+    end
+
+    local sourceViewports = {}
+    for _, folderName in ipairs({ "Pets", "Eggs" }) do
+        for _, viewport in ipairs(collectViewportFrames(images:FindFirstChild(folderName))) do
+            table.insert(sourceViewports, viewport)
+        end
+    end
+
+    if #sourceViewports == 0 then
+        Logger:Warn("Asset prewarm skipped; no thumbnail ViewportFrames found")
+        return
+    end
+
+    local playerGui = localPlayer:WaitForChild("PlayerGui", 10)
+    if not playerGui then
+        Logger:Warn("Asset prewarm skipped; PlayerGui missing")
+        return
+    end
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "PetThumbnailPrewarm"
+    screenGui.DisplayOrder = 0
+    screenGui.IgnoreGuiInset = true
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = playerGui
+
+    local container = Instance.new("Frame")
+    container.Name = "ViewportCache"
+    container.BackgroundTransparency = 1
+    container.BorderSizePixel = 0
+    container.Position = UDim2.new(1, 128, 1, 128)
+    container.Size = UDim2.new(0, 64, 0, 64)
+    container.ClipsDescendants = true
+    container.Parent = screenGui
+
+    local preloadInstances = {}
+    for index, sourceViewport in ipairs(sourceViewports) do
+        local clone = sourceViewport:Clone()
+        clone.Name = "Prewarm" .. tostring(index)
+        clone.Size = UDim2.new(0, 64, 0, 64)
+        clone.Position = UDim2.new(0, 0, 0, 0)
+        clone.BackgroundTransparency = 1
+        clone.Visible = true
+        clone.Parent = container
+        table.insert(preloadInstances, clone)
+    end
+
+    pcall(function()
+        ContentProvider:PreloadAsync(preloadInstances)
+    end)
+
+    RunService.RenderStepped:Wait()
+    RunService.RenderStepped:Wait()
+    screenGui:Destroy()
+
+    Logger:Info("Prewarmed pet thumbnail ViewportFrames", {
+        count = #sourceViewports,
+        ready = assets:GetAttribute("PetThumbnailsReady"),
+        failures = assets:GetAttribute("PetThumbnailFailures"),
+    })
+end
+
 -- Load test GUI for economy testing (remove in production)
 if game:GetService("RunService"):IsStudio() then
     task.spawn(function()
@@ -372,6 +720,7 @@ if game:GetService("RunService"):IsStudio() then
 
         -- Load proper game UI system
         task.wait(1) -- Wait a moment for other UIs to load
+        prewarmPetThumbnailViewports()
 
         -- Initialize MenuManager
         local MenuManager = require(script.UI.MenuManager)

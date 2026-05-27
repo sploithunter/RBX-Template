@@ -6,6 +6,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
@@ -15,6 +16,8 @@ ZoneService.__index = ZoneService
 
 local TOUCH_DEBOUNCE_SECONDS = 1
 local DEFAULT_START_AREA = "Spawn"
+local TRAVEL_PROMPT_NAME = "ZoneTravelPrompt"
+local UNLOCKED_AREAS_ATTRIBUTE = "UnlockedAreasJson"
 
 local function asSet(values)
     local set = {}
@@ -84,10 +87,12 @@ function ZoneService:Start()
 
     Players.PlayerAdded:Connect(function(player)
         self:_connectCharacterSpawnSafety(player)
+        self:_syncUnlocksWhenDataLoads(player)
     end)
 
     for _, player in ipairs(Players:GetPlayers()) do
         self:_connectCharacterSpawnSafety(player)
+        self:_syncUnlocksWhenDataLoads(player)
     end
 end
 
@@ -124,6 +129,7 @@ function ZoneService:_getUnlockSet(player)
     set[DEFAULT_START_AREA] = true
 
     data.GameData.UnlockedAreas = setToSortedArray(set)
+    self:_publishUnlockedAreas(player, set)
     return set, data
 end
 
@@ -177,6 +183,76 @@ function ZoneService:GetUnlockedZones(player)
         return {}
     end
     return setToSortedArray(unlockSet)
+end
+
+function ZoneService:SetZoneLocked(player, zoneId, locked, options)
+    options = options or {}
+
+    local zone = self:_getZone(zoneId)
+    if not zone then
+        return {
+            ok = false,
+            reason = "unknown_zone",
+            zoneId = zoneId,
+        }
+    end
+
+    local areaId = self:_resolveAreaId(zoneId)
+    if not areaId then
+        return {
+            ok = false,
+            reason = "missing_primary_area",
+            zoneId = zoneId,
+        }
+    end
+
+    local areaZone = self:_getZone(areaId)
+    if locked == true and areaZone and areaZone.unlock and areaZone.unlock.unlocked_by_default then
+        return {
+            ok = false,
+            reason = "default_area_cannot_lock",
+            zoneId = zoneId,
+            areaId = areaId,
+        }
+    end
+
+    if locked ~= true then
+        return self:UnlockZone(player, zoneId, {
+            bypassRequirements = options.bypassRequirements == true,
+        })
+    end
+
+    local unlockSet, data = self:_getUnlockSet(player)
+    if not unlockSet or not data then
+        return {
+            ok = false,
+            reason = "data_not_loaded",
+            zoneId = zoneId,
+            areaId = areaId,
+        }
+    end
+
+    unlockSet[areaId] = nil
+    data.GameData.UnlockedAreas = setToSortedArray(unlockSet)
+    self:_publishUnlockedAreas(player, unlockSet)
+    self._dataService:RequestSave(player, "zone_lock", { critical = true })
+
+    if self._worldBindingService:GetActiveArea(player) == areaId then
+        self:TravelToZone(player, DEFAULT_START_AREA)
+    end
+
+    self._logger:Info("Zone locked", {
+        player = player.Name,
+        zoneId = zoneId,
+        areaId = areaId,
+    })
+
+    return {
+        ok = true,
+        locked = true,
+        zoneId = zoneId,
+        areaId = areaId,
+    }
 end
 
 function ZoneService:_connectCharacterSpawnSafety(player)
@@ -264,7 +340,7 @@ function ZoneService:UnlockZone(player, zoneId, options)
         }
     end
 
-    local unlock = zone.unlock or self:_getZone(areaId).unlock or {}
+    local unlock = self:_getUnlockConfig(zoneId) or {}
     if options.bypassRequirements ~= true then
         local requiredZoneId = unlock.required_zone
         if requiredZoneId and not self:IsZoneUnlocked(player, requiredZoneId, unlockSet) then
@@ -298,6 +374,7 @@ function ZoneService:UnlockZone(player, zoneId, options)
 
     unlockSet[areaId] = true
     data.GameData.UnlockedAreas = setToSortedArray(unlockSet)
+    self:_publishUnlockedAreas(player, unlockSet)
     self._dataService:RequestSave(player, "zone_unlock", { critical = true })
 
     self._logger:Info("Zone unlocked", {
@@ -322,13 +399,14 @@ function ZoneService:GetUnlockRequirement(player, zoneId)
 
     local areaId = self:_resolveAreaId(zoneId)
     local areaZone = areaId and self:_getZone(areaId) or nil
-    local unlock = zone.unlock or (areaZone and areaZone.unlock) or {}
+    local unlock = self:_getUnlockConfig(zoneId) or {}
     local currency = unlock.currency
     local cost = tonumber(unlock.cost) or 0
     local requiredZoneId = unlock.required_zone
     local canAfford = currency == nil
         or cost <= 0
-        or self._dataService:CanAfford(player, currency, cost)
+        or (player and self._dataService:CanAfford(player, currency, cost))
+        or false
 
     return {
         zoneId = zoneId,
@@ -339,6 +417,54 @@ function ZoneService:GetUnlockRequirement(player, zoneId)
         requiredZoneId = requiredZoneId,
         canAfford = canAfford,
     }
+end
+
+function ZoneService:_publishUnlockedAreas(player, unlockSet)
+    if not player or type(unlockSet) ~= "table" then
+        return
+    end
+
+    player:SetAttribute(
+        UNLOCKED_AREAS_ATTRIBUTE,
+        HttpService:JSONEncode(setToSortedArray(unlockSet))
+    )
+end
+
+function ZoneService:_syncUnlocksWhenDataLoads(player)
+    task.spawn(function()
+        local startedAt = os.clock()
+        while player.Parent and player:GetAttribute("DataLoaded") ~= true do
+            if os.clock() - startedAt > 30 then
+                return
+            end
+            task.wait(0.25)
+        end
+
+        if player.Parent then
+            self:GetUnlockedZones(player)
+        end
+    end)
+end
+
+function ZoneService:_getUnlockConfig(zoneId)
+    local zone = self:_getZone(zoneId)
+    if not zone then
+        return nil
+    end
+
+    local areaId = self:_resolveAreaId(zoneId)
+    local areaZone = areaId and self:_getZone(areaId) or nil
+    return zone.unlock or (areaZone and areaZone.unlock) or {}
+end
+
+function ZoneService:_getZoneDisplayName(zoneId)
+    local zone = self:_getZone(zoneId)
+    local areaId = self:_resolveAreaId(zoneId)
+    local areaZone = areaId and self:_getZone(areaId) or nil
+
+    return (areaZone and areaZone.display_name)
+        or (zone and zone.display_name)
+        or tostring(zoneId or "Area")
 end
 
 function ZoneService:TravelToZone(player, targetZoneId, sourceHook)
@@ -428,13 +554,103 @@ function ZoneService:_connectTravelHooks()
     end
 
     for _, hook in ipairs(hooks) do
-        if not hook:GetAttribute("ZoneServiceConnected") then
+        if hook:IsA("BasePart") then
+            self:_ensureTravelPrompt(hook)
+        end
+
+        if hook:IsA("BasePart") and not hook:GetAttribute("ZoneServiceConnected") then
             hook:SetAttribute("ZoneServiceConnected", true)
             hook.Touched:Connect(function(hit)
                 self:_handleHookTouched(hook, hit)
             end)
         end
     end
+end
+
+function ZoneService:_ensureTravelPrompt(hook)
+    local prompt = hook:FindFirstChild(TRAVEL_PROMPT_NAME)
+    if prompt and not prompt:IsA("ProximityPrompt") then
+        self._logger:Warn("Travel hook has non-prompt child using reserved prompt name", {
+            hook = hook:GetFullName(),
+            childClass = prompt.ClassName,
+        })
+        return
+    end
+
+    if not prompt then
+        prompt = Instance.new("ProximityPrompt")
+        prompt.Name = TRAVEL_PROMPT_NAME
+        prompt.KeyboardKeyCode = Enum.KeyCode.E
+        prompt.RequiresLineOfSight = false
+        prompt.HoldDuration = 0
+        prompt.MaxActivationDistance = 14
+        prompt.Parent = hook
+    end
+
+    local targetZoneId = hook:GetAttribute("TargetZoneId")
+    local targetAreaId = self:_resolveAreaId(targetZoneId)
+    local unlock = self:_getUnlockConfig(targetZoneId)
+    local unlockCost = unlock and tonumber(unlock.cost) or 0
+    local unlockCurrency = unlock and unlock.currency or nil
+
+    prompt.ObjectText = self:_getZoneDisplayName(targetZoneId)
+    prompt.ActionText = self:_getTravelPromptActionText(targetZoneId)
+    prompt.Enabled = type(targetZoneId) == "string"
+        and targetZoneId ~= ""
+        and unlockCurrency ~= nil
+        and unlockCost > 0
+    prompt:SetAttribute("TargetZoneId", targetZoneId)
+    prompt:SetAttribute("TargetAreaId", targetAreaId)
+    prompt:SetAttribute("UnlockCurrency", unlockCurrency)
+    prompt:SetAttribute("UnlockCost", unlockCost)
+    prompt:SetAttribute("RequiresUnlockPrompt", prompt.Enabled)
+
+    if not hook:GetAttribute("ZoneServicePromptConnected") then
+        hook:SetAttribute("ZoneServicePromptConnected", true)
+        prompt.Triggered:Connect(function(player)
+            self:_handleHookPromptTriggered(hook, player)
+        end)
+    end
+end
+
+function ZoneService:_getTravelPromptActionText(targetZoneId)
+    local unlock = self:_getUnlockConfig(targetZoneId)
+    local currency = unlock and unlock.currency
+    local cost = unlock and tonumber(unlock.cost) or 0
+
+    if currency and cost > 0 then
+        return string.format("Unlock %d %s", cost, currency)
+    end
+
+    return "Travel"
+end
+
+function ZoneService:_handleHookPromptTriggered(hook, player)
+    if not player then
+        return
+    end
+
+    local targetZoneId = hook and hook:GetAttribute("TargetZoneId")
+    if type(targetZoneId) ~= "string" or targetZoneId == "" then
+        Signals.ZoneTravelResult:FireClient(player, {
+            ok = false,
+            reason = "missing_target",
+        })
+        return
+    end
+
+    if not self:IsZoneUnlocked(player, targetZoneId) then
+        local unlockResult = self:UnlockZone(player, targetZoneId)
+        unlockResult.unlock = unlockResult.unlock or self:GetUnlockRequirement(player, targetZoneId)
+        Signals.ZoneUnlockResult:FireClient(player, unlockResult)
+
+        if unlockResult.ok ~= true then
+            return
+        end
+    end
+
+    local travelResult = self:TravelViaHook(player, hook)
+    Signals.ZoneTravelResult:FireClient(player, travelResult)
 end
 
 function ZoneService:_handleHookTouched(hook, hit)

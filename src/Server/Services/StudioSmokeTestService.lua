@@ -30,6 +30,7 @@ local breakableSpawner
 local petIndexService
 local achievementsService
 local leaderboardService
+local petGrantService
 
 local sessions = {}
 local travelSessions = {}
@@ -123,6 +124,7 @@ function StudioSmokeTestService:Init()
     petIndexService = self._modules.PetIndexService
     achievementsService = self._modules.AchievementsService
     leaderboardService = self._modules.LeaderboardService
+    petGrantService = self._modules.PetGrantService
 end
 
 function StudioSmokeTestService:Start()
@@ -187,11 +189,490 @@ function StudioSmokeTestService:_handleRequest(player, action, payload)
         return self:_runSyntheticExpansionSmoke(player, payload)
     elseif action == "RunPhase3StatsSmoke" then
         return self:_runPhase3StatsSmoke(player, payload)
+    elseif action == "GrantColoradoTestPets" then
+        return self:_grantColoradoTestPets(player, payload)
+    elseif action == "BackfillPetHatcherProvenance" then
+        return self:_backfillPetHatcherProvenance(player, payload)
+    elseif action == "BackfillPetPowerSourceOfTruth" then
+        return self:_backfillPetPowerSourceOfTruth(player, payload)
+    elseif action == "CheckEternalPowerSmoke" then
+        return self:_checkEternalPowerSmoke(player)
+    elseif action == "CleanupColoradoGrantOrphans" then
+        return self:_cleanupColoradoGrantOrphans(player)
     end
 
     return {
         ok = false,
         error = "Unknown smoke action: " .. tostring(action),
+    }
+end
+
+function StudioSmokeTestService:_cleanupColoradoGrantOrphans(player)
+    if not dataService:IsDataLoaded(player) then
+        return {
+            ok = false,
+            error = "Player data is not loaded",
+        }
+    end
+
+    local data = dataService:GetData(player)
+    local bucket = data and data.Inventory and data.Inventory.pets
+    local removed = {}
+    if bucket and bucket.items then
+        for key, item in pairs(bucket.items) do
+            if
+                type(key) == "string"
+                and string.match(key, "^colorado_")
+                and type(item) == "table"
+                and item.id == "colorado"
+                and item._kind ~= "special"
+            then
+                bucket.items[key] = nil
+                bucket.used_slots = math.max(0, (bucket.used_slots or 1) - 1)
+                table.insert(removed, key)
+            end
+        end
+    end
+
+    if #removed > 0 then
+        if inventoryService and inventoryService._updateBucketFolders then
+            inventoryService:_updateBucketFolders(player, "pets")
+        end
+        dataService:RequestSave(player, "cleanup_colorado_grant_orphans", {
+            critical = true,
+        })
+    end
+
+    return {
+        ok = true,
+        removed = removed,
+    }
+end
+
+function StudioSmokeTestService:_grantColoradoTestPets(player, payload)
+    payload = type(payload) == "table" and payload or {}
+    if not dataService:IsDataLoaded(player) then
+        return {
+            ok = false,
+            error = "Player data is not loaded",
+        }
+    end
+    if not petGrantService then
+        return {
+            ok = false,
+            error = "PetGrantService unavailable",
+        }
+    end
+
+    local normalResult = petGrantService:GrantPet(player, {
+        petType = "colorado",
+        variant = "basic",
+        source = "studio_colorado_test",
+    })
+    if not normalResult.ok then
+        return normalResult
+    end
+
+    local hugeResult = petGrantService:GrantPet(player, {
+        petType = "colorado",
+        variant = "rainbow",
+        huge = true,
+        source = "studio_colorado_test",
+    })
+    if not hugeResult.ok then
+        return hugeResult
+    end
+
+    local equip = payload.equip ~= false
+    if equip then
+        local data = dataService:GetData(player)
+        data.Equipped = data.Equipped or {}
+        data.Equipped.pets = data.Equipped.pets or {}
+        data.Equipped.pets.slot_1 = normalResult.uid
+        data.Equipped.pets.slot_2 = hugeResult.uid
+
+        if inventoryService and inventoryService._updateEquippedFolders then
+            inventoryService:_updateEquippedFolders(player, "pets")
+        end
+    end
+
+    dataService:RequestSave(player, "studio_colorado_test_grant", {
+        critical = true,
+    })
+
+    return {
+        ok = true,
+        equipped = equip,
+        normal = {
+            uid = normalResult.uid,
+            petType = normalResult.petData.id,
+            variant = normalResult.petData.variant,
+            rarity = normalResult.petConfig and normalResult.petConfig.rarity_id or "exclusive",
+        },
+        huge = {
+            uid = hugeResult.uid,
+            petType = hugeResult.petData.id,
+            variant = hugeResult.petData.variant,
+            huge = hugeResult.petData.huge == true,
+            serial = hugeResult.petData.serial,
+            serialKey = hugeResult.petData.serial_key,
+            serialSource = hugeResult.petData.serial_source,
+            rarity = hugeResult.petData.rarity_id,
+        },
+    }
+end
+
+function StudioSmokeTestService:_backfillPetHatcherProvenance(player, payload)
+    payload = type(payload) == "table" and payload or {}
+    if not dataService:IsDataLoaded(player) then
+        return {
+            ok = false,
+            error = "Player data is not loaded",
+        }
+    end
+
+    local data = dataService:GetData(player)
+    local bucket = data and data.Inventory and data.Inventory.pets
+    local items = bucket and bucket.items
+    if type(items) ~= "table" then
+        return {
+            ok = false,
+            error = "Pet inventory is unavailable",
+        }
+    end
+
+    local petsConfig = configLoader:LoadConfig("pets")
+    local provenance = petsConfig.provenance or {}
+    local threshold = tonumber(provenance.hatcher_source_min_enchantments) or 0
+    local explicitRarities = {}
+    for _, rarityId in ipairs(provenance.hatcher_source_rarities or {}) do
+        explicitRarities[rarityId] = true
+    end
+
+    local enchanting = petsConfig.enchanting or {}
+    local maxByRarity = enchanting.max_enchantments_by_rarity or {}
+    local overwrite = payload.overwrite == true
+    local clearLegacySource = payload.clearLegacySource ~= false
+    local changed = 0
+    local eligible = 0
+    local skippedExisting = 0
+
+    local function getRarityId(item)
+        if item.huge == true then
+            return "huge"
+        end
+        if type(item.rarity_id) == "string" and item.rarity_id ~= "" then
+            return item.rarity_id
+        end
+        if type(item.rarity_override) == "string" and item.rarity_override ~= "" then
+            return item.rarity_override
+        end
+        local petData = petsConfig.getPet and petsConfig.getPet(item.id, item.variant or "basic")
+        return petData and petData.rarity_id or nil
+    end
+
+    local function isEligible(item)
+        if type(item) ~= "table" or item._kind == "stack" then
+            return false
+        end
+
+        local rarityId = getRarityId(item)
+        local maxEnchantments = tonumber(item.max_enchantments)
+            or tonumber(maxByRarity[rarityId] or enchanting.default_max_enchantments)
+            or 0
+        return explicitRarities[rarityId] == true
+            or (threshold > 0 and maxEnchantments >= threshold)
+    end
+
+    for _, item in pairs(items) do
+        if isEligible(item) then
+            eligible += 1
+            if overwrite or type(item.hatcher_name) ~= "string" or item.hatcher_name == "" then
+                item.hatcher_name = player.Name
+                item.hatcher_user_id = player.UserId
+                if clearLegacySource then
+                    item.source = nil
+                end
+                changed += 1
+            else
+                skippedExisting += 1
+            end
+        end
+    end
+
+    if changed > 0 then
+        if inventoryService and inventoryService._updateBucketFolders then
+            inventoryService:_updateBucketFolders(player, "pets")
+        end
+        dataService:RequestSave(player, "backfill_pet_hatcher_provenance", {
+            critical = true,
+        })
+    end
+
+    return {
+        ok = true,
+        player = player.Name,
+        eligible = eligible,
+        changed = changed,
+        skippedExisting = skippedExisting,
+    }
+end
+
+function StudioSmokeTestService:_backfillPetPowerSourceOfTruth(player, payload)
+    payload = type(payload) == "table" and payload or {}
+    if not dataService:IsDataLoaded(player) then
+        return {
+            ok = false,
+            error = "Player data is not loaded",
+        }
+    end
+
+    local data = dataService:GetData(player)
+    local bucket = data and data.Inventory and data.Inventory.pets
+    local items = bucket and bucket.items
+    if type(items) ~= "table" then
+        return {
+            ok = false,
+            error = "Pet inventory is unavailable",
+        }
+    end
+
+    local petsConfig = configLoader:LoadConfig("pets")
+    local petProgressionConfig = configLoader:LoadConfig("pet_progression")
+    local changed = 0
+    local inspected = 0
+    local missingConfig = {}
+
+    local function clearField(item, key)
+        if item[key] ~= nil then
+            item[key] = nil
+            return true
+        end
+        return false
+    end
+
+    local function stripPowerFields(item)
+        local didChange = false
+        for _, key in ipairs({
+            "power",
+            "Power",
+            "health",
+            "Health",
+            "base_power",
+            "BasePower",
+            "base_health",
+            "BaseHealth",
+            "effective_power",
+            "EffectivePower",
+            "eternal_baseline_power",
+            "EternalBaselinePower",
+        }) do
+            didChange = clearField(item, key) or didChange
+        end
+
+        if type(item.stats) == "table" then
+            didChange = true
+            item.stats = nil
+        end
+        if type(item.Stats) == "table" then
+            didChange = true
+            item.Stats = nil
+        end
+
+        return didChange
+    end
+
+    local function applyProgressionMetadata(item, petConfig)
+        if type(item) ~= "table" or item._kind == "stack" then
+            if clearField(item, "level") then
+                return true
+            end
+            local changedStack = false
+            changedStack = clearField(item, "exp") or changedStack
+            changedStack = clearField(item, "max_level") or changedStack
+            changedStack = clearField(item, "xp_to_next_level") or changedStack
+            return changedStack
+        end
+
+        local rarityId = item.huge == true and "huge" or item.rarity_id or petConfig.rarity_id
+        local maxByRarity = petProgressionConfig.max_level_by_rarity or {}
+        local maxLevel = math.max(
+            1,
+            math.floor(
+                tonumber(maxByRarity[rarityId]) or petProgressionConfig.default_max_level or 1
+            )
+        )
+        local oldLevel = item.level
+        local oldExp = item.exp
+        local oldMax = item.max_level
+        local oldNext = item.xp_to_next_level
+        item.level = math.clamp(math.floor(tonumber(item.level) or 1), 1, maxLevel)
+        item.exp = math.max(0, math.floor(tonumber(item.exp) or 0))
+        item.max_level = maxLevel
+        if item.level < maxLevel then
+            local curve = petProgressionConfig.xp_curve or {}
+            local base = tonumber(curve.base) or 100
+            local required
+            if curve.type == "linear" then
+                required = base + ((tonumber(curve.increment) or 0) * (item.level - 1))
+            else
+                required = base * ((tonumber(curve.growth) or 1) ^ (item.level - 1))
+            end
+            item.xp_to_next_level = math.max(1, math.floor(required))
+        else
+            item.xp_to_next_level = 0
+        end
+
+        return oldLevel ~= item.level
+            or oldExp ~= item.exp
+            or oldMax ~= item.max_level
+            or oldNext ~= item.xp_to_next_level
+    end
+
+    for key, item in pairs(items) do
+        if type(item) == "table" then
+            inspected += 1
+            local petData = petsConfig.getPet
+                and petsConfig.getPet(item.id, item.variant or "basic")
+            if not petData then
+                table.insert(missingConfig, tostring(key))
+            end
+
+            local itemChanged = stripPowerFields(item)
+            if petData then
+                itemChanged = applyProgressionMetadata(item, petData) or itemChanged
+                if item.rarity_id == nil and petData.rarity_id then
+                    item.rarity_id = petData.rarity_id
+                    itemChanged = true
+                end
+            end
+
+            if itemChanged then
+                changed += 1
+            end
+        end
+    end
+
+    if changed > 0 then
+        if inventoryService and inventoryService._updateBucketFolders then
+            inventoryService:_updateBucketFolders(player, "pets")
+        end
+        if inventoryService and inventoryService._updateEquippedFolders then
+            inventoryService:_updateEquippedFolders(player, "pets")
+        end
+        dataService:RequestSave(player, "backfill_pet_power_source_of_truth", {
+            critical = true,
+        })
+    end
+
+    return {
+        ok = true,
+        player = player.Name,
+        inspected = inspected,
+        changed = changed,
+        missingConfig = missingConfig,
+    }
+end
+
+function StudioSmokeTestService:_checkEternalPowerSmoke(player)
+    local playerPetsFolder = workspace:FindFirstChild("PlayerPets")
+        and workspace.PlayerPets:FindFirstChild(player.Name)
+    if not playerPetsFolder then
+        return {
+            ok = false,
+            error = "Player pet models are not spawned",
+        }
+    end
+
+    local rows = {}
+    local strongestBasePower = 1
+    local topTeamAverageBasePower = 1
+    local basePowerValues = {}
+    for _, petModel in ipairs(playerPetsFolder:GetChildren()) do
+        if petModel:IsA("Model") then
+            local basePowerValue = petModel:FindFirstChild("BasePower")
+            local effectivePowerValue = petModel:FindFirstChild("EffectivePower")
+            local eternalPercentValue = petModel:FindFirstChild("EternalPercent")
+            local eternalBaselineValue = petModel:FindFirstChild("EternalBaselinePower")
+            local basePower = tonumber(basePowerValue and basePowerValue.Value)
+                or tonumber(petModel:GetAttribute("BasePower"))
+                or 0
+            local effectivePower = tonumber(effectivePowerValue and effectivePowerValue.Value)
+                or tonumber(petModel:GetAttribute("EffectivePower"))
+                or 0
+            local eternalPercent = tonumber(eternalPercentValue and eternalPercentValue.Value)
+                or tonumber(petModel:GetAttribute("EternalPercent"))
+                or 0
+            local eternalBaselinePower = tonumber(
+                eternalBaselineValue and eternalBaselineValue.Value
+            ) or tonumber(petModel:GetAttribute("EternalBaselinePower")) or 0
+
+            if basePower > 0 then
+                strongestBasePower = math.max(strongestBasePower, basePower)
+                table.insert(basePowerValues, basePower)
+            end
+            table.insert(rows, {
+                name = petModel.Name,
+                basePower = basePower,
+                effectivePower = effectivePower,
+                eternalPercent = eternalPercent,
+                eternalBaselinePower = eternalBaselinePower,
+            })
+        end
+    end
+    table.sort(basePowerValues, function(a, b)
+        return a > b
+    end)
+    local limit = math.min(#basePowerValues, #rows)
+    if limit > 0 then
+        local total = 0
+        for index = 1, limit do
+            total += basePowerValues[index] or 0
+        end
+        topTeamAverageBasePower = math.max(1, total / limit)
+    end
+
+    local eternalCount = 0
+    for _, row in ipairs(rows) do
+        if row.eternalPercent > 0 then
+            eternalCount += 1
+            local expected = math.max(
+                row.basePower,
+                math.floor((topTeamAverageBasePower * row.eternalPercent / 100) + 0.5)
+            )
+            if row.effectivePower ~= expected then
+                return {
+                    ok = false,
+                    error = string.format(
+                        "Expected %s effective power %d, got %d",
+                        row.name,
+                        expected,
+                        row.effectivePower
+                    ),
+                    strongestBasePower = strongestBasePower,
+                    topTeamAverageBasePower = topTeamAverageBasePower,
+                    rows = rows,
+                }
+            end
+        end
+    end
+
+    if eternalCount == 0 then
+        return {
+            ok = false,
+            error = "No equipped eternal pets found",
+            strongestBasePower = strongestBasePower,
+            topTeamAverageBasePower = topTeamAverageBasePower,
+            rows = rows,
+        }
+    end
+
+    return {
+        ok = true,
+        strongestBasePower = strongestBasePower,
+        topTeamAverageBasePower = topTeamAverageBasePower,
+        eternalCount = eternalCount,
+        rows = rows,
     }
 end
 

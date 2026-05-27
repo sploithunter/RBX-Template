@@ -173,7 +173,7 @@ function InventoryService:AddItem(player, bucketName, itemData)
     -- Mixed behavior for pets: normal variants stack, special variants are unique
     if bucketName == "pets" then
         local variant = itemData.variant or "basic"
-        local isSpecial = self:_isSpecialPet(itemData.id, variant)
+        local isSpecial = itemData.huge == true or self:_isSpecialPet(itemData.id, variant)
         if isSpecial then
             uid, success =
                 self:_addPetSpecialUnique(player, bucketName, itemData, bucket, bucketConfig)
@@ -223,7 +223,7 @@ end
 function InventoryService:_getRequiredSlotsForAdd(bucketName, itemData, bucket, bucketConfig)
     if bucketName == "pets" then
         local variant = itemData.variant or "basic"
-        if self:_isSpecialPet(itemData.id, variant) then
+        if itemData.huge == true or self:_isSpecialPet(itemData.id, variant) then
             return 1
         end
 
@@ -337,7 +337,10 @@ function InventoryService:_addUniqueItem(player, bucketName, itemData, bucket, b
 
     -- Apply defaults for missing optional fields
     local defaults = self._inventoryConfig.defaults[bucketName] or {}
-    for _, optionalField in ipairs(bucketConfig.item_schema.optional or {}) do
+    local schema = bucketConfig.item_schema
+        or (bucketConfig.schema and bucketConfig.schema.special)
+        or {}
+    for _, optionalField in ipairs(schema.optional or {}) do
         if bucket.items[uid][optionalField] == nil and defaults[optionalField] ~= nil then
             bucket.items[uid][optionalField] = defaults[optionalField]
         end
@@ -380,6 +383,13 @@ function InventoryService:_isSpecialPet(petId, variant)
             return true
         end
     end
+
+    local maxByRarity = self._petsConfig.enchanting
+        and self._petsConfig.enchanting.max_enchantments_by_rarity
+    if type(maxByRarity) == "table" and tonumber(maxByRarity[rarityId] or 0) > 0 then
+        return true
+    end
+
     return false
 end
 
@@ -663,7 +673,12 @@ function InventoryService:_createBucketFolder(player, bucketName, parentFolder)
         specialFolder.Parent = bucketFolder
 
         for key, itemData in pairs(bucket.items or {}) do
-            if itemData and (itemData._kind == "stack" or itemData.quantity) then
+            if
+                itemData
+                and (
+                    itemData._kind == "stack" or (itemData._kind ~= "special" and itemData.quantity)
+                )
+            then
                 self:_createPetStackFolder(stacksFolder, key, itemData)
             else
                 self:_createPetSpecialFolder(specialFolder, key, itemData)
@@ -815,7 +830,12 @@ function InventoryService:_updateBucketFolders(player, bucketName)
         specialFolder.Parent = bucketFolder
 
         for key, itemData in pairs(bucket.items or {}) do
-            if itemData and (itemData._kind == "stack" or itemData.quantity) then
+            if
+                itemData
+                and (
+                    itemData._kind == "stack" or (itemData._kind ~= "special" and itemData.quantity)
+                )
+            then
                 self:_createPetStackFolder(stacksFolder, key, itemData)
             else
                 self:_createPetSpecialFolder(specialFolder, key, itemData)
@@ -1415,6 +1435,13 @@ end
 -- ═══════════════════════════════════════════════════════════════════════════════════
 
 function InventoryService:_handleTogglePetEquipped(player, data)
+    if type(data) == "table" and type(data.itemUid) == "string" then
+        local parts = string.split(data.itemUid, "|")
+        if #parts >= 2 and parts[1] == "special" then
+            data.itemUid = parts[2]
+        end
+    end
+
     self._logger:Info("🐾 PET EQUIP REQUEST", {
         player = player.Name,
         bucket = data.bucket,
