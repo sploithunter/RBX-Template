@@ -15,7 +15,11 @@ return {
         playback_speed = 1.0,
     },
 
+    enchant_thunder = {
+        id = "rbxassetid://71266985896124",
+        volume = 0.9,
+        playback_speed = 0.85,
+    },
+
     -- Add more named sounds here as needed
 }
-
-

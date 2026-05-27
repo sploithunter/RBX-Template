@@ -46,9 +46,11 @@ Pet power has a single durable source of truth: `configs/pets.lua`. Pet families
 
 ## Pet Storage And Enchants
 
-Normal pets should remain stack-count records keyed by canonical pet id + variant. Any pet with per-copy state that affects gameplay or ownership value, such as enchantments, serials, signatures, huge/eternal status, nickname, lock state, or custom progression, should be promoted to a unique special instance before that state is applied. Enchants should be stored on the pet instance and contribute through the `enchants` modifier pipeline stage; stack records must stay free of enchant/progression fields. Enchant capacity is declared by rarity in pet config so tiers such as Mythic, Exclusive, Huge, or future larger tiers can change slot counts without service edits.
+Normal pets should remain stack-count records keyed by canonical pet id + variant. The project should not add a generic stack-to-unique promotion flow for normal pets; it is easy to create one-off edge cases and hard to reason about at scale. Per-copy state belongs only on pets that are unique from the moment they are granted, such as configured Mythic/Secret/Exclusive/Huge/future tiers, special rewards, or future explicitly unique craft outputs. Enchants should be stored on the unique pet instance and contribute through the `enchants` modifier pipeline stage; stack records must stay free of enchant/progression fields. Enchant capacity is declared by rarity in pet config so tiers such as Mythic, Exclusive, Huge, or future larger tiers can change slot counts without service edits.
 
 Pet XP and levels are unique-pet progression state. Stack records do not gain XP or levels. Unique pets may scale power from a config-driven XP curve and capped per-level multiplier. Enchant capacity remains the pet's potential slot count, while `unlocked_enchant_slots` is progression-driven; unique enchantable pets start with one unlocked slot and unlock remaining slots at configured level milestones.
+
+Player level must affect gameplay. It should not be cosmetic-only. The first target is a configurable contribution to team power, plus configurable level rewards such as additional equipped-pet slots every N levels. The exact balance curve belongs in config and should feed the shared modifier/equip-limit paths rather than special-case consumers.
 
 ## Pet Provenance
 

@@ -56,6 +56,7 @@ local Signals = {
     ToggleToolEquipped = Net:RemoteEvent("ToggleToolEquipped"), -- c->s equip/unequip tool
     EnchantPetRequest = Net:RemoteEvent("EnchantPetRequest"), -- c->s reroll/apply pet enchant
     EnchantPetResult = Net:RemoteEvent("EnchantPetResult"), -- s->c enchant action result
+    EnchantStationOpened = Net:RemoteEvent("EnchantStationOpened"), -- s->c player activated map enchanter
 
     -- User Display Preferences
     SaveDisplayPreferences = Net:RemoteEvent("SaveDisplayPreferences"),

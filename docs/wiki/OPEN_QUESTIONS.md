@@ -12,9 +12,9 @@ Status: current
 
 ## Content And Pets
 
-- What exact modifier semantics should each enchant have? Storage direction is decided: enchanting a stackable pet should promote one copy into a unique special instance; enchants live on that instance and feed the `enchants` modifier pipeline stage. Capacity is now config-driven by rarity.
+- What exact balance magnitudes should each enchant have? Storage direction is decided: stacks stay stack-only, and pets that need enchant/progression state must be unique from grant/craft/reward time. Enchants live on unique pet instances and feed the `enchants` modifier pipeline stage. Capacity is now config-driven by rarity.
 - What should the first live pet XP sources be? The data/service foundation exists for unique pets, but breakable damage, breakable destroy, daycare/offline, and consumable XP items still need balancing decisions.
-- Should player level/XP directly modify team power, only gate content, or only affect luck/unlocks? The offline calculator can model a temporary direct multiplier, but no gameplay multiplier is committed yet.
+- What player-level-to-team-power curve feels good? Decision made: player level must affect team power and should also support configurable rewards such as extra equipped pet slots.
 - Should high-power pets be normalized by player progression, area tier, or both?
 - Should forever/eternal pets use the reference-style percentage-of-current-best-power model, and what percent range keeps them prestigious without breaking early progression?
 - What is the long-term automated Meshi-to-Roblox asset workflow?

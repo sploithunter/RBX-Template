@@ -540,6 +540,10 @@ function MenuManager:OpenEffectsPanel(effect)
     return self:OpenPanel("Effects", effect)
 end
 
+function MenuManager:OpenEnchantPanel(effect)
+    return self:OpenPanel("Enchant", effect)
+end
+
 function MenuManager:OpenSettingsPanel(effect)
     return self:OpenPanel("Settings", effect)
 end

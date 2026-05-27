@@ -19,6 +19,7 @@ The newer reference game at `/Users/jason/Documents/ColorfulClickers_exchange-ro
 - The reference spawner normalized spawned model parts by anchoring where needed and disabling `CanTouch` on non-star parts. For imported pet art in this project, keep a reusable normalizer instead of fixing each asset manually.
 - Enchants such as HomeWorld, Efficiency, Tactics, Luck, Leadership, and SecretLuck.
 - Reference enchants are tier-gated by rarity (`Legendary`, `Mythical`, `Secret`, `Exclusive`, `Huge`, `Colossal`) with `MaxEnchant`, `DefaultEnchant`, weighted chances, low/high value ranges, and a scale value. Keep that data shape, but add config-declared modifier semantics and store enchants only on unique pet instances.
+- The reference enchanter used a procedural lightning burst through `ReplicatedStorage.SharedLib.Lightning` and a server `Lightning` remote. In this project the idea is translated into `Shared.Effects.EnchantLightning` and station config (`configs/enchants.lua`): successful rerolls can spawn a temporary copy of the selected pet and use its primary/first part as the lightning endpoint, making the animation portable across pet models without old Workspace remote scripts.
 - Pet of the Day selected deterministically and displayed on a podium.
 - Rare/dark breakable variants with low spawn weight and high value.
 - Auto-targeting and auto-delete quality-of-life systems.

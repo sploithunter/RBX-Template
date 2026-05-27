@@ -2866,6 +2866,205 @@ function InventoryPanel:_formatTooltipFieldValue(value)
     return tostring(value)
 end
 
+function InventoryPanel:_readNumberValue(folder, names)
+    if not folder then
+        return nil
+    end
+    for _, name in ipairs(names) do
+        local value = folder:FindFirstChild(name)
+        if value and (value:IsA("NumberValue") or value:IsA("IntValue")) then
+            return tonumber(value.Value)
+        end
+    end
+    return nil
+end
+
+function InventoryPanel:_readStringValue(folder, names)
+    if not folder then
+        return nil
+    end
+    for _, name in ipairs(names) do
+        local value = folder:FindFirstChild(name)
+        if value and value:IsA("StringValue") then
+            return value.Value
+        end
+    end
+    return nil
+end
+
+function InventoryPanel:_readBoolValue(folder, names)
+    if not folder then
+        return nil
+    end
+    for _, name in ipairs(names) do
+        local value = folder:FindFirstChild(name)
+        if value and value:IsA("BoolValue") then
+            return value.Value
+        end
+    end
+    return nil
+end
+
+function InventoryPanel:_readPrimitiveValues(folder)
+    local values = {}
+    if not folder then
+        return values
+    end
+    for _, child in ipairs(folder:GetChildren()) do
+        if child:IsA("StringValue") or child:IsA("BoolValue") then
+            values[child.Name] = child.Value
+        elseif child:IsA("NumberValue") or child:IsA("IntValue") then
+            values[child.Name] = tonumber(child.Value)
+        end
+    end
+    return values
+end
+
+function InventoryPanel:_countFolderChildren(folder, names)
+    if not folder then
+        return 0
+    end
+    for _, name in ipairs(names) do
+        local child = folder:FindFirstChild(name)
+        if child and child:IsA("Folder") then
+            return #child:GetChildren()
+        end
+    end
+    return 0
+end
+
+function InventoryPanel:_readEnchantSummaries(folder)
+    local summaries = {}
+    if not folder then
+        return summaries
+    end
+
+    local enchantFolder = folder:FindFirstChild("enchantments")
+        or folder:FindFirstChild("Enchantments")
+    if not enchantFolder or not enchantFolder:IsA("Folder") then
+        return summaries
+    end
+
+    local children = enchantFolder:GetChildren()
+    table.sort(children, function(a, b)
+        return tostring(a.Name) < tostring(b.Name)
+    end)
+    for _, child in ipairs(children) do
+        if child:IsA("Folder") then
+            local id = self:_readStringValue(child, { "id", "Id" })
+            local displayName = self:_readStringValue(child, { "display_name", "DisplayName" })
+                or id
+                or child.Name
+            local strength = self:_readNumberValue(child, { "strength", "Strength", "value", "Value" })
+            local profile = self:_readStringValue(child, { "roll_profile", "RollProfile" })
+            table.insert(summaries, {
+                id = id,
+                displayName = displayName,
+                strength = strength,
+                profile = profile,
+            })
+        end
+    end
+
+    return summaries
+end
+
+function InventoryPanel:_getReplicatedSpecialPetFolder(uid)
+    if type(uid) ~= "string" or uid == "" or not self.player then
+        return nil
+    end
+
+    local inventoryFolder = self.player:FindFirstChild("Inventory")
+    local petsFolder = inventoryFolder and inventoryFolder:FindFirstChild("pets")
+    local specialFolder = petsFolder and petsFolder:FindFirstChild("Special")
+    return specialFolder and specialFolder:FindFirstChild(uid) or nil
+end
+
+function InventoryPanel:_getConfiguredPetPower(petType, variant, level)
+    local okPets, petsConfig = pcall(function()
+        return ConfigLoader:LoadConfig("pets")
+    end)
+    if not okPets or not petsConfig or not petsConfig.getPet then
+        return nil
+    end
+
+    local pdata = petsConfig.getPet(petType, variant)
+    local configuredPower = tonumber(pdata and pdata.power) or 0
+    if configuredPower <= 0 then
+        return nil
+    end
+
+    local multiplier = 1
+    local okProgression, progressionConfig = pcall(function()
+        return ConfigLoader:LoadConfig("pet_progression")
+    end)
+    if okProgression and progressionConfig and progressionConfig.enabled ~= false then
+        local scaling = progressionConfig.power_scaling or {}
+        local perLevel = tonumber(scaling.percent_per_level) or 0
+        local maxBonus = tonumber(scaling.max_bonus_percent) or 0
+        local bonus = math.min(maxBonus, math.max(0, (math.max(1, level or 1) - 1) * perLevel))
+        multiplier = 1 + bonus
+    end
+
+    return math.max(1, math.floor(configuredPower * multiplier))
+end
+
+function InventoryPanel:_refreshPetTooltipFromReplicatedState(item)
+    if not item or item.category ~= "Pets" or not item.special or type(item.uid) ~= "string" then
+        return item
+    end
+
+    local petFolder = self:_getReplicatedSpecialPetFolder(item.uid)
+    if not petFolder then
+        return item
+    end
+
+    local level = self:_readNumberValue(petFolder, { "level", "Level" }) or item.level or 1
+    local exp = self:_readNumberValue(petFolder, { "exp", "Exp", "xp", "XP" }) or item.exp or 0
+    local maxLevel = self:_readNumberValue(petFolder, { "max_level", "MaxLevel" })
+        or item.maxLevel
+    local xpToNext = self:_readNumberValue(
+        petFolder,
+        { "xp_to_next_level", "XpToNextLevel", "XPToNextLevel" }
+    ) or item.xpToNextLevel
+
+    item.level = math.max(1, math.floor(tonumber(level) or 1))
+    item.exp = math.max(0, math.floor(tonumber(exp) or 0))
+    item.maxLevel = maxLevel and math.max(1, math.floor(tonumber(maxLevel) or 1)) or nil
+    item.xpToNextLevel = xpToNext and math.max(0, math.floor(tonumber(xpToNext) or 0)) or nil
+    item.unlockedEnchantSlots = self:_readNumberValue(
+        petFolder,
+        { "unlocked_enchant_slots", "UnlockedEnchantSlots" }
+    ) or item.unlockedEnchantSlots
+    item.maxEnchantments = self:_readNumberValue(
+        petFolder,
+        { "max_enchantments", "MaxEnchantments", "MaxEnchants" }
+    ) or item.maxEnchantments
+    item.enchantmentCount = self:_countFolderChildren(petFolder, { "enchantments", "Enchantments" })
+    item.enchantments = self:_readEnchantSummaries(petFolder)
+    item.locked = self:_readBoolValue(petFolder, { "locked", "Locked" })
+
+    local tooltipFields = self:_readPrimitiveValues(petFolder)
+    local hatcherName = self:_readStringValue(petFolder, { "hatcher_name", "HatcherName" })
+        or self:_readStringValue(petFolder, { "source", "Source" })
+    if hatcherName then
+        tooltipFields.hatcher_name = hatcherName
+    end
+    item.tooltipFields = tooltipFields
+
+    local basePower = self:_getConfiguredPetPower(item.petType, item.variant, 1)
+    local leveledPower = self:_getConfiguredPetPower(item.petType, item.variant, item.level)
+    if basePower then
+        item.basePower = basePower
+    end
+    if leveledPower then
+        item.power = leveledPower
+        item.effectivePower = math.max(tonumber(item.effectivePower) or 0, leveledPower)
+    end
+
+    return item
+end
+
 function InventoryPanel:_appendConfiguredTooltipFields(lines, item)
     local fields = item and item.tooltipFields
     if type(fields) ~= "table" then
@@ -2875,6 +3074,21 @@ function InventoryPanel:_appendConfiguredTooltipFields(lines, item)
     local config = self._petTooltipFieldsConfig or {}
     local hidden = {}
     for _, fieldName in ipairs(config.hidden or {}) do
+        hidden[fieldName] = true
+    end
+    for _, fieldName in ipairs({
+        "level",
+        "Level",
+        "exp",
+        "Exp",
+        "xp",
+        "XP",
+        "max_level",
+        "MaxLevel",
+        "xp_to_next_level",
+        "XpToNextLevel",
+        "XPToNextLevel",
+    }) do
         hidden[fieldName] = true
     end
 
@@ -2916,6 +3130,7 @@ function InventoryPanel:_showItemTooltip(item)
     end
 
     self:_hideItemTooltip()
+    item = self:_refreshPetTooltipFromReplicatedState(item)
 
     local lines = {
         { label = "Rarity", value = item.rarity or "-" },
@@ -2926,6 +3141,21 @@ function InventoryPanel:_showItemTooltip(item)
 
     if item.basePower and item.effectivePower and item.basePower ~= item.effectivePower then
         table.insert(lines, { label = "Base", value = self:_formatNumber(item.basePower) })
+    end
+    if item.special and item.maxLevel and item.maxLevel > 1 then
+        table.insert(lines, {
+            label = "Level",
+            value = tostring(item.level or 1) .. "/" .. tostring(item.maxLevel),
+        })
+        local xpToNext = tonumber(item.xpToNextLevel) or 0
+        if xpToNext > 0 then
+            table.insert(lines, {
+                label = "XP",
+                value = self:_formatNumber(item.exp or 0) .. "/" .. self:_formatNumber(xpToNext),
+            })
+        else
+            table.insert(lines, { label = "XP", value = "Max" })
+        end
     end
     if tonumber(item.eternalPercent) and tonumber(item.eternalPercent) > 0 then
         table.insert(lines, {
@@ -3630,6 +3860,13 @@ end
 function InventoryPanel:_addConfiguredAction(options, actionConfig, item)
     local itemCount = item.count or 1
 
+    if actionConfig.enabled == false then
+        return
+    end
+    if actionConfig.enabled_check and not self:_passesActionEnabledCheck(actionConfig.enabled_check, item) then
+        return
+    end
+
     -- Check if action should be enabled
     if actionConfig.min_count and itemCount < actionConfig.min_count then
         print(
@@ -3699,6 +3936,20 @@ function InventoryPanel:_addConfiguredAction(options, actionConfig, item)
             confirmation = actionConfig.confirmation,
         })
     end
+end
+
+function InventoryPanel:_passesActionEnabledCheck(checkName, item)
+    if checkName == "can_enchant" then
+        if item.folder_source ~= "pets" or item.enchantable ~= true then
+            return false
+        end
+        if type(item.uid) ~= "string" or item.uid == "" then
+            return false
+        end
+        return (tonumber(item.unlockedEnchantSlots) or tonumber(item.maxEnchantments) or 0) > 0
+    end
+
+    return true
 end
 
 function InventoryPanel:_getFallbackContextMenuOptions(item)

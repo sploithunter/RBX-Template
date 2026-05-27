@@ -6,8 +6,30 @@
     "enchants" stage.
 ]]
 
+local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
 local EnchantService = {}
 EnchantService.__index = EnchantService
+
+local ENCHANT_PROMPT_NAME = "EnchantStationPrompt"
+local DEFAULT_STATION_ID = "basic_enchanter"
+local TOUCH_DEBOUNCE_SECONDS = 1.5
+
+local function getPrimaryPartOrSelf(instance)
+    if not instance then
+        return nil
+    end
+    if instance:IsA("BasePart") then
+        return instance
+    end
+    if instance:IsA("Model") then
+        return instance.PrimaryPart or instance:FindFirstChildWhichIsA("BasePart", true)
+    end
+    return nil
+end
 
 function EnchantService.new()
     local self = setmetatable({}, EnchantService)
@@ -16,7 +38,15 @@ function EnchantService.new()
     self._dataService = nil
     self._inventoryService = nil
     self._modifierService = nil
+    self._worldBindingService = nil
+    self._petProgressionService = nil
+    self._enchantLightning = nil
+    self._signals = nil
     self._config = nil
+    self._petsConfig = nil
+    self._stationAccessByPlayer = {}
+    self._stationTouchCounts = {}
+    self._stationTouchDebounce = {}
     return self
 end
 
@@ -26,7 +56,11 @@ function EnchantService:Init()
     self._dataService = self._modules.DataService
     self._inventoryService = self._modules.InventoryService
     self._modifierService = self._modules.ModifierService
+    self._worldBindingService = self._modules.WorldBindingService
+    self._petProgressionService = self._modules.PetProgressionService
     self._config = self._configLoader:LoadConfig("enchants")
+    self._petsConfig = self._configLoader:LoadConfig("pets")
+    self._enchantLightning = require(ReplicatedStorage.Shared.Effects.EnchantLightning)
 
     if self:IsEnabled() and self._modifierService and self._modifierService.RegisterProvider then
         self._modifierService:RegisterProvider("enchants", function(context)
@@ -41,10 +75,27 @@ function EnchantService:Init()
 end
 
 function EnchantService:Start()
-    local Signals = require(game:GetService("ReplicatedStorage").Shared.Network.Signals)
-    Signals.EnchantPetRequest.OnServerEvent:Connect(function(player, payload)
+    self._signals = require(game:GetService("ReplicatedStorage").Shared.Network.Signals)
+    self._signals.EnchantPetRequest.OnServerEvent:Connect(function(player, payload)
         local result = self:RerollPetEnchant(player, payload)
-        Signals.EnchantPetResult:FireClient(player, result)
+        local revealDelay = result and result.ok == true
+            and math.max(0, tonumber(result.reveal_delay_seconds) or 0)
+            or 0
+        if revealDelay > 0 then
+            task.delay(revealDelay, function()
+                if player and player.Parent then
+                    self._signals.EnchantPetResult:FireClient(player, result)
+                end
+            end)
+        else
+            self._signals.EnchantPetResult:FireClient(player, result)
+        end
+    end)
+
+    self:_connectEnchanterStations()
+    Players.PlayerRemoving:Connect(function(player)
+        self._stationAccessByPlayer[player] = nil
+        self._stationTouchDebounce[player] = nil
     end)
 end
 
@@ -244,7 +295,62 @@ function EnchantService:_getPetRecord(player, petUid)
     if type(petData) ~= "table" or petData._kind ~= "special" then
         return nil, "pet_not_unique"
     end
+    self:_normalizePetEnchantMetadata(petData)
     return petData, nil
+end
+
+function EnchantService:_getPetConfigForRecord(petData)
+    if type(petData) ~= "table" or not (self._petsConfig and self._petsConfig.getPet) then
+        return nil
+    end
+    return self._petsConfig.getPet(petData.id, petData.variant or "basic")
+end
+
+function EnchantService:_getMaxEnchantmentsForRarity(rarityId)
+    local enchanting = self._petsConfig and self._petsConfig.enchanting
+    if type(rarityId) ~= "string" or type(enchanting) ~= "table" then
+        return 0
+    end
+
+    local byRarity = enchanting.max_enchantments_by_rarity
+    local maxEnchantments = type(byRarity) == "table" and byRarity[rarityId]
+    if maxEnchantments == nil then
+        maxEnchantments = enchanting.default_max_enchantments
+    end
+    return math.max(0, math.floor(tonumber(maxEnchantments) or 0))
+end
+
+function EnchantService:_normalizePetEnchantMetadata(petData)
+    if type(petData) ~= "table" then
+        return
+    end
+
+    local petConfig = self:_getPetConfigForRecord(petData)
+    local rarityId = petData.huge == true and "huge"
+        or petData.rarity_id
+        or petData.rarity_override
+        or (petConfig and petConfig.rarity_id)
+    if type(rarityId) == "string" and rarityId ~= "" and petData.rarity_id == nil then
+        petData.rarity_id = rarityId
+    end
+
+    local maxEnchantments = math.max(0, math.floor(tonumber(petData.max_enchantments) or 0))
+    if maxEnchantments <= 0 then
+        maxEnchantments = self:_getMaxEnchantmentsForRarity(rarityId)
+    end
+    if maxEnchantments <= 0 then
+        return
+    end
+
+    petData.enchantable = true
+    petData.max_enchantments = maxEnchantments
+    petData.enchantments = type(petData.enchantments) == "table" and petData.enchantments or {}
+
+    if self._petProgressionService and self._petProgressionService.ApplyProgression then
+        self._petProgressionService:ApplyProgression(petData, petConfig)
+    elseif petData.unlocked_enchant_slots == nil then
+        petData.unlocked_enchant_slots = 1
+    end
 end
 
 function EnchantService:_chargeRerollCost(player)
@@ -271,6 +377,381 @@ function EnchantService:_chargeRerollCost(player)
     }
 end
 
+function EnchantService:_getStationConfig(stationId)
+    local stations = self._config and self._config.stations or {}
+    local id = type(stationId) == "string" and stationId ~= "" and stationId or DEFAULT_STATION_ID
+    return stations[id] or stations[DEFAULT_STATION_ID] or {}, id
+end
+
+function EnchantService:_resolveStationTouchPart(station, stationConfig)
+    if not station then
+        return nil
+    end
+    if station:IsA("BasePart") then
+        return station
+    end
+
+    local touchPartName = station:GetAttribute("TouchPartName")
+        or stationConfig.touch_part_name
+        or "EnchantTouchPart"
+    local touchPart = station:FindFirstChild(touchPartName, true)
+    if touchPart and touchPart:IsA("BasePart") then
+        return touchPart
+    end
+
+    return getPrimaryPartOrSelf(station)
+end
+
+function EnchantService:_getStationAnimationRoot(station, stationConfig)
+    if not station then
+        return nil
+    end
+
+    local animationRootName = station:GetAttribute("AnimationRootName")
+        or (stationConfig.animation and stationConfig.animation.root_name)
+    if type(animationRootName) == "string" and animationRootName ~= "" then
+        return station:FindFirstChild(animationRootName, true) or station
+    end
+
+    return station
+end
+
+function EnchantService:_setStationAnimationEnabled(station, stationConfig, enabled)
+    local animation = stationConfig.animation or {}
+    if animation.enabled == false then
+        return
+    end
+
+    local root = self:_getStationAnimationRoot(station, stationConfig)
+    if not root then
+        return
+    end
+
+    local scriptName = animation.script_name or "FloatingCoinScript"
+    for _, descendant in ipairs(root:GetDescendants()) do
+        if descendant:IsA("BaseScript") and descendant.Name == scriptName then
+            descendant.Enabled = enabled
+        end
+    end
+end
+
+function EnchantService:_hasStationAccess(player)
+    local access = self._stationAccessByPlayer[player]
+    return type(access) == "table" and (tonumber(access.expiresAt) or 0) >= os.clock()
+end
+
+function EnchantService:_canBypassStationRequirement(payload)
+    return RunService:IsStudio()
+        and type(payload) == "table"
+        and (payload.source == "studio_smoke" or payload.bypassStation == true)
+end
+
+function EnchantService:_requireStationAccess(player, payload)
+    local reroll = self._config.reroll or {}
+    if reroll.requires_station ~= true then
+        return true
+    end
+    if self:_hasStationAccess(player) or self:_canBypassStationRequirement(payload) then
+        return true
+    end
+    return false
+end
+
+function EnchantService:_activateStation(player, station, stationId, reason)
+    if not player then
+        return
+    end
+
+    local stationConfig = self:_getStationConfig(stationId)
+    local reroll = self._config.reroll or {}
+    local graceSeconds = math.max(1, tonumber(reroll.station_grace_seconds) or 12)
+    local expiresAt = os.clock() + graceSeconds
+
+    self._stationAccessByPlayer[player] = {
+        stationId = stationId,
+        station = station,
+        expiresAt = expiresAt,
+    }
+    self:_setStationAnimationEnabled(station, stationConfig, true)
+
+    if not self._signals then
+        return
+    end
+
+    self._signals.EnchantStationOpened:FireClient(player, {
+        stationId = stationId,
+        displayName = stationConfig.display_name or "Enchanter",
+        reason = reason,
+        expiresAt = expiresAt,
+        graceSeconds = graceSeconds,
+        reroll = reroll,
+    })
+end
+
+function EnchantService:_ensureStationPrompt(station, touchPart, stationId, stationConfig)
+    local promptConfig = stationConfig.prompt or {}
+    if promptConfig.enabled == false then
+        return
+    end
+
+    local prompt = touchPart:FindFirstChild(ENCHANT_PROMPT_NAME)
+    if prompt and not prompt:IsA("ProximityPrompt") then
+        self._logger:Warn("Enchanter touch part has non-prompt child using reserved name", {
+            touchPart = touchPart:GetFullName(),
+            childClass = prompt.ClassName,
+        })
+        return
+    end
+
+    if not prompt then
+        prompt = Instance.new("ProximityPrompt")
+        prompt.Name = ENCHANT_PROMPT_NAME
+        prompt.RequiresLineOfSight = false
+        prompt.Parent = touchPart
+    end
+
+    local keyName = promptConfig.key or "E"
+    local keyCode = Enum.KeyCode[keyName] or Enum.KeyCode.E
+    prompt.KeyboardKeyCode = keyCode
+    prompt.ActionText = promptConfig.action_text or "Enchant Pets"
+    prompt.ObjectText = promptConfig.object_text or stationConfig.display_name or "Enchanter"
+    prompt.MaxActivationDistance = tonumber(promptConfig.max_distance) or 14
+    prompt.HoldDuration = tonumber(promptConfig.hold_duration) or 0
+    prompt.Enabled = true
+    prompt:SetAttribute("EnchanterId", stationId)
+
+    if not prompt:GetAttribute("EnchantStationPromptConnected") then
+        prompt:SetAttribute("EnchantStationPromptConnected", true)
+        prompt.Triggered:Connect(function(player)
+            self:_activateStation(player, station, stationId, "prompt")
+        end)
+    end
+end
+
+function EnchantService:_connectStationTouch(station, touchPart, stationId, stationConfig)
+    touchPart.CanTouch = true
+    touchPart:SetAttribute("EnchanterId", stationId)
+
+    if stationConfig.animation and stationConfig.animation.active_when_near == true then
+        self:_setStationAnimationEnabled(station, stationConfig, false)
+    end
+
+    self:_ensureStationPrompt(station, touchPart, stationId, stationConfig)
+
+    if touchPart:GetAttribute("EnchantStationTouchConnected") then
+        return
+    end
+    touchPart:SetAttribute("EnchantStationTouchConnected", true)
+
+    touchPart.Touched:Connect(function(hit)
+        local character = hit and hit.Parent
+        local player = character and Players:GetPlayerFromCharacter(character)
+        if not player then
+            return
+        end
+
+        local now = os.clock()
+        self._stationTouchDebounce[player] = self._stationTouchDebounce[player] or {}
+        local playerDebounce = self._stationTouchDebounce[player]
+        if playerDebounce[touchPart] and now - playerDebounce[touchPart] < TOUCH_DEBOUNCE_SECONDS then
+            return
+        end
+        playerDebounce[touchPart] = now
+
+        self._stationTouchCounts[touchPart] = (self._stationTouchCounts[touchPart] or 0) + 1
+        self:_activateStation(player, station, stationId, "touch")
+    end)
+
+    touchPart.TouchEnded:Connect(function(hit)
+        local character = hit and hit.Parent
+        local player = character and Players:GetPlayerFromCharacter(character)
+        if not player then
+            return
+        end
+
+        self._stationTouchCounts[touchPart] = math.max(
+            0,
+            (self._stationTouchCounts[touchPart] or 1) - 1
+        )
+        if stationConfig.animation and stationConfig.animation.active_when_near == true then
+            task.delay(0.25, function()
+                if (self._stationTouchCounts[touchPart] or 0) <= 0 then
+                    self:_setStationAnimationEnabled(station, stationConfig, false)
+                end
+            end)
+        end
+    end)
+end
+
+function EnchantService:_connectEnchanterStations()
+    if not self:IsEnabled() or not self._worldBindingService then
+        return
+    end
+
+    local stations = self._worldBindingService:GetBound("EnchanterStation")
+    for _, station in ipairs(stations) do
+        local stationId = station:GetAttribute("EnchanterId") or DEFAULT_STATION_ID
+        local stationConfig = self:_getStationConfig(stationId)
+        local touchPart = self:_resolveStationTouchPart(station, stationConfig)
+        if touchPart then
+            self:_connectStationTouch(station, touchPart, stationId, stationConfig)
+        else
+            self._logger:Warn("EnchanterStation has no touch part", {
+                station = station:GetFullName(),
+                enchanterId = stationId,
+            })
+        end
+    end
+end
+
+function EnchantService:_findStationById(stationId)
+    if not self._worldBindingService then
+        return nil
+    end
+
+    for _, station in ipairs(self._worldBindingService:GetBound("EnchanterStation")) do
+        local id = station:GetAttribute("EnchanterId") or DEFAULT_STATION_ID
+        if id == stationId then
+            return station
+        end
+    end
+
+    return nil
+end
+
+function EnchantService:_getPetModelTemplate(petData)
+    if type(petData) ~= "table" then
+        return nil
+    end
+
+    local assets = ReplicatedStorage:FindFirstChild("Assets")
+    local models = assets and assets:FindFirstChild("Models")
+    local pets = models and models:FindFirstChild("Pets")
+    local petFolder = pets and pets:FindFirstChild(tostring(petData.id or ""))
+    local variant = tostring(petData.variant or "basic")
+    local template = petFolder and petFolder:FindFirstChild(variant)
+    if template and template:IsA("Model") then
+        return template
+    end
+    return nil
+end
+
+function EnchantService:_prepareDisplayPet(model)
+    for _, descendant in ipairs(model:GetDescendants()) do
+        if descendant:IsA("BasePart") then
+            descendant.Anchored = true
+            descendant.CanCollide = false
+            descendant.CanTouch = false
+            descendant.CanQuery = false
+            descendant.Massless = true
+            descendant.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            descendant.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+        elseif descendant:IsA("Script") or descendant:IsA("LocalScript") then
+            descendant.Enabled = false
+        end
+    end
+end
+
+function EnchantService:_createEnchantDisplayPet(station, petData, lightningConfig)
+    local displayConfig = lightningConfig.display_pet or {}
+    if displayConfig.enabled == false then
+        return nil
+    end
+
+    local template = self:_getPetModelTemplate(petData)
+    if not template then
+        return nil
+    end
+
+    local centerPart = self:_resolveStationTouchPart(station, {
+        touch_part_name = lightningConfig.center_part_name or "EnchantTouchPart",
+    })
+    if not centerPart then
+        return nil
+    end
+
+    local clone = template:Clone()
+    clone.Name = "EnchantPreviewPet"
+    self:_prepareDisplayPet(clone)
+
+    local scale = tonumber(displayConfig.scale) or 1
+    if petData.huge == true then
+        scale = tonumber(displayConfig.huge_scale) or scale
+    end
+    if scale > 0 then
+        pcall(function()
+            clone:ScaleTo(scale)
+        end)
+    end
+
+    local offset = displayConfig.offset
+    if typeof(offset) ~= "Vector3" then
+        offset = Vector3.new(0, 0, 0)
+    end
+    local yaw = math.rad(tonumber(displayConfig.yaw_degrees) or 0)
+    clone:PivotTo(CFrame.new(centerPart.Position + offset) * CFrame.Angles(0, yaw, 0))
+
+    local effects = workspace:FindFirstChild("Effects")
+    if not effects then
+        effects = Instance.new("Folder")
+        effects.Name = "Effects"
+        effects.Parent = workspace
+    end
+    clone.Parent = effects
+
+    local lifetime = math.max(
+        tonumber(lightningConfig.result_delay_seconds)
+            or tonumber(displayConfig.lifetime_seconds)
+            or tonumber(lightningConfig.duration)
+            or 1,
+        0.2
+    )
+    Debris:AddItem(clone, lifetime + 0.35)
+    return clone
+end
+
+function EnchantService:_playEnchantSuccessEffect(player, petData)
+    if not (self._enchantLightning and self._enchantLightning.Play) then
+        return 0
+    end
+
+    local access = self._stationAccessByPlayer[player]
+    local stationId = type(access) == "table" and access.stationId or DEFAULT_STATION_ID
+    local station = type(access) == "table" and access.station or nil
+    if not (station and station.Parent) then
+        station = self:_findStationById(stationId)
+    end
+
+    if not station then
+        return 0
+    end
+
+    local stationConfig = self:_getStationConfig(stationId)
+    local animation = stationConfig.animation or {}
+    local lightning = animation.lightning or {}
+    if lightning.enabled == false then
+        return 0
+    end
+    local displayPet = self:_createEnchantDisplayPet(station, petData, lightning)
+
+    local ok, err = pcall(function()
+        self._enchantLightning.Play(station, lightning, displayPet)
+    end)
+    if not ok then
+        self._logger:Warn("Failed to play enchanter lightning effect", {
+            context = "EnchantService",
+            station = station:GetFullName(),
+            error = tostring(err),
+        })
+        return 0
+    end
+
+    return math.max(
+        0,
+        tonumber(lightning.result_delay_seconds) or tonumber(lightning.duration) or 0
+    )
+end
+
 function EnchantService:RerollPetEnchant(player, payload)
     if not self:IsEnabled() then
         return {
@@ -288,6 +769,13 @@ function EnchantService:RerollPetEnchant(player, payload)
     end
 
     payload = type(payload) == "table" and payload or {}
+    if not self:_requireStationAccess(player, payload) then
+        return {
+            ok = false,
+            reason = "requires_station",
+        }
+    end
+
     local petUid = tostring(payload.petUid or payload.uid or "")
     local slot = math.max(
         1,
@@ -354,6 +842,7 @@ function EnchantService:RerollPetEnchant(player, payload)
     if self._inventoryService and self._inventoryService._updateBucketFolders then
         self._inventoryService:_updateBucketFolders(player, "pets")
     end
+    local revealDelay = self:_playEnchantSuccessEffect(player, petData)
     self._dataService:RequestSave(player, "pet_enchant_reroll", { critical = true })
 
     return {
@@ -363,6 +852,7 @@ function EnchantService:RerollPetEnchant(player, payload)
         enchant = enchant,
         currency = costInfo and costInfo.currency,
         cost = costInfo and costInfo.cost,
+        reveal_delay_seconds = revealDelay,
     }
 end
 

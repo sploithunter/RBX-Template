@@ -2695,6 +2695,17 @@ function ConfigLoader:_validateEnchantsConfig(config)
     if reroll.enabled ~= nil and type(reroll.enabled) ~= "boolean" then
         return self:_configError("enchants", "reroll.enabled", "expected boolean")
     end
+    if reroll.requires_station ~= nil and type(reroll.requires_station) ~= "boolean" then
+        return self:_configError("enchants", "reroll.requires_station", "expected boolean")
+    end
+    ok, err = self:_requireNonNegativeNumber(
+        "enchants",
+        reroll.station_grace_seconds or 0,
+        "reroll.station_grace_seconds"
+    )
+    if not ok then
+        return ok, err
+    end
     ok, err = self:_requirePositiveNumber(
         "enchants",
         reroll.default_slot or 1,
@@ -2715,6 +2726,295 @@ function ConfigLoader:_validateEnchantsConfig(config)
     ok, err = self:_requireNonNegativeNumber("enchants", reroll.cost.amount, "reroll.cost.amount")
     if not ok then
         return ok, err
+    end
+
+    local stations = config.stations or {}
+    if type(stations) ~= "table" then
+        return self:_configError("enchants", "stations", "expected table")
+    end
+    for stationId, station in pairs(stations) do
+        local path = "stations." .. tostring(stationId)
+        if not isStableConfigId(stationId) then
+            return self:_configError("enchants", path, "id must match " .. STABLE_CONFIG_ID_PATTERN)
+        end
+        if type(station) ~= "table" then
+            return self:_configError("enchants", path, "expected table")
+        end
+        if
+            station.display_name ~= nil
+            and (type(station.display_name) ~= "string" or station.display_name == "")
+        then
+            return self:_configError(
+                "enchants",
+                path .. ".display_name",
+                "expected non-empty string"
+            )
+        end
+        if
+            station.touch_part_name ~= nil
+            and (type(station.touch_part_name) ~= "string" or station.touch_part_name == "")
+        then
+            return self:_configError(
+                "enchants",
+                path .. ".touch_part_name",
+                "expected non-empty string"
+            )
+        end
+
+        local prompt = station.prompt or {}
+        if type(prompt) ~= "table" then
+            return self:_configError("enchants", path .. ".prompt", "expected table")
+        end
+        if prompt.enabled ~= nil and type(prompt.enabled) ~= "boolean" then
+            return self:_configError("enchants", path .. ".prompt.enabled", "expected boolean")
+        end
+        for _, fieldName in ipairs({ "action_text", "object_text", "key" }) do
+            if
+                prompt[fieldName] ~= nil
+                and (type(prompt[fieldName]) ~= "string" or prompt[fieldName] == "")
+            then
+                return self:_configError(
+                    "enchants",
+                    path .. ".prompt." .. fieldName,
+                    "expected non-empty string"
+                )
+            end
+        end
+        ok, err = self:_requireNonNegativeNumber(
+            "enchants",
+            prompt.max_distance or 0,
+            path .. ".prompt.max_distance"
+        )
+        if not ok then
+            return ok, err
+        end
+        ok, err = self:_requireNonNegativeNumber(
+            "enchants",
+            prompt.hold_duration or 0,
+            path .. ".prompt.hold_duration"
+        )
+        if not ok then
+            return ok, err
+        end
+
+        local animation = station.animation or {}
+        if type(animation) ~= "table" then
+            return self:_configError("enchants", path .. ".animation", "expected table")
+        end
+        if animation.enabled ~= nil and type(animation.enabled) ~= "boolean" then
+            return self:_configError(
+                "enchants",
+                path .. ".animation.enabled",
+                "expected boolean"
+            )
+        end
+        if
+            animation.active_when_near ~= nil
+            and type(animation.active_when_near) ~= "boolean"
+        then
+            return self:_configError(
+                "enchants",
+                path .. ".animation.active_when_near",
+                "expected boolean"
+            )
+        end
+        if
+            animation.script_name ~= nil
+            and (type(animation.script_name) ~= "string" or animation.script_name == "")
+        then
+            return self:_configError(
+                "enchants",
+                path .. ".animation.script_name",
+                "expected non-empty string"
+            )
+        end
+        local lightning = animation.lightning or {}
+        if type(lightning) ~= "table" then
+            return self:_configError("enchants", path .. ".animation.lightning", "expected table")
+        end
+        if lightning.enabled ~= nil and type(lightning.enabled) ~= "boolean" then
+            return self:_configError(
+                "enchants",
+                path .. ".animation.lightning.enabled",
+                "expected boolean"
+            )
+        end
+        if lightning.core_enabled ~= nil and type(lightning.core_enabled) ~= "boolean" then
+            return self:_configError(
+                "enchants",
+                path .. ".animation.lightning.core_enabled",
+                "expected boolean"
+            )
+        end
+        for _, fieldName in ipairs({ "center_part_name", "origin_part_name", "sound_name", "sound_id" }) do
+            if
+                lightning[fieldName] ~= nil
+                and (type(lightning[fieldName]) ~= "string" or lightning[fieldName] == "")
+            then
+                return self:_configError(
+                    "enchants",
+                    path .. ".animation.lightning." .. fieldName,
+                    "expected non-empty string"
+                )
+            end
+        end
+        for _, fieldName in ipairs({ "origin_part_paths", "origin_part_names" }) do
+            local values = lightning[fieldName]
+            if values ~= nil and not isArray(values) then
+                return self:_configError(
+                    "enchants",
+                    path .. ".animation.lightning." .. fieldName,
+                    "expected array"
+                )
+            end
+            if values ~= nil then
+                for index, value in ipairs(values) do
+                    if type(value) ~= "string" or value == "" then
+                        return self:_configError(
+                            "enchants",
+                            path .. ".animation.lightning." .. fieldName .. "[" .. index .. "]",
+                            "expected non-empty string"
+                        )
+                    end
+                end
+            end
+        end
+        for _, fieldName in ipairs({
+            "origin_limit",
+            "strands_per_origin",
+            "segments",
+            "jitter",
+            "max_radius",
+            "thickness",
+            "min_thickness_multiplier",
+            "max_thickness_multiplier",
+            "frequency",
+            "animation_speed",
+            "curve_size0",
+            "curve_size1",
+            "core_thickness_multiplier",
+            "core_opacity_multiplier",
+            "fade_out_seconds",
+            "duration",
+            "result_delay_seconds",
+            "volume",
+            "playback_speed",
+            "roll_off_max_distance",
+            "sound_lifetime_seconds",
+        }) do
+            if lightning[fieldName] ~= nil then
+                ok, err = self:_requirePositiveNumber(
+                    "enchants",
+                    lightning[fieldName],
+                    path .. ".animation.lightning." .. fieldName
+                )
+                if not ok then
+                    return ok, err
+                end
+            end
+        end
+        for _, fieldName in ipairs({ "min_radius", "flicker", "neon_lift" }) do
+            if lightning[fieldName] ~= nil then
+                ok, err = self:_requireNonNegativeNumber(
+                    "enchants",
+                    lightning[fieldName],
+                    path .. ".animation.lightning." .. fieldName
+                )
+                if not ok then
+                    return ok, err
+                end
+            end
+        end
+        for _, fieldName in ipairs({ "flicker", "neon_lift" }) do
+            if lightning[fieldName] ~= nil and lightning[fieldName] > 1 then
+                return self:_configError(
+                    "enchants",
+                    path .. ".animation.lightning." .. fieldName,
+                    "expected number from 0 to 1"
+                )
+            end
+        end
+        if
+            lightning.core_enabled == false
+            and (lightning.core_thickness_multiplier ~= nil or lightning.core_opacity_multiplier ~= nil)
+        then
+            return self:_configError(
+                "enchants",
+                path .. ".animation.lightning.core_enabled",
+                "core tuning fields require core_enabled"
+            )
+        end
+        for _, fieldName in ipairs({ "center_offset", "target_offset" }) do
+            if lightning[fieldName] ~= nil and typeof(lightning[fieldName]) ~= "Vector3" then
+                return self:_configError(
+                    "enchants",
+                    path .. ".animation.lightning." .. fieldName,
+                    "expected Vector3"
+                )
+            end
+        end
+        if lightning.colors ~= nil then
+            if not isArray(lightning.colors) then
+                return self:_configError(
+                    "enchants",
+                    path .. ".animation.lightning.colors",
+                    "expected array"
+                )
+            end
+            for index, color in ipairs(lightning.colors) do
+                if typeof(color) ~= "Color3" then
+                    return self:_configError(
+                        "enchants",
+                        path .. ".animation.lightning.colors[" .. index .. "]",
+                        "expected Color3"
+                    )
+                end
+            end
+        end
+        local displayPet = lightning.display_pet or {}
+        if type(displayPet) ~= "table" then
+            return self:_configError(
+                "enchants",
+                path .. ".animation.lightning.display_pet",
+                "expected table"
+            )
+        end
+        if displayPet.enabled ~= nil and type(displayPet.enabled) ~= "boolean" then
+            return self:_configError(
+                "enchants",
+                path .. ".animation.lightning.display_pet.enabled",
+                "expected boolean"
+            )
+        end
+        if displayPet.offset ~= nil and typeof(displayPet.offset) ~= "Vector3" then
+            return self:_configError(
+                "enchants",
+                path .. ".animation.lightning.display_pet.offset",
+                "expected Vector3"
+            )
+        end
+        if displayPet.yaw_degrees ~= nil then
+            ok, err = self:_requireNonNegativeNumber(
+                "enchants",
+                displayPet.yaw_degrees,
+                path .. ".animation.lightning.display_pet.yaw_degrees"
+            )
+            if not ok then
+                return ok, err
+            end
+        end
+        for _, fieldName in ipairs({ "scale", "huge_scale", "lifetime_seconds" }) do
+            if displayPet[fieldName] ~= nil then
+                ok, err = self:_requirePositiveNumber(
+                    "enchants",
+                    displayPet[fieldName],
+                    path .. ".animation.lightning.display_pet." .. fieldName
+                )
+                if not ok then
+                    return ok, err
+                end
+            end
+        end
     end
 
     local effects = config.effects

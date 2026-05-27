@@ -406,6 +406,53 @@ Signals.ActiveEffects.OnClientEvent:Connect(function(data)
         end
     end
 end)
+Signals.EnchantStationOpened.OnClientEvent:Connect(function(data)
+    local displayName = data and data.displayName or "Enchanter"
+    if _G.MenuManager then
+        _G.MenuManager:OpenEnchantPanel("bounce_in")
+        local enchantPanel = _G.MenuManager:GetPanel("Enchant")
+        if enchantPanel and enchantPanel.SetStationContext then
+            enchantPanel:SetStationContext(data)
+        end
+    end
+    showNotice(tostring(displayName) .. " ready.", false)
+end)
+Signals.EnchantPetResult.OnClientEvent:Connect(function(data)
+    if _G.MenuManager then
+        local enchantPanel = _G.MenuManager:GetPanel("Enchant")
+        if enchantPanel and enchantPanel.HandleEnchantResult then
+            enchantPanel:HandleEnchantResult(data)
+        end
+    end
+
+    if data and data.ok == true then
+        if _G.MenuManager then
+            local inventoryPanel = _G.MenuManager:GetPanel("Inventory")
+            if inventoryPanel and inventoryPanel.RefreshFromRealData then
+                inventoryPanel:RefreshFromRealData()
+            end
+        end
+        return
+    end
+
+    local reason = data and data.reason or "unknown"
+    if reason == "requires_station" then
+        showNotice("Use an enchanter station before rerolling pet enchants.", true)
+    elseif reason == "insufficient_currency" then
+        showNotice(
+            string.format(
+                "Need %d %s to reroll.",
+                tonumber(data.cost) or 0,
+                tostring(data.currency or "currency")
+            ),
+            true
+        )
+    elseif reason == "slot_locked" then
+        showNotice("That enchant slot is locked. Level the pet to unlock more slots.", true)
+    else
+        showNotice("Enchant failed: " .. tostring(reason), true)
+    end
+end)
 
 -- Old NetworkBridge code removed
 
@@ -741,6 +788,10 @@ if game:GetService("RunService"):IsStudio() then
         local EffectsPanel = require(script.UI.Menus.EffectsPanel)
         local effectsPanel = EffectsPanel.new()
         menuManager:RegisterPanel("Effects", effectsPanel)
+
+        local EnchantPanel = require(script.UI.Menus.EnchantPanel)
+        local enchantPanel = EnchantPanel.new()
+        menuManager:RegisterPanel("Enchant", enchantPanel)
 
         local SettingsPanel = require(script.UI.Menus.SettingsPanel)
         local settingsPanel = SettingsPanel.new()

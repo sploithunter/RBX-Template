@@ -31,6 +31,7 @@ Studio owns:
 - `TeleportPad`
 - `Portal`
 - `EggStand` or contracted names like `EggStand_Basic`
+- `EnchanterStation`
 - `PODPodium` or contracted names like `PetDisplay_Podium`
 - `ChaseableRegion`
 - `ShopAnchor` / `NPCAnchor`
@@ -81,6 +82,12 @@ Spawn placement is resolved from the live map before falling back to configured 
 Active-zone dormancy is implemented for breakable spawning: Spawn is live for the starter loop, while non-default configured areas stay dormant until a player enters/travels there. Entering/traveling to an area fills that area's configured spawner.
 
 When authored `TeleportPad`/`Portal` hooks already exist for a source/target pair, `WorldBindingService` does not create duplicate synthetic travel hooks.
+
+Pet enchant/reroll stations are authored map fixtures. Tag the station model or its touch part with `EnchanterStation`, set `EnchanterId` to a key in `configs/enchants.lua` `stations`, and optionally set `TouchPartName` if the touch volume is a named child such as `EnchantTouchPart`. Cosmetic movement scripts can remain inside the model; gameplay touch/prompt behavior belongs to `EnchantService`. The current ColorfulClickers-imported `Workspace.Enchanter` uses `EnchanterId = "basic_enchanter"` and keeps its floating scripts, while the copied touch script is disabled because the service owns activation. Use `scripts/studio/tag_enchanter_station.luau` to repeat that setup after reimporting the model.
+
+For imported enchanter cosmetics such as `FloatingCoinScript`, leave `configs/enchants.lua` `stations.<id>.animation.active_when_near = false` unless the designer explicitly wants proximity-driven ambient animation. The current model expects its floating scripts to run continuously.
+
+Successful rerolls can also trigger station-authored VFX through `stations.<id>.animation.lightning`. The default `basic_enchanter` effect temporarily clones the selected pet from preloaded pet assets, places it at the station, and calls the reusable `Shared.Effects.EnchantLightning` module. That module fires ColorfulClickers-style procedural neon cylinder bolts from configured origin parts into the cloned pet's primary/first part. Use `origin_part_paths` for exact station-relative child paths, such as `RuneStone1.Rune`, when an imported model has extra parts with the same name; use `origin_part_name` or `origin_part_names` only when name-based discovery is unambiguous. Designers can swap the top endpoint contract to a single named part such as `LightningTop` or an explicit `origin_part_paths` list without changing service code. The station config owns colors, duration, curve, jitter/radius, thickness, core/glow intensity, strand/segment counts, result delay, temporary pet placement, and independent thunder audio lifetime.
 
 ## Links
 

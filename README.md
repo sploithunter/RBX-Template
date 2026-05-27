@@ -12,19 +12,51 @@ Phase 3 is complete for the current baseline. Phase 4's core pet progression/enc
 - Phase 3: stats-derived wins complete: pet index, achievements, and live leaderboards.
 - Phase 4: core progression/enchant systems are active: unique pet XP/levels, enchant-slot unlock milestones, hatch-time enchant rolls, manual reroll service hooks, enchant modifier providers, eternal/huge pet handling, source-of-truth pet power, and offline balance tooling.
 
-## Core Loop
+## Current Implemented Features
 
-The playable baseline includes:
+The playable baseline currently includes:
 
-- Breakable crystal and coin spawning.
-- Eggs and hatching from configured asset ids.
-- Persistent player data through ProfileStore.
+- Rojo-owned code/config with Studio-owned map geometry and marker hooks.
+- Persistent ProfileStore-backed player data after Studio API access is enabled.
+- Breakable crystal spawning, coin spawning, contribution rewards, and configurable reward modifiers.
+- Eggs, proximity hatch validation, and hatching from configured pet asset ids.
 - Mixed pet inventory storage: normal pets stack, special pets are unique records.
-- Pet equip limits, storage limits, and config-driven upgrades.
-- Paid area unlocks and server-authoritative portal/pad travel.
-- Active-zone breakable spawning so inactive areas stay dormant.
-- Pet index milestones, achievements, and live leaderboard service.
-- Admin and Studio smoke-test tooling for repeatable validation.
+- Pet equip limits, storage limits, config-driven upgrades, and admin test controls.
+- Imported pet asset transforms for scale, orientation, Huge scale, and variant visuals.
+- Centralized pet grants through `PetGrantService`, including huge serial allocation and hatcher provenance.
+- Eternal/Huge pet power handling with config-only durable pet power.
+- Unique-pet XP, levels, enchant-slot unlock milestones, and hover-time XP display refresh.
+- Hatch-time enchants, server-authoritative manual rerolls, and a map-authored enchanter station.
+- Enchanter VFX using a reusable ColorfulClickers-style lightning module plus station-configured endpoints.
+- Paid area unlocks, locked-gate prompts/notices, and server-authoritative portal/pad travel.
+- Active-zone breakable spawning so inactive areas stay dormant until entered.
+- Pet index milestones, achievements, and live leaderboard service over shared stats.
+- Admin panel tools and Studio MCP smoke-test tooling for repeatable validation.
+
+## In Process / Partially Implemented
+
+These systems exist but still need Phase 4 completion or polish:
+
+- Player-level progression exists as saved stats/UI, but player level does not yet feed team power.
+- Level rewards are not yet configurable; the first target is extra equipped-pet slots on level milestones.
+- Enchant modifier source of truth exists, but only `breakable_reward` and `pet_xp` are live consumers.
+- High-priority enchant consumers still need wiring: `hatch_luck`, `secret_hatch_luck`, `pet_damage`, `team_power`, and `pet_efficiency`.
+- Enchanter UI works, but result explanation/discoverability still needs polish.
+- Offline balance tooling exists, but the player-level power curve still needs implementation and tuning.
+- Authored-map workflow works through markers, but visible production map fixtures/gate art are still early.
+
+## Planned Features
+
+Planned or intentionally deferred work:
+
+- Potions, boosts, shops, and other player enhancements that feed the shared modifier pipeline.
+- Auto systems such as richer auto-targeting modes and auto-delete hatch filters.
+- Daily gifts, reward tracks, codes, stock/limited items, and Pet of the Day style rotations.
+- Chaseables, seasonal/event currencies, and more authored-world content.
+- Trading/marketplace with Roblox-native escrow and anti-duplication guarantees.
+- Automated Meshi-to-Roblox asset workflow.
+- Rebirth only if it becomes rare and dramatic; it is deferred out of Phase 4.
+- No generic stack-to-unique promotion flow for normal pets; pets needing per-copy state should be unique from grant/craft/reward time.
 
 ## Configuration As Code
 
@@ -134,9 +166,6 @@ Latest local checkpoint:
 
 See `docs/wiki/CURRENT_STATUS.md` for detailed verification history and `docs/IMPLEMENTATION_PLAN.md` for the phase roadmap.
 
-## Next Phase
+## Active Phase 4 Work
 
-Remaining Phase 4-adjacent work:
-
-- Stack-to-unique promotion for normal pets that receive per-copy state.
-- Rebirth design only if it remains dramatic and meaningfully different from old ColorfulClickers-style multiplier rebirths.
+Phase 4 will be considered complete when player level affects team power through config, level rewards can grant equip capacity, the high-priority enchant consumers are live, the enchanter explains rolled enchants clearly enough for playtesting, and the Phase 4 Studio smoke is refreshed.

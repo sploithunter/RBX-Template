@@ -12,6 +12,7 @@ This project treats Studio-authored maps as geometry plus invisible gameplay hoo
 | `TeleportPad` | `AreaId`, `TargetZoneId` | none | Area-to-area travel hook. |
 | `Portal` | `ZoneId`, `TargetZoneId` | none | World/island travel hook. |
 | `EggStand` | `EggId` | `AreaId`, `SpawnId` | Egg placement hook. The legacy egg spawner also accepts a part named `EggSpawnPoint`. |
+| `EnchanterStation` | `EnchanterId` | `AreaId`, `TouchPartName`, `AnimationRootName` | Map-built pet enchant/reroll station. `EnchanterId` references `configs/enchants.lua` `stations`; `TouchPartName` points at the child part players touch/prompt against. |
 | `PODPodium` | none | `AreaId`, `Slot` | Pet-of-the-day display anchor. |
 | `ChaseableRegion` | `AreaId`, `ChaseableId` | none | Future chaseable spawn region. |
 | `ShopAnchor` | `AnchorId` | `AreaId` | Shop or UI world anchor. |
@@ -23,6 +24,7 @@ This project treats Studio-authored maps as geometry plus invisible gameplay hoo
 - Zone and area ids live in `configs/areas.lua`.
 - Breakable world ids currently mirror area ids in `configs/breakables.lua`.
 - Egg ids are read from `configs/pets.lua` under `egg_sources`.
+- Enchanter ids are read from `configs/enchants.lua` under `stations`.
 
 ## Current Synthetic Baseline
 
@@ -47,3 +49,5 @@ Breakable spawners honor active-zone dormancy. Spawn is live for the starter loo
 ## World Builder Rule
 
 For an authored map, place invisible parts with the tags and attributes above. Visual names can change freely. Behavior must remain stable as long as the tags, attributes, and declared contracted names remain intact.
+
+For the current imported enchanter, `scripts/studio/tag_enchanter_station.luau` can tag `Workspace.Enchanter`, set the required attributes, preserve cosmetic floating scripts, and disable the old copied touch gameplay script.

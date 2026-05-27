@@ -246,9 +246,13 @@ registerFeatureModule(
     "EnchantService",
     ServerScriptService.Server.Services.EnchantService,
     appendIfEnabled(
-        { "Logger", "ConfigLoader", "DataService", "InventoryService" },
-        "modifiers",
-        "ModifierService"
+        appendIfEnabled(
+            { "Logger", "ConfigLoader", "DataService", "InventoryService" },
+            "modifiers",
+            "ModifierService"
+        ),
+        "map_binding",
+        "WorldBindingService"
     )
 )
 loader:RegisterModule(

@@ -15,7 +15,7 @@ Phase 0  Foundations (code)        K4 validation · K3 save versioning · K1 sta
 Phase 1  Map Integration Contract  K8 WorldBindingService · markers.lua · areas.lua zones · synthetic baseplate (incl. per-area gap-fill)
 Phase 2  Economy depth             equip/storage limits · upgrades · area unlocks + teleports
 Phase 3  Stats-derived wins        achievements · leaderboards · pet index   (≈ config only)
-Phase 4  Progression depth         pet levels/XP · enchant-slot unlocks · rebirths · enchants · upgrade modifiers
+Phase 4  Progression depth         pet levels/XP · player-level power · enchant-slot unlocks · enchants · upgrade modifiers
 Phase 5  Auto systems              auto-target modes · auto-delete filters
 Phase 6  Cadence & events          scheduled luck days · Pet of the Day · daily rewards/codes/gifts
 Phase 7  Content variety           rare/dark breakables · seasonal chaseables · limited stock
@@ -144,14 +144,16 @@ Container naming convention: `<HookKind>_<Place>` (e.g. `CrystalSpawnZone_SpawnI
 
 ### Phase 4 — Progression depth (pipeline inputs)
 
-- `configs/pet_progression.lua` + `PetProgressionService` — unique-pet XP/levels, config-driven XP curve, rarity caps, capped power scaling, and enchant-slot unlocks. Stack pets do not carry XP/level; a stack copy must first become a unique pet through a future promotion flow. Unique pets with enchant capacity start with one unlocked slot and gain remaining potential slots through level milestones.
+- `configs/pet_progression.lua` + `PetProgressionService` — unique-pet XP/levels, config-driven XP curve, rarity caps, capped power scaling, and enchant-slot unlocks. Stack pets do not carry XP/level and should not be generically promoted to unique pets. Pets that need per-copy state must be unique from grant/craft/reward time. Unique pets with enchant capacity start with one unlocked slot and gain remaining potential slots through level milestones.
 - `scripts/balance_team_power.py` — offline config-reading calculator for rough team-power tuning across player level/XP assumptions, pet team size, pet levels, eternal/huge behavior, and configured pet power values.
 - Pet power source-of-truth rule — family base power + variant multipliers live in `configs/pets.lua`; saved pet inventory records must not carry power values. Use `tests/studio/BackfillPetPowerSourceOfTruth.lua` to clean legacy saves after tuning changes.
-- `configs/rebirths.lua` + `RebirthService` — transactional reset of one economy layer, grant permanent currency/boost, increment `rebirths`, ledger‑tag reset; register `rebirth` provider with K2 (FR-REB-1..3).
+- `configs/player_progression.lua` + player-level provider — player level must affect team power through config, and level rewards should be configurable. The first likely reward is +1 equipped pet every 10 levels, but the cadence/value belongs in config.
 - `configs/enchants.lua` (port reference data shape: tier→weighted Chances + value range + Scale) + `EnchantService` — roll/store enchants; **map each enchant name to a declared modifier** and register the `enchants` provider (FR-ENCH-1..3). Validation fails if an enchant has no effect mapping.
+- Wire all high-priority enchant consumers: `hatch_luck`, `secret_hatch_luck`, `pet_damage`, `team_power`, and `pet_efficiency`. Current live consumers include `breakable_reward` and `pet_xp`.
 - Upgrades from Phase 2 register the `permanent_upgrades` provider.
+- Rebirth is deferred out of Phase 4. If it returns, it should be rare/dramatic rather than a ColorfulClickers-style repeated multiplier loop.
 
-**DoD:** pet progression is config-driven and applies only to unique pet records; enchants/rebirth/upgrades are all just K2 providers; no consumer of resolved values changes.
+**DoD:** pet progression is config-driven and applies only to unique pet records; player level affects team power through config; level rewards can alter equip capacity through config; all declared enchant modifier kinds either have live consumers or are explicitly marked future-only; upgrades and enchants remain K2 providers.
 
 ### Phase 5 — Auto systems
 

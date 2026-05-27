@@ -60,6 +60,18 @@ return {
             config = "pets.egg_sources",
             id_attribute = "EggId",
         },
+        EnchanterStation = {
+            required_attributes = {
+                EnchanterId = "string",
+            },
+            optional_attributes = {
+                AreaId = "string",
+                TouchPartName = "string",
+                AnimationRootName = "string",
+            },
+            config = "enchants.stations",
+            id_attribute = "EnchanterId",
+        },
         PODPodium = {
             required_attributes = {},
             optional_attributes = {

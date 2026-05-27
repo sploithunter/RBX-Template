@@ -176,6 +176,7 @@ function WorldBindingService:Init()
     self._markersConfig = self._configLoader:LoadConfig("markers")
     self._breakablesConfig = self._configLoader:LoadConfig("breakables")
     self._petsConfig = self._configLoader:LoadConfig("pets")
+    self._enchantsConfig = self._configLoader:LoadConfig("enchants")
     self._mapMode = (self._gameConfig.map and self._gameConfig.map.mode) or "auto"
 
     self:_validateZoneTree()
@@ -679,6 +680,11 @@ function WorldBindingService:_validateReference(instance, tagName)
         local eggId = instance:GetAttribute("EggId")
         if not (self._petsConfig.egg_sources and self._petsConfig.egg_sources[eggId]) then
             return false, "EggId references missing pets.egg_sources entry"
+        end
+    elseif tagName == "EnchanterStation" then
+        local enchanterId = instance:GetAttribute("EnchanterId")
+        if not (self._enchantsConfig.stations and self._enchantsConfig.stations[enchanterId]) then
+            return false, "EnchanterId references missing enchants.stations entry"
         end
     end
     return true
