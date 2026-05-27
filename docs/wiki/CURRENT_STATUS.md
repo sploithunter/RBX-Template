@@ -4,7 +4,7 @@ Status: current
 
 ## Summary
 
-This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code template. Phase 0 is complete, Phase 1 map integration is complete for the current synthetic/partial-authored baseline, and Phase 2 economy depth is complete for the current baseline. The playable loop includes breakable crystals, coin generation, eggs, hatching, persistent player data, imported pet assets, an admin panel, configurable currency conversion, basic global events/effects work, multi-area map hooks, server-authoritative area travel, active-zone spawner dormancy, config-driven upgrades, paid area unlocks, and area-gated stronger breakables.
+This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code template. Phase 0 is complete, Phase 1 map integration is complete for the current synthetic/partial-authored baseline, Phase 2 economy depth is complete for the current baseline, and Phase 3 stats-derived wins are now implemented for pet index, achievements, and live leaderboards. The playable loop includes breakable crystals, coin generation, eggs, hatching, persistent player data, imported pet assets, an admin panel, configurable currency conversion, basic global events/effects work, multi-area map hooks, server-authoritative area travel, active-zone spawner dormancy, config-driven upgrades, paid area unlocks, area-gated stronger breakables, first-time pet indexing, achievement rewards, and K1-backed leaderboards.
 
 ## Working Systems
 
@@ -31,6 +31,12 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - `configs/upgrades.lua` and `UpgradeService` now provide permanent upgrades for pet equip slots, pet storage, and crystal reward value. Upgrade levels persist under `DataService.Upgrades`; inventory slot limits read the upgrade effects server-side.
 - `Meadow` now has a paid unlock cost of `100 crystals`, and its breakable table includes stronger medium/big crystals. This is the first area-gated Phase 2 progression step.
 - Phase 2 network bridges exist for UI/admin work: `PurchaseUpgrade`/`UpgradeResult`, `UnlockZoneRequest`/`ZoneUnlockResult`, and `ZoneTravelResult`. Locked-zone results include the configured unlock requirement payload.
+- Pet inventory storage is already mixed: normal pets stack under `Inventory.pets.items["petId:variant"]` with a quantity, while special pets are individual records. Equipping a stacked pet creates an ephemeral equipped id and temporarily decrements the stack quantity.
+- Phase 3 configs are live: `configs/pet_index.lua`, `configs/achievements.lua`, and `configs/leaderboards.lua`.
+- `PetIndexService` records first-time pet/variant acquisition under `DataService.PetIndex`, increments/syncs `distinct_pets`, and grants index milestones once.
+- `AchievementsService` listens to `StatsService.CounterChanged`, evaluates config tiers over K1 counters, stores completed tiers under `DataService.Achievements.Completed`, and grants rewards once.
+- `LeaderboardService` builds in-server live boards from K1 counters and has a throttled OrderedDataStore path for global boards when config enables it.
+- Inventory now allows adding to an existing pet stack even when storage slots are full, because existing stacks do not consume new slots.
 
 ## Phase 0 Verification
 
@@ -73,6 +79,17 @@ Last checked: 2026-05-27
 - `SyntheticExpansionSmoke` verifies the Phase 2 expansion contract without permanently changing the authored map: it temporarily injects a second synthetic world (`crystal_world -> CrystalCavern`), rebuilds bindings in synthetic mode, asserts a cross-world portal and spawn zone, travels through the portal, restores profile/map state, and leaves the authored-only marker contract at `synthetic=0`.
 - Regression smokes still pass: `SpawnSafetySmoke`, authored-only `MapContractSmoke`, `TravelSmoke`, and `EggProximitySmoke`.
 
+## Phase 3 Verification
+
+Last checked: 2026-05-27
+
+- Rojo 7.6.1 build: passes with `mise exec -- rojo build --output /tmp/rbx-template-phase3.rbxl`.
+- Targeted StyLua check/format for touched Phase 3 files: passes.
+- Targeted Selene for touched Phase 3 files/configs/tests: 0 errors, existing warnings only in older bootstrap/config/inventory/data files.
+- `ConfigLoader.spec` passes in Studio with `36` passed and `0` failed, including pet index, achievements, and leaderboard config validation.
+- `Phase3StatsSmoke` passes through MCP: adding bear/basic twice and bunny/basic records only `2` distinct pet entries, syncs `distinct_pets=2`, grants the first pet-index milestone once, grants the first egg achievement over `eggs_hatched`, updates the live eggs leaderboard, and restores the profile.
+- Phase 2 regression smoke still passes after Phase 3 profile/inventory changes: `Phase2ProgressionSmoke`.
+
 ## Recent Planning State
 
 The project now has two high-level source documents:
@@ -84,13 +101,13 @@ Those documents define the planned foundation work: stats, modifier pipeline, sa
 
 ## Next Likely Work
 
-Continue into Phase 3 stats-derived features or a UI/admin polish lane while keeping cleanup space for Studio and tooling warnings:
+Continue into Phase 4 progression-depth design or a UI/admin polish lane while keeping cleanup space for Studio and tooling warnings:
 
 1. Expand the authored-map workflow with visible gate art/fixtures attached to the invisible `TeleportPad`/`Portal` hooks.
 2. Save/promote the generated `AuthoredReferenceMap` in Studio or replace it with a hand-built first island that keeps the same marker contract.
 3. Add UI/admin affordances for locked destination requirements and upgrade purchases.
-4. Start Phase 3 stats-derived features: achievements, leaderboards, and pet index, all driven from stat counters/config.
-5. Clean up warning-level placeholder/test data in monetization and saved effects.
+4. Design Phase 4 enchant/rebirth contracts on top of the existing modifier pipeline and the new stack-to-unique pet promotion rule.
+5. Clean up warning-level placeholder/test data in monetization, UI style rules, and saved effects.
 
 ## Links
 

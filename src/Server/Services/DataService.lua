@@ -31,7 +31,7 @@ local DEFAULT_SAVE_DEBOUNCE_SECONDS = 15
 local CRITICAL_SAVE_DEBOUNCE_SECONDS = 1
 local PERIODIC_SAVE_SECONDS = 60
 local SAVE_CONFIRM_TIMEOUT_SECONDS = 10
-local CURRENT_SCHEMA_VERSION = 2
+local CURRENT_SCHEMA_VERSION = 3
 
 local function countInventoryItems(inventory)
     local counts = {}
@@ -81,6 +81,15 @@ local function generateProfileTemplate(configLoader)
         Ledger = {
             CurrencySources = {},
             CurrencySinks = {},
+        },
+
+        PetIndex = {
+            Discovered = {},
+            Milestones = {},
+        },
+
+        Achievements = {
+            Completed = {},
         },
 
         -- Game-specific data
@@ -316,6 +325,12 @@ end
 SchemaMigrations[1] = function(self, data)
     local migrations = self:_migrateUpgrades(data)
     data.SchemaVersion = 2
+    return migrations + 1
+end
+
+SchemaMigrations[2] = function(self, data)
+    local migrations = self:_migratePhase3Collections(data)
+    data.SchemaVersion = 3
     return migrations + 1
 end
 
@@ -1228,6 +1243,7 @@ function DataService:MigrateProfile(profile)
     migrationCount = migrationCount + self:_backfillStatCounters(data)
     migrationCount = migrationCount + self:_migrateUpgrades(data)
     migrationCount = migrationCount + self:_migrateLedger(data)
+    migrationCount = migrationCount + self:_migratePhase3Collections(data)
 
     -- 4. Migrate inventory system safely (preserve all data)
     migrationCount = migrationCount + self:_migrateInventoryBuckets(data)
@@ -1356,6 +1372,8 @@ function DataService:_migrateCoreData(data)
         "PlayerClock",
         "Inventory",
         "Upgrades",
+        "PetIndex",
+        "Achievements",
     }
 
     for _, section in ipairs(coreSections) do
@@ -1444,6 +1462,34 @@ function DataService:_migrateLedger(data)
 
     if not data.Ledger.CurrencySinks then
         data.Ledger.CurrencySinks = {}
+        migrations += 1
+    end
+
+    return migrations
+end
+
+function DataService:_migratePhase3Collections(data)
+    local migrations = 0
+
+    if not data.PetIndex then
+        data.PetIndex = {}
+        migrations += 1
+    end
+    if not data.PetIndex.Discovered then
+        data.PetIndex.Discovered = {}
+        migrations += 1
+    end
+    if not data.PetIndex.Milestones then
+        data.PetIndex.Milestones = {}
+        migrations += 1
+    end
+
+    if not data.Achievements then
+        data.Achievements = {}
+        migrations += 1
+    end
+    if not data.Achievements.Completed then
+        data.Achievements.Completed = {}
         migrations += 1
     end
 

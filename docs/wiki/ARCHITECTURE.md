@@ -8,8 +8,8 @@ The desired shape is a small set of authoritative services backed by validated c
 
 ## Foundation Services
 
-- `ConfigLoader` validates config shape and cross-references at boot. Current focused validators cover currencies, game, breakables, pets/egg sources, events, economy exchange, egg system, inventory, UI, context menus, items, and monetization.
-- `DataService` owns ProfileStore data, schema versioning, migrations, durable state, stat counter storage, and currency source/sink ledger aggregates.
+- `ConfigLoader` validates config shape and cross-references at boot. Current focused validators cover currencies, game, breakables, pets/egg sources, events, economy exchange, egg system, inventory, upgrades, areas, markers, pet index, achievements, leaderboards, UI, context menus, items, and monetization.
+- `DataService` owns ProfileStore data, schema versioning, migrations, durable state, stat counter storage, pet index state, achievement completion state, and currency source/sink ledger aggregates.
 - `StatsService` owns declared tracked counters and emits counter change signals.
 - `ModifierService` plus shared `ModifierPipeline` resolve derived values from pets, enchants, upgrades, boosts, events, rebirths, and gamepasses. Breakable rewards now route through this path, with active global events registered as a provider.
 - `EconomyService` owns currency mutation and passes source reasons into the ledger.
@@ -17,12 +17,15 @@ The desired shape is a small set of authoritative services backed by validated c
 - `WorldBindingService` discovers, validates, and serves Studio map hooks. In `auto`/`synthetic` map modes it fabricates missing baseplate hooks from `configs/areas.lua` and `configs/markers.lua`.
 - `ZoneService` owns area unlocks and server-authoritative `TeleportPad`/`Portal` travel. It uses `WorldBindingService` for hook/spawn lookup and persists area unlock state through `DataService.GameData.UnlockedAreas`.
 - `UpgradeService` owns config-driven permanent upgrade purchases. Levels persist under `DataService.Upgrades`; equip/storage effects feed inventory limits, and modifier effects register as `permanent_upgrades` providers.
+- `PetIndexService` owns first-time pet/variant discovery. It writes compact `PetIndex.Discovered` records, syncs the K1 `distinct_pets` counter, and grants `configs/pet_index.lua` milestones once.
+- `AchievementsService` owns config-tier completion over K1 counters. It listens to `StatsService.CounterChanged`, persists completed tiers under `Achievements.Completed`, and grants currency rewards once.
+- `LeaderboardService` owns K1-backed live in-server leaderboard snapshots and optional throttled OrderedDataStore publication for global boards.
 - Phase 2 player actions use central `Signals` remotes: `PurchaseUpgrade`, `UpgradeResult`, `UnlockZoneRequest`, `ZoneUnlockResult`, and `ZoneTravelResult`. Service methods remain the authority; remotes are thin request/result bridges for future UI.
 - `StudioSmokeTestService` is a Studio-only test bridge. It exposes controlled server-authoritative smoke-test actions to MCP/client runners and must remain disabled outside Studio.
 
 ## Gameplay Services
 
-Planned services include upgrades, achievements, leaderboards, pet index, rebirths, enchants, auto-delete, rewards, Pet of the Day, chaseables, stock, and marketplace. Existing services already cover breakables, eggs, inventory, zones, auto-targeting, admin tools, basic events, and core economy.
+Planned services include rebirths, enchants, auto-delete, rewards, Pet of the Day, chaseables, stock, and marketplace. Existing services already cover breakables, eggs, inventory, zones, upgrades, pet index, achievements, leaderboards, auto-targeting, admin tools, basic events, and core economy.
 
 ## Resolution Rule
 

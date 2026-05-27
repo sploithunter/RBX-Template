@@ -30,6 +30,14 @@ The project should support multiple currencies, but the template baseline should
 
 Pet models should be referenced by asset id where possible. Meshi can be used for asset creation, but current import is manual download followed by project-side upload/import. Automation is desired later.
 
+## Pet Storage And Enchants
+
+Normal pets should remain stack-count records keyed by canonical pet id + variant. Any pet with per-copy state that affects gameplay or ownership value, such as enchantments, serials, signatures, huge/eternal status, nickname, lock state, or custom progression, should be promoted to a unique special instance before that state is applied. Enchants should be stored on the pet instance and contribute through the `enchants` modifier pipeline stage; stack records must stay free of enchant/progression fields.
+
+## Stats-Derived Features
+
+Pet index, achievements, and leaderboards should stay thin views over profile state and K1 stat counters. Pet index may persist compact first-discovery records because it is ownership history, but progress counters such as `distinct_pets`, `eggs_hatched`, and `breakables_broken` remain the shared source for achievements and leaderboards.
+
 ## Studio AI Workflow
 
 Use Codex connected to Roblox Studio through the official Studio MCP server as the primary automated development workflow. Roblox Studio Assistant's external OpenAI/Anthropic/Google model settings currently require provider API keys; they do not replace Codex subscription access. Studio MCP plus Codex gives this project Output access, screenshots, play control, tree inspection, Luau execution, and script reads/edits without adding provider API keys inside Studio.

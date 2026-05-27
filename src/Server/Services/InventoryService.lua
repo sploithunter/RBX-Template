@@ -43,6 +43,7 @@ function InventoryService:Init()
     self._dataService = self._modules.DataService
     self._configLoader = self._modules.ConfigLoader
     self._upgradeService = self._modules.UpgradeService
+    self._petIndexService = nil
 
     print("📦 InventoryService dependencies injected")
 
@@ -153,13 +154,15 @@ function InventoryService:AddItem(player, bucketName, itemData)
     local bucket = data.Inventory[bucketName]
     local bucketConfig = self._inventoryConfig.buckets[bucketName]
 
-    -- Check if bucket has space
-    if not self:HasSpace(player, bucketName, 1) then
+    -- Check if bucket has space. Existing stacks do not consume a new slot.
+    local requiredSlots = self:_getRequiredSlotsForAdd(bucketName, itemData, bucket, bucketConfig)
+    if requiredSlots > 0 and not self:HasSpace(player, bucketName, requiredSlots) then
         self._logger:Warn("⚠️ ADD ITEM FAILED - No space", {
             player = player.Name,
             bucket = bucketName,
             usedSlots = bucket.used_slots,
             totalSlots = bucket.total_slots,
+            requiredSlots = requiredSlots,
         })
         return nil, "No space in " .. bucketConfig.display_name
     end
@@ -202,6 +205,10 @@ function InventoryService:AddItem(player, bucketName, itemData)
             critical = bucketName == "pets",
         })
 
+        if bucketName == "pets" then
+            self:_recordPetIndex(player, itemData)
+        end
+
         return uid
     else
         self._logger:Error("❌ ADD ITEM FAILED - Storage error", {
@@ -210,6 +217,47 @@ function InventoryService:AddItem(player, bucketName, itemData)
             itemId = itemData.id,
         })
         return nil, "Failed to add item"
+    end
+end
+
+function InventoryService:_getRequiredSlotsForAdd(bucketName, itemData, bucket, bucketConfig)
+    if bucketName == "pets" then
+        local variant = itemData.variant or "basic"
+        if self:_isSpecialPet(itemData.id, variant) then
+            return 1
+        end
+
+        local stackKey = self:_petStackKey(itemData.id, variant)
+        return bucket.items and bucket.items[stackKey] and 0 or 1
+    end
+
+    if bucketConfig.storage_type == "stackable" and bucket.items and bucket.items[itemData.id] then
+        return 0
+    end
+
+    return 1
+end
+
+function InventoryService:_recordPetIndex(player, itemData)
+    if self._petIndexService == nil and self._moduleLoader then
+        local ok, service = pcall(function()
+            return self._moduleLoader:Get("PetIndexService")
+        end)
+        self._petIndexService = ok and service or false
+    end
+
+    if self._petIndexService and self._petIndexService.RecordPetObtained then
+        local ok, result = pcall(function()
+            return self._petIndexService:RecordPetObtained(player, itemData)
+        end)
+        if not ok then
+            self._logger:Warn("Pet index update failed after pet add", {
+                context = "InventoryService",
+                player = player.Name,
+                itemId = itemData.id,
+                error = tostring(result),
+            })
+        end
     end
 end
 

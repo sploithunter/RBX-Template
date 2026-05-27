@@ -11,7 +11,7 @@ Status: current
 
 ## Content And Pets
 
-- What exact modifier semantics should each enchant have?
+- What exact modifier semantics should each enchant have? Storage direction is decided: enchanting a stackable pet should promote one copy into a unique special instance; enchants live on that instance and feed the `enchants` modifier pipeline stage.
 - Should high-power pets be normalized by player progression, area tier, or both?
 - Should forever/eternal pets use the reference-style percentage-of-current-best-power model, and what percent range keeps them prestigious without breaking early progression?
 - What is the long-term automated Meshi-to-Roblox asset workflow?

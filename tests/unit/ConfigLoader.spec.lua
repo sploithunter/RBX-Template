@@ -583,6 +583,75 @@ return function()
                 expect(isValid).to.equal(false)
                 expect(string.find(error, "unsupported expected type", 1, true)).to.be.ok()
             end)
+
+            it("should validate pet index milestones", function()
+                local validConfig = {
+                    version = "1.0.0",
+                    milestones = {
+                        {
+                            id = "first_pet",
+                            goal = 1,
+                            reward = {
+                                type = "currency",
+                                currency = "gems",
+                                amount = 5,
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("pet_index", validConfig)
+                expect(isValid).to.equal(true)
+                expect(error).to.equal(nil)
+            end)
+
+            it("should reject achievements with unknown stat counters", function()
+                local invalidConfig = {
+                    version = "1.0.0",
+                    achievements = {
+                        missing = {
+                            id = "missing",
+                            stat = "not_a_counter",
+                            tiers = {
+                                {
+                                    id = "tier_1",
+                                    goal = 1,
+                                    reward = {
+                                        type = "currency",
+                                        currency = "gems",
+                                        amount = 1,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("achievements", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "configs/stats.lua", 1, true)).to.be.ok()
+            end)
+
+            it("should validate leaderboards backed by stat counters", function()
+                local validConfig = {
+                    version = "1.0.0",
+                    boards = {
+                        {
+                            id = "eggs_hatched",
+                            stat = "eggs_hatched",
+                            sort = "desc",
+                            max_entries = 10,
+                            global = {
+                                enabled = false,
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("leaderboards", validConfig)
+                expect(isValid).to.equal(true)
+                expect(error).to.equal(nil)
+            end)
         end)
 
         describe("Monetization Setup Validation", function()

@@ -15,10 +15,14 @@ The newer reference game at `/Users/jason/Documents/ColorfulClickers_exchange-ro
 - Pet team calculation with stats and enchants.
 - Eternal/forever pet semantics: the newer reference game's equip-best logic treated an `Eternal` value as a percentage of the player's current top damage for the relevant damage type, rather than as a huge fixed stat. This keeps ultra-rare pets valuable forever without letting a traded/gifted endgame pet erase early progression.
 - Enchants such as HomeWorld, Efficiency, Tactics, Luck, Leadership, and SecretLuck.
+- Reference enchants are tier-gated by rarity (`Legendary`, `Mythical`, `Secret`, `Exclusive`, `Huge`, `Colossal`) with `MaxEnchant`, `DefaultEnchant`, weighted chances, low/high value ranges, and a scale value. Keep that data shape, but add config-declared modifier semantics and store enchants only on unique pet instances.
 - Pet of the Day selected deterministically and displayed on a podium.
 - Rare/dark breakable variants with low spawn weight and high value.
 - Auto-targeting and auto-delete quality-of-life systems.
 - Pet index and collection progress.
+- The newer reference game's pet index records distinct pet name + type/variant combinations, not every owned copy. That maps well to a compact `PetIndex` profile table keyed by canonical pet/variant ids.
+- The reference achievements are useful as tier ideas but are hardcoded around specific counters and polling. In this project they should become config tiers over K1 counters and react to `StatsService.CounterChanged`.
+- The reference has several leaderboard families: total stat boards, daily/yesterday boards, and pet rarity boards for Huge/Eternal ownership. Port the concepts through `configs/leaderboards.lua` and a throttled `LeaderboardService`, not scattered OrderedDataStore scripts.
 - Daily gifts, codes, and reward tracks.
 - Limited stock pets/items.
 - Seasonal chaseables and event currencies.

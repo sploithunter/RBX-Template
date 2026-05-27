@@ -20,12 +20,16 @@ local REMOTE_NAME = "StudioSmokeTest"
 local logger
 local configLoader
 local dataService
+local statsService
 local inventoryService
 local economyService
 local worldBindingService
 local zoneService
 local upgradeService
 local breakableSpawner
+local petIndexService
+local achievementsService
+local leaderboardService
 
 local sessions = {}
 local travelSessions = {}
@@ -109,12 +113,16 @@ function StudioSmokeTestService:Init()
     logger = self._modules.Logger
     configLoader = self._modules.ConfigLoader
     dataService = self._modules.DataService
+    statsService = self._modules.StatsService
     inventoryService = self._modules.InventoryService
     economyService = self._modules.EconomyService
     worldBindingService = self._modules.WorldBindingService
     zoneService = self._modules.ZoneService
     upgradeService = self._modules.UpgradeService
     breakableSpawner = self._modules.BreakableSpawner
+    petIndexService = self._modules.PetIndexService
+    achievementsService = self._modules.AchievementsService
+    leaderboardService = self._modules.LeaderboardService
 end
 
 function StudioSmokeTestService:Start()
@@ -177,6 +185,8 @@ function StudioSmokeTestService:_handleRequest(player, action, payload)
         return self:_runMeadowBreakableSmoke(player, payload)
     elseif action == "RunSyntheticExpansionSmoke" then
         return self:_runSyntheticExpansionSmoke(player, payload)
+    elseif action == "RunPhase3StatsSmoke" then
+        return self:_runPhase3StatsSmoke(player, payload)
     end
 
     return {
@@ -1169,6 +1179,170 @@ function StudioSmokeTestService:_runSyntheticExpansionSmoke(player, payload)
     worldBindingService:RebuildBindings()
     zoneService:PlacePlayerAtZoneSpawn(player, original.activeArea or "Spawn")
     dataService:RequestSave(player, "synthetic_expansion_smoke_restore", { critical = true })
+
+    if not ok then
+        return {
+            ok = false,
+            error = tostring(result),
+            restored = true,
+        }
+    end
+
+    result.restored = true
+    return result
+end
+
+function StudioSmokeTestService:_runPhase3StatsSmoke(player, payload)
+    payload = payload or {}
+    if not (statsService and petIndexService and achievementsService and leaderboardService) then
+        return {
+            ok = false,
+            error = "Phase 3 smoke dependencies are not loaded",
+        }
+    end
+
+    local data = dataService:GetData(player)
+    if not data then
+        return {
+            ok = false,
+            error = "Player data not loaded",
+        }
+    end
+
+    local firstPet = payload.firstPet or "bear"
+    local secondPet = payload.secondPet or "bunny"
+    local variant = payload.variant or "basic"
+
+    local original = {
+        coins = dataService:GetCurrency(player, "coins"),
+        gems = dataService:GetCurrency(player, "gems"),
+        crystals = dataService:GetCurrency(player, "crystals"),
+        petsBucket = deepCopy(data.Inventory and data.Inventory.pets or nil),
+        petIndex = deepCopy(data.PetIndex or nil),
+        achievements = deepCopy(data.Achievements or nil),
+        counters = deepCopy(data.Stats and data.Stats.Counters or {}),
+    }
+
+    local function restore()
+        dataService:SetCurrency(player, "coins", original.coins, "phase3_smoke_restore")
+        dataService:SetCurrency(player, "gems", original.gems, "phase3_smoke_restore")
+        dataService:SetCurrency(player, "crystals", original.crystals, "phase3_smoke_restore")
+
+        data.Inventory = data.Inventory or {}
+        if original.petsBucket then
+            data.Inventory.pets = deepCopy(original.petsBucket)
+        end
+        data.PetIndex = deepCopy(original.petIndex)
+        data.Achievements = deepCopy(original.achievements)
+        data.Stats = data.Stats or {}
+        data.Stats.Counters = deepCopy(original.counters)
+
+        if inventoryService and inventoryService._updateBucketFolders then
+            inventoryService:_updateBucketFolders(player, "pets")
+        end
+        if leaderboardService then
+            leaderboardService:RefreshPlayer(player)
+        end
+
+        dataService:RequestSave(player, "phase3_smoke_restore", { critical = true })
+    end
+
+    local ok, result = pcall(function()
+        data.PetIndex = {
+            Discovered = {},
+            Milestones = {},
+        }
+        data.Achievements = {
+            Completed = {},
+        }
+        data.Stats = data.Stats or {}
+        data.Stats.Counters = data.Stats.Counters or {}
+        data.Stats.Counters.distinct_pets = 0
+        data.Stats.Counters.eggs_hatched = 0
+        data.Stats.Counters.breakables_broken = 0
+
+        local firstUid = inventoryService:AddItem(player, "pets", {
+            id = firstPet,
+            variant = variant,
+            obtained_at = os.time(),
+        })
+        if not firstUid then
+            error("Expected first pet add to succeed")
+        end
+
+        local duplicateUid = inventoryService:AddItem(player, "pets", {
+            id = firstPet,
+            variant = variant,
+            obtained_at = os.time(),
+        })
+        if not duplicateUid then
+            error("Expected duplicate pet stack add to succeed")
+        end
+
+        local secondUid = inventoryService:AddItem(player, "pets", {
+            id = secondPet,
+            variant = variant,
+            obtained_at = os.time(),
+        })
+        if not secondUid then
+            error("Expected second distinct pet add to succeed")
+        end
+
+        local indexSnapshot = petIndexService:GetIndex(player)
+        if indexSnapshot.count ~= 2 then
+            error("Expected pet index count to be 2, got " .. tostring(indexSnapshot.count))
+        end
+        if dataService:GetCounter(player, "distinct_pets") ~= 2 then
+            error("Expected distinct_pets counter to be 2")
+        end
+        if not indexSnapshot.milestones.first_friend then
+            error("Expected first pet index milestone to complete")
+        end
+
+        local gemsAfterIndex = dataService:GetCurrency(player, "gems")
+
+        statsService:Set(player, "eggs_hatched", 1)
+        achievementsService:EvaluateAll(player)
+
+        local achievementState = achievementsService:GetAchievements(player)
+        local eggAchievement = achievementState.eggs_hatched
+        if not eggAchievement or not eggAchievement.completed.eggs_1 then
+            error("Expected eggs_hatched achievement tier eggs_1 to complete")
+        end
+
+        leaderboardService:RefreshPlayer(player)
+        local board = leaderboardService:GetLiveLeaderboard("eggs_hatched", 10)
+        if not board or #board == 0 then
+            error("Expected live eggs_hatched leaderboard entry")
+        end
+
+        local foundPlayer = false
+        for _, entry in ipairs(board) do
+            if entry.userId == player.UserId and entry.value == 1 then
+                foundPlayer = true
+                break
+            end
+        end
+        if not foundPlayer then
+            error("Expected player to appear on eggs_hatched leaderboard with value 1")
+        end
+
+        return {
+            ok = true,
+            firstPet = firstPet,
+            secondPet = secondPet,
+            variant = variant,
+            indexCount = indexSnapshot.count,
+            distinctPets = dataService:GetCounter(player, "distinct_pets"),
+            indexMilestone = indexSnapshot.milestones.first_friend ~= nil,
+            eggsAchievement = eggAchievement.completed.eggs_1 ~= nil,
+            gemsAfterIndex = gemsAfterIndex,
+            gemsAfterAchievements = dataService:GetCurrency(player, "gems"),
+            leaderboardEntries = #board,
+        }
+    end)
+
+    restore()
 
     if not ok then
         return {

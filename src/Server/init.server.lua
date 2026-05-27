@@ -191,6 +191,32 @@ loader:RegisterModule(
         "ModifierService"
     )
 )
+registerFeatureModule(
+    "pet_index",
+    "PetIndexService",
+    ServerScriptService.Server.Services.PetIndexService,
+    appendIfEnabled(
+        { "Logger", "ConfigLoader", "DataService", "EconomyService" },
+        "stats",
+        "StatsService"
+    )
+)
+registerFeatureModule(
+    "achievements",
+    "AchievementsService",
+    ServerScriptService.Server.Services.AchievementsService,
+    appendIfEnabled(
+        { "Logger", "ConfigLoader", "DataService", "EconomyService" },
+        "stats",
+        "StatsService"
+    )
+)
+registerFeatureModule(
+    "leaderboards",
+    "LeaderboardService",
+    ServerScriptService.Server.Services.LeaderboardService,
+    appendIfEnabled({ "Logger", "ConfigLoader", "DataService" }, "stats", "StatsService")
+)
 loader:RegisterModule(
     "MonetizationService",
     ServerScriptService.Server.Services.MonetizationService,
@@ -222,25 +248,26 @@ registerFeatureModule(
     )
 )
 if RunService:IsStudio() then
+    local studioSmokeDeps = {
+        "Logger",
+        "ConfigLoader",
+        "DataService",
+        "InventoryService",
+        "EconomyService",
+        "BreakableSpawner",
+    }
+    appendIfEnabled(studioSmokeDeps, "stats", "StatsService")
+    appendIfEnabled(studioSmokeDeps, "upgrades", "UpgradeService")
+    appendIfEnabled(studioSmokeDeps, "map_binding", "WorldBindingService")
+    appendIfEnabled(studioSmokeDeps, "map_binding", "ZoneService")
+    appendIfEnabled(studioSmokeDeps, "pet_index", "PetIndexService")
+    appendIfEnabled(studioSmokeDeps, "achievements", "AchievementsService")
+    appendIfEnabled(studioSmokeDeps, "leaderboards", "LeaderboardService")
+
     loader:RegisterModule(
         "StudioSmokeTestService",
         ServerScriptService.Server.Services.StudioSmokeTestService,
-        appendIfEnabled(
-            appendIfEnabled(
-                appendIfEnabled({
-                    "Logger",
-                    "ConfigLoader",
-                    "DataService",
-                    "InventoryService",
-                    "EconomyService",
-                    "BreakableSpawner",
-                }, "upgrades", "UpgradeService"),
-                "map_binding",
-                "WorldBindingService"
-            ),
-            "map_binding",
-            "ZoneService"
-        )
+        studioSmokeDeps
     )
 end
 registerFeatureModule(
@@ -299,6 +326,9 @@ appendIfEnabled(requiredModules, "map_binding", "ZoneService")
 appendIfEnabled(requiredModules, "global_events", "EventService")
 appendIfEnabled(requiredModules, "admin_tools", "AdminToolsService")
 appendIfEnabled(requiredModules, "auto_target", "AutoTargetService")
+appendIfEnabled(requiredModules, "pet_index", "PetIndexService")
+appendIfEnabled(requiredModules, "achievements", "AchievementsService")
+appendIfEnabled(requiredModules, "leaderboards", "LeaderboardService")
 if RunService:IsStudio() then
     table.insert(requiredModules, "StudioSmokeTestService")
 end

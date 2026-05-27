@@ -713,6 +713,12 @@ function ConfigLoader:ValidateConfig(configName, config)
         return self:_validateAreasConfig(config)
     elseif configName == "markers" then
         return self:_validateMarkersConfig(config)
+    elseif configName == "pet_index" then
+        return self:_validatePetIndexConfig(config)
+    elseif configName == "achievements" then
+        return self:_validateAchievementsConfig(config)
+    elseif configName == "leaderboards" then
+        return self:_validateLeaderboardsConfig(config)
     end
 
     -- Default validation for other configs
@@ -2059,6 +2065,228 @@ function ConfigLoader:_validateStatsConfig(config)
         end
         if counter.default ~= nil and type(counter.default) ~= "number" then
             return self:_configError("stats", path .. ".default", "expected number")
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_counterExists(counterId)
+    local statsConfig = self:_rawConfig("stats")
+    return type(statsConfig) == "table"
+        and type(statsConfig.counters) == "table"
+        and statsConfig.counters[counterId] ~= nil
+end
+
+function ConfigLoader:_currencyExists(currencyId)
+    return hasId(self:_rawConfig("currencies"), currencyId)
+end
+
+function ConfigLoader:_validateReward(configName, reward, path)
+    local ok, err = self:_requireType(configName, reward, "table", path)
+    if not ok then
+        return ok, err
+    end
+
+    if reward.type ~= "currency" then
+        return self:_configError(configName, path .. ".type", "currently only supports currency")
+    end
+
+    if type(reward.currency) ~= "string" or reward.currency == "" then
+        return self:_configError(configName, path .. ".currency", "expected non-empty string")
+    end
+    if not self:_currencyExists(reward.currency) then
+        return self:_configError(
+            configName,
+            path .. ".currency",
+            "must reference configs/currencies.lua"
+        )
+    end
+
+    return self:_requirePositiveNumber(configName, reward.amount, path .. ".amount")
+end
+
+function ConfigLoader:_validatePetIndexConfig(config)
+    local ok, err = self:_requireType("pet_index", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    ok, err = self:_requireType("pet_index", config.milestones, "table", "milestones")
+    if not ok then
+        return ok, err
+    end
+
+    local seen = {}
+    for index, milestone in ipairs(config.milestones) do
+        local path = "milestones[" .. index .. "]"
+        if type(milestone.id) ~= "string" or milestone.id == "" then
+            return self:_configError("pet_index", path .. ".id", "expected non-empty string")
+        end
+        if seen[milestone.id] then
+            return self:_configError("pet_index", path .. ".id", "duplicate milestone id")
+        end
+        seen[milestone.id] = true
+
+        ok, err = self:_requirePositiveNumber("pet_index", milestone.goal, path .. ".goal")
+        if not ok then
+            return ok, err
+        end
+        ok, err = self:_validateReward("pet_index", milestone.reward, path .. ".reward")
+        if not ok then
+            return ok, err
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_validateAchievementsConfig(config)
+    local ok, err = self:_requireType("achievements", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    ok, err = self:_requireType("achievements", config.achievements, "table", "achievements")
+    if not ok then
+        return ok, err
+    end
+
+    for achievementKey, achievement in pairs(config.achievements) do
+        local path = "achievements." .. tostring(achievementKey)
+        if type(achievement.id) ~= "string" or achievement.id == "" then
+            return self:_configError("achievements", path .. ".id", "expected non-empty string")
+        end
+        if type(achievement.stat) ~= "string" or achievement.stat == "" then
+            return self:_configError("achievements", path .. ".stat", "expected non-empty string")
+        end
+        if not self:_counterExists(achievement.stat) then
+            return self:_configError(
+                "achievements",
+                path .. ".stat",
+                "must reference configs/stats.lua counters"
+            )
+        end
+
+        ok, err = self:_requireType("achievements", achievement.tiers, "table", path .. ".tiers")
+        if not ok then
+            return ok, err
+        end
+
+        local seenTiers = {}
+        local previousGoal = 0
+        for tierIndex, tier in ipairs(achievement.tiers) do
+            local tierPath = path .. ".tiers[" .. tierIndex .. "]"
+            if type(tier.id) ~= "string" or tier.id == "" then
+                return self:_configError(
+                    "achievements",
+                    tierPath .. ".id",
+                    "expected non-empty string"
+                )
+            end
+            if seenTiers[tier.id] then
+                return self:_configError("achievements", tierPath .. ".id", "duplicate tier id")
+            end
+            seenTiers[tier.id] = true
+
+            ok, err = self:_requirePositiveNumber("achievements", tier.goal, tierPath .. ".goal")
+            if not ok then
+                return ok, err
+            end
+            if tier.goal <= previousGoal then
+                return self:_configError(
+                    "achievements",
+                    tierPath .. ".goal",
+                    "must increase by tier"
+                )
+            end
+            previousGoal = tier.goal
+
+            ok, err = self:_validateReward("achievements", tier.reward, tierPath .. ".reward")
+            if not ok then
+                return ok, err
+            end
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_validateLeaderboardsConfig(config)
+    local ok, err = self:_requireType("leaderboards", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    ok, err = self:_requireType("leaderboards", config.boards, "table", "boards")
+    if not ok then
+        return ok, err
+    end
+
+    local seen = {}
+    for index, board in ipairs(config.boards) do
+        local path = "boards[" .. index .. "]"
+        if type(board.id) ~= "string" or board.id == "" then
+            return self:_configError("leaderboards", path .. ".id", "expected non-empty string")
+        end
+        if seen[board.id] then
+            return self:_configError("leaderboards", path .. ".id", "duplicate board id")
+        end
+        seen[board.id] = true
+
+        if type(board.stat) ~= "string" or board.stat == "" then
+            return self:_configError("leaderboards", path .. ".stat", "expected non-empty string")
+        end
+        if not self:_counterExists(board.stat) then
+            return self:_configError(
+                "leaderboards",
+                path .. ".stat",
+                "must reference configs/stats.lua counters"
+            )
+        end
+
+        if board.sort ~= "asc" and board.sort ~= "desc" then
+            return self:_configError("leaderboards", path .. ".sort", "must be asc or desc")
+        end
+
+        ok, err =
+            self:_requirePositiveNumber("leaderboards", board.max_entries, path .. ".max_entries")
+        if not ok then
+            return ok, err
+        end
+
+        if board.global ~= nil then
+            ok, err = self:_requireType("leaderboards", board.global, "table", path .. ".global")
+            if not ok then
+                return ok, err
+            end
+            if type(board.global.enabled) ~= "boolean" then
+                return self:_configError(
+                    "leaderboards",
+                    path .. ".global.enabled",
+                    "expected boolean"
+                )
+            end
+            if board.global.enabled then
+                if
+                    type(board.global.ordered_store) ~= "string"
+                    or board.global.ordered_store == ""
+                then
+                    return self:_configError(
+                        "leaderboards",
+                        path .. ".global.ordered_store",
+                        "expected non-empty string"
+                    )
+                end
+                ok, err = self:_requirePositiveNumber(
+                    "leaderboards",
+                    board.global.refresh_seconds,
+                    path .. ".global.refresh_seconds"
+                )
+                if not ok then
+                    return ok, err
+                end
+            end
         end
     end
 

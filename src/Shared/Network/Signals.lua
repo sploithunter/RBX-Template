@@ -66,6 +66,12 @@ local Signals = {
     ZoneUnlockResult = Net:RemoteEvent("ZoneUnlockResult"), -- s->c
     ZoneTravelResult = Net:RemoteEvent("ZoneTravelResult"), -- s->c
 
+    -- Phase 3 stats-derived features
+    PetIndexUpdated = Net:RemoteEvent("PetIndexUpdated"), -- s->c
+    AchievementCompleted = Net:RemoteEvent("AchievementCompleted"), -- s->c
+    LeaderboardUpdated = Net:RemoteEvent("LeaderboardUpdated"), -- s->c
+    LeaderboardSnapshotRequest = Net:RemoteEvent("LeaderboardSnapshotRequest"), -- c->s
+
     -- Auto-target toggles
     -- Server validates and flips Player BoolValues (FreeTarget/PaidTarget).
     -- Client UI reflects state via AutoTarget_Status and Player value listeners.
