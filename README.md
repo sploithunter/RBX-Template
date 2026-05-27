@@ -43,6 +43,32 @@ Important configs:
 
 Durable pet power has a single source of truth in `configs/pets.lua`: family base power plus variant multipliers. Saved pet inventory records should store identity and mutable per-copy state such as level, XP, enchants, serials, hatcher metadata, lock state, and Huge/Eternal traits, but not power values.
 
+## AI And Wiki Workflow
+
+This repo is intended to be developed with Codex or another AI coding agent. The persistent project memory lives in `docs/wiki/`, so useful decisions survive beyond one chat thread and future agents can move quickly without rediscovering the same context.
+
+Recommended start-of-work flow for any agent:
+
+1. Read `AGENTS.md`.
+2. Read `docs/wiki/INDEX.md`.
+3. Follow the links relevant to the task, especially `CURRENT_STATUS.md`, `DECISIONS.md`, `ARCHITECTURE.md`, `STUDIO_WORKFLOW.md`, and `MAP_INTEGRATION_CONTRACT.md`.
+4. Verify the wiki against source files before editing code, because code and formal requirements remain the final authority.
+5. Make the smallest useful code/config/doc change.
+6. Run the relevant local checks and Studio smoke runners.
+7. Update the wiki before finishing if the work changed architecture, config shape, map contracts, data shapes, save fields, network packets, Studio workflow, or project direction.
+
+The wiki pattern is deliberately lightweight:
+
+- `docs/wiki/INDEX.md` is the table of contents.
+- `docs/wiki/CURRENT_STATUS.md` says what is true right now.
+- `docs/wiki/DECISIONS.md` captures durable decisions and rationale.
+- `docs/wiki/ARCHITECTURE.md` explains service and data boundaries.
+- `docs/wiki/STUDIO_WORKFLOW.md` captures Rojo, Studio, MCP, and smoke-test workflow.
+- `docs/wiki/LOG.md` records dated session summaries.
+- `docs/wiki/raw/` is for unsynthesized notes; do not treat raw notes as current truth until they are compiled into a normal wiki page.
+
+Use `python3 scripts/wiki_status.py` as a quick health check after wiki edits. The goal is not heavy documentation; the goal is a short, current project memory that lets an AI agent and a human developer maintain momentum together.
+
 ## Studio And Rojo Workflow
 
 Prerequisites:
