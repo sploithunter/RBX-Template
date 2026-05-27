@@ -148,6 +148,81 @@ function AssetPreloadService:CreateAssetFolders()
     })
 end
 
+local function createHealthBillboard(parentPart)
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "BillboardGui"
+    billboard.Size = UDim2.new(0, 110, 0, 16)
+    billboard.StudsOffset = Vector3.new(0, 2.2, 0)
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = 75
+    billboard.Parent = parentPart
+
+    local background = Instance.new("Frame")
+    background.Name = "Background"
+    background.Size = UDim2.new(0, 100, 0, 10)
+    background.Position = UDim2.new(0, 5, 0, 3)
+    background.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    background.BorderSizePixel = 0
+    background.Parent = billboard
+
+    local health = Instance.new("Frame")
+    health.Name = "Health"
+    health.Size = UDim2.new(0, 100, 0, 10)
+    health.BackgroundColor3 = Color3.fromRGB(45, 220, 95)
+    health.BorderSizePixel = 0
+    health.Parent = background
+end
+
+local function createCoinStackModel()
+    local model = Instance.new("Model")
+    model.Name = "CoinStack"
+
+    local hitbox = Instance.new("Part")
+    hitbox.Name = "Hitbox"
+    hitbox.Size = Vector3.new(3.5, 2.2, 3.5)
+    hitbox.Transparency = 1
+    hitbox.Anchored = true
+    hitbox.CanCollide = false
+    hitbox.CanTouch = false
+    hitbox.CanQuery = true
+    hitbox.Parent = model
+    model.PrimaryPart = hitbox
+
+    for i = 1, 6 do
+        local coin = Instance.new("Part")
+        coin.Name = "Coin" .. tostring(i)
+        coin.Shape = Enum.PartType.Cylinder
+        coin.Size = Vector3.new(2.7, 0.22, 2.7)
+        coin.Anchored = true
+        coin.CanCollide = false
+        coin.CanTouch = false
+        coin.CanQuery = true
+        coin.Material = Enum.Material.Metal
+        coin.Color = Color3.fromRGB(255, 205, 55)
+        coin.CFrame = CFrame.new((i % 2) * 0.08, (i - 1) * 0.2, ((i + 1) % 2) * 0.08)
+            * CFrame.Angles(0, math.rad(i * 19), 0)
+        coin.Parent = model
+    end
+
+    local sparkle = Instance.new("PointLight")
+    sparkle.Name = "CoinGlow"
+    sparkle.Color = Color3.fromRGB(255, 220, 95)
+    sparkle.Brightness = 0.8
+    sparkle.Range = 8
+    sparkle.Parent = hitbox
+
+    createHealthBillboard(hitbox)
+    model:PivotTo(CFrame.identity)
+    return model
+end
+
+local function createProceduralBreakableModel(kind)
+    if kind == "coin_stack" then
+        return createCoinStackModel()
+    end
+    return nil
+end
+
 -- Load all breakable (non-pet) models such as crystals
 function AssetPreloadService:LoadAllBreakableModelsIntoAssets()
     logger:Info("🔄 LoadAllBreakableModelsIntoAssets: Starting...")
@@ -180,9 +255,25 @@ function AssetPreloadService:LoadAllBreakableModelsIntoAssets()
     local successCount = 0
     local failureCount = 0
     
-    -- Iterate crystals in config
+    -- Iterate crystals/breakables in config
     for crystalName, crystalData in pairs(breakablesConfig.crystals or {}) do
-        if type(crystalData) == "table" and crystalData.asset_id and crystalData.asset_id ~= "rbxassetid://0" then
+        if type(crystalData) == "table" and crystalData.procedural_asset then
+            local existing = crystalsFolder:FindFirstChild(crystalName)
+            if existing then existing:Destroy() end
+
+            local model = createProceduralBreakableModel(crystalData.procedural_asset)
+            if model then
+                model.Name = crystalName
+                model.Parent = crystalsFolder
+                successCount += 1
+            else
+                logger:Warn("LoadAllBreakableModelsIntoAssets: Unknown procedural breakable", {
+                    name = tostring(crystalName),
+                    proceduralAsset = tostring(crystalData.procedural_asset),
+                })
+                failureCount += 1
+            end
+        elseif type(crystalData) == "table" and crystalData.asset_id and crystalData.asset_id ~= "rbxassetid://0" then
             -- Replace any existing model with same name
             local existing = crystalsFolder:FindFirstChild(crystalName)
             if existing then existing:Destroy() end
@@ -311,18 +402,42 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                 totalAssets = totalAssets + 1
                 
                 if variantData.asset_id and variantData.asset_id ~= "rbxassetid://0" then
-                    -- Replace existing variant model to avoid duplicates
                     local existingVariant = petTypeFolder:FindFirstChild(variant)
-                    if existingVariant then
-                        existingVariant:Destroy()
+                    local modelSuccess
+                    
+                    if variantData.asset_source == "rojo" then
+                        if existingVariant and existingVariant:IsA("Model") then
+                            logger:Info("Using Rojo-managed pet model", {
+                                petType = petType,
+                                variant = variant,
+                                path = existingVariant:GetFullName()
+                            })
+                            self:SetPreferredPrimaryPart(existingVariant)
+                            existingVariant:PivotTo(CFrame.identity)
+                            self:WeldModelParts(existingVariant)
+                            self:AddPetSystemComponents(existingVariant)
+                            modelSuccess = true
+                        else
+                            logger:Warn("Rojo-managed pet model missing", {
+                                petType = petType,
+                                variant = variant,
+                                expectedPath = petTypeFolder:GetFullName() .. "." .. variant
+                            })
+                            modelSuccess = false
+                        end
+                    else
+                        -- Replace existing variant model to avoid duplicates
+                        if existingVariant then
+                            existingVariant:Destroy()
+                        end
+                        -- Load 3D model
+                        modelSuccess = self:LoadModelIntoFolder(
+                            variantData.asset_id,
+                            petTypeFolder,
+                            variant,
+                            petType .. "_" .. variant
+                        )
                     end
-                    -- Load 3D model
-                    local modelSuccess = self:LoadModelIntoFolder(
-                        variantData.asset_id,
-                        petTypeFolder,
-                        variant,
-                        petType .. "_" .. variant
-                    )
                     
                     if modelSuccess then
                         modelSuccessCount = modelSuccessCount + 1
@@ -616,8 +731,10 @@ end
 function AssetPreloadService:SetPreferredPrimaryPart(model)
     if not model or not model:IsA("Model") then return end
     local chosen = model.PrimaryPart
+    local firstPart = nil
     for _, d in ipairs(model:GetDescendants()) do
         if d:IsA("BasePart") then
+            firstPart = firstPart or d
             local n = string.lower(d.Name)
             if string.find(n, "face") or string.find(n, "head") then
                 chosen = d
@@ -625,6 +742,7 @@ function AssetPreloadService:SetPreferredPrimaryPart(model)
             end
         end
     end
+    chosen = chosen or firstPart
     if chosen then
         model.PrimaryPart = chosen
     end
@@ -1017,24 +1135,42 @@ function AssetPreloadService:AddPetSystemComponents(petModel)
     }
     
     for _, valueData in pairs(values) do
-        local value = Instance.new(valueData.class)
-        value.Name = valueData.name
+        local value = petModel:FindFirstChild(valueData.name)
+        if not value or not value:IsA(valueData.class) then
+            if value then
+                value:Destroy()
+            end
+            value = Instance.new(valueData.class)
+            value.Name = valueData.name
+            value.Parent = petModel
+        end
         value.Value = valueData.value
-        value.Parent = petModel
     end
     
     -- 2. Add Follow script placeholder to the pet model (disabled)
     -- NOTE: Do not set `Script.Source` at runtime; it is read-only in live games.
-    local followScript = Instance.new("Script")
-    followScript.Name = "Follow"
+    local followScript = petModel:FindFirstChild("Follow")
+    if not followScript or not followScript:IsA("Script") then
+        if followScript then
+            followScript:Destroy()
+        end
+        followScript = Instance.new("Script")
+        followScript.Name = "Follow"
+        followScript.Parent = petModel
+    end
     followScript.Disabled = true
-    followScript.Parent = petModel
     
     -- 3. Add attachmentPet to the pet model's PrimaryPart
     if petModel.PrimaryPart then
-        local attachmentPet = Instance.new("Attachment")
-        attachmentPet.Name = "attachmentPet"
-        attachmentPet.Parent = petModel.PrimaryPart
+        local attachmentPet = petModel.PrimaryPart:FindFirstChild("attachmentPet")
+        if not attachmentPet or not attachmentPet:IsA("Attachment") then
+            if attachmentPet then
+                attachmentPet:Destroy()
+            end
+            attachmentPet = Instance.new("Attachment")
+            attachmentPet.Name = "attachmentPet"
+            attachmentPet.Parent = petModel.PrimaryPart
+        end
     end
     
     -- 4. Set initial pet size

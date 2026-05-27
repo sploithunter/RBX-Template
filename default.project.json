@@ -1,13 +1,79 @@
 {
   "name": "game-template",
+  "servePort": 34872,
+  "globIgnorePaths": [
+    "Packages/**/*.project.json"
+  ],
   "tree": {
     "$className": "DataModel",
+    "Workspace": {
+      "$ignoreUnknownInstances": true,
+      "SpawnIsland": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Size": [160, 4, 160],
+          "Position": [0, -2, 0],
+          "Color": [0.18, 0.62, 0.29],
+          "Material": "Grass"
+        }
+      },
+      "StartSpawn": {
+        "$className": "SpawnLocation",
+        "$properties": {
+          "Anchored": true,
+          "Neutral": true,
+          "Duration": 0,
+          "Size": [12, 1, 12],
+          "Position": [0, 2, 0],
+          "Transparency": 0.25,
+          "Color": [0.15, 0.45, 1]
+        }
+      }
+    },
     "ServerScriptService": {
       "Server": {
         "$path": "src/Server"
       }
     },
     "ReplicatedStorage": {
+      "Assets": {
+        "$className": "Folder",
+        "Models": {
+          "$className": "Folder",
+          "Pets": {
+            "$className": "Folder",
+            "bear": {
+              "$className": "Folder",
+              "basic": {
+                "$className": "Model",
+                "Body": {
+                  "$className": "MeshPart",
+                  "$properties": {
+                    "Anchored": false,
+                    "CanCollide": false,
+                    "CanQuery": false,
+                    "CanTouch": false,
+                    "Massless": true,
+                    "MeshId": "rbxassetid://130306156035035",
+                    "Size": [0.9667320251464844, 1.9060661792755127, 0.841488242149353],
+                    "TextureID": ""
+                  },
+                  "SurfaceAppearance": {
+                    "$className": "SurfaceAppearance",
+                    "$properties": {
+                      "ColorMap": "rbxassetid://97203863650890",
+                      "MetalnessMap": "rbxassetid://89610260195226",
+                      "NormalMap": "rbxassetid://95598169051053",
+                      "RoughnessMap": "rbxassetid://121250134051564"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "Shared": {
         "$path": "src/Shared"
       },

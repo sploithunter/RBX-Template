@@ -41,10 +41,8 @@ return function()
                 local remote = Signals[name]
                 if remote and typeof(remote) == "Instance" then
                     -- Replace with proxy table preserving FireClient
-                    Signals[name] = { FireClient = function() end }
-                else
-                    Signals[name] = { FireClient = function() end }
                 end
+                Signals[name] = { FireClient = function() end }
             end
             for _, n in ipairs({"PurchaseSuccess", "PurchaseError", "OwnedPasses", "ProductInfo", "FirstPurchaseBonus"}) do
                 stub(n)

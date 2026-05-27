@@ -2397,6 +2397,22 @@ function BaseUI:_onMenuButtonClicked(menuName)
             end
         end
     end
+
+    if actionConfig
+        and actionConfig.type == "network_call"
+        and actionConfig.service == "EconomyService"
+        and actionConfig.method == "ConvertCurrency" then
+        local ok, Signals = pcall(function()
+            return require(ReplicatedStorage.Shared.Network.Signals)
+        end)
+        if ok and Signals and Signals.ConvertCurrency then
+            Signals.ConvertCurrency:FireServer(actionConfig.parameters or {})
+        else
+            self.logger:warn("Unable to fire currency conversion action")
+        end
+        return
+    end
+
     self.menuManager:TogglePanel(menuName, transitionEffect)
 end
 
@@ -2736,4 +2752,4 @@ function BaseUI:_validatePanePosition(paneContainer, config, paneName)
     })
 end
 
-return BaseUI 
+return BaseUI

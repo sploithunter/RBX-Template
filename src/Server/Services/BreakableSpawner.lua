@@ -9,7 +9,7 @@
 
     Notes:
     - Does NOT modify scripts inside the crystal models; spawns with parts anchored
-    - Relies on GameStructureService to create workspace.Game.Breakables.Crystals.* worlds
+    - Uses WorldBindingService map hooks when available, with legacy folder fallback
 ]]
 
 local BreakableSpawner = {}
@@ -23,17 +23,25 @@ local Players = game:GetService("Players")
 -- Injected services
 local logger
 local configLoader
+local eventService
+local worldBindingService
 
 -- Local state
 local breakablesConfig
 
 -- Geometry helpers for crystal star ring
 local function getPointOnCircle(radius, degrees)
-    return Vector3.new(math.cos(math.rad(degrees)) * radius, 2, math.sin(math.rad(degrees)) * radius)
+    return Vector3.new(
+        math.cos(math.rad(degrees)) * radius,
+        2,
+        math.sin(math.rad(degrees)) * radius
+    )
 end
 
 local function updateStarScale(starPart, factor)
-    if not starPart or not starPart:IsA("BasePart") then return end
+    if not starPart or not starPart:IsA("BasePart") then
+        return
+    end
     local baseRadius = starPart:GetAttribute("BaseRadius") or 10
     local pointCount = starPart:GetAttribute("PointCount") or 108
     local increment = 360 / pointCount
@@ -53,14 +61,18 @@ end
 
 local function createStarRing(parentModel, radius, pointCount)
     -- Create a simple anchor part above the crystal with attachments where pets can align
-    if not parentModel or not parentModel.PrimaryPart then return end
+    if not parentModel or not parentModel.PrimaryPart then
+        return
+    end
     local star = Instance.new("Part")
     star.Name = "Star"
     star.Size = Vector3.new(1, 1, 1)
     star.Anchored = true
     star.CanCollide = false
     star.Transparency = 1
-    star.CFrame = CFrame.new(parentModel.PrimaryPart.Position + Vector3.new(0, parentModel:GetExtentsSize().Y/4, 0))
+    star.CFrame = CFrame.new(
+        parentModel.PrimaryPart.Position + Vector3.new(0, parentModel:GetExtentsSize().Y / 4, 0)
+    )
     star.Parent = parentModel
 
     local count = tonumber(pointCount) or 108
@@ -120,7 +132,9 @@ local function createStarRing(parentModel, radius, pointCount)
         while star.Parent == parentModel and parentModel.Parent do
             local dt = RunService.Heartbeat:Wait()
             local pp = parentModel.PrimaryPart
-            if not pp then break end
+            if not pp then
+                break
+            end
             local maxHp = tonumber(parentModel:GetAttribute("MaxHP")) or 0
             local hp = tonumber(parentModel:GetAttribute("HP")) or 0
             local fracTarget = (maxHp > 0) and math.clamp(hp / maxHp, 0, 1) or 1
@@ -142,9 +156,103 @@ local function createStarRing(parentModel, radius, pointCount)
     return star
 end
 
+local function getWorldConfig(worldName)
+    return (breakablesConfig.worlds and breakablesConfig.worlds[worldName]) or {}
+end
+
+local function getSpawnSettings(worldName)
+    local defaults = (breakablesConfig.defaults and breakablesConfig.defaults.spawn_settings) or {}
+    local worldCfg = getWorldConfig(worldName)
+    local worldSettings = worldCfg.spawn_settings or {}
+    local settings = table.clone(defaults)
+    for key, value in pairs(worldSettings) do
+        settings[key] = value
+    end
+    return settings
+end
+
+local function getConfiguredPosition(value, fallback, surfaceY)
+    if type(value) ~= "table" then
+        return fallback
+    end
+
+    local x = tonumber(value.x or value.X) or fallback.X
+    local y = tonumber(value.y or value.Y) or surfaceY or fallback.Y
+    local z = tonumber(value.z or value.Z) or fallback.Z
+    return Vector3.new(x, y, z)
+end
+
+local function horizontalDistance(a, b)
+    local dx = a.X - b.X
+    local dz = a.Z - b.Z
+    return math.sqrt((dx * dx) + (dz * dz))
+end
+
+local function randomPointInCircle(center, radius)
+    if radius <= 0 then
+        return center
+    end
+
+    local angle = math.random() * math.pi * 2
+    local distance = math.sqrt(math.random()) * radius
+    return center + Vector3.new(math.cos(angle) * distance, 0, math.sin(angle) * distance)
+end
+
+local function randomPointInSpawnerBounds(spawner, margin)
+    local halfX = math.max(0, (spawner.Size.X * 0.5) - margin)
+    local halfZ = math.max(0, (spawner.Size.Z * 0.5) - margin)
+    local localX = (math.random() * 2 - 1) * halfX
+    local localZ = (math.random() * 2 - 1) * halfZ
+    return spawner.CFrame:PointToWorldSpace(Vector3.new(localX, 0, localZ))
+end
+
+local function selectSpawnZone(zones)
+    if type(zones) ~= "table" or #zones == 0 then
+        return nil
+    end
+
+    local totalWeight = 0
+    for _, zone in ipairs(zones) do
+        totalWeight += tonumber(zone.weight or 1)
+    end
+
+    local roll = math.random() * totalWeight
+    local cumulative = 0
+    for _, zone in ipairs(zones) do
+        cumulative += tonumber(zone.weight or 1)
+        if roll <= cumulative then
+            return zone
+        end
+    end
+
+    return zones[#zones]
+end
+
+local function ensureConfiguredFolderTree(gameFolder)
+    local structure = breakablesConfig.structure or {}
+    for sectionName, sectionConfig in pairs(structure.folders or {}) do
+        local sectionFolder = gameFolder:FindFirstChild(sectionName)
+        if not sectionFolder then
+            sectionFolder = Instance.new("Folder")
+            sectionFolder.Name = sectionName
+            sectionFolder.Parent = gameFolder
+        end
+
+        for groupName in pairs(sectionConfig) do
+            if not sectionFolder:FindFirstChild(groupName) then
+                local groupFolder = Instance.new("Folder")
+                groupFolder.Name = groupName
+                groupFolder.Parent = sectionFolder
+            end
+        end
+    end
+end
+
 function BreakableSpawner:Init()
     logger = self._modules.Logger
     configLoader = self._modules.ConfigLoader
+    eventService = self._modules.EventService
+    worldBindingService = self._modules.WorldBindingService
 
     -- Load config (safe)
     local ok, cfg = pcall(function()
@@ -158,11 +266,17 @@ function BreakableSpawner:Init()
     end
 
     logger:Info("BreakableSpawner initialized", {
-        crystalsDefined = (breakablesConfig.crystals and #breakablesConfig.crystals) or 0
+        crystalsDefined = (breakablesConfig.crystals and #breakablesConfig.crystals) or 0,
     })
 end
 
 function BreakableSpawner:Start()
+    if worldBindingService and worldBindingService.AreaEntered then
+        worldBindingService.AreaEntered:Connect(function(_, areaId)
+            self:_fillAreaWorld(areaId)
+        end)
+    end
+
     task.spawn(function()
         self:_spawnLoop()
     end)
@@ -179,6 +293,28 @@ function BreakableSpawner:Start()
     end)
 end
 
+function BreakableSpawner:_isWorldActive(worldName)
+    if not worldBindingService or not worldBindingService.IsAreaActive then
+        return true
+    end
+
+    return worldName == "Spawn" or worldBindingService:IsAreaActive(worldName)
+end
+
+function BreakableSpawner:_fillAreaWorld(areaId)
+    if not self._crystalsAssets then
+        return
+    end
+
+    local gameFolder = workspace:FindFirstChild("Game")
+    local breakablesWorlds = gameFolder and gameFolder:FindFirstChild("Breakables")
+    local crystalsWorlds = breakablesWorlds and breakablesWorlds:FindFirstChild("Crystals")
+    local worldFolder = crystalsWorlds and crystalsWorlds:FindFirstChild(areaId)
+    if worldFolder and worldFolder:IsA("Folder") then
+        self:_fillWorld(worldFolder, self._crystalsAssets)
+    end
+end
+
 function BreakableSpawner:_spawnLoop()
     -- Wait for assets folder
     local assets = ReplicatedStorage:WaitForChild("Assets", 10)
@@ -187,7 +323,9 @@ function BreakableSpawner:_spawnLoop()
         return
     end
     local models = assets:WaitForChild("Models", 10)
-    if not models then return end
+    if not models then
+        return
+    end
     local breakables = models:WaitForChild("Breakables", 30)
     if not breakables then
         logger:Error("BreakableSpawner: Assets.Models.Breakables missing; aborting")
@@ -195,7 +333,9 @@ function BreakableSpawner:_spawnLoop()
     end
     local crystalsAssets = breakables:WaitForChild("Crystals", 30)
     if not crystalsAssets then
-        logger:Warn("BreakableSpawner: Crystal assets folder missing after wait; will retry when assets load")
+        logger:Warn(
+            "BreakableSpawner: Crystal assets folder missing after wait; will retry when assets load"
+        )
         -- Try to wait for global signal if provided by AssetPreloadService
         if _G.AssetsLoadedEvent then
             _G.AssetsLoadedEvent.Event:Connect(function()
@@ -220,7 +360,9 @@ function BreakableSpawner:_spawnLoop()
         end
         self._crystalsAssets = crystalsAssets
         if #crystalsAssets:GetChildren() == 0 then
-            logger:Warn("BreakableSpawner: Crystals folder has no children after waits; will keep retrying")
+            logger:Warn(
+                "BreakableSpawner: Crystals folder has no children after waits; will keep retrying"
+            )
         else
             local names = {}
             for _, child in ipairs(crystalsAssets:GetChildren()) do
@@ -241,40 +383,21 @@ function BreakableSpawner:_spawnLoop()
         logger:Error("BreakableSpawner: workspace.Game.Breakables missing; cannot spawn")
         return
     end
-    -- Ensure placeholder folders so other systems that WaitForChild on them don't hang
-    for _, name in ipairs({"Gold", "Green", "Summer"}) do
-        if not breakablesWorlds:FindFirstChild(name) then
-            local f = Instance.new("Folder")
-            f.Name = name
-            f.Parent = breakablesWorlds
-        end
-    end
+    ensureConfiguredFolderTree(gameFolder)
+
     local crystalsWorlds = breakablesWorlds:FindFirstChild("Crystals")
     if not crystalsWorlds then
         logger:Error("BreakableSpawner: workspace.Game.Breakables.Crystals missing; cannot spawn")
         return
     end
 
-    -- Ensure minimal Chaseables tree to satisfy any WaitForChild
-    local chaseables = gameFolder:FindFirstChild("Chaseables")
-    if not chaseables then
-        chaseables = Instance.new("Folder")
-        chaseables.Name = "Chaseables"
-        chaseables.Parent = gameFolder
-    end
-    for _, name in ipairs({"Snowman", "Hearts"}) do
-        if not chaseables:FindFirstChild(name) then
-            local f = Instance.new("Folder")
-            f.Name = name
-            f.Parent = chaseables
-        end
-    end
-
     -- Attach listeners and do initial fill for each world
     for _, worldFolder in ipairs(crystalsWorlds:GetChildren()) do
         if worldFolder:IsA("Folder") then
             self:_setupWorld(worldFolder)
-            self:_fillWorld(worldFolder, self._crystalsAssets)
+            if self:_isWorldActive(worldFolder.Name) then
+                self:_fillWorld(worldFolder, self._crystalsAssets)
+            end
         end
     end
 
@@ -282,21 +405,29 @@ function BreakableSpawner:_spawnLoop()
     crystalsWorlds.ChildAdded:Connect(function(child)
         if child:IsA("Folder") then
             self:_setupWorld(child)
-            self:_fillWorld(child, self._crystalsAssets)
+            if self:_isWorldActive(child.Name) then
+                self:_fillWorld(child, self._crystalsAssets)
+            end
         end
     end)
 end
 
 function BreakableSpawner:_fillAllWorlds(crystalsAssets)
     local gameFolder = workspace:FindFirstChild("Game")
-    if not gameFolder then return end
+    if not gameFolder then
+        return
+    end
     local breakablesWorlds = gameFolder:FindFirstChild("Breakables")
-    if not breakablesWorlds then return end
+    if not breakablesWorlds then
+        return
+    end
     local crystalsWorlds = breakablesWorlds:FindFirstChild("Crystals")
-    if not crystalsWorlds then return end
+    if not crystalsWorlds then
+        return
+    end
     self._crystalsAssets = crystalsAssets
     for _, worldFolder in ipairs(crystalsWorlds:GetChildren()) do
-        if worldFolder:IsA("Folder") then
+        if worldFolder:IsA("Folder") and self:_isWorldActive(worldFolder.Name) then
             self:_fillWorld(worldFolder, crystalsAssets)
         end
     end
@@ -319,23 +450,24 @@ function BreakableSpawner:_setupWorld(worldFolder)
     end
 
     local max = worldFolder:FindFirstChild("Max")
+    local worldConfig = getWorldConfig(worldFolder.Name)
+    local defaultMax = (breakablesConfig.defaults and breakablesConfig.defaults.max_per_world) or 25
+    local configuredMax = tonumber(worldConfig.max or defaultMax) or defaultMax
     if not max then
         max = Instance.new("NumberValue")
         max.Name = "Max"
-        -- use config if available
-        local worldConfig = (breakablesConfig.worlds and breakablesConfig.worlds[worldFolder.Name]) or nil
-        local defaultMax = (breakablesConfig.defaults and breakablesConfig.defaults.max_per_world) or 25
-        max.Value = (worldConfig and worldConfig.max) or defaultMax
         max.Parent = worldFolder
     end
+    max.Value = configuredMax
 
     -- Maintain count when items removed
     items.ChildRemoved:Connect(function()
         task.defer(function()
             local c = current.Value
-            if c > 0 then current.Value = c - 1 end
-            local worldCfg = breakablesConfig.worlds and breakablesConfig.worlds[worldFolder.Name]
-            local placeCfg = worldCfg and worldCfg.spawn_settings or {}
+            if c > 0 then
+                current.Value = c - 1
+            end
+            local placeCfg = getSpawnSettings(worldFolder.Name)
             local minDelay = tonumber(placeCfg.respawn_min_seconds or 5)
             local maxDelay = tonumber(placeCfg.respawn_max_seconds or 60)
             local delaySec = math.random(minDelay, maxDelay)
@@ -347,16 +479,22 @@ function BreakableSpawner:_setupWorld(worldFolder)
 end
 
 function BreakableSpawner:_fillWorld(worldFolder, crystalsAssets)
+    if not self:_isWorldActive(worldFolder.Name) then
+        return
+    end
+
     local current = worldFolder:FindFirstChild("CurrentItems")
     local max = worldFolder:FindFirstChild("Max")
-    if not (current and max) then return end
+    if not (current and max) then
+        return
+    end
     local deficit = math.max(0, (max.Value or 0) - (current.Value or 0))
     for i = 1, deficit do
         self:_trySpawnOne(worldFolder)
     end
 end
 
-function BreakableSpawner:_selectCrystalName(worldName)
+function BreakableSpawner:_selectCrystalSpawn(worldName)
     -- Prefer per-world weighted spawn table if provided
     local worldCfg = breakablesConfig.worlds and breakablesConfig.worlds[worldName]
     local tableCfg = worldCfg and worldCfg.spawn_table
@@ -370,7 +508,7 @@ function BreakableSpawner:_selectCrystalName(worldName)
         for _, e in ipairs(tableCfg) do
             acc += tonumber(e.weight or 1)
             if roll <= acc then
-                return e.name
+                return e.name, e
             end
         end
     end
@@ -382,26 +520,47 @@ function BreakableSpawner:_selectCrystalName(worldName)
             table.insert(names, name)
         end
     end
-    if #names == 0 then return nil end
+    if #names == 0 then
+        return nil
+    end
     local idx = math.random(1, #names)
-    return names[idx]
+    return names[idx], nil
 end
 
 function BreakableSpawner:_getSpawnerParts(worldFolder)
+    if worldBindingService and worldBindingService.GetSpawnZonesForSpawner then
+        local boundSpawners =
+            worldBindingService:GetSpawnZonesForSpawner(worldFolder.Name, "spawn_crystals")
+        if type(boundSpawners) == "table" and #boundSpawners > 0 then
+            return boundSpawners
+        end
+    end
+
     local spawners = {}
     for _, child in ipairs(worldFolder:GetChildren()) do
-        if child:IsA("BasePart") and (child.Name == "Spawner" or child.Name == "DarkSpawner" or child.Name:find("Spawner")) then
+        if
+            child:IsA("BasePart")
+            and (
+                child.Name == "SpawnArea"
+                or child.Name == "CrystalSpawnArea"
+                or child.Name == "Spawner"
+                or child.Name == "DarkSpawner"
+                or child.Name:find("Spawner")
+            )
+        then
             table.insert(spawners, child)
         end
     end
     return spawners
 end
 
--- Find a spawner that doesn't currently have a crystal near it
-function BreakableSpawner:_findFreeSpawner(worldFolder)
+-- Find a placement point inside a spawner's configured area.
+function BreakableSpawner:_findSpawnPoint(worldFolder)
     local itemsFolder = worldFolder:FindFirstChild("Items")
     local spawners = self:_getSpawnerParts(worldFolder)
-    if #spawners == 0 then return nil end
+    if #spawners == 0 then
+        return nil, nil
+    end
 
     -- Shuffle spawners to distribute load
     for i = #spawners, 2, -1 do
@@ -409,35 +568,87 @@ function BreakableSpawner:_findFreeSpawner(worldFolder)
         spawners[i], spawners[j] = spawners[j], spawners[i]
     end
 
-    local worldCfg = breakablesConfig.worlds and breakablesConfig.worlds[worldFolder.Name]
-    local placeCfg = worldCfg and worldCfg.spawn_settings or {}
-    local clearRadius = tonumber(placeCfg.min_distance or 12)
+    local placeCfg = getSpawnSettings(worldFolder.Name)
+    local minDistance = tonumber(placeCfg.min_distance or 12)
+    local spawnRadius = tonumber(placeCfg.spawn_radius or 0)
+    local spawnAttempts = math.max(1, tonumber(placeCfg.spawn_attempts or 12))
+    local surfaceY = tonumber(placeCfg.surface_y)
+    local exclusionRadius = tonumber(placeCfg.spawn_exclusion_radius or 0)
+    local zones = type(placeCfg.spawn_zones) == "table" and placeCfg.spawn_zones or nil
+    local useSpawnerBounds = placeCfg.use_spawner_bounds ~= false
+    local spawnerMargin = tonumber(placeCfg.spawn_area_margin or 0)
 
     for _, spawner in ipairs(spawners) do
-        local occupied = false
-        if itemsFolder then
-            for _, child in ipairs(itemsFolder:GetChildren()) do
-                if child:IsA("Model") and child.PrimaryPart then
-                    local d = (child.PrimaryPart.Position - spawner.Position).Magnitude
-                    if d < clearRadius then
-                        occupied = true
-                        break
+        local spawnerPosition = spawner.Position
+        if surfaceY then
+            spawnerPosition = Vector3.new(spawner.Position.X, surfaceY, spawner.Position.Z)
+        end
+
+        local spawnCenter = getConfiguredPosition(placeCfg.spawn_center, spawnerPosition, surfaceY)
+        local exclusionCenter =
+            getConfiguredPosition(placeCfg.spawn_exclusion_center, spawnCenter, surfaceY)
+
+        for _ = 1, spawnAttempts do
+            local zone = selectSpawnZone(zones)
+            local zoneCenter = spawnCenter
+            local zoneRadius = spawnRadius
+            if zone then
+                zoneCenter = getConfiguredPosition(zone.center, spawnCenter, surfaceY)
+                zoneRadius = tonumber(zone.radius or spawnRadius)
+            end
+
+            local hasAreaBounds = useSpawnerBounds
+                and not zone
+                and (spawner.Size.X > 1 or spawner.Size.Z > 1)
+            local candidate = hasAreaBounds and randomPointInSpawnerBounds(spawner, spawnerMargin)
+                or randomPointInCircle(zoneCenter, zoneRadius)
+            if surfaceY then
+                candidate = Vector3.new(candidate.X, surfaceY, candidate.Z)
+            end
+
+            local insideExclusion = exclusionRadius > 0
+                and horizontalDistance(candidate, exclusionCenter) < exclusionRadius
+            local tooClose = insideExclusion
+
+            if not tooClose and itemsFolder then
+                for _, child in ipairs(itemsFolder:GetChildren()) do
+                    if child:IsA("Model") and child.PrimaryPart then
+                        if
+                            horizontalDistance(child.PrimaryPart.Position, candidate) < minDistance
+                        then
+                            tooClose = true
+                            break
+                        end
                     end
                 end
             end
-        end
-        if not occupied then
-            return spawner
+
+            if not tooClose then
+                return spawner, candidate
+            end
         end
     end
-    return nil
+    return nil, nil
 end
 
-function BreakableSpawner:_trySpawnOne(worldFolder)
+function BreakableSpawner:_trySpawnOne(
+    worldFolder,
+    forcedCrystalName,
+    forcedSpawnOverrides,
+    ignoreMax
+)
+    if not self:_isWorldActive(worldFolder.Name) then
+        return
+    end
+
     local current = worldFolder:FindFirstChild("CurrentItems")
     local max = worldFolder:FindFirstChild("Max")
-    if not (current and max) then return end
-    if current.Value >= max.Value then return end
+    if not (current and max) then
+        return
+    end
+    if not ignoreMax and current.Value >= max.Value then
+        return
+    end
 
     local crystalsAssets = self._crystalsAssets
     if not crystalsAssets then
@@ -462,7 +673,10 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
         return
     end
 
-    local crystalName = self:_selectCrystalName(worldFolder.Name)
+    local crystalName, spawnOverrides = forcedCrystalName, forcedSpawnOverrides
+    if not crystalName then
+        crystalName, spawnOverrides = self:_selectCrystalSpawn(worldFolder.Name)
+    end
     if not crystalName then
         logger:Warn("BreakableSpawner: No crystals available to spawn")
         return
@@ -474,18 +688,16 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
         for _, child in ipairs(crystalsAssets:GetChildren()) do
             table.insert(present, child.Name)
         end
-        logger:Warn("BreakableSpawner: Crystal asset missing", { name = crystalName, available = present })
+        logger:Warn(
+            "BreakableSpawner: Crystal asset missing",
+            { name = crystalName, available = present }
+        )
         return
     end
 
-    local spawners = self:_getSpawnerParts(worldFolder)
-    if #spawners == 0 then
-        logger:Warn("BreakableSpawner: No spawner parts in world", { world = worldFolder.Name })
-        return
-    end
-    local spawner = self:_findFreeSpawner(worldFolder)
+    local spawner, spawnPosition = self:_findSpawnPoint(worldFolder)
     if not spawner then
-        -- All spawners are currently occupied within clear radius; skip for now
+        logger:Warn("BreakableSpawner: No spawner parts in world", { world = worldFolder.Name })
         return
     end
 
@@ -493,52 +705,93 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
     local model = assetModel:Clone()
     model.Name = crystalName
 
-    -- Anchor all parts so crystals stay in place
+    local crystalCfg = breakablesConfig.crystals and breakablesConfig.crystals[crystalName]
+    local crystalPlacement = {}
+    if type(crystalCfg) == "table" and type(crystalCfg.placement) == "table" then
+        for key, value in pairs(crystalCfg.placement) do
+            crystalPlacement[key] = value
+        end
+    end
+    if type(spawnOverrides) == "table" and type(spawnOverrides.placement) == "table" then
+        for key, value in pairs(spawnOverrides.placement) do
+            crystalPlacement[key] = value
+        end
+    end
+
+    local function resolveStat(key, fallback)
+        if type(spawnOverrides) == "table" and spawnOverrides[key] ~= nil then
+            return spawnOverrides[key]
+        end
+        if type(crystalCfg) == "table" and crystalCfg[key] ~= nil then
+            return crystalCfg[key]
+        end
+        return fallback
+    end
+
+    local scale = tonumber(resolveStat("scale", 1)) or 1
+    if scale > 0 and scale ~= 1 then
+        pcall(function()
+            model:ScaleTo(scale)
+        end)
+    end
+
+    local physicsCfg = (type(crystalCfg) == "table" and type(crystalCfg.physics) == "table")
+            and crystalCfg.physics
+        or {}
+
+    -- Anchor all parts so breakables stay in place; per-breakable config can tune collision/query.
     for _, d in ipairs(model:GetDescendants()) do
         if d:IsA("BasePart") then
-            d.Anchored = true
+            if physicsCfg.anchored ~= nil then
+                d.Anchored = physicsCfg.anchored == true
+            else
+                d.Anchored = true
+            end
+            if physicsCfg.can_collide ~= nil then
+                d.CanCollide = physicsCfg.can_collide == true
+            end
+            if physicsCfg.can_touch ~= nil then
+                d.CanTouch = physicsCfg.can_touch == true
+            end
+            if physicsCfg.can_query ~= nil then
+                d.CanQuery = physicsCfg.can_query == true
+            end
         end
     end
 
     -- Determine placement/orientation settings
-    local worldCfg = breakablesConfig.worlds and breakablesConfig.worlds[worldFolder.Name]
-    local placeCfg = worldCfg and worldCfg.spawn_settings or {upright = true, embed_ratio = 0.25, min_distance = 12}
-
-    -- Compute height offsets
-    local heightOffset = 1
-    if string.find(crystalName, "Program") or string.find(crystalName, "DarkDesert") then
-        heightOffset = 12
-    elseif string.find(crystalName, "Dark") or string.find(crystalName, "Big") then
-        heightOffset = 7
-    elseif string.find(crystalName, "Medium") then
-        heightOffset = 2
-    else
-        heightOffset = 1
-    end
+    local placeCfg = getSpawnSettings(worldFolder.Name)
+    local sinkDepth = tonumber(crystalPlacement.sink_depth or placeCfg.sink_depth or 0)
+    local surfaceY = tonumber(placeCfg.surface_y)
 
     -- Orientation: preserve model's default pitch/roll from assets, add random yaw
     local yaw = math.rad(math.random(0, 359))
-    local baseCF = spawner.CFrame * CFrame.new(0, heightOffset, 0)
+    local basePosition = spawnPosition or spawner.Position
     local targetCFrame
     if placeCfg.upright then
         -- Keep the model's asset orientation (pitch/roll), only randomize yaw around world Y
         local pivot = model:GetPivot()
         local orientOnly = pivot - pivot.Position
-        targetCFrame = CFrame.new(baseCF.Position) * CFrame.Angles(0, yaw, 0) * orientOnly
+        targetCFrame = CFrame.new(basePosition) * CFrame.Angles(0, yaw, 0) * orientOnly
     else
         -- Free rotation: yaw only
-        targetCFrame = CFrame.new(baseCF.Position) * CFrame.Angles(0, yaw, 0)
+        targetCFrame = CFrame.new(basePosition) * CFrame.Angles(0, yaw, 0)
     end
     pcall(function()
         model:PivotTo(targetCFrame)
     end)
 
-    -- Embed fraction of height below ground to avoid floating
-    local sizeY = model:GetExtentsSize().Y
+    -- Align by bounding box so assets with odd pivots still sit/sink consistently.
+    local boundsCFrame, boundsSize = model:GetBoundingBox()
     local embed = math.clamp(tonumber(placeCfg.embed_ratio or 0.25), 0, 0.9)
-    if embed > 0 then
+    local totalSink = (boundsSize.Y * embed) + sinkDepth
+    local floorY = surfaceY or basePosition.Y
+    local currentBottomY = boundsCFrame.Position.Y - (boundsSize.Y * 0.5)
+    local targetBottomY = floorY - totalSink
+    local yDelta = targetBottomY - currentBottomY
+    if math.abs(yDelta) > 0.001 then
         pcall(function()
-            model:PivotTo(model:GetPivot() * CFrame.new(0, -sizeY * embed, 0))
+            model:PivotTo(model:GetPivot() + Vector3.new(0, yDelta, 0))
         end)
     end
 
@@ -549,7 +802,12 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
     while tries < 4 and itemsFolder do
         local tooClose = false
         for _, other in ipairs(itemsFolder:GetChildren()) do
-            if other:IsA("Model") and other ~= model and other.PrimaryPart and model.PrimaryPart then
+            if
+                other:IsA("Model")
+                and other ~= model
+                and other.PrimaryPart
+                and model.PrimaryPart
+            then
                 local d = (other.PrimaryPart.Position - model.PrimaryPart.Position).Magnitude
                 if d < minDist then
                     tooClose = true
@@ -559,14 +817,26 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
         end
         if tooClose then
             tries += 1
-            local angle = math.rad(math.random(0,359))
+            local angle = math.rad(math.random(0, 359))
             local step = minDist * 0.75
             pcall(function()
-                model:PivotTo(model:GetPivot() * CFrame.new(math.cos(angle)*step, 0, math.sin(angle)*step))
+                model:PivotTo(
+                    model:GetPivot() * CFrame.new(math.cos(angle) * step, 0, math.sin(angle) * step)
+                )
             end)
         else
             break
         end
+    end
+
+    local finalPivot = model:GetPivot()
+    local dropFromHeight = tonumber(
+        crystalPlacement.drop_from_height or placeCfg.drop_from_height or 0
+    ) or 0
+    local dropDuration = tonumber(crystalPlacement.drop_duration or placeCfg.drop_duration or 0.6)
+        or 0.6
+    if dropFromHeight > 0 then
+        model:PivotTo(finalPivot + Vector3.new(0, dropFromHeight, 0))
     end
 
     -- Optional attributes for downstream logic (mirrors MCP fields)
@@ -575,14 +845,14 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
     model:SetAttribute("World", worldFolder.Name)
 
     -- Set gameplay attributes if present in config
-    local data = breakablesConfig.crystals[crystalName]
-    if type(data) == "table" then
-        local maxhp = tonumber(data.health or 0)
-        local value = tonumber(data.value or 0)
+    if type(crystalCfg) == "table" then
+        local maxhp = tonumber(resolveStat("health", 0)) or 0
+        local value = tonumber(resolveStat("value", 0)) or 0
         model:SetAttribute("MaxHP", maxhp)
         model:SetAttribute("HP", maxhp)
         model:SetAttribute("Value", value)
-        model:SetAttribute("Currency", tostring(data.currency or "crystals"))
+        model:SetAttribute("Currency", tostring(resolveStat("currency", "crystals")))
+        model:SetAttribute("Scale", scale)
         model:SetAttribute("Boost", 0)
         model:SetAttribute("MaxBoost", 100)
     end
@@ -590,7 +860,7 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
     -- Unique breakable ID (for targeting). Using random large int similar to MCP
     local idValue = Instance.new("NumberValue")
     idValue.Name = "BreakableID"
-    idValue.Value = math.random(2, 2^30) + math.random(2, 2^30)
+    idValue.Value = math.random(2, 2 ^ 30) + math.random(2, 2 ^ 30)
     idValue.Parent = model
 
     -- Contribution tracking (per-player damage)
@@ -648,11 +918,15 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
             repopulateHealthFrames()
         end
         print("updateHealthBar", #healthFrames)
-        if #healthFrames == 0 then return end
+        if #healthFrames == 0 then
+            return
+        end
         local maxHp = tonumber(model:GetAttribute("MaxHP")) or 0
         local hp = tonumber(model:GetAttribute("HP")) or 0
         print("updateHealthBar", maxHp, hp)
-        if maxHp <= 0 then return end
+        if maxHp <= 0 then
+            return
+        end
         -- MCP behavior: width is percent [0..100] pixels, fixed height 10px
         local percentPx = math.max(0, math.floor((hp / maxHp) * 100))
         for _, frame in ipairs(healthFrames) do
@@ -677,15 +951,21 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
     -- Boost bar hookup
     local function updateBoostBar()
         local pp = model.PrimaryPart
-        if not pp then return end
+        if not pp then
+            return
+        end
         local bbg = pp:FindFirstChild("BoostBillboardGui")
-        if not bbg then return end
+        if not bbg then
+            return
+        end
         local boostFrame = bbg:FindFirstChild("Boost")
         if not boostFrame then
             local container = bbg:FindFirstChildWhichIsA("Frame")
             boostFrame = container and container:FindFirstChild("Boost")
         end
-        if not boostFrame then return end
+        if not boostFrame then
+            return
+        end
         local b = tonumber(model:GetAttribute("Boost")) or 0
         local mb = tonumber(model:GetAttribute("MaxBoost")) or 100
         local percentPx = (mb > 0) and math.max(0, math.floor((b / mb) * 100)) or 0
@@ -746,17 +1026,25 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
             -- Enable crystal SFX/UI when pets engage
             local pp = model.PrimaryPart
             if pp then
-            local bb = pp:FindFirstChild("BillboardGui")
-            if bb then bb.MaxDistance = 75 end
-            local bbb = pp:FindFirstChild("BoostBillboardGui")
-            if bbb then bbb.MaxDistance = 75 end
+                local bb = pp:FindFirstChild("BillboardGui")
+                if bb then
+                    bb.MaxDistance = 75
+                end
+                local bbb = pp:FindFirstChild("BoostBillboardGui")
+                if bbb then
+                    bbb.MaxDistance = 75
+                end
                 local hum = pp:FindFirstChild("EngineHumSound")
-                if hum and hum:IsA("Sound") then hum:Play() end
-            -- Play a soft engage sound if present
-            local soft = pp:FindFirstChild("littleBreakSound")
-            if soft and soft:IsA("Sound") then
-                if math.random(1, 3) == 1 then soft:Play() end
-            end
+                if hum and hum:IsA("Sound") then
+                    hum:Play()
+                end
+                -- Play a soft engage sound if present
+                local soft = pp:FindFirstChild("littleBreakSound")
+                if soft and soft:IsA("Sound") then
+                    if math.random(1, 3) == 1 then
+                        soft:Play()
+                    end
+                end
             end
         end)
         petsFolder.ChildRemoved:Connect(function(child)
@@ -770,19 +1058,29 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
             end
             if #petsFolder:GetChildren() == 0 then
                 local star = model:FindFirstChild("Star")
-                if star then star:Destroy() end
+                if star then
+                    star:Destroy()
+                end
                 local pp = model.PrimaryPart
                 if pp then
                     local bb = pp:FindFirstChild("BillboardGui")
-                    if bb then bb.MaxDistance = 25 end
+                    if bb then
+                        bb.MaxDistance = 25
+                    end
                     local bbb = pp:FindFirstChild("BoostBillboardGui")
-                    if bbb then bbb.MaxDistance = 1 end
+                    if bbb then
+                        bbb.MaxDistance = 1
+                    end
                     local hum = pp:FindFirstChild("EngineHumSound")
-                    if hum and hum:IsA("Sound") then hum:Stop() end
+                    if hum and hum:IsA("Sound") then
+                        hum:Stop()
+                    end
                     -- Optional soft stop cue
                     local soft = pp:FindFirstChild("littleBreakSound")
                     if soft and soft:IsA("Sound") then
-                        if math.random(1, 5) == 1 then soft:Play() end
+                        if math.random(1, 5) == 1 then
+                            soft:Play()
+                        end
                     end
                 end
             end
@@ -791,21 +1089,51 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
 
     -- Award/destroy handler when HP reaches 0 from any source
     local function handleDeath()
-        if not model.Parent then return end
-        if model:GetAttribute("Dead") then return end
+        if not model.Parent then
+            return
+        end
+        if model:GetAttribute("Dead") then
+            return
+        end
         model:SetAttribute("Dead", true)
+        local stats = self._moduleLoader and self._moduleLoader:Get("StatsService")
         -- Compute awards based on contributions
         local currencyType = tostring(model:GetAttribute("Currency") or "coins")
         local valueAmount = tonumber(model:GetAttribute("Value") or 0)
-        local economy = (self._moduleLoader and self._moduleLoader:Get("EconomyService")) or (self._modules and self._modules.EconomyService)
+        local economy = (self._moduleLoader and self._moduleLoader:Get("EconomyService"))
+            or (self._modules and self._modules.EconomyService)
+
+        local function resolvePlayerAward(player, baseAmount)
+            baseAmount = tonumber(baseAmount) or 0
+            if economy and economy.ResolveRewardAmount and baseAmount > 0 then
+                local resolvedAmount = economy:ResolveRewardAmount(baseAmount, {
+                    player = player,
+                    kind = "breakable_reward",
+                    currency = currencyType,
+                    breakableId = model:GetAttribute("BreakableId"),
+                    source = "BreakableSpawner",
+                })
+                return resolvedAmount
+            elseif eventService and baseAmount > 0 then
+                local rewardMultiplier = eventService:GetModifier("breakable_reward_multiplier", 1)
+                    or 1
+                local currencyMultiplier = eventService:GetModifier(
+                    currencyType .. "_reward_multiplier",
+                    1
+                ) or 1
+                return math.max(0, math.floor(baseAmount * rewardMultiplier * currencyMultiplier))
+            end
+            return baseAmount
+        end
+
         if economy and valueAmount > 0 then
             local total = 0
             for _, v in ipairs(contribFolder:GetChildren()) do
-                if v:IsA("NumberValue") then total += v.Value end
+                if v:IsA("NumberValue") then
+                    total += v.Value
+                end
             end
-            if total <= 0 then
-                -- No contributions recorded; nothing to award
-            else
+            if total > 0 then
                 local remainder = valueAmount
                 local topUserId, topAmount = nil, -math.huge
                 for _, v in ipairs(contribFolder:GetChildren()) do
@@ -814,8 +1142,17 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
                         remainder -= share
                         local plr = Players:GetPlayerByUserId(tonumber(v.Name))
                         if plr and share > 0 then
+                            local resolvedShare = resolvePlayerAward(plr, share)
                             pcall(function()
-                                economy:AddCurrency(plr, currencyType, share, "crystal_break_split")
+                                economy:AddCurrency(
+                                    plr,
+                                    currencyType,
+                                    resolvedShare,
+                                    "crystal_break_split"
+                                )
+                                if stats then
+                                    stats:Increment(plr, "breakables_broken", 1)
+                                end
                             end)
                         end
                         if v.Value > topAmount then
@@ -827,14 +1164,19 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
                 if remainder > 0 and topUserId then
                     local topPlayer = Players:GetPlayerByUserId(topUserId)
                     if topPlayer then
+                        local resolvedRemainder = resolvePlayerAward(topPlayer, remainder)
                         pcall(function()
-                            economy:AddCurrency(topPlayer, currencyType, remainder, "crystal_break_remainder")
+                            economy:AddCurrency(
+                                topPlayer,
+                                currencyType,
+                                resolvedRemainder,
+                                "crystal_break_remainder"
+                            )
                         end)
                     end
                 end
             end
         end
-
         -- Play break sound and destroy
         local container = model:FindFirstChild(model.Name) or model
         local sound = container:FindFirstChild("bigBreakSound")
@@ -852,7 +1194,6 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
         end
 
         -- Decrement world counts
-        local itemsFolder = worldFolder:FindFirstChild("Items")
         local current = worldFolder:FindFirstChild("CurrentItems")
         if current then
             task.defer(function()
@@ -872,8 +1213,11 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
     model:SetAttribute("Spawner", spawner.Name)
     -- Helpers for pet assignment
     local function removePetIdFromBreakables(petId)
-        local breakablesRoot = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Breakables")
-        if not breakablesRoot then return end
+        local breakablesRoot = workspace:FindFirstChild("Game")
+            and workspace.Game:FindFirstChild("Breakables")
+        if not breakablesRoot then
+            return
+        end
         local function scan(folder)
             for _, child in ipairs(folder:GetChildren()) do
                 if child:IsA("Folder") and child.Name == "Pets" then
@@ -893,9 +1237,13 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
 
     local function assignPlayerPetsToTarget(player)
         local petInstancesFolder = workspace:FindFirstChild("PlayerPets")
-        if not petInstancesFolder then return end
+        if not petInstancesFolder then
+            return
+        end
         local playerPets = petInstancesFolder:FindFirstChild(player.Name)
-        if not playerPets then return end
+        if not playerPets then
+            return
+        end
         local targetId = model:FindFirstChild("BreakableID") and model.BreakableID.Value or 0
         for _, petInst in ipairs(playerPets:GetChildren()) do
             local petIdVal = petInst:FindFirstChild("PetID")
@@ -935,19 +1283,31 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
         -- Visual/audio feedback
         local pp = model.PrimaryPart
         if pp then
-            local bb = pp:FindFirstChild("BillboardGui"); if bb then bb.MaxDistance = 75 end
-            local bbb = pp:FindFirstChild("BoostBillboardGui"); if bbb then bbb.MaxDistance = 75 end
-            local hum = pp:FindFirstChild("EngineHumSound"); if hum and hum:IsA("Sound") then hum:Play() end
+            local bb = pp:FindFirstChild("BillboardGui")
+            if bb then
+                bb.MaxDistance = 75
+            end
+            local bbb = pp:FindFirstChild("BoostBillboardGui")
+            if bbb then
+                bbb.MaxDistance = 75
+            end
+            local hum = pp:FindFirstChild("EngineHumSound")
+            if hum and hum:IsA("Sound") then
+                hum:Play()
+            end
         end
         -- Nudge boost
         local b = tonumber(model:GetAttribute("Boost")) or 0
         local m = tonumber(model:GetAttribute("MaxBoost")) or 100
         b += 1
-        if b <= m then model:SetAttribute("Boost", b) end
+        if b <= m then
+            model:SetAttribute("Boost", b)
+        end
     end
 
     -- Add click-to-assign-pets and damage (server-side)
-    local breakableIdForLogs = (model:FindFirstChild("BreakableID") and model.BreakableID.Value) or 0
+    local breakableIdForLogs = (model:FindFirstChild("BreakableID") and model.BreakableID.Value)
+        or 0
     local function attachClick(part)
         local cd = Instance.new("ClickDetector")
         cd.MaxActivationDistance = 50
@@ -964,7 +1324,17 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
             local before = hp
             local after = math.max(0, hp - 5)
             model:SetAttribute("HP", after)
-            print("[Breakables] Clicked", breakableIdForLogs, player.Name, "HP:", before, "->", after, "part:", part.Name)
+            print(
+                "[Breakables] Clicked",
+                breakableIdForLogs,
+                player.Name,
+                "HP:",
+                before,
+                "->",
+                after,
+                "part:",
+                part.Name
+            )
 
             -- Record contribution
             local delta = before - after
@@ -990,8 +1360,61 @@ function BreakableSpawner:_trySpawnOne(worldFolder)
     -- Parent to Items and update count
     model.Parent = worldFolder:FindFirstChild("Items")
     current.Value = current.Value + 1
+
+    if dropFromHeight > 0 then
+        task.spawn(function()
+            local startPivot = model:GetPivot()
+            local elapsed = 0
+            local duration = math.max(0.05, dropDuration)
+
+            while model.Parent and elapsed < duration do
+                local dt = RunService.Heartbeat:Wait()
+                elapsed += dt
+                local alpha = math.clamp(elapsed / duration, 0, 1)
+                local eased = 1 - math.pow(1 - alpha, 3)
+                model:PivotTo(startPivot:Lerp(finalPivot, eased))
+            end
+
+            if model.Parent then
+                model:PivotTo(finalPivot)
+            end
+        end)
+    end
+
+    return model
+end
+
+function BreakableSpawner:SpawnBreakableForStudioSmoke(areaId, breakableId)
+    if not RunService:IsStudio() then
+        return nil, "studio_only"
+    end
+
+    if type(areaId) ~= "string" or areaId == "" then
+        return nil, "invalid_area"
+    end
+    if type(breakableId) ~= "string" or breakableId == "" then
+        return nil, "invalid_breakable"
+    end
+    if not (breakablesConfig.crystals and breakablesConfig.crystals[breakableId]) then
+        return nil, "unknown_breakable"
+    end
+
+    local crystalsRoot = workspace:FindFirstChild("Game")
+        and workspace.Game:FindFirstChild("Breakables")
+        and workspace.Game.Breakables:FindFirstChild("Crystals")
+    local worldFolder = crystalsRoot and crystalsRoot:FindFirstChild(areaId)
+    if not worldFolder then
+        return nil, "missing_area_folder"
+    end
+
+    self:_setupWorld(worldFolder)
+
+    local model = self:_trySpawnOne(worldFolder, breakableId, nil, true)
+    if not model then
+        return nil, "spawn_failed"
+    end
+
+    return model
 end
 
 return BreakableSpawner
-
-

@@ -307,13 +307,13 @@ end
 function TextInput:_setupMobileOptimizations()
     -- Configure virtual keyboard for different input types
     if self.config.inputType == "email" then
-        self.textBox.TextBoxKeyboardType = Enum.TextBoxKeyboardType.Email
+        self.textBox.TextInputType = Enum.TextInputType.Email
     elseif self.config.inputType == "number" or self.config.inputType == "integer" then
-        self.textBox.TextBoxKeyboardType = Enum.TextBoxKeyboardType.Number
+        self.textBox.TextInputType = Enum.TextInputType.Number
     elseif self.config.inputType == "phone" then
-        self.textBox.TextBoxKeyboardType = Enum.TextBoxKeyboardType.Phone
+        self.textBox.TextInputType = Enum.TextInputType.Phone
     else
-        self.textBox.TextBoxKeyboardType = Enum.TextBoxKeyboardType.Default
+        self.textBox.TextInputType = Enum.TextInputType.Default
     end
 end
 

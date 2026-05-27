@@ -112,8 +112,12 @@ local TEST_CATEGORIES = {
         title = "⚡ Effects Testing",
         tests = {
             {name = "Test Effect Stacking", action = "test_effect_stacking"},
-            {name = "Start XP Weekend (+8h)", action = "start_xp_weekend"},
-            {name = "Start Speed Hour (1h)", action = "start_speed_hour"},
+            {name = "Start Hatch Luck Hour", action = "start_hatch_luck_hour"},
+            {name = "Start Double Rewards Hour", action = "start_double_rewards_hour"},
+            {name = "Start Crystal Rush", action = "start_crystal_rush"},
+            {name = "Start Coin Shower", action = "start_coin_shower"},
+            {name = "Show Active Global Events", action = "show_global_events"},
+            {name = "Clear Global Events", action = "clear_global_events"},
         }
     },
     system = {
@@ -146,6 +150,23 @@ local TEST_CATEGORIES = {
                 placeholder = "e.g. +1M, -100K, +1T, +500",
                 currency = "gems", 
                 action = "adjust_gems_custom"
+            }
+        }
+    },
+    developer = {
+        title = "🧰 Developer Tools",
+        tests = {
+            {name = "📋 Snapshot Target Player", action = "admin_snapshot"},
+            {name = "💾 Force Save Target Player", action = "admin_force_save"},
+            {name = "🐻 Grant Bear Basic", action = "grant_bear_basic"},
+            {name = "🐉 Grant Dragon Basic", action = "grant_dragon_basic"},
+            {name = "🐻 Grant Golden Bear", action = "grant_bear_golden"},
+        },
+        customInputs = {
+            {
+                label = "Grant Pet (pet:variant:quantity):",
+                placeholder = "e.g. bear:basic:3, dragon:golden:1",
+                action = "grant_pet_custom"
             }
         }
     },
@@ -231,6 +252,7 @@ function AdminPanel.new()
     self.playerList = {}
     self.playerDropdown = nil
     self.targetPlayerLabel = nil
+    self.resultLabel = nil
     
     self:_initializeNetworking()
     
@@ -340,12 +362,13 @@ function AdminPanel:_createUI(parent)
     
     -- Player Selection Section (NEW)
     self:_createPlayerSelector()
+    self:_createResultDisplay()
     
     -- Scroll frame for test categories (adjusted position to make room for player selector)
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Name = "AdminScroll"
-    scrollFrame.Size = UDim2.new(1, -20, 1, -140)  -- Reduced height for player selector
-    scrollFrame.Position = UDim2.new(0, 10, 0, 130)  -- Moved down for player selector
+    scrollFrame.Size = UDim2.new(1, -20, 1, -210)
+    scrollFrame.Position = UDim2.new(0, 10, 0, 200)
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
     scrollFrame.ScrollBarThickness = 8
@@ -674,6 +697,12 @@ function AdminPanel:_executeTestAction(action, testName)
         self:_executeCurrencyAction(action)
     elseif action == "reset_currencies" then
         self:_resetCurrencies()
+    elseif action == "admin_snapshot" then
+        self:_requestPlayerSnapshot()
+    elseif action == "admin_force_save" then
+        self:_requestForceSave()
+    elseif action:find("^grant_") then
+        self:_executePetGrantAction(action)
     
     -- Effects actions
     elseif action == "run_diagnostics" then
@@ -823,7 +852,28 @@ end
 
 function AdminPanel:_executeEffectAction(action)
     self.logger:info("Effect action:", action)
-    -- Implement effect actions when effects system is connected
+
+    local eventActions = {
+        test_effect_stacking = {command = "start", eventId = "hatch_luck_hour", durationSeconds = 300},
+        start_xp_weekend = {command = "start", eventId = "double_rewards_hour"},
+        start_speed_hour = {command = "start", eventId = "crystal_rush"},
+        start_hatch_luck_hour = {command = "start", eventId = "hatch_luck_hour"},
+        start_double_rewards_hour = {command = "start", eventId = "double_rewards_hour"},
+        start_crystal_rush = {command = "start", eventId = "crystal_rush"},
+        start_coin_shower = {command = "start", eventId = "coin_shower"},
+        show_global_events = {command = "snapshot"},
+        clear_global_events = {command = "clear"},
+    }
+
+    local command = eventActions[action]
+    if not command then
+        self:_showAdminResult("Unknown event action: " .. tostring(action), false)
+        return
+    end
+
+    command.reason = "Admin panel: " .. tostring(action)
+    Signals.Admin_EventCommand:FireServer(command)
+    self:_showAdminResult("Event command sent: " .. tostring(action), true)
 end
 
 function AdminPanel:_testRateLimit()
@@ -957,6 +1007,8 @@ function AdminPanel:_executeCustomAction(action, inputValue)
             print("  BaseUI warn")
             print("  AssetPreloadService:info")
         end
+    elseif action == "grant_pet_custom" then
+        self:_executeCustomPetGrant(inputValue)
     elseif action == "hatch_custom_eggs" or action == "hatch_specific_pet" then
         -- Handle egg hatching custom inputs
         self:_executeCustomEggHatching({
@@ -985,6 +1037,12 @@ function AdminPanel:_initializeNetworking()
         if Signals.RunDiagnostics then
             Signals.RunDiagnostics.OnClientEvent:Connect(function(report)
                 self:_showDiagnosticsPopup(report)
+            end)
+        end
+
+        if Signals.AdminToolResult then
+            Signals.AdminToolResult.OnClientEvent:Connect(function(result)
+                self:_handleAdminToolResult(result)
             end)
         end
         
@@ -1073,6 +1131,49 @@ function AdminPanel:_createPlayerSelector()
     self.playerDropdown = dropdownButton
 end
 
+function AdminPanel:_createResultDisplay()
+    local theme = uiConfig.helpers.get_theme(uiConfig)
+
+    local resultContainer = Instance.new("Frame")
+    resultContainer.Name = "AdminResult"
+    resultContainer.Size = UDim2.new(1, -20, 0, 65)
+    resultContainer.Position = UDim2.new(0, 10, 0, 125)
+    resultContainer.BackgroundColor3 = theme.primary.card or Color3.fromRGB(45, 45, 50)
+    resultContainer.BorderSizePixel = 0
+    resultContainer.Parent = self.frame
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = resultContainer
+
+    self.resultLabel = Instance.new("TextLabel")
+    self.resultLabel.Name = "ResultText"
+    self.resultLabel.Size = UDim2.new(1, -20, 1, -10)
+    self.resultLabel.Position = UDim2.new(0, 10, 0, 5)
+    self.resultLabel.BackgroundTransparency = 1
+    self.resultLabel.Text = "Admin tools ready. Select a target, then run a developer action."
+    self.resultLabel.TextColor3 = theme.text.primary or Color3.fromRGB(255, 255, 255)
+    self.resultLabel.TextSize = 12
+    self.resultLabel.Font = Enum.Font.Gotham
+    self.resultLabel.TextXAlignment = Enum.TextXAlignment.Left
+    self.resultLabel.TextYAlignment = Enum.TextYAlignment.Top
+    self.resultLabel.TextWrapped = true
+    self.resultLabel.Parent = resultContainer
+end
+
+function AdminPanel:_showAdminResult(message, success)
+    if self.resultLabel then
+        self.resultLabel.Text = message
+        self.resultLabel.TextColor3 = success == false and Color3.fromRGB(255, 120, 120) or Color3.fromRGB(170, 255, 170)
+    end
+
+    if success == false then
+        self.logger:warn(message)
+    else
+        self.logger:info(message)
+    end
+end
+
 function AdminPanel:_refreshPlayerList()
     -- Request updated player list from server
     if self.economyBridge then
@@ -1128,6 +1229,106 @@ function AdminPanel:_getAdminActionData(baseData)
     end
     
     return actionData
+end
+
+function AdminPanel:_requestPlayerSnapshot()
+    Signals.Admin_GetPlayerSnapshot:FireServer(self:_getAdminActionData({}))
+    self:_showAdminResult("Snapshot requested...", true)
+end
+
+function AdminPanel:_requestForceSave()
+    Signals.Admin_ForceSave:FireServer(self:_getAdminActionData({}))
+    self:_showAdminResult("Force save requested...", true)
+end
+
+function AdminPanel:_executePetGrantAction(action)
+    local quickGrants = {
+        grant_bear_basic = {petType = "bear", variant = "basic", quantity = 1},
+        grant_dragon_basic = {petType = "dragon", variant = "basic", quantity = 1},
+        grant_bear_golden = {petType = "bear", variant = "golden", quantity = 1},
+    }
+
+    local grantData = quickGrants[action]
+    if not grantData then
+        self.logger:warn("Unknown pet grant action:", action)
+        return
+    end
+
+    Signals.Admin_GrantPet:FireServer(self:_getAdminActionData(grantData))
+    self:_showAdminResult("Pet grant requested: " .. grantData.petType .. ":" .. grantData.variant, true)
+end
+
+function AdminPanel:_executeCustomPetGrant(inputValue)
+    local petType, variant, quantity = inputValue:match("^%s*([^:%s]+)%s*:%s*([^:%s]+)%s*:%s*(%d+)%s*$")
+    if not petType then
+        petType, variant = inputValue:match("^%s*([^:%s]+)%s*:%s*([^:%s]+)%s*$")
+        quantity = 1
+    end
+
+    if not petType or not variant then
+        self:_showAdminResult("Invalid pet grant format. Use pet:variant:quantity", false)
+        return
+    end
+
+    Signals.Admin_GrantPet:FireServer(self:_getAdminActionData({
+        petType = petType,
+        variant = variant,
+        quantity = tonumber(quantity) or 1
+    }))
+    self:_showAdminResult("Pet grant requested: " .. petType .. ":" .. variant, true)
+end
+
+function AdminPanel:_formatSnapshot(snapshot)
+    local currencies = snapshot.currencies or {}
+    local save = snapshot.save or {}
+    local autoTarget = snapshot.autoTarget or {}
+
+    return string.format(
+        "%s | Coins %s, Gems %s, Crystals %s | Pets %d (%d entries), Equipped %d/%d | Auto low=%s high=%s | Data %s/%s | Save dirty=%s scheduled=%s inFlight=%s reason=%s",
+        snapshot.name or "Player",
+        tostring(currencies.coins or 0),
+        tostring(currencies.gems or 0),
+        tostring(currencies.crystals or 0),
+        snapshot.petCount or 0,
+        snapshot.petEntryCount or 0,
+        snapshot.equippedPetCount or 0,
+        snapshot.equippedPetLimit or 0,
+        tostring(autoTarget.low == true),
+        tostring(autoTarget.high == true),
+        snapshot.dataLoaded and "loaded" or "not loaded",
+        snapshot.persistenceEnabled and tostring(snapshot.dataStoreState or "Access") or "no persistence",
+        tostring(save.dirty == true),
+        tostring(save.scheduled == true),
+        tostring(save.inFlight == true),
+        tostring(save.lastReason or "none")
+    )
+end
+
+function AdminPanel:_handleAdminToolResult(result)
+    if type(result) ~= "table" then
+        return
+    end
+
+    local message = result.message or "Admin tool completed"
+    if result.snapshot then
+        message ..= "\n" .. self:_formatSnapshot(result.snapshot)
+    end
+    if result.kind == "event_command" then
+        local eventCount = result.events and #result.events or 0
+        message ..= "\nActive global events: " .. tostring(eventCount)
+        if result.modifiers then
+            local modifierParts = {}
+            for key, value in pairs(result.modifiers) do
+                table.insert(modifierParts, key .. "=" .. tostring(value))
+            end
+            table.sort(modifierParts)
+            if #modifierParts > 0 then
+                message ..= "\nModifiers: " .. table.concat(modifierParts, ", ")
+            end
+        end
+    end
+
+    self:_showAdminResult(message, result.success ~= false)
 end
 
 -- Display diagnostics in a simple popup

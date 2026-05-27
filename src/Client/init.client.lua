@@ -40,7 +40,7 @@ local loader = ModuleLoader.new()
 
 -- Register shared utilities
 loader:RegisterModule("Logger", Shared.Utils.Logger)
-loader:RegisterModule("ConfigLoader", Shared.ConfigLoader, {"Logger"})
+loader:RegisterModule("ConfigLoader", Shared.ConfigLoader, { "Logger" })
 -- NetworkConfig removed - using Signals instead
 
 -- Register client controllers
@@ -61,12 +61,30 @@ local Logger = loader:Get("Logger")
 local ConfigLoader = loader:Get("ConfigLoader")
 -- NetworkConfig removed - using Signals instead
 
+local petVisualsOk, PetVariantVisuals = pcall(function()
+    return require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
+end)
+
+if petVisualsOk and PetVariantVisuals then
+    task.spawn(function()
+        local playerPets = workspace:WaitForChild("PlayerPets", 30)
+        if playerPets then
+            PetVariantVisuals.StartClient(playerPets)
+            Logger:Info("Pet variant visuals started")
+        else
+            Logger:Warn("PlayerPets folder not found; pet variant visuals not started")
+        end
+    end)
+else
+    Logger:Warn("Failed to load PetVariantVisuals", { error = tostring(PetVariantVisuals) })
+end
+
 -- Load client configuration
 local gameConfig = ConfigLoader:LoadConfig("game")
 Logger:Info("Client initialized", {
     gameMode = gameConfig.GameMode,
     player = localPlayer.Name,
-    userId = localPlayer.UserId
+    userId = localPlayer.UserId,
 })
 
 -- Initialize Matter ECS World for client
@@ -108,7 +126,7 @@ end
 local systemsList = {}
 for name, system in pairs(systems) do
     table.insert(systemsList, system)
-    Logger:Debug("Registered client system", {system = name})
+    Logger:Debug("Registered client system", { system = name })
 end
 
 -- Start the client ECS loop (temporarily disabled for debugging)
@@ -118,7 +136,7 @@ end
 --     -- debugger = game:GetService("RunService"):IsStudio() and Matter.Debugger.new() or nil
 -- })
 
-Logger:Info("Client Matter ECS loop started", {systemCount = #systemsList})
+Logger:Info("Client Matter ECS loop started", { systemCount = #systemsList })
 
 -- Set up economy networking
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
@@ -130,7 +148,7 @@ Signals.CurrencyUpdate.OnClientEvent:Connect(function(data)
     Logger:Debug("Currency updated", data)
 end)
 Signals.ShopItems.OnClientEvent:Connect(function(data)
-    Logger:Debug("Shop items received", {itemCount = #data.items})
+    Logger:Debug("Shop items received", { itemCount = #data.items })
 end)
 Signals.PurchaseSuccess.OnClientEvent:Connect(function(data)
     Logger:Info("Purchase successful", data)
@@ -141,6 +159,15 @@ end)
 Signals.EconomyError.OnClientEvent:Connect(function(data)
     Logger:Warn("Economy error", data)
 end)
+Signals.UpgradeResult.OnClientEvent:Connect(function(data)
+    Logger:Info("Upgrade result", data)
+end)
+Signals.ZoneUnlockResult.OnClientEvent:Connect(function(data)
+    Logger:Info("Zone unlock result", data)
+end)
+Signals.ZoneTravelResult.OnClientEvent:Connect(function(data)
+    Logger:Info("Zone travel result", data)
+end)
 Signals.PlayerDebugInfo.OnClientEvent:Connect(function(data)
     print("🔍 SERVER DEBUG INFO:", data)
 end)
@@ -148,7 +175,7 @@ Signals.ActiveEffects.OnClientEvent:Connect(function(data)
     if _G.MenuManager then
         local effectsPanel = _G.MenuManager:GetPanel("Effects")
         if effectsPanel and effectsPanel.UpdateEffects then
-            effectsPanel:UpdateEffects(data.effects)
+            effectsPanel:UpdateEffects(data)
         end
     end
 end)
@@ -157,7 +184,8 @@ end)
 
 -- Preload sounds client-side for instant playback
 task.spawn(function()
-    local soundsFolder = ReplicatedStorage:WaitForChild("Assets", 10) and ReplicatedStorage.Assets:FindFirstChild("Sounds")
+    local soundsFolder = ReplicatedStorage:WaitForChild("Assets", 10)
+        and ReplicatedStorage.Assets:FindFirstChild("Sounds")
     if soundsFolder then
         local soundInstances = {}
         for _, child in ipairs(soundsFolder:GetChildren()) do
@@ -170,20 +198,20 @@ task.spawn(function()
                 ContentProvider:PreloadAsync(soundInstances)
             end)
             if ok then
-                Logger:Info("Preloaded sounds", {count = #soundInstances})
+                Logger:Info("Preloaded sounds", { count = #soundInstances })
             else
-                Logger:Warn("Failed to preload sounds", {error = tostring(err)})
+                Logger:Warn("Failed to preload sounds", { error = tostring(err) })
             end
         end
     end
 end)
 
-
-
 -- Set up input handling
 local function onInputBegan(input, gameProcessed)
-    if gameProcessed then return end
-    
+    if gameProcessed then
+        return
+    end
+
     -- Example input handling
     if input.KeyCode == Enum.KeyCode.Tab then
         -- Toggle inventory
@@ -193,7 +221,7 @@ local function onInputBegan(input, gameProcessed)
         Logger:Debug("Main menu toggle requested")
     elseif input.KeyCode == Enum.KeyCode.B then
         -- Open shop
-        Signals.ShopItems:FireServer({request = true})
+        Signals.ShopItems:FireServer({ request = true })
         Logger:Debug("Shop requested")
     end
 end
@@ -204,17 +232,17 @@ UserInputService.InputBegan:Connect(onInputBegan)
 local function onCharacterAdded(character)
     Logger:Info("Character spawned", {
         character = character.Name,
-        spawnTime = tick()
+        spawnTime = tick(),
     })
-    
+
     -- Wait for character to fully load
     local humanoid = character:WaitForChild("Humanoid")
     local rootPart = character:WaitForChild("HumanoidRootPart")
-    
+
     -- Apply game configuration to character
     humanoid.WalkSpeed = gameConfig.WorldSettings.WalkSpeed
     humanoid.JumpPower = gameConfig.WorldSettings.JumpPower
-    
+
     -- Set up character-specific systems
     -- This is where you'd initialize things like:
     -- - First person camera for FPS
@@ -233,42 +261,42 @@ local function waitForDataLoaded()
     local dataLoaded = localPlayer:GetAttribute("DataLoaded")
     if dataLoaded then
         Logger:Info("Player data loaded")
-        
+
         -- Get initial currency values
         local coins = localPlayer:GetAttribute("Coins") or 0
         local gems = localPlayer:GetAttribute("Gems") or 0
         local level = localPlayer:GetAttribute("Level") or 1
-        
+
         Logger:Info("Initial player state", {
             coins = coins,
             gems = gems,
-            level = level
+            level = level,
         })
-        
+
         -- Initialize UI with player data
         -- UIController:InitializeWithPlayerData({
         --     coins = coins,
         --     gems = gems,
         --     level = level
         -- })
-        
+
         return true
     end
-    
+
     return false
 end
 
 -- Check if data is already loaded, or wait for it
 if not waitForDataLoaded() then
     Logger:Info("Waiting for player data to load...")
-    
+
     local connection
     connection = localPlayer:GetAttributeChangedSignal("DataLoaded"):Connect(function()
         if waitForDataLoaded() then
             connection:Disconnect()
         end
     end)
-    
+
     -- Timeout after 30 seconds
     task.delay(30, function()
         if connection and connection.Connected then
@@ -282,22 +310,22 @@ end
 task.spawn(function()
     while true do
         task.wait(60) -- Log performance every minute
-        
+
         local stats = {
             fps = 1 / game:GetService("RunService").Heartbeat:Wait(),
             ping = localPlayer:GetNetworkPing() * 1000, -- Convert to ms
-            memoryUsage = game:GetService("Stats"):GetTotalMemoryUsageMb()
+            memoryUsage = game:GetService("Stats"):GetTotalMemoryUsageMb(),
         }
-        
+
         Logger:Debug("Client performance", stats)
-        
+
         -- Warn if performance is poor
         if stats.fps < 30 then
-            Logger:Warn("Low FPS detected", {fps = stats.fps})
+            Logger:Warn("Low FPS detected", { fps = stats.fps })
         end
-        
+
         if stats.ping > 200 then
-            Logger:Warn("High ping detected", {ping = stats.ping})
+            Logger:Warn("High ping detected", { ping = stats.ping })
         end
     end
 end)
@@ -307,10 +335,10 @@ end)
 if game:GetService("RunService"):IsServer() then
     game:BindToClose(function()
         Logger:Info("Client shutting down...")
-        
+
         -- Stop Matter loop
         loop:stop()
-        
+
         Logger:Info("Client shutdown complete")
     end)
 end
@@ -323,7 +351,7 @@ LogService.MessageOut:Connect(function(message, messageType)
         if not string.find(message, "plugin") and not string.find(message, "Plugin") then
             Logger:Error("Client script error", {
                 message = message,
-                messageType = messageType.Name
+                messageType = messageType.Name,
             })
         end
     end
@@ -332,7 +360,7 @@ end)
 Logger:Info("🎯 Game Template Client started successfully!", {
     gameMode = gameConfig.GameMode,
     systemCount = #systemsList,
-    player = localPlayer.Name
+    player = localPlayer.Name,
 })
 
 -- Load test GUI for economy testing (remove in production)
@@ -341,81 +369,89 @@ if game:GetService("RunService"):IsStudio() then
         -- OLD: require(script.UI.TestEconomyGUI) -- REMOVED: Replaced by AdminPanel
         -- OLD: require(script.UI.SimpleEffectsGUI) -- REMOVED: Replaced by EffectsPanel in MenuManager
         -- OLD: require(script.UI.GlobalEffectsGUI) -- REMOVED: Replaced by EffectsPanel in MenuManager
-        
+
         -- Load proper game UI system
-task.wait(1) -- Wait a moment for other UIs to load
+        task.wait(1) -- Wait a moment for other UIs to load
 
--- Initialize MenuManager
-local MenuManager = require(script.UI.MenuManager)
-local menuManager = MenuManager.new()
+        -- Initialize MenuManager
+        local MenuManager = require(script.UI.MenuManager)
+        local menuManager = MenuManager.new()
 
--- Make MenuManager globally accessible for network updates
-_G.MenuManager = menuManager
+        -- Make MenuManager globally accessible for network updates
+        _G.MenuManager = menuManager
 
--- Create and register menu panels
-local ShopPanel = require(script.UI.Menus.ShopPanel)
-local shopPanel = ShopPanel.new()
-menuManager:RegisterPanel("Shop", shopPanel)
+        -- Create and register menu panels
+        local ShopPanel = require(script.UI.Menus.ShopPanel)
+        local shopPanel = ShopPanel.new()
+        menuManager:RegisterPanel("Shop", shopPanel)
 
-local InventoryPanel = require(script.UI.Menus.InventoryPanel)
-local inventoryPanel = InventoryPanel.new()
-menuManager:RegisterPanel("Inventory", inventoryPanel)
+        local InventoryPanel = require(script.UI.Menus.InventoryPanel)
+        local inventoryPanel = InventoryPanel.new()
+        menuManager:RegisterPanel("Inventory", inventoryPanel)
 
-local EffectsPanel = require(script.UI.Menus.EffectsPanel)
-local effectsPanel = EffectsPanel.new()
-menuManager:RegisterPanel("Effects", effectsPanel)
+        local EffectsPanel = require(script.UI.Menus.EffectsPanel)
+        local effectsPanel = EffectsPanel.new()
+        menuManager:RegisterPanel("Effects", effectsPanel)
 
-local SettingsPanel = require(script.UI.Menus.SettingsPanel)
-local settingsPanel = SettingsPanel.new()
-menuManager:RegisterPanel("Settings", settingsPanel)
+        local SettingsPanel = require(script.UI.Menus.SettingsPanel)
+        local settingsPanel = SettingsPanel.new()
+        menuManager:RegisterPanel("Settings", settingsPanel)
 
--- Admin panel (only for admin users)
-if settingsPanel:IsAdmin() then
-    local AdminPanel = require(script.UI.Menus.AdminPanel)
-    local adminPanel = AdminPanel.new()
-    menuManager:RegisterPanel("Admin", adminPanel)
-end
+        -- Admin panel is registered client-side so late admin attribute replication cannot strand the UI.
+        -- Server-side AdminService remains the authority for privileged actions.
+        local AdminPanel = require(script.UI.Menus.AdminPanel)
+        local adminPanel = AdminPanel.new()
+        menuManager:RegisterPanel("Admin", adminPanel)
 
--- Initialize and show BaseUI
-local BaseUI = require(script.UI.BaseUI)
-local baseUI = BaseUI.new()
+        settingsPanel:SetAdminPanelCallback(function()
+            menuManager:OpenAdminPanel("bounce_in")
+        end)
 
--- Connect BaseUI with MenuManager
-baseUI:SetMenuManager(menuManager)
+        -- Initialize and show BaseUI
+        local BaseUI = require(script.UI.BaseUI)
+        local baseUI = BaseUI.new()
 
-baseUI:Show()
+        -- Connect BaseUI with MenuManager
+        baseUI:SetMenuManager(menuManager)
 
+        baseUI:Show()
     end) -- Close the task.spawn(function() from line 325
 end
 
 -- Initialize EggCurrentTargetService (proximity detection and UI positioning)
 task.spawn(function()
     task.wait(0.5) -- Small delay to ensure everything is loaded
-    
+
     local success, eggCurrentTargetService = pcall(function()
         return require(ReplicatedStorage.Shared.Services.EggCurrentTargetService)
     end)
-    
+
     if success then
         eggCurrentTargetService:Initialize()
         Logger:Info("EggCurrentTargetService initialized")
     else
-        Logger:Error("Failed to initialize EggCurrentTargetService", {error = tostring(eggCurrentTargetService)})
+        Logger:Error(
+            "Failed to initialize EggCurrentTargetService",
+            { error = tostring(eggCurrentTargetService) }
+        )
     end
 end)
 
 -- Initialize EggInteractionService (E key handling)
 task.spawn(function()
     task.wait(0.7) -- Small delay after CurrentTargetService
-    
+
     local success, eggInteractionService = pcall(function()
         return require(ReplicatedStorage.Shared.Services.EggInteractionService)
     end)
-    
+
     if success then
         eggInteractionService:Initialize()
         Logger:Info("EggInteractionService initialized")
     else
-        Logger:Error("Failed to initialize EggInteractionService", {error = tostring(eggInteractionService)})
+        Logger:Error(
+            "Failed to initialize EggInteractionService",
+            { error = tostring(eggInteractionService) }
+        )
     end
-end) 
+end)

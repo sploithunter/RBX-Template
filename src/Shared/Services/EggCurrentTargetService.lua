@@ -18,6 +18,7 @@ local UserInputService = game:GetService("UserInputService")
 -- Dependencies
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local eggSystemConfig = Locations.getConfig("egg_system")
+local petConfig = Locations.getConfig("pets")
 
 -- Services
 local eggPetPreviewService = nil
@@ -442,15 +443,10 @@ end
 -- === HELPER FUNCTIONS FOR PRICE DISPLAY ===
 
 function EggCurrentTargetService:GetEggConfig(eggType)
-    -- Get the pet configuration
-    local success, petConfig = pcall(function()
-        return require(Locations.getConfig("pets"))
-    end)
-    
-    if success and petConfig and petConfig.egg_sources then
+    if petConfig and petConfig.egg_sources then
         return petConfig.egg_sources[eggType]
     end
-    
+
     return nil
 end
 

@@ -6,7 +6,37 @@ return {
     EnableTrading = true,
     EnablePvP = false,
     RespawnTime = 5,
-    
+
+    features = {
+        stats = true,
+        modifiers = true,
+        economy_ledger = true,
+        global_events = true,
+        player_effects = true,
+        monetization = true,
+        admin_tools = true,
+        auto_target = true,
+        inventory = true,
+        settings = true,
+        diagnostics = true,
+        map_binding = true,
+        upgrades = true,
+        rebirths = false,
+        enchants = false,
+        achievements = false,
+        leaderboards = false,
+        pet_index = false,
+        daily_rewards = false,
+        pet_of_the_day = false,
+        chaseables = false,
+        stock = false,
+        marketplace = false,
+    },
+
+    map = {
+        mode = "auto", -- auto | synthetic | authored
+    },
+
     -- Simulator specific settings
     SimulatorSettings = {
         BaseClickPower = 1,
@@ -15,30 +45,30 @@ return {
         AutoClickers = {
             maxOwned = 10,
             basePrice = 100,
-            priceMultiplier = 1.5
-        }
+            priceMultiplier = 1.5,
+        },
     },
-    
-    -- FPS specific settings  
+
+    -- FPS specific settings
     FPSSettings = {
         RoundTime = 300,
         MaxKills = 30,
         WeaponRespawnTime = 10,
-        TeamBalance = true
+        TeamBalance = true,
     },
-    
+
     -- Tower Defense specific settings
     TowerDefenseSettings = {
         StartingLives = 20,
         StartingMoney = 500,
         WaveCount = 50,
-        DifficultyMultiplier = 1.1
+        DifficultyMultiplier = 1.1,
     },
-    
+
     -- World settings
     WorldSettings = {
         Gravity = 196.2,
         WalkSpeed = 16,
-        JumpPower = 50
-    }
-} 
+        JumpPower = 50,
+    },
+}

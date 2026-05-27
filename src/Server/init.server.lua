@@ -11,6 +11,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
 -- Wait for packages to be available
 local Packages = ReplicatedStorage:WaitForChild("Packages", 10)
@@ -18,10 +19,10 @@ if not Packages then
     error("Packages not found - make sure 'wally install' has been run")
 end
 
--- Core dependencies  
+-- Core dependencies
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local Matter = Locations.getLibrary("Matter") -- Matter ECS framework (manual due to Wally/Rojo sync issues)
-local Reflex = Locations.getPackage("Reflex") -- Redux-like state management (via Wally) 
+local Reflex = Locations.getPackage("Reflex") -- Redux-like state management (via Wally)
 local ModuleLoader = require(Locations.SharedUtils.ModuleLoader)
 
 -- Console noise reduction: defer logging until Logger is initialized
@@ -29,28 +30,225 @@ local ModuleLoader = require(Locations.SharedUtils.ModuleLoader)
 -- Create module loader
 local loader = ModuleLoader.new()
 
+local function loadBootFeatureFlags()
+    local configsFolder = ReplicatedStorage:FindFirstChild("Configs")
+    local gameConfigModule = configsFolder and configsFolder:FindFirstChild("game")
+    if not gameConfigModule or not gameConfigModule:IsA("ModuleScript") then
+        return {}
+    end
+
+    local ok, gameConfig = pcall(require, gameConfigModule)
+    if not ok or type(gameConfig) ~= "table" or type(gameConfig.features) ~= "table" then
+        return {}
+    end
+
+    return gameConfig.features
+end
+
+local bootFeatures = loadBootFeatureFlags()
+
+local function isFeatureEnabled(featureName, defaultValue)
+    local value = bootFeatures[featureName]
+    if value == nil then
+        return defaultValue ~= false
+    end
+    return value == true
+end
+
+local function appendIfEnabled(dependencies, featureName, moduleName, defaultValue)
+    if isFeatureEnabled(featureName, defaultValue) then
+        table.insert(dependencies, moduleName)
+    end
+    return dependencies
+end
+
+local function registerFeatureModule(
+    featureName,
+    moduleName,
+    moduleScript,
+    dependencies,
+    defaultValue
+)
+    if isFeatureEnabled(featureName, defaultValue) then
+        loader:RegisterModule(moduleName, moduleScript, dependencies)
+    end
+end
+
 -- Register core utilities (loaded first)
 loader:RegisterModule("Logger", ReplicatedStorage.Shared.Utils.Logger)
-loader:RegisterModule("ConfigLoader", ReplicatedStorage.Shared.ConfigLoader, {"Logger"})
-loader:RegisterModule("ServerClockService", ServerScriptService.Server.Services.ServerClockService, {"Logger"})
+loader:RegisterModule("ConfigLoader", ReplicatedStorage.Shared.ConfigLoader, { "Logger" })
+loader:RegisterModule(
+    "ServerClockService",
+    ServerScriptService.Server.Services.ServerClockService,
+    { "Logger" }
+)
 -- NetworkConfig removed - using Signals instead
 
 -- Register server services
-loader:RegisterModule("DataService", ServerScriptService.Server.Services.DataService, {"Logger", "ConfigLoader"})
-loader:RegisterModule("AdminService", ServerScriptService.Server.Services.AdminService, {"Logger", "ConfigLoader"})
-loader:RegisterModule("RateLimitService", ServerScriptService.Server.Services.RateLimitService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
-loader:RegisterModule("AssetPreloadService", ServerScriptService.Server.Services.AssetPreloadService, {"Logger", "ConfigLoader"})
-loader:RegisterModule("BreakableSpawner", ServerScriptService.Server.Services.BreakableSpawner, {"Logger", "ConfigLoader"})
-loader:RegisterModule("BreakableService", ServerScriptService.Server.Services.BreakableService, {"Logger", "ConfigLoader"})
-loader:RegisterModule("PlayerEffectsService", ServerScriptService.Server.Services.PlayerEffectsService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
-loader:RegisterModule("GlobalEffectsService", ServerScriptService.Server.Services.GlobalEffectsService, {"Logger", "ConfigLoader", "DataService", "ServerClockService"})
-loader:RegisterModule("ProductIdMapper", ReplicatedStorage.Shared.Utils.ProductIdMapper, {"Logger", "ConfigLoader"})
-loader:RegisterModule("EconomyService", ServerScriptService.Server.Services.EconomyService, {"Logger", "DataService", "ConfigLoader", "PlayerEffectsService", "GlobalEffectsService", "AdminService", "InventoryService"})
-loader:RegisterModule("MonetizationService", ServerScriptService.Server.Services.MonetizationService, {"Logger", "DataService", "EconomyService", "ProductIdMapper", "PlayerEffectsService"})
-loader:RegisterModule("InventoryService", ServerScriptService.Server.Services.InventoryService, {"Logger", "DataService", "ConfigLoader"})
-loader:RegisterModule("SettingsService", ServerScriptService.Server.Services.SettingsService, {"Logger", "DataService", "ConfigLoader"})
-loader:RegisterModule("DiagnosticsService", ServerScriptService.Server.Services.DiagnosticsService, {"Logger", "InventoryService", "EconomyService", "RateLimitService", "DataService"})
-loader:RegisterModule("AutoTargetService", ServerScriptService.Server.Services.AutoTargetService, {"Logger", "ConfigLoader", "MonetizationService", "ProductIdMapper"})
+loader:RegisterModule(
+    "DataService",
+    ServerScriptService.Server.Services.DataService,
+    { "Logger", "ConfigLoader" }
+)
+registerFeatureModule(
+    "stats",
+    "StatsService",
+    ServerScriptService.Server.Services.StatsService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
+registerFeatureModule(
+    "modifiers",
+    "ModifierService",
+    ServerScriptService.Server.Services.ModifierService,
+    { "Logger", "ConfigLoader" }
+)
+registerFeatureModule(
+    "upgrades",
+    "UpgradeService",
+    ServerScriptService.Server.Services.UpgradeService,
+    appendIfEnabled({ "Logger", "ConfigLoader", "DataService" }, "modifiers", "ModifierService")
+)
+loader:RegisterModule(
+    "AdminService",
+    ServerScriptService.Server.Services.AdminService,
+    { "Logger", "ConfigLoader" }
+)
+loader:RegisterModule(
+    "RateLimitService",
+    ServerScriptService.Server.Services.RateLimitService,
+    { "Logger", "ConfigLoader", "DataService", "ServerClockService" }
+)
+loader:RegisterModule(
+    "AssetPreloadService",
+    ServerScriptService.Server.Services.AssetPreloadService,
+    { "Logger", "ConfigLoader" }
+)
+registerFeatureModule(
+    "map_binding",
+    "WorldBindingService",
+    ServerScriptService.Server.Services.WorldBindingService,
+    { "Logger", "ConfigLoader" }
+)
+registerFeatureModule(
+    "map_binding",
+    "ZoneService",
+    ServerScriptService.Server.Services.ZoneService,
+    { "Logger", "ConfigLoader", "DataService", "WorldBindingService" }
+)
+registerFeatureModule(
+    "global_events",
+    "EventService",
+    ServerScriptService.Server.Services.EventService,
+    appendIfEnabled(
+        { "Logger", "ConfigLoader", "ServerClockService" },
+        "modifiers",
+        "ModifierService"
+    )
+)
+loader:RegisterModule(
+    "BreakableSpawner",
+    ServerScriptService.Server.Services.BreakableSpawner,
+    appendIfEnabled(
+        appendIfEnabled({ "Logger", "ConfigLoader" }, "global_events", "EventService"),
+        "map_binding",
+        "WorldBindingService"
+    )
+)
+loader:RegisterModule(
+    "BreakableService",
+    ServerScriptService.Server.Services.BreakableService,
+    { "Logger", "ConfigLoader" }
+)
+loader:RegisterModule(
+    "PlayerEffectsService",
+    ServerScriptService.Server.Services.PlayerEffectsService,
+    { "Logger", "ConfigLoader", "DataService", "ServerClockService" }
+)
+loader:RegisterModule(
+    "GlobalEffectsService",
+    ServerScriptService.Server.Services.GlobalEffectsService,
+    { "Logger", "ConfigLoader", "DataService", "ServerClockService" }
+)
+loader:RegisterModule(
+    "ProductIdMapper",
+    ReplicatedStorage.Shared.Utils.ProductIdMapper,
+    { "Logger", "ConfigLoader" }
+)
+loader:RegisterModule(
+    "EconomyService",
+    ServerScriptService.Server.Services.EconomyService,
+    appendIfEnabled(
+        appendIfEnabled({
+            "Logger",
+            "DataService",
+            "ConfigLoader",
+            "PlayerEffectsService",
+            "GlobalEffectsService",
+            "AdminService",
+            "InventoryService",
+        }, "stats", "StatsService"),
+        "modifiers",
+        "ModifierService"
+    )
+)
+loader:RegisterModule(
+    "MonetizationService",
+    ServerScriptService.Server.Services.MonetizationService,
+    { "Logger", "DataService", "EconomyService", "ProductIdMapper", "PlayerEffectsService" }
+)
+loader:RegisterModule(
+    "InventoryService",
+    ServerScriptService.Server.Services.InventoryService,
+    appendIfEnabled({ "Logger", "DataService", "ConfigLoader" }, "upgrades", "UpgradeService")
+)
+loader:RegisterModule(
+    "SettingsService",
+    ServerScriptService.Server.Services.SettingsService,
+    { "Logger", "DataService", "ConfigLoader" }
+)
+loader:RegisterModule(
+    "DiagnosticsService",
+    ServerScriptService.Server.Services.DiagnosticsService,
+    { "Logger", "InventoryService", "EconomyService", "RateLimitService", "DataService" }
+)
+registerFeatureModule(
+    "admin_tools",
+    "AdminToolsService",
+    ServerScriptService.Server.Services.AdminToolsService,
+    appendIfEnabled(
+        { "Logger", "AdminService", "DataService", "InventoryService", "ConfigLoader" },
+        "global_events",
+        "EventService"
+    )
+)
+if RunService:IsStudio() then
+    loader:RegisterModule(
+        "StudioSmokeTestService",
+        ServerScriptService.Server.Services.StudioSmokeTestService,
+        appendIfEnabled(
+            appendIfEnabled(
+                appendIfEnabled({
+                    "Logger",
+                    "ConfigLoader",
+                    "DataService",
+                    "InventoryService",
+                    "EconomyService",
+                    "BreakableSpawner",
+                }, "upgrades", "UpgradeService"),
+                "map_binding",
+                "WorldBindingService"
+            ),
+            "map_binding",
+            "ZoneService"
+        )
+    )
+end
+registerFeatureModule(
+    "auto_target",
+    "AutoTargetService",
+    ServerScriptService.Server.Services.AutoTargetService,
+    { "Logger", "ConfigLoader", "MonetizationService", "ProductIdMapper" }
+)
 
 -- Register lazy services (loaded when needed)
 -- loader:RegisterLazyModule("TradeService", ServerScriptService.Server.Services.TradeService, {"EconomyService", "DataService", "NetworkBridge"}) -- TODO: Create TradeService
@@ -79,7 +277,31 @@ else
 end
 
 -- Validate critical modules loaded
-local requiredModules = {"Logger", "ConfigLoader", "ServerClockService", "DataService", "PlayerEffectsService", "GlobalEffectsService", "EconomyService", "ProductIdMapper", "MonetizationService", "InventoryService", "SettingsService", "DiagnosticsService"}
+local requiredModules = {
+    "Logger",
+    "ConfigLoader",
+    "ServerClockService",
+    "DataService",
+    "PlayerEffectsService",
+    "GlobalEffectsService",
+    "EconomyService",
+    "ProductIdMapper",
+    "MonetizationService",
+    "InventoryService",
+    "SettingsService",
+    "DiagnosticsService",
+}
+appendIfEnabled(requiredModules, "stats", "StatsService")
+appendIfEnabled(requiredModules, "modifiers", "ModifierService")
+appendIfEnabled(requiredModules, "upgrades", "UpgradeService")
+appendIfEnabled(requiredModules, "map_binding", "WorldBindingService")
+appendIfEnabled(requiredModules, "map_binding", "ZoneService")
+appendIfEnabled(requiredModules, "global_events", "EventService")
+appendIfEnabled(requiredModules, "admin_tools", "AdminToolsService")
+appendIfEnabled(requiredModules, "auto_target", "AutoTargetService")
+if RunService:IsStudio() then
+    table.insert(requiredModules, "StudioSmokeTestService")
+end
 for _, moduleName in ipairs(requiredModules) do
     local module = loader:Get(moduleName)
     if not module then
@@ -104,14 +326,13 @@ DataService:SetPlayerEffectsService(PlayerEffectsService)
 
 -- Legacy network handler connection removed - using Signals directly
 
-
 -- Load game configuration
 local gameConfig = ConfigLoader:LoadConfig("game")
 Logger:Info("Game configuration loaded", {
     gameMode = gameConfig.GameMode,
     maxPlayers = gameConfig.MaxPlayers,
     enableTrading = gameConfig.EnableTrading,
-    enablePvP = gameConfig.EnablePvP
+    enablePvP = gameConfig.EnablePvP,
 })
 
 -- Validate monetization setup
@@ -119,16 +340,21 @@ local monetizationStatus = ConfigLoader:GetMonetizationStatus()
 Logger:Info("Monetization status", monetizationStatus)
 
 if #monetizationStatus.validation.errors > 0 then
-    Logger:Error("MONETIZATION SETUP ERRORS:", {errors = monetizationStatus.validation.errors})
+    Logger:Error("MONETIZATION SETUP ERRORS:", { errors = monetizationStatus.validation.errors })
     error("Fix monetization configuration errors before starting")
 end
 
 if #monetizationStatus.validation.warnings > 0 then
-    Logger:Warn("MONETIZATION SETUP WARNINGS:", {warnings = monetizationStatus.validation.warnings})
+    Logger:Warn(
+        "MONETIZATION SETUP WARNINGS:",
+        { warnings = monetizationStatus.validation.warnings }
+    )
 end
 
 if monetizationStatus.validation.hasPlaceholders then
-    Logger:Warn("⚠️  MONETIZATION: Replace placeholder IDs with actual Roblox product/pass IDs from Creator Dashboard")
+    Logger:Warn(
+        "⚠️  MONETIZATION: Replace placeholder IDs with actual Roblox product/pass IDs from Creator Dashboard"
+    )
 end
 
 -- Initialize Matter ECS World
@@ -166,9 +392,13 @@ local ENABLE_LEGACY_GOLDEN_BEAR_CLEANUP = false
 local function cleanupLegacyGoldenBear(player)
     local DataService = loader:Get("DataService")
     local profile = DataService and DataService:GetProfile(player)
-    if not profile then return end
+    if not profile then
+        return
+    end
     local data = profile.Data
-    if not data then return end
+    if not data then
+        return
+    end
     local changed = false
 
     -- Delete persisted node Inventory/pets/items["equip_bear:golden"]
@@ -183,7 +413,11 @@ local function cleanupLegacyGoldenBear(player)
     if eq then
         for slotName, uid in pairs(eq) do
             if type(uid) == "string" then
-                if uid == "bear:golden" or uid:match("^stack|bear:golden") or uid == "equip_bear:golden" then
+                if
+                    uid == "bear:golden"
+                    or uid:match("^stack|bear:golden")
+                    or uid == "equip_bear:golden"
+                then
                     eq[slotName] = nil
                     changed = true
                 end
@@ -192,8 +426,12 @@ local function cleanupLegacyGoldenBear(player)
     end
 
     if changed then
-        Logger:Info("🧹 Cleanup: Removed legacy golden bear data", {player = player.Name})
-        if InventoryService and InventoryService._updateBucketFolders and InventoryService._updateEquippedFolders then
+        Logger:Info("🧹 Cleanup: Removed legacy golden bear data", { player = player.Name })
+        if
+            InventoryService
+            and InventoryService._updateBucketFolders
+            and InventoryService._updateEquippedFolders
+        then
             InventoryService:_updateBucketFolders(player, "pets")
             InventoryService:_updateEquippedFolders(player, "pets")
         end
@@ -221,7 +459,7 @@ end
 local systemsList = {}
 for name, system in pairs(systems) do
     table.insert(systemsList, system)
-    Logger:Debug("Registered system", {system = name})
+    Logger:Debug("Registered system", { system = name })
 end
 
 -- Start the ECS loop (temporarily disabled for debugging)
@@ -231,34 +469,34 @@ end
 --     -- debugger = game:GetService("RunService"):IsStudio() and Matter.Debugger.new() or nil
 -- })
 
-Logger:Info("Matter ECS loop started", {systemCount = #systemsList})
+Logger:Info("Matter ECS loop started", { systemCount = #systemsList })
 
 -- Initialize EggSpawner system
 task.spawn(function()
     -- Small delay to ensure all dependencies are ready
     task.wait(1)
-    
+
     Logger:Info("Starting EggSpawner initialization...")
-    
+
     local success, eggSpawnerOrError = pcall(function()
         local Locations = require(ReplicatedStorage.Shared.Locations)
         return require(ReplicatedStorage.Shared.Services.EggSpawner)
     end)
-    
+
     if success then
         Logger:Info("EggSpawner service loaded successfully")
         local EggSpawner = eggSpawnerOrError
         local initSuccess, initError = pcall(function()
             EggSpawner:Initialize()
         end)
-        
+
         if initSuccess then
             Logger:Info("EggSpawner initialized successfully")
         else
-            Logger:Error("Failed to initialize EggSpawner", {error = tostring(initError)})
+            Logger:Error("Failed to initialize EggSpawner", { error = tostring(initError) })
         end
     else
-        Logger:Error("Failed to load EggSpawner service", {error = tostring(eggSpawnerOrError)})
+        Logger:Error("Failed to load EggSpawner service", { error = tostring(eggSpawnerOrError) })
     end
 end)
 
@@ -267,28 +505,28 @@ end)
 -- Initialize EggService (following working game pattern)
 task.spawn(function()
     task.wait(0.1) -- Small delay after UserDisplayPreferences
-    
+
     Logger:Info("Starting EggService initialization...")
-    
+
     local success, eggServiceOrError = pcall(function()
         local Locations = require(ReplicatedStorage.Shared.Locations)
         return require(script.Services.EggService)
     end)
-    
+
     if success then
         Logger:Info("EggService loaded successfully")
         local EggService = eggServiceOrError
         local initSuccess, initError = pcall(function()
             EggService:Initialize(loader) -- Pass loader so EggService can access other services
         end)
-        
+
         if initSuccess then
             Logger:Info("EggService initialized successfully")
         else
-            Logger:Error("Failed to initialize EggService", {error = tostring(initError)})
+            Logger:Error("Failed to initialize EggService", { error = tostring(initError) })
         end
     else
-        Logger:Error("Failed to load EggService", {error = tostring(eggServiceOrError)})
+        Logger:Error("Failed to load EggService", { error = tostring(eggServiceOrError) })
     end
 end)
 
@@ -297,9 +535,9 @@ Players.PlayerAdded:Connect(function(player)
     Logger:Info("Player joined", {
         player = player.Name,
         userId = player.UserId,
-        accountAge = player.AccountAge
+        accountAge = player.AccountAge,
     })
-    
+
     -- Player will be handled by DataService automatically
     -- DataService:LoadProfile(player) is called automatically
 end)
@@ -307,9 +545,9 @@ end)
 Players.PlayerRemoving:Connect(function(player)
     Logger:Info("Player leaving", {
         player = player.Name,
-        userId = player.UserId
+        userId = player.UserId,
     })
-    
+
     -- Cleanup handled by DataService automatically
 end)
 
@@ -321,7 +559,7 @@ LogService.MessageOut:Connect(function(message, messageType)
         if not string.find(message, "plugin") and not string.find(message, "Plugin") then
             Logger:Error("Server script error", {
                 message = message,
-                messageType = messageType.Name
+                messageType = messageType.Name,
             })
         end
     end
@@ -339,15 +577,22 @@ task.spawn(function()
         end
         return nil
     end)
-    if ok then loggingConfig = result end
+    if ok then
+        loggingConfig = result
+    end
 
-    local perfCfg = (loggingConfig and loggingConfig.performance_monitor and loggingConfig.performance_monitor.server) or {
-        enabled = true,
-        interval_seconds = 30,
-        target_frame_time_seconds = 1/60,
-        warn_frame_time_seconds = 1/30,
-        error_frame_time_seconds = 0.0667,
-    }
+    local perfCfg = (
+        loggingConfig
+        and loggingConfig.performance_monitor
+        and loggingConfig.performance_monitor.server
+    )
+        or {
+            enabled = true,
+            interval_seconds = 30,
+            target_frame_time_seconds = 1 / 60,
+            warn_frame_time_seconds = 1 / 30,
+            error_frame_time_seconds = 0.0667,
+        }
 
     if not perfCfg.enabled then
         return
@@ -365,21 +610,21 @@ task.spawn(function()
 
         Logger:Debug("Server performance", stats)
 
-        local target = perfCfg.target_frame_time_seconds or (1/60)
-        local warnAt = perfCfg.warn_frame_time_seconds or (1/30)
+        local target = perfCfg.target_frame_time_seconds or (1 / 60)
+        local warnAt = perfCfg.warn_frame_time_seconds or (1 / 30)
         local errorAt = perfCfg.error_frame_time_seconds or 0.0667
 
         if heartbeatTime > errorAt then
             Logger:Error("Server performance severely degraded", {
                 frameTime = heartbeatTime,
                 targetFrameTime = target,
-                threshold = errorAt
+                threshold = errorAt,
             })
         elseif heartbeatTime > warnAt then
             Logger:Warn("Server performance degraded", {
                 frameTime = heartbeatTime,
                 targetFrameTime = target,
-                threshold = warnAt
+                threshold = warnAt,
             })
         end
     end
@@ -388,18 +633,18 @@ end)
 -- Graceful shutdown handling
 game:BindToClose(function()
     Logger:Info("Server shutting down...")
-    
+
     -- Give services time to clean up
     task.wait(1)
-    
+
     -- Stop Matter loop
     loop:stop()
-    
+
     Logger:Info("Server shutdown complete")
 end)
 
 Logger:Info("🎮 Game Template Server started successfully!", {
     gameMode = gameConfig.GameMode,
     maxPlayers = gameConfig.MaxPlayers,
-    systemCount = #systemsList
-}) 
+    systemCount = #systemsList,
+})

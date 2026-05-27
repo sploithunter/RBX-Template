@@ -40,8 +40,35 @@ function AdminService:Init()
         self._adminConfig = {
             authorizedUsers = {},
             permissions = {},
-            security = { logAllAdminActions = true, requireStudioForSensitiveOps = true }
+            security = { logAllAdminActions = true, requireStudioForSensitiveOps = true, allowStudioAccess = false }
         }
+    end
+
+    Players.PlayerAdded:Connect(function(player)
+        self:_syncPlayerAdminAttributes(player)
+    end)
+end
+
+function AdminService:Start()
+    for _, player in ipairs(Players:GetPlayers()) do
+        self:_syncPlayerAdminAttributes(player)
+    end
+end
+
+function AdminService:_syncPlayerAdminAttributes(player)
+    if not player then
+        return
+    end
+
+    local isAdmin = self:IsAuthorized(player)
+    player:SetAttribute("IsAdmin", isAdmin)
+
+    if self._logger then
+        self._logger:Info("Admin attributes synced", {
+            player = player.Name,
+            userId = player.UserId,
+            isAdmin = isAdmin
+        })
     end
 end
 
@@ -49,6 +76,12 @@ end
 function AdminService:IsAuthorized(player)
     if not player or not self._adminConfig then
         return false
+    end
+
+    if RunService:IsStudio()
+        and self._adminConfig.security
+        and self._adminConfig.security.allowStudioAccess == true then
+        return true
     end
     
     local userId = player.UserId

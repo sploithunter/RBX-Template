@@ -237,7 +237,7 @@ local function testPlayerInventoryReplication(player)
     
     local stackUID = InventoryService:AddItem(player, "consumables", morePotions)
     if stackUID then
-        print(string.format("✅ More potions added, should stack with existing"))
+        print("✅ More potions added, should stack with existing")
         
         -- Wait for replication
         task.wait(0.5)

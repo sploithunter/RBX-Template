@@ -767,6 +767,17 @@ local uiConfig = {
             },
             description = "Initiates gem purchase flow"
         },
+
+        exchange_action = {
+            type = "network_call",
+            service = "EconomyService",
+            method = "ConvertCurrency",
+            parameters = {
+                conversionId = "crystals_to_gems",
+                batches = 1
+            },
+            description = "Converts mined crystals into gems"
+        },
         
         -- Conditional Actions
         quest_claim_action = {
@@ -965,7 +976,7 @@ local uiConfig = {
             layout = {
                 type = "grid",
                 auto_size = true, -- Enable automatic sizing based on content
-                button_count = 7, -- Exact number of buttons for calculation
+                button_count = 8, -- Exact number of buttons for calculation
                 padding = {top = 5, bottom = 5, left = 5, right = 5} -- Padding for calculations
             },
             contents = {
@@ -1032,6 +1043,13 @@ local uiConfig = {
                     text = "Settings", 
                     action = "settings_action"
                     -- 🎨 Automatically gets: teal background, default colors, default layout!
+                }},
+
+                {type = "menu_button", config = {
+                    name = "Exchange",
+                    icon = "💎",
+                    text = "Trade",
+                    action = "exchange_action"
                 }},
                 
                 -- 🟣 MINIMAL WITH OVERRIDE: Custom icon but inherits everything else
@@ -1477,5 +1495,4 @@ local uiConfig = {
 
 -- 🎉 UNIVERSAL CONSISTENCY SYSTEM - Successfully loaded!
 
-return uiConfig 
-
+return uiConfig

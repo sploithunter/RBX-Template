@@ -164,6 +164,26 @@ function MenuManager:RegisterPanel(name, panelObject)
     self.logger:info("Registered panel:", name)
 end
 
+function MenuManager:_hideCurrentPanelForSwitch()
+    local panelToClose = self.currentPanel
+    local panelName = self.currentPanelName
+
+    if not panelToClose then
+        return
+    end
+
+    self.currentPanel = nil
+    self.currentPanelName = nil
+
+    if self.escConnection then
+        self.escConnection:Disconnect()
+        self.escConnection = nil
+    end
+
+    panelToClose:Hide()
+    self.logger:info("Switched away from panel:", panelName)
+end
+
 -- Open a specific panel with configurable transition
 function MenuManager:OpenPanel(panelName, transitionEffect)
     if self.isTransitioning then
@@ -171,9 +191,9 @@ function MenuManager:OpenPanel(panelName, transitionEffect)
         return false
     end
     
-    -- Close current panel if any
+    -- Switch panels inside the same overlay without running an async close that can hide the new panel.
     if self.currentPanel then
-        self:CloseCurrentPanel()
+        self:_hideCurrentPanelForSwitch()
     end
     
     local panel = self.panels[panelName]

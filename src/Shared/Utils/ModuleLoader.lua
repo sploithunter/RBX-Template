@@ -169,11 +169,8 @@ function ModuleLoader:_loadModule(name)
         if moduleResult.new then
             -- Constructor pattern
             instance = moduleResult.new()
-        elseif moduleResult.Init or moduleResult.Start then
-            -- Service pattern
-            instance = moduleResult
         else
-            -- Static module
+            -- Service/static module pattern
             instance = moduleResult
         end
     elseif type(moduleResult) == "function" then

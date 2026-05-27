@@ -14,10 +14,7 @@
     MenuManager:RegisterPanel("Effects", effects)
 ]]
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
@@ -219,22 +216,13 @@ function EffectsPanel:_createUI(parent)
 end
 
 function EffectsPanel:_loadEffectsData()
-    -- Try to get real effects data from services
-    local player = Players.LocalPlayer
-    
-    -- Mock data for now (replace with real service calls)
     self.effectsData = {
-        playerEffects = {
-            {id = "speed_boost", name = "Speed Boost", duration = 300, remaining = 45, icon = "🏃", active = true},
-            {id = "double_coins", name = "Double Coins", duration = 600, remaining = 120, icon = "💰", active = true},
-            {id = "vip_status", name = "VIP Status", duration = -1, remaining = -1, icon = "⭐", active = true}, -- Permanent
-        },
-        globalEffects = {
-            {id = "global_xp", name = "2x XP Weekend", duration = 7200, remaining = 3600, icon = "📈", active = true},
-            {id = "premium_benefits", name = "Premium Benefits", duration = -1, remaining = -1, icon = "💎", active = true},
-        }
+        playerEffects = {},
+        globalEffects = {}
     }
-    
+
+    local signals = require(ReplicatedStorage.Shared.Network.Signals)
+    signals.ActiveEffects:FireServer({request = true})
     self:_updateEffectsDisplay()
 end
 
@@ -245,7 +233,6 @@ function EffectsPanel:_updateEffectsDisplay()
     end
     self.effectDisplays = {}
     
-    local theme = uiConfig.helpers.get_theme(uiConfig)
     local layoutOrder = 1
     
     -- Player Effects Section
@@ -294,11 +281,11 @@ function EffectsPanel:_createSectionHeader(title, layoutOrder)
     label.Parent = header
 end
 
-function EffectsPanel:_createEffectDisplay(effect, effectType, layoutOrder)
+function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     local theme = uiConfig.helpers.get_theme(uiConfig)
     
     local effectFrame = Instance.new("Frame")
-    effectFrame.Name = effect.id .. "Display"
+    effectFrame.Name = tostring(effect.id or effect.name or "effect") .. "Display"
     effectFrame.Size = UDim2.new(1, 0, 0, 60)
     effectFrame.BackgroundColor3 = theme.primary.card or Color3.fromRGB(50, 50, 55)
     effectFrame.BorderSizePixel = 0
@@ -314,7 +301,7 @@ function EffectsPanel:_createEffectDisplay(effect, effectType, layoutOrder)
     iconLabel.Size = UDim2.new(0, 40, 0, 40)
     iconLabel.Position = UDim2.new(0, 10, 0.5, -20)
     iconLabel.BackgroundTransparency = 1
-    iconLabel.Text = effect.icon
+    iconLabel.Text = tostring(effect.icon or "EVENT")
     iconLabel.TextSize = 24
     iconLabel.Parent = effectFrame
     
@@ -323,7 +310,7 @@ function EffectsPanel:_createEffectDisplay(effect, effectType, layoutOrder)
     nameLabel.Size = UDim2.new(0, 200, 0, 20)
     nameLabel.Position = UDim2.new(0, 60, 0, 10)
     nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = effect.name
+    nameLabel.Text = tostring(effect.name or effect.displayName or effect.id or "Event")
     nameLabel.TextColor3 = theme.text.primary
     nameLabel.TextSize = 14
     nameLabel.Font = Enum.Font.GothamMedium
@@ -341,16 +328,19 @@ function EffectsPanel:_createEffectDisplay(effect, effectType, layoutOrder)
     timeLabel.TextXAlignment = Enum.TextXAlignment.Left
     timeLabel.Parent = effectFrame
     
-    if effect.remaining == -1 then
+    local remaining = tonumber(effect.remaining or effect.timeRemaining or 0) or 0
+    local duration = tonumber(effect.duration or remaining) or remaining
+
+    if remaining == -1 then
         timeLabel.Text = "Permanent"
     else
-        local minutes = math.floor(effect.remaining / 60)
-        local seconds = effect.remaining % 60
+        local minutes = math.floor(remaining / 60)
+        local seconds = remaining % 60
         timeLabel.Text = string.format("%02d:%02d remaining", minutes, seconds)
     end
     
     -- Progress bar (for timed effects)
-    if effect.remaining ~= -1 then
+    if remaining ~= -1 then
         local progressBG = Instance.new("Frame")
         progressBG.Size = UDim2.new(0, 150, 0, 4)
         progressBG.Position = UDim2.new(1, -160, 1, -8)
@@ -359,7 +349,8 @@ function EffectsPanel:_createEffectDisplay(effect, effectType, layoutOrder)
         progressBG.Parent = effectFrame
         
         local progressFill = Instance.new("Frame")
-        progressFill.Size = UDim2.new(effect.remaining / effect.duration, 0, 1, 0)
+        local progress = duration > 0 and math.clamp(remaining / duration, 0, 1) or 0
+        progressFill.Size = UDim2.new(progress, 0, 1, 0)
         progressFill.Position = UDim2.new(0, 0, 0, 0)
         progressFill.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
         progressFill.BorderSizePixel = 0
@@ -380,7 +371,36 @@ end
 -- Update effects data (call this periodically)
 function EffectsPanel:UpdateEffects(newEffectsData)
     if newEffectsData then
-        self.effectsData = newEffectsData
+        if newEffectsData.effects and newEffectsData.effects.globalEffects then
+            self.effectsData = {
+                playerEffects = newEffectsData.effects.playerEffects or self.effectsData.playerEffects or {},
+                globalEffects = newEffectsData.effects.globalEffects or self.effectsData.globalEffects or {}
+            }
+        elseif newEffectsData.globalEvents then
+            self.effectsData = {
+                playerEffects = self.effectsData.playerEffects or {},
+                globalEffects = newEffectsData.globalEvents
+            }
+        elseif newEffectsData.playerEffects or newEffectsData.globalEffects then
+            self.effectsData = {
+                playerEffects = newEffectsData.playerEffects or self.effectsData.playerEffects or {},
+                globalEffects = newEffectsData.globalEffects or self.effectsData.globalEffects or {}
+            }
+        else
+            local playerEffects = {}
+            for effectId, effect in pairs(newEffectsData.effects or newEffectsData) do
+                if type(effect) == "table" then
+                    effect.id = effect.id or effectId
+                    effect.name = effect.name or effect.displayName or effectId
+                    effect.remaining = effect.remaining or effect.timeRemaining
+                    table.insert(playerEffects, effect)
+                end
+            end
+            self.effectsData = {
+                playerEffects = playerEffects,
+                globalEffects = self.effectsData.globalEffects or {}
+            }
+        end
     end
     
     if self.isVisible then

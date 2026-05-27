@@ -3,13 +3,13 @@
 
 [tools]
 # Rojo for file sync between IDE and Roblox Studio
-rojo = "7.5.1"
+"github:rojo-rbx/rojo" = { version = "7.6.1", exe = "rojo" }
 
 # Wally for package management
-wally = "0.3.2"
+"github:UpliftGames/wally" = { version = "0.3.2", exe = "wally" }
 
 # Selene for Lua linting
-selene = "0.25.0"
+"github:Kampfkarren/selene" = { version = "0.25.0", exe = "selene" }
 
 # StyLua for code formatting
 stylua = "0.18.2"
@@ -34,13 +34,29 @@ run = "rojo serve"
 description = "Build the project for production"
 run = "rojo build --output game.rbxl"
 
+[tasks.asset-report]
+description = "Report tracked pet assets and source-file gaps"
+run = "node scripts/assets_report.js"
+
+[tasks.asset-check]
+description = "Check pet asset manifest against configs/pets.lua"
+run = "node scripts/assets_report.js --check"
+
+[tasks.asset-prompts]
+description = "Print Meshy-ready prompts from the pet manifest"
+run = "node scripts/assets_report.js --prompts"
+
 [tasks.test]
 description = "Run tests (requires Studio)"
 run = "echo 'Run tests/TestBootstrap.lua in Roblox Studio'"
 
 [tasks.lint]
-description = "Lint Lua files with Selene"
-run = "selene src/"
+description = "Lint Lua files with Selene, failing on errors"
+run = "selene --allow-warnings src configs tests"
+
+[tasks.lint-strict]
+description = "Lint Lua files with Selene, failing on warnings"
+run = "selene src configs tests"
 
 [tasks.format]
 description = "Format Lua files with StyLua"

@@ -175,6 +175,7 @@ function PlayerEffectsService:ApplyEffect(player, effectId, duration, customEffe
     local existingEffect = timedBoosts:FindFirstChild(effectId)
     if existingEffect then
         local currentTimeRemaining = existingEffect:FindFirstChild("timeRemaining")
+        local sessionStartTime = existingEffect:FindFirstChild("sessionStartTime")
         self._logger:Debug("Existing effect stacking", {player = player.Name, effectId = effectId, stacking = effectConfig.stacking})
 
         if effectConfig.stacking == "extend_duration" then
@@ -210,7 +211,6 @@ function PlayerEffectsService:ApplyEffect(player, effectId, duration, customEffe
         if currentTimeRemaining then
             currentTimeRemaining.Value = duration
         end
-        local sessionStartTime = existingEffect:FindFirstChild("sessionStartTime")
         if sessionStartTime then
             sessionStartTime.Value = self._serverClock:GetServerTime()
         end

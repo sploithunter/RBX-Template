@@ -56,9 +56,9 @@ function TestReporter:report(results)
     local endTime = tick()
     local duration = endTime - self.startTime
     
-    print("\n" .. "=":rep(50))
+    print("\n" .. ("="):rep(50))
     print("🧪 TEST RESULTS")
-    print("=":rep(50))
+    print(("="):rep(50))
     
     -- Count results
     for _, result in pairs(results) do
@@ -93,7 +93,7 @@ function TestReporter:report(results)
         end
     end
     
-    print("=":rep(50))
+    print(("="):rep(50))
     
     return self.failCount == 0
 end

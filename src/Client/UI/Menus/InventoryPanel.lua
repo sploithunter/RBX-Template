@@ -23,6 +23,7 @@ local UserInputService = game:GetService("UserInputService")
 
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
+local ConfigLoader = require(ReplicatedStorage.Shared.ConfigLoader)
 
 -- Load Logger with wrapper
 local LoggerWrapper
@@ -108,7 +109,6 @@ function InventoryPanel.new()
     self.logger = LoggerWrapper.new("InventoryPanel")
     
     -- Load inventory configuration
-    local ConfigLoader = require(ReplicatedStorage.Shared.ConfigLoader)
     local success, result = pcall(function()
         return ConfigLoader:LoadConfig("inventory")
     end)
@@ -2369,10 +2369,7 @@ function InventoryPanel:_togglePetEquipped(item)
     
     if self.signals then
         local payload = { bucket = item.folder_source, itemId = item.id }
-        -- If this is a ghost equipped instance from a stack, send its uid directly to toggle (unequip)
-        if typeof(item.id) == "string" and string.sub(item.id,1,18) == "equipped_instance|" then
-            payload.itemUid = item.uid
-        elseif typeof(item.id) == "string" and string.sub(item.id,1,6) == "stack|" then
+        if typeof(item.id) == "string" and string.sub(item.id,1,6) == "stack|" then
             local stackKey = string.sub(item.id, 7)
             payload.itemUid = "stack|" .. stackKey .. "|" .. game:GetService("HttpService"):GenerateGUID(false)
             payload.isStackEquip = true

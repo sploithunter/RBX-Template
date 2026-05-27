@@ -152,9 +152,9 @@ return {
     -- Equipped configuration
     equipped = {
         pets = {
-            -- Temporary: large default while aggregate-based limit is wired up
-            -- Final design: this numeric default is a floor; runtime aggregate may raise/lower
-            slots = 99,                 -- Number of equipped slots (stub; see InventoryService _getMaxEquippedSlots)
+            slots = 3,                  -- Base equipped pet slots
+            max_slots = 6,              -- Hard cap after perks/gamepasses/rewards
+            extra_slots_perk = "extra_pet_slots",
             display_name = "Active Pets",
             icon = "🐾",
             

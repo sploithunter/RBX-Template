@@ -1,4 +1,3 @@
---#selene:allow(empty_loop)
 local useCurrentSystem = require(script.Parent.Parent.topoRuntime).useCurrentSystem
 local World = require(script.Parent.Parent.World)
 local rollingAverage = require(script.Parent.Parent.rollingAverage)

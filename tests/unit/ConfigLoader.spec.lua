@@ -5,19 +5,24 @@
 ]]
 
 return function()
-    
     local ConfigLoader = require(game.ReplicatedStorage.Shared.ConfigLoader)
     -- Save original loader for patches throughout this spec
-    local originalLoadConfig = ConfigLoader.LoadConfig
-    
+    local originalLoadConfig = ConfigLoader.__TEST_ORIGINAL_LOAD_CONFIG or ConfigLoader.LoadConfig
+    ConfigLoader.__TEST_ORIGINAL_LOAD_CONFIG = originalLoadConfig
+
     describe("ConfigLoader", function()
         local configLoader
-        
+
         beforeEach(function()
             configLoader = setmetatable({}, ConfigLoader)
             configLoader:Init()
+            ConfigLoader.LoadConfig = originalLoadConfig
         end)
-        
+
+        afterEach(function()
+            ConfigLoader.LoadConfig = originalLoadConfig
+        end)
+
         describe("Monetization Config Methods", function()
             -- Mock monetization config
             local mockMonetizationConfig = {
@@ -27,20 +32,20 @@ return function()
                     starter_pack = 1234567892,
                     vip_pass = 123456789,
                     auto_collect = 123456790,
-                    speed_boost = 123456791
+                    speed_boost = 123456791,
                 },
                 products = {
                     {
                         id = "small_gems",
                         name = "100 Gems",
                         price_robux = 99,
-                        rewards = {gems = 100}
+                        rewards = { gems = 100 },
                     },
                     {
                         id = "medium_gems",
                         name = "500 Gems",
                         price_robux = 399,
-                        rewards = {gems = 550}
+                        rewards = { gems = 550 },
                     },
                     {
                         id = "starter_pack",
@@ -49,9 +54,9 @@ return function()
                         rewards = {
                             gems = 150,
                             coins = 25000,
-                            items = {"wooden_sword"}
-                        }
-                    }
+                            items = { "wooden_sword" },
+                        },
+                    },
                 },
                 passes = {
                     {
@@ -59,16 +64,16 @@ return function()
                         name = "VIP Pass",
                         price_robux = 499,
                         benefits = {
-                            multipliers = {xp = 2.0, coins = 1.5}
-                        }
+                            multipliers = { xp = 2.0, coins = 1.5 },
+                        },
                     },
                     {
                         id = "auto_collect",
                         name = "Auto Collector",
                         price_robux = 299,
                         benefits = {
-                            features = {auto_collect_enabled = true}
-                        }
+                            features = { auto_collect_enabled = true },
+                        },
                     },
                     {
                         id = "speed_boost",
@@ -78,188 +83,179 @@ return function()
                             effects = {
                                 id = "speed_pass",
                                 permanent = true,
-                                stats = {speedMultiplier = 0.5}
-                            }
-                        }
-                    }
+                                stats = { speedMultiplier = 0.5 },
+                            },
+                        },
+                    },
                 },
                 premium_benefits = {
                     enabled = true,
-                    multipliers = {xp = 1.5, coins = 1.25}
+                    multipliers = { xp = 1.5, coins = 1.25 },
                 },
                 first_purchase_bonus = {
                     enabled = true,
-                    rewards = {gems = 100, coins = 50000}
+                    rewards = { gems = 100, coins = 50000 },
                 },
                 validation_rules = {
-                    test_mode = {enabled = true}
+                    test_mode = { enabled = true },
                 },
                 error_messages = {
-                    product_not_found = "Product not found"
+                    product_not_found = "Product not found",
                 },
                 analytics = {
-                    track_purchases = true
-                }
+                    track_purchases = true,
+                },
             }
-            
-            -- Apply monkey-patch only once for the whole test run
 
-            if not ConfigLoader.__TEST_PATCH_APPLIED then
-                ConfigLoader.__TEST_PATCH_APPLIED = true
-                -- duplicate patch block removed
-                ConfigLoader.LoadConfig = function(self, configName)
-                    if configName == "monetization" then
-                        return mockMonetizationConfig
-                    end
-                    return originalLoadConfig(self, configName)
-                end
-            end
-            
+            beforeEach(function()
+                configLoader._monetizationCache = mockMonetizationConfig
+            end)
+
             it("should get product by ID", function()
                 local product = configLoader:GetProduct("small_gems")
-                
+
                 expect(product).to.be.ok()
                 expect(product.id).to.equal("small_gems")
                 expect(product.name).to.equal("100 Gems")
                 expect(product.price_robux).to.equal(99)
                 expect(product.rewards.gems).to.equal(100)
             end)
-            
+
             it("should get game pass by ID", function()
                 local pass = configLoader:GetGamePass("vip_pass")
-                
+
                 expect(pass).to.be.ok()
                 expect(pass.id).to.equal("vip_pass")
                 expect(pass.name).to.equal("VIP Pass")
                 expect(pass.price_robux).to.equal(499)
                 expect(pass.benefits.multipliers.xp).to.equal(2.0)
             end)
-            
+
             it("should get product by Roblox ID", function()
                 local product = configLoader:GetProductByRobloxId(1234567890)
-                
+
                 expect(product).to.be.ok()
                 expect(product.id).to.equal("small_gems")
                 expect(product.name).to.equal("100 Gems")
             end)
-            
+
             it("should return nil for unknown product", function()
                 local product = configLoader:GetProduct("unknown_product")
                 expect(product).to.equal(nil)
             end)
-            
+
             it("should return nil for unknown game pass", function()
                 local pass = configLoader:GetGamePass("unknown_pass")
                 expect(pass).to.equal(nil)
             end)
-            
+
             it("should get all products", function()
                 local products = configLoader:GetAllProducts()
-                
+
                 expect(#products).to.equal(3)
                 expect(products[1].id).to.equal("small_gems")
                 expect(products[2].id).to.equal("medium_gems")
                 expect(products[3].id).to.equal("starter_pack")
             end)
-            
+
             it("should get all game passes", function()
                 local passes = configLoader:GetAllGamePasses()
-                
+
                 expect(#passes).to.equal(3)
                 expect(passes[1].id).to.equal("vip_pass")
                 expect(passes[2].id).to.equal("auto_collect")
                 expect(passes[3].id).to.equal("speed_boost")
             end)
-            
+
             it("should get product ID mapping", function()
                 local mapping = configLoader:GetProductIdMapping()
-                
+
                 expect(mapping).to.be.ok()
                 expect(mapping.small_gems).to.equal(1234567890)
                 expect(mapping.vip_pass).to.equal(123456789)
             end)
-            
+
             it("should get Roblox ID from config ID", function()
                 local robloxId = configLoader:GetRobloxId("small_gems")
                 expect(robloxId).to.equal(1234567890)
-                
+
                 local passId = configLoader:GetRobloxId("vip_pass")
                 expect(passId).to.equal(123456789)
             end)
-            
+
             it("should get premium benefits", function()
                 local benefits = configLoader:GetPremiumBenefits()
-                
+
                 expect(benefits).to.be.ok()
                 expect(benefits.enabled).to.equal(true)
                 expect(benefits.multipliers.xp).to.equal(1.5)
                 expect(benefits.multipliers.coins).to.equal(1.25)
             end)
-            
+
             it("should get first purchase bonus", function()
                 local bonus = configLoader:GetFirstPurchaseBonus()
-                
+
                 expect(bonus).to.be.ok()
                 expect(bonus.enabled).to.equal(true)
                 expect(bonus.rewards.gems).to.equal(100)
                 expect(bonus.rewards.coins).to.equal(50000)
             end)
-            
+
             it("should get validation rules", function()
                 local rules = configLoader:GetValidationRules()
-                
+
                 expect(rules).to.be.ok()
                 expect(rules.test_mode.enabled).to.equal(true)
             end)
-            
+
             it("should get error messages", function()
                 local messages = configLoader:GetErrorMessages()
-                
+
                 expect(messages).to.be.ok()
                 expect(messages.product_not_found).to.equal("Product not found")
             end)
-            
+
             it("should get analytics config", function()
                 local analytics = configLoader:GetAnalyticsConfig()
-                
+
                 expect(analytics).to.be.ok()
                 expect(analytics.track_purchases).to.equal(true)
             end)
         end)
-        
+
         describe("Configuration Validation", function()
             it("should validate valid monetization config", function()
                 local validConfig = {
-                    product_id_mapping = {test_product = 123456789},
+                    product_id_mapping = { test_product = 123456789 },
                     products = {
                         {
                             id = "test_product",
                             name = "Test Product",
                             price_robux = 99,
-                            rewards = {gems = 100}
-                        }
+                            rewards = { gems = 100 },
+                        },
                     },
                     passes = {},
-                    premium_benefits = {enabled = true}
+                    premium_benefits = { enabled = true },
                 }
-                
+
                 local isValid, error = configLoader:ValidateConfig("monetization", validConfig)
                 expect(isValid).to.equal(true)
                 expect(error).to.equal(nil)
             end)
-            
+
             it("should reject monetization config with missing product_id_mapping", function()
                 local invalidConfig = {
                     products = {},
                     passes = {},
-                    premium_benefits = {}
+                    premium_benefits = {},
                 }
-                
+
                 local isValid, error = configLoader:ValidateConfig("monetization", invalidConfig)
                 expect(isValid).to.equal(false)
                 expect(string.find(error, "Missing required section: product_id_mapping", 1, true)).to.be.ok()
             end)
-            
+
             it("should reject product with missing ID", function()
                 local invalidConfig = {
                     product_id_mapping = {},
@@ -267,18 +263,18 @@ return function()
                         {
                             name = "Test Product",
                             price_robux = 99,
-                            rewards = {}
-                        }
+                            rewards = {},
+                        },
                     },
                     passes = {},
-                    premium_benefits = {}
+                    premium_benefits = {},
                 }
-                
+
                 local isValid, error = configLoader:ValidateConfig("monetization", invalidConfig)
                 expect(isValid).to.equal(false)
                 expect(string.find(error, "missing or invalid id", 1, true)).to.be.ok()
             end)
-            
+
             it("should reject product not in ID mapping", function()
                 local invalidConfig = {
                     product_id_mapping = {},
@@ -287,79 +283,368 @@ return function()
                             id = "test_product",
                             name = "Test Product",
                             price_robux = 99,
-                            rewards = {}
-                        }
+                            rewards = {},
+                        },
                     },
                     passes = {},
-                    premium_benefits = {}
+                    premium_benefits = {},
                 }
-                
+
                 local isValid, error = configLoader:ValidateConfig("monetization", invalidConfig)
                 expect(isValid).to.equal(false)
                 expect(string.find(error, "not found in product_id_mapping", 1, true)).to.be.ok()
             end)
+
+            it("should reject breakable spawn entries with unknown crystal ids", function()
+                local invalidConfig = {
+                    crystals = {
+                        SmallCrystal = {
+                            display_name = "Small Crystal",
+                            procedural_asset = "test",
+                            scale = 1,
+                            health = 10,
+                            value = 1,
+                            currency = "coins",
+                        },
+                    },
+                    worlds = {
+                        Spawn = {
+                            max = 1,
+                            interval = 5,
+                            spawn_table = {
+                                { name = "MissingCrystal", weight = 1 },
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("breakables", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "must reference breakables.crystals", 1, true)).to.be.ok()
+            end)
+
+            it("should reject pet eggs with unknown currency ids", function()
+                local invalidConfig = {
+                    version = "1.0.0",
+                    rarities = {
+                        common = { name = "Common" },
+                    },
+                    variants = {
+                        basic = { name = "Basic", rarity = "common" },
+                    },
+                    pets = {
+                        bear = {
+                            name = "Bear",
+                            category = "forest",
+                            base_power = 10,
+                            base_health = 10,
+                            variants = {
+                                basic = {
+                                    asset_id = "rbxassetid://1",
+                                    display_name = "Bear",
+                                    power = 10,
+                                    health = 10,
+                                },
+                            },
+                        },
+                    },
+                    abilities = {},
+                    egg_sources = {
+                        basic_egg = {
+                            name = "Basic Egg",
+                            cost = 100,
+                            currency = "missing_currency",
+                            pet_weights = {
+                                bear = 1,
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("pets", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "must reference configs/currencies.lua", 1, true)).to.be.ok()
+            end)
+
+            it("should reject scheduled events with unknown event ids", function()
+                local invalidConfig = {
+                    tick_seconds = 1,
+                    workspace = {
+                        active_folder = "GlobalEvents",
+                    },
+                    modifiers = {
+                        egg_luck = {
+                            display_name = "Egg Luck",
+                            base = 0,
+                        },
+                    },
+                    global_events = {
+                        lucky_day = {
+                            display_name = "Lucky Day",
+                            duration_seconds = -1,
+                            stacking = "reset",
+                            modifiers = {
+                                egg_luck = 0.1,
+                            },
+                        },
+                    },
+                    scheduled_global_events = {
+                        bad_schedule = {
+                            event_id = "missing_event",
+                            weekdays_utc = { 3 },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("events", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "must reference global_events", 1, true)).to.be.ok()
+            end)
+
+            it("should validate an area zone tree", function()
+                local validConfig = {
+                    zones = {
+                        spawn_world = {
+                            id = "spawn_world",
+                            kind = "world",
+                        },
+                        spawn_island = {
+                            id = "spawn_island",
+                            kind = "island",
+                            parent = "spawn_world",
+                        },
+                        Spawn = {
+                            id = "Spawn",
+                            kind = "area",
+                            parent = "spawn_island",
+                            boosts = {},
+                            synthetic = {},
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("areas", validConfig)
+                expect(isValid).to.equal(true)
+                expect(error).to.equal(nil)
+            end)
+
+            it("should reject areas with missing parent zone references", function()
+                local invalidConfig = {
+                    zones = {
+                        Spawn = {
+                            id = "Spawn",
+                            kind = "area",
+                            parent = "missing_parent",
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("areas", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "must reference an existing zone", 1, true)).to.be.ok()
+            end)
+
+            it("should reject cyclic area zone trees", function()
+                local invalidConfig = {
+                    zones = {
+                        alpha = {
+                            id = "alpha",
+                            kind = "area",
+                            parent = "bravo",
+                        },
+                        bravo = {
+                            id = "bravo",
+                            kind = "area",
+                            parent = "alpha",
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("areas", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "cycle detected", 1, true)).to.be.ok()
+            end)
+
+            it("should reject area unlocks with unknown currencies", function()
+                local invalidConfig = {
+                    zones = {
+                        Spawn = {
+                            id = "Spawn",
+                            kind = "area",
+                            unlock = {
+                                currency = "missing_currency",
+                                cost = 10,
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("areas", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "configs/currencies.lua", 1, true)).to.be.ok()
+            end)
+
+            it("should validate upgrade definitions", function()
+                local validConfig = {
+                    version = "1.0.0",
+                    upgrades = {
+                        pet_equip_slots = {
+                            id = "pet_equip_slots",
+                            display_name = "Pet Equip Slots",
+                            max_level = 2,
+                            cost = {
+                                currency = "coins",
+                                type = "linear",
+                                base = 100,
+                                increment = 50,
+                            },
+                            effects = {
+                                {
+                                    type = "equip_slots",
+                                    category = "pets",
+                                    amount_per_level = 1,
+                                },
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("upgrades", validConfig)
+                expect(isValid).to.equal(true)
+                expect(error).to.equal(nil)
+            end)
+
+            it("should reject upgrades with dangling inventory effects", function()
+                local invalidConfig = {
+                    version = "1.0.0",
+                    upgrades = {
+                        impossible_slots = {
+                            id = "impossible_slots",
+                            display_name = "Impossible Slots",
+                            max_level = 1,
+                            cost = {
+                                currency = "coins",
+                                type = "linear",
+                                base = 100,
+                                increment = 50,
+                            },
+                            effects = {
+                                {
+                                    type = "equip_slots",
+                                    category = "mounts",
+                                    amount_per_level = 1,
+                                },
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("upgrades", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "inventory.equipped", 1, true)).to.be.ok()
+            end)
+
+            it("should validate marker tag schemas", function()
+                local validConfig = {
+                    tags = {
+                        SpawnZone = {
+                            required_attributes = {
+                                AreaId = "string",
+                                SpawnerId = "string",
+                            },
+                            optional_attributes = {
+                                DepthOffset = "number",
+                                Disabled = "boolean",
+                            },
+                            config = "breakables.worlds",
+                            id_attribute = "SpawnerId",
+                        },
+                    },
+                    synthetic = {},
+                }
+
+                local isValid, error = configLoader:ValidateConfig("markers", validConfig)
+                expect(isValid).to.equal(true)
+                expect(error).to.equal(nil)
+            end)
+
+            it("should reject marker schemas with unsupported attribute types", function()
+                local invalidConfig = {
+                    tags = {
+                        SpawnZone = {
+                            required_attributes = {
+                                AreaId = "Instance",
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("markers", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "unsupported expected type", 1, true)).to.be.ok()
+            end)
         end)
-        
+
         describe("Monetization Setup Validation", function()
             it("should detect placeholder IDs", function()
                 -- Mock monetization config with placeholders
                 configLoader._monetizationCache = {
                     product_id_mapping = {
-                        small_gems = 1234567890,  -- Placeholder
-                        vip_pass = 123456789     -- Placeholder
+                        small_gems = 1234567890, -- Placeholder
+                        vip_pass = 123456789, -- Placeholder
                     },
                     products = {},
                     passes = {},
                     premium_benefits = {},
                     validation_rules = {
-                        test_mode = {enabled = true}
-                    }
+                        test_mode = { enabled = true },
+                    },
                 }
-                
+
                 local status = configLoader:ValidateMonetizationSetup()
-                
+
                 expect(status.isValid).to.equal(true)
                 expect(status.hasPlaceholders).to.equal(true)
-                expect(#status.warnings).to.equal(3)  -- 2 placeholders + test mode
+                expect(#status.warnings).to.equal(3) -- 2 placeholders + test mode
                 expect(string.find(status.warnings[1], "placeholder ID", 1, true)).to.be.ok()
                 expect(string.find(status.warnings[2], "placeholder ID", 1, true)).to.be.ok()
                 expect(string.find(status.warnings[3], "Test mode is enabled", 1, true)).to.be.ok()
             end)
-            
+
             it("should detect invalid Roblox IDs", function()
                 configLoader._monetizationCache = {
                     product_id_mapping = {
-                        invalid_product = -1  -- Invalid ID
+                        invalid_product = -1, -- Invalid ID
                     },
                     products = {},
                     passes = {},
                     premium_benefits = {},
                     validation_rules = {
-                        test_mode = {enabled = false}
-                    }
+                        test_mode = { enabled = false },
+                    },
                 }
-                
+
                 local status = configLoader:ValidateMonetizationSetup()
-                
+
                 expect(status.isValid).to.equal(false)
                 expect(#status.errors).to.equal(1)
                 expect(string.find(status.errors[1], "Invalid Roblox ID", 1, true)).to.be.ok()
             end)
-            
+
             it("should get monetization status", function()
                 configLoader._monetizationCache = {
                     product_id_mapping = {},
-                    products = {{}, {}},  -- 2 products
-                    passes = {{}, {}, {}},  -- 3 passes
-                    premium_benefits = {enabled = true},
-                    first_purchase_bonus = {enabled = false},
+                    products = { {}, {} }, -- 2 products
+                    passes = { {}, {}, {} }, -- 3 passes
+                    premium_benefits = { enabled = true },
+                    first_purchase_bonus = { enabled = false },
                     validation_rules = {
-                        test_mode = {enabled = true}
-                    }
+                        test_mode = { enabled = true },
+                    },
                 }
-                
+
                 local status = configLoader:GetMonetizationStatus()
-                
+
                 expect(status.productCount).to.equal(2)
                 expect(status.passCount).to.equal(3)
                 expect(status.hasPremiumBenefits).to.equal(true)
@@ -367,7 +652,7 @@ return function()
                 expect(status.testModeEnabled).to.equal(true)
             end)
         end)
-        
+
         describe("Cache Management", function()
             it("should cache monetization config", function()
                 -- Mock the LoadConfig to track calls
@@ -380,20 +665,20 @@ return function()
                             product_id_mapping = {},
                             products = {},
                             passes = {},
-                            premium_benefits = {}
+                            premium_benefits = {},
                         }
                     end
                     return originalLoadConfig(self, configName)
                 end
-                
+
                 -- First call should load
                 configLoader:GetProduct("test")
                 expect(loadCalls).to.equal(1)
-                
+
                 -- Second call should use cache
                 configLoader:GetGamePass("test")
                 expect(loadCalls).to.equal(1)
-                
+
                 -- Clear cache and try again
                 configLoader:ClearMonetizationCache()
                 configLoader:GetProduct("test")
@@ -401,4 +686,4 @@ return function()
             end)
         end)
     end)
-end 
+end

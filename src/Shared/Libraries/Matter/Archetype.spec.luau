@@ -1,4 +1,4 @@
-local archetype = require(script.Parent.archetype)
+local archetype = require(script.Parent.Archetype)
 local component = require(script.Parent).component
 
 return function()

@@ -90,18 +90,21 @@ local Panel = {}
 Panel.__index = Panel
 
 -- === HELPER FUNCTIONS ===
+local function destroyChild(child)
+    if typeof(child) == "Instance" or (typeof(child) == "table" and child.Destroy) then
+        child:Destroy()
+    end
+end
+
 local function applyTheme(frame, variant, theme)
     variant = variant or "surface"
-    
-    if variant == "background" then
-        frame.BackgroundColor3 = theme.primary.background
-    elseif variant == "surface" then
-        frame.BackgroundColor3 = theme.primary.surface
-    elseif variant == "accent" then
-        frame.BackgroundColor3 = theme.primary.accent
-    else
-        frame.BackgroundColor3 = theme.primary.surface
-    end
+
+    local colors = {
+        background = theme.primary.background,
+        surface = theme.primary.surface,
+        accent = theme.primary.accent,
+    }
+    frame.BackgroundColor3 = colors[variant] or colors.surface
 end
 
 -- === PANEL CLASS ===
@@ -422,11 +425,7 @@ end
 function Panel:RemoveChild(child)
     for i, existingChild in ipairs(self.children) do
         if existingChild == child then
-            if typeof(child) == "table" and child.Destroy then
-                child:Destroy()
-            elseif typeof(child) == "Instance" then
-                child:Destroy()
-            end
+            destroyChild(child)
             table.remove(self.children, i)
             break
         end
@@ -435,11 +434,7 @@ end
 
 function Panel:ClearChildren()
     for _, child in ipairs(self.children) do
-        if typeof(child) == "table" and child.Destroy then
-            child:Destroy()
-        elseif typeof(child) == "Instance" then
-            child:Destroy()
-        end
+        destroyChild(child)
     end
     self.children = {}
 end

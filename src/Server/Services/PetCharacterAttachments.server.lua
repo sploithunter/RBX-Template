@@ -1,6 +1,4 @@
 local Players = game:GetService("Players")
-local Datastore = game:GetService("DataStoreService"):GetDataStore("PlayerData_alpha1")
-local RS = game:GetService("ReplicatedStorage")
 local originalPosition = Vector3.new(0,0,15)
 
 -- Create globalPetFloat if it doesn't exist (matches original game)

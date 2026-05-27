@@ -1,8 +1,8 @@
-std = "roblox"
+std = "roblox+testez"
 
 [rules]
 shadowing = "warn"
-undefined_variable = "error"
+undefined_variable = "deny"
 unused_variable = "warn"
 global_usage = "warn"
-incorrect_standard_library_use = "error" 
+incorrect_standard_library_use = "deny" 

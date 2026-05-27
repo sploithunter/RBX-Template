@@ -37,6 +37,60 @@ local activeEggs = {}
 
 -- === EGG SPAWNING SYSTEM ===
 
+local function getPreloadedEggTemplate(eggType)
+    local assets = ReplicatedStorage:FindFirstChild("Assets")
+    local models = assets and assets:FindFirstChild("Models")
+    local eggs = models and models:FindFirstChild("Eggs")
+    local template = eggs and eggs:FindFirstChild(eggType)
+    if template and template:IsA("Model") then
+        return template
+    end
+    return nil
+end
+
+local function loadEggTemplateFromAsset(eggType, eggData)
+    local assetId = eggData.asset_id
+    if not assetId or assetId == "rbxassetid://0" then
+        warn("No asset ID configured for egg type: " .. eggType)
+        return nil
+    end
+
+    local cleanId = assetId:match("%d+")
+    if not cleanId then
+        warn("Invalid egg asset ID: " .. tostring(assetId))
+        return nil
+    end
+
+    local success, eggAsset = pcall(function()
+        return InsertService:LoadAsset(tonumber(cleanId))
+    end)
+
+    if not success or not eggAsset then
+        warn("Failed to load egg asset: " .. assetId)
+        return nil
+    end
+
+    local template = eggAsset:FindFirstChildOfClass("Model")
+    if not template then
+        warn("Asset doesn't contain a Model: " .. assetId)
+        eggAsset:Destroy()
+        return nil
+    end
+
+    local clone = template:Clone()
+    eggAsset:Destroy()
+    return clone
+end
+
+local function getEggModel(eggType, eggData)
+    local preloadedTemplate = getPreloadedEggTemplate(eggType)
+    if preloadedTemplate then
+        return preloadedTemplate:Clone(), "preloaded"
+    end
+
+    return loadEggTemplateFromAsset(eggType, eggData), "insert_service_fallback"
+end
+
 -- Spawn an egg at a specific position
 function EggSpawner:SpawnEgg(eggType, position, spawnPoint)
     local eggData = petConfig.egg_sources[eggType]
@@ -44,29 +98,9 @@ function EggSpawner:SpawnEgg(eggType, position, spawnPoint)
         warn("Unknown egg type: " .. tostring(eggType))
         return nil
     end
-    
-    -- Get the egg model asset ID
-    local assetId = eggData.asset_id
-    if not assetId or assetId == "rbxassetid://0" then
-        warn("No asset ID configured for egg type: " .. eggType)
-        return nil
-    end
-    
-    -- Load the egg model from asset
-    local success, eggModel = pcall(function()
-        return InsertService:LoadAsset(tonumber(assetId:match("%d+")))
-    end)
-    
-    if not success or not eggModel then
-        warn("Failed to load egg asset: " .. assetId)
-        return nil
-    end
-    
-    -- Get the actual egg model (first Model child)
-    local egg = eggModel:FindFirstChildOfClass("Model")
+
+    local egg, source = getEggModel(eggType, eggData)
     if not egg then
-        warn("Asset doesn't contain a Model: " .. assetId)
-        eggModel:Destroy()
         return nil
     end
     
@@ -82,17 +116,31 @@ function EggSpawner:SpawnEgg(eggType, position, spawnPoint)
     end
     
     -- Add metadata
+    local existingEggInfo = egg:FindFirstChild("EggType")
+    if existingEggInfo then
+        existingEggInfo:Destroy()
+    end
     local eggInfo = Instance.new("StringValue")
     eggInfo.Name = "EggType"
     eggInfo.Value = eggType
     eggInfo.Parent = egg
     
+    local existingSpawnPointRef = egg:FindFirstChild("SpawnPoint")
+    if existingSpawnPointRef then
+        existingSpawnPointRef:Destroy()
+    end
     local spawnPointRef = Instance.new("ObjectValue")
     spawnPointRef.Name = "SpawnPoint" 
     spawnPointRef.Value = spawnPoint
     spawnPointRef.Parent = egg
     
-    Logger:Info("Egg spawned", {context = "EggSpawner", name = eggData.name, spawnPoint = spawnPoint.Name})
+    Logger:Info("Egg spawned", {
+        context = "EggSpawner",
+        name = eggData.name,
+        eggType = eggType,
+        source = source,
+        spawnPoint = spawnPoint.Name
+    })
     
     -- Add to active eggs
     activeEggs[egg] = {
@@ -113,8 +161,6 @@ function EggSpawner:SpawnEgg(eggType, position, spawnPoint)
             activeEggs[egg] = nil
         end
     end)
-    
-    eggModel:Destroy() -- Clean up the asset container
     return egg
 end
 
@@ -223,6 +269,12 @@ function EggSpawner:Initialize()
     -- Check workspace first
     Logger:Info("Searching for spawn points...", {context = "EggSpawner"})
     local spawnPoints = self:GetSpawnPoints()
+    local waited = 0
+    while #spawnPoints == 0 and waited < 5 do
+        task.wait(0.5)
+        waited += 0.5
+        spawnPoints = self:GetSpawnPoints()
+    end
     Logger:Info("Found spawn points", {context = "EggSpawner", count = #spawnPoints})
     
     if #spawnPoints == 0 then

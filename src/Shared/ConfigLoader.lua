@@ -23,16 +23,53 @@ ConfigLoader.__index = ConfigLoader
 -- Configuration storage
 local configs = {}
 local configsLoaded = false
+local configsValidated = false
 
--- Simple config parser for our Lua config files  
+local function isArray(value)
+    if type(value) ~= "table" then
+        return false
+    end
+
+    local count = 0
+    for key in pairs(value) do
+        if type(key) ~= "number" or key < 1 or key % 1 ~= 0 then
+            return false
+        end
+        count = count + 1
+    end
+
+    for index = 1, count do
+        if value[index] == nil then
+            return false
+        end
+    end
+
+    return true
+end
+
+local function hasId(list, id)
+    if type(list) ~= "table" then
+        return false
+    end
+
+    for _, entry in ipairs(list) do
+        if type(entry) == "table" and entry.id == id then
+            return true
+        end
+    end
+
+    return false
+end
+
+-- Simple config parser for our Lua config files
 local function parseConfig(content)
     local result = {}
     local currentSection = result
     local stack = {}
-    
+
     for line in content:gmatch("[^\r\n]+") do
         line = line:gsub("^%s*", ""):gsub("%s*$", "") -- trim
-        
+
         if line:sub(1, 1) == "#" or line == "" then
             -- Skip comments and empty lines
         elseif line:match(":$") then
@@ -44,285 +81,291 @@ local function parseConfig(content)
         elseif line:match("^%s*%w+:%s*") then
             -- Key-value pair (e.g., "rateLimit: 30")
             local key, value = line:match("^%s*(%w+):%s*(.*)$")
-            if value == "true" then value = true
-            elseif value == "false" then value = false
-            elseif tonumber(value) then value = tonumber(value)
-            elseif value:match('^".*"$') then value = value:sub(2, -2) -- remove quotes
+            if value == "true" then
+                value = true
+            elseif value == "false" then
+                value = false
+            elseif tonumber(value) then
+                value = tonumber(value)
+            elseif value:match('^".*"$') then
+                value = value:sub(2, -2) -- remove quotes
             end
             currentSection[key] = value
         end
     end
-    
+
     return result
 end
 
 -- Load configs from ReplicatedStorage
 local function loadConfigsFromStorage()
-    if configsLoaded then return end
-    
+    if configsLoaded then
+        return
+    end
+
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local configsFolder = ReplicatedStorage:FindFirstChild("Configs")
-    
+
     if not configsFolder then
         warn("Configs folder not found in ReplicatedStorage - using hardcoded defaults")
         -- Hardcoded fallback configurations
         configs = {
-    game = {
-        GameMode = "Simulator", -- Options: Simulator, FPS, TowerDefense, Custom
-        MaxPlayers = 20,
-        EnableTrading = true,
-        EnablePvP = false,
-        RespawnTime = 5,
-        StartingCurrency = {
-            coins = 100,
-            gems = 0
-        },
-        WorldSettings = {
-            Gravity = 196.2,
-            WalkSpeed = 16,
-            JumpPower = 50
-        }
-    },
-    
-    currencies = {
-        {
-            id = "coins",
-            name = "Coins",
-            icon = "💰",
-            maxAmount = 1000000000,
-            defaultAmount = 100,
-            canPurchase = false
-        },
-        {
-            id = "gems",
-            name = "Gems", 
-            icon = "💎",
-            maxAmount = 100000,
-            defaultAmount = 0,
-            canPurchase = true,
-            premium = true
-        }
-    },
-    
-    items = {
-        {
-            id = "test_item",
-            name = "Test Item",
-            type = "consumable",
-            rarity = "common",
-            description = "A simple test item for debugging purchases",
-            price = {
-                currency = "coins",
-                amount = 50
-            },
-            level_requirement = 1,
-            stackable = true,
-            max_stack = 99
-        },
-        {
-            id = "wooden_sword",
-            name = "Wooden Sword",
-            type = "weapon",
-            rarity = "common",
-            stats = {
-                damage = 10,
-                speed = 1.5,
-                range = 5
-            },
-            price = {
-                currency = "coins",
-                amount = 100
-            },
-            level_requirement = 1
-        },
-        {
-            id = "iron_sword",
-            name = "Iron Sword", 
-            type = "weapon",
-            rarity = "uncommon",
-            stats = {
-                damage = 20,
-                speed = 1.3,
-                range = 5
-            },
-            price = {
-                currency = "coins",
-                amount = 500
-            },
-            level_requirement = 5
-        },
-        {
-            id = "health_potion",
-            name = "Health Potion",
-            type = "consumable",
-            rarity = "common",
-            effects = {
-                health_restore = 50
-            },
-            price = {
-                currency = "coins",
-                amount = 25
-            },
-            stackable = true,
-            max_stack = 10
-        }
-    },
-    
-    enemies = {
-        {
-            id = "goblin",
-            name = "Goblin",
-            type = "melee",
-            level = 1,
-            stats = {
-                health = 50,
-                damage = 8,
-                speed = 12,
-                detection_range = 20,
-                attack_range = 3
-            },
-            rewards = {
-                experience = 10,
-                currency = {
-                    coins = {min = 5, max = 15}
-                }
-            },
-            spawn_weight = 10
-        },
-        {
-            id = "orc",
-            name = "Orc Warrior",
-            type = "melee", 
-            level = 5,
-            stats = {
-                health = 150,
-                damage = 25,
-                speed = 10,
-                detection_range = 25,
-                attack_range = 4
-            },
-            rewards = {
-                experience = 50,
-                currency = {
-                    coins = {min = 20, max = 40}
-                }
-            },
-            spawn_weight = 5
-        }
-    },
-    
-    ui = {
-        -- Fallback UI configuration
-        version = "1.0.0",
-        active_theme = "dark",
-        themes = {
-            dark = {
-                primary = {
-                    background = Color3.fromRGB(30, 30, 35),
-                    surface = Color3.fromRGB(40, 40, 45),
-                    accent = Color3.fromRGB(0, 120, 180),
+            game = {
+                GameMode = "Simulator", -- Options: Simulator, FPS, TowerDefense, Custom
+                MaxPlayers = 20,
+                EnableTrading = true,
+                EnablePvP = false,
+                RespawnTime = 5,
+                StartingCurrency = {
+                    coins = 100,
+                    gems = 0,
                 },
-                text = {
-                    primary = Color3.fromRGB(255, 255, 255),
-                    secondary = Color3.fromRGB(200, 200, 200),
+                WorldSettings = {
+                    Gravity = 196.2,
+                    WalkSpeed = 16,
+                    JumpPower = 50,
                 },
-                button = {
-                    primary = Color3.fromRGB(0, 120, 180),
-                }
-            }
-        },
-        fonts = {
-            primary = Enum.Font.Gotham,
-            sizes = { md = 14 }
-        },
-        spacing = { md = 16 },
-        radius = { md = 8 },
-        animations = {
-            duration = { fast = 0.15 }
-        },
-        helpers = {
-            get_theme = function(config)
-                return config.themes[config.active_theme] or config.themes.dark
-            end,
-            get_spacing = function(config, key)
-                local value = config.spacing[key] or config.spacing.md
-                return UDim.new(0, value)
-            end,
-            get_radius = function(config, key)
-                local value = config.radius[key] or config.radius.md
-                return UDim.new(0, value)
-            end,
-        }
-    },
-    
-    monetization = {
-        products = {
-            {
-                id = "gems_100",
-                name = "100 Gems",
-                price_robux = 100,
-                rewards = {
-                    gems = 100
-                }
             },
-            {
-                id = "gems_500", 
-                name = "500 Gems",
-                price_robux = 400,
-                rewards = {
-                    gems = 500,
-                    bonus_coins = 1000
-                }
+
+            currencies = {
+                {
+                    id = "coins",
+                    name = "Coins",
+                    icon = "💰",
+                    maxAmount = 1000000000,
+                    defaultAmount = 100,
+                    canPurchase = false,
+                },
+                {
+                    id = "gems",
+                    name = "Gems",
+                    icon = "💎",
+                    maxAmount = 100000,
+                    defaultAmount = 0,
+                    canPurchase = true,
+                    premium = true,
+                },
             },
-            {
-                id = "starter_pack",
-                name = "Starter Pack",
-                price_robux = 200,
-                rewards = {
-                    gems = 150,
-                    coins = 2000,
-                    items = {"iron_sword", "health_potion"}
-                }
-            }
-        },
-        
-        passes = {
-            {
-                id = "vip",
-                name = "VIP Pass",
-                price_robux = 500,
-                benefits = {
-                    daily_gems = 10,
-                    experience_multiplier = 2,
-                    exclusive_items = true
-                }
-            }
-        }
-    },
-    
-    analytics = {
-        events = {
-            "player_joined",
-            "player_left", 
-            "level_up",
-            "item_purchased",
-            "currency_earned",
-            "enemy_defeated",
-            "quest_completed"
-        },
-        
-        retention_milestones = {
-            tutorial_completed = 1,
-            first_purchase = 7,
-            level_10_reached = 3,
-            friend_invited = 14
-        }
-    }
+
+            items = {
+                {
+                    id = "test_item",
+                    name = "Test Item",
+                    type = "consumable",
+                    rarity = "common",
+                    description = "A simple test item for debugging purchases",
+                    price = {
+                        currency = "coins",
+                        amount = 50,
+                    },
+                    level_requirement = 1,
+                    stackable = true,
+                    max_stack = 99,
+                },
+                {
+                    id = "wooden_sword",
+                    name = "Wooden Sword",
+                    type = "weapon",
+                    rarity = "common",
+                    stats = {
+                        damage = 10,
+                        speed = 1.5,
+                        range = 5,
+                    },
+                    price = {
+                        currency = "coins",
+                        amount = 100,
+                    },
+                    level_requirement = 1,
+                },
+                {
+                    id = "iron_sword",
+                    name = "Iron Sword",
+                    type = "weapon",
+                    rarity = "uncommon",
+                    stats = {
+                        damage = 20,
+                        speed = 1.3,
+                        range = 5,
+                    },
+                    price = {
+                        currency = "coins",
+                        amount = 500,
+                    },
+                    level_requirement = 5,
+                },
+                {
+                    id = "health_potion",
+                    name = "Health Potion",
+                    type = "consumable",
+                    rarity = "common",
+                    effects = {
+                        health_restore = 50,
+                    },
+                    price = {
+                        currency = "coins",
+                        amount = 25,
+                    },
+                    stackable = true,
+                    max_stack = 10,
+                },
+            },
+
+            enemies = {
+                {
+                    id = "goblin",
+                    name = "Goblin",
+                    type = "melee",
+                    level = 1,
+                    stats = {
+                        health = 50,
+                        damage = 8,
+                        speed = 12,
+                        detection_range = 20,
+                        attack_range = 3,
+                    },
+                    rewards = {
+                        experience = 10,
+                        currency = {
+                            coins = { min = 5, max = 15 },
+                        },
+                    },
+                    spawn_weight = 10,
+                },
+                {
+                    id = "orc",
+                    name = "Orc Warrior",
+                    type = "melee",
+                    level = 5,
+                    stats = {
+                        health = 150,
+                        damage = 25,
+                        speed = 10,
+                        detection_range = 25,
+                        attack_range = 4,
+                    },
+                    rewards = {
+                        experience = 50,
+                        currency = {
+                            coins = { min = 20, max = 40 },
+                        },
+                    },
+                    spawn_weight = 5,
+                },
+            },
+
+            ui = {
+                -- Fallback UI configuration
+                version = "1.0.0",
+                active_theme = "dark",
+                themes = {
+                    dark = {
+                        primary = {
+                            background = Color3.fromRGB(30, 30, 35),
+                            surface = Color3.fromRGB(40, 40, 45),
+                            accent = Color3.fromRGB(0, 120, 180),
+                        },
+                        text = {
+                            primary = Color3.fromRGB(255, 255, 255),
+                            secondary = Color3.fromRGB(200, 200, 200),
+                        },
+                        button = {
+                            primary = Color3.fromRGB(0, 120, 180),
+                        },
+                    },
+                },
+                fonts = {
+                    primary = Enum.Font.Gotham,
+                    sizes = { md = 14 },
+                },
+                spacing = { md = 16 },
+                radius = { md = 8 },
+                animations = {
+                    duration = { fast = 0.15 },
+                },
+                helpers = {
+                    get_theme = function(config)
+                        return config.themes[config.active_theme] or config.themes.dark
+                    end,
+                    get_spacing = function(config, key)
+                        local value = config.spacing[key] or config.spacing.md
+                        return UDim.new(0, value)
+                    end,
+                    get_radius = function(config, key)
+                        local value = config.radius[key] or config.radius.md
+                        return UDim.new(0, value)
+                    end,
+                },
+            },
+
+            monetization = {
+                products = {
+                    {
+                        id = "gems_100",
+                        name = "100 Gems",
+                        price_robux = 100,
+                        rewards = {
+                            gems = 100,
+                        },
+                    },
+                    {
+                        id = "gems_500",
+                        name = "500 Gems",
+                        price_robux = 400,
+                        rewards = {
+                            gems = 500,
+                            bonus_coins = 1000,
+                        },
+                    },
+                    {
+                        id = "starter_pack",
+                        name = "Starter Pack",
+                        price_robux = 200,
+                        rewards = {
+                            gems = 150,
+                            coins = 2000,
+                            items = { "iron_sword", "health_potion" },
+                        },
+                    },
+                },
+
+                passes = {
+                    {
+                        id = "vip",
+                        name = "VIP Pass",
+                        price_robux = 500,
+                        benefits = {
+                            daily_gems = 10,
+                            experience_multiplier = 2,
+                            exclusive_items = true,
+                        },
+                    },
+                },
+            },
+
+            analytics = {
+                events = {
+                    "player_joined",
+                    "player_left",
+                    "level_up",
+                    "item_purchased",
+                    "currency_earned",
+                    "enemy_defeated",
+                    "quest_completed",
+                },
+
+                retention_milestones = {
+                    tutorial_completed = 1,
+                    first_purchase = 7,
+                    level_10_reached = 3,
+                    friend_invited = 14,
+                },
+            },
         }
         configsLoaded = true
         return
     end
-    
+
     -- Load configs from files
     for _, child in ipairs(configsFolder:GetChildren()) do
         if child:IsA("ModuleScript") then
@@ -330,7 +373,7 @@ local function loadConfigsFromStorage()
             local success, result = pcall(function()
                 return require(child)
             end)
-            
+
             if success then
                 configs[configName] = result
             else
@@ -338,7 +381,7 @@ local function loadConfigsFromStorage()
             end
         end
     end
-    
+
     configsLoaded = true
 end
 
@@ -346,10 +389,12 @@ function ConfigLoader:Init()
     -- Initialize caches
     self._monetizationCache = nil
     self._configCaches = {}
-    
+    loadConfigsFromStorage()
+    self:ValidateAllConfigs()
+
     if self._modules and self._modules.Logger then
         self._modules.Logger:Info("ConfigLoader initialized", {
-            configCount = self:_getConfigCount()
+            configCount = self:_getConfigCount(),
         })
     end
 end
@@ -357,19 +402,25 @@ end
 function ConfigLoader:LoadConfig(configName)
     -- Load configs from storage if not already loaded
     loadConfigsFromStorage()
-    
+
     if not configs[configName] then
         error(string.format("Config '%s' not found", configName))
     end
-    
+
     -- Validate config before returning
     local config = configs[configName]
     local isValid, errorMessage = self:ValidateConfig(configName, config)
-    
+
     if not isValid then
-        error(string.format("Invalid config '%s': %s", configName, errorMessage or "Unknown validation error"))
+        error(
+            string.format(
+                "Invalid config '%s': %s",
+                configName,
+                errorMessage or "Unknown validation error"
+            )
+        )
     end
-    
+
     return self:_deepCopy(config)
 end
 
@@ -403,17 +454,34 @@ function ConfigLoader:GetCurrency(currencyId)
     return nil
 end
 
+function ConfigLoader:IsFeatureEnabled(featureName, defaultValue)
+    local ok, gameConfig = pcall(function()
+        return self:LoadConfig("game")
+    end)
+
+    if not ok or not gameConfig or type(gameConfig.features) ~= "table" then
+        return defaultValue ~= false
+    end
+
+    local value = gameConfig.features[featureName]
+    if value == nil then
+        return defaultValue ~= false
+    end
+
+    return value == true
+end
+
 -- Monetization-specific config methods with caching
 function ConfigLoader:GetProduct(productId)
     if not self._monetizationCache then
         self._monetizationCache = self:LoadConfig("monetization")
     end
-    
+
     local monetization = self._monetizationCache
     if not monetization or not monetization.products then
         return nil
     end
-    
+
     for _, product in ipairs(monetization.products) do
         if product.id == productId then
             return product
@@ -426,12 +494,12 @@ function ConfigLoader:GetGamePass(passId)
     if not self._monetizationCache then
         self._monetizationCache = self:LoadConfig("monetization")
     end
-    
+
     local monetization = self._monetizationCache
     if not monetization or not monetization.passes then
         return nil
     end
-    
+
     for _, pass in ipairs(monetization.passes) do
         if pass.id == passId then
             return pass
@@ -445,12 +513,12 @@ function ConfigLoader:GetProductByRobloxId(robloxProductId)
     if not self._monetizationCache then
         self._monetizationCache = self:LoadConfig("monetization")
     end
-    
+
     local monetization = self._monetizationCache
     if not monetization or not monetization.product_id_mapping then
         return nil
     end
-    
+
     -- Find config ID that maps to this Roblox ID
     local configId = nil
     for id, productId in pairs(monetization.product_id_mapping) do
@@ -459,11 +527,11 @@ function ConfigLoader:GetProductByRobloxId(robloxProductId)
             break
         end
     end
-    
+
     if configId then
         return self:GetProduct(configId)
     end
-    
+
     return nil
 end
 
@@ -472,7 +540,7 @@ function ConfigLoader:GetAllProducts()
     if not self._monetizationCache then
         self._monetizationCache = self:LoadConfig("monetization")
     end
-    
+
     local monetization = self._monetizationCache
     return (monetization and monetization.products) or {}
 end
@@ -482,7 +550,7 @@ function ConfigLoader:GetAllGamePasses()
     if not self._monetizationCache then
         self._monetizationCache = self:LoadConfig("monetization")
     end
-    
+
     local monetization = self._monetizationCache
     return (monetization and monetization.passes) or {}
 end
@@ -492,7 +560,7 @@ function ConfigLoader:GetProductIdMapping()
     if not self._monetizationCache then
         self._monetizationCache = self:LoadConfig("monetization")
     end
-    
+
     local monetization = self._monetizationCache
     return (monetization and monetization.product_id_mapping) or {}
 end
@@ -508,7 +576,7 @@ function ConfigLoader:GetPremiumBenefits()
     if not self._monetizationCache then
         self._monetizationCache = self:LoadConfig("monetization")
     end
-    
+
     local monetization = self._monetizationCache
     return (monetization and monetization.premium_benefits) or {}
 end
@@ -518,7 +586,7 @@ function ConfigLoader:GetFirstPurchaseBonus()
     if not self._monetizationCache then
         self._monetizationCache = self:LoadConfig("monetization")
     end
-    
+
     local monetization = self._monetizationCache
     return (monetization and monetization.first_purchase_bonus) or {}
 end
@@ -528,7 +596,7 @@ function ConfigLoader:GetValidationRules()
     if not self._monetizationCache then
         self._monetizationCache = self:LoadConfig("monetization")
     end
-    
+
     local monetization = self._monetizationCache
     return (monetization and monetization.validation_rules) or {}
 end
@@ -538,7 +606,7 @@ function ConfigLoader:GetErrorMessages()
     if not self._monetizationCache then
         self._monetizationCache = self:LoadConfig("monetization")
     end
-    
+
     local monetization = self._monetizationCache
     return (monetization and monetization.error_messages) or {}
 end
@@ -548,7 +616,7 @@ function ConfigLoader:GetAnalyticsConfig()
     if not self._monetizationCache then
         self._monetizationCache = self:LoadConfig("monetization")
     end
-    
+
     local monetization = self._monetizationCache
     return (monetization and monetization.analytics) or {}
 end
@@ -563,31 +631,37 @@ function ConfigLoader:ValidateMonetizationSetup()
     local monetization = self._monetizationCache or self:LoadConfig("monetization")
     local warnings = {}
     local errors = {}
-    
+
     -- Check for placeholder product IDs
     for configId, robloxId in pairs(monetization.product_id_mapping) do
         if robloxId == 1234567890 or robloxId == 1234567891 or robloxId == 1234567892 then
-            table.insert(warnings, "Product '" .. configId .. "' still uses placeholder ID " .. robloxId)
+            table.insert(
+                warnings,
+                "Product '" .. configId .. "' still uses placeholder ID " .. robloxId
+            )
         elseif robloxId == 123456789 or robloxId == 123456790 or robloxId == 123456791 then
-            table.insert(warnings, "Game pass '" .. configId .. "' still uses placeholder ID " .. robloxId)
+            table.insert(
+                warnings,
+                "Game pass '" .. configId .. "' still uses placeholder ID " .. robloxId
+            )
         end
-        
+
         if robloxId <= 0 then
             table.insert(errors, "Invalid Roblox ID for '" .. configId .. "': " .. robloxId)
         end
     end
-    
+
     -- Check test mode configuration
     local validation = monetization.validation_rules
     if validation and validation.test_mode and validation.test_mode.enabled then
         table.insert(warnings, "Test mode is enabled - purchases will be free in Studio")
     end
-    
+
     return {
         isValid = #errors == 0,
         errors = errors,
         warnings = warnings,
-        hasPlaceholders = #warnings > 0
+        hasPlaceholders = #warnings > 0,
     }
 end
 
@@ -595,14 +669,14 @@ end
 function ConfigLoader:GetMonetizationStatus()
     local status = self:ValidateMonetizationSetup()
     local monetization = self._monetizationCache or self:LoadConfig("monetization")
-    
+
     return {
         validation = status,
         productCount = #monetization.products,
         passCount = #monetization.passes,
         hasPremiumBenefits = monetization.premium_benefits.enabled,
         hasFirstPurchaseBonus = monetization.first_purchase_bonus.enabled,
-        testModeEnabled = monetization.validation_rules.test_mode.enabled
+        testModeEnabled = monetization.validation_rules.test_mode.enabled,
     }
 end
 
@@ -613,102 +687,189 @@ function ConfigLoader:ValidateConfig(configName, config)
         return self:_validateItemsConfig(config)
     elseif configName == "currencies" then
         return self:_validateCurrenciesConfig(config)
+    elseif configName == "game" then
+        return self:_validateGameConfig(config)
+    elseif configName == "breakables" then
+        return self:_validateBreakablesConfig(config)
+    elseif configName == "pets" then
+        return self:_validatePetsConfig(config)
+    elseif configName == "events" then
+        return self:_validateEventsConfig(config)
+    elseif configName == "economy" then
+        return self:_validateEconomyConfig(config)
+    elseif configName == "egg_system" then
+        return self:_validateEggSystemConfig(config)
+    elseif configName == "stats" then
+        return self:_validateStatsConfig(config)
     elseif configName == "ui" then
         return self:_validateUIConfig(config)
     elseif configName == "inventory" then
         return self:_validateInventoryConfig(config)
+    elseif configName == "upgrades" then
+        return self:_validateUpgradesConfig(config)
     elseif configName == "context_menus" then
         return self:_validateContextMenusConfig(config)
+    elseif configName == "areas" then
+        return self:_validateAreasConfig(config)
+    elseif configName == "markers" then
+        return self:_validateMarkersConfig(config)
     end
-    
+
     -- Default validation for other configs
     return true
+end
+
+function ConfigLoader:ValidateAllConfigs()
+    loadConfigsFromStorage()
+
+    if configsValidated then
+        return true
+    end
+
+    for configName, config in pairs(configs) do
+        local isValid, errorMessage = self:ValidateConfig(configName, config)
+        if not isValid then
+            local message = string.format(
+                "Invalid config '%s': %s",
+                configName,
+                errorMessage or "Unknown validation error"
+            )
+            if self._modules and self._modules.Logger then
+                self._modules.Logger:Error(message, { context = "ConfigLoader" })
+            end
+            error(message)
+        end
+    end
+
+    configsValidated = true
+
+    if self._modules and self._modules.Logger then
+        self._modules.Logger:Info("All configs validated", {
+            configCount = self:_getConfigCount(),
+            context = "ConfigLoader",
+        })
+    end
+
+    return true
+end
+
+function ConfigLoader:_configError(configName, path, message)
+    return false, string.format("configs/%s.lua:%s %s", configName, path or "<root>", message)
+end
+
+function ConfigLoader:_requireType(configName, value, expectedType, path)
+    if type(value) ~= expectedType then
+        return self:_configError(
+            configName,
+            path,
+            string.format("expected %s, got %s", expectedType, type(value))
+        )
+    end
+    return true
+end
+
+function ConfigLoader:_requirePositiveNumber(configName, value, path)
+    if type(value) ~= "number" or value <= 0 then
+        return self:_configError(configName, path, "expected positive number")
+    end
+    return true
+end
+
+function ConfigLoader:_requireNonNegativeNumber(configName, value, path)
+    if type(value) ~= "number" or value < 0 then
+        return self:_configError(configName, path, "expected non-negative number")
+    end
+    return true
+end
+
+function ConfigLoader:_rawConfig(configName)
+    return configs[configName]
 end
 
 function ConfigLoader:_validateMonetizationConfig(config)
     if not config then
         return false, "Monetization config is nil"
     end
-    
+
     -- Check required sections
-    local requiredSections = {"product_id_mapping", "products", "passes", "premium_benefits"}
+    local requiredSections = { "product_id_mapping", "products", "passes", "premium_benefits" }
     for _, section in ipairs(requiredSections) do
         if not config[section] then
             return false, "Missing required section: " .. section
         end
     end
-    
+
     -- Validate products
     if type(config.products) ~= "table" then
         return false, "Products must be a table"
     end
-    
+
     for i, product in ipairs(config.products) do
         if not product.id or type(product.id) ~= "string" then
             return false, "Product " .. i .. " missing or invalid id"
         end
-        
+
         if not product.name or type(product.name) ~= "string" then
             return false, "Product " .. product.id .. " missing or invalid name"
         end
-        
+
         if not product.price_robux or type(product.price_robux) ~= "number" then
             return false, "Product " .. product.id .. " missing or invalid price_robux"
         end
-        
+
         if not product.rewards or type(product.rewards) ~= "table" then
             return false, "Product " .. product.id .. " missing or invalid rewards"
         end
-        
+
         -- Check if product ID exists in mapping
         if not config.product_id_mapping[product.id] then
             return false, "Product " .. product.id .. " not found in product_id_mapping"
         end
     end
-    
+
     -- Validate game passes
     if type(config.passes) ~= "table" then
         return false, "Passes must be a table"
     end
-    
+
     for i, pass in ipairs(config.passes) do
         if not pass.id or type(pass.id) ~= "string" then
             return false, "Pass " .. i .. " missing or invalid id"
         end
-        
+
         if not pass.name or type(pass.name) ~= "string" then
             return false, "Pass " .. pass.id .. " missing or invalid name"
         end
-        
+
         if not pass.price_robux or type(pass.price_robux) ~= "number" then
             return false, "Pass " .. pass.id .. " missing or invalid price_robux"
         end
-        
+
         if not pass.benefits or type(pass.benefits) ~= "table" then
             return false, "Pass " .. pass.id .. " missing or invalid benefits"
         end
-        
+
         -- Check if pass ID exists in mapping
         if not config.product_id_mapping[pass.id] then
             return false, "Pass " .. pass.id .. " not found in product_id_mapping"
         end
     end
-    
+
     -- Validate product ID mapping
     if type(config.product_id_mapping) ~= "table" then
         return false, "Product ID mapping must be a table"
     end
-    
+
     for configId, robloxId in pairs(config.product_id_mapping) do
         if type(configId) ~= "string" then
             return false, "Config ID must be string: " .. tostring(configId)
         end
-        
+
         if type(robloxId) ~= "number" then
             return false, "Roblox ID must be number for: " .. configId
         end
     end
-    
+
     return true
 end
 
@@ -716,17 +877,17 @@ function ConfigLoader:_validateItemsConfig(config)
     if not config or type(config) ~= "table" then
         return false, "Items config must be a table"
     end
-    
+
     for i, item in ipairs(config) do
         if not item.id or type(item.id) ~= "string" then
             return false, "Item " .. i .. " missing or invalid id"
         end
-        
+
         if not item.name or type(item.name) ~= "string" then
             return false, "Item " .. item.id .. " missing or invalid name"
         end
     end
-    
+
     return true
 end
 
@@ -734,17 +895,1173 @@ function ConfigLoader:_validateCurrenciesConfig(config)
     if not config or type(config) ~= "table" then
         return false, "Currencies config must be a table"
     end
-    
+
+    local seen = {}
+
     for i, currency in ipairs(config) do
         if not currency.id or type(currency.id) ~= "string" then
             return false, "Currency " .. i .. " missing or invalid id"
         end
-        
+
+        if seen[currency.id] then
+            return false, "Duplicate currency id: " .. currency.id
+        end
+        seen[currency.id] = true
+
         if not currency.name or type(currency.name) ~= "string" then
             return false, "Currency " .. currency.id .. " missing or invalid name"
         end
+
+        if
+            currency.maxAmount ~= nil
+            and (type(currency.maxAmount) ~= "number" or currency.maxAmount <= 0)
+        then
+            return false, "Currency " .. currency.id .. " maxAmount must be a positive number"
+        end
+
+        if
+            currency.defaultAmount ~= nil
+            and (type(currency.defaultAmount) ~= "number" or currency.defaultAmount < 0)
+        then
+            return false,
+                "Currency " .. currency.id .. " defaultAmount must be a non-negative number"
+        end
+
+        if
+            currency.maxAmount ~= nil
+            and currency.defaultAmount ~= nil
+            and currency.defaultAmount > currency.maxAmount
+        then
+            return false, "Currency " .. currency.id .. " defaultAmount cannot exceed maxAmount"
+        end
     end
-    
+
+    return true
+end
+
+function ConfigLoader:_validateGameConfig(config)
+    local ok, err = self:_requireType("game", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    local required = {
+        GameMode = "string",
+        MaxPlayers = "number",
+        RespawnTime = "number",
+        WorldSettings = "table",
+    }
+
+    for key, expectedType in pairs(required) do
+        ok, err = self:_requireType("game", config[key], expectedType, key)
+        if not ok then
+            return ok, err
+        end
+    end
+
+    if config.MaxPlayers <= 0 then
+        return self:_configError("game", "MaxPlayers", "must be greater than 0")
+    end
+
+    if config.RespawnTime < 0 then
+        return self:_configError("game", "RespawnTime", "must be non-negative")
+    end
+
+    if config.features ~= nil then
+        ok, err = self:_requireType("game", config.features, "table", "features")
+        if not ok then
+            return ok, err
+        end
+
+        for featureName, enabled in pairs(config.features) do
+            if type(featureName) ~= "string" then
+                return self:_configError("game", "features", "feature names must be strings")
+            end
+            if type(enabled) ~= "boolean" then
+                return self:_configError("game", "features." .. featureName, "expected boolean")
+            end
+        end
+    end
+
+    for _, key in ipairs({ "Gravity", "WalkSpeed", "JumpPower" }) do
+        ok, err =
+            self:_requirePositiveNumber("game", config.WorldSettings[key], "WorldSettings." .. key)
+        if not ok then
+            return ok, err
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_validateBreakablesConfig(config)
+    local ok, err = self:_requireType("breakables", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    ok, err = self:_requireType("breakables", config.crystals, "table", "crystals")
+    if not ok then
+        return ok, err
+    end
+
+    local currencies = self:_rawConfig("currencies")
+    local crystalIds = {}
+
+    for breakableId, breakable in pairs(config.crystals) do
+        local basePath = "crystals." .. tostring(breakableId)
+        ok, err = self:_requireType("breakables", breakable, "table", basePath)
+        if not ok then
+            return ok, err
+        end
+
+        if type(breakable.display_name) ~= "string" or breakable.display_name == "" then
+            return self:_configError(
+                "breakables",
+                basePath .. ".display_name",
+                "expected non-empty string"
+            )
+        end
+
+        if
+            type(breakable.asset_id) ~= "string"
+            and type(breakable.procedural_asset) ~= "string"
+        then
+            return self:_configError(
+                "breakables",
+                basePath,
+                "expected asset_id or procedural_asset"
+            )
+        end
+
+        ok, err = self:_requirePositiveNumber("breakables", breakable.scale, basePath .. ".scale")
+        if not ok then
+            return ok, err
+        end
+
+        ok, err = self:_requirePositiveNumber("breakables", breakable.health, basePath .. ".health")
+        if not ok then
+            return ok, err
+        end
+
+        ok, err =
+            self:_requireNonNegativeNumber("breakables", breakable.value, basePath .. ".value")
+        if not ok then
+            return ok, err
+        end
+
+        if type(breakable.currency) ~= "string" or not hasId(currencies, breakable.currency) then
+            return self:_configError(
+                "breakables",
+                basePath .. ".currency",
+                "must reference configs/currencies.lua"
+            )
+        end
+
+        if breakable.placement ~= nil and type(breakable.placement) ~= "table" then
+            return self:_configError(
+                "breakables",
+                basePath .. ".placement",
+                "expected table when provided"
+            )
+        end
+
+        crystalIds[breakableId] = true
+    end
+
+    ok, err = self:_requireType("breakables", config.worlds, "table", "worlds")
+    if not ok then
+        return ok, err
+    end
+
+    local areas = self:_rawConfig("areas")
+    for worldId, world in pairs(config.worlds) do
+        local basePath = "worlds." .. tostring(worldId)
+        ok, err = self:_requireType("breakables", world, "table", basePath)
+        if not ok then
+            return ok, err
+        end
+
+        if
+            areas
+            and areas.zones
+            and (not areas.zones[worldId] or areas.zones[worldId].kind ~= "area")
+        then
+            return self:_configError(
+                "breakables",
+                basePath,
+                "must reference an area zone in configs/areas.lua"
+            )
+        end
+
+        ok, err = self:_requireNonNegativeNumber("breakables", world.max, basePath .. ".max")
+        if not ok then
+            return ok, err
+        end
+
+        ok, err = self:_requirePositiveNumber("breakables", world.interval, basePath .. ".interval")
+        if not ok then
+            return ok, err
+        end
+
+        if world.spawn_table ~= nil then
+            if not isArray(world.spawn_table) then
+                return self:_configError("breakables", basePath .. ".spawn_table", "expected array")
+            end
+
+            for index, entry in ipairs(world.spawn_table) do
+                local entryPath = basePath .. ".spawn_table[" .. index .. "]"
+                if type(entry) ~= "table" then
+                    return self:_configError("breakables", entryPath, "expected table")
+                end
+                if type(entry.name) ~= "string" or not crystalIds[entry.name] then
+                    return self:_configError(
+                        "breakables",
+                        entryPath .. ".name",
+                        "must reference breakables.crystals"
+                    )
+                end
+                ok, err =
+                    self:_requirePositiveNumber("breakables", entry.weight, entryPath .. ".weight")
+                if not ok then
+                    return ok, err
+                end
+            end
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_validateAreasConfig(config)
+    local ok, err = self:_requireType("areas", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    ok, err = self:_requireType("areas", config.zones, "table", "zones")
+    if not ok then
+        return ok, err
+    end
+
+    local zoneIds = {}
+    for zoneId, zone in pairs(config.zones) do
+        local basePath = "zones." .. tostring(zoneId)
+        ok, err = self:_requireType("areas", zone, "table", basePath)
+        if not ok then
+            return ok, err
+        end
+
+        if type(zone.id) ~= "string" or zone.id == "" then
+            return self:_configError("areas", basePath .. ".id", "expected non-empty string")
+        end
+        if zone.id ~= zoneId then
+            return self:_configError("areas", basePath .. ".id", "must match table key")
+        end
+        if zoneIds[zone.id] then
+            return self:_configError("areas", basePath .. ".id", "duplicate zone id")
+        end
+        zoneIds[zone.id] = true
+
+        if zone.kind ~= "world" and zone.kind ~= "island" and zone.kind ~= "area" then
+            return self:_configError(
+                "areas",
+                basePath .. ".kind",
+                "expected world, island, or area"
+            )
+        end
+        if zone.parent ~= nil and type(zone.parent) ~= "string" then
+            return self:_configError("areas", basePath .. ".parent", "expected string")
+        end
+        if zone.boosts ~= nil and type(zone.boosts) ~= "table" then
+            return self:_configError("areas", basePath .. ".boosts", "expected table")
+        end
+        if zone.synthetic ~= nil and type(zone.synthetic) ~= "table" then
+            return self:_configError("areas", basePath .. ".synthetic", "expected table")
+        end
+        if zone.unlock ~= nil then
+            ok, err = self:_requireType("areas", zone.unlock, "table", basePath .. ".unlock")
+            if not ok then
+                return ok, err
+            end
+
+            if
+                zone.unlock.unlocked_by_default ~= nil
+                and type(zone.unlock.unlocked_by_default) ~= "boolean"
+            then
+                return self:_configError(
+                    "areas",
+                    basePath .. ".unlock.unlocked_by_default",
+                    "expected boolean"
+                )
+            end
+
+            if zone.unlock.required_zone ~= nil and type(zone.unlock.required_zone) ~= "string" then
+                return self:_configError(
+                    "areas",
+                    basePath .. ".unlock.required_zone",
+                    "expected string"
+                )
+            end
+
+            if zone.unlock.currency ~= nil then
+                local currencies = self:_rawConfig("currencies")
+                if
+                    type(zone.unlock.currency) ~= "string"
+                    or not hasId(currencies, zone.unlock.currency)
+                then
+                    return self:_configError(
+                        "areas",
+                        basePath .. ".unlock.currency",
+                        "must reference configs/currencies.lua"
+                    )
+                end
+            end
+
+            if zone.unlock.cost ~= nil then
+                ok, err = self:_requireNonNegativeNumber(
+                    "areas",
+                    zone.unlock.cost,
+                    basePath .. ".unlock.cost"
+                )
+                if not ok then
+                    return ok, err
+                end
+            end
+        end
+    end
+
+    for zoneId, zone in pairs(config.zones) do
+        if zone.parent and not zoneIds[zone.parent] then
+            return self:_configError(
+                "areas",
+                "zones." .. tostring(zoneId) .. ".parent",
+                "must reference an existing zone"
+            )
+        end
+        if zone.unlock and zone.unlock.required_zone and not zoneIds[zone.unlock.required_zone] then
+            return self:_configError(
+                "areas",
+                "zones." .. tostring(zoneId) .. ".unlock.required_zone",
+                "must reference an existing zone"
+            )
+        end
+    end
+
+    local visiting = {}
+    local visited = {}
+    local function visit(zoneId)
+        if visiting[zoneId] then
+            return false, "cycle detected at " .. tostring(zoneId)
+        end
+        if visited[zoneId] then
+            return true
+        end
+        visiting[zoneId] = true
+        local zone = config.zones[zoneId]
+        if zone and zone.parent then
+            local success, message = visit(zone.parent)
+            if not success then
+                return false, message
+            end
+        end
+        visiting[zoneId] = nil
+        visited[zoneId] = true
+        return true
+    end
+
+    for zoneId in pairs(config.zones) do
+        ok, err = visit(zoneId)
+        if not ok then
+            return self:_configError("areas", "zones." .. tostring(zoneId), err)
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_validateUpgradesConfig(config)
+    local ok, err = self:_requireType("upgrades", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    ok, err = self:_requireType("upgrades", config.version, "string", "version")
+    if not ok then
+        return ok, err
+    end
+
+    ok, err = self:_requireType("upgrades", config.upgrades, "table", "upgrades")
+    if not ok then
+        return ok, err
+    end
+
+    local currencies = self:_rawConfig("currencies")
+    local inventory = self:_rawConfig("inventory")
+    local economy = self:_rawConfig("economy")
+
+    for upgradeId, upgrade in pairs(config.upgrades) do
+        local basePath = "upgrades." .. tostring(upgradeId)
+        ok, err = self:_requireType("upgrades", upgrade, "table", basePath)
+        if not ok then
+            return ok, err
+        end
+
+        if type(upgrade.id) ~= "string" or upgrade.id == "" then
+            return self:_configError("upgrades", basePath .. ".id", "expected non-empty string")
+        end
+        if upgrade.id ~= upgradeId then
+            return self:_configError("upgrades", basePath .. ".id", "must match table key")
+        end
+        if type(upgrade.display_name) ~= "string" or upgrade.display_name == "" then
+            return self:_configError(
+                "upgrades",
+                basePath .. ".display_name",
+                "expected non-empty string"
+            )
+        end
+        if
+            type(upgrade.max_level) ~= "number"
+            or upgrade.max_level < 1
+            or upgrade.max_level % 1 ~= 0
+        then
+            return self:_configError(
+                "upgrades",
+                basePath .. ".max_level",
+                "expected positive integer"
+            )
+        end
+
+        ok, err = self:_requireType("upgrades", upgrade.cost, "table", basePath .. ".cost")
+        if not ok then
+            return ok, err
+        end
+        if
+            type(upgrade.cost.currency) ~= "string" or not hasId(currencies, upgrade.cost.currency)
+        then
+            return self:_configError(
+                "upgrades",
+                basePath .. ".cost.currency",
+                "must reference configs/currencies.lua"
+            )
+        end
+        if upgrade.cost.type ~= "linear" and upgrade.cost.type ~= "exponential" then
+            return self:_configError(
+                "upgrades",
+                basePath .. ".cost.type",
+                "expected linear or exponential"
+            )
+        end
+        ok, err =
+            self:_requireNonNegativeNumber("upgrades", upgrade.cost.base, basePath .. ".cost.base")
+        if not ok then
+            return ok, err
+        end
+        if upgrade.cost.type == "linear" then
+            ok, err = self:_requireNonNegativeNumber(
+                "upgrades",
+                upgrade.cost.increment,
+                basePath .. ".cost.increment"
+            )
+            if not ok then
+                return ok, err
+            end
+        else
+            ok, err = self:_requirePositiveNumber(
+                "upgrades",
+                upgrade.cost.growth,
+                basePath .. ".cost.growth"
+            )
+            if not ok then
+                return ok, err
+            end
+        end
+
+        if not isArray(upgrade.effects) or #upgrade.effects == 0 then
+            return self:_configError("upgrades", basePath .. ".effects", "expected non-empty array")
+        end
+
+        for index, effect in ipairs(upgrade.effects) do
+            local effectPath = basePath .. ".effects[" .. index .. "]"
+            ok, err = self:_requireType("upgrades", effect, "table", effectPath)
+            if not ok then
+                return ok, err
+            end
+
+            if effect.type == "equip_slots" then
+                if
+                    type(effect.category) ~= "string"
+                    or not inventory
+                    or not inventory.equipped
+                    or not inventory.equipped[effect.category]
+                then
+                    return self:_configError(
+                        "upgrades",
+                        effectPath .. ".category",
+                        "must reference inventory.equipped"
+                    )
+                end
+            elseif effect.type == "storage_slots" then
+                if
+                    type(effect.bucket) ~= "string"
+                    or not inventory
+                    or not inventory.buckets
+                    or not inventory.buckets[effect.bucket]
+                then
+                    return self:_configError(
+                        "upgrades",
+                        effectPath .. ".bucket",
+                        "must reference inventory.buckets"
+                    )
+                end
+            elseif effect.type == "modifier" then
+                if
+                    type(effect.stage) ~= "string"
+                    or not economy
+                    or not economy.modifier_pipeline
+                    or not economy.modifier_pipeline.stages
+                    or not economy.modifier_pipeline.stages[effect.stage]
+                then
+                    return self:_configError(
+                        "upgrades",
+                        effectPath .. ".stage",
+                        "must reference economy.modifier_pipeline.stages"
+                    )
+                end
+            else
+                return self:_configError(
+                    "upgrades",
+                    effectPath .. ".type",
+                    "expected equip_slots, storage_slots, or modifier"
+                )
+            end
+
+            ok, err = self:_requirePositiveNumber(
+                "upgrades",
+                effect.amount_per_level,
+                effectPath .. ".amount_per_level"
+            )
+            if not ok then
+                return ok, err
+            end
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_validateMarkersConfig(config)
+    local ok, err = self:_requireType("markers", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    ok, err = self:_requireType("markers", config.tags, "table", "tags")
+    if not ok then
+        return ok, err
+    end
+
+    local allowedAttributeTypes = {
+        string = true,
+        number = true,
+        boolean = true,
+    }
+
+    for tagName, tagConfig in pairs(config.tags) do
+        local basePath = "tags." .. tostring(tagName)
+        if type(tagName) ~= "string" or tagName == "" then
+            return self:_configError("markers", "tags", "tag names must be non-empty strings")
+        end
+        ok, err = self:_requireType("markers", tagConfig, "table", basePath)
+        if not ok then
+            return ok, err
+        end
+        for _, sectionName in ipairs({ "required_attributes", "optional_attributes" }) do
+            local attributes = tagConfig[sectionName]
+            if attributes ~= nil then
+                ok, err = self:_requireType(
+                    "markers",
+                    attributes,
+                    "table",
+                    basePath .. "." .. sectionName
+                )
+                if not ok then
+                    return ok, err
+                end
+                for attributeName, expectedType in pairs(attributes) do
+                    if type(attributeName) ~= "string" or attributeName == "" then
+                        return self:_configError(
+                            "markers",
+                            basePath .. "." .. sectionName,
+                            "attribute names must be non-empty strings"
+                        )
+                    end
+                    if not allowedAttributeTypes[expectedType] then
+                        return self:_configError(
+                            "markers",
+                            basePath .. "." .. sectionName .. "." .. attributeName,
+                            "unsupported expected type"
+                        )
+                    end
+                end
+            end
+        end
+        if tagConfig.id_attribute ~= nil and type(tagConfig.id_attribute) ~= "string" then
+            return self:_configError("markers", basePath .. ".id_attribute", "expected string")
+        end
+        if tagConfig.config ~= nil and type(tagConfig.config) ~= "string" then
+            return self:_configError("markers", basePath .. ".config", "expected string")
+        end
+    end
+
+    if config.synthetic ~= nil then
+        ok, err = self:_requireType("markers", config.synthetic, "table", "synthetic")
+        if not ok then
+            return ok, err
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_validatePetsConfig(config)
+    local ok, err = self:_requireType("pets", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    for _, key in ipairs({ "version", "rarities", "variants", "pets", "abilities", "egg_sources" }) do
+        local expectedType = key == "version" and "string" or "table"
+        ok, err = self:_requireType("pets", config[key], expectedType, key)
+        if not ok then
+            return ok, err
+        end
+    end
+
+    for rarityId, rarity in pairs(config.rarities) do
+        local path = "rarities." .. tostring(rarityId)
+        if type(rarity) ~= "table" then
+            return self:_configError("pets", path, "expected table")
+        end
+        if type(rarity.name) ~= "string" or rarity.name == "" then
+            return self:_configError("pets", path .. ".name", "expected non-empty string")
+        end
+    end
+
+    for variantId, variant in pairs(config.variants) do
+        local path = "variants." .. tostring(variantId)
+        if type(variant) ~= "table" then
+            return self:_configError("pets", path, "expected table")
+        end
+        if type(variant.name) ~= "string" or variant.name == "" then
+            return self:_configError("pets", path .. ".name", "expected non-empty string")
+        end
+        if type(variant.rarity) ~= "string" or not config.rarities[variant.rarity] then
+            return self:_configError("pets", path .. ".rarity", "must reference rarities")
+        end
+    end
+
+    for petId, pet in pairs(config.pets) do
+        local basePath = "pets." .. tostring(petId)
+        if type(pet) ~= "table" then
+            return self:_configError("pets", basePath, "expected table")
+        end
+
+        for _, key in ipairs({ "name", "category" }) do
+            if type(pet[key]) ~= "string" or pet[key] == "" then
+                return self:_configError(
+                    "pets",
+                    basePath .. "." .. key,
+                    "expected non-empty string"
+                )
+            end
+        end
+
+        ok, err = self:_requirePositiveNumber("pets", pet.base_power, basePath .. ".base_power")
+        if not ok then
+            return ok, err
+        end
+        ok, err = self:_requirePositiveNumber("pets", pet.base_health, basePath .. ".base_health")
+        if not ok then
+            return ok, err
+        end
+
+        if type(pet.variants) ~= "table" then
+            return self:_configError("pets", basePath .. ".variants", "expected table")
+        end
+
+        for variantId, petVariant in pairs(pet.variants) do
+            local variantPath = basePath .. ".variants." .. tostring(variantId)
+            if not config.variants[variantId] then
+                return self:_configError("pets", variantPath, "variant key must exist in variants")
+            end
+            if type(petVariant) ~= "table" then
+                return self:_configError("pets", variantPath, "expected table")
+            end
+            if type(petVariant.asset_id) ~= "string" then
+                return self:_configError("pets", variantPath .. ".asset_id", "expected string")
+            end
+            if type(petVariant.display_name) ~= "string" or petVariant.display_name == "" then
+                return self:_configError(
+                    "pets",
+                    variantPath .. ".display_name",
+                    "expected non-empty string"
+                )
+            end
+            ok, err = self:_requirePositiveNumber("pets", petVariant.power, variantPath .. ".power")
+            if not ok then
+                return ok, err
+            end
+            ok, err =
+                self:_requirePositiveNumber("pets", petVariant.health, variantPath .. ".health")
+            if not ok then
+                return ok, err
+            end
+            if
+                petVariant.rarity_override ~= nil
+                and not config.rarities[petVariant.rarity_override]
+            then
+                return self:_configError(
+                    "pets",
+                    variantPath .. ".rarity_override",
+                    "must reference rarities"
+                )
+            end
+            if petVariant.abilities ~= nil then
+                if not isArray(petVariant.abilities) then
+                    return self:_configError("pets", variantPath .. ".abilities", "expected array")
+                end
+                for index, abilityId in ipairs(petVariant.abilities) do
+                    if type(abilityId) ~= "string" or not config.abilities[abilityId] then
+                        return self:_configError(
+                            "pets",
+                            variantPath .. ".abilities[" .. index .. "]",
+                            "must reference abilities"
+                        )
+                    end
+                end
+            end
+        end
+    end
+
+    local currencies = self:_rawConfig("currencies")
+    for eggId, egg in pairs(config.egg_sources) do
+        local basePath = "egg_sources." .. tostring(eggId)
+        if type(egg) ~= "table" then
+            return self:_configError("pets", basePath, "expected table")
+        end
+        if type(egg.name) ~= "string" or egg.name == "" then
+            return self:_configError("pets", basePath .. ".name", "expected non-empty string")
+        end
+        ok, err = self:_requireNonNegativeNumber("pets", egg.cost, basePath .. ".cost")
+        if not ok then
+            return ok, err
+        end
+        if type(egg.currency) ~= "string" or not hasId(currencies, egg.currency) then
+            return self:_configError(
+                "pets",
+                basePath .. ".currency",
+                "must reference configs/currencies.lua"
+            )
+        end
+        if type(egg.pet_weights) ~= "table" then
+            return self:_configError("pets", basePath .. ".pet_weights", "expected table")
+        end
+        for petId, weight in pairs(egg.pet_weights) do
+            if not config.pets[petId] then
+                return self:_configError(
+                    "pets",
+                    basePath .. ".pet_weights." .. tostring(petId),
+                    "must reference pets"
+                )
+            end
+            ok, err = self:_requirePositiveNumber(
+                "pets",
+                weight,
+                basePath .. ".pet_weights." .. tostring(petId)
+            )
+            if not ok then
+                return ok, err
+            end
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_validateEventsConfig(config)
+    local ok, err = self:_requireType("events", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    ok, err = self:_requirePositiveNumber("events", config.tick_seconds, "tick_seconds")
+    if not ok then
+        return ok, err
+    end
+
+    for _, key in ipairs({ "workspace", "modifiers", "global_events" }) do
+        ok, err = self:_requireType("events", config[key], "table", key)
+        if not ok then
+            return ok, err
+        end
+    end
+
+    for key, value in pairs(config.workspace) do
+        if type(value) ~= "string" or value == "" then
+            return self:_configError(
+                "events",
+                "workspace." .. tostring(key),
+                "expected non-empty string"
+            )
+        end
+    end
+
+    local modifierIds = {}
+    for modifierId, modifier in pairs(config.modifiers) do
+        local path = "modifiers." .. tostring(modifierId)
+        if type(modifier) ~= "table" then
+            return self:_configError("events", path, "expected table")
+        end
+        if type(modifier.display_name) ~= "string" or modifier.display_name == "" then
+            return self:_configError("events", path .. ".display_name", "expected non-empty string")
+        end
+        if type(modifier.base) ~= "number" then
+            return self:_configError("events", path .. ".base", "expected number")
+        end
+        modifierIds[modifierId] = true
+    end
+
+    local eventIds = {}
+    local allowedStacking = {
+        extend_duration = true,
+        reset = true,
+        stack = true,
+        ignore = true,
+    }
+
+    for eventId, event in pairs(config.global_events) do
+        local path = "global_events." .. tostring(eventId)
+        if type(event) ~= "table" then
+            return self:_configError("events", path, "expected table")
+        end
+        if type(event.display_name) ~= "string" or event.display_name == "" then
+            return self:_configError("events", path .. ".display_name", "expected non-empty string")
+        end
+        if type(event.duration_seconds) ~= "number" then
+            return self:_configError("events", path .. ".duration_seconds", "expected number")
+        end
+        if event.duration_seconds == 0 or event.duration_seconds < -1 then
+            return self:_configError(
+                "events",
+                path .. ".duration_seconds",
+                "must be positive seconds or -1 for scheduled indefinite events"
+            )
+        end
+        if type(event.stacking) ~= "string" or not allowedStacking[event.stacking] then
+            return self:_configError(
+                "events",
+                path .. ".stacking",
+                "must be extend_duration, reset, stack, or ignore"
+            )
+        end
+        if type(event.modifiers) ~= "table" then
+            return self:_configError("events", path .. ".modifiers", "expected table")
+        end
+        for modifierId, amount in pairs(event.modifiers) do
+            if not modifierIds[modifierId] then
+                return self:_configError(
+                    "events",
+                    path .. ".modifiers." .. tostring(modifierId),
+                    "must reference modifiers"
+                )
+            end
+            if type(amount) ~= "number" then
+                return self:_configError(
+                    "events",
+                    path .. ".modifiers." .. tostring(modifierId),
+                    "expected number"
+                )
+            end
+        end
+        eventIds[eventId] = true
+    end
+
+    if config.scheduled_global_events ~= nil then
+        if type(config.scheduled_global_events) ~= "table" then
+            return self:_configError("events", "scheduled_global_events", "expected table")
+        end
+
+        for scheduleId, schedule in pairs(config.scheduled_global_events) do
+            local path = "scheduled_global_events." .. tostring(scheduleId)
+            if type(schedule) ~= "table" then
+                return self:_configError("events", path, "expected table")
+            end
+            if type(schedule.event_id) ~= "string" or not eventIds[schedule.event_id] then
+                return self:_configError(
+                    "events",
+                    path .. ".event_id",
+                    "must reference global_events"
+                )
+            end
+            if not isArray(schedule.weekdays_utc) then
+                return self:_configError("events", path .. ".weekdays_utc", "expected array")
+            end
+            for index, weekday in ipairs(schedule.weekdays_utc) do
+                if type(weekday) ~= "number" or weekday < 1 or weekday > 7 or weekday % 1 ~= 0 then
+                    return self:_configError(
+                        "events",
+                        path .. ".weekdays_utc[" .. index .. "]",
+                        "must be integer 1..7"
+                    )
+                end
+            end
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_validateEconomyConfig(config)
+    local ok, err = self:_requireType("economy", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    if config.modifier_pipeline ~= nil then
+        ok, err =
+            self:_requireType("economy", config.modifier_pipeline, "table", "modifier_pipeline")
+        if not ok then
+            return ok, err
+        end
+
+        local pipeline = config.modifier_pipeline
+        if not isArray(pipeline.stage_order) then
+            return self:_configError("economy", "modifier_pipeline.stage_order", "expected array")
+        end
+
+        ok, err = self:_requireType("economy", pipeline.stages, "table", "modifier_pipeline.stages")
+        if not ok then
+            return ok, err
+        end
+
+        local allowedCombine = {
+            add = true,
+            multiply = true,
+            override = true,
+            cap = true,
+        }
+
+        for index, stageName in ipairs(pipeline.stage_order) do
+            if type(stageName) ~= "string" then
+                return self:_configError(
+                    "economy",
+                    "modifier_pipeline.stage_order[" .. index .. "]",
+                    "expected string"
+                )
+            end
+            if stageName ~= "base" and not pipeline.stages[stageName] then
+                return self:_configError(
+                    "economy",
+                    "modifier_pipeline.stage_order[" .. index .. "]",
+                    "must reference modifier_pipeline.stages"
+                )
+            end
+        end
+
+        for stageName, stageConfig in pairs(pipeline.stages) do
+            local combine = stageConfig and stageConfig.combine
+            if type(combine) ~= "string" or not allowedCombine[combine] then
+                return self:_configError(
+                    "economy",
+                    "modifier_pipeline.stages." .. tostring(stageName) .. ".combine",
+                    "must be add, multiply, override, or cap"
+                )
+            end
+        end
+    end
+
+    if config.currency_exchange == nil then
+        return true
+    end
+
+    local exchange = config.currency_exchange
+    ok, err = self:_requireType("economy", exchange, "table", "currency_exchange")
+    if not ok then
+        return ok, err
+    end
+
+    if exchange.enabled ~= nil and type(exchange.enabled) ~= "boolean" then
+        return self:_configError("economy", "currency_exchange.enabled", "expected boolean")
+    end
+
+    if exchange.conversions ~= nil then
+        ok, err = self:_requireType(
+            "economy",
+            exchange.conversions,
+            "table",
+            "currency_exchange.conversions"
+        )
+        if not ok then
+            return ok, err
+        end
+    end
+
+    local currencies = self:_rawConfig("currencies")
+    local hasDefault = false
+
+    for conversionId, conversion in pairs(exchange.conversions or {}) do
+        local path = "currency_exchange.conversions." .. tostring(conversionId)
+        if conversionId == exchange.default_conversion then
+            hasDefault = true
+        end
+        if type(conversion) ~= "table" then
+            return self:_configError("economy", path, "expected table")
+        end
+        if type(conversion.from) ~= "string" or not hasId(currencies, conversion.from) then
+            return self:_configError(
+                "economy",
+                path .. ".from",
+                "must reference configs/currencies.lua"
+            )
+        end
+        if type(conversion.to) ~= "string" or not hasId(currencies, conversion.to) then
+            return self:_configError(
+                "economy",
+                path .. ".to",
+                "must reference configs/currencies.lua"
+            )
+        end
+        ok, err =
+            self:_requirePositiveNumber("economy", conversion.from_amount, path .. ".from_amount")
+        if not ok then
+            return ok, err
+        end
+        ok, err = self:_requirePositiveNumber("economy", conversion.to_amount, path .. ".to_amount")
+        if not ok then
+            return ok, err
+        end
+        ok, err = self:_requirePositiveNumber(
+            "economy",
+            conversion.max_batches_per_request,
+            path .. ".max_batches_per_request"
+        )
+        if not ok then
+            return ok, err
+        end
+    end
+
+    if exchange.default_conversion ~= nil and not hasDefault then
+        return self:_configError(
+            "economy",
+            "currency_exchange.default_conversion",
+            "must reference currency_exchange.conversions"
+        )
+    end
+
+    return true
+end
+
+function ConfigLoader:_validateEggSystemConfig(config)
+    local ok, err = self:_requireType("egg_system", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    for _, key in ipairs({
+        "version",
+        "proximity",
+        "performance",
+        "cooldowns",
+        "ui",
+        "pet_preview",
+        "messages",
+        "spawning",
+        "validation",
+    }) do
+        local expectedType = key == "version" and "string" or "table"
+        ok, err = self:_requireType("egg_system", config[key], expectedType, key)
+        if not ok then
+            return ok, err
+        end
+    end
+
+    ok, err = self:_requirePositiveNumber(
+        "egg_system",
+        config.proximity.max_distance,
+        "proximity.max_distance"
+    )
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requirePositiveNumber(
+        "egg_system",
+        config.performance.update_interval,
+        "performance.update_interval"
+    )
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requireNonNegativeNumber(
+        "egg_system",
+        config.cooldowns.purchase_cooldown,
+        "cooldowns.purchase_cooldown"
+    )
+    if not ok then
+        return ok, err
+    end
+
+    if
+        type(config.spawning.spawn_point_name) ~= "string"
+        or config.spawning.spawn_point_name == ""
+    then
+        return self:_configError(
+            "egg_system",
+            "spawning.spawn_point_name",
+            "expected non-empty string"
+        )
+    end
+
+    return true
+end
+
+function ConfigLoader:_validateStatsConfig(config)
+    local ok, err = self:_requireType("stats", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    ok, err = self:_requireType("stats", config.counters, "table", "counters")
+    if not ok then
+        return ok, err
+    end
+
+    local allowedScopes = {
+        lifetime = true,
+        session = true,
+        daily = true,
+    }
+
+    for counterId, counter in pairs(config.counters) do
+        local path = "counters." .. tostring(counterId)
+        if type(counter) ~= "table" then
+            return self:_configError("stats", path, "expected table")
+        end
+        if type(counter.display_name) ~= "string" or counter.display_name == "" then
+            return self:_configError("stats", path .. ".display_name", "expected non-empty string")
+        end
+        if type(counter.scope) ~= "string" or not allowedScopes[counter.scope] then
+            return self:_configError(
+                "stats",
+                path .. ".scope",
+                "must be lifetime, session, or daily"
+            )
+        end
+        if counter.default ~= nil and type(counter.default) ~= "number" then
+            return self:_configError("stats", path .. ".default", "expected number")
+        end
+    end
+
     return true
 end
 
@@ -752,29 +2069,30 @@ function ConfigLoader:_validateUIConfig(config)
     if not config or type(config) ~= "table" then
         return false, "UI config must be a table"
     end
-    
+
     -- Check required sections
-    local requiredSections = {"themes", "active_theme", "fonts", "spacing", "radius", "animations", "helpers"}
+    local requiredSections =
+        { "themes", "active_theme", "fonts", "spacing", "radius", "animations", "helpers" }
     for _, section in ipairs(requiredSections) do
         if not config[section] then
             return false, "Missing required section: " .. section
         end
     end
-    
+
     -- Validate themes
     if not config.themes or type(config.themes) ~= "table" then
         return false, "Themes must be a table"
     end
-    
+
     if not config.themes.dark or not config.themes.light then
         return false, "Dark and light themes are required"
     end
-    
+
     -- Validate active theme exists
     if not config.themes[config.active_theme] then
         return false, "Active theme '" .. tostring(config.active_theme) .. "' not found in themes"
     end
-    
+
     return true
 end
 
@@ -782,39 +2100,44 @@ function ConfigLoader:_validateContextMenusConfig(config)
     if not config or type(config) ~= "table" then
         return false, "Context menus config must be a table"
     end
-    
+
     -- Check required sections
     if not config.global then
         return false, "Missing required section: global"
     end
-    
+
     if not config.item_types then
         return false, "Missing required section: item_types"
     end
-    
+
     if not config.fallback then
         return false, "Missing required section: fallback"
     end
-    
+
     -- Validate item_types structure
     if type(config.item_types) ~= "table" then
         return false, "item_types must be a table"
     end
-    
+
     -- Check that each item type has actions
     for itemType, typeConfig in pairs(config.item_types) do
         if not typeConfig.actions or type(typeConfig.actions) ~= "table" then
             return false, "Item type '" .. itemType .. "' must have actions table"
         end
-        
+
         -- Validate each action
         for i, action in ipairs(typeConfig.actions) do
             if not action.action or not action.text or not action.color then
-                return false, "Action " .. i .. " in item type '" .. itemType .. "' missing required fields (action, text, color)"
+                return false,
+                    "Action "
+                        .. i
+                        .. " in item type '"
+                        .. itemType
+                        .. "' missing required fields (action, text, color)"
             end
         end
     end
-    
+
     return true
 end
 
@@ -823,15 +2146,16 @@ function ConfigLoader:ReloadConfig(configName)
     if configName == "monetization" then
         self:ClearMonetizationCache()
     end
-    
+    configsValidated = false
+
     if self._configCaches then
         self._configCaches[configName] = nil
     end
-    
+
     if self._modules and self._modules.Logger then
-        self._modules.Logger:Info("Config reloaded", {config = configName})
+        self._modules.Logger:Info("Config reloaded", { config = configName })
     end
-    
+
     return self:LoadConfig(configName)
 end
 
@@ -876,41 +2200,41 @@ function ConfigLoader:_validateInventoryConfig(config)
     if not config then
         return false, "Inventory config is nil"
     end
-    
+
     -- Check required top-level fields
-    local requiredFields = {"version", "enabled_buckets", "buckets", "settings"}
+    local requiredFields = { "version", "enabled_buckets", "buckets", "settings" }
     for _, field in ipairs(requiredFields) do
         if not config[field] then
             return false, "Missing required field: " .. field
         end
     end
-    
+
     -- Validate version
     if type(config.version) ~= "string" then
         return false, "Version must be a string"
     end
-    
+
     -- Validate enabled_buckets
     if type(config.enabled_buckets) ~= "table" then
         return false, "enabled_buckets must be a table"
     end
-    
+
     -- Validate buckets
     if type(config.buckets) ~= "table" then
         return false, "buckets must be a table"
     end
-    
+
     -- Check that each enabled bucket has a corresponding bucket definition
     for bucketName, enabled in pairs(config.enabled_buckets) do
         if enabled and not config.buckets[bucketName] then
             return false, "Enabled bucket '" .. bucketName .. "' has no bucket definition"
         end
-        
+
         if enabled then
             local bucket = config.buckets[bucketName]
-            
+
             -- Validate required bucket fields (support mixed storage type)
-            local requiredBaseFields = {"display_name", "icon", "base_limit", "storage_type"}
+            local requiredBaseFields = { "display_name", "icon", "base_limit", "storage_type" }
             for _, field in ipairs(requiredBaseFields) do
                 if not bucket[field] then
                     return false, "Bucket '" .. bucketName .. "' missing required field: " .. field
@@ -925,68 +2249,92 @@ function ConfigLoader:_validateInventoryConfig(config)
                 if type(bucket.item_schema) ~= "table" then
                     return false, "Bucket '" .. bucketName .. "' item_schema must be a table"
                 end
-                if not bucket.item_schema.required or type(bucket.item_schema.required) ~= "table" then
-                    return false, "Bucket '" .. bucketName .. "' item_schema must have 'required' array"
+                if
+                    not bucket.item_schema.required
+                    or type(bucket.item_schema.required) ~= "table"
+                then
+                    return false,
+                        "Bucket '" .. bucketName .. "' item_schema must have 'required' array"
                 end
-                if not bucket.item_schema.optional or type(bucket.item_schema.optional) ~= "table" then
-                    return false, "Bucket '" .. bucketName .. "' item_schema must have 'optional' array"
+                if
+                    not bucket.item_schema.optional
+                    or type(bucket.item_schema.optional) ~= "table"
+                then
+                    return false,
+                        "Bucket '" .. bucketName .. "' item_schema must have 'optional' array"
                 end
             elseif bucket.storage_type == "mixed" then
                 if type(bucket.schema) ~= "table" then
-                    return false, "Bucket '" .. bucketName .. "' missing or invalid 'schema' for mixed storage"
+                    return false,
+                        "Bucket '"
+                            .. bucketName
+                            .. "' missing or invalid 'schema' for mixed storage"
                 end
-                if type(bucket.schema.stacks) ~= "table" or type(bucket.schema.special) ~= "table" then
-                    return false, "Bucket '" .. bucketName .. "' schema must contain 'stacks' and 'special' tables"
+                if
+                    type(bucket.schema.stacks) ~= "table"
+                    or type(bucket.schema.special) ~= "table"
+                then
+                    return false,
+                        "Bucket '"
+                            .. bucketName
+                            .. "' schema must contain 'stacks' and 'special' tables"
                 end
                 if bucket.stack_key_fields and type(bucket.stack_key_fields) ~= "table" then
-                    return false, "Bucket '" .. bucketName .. "' stack_key_fields must be an array when provided"
+                    return false,
+                        "Bucket '"
+                            .. bucketName
+                            .. "' stack_key_fields must be an array when provided"
                 end
             else
-                return false, "Bucket '" .. bucketName .. "' storage_type must be 'unique', 'stackable', or 'mixed'"
+                return false,
+                    "Bucket '"
+                        .. bucketName
+                        .. "' storage_type must be 'unique', 'stackable', or 'mixed'"
             end
 
             -- Validate bucket field types
             if type(bucket.display_name) ~= "string" then
                 return false, "Bucket '" .. bucketName .. "' display_name must be a string"
             end
-            
+
             if type(bucket.base_limit) ~= "number" or bucket.base_limit <= 0 then
                 return false, "Bucket '" .. bucketName .. "' base_limit must be a positive number"
             end
             -- Additional checks handled per storage type above
         end
     end
-    
+
     -- Validate equipped configuration
     if config.equipped then
         if type(config.equipped) ~= "table" then
             return false, "equipped must be a table"
         end
-        
+
         for equipCategory, equipConfig in pairs(config.equipped) do
             if type(equipConfig) ~= "table" then
                 return false, "Equipped category '" .. equipCategory .. "' must be a table"
             end
-            
+
             if not equipConfig.slots then
                 return false, "Equipped category '" .. equipCategory .. "' missing slots field"
             end
-            
+
             if not equipConfig.display_name or type(equipConfig.display_name) ~= "string" then
-                return false, "Equipped category '" .. equipCategory .. "' missing or invalid display_name"
+                return false,
+                    "Equipped category '" .. equipCategory .. "' missing or invalid display_name"
             end
         end
     end
-    
+
     -- Validate settings
     if type(config.settings) ~= "table" then
         return false, "settings must be a table"
     end
-    
+
     if self._modules and self._modules.Logger then
-        self._modules.Logger:Info("Inventory config validated", {context = "ConfigLoader"})
+        self._modules.Logger:Info("Inventory config validated", { context = "ConfigLoader" })
     end
     return true
 end
 
-return ConfigLoader 
+return ConfigLoader

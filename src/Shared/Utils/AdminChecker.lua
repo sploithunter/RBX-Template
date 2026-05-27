@@ -3,6 +3,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
 local Locations = require(ReplicatedStorage.Shared.Locations)
 
@@ -28,9 +29,14 @@ local function loadAdminConfig()
         configLoaded = true
         -- quiet: config loaded
     else
-        -- Fallback to empty config if loading fails
-        adminConfig = { authorizedUsers = {} }
-        configLoaded = true
+        -- Do not permanently cache failures; Configs can arrive after early client UI boot.
+        adminConfig = {
+            authorizedUsers = {},
+            security = {
+                allowStudioAccess = RunService:IsStudio()
+            }
+        }
+        configLoaded = false
         -- quiet: error suppressed in console
     end
     
@@ -44,6 +50,15 @@ function AdminChecker.IsCurrentPlayerAdmin()
     
     if not player or not config then
         return false
+    end
+
+    local serverValue = player:GetAttribute("IsAdmin")
+    if serverValue ~= nil then
+        return serverValue == true
+    end
+
+    if RunService:IsStudio() then
+        return true
     end
     
     local userId = player.UserId

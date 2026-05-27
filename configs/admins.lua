@@ -32,6 +32,7 @@ return {
         adjustCurrency = true,       -- Can add/remove currency amounts  
         giveItems = true,            -- Can give items to players
         resetData = true,            -- Can reset player data
+        forceSaveData = true,        -- Can force-save own profile during testing
         manageEffects = true,        -- Can start/stop effects
         viewDebugInfo = true,        -- Can view debug information
         testRateLimit = true,        -- Can test rate limiting
@@ -41,6 +42,7 @@ return {
         adjustCurrencyOthers = true, -- Can adjust currency for other players
         giveItemsOthers = true,      -- Can give items to other players
         resetDataOthers = true,      -- Can reset other players' data
+        forceSaveDataOthers = true,  -- Can force-save other players during testing
         manageEffectsOthers = true,  -- Can manage effects for other players
         viewDebugInfoOthers = true,  -- Can view other players' debug info
         kickPlayers = false,         -- Can kick players (disabled by default)
@@ -55,6 +57,7 @@ return {
     security = {
         logAllAdminActions = true,           -- Log all admin actions for auditing
         requireStudioForSensitiveOps = true, -- Require Studio for dangerous operations
+        allowStudioAccess = true,            -- Treat Studio sessions as admin for local development/testing
         blockClientRequests = false,        -- Block all client-originated admin requests (use true for maximum security)
     }
 }

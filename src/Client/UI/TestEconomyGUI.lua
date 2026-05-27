@@ -11,8 +11,8 @@ local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 -- Wait for Signals to initialize
 task.wait(1) 
 
-if not Signals.PurchaseItem then
-    warn("PurchaseItem signal not found! Check Signals configuration")
+if not Signals.PurchaseItem or not Signals.SellItem then
+    warn("Economy signals not found! Check Signals configuration")
     return
 end
 
@@ -209,7 +209,7 @@ comprehensiveTestButton.Activated:Connect(function()
         
         -- Step 4: Sell an item
         print("💸 Step 4: Selling test_item...")
-        -- economyBridge:Fire("server", "SellItem", -- TODO: Replace with appropriate Signal {
+        Signals.SellItem:FireServer({
             itemId = "test_item",
             quantity = 1
         })
@@ -421,7 +421,7 @@ sellCorner.Parent = sellButton
 sellButton.Activated:Connect(function()
     print("💰 Testing item sell...")
     print("📊 Current coins before sell:", player:GetAttribute("Coins") or "unknown")
-    -- economyBridge:Fire("server", "SellItem", -- TODO: Replace with appropriate Signal {
+    Signals.SellItem:FireServer({
         itemId = "test_item",
         quantity = 1
     })

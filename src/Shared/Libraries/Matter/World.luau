@@ -1,5 +1,5 @@
 local Component = require(script.Parent.component)
-local archetypeModule = require(script.Parent.archetype)
+local archetypeModule = require(script.Parent.Archetype)
 local topoRuntime = require(script.Parent.topoRuntime)
 
 local assertValidComponentInstance = Component.assertValidComponentInstance

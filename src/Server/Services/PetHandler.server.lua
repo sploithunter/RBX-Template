@@ -13,6 +13,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local PetVariantVisuals = require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
 print("✅ PetHandler: Loaded and waiting for bridge registration")
 
 -- Suppress verbose debug prints in this script unless explicitly enabled
@@ -400,9 +401,8 @@ local function sanitizeModelConstraints(model)
             or d:IsA("BodyPosition") or d:IsA("BodyVelocity")
             or d:IsA("LinearVelocity") or d:IsA("AngularVelocity")
             or (d:IsA("Constraint") and not d:IsA("WeldConstraint"))
+            or d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript")
         then
-            d:Destroy()
-        elseif d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
             d:Destroy()
         elseif d:IsA("Weld") or d:IsA("Motor6D") then
             local p0 = d.Part0 or d.Part1
@@ -704,6 +704,8 @@ function loadEquipped(Player)
                                 print("   • RS welds:", welds)
                             end
                             PetModel = petVariantModel:Clone()
+                            PetVariantVisuals.ApplyServerMetadata(PetModel, effectiveIdName, effectiveVariantName)
+                            PetVariantVisuals.ApplyStaticVisuals(PetModel)
                             -- Log geometry immediately after clone, before any changes
                             logModelGeometry("POST_CLONE_PREPARENT", PetModel)
                             if DIAGNOSTICS_ENABLED then
@@ -849,7 +851,7 @@ function loadEquipped(Player)
             logModelGeometry("POST_SET_POSITION_PREPARENT", PetModel)
         end
         
-        print("✅ PetHandler: Pet system set up for", basePetName)
+        print("✅ PetHandler: Pet system set up for", petIdName)
         
         -- DEBUG: Check if pet model has required components
         print("🔍 DEBUG PetHandler: Pet model", PetModel.Name)

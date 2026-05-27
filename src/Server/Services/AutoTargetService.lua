@@ -14,6 +14,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local AutoTargetService = {}
 AutoTargetService.__index = AutoTargetService
@@ -97,9 +98,9 @@ function AutoTargetService:_togglePaid(player)
     local free, paid = ensurePlayerFlags(player)
 
     -- Validate gamepass ownership using MonetizationService's data if available
-    local owns = false
+    local owns = player:GetAttribute("IsAdmin") == true or RunService:IsStudio()
     if monetization and monetization.PlayerOwnsPass and productIdMapper then
-        owns = monetization:PlayerOwnsPass(player, PAID_AUTOTARGET_PASS_ID)
+        owns = owns or monetization:PlayerOwnsPass(player, PAID_AUTOTARGET_PASS_ID)
     end
 
     if owns then
@@ -119,5 +120,4 @@ function AutoTargetService:_togglePaid(player)
 end
 
 return AutoTargetService
-
 

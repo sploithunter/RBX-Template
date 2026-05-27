@@ -264,9 +264,7 @@ end
 
 local function setModelTransparencyInstant(model, alpha)
     for _, d in ipairs(model:GetDescendants()) do
-        if d:IsA("BasePart") then
-            d.Transparency = alpha
-        elseif d:IsA("Decal") or d:IsA("Texture") then
+        if d:IsA("BasePart") or d:IsA("Decal") or d:IsA("Texture") then
             d.Transparency = alpha
         end
     end
@@ -275,9 +273,7 @@ end
 local function fadeModelToVisible(model, duration)
     duration = duration or 0.25
     for _, d in ipairs(model:GetDescendants()) do
-        if d:IsA("BasePart") then
-            TweenService:Create(d, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 0 }):Play()
-        elseif d:IsA("Decal") or d:IsA("Texture") then
+        if d:IsA("BasePart") or d:IsA("Decal") or d:IsA("Texture") then
             TweenService:Create(d, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 0 }):Play()
         end
     end
@@ -914,18 +910,21 @@ if Player then
 	end)
 	
     script.Parent.TargetID:GetPropertyChangedSignal("Value"):Connect(function()
-		if TargetID.Value ~= 0 then
-		--	print("Set Attack")
-            setAttack(1)
-            -- Always (re)start damage loop when acquiring a target
-            local existing = script:FindFirstChild("_DamageLoopConn")
-            if existing then existing:Destroy() end
-            local function doDamage()
-                local TargetIDValue = TargetID.Value
-                if TargetIDValue == 0 then return end
-            local targetIdObj = scanForID(breakables, TargetIDValue, TargetType.Value, TargetWorld.Value)
-            local breakable = targetIdObj and targetIdObj.Parent
-                if not breakable then return end
+            if TargetID.Value ~= 0 then
+			--	print("Set Attack")
+	            setAttack()
+	            -- Always (re)start damage loop when acquiring a target
+	            local existing = script:FindFirstChild("_DamageLoopConn")
+	            if existing then existing:Destroy() end
+	            local function getCurrentBreakable()
+	                local targetIdObj = scanForID(breakables, TargetID.Value, TargetType.Value, TargetWorld.Value)
+	                return targetIdObj and targetIdObj.Parent
+	            end
+	            local function doDamage()
+	                local TargetIDValue = TargetID.Value
+	                if TargetIDValue == 0 then return end
+	                local breakable = getCurrentBreakable()
+	                if not breakable then return end
                 -- Apply small periodic damage per pet
                 local hp = breakable:GetAttribute("HP") or 0
                 if hp <= 0 then return end
@@ -959,10 +958,11 @@ if Player then
                 end
                 if conn.Parent then conn:Destroy() end
             end)
-            -- Switch watchdog to attack target while attacking
-            startTeleportWatchdog("_AttackWatchdog", function()
-                return breakable and breakable:FindFirstChild("Star") and breakable.Star:FindFirstChild("StarBox1") and breakable.Star.StarBox1.Pet.WorldCFrame or nil
-            end)
+	            -- Switch watchdog to attack target while attacking
+	            startTeleportWatchdog("_AttackWatchdog", function()
+	                local breakable = getCurrentBreakable()
+	                return breakable and breakable:FindFirstChild("Star") and breakable.Star:FindFirstChild("StarBox1") and breakable.Star.StarBox1.Pet.WorldCFrame or nil
+	            end)
 		else
 		--	print("Quit Attack")
             local existing = script:FindFirstChild("_DamageLoopConn")
