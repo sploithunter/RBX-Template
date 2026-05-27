@@ -754,6 +754,109 @@ return function()
                 expect(string.find(error, "must reference pets.rarities", 1, true)).to.be.ok()
             end)
 
+            it("should validate config-driven enchant roll profiles", function()
+                local validConfig = {
+                    version = "1.0.0",
+                    enabled = true,
+                    hatch_rolls = {
+                        enabled = true,
+                        require_unlocked_slot = true,
+                    },
+                    reroll = {
+                        enabled = true,
+                        default_slot = 1,
+                        cost = {
+                            currency = "gems",
+                            amount = 5,
+                        },
+                    },
+                    rarity_profiles = {
+                        huge = "huge",
+                    },
+                    effects = {
+                        crystal_finder = {
+                            display_name = "Crystal Finder",
+                            modifier = {
+                                stage = "enchants",
+                                kind = "breakable_reward",
+                                currency = "crystals",
+                                combine = "multiply",
+                                amount_per_strength = 0.01,
+                            },
+                        },
+                    },
+                    roll_profiles = {
+                        huge = {
+                            min_rolls = 1,
+                            max_rolls = 3,
+                            initial_roll_chance = 1,
+                            prevent_duplicate_effects = true,
+                            chances = {
+                                {
+                                    effect = "crystal_finder",
+                                    weight = 10,
+                                    strength = { low = 1, high = 5, scale = 2 },
+                                },
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("enchants", validConfig)
+                expect(isValid).to.equal(true)
+                expect(error).to.equal(nil)
+            end)
+
+            it("should reject enchant chance entries with unknown effects", function()
+                local invalidConfig = {
+                    version = "1.0.0",
+                    hatch_rolls = {
+                        enabled = true,
+                    },
+                    reroll = {
+                        enabled = true,
+                        default_slot = 1,
+                        cost = {
+                            currency = "gems",
+                            amount = 5,
+                        },
+                    },
+                    rarity_profiles = {
+                        huge = "huge",
+                    },
+                    effects = {
+                        crystal_finder = {
+                            display_name = "Crystal Finder",
+                            modifier = {
+                                stage = "enchants",
+                                kind = "breakable_reward",
+                                currency = "crystals",
+                                combine = "multiply",
+                                amount_per_strength = 0.01,
+                            },
+                        },
+                    },
+                    roll_profiles = {
+                        huge = {
+                            min_rolls = 1,
+                            max_rolls = 1,
+                            initial_roll_chance = 1,
+                            chances = {
+                                {
+                                    effect = "typo_finder",
+                                    weight = 10,
+                                    strength = { low = 1, high = 5, scale = 2 },
+                                },
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("enchants", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "must reference effects", 1, true)).to.be.ok()
+            end)
+
             it("should validate marker tag schemas", function()
                 local validConfig = {
                     tags = {

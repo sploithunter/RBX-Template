@@ -55,9 +55,15 @@ return {
             xp_per_damage = 0,
         },
         breakable_destroy = {
-            enabled = false,
-            xp_by_area = {},
-            default_xp = 0,
+            enabled = true,
+            xp_by_world = {
+                Spawn = 8,
+                Meadow = 20,
+            },
+            xp_by_breakable = {
+                BigBlueCrystal = 25,
+            },
+            default_xp = 5,
         },
     },
 }

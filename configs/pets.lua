@@ -28,7 +28,7 @@ local petConfig = {
             huge = 3,
         },
         default_max_enchantments = 0,
-        hatch_rolls_enabled = false,
+        hatch_rolls_enabled = true,
     },
 
     provenance = {

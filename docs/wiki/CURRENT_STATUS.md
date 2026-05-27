@@ -4,7 +4,7 @@ Status: current
 
 ## Summary
 
-This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code template. Phase 0 is complete, Phase 1 map integration is complete for the current synthetic/partial-authored baseline, Phase 2 economy depth is complete for the current baseline, and Phase 3 stats-derived wins are complete for pet index, achievements, and live leaderboards. The repo is ready to continue Phase 4 work; a first Phase 4 foundation slice already exists for unique-pet progression, enchant-slot unlocks, eternal/huge pet handling, config-only pet power, and offline team-power balancing. The playable loop includes breakable crystals, coin generation, eggs, hatching, persistent player data, imported pet assets, an admin panel, configurable currency conversion, basic global events/effects work, multi-area map hooks, server-authoritative area travel, active-zone spawner dormancy, config-driven upgrades, paid area unlocks, area-gated stronger breakables, first-time pet indexing, achievement rewards, and K1-backed leaderboards.
+This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code template. Phase 0 is complete, Phase 1 map integration is complete for the current synthetic/partial-authored baseline, Phase 2 economy depth is complete for the current baseline, and Phase 3 stats-derived wins are complete for pet index, achievements, and live leaderboards. Phase 4's core pet progression/enchant baseline is now active: unique-pet progression, enchant-slot unlocks, hatch-time enchant rolls, manual reroll service hooks, enchant modifier providers, eternal/huge pet handling, config-only pet power, and offline team-power balancing. The playable loop includes breakable crystals, coin generation, eggs, hatching, persistent player data, imported pet assets, an admin panel, configurable currency conversion, basic global events/effects work, multi-area map hooks, server-authoritative area travel, active-zone spawner dormancy, config-driven upgrades, paid area unlocks, area-gated stronger breakables, first-time pet indexing, achievement rewards, and K1-backed leaderboards.
 
 ## Working Systems
 
@@ -45,6 +45,9 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Colorado Plays is currently an eternal pet family. Equip rebuilds cache team-relative `EffectivePower` from the configured eternal percent and top-team-average baseline, while preserving the pet's configured power as the minimum. Huge pets clamp to at least `100%` of that baseline. Inventory pet hover details now show power, base power when different, eternal percent, baseline, huge serials, enchant capacity, and stack count.
 - Enchant capacity is now controlled by pet rarity config: Mythic pets get `1` slot, Secret/Exclusive pets get `2`, and Huge pets get `3`. Rarities with enchant slots are granted as unique pet records going forward; existing stacked pets are not retroactively promoted until a future stack-to-unique promotion flow exists.
 - Phase 4 pet progression has a first foundation slice: `configs/pet_progression.lua` and `PetProgressionService` define unique-pet XP curves, max levels by rarity, capped power growth, and enchant slot unlock milestones. New unique pets keep their full potential `max_enchantments` but start with configured `unlocked_enchant_slots` (currently one slot) and gain the rest through levels.
+- `configs/enchants.lua` is the single source of truth for enchant chance and behavior. It defines rarity roll profiles, roll counts, weighted chance entries, strength low/high/scale ranges, duplicate policy, reroll cost, and modifier mappings. The initial template ports the useful ColorfulClickers concepts (`HomeWorld`, `Luck`, `SecretLuck`, `Tactics`, `Leadership`, `Efficiency`) into config-first effects and adds this-game examples for crystal rewards, coin rewards, and pet XP.
+- `EnchantService` rolls hatch-time enchants for eligible unique pets through `PetGrantService`, exposes server-authoritative manual rerolls through `EnchantPetRequest`/`EnchantPetResult`, and registers equipped unique pet enchants as `enchants` modifier providers.
+- Equipped unique pets now receive configurable breakable-destroy XP through `PetProgressionService:AwardBreakableDestroyed`. `BreakableSpawner` calls this after contribution rewards, and pet XP can itself be modified by enchant effects such as `scholar`.
 - `scripts/balance_team_power.py` is available for offline balance passes. It reads current pet/progression configs and estimates team power across team size, pet level, eternal/huge rules, and optional player level/XP power assumptions before those assumptions are committed to gameplay code.
 - Huge-and-above provenance is now captured as separate hatcher metadata. Future grants stamp `hatcher_name`/`hatcher_user_id` for pets meeting the configured provenance threshold; `grant_source` remains non-displayed audit data. `tests/studio/BackfillPetHatcherProvenance.lua` can backfill existing qualifying pets for the current Studio player.
 - Pet tooltip metadata visibility is driven by `configs/inventory.lua` `tooltip_fields`, so fields can be hidden, labeled, or ordered without editing `InventoryPanel`.
@@ -105,6 +108,16 @@ Last checked: 2026-05-27
 - Phase 2 regression smoke still passes after Phase 3 profile/inventory changes: `Phase2ProgressionSmoke`.
 - `EternalPowerSmoke` exists as a Studio runner for verifying cached eternal pet power after Rojo sync/restart.
 
+## Phase 4 Verification
+
+Last checked: 2026-05-27
+
+- Rojo 7.6.1 build: passes with `mise exec -- rojo build --output /tmp/rbx-template-phase4-enchants.rbxl`.
+- Targeted Selene for touched Phase 4 files/configs/tests: 0 errors, existing warnings only in older bootstrap/inventory/breakable/config files.
+- `python3 scripts/wiki_status.py`: passes.
+- `git diff --check`: passes.
+- `Phase4PetProgressionSmoke` passes through Studio MCP after Rojo sync/restart. It granted a Huge Rainbow Colorado, verified a hatch-time enchant, awarded `25` pet XP from a `BigBlueCrystal` breakable context, rerolled enchant slot `1`, and restored profile state.
+
 ## Admin/Map Test Verification
 
 Last checked: 2026-05-27
@@ -123,10 +136,10 @@ Those documents define the planned foundation work: stats, modifier pipeline, sa
 
 ## Next Likely Work
 
-Continue Phase 4 progression-depth work while keeping cleanup space for Studio and tooling warnings:
+Continue Phase 4 polish while keeping cleanup space for Studio and tooling warnings:
 
-1. Build Phase 4 enchant behavior on top of the new rarity-slot config: hatch-time enchant rolls, manual enchant/reroll UI, modifier semantics, and stack-to-unique promotion for existing stackable pets that become enchantable.
-2. Choose first live pet XP sources and balance them against the offline team-power calculator.
+1. Run `Phase4PetProgressionSmoke` in Studio after Rojo sync, then update this page with the result.
+2. Add player-facing UI around the server-authoritative enchant reroll path.
 3. Decide whether player level modifies team power directly, gates content, or only affects luck/unlocks.
 4. Expand the authored-map workflow with visible gate art/fixtures attached to the invisible `TeleportPad`/`Portal` hooks.
 5. Clean up warning-level placeholder/test data in monetization, UI style rules, and saved effects.

@@ -1039,7 +1039,7 @@ function InventoryService:_createValueObject(name, value)
     end
 
     if valueObj then
-        valueObj.Name = name
+        valueObj.Name = tostring(name)
     end
 
     return valueObj

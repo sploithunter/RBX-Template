@@ -723,6 +723,8 @@ function ConfigLoader:ValidateConfig(configName, config)
         return self:_validatePetIndexConfig(config)
     elseif configName == "pet_progression" then
         return self:_validatePetProgressionConfig(config)
+    elseif configName == "enchants" then
+        return self:_validateEnchantsConfig(config)
     elseif configName == "achievements" then
         return self:_validateAchievementsConfig(config)
     elseif configName == "leaderboards" then
@@ -2618,6 +2620,283 @@ function ConfigLoader:_validatePetProgressionConfig(config)
                     "expected non-negative integer"
                 )
             end
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_validateEnchantStrength(config, path)
+    if type(config) ~= "table" then
+        return self:_configError("enchants", path, "expected table")
+    end
+
+    local ok, err = self:_requirePositiveNumber("enchants", config.low, path .. ".low")
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requirePositiveNumber("enchants", config.high, path .. ".high")
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requirePositiveNumber("enchants", config.scale, path .. ".scale")
+    if not ok then
+        return ok, err
+    end
+
+    for _, key in ipairs({ "low", "high", "scale" }) do
+        if config[key] % 1 ~= 0 then
+            return self:_configError("enchants", path .. "." .. key, "expected positive integer")
+        end
+    end
+    if config.high < config.low then
+        return self:_configError("enchants", path .. ".high", "must be >= low")
+    end
+
+    return true
+end
+
+function ConfigLoader:_validateEnchantsConfig(config)
+    local ok, err = self:_requireType("enchants", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    ok, err = self:_requireType("enchants", config.version, "string", "version")
+    if not ok then
+        return ok, err
+    end
+    if config.enabled ~= nil and type(config.enabled) ~= "boolean" then
+        return self:_configError("enchants", "enabled", "expected boolean")
+    end
+
+    local hatchRolls = config.hatch_rolls
+    if type(hatchRolls) ~= "table" then
+        return self:_configError("enchants", "hatch_rolls", "expected table")
+    end
+    if hatchRolls.enabled ~= nil and type(hatchRolls.enabled) ~= "boolean" then
+        return self:_configError("enchants", "hatch_rolls.enabled", "expected boolean")
+    end
+    if
+        hatchRolls.require_unlocked_slot ~= nil
+        and type(hatchRolls.require_unlocked_slot) ~= "boolean"
+    then
+        return self:_configError(
+            "enchants",
+            "hatch_rolls.require_unlocked_slot",
+            "expected boolean"
+        )
+    end
+
+    local reroll = config.reroll
+    if type(reroll) ~= "table" then
+        return self:_configError("enchants", "reroll", "expected table")
+    end
+    if reroll.enabled ~= nil and type(reroll.enabled) ~= "boolean" then
+        return self:_configError("enchants", "reroll.enabled", "expected boolean")
+    end
+    ok, err = self:_requirePositiveNumber(
+        "enchants",
+        reroll.default_slot or 1,
+        "reroll.default_slot"
+    )
+    if not ok then
+        return ok, err
+    end
+    if (reroll.default_slot or 1) % 1 ~= 0 then
+        return self:_configError("enchants", "reroll.default_slot", "expected positive integer")
+    end
+    if type(reroll.cost) ~= "table" then
+        return self:_configError("enchants", "reroll.cost", "expected table")
+    end
+    if not self:_currencyExists(reroll.cost.currency) then
+        return self:_configError("enchants", "reroll.cost.currency", "must reference currencies")
+    end
+    ok, err = self:_requireNonNegativeNumber("enchants", reroll.cost.amount, "reroll.cost.amount")
+    if not ok then
+        return ok, err
+    end
+
+    local effects = config.effects
+    if type(effects) ~= "table" then
+        return self:_configError("enchants", "effects", "expected table")
+    end
+
+    local economy = self:_rawConfig("economy")
+    local stages = economy
+        and economy.modifier_pipeline
+        and economy.modifier_pipeline.stages
+        or {}
+    local allowedCombine = {
+        add = true,
+        multiply = true,
+        override = true,
+        cap = true,
+    }
+    for effectId, effect in pairs(effects) do
+        local path = "effects." .. tostring(effectId)
+        if not isStableConfigId(effectId) then
+            return self:_configError("enchants", path, "id must match " .. STABLE_CONFIG_ID_PATTERN)
+        end
+        if type(effect) ~= "table" then
+            return self:_configError("enchants", path, "expected table")
+        end
+        if type(effect.display_name) ~= "string" or effect.display_name == "" then
+            return self:_configError("enchants", path .. ".display_name", "expected non-empty string")
+        end
+        local modifier = effect.modifier
+        if type(modifier) ~= "table" then
+            return self:_configError("enchants", path .. ".modifier", "expected table")
+        end
+        if not stages[modifier.stage] then
+            return self:_configError(
+                "enchants",
+                path .. ".modifier.stage",
+                "must reference economy.modifier_pipeline.stages"
+            )
+        end
+        if type(modifier.kind) ~= "string" or modifier.kind == "" then
+            return self:_configError("enchants", path .. ".modifier.kind", "expected non-empty string")
+        end
+        if modifier.currency ~= nil and not self:_currencyExists(modifier.currency) then
+            return self:_configError(
+                "enchants",
+                path .. ".modifier.currency",
+                "must reference currencies"
+            )
+        end
+        if type(modifier.combine) ~= "string" or not allowedCombine[modifier.combine] then
+            return self:_configError(
+                "enchants",
+                path .. ".modifier.combine",
+                "must be add, multiply, override, or cap"
+            )
+        end
+        ok, err = self:_requireNonNegativeNumber(
+            "enchants",
+            modifier.amount_per_strength,
+            path .. ".modifier.amount_per_strength"
+        )
+        if not ok then
+            return ok, err
+        end
+    end
+
+    local pets = self:_rawConfig("pets")
+    local rarities = pets and pets.rarities or {}
+    local rarityProfiles = config.rarity_profiles
+    if type(rarityProfiles) ~= "table" then
+        return self:_configError("enchants", "rarity_profiles", "expected table")
+    end
+    for rarityId, profileId in pairs(rarityProfiles) do
+        if not rarities[rarityId] then
+            return self:_configError(
+                "enchants",
+                "rarity_profiles." .. tostring(rarityId),
+                "must reference pets.rarities"
+            )
+        end
+        if type(profileId) ~= "string" then
+            return self:_configError(
+                "enchants",
+                "rarity_profiles." .. tostring(rarityId),
+                "expected string"
+            )
+        end
+    end
+
+    local profiles = config.roll_profiles
+    if type(profiles) ~= "table" then
+        return self:_configError("enchants", "roll_profiles", "expected table")
+    end
+    for profileId, profile in pairs(profiles) do
+        local profilePath = "roll_profiles." .. tostring(profileId)
+        if not isStableConfigId(profileId) then
+            return self:_configError(
+                "enchants",
+                profilePath,
+                "id must match " .. STABLE_CONFIG_ID_PATTERN
+            )
+        end
+        if type(profile) ~= "table" then
+            return self:_configError("enchants", profilePath, "expected table")
+        end
+        ok, err = self:_requireNonNegativeNumber(
+            "enchants",
+            profile.min_rolls,
+            profilePath .. ".min_rolls"
+        )
+        if not ok then
+            return ok, err
+        end
+        ok, err = self:_requireNonNegativeNumber(
+            "enchants",
+            profile.max_rolls,
+            profilePath .. ".max_rolls"
+        )
+        if not ok then
+            return ok, err
+        end
+        if profile.min_rolls % 1 ~= 0 or profile.max_rolls % 1 ~= 0 then
+            return self:_configError("enchants", profilePath, "roll counts must be integers")
+        end
+        if profile.max_rolls < profile.min_rolls then
+            return self:_configError("enchants", profilePath .. ".max_rolls", "must be >= min_rolls")
+        end
+        ok, err = self:_requireNonNegativeNumber(
+            "enchants",
+            profile.initial_roll_chance,
+            profilePath .. ".initial_roll_chance"
+        )
+        if not ok then
+            return ok, err
+        end
+        if profile.initial_roll_chance > 1 then
+            return self:_configError(
+                "enchants",
+                profilePath .. ".initial_roll_chance",
+                "must be between 0 and 1"
+            )
+        end
+        if
+            profile.prevent_duplicate_effects ~= nil
+            and type(profile.prevent_duplicate_effects) ~= "boolean"
+        then
+            return self:_configError(
+                "enchants",
+                profilePath .. ".prevent_duplicate_effects",
+                "expected boolean"
+            )
+        end
+        if not isArray(profile.chances) then
+            return self:_configError("enchants", profilePath .. ".chances", "expected array")
+        end
+        for index, chance in ipairs(profile.chances) do
+            local path = profilePath .. ".chances[" .. index .. "]"
+            if type(chance) ~= "table" then
+                return self:_configError("enchants", path, "expected table")
+            end
+            if type(chance.effect) ~= "string" or not effects[chance.effect] then
+                return self:_configError("enchants", path .. ".effect", "must reference effects")
+            end
+            ok, err = self:_requirePositiveNumber("enchants", chance.weight, path .. ".weight")
+            if not ok then
+                return ok, err
+            end
+            ok, err = self:_validateEnchantStrength(chance.strength, path .. ".strength")
+            if not ok then
+                return ok, err
+            end
+        end
+    end
+
+    for rarityId, profileId in pairs(rarityProfiles) do
+        if not profiles[profileId] then
+            return self:_configError(
+                "enchants",
+                "rarity_profiles." .. tostring(rarityId),
+                "must reference roll_profiles"
+            )
         end
     end
 

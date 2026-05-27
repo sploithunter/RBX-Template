@@ -17,6 +17,7 @@ function PetGrantService.new()
     self._inventoryService = nil
     self._petSerialService = nil
     self._petProgressionService = nil
+    self._enchantService = nil
     self._petsConfig = nil
     return self
 end
@@ -28,6 +29,7 @@ function PetGrantService:Init()
     self._inventoryService = self._modules.InventoryService
     self._petSerialService = self._modules.PetSerialService
     self._petProgressionService = self._modules.PetProgressionService
+    self._enchantService = self._modules.EnchantService
     self._petsConfig = self._configLoader:LoadConfig("pets")
 
     self._logger:Info("PetGrantService initialized", {
@@ -165,6 +167,14 @@ function PetGrantService:BuildPetData(request, player)
     end
     if self._petProgressionService then
         self._petProgressionService:ApplyProgression(petData, petConfig)
+    end
+    if
+        self._enchantService
+        and self._enchantService.RollInitialEnchantments
+        and self._petsConfig.enchanting
+        and self._petsConfig.enchanting.hatch_rolls_enabled == true
+    then
+        self._enchantService:RollInitialEnchantments(player, petData, petConfig, grant.source)
     end
     self:_applyProvenance(petData, player)
 

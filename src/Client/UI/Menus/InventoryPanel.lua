@@ -1269,6 +1269,42 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
         return 0
     end
 
+    local function readEnchantSummaries(folder)
+        local summaries = {}
+        if not folder then
+            return summaries
+        end
+
+        local enchantFolder = folder:FindFirstChild("enchantments")
+            or folder:FindFirstChild("Enchantments")
+        if not enchantFolder or not enchantFolder:IsA("Folder") then
+            return summaries
+        end
+
+        local children = enchantFolder:GetChildren()
+        table.sort(children, function(a, b)
+            return tostring(a.Name) < tostring(b.Name)
+        end)
+        for _, child in ipairs(children) do
+            if child:IsA("Folder") then
+                local id = readStringValue(child, { "id", "Id" })
+                local displayName = readStringValue(child, { "display_name", "DisplayName" })
+                    or id
+                    or child.Name
+                local strength = readNumberValue(child, { "strength", "Strength", "value", "Value" })
+                local profile = readStringValue(child, { "roll_profile", "RollProfile" })
+                table.insert(summaries, {
+                    id = id,
+                    displayName = displayName,
+                    strength = strength,
+                    profile = profile,
+                })
+            end
+        end
+
+        return summaries
+    end
+
     local function readPrimitiveValues(folder)
         local values = {}
         if not folder then
@@ -1413,6 +1449,7 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                     end
                     local enchantmentCount =
                         countFolderChildren(uidFolder, { "enchantments", "Enchantments" })
+                    local enchantments = readEnchantSummaries(uidFolder)
                     local enchantable = maxEnchantments > 0
                         or (storedEnchantable == true and storedRarityId == rarityId)
                     local level = readNumberValue(uidFolder, { "level", "Level" }) or 1
@@ -1460,6 +1497,7 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                         maxEnchantments = maxEnchantments,
                         unlockedEnchantSlots = unlockedEnchantSlots,
                         enchantmentCount = enchantmentCount,
+                        enchantments = enchantments,
                         uid = uidFolder.Name,
                         folder_source = "pets",
                         petType = petType,
@@ -2923,6 +2961,14 @@ function InventoryPanel:_showItemTooltip(item)
             value = value .. "/0 (max " .. tostring(maxEnchantments) .. ")"
         end
         table.insert(lines, { label = "Enchants", value = value })
+        for index, enchant in ipairs(item.enchantments or {}) do
+            local strength = tonumber(enchant.strength)
+            local suffix = strength and (" +" .. self:_formatNumber(strength)) or ""
+            table.insert(lines, {
+                label = "Enchant " .. tostring(index),
+                value = tostring(enchant.displayName or enchant.id or "-") .. suffix,
+            })
+        end
     elseif item.enchantmentCount and item.enchantmentCount > 0 then
         table.insert(lines, { label = "Enchants", value = tostring(item.enchantmentCount) })
     else

@@ -31,6 +31,8 @@ local petIndexService
 local achievementsService
 local leaderboardService
 local petGrantService
+local petProgressionService
+local enchantService
 
 local sessions = {}
 local travelSessions = {}
@@ -125,6 +127,8 @@ function StudioSmokeTestService:Init()
     achievementsService = self._modules.AchievementsService
     leaderboardService = self._modules.LeaderboardService
     petGrantService = self._modules.PetGrantService
+    petProgressionService = self._modules.PetProgressionService
+    enchantService = self._modules.EnchantService
 end
 
 function StudioSmokeTestService:Start()
@@ -197,6 +201,8 @@ function StudioSmokeTestService:_handleRequest(player, action, payload)
         return self:_backfillPetPowerSourceOfTruth(player, payload)
     elseif action == "CheckEternalPowerSmoke" then
         return self:_checkEternalPowerSmoke(player)
+    elseif action == "RunPhase4PetProgressionSmoke" then
+        return self:_runPhase4PetProgressionSmoke(player, payload)
     elseif action == "CleanupColoradoGrantOrphans" then
         return self:_cleanupColoradoGrantOrphans(player)
     end
@@ -246,6 +252,121 @@ function StudioSmokeTestService:_cleanupColoradoGrantOrphans(player)
     return {
         ok = true,
         removed = removed,
+    }
+end
+
+function StudioSmokeTestService:_runPhase4PetProgressionSmoke(player, payload)
+    payload = type(payload) == "table" and payload or {}
+    if not dataService:IsDataLoaded(player) then
+        return {
+            ok = false,
+            error = "Player data is not loaded",
+        }
+    end
+    if not petGrantService or not petProgressionService or not enchantService then
+        return {
+            ok = false,
+            error = "Phase 4 services unavailable",
+        }
+    end
+
+    local data = dataService:GetData(player)
+    local snapshot = {
+        Inventory = deepCopy(data.Inventory),
+        Equipped = deepCopy(data.Equipped),
+        Currencies = deepCopy(data.Currencies),
+    }
+
+    local function restore()
+        data.Inventory = snapshot.Inventory
+        data.Equipped = snapshot.Equipped
+        data.Currencies = snapshot.Currencies
+        if inventoryService and inventoryService._updateBucketFolders then
+            inventoryService:_updateBucketFolders(player, "pets")
+        end
+        if inventoryService and inventoryService._updateEquippedFolders then
+            inventoryService:_updateEquippedFolders(player, "pets")
+        end
+    end
+
+    local ok, result = pcall(function()
+        local grant = petGrantService:GrantPet(player, {
+            petType = payload.petType or "colorado",
+            variant = payload.variant or "rainbow",
+            huge = payload.huge ~= false,
+            source = "phase4_pet_progression_smoke",
+        })
+        if not grant.ok then
+            error(grant.error or "grant_failed")
+        end
+
+        local petData = data.Inventory.pets.items[grant.uid]
+        if type(petData) ~= "table" then
+            error("Granted pet missing from inventory")
+        end
+
+        local enchantCount = type(petData.enchantments) == "table" and #petData.enchantments or 0
+        if enchantCount <= 0 then
+            error("Expected granted pet to roll at least one hatch enchant")
+        end
+
+        data.Equipped = data.Equipped or {}
+        data.Equipped.pets = data.Equipped.pets or {}
+        data.Equipped.pets.slot_1 = grant.uid
+        if inventoryService and inventoryService._updateEquippedFolders then
+            inventoryService:_updateEquippedFolders(player, "pets")
+        end
+
+        local xpResult = petProgressionService:AwardBreakableDestroyed(player, {
+            world = "Spawn",
+            crystalName = "BigBlueCrystal",
+            currency = "crystals",
+            source = "Phase4PetProgressionSmoke",
+        })
+        if not xpResult.ok or (xpResult.awarded or 0) <= 0 then
+            error("Expected breakable XP to award to equipped unique pet")
+        end
+        if (tonumber(petData.exp) or 0) <= 0 and (tonumber(petData.level) or 1) <= 1 then
+            error("Expected pet XP or level to increase")
+        end
+
+        data.Currencies = data.Currencies or {}
+        data.Currencies.gems = math.max(tonumber(data.Currencies.gems) or 0, 5)
+        local reroll = enchantService:RerollPetEnchant(player, {
+            petUid = grant.uid,
+            slot = 1,
+            source = "phase4_pet_progression_smoke",
+        })
+        if not reroll.ok then
+            error("Expected enchant reroll to succeed: " .. tostring(reroll.reason))
+        end
+
+        return {
+            uid = grant.uid,
+            enchantCount = enchantCount,
+            firstEnchant = petData.enchantments[1],
+            rerolledEnchant = reroll.enchant,
+            xp = xpResult.xp,
+            level = petData.level,
+            exp = petData.exp,
+            unlockedEnchantSlots = petData.unlocked_enchant_slots,
+            maxEnchantments = petData.max_enchantments,
+        }
+    end)
+
+    restore()
+
+    if not ok then
+        return {
+            ok = false,
+            error = tostring(result),
+        }
+    end
+
+    return {
+        ok = true,
+        restored = true,
+        result = result,
     }
 end
 

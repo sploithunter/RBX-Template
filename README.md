@@ -4,13 +4,13 @@ A configuration-as-code Roblox pet/clicker template built with Rojo. The project
 
 ## Current Checkpoint
 
-Phase 3 is complete for the current baseline. The repo is ready to move deeper into Phase 4.
+Phase 3 is complete for the current baseline. Phase 4's core pet progression/enchant baseline is in progress.
 
 - Phase 0: foundations complete.
 - Phase 1: map integration contract complete for synthetic and partial authored maps.
 - Phase 2: economy depth complete for the current baseline.
 - Phase 3: stats-derived wins complete: pet index, achievements, and live leaderboards.
-- Phase 4: foundation has begun: unique pet XP/levels, enchant-slot unlock milestones, eternal/huge pet handling, source-of-truth pet power, and offline balance tooling.
+- Phase 4: core progression/enchant systems are active: unique pet XP/levels, enchant-slot unlock milestones, hatch-time enchant rolls, manual reroll service hooks, enchant modifier providers, eternal/huge pet handling, source-of-truth pet power, and offline balance tooling.
 
 ## Core Loop
 
@@ -35,6 +35,7 @@ Important configs:
 - `configs/game.lua`: feature flags and global settings.
 - `configs/pets.lua`: pet families, rarity, variant multipliers, asset ids, transforms, eternal settings, and enchant capacity.
 - `configs/pet_progression.lua`: unique-pet XP curves, level caps, power growth, and enchant-slot unlocks.
+- `configs/enchants.lua`: enchant effects, rarity roll profiles, roll counts, chance weights, strength ranges, reroll costs, and modifier mappings.
 - `configs/areas.lua`: zone tree and area unlock requirements.
 - `configs/markers.lua`: Studio-authored map marker contract.
 - `configs/breakables.lua`: crystals, spawn tables, and world/area spawner settings.
@@ -42,6 +43,8 @@ Important configs:
 - `configs/pet_index.lua`, `configs/achievements.lua`, `configs/leaderboards.lua`: Phase 3 stats-derived systems.
 
 Durable pet power has a single source of truth in `configs/pets.lua`: family base power plus variant multipliers. Saved pet inventory records should store identity and mutable per-copy state such as level, XP, enchants, serials, hatcher metadata, lock state, and Huge/Eternal traits, but not power values.
+
+Enchant chance also has a single source of truth in `configs/enchants.lua`. Services read configured rarity profiles, weighted chance entries, slot counts, and strength ranges; saved pets store the rolled enchant identity/strength, while modifier semantics remain configurable.
 
 ## AI And Wiki Workflow
 
@@ -101,6 +104,7 @@ return require(game:GetService("ReplicatedStorage").Tests.studio.GrantColoradoTe
 return require(game:GetService("ReplicatedStorage").Tests.studio.BackfillPetHatcherProvenance).runText()
 return require(game:GetService("ReplicatedStorage").Tests.studio.BackfillPetPowerSourceOfTruth).runText()
 return require(game:GetService("ReplicatedStorage").Tests.studio.EternalPowerSmoke).runText()
+return require(game:GetService("ReplicatedStorage").Tests.studio.Phase4PetProgressionSmoke).runText()
 ```
 
 ## Project Structure
@@ -126,16 +130,13 @@ Latest local checkpoint:
 - `python3 scripts/wiki_status.py`: passes.
 - `git diff --check`: passes.
 - Phase 3 Studio smoke coverage exists for pet index, achievements, leaderboards, and Phase 2 regressions.
+- `Phase4PetProgressionSmoke`: passes in Studio for hatch enchants, breakable XP, manual reroll, and profile restoration.
 
 See `docs/wiki/CURRENT_STATUS.md` for detailed verification history and `docs/IMPLEMENTATION_PLAN.md` for the phase roadmap.
 
 ## Next Phase
 
-Phase 4 should build on the current pet progression foundation:
+Remaining Phase 4-adjacent work:
 
-- Hatch-time enchant rolls.
-- Manual enchant/reroll flow.
-- Modifier semantics for enchants.
-- Live pet XP sources and balancing.
 - Stack-to-unique promotion for normal pets that receive per-copy state.
 - Rebirth design only if it remains dramatic and meaningfully different from old ColorfulClickers-style multiplier rebirths.

@@ -25,6 +25,7 @@ local logger
 local configLoader
 local eventService
 local worldBindingService
+local petProgressionService
 
 -- Local state
 local breakablesConfig
@@ -253,6 +254,7 @@ function BreakableSpawner:Init()
     configLoader = self._modules.ConfigLoader
     eventService = self._modules.EventService
     worldBindingService = self._modules.WorldBindingService
+    petProgressionService = self._modules.PetProgressionService
 
     -- Load config (safe)
     local ok, cfg = pcall(function()
@@ -1152,6 +1154,15 @@ function BreakableSpawner:_trySpawnOne(
                                 )
                                 if stats then
                                     stats:Increment(plr, "breakables_broken", 1)
+                                end
+                                if petProgressionService and petProgressionService.AwardBreakableDestroyed then
+                                    petProgressionService:AwardBreakableDestroyed(plr, {
+                                        world = model:GetAttribute("World"),
+                                        breakableId = model:GetAttribute("BreakableId"),
+                                        crystalName = model:GetAttribute("CrystalName"),
+                                        currency = currencyType,
+                                        source = "BreakableSpawner",
+                                    })
                                 end
                             end)
                         end

@@ -149,7 +149,11 @@ loader:RegisterModule(
     "BreakableSpawner",
     ServerScriptService.Server.Services.BreakableSpawner,
     appendIfEnabled(
-        appendIfEnabled({ "Logger", "ConfigLoader" }, "global_events", "EventService"),
+        appendIfEnabled(
+            appendIfEnabled({ "Logger", "ConfigLoader" }, "global_events", "EventService"),
+            "pet_progression",
+            "PetProgressionService"
+        ),
         "map_binding",
         "WorldBindingService"
     )
@@ -231,7 +235,21 @@ registerFeatureModule(
     "pet_progression",
     "PetProgressionService",
     ServerScriptService.Server.Services.PetProgressionService,
-    { "Logger", "ConfigLoader", "DataService", "InventoryService" }
+    appendIfEnabled(
+        { "Logger", "ConfigLoader", "DataService", "InventoryService" },
+        "modifiers",
+        "ModifierService"
+    )
+)
+registerFeatureModule(
+    "enchants",
+    "EnchantService",
+    ServerScriptService.Server.Services.EnchantService,
+    appendIfEnabled(
+        { "Logger", "ConfigLoader", "DataService", "InventoryService" },
+        "modifiers",
+        "ModifierService"
+    )
 )
 loader:RegisterModule(
     "PetSerialService",
@@ -242,7 +260,11 @@ loader:RegisterModule(
     "PetGrantService",
     ServerScriptService.Server.Services.PetGrantService,
     appendIfEnabled(
-        { "Logger", "ConfigLoader", "DataService", "InventoryService", "PetSerialService" },
+        appendIfEnabled(
+            { "Logger", "ConfigLoader", "DataService", "InventoryService", "PetSerialService" },
+            "enchants",
+            "EnchantService"
+        ),
         "pet_progression",
         "PetProgressionService"
     )
@@ -290,6 +312,8 @@ if RunService:IsStudio() then
     appendIfEnabled(studioSmokeDeps, "pet_index", "PetIndexService")
     appendIfEnabled(studioSmokeDeps, "achievements", "AchievementsService")
     appendIfEnabled(studioSmokeDeps, "leaderboards", "LeaderboardService")
+    appendIfEnabled(studioSmokeDeps, "pet_progression", "PetProgressionService")
+    appendIfEnabled(studioSmokeDeps, "enchants", "EnchantService")
     table.insert(studioSmokeDeps, "PetGrantService")
 
     loader:RegisterModule(
@@ -359,6 +383,8 @@ appendIfEnabled(requiredModules, "auto_target", "AutoTargetService")
 appendIfEnabled(requiredModules, "pet_index", "PetIndexService")
 appendIfEnabled(requiredModules, "achievements", "AchievementsService")
 appendIfEnabled(requiredModules, "leaderboards", "LeaderboardService")
+appendIfEnabled(requiredModules, "pet_progression", "PetProgressionService")
+appendIfEnabled(requiredModules, "enchants", "EnchantService")
 if RunService:IsStudio() then
     table.insert(requiredModules, "StudioSmokeTestService")
 end

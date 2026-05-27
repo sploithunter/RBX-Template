@@ -23,7 +23,7 @@ return {
         upgrades = true,
         pet_progression = true,
         rebirths = false,
-        enchants = false,
+        enchants = true,
         achievements = true,
         leaderboards = true,
         pet_index = true,

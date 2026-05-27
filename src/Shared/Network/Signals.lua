@@ -54,6 +54,8 @@ local Signals = {
     ConsumeItem = Net:RemoteEvent("ConsumeItem"), -- c->s consume consumable
     TogglePetEquipped = Net:RemoteEvent("TogglePetEquipped"), -- c->s equip/unequip pet
     ToggleToolEquipped = Net:RemoteEvent("ToggleToolEquipped"), -- c->s equip/unequip tool
+    EnchantPetRequest = Net:RemoteEvent("EnchantPetRequest"), -- c->s reroll/apply pet enchant
+    EnchantPetResult = Net:RemoteEvent("EnchantPetResult"), -- s->c enchant action result
 
     -- User Display Preferences
     SaveDisplayPreferences = Net:RemoteEvent("SaveDisplayPreferences"),

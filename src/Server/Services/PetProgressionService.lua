@@ -15,6 +15,7 @@ function PetProgressionService.new()
     self._configLoader = nil
     self._dataService = nil
     self._inventoryService = nil
+    self._modifierService = nil
     self._config = nil
     self._petsConfig = nil
     return self
@@ -25,6 +26,7 @@ function PetProgressionService:Init()
     self._configLoader = self._modules.ConfigLoader
     self._dataService = self._modules.DataService
     self._inventoryService = self._modules.InventoryService
+    self._modifierService = self._modules.ModifierService
     self._config = self._configLoader:LoadConfig("pet_progression")
     self._petsConfig = self._configLoader:LoadConfig("pets")
 
@@ -211,6 +213,102 @@ function PetProgressionService:AddPetExperience(player, petUid, amount, reason)
             unlockedEnchantSlots = petData.unlocked_enchant_slots or 0,
             maxEnchantments = petData.max_enchantments or 0,
         }
+end
+
+function PetProgressionService:_getBreakableDestroyBaseXp(context)
+    local sources = self._config.xp_sources or {}
+    local destroy = sources.breakable_destroy or {}
+    if destroy.enabled ~= true then
+        return 0
+    end
+
+    context = type(context) == "table" and context or {}
+    local byBreakable = destroy.xp_by_breakable or {}
+    local breakableId = context.breakableId or context.crystalName
+    local xp = breakableId and byBreakable[breakableId] or nil
+    if xp == nil then
+        local byWorld = destroy.xp_by_world or destroy.xp_by_area or {}
+        xp = context.world and byWorld[context.world] or nil
+    end
+    if xp == nil then
+        xp = destroy.default_xp
+    end
+    return math.max(0, math.floor(tonumber(xp) or 0))
+end
+
+function PetProgressionService:_resolveXpAmount(player, baseXp, context)
+    baseXp = math.max(0, math.floor(tonumber(baseXp) or 0))
+    if baseXp <= 0 then
+        return 0
+    end
+    if not self._modifierService or not self._modifierService.Resolve then
+        return baseXp
+    end
+
+    local modifierContext = type(context) == "table" and table.clone(context) or {}
+    modifierContext.player = player
+    modifierContext.kind = "pet_xp"
+    modifierContext.source = modifierContext.source or "PetProgressionService"
+
+    local resolved = self._modifierService:Resolve(baseXp, modifierContext)
+    return math.max(0, math.floor(tonumber(resolved) or baseXp))
+end
+
+function PetProgressionService:GetEquippedUniquePetUids(player)
+    local data = self._dataService:GetData(player)
+    local equipped = data and data.Equipped and data.Equipped.pets
+    local items = data and data.Inventory and data.Inventory.pets and data.Inventory.pets.items
+    if type(equipped) ~= "table" or type(items) ~= "table" then
+        return {}
+    end
+
+    local uids = {}
+    for _, uid in pairs(equipped) do
+        if type(uid) == "string" and not string.match(uid, "^stack|") then
+            local petData = items[uid]
+            if type(petData) == "table" and petData._kind == "special" then
+                table.insert(uids, uid)
+            end
+        end
+    end
+    return uids
+end
+
+function PetProgressionService:AwardBreakableDestroyed(player, context)
+    if not self:IsEnabled() or not player then
+        return {
+            ok = false,
+            reason = "pet_progression_disabled",
+        }
+    end
+
+    local baseXp = self:_getBreakableDestroyBaseXp(context)
+    local xp = self:_resolveXpAmount(player, baseXp, context)
+    if xp <= 0 then
+        return {
+            ok = true,
+            xp = 0,
+            awarded = 0,
+        }
+    end
+
+    local awarded = 0
+    local results = {}
+    for _, uid in ipairs(self:GetEquippedUniquePetUids(player)) do
+        local ok, result = self:AddPetExperience(player, uid, xp, "breakable_destroy")
+        if ok then
+            awarded += 1
+            results[uid] = result
+        end
+    end
+
+    return {
+        ok = true,
+        xp = xp,
+        baseXp = baseXp,
+        awarded = awarded,
+        results = results,
+    }
 end
 
 return PetProgressionService
