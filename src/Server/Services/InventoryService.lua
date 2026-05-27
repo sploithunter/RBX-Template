@@ -43,6 +43,7 @@ function InventoryService:Init()
     self._dataService = self._modules.DataService
     self._configLoader = self._modules.ConfigLoader
     self._upgradeService = self._modules.UpgradeService
+    self._playerProgressionService = self._modules.PlayerProgressionService
     self._petIndexService = nil
 
     print("📦 InventoryService dependencies injected")
@@ -57,6 +58,7 @@ function InventoryService:Init()
     -- Track player inventory folders for replication
     self._playerInventoryFolders = {}
     self._playerEquippedFolders = {}
+    self._playerLevelConnections = {}
 
     self._logger:Info("📦 InventoryService initializing", {
         enabledBuckets = self._inventoryConfig.enabled_buckets,
@@ -86,6 +88,7 @@ function InventoryService:Start()
         if self._dataService:IsDataLoaded(player) then
             print("📂 Creating folders for existing player:", player.Name)
             self:_createInventoryFolders(player)
+            self:_connectPlayerLevelRewards(player)
         end
     end
 
@@ -557,6 +560,7 @@ function InventoryService:_onPlayerAdded(player)
 
         if self._dataService:IsDataLoaded(player) then
             self:_createInventoryFolders(player)
+            self:_connectPlayerLevelRewards(player)
         else
             self._logger:Warn("⚠️ REPLICATION - Player data not loaded in time", {
                 player = player.Name,
@@ -567,6 +571,12 @@ function InventoryService:_onPlayerAdded(player)
 end
 
 function InventoryService:_onPlayerRemoving(player)
+    local levelConnection = self._playerLevelConnections[player]
+    if levelConnection then
+        levelConnection:Disconnect()
+        self._playerLevelConnections[player] = nil
+    end
+
     -- Cleanup folder references
     self._playerInventoryFolders[player] = nil
     self._playerEquippedFolders[player] = nil
@@ -574,6 +584,16 @@ function InventoryService:_onPlayerRemoving(player)
     self._logger:Debug("🧹 REPLICATION - Cleaned up folder references", {
         player = player.Name,
     })
+end
+
+function InventoryService:_connectPlayerLevelRewards(player)
+    if self._playerLevelConnections[player] then
+        return
+    end
+
+    self._playerLevelConnections[player] = player:GetAttributeChangedSignal("Level"):Connect(function()
+        self:_updateEquippedFolders(player, "pets")
+    end)
 end
 
 function InventoryService:_createInventoryFolders(player)
@@ -1136,6 +1156,13 @@ function InventoryService:_getMaxEquippedSlots(player, category, configuredSlots
 
     if self._upgradeService and self._upgradeService.GetUpgradeEffectTotal then
         extraSlots += self._upgradeService:GetUpgradeEffectTotal(player, "equip_slots", category)
+    end
+
+    if
+        self._playerProgressionService
+        and self._playerProgressionService.GetEquippedPetSlotBonus
+    then
+        extraSlots += self._playerProgressionService:GetEquippedPetSlotBonus(player)
     end
 
     local attributeSlots = tonumber(player:GetAttribute("ExtraPetSlots")) or 0

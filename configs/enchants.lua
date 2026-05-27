@@ -10,8 +10,8 @@
 --
 -- For an effect to be live, some gameplay system must resolve the matching
 -- modifier context through ModifierService. Current live contexts include
--- `kind = "breakable_reward"` and `kind = "pet_xp"`. Other example kinds are
--- template contracts for future systems.
+-- `breakable_reward`, `pet_xp`, `hatch_luck`, `secret_hatch_luck`,
+-- `pet_damage`, `team_power`, and `pet_efficiency`.
 
 return {
     version = "1.0.0",

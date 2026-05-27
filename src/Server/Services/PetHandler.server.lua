@@ -35,6 +35,21 @@ pcall(function()
     petProgressionConfig = require(ReplicatedStorage.Configs.pet_progression)
 end)
 
+local function getLoadedService(serviceName)
+    local registry = _G.RBXTemplateServices
+    if type(registry) ~= "table" or type(registry.Get) ~= "function" then
+        return nil
+    end
+
+    local ok, service = pcall(function()
+        return registry:Get(serviceName)
+    end)
+    if ok then
+        return service
+    end
+    return nil
+end
+
 -- Prevent concurrent loadEquipped runs per-player (which can destroy freshly spawned models)
 local activeLoads: { [Player]: boolean } = {}
 
@@ -482,6 +497,31 @@ local function resolveEffectivePetPower(basePower, eternalPercent, teamContext)
     local baseline = math.max(1, tonumber(teamContext and teamContext.topTeamAverageBasePower) or 1)
     local eternalPower = math.floor((baseline * eternalPercent / 100) + 0.5)
     return math.max(basePower, eternalPower)
+end
+
+local function resolveTeamModifiedPetPower(player, petIdName, petVariantName, effectivePower, teamContext)
+    local modifierService = getLoadedService("ModifierService")
+    if not (modifierService and modifierService.Resolve) then
+        return effectivePower
+    end
+
+    local resolved = effectivePower
+    local ok = pcall(function()
+        resolved = modifierService:Resolve(effectivePower, {
+            player = player,
+            kind = "team_power",
+            petId = petIdName,
+            variant = petVariantName,
+            teamCapacity = teamContext and teamContext.teamCapacity,
+            strongestBasePower = teamContext and teamContext.strongestBasePower,
+            topTeamAverageBasePower = teamContext and teamContext.topTeamAverageBasePower,
+            source = "PetHandler",
+        })
+    end)
+    if not ok then
+        return effectivePower
+    end
+    return math.max(1, math.floor(tonumber(resolved) or effectivePower))
 end
 
 local function upsertNumberValue(parent, name, value)
@@ -1056,6 +1096,13 @@ function loadEquipped(Player)
                 or getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
             local effectivePower =
                 resolveEffectivePetPower(basePower, eternalPercent, teamPowerContext)
+            effectivePower = resolveTeamModifiedPetPower(
+                Player,
+                petIdName,
+                petVariantName,
+                effectivePower,
+                teamPowerContext
+            )
 
             -- Apply temporary override if enabled
             local effectiveIdName = petIdName
@@ -1294,6 +1341,8 @@ function loadEquipped(Player)
                 )
                 PetModel:SetAttribute("BasePower", basePower)
                 PetModel:SetAttribute("EffectivePower", effectivePower)
+                PetModel:SetAttribute("PetType", petIdName)
+                PetModel:SetAttribute("PetVariant", petVariantName)
                 PetModel:SetAttribute("EternalPercent", eternalPercent)
                 PetModel:SetAttribute(
                     "EternalBaselinePower",

@@ -108,6 +108,12 @@ registerFeatureModule(
     ServerScriptService.Server.Services.UpgradeService,
     appendIfEnabled({ "Logger", "ConfigLoader", "DataService" }, "modifiers", "ModifierService")
 )
+registerFeatureModule(
+    "player_progression",
+    "PlayerProgressionService",
+    ServerScriptService.Server.Services.PlayerProgressionService,
+    appendIfEnabled({ "Logger", "ConfigLoader", "DataService" }, "modifiers", "ModifierService")
+)
 loader:RegisterModule(
     "AdminService",
     ServerScriptService.Server.Services.AdminService,
@@ -229,7 +235,11 @@ loader:RegisterModule(
 loader:RegisterModule(
     "InventoryService",
     ServerScriptService.Server.Services.InventoryService,
-    appendIfEnabled({ "Logger", "DataService", "ConfigLoader" }, "upgrades", "UpgradeService")
+    appendIfEnabled(
+        appendIfEnabled({ "Logger", "DataService", "ConfigLoader" }, "upgrades", "UpgradeService"),
+        "player_progression",
+        "PlayerProgressionService"
+    )
 )
 registerFeatureModule(
     "pet_progression",
@@ -309,8 +319,10 @@ if RunService:IsStudio() then
         "EconomyService",
         "BreakableSpawner",
     }
+    appendIfEnabled(studioSmokeDeps, "modifiers", "ModifierService")
     appendIfEnabled(studioSmokeDeps, "stats", "StatsService")
     appendIfEnabled(studioSmokeDeps, "upgrades", "UpgradeService")
+    appendIfEnabled(studioSmokeDeps, "player_progression", "PlayerProgressionService")
     appendIfEnabled(studioSmokeDeps, "map_binding", "WorldBindingService")
     appendIfEnabled(studioSmokeDeps, "map_binding", "ZoneService")
     appendIfEnabled(studioSmokeDeps, "pet_index", "PetIndexService")
@@ -379,6 +391,7 @@ local requiredModules = {
 appendIfEnabled(requiredModules, "stats", "StatsService")
 appendIfEnabled(requiredModules, "modifiers", "ModifierService")
 appendIfEnabled(requiredModules, "upgrades", "UpgradeService")
+appendIfEnabled(requiredModules, "player_progression", "PlayerProgressionService")
 appendIfEnabled(requiredModules, "map_binding", "WorldBindingService")
 appendIfEnabled(requiredModules, "map_binding", "ZoneService")
 appendIfEnabled(requiredModules, "global_events", "EventService")
@@ -410,6 +423,12 @@ local DataService = loader:Get("DataService")
 local PlayerEffectsService = loader:Get("PlayerEffectsService")
 local MonetizationService = loader:Get("MonetizationService")
 local InventoryService = loader:Get("InventoryService")
+
+_G.RBXTemplateServices = {
+    Get = function(_, moduleName)
+        return loader:Get(moduleName)
+    end,
+}
 
 -- Set up cross-references to avoid circular dependencies
 DataService:SetPlayerEffectsService(PlayerEffectsService)

@@ -11,6 +11,37 @@ local function tprint(...)
     end
 end
 
+local function getLoadedService(serviceName)
+    local registry = _G.RBXTemplateServices
+    if type(registry) ~= "table" or type(registry.Get) ~= "function" then
+        return nil
+    end
+
+    local ok, service = pcall(function()
+        return registry:Get(serviceName)
+    end)
+    if ok then
+        return service
+    end
+    return nil
+end
+
+local function resolveModifier(baseValue, context)
+    local modifierService = getLoadedService("ModifierService")
+    if not (modifierService and modifierService.Resolve) then
+        return baseValue
+    end
+
+    local resolved = baseValue
+    local ok = pcall(function()
+        resolved = modifierService:Resolve(baseValue, context)
+    end)
+    if ok then
+        return tonumber(resolved) or baseValue
+    end
+    return baseValue
+end
+
 -- Toggleable stabilization knobs (for A/B testing root cause)
 local ENABLE_MASSLESS = false -- massless now applied pre-parent in PetHandler
 local ENABLE_ZERO_VELOCITY = true
@@ -928,10 +959,19 @@ if Player then
                 -- Apply small periodic damage per pet
                 local hp = breakable:GetAttribute("HP") or 0
                 if hp <= 0 then return end
-                -- Use pet Power directly as damage per tick (default 1)
+                -- Use pet Power as the base damage, then let the shared modifier pipeline adjust it.
                 local powerNV = script.Parent:FindFirstChild("Power")
                 local power = tonumber(powerNV and powerNV.Value) or 1
-                local dmg = math.max(1, math.floor(power))
+                local dmg = resolveModifier(power, {
+                    player = Player,
+                    kind = "pet_damage",
+                    petId = script.Parent:GetAttribute("PetType"),
+                    variant = script.Parent:GetAttribute("PetVariant"),
+                    breakableId = breakable:GetAttribute("BreakableId"),
+                    currency = breakable:GetAttribute("Currency"),
+                    source = "PetFollow",
+                })
+                dmg = math.max(1, math.floor(dmg))
                 local newHp = math.max(0, hp - dmg)
                 breakable:SetAttribute("HP", newHp)
                 -- Record contribution on the crystal if folder exists
@@ -953,7 +993,14 @@ if Player then
             conn.Parent = script
             task.spawn(function()
                 while conn.Parent and script.Parent and TargetID.Value ~= 0 do
-                    task.wait(1)
+                    local efficiency = resolveModifier(1, {
+                        player = Player,
+                        kind = "pet_efficiency",
+                        petId = script.Parent:GetAttribute("PetType"),
+                        variant = script.Parent:GetAttribute("PetVariant"),
+                        source = "PetFollow",
+                    })
+                    task.wait(math.clamp(1 / math.max(0.05, efficiency), 0.2, 2))
                     doDamage()
                 end
                 if conn.Parent then conn:Destroy() end

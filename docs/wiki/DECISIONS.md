@@ -50,7 +50,7 @@ Normal pets should remain stack-count records keyed by canonical pet id + varian
 
 Pet XP and levels are unique-pet progression state. Stack records do not gain XP or levels. Unique pets may scale power from a config-driven XP curve and capped per-level multiplier. Enchant capacity remains the pet's potential slot count, while `unlocked_enchant_slots` is progression-driven; unique enchantable pets start with one unlocked slot and unlock remaining slots at configured level milestones.
 
-Player level must affect gameplay. It should not be cosmetic-only. The first target is a configurable contribution to team power, plus configurable level rewards such as additional equipped-pet slots every N levels. The exact balance curve belongs in config and should feed the shared modifier/equip-limit paths rather than special-case consumers.
+Player level must affect gameplay. It should not be cosmetic-only. Player-level team power and level milestone rewards live in `configs/player_progression.lua`; the service feeds the shared modifier path and inventory equip-limit path rather than special-case consumers. The first reward pattern is additional equipped-pet slots every configured number of levels.
 
 ## Pet Provenance
 

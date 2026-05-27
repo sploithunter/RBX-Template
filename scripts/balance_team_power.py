@@ -8,6 +8,7 @@ rules closely enough for rough tuning:
 
 - variant power comes from configs/pets.lua
 - pet level power scaling comes from configs/pet_progression.lua
+- player level power scaling comes from configs/player_progression.lua
 - eternal pets use the average of the top team-size base powers
 - huge eternal pets clamp to at least 100% of that top-team average
 
@@ -29,6 +30,7 @@ from typing import Iterable
 ROOT = Path(__file__).resolve().parents[1]
 PETS_CONFIG = ROOT / "configs" / "pets.lua"
 PET_PROGRESSION_CONFIG = ROOT / "configs" / "pet_progression.lua"
+PLAYER_PROGRESSION_CONFIG = ROOT / "configs" / "player_progression.lua"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -57,6 +59,13 @@ class PetVariant:
 class ProgressionConfig:
     default_max_level: int
     max_level_by_rarity: dict[str, int]
+    percent_per_level: float
+    max_bonus_percent: float
+
+
+@dataclasses.dataclass(frozen=True)
+class PlayerProgressionConfig:
+    start_level: int
     percent_per_level: float
     max_bonus_percent: float
 
@@ -219,6 +228,19 @@ def load_progression() -> ProgressionConfig:
     )
 
 
+def load_player_progression() -> PlayerProgressionConfig:
+    if not PLAYER_PROGRESSION_CONFIG.exists():
+        return PlayerProgressionConfig(start_level=1, percent_per_level=0.0, max_bonus_percent=0.0)
+
+    source = strip_lua_comments(PLAYER_PROGRESSION_CONFIG.read_text())
+    team_power_body = find_named_table(source, "team_power") or ""
+    return PlayerProgressionConfig(
+        start_level=int(scalar_number(team_power_body, "start_level", 1)),
+        percent_per_level=scalar_number(team_power_body, "percent_per_level", 0),
+        max_bonus_percent=scalar_number(team_power_body, "max_bonus_percent", 0),
+    )
+
+
 def parse_team_pet(raw: str) -> TeamPet:
     parts = raw.split(":")
     if len(parts) < 2:
@@ -241,8 +263,8 @@ def power_multiplier(level: int, progression: ProgressionConfig) -> float:
     return 1.0 + bonus
 
 
-def player_power_multiplier(player_level: int, rate: float, cap: float) -> float:
-    bonus = min(cap, max(0.0, (player_level - 1) * rate))
+def player_power_multiplier(player_level: int, start_level: int, rate: float, cap: float) -> float:
+    bonus = min(cap, max(0.0, (player_level - start_level) * rate))
     return 1.0 + bonus
 
 
@@ -266,10 +288,14 @@ def resolve_team(
     progression: ProgressionConfig,
     team_size: int,
     player_level: int,
-    player_level_rate: float,
-    player_level_cap: float,
+    player_progression: PlayerProgressionConfig,
 ) -> list[ResolvedPet]:
-    p_mult = player_power_multiplier(player_level, player_level_rate, player_level_cap)
+    p_mult = player_power_multiplier(
+        player_level,
+        player_progression.start_level,
+        player_progression.percent_per_level,
+        player_progression.max_bonus_percent,
+    )
 
     first_pass: list[tuple[TeamPet, PetVariant, int]] = []
     for spec in team:
@@ -278,7 +304,7 @@ def resolve_team(
             raise KeyError(f"Unknown pet variant: {spec.pet_id}:{spec.variant}")
         max_level = progression.max_level_by_rarity.get(config.rarity, progression.default_max_level)
         level = min(spec.level, max_level)
-        leveled = max(1, math.floor(config.power * power_multiplier(level, progression) * p_mult))
+        leveled = max(1, math.floor(config.power * power_multiplier(level, progression)))
         first_pass.append((spec, config, leveled))
 
     top_values = sorted((power for _, _, power in first_pass), reverse=True)
@@ -291,7 +317,7 @@ def resolve_team(
         if spec.huge:
             eternal_percent = max(100, eternal_percent)
         eternal_power = round(top_team_average * eternal_percent / 100) if eternal_percent > 0 else 0
-        effective = max(leveled_power, eternal_power)
+        effective = math.floor(max(leveled_power, eternal_power) * p_mult)
         name_prefix = "Huge " if spec.huge else ""
         resolved.append(
             ResolvedPet(
@@ -382,14 +408,13 @@ def main() -> int:
     parser.add_argument("--player-xp", type=int, help="Optional player XP. Used to estimate level when --player-level is omitted.")
     parser.add_argument("--player-xp-base", type=int, default=100)
     parser.add_argument("--player-xp-growth", type=float, default=1.15)
-    parser.add_argument("--player-level-rate", type=float, default=0.0, help="Optional percent bonus per player level, expressed as decimal.")
-    parser.add_argument("--player-level-cap", type=float, default=0.0, help="Optional max player-level bonus, expressed as decimal.")
     parser.add_argument("--pet", action="append", type=parse_team_pet, help="Pet spec: pet:variant[:level][:huge]. Repeat for team.")
     parser.add_argument("--list-pets", action="store_true", help="List configured pet variants and exit.")
     args = parser.parse_args()
 
     pet_configs = load_pets()
     progression = load_progression()
+    player_progression = load_player_progression()
     player_level = args.player_level
     if player_level is None:
         player_level = level_from_xp(args.player_xp, args.player_xp_base, args.player_xp_growth) if args.player_xp is not None else 1
@@ -410,17 +435,18 @@ def main() -> int:
         f"+{progression.percent_per_level * 100:.1f}% power/level, "
         f"cap +{progression.max_bonus_percent * 100:.0f}%"
     )
-    if args.player_level_rate > 0:
+    if player_progression.percent_per_level > 0:
         print(
-            "Player level assumption: "
-            f"level {player_level}, +{args.player_level_rate * 100:.1f}%/level, "
-            f"cap +{args.player_level_cap * 100:.0f}%"
+            "Player progression: "
+            f"level {player_level}, +{player_progression.percent_per_level * 100:.1f}%/level "
+            f"after level {player_progression.start_level}, "
+            f"cap +{player_progression.max_bonus_percent * 100:.0f}%"
         )
     else:
         detail = f"level {player_level}"
         if args.player_xp is not None and args.player_level is None:
             detail += f" estimated from {args.player_xp} XP"
-        print(f"Player level assumption: {detail}; no direct power bonus yet")
+        print(f"Player level assumption: {detail}; no direct power bonus configured")
 
     if args.pet:
         resolved = resolve_team(
@@ -429,8 +455,7 @@ def main() -> int:
             progression,
             args.team_size,
             player_level,
-            args.player_level_rate,
-            args.player_level_cap,
+            player_progression,
         )
         print_team(f"Custom team, player level {player_level}, team size {args.team_size}", resolved)
         return 0
@@ -442,8 +467,7 @@ def main() -> int:
             progression,
             team_size,
             player_level,
-            args.player_level_rate,
-            args.player_level_cap,
+            player_progression,
         )
         print_team(f"{title}, team size {team_size}", resolved)
     return 0

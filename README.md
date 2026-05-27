@@ -4,13 +4,13 @@ A configuration-as-code Roblox pet/clicker template built with Rojo. The project
 
 ## Current Checkpoint
 
-Phase 3 is complete for the current baseline. Phase 4's core pet progression/enchant baseline is in progress.
+Phase 4 is complete for the current baseline. Phase 5 auto systems are the next planned phase.
 
 - Phase 0: foundations complete.
 - Phase 1: map integration contract complete for synthetic and partial authored maps.
 - Phase 2: economy depth complete for the current baseline.
 - Phase 3: stats-derived wins complete: pet index, achievements, and live leaderboards.
-- Phase 4: core progression/enchant systems are active: unique pet XP/levels, enchant-slot unlock milestones, hatch-time enchant rolls, manual reroll service hooks, enchant modifier providers, eternal/huge pet handling, source-of-truth pet power, and offline balance tooling.
+- Phase 4: progression depth complete for the current baseline: unique pet XP/levels, enchant-slot unlock milestones, hatch-time enchant rolls, manual reroll service hooks, enchant modifier providers, player-level team power, configurable level rewards, eternal/huge pet handling, source-of-truth pet power, and offline balance tooling.
 
 ## Current Implemented Features
 
@@ -26,8 +26,11 @@ The playable baseline currently includes:
 - Centralized pet grants through `PetGrantService`, including huge serial allocation and hatcher provenance.
 - Eternal/Huge pet power handling with config-only durable pet power.
 - Unique-pet XP, levels, enchant-slot unlock milestones, and hover-time XP display refresh.
+- Configurable player-level team power and level milestone rewards, starting with extra equipped pet slots.
 - Hatch-time enchants, server-authoritative manual rerolls, and a map-authored enchanter station.
+- Live enchant consumers for breakable rewards, pet XP, hatch luck, secret hatch luck, pet damage, team power, and pet efficiency.
 - Enchanter VFX using a reusable ColorfulClickers-style lightning module plus station-configured endpoints.
+- Enchanter UI descriptions/reveal copy sourced from enchant config.
 - Paid area unlocks, locked-gate prompts/notices, and server-authoritative portal/pad travel.
 - Active-zone breakable spawning so inactive areas stay dormant until entered.
 - Pet index milestones, achievements, and live leaderboard service over shared stats.
@@ -35,14 +38,12 @@ The playable baseline currently includes:
 
 ## In Process / Partially Implemented
 
-These systems exist but still need Phase 4 completion or polish:
+These systems exist but still need polish or later-phase expansion:
 
-- Player-level progression exists as saved stats/UI, but player level does not yet feed team power.
-- Level rewards are not yet configurable; the first target is extra equipped-pet slots on level milestones.
-- Enchant modifier source of truth exists, but only `breakable_reward` and `pet_xp` are live consumers.
-- High-priority enchant consumers still need wiring: `hatch_luck`, `secret_hatch_luck`, `pet_damage`, `team_power`, and `pet_efficiency`.
-- Enchanter UI works, but result explanation/discoverability still needs polish.
-- Offline balance tooling exists, but the player-level power curve still needs implementation and tuning.
+- Player-level and enchant balance values are intentionally first-pass and need tuning from real playtesting.
+- Pet follow/mining still runs through a stabilized legacy cloned script. Phase 4 now routes its damage/cadence through the modifier pipeline, but a cleaner PetWork/Combat service should replace that script.
+- Enchanter UI works and now explains config descriptions, but richer player education such as signs/help panels is still future polish.
+- Offline balance tooling reads the current player-level curve, but it remains a rough calculator rather than a full economy simulator.
 - Authored-map workflow works through markers, but visible production map fixtures/gate art are still early.
 
 ## Planned Features
@@ -55,6 +56,7 @@ Planned or intentionally deferred work:
 - Chaseables, seasonal/event currencies, and more authored-world content.
 - Trading/marketplace with Roblox-native escrow and anti-duplication guarantees.
 - Automated Meshi-to-Roblox asset workflow.
+- Pet follow/mining refactor into a service-owned assignment, cadence, and damage system.
 - Rebirth only if it becomes rare and dramatic; it is deferred out of Phase 4.
 - No generic stack-to-unique promotion flow for normal pets; pets needing per-copy state should be unique from grant/craft/reward time.
 
@@ -67,6 +69,7 @@ Important configs:
 - `configs/game.lua`: feature flags and global settings.
 - `configs/pets.lua`: pet families, rarity, variant multipliers, asset ids, transforms, eternal settings, and enchant capacity.
 - `configs/pet_progression.lua`: unique-pet XP curves, level caps, power growth, and enchant-slot unlocks.
+- `configs/player_progression.lua`: player-level team-power scaling and level reward milestones.
 - `configs/enchants.lua`: enchant effects, rarity roll profiles, roll counts, chance weights, strength ranges, reroll costs, and modifier mappings.
 - `configs/areas.lua`: zone tree and area unlock requirements.
 - `configs/markers.lua`: Studio-authored map marker contract.
@@ -162,10 +165,10 @@ Latest local checkpoint:
 - `python3 scripts/wiki_status.py`: passes.
 - `git diff --check`: passes.
 - Phase 3 Studio smoke coverage exists for pet index, achievements, leaderboards, and Phase 2 regressions.
-- `Phase4PetProgressionSmoke`: passes in Studio for hatch enchants, breakable XP, manual reroll, and profile restoration.
+- `Phase4PetProgressionSmoke`: passes in Studio for hatch enchants, breakable XP, manual reroll, player-level slot rewards, hatch/secret luck, pet damage, team power, pet efficiency, and profile restoration.
 
 See `docs/wiki/CURRENT_STATUS.md` for detailed verification history and `docs/IMPLEMENTATION_PLAN.md` for the phase roadmap.
 
-## Active Phase 4 Work
+## Next Phase
 
-Phase 4 will be considered complete when player level affects team power through config, level rewards can grant equip capacity, the high-priority enchant consumers are live, the enchanter explains rolled enchants clearly enough for playtesting, and the Phase 4 Studio smoke is refreshed.
+Phase 5 is the next planned lane: auto-targeting modes and hatch auto-delete filters. The legacy pet follow/mining script should be replaced with a service-owned PetWork/Combat loop before building much more automation on top of pet work.

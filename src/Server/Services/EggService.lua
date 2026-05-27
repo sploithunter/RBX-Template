@@ -208,6 +208,26 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         playerData.luckBoost = self._eventService:GetModifier("egg_luck", 0)
     end
 
+    if self._modifierService and self._modifierService.Resolve then
+        local baseLuckBoost = tonumber(playerData.luckBoost) or 0
+        local hatchLuck = self._modifierService:Resolve(baseLuckBoost, {
+            player = player,
+            kind = "hatch_luck",
+            eggType = eggType,
+            currency = eggData.currency,
+            source = "EggService",
+        })
+        local secretLuck = self._modifierService:Resolve(0, {
+            player = player,
+            kind = "secret_hatch_luck",
+            eggType = eggType,
+            currency = eggData.currency,
+            source = "EggService",
+        })
+        playerData.luckBoost = tonumber(hatchLuck) or baseLuckBoost
+        playerData.secretLuckBoost = tonumber(secretLuck) or 0
+    end
+
     -- Allow runtime forcing via player attributes for quick testing
     if petConfig.test_mode and petConfig.test_mode.enabled then
         local attrForcePet = player:GetAttribute("ForcePet")
@@ -331,6 +351,7 @@ function EggService:Initialize(moduleLoader)
         self._eventService = moduleLoader:Get("EventService")
         self._statsService = moduleLoader:Get("StatsService")
         self._petGrantService = moduleLoader:Get("PetGrantService")
+        self._modifierService = moduleLoader:Get("ModifierService")
 
         if self._inventoryService then
             Logger:Info("EggService: InventoryService connection established")
@@ -360,6 +381,12 @@ function EggService:Initialize(moduleLoader)
             Logger:Info("EggService: PetGrantService connection established")
         else
             Logger:Warn("EggService: PetGrantService not available in module loader")
+        end
+
+        if self._modifierService then
+            Logger:Info("EggService: ModifierService connection established")
+        else
+            Logger:Warn("EggService: ModifierService not available in module loader")
         end
     else
         Logger:Warn("EggService: No module loader provided")

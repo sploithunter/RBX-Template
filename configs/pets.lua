@@ -907,6 +907,18 @@ function petConfig.simulateHatch(eggType, playerData)
         end
     end
 
+    local secretLuckBoost = tonumber(playerData.secretLuckBoost) or 0
+    if secretLuckBoost > 0 then
+        local adjustedWeights = table.clone(petWeights)
+        for petType, weight in pairs(petWeights) do
+            local petFamily = petConfig.pets[petType]
+            if petFamily and petFamily.rarity == "secret" then
+                adjustedWeights[petType] = weight * (1 + secretLuckBoost)
+            end
+        end
+        petWeights = adjustedWeights
+    end
+
     for _, weight in pairs(petWeights) do
         totalWeight = totalWeight + weight
     end

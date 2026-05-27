@@ -21,6 +21,7 @@ return {
         diagnostics = true,
         map_binding = true,
         upgrades = true,
+        player_progression = true,
         pet_progression = true,
         rebirths = false,
         enchants = true,

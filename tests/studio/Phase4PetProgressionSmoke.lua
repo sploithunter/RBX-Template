@@ -28,7 +28,7 @@ function Phase4PetProgressionSmoke.runText(options)
     local enchant = data.firstEnchant or {}
     local rerolled = data.rerolledEnchant or {}
     return string.format(
-        "Phase4PetProgressionSmoke complete: enchant=%s strength=%s reroll=%s strength=%s xp=%s level=%s exp=%s slots=%s/%s restored=%s",
+        "Phase4PetProgressionSmoke complete: enchant=%s strength=%s reroll=%s strength=%s xp=%s level=%s exp=%s slots=%s/%s slotBonus=%s hatchLuck=%s secretLuck=%s damage=%s team=%s efficiency=%s restored=%s",
         tostring(enchant.display_name or enchant.id or "-"),
         tostring(enchant.strength or "-"),
         tostring(rerolled.display_name or rerolled.id or "-"),
@@ -38,6 +38,12 @@ function Phase4PetProgressionSmoke.runText(options)
         tostring(data.exp or 0),
         tostring(data.unlockedEnchantSlots or 0),
         tostring(data.maxEnchantments or 0),
+        tostring(data.slotBonus or 0),
+        tostring(data.hatchLuck or 0),
+        tostring(data.secretLuck or 0),
+        tostring(data.petDamage or 0),
+        tostring(data.teamPower or 0),
+        tostring(data.petEfficiency or 0),
         tostring(result.restored == true)
     )
 end

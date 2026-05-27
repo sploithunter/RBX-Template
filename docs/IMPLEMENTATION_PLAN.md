@@ -145,11 +145,11 @@ Container naming convention: `<HookKind>_<Place>` (e.g. `CrystalSpawnZone_SpawnI
 ### Phase 4 — Progression depth (pipeline inputs)
 
 - `configs/pet_progression.lua` + `PetProgressionService` — unique-pet XP/levels, config-driven XP curve, rarity caps, capped power scaling, and enchant-slot unlocks. Stack pets do not carry XP/level and should not be generically promoted to unique pets. Pets that need per-copy state must be unique from grant/craft/reward time. Unique pets with enchant capacity start with one unlocked slot and gain remaining potential slots through level milestones.
-- `scripts/balance_team_power.py` — offline config-reading calculator for rough team-power tuning across player level/XP assumptions, pet team size, pet levels, eternal/huge behavior, and configured pet power values.
+- `scripts/balance_team_power.py` — offline config-reading calculator for rough team-power tuning across player level/XP assumptions, pet team size, pet levels, eternal/huge behavior, configured pet power values, and `configs/player_progression.lua`.
 - Pet power source-of-truth rule — family base power + variant multipliers live in `configs/pets.lua`; saved pet inventory records must not carry power values. Use `tests/studio/BackfillPetPowerSourceOfTruth.lua` to clean legacy saves after tuning changes.
-- `configs/player_progression.lua` + player-level provider — player level must affect team power through config, and level rewards should be configurable. The first likely reward is +1 equipped pet every 10 levels, but the cadence/value belongs in config.
+- `configs/player_progression.lua` + player-level provider — player level affects team power through config, and level rewards are configurable. The first reward is +1 equipped pet slot every configured number of levels, capped by config and the inventory max slot cap.
 - `configs/enchants.lua` (port reference data shape: tier→weighted Chances + value range + Scale) + `EnchantService` — roll/store enchants; **map each enchant name to a declared modifier** and register the `enchants` provider (FR-ENCH-1..3). Validation fails if an enchant has no effect mapping.
-- Wire all high-priority enchant consumers: `hatch_luck`, `secret_hatch_luck`, `pet_damage`, `team_power`, and `pet_efficiency`. Current live consumers include `breakable_reward` and `pet_xp`.
+- Wire all high-priority enchant consumers: `hatch_luck`, `secret_hatch_luck`, `pet_damage`, `team_power`, and `pet_efficiency`. Current live consumers include `breakable_reward`, `pet_xp`, and those high-priority Phase 4 kinds.
 - Upgrades from Phase 2 register the `permanent_upgrades` provider.
 - Rebirth is deferred out of Phase 4. If it returns, it should be rare/dramatic rather than a ColorfulClickers-style repeated multiplier loop.
 

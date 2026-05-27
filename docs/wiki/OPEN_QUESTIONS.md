@@ -14,7 +14,8 @@ Status: current
 
 - What exact balance magnitudes should each enchant have? Storage direction is decided: stacks stay stack-only, and pets that need enchant/progression state must be unique from grant/craft/reward time. Enchants live on unique pet instances and feed the `enchants` modifier pipeline stage. Capacity is now config-driven by rarity.
 - What should the first live pet XP sources be? The data/service foundation exists for unique pets, but breakable damage, breakable destroy, daycare/offline, and consumable XP items still need balancing decisions.
-- What player-level-to-team-power curve feels good? Decision made: player level must affect team power and should also support configurable rewards such as extra equipped pet slots.
+- What player-level-to-team-power curve feels good in real play? The implementation is config-driven and active, but the current +1% per level / +1 equipped slot per 10 levels defaults are first-pass tuning values.
+- What should replace the legacy pet `Follow` mining script? Phase 4 now routes damage and cadence modifiers through it, but the long-term design should be a service-owned pet assignment/work loop.
 - Should high-power pets be normalized by player progression, area tier, or both?
 - Should forever/eternal pets use the reference-style percentage-of-current-best-power model, and what percent range keeps them prestigious without breaking early progression?
 - What is the long-term automated Meshi-to-Roblox asset workflow?

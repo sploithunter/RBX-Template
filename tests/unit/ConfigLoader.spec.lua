@@ -754,6 +754,66 @@ return function()
                 expect(string.find(error, "must reference pets.rarities", 1, true)).to.be.ok()
             end)
 
+            it("should validate player-level progression rewards", function()
+                local validConfig = {
+                    version = "1.0.0",
+                    enabled = true,
+                    team_power = {
+                        enabled = true,
+                        stage = "boosts",
+                        kind = "team_power",
+                        start_level = 1,
+                        percent_per_level = 0.01,
+                        max_bonus_percent = 1,
+                    },
+                    level_rewards = {
+                        equip_slots = {
+                            pets = {
+                                enabled = true,
+                                start_level = 10,
+                                every_levels = 10,
+                                slots_per_milestone = 1,
+                                max_bonus_slots = 3,
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("player_progression", validConfig)
+                expect(isValid).to.equal(true)
+                expect(error).to.equal(nil)
+            end)
+
+            it("should reject player progression modifier stage typos", function()
+                local invalidConfig = {
+                    version = "1.0.0",
+                    enabled = true,
+                    team_power = {
+                        enabled = true,
+                        stage = "boosts_typo",
+                        kind = "team_power",
+                        start_level = 1,
+                        percent_per_level = 0.01,
+                        max_bonus_percent = 1,
+                    },
+                    level_rewards = {
+                        equip_slots = {
+                            pets = {
+                                enabled = true,
+                                start_level = 10,
+                                every_levels = 10,
+                                slots_per_milestone = 1,
+                                max_bonus_slots = 3,
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("player_progression", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "must reference economy.modifier_pipeline.stages", 1, true)).to.be.ok()
+            end)
+
             it("should validate config-driven enchant roll profiles", function()
                 local validConfig = {
                     version = "1.0.0",

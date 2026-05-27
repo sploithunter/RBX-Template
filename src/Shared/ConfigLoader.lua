@@ -723,6 +723,8 @@ function ConfigLoader:ValidateConfig(configName, config)
         return self:_validatePetIndexConfig(config)
     elseif configName == "pet_progression" then
         return self:_validatePetProgressionConfig(config)
+    elseif configName == "player_progression" then
+        return self:_validatePlayerProgressionConfig(config)
     elseif configName == "enchants" then
         return self:_validateEnchantsConfig(config)
     elseif configName == "achievements" then
@@ -2620,6 +2622,121 @@ function ConfigLoader:_validatePetProgressionConfig(config)
                     "expected non-negative integer"
                 )
             end
+        end
+    end
+
+    return true
+end
+
+function ConfigLoader:_validatePlayerProgressionConfig(config)
+    local ok, err = self:_requireType("player_progression", config, "table", "<root>")
+    if not ok then
+        return ok, err
+    end
+
+    ok, err = self:_requireType("player_progression", config.version, "string", "version")
+    if not ok then
+        return ok, err
+    end
+
+    if config.enabled ~= nil and type(config.enabled) ~= "boolean" then
+        return self:_configError("player_progression", "enabled", "expected boolean")
+    end
+
+    local teamPower = config.team_power
+    if type(teamPower) ~= "table" then
+        return self:_configError("player_progression", "team_power", "expected table")
+    end
+    if teamPower.enabled ~= nil and type(teamPower.enabled) ~= "boolean" then
+        return self:_configError("player_progression", "team_power.enabled", "expected boolean")
+    end
+    local economy = self:_rawConfig("economy")
+    local stages = economy
+        and economy.modifier_pipeline
+        and economy.modifier_pipeline.stages
+        or {}
+    if not stages[teamPower.stage or "boosts"] then
+        return self:_configError(
+            "player_progression",
+            "team_power.stage",
+            "must reference economy.modifier_pipeline.stages"
+        )
+    end
+    if type(teamPower.kind) ~= "string" or teamPower.kind == "" then
+        return self:_configError("player_progression", "team_power.kind", "expected non-empty string")
+    end
+    ok, err = self:_requirePositiveNumber(
+        "player_progression",
+        teamPower.start_level or 1,
+        "team_power.start_level"
+    )
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requireNonNegativeNumber(
+        "player_progression",
+        teamPower.percent_per_level,
+        "team_power.percent_per_level"
+    )
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requireNonNegativeNumber(
+        "player_progression",
+        teamPower.max_bonus_percent,
+        "team_power.max_bonus_percent"
+    )
+    if not ok then
+        return ok, err
+    end
+
+    local rewards = config.level_rewards
+    if type(rewards) ~= "table" then
+        return self:_configError("player_progression", "level_rewards", "expected table")
+    end
+    local equipSlots = rewards.equip_slots
+    if type(equipSlots) ~= "table" then
+        return self:_configError("player_progression", "level_rewards.equip_slots", "expected table")
+    end
+    for category, reward in pairs(equipSlots) do
+        local path = "level_rewards.equip_slots." .. tostring(category)
+        if type(reward) ~= "table" then
+            return self:_configError("player_progression", path, "expected table")
+        end
+        if reward.enabled ~= nil and type(reward.enabled) ~= "boolean" then
+            return self:_configError("player_progression", path .. ".enabled", "expected boolean")
+        end
+        ok, err = self:_requirePositiveNumber(
+            "player_progression",
+            reward.start_level or 1,
+            path .. ".start_level"
+        )
+        if not ok then
+            return ok, err
+        end
+        ok, err = self:_requirePositiveNumber(
+            "player_progression",
+            reward.every_levels or 1,
+            path .. ".every_levels"
+        )
+        if not ok then
+            return ok, err
+        end
+        ok, err = self:_requireNonNegativeNumber(
+            "player_progression",
+            reward.slots_per_milestone or 0,
+            path .. ".slots_per_milestone"
+        )
+        if not ok then
+            return ok, err
+        end
+        ok, err = self:_requireNonNegativeNumber(
+            "player_progression",
+            reward.max_bonus_slots or 0,
+            path .. ".max_bonus_slots"
+        )
+        if not ok then
+            return ok, err
         end
     end
 

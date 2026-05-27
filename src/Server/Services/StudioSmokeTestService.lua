@@ -33,6 +33,8 @@ local leaderboardService
 local petGrantService
 local petProgressionService
 local enchantService
+local modifierService
+local playerProgressionService
 
 local sessions = {}
 local travelSessions = {}
@@ -129,6 +131,8 @@ function StudioSmokeTestService:Init()
     petGrantService = self._modules.PetGrantService
     petProgressionService = self._modules.PetProgressionService
     enchantService = self._modules.EnchantService
+    modifierService = self._modules.ModifierService
+    playerProgressionService = self._modules.PlayerProgressionService
 end
 
 function StudioSmokeTestService:Start()
@@ -263,7 +267,13 @@ function StudioSmokeTestService:_runPhase4PetProgressionSmoke(player, payload)
             error = "Player data is not loaded",
         }
     end
-    if not petGrantService or not petProgressionService or not enchantService then
+    if
+        not petGrantService
+        or not petProgressionService
+        or not enchantService
+        or not modifierService
+        or not playerProgressionService
+    then
         return {
             ok = false,
             error = "Phase 4 services unavailable",
@@ -275,12 +285,15 @@ function StudioSmokeTestService:_runPhase4PetProgressionSmoke(player, payload)
         Inventory = deepCopy(data.Inventory),
         Equipped = deepCopy(data.Equipped),
         Currencies = deepCopy(data.Currencies),
+        Stats = deepCopy(data.Stats),
     }
 
     local function restore()
         data.Inventory = snapshot.Inventory
         data.Equipped = snapshot.Equipped
         data.Currencies = snapshot.Currencies
+        data.Stats = snapshot.Stats
+        player:SetAttribute("Level", data.Stats and data.Stats.Level or 1)
         if inventoryService and inventoryService._updateBucketFolders then
             inventoryService:_updateBucketFolders(player, "pets")
         end
@@ -317,6 +330,55 @@ function StudioSmokeTestService:_runPhase4PetProgressionSmoke(player, payload)
             inventoryService:_updateEquippedFolders(player, "pets")
         end
 
+        data.Stats = data.Stats or {}
+        data.Stats.Level = 15
+        player:SetAttribute("Level", 15)
+
+        petData.enchantments = {
+            { id = "luck", display_name = "Luck", strength = 10 },
+            { id = "secret_luck", display_name = "Secret Luck", strength = 10 },
+            { id = "tactics", display_name = "Tactics", strength = 10 },
+            { id = "leadership", display_name = "Leadership", strength = 10 },
+            { id = "efficiency", display_name = "Efficiency", strength = 10 },
+        }
+
+        local slotBonus = playerProgressionService:GetEquippedPetSlotBonus(player)
+        if slotBonus < 1 then
+            error("Expected player level reward to grant at least one pet slot bonus at level 15")
+        end
+
+        local hatchLuck = modifierService:Resolve(0, {
+            player = player,
+            kind = "hatch_luck",
+            source = "Phase4PetProgressionSmoke",
+        })
+        local secretLuck = modifierService:Resolve(0, {
+            player = player,
+            kind = "secret_hatch_luck",
+            source = "Phase4PetProgressionSmoke",
+        })
+        local petDamage = modifierService:Resolve(100, {
+            player = player,
+            kind = "pet_damage",
+            source = "Phase4PetProgressionSmoke",
+        })
+        local teamPower = modifierService:Resolve(100, {
+            player = player,
+            kind = "team_power",
+            source = "Phase4PetProgressionSmoke",
+        })
+        local petEfficiency = modifierService:Resolve(1, {
+            player = player,
+            kind = "pet_efficiency",
+            source = "Phase4PetProgressionSmoke",
+        })
+        if hatchLuck <= 0 or secretLuck <= 0 then
+            error("Expected hatch luck enchant modifiers to resolve above zero")
+        end
+        if petDamage <= 100 or teamPower <= 100 or petEfficiency <= 1 then
+            error("Expected damage/team/efficiency enchant modifiers to increase base values")
+        end
+
         local xpResult = petProgressionService:AwardBreakableDestroyed(player, {
             world = "Spawn",
             crystalName = "BigBlueCrystal",
@@ -335,7 +397,7 @@ function StudioSmokeTestService:_runPhase4PetProgressionSmoke(player, payload)
         local reroll = enchantService:RerollPetEnchant(player, {
             petUid = grant.uid,
             slot = 1,
-            source = "phase4_pet_progression_smoke",
+            source = "studio_smoke",
         })
         if not reroll.ok then
             error("Expected enchant reroll to succeed: " .. tostring(reroll.reason))
@@ -351,6 +413,12 @@ function StudioSmokeTestService:_runPhase4PetProgressionSmoke(player, payload)
             exp = petData.exp,
             unlockedEnchantSlots = petData.unlocked_enchant_slots,
             maxEnchantments = petData.max_enchantments,
+            slotBonus = slotBonus,
+            hatchLuck = hatchLuck,
+            secretLuck = secretLuck,
+            petDamage = petDamage,
+            teamPower = teamPower,
+            petEfficiency = petEfficiency,
         }
     end)
 

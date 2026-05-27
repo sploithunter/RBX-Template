@@ -454,6 +454,7 @@ function EnchantPanel:_readEnchantments(folder)
                     or (config and config.display_name)
                     or id,
                 strength = readNumberValue(child, { "strength", "Strength", "value", "Value" }) or 0,
+                description = config and config.description or nil,
             })
         end
     end
@@ -740,6 +741,21 @@ function EnchantPanel:_renderDetails()
         self:_createSlotButton(slotContainer, pet, slot)
     end
 
+    local description = Instance.new("TextLabel")
+    description.Name = "EffectDescription"
+    description.Size = UDim2.new(1, -32, 0, 72)
+    description.Position = UDim2.new(0, 16, 0, 306)
+    description.BackgroundTransparency = 1
+    description.Font = Enum.Font.Gotham
+    description.Text = self:_formatSelectedEnchantDescription(pet)
+    description.TextColor3 = MUTED
+    description.TextSize = 15
+    description.TextWrapped = true
+    description.TextXAlignment = Enum.TextXAlignment.Left
+    description.TextYAlignment = Enum.TextYAlignment.Top
+    description.ZIndex = 102
+    description.Parent = self.detailPanel
+
     self.statusLabel = Instance.new("TextLabel")
     self.statusLabel.Name = "Status"
     self.statusLabel.Size = UDim2.new(1, -32, 0, 44)
@@ -816,6 +832,31 @@ function EnchantPanel:_formatEnchant(enchant)
         suffix = " +" .. formatNumber(enchant.strength)
     end
     return tostring(enchant.displayName or enchant.id or "Enchant") .. suffix
+end
+
+function EnchantPanel:_formatSelectedEnchantDescription(pet)
+    if not pet then
+        return ""
+    end
+    local enchant = pet.enchantments[self.selectedSlot]
+    if type(enchant) ~= "table" then
+        if self.selectedSlot > pet.unlockedEnchantSlots then
+            return "Level this pet to unlock this slot."
+        end
+        return "This slot is ready for a new enchant."
+    end
+
+    local config = self.enchantConfig.effects and self.enchantConfig.effects[enchant.id]
+    local description = enchant.description or (config and config.description)
+    local modifier = config and config.modifier
+    local strength = tonumber(enchant.strength) or 0
+    if type(modifier) == "table" and strength > 0 then
+        local amount = strength * (tonumber(modifier.amount_per_strength) or 0)
+        local percent = math.floor(amount * 1000 + 0.5) / 10
+        local suffix = string.format(" (+%.1f%%)", percent)
+        return tostring(description or "Configured enchant effect.") .. suffix
+    end
+    return tostring(description or "Configured enchant effect.")
 end
 
 function EnchantPanel:_requestEnchant()
@@ -931,6 +972,20 @@ function EnchantPanel:_showReveal(data)
     result.TextWrapped = true
     result.ZIndex = 182
     result.Parent = card
+
+    local effectConfig = self.enchantConfig.effects and self.enchantConfig.effects[enchant.id]
+    local description = Instance.new("TextLabel")
+    description.Name = "Description"
+    description.Size = UDim2.new(1, -40, 0, 42)
+    description.Position = UDim2.new(0, 20, 0, 162)
+    description.BackgroundTransparency = 1
+    description.Font = Enum.Font.Gotham
+    description.Text = tostring(effectConfig and effectConfig.description or "")
+    description.TextColor3 = MUTED
+    description.TextSize = 15
+    description.TextWrapped = true
+    description.ZIndex = 182
+    description.Parent = card
 
     local okButton = Instance.new("TextButton")
     okButton.Name = "OkButton"
