@@ -1,5 +1,10 @@
 std = "roblox+testez"
 
+# tests/headless/* are lune (standalone Luau) scripts, not Roblox code.
+# They use the lune stdlib (@lune/fs, @lune/process, ...) which the roblox
+# std does not know about, so exclude them from the Roblox-targeted linter.
+exclude = ["tests/headless/**"]
+
 [rules]
 shadowing = "warn"
 undefined_variable = "deny"
