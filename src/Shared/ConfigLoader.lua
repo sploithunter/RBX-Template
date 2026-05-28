@@ -2367,6 +2367,39 @@ function ConfigLoader:_validateEggSystemConfig(config)
     then
         return self:_configError("egg_system", "hatching.allow_partial", "expected boolean")
     end
+    if type(config.ui.hatch_panel) ~= "table" then
+        return self:_configError("egg_system", "ui.hatch_panel", "expected table")
+    end
+    if
+        config.ui.hatch_panel.enabled ~= nil
+        and type(config.ui.hatch_panel.enabled) ~= "boolean"
+    then
+        return self:_configError("egg_system", "ui.hatch_panel.enabled", "expected boolean")
+    end
+    ok, err = self:_requirePositiveNumber(
+        "egg_system",
+        config.ui.hatch_panel.width,
+        "ui.hatch_panel.width"
+    )
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requirePositiveNumber(
+        "egg_system",
+        config.ui.hatch_panel.height,
+        "ui.hatch_panel.height"
+    )
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requirePositiveNumber(
+        "egg_system",
+        config.ui.hatch_panel.count_step or 1,
+        "ui.hatch_panel.count_step"
+    )
+    if not ok then
+        return ok, err
+    end
 
     if
         type(config.spawning.spawn_point_name) ~= "string"

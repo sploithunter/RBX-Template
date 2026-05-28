@@ -12,12 +12,14 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 -- Dependencies
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local petConfig = Locations.getConfig("pets")
 local eggSystemConfig = Locations.getConfig("egg_system")
 local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 -- Local player reference
 local player = Players.LocalPlayer
@@ -27,6 +29,25 @@ local currentTargetService = nil
 local hatchRequestInFlight = false
 local autoHatchEnabled = false
 local autoHatchSessionId = 0
+local selectedHatchCount = 1
+local hatchPanelGui = nil
+local hatchPanel = nil
+local hatchPanelFields = {}
+local hatchPanelConnection = nil
+local hatchSettingsOpen = false
+local autoDeleteState = {
+    enabled = false,
+    rarities = {},
+    pet_types = {},
+    variants = {},
+}
+local hatchModeState = {
+    goldenMode = false,
+    fastHatch = false,
+    skipHatch = false,
+    silentHatch = false,
+}
+local lastStatusAt = 0
 
 -- Logger setup using singleton pattern
 local Logger
@@ -53,6 +74,604 @@ else
     }
 end
 
+local function getHatchingConfig()
+    return eggSystemConfig.hatching or {}
+end
+
+local function getHatchPanelConfig()
+    return eggSystemConfig.ui and eggSystemConfig.ui.hatch_panel or {}
+end
+
+local function getMaxHatchCount()
+    local hatching = getHatchingConfig()
+    return math.clamp(math.floor(tonumber(hatching.max_count) or 99), 1, 99)
+end
+
+local function clampSelectedCount(count)
+    return math.clamp(math.floor(tonumber(count) or 1), 1, getMaxHatchCount())
+end
+
+local function asSet(values)
+    local result = {}
+    if type(values) ~= "table" then
+        return result
+    end
+
+    for key, value in pairs(values) do
+        if type(key) == "number" then
+            result[tostring(value)] = true
+        elseif value == true then
+            result[tostring(key)] = true
+        end
+    end
+    return result
+end
+
+local function setToArray(set)
+    local values = {}
+    for key, enabled in pairs(set or {}) do
+        if enabled == true then
+            table.insert(values, key)
+        end
+    end
+    table.sort(values)
+    return values
+end
+
+local function titleCaseId(id)
+    return tostring(id or ""):gsub("_", " "):gsub("(%l)(%w*)", function(a, b)
+        return string.upper(a) .. b
+    end)
+end
+
+local function getEggDisplayData(eggType)
+    local eggData = petConfig.egg_sources[eggType]
+    if not eggData then
+        return nil
+    end
+
+    local cost = (petConfig.getEggCost and petConfig.getEggCost(eggType)) or eggData.cost or 0
+    return {
+        name = eggData.name or titleCaseId(eggType),
+        currency = eggData.currency or "coins",
+        cost = math.max(0, tonumber(cost) or 0),
+    }
+end
+
+local function formatNumber(value)
+    value = tonumber(value) or 0
+    if value >= 1000000000 then
+        return string.format("%.1fB", value / 1000000000)
+    elseif value >= 1000000 then
+        return string.format("%.1fM", value / 1000000)
+    elseif value >= 1000 then
+        return string.format("%.1fK", value / 1000)
+    end
+    return tostring(math.floor(value))
+end
+
+local function getCurrencyIcon(currency)
+    if currency == "gems" then
+        return "💎"
+    elseif currency == "crystals" then
+        return "🔮"
+    end
+    return "💰"
+end
+
+local function formatStopReason(stopReason)
+    local labels = {
+        currency = "out of currency",
+        storage = "storage full",
+        entitlement = "hatch limit",
+        partial = "partial hatch",
+        grant_failed = "grant issue",
+    }
+    return labels[stopReason] or tostring(stopReason or "")
+end
+
+local function getSelectedCostMultiplier()
+    local hatching = getHatchingConfig()
+    local shopStubs = hatching.shop_stubs or {}
+    local golden = shopStubs.golden_mode or {}
+    if hatchModeState.goldenMode == true then
+        return math.max(1, tonumber(golden.cost_multiplier) or 20)
+    end
+    return 1
+end
+
+function EggInteractionService:CreateButton(parent, name, text, size, position, color, callback)
+    local button = Instance.new("TextButton")
+    button.Name = name
+    button.Size = size
+    button.Position = position
+    button.BackgroundColor3 = color
+    button.BorderSizePixel = 0
+    button.Text = text
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextScaled = true
+    button.Font = Enum.Font.GothamBold
+    button.AutoButtonColor = true
+    button.Parent = parent
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = button
+
+    button.MouseButton1Click:Connect(function()
+        if callback then
+            callback()
+        end
+    end)
+
+    return button
+end
+
+function EggInteractionService:SetPanelStatus(message, isError)
+    if not hatchPanelFields.status then
+        return
+    end
+
+    lastStatusAt = os.clock()
+    hatchPanelFields.status.Text = tostring(message or "")
+    hatchPanelFields.status.TextColor3 = isError and Color3.fromRGB(255, 150, 150)
+        or Color3.fromRGB(170, 255, 210)
+end
+
+function EggInteractionService:CreateHatchPanel()
+    if hatchPanelGui then
+        hatchPanelGui:Destroy()
+    end
+
+    local panelConfig = getHatchPanelConfig()
+    if panelConfig.enabled == false then
+        return
+    end
+
+    local width = tonumber(panelConfig.width) or 500
+    local height = tonumber(panelConfig.height) or 176
+    local settingsHeight = tonumber(panelConfig.settings_height) or 168
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "EggHatchPanel"
+    screenGui.ResetOnSpawn = false
+    screenGui.IgnoreGuiInset = true
+    screenGui.Parent = player.PlayerGui
+
+    local frame = Instance.new("Frame")
+    frame.Name = "Panel"
+    frame.Size = UDim2.new(0, width, 0, height)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 28, 36)
+    frame.BackgroundTransparency = 0.04
+    frame.BorderSizePixel = 0
+    frame.Visible = false
+    frame.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 2
+    stroke.Color = Color3.fromRGB(0, 210, 220)
+    stroke.Parent = frame
+
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -24, 0, 30)
+    title.Position = UDim2.new(0, 12, 0, 10)
+    title.BackgroundTransparency = 1
+    title.Text = "Egg"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextScaled = true
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = frame
+
+    local cost = Instance.new("TextLabel")
+    cost.Name = "Cost"
+    cost.Size = UDim2.new(0.52, -12, 0, 24)
+    cost.Position = UDim2.new(0, 12, 0, 44)
+    cost.BackgroundTransparency = 1
+    cost.Text = ""
+    cost.TextColor3 = Color3.fromRGB(205, 214, 230)
+    cost.TextScaled = true
+    cost.Font = Enum.Font.Gotham
+    cost.TextXAlignment = Enum.TextXAlignment.Left
+    cost.Parent = frame
+
+    local countLabel = Instance.new("TextLabel")
+    countLabel.Name = "Count"
+    countLabel.Size = UDim2.new(0, 104, 0, 36)
+    countLabel.Position = UDim2.new(0.52, 4, 0, 38)
+    countLabel.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
+    countLabel.BorderSizePixel = 0
+    countLabel.Text = "x1"
+    countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    countLabel.TextScaled = true
+    countLabel.Font = Enum.Font.GothamBold
+    countLabel.Parent = frame
+
+    local countCorner = Instance.new("UICorner")
+    countCorner.CornerRadius = UDim.new(0, 8)
+    countCorner.Parent = countLabel
+
+    self:CreateButton(
+        frame,
+        "CountDown",
+        "-",
+        UDim2.new(0, 42, 0, 36),
+        UDim2.new(0.52, 112, 0, 38),
+        Color3.fromRGB(72, 82, 103),
+        function()
+            local step = tonumber(panelConfig.count_step) or 1
+            self:SetSelectedHatchCount(selectedHatchCount - step)
+        end
+    )
+    self:CreateButton(
+        frame,
+        "CountUp",
+        "+",
+        UDim2.new(0, 42, 0, 36),
+        UDim2.new(0.52, 158, 0, 38),
+        Color3.fromRGB(72, 82, 103),
+        function()
+            local step = tonumber(panelConfig.count_step) or 1
+            self:SetSelectedHatchCount(selectedHatchCount + step)
+        end
+    )
+
+    local buttonY = 84
+    local buttons = panelConfig.buttons or {}
+    local hatchButton = self:CreateButton(
+        frame,
+        "Hatch",
+        buttons.hatch or "Hatch",
+        UDim2.new(0, 112, 0, 38),
+        UDim2.new(0, 12, 0, buttonY),
+        Color3.fromRGB(31, 138, 255),
+        function()
+            self:HatchSelectedCount("Button")
+        end
+    )
+    local maxButton = self:CreateButton(
+        frame,
+        "Max",
+        buttons.max or "Max",
+        UDim2.new(0, 96, 0, 38),
+        UDim2.new(0, 132, 0, buttonY),
+        Color3.fromRGB(72, 82, 103),
+        function()
+            self:OnMaxHatchKeyPressed()
+        end
+    )
+    local autoButton = self:CreateButton(
+        frame,
+        "Auto",
+        buttons.auto or "Auto",
+        UDim2.new(0, 96, 0, 38),
+        UDim2.new(0, 236, 0, buttonY),
+        Color3.fromRGB(39, 161, 92),
+        function()
+            self:ToggleAutoHatch()
+        end
+    )
+    local settingsButton = self:CreateButton(
+        frame,
+        "Settings",
+        buttons.settings or "Filters",
+        UDim2.new(0, 132, 0, 38),
+        UDim2.new(1, -144, 0, buttonY),
+        Color3.fromRGB(115, 85, 210),
+        function()
+            hatchSettingsOpen = not hatchSettingsOpen
+            self:UpdateHatchPanel()
+        end
+    )
+
+    local status = Instance.new("TextLabel")
+    status.Name = "Status"
+    status.Size = UDim2.new(1, -24, 0, 26)
+    status.Position = UDim2.new(0, 12, 0, 132)
+    status.BackgroundTransparency = 1
+    status.Text = ""
+    status.TextColor3 = Color3.fromRGB(170, 255, 210)
+    status.TextScaled = true
+    status.Font = Enum.Font.Gotham
+    status.TextXAlignment = Enum.TextXAlignment.Left
+    status.Parent = frame
+
+    local settings = Instance.new("Frame")
+    settings.Name = "SettingsDrawer"
+    settings.Size = UDim2.new(1, -24, 0, settingsHeight)
+    settings.Position = UDim2.new(0, 12, 0, height - 4)
+    settings.BackgroundColor3 = Color3.fromRGB(16, 18, 26)
+    settings.BorderSizePixel = 0
+    settings.Visible = false
+    settings.Parent = frame
+
+    local settingsCorner = Instance.new("UICorner")
+    settingsCorner.CornerRadius = UDim.new(0, 8)
+    settingsCorner.Parent = settings
+
+    hatchPanelGui = screenGui
+    hatchPanel = frame
+    hatchPanelFields = {
+        title = title,
+        cost = cost,
+        count = countLabel,
+        status = status,
+        hatchButton = hatchButton,
+        maxButton = maxButton,
+        autoButton = autoButton,
+        settingsButton = settingsButton,
+        settings = settings,
+        filterButtons = {},
+        modeButtons = {},
+    }
+
+    self:CreateAutoDeleteSettings(settings)
+    self:CreateModeSettings(settings)
+    self:SetSelectedHatchCount(panelConfig.default_selected_count or 1)
+end
+
+function EggInteractionService:CreateAutoDeleteSettings(parent)
+    local header = Instance.new("TextLabel")
+    header.Name = "Header"
+    header.Size = UDim2.new(1, -16, 0, 24)
+    header.Position = UDim2.new(0, 8, 0, 8)
+    header.BackgroundTransparency = 1
+    header.Text = "Auto-delete"
+    header.TextColor3 = Color3.fromRGB(255, 255, 255)
+    header.TextScaled = true
+    header.Font = Enum.Font.GothamBold
+    header.TextXAlignment = Enum.TextXAlignment.Left
+    header.Parent = parent
+
+    local enabledButton = self:CreateButton(
+        parent,
+        "AutoDeleteEnabled",
+        "Off",
+        UDim2.new(0, 82, 0, 30),
+        UDim2.new(1, -92, 0, 6),
+        Color3.fromRGB(80, 85, 98),
+        function()
+            autoDeleteState.enabled = not autoDeleteState.enabled
+            self:SendAutoDeleteFilters()
+        end
+    )
+    hatchPanelFields.filterButtons.enabled = enabledButton
+
+    local panelConfig = getHatchPanelConfig()
+    local filterConfig = panelConfig.auto_delete or {}
+    local y = 44
+    self:CreateFilterRow(parent, "Rarities", filterConfig.rarity_filters or {}, "rarities", y)
+    self:CreateFilterRow(parent, "Variants", filterConfig.variant_filters or {}, "variants", y + 58)
+end
+
+function EggInteractionService:CreateModeSettings(parent)
+    local panelConfig = getHatchPanelConfig()
+    local modeConfig = panelConfig.modes or {}
+    local y = 132
+
+    local label = Instance.new("TextLabel")
+    label.Name = "ModesLabel"
+    label.Size = UDim2.new(0, 74, 0, 28)
+    label.Position = UDim2.new(0, 8, 0, y)
+    label.BackgroundTransparency = 1
+    label.Text = "Modes"
+    label.TextColor3 = Color3.fromRGB(205, 214, 230)
+    label.TextScaled = true
+    label.Font = Enum.Font.Gotham
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = parent
+
+    local orderedModes = { "golden", "fast", "skip", "silent" }
+    for index, key in ipairs(orderedModes) do
+        local cfg = modeConfig[key]
+        if cfg then
+            local optionName = cfg.option or key
+            local button = self:CreateButton(
+                parent,
+                "Mode_" .. optionName,
+                cfg.label or titleCaseId(key),
+                UDim2.new(0, 84, 0, 28),
+                UDim2.new(0, 88 + (index - 1) * 92, 0, y),
+                Color3.fromRGB(80, 85, 98),
+                function()
+                    hatchModeState[optionName] = hatchModeState[optionName] ~= true
+                    self:RefreshModeButtons()
+                    self:UpdateHatchPanel()
+                end
+            )
+            hatchPanelFields.modeButtons[optionName] = button
+        end
+    end
+end
+
+function EggInteractionService:CreateFilterRow(parent, labelText, filterIds, bucketName, y)
+    local label = Instance.new("TextLabel")
+    label.Name = bucketName .. "Label"
+    label.Size = UDim2.new(0, 74, 0, 28)
+    label.Position = UDim2.new(0, 8, 0, y)
+    label.BackgroundTransparency = 1
+    label.Text = labelText
+    label.TextColor3 = Color3.fromRGB(205, 214, 230)
+    label.TextScaled = true
+    label.Font = Enum.Font.Gotham
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = parent
+
+    hatchPanelFields.filterButtons[bucketName] = hatchPanelFields.filterButtons[bucketName] or {}
+    for index, id in ipairs(filterIds) do
+        local x = 88 + ((index - 1) % 4) * 92
+        local row = math.floor((index - 1) / 4)
+        local button = self:CreateButton(
+            parent,
+            bucketName .. "_" .. id,
+            (petConfig.rarities[id] and petConfig.rarities[id].name)
+                or (petConfig.variants[id] and petConfig.variants[id].name)
+                or titleCaseId(id),
+            UDim2.new(0, 84, 0, 28),
+            UDim2.new(0, x, 0, y + row * 32),
+            Color3.fromRGB(80, 85, 98),
+            function()
+                autoDeleteState[bucketName] = autoDeleteState[bucketName] or {}
+                autoDeleteState[bucketName][id] = autoDeleteState[bucketName][id] ~= true
+                self:SendAutoDeleteFilters()
+            end
+        )
+        hatchPanelFields.filterButtons[bucketName][id] = button
+    end
+end
+
+function EggInteractionService:SendAutoDeleteFilters()
+    Signals.AutoDelete_SetFilters:FireServer({
+        enabled = autoDeleteState.enabled == true,
+        rarities = setToArray(autoDeleteState.rarities),
+        pet_types = setToArray(autoDeleteState.pet_types),
+        variants = setToArray(autoDeleteState.variants),
+    })
+    self:RefreshAutoDeleteButtons()
+    self:SetPanelStatus("Filters saved", false)
+end
+
+function EggInteractionService:ApplyAutoDeleteStatus(status)
+    if type(status) ~= "table" then
+        return
+    end
+
+    autoDeleteState.enabled = status.enabled == true
+    autoDeleteState.rarities = asSet(status.rarities)
+    autoDeleteState.pet_types = asSet(status.pet_types)
+    autoDeleteState.variants = asSet(status.variants)
+    self:RefreshAutoDeleteButtons()
+end
+
+function EggInteractionService:RefreshAutoDeleteButtons()
+    if not hatchPanelFields.filterButtons then
+        return
+    end
+
+    local enabledButton = hatchPanelFields.filterButtons.enabled
+    if enabledButton then
+        enabledButton.Text = autoDeleteState.enabled and "On" or "Off"
+        enabledButton.BackgroundColor3 = autoDeleteState.enabled and Color3.fromRGB(39, 161, 92)
+            or Color3.fromRGB(80, 85, 98)
+    end
+
+    for bucketName, buttons in pairs(hatchPanelFields.filterButtons) do
+        if type(buttons) == "table" then
+            for id, button in pairs(buttons) do
+                local enabled = autoDeleteState[bucketName]
+                    and autoDeleteState[bucketName][id] == true
+                button.BackgroundColor3 = enabled and Color3.fromRGB(220, 82, 95)
+                    or Color3.fromRGB(80, 85, 98)
+            end
+        end
+
+        function EggInteractionService:RefreshModeButtons()
+            if not hatchPanelFields.modeButtons then
+                return
+            end
+
+            for optionName, button in pairs(hatchPanelFields.modeButtons) do
+                local enabled = hatchModeState[optionName] == true
+                button.BackgroundColor3 = enabled and Color3.fromRGB(244, 172, 54)
+                    or Color3.fromRGB(80, 85, 98)
+            end
+        end
+
+        function EggInteractionService:BuildHatchOptions()
+            return {
+                goldenMode = hatchModeState.goldenMode == true,
+                fastHatch = hatchModeState.fastHatch == true,
+                skipHatch = hatchModeState.skipHatch == true,
+                silentHatch = hatchModeState.silentHatch == true,
+            }
+        end
+    end
+end
+
+function EggInteractionService:SetSelectedHatchCount(count)
+    selectedHatchCount = clampSelectedCount(count)
+    self:UpdateHatchPanel()
+end
+
+function EggInteractionService:HatchSelectedCount(purchaseType)
+    if not currentTargetService then
+        return false
+    end
+
+    local currentTarget = currentTargetService:GetCurrentTarget()
+    if currentTarget == "None" or not currentTarget then
+        self:SetPanelStatus("Move near an egg", true)
+        return false
+    end
+
+    return self:HandleEggPurchase(currentTarget, selectedHatchCount, purchaseType or "Selected")
+end
+
+function EggInteractionService:UpdateHatchPanel()
+    if not hatchPanel then
+        return
+    end
+
+    local panelConfig = getHatchPanelConfig()
+    local currentTarget = currentTargetService and currentTargetService:GetCurrentTarget() or "None"
+    local visible = currentTarget ~= nil and currentTarget ~= "None"
+    hatchPanel.Visible = visible
+    if not visible then
+        return
+    end
+
+    local width = tonumber(panelConfig.width) or 500
+    local baseHeight = tonumber(panelConfig.height) or 176
+    local settingsHeight = tonumber(panelConfig.settings_height) or 168
+    local height = hatchSettingsOpen and (baseHeight + settingsHeight) or baseHeight
+    local bottomOffset = tonumber(panelConfig.bottom_offset) or 126
+
+    hatchPanel.Size = UDim2.new(0, width, 0, height)
+    hatchPanel.Position = UDim2.new(0.5, -math.floor(width / 2), 1, -bottomOffset - height)
+    if hatchPanelFields.settings then
+        hatchPanelFields.settings.Visible = hatchSettingsOpen
+    end
+
+    local eggData = getEggDisplayData(currentTarget)
+    if eggData then
+        local totalCost = eggData.cost * getSelectedCostMultiplier() * selectedHatchCount
+        hatchPanelFields.title.Text = eggData.name
+        hatchPanelFields.cost.Text = string.format(
+            "%s %s %s",
+            getCurrencyIcon(eggData.currency),
+            formatNumber(totalCost),
+            titleCaseId(eggData.currency)
+        )
+    end
+
+    hatchPanelFields.count.Text = "x" .. tostring(selectedHatchCount)
+    local busy = hatchRequestInFlight == true
+    hatchPanelFields.hatchButton.Active = not busy
+    hatchPanelFields.maxButton.Active = not busy
+    hatchPanelFields.autoButton.Active = not busy
+    hatchPanelFields.hatchButton.AutoButtonColor = not busy
+    hatchPanelFields.maxButton.AutoButtonColor = not busy
+    hatchPanelFields.autoButton.AutoButtonColor = not busy
+    hatchPanelFields.hatchButton.BackgroundColor3 = busy and Color3.fromRGB(70, 76, 90)
+        or Color3.fromRGB(31, 138, 255)
+    hatchPanelFields.maxButton.BackgroundColor3 = busy and Color3.fromRGB(70, 76, 90)
+        or Color3.fromRGB(72, 82, 103)
+    hatchPanelFields.autoButton.Text = autoHatchEnabled and "Stop" or "Auto"
+    hatchPanelFields.autoButton.BackgroundColor3 = autoHatchEnabled and Color3.fromRGB(220, 82, 95)
+        or Color3.fromRGB(39, 161, 92)
+
+    if os.clock() - lastStatusAt > (tonumber(panelConfig.status_display_time) or 3) then
+        hatchPanelFields.status.Text = ""
+    end
+    self:RefreshAutoDeleteButtons()
+    self:RefreshModeButtons()
+end
+
 -- === E KEY INTERACTION ===
 
 function EggInteractionService:OnEKeyPressed()
@@ -71,8 +690,9 @@ function EggInteractionService:OnEKeyPressed()
     Logger:Info("E pressed - attempting hatch", {
         context = "EggInteractionService",
         eggType = currentTarget,
+        requestedCount = selectedHatchCount,
     })
-    self:HandleEggPurchase(currentTarget, 1, "Single")
+    self:HandleEggPurchase(currentTarget, selectedHatchCount, "Selected")
 end
 
 function EggInteractionService:OnMaxHatchKeyPressed()
@@ -87,6 +707,7 @@ function EggInteractionService:OnMaxHatchKeyPressed()
     end
 
     local maxCount = eggSystemConfig.hatching and eggSystemConfig.hatching.max_count or 99
+    self:SetSelectedHatchCount(maxCount)
     self:HandleEggPurchase(currentTarget, maxCount, "Max")
 end
 
@@ -94,7 +715,8 @@ function EggInteractionService:ToggleAutoHatch()
     if autoHatchEnabled then
         autoHatchEnabled = false
         autoHatchSessionId += 1
-        self:ShowErrorMessage("Auto hatch stopped")
+        self:SetPanelStatus("Auto hatch stopped", false)
+        self:UpdateHatchPanel()
         return
     end
 
@@ -105,26 +727,27 @@ function EggInteractionService:ToggleAutoHatch()
 
     local currentTarget = currentTargetService:GetCurrentTarget()
     if currentTarget == "None" or not currentTarget then
-        self:ShowErrorMessage("No egg selected")
+        self:SetPanelStatus("Move near an egg", true)
         return
     end
 
     autoHatchEnabled = true
     autoHatchSessionId += 1
     local sessionId = autoHatchSessionId
-    local maxCount = eggSystemConfig.hatching and eggSystemConfig.hatching.max_count or 99
     local waitSeconds = eggSystemConfig.cooldowns.purchase_cooldown or 3
+    self:SetPanelStatus("Auto hatch running", false)
+    self:UpdateHatchPanel()
 
     task.spawn(function()
         while autoHatchEnabled and sessionId == autoHatchSessionId do
             local target = currentTargetService:GetCurrentTarget()
             if target == "None" or not target then
                 autoHatchEnabled = false
-                self:ShowErrorMessage("Auto hatch stopped: too far away")
+                self:SetPanelStatus("Auto hatch stopped: too far away", true)
                 break
             end
 
-            local ok = self:HandleEggPurchase(target, maxCount, "Auto", sessionId)
+            local ok = self:HandleEggPurchase(target, selectedHatchCount, "Auto", sessionId)
             if not ok then
                 autoHatchEnabled = false
                 break
@@ -132,6 +755,7 @@ function EggInteractionService:ToggleAutoHatch()
 
             task.wait(waitSeconds)
         end
+        self:UpdateHatchPanel()
     end)
 end
 
@@ -209,15 +833,18 @@ function EggInteractionService:HandleEggPurchase(
     end
 
     hatchRequestInFlight = true
+    self:UpdateHatchPanel()
     local success, result, message = pcall(function()
         return eggRemote:InvokeServer({
             eggType = eggType,
             requestedCount = requestedCount,
             purchaseType = purchaseType,
+            options = self:BuildHatchOptions(),
             autoSessionId = autoSessionId,
         })
     end)
     hatchRequestInFlight = false
+    self:UpdateHatchPanel()
 
     if success then
         Logger:Info(
@@ -227,6 +854,11 @@ function EggInteractionService:HandleEggPurchase(
         if type(result) == "table" and result.success then
             Logger:Info("Purchase successful", { context = "EggInteractionService" })
             self:ShowHatchingResults(result)
+            local status = "Hatched " .. tostring(result.hatchCount or 1)
+            if result.stopReason then
+                status ..= " - " .. formatStopReason(result.stopReason)
+            end
+            self:SetPanelStatus(status, false)
             return true
         elseif type(result) == "table" and result.success == false then
             Logger:Warn("Purchase failed", {
@@ -235,6 +867,7 @@ function EggInteractionService:HandleEggPurchase(
                 code = result.code,
             })
             self:ShowErrorMessage(result.message or "Purchase failed")
+            self:SetPanelStatus(result.message or "Purchase failed", true)
             return false
         elseif result == "Error" then
             Logger:Warn(
@@ -242,6 +875,7 @@ function EggInteractionService:HandleEggPurchase(
                 { context = "EggInteractionService", message = message or "Unknown error" }
             )
             self:ShowErrorMessage(message or "Purchase failed")
+            self:SetPanelStatus(message or "Purchase failed", true)
             return false
         elseif type(result) == "table" and result.Pet then
             -- Handle successful result without explicit success flag
@@ -250,6 +884,7 @@ function EggInteractionService:HandleEggPurchase(
                 { context = "EggInteractionService" }
             )
             self:ShowHatchingResults(result)
+            self:SetPanelStatus("Hatched 1", false)
             return true
         else
             Logger:Warn(
@@ -257,6 +892,7 @@ function EggInteractionService:HandleEggPurchase(
                 { context = "EggInteractionService", resultType = typeof(result) }
             )
             self:ShowErrorMessage("Unexpected server response")
+            self:SetPanelStatus("Unexpected server response", true)
             return false
         end
     else
@@ -265,6 +901,7 @@ function EggInteractionService:HandleEggPurchase(
             { context = "EggInteractionService", error = tostring(result) }
         )
         self:ShowErrorMessage("Connection error")
+        self:SetPanelStatus("Connection error", true)
         return false
     end
 end
@@ -276,6 +913,8 @@ end
 -- === UI FEEDBACK ===
 
 function EggInteractionService:ShowErrorMessage(errorMessage)
+    self:SetPanelStatus(errorMessage, true)
+
     -- Create simple error notification
     local errorGui = Instance.new("ScreenGui")
     errorGui.Name = "EggError"
@@ -322,6 +961,10 @@ function EggInteractionService:ShowErrorMessage(errorMessage)
 end
 
 function EggInteractionService:ShowHatchingResults(result)
+    if type(result) == "table" and result.options and result.options.skipHatch == true then
+        return
+    end
+
     -- Reduce console noise: keep egg-related logs through Logger only
     local activeLogger = self._modules and self._modules.Logger
     if activeLogger and activeLogger.Info then
@@ -356,6 +999,7 @@ function EggInteractionService:ShowHatchingResults(result)
                     entry.Type or entry.variant
                 ),
                 animation = result.animation,
+                hatchOptions = result.options,
                 autoDeleted = entry.AutoDeleted or entry.autoDeleted,
                 autoDeleteReason = entry.AutoDeleteReason or entry.autoDeleteReason,
             })
@@ -493,6 +1137,23 @@ function EggInteractionService:Initialize()
         return
     end
 
+    self:CreateHatchPanel()
+
+    Signals.AutoTarget_Status.OnClientEvent:Connect(function(status)
+        if type(status) == "table" then
+            self:ApplyAutoDeleteStatus(status.auto_delete)
+        end
+    end)
+
+    local updateAccumulator = 0
+    hatchPanelConnection = RunService.Heartbeat:Connect(function(step)
+        updateAccumulator += step
+        if updateAccumulator >= 0.12 then
+            updateAccumulator = 0
+            self:UpdateHatchPanel()
+        end
+    end)
+
     -- Set up E key listening (only when not typing)
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then
@@ -515,6 +1176,19 @@ function EggInteractionService:Initialize()
     end)
 
     Logger:Info("Initialized with E key listening", { context = "EggInteractionService" })
+end
+
+function EggInteractionService:Destroy()
+    if hatchPanelConnection then
+        hatchPanelConnection:Disconnect()
+        hatchPanelConnection = nil
+    end
+    if hatchPanelGui then
+        hatchPanelGui:Destroy()
+        hatchPanelGui = nil
+        hatchPanel = nil
+        hatchPanelFields = {}
+    end
 end
 
 return EggInteractionService

@@ -1040,6 +1040,10 @@ function petConfig.simulateHatch(eggType, playerData)
     local allowBasic = variantRolls.allow_basic ~= false
     local allowGolden = variantRolls.allow_golden ~= false
     local allowRainbow = variantRolls.allow_rainbow ~= false
+    local hatchOptions = playerData.hatchOptions or {}
+    if hatchOptions.goldenMode == true then
+        allowBasic = false
+    end
 
     if not variantRollsEnabled then
         selectedVariant = "basic"

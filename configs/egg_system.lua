@@ -95,6 +95,55 @@ return {
             height = 120, -- Increased height for three-line layout (name, price, prompt)
         },
 
+        hatch_panel = {
+            enabled = true,
+            width = 500,
+            height = 176,
+            settings_height = 168,
+            bottom_offset = 126,
+            count_step = 1,
+            count_large_step = 10,
+            default_selected_count = 1,
+            status_display_time = 3,
+            buttons = {
+                hatch = "Hatch",
+                max = "Max",
+                auto = "Auto",
+                settings = "Filters",
+            },
+            auto_delete = {
+                rarity_filters = {
+                    "common",
+                    "uncommon",
+                    "rare",
+                    "epic",
+                },
+                variant_filters = {
+                    "basic",
+                    "golden",
+                    "rainbow",
+                },
+            },
+            modes = {
+                golden = {
+                    label = "Golden",
+                    option = "goldenMode",
+                },
+                fast = {
+                    label = "Fast",
+                    option = "fastHatch",
+                },
+                skip = {
+                    label = "Skip",
+                    option = "skipHatch",
+                },
+                silent = {
+                    label = "Silent",
+                    option = "silentHatch",
+                },
+            },
+        },
+
         -- Pet Preview UI Dimensions
         pet_preview_size = {
             width = 600,

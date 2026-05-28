@@ -39,7 +39,9 @@ The playable baseline currently includes:
 - Pet index milestones, achievements, and live leaderboard service over shared stats.
 - Config-driven auto-target modes: nearest, highest value, weakest, strongest, and selected currency.
 - Config-driven hatch auto-delete filters by rarity, pet family, and variant, with protected special rarities.
-- Hatch hotkeys for single, max, and auto hatch (`E`, `R`, `T`) backed by the same server batch endpoint.
+- Hatch panel controls and hotkeys for selected-count, max, and auto hatch, backed by the same server batch endpoint.
+- Compact hatch auto-delete filter drawer for rarity/variant filters, backed by the server-authoritative auto-delete settings event.
+- Hatch mode toggles for Golden/Fast/Skip/Silent; Golden mode is server-entitlement checked, costs the configured multiplier, and prevents basic variants.
 - Admin panel tools and Studio MCP smoke-test tooling for repeatable validation.
 
 ## In Process / Partially Implemented
@@ -50,7 +52,7 @@ These systems exist but still need polish or later-phase expansion:
 - Pet follow/mining still runs through a stabilized legacy cloned script. Phase 4 now routes its damage/cadence through the modifier pipeline, but a cleaner PetWork/Combat service should replace that script.
 - Enchanter UI works and now explains config descriptions, but richer player education such as signs/help panels is still future polish.
 - Auto systems currently have server/config/smoke coverage and compatibility with the existing Low/High buttons; richer settings UI controls are still future polish.
-- Egg hatching now has the server transaction foundation for dynamic counts and auto hatch, but the near-egg UI is still hotkey-oriented and needs a proper button/count-selector panel.
+- Egg hatching now has the server transaction foundation and a first-pass near-egg Hatch/Max/Auto panel, but the UI still needs visual QA and richer locked-mode explanations.
 - Egg hatch responses include authored egg visual metadata and `EggHatchingService` has a first-pass authored ViewportFrame clone/scale path, but the animation still needs richer UI polish.
 - Offline balance tooling reads the current player-level curve, but it remains a rough calculator rather than a full economy simulator.
 - Authored-map workflow works through markers, but visible production map fixtures/gate art are still early.
@@ -180,7 +182,8 @@ Latest local checkpoint:
 - Phase 3 Studio smoke coverage exists for pet index, achievements, leaderboards, and Phase 2 regressions.
 - `Phase4PetProgressionSmoke`: passes in Studio for hatch enchants, breakable XP, manual reroll, player-level slot rewards, hatch/secret luck, pet damage, team power, pet efficiency, and profile restoration.
 - `Phase5AutoSystemsSmoke`: passes in Studio for server-selected nearest/highest/weakest/strongest/selected-currency targets, hatch auto-delete filters, protected special rarity behavior, and profile restoration.
-- `EggBatchHatchSmoke`: added for server batch hatch count/cost behavior and rapid-repeat hatch lock rejection.
+- `EggBatchHatchSmoke`: added for server batch hatch count/cost behavior, rapid-repeat hatch lock rejection, partial hatch by available funds, and Golden mode cost/no-basic behavior.
+- `EggProximitySmoke`: now also checks the near-egg hatch panel appears with Hatch/Max/Auto/count controls.
 
 See `docs/wiki/CURRENT_STATUS.md` for detailed verification history and `docs/IMPLEMENTATION_PLAN.md` for the phase roadmap.
 

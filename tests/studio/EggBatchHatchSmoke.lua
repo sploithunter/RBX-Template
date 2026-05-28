@@ -10,6 +10,8 @@ local EggBatchHatchSmoke = {}
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Locations = require(ReplicatedStorage.Shared.Locations)
+local eggSystemConfig = Locations.getConfig("egg_system")
 
 local DEFAULT_TIMEOUT_SECONDS = 20
 local REMOTE_NAME = "StudioSmokeTest"
@@ -113,6 +115,86 @@ function EggBatchHatchSmoke.run(options)
             "Rapid rejected hatch changed pet count"
         )
 
+        task.wait((batch.cooldown or 0) + 0.25)
+        local partialFundsCount = math.max(1, requestedCount - 2)
+        invoke(remote, "RestoreEggProximity", {})
+        started = false
+        begin = invoke(remote, "BeginEggProximity", {
+            eggType = eggType,
+            setupHatchCount = requestedCount,
+            setupCurrencyAmount = begin.cost * partialFundsCount,
+        })
+        started = true
+        invoke(remote, "MoveEggProximity", { placement = "near" })
+        task.wait(0.2)
+
+        local partialFunds = invoke(remote, "HatchEggProximity", {
+            batch = true,
+            requestedCount = requestedCount,
+        })
+        assert(
+            type(partialFunds.result) == "table" and partialFunds.result.success == true,
+            "Partial funds hatch failed"
+        )
+        assert(
+            partialFunds.result.hatchCount == partialFundsCount,
+            "Partial funds hatch count mismatch"
+        )
+        assert(partialFunds.result.stopReason == "currency", "Partial funds stop reason mismatch")
+        assert(
+            partialFunds.afterCurrency
+                == partialFunds.beforeCurrency - (partialFunds.cost * partialFundsCount),
+            "Partial funds deducted wrong amount"
+        )
+
+        task.wait((partialFunds.cooldown or 0) + 0.25)
+        invoke(remote, "RestoreEggProximity", {})
+        started = false
+        local goldenCount = math.min(2, requestedCount)
+        local goldenMultiplier = math.max(
+            1,
+            tonumber(
+                eggSystemConfig.hatching
+                    and eggSystemConfig.hatching.shop_stubs
+                    and eggSystemConfig.hatching.shop_stubs.golden_mode
+                    and eggSystemConfig.hatching.shop_stubs.golden_mode.cost_multiplier
+            ) or 20
+        )
+        begin = invoke(remote, "BeginEggProximity", {
+            eggType = eggType,
+            setupHatchCount = goldenCount,
+            setupCurrencyAmount = begin.cost * goldenMultiplier * goldenCount,
+            setupGoldenModeUnlocked = true,
+        })
+        started = true
+        invoke(remote, "MoveEggProximity", { placement = "near" })
+        task.wait(0.2)
+
+        local golden = invoke(remote, "HatchEggProximity", {
+            batch = true,
+            requestedCount = goldenCount,
+            options = {
+                goldenMode = true,
+            },
+        })
+        assert(
+            type(golden.result) == "table" and golden.result.success == true,
+            "Golden hatch failed"
+        )
+        assert(golden.result.hatchCount == goldenCount, "Golden hatch count mismatch")
+        assert(
+            golden.result.options and golden.result.options.goldenMode == true,
+            "Golden mode not echoed"
+        )
+        assert(
+            golden.afterCurrency
+                == golden.beforeCurrency - (golden.cost * goldenMultiplier * goldenCount),
+            "Golden hatch deducted wrong amount"
+        )
+        for _, entry in ipairs(golden.result.results or {}) do
+            assert(entry.Type ~= "basic", "Golden mode hatched a basic variant")
+        end
+
         return {
             player = player.Name,
             eggType = begin.eggType,
@@ -120,6 +202,8 @@ function EggBatchHatchSmoke.run(options)
             cost = begin.cost,
             requestedCount = requestedCount,
             hatchCount = batch.result.hatchCount,
+            partialFundsCount = partialFunds.result.hatchCount,
+            goldenCount = golden.result.hatchCount,
             stopReason = batch.result.stopReason,
         }
     end)
@@ -140,10 +224,12 @@ end
 function EggBatchHatchSmoke.runText(options)
     local result = EggBatchHatchSmoke.run(options)
     return string.format(
-        "EggBatchHatchSmoke passed: player=%s egg=%s count=%d cost=%d %s stop=%s restored=%s",
+        "EggBatchHatchSmoke passed: player=%s egg=%s count=%d partialFunds=%d golden=%d cost=%d %s stop=%s restored=%s",
         result.player,
         result.eggType,
         result.hatchCount,
+        result.partialFundsCount,
+        result.goldenCount,
         result.cost,
         result.currency,
         tostring(result.stopReason),

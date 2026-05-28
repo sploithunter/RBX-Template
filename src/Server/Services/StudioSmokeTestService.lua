@@ -1098,6 +1098,27 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
         or ((eggCost * setupHatchCount) + math.max(25, math.floor(eggCost * 0.1)))
 
     dataService:SetCurrency(player, eggData.currency, requiredCurrency, "egg_smoke_setup")
+    local originalAttributes = {}
+    for _, attributeName in ipairs({
+        "GoldenHatchUnlocked",
+        "FastHatchUnlocked",
+        "SkipHatchUnlocked",
+    }) do
+        local value = player:GetAttribute(attributeName)
+        originalAttributes[attributeName] = {
+            hadValue = value ~= nil,
+            value = value,
+        }
+    end
+    if payload.setupGoldenModeUnlocked ~= nil then
+        player:SetAttribute("GoldenHatchUnlocked", payload.setupGoldenModeUnlocked == true)
+    end
+    if payload.setupFastHatchUnlocked ~= nil then
+        player:SetAttribute("FastHatchUnlocked", payload.setupFastHatchUnlocked == true)
+    end
+    if payload.setupSkipHatchUnlocked ~= nil then
+        player:SetAttribute("SkipHatchUnlocked", payload.setupSkipHatchUnlocked == true)
+    end
 
     local maxDistance = eggSystemConfig.proximity.max_distance
     local anchorPosition = anchor.Position
@@ -1109,6 +1130,7 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
         originalCurrency = originalCurrency,
         originalPetsBucket = originalPetsBucket,
         originalPetCount = countPets(originalPetsBucket),
+        originalAttributes = originalAttributes,
         farPosition = anchorPosition + Vector3.new(maxDistance + 80, 4, 0),
         nearPosition = anchorPosition + Vector3.new(0, 4, 0),
         cooldown = eggSystemConfig.cooldowns.purchase_cooldown or 0,
@@ -1167,9 +1189,20 @@ function StudioSmokeTestService:_hatchEggProximity(player, payload)
             eggType = session.eggType,
             requestedCount = requestedCount,
             purchaseType = payload.purchaseType or "SmokeBatch",
+            options = payload.options or payload.hatchOptions or {},
         })
     else
-        hatchResult, hatchMessage = EggService:HandleEggPurchase(player, session.eggType, "Single")
+        if payload.options or payload.hatchOptions then
+            hatchResult, hatchMessage = EggService:HandleEggPurchase(player, {
+                eggType = session.eggType,
+                requestedCount = requestedCount,
+                purchaseType = payload.purchaseType or "Single",
+                options = payload.options or payload.hatchOptions or {},
+            })
+        else
+            hatchResult, hatchMessage =
+                EggService:HandleEggPurchase(player, session.eggType, "Single")
+        end
     end
     local afterData = dataService:GetData(player)
 
@@ -1204,6 +1237,14 @@ function StudioSmokeTestService:_restoreEggProximity(player)
         data.Inventory.pets = deepCopy(session.originalPetsBucket)
         if inventoryService and inventoryService._updateBucketFolders then
             inventoryService:_updateBucketFolders(player, "pets")
+        end
+    end
+
+    for attributeName, record in pairs(session.originalAttributes or {}) do
+        if record.hadValue then
+            player:SetAttribute(attributeName, record.value)
+        else
+            player:SetAttribute(attributeName, nil)
         end
     end
 

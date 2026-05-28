@@ -244,7 +244,33 @@ function EggService:ResolveHatchEntitlements(player)
             or (shopStubs.fast_hatch and shopStubs.fast_hatch.owned_by_default == true),
         skipHatch = player:GetAttribute("SkipHatchUnlocked") == true
             or (shopStubs.skip_hatch and shopStubs.skip_hatch.owned_by_default == true),
+        goldenMode = player:GetAttribute("GoldenHatchUnlocked") == true
+            or (shopStubs.golden_mode and shopStubs.golden_mode.owned_by_default == true),
     }
+end
+
+function EggService:ResolveHatchOptions(player, request, entitlements)
+    local options = request.options or {}
+    local hatching = self:GetHatchingConfig()
+    local shopStubs = hatching.shop_stubs or {}
+    local goldenStub = shopStubs.golden_mode or {}
+    local resolved = {
+        goldenMode = false,
+        fastHatch = options.fastHatch == true and entitlements.fastHatch == true,
+        skipHatch = options.skipHatch == true and entitlements.skipHatch == true,
+        silentHatch = options.silentHatch == true,
+        costMultiplier = 1,
+    }
+
+    if options.goldenMode == true then
+        if entitlements.goldenMode ~= true then
+            return nil, "Golden hatch mode is locked", "feature_locked"
+        end
+        resolved.goldenMode = true
+        resolved.costMultiplier = math.max(1, tonumber(goldenStub.cost_multiplier) or 20)
+    end
+
+    return resolved
 end
 
 function EggService:BuildPlayerHatchData(player, eggType, eggData)
@@ -431,6 +457,18 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
     end
 
     local entitlements = self:ResolveHatchEntitlements(player)
+    local hatchOptions, optionMessage, optionCode =
+        self:ResolveHatchOptions(player, request, entitlements)
+    if not hatchOptions then
+        self:ReleaseHatchLock(player, false)
+        return self:FormatError(
+            request,
+            optionMessage or "Hatch mode locked",
+            optionCode or "feature_locked"
+        )
+    end
+    eggCost = math.floor((eggCost * (hatchOptions.costMultiplier or 1)) + 0.5)
+
     local hatching = self:GetHatchingConfig()
     local allowPartial = hatching.allow_partial ~= false
     local entitledCount = math.min(request.requestedCount, entitlements.maxHatchCount)
@@ -482,6 +520,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
     end
 
     local playerData = self:BuildPlayerHatchData(player, request.eggType, eggData)
+    playerData.hatchOptions = hatchOptions
     self:ApplyTestOverrides(player)
 
     local outcomes = {}
@@ -640,6 +679,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         results = resultEntries,
         stopReason = stopReason,
         entitlements = entitlements,
+        options = hatchOptions,
         animation = self:GetEggAnimationPayload(request.eggType, eggData),
     }
 

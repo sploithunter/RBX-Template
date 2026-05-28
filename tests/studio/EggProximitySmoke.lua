@@ -63,6 +63,13 @@ local function getCurrentTarget(player)
     return target and target.Value or nil, frame
 end
 
+local function getHatchPanel(player)
+    local gui = player:FindFirstChild("PlayerGui")
+    local panelGui = gui and gui:FindFirstChild("EggHatchPanel")
+    local panel = panelGui and panelGui:FindFirstChild("Panel")
+    return panel
+end
+
 local function waitForTarget(player, expectedValue, timeoutSeconds)
     return waitFor("egg current target " .. tostring(expectedValue), timeoutSeconds, function()
         local currentTarget, frame = getCurrentTarget(player)
@@ -74,6 +81,23 @@ local function waitForTarget(player, expectedValue, timeoutSeconds)
         end
         return nil
     end)
+end
+
+local function waitForHatchPanel(player, expectedVisible, timeoutSeconds)
+    return waitFor(
+        "egg hatch panel visibility " .. tostring(expectedVisible),
+        timeoutSeconds,
+        function()
+            local panel = getHatchPanel(player)
+            if panel and panel.Visible == expectedVisible then
+                return panel
+            end
+            if expectedVisible == false and not panel then
+                return true
+            end
+            return nil
+        end
+    )
 end
 
 function EggProximitySmoke.run(options)
@@ -101,6 +125,7 @@ function EggProximitySmoke.run(options)
 
         if assertUi then
             waitForTarget(player, "None", timeoutSeconds)
+            waitForHatchPanel(player, false, timeoutSeconds)
         end
 
         local far = invoke(remote, "HatchEggProximity")
@@ -120,6 +145,21 @@ function EggProximitySmoke.run(options)
         if assertUi then
             local targetState = waitForTarget(player, eggType, timeoutSeconds)
             assert(targetState.visible == true, "Egg target UI was not visible near the egg")
+            local hatchPanel = waitForHatchPanel(player, true, timeoutSeconds)
+            assert(hatchPanel:FindFirstChild("Hatch"), "Hatch panel missing Hatch button")
+            assert(hatchPanel:FindFirstChild("Max"), "Hatch panel missing Max button")
+            assert(hatchPanel:FindFirstChild("Auto"), "Hatch panel missing Auto button")
+            assert(hatchPanel:FindFirstChild("Count"), "Hatch panel missing count display")
+            local settings = hatchPanel:FindFirstChild("SettingsDrawer")
+            assert(settings, "Hatch panel missing settings drawer")
+            assert(
+                settings:FindFirstChild("Mode_goldenMode"),
+                "Hatch panel missing Golden mode toggle"
+            )
+            assert(
+                settings:FindFirstChild("Mode_skipHatch"),
+                "Hatch panel missing Skip mode toggle"
+            )
         end
 
         local near = invoke(remote, "HatchEggProximity")
@@ -135,6 +175,7 @@ function EggProximitySmoke.run(options)
 
         if assertUi then
             waitForTarget(player, "None", timeoutSeconds)
+            waitForHatchPanel(player, false, timeoutSeconds)
         end
 
         return {

@@ -19,12 +19,10 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
 
 local Locations = require(ReplicatedStorage.Shared.Locations)
-local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local EggHatchFX = require(ReplicatedStorage.Shared.Effects.EggHatchFX)
 local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
 
@@ -598,51 +596,52 @@ function EggHatchingService:AnimateFlash(eggComponents, duration)
         print("  ✅ ImageLabel fade-out tween started")
     end
 
-    -- Play configured sound effect (prefer preloaded named sound)
-    local soundSettings = (flashEffectsConfig and flashEffectsConfig.sound) or {}
-    local named = (effectConfig and effectConfig.sound_name) or soundSettings.sound_name
-    local soundId = (effectConfig and effectConfig.sound_id) or soundSettings.sound_id
-    local volume = (effectConfig and effectConfig.volume) or soundSettings.volume or 0.8
-    local speed = (effectConfig and effectConfig.playback_speed)
-        or soundSettings.playback_speed
-        or 1.0
+    if eggComponents._silentHatch ~= true then
+        -- Play configured sound effect (prefer preloaded named sound)
+        local soundSettings = (flashEffectsConfig and flashEffectsConfig.sound) or {}
+        local named = (effectConfig and effectConfig.sound_name) or soundSettings.sound_name
+        local soundId = (effectConfig and effectConfig.sound_id) or soundSettings.sound_id
+        local volume = (effectConfig and effectConfig.volume) or soundSettings.volume or 0.8
+        local speed = (effectConfig and effectConfig.playback_speed)
+            or soundSettings.playback_speed
+            or 1.0
 
-    local played = false
-    local SoundService = game:GetService("SoundService")
-    if named then
-        local soundsFolder = ReplicatedStorage:FindFirstChild("Assets")
-            and ReplicatedStorage.Assets:FindFirstChild("Sounds")
-        if soundsFolder then
-            local template = soundsFolder:FindFirstChild(named)
-            if template and template:IsA("Sound") then
-                local s = template:Clone()
-                s.Volume = volume
-                s.PlaybackSpeed = speed
-                s.RollOffMaxDistance = 100
-                s.Parent = SoundService
-                s:Play()
-                played = true
-                task.delay(duration + 0.5, function()
-                    if s and s.Parent then
-                        s:Destroy()
-                    end
-                end)
+        local played = false
+        if named then
+            local soundsFolder = ReplicatedStorage:FindFirstChild("Assets")
+                and ReplicatedStorage.Assets:FindFirstChild("Sounds")
+            if soundsFolder then
+                local template = soundsFolder:FindFirstChild(named)
+                if template and template:IsA("Sound") then
+                    local s = template:Clone()
+                    s.Volume = volume
+                    s.PlaybackSpeed = speed
+                    s.RollOffMaxDistance = 100
+                    s.Parent = SoundService
+                    s:Play()
+                    played = true
+                    task.delay(duration + 0.5, function()
+                        if s and s.Parent then
+                            s:Destroy()
+                        end
+                    end)
+                end
             end
         end
-    end
-    if (not played) and soundId then
-        local s = Instance.new("Sound")
-        s.SoundId = soundId
-        s.Volume = volume
-        s.PlaybackSpeed = speed
-        s.RollOffMaxDistance = 100
-        s.Parent = SoundService
-        s:Play()
-        task.delay(duration + 0.5, function()
-            if s and s.Parent then
-                s:Destroy()
-            end
-        end)
+        if (not played) and soundId then
+            local s = Instance.new("Sound")
+            s.SoundId = soundId
+            s.Volume = volume
+            s.PlaybackSpeed = speed
+            s.RollOffMaxDistance = 100
+            s.Parent = SoundService
+            s:Play()
+            task.delay(duration + 0.5, function()
+                if s and s.Parent then
+                    s:Destroy()
+                end
+            end)
+        end
     end
 
     -- Create visual effect (always create; do not short-circuit)
@@ -1284,9 +1283,10 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
     -- Start rolling snare as eggs appear (from config), stop on first pop
     local rollSound
     do
+        local hatchOptions = eggsData[1] and eggsData[1].hatchOptions or {}
         local adv = hatchingConfig.advanced or {}
         local rollName = adv.egg_roll_sound_name
-        if rollName then
+        if rollName and hatchOptions.silentHatch ~= true then
             local soundsFolder = ReplicatedStorage:FindFirstChild("Assets")
                 and ReplicatedStorage.Assets:FindFirstChild("Sounds")
             if soundsFolder then
@@ -1343,18 +1343,24 @@ function EggHatchingService:ExecuteHatchingSequence(
     rollSound
 )
     local eggCount = #eggComponents
+    local hatchOptions = eggsData[1] and eggsData[1].hatchOptions or {}
+    local silentHatch = hatchOptions.silentHatch == true
+    local speedScale = hatchOptions.fastHatch == true and 0.5 or 1
 
     -- Get adjusted timings based on current speed preset
-    local shakeDuration = hatchingConfig.helpers.get_adjusted_timing("shake_duration")
+    local shakeDuration = hatchingConfig.helpers.get_adjusted_timing("shake_duration") * speedScale
     local shakeWaitDuration = hatchingConfig.helpers.get_adjusted_timing("shake_wait_duration")
-    local flashDuration = hatchingConfig.helpers.get_adjusted_timing("flash_duration")
+        * speedScale
+    local flashDuration = hatchingConfig.helpers.get_adjusted_timing("flash_duration") * speedScale
     local revealDuration = hatchingConfig.helpers.get_adjusted_timing("reveal_duration")
-    local staggerDelay = hatchingConfig.helpers.get_adjusted_timing("stagger_delay")
+        * speedScale
+    local staggerDelay = hatchingConfig.helpers.get_adjusted_timing("stagger_delay") * speedScale
     local doStagger = true
     if hatchingConfig.advanced and hatchingConfig.advanced.batch_reveal_mode == "simultaneous" then
         doStagger = false
     end
     local completionWait = hatchingConfig.helpers.get_adjusted_timing("reveal_completion_wait")
+        * speedScale
 
     print(
         "⚡ Using",
@@ -1404,6 +1410,9 @@ function EggHatchingService:ExecuteHatchingSequence(
             components._batchCount = eggCount
             components._indexInBatch = i
             -- Flash (non-yielding) and play sound immediately
+            if silentHatch then
+                components._silentHatch = true
+            end
             self:AnimateFlash(components, math.max(flashDuration, 0.01))
             -- Stop the rolling snare on first pop
             if rollSound then
@@ -1465,7 +1474,7 @@ function EggHatchingService:ExecuteHatchingSequence(
                     end
                 end
             end
-            if shouldPlayWorldFX and worldPart then
+            if shouldPlayWorldFX and worldPart and not silentHatch then
                 local playDuration = math.max(flashDuration, 0.2) + math.max(revealDuration, 0)
                 task.spawn(function()
                     pcall(function()
