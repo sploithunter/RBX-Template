@@ -28,7 +28,11 @@ The project should support multiple currencies, but the template baseline should
 
 ## Pet Assets
 
-Pet models should be referenced by asset id where possible. Meshi can be used for asset creation, but current import is manual download followed by project-side upload/import. Automation is desired later.
+Pet models should be referenced by asset id where possible. Meshy can be used for developer-side asset creation, but generation and upload helpers are tooling only and must not run in-game or expose API keys to Roblox runtime code.
+
+The preferred pet creation workflow is reference-image first: create a clean white-background style reference, use Meshy image-to-3D or multi-image-to-3D in low-poly mode, texture with the same reference image, then store the downloaded GLB/FBX under `assets/source/pets/`. Prompt-only text-to-3D remains useful for exploration, but the reference-image route has produced better art-style consistency.
+
+Long-term automation should be a repo-owned script pipeline that reads `assets/manifest/pets.json`, calls Meshy with local `MESHY_API_KEY`, downloads source exports, pauses for human approval, then optionally uploads through Roblox Open Cloud and updates the manifest plus `configs/pets.lua`. Meshy's MCP server may help interactive Codex work, but scripts in the repo are the portable canonical workflow.
 
 ## Pet Rarity And Variants
 

@@ -37,6 +37,7 @@ function parsePetsConfig(filePath) {
   let depth = 0;
   let currentPet = null;
   let currentVariant = null;
+  let currentVariantsDepth = null;
 
   for (const rawLine of lines) {
     const line = rawLine.replace(/--.*$/, "");
@@ -54,7 +55,9 @@ function parsePetsConfig(filePath) {
       if (petMatch) {
         currentPet = petMatch[1];
       }
-    } else if (depth === 3 && currentPet) {
+    } else if (depth === 2 && currentPet && /^\s*variants\s*=\s*{/.test(line)) {
+      currentVariantsDepth = depth + 1;
+    } else if (currentVariantsDepth && depth === currentVariantsDepth && currentPet) {
       const variantMatch = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*{/);
       if (variantMatch) {
         currentVariant = variantMatch[1];
@@ -67,7 +70,7 @@ function parsePetsConfig(filePath) {
           display_name: "",
         });
       }
-    } else if (depth === 4 && currentPet && currentVariant) {
+    } else if (currentVariantsDepth && depth === currentVariantsDepth + 1 && currentPet && currentVariant) {
       const key = `${currentPet}.${currentVariant}`;
       const entry = pets.get(key);
       const assetMatch = line.match(/asset_id\s*=\s*"([^"]*)"/);
@@ -80,8 +83,11 @@ function parsePetsConfig(filePath) {
 
     depth += countChar(line, "{") - countChar(line, "}");
 
-    if (currentVariant && depth < 4) {
+    if (currentVariant && currentVariantsDepth && depth <= currentVariantsDepth) {
       currentVariant = null;
+    }
+    if (currentVariantsDepth && depth < currentVariantsDepth) {
+      currentVariantsDepth = null;
     }
     if (currentPet && depth < 2) {
       currentPet = null;
@@ -159,8 +165,19 @@ function analyze() {
   }
 
   const duplicateModelIds = [...modelIdUsage.entries()]
-    .filter(([, keys]) => keys.length > 1)
-    .map(([assetId, keys]) => ({ assetId, keys }));
+    .map(([assetId, keys]) => {
+      const unapprovedKeys = keys.filter((key) => {
+        const entry = manifestPets.get(key);
+        const sharedWith = entry?.roblox?.shares_model_asset_with;
+        if (!sharedWith) return true;
+
+        const sharedEntry = manifestPets.get(sharedWith);
+        return !sharedEntry || assetNumber(sharedEntry.roblox?.model_asset_id) !== assetId;
+      });
+
+      return { assetId, keys, unapprovedKeys };
+    })
+    .filter((item) => item.keys.length > 1 && item.unapprovedKeys.length > 1);
 
   const errors = [
     ...missingInManifest.map((key) => `configs/pets.lua has ${key}, but the manifest does not.`),

@@ -19,7 +19,7 @@ Status: current
 - What player-facing controls should expose Phase 5 auto-target modes and auto-delete filters? The server/config/persistence path exists, but the richer UI is still open.
 - Should high-power pets be normalized by player progression, area tier, or both?
 - Should forever/eternal pets use the reference-style percentage-of-current-best-power model, and what percent range keeps them prestigious without breaking early progression?
-- What is the long-term automated Meshi-to-Roblox asset workflow?
+- What exact first implementation should the developer-side Meshy-to-Roblox helper ship with: Meshy generation/download only, or generation plus Roblox Open Cloud upload after human approval?
 - What are the first production-quality pet families after Bear and Dragon basics?
 
 ## Map Workflow

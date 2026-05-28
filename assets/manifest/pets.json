@@ -342,6 +342,76 @@
         "image_asset_id": "rbxassetid://0"
       },
       "notes": "Existing Roblox asset id from configs/pets.lua; source model file is not present locally yet."
+    },
+    {
+      "key": "colorado.basic",
+      "pet": "colorado",
+      "variant": "basic",
+      "display_name": "Colorado Plays",
+      "status": "needs_source",
+      "prompt": "cute low-poly Roblox creator avatar pet companion, square toy-like head, blue shirt, friendly face, compact proportions, game-ready pet simulator style",
+      "reference_image": "",
+      "meshy": {
+        "task_id": "",
+        "source_url": "",
+        "notes": ""
+      },
+      "files": {
+        "source_glb": "assets/source/pets/colorado_basic.glb",
+        "source_fbx": "assets/source/pets/colorado_basic.fbx"
+      },
+      "roblox": {
+        "model_asset_id": "rbxassetid://100466492312776",
+        "image_asset_id": "rbxassetid://0"
+      },
+      "notes": "Creator reward pet. Runtime uses the imported Roblox asset; source model file is not present locally yet."
+    },
+    {
+      "key": "colorado.golden",
+      "pet": "colorado",
+      "variant": "golden",
+      "display_name": "Golden Colorado Plays",
+      "status": "needs_source",
+      "prompt": "golden cute low-poly Roblox creator avatar pet companion, square toy-like head, golden accents, friendly face, compact pet simulator proportions",
+      "reference_image": "",
+      "meshy": {
+        "task_id": "",
+        "source_url": "",
+        "notes": ""
+      },
+      "files": {
+        "source_glb": "assets/source/pets/colorado_golden.glb",
+        "source_fbx": "assets/source/pets/colorado_golden.fbx"
+      },
+      "roblox": {
+        "model_asset_id": "rbxassetid://121192248833075",
+        "image_asset_id": "rbxassetid://0"
+      },
+      "notes": "Creator reward pet. Runtime uses the imported Roblox asset; source model file is not present locally yet."
+    },
+    {
+      "key": "colorado.rainbow",
+      "pet": "colorado",
+      "variant": "rainbow",
+      "display_name": "Rainbow Colorado Plays",
+      "status": "needs_source",
+      "prompt": "rainbow cute low-poly Roblox creator avatar pet companion, square toy-like head, colorful magical accents, friendly face, compact pet simulator proportions",
+      "reference_image": "",
+      "meshy": {
+        "task_id": "",
+        "source_url": "",
+        "notes": "Runtime intentionally reuses the normal Colorado model and applies Rainbow visual treatment in code."
+      },
+      "files": {
+        "source_glb": "assets/source/pets/colorado_basic.glb",
+        "source_fbx": "assets/source/pets/colorado_basic.fbx"
+      },
+      "roblox": {
+        "model_asset_id": "rbxassetid://100466492312776",
+        "image_asset_id": "rbxassetid://0",
+        "shares_model_asset_with": "colorado.basic"
+      },
+      "notes": "Creator reward pet. This variant intentionally shares the normal model asset and relies on runtime Rainbow treatment."
     }
   ]
 }
