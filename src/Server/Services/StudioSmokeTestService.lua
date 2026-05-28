@@ -1093,7 +1093,9 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
     local originalCurrency = dataService:GetCurrency(player, eggData.currency)
     local originalPetsBucket = deepCopy(data.Inventory.pets or { items = {} })
     local eggCost = (petsConfig.getEggCost and petsConfig.getEggCost(eggType)) or eggData.cost
-    local requiredCurrency = eggCost + math.max(25, math.floor(eggCost * 0.1))
+    local setupHatchCount = math.max(1, math.floor(tonumber(payload.setupHatchCount) or 1))
+    local requiredCurrency = payload.setupCurrencyAmount
+        or ((eggCost * setupHatchCount) + math.max(25, math.floor(eggCost * 0.1)))
 
     dataService:SetCurrency(player, eggData.currency, requiredCurrency, "egg_smoke_setup")
 
@@ -1121,6 +1123,7 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
         originalCurrency = originalCurrency,
         originalPetCount = sessions[player.UserId].originalPetCount,
         currentCurrency = dataService:GetCurrency(player, eggData.currency),
+        setupHatchCount = setupHatchCount,
     }
 end
 
@@ -1143,7 +1146,7 @@ function StudioSmokeTestService:_moveEggProximity(player, payload)
     }
 end
 
-function StudioSmokeTestService:_hatchEggProximity(player)
+function StudioSmokeTestService:_hatchEggProximity(player, payload)
     local session = sessions[player.UserId]
     if not session then
         return {
@@ -1151,13 +1154,23 @@ function StudioSmokeTestService:_hatchEggProximity(player)
             error = "Egg proximity smoke session has not started",
         }
     end
+    payload = payload or {}
 
     local EggService = require(ServerScriptService.Server.Services.EggService)
     local beforeCurrency = dataService:GetCurrency(player, session.currency)
     local data = dataService:GetData(player)
     local beforePetCount = countPets(data.Inventory and data.Inventory.pets)
-    local hatchResult, hatchMessage =
-        EggService:HandleEggPurchase(player, session.eggType, "Single")
+    local hatchResult, hatchMessage
+    local requestedCount = math.max(1, math.floor(tonumber(payload.requestedCount) or 1))
+    if payload.batch == true or requestedCount ~= 1 then
+        hatchResult, hatchMessage = EggService:HandleEggPurchase(player, {
+            eggType = session.eggType,
+            requestedCount = requestedCount,
+            purchaseType = payload.purchaseType or "SmokeBatch",
+        })
+    else
+        hatchResult, hatchMessage = EggService:HandleEggPurchase(player, session.eggType, "Single")
+    end
     local afterData = dataService:GetData(player)
 
     return {

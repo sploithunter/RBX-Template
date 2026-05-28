@@ -1,0 +1,154 @@
+--[[
+    Studio smoke test for server-authoritative batch egg hatching.
+
+    Run in play mode:
+
+    return require(game:GetService("ReplicatedStorage").Tests.studio.EggBatchHatchSmoke).runText()
+]]
+
+local EggBatchHatchSmoke = {}
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local DEFAULT_TIMEOUT_SECONDS = 20
+local REMOTE_NAME = "StudioSmokeTest"
+
+local function waitFor(description, timeoutSeconds, predicate)
+    local deadline = os.clock() + (timeoutSeconds or DEFAULT_TIMEOUT_SECONDS)
+
+    while os.clock() < deadline do
+        local result = predicate()
+        if result then
+            return result
+        end
+        task.wait(0.1)
+    end
+
+    error("Timed out waiting for " .. description)
+end
+
+local function getPlayer(options)
+    if options.player then
+        return options.player
+    end
+
+    return Players.LocalPlayer
+        or Players:GetPlayers()[1]
+        or waitFor("a player", options.timeoutSeconds, function()
+            return Players.LocalPlayer or Players:GetPlayers()[1]
+        end)
+end
+
+local function invoke(remote, action, payload)
+    local response = remote:InvokeServer(action, payload or {})
+    if type(response) ~= "table" then
+        error("Studio smoke bridge returned non-table response")
+    end
+    if response.ok ~= true then
+        error(response.error or ("Studio smoke bridge action failed: " .. tostring(action)))
+    end
+    return response
+end
+
+function EggBatchHatchSmoke.run(options)
+    options = options or {}
+
+    local eggType = options.eggType or "basic_egg"
+    local requestedCount = math.max(2, math.floor(tonumber(options.requestedCount) or 5))
+    local timeoutSeconds = options.timeoutSeconds or DEFAULT_TIMEOUT_SECONDS
+    local player = getPlayer(options)
+    local remote = waitFor(REMOTE_NAME .. " RemoteFunction", timeoutSeconds, function()
+        local instance = ReplicatedStorage:FindFirstChild(REMOTE_NAME)
+        if instance and instance:IsA("RemoteFunction") then
+            return instance
+        end
+        return nil
+    end)
+
+    local started = false
+    local success, result = pcall(function()
+        local begin = invoke(remote, "BeginEggProximity", {
+            eggType = eggType,
+            setupHatchCount = requestedCount,
+        })
+        started = true
+
+        invoke(remote, "MoveEggProximity", { placement = "near" })
+        task.wait(0.35)
+
+        local batch = invoke(remote, "HatchEggProximity", {
+            batch = true,
+            requestedCount = requestedCount,
+        })
+        assert(
+            type(batch.result) == "table" and batch.result.success == true,
+            tostring(batch.message)
+        )
+        assert(batch.result.requestedCount == requestedCount, "Batch response lost requested count")
+        assert(batch.result.hatchCount == requestedCount, "Batch did not hatch requested count")
+        assert(type(batch.result.results) == "table", "Batch response missing results")
+        assert(#batch.result.results == requestedCount, "Batch result count mismatch")
+        assert(
+            batch.afterCurrency == batch.beforeCurrency - (batch.cost * requestedCount),
+            "Batch did not deduct the combined configured cost"
+        )
+        assert(
+            batch.afterPetCount == batch.beforePetCount + requestedCount,
+            "Batch did not add the expected number of pets"
+        )
+
+        local rapid = invoke(remote, "HatchEggProximity", {
+            batch = true,
+            requestedCount = 1,
+        })
+        assert(
+            type(rapid.result) == "table" and rapid.result.success == false,
+            "Rapid hatch was not rejected"
+        )
+        assert(rapid.result.code == "hatch_locked", "Rapid hatch rejected for wrong reason")
+        assert(rapid.afterCurrency == rapid.beforeCurrency, "Rapid rejected hatch changed currency")
+        assert(
+            rapid.afterPetCount == rapid.beforePetCount,
+            "Rapid rejected hatch changed pet count"
+        )
+
+        return {
+            player = player.Name,
+            eggType = begin.eggType,
+            currency = begin.currency,
+            cost = begin.cost,
+            requestedCount = requestedCount,
+            hatchCount = batch.result.hatchCount,
+            stopReason = batch.result.stopReason,
+        }
+    end)
+
+    local restoreResponse
+    if started then
+        restoreResponse = remote:InvokeServer("RestoreEggProximity", {})
+    end
+
+    if not success then
+        error(result)
+    end
+
+    result.restored = type(restoreResponse) == "table" and restoreResponse.restored == true
+    return result
+end
+
+function EggBatchHatchSmoke.runText(options)
+    local result = EggBatchHatchSmoke.run(options)
+    return string.format(
+        "EggBatchHatchSmoke passed: player=%s egg=%s count=%d cost=%d %s stop=%s restored=%s",
+        result.player,
+        result.eggType,
+        result.hatchCount,
+        result.cost,
+        result.currency,
+        tostring(result.stopReason),
+        tostring(result.restored)
+    )
+end
+
+return EggBatchHatchSmoke

@@ -24,6 +24,9 @@ local player = Players.LocalPlayer
 
 -- Current target service reference
 local currentTargetService = nil
+local hatchRequestInFlight = false
+local autoHatchEnabled = false
+local autoHatchSessionId = 0
 
 -- Logger setup using singleton pattern
 local Logger
@@ -65,31 +68,108 @@ function EggInteractionService:OnEKeyPressed()
         return
     end
 
-    Logger:Info(
-        "E pressed - attempting purchase",
-        { context = "EggInteractionService", eggType = currentTarget }
-    )
-    self:HandleEggPurchase(currentTarget)
+    Logger:Info("E pressed - attempting hatch", {
+        context = "EggInteractionService",
+        eggType = currentTarget,
+    })
+    self:HandleEggPurchase(currentTarget, 1, "Single")
+end
+
+function EggInteractionService:OnMaxHatchKeyPressed()
+    if not currentTargetService then
+        Logger:Warn("CurrentTargetService not available", { context = "EggInteractionService" })
+        return
+    end
+
+    local currentTarget = currentTargetService:GetCurrentTarget()
+    if currentTarget == "None" or not currentTarget then
+        return
+    end
+
+    local maxCount = eggSystemConfig.hatching and eggSystemConfig.hatching.max_count or 99
+    self:HandleEggPurchase(currentTarget, maxCount, "Max")
+end
+
+function EggInteractionService:ToggleAutoHatch()
+    if autoHatchEnabled then
+        autoHatchEnabled = false
+        autoHatchSessionId += 1
+        self:ShowErrorMessage("Auto hatch stopped")
+        return
+    end
+
+    if not currentTargetService then
+        Logger:Warn("CurrentTargetService not available", { context = "EggInteractionService" })
+        return
+    end
+
+    local currentTarget = currentTargetService:GetCurrentTarget()
+    if currentTarget == "None" or not currentTarget then
+        self:ShowErrorMessage("No egg selected")
+        return
+    end
+
+    autoHatchEnabled = true
+    autoHatchSessionId += 1
+    local sessionId = autoHatchSessionId
+    local maxCount = eggSystemConfig.hatching and eggSystemConfig.hatching.max_count or 99
+    local waitSeconds = eggSystemConfig.cooldowns.purchase_cooldown or 3
+
+    task.spawn(function()
+        while autoHatchEnabled and sessionId == autoHatchSessionId do
+            local target = currentTargetService:GetCurrentTarget()
+            if target == "None" or not target then
+                autoHatchEnabled = false
+                self:ShowErrorMessage("Auto hatch stopped: too far away")
+                break
+            end
+
+            local ok = self:HandleEggPurchase(target, maxCount, "Auto", sessionId)
+            if not ok then
+                autoHatchEnabled = false
+                break
+            end
+
+            task.wait(waitSeconds)
+        end
+    end)
 end
 
 -- === EGG PURCHASE HANDLING ===
 
-function EggInteractionService:HandleEggPurchase(eggType)
-    Logger:Info("Requesting egg purchase", { context = "EggInteractionService", eggType = eggType })
+function EggInteractionService:HandleEggPurchase(
+    eggType,
+    requestedCount,
+    purchaseType,
+    autoSessionId
+)
+    if hatchRequestInFlight then
+        self:ShowErrorMessage("Please wait before hatching again")
+        return false
+    end
+
+    requestedCount = requestedCount or 1
+    purchaseType = purchaseType or "Single"
+    Logger:Info("Requesting egg hatch", {
+        context = "EggInteractionService",
+        eggType = eggType,
+        requestedCount = requestedCount,
+        purchaseType = purchaseType,
+    })
 
     -- Validate egg type
     local eggData = petConfig.egg_sources[eggType]
     if not eggData then
         Logger:Warn("Invalid egg type", { context = "EggInteractionService", eggType = eggType })
         self:ShowErrorMessage("Invalid egg type")
-        return
+        return false
     end
 
     -- Client-side distance check (like working game)
     if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
         Logger:Warn("No character or root part", { context = "EggInteractionService" })
         self:ShowErrorMessage("Character not ready")
-        return
+        return false
     end
 
     -- Find egg in workspace
@@ -97,7 +177,7 @@ function EggInteractionService:HandleEggPurchase(eggType)
     if not eggInWorkspace then
         Logger:Warn("Egg not found in workspace", { context = "EggInteractionService" })
         self:ShowErrorMessage("Egg not found")
-        return
+        return false
     end
 
     local anchor = EggWorldQuery.GetAnchor(eggInWorkspace)
@@ -105,14 +185,14 @@ function EggInteractionService:HandleEggPurchase(eggType)
     if not anchor then
         Logger:Warn("No anchor found on egg", { context = "EggInteractionService" })
         self:ShowErrorMessage("Egg configuration error")
-        return
+        return false
     end
 
     local distance = (player.Character.HumanoidRootPart.Position - anchor.Position).Magnitude
     if distance > eggSystemConfig.proximity.max_distance then
         Logger:Info("Too far from egg", { context = "EggInteractionService", distance = distance })
         self:ShowErrorMessage(eggSystemConfig.messages.too_far_away)
-        return
+        return false
     end
 
     Logger:Debug(
@@ -125,12 +205,19 @@ function EggInteractionService:HandleEggPurchase(eggType)
     if not eggRemote then
         Logger:Error("EggOpened RemoteFunction not found", { context = "EggInteractionService" })
         self:ShowErrorMessage("Server not ready, please restart game")
-        return
+        return false
     end
 
+    hatchRequestInFlight = true
     local success, result, message = pcall(function()
-        return eggRemote:InvokeServer(eggType, "Single")
+        return eggRemote:InvokeServer({
+            eggType = eggType,
+            requestedCount = requestedCount,
+            purchaseType = purchaseType,
+            autoSessionId = autoSessionId,
+        })
     end)
+    hatchRequestInFlight = false
 
     if success then
         Logger:Info(
@@ -140,12 +227,22 @@ function EggInteractionService:HandleEggPurchase(eggType)
         if type(result) == "table" and result.success then
             Logger:Info("Purchase successful", { context = "EggInteractionService" })
             self:ShowHatchingResults(result)
+            return true
+        elseif type(result) == "table" and result.success == false then
+            Logger:Warn("Purchase failed", {
+                context = "EggInteractionService",
+                message = result.message or "Purchase failed",
+                code = result.code,
+            })
+            self:ShowErrorMessage(result.message or "Purchase failed")
+            return false
         elseif result == "Error" then
             Logger:Warn(
                 "Purchase failed",
                 { context = "EggInteractionService", message = message or "Unknown error" }
             )
             self:ShowErrorMessage(message or "Purchase failed")
+            return false
         elseif type(result) == "table" and result.Pet then
             -- Handle successful result without explicit success flag
             Logger:Info(
@@ -153,12 +250,14 @@ function EggInteractionService:HandleEggPurchase(eggType)
                 { context = "EggInteractionService" }
             )
             self:ShowHatchingResults(result)
+            return true
         else
             Logger:Warn(
                 "Unexpected result format",
                 { context = "EggInteractionService", resultType = typeof(result) }
             )
             self:ShowErrorMessage("Unexpected server response")
+            return false
         end
     else
         Logger:Error(
@@ -166,6 +265,7 @@ function EggInteractionService:HandleEggPurchase(eggType)
             { context = "EggInteractionService", error = tostring(result) }
         )
         self:ShowErrorMessage("Connection error")
+        return false
     end
 end
 
@@ -223,12 +323,14 @@ end
 
 function EggInteractionService:ShowHatchingResults(result)
     -- Reduce console noise: keep egg-related logs through Logger only
-    local Logger = self._modules and self._modules.Logger
-    if Logger and Logger.Info then
-        Logger:Info(
-            "Hatched pet",
-            { pet = result.Pet, variant = result.Type, power = result.Power }
-        )
+    local activeLogger = self._modules and self._modules.Logger
+    if activeLogger and activeLogger.Info then
+        activeLogger:Info("Hatched pet", {
+            pet = result.Pet,
+            variant = result.Type,
+            power = result.Power,
+            hatchCount = result.hatchCount or 1,
+        })
     end
 
     -- Use the full egg hatching animation system instead of simple notification
@@ -237,26 +339,38 @@ function EggInteractionService:ShowHatchingResults(result)
     end)
 
     if success and hatchingService then
-        -- Prepare egg data for animation
-        local eggData = {
-            petType = result.Pet,
-            variant = result.Type,
-            power = result.Power,
-            eggType = result.EggType or "basic_egg", -- Add egg type for proper image lookup
-            imageId = self:GetEggImageId(result.EggType or "basic_egg"),
-            petImageId = self:GetPetImageId(result.Pet, result.Type),
-        }
+        -- Prepare egg data for animation. Batch responses carry one entry per egg;
+        -- legacy single-hatch responses still flow through the same path.
+        local eggsData = {}
+        local resultEntries = type(result.results) == "table" and result.results or { result }
+        for _, entry in ipairs(resultEntries) do
+            local eggType = entry.EggType or result.EggType or "basic_egg"
+            table.insert(eggsData, {
+                petType = entry.Pet or entry.pet,
+                variant = entry.Type or entry.variant,
+                power = entry.Power or entry.power,
+                eggType = eggType,
+                imageId = self:GetEggImageId(eggType),
+                petImageId = self:GetPetImageId(
+                    entry.Pet or entry.pet,
+                    entry.Type or entry.variant
+                ),
+                animation = result.animation,
+                autoDeleted = entry.AutoDeleted or entry.autoDeleted,
+                autoDeleteReason = entry.AutoDeleteReason or entry.autoDeleteReason,
+            })
+        end
 
         -- Start the hatching animation (uses persistent reusable GUI)
-        if Logger and Logger.Info then
-            Logger:Info(
+        if activeLogger and activeLogger.Info then
+            activeLogger:Info(
                 "Starting egg hatching animation",
-                { pet = result.Pet, variant = result.Type }
+                { pet = result.Pet, variant = result.Type, hatchCount = #eggsData }
             )
         end
-        local animationResult = hatchingService:StartHatchingAnimation({ eggData })
-        if Logger and Logger.Info then
-            Logger:Info("Hatching animation started (persistent GUI)")
+        hatchingService:StartHatchingAnimation(eggsData)
+        if activeLogger and activeLogger.Info then
+            activeLogger:Info("Hatching animation started (persistent GUI)")
         end
     else
         -- Fallback to simple notification if animation service fails
@@ -386,10 +500,16 @@ function EggInteractionService:Initialize()
         end
 
         if input.UserInputType == Enum.UserInputType.Keyboard then
+            if UserInputService:GetFocusedTextBox() ~= nil then
+                return
+            end
+
             if input.KeyCode == eggSystemConfig.proximity.interaction_key then
-                if UserInputService:GetFocusedTextBox() == nil then
-                    self:OnEKeyPressed()
-                end
+                self:OnEKeyPressed()
+            elseif input.KeyCode == eggSystemConfig.proximity.hatch_max_key then
+                self:OnMaxHatchKeyPressed()
+            elseif input.KeyCode == eggSystemConfig.proximity.auto_hatch_key then
+                self:ToggleAutoHatch()
             end
         end
     end)

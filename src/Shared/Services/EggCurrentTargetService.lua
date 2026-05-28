@@ -13,7 +13,6 @@ local EggCurrentTargetService = {}
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 
 -- Dependencies
 local Locations = require(ReplicatedStorage.Shared.Locations)
@@ -138,7 +137,12 @@ function EggCurrentTargetService:CreateEggUI()
     promptLabel.Size = UDim2.new(1, -10, 0.3, 0)
     promptLabel.Position = UDim2.new(0, 5, 0.7, 0)
     promptLabel.BackgroundTransparency = 1
-    promptLabel.Text = "Press " .. eggSystemConfig.proximity.interaction_key.Name .. " to purchase"
+    promptLabel.Text = eggSystemConfig.proximity.interaction_key.Name
+        .. " Hatch | "
+        .. eggSystemConfig.proximity.hatch_max_key.Name
+        .. " Max | "
+        .. eggSystemConfig.proximity.auto_hatch_key.Name
+        .. " Auto"
     promptLabel.TextColor3 = eggSystemConfig.ui.colors.text_secondary
     promptLabel.TextScaled = true
     promptLabel.Font = eggSystemConfig.ui.fonts.prompt

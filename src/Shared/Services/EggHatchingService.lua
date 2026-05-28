@@ -26,6 +26,10 @@ local SoundService = game:GetService("SoundService")
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local EggHatchFX = require(ReplicatedStorage.Shared.Effects.EggHatchFX)
+local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
+
+local eggSystemConfig = Locations.getConfig("egg_system")
+local petConfig = Locations.getConfig("pets")
 
 -- Load flash effects configuration
 local flashEffectsConfig
@@ -374,10 +378,19 @@ function EggHatchingService:CreateEggFrame(position, eggData)
         frame.Position.Y.Offset
     )
 
-    -- Egg image - use the generated ViewportFrames from asset generation system
+    -- Egg image - use authored world egg visuals first, then generated ViewportFrames.
     local eggImage = nil
 
-    if eggData.imageId == "generated_image" then
+    if eggData.animation and eggData.animation.useAuthoredEggVisual == true then
+        eggImage = self:GetAuthoredEggViewport(eggData.eggType or "basic_egg")
+        if eggImage then
+            print("🖼️ Using authored egg ViewportFrame for:", eggData.eggType)
+        else
+            print("⚠️ No authored egg ViewportFrame found, using generated/fallback")
+        end
+    end
+
+    if not eggImage and eggData.imageId == "generated_image" then
         -- Get the actual generated ViewportFrame (same as inventory/egg preview)
         eggImage = self:GetGeneratedEggViewport(eggData.eggType or "basic_egg")
         if eggImage then
@@ -1988,6 +2001,97 @@ end
 -- ═══════════════════════════════════════════════════════════════════════════════════
 -- HELPER FUNCTIONS FOR GENERATED IMAGES
 -- ═══════════════════════════════════════════════════════════════════════════════════
+
+local function prepareViewportClone(instance)
+    local clone = instance:Clone()
+    for _, descendant in ipairs(clone:GetDescendants()) do
+        if descendant:IsA("BaseScript") then
+            descendant:Destroy()
+        elseif descendant:IsA("BasePart") then
+            descendant.Anchored = true
+            descendant.CanCollide = false
+            descendant.CanTouch = false
+            descendant.Massless = true
+        end
+    end
+
+    if clone:IsA("BasePart") then
+        local model = Instance.new("Model")
+        model.Name = clone.Name .. "_ViewportModel"
+        clone.Parent = model
+        return model
+    end
+
+    if clone:IsA("Model") then
+        return clone
+    end
+
+    local firstPart = clone:FindFirstChildWhichIsA("BasePart", true)
+    if firstPart then
+        local model = Instance.new("Model")
+        model.Name = clone.Name .. "_ViewportModel"
+        clone.Parent = model
+        return model
+    end
+
+    clone:Destroy()
+    return nil
+end
+
+local function getAuthoredEggVisualScale(eggType)
+    local defaultScale = 1
+    local hatching = eggSystemConfig and eggSystemConfig.hatching
+    if hatching and hatching.animation then
+        defaultScale = tonumber(hatching.animation.authored_visual_scale) or defaultScale
+    end
+
+    local eggData = petConfig and petConfig.egg_sources and petConfig.egg_sources[eggType]
+    local eggAnimation = eggData and eggData.animation
+    local scale = tonumber(eggAnimation and eggAnimation.authored_visual_scale) or defaultScale
+    return math.clamp(scale, 0.25, 5)
+end
+
+function EggHatchingService:GetAuthoredEggViewport(eggType)
+    local success, viewport = pcall(function()
+        local egg = EggWorldQuery.FindEggByType(eggType)
+        if not egg then
+            return nil
+        end
+
+        local model = prepareViewportClone(egg)
+        if not model then
+            return nil
+        end
+
+        local viewportFrame = Instance.new("ViewportFrame")
+        viewportFrame.Name = "AuthoredEggViewport_" .. tostring(eggType)
+        viewportFrame.BackgroundTransparency = 1
+        viewportFrame.BorderSizePixel = 0
+        viewportFrame.Ambient = Color3.fromRGB(150, 150, 150)
+        viewportFrame.LightColor = Color3.fromRGB(255, 255, 255)
+        viewportFrame.LightDirection = Vector3.new(-1, -1, -0.5)
+
+        local worldModel = Instance.new("WorldModel")
+        worldModel.Parent = viewportFrame
+        model.Parent = worldModel
+
+        local bboxCFrame, bboxSize = model:GetBoundingBox()
+        model:PivotTo(CFrame.new(-bboxCFrame.Position) * model:GetPivot())
+
+        local maxSize = math.max(bboxSize.X, bboxSize.Y, bboxSize.Z, 1)
+        local focusY = bboxSize.Y * 0.08
+        local visualScale = getAuthoredEggVisualScale(eggType)
+        local distance = (maxSize * 2.25) / visualScale
+        local camera = Instance.new("Camera")
+        camera.CFrame = CFrame.lookAt(Vector3.new(0, focusY, distance), Vector3.new(0, focusY, 0))
+        camera.Parent = viewportFrame
+        viewportFrame.CurrentCamera = camera
+
+        return viewportFrame
+    end)
+
+    return success and viewport or nil
+end
 
 function EggHatchingService:GetGeneratedEggViewport(eggType)
     local success, viewport = pcall(function()

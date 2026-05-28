@@ -633,6 +633,9 @@ local petConfig = {
                 offset = Vector3.new(0, 0, 0),
                 lighting = "default",
             },
+            animation = {
+                authored_visual_scale = 1.55,
+            },
 
             -- Stage 1: Pet Selection (which animal) - TESTING RARE PERCENTAGES
             pet_weights = {

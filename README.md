@@ -13,7 +13,7 @@ Phase 5 has its first server-authoritative auto systems slice. The pet follow/mi
 - Phase 2: economy depth complete for the current baseline.
 - Phase 3: stats-derived wins complete: pet index, achievements, and live leaderboards.
 - Phase 4: progression depth complete for the current baseline: unique pet XP/levels, enchant-slot unlock milestones, hatch-time enchant rolls, manual reroll service hooks, enchant modifier providers, player-level team power, configurable level rewards, eternal/huge pet handling, source-of-truth pet power, and offline balance tooling.
-- Phase 5: first auto-system slice active: server-selected auto-target modes, persisted auto settings, and server-enforced hatch auto-delete filters.
+- Phase 5: auto-system slice active: server-selected auto-target modes, persisted auto settings, server-enforced hatch auto-delete filters, and first dynamic egg hatch foundation.
 
 ## Current Implemented Features
 
@@ -22,7 +22,7 @@ The playable baseline currently includes:
 - Rojo-owned code/config with Studio-owned map geometry and marker hooks.
 - Persistent ProfileStore-backed player data after Studio API access is enabled.
 - Breakable crystal spawning, coin spawning, contribution rewards, and configurable reward modifiers.
-- Eggs, proximity hatch validation, and hatching from configured pet asset ids.
+- Eggs, proximity hatch validation, server-authoritative dynamic `1..99` requested hatch counts, and hatching from configured pet asset ids.
 - Mixed pet inventory storage: normal pets stack, special pets are unique records.
 - Pet equip limits, storage limits, config-driven upgrades, and admin test controls.
 - Imported pet asset transforms for scale, orientation, Huge scale, and variant visuals.
@@ -39,6 +39,7 @@ The playable baseline currently includes:
 - Pet index milestones, achievements, and live leaderboard service over shared stats.
 - Config-driven auto-target modes: nearest, highest value, weakest, strongest, and selected currency.
 - Config-driven hatch auto-delete filters by rarity, pet family, and variant, with protected special rarities.
+- Hatch hotkeys for single, max, and auto hatch (`E`, `R`, `T`) backed by the same server batch endpoint.
 - Admin panel tools and Studio MCP smoke-test tooling for repeatable validation.
 
 ## In Process / Partially Implemented
@@ -49,6 +50,8 @@ These systems exist but still need polish or later-phase expansion:
 - Pet follow/mining still runs through a stabilized legacy cloned script. Phase 4 now routes its damage/cadence through the modifier pipeline, but a cleaner PetWork/Combat service should replace that script.
 - Enchanter UI works and now explains config descriptions, but richer player education such as signs/help panels is still future polish.
 - Auto systems currently have server/config/smoke coverage and compatibility with the existing Low/High buttons; richer settings UI controls are still future polish.
+- Egg hatching now has the server transaction foundation for dynamic counts and auto hatch, but the near-egg UI is still hotkey-oriented and needs a proper button/count-selector panel.
+- Egg hatch responses include authored egg visual metadata and `EggHatchingService` has a first-pass authored ViewportFrame clone/scale path, but the animation still needs richer UI polish.
 - Offline balance tooling reads the current player-level curve, but it remains a rough calculator rather than a full economy simulator.
 - Authored-map workflow works through markers, but visible production map fixtures/gate art are still early.
 
@@ -58,6 +61,7 @@ Planned or intentionally deferred work:
 
 - Potions, boosts, shops, and other player enhancements that feed the shared modifier pipeline.
 - Richer auto-system UI controls and player-facing explanations.
+- Richer egg UI: Hatch/Max/Auto buttons, selected-count control, stop-reason display, fast/skip/silent/golden mode toggles, and player-facing hatch settings.
 - Daily gifts, reward tracks, codes, stock/limited items, and Pet of the Day style rotations.
 - Chaseables, seasonal/event currencies, and more authored-world content.
 - Trading/marketplace with Roblox-native escrow and anti-duplication guarantees.
@@ -148,6 +152,7 @@ return require(game:GetService("ReplicatedStorage").Tests.studio.BackfillPetPowe
 return require(game:GetService("ReplicatedStorage").Tests.studio.EternalPowerSmoke).runText()
 return require(game:GetService("ReplicatedStorage").Tests.studio.Phase4PetProgressionSmoke).runText()
 return require(game:GetService("ReplicatedStorage").Tests.studio.Phase5AutoSystemsSmoke).runText()
+return require(game:GetService("ReplicatedStorage").Tests.studio.EggBatchHatchSmoke).runText()
 ```
 
 ## Project Structure
@@ -175,6 +180,7 @@ Latest local checkpoint:
 - Phase 3 Studio smoke coverage exists for pet index, achievements, leaderboards, and Phase 2 regressions.
 - `Phase4PetProgressionSmoke`: passes in Studio for hatch enchants, breakable XP, manual reroll, player-level slot rewards, hatch/secret luck, pet damage, team power, pet efficiency, and profile restoration.
 - `Phase5AutoSystemsSmoke`: passes in Studio for server-selected nearest/highest/weakest/strongest/selected-currency targets, hatch auto-delete filters, protected special rarity behavior, and profile restoration.
+- `EggBatchHatchSmoke`: added for server batch hatch count/cost behavior and rapid-repeat hatch lock rejection.
 
 See `docs/wiki/CURRENT_STATUS.md` for detailed verification history and `docs/IMPLEMENTATION_PLAN.md` for the phase roadmap.
 

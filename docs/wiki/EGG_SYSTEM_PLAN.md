@@ -1,0 +1,202 @@
+# Egg System Plan
+
+Status: in progress
+
+Implemented so far:
+
+- `configs/egg_system.lua` now declares `hatching.max_count = 99`, partial-hatch policy, transaction lock timing, compatibility purchase counts, animation policy, and shop/entitlement stubs.
+- `EggService` accepts both legacy `eggType, purchaseType` calls and new table requests with `requestedCount`; the server resolves actual hatch count from entitlement, currency, auto-delete, and mixed pet storage before charging.
+- Per-player hatch locks now cover the server transaction, blocking rapid repeat requests that previously created invisible hatches.
+- Batch responses include legacy `Pet`/`Type`/`Power` fields plus `requestedCount`, `hatchCount`, `results`, `stopReason`, `entitlements`, and authored egg animation metadata.
+- Client hatch controls now support `E` single hatch, `R` max hatch, and `T` auto hatch through the same server-authoritative endpoint.
+- `EggBatchHatchSmoke` covers multi-hatch cost/count behavior plus rapid-repeat rejection.
+- Authored egg animation ViewportFrames use config-driven scale: a global default in `egg_system.hatching.animation.authored_visual_scale` plus per-egg overrides such as `pets.egg_sources.basic_egg.animation.authored_visual_scale`.
+
+Still to build:
+
+- Rich near-egg hatch UI with buttons/count selector instead of hotkeys only.
+- Auto-delete settings UI polish and hatch setting UI for fast/skip/silent/golden modes.
+- Richer authored egg animation polish beyond the first ViewportFrame clone/scale pass.
+- Insufficient-funds partial and insufficient-storage partial smoke coverage.
+
+## Goal
+
+Build eggs into a complete, config-first pet-simulator subsystem while keeping the server authoritative. Egg stands are authored map fixtures; egg behavior, costs, hatch modes, odds, variants, auto-delete, animation policy, and unlock rules live in config.
+
+The designed hatch ceiling is `99` eggs. The hatch request should allow a desired count from `1` to `99`, but the server resolves the actual count from player entitlement, available currency, storage capacity, and egg settings. If the player asks for `99` and can afford/store `37`, hatch `37`; if the player can afford/store none, return a clear stop/error reason.
+
+## Reference Findings
+
+Pet Simulator X / 99 patterns worth adapting:
+
+- Eggs are area/progression objects with cost, unlock requirement, and pet table.
+- Multi-hatch is a first-class capability. This project should support any count `1..99`, not only fixed 3/9 progression steps.
+- Auto-hatch is a loop state, not repeated manual clicking.
+- Premium hatch modifiers include faster hatch, skip hatch, luck, huge/secret luck, Magic Eggs-style golden/rainbow chance, golden-only/charged modes, and additional egg slots.
+- High-volume hatching depends on auto-delete/filtering so inventory and saves remain manageable.
+- Special hatches need stronger reveal treatment and may bypass skip/silent settings.
+
+ColorfulClickers patterns worth preserving conceptually:
+
+- Single, triple, and nine hatch modes.
+- Auto hatch loop near the current egg.
+- Hatch speed scaling from Fast Egg-style ownership.
+- Player settings for show/silence hatches and server hatch messages.
+- Auto-delete by rarity.
+- Special reveal fanfare for Secret/Exclusive/Huge/Colossal.
+- The egg animation clones the actual world egg model, so authored eggs such as rocks can hatch as themselves.
+
+## Core Architecture
+
+Create one hatch pipeline:
+
+1. Client requests `{ eggId, requestedCount, options, autoSessionId? }`.
+2. Server validates target, distance, unlock, cooldown/lock, requested count, feature entitlement, currency, and storage.
+3. Server resolves actual count, total cost, and stop reason. Counts above `99` are rejected or clamped by config; counts below affordable/storable capacity hatch partially only when the request allows partial hatches.
+4. Server deducts once, rolls each pet, applies variant rolls, applies hatch enchants/auto-delete, grants pets through `PetGrantService`, increments stats, and returns a batch result.
+5. Client plays one animation for the whole batch using the returned egg visual contract and result list.
+
+The current spam bug should be fixed by a server-side per-player hatch lock. Cooldown should begin when the request is accepted, and the player should not be able to start another hatch until the server has finished validation/grants and the configured lock window has elapsed.
+
+## Feature Buckets
+
+Necessary:
+
+- Server batch hatching for dynamic `1..99` counts.
+- Server-side hatch lock and cooldown race fix.
+- Config-driven hatch limits with max count, partial-hatch policy, required unlocks, and hotkey/button labels.
+- Batch currency/storage validation before rolling.
+- Batch result payload for animation, stats, auto-delete, and errors.
+- Egg animation uses the authored egg model/anchor, not a generic icon.
+- Tests for too-far, insufficient funds, insufficient storage, rapid repeat, single hatch, and multi-hatch.
+
+High priority:
+
+- Auto-hatch as a server-authorized client loop with stop reasons.
+- Auto-delete UI for rarity/family/variant using the existing server filter foundation.
+- Hatch UI near eggs: requested count selector/input, Hatch, Auto, Golden/Charged toggles where unlocked.
+- Fast/skip/silent hatch settings.
+- Special hatch fanfare rules by rarity/trait.
+- Hatch history/debug panel for admin testing.
+
+Config and balancing:
+
+- `configs/egg_system.lua` should define max hatch count (`99`), partial hatch policy, lock/cooldown windows, animation policy, auto-hatch loop interval, and default UI/hotkeys.
+- `configs/pets.lua` egg source entries should define base cost, currency, unlock/area, pet table, variant rolls, golden/charged modifiers, and visual model policy.
+- `configs/upgrades.lua` / future monetization config can grant max requested hatch count, auto-hatch, fast hatch, skip hatch, luck, golden/rainbow chance, and huge/secret luck modifiers.
+
+## Comprehensive Implementation Checklist
+
+Server pipeline:
+
+- Add a canonical `EggHatchService` or refactor `EggService` into clearly separated helpers: validate request, resolve count, charge currency, roll pets, grant pets, build response.
+- Replace legacy `purchaseType` strings with `{ requestedCount, options }` while preserving a temporary compatibility adapter for current UI/tests.
+- Add per-player hatch lock state with accepted-at time, active request id, and release timing.
+- Make hatch lock cover the whole server transaction so rapid `E` presses cannot create invisible hatches.
+- Add consistent result envelopes: `{ ok = true, eggId, requestedCount, hatchCount, totalCost, currency, results, animation, autoDeleted, stopReason }` and `{ ok = false, code, message, details }`.
+- Support partial hatching: requested `99`, affordable/storable `N`, hatch `N` when `allow_partial = true`; otherwise reject.
+- Validate distance using `EggWorldQuery` and authored `EggStand` anchors.
+- Validate area/zone unlocks for eggs if configured.
+- Validate storage against stackable vs unique pet storage rules.
+- Deduct total currency once per batch with economy source metadata such as `egg_hatch_batch`.
+- Roll each hatch independently using current pet + variant + luck/enchant logic.
+- Apply hatch-time enchants only through `PetGrantService`.
+- Apply auto-delete before inventory write, preserving protected rarity rules.
+- Increment `eggs_hatched` by actual hatch count.
+- Return per-result metadata for rarity, variant, unique id, serial, auto-delete status, and display names.
+- Add admin/server utility to simulate hatch batches without client animation.
+
+Config:
+
+- Add `egg_system.hatching.max_count = 99`.
+- Add `egg_system.hatching.allow_partial = true`.
+- Add `egg_system.hatching.default_requested_count = 1` and per-player setting support.
+- Add `egg_system.hatching.cooldown_seconds`, `lock_release_policy`, and `auto_loop_delay`.
+- Add `egg_system.hatching.compat_purchase_types` for temporary `"Single"`, `"Triple"`, and `"Auto"` mapping during migration.
+- Add `egg_system.ui.hatch_controls` for button visibility, labels, count selector, and hotkeys.
+- Add `egg_system.animation` for show/skip/silent/force-special rules, speed multipliers, and max supported count.
+- Extend config validation for max count, partial policy, animation max, and hatch-control fields.
+- Add shop/entitlement stub config for max hatch count, auto hatch, fast hatch, skip hatch, golden mode, charged mode, and luck sources.
+
+Client UI:
+
+- Replace single `E` behavior with a hatch controller that tracks selected/requested count.
+- Add near-egg controls for Hatch, Auto, selected count, and future mode toggles.
+- Add keyboard support that remains simple: `E` hatch selected count; optional key for auto hatch.
+- Disable/gray controls while the server hatch lock is active.
+- Show exact stop reasons: no funds, no storage, too far, locked area, on cooldown, feature locked.
+- Add auto-hatch state UI with visible running/stopped reason.
+- Add auto-delete filter UI backed by existing server settings: rarity, pet family, variant, protected tiers.
+- Add settings for show hatch, skip hatch, silence hatch, and fast hatch once entitlement stubs exist.
+
+Animation:
+
+- Feed `EggHatchingService` a list of `1..99` result entries.
+- Use the authored egg visual from the current `EggStand`/world model when available, including rock-style placeholder eggs.
+- Keep fallback generated egg visuals for synthetic maps.
+- Support dynamic count layouts up to `99`.
+- Force special reveal for protected/special tiers even if skip/silent is enabled, unless config says otherwise.
+- Include per-result rarity/variant colors and special effects.
+- Ensure animation completion/reentry does not control server correctness; it only controls client presentation.
+
+Auto hatch:
+
+- Implement auto hatch as a client loop that repeatedly asks the server while the same egg remains valid.
+- Give each auto session a token/session id so stale responses do not restart a stopped loop.
+- Stop on no funds, no storage, too far, egg changed, area locked, server error, or manual cancel.
+- Use the selected requested count; default can be max allowed/requested count.
+- Respect hatch lock and server cooldown instead of trying to time it only on the client.
+
+Shop and entitlement stubs:
+
+- Add a server-side entitlement resolver that initially reads dev/test config and player attributes/profile settings.
+- Stub entitlements for `max_hatch_count`, `auto_hatch`, `fast_hatch`, `skip_hatch`, `golden_mode`, `charged_mode`, `luck_bonus`, `secret_luck_bonus`.
+- Do not require the shop UI to exist yet; expose admin/dev commands or config flags to toggle entitlements for testing.
+- Later shop/monetization should call the same entitlement resolver, not change egg code.
+
+Testing:
+
+- Unit/config tests for hatch max count, partial count, cost math, and invalid config.
+- Studio smoke: far hatch rejects.
+- Studio smoke: single hatch succeeds and saves.
+- Studio smoke: rapid `E` returns cooldown/locked and never creates invisible hatches.
+- Studio smoke: requested `99` with limited funds hatches affordable count.
+- Studio smoke: requested `99` with limited storage hatches storable count.
+- Studio smoke: auto-delete prevents inventory writes but increments hatch stats.
+- Studio smoke: auto hatch stops on no funds/storage/too far.
+- Studio smoke: authored egg animation payload names/uses the current rock egg.
+- Regression: existing egg proximity, pet grant, pet index, achievements, and leaderboards still pass.
+
+Documentation:
+
+- Update current status after each major slice.
+- Keep `EGG_SYSTEM_PLAN.md` current as decisions firm up.
+- Add an egg authoring section to map workflow docs.
+- Add admin testing instructions for dynamic hatch counts and entitlement stubs.
+
+Later polish:
+
+- Area-specific currencies/materials for eggs.
+- Egg mastery or hatch milestones.
+- Pity/mercy counters if desired for event/secret balancing.
+- Public hatch announcements for rare tiers.
+- Party/shared hatch visibility.
+- Premium/event eggs with stricter odds disclosure and no hidden client-side luck drift.
+
+## Implementation Order
+
+1. Harden current single hatch: server lock, consistent error response, current authored egg visual payload.
+2. Replace `purchaseType` strings with dynamic requested counts and server batch result.
+3. Add selected-count UI and batch animation for `1..99`.
+4. Add auto-hatch loop with stop reasons and server/session guard.
+5. Add full auto-delete/filter UI and hatch settings.
+6. Add golden/charged mode toggles and balance hooks.
+7. Add smoke tests and admin tools for every mode.
+
+## Open Questions
+
+- Should the default selected count be `1`, player preference, or max affordable/storable up to max allowed?
+- Should multi-hatch count entitlement default to `99` during template development, then be tuned later by game-specific config/shop?
+- Do we want golden/charged modes immediately, or after basic multi/auto feels solid?
+- Should special hatches always force animation even when the player has skip/silent enabled?
+- Should area currencies replace coins/crystals entirely per area, or should core currency stay global with area materials as side currencies?

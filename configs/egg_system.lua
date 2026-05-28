@@ -8,6 +8,8 @@ return {
     proximity = {
         max_distance = 18, -- Maximum distance to show egg UI and allow interaction (studs)
         interaction_key = Enum.KeyCode.E, -- Key for egg interaction
+        hatch_max_key = Enum.KeyCode.R,
+        auto_hatch_key = Enum.KeyCode.T,
     },
 
     -- === PERFORMANCE SETTINGS ===
@@ -22,6 +24,67 @@ return {
         purchase_cooldown = 3, -- Seconds between egg purchases per player
         ui_error_display_time = 3, -- How long error messages stay on screen
         success_notification_time = 5, -- How long success notifications stay on screen
+    },
+
+    -- Server-authoritative hatch transaction settings. The client may request any
+    -- count up to max_count, but the server resolves the actual count from
+    -- entitlements, currency, storage, and this config.
+    hatching = {
+        max_count = 99,
+        default_requested_count = 1,
+        allow_partial = true,
+        transaction_lock_seconds = 0.35,
+        failed_request_lock_seconds = 0.2,
+        default_max_entitled_count = 99,
+        compat_purchase_types = {
+            Single = 1,
+            Triple = 3,
+            Auto = 99,
+            Max = 99,
+        },
+        animation = {
+            max_visible_eggs = 99,
+            use_authored_egg_visual = true,
+            authored_visual_scale = 1.25,
+        },
+        shop_stubs = {
+            max_hatch_count = {
+                enabled = true,
+                default_value = 99,
+                source = "config",
+            },
+            auto_hatch = {
+                enabled = true,
+                owned_by_default = true,
+                source = "stub",
+            },
+            fast_hatch = {
+                enabled = true,
+                owned_by_default = false,
+                source = "stub",
+            },
+            skip_hatch = {
+                enabled = true,
+                owned_by_default = false,
+                source = "stub",
+            },
+            golden_mode = {
+                enabled = true,
+                owned_by_default = false,
+                cost_multiplier = 20,
+                source = "stub",
+            },
+            luck_bonus = {
+                enabled = true,
+                default_multiplier = 0,
+                source = "stub",
+            },
+            secret_luck_bonus = {
+                enabled = true,
+                default_multiplier = 0,
+                source = "stub",
+            },
+        },
     },
 
     -- === UI CONFIGURATION ===

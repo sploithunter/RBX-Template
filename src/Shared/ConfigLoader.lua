@@ -2299,6 +2299,7 @@ function ConfigLoader:_validateEggSystemConfig(config)
         "proximity",
         "performance",
         "cooldowns",
+        "hatching",
         "ui",
         "pet_preview",
         "messages",
@@ -2335,6 +2336,36 @@ function ConfigLoader:_validateEggSystemConfig(config)
     )
     if not ok then
         return ok, err
+    end
+    ok, err =
+        self:_requirePositiveNumber("egg_system", config.hatching.max_count, "hatching.max_count")
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requirePositiveNumber(
+        "egg_system",
+        config.hatching.default_requested_count,
+        "hatching.default_requested_count"
+    )
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requireNonNegativeNumber(
+        "egg_system",
+        config.hatching.transaction_lock_seconds,
+        "hatching.transaction_lock_seconds"
+    )
+    if not ok then
+        return ok, err
+    end
+    if config.hatching.max_count > 99 then
+        return self:_configError("egg_system", "hatching.max_count", "must be 99 or lower")
+    end
+    if
+        config.hatching.allow_partial ~= nil
+        and type(config.hatching.allow_partial) ~= "boolean"
+    then
+        return self:_configError("egg_system", "hatching.allow_partial", "expected boolean")
     end
 
     if

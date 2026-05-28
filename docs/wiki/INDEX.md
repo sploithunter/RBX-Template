@@ -9,6 +9,7 @@ This is the living project wiki for the RBX Template pet/clicker game. It follow
 - [Architecture](ARCHITECTURE.md) — system shape and service boundaries.
 - [Studio Workflow](STUDIO_WORKFLOW.md) — Rojo, Roblox Studio, MCP, and verification workflow.
 - [Map Integration Contract](MAP_INTEGRATION_CONTRACT.md) — how Rojo systems bind to Studio-authored worlds.
+- [Egg System Plan](EGG_SYSTEM_PLAN.md) — planned hatch modes, auto hatch, multi hatch, animation, and egg config architecture.
 - [Reference Game Insights](REFERENCE_GAME_INSIGHTS.md) — useful ideas from ColorfulClickers.
 - [Open Questions](OPEN_QUESTIONS.md) — decisions still pending.
 - [Log](LOG.md) — dated session notes.
