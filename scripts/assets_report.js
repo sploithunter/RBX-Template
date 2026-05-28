@@ -20,6 +20,10 @@ function isPlaceholderAssetId(value) {
   return !value || value === "rbxassetid://0" || value === "0";
 }
 
+function isRuntimeRequired(entry) {
+  return ["uploaded", "verified"].includes(entry.status || "");
+}
+
 function assetNumber(value) {
   if (!value) return "";
   const match = String(value).match(/\d+/);
@@ -110,7 +114,14 @@ function analyze() {
   const configPets = parsePetsConfig(petsConfigPath);
 
   const missingInManifest = [...configPets.keys()].filter((key) => !manifestPets.has(key)).sort();
-  const missingInConfig = [...manifestPets.keys()].filter((key) => !configPets.has(key)).sort();
+  const missingInConfig = [...manifestPets.values()]
+    .filter((entry) => isRuntimeRequired(entry) && !configPets.has(entry.key))
+    .map((entry) => entry.key)
+    .sort();
+  const manifestOnlyAssets = [...manifestPets.values()]
+    .filter((entry) => !isRuntimeRequired(entry) && !configPets.has(entry.key))
+    .map((entry) => entry.key)
+    .sort();
 
   const idMismatches = [];
   for (const [key, configEntry] of configPets) {
@@ -183,12 +194,15 @@ function analyze() {
     ...missingInManifest.map((key) => `configs/pets.lua has ${key}, but the manifest does not.`),
     ...missingInConfig.map((key) => `Manifest has ${key}, but configs/pets.lua does not.`),
     ...idMismatches.map((item) => `${item.key} ${item.field} mismatch: manifest=${item.manifest || "(empty)"} config=${item.config || "(empty)"}`),
-    ...placeholderModelIds.map((key) => `${key} has no Roblox model asset id.`),
+    ...placeholderModelIds
+      .filter((key) => isRuntimeRequired(manifestPets.get(key)))
+      .map((key) => `${key} has no Roblox model asset id.`),
     ...duplicateModelIds.map((item) => `Roblox model asset id ${item.assetId} is reused by ${item.keys.join(", ")}.`),
   ];
 
   const warnings = [
     ...placeholderImageIds.map((key) => `${key} has no generated image asset id yet.`),
+    ...manifestOnlyAssets.map((key) => `${key} is tracked in the manifest but is not wired into configs/pets.lua yet.`),
     ...missingSources.map((key) => `${key} has no local .glb/.fbx source file yet.`),
   ];
 

@@ -46,6 +46,14 @@ run = "node scripts/assets_report.js --check"
 description = "Print Meshy-ready prompts from the pet manifest"
 run = "node scripts/assets_report.js --prompts"
 
+[tasks.asset-meshy]
+description = "Run the local Meshy developer asset helper"
+run = "node scripts/meshy_asset.js"
+
+[tasks.asset-balance]
+description = "Show Meshy API credit balance"
+run = "node scripts/meshy_asset.js balance"
+
 [tasks.test]
 description = "Run tests (requires Studio)"
 run = "echo 'Run tests/TestBootstrap.lua in Roblox Studio'"

@@ -34,6 +34,10 @@ The preferred pet creation workflow is reference-image first: create a clean whi
 
 Long-term automation should be a repo-owned script pipeline that reads `assets/manifest/pets.json`, calls Meshy with local `MESHY_API_KEY`, downloads source exports, pauses for human approval, then optionally uploads through Roblox Open Cloud and updates the manifest plus `configs/pets.lua`. Meshy's MCP server may help interactive Codex work, but scripts in the repo are the portable canonical workflow.
 
+The asset manifest may contain concept/generated assets before runtime config is updated. Statuses such as `concept` and `generated` are allowed to be manifest-only so artists/developers can iterate in Meshy without exposing placeholder asset IDs to game runtime config. Runtime wiring should happen only after approval and Roblox upload.
+
+The long-term Pet Asset Manager should use `assets/manifest/pets.json` as the portable asset database and present a browser review UI for selecting approved pets, inspecting previews/models, and seeing duplicate warnings. File writes, Roblox uploads, asset ID persistence, and config generation should run through local repo scripts or a local dev server, not static browser code, because credentials and filesystem writes must stay outside the runtime game and outside committed files.
+
 ## Pet Rarity And Variants
 
 Pet rarity belongs to the pet family. Variants such as Basic, Golden, and Rainbow are visual/stat treatments and should not automatically promote a normal pet into Mythical/Secret/etc. For example, Rainbow Bear is still a Common Bear with the Rainbow variant treatment; Dragon is Secret because the Dragon family declares `rarity = "secret"`, and Colorado is Exclusive because the Colorado family declares `rarity = "exclusive"`. Startup config validation requires every pet family to declare a valid rarity so content typos fail early.
