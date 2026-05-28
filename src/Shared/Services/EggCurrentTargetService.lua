@@ -19,6 +19,7 @@ local UserInputService = game:GetService("UserInputService")
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local eggSystemConfig = Locations.getConfig("egg_system")
 local petConfig = Locations.getConfig("pets")
+local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
 
 -- Services
 local eggPetPreviewService = nil
@@ -49,86 +50,66 @@ if loggerSuccess and loggerResult then
     Logger = loggerResult -- Use singleton directly
 else
     Logger = {
-        Info = function(self, message, context) print("[INFO]", message, context) end,
-        Warn = function(self, message, context) warn("[WARN]", message, context) end,
-        Error = function(self, message, context) warn("[ERROR]", message, context) end,
-        Debug = function(self, message, context) print("[DEBUG]", message, context) end,
+        Info = function(self, message, context)
+            print("[INFO]", message, context)
+        end,
+        Warn = function(self, message, context)
+            warn("[WARN]", message, context)
+        end,
+        Error = function(self, message, context)
+            warn("[ERROR]", message, context)
+        end,
+        Debug = function(self, message, context)
+            print("[DEBUG]", message, context)
+        end,
     }
 end
 
 -- === HELPER FUNCTIONS ===
 
 function EggCurrentTargetService:DetermineClosest(eggsAvailable)
-    local currentClosest = nil
-    local closestDistance = MAX_MAGNITUDE
-    
-    for i, eggName in pairs(eggsAvailable) do
-        local egg = nil
-        -- Search workspace for egg model
-        for _, obj in pairs(workspace:GetChildren()) do
-            if obj:IsA("Model") then
-                local objEggType = obj:GetAttribute("EggType")
-                local eggInfo = obj:FindFirstChild("EggType")
-                if eggInfo then objEggType = eggInfo.Value end
-                
-                if objEggType == eggName then
-                    egg = obj
-                    break
-                end
-            end
-        end
-        
-        if egg then
-            -- Use the EggSpawnPoint as anchor (referenced in SpawnPoint ObjectValue)
-            local spawnPointRef = egg:FindFirstChild("SpawnPoint")
-            local anchor = spawnPointRef and spawnPointRef.Value
-            
-            -- Fallback to PrimaryPart or any Part if no SpawnPoint reference
-            if not anchor then
-                anchor = egg.PrimaryPart or egg:FindFirstChildOfClass("Part")
-            end
-            
-            if anchor and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local mag = (anchor.Position - player.Character.HumanoidRootPart.Position).Magnitude
-                if mag <= closestDistance then
-                    currentClosest = egg
-                    closestDistance = mag
-                end
-            end
-        end
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then
+        return nil
     end
-    
-    return currentClosest
+
+    local closest = EggWorldQuery.FindClosestEgg(root.Position, eggsAvailable, MAX_MAGNITUDE)
+    return closest and closest.instance or nil
 end
 
 function EggCurrentTargetService:CreateEggUI()
     if currentTargetUI then
         currentTargetUI:Destroy()
     end
-    
+
     -- Create UI similar to working game's EggPreview
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "EggCurrentTarget"
     screenGui.ResetOnSpawn = false
     screenGui.Parent = player.PlayerGui
-    
+
     local frame = Instance.new("Frame")
     frame.Name = "PreviewFrame"
-    frame.Size = UDim2.new(0, eggSystemConfig.ui.preview_size.width, 0, eggSystemConfig.ui.preview_size.height)
+    frame.Size = UDim2.new(
+        0,
+        eggSystemConfig.ui.preview_size.width,
+        0,
+        eggSystemConfig.ui.preview_size.height
+    )
     frame.BackgroundColor3 = eggSystemConfig.ui.colors.background
     frame.BorderSizePixel = 0
-    frame.Visible = false  -- Start hidden until an egg is in range
+    frame.Visible = false -- Start hidden until an egg is in range
     frame.Parent = screenGui
-    
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, eggSystemConfig.ui.corner_radius)
     corner.Parent = frame
-    
+
     local stroke = Instance.new("UIStroke")
     stroke.Thickness = eggSystemConfig.ui.border_thickness
     stroke.Color = eggSystemConfig.ui.colors.border
     stroke.Parent = frame
-    
+
     local eggNameLabel = Instance.new("TextLabel")
     eggNameLabel.Name = "EggName"
     eggNameLabel.Size = UDim2.new(1, -10, 0.4, 0)
@@ -139,19 +120,19 @@ function EggCurrentTargetService:CreateEggUI()
     eggNameLabel.TextScaled = true
     eggNameLabel.Font = eggSystemConfig.ui.fonts.title
     eggNameLabel.Parent = frame
-    
+
     -- Price display
     local priceLabel = Instance.new("TextLabel")
     priceLabel.Name = "Price"
     priceLabel.Size = UDim2.new(1, -10, 0.3, 0)
     priceLabel.Position = UDim2.new(0, 5, 0.4, 0)
     priceLabel.BackgroundTransparency = 1
-    priceLabel.Text = "💰 100 Coins"  -- Will be dynamically set
+    priceLabel.Text = "💰 100 Coins" -- Will be dynamically set
     priceLabel.TextColor3 = eggSystemConfig.ui.colors.text_secondary
     priceLabel.TextScaled = true
     priceLabel.Font = eggSystemConfig.ui.fonts.prompt
     priceLabel.Parent = frame
-    
+
     local promptLabel = Instance.new("TextLabel")
     promptLabel.Name = "Prompt"
     promptLabel.Size = UDim2.new(1, -10, 0.3, 0)
@@ -162,13 +143,13 @@ function EggCurrentTargetService:CreateEggUI()
     promptLabel.TextScaled = true
     promptLabel.Font = eggSystemConfig.ui.fonts.prompt
     promptLabel.Parent = frame
-    
+
     -- Store CurrentTarget value
     local currentTargetValue = Instance.new("StringValue")
     currentTargetValue.Name = "CurrentTarget"
     currentTargetValue.Value = "None"
     currentTargetValue.Parent = frame
-    
+
     currentTargetUI = screenGui
     return frame
 end
@@ -177,27 +158,35 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
     if not currentTargetUI then
         self:CreateEggUI()
     end
-    
+
     local frame = currentTargetUI.PreviewFrame
     local currentTargetValue = frame.CurrentTarget
-    
+
     if egg and eggType then
         -- Only update if target has changed
         if currentTarget ~= eggType then
             if eggSystemConfig.debug.log_proximity_changes then
-                Logger:Info("Now targeting egg", {context = "EggCurrentTargetService", eggType = eggType})
+                Logger:Info(
+                    "Now targeting egg",
+                    { context = "EggCurrentTargetService", eggType = eggType }
+                )
             end
             currentTarget = eggType
             currentTargetValue.Value = eggType
-            
+
             -- Get egg configuration for price display
             local eggConfig = self:GetEggConfig(eggType)
             local displayName = "Basic Egg"
             local priceText = "💰 100 Coins"
-            
+
             if eggConfig then
-                displayName = eggConfig.name or (eggType:gsub("_", " ")):gsub("(%l)(%w*)", function(a,b) return string.upper(a)..b end)
-                
+                local displayCost = (petConfig.getEggCost and petConfig.getEggCost(eggType))
+                    or eggConfig.cost
+                displayName = eggConfig.name
+                    or (eggType:gsub("_", " ")):gsub("(%l)(%w*)", function(a, b)
+                        return string.upper(a) .. b
+                    end)
+
                 -- Format price with currency icon
                 local currencyIcon = "💰"
                 if eggConfig.currency == "gems" then
@@ -205,15 +194,21 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
                 elseif eggConfig.currency == "crystals" then
                     currencyIcon = "🔮"
                 end
-                
-                priceText = currencyIcon .. " " .. self:FormatNumber(eggConfig.cost) .. " " .. eggConfig.currency:gsub("(%l)(%w*)", function(a,b) return string.upper(a)..b end)
+
+                priceText = currencyIcon
+                    .. " "
+                    .. self:FormatNumber(displayCost)
+                    .. " "
+                    .. eggConfig.currency:gsub("(%l)(%w*)", function(a, b)
+                        return string.upper(a) .. b
+                    end)
             end
-            
+
             -- Update UI content only when target changes
             frame.EggName.Text = displayName
             frame.Price.Text = priceText
             frame.Visible = true
-            
+
             -- Show pet preview for new egg
             if eggPetPreviewService then
                 local anchor = self:GetEggAnchor(egg)
@@ -222,14 +217,19 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
                 end
             end
         end
-        
+
         -- Always update position (player might be moving around the egg)
         local anchor = self:GetEggAnchor(egg)
-        
+
         if anchor then
             local screenPos = camera:WorldToScreenPoint(anchor.Position)
-            frame.Position = UDim2.new(0, screenPos.X + eggSystemConfig.ui.position_offset.x, 0, screenPos.Y + eggSystemConfig.ui.position_offset.y)
-            
+            frame.Position = UDim2.new(
+                0,
+                screenPos.X + eggSystemConfig.ui.position_offset.x,
+                0,
+                screenPos.Y + eggSystemConfig.ui.position_offset.y
+            )
+
             -- Update pet preview position
             if eggPetPreviewService then
                 eggPetPreviewService:UpdatePreviewPosition(anchor)
@@ -239,12 +239,12 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
         -- No egg in range - only update if we had a target before
         if currentTarget ~= "None" then
             if eggSystemConfig.debug.log_proximity_changes then
-                Logger:Info("No longer targeting egg", {context = "EggCurrentTargetService"})
+                Logger:Info("No longer targeting egg", { context = "EggCurrentTargetService" })
             end
             currentTarget = "None"
             currentTargetValue.Value = "None"
             frame.Visible = false
-            
+
             -- Hide pet preview
             if eggPetPreviewService then
                 eggPetPreviewService:HidePetPreview()
@@ -261,11 +261,11 @@ function EggCurrentTargetService:CallSetLastEgg(eggType)
             return eggRemote.setLastEgg:InvokeServer(eggType)
         end
     end)
-    
+
     if success then
-        Logger:Debug("Set last egg on server", {eggType = eggType or "nil"})
+        Logger:Debug("Set last egg on server", { eggType = eggType or "nil" })
     else
-        Logger:Warn("Failed to set last egg on server", {error = tostring(result)})
+        Logger:Warn("Failed to set last egg on server", { error = tostring(result) })
     end
 end
 
@@ -273,85 +273,66 @@ end
 
 function EggCurrentTargetService:UpdateTargeting(step)
     timecounter = timecounter + step
-    
+
     if timecounter >= UPDATE_INTERVAL then
         timecounter = timecounter - UPDATE_INTERVAL
-        
+
         if not player.Character or not player.Character:FindFirstChild("Humanoid") then
             return
         end
-        
+
         if player.Character.Humanoid.Health == 0 then
             return
         end
-        
+
         local eggsAvailable = {}
-        
-        -- Find all eggs in range (scan workspace like working game)
-        for _, obj in pairs(workspace:GetChildren()) do
-            if obj:IsA("Model") then
-                local objEggType = obj:GetAttribute("EggType")
-                local eggInfo = obj:FindFirstChild("EggType")
-                if eggInfo then objEggType = eggInfo.Value end
-                
-                if objEggType and player.Character:FindFirstChild("HumanoidRootPart") then
-                    -- Use the EggSpawnPoint as anchor (referenced in SpawnPoint ObjectValue)
-                    local spawnPointRef = obj:FindFirstChild("SpawnPoint")
-                    local anchor = spawnPointRef and spawnPointRef.Value
-                    
-                    if anchor then
-                        local mag = (anchor.Position - player.Character.HumanoidRootPart.Position).Magnitude
-                        if mag <= MAX_MAGNITUDE then
-                            eggsAvailable[#eggsAvailable + 1] = objEggType
-                        end
-                    else
-                        -- Fallback to PrimaryPart or any Part
-                        anchor = obj.PrimaryPart or obj:FindFirstChildOfClass("Part")
-                        if anchor then
-                            local mag = (anchor.Position - player.Character.HumanoidRootPart.Position).Magnitude
-                            if mag <= MAX_MAGNITUDE then
-                                eggsAvailable[#eggsAvailable + 1] = objEggType
-                            end
-                        end
-                    end
+        local seenEggTypes = {}
+        local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+
+        for _, egg in ipairs(EggWorldQuery.GetEggs()) do
+            if egg.anchor and egg.eggType and not seenEggTypes[egg.eggType] then
+                local mag = (egg.anchor.Position - rootPart.Position).Magnitude
+                if mag <= MAX_MAGNITUDE then
+                    seenEggTypes[egg.eggType] = true
+                    eggsAvailable[#eggsAvailable + 1] = egg.eggType
                 end
             end
         end
-        
+
         counter = counter + 1
-        
+
         if #eggsAvailable == 1 then
             -- Single egg in range
             local eggType = eggsAvailable[1]
             local egg = self:FindEggByType(eggType)
             self:UpdateEggUI(egg, eggType)
-            
+
             -- Call setLastEgg periodically (like working game)
             if counter > SERVER_UPDATE_THRESHOLD then
                 counter = 0
                 self:CallSetLastEgg(eggType)
             end
-            
         elseif #eggsAvailable > 1 then
             -- Multiple eggs - find closest
             local egg = self:DetermineClosest(eggsAvailable)
             if egg then
                 local eggType = egg:GetAttribute("EggType")
                 local eggInfo = egg:FindFirstChild("EggType")
-                if eggInfo then eggType = eggInfo.Value end
-                
+                if eggInfo then
+                    eggType = eggInfo.Value
+                end
+
                 self:UpdateEggUI(egg, eggType)
-                
+
                 if counter > SERVER_UPDATE_THRESHOLD then
                     counter = 0
                     self:CallSetLastEgg(eggType)
                 end
             end
-            
         elseif #eggsAvailable == 0 then
             -- No eggs in range
             self:UpdateEggUI(nil, nil)
-            
+
             if counter > 100 then -- Less frequent server calls when no eggs
                 counter = 0
                 self:CallSetLastEgg(nil)
@@ -361,34 +342,12 @@ function EggCurrentTargetService:UpdateTargeting(step)
 end
 
 function EggCurrentTargetService:FindEggByType(eggType)
-    for _, obj in pairs(workspace:GetChildren()) do
-        if obj:IsA("Model") then
-            local objEggType = obj:GetAttribute("EggType")
-            local eggInfo = obj:FindFirstChild("EggType")
-            if eggInfo then objEggType = eggInfo.Value end
-            
-            if objEggType == eggType then
-                return obj
-            end
-        end
-    end
-    return nil
+    return EggWorldQuery.FindEggByType(eggType)
 end
 
 -- Helper function to get egg anchor position
 function EggCurrentTargetService:GetEggAnchor(egg)
-    if not egg then return nil end
-    
-    -- Use the EggSpawnPoint as anchor (referenced in SpawnPoint ObjectValue)
-    local spawnPointRef = egg:FindFirstChild("SpawnPoint")
-    local anchor = spawnPointRef and spawnPointRef.Value
-    
-    -- Fallback to PrimaryPart or any Part if no SpawnPoint reference
-    if not anchor then
-        anchor = egg.PrimaryPart or egg:FindFirstChildOfClass("Part")
-    end
-    
-    return anchor
+    return EggWorldQuery.GetAnchor(egg)
 end
 
 function EggCurrentTargetService:GetCurrentTarget()
@@ -398,27 +357,36 @@ end
 -- === INITIALIZATION ===
 
 function EggCurrentTargetService:Initialize()
-    Logger:Info("EggCurrentTargetService initializing...", {context = "EggCurrentTargetService"})
-    
+    Logger:Info("EggCurrentTargetService initializing...", { context = "EggCurrentTargetService" })
+
     -- Load pet preview service
     local success, petPreviewService = pcall(function()
         return require(ReplicatedStorage.Shared.Services.EggPetPreviewService)
     end)
-    
+
     if success then
         eggPetPreviewService = petPreviewService
         eggPetPreviewService:Initialize()
-        Logger:Info("Pet preview service loaded successfully", {context = "EggCurrentTargetService"})
+        Logger:Info(
+            "Pet preview service loaded successfully",
+            { context = "EggCurrentTargetService" }
+        )
     else
-        Logger:Warn("Failed to load pet preview service", {error = tostring(petPreviewService), context = "EggCurrentTargetService"})
+        Logger:Warn(
+            "Failed to load pet preview service",
+            { error = tostring(petPreviewService), context = "EggCurrentTargetService" }
+        )
     end
-    
+
     -- Start the targeting update loop (like working game's VisibleHandler)
     heartbeatConnection = RunService.Heartbeat:Connect(function(step)
         self:UpdateTargeting(step)
     end)
-    
-    Logger:Info("EggCurrentTargetService initialized - targeting system active", {context = "EggCurrentTargetService"})
+
+    Logger:Info(
+        "EggCurrentTargetService initialized - targeting system active",
+        { context = "EggCurrentTargetService" }
+    )
 end
 
 function EggCurrentTargetService:Destroy()
@@ -426,17 +394,17 @@ function EggCurrentTargetService:Destroy()
         heartbeatConnection:Disconnect()
         heartbeatConnection = nil
     end
-    
+
     if currentTargetUI then
         currentTargetUI:Destroy()
         currentTargetUI = nil
     end
-    
+
     if eggPetPreviewService then
         eggPetPreviewService:Destroy()
         eggPetPreviewService = nil
     end
-    
+
     Logger:Info("EggCurrentTargetService destroyed", {})
 end
 
@@ -451,8 +419,10 @@ function EggCurrentTargetService:GetEggConfig(eggType)
 end
 
 function EggCurrentTargetService:FormatNumber(number)
-    if not number then return "0" end
-    
+    if not number then
+        return "0"
+    end
+
     if number >= 1000000000 then
         return string.format("%.1fB", number / 1000000000)
     elseif number >= 1000000 then

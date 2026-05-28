@@ -117,12 +117,12 @@ Container naming convention: `<HookKind>_<Place>` (e.g. `CrystalSpawnZone_SpawnI
 - `configs/markers.lua` — declare tags, required attributes, and the config table each references (Section 4 table).
 - `configs/areas.lua` — the **zone tree**: each entry `{ id, kind = "world"|"island"|"area", parent, unlock, boosts }`. Arbitrary depth, config‑expandable (FR-ZONE-1/2). Boosts register as a K2 provider.
 - `WorldBindingService` — at boot: scan Workspace via CollectionService, build/validate the zone tree (no orphans/cycles, FR-ZONE-1) and hooks (FR-MAP-2), index bound instances by tag/attribute, raise centralized zone enter/exit events keyed by id. Owns **active‑zone activation/dormancy** (FR-ZONE-4 / P10): only the player's active subtree runs spawners/effects.
-- **Synthetic builder** (inside or beside `WorldBindingService`) — in `auto`/`synthetic` modes, fabricate the **full missing hierarchy** (worlds → islands → areas) per id at deterministic baseplate offsets, wire `Portal`s between worlds/islands and `TeleportPad`s between areas (FR-MAP-9/13/14/15). Generated map must pass its own validation (FR-MAP-12).
+- **Synthetic builder** (inside or beside `WorldBindingService`) — in `synthetic` mode, or in `auto` mode when no authored hooks exist, fabricate the **full missing hierarchy** (worlds → islands → areas) per id at deterministic baseplate offsets, wire `Portal`s between worlds/islands and `TeleportPad`s between areas (FR-MAP-9/13/14/15). Once `auto` detects any authored contract hook, treat the place as a real map and require missing gameplay hooks to be stamped explicitly instead of generating visual fallback content. Generated maps must pass their own validation (FR-MAP-12).
 - Ship a **reference map** (one of each hook, correctly attributed) + a tag/attribute doc page (FR-MAP-8).
 - Scope `default.project.json` so Rojo does not own the authored map subtree (FR-MAP-6).
 
 **Service registration:** `WorldBindingService` (`{"Logger","ConfigLoader"}`), loaded **before** spawners; update `BreakableSpawner` deps to include `WorldBindingService`.
-**Definition of Done:** FR-MAP-1..16, FR-AREA-4, FR-ZONE-1..5. Game boots and runs the core loop on a bare baseplate (`synthetic`) and on a partial authored map (`auto`) with identical mechanics (NFR-TEST-2), including active-zone activation/dormancy.
+**Definition of Done:** FR-MAP-1..16, FR-AREA-4, FR-ZONE-1..5. Game boots and runs the core loop on a bare baseplate (`synthetic`), and an authored map can receive Rojo scripts/configs without synthetic floors, spawn pads, placeholder egg stands, or breakable regions appearing. Map-specific gameplay hooks are added by the assisted authoring pass and then smoke-tested.
 
 ### Phase 2 — Economy depth
 

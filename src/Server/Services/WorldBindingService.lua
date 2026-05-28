@@ -128,6 +128,12 @@ function WorldBindingService:_markerRaycastExclusions()
 end
 
 function WorldBindingService:_findGroundSpawnPosition(areaId)
+    local playerSpawn = self._playerSpawnsByArea[areaId]
+    local playerSpawnPart = getPrimaryPartOrSelf(playerSpawn)
+    if playerSpawnPart then
+        return playerSpawnPart.Position + Vector3.new(0, 5, 0)
+    end
+
     local areaZone = self._areaZoneById[areaId]
     local center = getInstanceCenter(areaZone) or self:_areaCenter(areaId)
     local rayHeight = 500
@@ -166,6 +172,7 @@ function WorldBindingService:Init()
     self._boundByTag = {}
     self._zoneById = {}
     self._areaZoneById = {}
+    self._playerSpawnsByArea = {}
     self._spawnZonesByArea = {}
     self._teleportPadsByArea = {}
     self._portalsByZone = {}
@@ -450,6 +457,7 @@ function WorldBindingService:_createEggHooks(areaId)
             spawnPoint:SetAttribute("EggType", eggId)
             spawnPoint:SetAttribute("SpawnId", spawnId)
             spawnPoint:SetAttribute("Synthetic", true)
+            spawnPoint:SetAttribute("SpawnMode", "spawn_model")
             addTag(spawnPoint, "EggStand")
         end
     end
@@ -660,6 +668,15 @@ function WorldBindingService:_validateReference(instance, tagName)
         if not (self._breakablesConfig.worlds and self._breakablesConfig.worlds[areaId]) then
             return false, "AreaId has no matching breakables.worlds entry"
         end
+    elseif tagName == "PlayerSpawn" then
+        local areaId = instance:GetAttribute("AreaId")
+        if not zones[areaId] or zones[areaId].kind ~= "area" then
+            return false, "AreaId must reference an area zone"
+        end
+        local zoneId = instance:GetAttribute("ZoneId")
+        if zoneId ~= nil and not zones[zoneId] then
+            return false, "ZoneId references missing areas.zones entry"
+        end
     elseif tagName == "TeleportPad" or tagName == "Portal" then
         local targetZoneId = instance:GetAttribute("TargetZoneId")
         if not zones[targetZoneId] then
@@ -744,6 +761,8 @@ function WorldBindingService:_bindInstance(tagName, instance)
     elseif tagName == "AreaZone" then
         self._areaZoneById[instance:GetAttribute("AreaId")] = instance
         self:_connectAreaZone(instance)
+    elseif tagName == "PlayerSpawn" then
+        self._playerSpawnsByArea[instance:GetAttribute("AreaId")] = instance
     elseif tagName == "SpawnZone" then
         local areaId = instance:GetAttribute("AreaId")
         self._spawnZonesByArea[areaId] = self._spawnZonesByArea[areaId] or {}
@@ -804,6 +823,7 @@ function WorldBindingService:RebuildBindings()
     table.clear(self._boundByTag)
     table.clear(self._zoneById)
     table.clear(self._areaZoneById)
+    table.clear(self._playerSpawnsByArea)
     table.clear(self._spawnZonesByArea)
     table.clear(self._teleportPadsByArea)
     table.clear(self._portalsByZone)
@@ -811,8 +831,6 @@ function WorldBindingService:RebuildBindings()
     local hasAuthoredHooks = self:_hasAuthoredHooks()
     if self._mapMode == "synthetic" or (self._mapMode == "auto" and not hasAuthoredHooks) then
         self:_synthesizeMissingHooks()
-    elseif self._mapMode == "auto" then
-        self:_synthesizeMissingConfiguredHooks()
     end
 
     for tagName in pairs(self._markersConfig.tags or {}) do

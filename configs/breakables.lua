@@ -146,22 +146,13 @@ return {
         },
         egg_spawn_points = {
             {
-                spawn_id = "BasicEgg",
+                spawn_id = "BasicEarth",
                 egg_type = "basic_egg",
                 name = "EggSpawnPoint",
                 size = { x = 3, y = 1, z = 3 },
-                position = { x = -34, y = 0.5, z = -22 },
+                position = { x = 0, y = 0.5, z = -22 },
                 transparency = 1,
                 color = { r = 255, g = 255, b = 255 },
-            },
-            {
-                spawn_id = "GoldenEgg",
-                egg_type = "golden_egg",
-                name = "EggSpawnPoint",
-                size = { x = 3, y = 1, z = 3 },
-                position = { x = 34, y = 0.5, z = -22 },
-                transparency = 1,
-                color = { r = 255, g = 215, b = 0 },
             },
         },
         defaults = {
@@ -268,6 +259,10 @@ return {
             spawn_area_margin = 0,
             spawn_radius = 0,
             spawn_exclusion_radius = 0,
+            -- Authored maps can set surface_mode = "surface" or tag a SpawnZone with
+            -- SurfaceOnly=true to raycast onto playable geometry instead of using a flat Y.
+            spawn_clearance_radius = 0,
+            spawn_clearance_height = 10,
             embed_ratio = 0,
             min_distance = 12,
             spawn_attempts = 12,

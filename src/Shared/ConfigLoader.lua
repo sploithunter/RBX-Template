@@ -1963,6 +1963,36 @@ function ConfigLoader:_validatePetsConfig(config)
         if type(egg.pet_weights) ~= "table" then
             return self:_configError("pets", basePath .. ".pet_weights", "expected table")
         end
+        if egg.variant_rolls ~= nil then
+            if type(egg.variant_rolls) ~= "table" then
+                return self:_configError("pets", basePath .. ".variant_rolls", "expected table")
+            end
+            for _, key in ipairs({
+                "enabled",
+                "allow_basic",
+                "allow_golden",
+                "allow_rainbow",
+            }) do
+                local value = egg.variant_rolls[key]
+                if value ~= nil and type(value) ~= "boolean" then
+                    return self:_configError(
+                        "pets",
+                        basePath .. ".variant_rolls." .. key,
+                        "expected boolean"
+                    )
+                end
+            end
+            if egg.variant_rolls.cost_multiplier ~= nil then
+                ok, err = self:_requirePositiveNumber(
+                    "pets",
+                    egg.variant_rolls.cost_multiplier,
+                    basePath .. ".variant_rolls.cost_multiplier"
+                )
+                if not ok then
+                    return ok, err
+                end
+            end
+        end
         for petId, weight in pairs(egg.pet_weights) do
             if not config.pets[petId] then
                 return self:_configError(
@@ -2653,10 +2683,7 @@ function ConfigLoader:_validatePlayerProgressionConfig(config)
         return self:_configError("player_progression", "team_power.enabled", "expected boolean")
     end
     local economy = self:_rawConfig("economy")
-    local stages = economy
-        and economy.modifier_pipeline
-        and economy.modifier_pipeline.stages
-        or {}
+    local stages = economy and economy.modifier_pipeline and economy.modifier_pipeline.stages or {}
     if not stages[teamPower.stage or "boosts"] then
         return self:_configError(
             "player_progression",
@@ -2665,7 +2692,11 @@ function ConfigLoader:_validatePlayerProgressionConfig(config)
         )
     end
     if type(teamPower.kind) ~= "string" or teamPower.kind == "" then
-        return self:_configError("player_progression", "team_power.kind", "expected non-empty string")
+        return self:_configError(
+            "player_progression",
+            "team_power.kind",
+            "expected non-empty string"
+        )
     end
     ok, err = self:_requirePositiveNumber(
         "player_progression",
@@ -2698,7 +2729,11 @@ function ConfigLoader:_validatePlayerProgressionConfig(config)
     end
     local equipSlots = rewards.equip_slots
     if type(equipSlots) ~= "table" then
-        return self:_configError("player_progression", "level_rewards.equip_slots", "expected table")
+        return self:_configError(
+            "player_progression",
+            "level_rewards.equip_slots",
+            "expected table"
+        )
     end
     for category, reward in pairs(equipSlots) do
         local path = "level_rewards.equip_slots." .. tostring(category)
@@ -2777,10 +2812,20 @@ function ConfigLoader:_validateAutoSystemsConfig(config)
     if autoTarget.default_enabled ~= nil and type(autoTarget.default_enabled) ~= "boolean" then
         return self:_configError("auto_systems", "auto_target.default_enabled", "expected boolean")
     end
-    if autoTarget.current_world_only ~= nil and type(autoTarget.current_world_only) ~= "boolean" then
-        return self:_configError("auto_systems", "auto_target.current_world_only", "expected boolean")
+    if
+        autoTarget.current_world_only ~= nil
+        and type(autoTarget.current_world_only) ~= "boolean"
+    then
+        return self:_configError(
+            "auto_systems",
+            "auto_target.current_world_only",
+            "expected boolean"
+        )
     end
-    if type(autoTarget.default_selected_currency) ~= "string" or not currencies[autoTarget.default_selected_currency] then
+    if
+        type(autoTarget.default_selected_currency) ~= "string"
+        or not currencies[autoTarget.default_selected_currency]
+    then
         return self:_configError(
             "auto_systems",
             "auto_target.default_selected_currency",
@@ -2822,19 +2867,34 @@ function ConfigLoader:_validateAutoSystemsConfig(config)
             return self:_configError("auto_systems", path, "expected table")
         end
         if type(modeConfig.display_name) ~= "string" or modeConfig.display_name == "" then
-            return self:_configError("auto_systems", path .. ".display_name", "expected non-empty string")
+            return self:_configError(
+                "auto_systems",
+                path .. ".display_name",
+                "expected non-empty string"
+            )
         end
         if type(modeConfig.sort) ~= "string" or not validSorts[modeConfig.sort] then
             return self:_configError("auto_systems", path .. ".sort", "expected supported sort")
         end
-        if modeConfig.requires_currency ~= nil and type(modeConfig.requires_currency) ~= "boolean" then
-            return self:_configError("auto_systems", path .. ".requires_currency", "expected boolean")
+        if
+            modeConfig.requires_currency ~= nil
+            and type(modeConfig.requires_currency) ~= "boolean"
+        then
+            return self:_configError(
+                "auto_systems",
+                path .. ".requires_currency",
+                "expected boolean"
+            )
         end
     end
 
     local toggles = autoTarget.compatibility_toggles or {}
     if type(toggles) ~= "table" then
-        return self:_configError("auto_systems", "auto_target.compatibility_toggles", "expected table")
+        return self:_configError(
+            "auto_systems",
+            "auto_target.compatibility_toggles",
+            "expected table"
+        )
     end
     for _, key in ipairs({ "free_mode", "paid_mode" }) do
         if toggles[key] ~= nil and not modes[toggles[key]] then
@@ -3003,11 +3063,8 @@ function ConfigLoader:_validateEnchantsConfig(config)
     if not ok then
         return ok, err
     end
-    ok, err = self:_requirePositiveNumber(
-        "enchants",
-        reroll.default_slot or 1,
-        "reroll.default_slot"
-    )
+    ok, err =
+        self:_requirePositiveNumber("enchants", reroll.default_slot or 1, "reroll.default_slot")
     if not ok then
         return ok, err
     end
@@ -3099,16 +3156,9 @@ function ConfigLoader:_validateEnchantsConfig(config)
             return self:_configError("enchants", path .. ".animation", "expected table")
         end
         if animation.enabled ~= nil and type(animation.enabled) ~= "boolean" then
-            return self:_configError(
-                "enchants",
-                path .. ".animation.enabled",
-                "expected boolean"
-            )
+            return self:_configError("enchants", path .. ".animation.enabled", "expected boolean")
         end
-        if
-            animation.active_when_near ~= nil
-            and type(animation.active_when_near) ~= "boolean"
-        then
+        if animation.active_when_near ~= nil and type(animation.active_when_near) ~= "boolean" then
             return self:_configError(
                 "enchants",
                 path .. ".animation.active_when_near",
@@ -3143,7 +3193,12 @@ function ConfigLoader:_validateEnchantsConfig(config)
                 "expected boolean"
             )
         end
-        for _, fieldName in ipairs({ "center_part_name", "origin_part_name", "sound_name", "sound_id" }) do
+        for _, fieldName in ipairs({
+            "center_part_name",
+            "origin_part_name",
+            "sound_name",
+            "sound_id",
+        }) do
             if
                 lightning[fieldName] ~= nil
                 and (type(lightning[fieldName]) ~= "string" or lightning[fieldName] == "")
@@ -3233,7 +3288,10 @@ function ConfigLoader:_validateEnchantsConfig(config)
         end
         if
             lightning.core_enabled == false
-            and (lightning.core_thickness_multiplier ~= nil or lightning.core_opacity_multiplier ~= nil)
+            and (
+                lightning.core_thickness_multiplier ~= nil
+                or lightning.core_opacity_multiplier ~= nil
+            )
         then
             return self:_configError(
                 "enchants",
@@ -3320,10 +3378,7 @@ function ConfigLoader:_validateEnchantsConfig(config)
     end
 
     local economy = self:_rawConfig("economy")
-    local stages = economy
-        and economy.modifier_pipeline
-        and economy.modifier_pipeline.stages
-        or {}
+    local stages = economy and economy.modifier_pipeline and economy.modifier_pipeline.stages or {}
     local allowedCombine = {
         add = true,
         multiply = true,
@@ -3339,7 +3394,11 @@ function ConfigLoader:_validateEnchantsConfig(config)
             return self:_configError("enchants", path, "expected table")
         end
         if type(effect.display_name) ~= "string" or effect.display_name == "" then
-            return self:_configError("enchants", path .. ".display_name", "expected non-empty string")
+            return self:_configError(
+                "enchants",
+                path .. ".display_name",
+                "expected non-empty string"
+            )
         end
         local modifier = effect.modifier
         if type(modifier) ~= "table" then
@@ -3353,7 +3412,11 @@ function ConfigLoader:_validateEnchantsConfig(config)
             )
         end
         if type(modifier.kind) ~= "string" or modifier.kind == "" then
-            return self:_configError("enchants", path .. ".modifier.kind", "expected non-empty string")
+            return self:_configError(
+                "enchants",
+                path .. ".modifier.kind",
+                "expected non-empty string"
+            )
         end
         if modifier.currency ~= nil and not self:_currencyExists(modifier.currency) then
             return self:_configError(
@@ -3438,7 +3501,11 @@ function ConfigLoader:_validateEnchantsConfig(config)
             return self:_configError("enchants", profilePath, "roll counts must be integers")
         end
         if profile.max_rolls < profile.min_rolls then
-            return self:_configError("enchants", profilePath .. ".max_rolls", "must be >= min_rolls")
+            return self:_configError(
+                "enchants",
+                profilePath .. ".max_rolls",
+                "must be >= min_rolls"
+            )
         end
         ok, err = self:_requireNonNegativeNumber(
             "enchants",

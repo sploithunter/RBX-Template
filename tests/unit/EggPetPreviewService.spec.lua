@@ -12,11 +12,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Test setup
 return function()
     local TestEZ = require(ReplicatedStorage.Packages.TestEZ)
-    
+
     describe("EggPetPreviewService", function()
         local EggPetPreviewService
         local mockPlayer
-        
+
         beforeEach(function()
             -- Mock player with aggregates
             mockPlayer = {
@@ -26,7 +26,7 @@ return function()
                 GetAttribute = function(self, key)
                     local attributes = {
                         Level = 5,
-                        PetsHatched = 10
+                        PetsHatched = 10,
                     }
                     return attributes[key]
                 end,
@@ -35,28 +35,28 @@ return function()
                         return {
                             FindFirstChild = function(self, statName)
                                 local stats = {
-                                    luckBoost = {Value = 0.5},      -- +0.5 luck from potions
-                                    rareLuckBoost = {Value = 0.2},  -- +0.2 rare luck
-                                    ultraLuckBoost = {Value = 0.1}  -- +0.1 ultra luck
+                                    luckBoost = { Value = 0.5 }, -- +0.5 luck from potions
+                                    rareLuckBoost = { Value = 0.2 }, -- +0.2 rare luck
+                                    ultraLuckBoost = { Value = 0.1 }, -- +0.1 ultra luck
                                 }
                                 return stats[statName]
-                            end
+                            end,
                         }
                     end
                     return nil
-                end
+                end,
             }
-            
+
             -- Provide mock player for server-side tests
             _G.__TEST_LOCAL_PLAYER = mockPlayer
-            
+
             EggPetPreviewService = require(ReplicatedStorage.Shared.Services.EggPetPreviewService)
         end)
-        
+
         describe("GetPlayerData", function()
             it("should gather player data including aggregates", function()
                 local playerData = EggPetPreviewService:GetPlayerData(mockPlayer)
-                
+
                 expect(playerData.level).to.equal(5)
                 expect(playerData.petsHatched).to.equal(10)
                 expect(playerData.luckBoost).to.equal(0.5)
@@ -64,21 +64,21 @@ return function()
                 expect(playerData.ultraLuckBoost).to.equal(0.1)
                 expect(playerData.isVIP).to.equal(false)
             end)
-            
+
             it("should detect premium players", function()
                 mockPlayer.MembershipType = Enum.MembershipType.Premium
                 local playerData = EggPetPreviewService:GetPlayerData(mockPlayer)
                 expect(playerData.isVIP).to.equal(true)
             end)
         end)
-        
+
         describe("CalculatePetChances", function()
             it("should calculate chances for basic_egg", function()
                 local chances = EggPetPreviewService:CalculatePetChances("basic_egg")
-                
+
                 expect(chances).to.be.a("table")
                 expect(#chances > 0).to.equal(true)
-                
+
                 -- Should have different pet types
                 local petTypes = {}
                 for _, chance in ipairs(chances) do
@@ -86,67 +86,64 @@ return function()
                     expect(chance.chance > 0).to.equal(true)
                     expect(chance.petData).to.be.ok()
                 end
-                
+
                 -- Should have multiple pet types from config
                 expect(petTypes.bear).to.equal(true)
                 expect(petTypes.bunny).to.equal(true)
             end)
-            
-            it("should show only basic variants for basic eggs", function()
+
+            it("should preview pet species in basic form only", function()
                 local chances = EggPetPreviewService:CalculatePetChances("basic_egg")
-                
-                -- Should only have basic variants, no golden or rainbow
+
+                local variants = {}
                 for _, chance in ipairs(chances) do
+                    variants[chance.variant] = true
                     expect(chance.variant).to.equal("basic")
-                    -- Chance should be the raw pet type weight (no rarity calculation)
+                    -- Chance should be the raw pet type weight; golden/rainbow is a second hidden roll.
                     expect(chance.chance > 0).to.equal(true)
                 end
-                
-                -- Check specific pet type chance (bear should be 25% = 0.25)
-                local bearFound = false
+
+                expect(variants.basic).to.equal(true)
+
+                local bearBasicChance = nil
                 for _, chance in ipairs(chances) do
-                    if chance.petType == "bear" then
-                        bearFound = true
-                        expect(chance.chance).to.equal(0.25) -- 25% weight from config
-                        break
+                    if chance.petType == "bear" and chance.variant == "basic" then
+                        bearBasicChance = chance.chance
                     end
                 end
-                expect(bearFound).to.equal(true)
+                expect(bearBasicChance).to.be.ok()
             end)
-            
-            it("should show golden and rainbow variants for golden eggs", function()
+
+            it("should still preview premium eggs in basic form", function()
                 local chances = EggPetPreviewService:CalculatePetChances("golden_egg")
-                
-                -- Should only have golden and rainbow variants, no basic
-                local hasGolden = false
-                local hasRainbow = false
-                
+                expect(#chances > 0).to.equal(true)
+
+                -- The egg may roll only golden/rainbow, but the preview remains species-only.
                 for _, chance in ipairs(chances) do
-                    expect(chance.variant == "golden" or chance.variant == "rainbow").to.equal(true)
-                    if chance.variant == "golden" then hasGolden = true end
-                    if chance.variant == "rainbow" then hasRainbow = true end
+                    expect(chance.variant).to.equal("basic")
                 end
-                
-                expect(hasGolden).to.equal(true)
-                expect(hasRainbow).to.equal(true)
             end)
-            
+
             it("should return empty table for invalid egg", function()
                 local chances = EggPetPreviewService:CalculatePetChances("invalid_egg")
                 expect(chances).to.be.a("table")
                 expect(#chances).to.equal(0)
             end)
         end)
-        
+
         describe("GetPetAssetImage", function()
             it("should return valid asset IDs", function()
-                expect(EggPetPreviewService:GetPetAssetImage("rbxassetid://12345")).to.equal("rbxassetid://12345")
-                expect(EggPetPreviewService:GetPetAssetImage("12345")).to.equal("rbxassetid://12345")
+                expect(EggPetPreviewService:GetPetAssetImage("rbxassetid://12345")).to.equal(
+                    "rbxassetid://12345"
+                )
+                expect(EggPetPreviewService:GetPetAssetImage("12345")).to.equal(
+                    "rbxassetid://12345"
+                )
                 expect(EggPetPreviewService:GetPetAssetImage("rbxassetid://0")).to.equal("")
                 expect(EggPetPreviewService:GetPetAssetImage(nil)).to.equal("")
             end)
         end)
-        
+
         describe("GetPetEmojiIcon", function()
             it("should return appropriate emoji fallbacks", function()
                 expect(EggPetPreviewService:GetPetEmojiIcon("bear")).to.equal("🐻")

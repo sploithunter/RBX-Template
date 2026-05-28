@@ -142,7 +142,8 @@ end
 
 -- === PET CHANCE CALCULATION ===
 
--- Calculate actual hatch chances for all pets in an egg, including player modifiers
+-- Calculate visible pet species chances for an egg.
+-- Variant odds are a second hidden roll, so the preview always displays basic-form pets.
 function EggPetPreviewService:CalculatePetChances(eggType)
     local eggData = petConfig.egg_sources[eggType]
     if not eggData then
@@ -151,6 +152,7 @@ function EggPetPreviewService:CalculatePetChances(eggType)
     end
 
     local playerData = self:GetPlayerData()
+    local luckMultiplier = 1
     local petChances = {}
 
     -- Stage 1: Get pet type weights
@@ -158,66 +160,6 @@ function EggPetPreviewService:CalculatePetChances(eggType)
     for _, weight in pairs(eggData.pet_weights) do
         totalWeight = totalWeight + weight
     end
-
-    -- Stage 2: Calculate rarity chances with all modifiers
-    local baseGoldenChance = eggData.rarity_rates.golden_chance
-    local baseRainbowChance = eggData.rarity_rates.rainbow_chance
-
-    -- Apply gamepass modifiers
-    local gamepassMods = petConfig.gamepass_modifiers
-    local goldenChance = baseGoldenChance
-    local rainbowChance = baseRainbowChance
-
-    if playerData.hasGoldenGamepass then
-        goldenChance = goldenChance * gamepassMods.golden_gamepass_multiplier
-    end
-    if playerData.hasRainbowGamepass then
-        rainbowChance = rainbowChance * gamepassMods.rainbow_gamepass_multiplier
-    end
-
-    -- Determine if this egg is purchased with Robux. Roblox policy forbids changing advertised odds for Robux purchases.
-    local isRobuxEgg = (eggData.currency == "robux")
-
-    -- Apply luck system from aggregates and level (skipped for Robux eggs)
-    local luckMultiplier
-
-    if isRobuxEgg then
-        -- For Robux purchases we must show the exact advertised odds – modifiers are disallowed.
-        luckMultiplier = 1
-    else
-        luckMultiplier = gamepassMods.base_luck
-
-        -- Level-based luck
-        luckMultiplier = luckMultiplier + (playerData.level * gamepassMods.luck_per_level)
-
-        -- Pets hatched luck
-        luckMultiplier = luckMultiplier
-            + (playerData.petsHatched * gamepassMods.luck_from_pets_hatched)
-
-        -- Aggregate luck bonuses (from effects, potions, etc.)
-        luckMultiplier = luckMultiplier + playerData.luckBoost
-        luckMultiplier = luckMultiplier + playerData.rareLuckBoost
-        luckMultiplier = luckMultiplier + playerData.ultraLuckBoost
-
-        -- Gamepass luck multiplier
-        if playerData.hasLuckGamepass then
-            luckMultiplier = luckMultiplier * gamepassMods.luck_gamepass_multiplier
-        end
-    end
-
-    -- VIP bonuses
-    if (not isRobuxEgg) and playerData.isVIP then
-        goldenChance = goldenChance * gamepassMods.vip_golden_bonus
-        rainbowChance = rainbowChance * gamepassMods.vip_rainbow_bonus
-    end
-
-    -- Cap luck at maximum
-    local maxLuck = eggData.modifier_support.max_luck_multiplier or gamepassMods.max_luck
-    luckMultiplier = math.min(luckMultiplier, maxLuck)
-
-    -- Apply luck to chances
-    goldenChance = goldenChance * luckMultiplier
-    rainbowChance = rainbowChance * luckMultiplier
 
     -- Calculate chances for each pet type based on egg configuration
     -- Determine appropriate denominator for weight calculations.
@@ -247,16 +189,9 @@ function EggPetPreviewService:CalculatePetChances(eggType)
             petTypeChance = rawChance
         end
 
-        -- Determine which variants to show based on egg type
-        local variantsToShow = {}
-
-        if eggData.rarity_rates.no_basic_variants then
-            -- Premium egg (like golden_egg) - show golden and rainbow variants
-            variantsToShow = { "golden", "rainbow" }
-        else
-            -- Basic egg - show only basic variants
-            variantsToShow = { "basic" }
-        end
+        -- The egg preview answers "which pet can this hatch?"
+        -- Golden/rainbow is a second hidden variant roll handled by hatching config.
+        local variantsToShow = { "basic" }
 
         -- Get variants for this pet type
         if petConfig.pets[petType] and petConfig.pets[petType].variants then
@@ -265,7 +200,7 @@ function EggPetPreviewService:CalculatePetChances(eggType)
                     table.insert(petChances, {
                         petType = petType,
                         variant = variant,
-                        chance = petTypeChance, -- Just the pet type weight, no rarity calculation for display
+                        chance = petTypeChance,
                         petData = petConfig.getPet(petType, variant),
                     })
                 end

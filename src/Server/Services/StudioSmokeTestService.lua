@@ -16,6 +16,7 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local REMOTE_NAME = "StudioSmokeTest"
+local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
 
 local logger
 local configLoader
@@ -67,35 +68,11 @@ local function countPets(petsBucket)
 end
 
 local function findEggByType(eggType)
-    for _, instance in ipairs(workspace:GetChildren()) do
-        if instance:IsA("Model") then
-            local modelEggType = instance:GetAttribute("EggType")
-            local eggTypeValue = instance:FindFirstChild("EggType")
-            if eggTypeValue then
-                modelEggType = eggTypeValue.Value
-            end
-
-            if modelEggType == eggType then
-                return instance
-            end
-        end
-    end
-
-    return nil
+    return EggWorldQuery.FindEggByType(eggType)
 end
 
 local function getEggAnchor(egg)
-    if not egg then
-        return nil
-    end
-
-    local spawnPointRef = egg:FindFirstChild("SpawnPoint")
-    local anchor = spawnPointRef and spawnPointRef.Value
-    if anchor then
-        return anchor
-    end
-
-    return egg.PrimaryPart or egg:FindFirstChildOfClass("BasePart")
+    return EggWorldQuery.GetAnchor(egg)
 end
 
 local function getRootPart(player)
@@ -1115,7 +1092,8 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
 
     local originalCurrency = dataService:GetCurrency(player, eggData.currency)
     local originalPetsBucket = deepCopy(data.Inventory.pets or { items = {} })
-    local requiredCurrency = eggData.cost + math.max(25, math.floor(eggData.cost * 0.1))
+    local eggCost = (petsConfig.getEggCost and petsConfig.getEggCost(eggType)) or eggData.cost
+    local requiredCurrency = eggCost + math.max(25, math.floor(eggCost * 0.1))
 
     dataService:SetCurrency(player, eggData.currency, requiredCurrency, "egg_smoke_setup")
 
@@ -1125,7 +1103,7 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
     sessions[player.UserId] = {
         eggType = eggType,
         currency = eggData.currency,
-        cost = eggData.cost,
+        cost = eggCost,
         originalCurrency = originalCurrency,
         originalPetsBucket = originalPetsBucket,
         originalPetCount = countPets(originalPetsBucket),
@@ -1138,7 +1116,7 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
         ok = true,
         eggType = eggType,
         currency = eggData.currency,
-        cost = eggData.cost,
+        cost = eggCost,
         maxDistance = maxDistance,
         originalCurrency = originalCurrency,
         originalPetCount = sessions[player.UserId].originalPetCount,

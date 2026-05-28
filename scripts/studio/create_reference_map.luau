@@ -199,13 +199,8 @@ local spawnPoints = ensureFolder(eggsFolder, "SpawnPoints")
 local eggStands = {
     {
         eggId = "basic_egg",
-        spawnId = "BasicEgg",
-        position = Vector3.new(-34, 0.5, -22),
-    },
-    {
-        eggId = "golden_egg",
-        spawnId = "GoldenEgg",
-        position = Vector3.new(34, 0.5, -22),
+        spawnId = "BasicEarth",
+        position = Vector3.new(0, 0.5, -22),
     },
 }
 

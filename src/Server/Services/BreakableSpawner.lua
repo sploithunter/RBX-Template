@@ -16,9 +16,9 @@ local BreakableSpawner = {}
 BreakableSpawner.__index = BreakableSpawner
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScriptService = game:GetService("ServerScriptService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
 
 -- Injected services
 local logger
@@ -207,6 +207,312 @@ local function randomPointInSpawnerBounds(spawner, margin)
     return spawner.CFrame:PointToWorldSpace(Vector3.new(localX, 0, localZ))
 end
 
+local function randomPointInBalancedSpawnerCell(spawner, margin, cellSize, itemsFolder)
+    local halfX = math.max(0, (spawner.Size.X * 0.5) - margin)
+    local halfZ = math.max(0, (spawner.Size.Z * 0.5) - margin)
+    if halfX <= 0 or halfZ <= 0 then
+        return spawner.Position
+    end
+
+    local resolvedCellSize = math.max(8, tonumber(cellSize) or 36)
+    local columns = math.max(1, math.floor((halfX * 2) / resolvedCellSize))
+    local rows = math.max(1, math.floor((halfZ * 2) / resolvedCellSize))
+    local cellWidth = (halfX * 2) / columns
+    local cellDepth = (halfZ * 2) / rows
+
+    local counts = {}
+    for column = 1, columns do
+        counts[column] = {}
+        for row = 1, rows do
+            counts[column][row] = 0
+        end
+    end
+
+    if itemsFolder then
+        for _, child in ipairs(itemsFolder:GetChildren()) do
+            if child:IsA("Model") and child.PrimaryPart then
+                local localPosition = spawner.CFrame:PointToObjectSpace(child.PrimaryPart.Position)
+                if
+                    localPosition.X >= -halfX
+                    and localPosition.X <= halfX
+                    and localPosition.Z >= -halfZ
+                    and localPosition.Z <= halfZ
+                then
+                    local column = math.clamp(
+                        math.floor((localPosition.X + halfX) / cellWidth) + 1,
+                        1,
+                        columns
+                    )
+                    local row =
+                        math.clamp(math.floor((localPosition.Z + halfZ) / cellDepth) + 1, 1, rows)
+                    counts[column][row] += 1
+                end
+            end
+        end
+    end
+
+    local lowestCount = math.huge
+    local cells = {}
+    for column = 1, columns do
+        for row = 1, rows do
+            local count = counts[column][row]
+            if count < lowestCount then
+                lowestCount = count
+                table.clear(cells)
+            end
+            if count == lowestCount then
+                table.insert(cells, { column = column, row = row })
+            end
+        end
+    end
+
+    local cell = cells[math.random(1, #cells)]
+    local minX = -halfX + ((cell.column - 1) * cellWidth)
+    local maxX = minX + cellWidth
+    local minZ = -halfZ + ((cell.row - 1) * cellDepth)
+    local maxZ = minZ + cellDepth
+    local localX = minX + (math.random() * (maxX - minX))
+    local localZ = minZ + (math.random() * (maxZ - minZ))
+
+    return spawner.CFrame:PointToWorldSpace(Vector3.new(localX, 0, localZ))
+end
+
+local function numberFromAttributeOrConfig(instance, attributeName, configValue, fallback)
+    local attributeValue = instance:GetAttribute(attributeName)
+    if attributeValue ~= nil then
+        return tonumber(attributeValue) or fallback
+    end
+    return tonumber(configValue) or fallback
+end
+
+local function shouldSampleSpawnerSurface(spawner, placeCfg)
+    local surfaceOnly = spawner:GetAttribute("SurfaceOnly")
+    if surfaceOnly ~= nil then
+        return surfaceOnly == true
+    end
+
+    local mode = placeCfg.surface_mode or placeCfg.spawn_surface_mode
+    return mode == "surface" or mode == "spawner_surface" or mode == "raycast"
+end
+
+local function shouldBalanceSpawnerCells(spawner, placeCfg)
+    local balanced = spawner:GetAttribute("BalancedCells")
+    if balanced ~= nil then
+        return balanced == true
+    end
+
+    local mode = placeCfg.distribution_mode or placeCfg.spawn_distribution
+    return mode == "balanced_cells" or mode == "grid"
+end
+
+local function raycastSpawnerSurface(spawner, candidate, placeCfg)
+    if not shouldSampleSpawnerSurface(spawner, placeCfg) then
+        return candidate
+    end
+
+    local raycastHeight = numberFromAttributeOrConfig(
+        spawner,
+        "RaycastHeight",
+        placeCfg.surface_raycast_height,
+        math.max(80, spawner.Size.Y + 40)
+    )
+    local normalMinY =
+        numberFromAttributeOrConfig(spawner, "NormalMinY", placeCfg.surface_normal_min_y, 0.75)
+    local origin = Vector3.new(
+        candidate.X,
+        spawner.Position.Y + (spawner.Size.Y * 0.5) + raycastHeight,
+        candidate.Z
+    )
+
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Include
+    params.FilterDescendantsInstances = { spawner }
+    params.IgnoreWater = true
+
+    local result = workspace:Raycast(origin, Vector3.new(0, -raycastHeight * 2, 0), params)
+    if not result or result.Instance ~= spawner then
+        return nil
+    end
+    if result.Normal.Y < normalMinY then
+        return nil
+    end
+
+    return result.Position
+end
+
+local function isIgnoredSpawnObstacle(part, spawner)
+    if not part or part == spawner then
+        return true
+    end
+    if part:IsDescendantOf(spawner) then
+        return true
+    end
+    if not part.CanQuery then
+        return true
+    end
+    if part.Transparency >= 0.95 and not part.CanCollide then
+        return true
+    end
+    if CollectionService:HasTag(part, "SpawnZone") and part.Transparency >= 0.95 then
+        return true
+    end
+    local gameFolder = workspace:FindFirstChild("Game")
+    if gameFolder and part:IsDescendantOf(gameFolder) then
+        return true
+    end
+    for _, player in ipairs(Players:GetPlayers()) do
+        local character = player.Character
+        if character and part:IsDescendantOf(character) then
+            return true
+        end
+    end
+    return false
+end
+
+local function getSpawnClearanceMode(spawner, placeCfg)
+    local mode = spawner:GetAttribute("ClearanceMode") or spawner:GetAttribute("ObstacleMode")
+    if type(mode) == "string" and mode ~= "" then
+        return string.lower(mode)
+    end
+
+    mode = placeCfg.clearance_mode or placeCfg.obstacle_mode
+    if type(mode) == "string" and mode ~= "" then
+        return string.lower(mode)
+    end
+
+    return "box"
+end
+
+local function hasBoxSpawnClearance(spawner, candidate, placeCfg, clearanceRadius)
+    local clearanceHeight = numberFromAttributeOrConfig(
+        spawner,
+        "ClearanceHeight",
+        placeCfg.spawn_clearance_height or placeCfg.clearance_height,
+        10
+    )
+    local yOffset = numberFromAttributeOrConfig(
+        spawner,
+        "ClearanceYOffset",
+        placeCfg.spawn_clearance_y_offset,
+        clearanceHeight * 0.5
+    )
+
+    local params = OverlapParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = { spawner }
+    params.MaxParts = 40
+
+    local parts = workspace:GetPartBoundsInBox(
+        CFrame.new(candidate + Vector3.new(0, yOffset, 0)),
+        Vector3.new(clearanceRadius * 2, clearanceHeight, clearanceRadius * 2),
+        params
+    )
+
+    for _, part in ipairs(parts) do
+        if not isIgnoredSpawnObstacle(part, spawner) then
+            return false
+        end
+    end
+
+    return true
+end
+
+local function hasRaySampleSpawnClearance(spawner, candidate, placeCfg, clearanceRadius)
+    local sampleCount = math.max(
+        0,
+        numberFromAttributeOrConfig(spawner, "RaySampleCount", placeCfg.ray_sample_count, 8)
+    )
+    local rayHeight = numberFromAttributeOrConfig(
+        spawner,
+        "ObstacleRaycastHeight",
+        placeCfg.obstacle_raycast_height or placeCfg.clearance_raycast_height,
+        18
+    )
+    local rayDepth = numberFromAttributeOrConfig(
+        spawner,
+        "ObstacleRaycastDepth",
+        placeCfg.obstacle_raycast_depth or placeCfg.clearance_raycast_depth,
+        1.5
+    )
+    local offsets = { Vector3.new(0, 0, 0) }
+    if sampleCount > 0 and clearanceRadius > 0 then
+        for i = 1, sampleCount do
+            local angle = ((i - 1) / sampleCount) * math.pi * 2
+            table.insert(
+                offsets,
+                Vector3.new(math.cos(angle) * clearanceRadius, 0, math.sin(angle) * clearanceRadius)
+            )
+        end
+    end
+
+    local filterDescendants = {}
+    local gameFolder = workspace:FindFirstChild("Game")
+    if gameFolder then
+        table.insert(filterDescendants, gameFolder)
+    end
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            table.insert(filterDescendants, player.Character)
+        end
+    end
+
+    for _, offset in ipairs(offsets) do
+        local origin = candidate + offset + Vector3.new(0, rayHeight, 0)
+        local direction = Vector3.new(0, -(rayHeight + rayDepth), 0)
+        local exclusions = table.clone(filterDescendants)
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Exclude
+        params.FilterDescendantsInstances = exclusions
+        params.IgnoreWater = true
+
+        local foundSurface = false
+        for _ = 1, 8 do
+            local result = workspace:Raycast(origin, direction, params)
+            if not result then
+                break
+            end
+
+            local part = result.Instance
+            if part == spawner or part:IsDescendantOf(spawner) then
+                foundSurface = true
+                break
+            end
+
+            if not isIgnoredSpawnObstacle(part, spawner) then
+                return false
+            end
+
+            table.insert(exclusions, part)
+            params.FilterDescendantsInstances = exclusions
+        end
+
+        if not foundSurface then
+            return false
+        end
+    end
+
+    return true
+end
+
+local function hasSpawnClearance(spawner, candidate, placeCfg)
+    local clearanceRadius = numberFromAttributeOrConfig(
+        spawner,
+        "ClearanceRadius",
+        placeCfg.spawn_clearance_radius or placeCfg.clearance_radius,
+        0
+    )
+    if clearanceRadius <= 0 then
+        return true
+    end
+
+    local mode = getSpawnClearanceMode(spawner, placeCfg)
+    if mode == "ray_samples" or mode == "raycasts" or mode == "rays" then
+        return hasRaySampleSpawnClearance(spawner, candidate, placeCfg, clearanceRadius)
+    end
+
+    return hasBoxSpawnClearance(spawner, candidate, placeCfg, clearanceRadius)
+end
+
 local function selectSpawnZone(zones)
     if type(zones) ~= "table" or #zones == 0 then
         return nil
@@ -244,6 +550,18 @@ local function ensureConfiguredFolderTree(gameFolder)
                 local groupFolder = Instance.new("Folder")
                 groupFolder.Name = groupName
                 groupFolder.Parent = sectionFolder
+            end
+        end
+    end
+
+    local breakablesFolder = gameFolder:FindFirstChild("Breakables")
+    local crystalsFolder = breakablesFolder and breakablesFolder:FindFirstChild("Crystals")
+    if crystalsFolder then
+        for areaId in pairs(breakablesConfig.worlds or {}) do
+            if not crystalsFolder:FindFirstChild(areaId) then
+                local worldFolder = Instance.new("Folder")
+                worldFolder.Name = areaId
+                worldFolder.Parent = crystalsFolder
             end
         end
     end
@@ -338,24 +656,12 @@ function BreakableSpawner:_spawnLoop()
         logger:Warn(
             "BreakableSpawner: Crystal assets folder missing after wait; will retry when assets load"
         )
-        -- Try to wait for global signal if provided by AssetPreloadService
-        if _G.AssetsLoadedEvent then
-            _G.AssetsLoadedEvent.Event:Connect(function()
-                local b = models:FindFirstChild("Breakables")
-                local c = b and b:FindFirstChild("Crystals")
-                if c then
-                    self:_fillAllWorlds(c)
-                end
-            end)
-        end
+        breakables.ChildAdded:Connect(function(child)
+            if child.Name == "Crystals" and child:IsA("Folder") then
+                self:_fillAllWorlds(child)
+            end
+        end)
     else
-        -- If AssetPreloadService exposes a global completion flag, wait for it
-        local waited = 0
-        while (not _G.AssetsLoadingComplete) and waited < 15 do
-            task.wait(0.5)
-            waited += 0.5
-        end
-        -- Also wait until crystals are actually populated
         local start = tick()
         while #crystalsAssets:GetChildren() == 0 and tick() - start < 30 do
             task.wait(0.5)
@@ -398,7 +704,7 @@ function BreakableSpawner:_spawnLoop()
         if worldFolder:IsA("Folder") then
             self:_setupWorld(worldFolder)
             if self:_isWorldActive(worldFolder.Name) then
-                self:_fillWorld(worldFolder, self._crystalsAssets)
+                self:_fillWorld(worldFolder)
             end
         end
     end
@@ -408,7 +714,7 @@ function BreakableSpawner:_spawnLoop()
         if child:IsA("Folder") then
             self:_setupWorld(child)
             if self:_isWorldActive(child.Name) then
-                self:_fillWorld(child, self._crystalsAssets)
+                self:_fillWorld(child)
             end
         end
     end)
@@ -430,7 +736,7 @@ function BreakableSpawner:_fillAllWorlds(crystalsAssets)
     self._crystalsAssets = crystalsAssets
     for _, worldFolder in ipairs(crystalsWorlds:GetChildren()) do
         if worldFolder:IsA("Folder") and self:_isWorldActive(worldFolder.Name) then
-            self:_fillWorld(worldFolder, crystalsAssets)
+            self:_fillWorld(worldFolder)
         end
     end
 end
@@ -455,6 +761,17 @@ function BreakableSpawner:_setupWorld(worldFolder)
     local worldConfig = getWorldConfig(worldFolder.Name)
     local defaultMax = (breakablesConfig.defaults and breakablesConfig.defaults.max_per_world) or 25
     local configuredMax = tonumber(worldConfig.max or defaultMax) or defaultMax
+    if worldBindingService and worldBindingService.GetSpawnZonesForSpawner then
+        local boundSpawners =
+            worldBindingService:GetSpawnZonesForSpawner(worldFolder.Name, "spawn_crystals")
+        for _, spawner in ipairs(boundSpawners or {}) do
+            local override = tonumber(spawner:GetAttribute("MaxCountOverride"))
+            if override then
+                configuredMax = override
+                break
+            end
+        end
+    end
     if not max then
         max = Instance.new("NumberValue")
         max.Name = "Max"
@@ -480,7 +797,7 @@ function BreakableSpawner:_setupWorld(worldFolder)
     end)
 end
 
-function BreakableSpawner:_fillWorld(worldFolder, crystalsAssets)
+function BreakableSpawner:_fillWorld(worldFolder)
     if not self:_isWorldActive(worldFolder.Name) then
         return
     end
@@ -491,7 +808,7 @@ function BreakableSpawner:_fillWorld(worldFolder, crystalsAssets)
         return
     end
     local deficit = math.max(0, (max.Value or 0) - (current.Value or 0))
-    for i = 1, deficit do
+    for _ = 1, deficit do
         self:_trySpawnOne(worldFolder)
     end
 end
@@ -571,7 +888,7 @@ function BreakableSpawner:_findSpawnPoint(worldFolder)
     end
 
     local placeCfg = getSpawnSettings(worldFolder.Name)
-    local minDistance = tonumber(placeCfg.min_distance or 12)
+    local defaultMinDistance = tonumber(placeCfg.min_distance or 12)
     local spawnRadius = tonumber(placeCfg.spawn_radius or 0)
     local spawnAttempts = math.max(1, tonumber(placeCfg.spawn_attempts or 12))
     local surfaceY = tonumber(placeCfg.surface_y)
@@ -581,6 +898,27 @@ function BreakableSpawner:_findSpawnPoint(worldFolder)
     local spawnerMargin = tonumber(placeCfg.spawn_area_margin or 0)
 
     for _, spawner in ipairs(spawners) do
+        local currentSpawnerMargin = numberFromAttributeOrConfig(
+            spawner,
+            "SpawnAreaMargin",
+            placeCfg.spawn_area_margin,
+            spawnerMargin
+        )
+        local currentSpawnAttempts = math.max(
+            1,
+            numberFromAttributeOrConfig(
+                spawner,
+                "SpawnAttempts",
+                placeCfg.spawn_attempts,
+                spawnAttempts
+            )
+        )
+        local currentMinDistance = numberFromAttributeOrConfig(
+            spawner,
+            "MinDistance",
+            placeCfg.min_distance,
+            defaultMinDistance
+        )
         local spawnerPosition = spawner.Position
         if surfaceY then
             spawnerPosition = Vector3.new(spawner.Position.X, surfaceY, spawner.Position.Z)
@@ -590,7 +928,7 @@ function BreakableSpawner:_findSpawnPoint(worldFolder)
         local exclusionCenter =
             getConfiguredPosition(placeCfg.spawn_exclusion_center, spawnCenter, surfaceY)
 
-        for _ = 1, spawnAttempts do
+        for _ = 1, currentSpawnAttempts do
             local zone = selectSpawnZone(zones)
             local zoneCenter = spawnCenter
             local zoneRadius = spawnRadius
@@ -602,9 +940,27 @@ function BreakableSpawner:_findSpawnPoint(worldFolder)
             local hasAreaBounds = useSpawnerBounds
                 and not zone
                 and (spawner.Size.X > 1 or spawner.Size.Z > 1)
-            local candidate = hasAreaBounds and randomPointInSpawnerBounds(spawner, spawnerMargin)
-                or randomPointInCircle(zoneCenter, zoneRadius)
-            if surfaceY then
+            local candidate
+            if hasAreaBounds and shouldBalanceSpawnerCells(spawner, placeCfg) then
+                local cellSize =
+                    numberFromAttributeOrConfig(spawner, "CellSize", placeCfg.cell_size, 36)
+                candidate = randomPointInBalancedSpawnerCell(
+                    spawner,
+                    currentSpawnerMargin,
+                    cellSize,
+                    itemsFolder
+                )
+            elseif hasAreaBounds then
+                candidate = randomPointInSpawnerBounds(spawner, currentSpawnerMargin)
+            else
+                candidate = randomPointInCircle(zoneCenter, zoneRadius)
+            end
+            if shouldSampleSpawnerSurface(spawner, placeCfg) then
+                candidate = raycastSpawnerSurface(spawner, candidate, placeCfg)
+                if not candidate then
+                    continue
+                end
+            elseif surfaceY then
                 candidate = Vector3.new(candidate.X, surfaceY, candidate.Z)
             end
 
@@ -616,13 +972,18 @@ function BreakableSpawner:_findSpawnPoint(worldFolder)
                 for _, child in ipairs(itemsFolder:GetChildren()) do
                     if child:IsA("Model") and child.PrimaryPart then
                         if
-                            horizontalDistance(child.PrimaryPart.Position, candidate) < minDistance
+                            horizontalDistance(child.PrimaryPart.Position, candidate)
+                            < currentMinDistance
                         then
                             tooClose = true
                             break
                         end
                     end
                 end
+            end
+
+            if not tooClose and not hasSpawnClearance(spawner, candidate, placeCfg) then
+                tooClose = true
             end
 
             if not tooClose then
@@ -708,12 +1069,9 @@ function BreakableSpawner:_trySpawnOne(
     model.Name = crystalName
 
     local crystalCfg = breakablesConfig.crystals and breakablesConfig.crystals[crystalName]
-    local crystalPlacement = {}
-    if type(crystalCfg) == "table" and type(crystalCfg.placement) == "table" then
-        for key, value in pairs(crystalCfg.placement) do
-            crystalPlacement[key] = value
-        end
-    end
+    local crystalPlacement = (type(crystalCfg) == "table" and type(crystalCfg.placement) == "table")
+            and table.clone(crystalCfg.placement)
+        or {}
     if type(spawnOverrides) == "table" and type(spawnOverrides.placement) == "table" then
         for key, value in pairs(spawnOverrides.placement) do
             crystalPlacement[key] = value
@@ -798,7 +1156,7 @@ function BreakableSpawner:_trySpawnOne(
     end
 
     -- Simple de-overlap: if another crystal is too close, nudge sideways (up to few tries)
-    local minDist = tonumber(placeCfg.min_distance or 12)
+    local minDist = numberFromAttributeOrConfig(spawner, "MinDistance", placeCfg.min_distance, 12)
     local itemsFolder = worldFolder:FindFirstChild("Items")
     local tries = 0
     while tries < 4 and itemsFolder do
@@ -872,11 +1230,9 @@ function BreakableSpawner:_trySpawnOne(
 
     -- Bind health bar UI (if present in model)
     -- Match MCP: find any descendant BillboardGui with a child Frame named 'Health'
-    local billboards = {}
     local healthFrames = {}
     for _, d in ipairs(model:GetDescendants()) do
         if d:IsA("BillboardGui") then
-            table.insert(billboards, d)
             d.MaxDistance = 75
             local hf = d:FindFirstChild("Health")
             if hf and hf:IsA("Frame") then
@@ -1155,7 +1511,10 @@ function BreakableSpawner:_trySpawnOne(
                                 if stats then
                                     stats:Increment(plr, "breakables_broken", 1)
                                 end
-                                if petProgressionService and petProgressionService.AwardBreakableDestroyed then
+                                if
+                                    petProgressionService
+                                    and petProgressionService.AwardBreakableDestroyed
+                                then
                                     petProgressionService:AwardBreakableDestroyed(plr, {
                                         world = model:GetAttribute("World"),
                                         breakableId = model:GetAttribute("BreakableId"),
@@ -1202,14 +1561,6 @@ function BreakableSpawner:_trySpawnOne(
             if model and model.Parent then
                 model:Destroy()
             end
-        end
-
-        -- Decrement world counts
-        local current = worldFolder:FindFirstChild("CurrentItems")
-        if current then
-            task.defer(function()
-                current.Value = math.max(0, (current.Value or 1) - 1)
-            end)
         end
     end
 

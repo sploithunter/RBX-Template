@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local petConfig = Locations.getConfig("pets")
 local eggSystemConfig = Locations.getConfig("egg_system")
+local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
 
 -- Logger setup using singleton pattern
 local Logger
@@ -97,42 +98,9 @@ function EggService:IsPlayerNearEgg(player, eggType)
 
     local playerPosition = player.Character.HumanoidRootPart.Position
 
-    -- Find the egg model
-    local eggModel = nil
-    for _, obj in pairs(workspace:GetChildren()) do
-        if obj:IsA("Model") then
-            local objEggType = obj:GetAttribute("EggType")
-            local eggInfo = obj:FindFirstChild("EggType")
-            if eggInfo then
-                objEggType = eggInfo.Value
-            end
-
-            if objEggType == eggType then
-                eggModel = obj
-                break
-            end
-        end
-    end
-
-    if not eggModel then
-        return false
-    end
-
-    -- Use EggSpawnPoint as anchor (referenced in SpawnPoint ObjectValue)
-    local spawnPointRef = eggModel:FindFirstChild("SpawnPoint")
-    local anchor = spawnPointRef and spawnPointRef.Value
-
-    -- Fallback to PrimaryPart or any Part if no SpawnPoint reference
-    if not anchor then
-        anchor = eggModel.PrimaryPart or eggModel:FindFirstChildOfClass("Part")
-    end
-
-    if not anchor then
-        return false
-    end
-
-    local distance = (playerPosition - anchor.Position).Magnitude
-    return distance <= eggSystemConfig.proximity.max_distance
+    local isNear =
+        EggWorldQuery.IsNearEggType(eggType, playerPosition, eggSystemConfig.proximity.max_distance)
+    return isNear == true
 end
 
 -- === MAIN HANDLER (following working game pattern) ===
@@ -150,6 +118,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         Logger:Warn("Invalid egg type", { player = player.Name, eggType = eggType })
         return nil, "Invalid egg type"
     end
+    local eggCost = (petConfig.getEggCost and petConfig.getEggCost(eggType)) or eggData.cost
 
     -- Check cooldown
     local onCooldown, remainingTime = self:IsOnCooldown(player)
@@ -165,13 +134,13 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
     end
 
     -- Check currency
-    local hasEnough, currentAmount = self:HasEnoughCurrency(player, eggData.currency, eggData.cost)
+    local hasEnough, currentAmount = self:HasEnoughCurrency(player, eggData.currency, eggCost)
 
     Logger:Info("🪙 EGG PURCHASE - Currency check", {
         player = player.Name,
         eggType = eggType,
         currency = eggData.currency,
-        required = eggData.cost,
+        required = eggCost,
         current = currentAmount,
         hasEnough = hasEnough,
         dataServiceAvailable = self._dataService ~= nil,
@@ -181,14 +150,14 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         Logger:Warn("🚫 INSUFFICIENT CURRENCY", {
             player = player.Name,
             currency = eggData.currency,
-            required = eggData.cost,
+            required = eggCost,
             current = currentAmount,
         })
         return "Error", "Insufficient " .. eggData.currency
     end
 
     -- Deduct currency
-    local deductSuccess = self:DeductCurrency(player, eggData.currency, eggData.cost)
+    local deductSuccess = self:DeductCurrency(player, eggData.currency, eggCost)
     if not deductSuccess then
         Logger:Error("Failed to deduct currency", { player = player.Name })
         return "Error", "Transaction failed"
@@ -250,7 +219,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         Logger:Error("Hatching failed", { player = player.Name, eggType = eggType })
         -- Refund currency
         local refundAmount = player:GetAttribute(eggData.currency) or 0
-        player:SetAttribute(eggData.currency, refundAmount + eggData.cost)
+        player:SetAttribute(eggData.currency, refundAmount + eggCost)
         return "Error", "Hatching failed"
     end
 
@@ -265,10 +234,8 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
     local autoDeleted = false
     local autoDeleteReason = nil
     if self._autoTargetService and self._autoTargetService.ShouldAutoDeleteHatch then
-        autoDeleted, autoDeleteReason = self._autoTargetService:ShouldAutoDeleteHatch(
-            player,
-            hatchResult
-        )
+        autoDeleted, autoDeleteReason =
+            self._autoTargetService:ShouldAutoDeleteHatch(player, hatchResult)
     end
 
     -- 🐾 ADD PET TO INVENTORY THROUGH THE SINGLE GRANT BOUNDARY
@@ -300,12 +267,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
                 error = grantResult.error,
             })
             if self._dataService then
-                self._dataService:AddCurrency(
-                    player,
-                    eggData.currency,
-                    eggData.cost,
-                    "egg_hatch_refund"
-                )
+                self._dataService:AddCurrency(player, eggData.currency, eggCost, "egg_hatch_refund")
             end
             return "Error", "Failed to grant pet"
         end
@@ -329,6 +291,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         Type = hatchResult.variant,
         Power = hatchResult.petData.power,
         EggType = eggType,
+        Cost = eggCost,
         AutoDeleted = autoDeleted,
         AutoDeleteReason = autoDeleteReason,
         success = true,

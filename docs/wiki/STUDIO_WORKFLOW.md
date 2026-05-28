@@ -61,7 +61,7 @@ return require(game:GetService("ReplicatedStorage").Tests.studio.MapContractSmok
 Last verified on 2026-05-27:
 
 ```text
-MapContractSmoke passed: authored=17 synthetic=0 AreaZone=2(a2/s0) EggStand=2(a2/s0) PODPodium=2(a2/s0) Portal=2(a2/s0) SpawnZone=2(a2/s0) TeleportPad=2(a2/s0) Zone=5(a5/s0)
+MapContractSmoke expected after the BasicEarth egg change: `AreaZone=2`, `EggStand=1`, `PODPodium=2`, `Portal=2`, `SpawnZone=2`, `TeleportPad=2`, `Zone=5`.
 ```
 
 See [Authored Map Workflow](../AUTHORED_MAP_WORKFLOW.md) for the checklist and promotion path.
@@ -208,7 +208,7 @@ Last verified on 2026-05-27:
 
 ```text
 SyntheticExpansionSmoke passed: spawn_world->crystal_world area=CrystalCavern spawnZones=1 restored=true
-MapContractSmoke passed: authored=17 synthetic=0 AreaZone=2(a2/s0) EggStand=2(a2/s0) PODPodium=2(a2/s0) Portal=2(a2/s0) SpawnZone=2(a2/s0) TeleportPad=2(a2/s0) Zone=5(a5/s0)
+MapContractSmoke expected after the BasicEarth egg change: `AreaZone=2`, `EggStand=1`, `PODPodium=2`, `Portal=2`, `SpawnZone=2`, `TeleportPad=2`, `Zone=5`.
 ```
 
 ## Current Verification Commands

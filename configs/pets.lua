@@ -649,6 +649,13 @@ local petConfig = {
                 rainbow_chance = 0.005, -- 0.5% base chance for rainbow
                 -- Remaining 94.5% will be basic
             },
+            variant_rolls = {
+                enabled = true,
+                allow_basic = true,
+                allow_golden = true,
+                allow_rainbow = true,
+                cost_multiplier = 20, -- Applied only if this egg is configured to remove basic rolls.
+            },
 
             -- Gamepass & Luck Modifiers (applied in hatching script)
             modifier_support = {
@@ -667,7 +674,8 @@ local petConfig = {
         golden_egg = {
             name = "Golden Basic Egg",
             description = "Premium egg - Only Golden and Rainbow pets, no Basic variants!",
-            cost = 1000,
+            world_placeable = false, -- Not used as a default map object; basic_egg can roll golden/rainbow.
+            cost = 100,
             currency = "gems",
             asset_id = "rbxassetid://83992435784076", -- 3D Golden_BasicEgg model for import
             image_id = "rbxassetid://0", -- Generated from 3D model
@@ -697,6 +705,13 @@ local petConfig = {
                 rainbow_chance = 0.05, -- 5% chance for rainbow
                 -- 0% chance for basic (premium egg!)
                 no_basic_variants = true, -- Flag for hatching script
+            },
+            variant_rolls = {
+                enabled = true,
+                allow_basic = false,
+                allow_golden = true,
+                allow_rainbow = true,
+                cost_multiplier = 20,
             },
 
             -- Gamepass & Luck Modifiers
@@ -863,6 +878,24 @@ end
 
 -- === TWO-STAGE HATCHING SIMULATION ===
 
+function petConfig.getEggCost(eggType)
+    local eggData = petConfig.egg_sources[eggType]
+    if not eggData then
+        return nil
+    end
+
+    local cost = tonumber(eggData.cost) or 0
+    local variantRolls = eggData.variant_rolls
+    local noBasicMode = (eggData.rarity_rates and eggData.rarity_rates.no_basic_variants == true)
+        or (variantRolls and variantRolls.allow_basic == false)
+
+    if noBasicMode and variantRolls and variantRolls.cost_multiplier ~= nil then
+        cost = cost * math.max(0, tonumber(variantRolls.cost_multiplier) or 1)
+    end
+
+    return math.floor(cost + 0.5)
+end
+
 -- Simulate egg hatching with gamepass/luck modifiers
 function petConfig.simulateHatch(eggType, playerData)
     playerData = playerData or {}
@@ -999,18 +1032,28 @@ function petConfig.simulateHatch(eggType, playerData)
     local rarityRoll = math.random()
     local selectedVariant = "basic"
 
-    if eggData.rarity_rates.no_basic_variants then
+    local variantRolls = eggData.variant_rolls or {}
+    local variantRollsEnabled = variantRolls.enabled ~= false
+    local allowBasic = variantRolls.allow_basic ~= false
+    local allowGolden = variantRolls.allow_golden ~= false
+    local allowRainbow = variantRolls.allow_rainbow ~= false
+
+    if not variantRollsEnabled then
+        selectedVariant = "basic"
+    elseif eggData.rarity_rates.no_basic_variants or not allowBasic then
         -- Premium egg - only golden/rainbow
-        if rarityRoll <= rainbowChance then
+        if allowRainbow and rarityRoll <= rainbowChance then
             selectedVariant = "rainbow"
-        else
+        elseif allowGolden then
             selectedVariant = "golden"
+        else
+            selectedVariant = "basic"
         end
     else
         -- Normal egg - basic/golden/rainbow
-        if rarityRoll <= rainbowChance then
+        if allowRainbow and rarityRoll <= rainbowChance then
             selectedVariant = "rainbow"
-        elseif rarityRoll <= rainbowChance + goldenChance then
+        elseif allowGolden and rarityRoll <= rainbowChance + goldenChance then
             selectedVariant = "golden"
         else
             selectedVariant = "basic"

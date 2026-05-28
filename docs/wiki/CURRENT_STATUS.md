@@ -59,6 +59,7 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Pet power is now config-only durable data. `configs/pets.lua` defines family base power plus global Basic/Golden/Rainbow multipliers, while grant/progression/inventory save paths avoid writing per-copy power or stats power. `tests/studio/BackfillPetPowerSourceOfTruth.lua` can strip legacy saved power fields for the current Studio player.
 - `configs/auto_systems.lua` and `AutoTargetService` now provide the first Phase 5 auto-system slice. Target mode choices persist under `Settings.AutoSystems.auto_target`; clients request auto-target work and the server selects the breakable. The configured default modes are nearest, highest value, weakest, strongest, and selected currency.
 - Hatch auto-delete filters persist under `Settings.AutoSystems.auto_delete` and are enforced in `EggService` before `PetGrantService` writes inventory. Filters can match rarity, pet family, or variant, and Secret/Exclusive/Huge are protected by default.
+- Egg hatching is treated as two-stage: first roll chooses the pet species, second hidden roll chooses basic/golden/rainbow. Egg previews stay species-only and show basic-form pets, while `egg_sources.<id>.variant_rolls` controls allowed variants and optional cost multipliers such as the starter `20x` no-basic/golden mode.
 
 ## Phase 0 Verification
 
@@ -79,11 +80,11 @@ Last checked: 2026-05-27
 - Full Selene: passes with warnings from the existing codebase.
 - StyLua check for Phase 1 touched files: passes.
 - ConfigLoader unit specs pass in Studio (`30` passed, `0` failed) and cover valid area/marker schemas plus missing-parent, cycle, and unsupported marker-attribute failures.
-- Studio MCP smoke test: passes. Generated hook counts in play mode were `Zone=5`, `AreaZone=2`, `SpawnZone=2`, `EggStand=2`, `PODPodium=2`, `TeleportPad=2`, `Portal=2`.
+- Studio MCP smoke test: latest expected generated hook counts are `Zone=5`, `AreaZone=2`, `SpawnZone=2`, `EggStand=1`, `PODPodium=2`, `TeleportPad=2`, `Portal=2`. Earlier Phase 1 verification used two egg stands before golden hatching moved into `basic_egg` variant-roll config.
 - Active-zone dormancy smoke check passes: after boot, Spawn had spawned breakables and Meadow had `0`; after `TravelSmoke` unlocked/traveled to Meadow, Meadow filled to its configured `8` breakables.
 - Travel smoke test passes through MCP with `TravelSmoke`. It verifies locked travel rejection, unlock, server-authoritative movement to Meadow, active-area update, and state restoration.
 - Egg proximity smoke test: passes through MCP with `EggProximitySmoke`. It verifies far hatch rejection, near hatch success, UI target state, currency deduction, pet inventory increase, and state restoration.
-- Authored reference map smoke passes through MCP with `MapContractSmoke` using `requireAuthored = true` and `allowSynthetic = false`: `Zone=5`, `AreaZone=2`, `SpawnZone=2`, `EggStand=2`, `PODPodium=2`, `TeleportPad=2`, `Portal=2`, all authored.
+- Authored reference map smoke should now expect one authored `EggStand` for `basic_egg`; rerun `MapContractSmoke` after regenerating the reference map.
 - Spawn safety smoke passes through MCP with `SpawnSafetySmoke` for `Spawn`: the player is placed above a real floor, vertical velocity is cleared, and active area state is synchronized.
 
 ## Phase 2 Verification

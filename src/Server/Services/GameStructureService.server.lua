@@ -7,8 +7,21 @@
 --]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CollectionService = game:GetService("CollectionService")
 
 local GameStructureService = {}
+
+local CONTRACT_TAGS = {
+    "Zone",
+    "AreaZone",
+    "PlayerSpawn",
+    "SpawnZone",
+    "TeleportPad",
+    "Portal",
+    "EggStand",
+    "EnchanterStation",
+    "PODPodium",
+}
 
 local function loadBreakablesConfig()
     local ok, config = pcall(function()
@@ -29,6 +42,50 @@ local function loadBreakablesConfig()
     end
 
     return {}
+end
+
+local function loadGameConfig()
+    local ok, config = pcall(function()
+        local ConfigLoader = require(ReplicatedStorage.Shared.ConfigLoader)
+        return ConfigLoader:LoadConfig("game")
+    end)
+    if ok and type(config) == "table" then
+        return config
+    end
+
+    local configsFolder = ReplicatedStorage:FindFirstChild("Configs")
+    local gameModule = configsFolder and configsFolder:FindFirstChild("game")
+    if gameModule and gameModule:IsA("ModuleScript") then
+        local directOk, directConfig = pcall(require, gameModule)
+        if directOk and type(directConfig) == "table" then
+            return directConfig
+        end
+    end
+
+    return {}
+end
+
+local function hasAuthoredMapHooks()
+    for _, tagName in ipairs(CONTRACT_TAGS) do
+        for _, instance in ipairs(CollectionService:GetTagged(tagName)) do
+            if instance:IsDescendantOf(workspace) and not instance:GetAttribute("Synthetic") then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function shouldGenerateFallbackStructure()
+    local gameConfig = loadGameConfig()
+    local mapMode = (gameConfig.map and gameConfig.map.mode) or "auto"
+    if mapMode == "synthetic" then
+        return true
+    end
+    if mapMode == "authored" then
+        return false
+    end
+    return not hasAuthoredMapHooks()
 end
 
 local function shallowCopy(source)
@@ -124,12 +181,15 @@ local function ensureSpawnIsland(structureConfig)
         island.Name = islandConfig.name or "SpawnIsland"
         island.Parent = workspace
     end
-    applyCommonPartConfig(island, mergeInto({
-        size = { x = 160, y = 4, z = 160 },
-        position = { x = 0, y = -2, z = 0 },
-        color = { r = 46, g = 158, b = 74 },
-        material = "Grass",
-    }, islandConfig))
+    applyCommonPartConfig(
+        island,
+        mergeInto({
+            size = { x = 160, y = 4, z = 160 },
+            position = { x = 0, y = -2, z = 0 },
+            color = { r = 46, g = 158, b = 74 },
+            material = "Grass",
+        }, islandConfig)
+    )
 
     local spawnConfig = structureConfig.start_spawn or {}
     local spawnLocation = workspace:FindFirstChild(spawnConfig.name or "StartSpawn")
@@ -140,12 +200,15 @@ local function ensureSpawnIsland(structureConfig)
     end
     spawnLocation.Neutral = spawnConfig.neutral ~= false
     spawnLocation.Duration = tonumber(spawnConfig.duration) or 0
-    applyCommonPartConfig(spawnLocation, mergeInto({
-        size = { x = 12, y = 1, z = 12 },
-        position = { x = 0, y = 2, z = 0 },
-        transparency = 0.25,
-        color = { r = 38, g = 115, b = 255 },
-    }, spawnConfig))
+    applyCommonPartConfig(
+        spawnLocation,
+        mergeInto({
+            size = { x = 12, y = 1, z = 12 },
+            position = { x = 0, y = 2, z = 0 },
+            transparency = 0.25,
+            color = { r = 38, g = 115, b = 255 },
+        }, spawnConfig)
+    )
 end
 
 local function ensureFolder(parent, name)
@@ -156,6 +219,22 @@ local function ensureFolder(parent, name)
         folder.Parent = parent
     end
     return folder
+end
+
+local function ensureMinimalGameFolders()
+    local gameFolder = ensureFolder(workspace, "Game")
+    gameFolder:SetAttribute("GeneratedFromConfig", true)
+    ensureFolder(gameFolder, "Music")
+    ensureFolder(gameFolder, "SFX")
+    local breakablesFolder = ensureFolder(gameFolder, "Breakables")
+    local crystalsFolder = ensureFolder(breakablesFolder, "Crystals")
+    local breakablesConfig = loadBreakablesConfig()
+    for areaId in pairs(breakablesConfig.worlds or {}) do
+        ensureFolder(crystalsFolder, areaId)
+    end
+    ensureFolder(gameFolder, "Eggs")
+    ensureFolder(gameFolder, "Chaseables")
+    return gameFolder
 end
 
 local function ensureEggSpawnPoints(gameFolder, structureConfig)
@@ -187,14 +266,17 @@ local function ensureEggSpawnPoints(gameFolder, structureConfig)
             end
 
             spawnPoint.Name = pointConfig.name or "EggSpawnPoint"
-            applyCommonPartConfig(spawnPoint, mergeInto({
-                size = { x = 3, y = 1, z = 3 },
-                position = { x = 0, y = 0.5, z = 0 },
-                transparency = 1,
-                can_collide = false,
-                can_query = false,
-                can_touch = false,
-            }, pointConfig))
+            applyCommonPartConfig(
+                spawnPoint,
+                mergeInto({
+                    size = { x = 3, y = 1, z = 3 },
+                    position = { x = 0, y = 0.5, z = 0 },
+                    transparency = 1,
+                    can_collide = false,
+                    can_query = false,
+                    can_touch = false,
+                }, pointConfig)
+            )
             spawnPoint:SetAttribute("SpawnId", spawnId)
             spawnPoint:SetAttribute("EggType", pointConfig.egg_type or "basic_egg")
         end
@@ -266,7 +348,11 @@ local function createSpawner(worldFolder, spawnerConfig, defaultConfig)
 end
 
 local function normalizeSpawnerSpecs(sectionName, groupName, worldOptions, groupConfig, worldConfig)
-    if sectionName == "Breakables" and groupName == "Crystals" and type(worldConfig.spawn_area) == "table" then
+    if
+        sectionName == "Breakables"
+        and groupName == "Crystals"
+        and type(worldConfig.spawn_area) == "table"
+    then
         return { worldConfig.spawn_area }
     end
 
@@ -360,7 +446,14 @@ local function collectWorldSpecs(sectionName, groupName, groupConfig, breakables
     return specs
 end
 
-local function createConfiguredGroup(sectionFolder, sectionName, groupName, groupConfig, structureConfig, breakablesConfig)
+local function createConfiguredGroup(
+    sectionFolder,
+    sectionName,
+    groupName,
+    groupConfig,
+    structureConfig,
+    breakablesConfig
+)
     local groupFolder = sectionFolder:FindFirstChild(groupName)
     if not groupFolder then
         groupFolder = Instance.new("Folder")
@@ -374,7 +467,8 @@ local function createConfiguredGroup(sectionFolder, sectionName, groupName, grou
     for worldName, worldOptions in pairs(worldSpecs) do
         local crystalWorldConfig = {}
         if sectionName == "Breakables" and groupName == "Crystals" then
-            crystalWorldConfig = (breakablesConfig.worlds and breakablesConfig.worlds[worldName]) or {}
+            crystalWorldConfig = (breakablesConfig.worlds and breakablesConfig.worlds[worldName])
+                or {}
         end
 
         local resolvedOptions = shallowCopy(groupConfig)
@@ -406,6 +500,11 @@ function GameStructureService:CreateGameStructure()
     local structureConfig = breakablesConfig.structure or {}
 
     print("GameStructureService: Creating Game structure from config...")
+    if not shouldGenerateFallbackStructure() then
+        print("GameStructureService: Authored map hooks detected; creating folders only.")
+        return ensureMinimalGameFolders()
+    end
+
     ensureSpawnIsland(structureConfig)
 
     local gameFolder = workspace:FindFirstChild("Game")
@@ -426,7 +525,14 @@ function GameStructureService:CreateGameStructure()
         end
 
         for groupName, groupConfig in pairs(sectionConfig) do
-            createConfiguredGroup(sectionFolder, sectionName, groupName, groupConfig, structureConfig, breakablesConfig)
+            createConfiguredGroup(
+                sectionFolder,
+                sectionName,
+                groupName,
+                groupConfig,
+                structureConfig,
+                breakablesConfig
+            )
         end
     end
 
@@ -436,8 +542,10 @@ end
 
 function GameStructureService:Initialize()
     print("GameStructureService: Initializing...")
-    local breakablesConfig = loadBreakablesConfig()
-    ensureSpawnIsland(breakablesConfig.structure or {})
+    if shouldGenerateFallbackStructure() then
+        local breakablesConfig = loadBreakablesConfig()
+        ensureSpawnIsland(breakablesConfig.structure or {})
+    end
     task.wait(1)
     self:CreateGameStructure()
     print("GameStructureService: Initialized.")

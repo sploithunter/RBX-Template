@@ -8,8 +8,9 @@ The first authored map should be a tiny reference map, not a final world:
 
 - `Spawn` floor and `Meadow` floor.
 - `Zone` and `AreaZone` markers for `spawn_world`, `spawn_island`, `meadow_island`, `Spawn`, and `Meadow`.
-- `SpawnZone` markers for breakables in both areas.
-- `EggStand` markers for `basic_egg` and `golden_egg`.
+- a `PlayerSpawn` marker for the starter area, usually stamped onto the authored `SpawnLocation`.
+- `SpawnZone` markers for breakables in both areas. These may be invisible volumes or tagged playable surface meshes.
+- an `EggStand` marker for `basic_egg`; golden/rainbow hatches come from egg variant-roll config rather than a required golden egg model.
 - `TeleportPad` markers between `Spawn` and `Meadow`.
 - `Portal` markers between `spawn_island` and `meadow_island`.
 - `PODPodium` markers in both areas.
@@ -75,6 +76,54 @@ return require(game:GetService("ReplicatedStorage").Tests.studio.EggProximitySmo
 - Marker names are for humans; tags and attributes are the contract.
 - Keep `configs/areas.lua` and `configs/breakables.lua` as the source of gameplay ids and balance.
 - Rojo must not own authored Workspace map folders.
+- The player spawn should be an authored `PlayerSpawn` hook, not a hardcoded config coordinate, once a real map is being integrated.
+- Builder-authored egg visuals should be tagged as `EggStand` with `EggId`/`EggType`; do not force the artist's visible model to be named `EggSpawnPoint`. On large decorative hatchers, tag the egg/rock interaction part instead of the whole hatcher model.
+- Builder-authored breakable areas can tag playable surface parts as `SpawnZone`; use clearance settings so automated spawning avoids props and paths.
+
+## AI-Assisted Normalization
+
+This workflow assumes an AI/MCP-assisted deployment pass. It is acceptable, and often preferable, for the assistant to reorganize imported map folders, rename duplicate or ambiguous objects, move legacy scripts into quarantine, create invisible helper volumes, and stamp tags/attributes when that makes the template easier to bind.
+
+The rule is not “never change the map.” The rule is “do not make builders manually conform to brittle engine assumptions.” If an AI-assisted cleanup makes the map clearer and repeatable, prefer that over adding fragile runtime guessing. Preserve original art, keep destructive edits out of the first pass, and document the mapping from authored objects to template hooks.
+
+## Imported Egg Art
+
+For a production map, visible egg models may be named anything by the builder. Run `scripts/studio/stamp_authored_egg_stands.luau` as an assisted setup step to map those models to configured egg ids. The script can resolve exact paths or choose the nearest duplicate-name model by position, then stamps the intended interaction part:
+
+- `EggStand` tag
+- `EggId`
+- `EggType`
+- optional `AreaId` and `SpawnId`
+- `AuthoredVisual = true`
+- `SpawnMode = "authored"`
+
+Keep `SpawnMode = "spawn_model"` only for invisible template hooks where the engine should create a placeholder visual egg.
+
+The current NewWorld mapping uses `Workspace.Maps.Home.LegacyEggHatchers.BasicEarth.EggModel` as the authored `basic_egg` stand, not the full `BasicEarth` hatcher container. There is intentionally no authored golden egg stand in the default flow; `configs/pets.lua` `egg_sources.<id>.variant_rolls` controls whether an egg can hatch basic, golden, and rainbow variants. The egg preview remains first-stage/species-only and displays pets in basic form. A premium/no-basic mode is configured by disabling `allow_basic`; if that mode should cost more, set `variant_rolls.cost_multiplier` such as `20`.
+
+Before stamping, run `scripts/studio/audit_authored_map_candidates.luau` to list likely egg/portal/shop candidates with paths and positions. The audit is intentionally advisory: it reduces search work for a human or AI agent, but final mapping still needs judgement because imported maps often contain duplicate names, decorative props, or old scripts.
+
+## Imported Breakable Surfaces
+
+For a production map, a designer can name the playable grass/floor however they like. A setup pass should stamp the intended surface with:
+
+- `SpawnZone` tag
+- `AreaId`, such as `Spawn`
+- `SpawnerId = "spawn_crystals"`
+- `SurfaceOnly = true`
+- `ClearanceRadius` and `ClearanceHeight`
+
+Use `scripts/studio/stamp_authored_spawn_surfaces.luau` as the repeatable helper. The current NewWorld cleanup copy maps `Workspace.Maps.Home.Grass` to the starter crystal spawner. Runtime spawning samples random points on that mesh by raycast and rejects candidates whose clearance box intersects sidewalks, hatcher platforms, trees, rocks, portals, or other props.
+
+## Imported Player Spawn
+
+For a production map, stamp the intended player start part with:
+
+- `PlayerSpawn` tag
+- `AreaId = "Spawn"` or the configured starter area id
+- optional `ZoneId = "Spawn"`
+
+The current NewWorld cleanup copy uses `Workspace.SpawnLocation` this way. Without that hook, spawn safety may fall back to the starter area's synthetic position and raycast onto whatever imported geometry happens to be near that coordinate.
 
 ## Promotion Path
 
