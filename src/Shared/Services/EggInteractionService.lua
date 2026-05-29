@@ -807,17 +807,25 @@ function EggInteractionService:CreateHatchPanel()
     costDetail.TextXAlignment = Enum.TextXAlignment.Left
     costDetail.Parent = frame
 
-    local countLabel = Instance.new("TextLabel")
+    local countLabel = Instance.new("TextBox")
     countLabel.Name = "Count"
     countLabel.Size = UDim2.new(0, 104, 0, 36)
     countLabel.Position = UDim2.new(0.52, 4, 0, 38)
     countLabel.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
     countLabel.BorderSizePixel = 0
     countLabel.Text = "x1"
+    countLabel.PlaceholderText = "1-" .. tostring(getMaxHatchCount())
+    countLabel.ClearTextOnFocus = false
     countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     countLabel.TextScaled = true
     countLabel.Font = Enum.Font.GothamBold
     countLabel.Parent = frame
+    countLabel.Focused:Connect(function()
+        countLabel.Text = tostring(selectedHatchCount)
+    end)
+    countLabel.FocusLost:Connect(function()
+        self:SubmitHatchCountInput(countLabel.Text)
+    end)
 
     local countCorner = Instance.new("UICorner")
     countCorner.CornerRadius = UDim.new(0, 8)
@@ -1425,6 +1433,16 @@ function EggInteractionService:SetSelectedHatchCount(count, options)
     if hatchPanelFields.count then
         hatchPanelFields.count.Text = "x" .. tostring(selectedHatchCount)
     end
+end
+
+function EggInteractionService:SubmitHatchCountInput(text)
+    local parsed = tostring(text or ""):match("%d+")
+    if parsed then
+        self:SetSelectedHatchCount(tonumber(parsed))
+    elseif hatchPanelFields.count then
+        hatchPanelFields.count.Text = "x" .. tostring(selectedHatchCount)
+    end
+    return selectedHatchCount
 end
 
 function EggInteractionService:SetHatchSettingsOpen(open)

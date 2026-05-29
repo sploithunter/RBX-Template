@@ -32,6 +32,7 @@ Implemented so far:
 - The near-egg hatch panel now persists the player's selected hatch count under `Settings.AutoSystems.hatch.selected_count`. `SettingsService` replicates it to `Player.Settings.AutoSystems.Hatch.SelectedCount`, the client restores it when the panel is created, and `EggProximitySmoke` verifies the replicated client/server round trip.
 - Hatch mode preferences now persist under `Settings.AutoSystems.hatch.modes`. `SettingsService` sanitizes mode keys from `egg_system.ui.hatch_panel.modes`, replicates them under `Player.Settings.AutoSystems.Hatch.Modes`, and `EggInteractionService` restores/persists Golden, Charged, Fast, Skip, and Silent mode toggles without making the server trust those preferences for entitlement.
 - The near-egg hatch panel now keeps replicated hatch settings live after creation. Changes to replicated selected count or mode values update the visible panel, and the panel exposes per-egg, multiplier, total, and affordable-count cost metadata for multi-hatch UI/debugging.
+- The selected hatch count is now a direct editable input as well as a button-driven selector. Typed values are parsed, clamped to effective entitlement, persisted through the same settings path, and covered by `EggProximitySmoke`.
 - The near-egg hatch panel now has config-driven responsive scaling. `egg_system.ui.hatch_panel.responsive` controls margin/min/max scale, `EggInteractionService:ComputeHatchPanelLayout()` exposes desktop/mobile fit math, and `EggProximitySmoke` verifies the panel remains full scale on desktop while fitting a mobile-width viewport.
 - Hatch animation now has explicit max-batch coverage. `EggHatchingService` resolves a sane fallback viewport when Studio reports an uninitialized `1x1` camera size, exposes resolved container/frame geometry through `GetActiveAnimationDebugState()`, and `EggAnimationMaxBatchSmoke` verifies `99` authored egg frames fit in the compact `10x10` layout.
 - Hatch mode education now includes config-derived economics. The hatch drawer reads mode cost/luck details from `egg_system.hatching.shop_stubs`, exposes them as UI attributes, and shows details such as Golden `20x` cost and Charged luck bonuses in help/status text.
@@ -151,7 +152,7 @@ Config:
 
 Client UI:
 
-- Replace single `E` behavior with a hatch controller that tracks selected/requested count.
+- Replace single `E` behavior with a hatch controller that tracks selected/requested count. First-pass count persistence, typed input, and direct button controls are in place.
 - Add near-egg controls for Hatch, Auto, selected count, and future mode toggles.
 - Add keyboard support that remains simple: `E` hatch selected count; optional key for auto hatch.
 - Disable/gray controls while the server hatch lock is active.

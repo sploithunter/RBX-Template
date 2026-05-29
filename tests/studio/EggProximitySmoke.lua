@@ -367,8 +367,10 @@ function EggProximitySmoke.run(options)
                 "Hatch panel mode status did not include configured mode details"
             )
 
-            EggInteractionService:SetSelectedHatchCount(4)
+            assert(hatchPanel.Count:IsA("TextBox"), "Hatch count control should be editable")
+            EggInteractionService:SubmitHatchCountInput("4")
             waitForHatchSelectedCount(player, 4, timeoutSeconds)
+            assert(hatchPanel.Count.Text == "x4", "Hatch count input did not show submitted count")
             local costDetail = hatchPanel:FindFirstChild("CostDetail")
             assert(costDetail, "Hatch panel missing cost detail label")
             assert(
