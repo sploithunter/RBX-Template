@@ -1,6 +1,6 @@
 # Egg System Plan
 
-Status: in progress
+Status: current baseline complete; polish in progress
 
 Implemented so far:
 
@@ -38,19 +38,26 @@ Implemented so far:
 - Hatch mode education now includes config-derived economics. The hatch drawer reads mode cost/luck details from `egg_system.hatching.shop_stubs`, exposes them as UI attributes, and shows details such as Golden `20x` cost and Charged luck bonuses in help/status text.
 - The expanded hatch drawer now has automated layout coverage. `EggProximitySmoke` opens the real `PlayerGui` drawer, verifies desktop/mobile fit math, and checks that visible drawer controls are not clipped inside the configured drawer bounds.
 - Special hatch animation polish now has a config-driven backdrop layer. `egg_system.hatching.animation.special_backdrop` controls a rarity-colored reveal backdrop behind special pets, `ConfigLoader` validates its fields, and `EggAnimationContractSmoke` verifies the visual contract.
+- Hatch result stacking/readout polish is now config-driven. `egg_system.hatching.animation.result_stack` controls duplicate-result stacking, name/count labels, count threshold, tween timing, and hold duration; `EggAnimationContractSmoke` verifies duplicate Bear hatches stack into a `Bear x2` readout.
+- `docs/EGG_AUTHORING_AND_ADMIN_TESTING.md` now documents the current authored egg stand workflow, two-stage hatch rules, admin hatch entitlement stubs, and Studio smoke commands for egg testing.
 - Egg source unlock requirements now run through the server hatch pipeline. `EggService` checks `egg_sources.<id>.unlock_requirement` for real and simulated hatches, returns `egg_locked` with current/required progress, `ConfigLoader` validates the requirement shape, and `EggUnlockSmoke` verifies locked/unlocked golden egg behavior in Studio.
 - Skip Hatch is now guarded at the animation service boundary too. `EggInteractionService` already avoids calling hatch animation when `skipHatch` is active, and `EggHatchingService` now immediately returns a completed skipped result without enabling the animation GUI or creating frames if a future caller passes `skipHatch`; `EggAnimationContractSmoke` verifies this contract.
 - Show Hatch is now a free, persisted, default-on presentation preference. `egg_system.ui.hatch_panel.modes.show.default_enabled` seeds/migrates `Settings.AutoSystems.hatch.modes.showHatch`; turning it off suppresses hatch animations without needing the paid Skip Hatch entitlement, while Skip Hatch remains a separate hard animation suppressor.
 - `HatchEntitlementService` now centralizes the server hatch shop/unlock stubs. `EggService` resolves Auto/Golden/Charged/Fast/Skip, max hatch count, hatch-luck bonus, and secret-luck bonus through the same service that admin tools use for snapshots and overrides.
 - The hatch settings drawer now surfaces server-protected auto-delete tiers directly from `configs/auto_systems.lua`. Secret/Exclusive/Huge protection remains a single source of truth in `auto_delete.protected_rarities`, while the UI renders the current protected list and `EggProximitySmoke` verifies it.
 - `ConfigLoader` now cross-validates egg-system rarity/filter references against pet config. Special hatch rarity ids must exist in `pets.rarities`, and hatch drawer auto-delete filter lists must reference configured rarity, pet family, and variant ids.
+- Hatch auto-delete filters now have a durable replicated UI contract. `SettingsService`/`AutoTargetService` publish `Player.Settings.AutoSystems.AutoDelete.Enabled`, `Rarities`, `PetTypes`, and `Variants`; `EggInteractionService` live-binds those folders so saved filter choices survive missed status packets and drawer rebuilds.
+- Hatch auto-delete education now includes a config-owned header summary for saved filter counts, including the important off-but-filters-saved state.
+- The near-egg hatch surface is now compact by default. A persisted `Settings.AutoSystems.hatch.action_mode` setting controls whether pressing E performs single hatch, max hatch, or auto hatch, and the Settings menu owns the first player-facing controls for this choice plus Show/Silent hatch presentation preferences.
+- Egg billboard prompt style is developer-configured through `egg_system.ui.interaction_prompt.mode`: `clean` follows the selected E-key action, while `advertised_hotkeys` shows the legacy E/R/T shortcut hint for games that want the noisier onboarding surface.
 
 Still to build:
 
-- Richer near-egg hatch UI polish beyond the current selected-count, entitlement, protected-tier, and cost-detail pass, plus direct Studio screenshot QA across desktop/mobile layouts when screenshot capture is available.
-- Further hatch setting UI polish beyond the current config-derived mode cost/luck education, protected auto-delete tier list, Max/Auto entitlement state, and dynamic hover/focus help text.
-- Richer authored egg animation visual polish beyond the current ViewportFrame clone/scale/reveal-badge/glow/backdrop pass.
-- Direct Studio screenshot QA across desktop/mobile layouts for the expanded hatch drawer when screenshot capture is available; current automated geometry coverage exists.
+- Richer compact near-egg hatch UI polish beyond the current cost/action/status pass, plus direct Studio screenshot QA across desktop/mobile layouts when screenshot capture is available.
+- Move auto-delete/filter editing out of the always-visible egg-adjacent flow. Candidate player-facing paths are Settings menu controls, interactions on the pet preview billboard, or inventory card actions after the player has discovered a pet.
+- Further hatch setting UI polish beyond the current Settings-menu action mode, Show/Silent toggles, config-derived mode cost/luck education, protected auto-delete tier list, saved-filter summary, Max/Auto entitlement state, and dynamic hover/focus help text.
+- Richer authored egg animation visual polish beyond the current ViewportFrame clone/scale/reveal-badge/glow/backdrop/result-stack pass.
+- Direct Studio screenshot QA across desktop/mobile layouts for the expanded hatch drawer when screenshot capture is reliable; current automated geometry/debug-state coverage exists, and a local screenshot attempt timed out.
 
 ## Goal
 
@@ -160,7 +167,7 @@ Client UI:
 - Disable/gray controls while the server hatch lock is active.
 - Show exact stop reasons: no funds, no storage, too far, locked area, on cooldown, feature locked.
 - Add auto-hatch state UI with visible running/stopped reason.
-- Add auto-delete filter UI backed by existing server settings: rarity, pet family, variant, protected tiers. First-pass protected tier display is in place; future polish can improve layout/education.
+- Add auto-delete filter UI backed by existing server settings: rarity, pet family, variant, protected tiers. First-pass protected tier display and replicated saved-filter state are in place; future polish can improve layout/education.
 - Add settings for show hatch, skip hatch, silence hatch, and fast hatch once entitlement stubs exist. First-pass persistent mode settings and help text exist, and Show Hatch now works as a default-on free presentation preference. Future polish should make locked/unlocked ownership more explicit.
 
 Animation:
@@ -172,7 +179,7 @@ Animation:
 - Add stronger reveal metadata/effects for protected/special tiers when hatch animation is shown. Skip Hatch suppresses the hatch animation entirely at both interaction and animation-service boundaries; Silent Hatch suppresses audio while config can decide whether special visual-only world FX still plays.
 - Include per-result rarity/variant colors and special effects.
 - Ensure animation completion/reentry does not control server correctness; it only controls client presentation.
-- Keep animation presentation choices configurable: grid layout sizes/padding, authored egg scale, reveal badges, special glow/backdrop, and future special effects should live in config rather than hardcoded UI constants.
+- Keep animation presentation choices configurable: grid layout sizes/padding, authored egg scale, reveal badges, special glow/backdrop, result stacking, and future special effects should live in config rather than hardcoded UI constants.
 - Fast Hatch speed should remain a config value, not a hardcoded client multiplier; current validation requires it to be positive and no slower than normal speed.
 
 Auto hatch:
@@ -214,8 +221,7 @@ Documentation:
 
 - Update current status after each major slice.
 - Keep `EGG_SYSTEM_PLAN.md` current as decisions firm up.
-- Add an egg authoring section to map workflow docs.
-- Add admin testing instructions for dynamic hatch counts and entitlement stubs.
+- Keep `docs/EGG_AUTHORING_AND_ADMIN_TESTING.md` current when egg authoring, hatch entitlement, or smoke-test workflows change.
 
 Later polish:
 

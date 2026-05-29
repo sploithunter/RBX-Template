@@ -16,7 +16,6 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 -- Get shared modules
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
@@ -205,6 +204,9 @@ function SettingsService:_replicateAutoSystemSettings(player)
     deleteFolder.Name = "AutoDelete"
     deleteFolder.Parent = autoFolder
     self:_upsertValue(deleteFolder, "Enabled", "BoolValue", deleteSettings.enabled == true)
+    self:_syncBoolSetFolder(deleteFolder, "Rarities", deleteSettings.rarities)
+    self:_syncBoolSetFolder(deleteFolder, "PetTypes", deleteSettings.pet_types)
+    self:_syncBoolSetFolder(deleteFolder, "Variants", deleteSettings.variants)
 
     local hatchSettings = autoSystems.hatch or {}
     local hatchFolder = autoFolder:FindFirstChild("Hatch") or Instance.new("Folder")
@@ -215,6 +217,12 @@ function SettingsService:_replicateAutoSystemSettings(player)
         "SelectedCount",
         "IntValue",
         self:_clampHatchSelectedCount(hatchSettings.selected_count)
+    )
+    self:_upsertValue(
+        hatchFolder,
+        "ActionMode",
+        "StringValue",
+        self:_sanitizeHatchActionMode(hatchSettings.action_mode)
     )
     local modesFolder = hatchFolder:FindFirstChild("Modes") or Instance.new("Folder")
     modesFolder.Name = "Modes"
@@ -236,6 +244,41 @@ function SettingsService:_upsertValue(parent, name, className, value)
         instance.Parent = parent
     end
     instance.Value = value
+end
+
+function SettingsService:_syncBoolSetFolder(parent, name, values)
+    local folder = parent:FindFirstChild(name)
+    if not folder or not folder:IsA("Folder") then
+        if folder then
+            folder:Destroy()
+        end
+        folder = Instance.new("Folder")
+        folder.Name = name
+        folder.Parent = parent
+    end
+
+    local active = {}
+    if type(values) == "table" then
+        for key, value in pairs(values) do
+            local id = nil
+            if type(key) == "number" then
+                id = type(value) == "string" and value or nil
+            elseif value == true then
+                id = tostring(key)
+            end
+
+            if id and id ~= "" then
+                active[id] = true
+                self:_upsertValue(folder, id, "BoolValue", true)
+            end
+        end
+    end
+
+    for _, child in ipairs(folder:GetChildren()) do
+        if not active[child.Name] then
+            child:Destroy()
+        end
+    end
 end
 
 function SettingsService:_updateDisplayPreference(player, context, method)
@@ -304,6 +347,22 @@ function SettingsService:_clampHatchSelectedCount(value)
     return math.clamp(count, 1, maxCount)
 end
 
+function SettingsService:_sanitizeHatchActionMode(value)
+    local eggConfig = self:_getEggSystemConfig()
+    local panel = eggConfig.ui and eggConfig.ui.hatch_panel or {}
+    local defaultMode = tostring(panel.default_action_mode or "single")
+    local valid = { single = true, max = true, auto = true }
+    if not valid[defaultMode] then
+        defaultMode = "single"
+    end
+
+    value = tostring(value or defaultMode):lower()
+    if valid[value] then
+        return value
+    end
+    return defaultMode
+end
+
 function SettingsService:_getHatchModeDefaults()
     local eggConfig = self:_getEggSystemConfig()
     local modesConfig = eggConfig.ui and eggConfig.ui.hatch_panel and eggConfig.ui.hatch_panel.modes
@@ -369,6 +428,30 @@ function SettingsService:_setHatchSelectedCount(player, count)
     return true
 end
 
+function SettingsService:_setHatchActionMode(player, actionMode)
+    if type(actionMode) == "table" then
+        actionMode = actionMode.actionMode or actionMode.action_mode or actionMode.mode
+    end
+
+    local data = self._dataService:GetData(player)
+    if not data then
+        return false
+    end
+
+    data.Settings = data.Settings or {}
+    data.Settings.AutoSystems = data.Settings.AutoSystems or {}
+    data.Settings.AutoSystems.hatch = data.Settings.AutoSystems.hatch or {}
+    data.Settings.AutoSystems.hatch.action_mode = self:_sanitizeHatchActionMode(actionMode)
+    self:_replicateAutoSystemSettings(player)
+
+    self._logger:Info("Updated hatch action mode", {
+        player = player.Name,
+        actionMode = data.Settings.AutoSystems.hatch.action_mode,
+    })
+
+    return true
+end
+
 function SettingsService:_setHatchModes(player, modes)
     if type(modes) == "table" and type(modes.modes) == "table" then
         modes = modes.modes
@@ -423,6 +506,10 @@ function SettingsService:_setupNetworkSignals()
         self:_setHatchSelectedCount(player, count)
     end)
 
+    Signals.HatchSettings_SetActionMode.OnServerEvent:Connect(function(player, actionMode)
+        self:_setHatchActionMode(player, actionMode)
+    end)
+
     Signals.HatchSettings_SetModes.OnServerEvent:Connect(function(player, modes)
         self:_setHatchModes(player, modes)
     end)
@@ -446,8 +533,16 @@ function SettingsService:SetHatchSelectedCount(player, count)
     return self:_setHatchSelectedCount(player, count)
 end
 
+function SettingsService:SetHatchActionMode(player, actionMode)
+    return self:_setHatchActionMode(player, actionMode)
+end
+
 function SettingsService:SetHatchModes(player, modes)
     return self:_setHatchModes(player, modes)
+end
+
+function SettingsService:ReplicateAutoSystemSettings(player)
+    self:_replicateAutoSystemSettings(player)
 end
 
 return SettingsService

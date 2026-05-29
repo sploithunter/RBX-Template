@@ -32,6 +32,7 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - `Meadow` now has a paid unlock cost of `100 crystals`, and its breakable table includes stronger medium/big crystals. This is the first area-gated Phase 2 progression step.
 - Phase 2 network bridges exist for UI/admin work: `PurchaseUpgrade`/`UpgradeResult`, `UnlockZoneRequest`/`ZoneUnlockResult`, and `ZoneTravelResult`. Locked-zone results include the configured unlock requirement payload.
 - Pet inventory storage is already mixed: normal pets stack under `Inventory.pets.items["petId:variant"]` with a quantity, while special pets are individual records. Equipping a stacked pet creates an ephemeral equipped id and temporarily decrements the stack quantity.
+- Clicking an inventory stack card now equips another copy from that stack when quantity remains. Clicking the equipped ghost card unequips that specific equipped instance.
 - Phase 3 configs are live: `configs/pet_index.lua`, `configs/achievements.lua`, and `configs/leaderboards.lua`.
 - `PetIndexService` records first-time pet/variant acquisition under `DataService.PetIndex`, increments/syncs `distinct_pets`, and grants index milestones once.
 - `AchievementsService` listens to `StatsService.CounterChanged`, evaluates config tiers over K1 counters, stores completed tiers under `DataService.Achievements.Completed`, and grants rewards once.
@@ -59,9 +60,16 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Pet power is now config-only durable data. `configs/pets.lua` defines family base power plus global Basic/Golden/Rainbow multipliers, while grant/progression/inventory save paths avoid writing per-copy power or stats power. `tests/studio/BackfillPetPowerSourceOfTruth.lua` can strip legacy saved power fields for the current Studio player.
 - `configs/auto_systems.lua` and `AutoTargetService` now provide the first Phase 5 auto-system slice. Target mode choices persist under `Settings.AutoSystems.auto_target`; clients request auto-target work and the server selects the breakable. The configured default modes are nearest, highest value, weakest, strongest, and selected currency.
 - Hatch auto-delete filters persist under `Settings.AutoSystems.auto_delete` and are enforced in `EggService` before `PetGrantService` writes inventory. Filters can match rarity, pet family, or variant, and Secret/Exclusive/Huge are protected by default.
+- Hatch auto-delete filter state now replicates through `Player.Settings.AutoSystems.AutoDelete`, including `Enabled`, `Rarities`, `PetTypes`, and `Variants` folders. `EggInteractionService` reads and live-binds those folders so the hatch drawer reflects saved filters even if the earlier `AutoTarget_Status` packet was missed during startup.
+- The hatch drawer now summarizes saved auto-delete filter count in its header, using config-owned summary strings such as `summary_empty`, `summary_enabled_format`, and `summary_disabled_format`. The summary exposes count attributes for smoke tests and helps players understand when filters are saved but auto-delete is off.
 - Egg hatching is treated as two-stage: first roll chooses the pet species, second hidden roll chooses basic/golden/rainbow. Egg previews stay species-only and show basic-form pets, while `egg_sources.<id>.variant_rolls` controls allowed variants and optional cost multipliers such as the starter `20x` no-basic/golden mode.
+- Egg preview percentages now use the same relative `pet_weights` denominator as the server hatch roll. Large weights are no longer treated as an implicit out-of-100000 table, so preview odds sum to the real hatch distribution.
+- Near-egg hatch controls are now settings-driven instead of always-visible. `Settings.AutoSystems.hatch.action_mode` persists what the E key does (`single`, `max`, or `auto`), the Settings menu exposes this choice plus Show Hatch/Silent Hatch toggles, and the egg panel defaults to a compact status/cost surface with inline Hatch/Max/Auto/filter controls hidden.
+- Egg prompt discoverability is developer-configured through `egg_system.ui.interaction_prompt.mode`. The default `clean` mode follows the configured E-key action, while `advertised_hotkeys` can show the legacy `E Hatch | R Max | T Auto` prompt for games that want that onboarding surface.
+- Hatch filter UX direction: avoid permanent on-screen filter panels near eggs. Auto-delete filters still exist in the engine and drawer for testing, but the preferred player-facing path is contextual selection through settings, egg preview interactions, or inventory actions such as “do not hatch this pet anymore.”
 - Special hatch reveal metadata is driven by `egg_system.hatching.animation`: configured rarities mark per-result special outcomes, aggregate reveal metadata is returned to the client, and Skip Hatch remains a hard animation-suppression preference instead of being overridden by rare outcomes.
 - Hatch mode stubs now include Golden and Charged. Golden removes basic variants and uses its configured multiplier; Charged uses its configured multiplier plus hatch-luck and secret-luck bonuses. Both are server-entitlement checked and surfaced through the hatch settings drawer.
+- Normal players default to `3` max hatch count. The engine still supports dynamic `1..99` hatching, but higher counts are granted through the `MaxEggHatchCount` entitlement/admin stub rather than given to everyone by config.
 - Admin hatch entitlement tools now expose the egg shop stubs before the shop UI exists. Developers can view, lock, unlock, reset, or directly set Auto, Golden, Charged, Fast, Skip, and max hatch count attributes from the admin panel; snapshots include effective hatch entitlement status.
 - `HatchEntitlementService` now centralizes server-side hatch shop/unlock stubs. `EggService` and `AdminToolsService` read the same effective entitlements for Auto, Golden, Charged, Fast, Skip, max hatch count, hatch-luck bonus, and secret-luck bonus, so future shop code has one resolver to call.
 - Hatch settings education is now config-driven. `configs/egg_system.lua` owns help copy for core hatch controls, mode toggles, and auto-delete filters; the hatch drawer renders a `HelpText` line and the interactive controls carry `HelpText` attributes for hover/focus updates.
@@ -89,6 +97,8 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Expanded hatch drawer layout is now covered without relying on screenshots. `EggProximitySmoke` opens the real `PlayerGui` drawer, verifies responsive desktop/mobile fit math, and asserts visible drawer controls stay inside the configured drawer bounds.
 - Special hatch reveal now includes a config-driven backdrop layer. `egg_system.hatching.animation.special_backdrop` controls a rarity-colored backdrop behind special pet reveals, `ConfigLoader` validates it, and animation debug state exposes the backdrop contract for Studio smokes.
 - Egg-system config validation now cross-references hatch special rarity ids and hatch auto-delete drawer filter ids against pet config. `hatching.animation.special_rarities` must reference `pets.rarities`, while hatch drawer `rarity_filters`, `pet_type_filters`, and `variant_filters` must reference configured rarities, pet families, and variants.
+- Hatch result stacking is now config-driven. `egg_system.hatching.animation.result_stack` controls whether duplicate hatch results collapse, whether name/count labels show, the minimum count label threshold, tween timing, and hold duration. The animation debug state exposes stack group/count/name metadata for Studio smokes.
+- Egg authoring and hatch-admin testing now have a dedicated project doc at `docs/EGG_AUTHORING_AND_ADMIN_TESTING.md`. It records the current authored `EggStand` stamping contract, two-stage hatch model, hatch entitlement stubs, Show Hatch vs Skip Hatch behavior, and Studio smoke commands.
 
 ## Phase 0 Verification
 
@@ -155,7 +165,7 @@ Last checked: 2026-05-27
 
 ## Phase 5 Verification
 
-Last checked: 2026-05-27
+Last checked: 2026-05-29
 
 - Rojo 7.6.1 build: passes with `mise exec -- rojo build --output /tmp/rbx-template-phase5-auto.rbxl`.
 - Targeted Selene for touched Phase 5 files/configs/tests: 0 errors, existing warnings only in older bootstrap/data/settings/breakable files.
@@ -172,6 +182,8 @@ Last checked: 2026-05-27
 - `ConfigLoader.spec` passes through Studio MCP in Play mode with `52` passed, `0` failed, and `0` skipped, including the egg-system validator coverage.
 - `EggHatchSimulationSmoke` passes through Studio MCP. It forces a deterministic `7`-egg basic hatch simulation and verifies result counts plus no currency, inventory, or `eggs_hatched` counter mutation.
 - `EggProximitySmoke` passes through Studio MCP with the effective hatch entitlement UI contract. It now asserts a configured `MaxEntitledHatchCount` and locked Auto control state in addition to the near-egg hatch transaction.
+- `EggProximitySmoke` also verifies replicated auto-delete settings reach the hatch drawer from `Player.Settings.AutoSystems.AutoDelete`, covering enabled state plus saved rarity, pet-family, and variant filters.
+- `EggProximitySmoke` also verifies the auto-delete drawer summary counts selected saved filters. A direct Studio screenshot capture attempt timed out locally, so automated geometry/debug-state coverage remains the reliable hatch drawer QA path for now.
 - `EggAutoHatchSmoke` still passes after the entitlement UI change, covering no-currency, no-storage, and too-far stop feedback.
 - `EggAnimationContractSmoke` passes through Studio MCP after the hatch animation config polish. It verifies reveal badges plus configured grid layout metadata and special glow pulse metadata.
 - Direct Studio validation of the new `egg_system` config rules passes: current config validates, invalid layout min/max fails, and invalid special glow transparency fails.
@@ -183,8 +195,10 @@ Last checked: 2026-05-27
 - `EggProximitySmoke` also verifies the hatch settings drawer exposes Golden/Charged cost and luck details from config.
 - `EggProximitySmoke` also verifies the expanded hatch settings drawer renders with nonzero dimensions and no clipped visible controls.
 - `EggAnimationContractSmoke` now verifies special hatch backdrop metadata, reveal visibility, and Skip Hatch suppression at the animation-service boundary; `ConfigLoader.spec` covers invalid backdrop transparency.
+- `EggAnimationContractSmoke` also verifies configured stacked hatch result labels by hatching duplicate Bear results and checking the `Bear x2` stack metadata.
 - `EggUnlockSmoke` passes through Studio MCP. It verifies `golden_egg` rejects at `9/10` configured hatch progress with `egg_locked`, succeeds at `10/10`, deducts the effective golden egg cost, grants one pet, and restores the profile/map state. `ConfigLoader.spec` now passes with `58` passed, `0` failed, and `0` skipped after adding unlock-requirement shape validation.
 - `EggHatchSimulationSmoke` and `EggBatchHatchSmoke` still pass after the unlock gate change, covering the basic simulation and broader batch hatch regression paths.
+- Final egg-system audit on 2026-05-29 passed local Rojo/Selene/StyLua/wiki/diff checks plus Studio MCP smokes for `EggAutoHatchSmoke`, `EggProximitySmoke`, `EggAnimationContractSmoke`, `EggHatchSimulationSmoke`, `HatchEntitlementAdminSmoke`, `EggBatchHatchSmoke`, `EggAnimationMaxBatchSmoke`, and `EggUnlockSmoke`.
 
 ## Admin/Map Test Verification
 

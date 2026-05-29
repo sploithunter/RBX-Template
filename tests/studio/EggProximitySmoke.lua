@@ -119,6 +119,31 @@ local function waitForHatchSelectedCount(player, expectedCount, timeoutSeconds)
     )
 end
 
+local function waitForHatchActionMode(player, expectedMode, timeoutSeconds)
+    return waitFor(
+        "persisted hatch action mode " .. tostring(expectedMode),
+        timeoutSeconds,
+        function()
+            local settingsFolder = player:FindFirstChild("Settings")
+            local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
+            local hatchFolder = autoFolder and autoFolder:FindFirstChild("Hatch")
+            local actionMode = hatchFolder and hatchFolder:FindFirstChild("ActionMode")
+            if actionMode and actionMode.Value == expectedMode then
+                return actionMode.Value
+            end
+            return nil
+        end
+    )
+end
+
+local function readHatchActionMode(player)
+    local settingsFolder = player:FindFirstChild("Settings")
+    local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
+    local hatchFolder = autoFolder and autoFolder:FindFirstChild("Hatch")
+    local actionMode = hatchFolder and hatchFolder:FindFirstChild("ActionMode")
+    return actionMode and actionMode.Value or "single"
+end
+
 local function waitForHatchMode(player, optionName, expectedEnabled, timeoutSeconds)
     return waitFor(
         "persisted hatch mode " .. tostring(optionName) .. "=" .. tostring(expectedEnabled),
@@ -196,6 +221,12 @@ function EggProximitySmoke.run(options)
             setupFastHatchUnlocked = false,
             setupSkipHatchUnlocked = false,
             setupMaxHatchCount = 5,
+            setupAutoDeleteFilters = {
+                enabled = false,
+                rarities = { "common" },
+                pet_types = { "bear" },
+                variants = { "golden" },
+            },
         })
         started = true
 
@@ -229,6 +260,14 @@ function EggProximitySmoke.run(options)
             assert(hatchPanel:FindFirstChild("Max"), "Hatch panel missing Max button")
             assert(hatchPanel:FindFirstChild("Auto"), "Hatch panel missing Auto button")
             assert(hatchPanel:FindFirstChild("Count"), "Hatch panel missing count display")
+            assert(
+                hatchPanel:GetAttribute("InlineControlsVisible") == false,
+                "Hatch panel inline controls should be hidden by default"
+            )
+            assert(
+                hatchPanel:GetAttribute("HatchActionMode") == readHatchActionMode(player),
+                "Hatch panel did not expose the persisted hatch action mode"
+            )
             assert(
                 hatchPanel:GetAttribute("MaxEntitledHatchCount") == 5,
                 "Hatch panel did not expose effective max hatch entitlement"
@@ -303,6 +342,43 @@ function EggProximitySmoke.run(options)
             assert(
                 settings:FindFirstChild("pet_types_bear"),
                 "Hatch panel missing pet-family auto-delete filter"
+            )
+            local autoDeleteState = waitFor(
+                "replicated auto-delete filters",
+                timeoutSeconds,
+                function()
+                    local state = EggInteractionService:GetHatchPanelDebugState().autoDelete
+                    if
+                        state
+                        and state.enabled == false
+                        and state.rarities
+                        and state.rarities.common == true
+                        and state.pet_types
+                        and state.pet_types.bear == true
+                        and state.variants
+                        and state.variants.golden == true
+                    then
+                        return state
+                    end
+                    return nil
+                end
+            )
+            assert(autoDeleteState.enabled == false, "Replicated auto-delete state changed enabled")
+            assert(
+                settings.AutoDeleteEnabled.Text == "Off",
+                "Hatch panel did not read replicated auto-delete enabled state"
+            )
+            assert(
+                settings.AutoDeleteEnabled:GetAttribute("SelectedFilterCount") == 3,
+                "Hatch panel did not summarize selected auto-delete filters"
+            )
+            assert(
+                settings.Header:GetAttribute("SelectedRarityFilterCount") == 1,
+                "Hatch panel auto-delete summary did not count rarity filters"
+            )
+            assert(
+                tostring(settings.Header.Text):find("3 filters", 1, true),
+                "Hatch panel auto-delete header did not summarize saved filters"
             )
             assert(
                 settings:FindFirstChild("Mode_goldenMode"),
@@ -409,6 +485,28 @@ function EggProximitySmoke.run(options)
 
             EggInteractionService:SetSelectedHatchCount(1)
             waitForHatchSelectedCount(player, 1, timeoutSeconds)
+
+            local originalActionMode = readHatchActionMode(player)
+            EggInteractionService:SetHatchActionMode("max")
+            waitForHatchActionMode(player, "max", timeoutSeconds)
+            waitFor("max hatch cost display", timeoutSeconds, function()
+                return hatchPanel:GetAttribute("EstimatedDisplayCount") == 5
+            end)
+            debugState = EggInteractionService:GetHatchPanelDebugState()
+            assert(
+                debugState.hatchActionMode == "max",
+                "Hatch interaction service did not keep hatch action mode"
+            )
+            assert(
+                hatchPanel:GetAttribute("EstimatedTotalCost") == begin.cost * 5,
+                "Max hatch compact panel did not estimate the effective max hatch count"
+            )
+            assert(
+                debugState.persistedHatchActionMode == "max",
+                "Hatch interaction service did not read persisted hatch action mode"
+            )
+            EggInteractionService:SetHatchActionMode(originalActionMode)
+            waitForHatchActionMode(player, originalActionMode, timeoutSeconds)
 
             local originalSilentHatch = readHatchMode(player, "silentHatch")
             local targetSilentHatch = not originalSilentHatch

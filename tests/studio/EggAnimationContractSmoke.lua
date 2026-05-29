@@ -75,11 +75,30 @@ function EggAnimationContractSmoke.run(options)
                 silentHatch = true,
             },
         },
+        {
+            eggType = options.eggType or "basic_egg",
+            imageId = "generated_image",
+            petImageId = "generated_image",
+            petType = "bear",
+            variant = "basic",
+            rarityId = "common",
+            rarityName = "Common",
+            specialHatch = false,
+            autoDeleted = true,
+            autoDeleteReason = "rarity",
+            animation = {
+                useAuthoredEggVisual = true,
+            },
+            hatchOptions = {
+                fastHatch = true,
+                silentHatch = true,
+            },
+        },
     })
 
     local initial = waitFor("animation frames", timeoutSeconds, function()
         local state = eggHatchingService:GetActiveAnimationDebugState()
-        if state.frameCount == 2 then
+        if state.frameCount == 3 then
             return state
         end
         return nil
@@ -87,7 +106,7 @@ function EggAnimationContractSmoke.run(options)
 
     local specialFrame = initial.frames[1]
     local autoDeletedFrame = initial.frames[2]
-    assert(initial.layout.name == "2x1", "Animation layout name mismatch")
+    assert(initial.layout.name == "2x2", "Animation layout name mismatch")
     assert(initial.layout.padding == layoutConfig.padding, "Animation layout padding mismatch")
     assert(
         initial.layout.eggSize >= layoutConfig.min_egg_size,
@@ -129,6 +148,23 @@ function EggAnimationContractSmoke.run(options)
             and first.specialRevealBackdropVisible == true
             and second.badges.AutoDeleteBadge
             and second.badges.AutoDeleteBadge.visible == true
+        then
+            return state
+        end
+        return nil
+    end)
+
+    local stacked = waitFor("stacked result labels", timeoutSeconds, function()
+        local state = eggHatchingService:GetActiveAnimationDebugState()
+        local second = state.frames[2]
+        if
+            second
+            and second.stackCount == 2
+            and second.stackDisplayName == "Bear"
+            and second.stackNameLabel
+            and second.stackNameLabel.text == "Bear"
+            and second.stackCountLabel
+            and second.stackCountLabel.text == "x2"
         then
             return state
         end
@@ -204,6 +240,8 @@ function EggAnimationContractSmoke.run(options)
         variantBadge = specialFrame.badges.VariantBadge.text,
         autoDeleteBadge = autoDeletedFrame.badges.AutoDeleteBadge.text,
         revealedStatus = revealed.guiStatus,
+        stackedCount = stacked.frames[2].stackCount,
+        stackedName = stacked.frames[2].stackNameLabel.text,
         animationComplete = animationResult.isComplete == true,
         skipSuppressed = skippedAnimation.skipped == true,
     }
@@ -212,12 +250,14 @@ end
 function EggAnimationContractSmoke.runText(options)
     local result = EggAnimationContractSmoke.run(options)
     return string.format(
-        "EggAnimationContractSmoke passed: frames=%d special=%q rarity=%q variant=%q autoDelete=%q revealedStatus=%s skipSuppressed=%s",
+        "EggAnimationContractSmoke passed: frames=%d special=%q rarity=%q variant=%q autoDelete=%q stack=%s/%s revealedStatus=%s skipSuppressed=%s",
         result.frameCount,
         result.specialBadge,
         result.rarityBadge,
         result.variantBadge,
         result.autoDeleteBadge,
+        tostring(result.stackedName),
+        tostring(result.stackedCount),
         result.revealedStatus,
         tostring(result.skipSuppressed)
     )

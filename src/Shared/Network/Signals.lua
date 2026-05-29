@@ -88,6 +88,7 @@ local Signals = {
     AutoTarget_RequestAttack = Net:RemoteEvent("AutoTarget_RequestAttack"), -- c->s ask server to select/attack
     AutoDelete_SetFilters = Net:RemoteEvent("AutoDelete_SetFilters"), -- c->s persist hatch auto-delete filters
     HatchSettings_SetCount = Net:RemoteEvent("HatchSettings_SetCount"), -- c->s persist selected egg hatch count
+    HatchSettings_SetActionMode = Net:RemoteEvent("HatchSettings_SetActionMode"), -- c->s persist what E does near eggs
     HatchSettings_SetModes = Net:RemoteEvent("HatchSettings_SetModes"), -- c->s persist selected egg hatch modes
     AutoTarget_Status = Net:RemoteEvent("AutoTarget_Status"), -- s->c push current auto-target status
 }

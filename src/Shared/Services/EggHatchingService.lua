@@ -124,6 +124,22 @@ local function getAnimationPolicy()
     return eggSystemConfig and eggSystemConfig.hatching and eggSystemConfig.hatching.animation or {}
 end
 
+local function getResultStackPolicy()
+    local policy = getAnimationPolicy().result_stack
+    if type(policy) ~= "table" then
+        policy = {}
+    end
+    return {
+        enabled = policy.enabled ~= false,
+        showName = policy.show_name ~= false,
+        showCount = policy.show_count ~= false,
+        countMinimum = math.max(1, math.floor(tonumber(policy.count_minimum) or 2)),
+        moveTweenSeconds = math.max(0.01, tonumber(policy.move_tween_seconds) or 0.35),
+        recenterTweenSeconds = math.max(0.01, tonumber(policy.recenter_tween_seconds) or 0.45),
+        holdSeconds = math.max(0, tonumber(policy.hold_seconds) or 1),
+    }
+end
+
 local function getLayoutPolicy()
     local layout = getAnimationPolicy().layout
     if type(layout) ~= "table" then
@@ -213,6 +229,22 @@ local function getVariantDisplayName(variant)
         return nil
     end
     return variant:sub(1, 1):upper() .. variant:sub(2)
+end
+
+local function getPetDisplayName(petType, sample)
+    if sample and sample.petData and sample.petData.name then
+        return sample.petData.name
+    end
+
+    if type(petType) == "string" then
+        local family = petConfig and petConfig.pets and petConfig.pets[petType]
+        if type(family) == "table" then
+            return family.display_name or family.name or family.id or petType
+        end
+        return petType:gsub("_", " "):gsub("^%l", string.upper)
+    end
+
+    return "Pet"
 end
 
 local function isAutoDeletedEggData(eggData)
@@ -1959,6 +1991,10 @@ end
 
 -- Group identical pets and animate them stacking into a single representative per group
 function EggHatchingService:AnimateStackedResults(eggFrames, _eggComponents, eggsData, _gridInfo)
+    local stackPolicy = getResultStackPolicy()
+    if stackPolicy.enabled == false then
+        return
+    end
     if not eggFrames or #eggFrames == 0 then
         return
     end
@@ -1992,44 +2028,48 @@ function EggHatchingService:AnimateStackedResults(eggFrames, _eggComponents, egg
         if repFrame and repFrame.Parent then
             -- Compute display name
             local sample = eggsData[group.indices[1]]
-            local displayName = nil
-            if sample and sample.petData and sample.petData.name then
-                displayName = sample.petData.name
-            else
-                local petType = group.petType or (sample and sample.petType) or "pet"
-                displayName = petType:gsub("^%l", string.upper)
-            end
+            local displayName =
+                getPetDisplayName(group.petType or (sample and sample.petType), sample)
 
             local nameHeight = 18
-            local nameLabel = Instance.new("TextLabel")
-            nameLabel.Name = "StackName"
-            nameLabel.Size = UDim2.new(0, math.max(60, repFrame.AbsoluteSize.X), 0, nameHeight)
-            nameLabel.AnchorPoint = Vector2.new(0.5, 0)
-            nameLabel.Position = UDim2.new(0.5, 0, 1, 2)
-            nameLabel.BackgroundTransparency = 1
-            nameLabel.Text = displayName
-            nameLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-            nameLabel.TextStrokeTransparency = 0.2
-            nameLabel.Font = Enum.Font.GothamMedium
-            nameLabel.TextScaled = true
-            nameLabel.ZIndex = (repFrame.ZIndex or 1) + 5
-            nameLabel.Parent = repFrame
+            local nameLabel = nil
+            if stackPolicy.showName == true then
+                nameLabel = Instance.new("TextLabel")
+                nameLabel.Name = "StackName"
+                nameLabel.Size = UDim2.new(0, math.max(60, repFrame.AbsoluteSize.X), 0, nameHeight)
+                nameLabel.AnchorPoint = Vector2.new(0.5, 0)
+                nameLabel.Position = UDim2.new(0.5, 0, 1, 2)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = displayName
+                nameLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+                nameLabel.TextStrokeTransparency = 0.2
+                nameLabel.Font = Enum.Font.GothamMedium
+                nameLabel.TextScaled = true
+                nameLabel.ZIndex = (repFrame.ZIndex or 1) + 5
+                nameLabel.Parent = repFrame
+            end
 
             local count = #group.indices
-            local countLabel = Instance.new("TextLabel")
-            countLabel.Name = "StackCount"
-            countLabel.Size = UDim2.new(0, math.max(50, repFrame.AbsoluteSize.X * 0.5), 0, 18)
-            countLabel.AnchorPoint = Vector2.new(0.5, 0)
-            countLabel.Position = UDim2.new(0.5, 0, 1, 2 + nameHeight + 2)
-            countLabel.BackgroundTransparency = 1
-            countLabel.Text = "x" .. tostring(count)
-            countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            countLabel.TextStrokeTransparency = 0.2
-            countLabel.Font = Enum.Font.GothamBold
-            countLabel.TextScaled = true
-            countLabel.ZIndex = (repFrame.ZIndex or 1) + 6
-            countLabel.Parent = repFrame
+            local countLabel = nil
+            if stackPolicy.showCount == true and count >= stackPolicy.countMinimum then
+                countLabel = Instance.new("TextLabel")
+                countLabel.Name = "StackCount"
+                countLabel.Size = UDim2.new(0, math.max(50, repFrame.AbsoluteSize.X * 0.5), 0, 18)
+                countLabel.AnchorPoint = Vector2.new(0.5, 0)
+                countLabel.Position = UDim2.new(0.5, 0, 1, 2 + nameHeight + 2)
+                countLabel.BackgroundTransparency = 1
+                countLabel.Text = "x" .. tostring(count)
+                countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                countLabel.TextStrokeTransparency = 0.2
+                countLabel.Font = Enum.Font.GothamBold
+                countLabel.TextScaled = true
+                countLabel.ZIndex = (repFrame.ZIndex or 1) + 6
+                countLabel.Parent = repFrame
+            end
 
+            repFrame:SetAttribute("StackGroupKey", key)
+            repFrame:SetAttribute("StackCount", count)
+            repFrame:SetAttribute("StackDisplayName", displayName)
             createdLabels[key] = { name = nameLabel, count = countLabel }
         end
     end
@@ -2046,7 +2086,11 @@ function EggHatchingService:AnimateStackedResults(eggFrames, _eggComponents, egg
                     local guiObj = frame:FindFirstChild("EggImage") or frame
                     local tween = TweenService:Create(
                         frame,
-                        TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                        TweenInfo.new(
+                            stackPolicy.moveTweenSeconds,
+                            Enum.EasingStyle.Quad,
+                            Enum.EasingDirection.Out
+                        ),
                         {
                             Position = UDim2.new(0, targetPos.X, 0, targetPos.Y),
                             Size = UDim2.new(
@@ -2060,8 +2104,11 @@ function EggHatchingService:AnimateStackedResults(eggFrames, _eggComponents, egg
                     tween:Play()
                     -- Also fade the image for visual clarity
                     if guiObj and guiObj:IsA("ImageLabel") then
-                        TweenService:Create(guiObj, TweenInfo.new(0.35), { ImageTransparency = 1 })
-                            :Play()
+                        TweenService:Create(
+                            guiObj,
+                            TweenInfo.new(stackPolicy.moveTweenSeconds),
+                            { ImageTransparency = 1 }
+                        ):Play()
                     end
                 end
             end
@@ -2102,7 +2149,11 @@ function EggHatchingService:AnimateStackedResults(eggFrames, _eggComponents, egg
                 TweenService
                     :Create(
                         repFrame,
-                        TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                        TweenInfo.new(
+                            stackPolicy.recenterTweenSeconds,
+                            Enum.EasingStyle.Quad,
+                            Enum.EasingDirection.Out
+                        ),
                         {
                             Position = UDim2.new(0, pos.x, 0, pos.y),
                             Size = UDim2.new(0, pos.size, 0, pos.size),
@@ -2137,7 +2188,7 @@ function EggHatchingService:AnimateStackedResults(eggFrames, _eggComponents, egg
     end
 
     -- Hold briefly to let players read counts
-    task.wait(1.0)
+    task.wait(stackPolicy.holdSeconds)
 
     -- Clean up labels
     for _, pair in pairs(createdLabels) do
@@ -2487,6 +2538,9 @@ function EggHatchingService:GetActiveAnimationDebugState()
             hasSpecialRevealStroke = frame:GetAttribute("HasSpecialRevealStroke") == true,
             specialGlowPulseEnabled = frame:GetAttribute("SpecialGlowPulseEnabled") == true,
             hasSpecialRevealBackdrop = frame:GetAttribute("HasSpecialRevealBackdrop") == true,
+            stackGroupKey = frame:GetAttribute("StackGroupKey"),
+            stackCount = frame:GetAttribute("StackCount"),
+            stackDisplayName = frame:GetAttribute("StackDisplayName"),
             specialRevealBackdropVisible = specialBackdrop and specialBackdrop.Visible == true
                 or false,
             specialRevealBackdropTransparency = frame:GetAttribute(
@@ -2512,6 +2566,21 @@ function EggHatchingService:GetActiveAnimationDebugState()
                     visible = badge.Visible,
                 }
             end
+        end
+
+        local stackName = frame:FindFirstChild("StackName")
+        if stackName and stackName:IsA("TextLabel") then
+            frameState.stackNameLabel = {
+                text = stackName.Text,
+                visible = stackName.Visible,
+            }
+        end
+        local stackCount = frame:FindFirstChild("StackCount")
+        if stackCount and stackCount:IsA("TextLabel") then
+            frameState.stackCountLabel = {
+                text = stackCount.Text,
+                visible = stackCount.Visible,
+            }
         end
 
         table.insert(state.frames, frameState)

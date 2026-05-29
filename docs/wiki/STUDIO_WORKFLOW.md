@@ -30,6 +30,28 @@ Rojo can occasionally enter an unsynced-looking state even while the server and 
 
 The Studio edit-command VM can also keep stale `require` results after Rojo updates a ModuleScript. If a module's `Source` is current but `require(module)` returns an old table, run the check in Play mode or restart the Studio session so Roblox creates a fresh Luau VM.
 
+Recovery checklist:
+
+1. Stop Play before judging sync.
+2. Use Studio MCP to inspect source, for example with `script_grep`, if available.
+3. If Studio source is stale, disconnect and reconnect the Rojo plugin to the current server.
+4. If source is current but behavior is stale, restart Play to clear the Luau VM/module cache.
+5. Only debug gameplay after the source and runtime agree.
+
+## Studio MCP Reset Gotchas
+
+Studio MCP can also get into a half-connected state after reboots or Codex restarts: `StudioMCP` may still be listening on `127.0.0.1:13469`, but Codex may not expose the `mcp__Roblox_Studio__` tools or tool calls may fail with `Not connected to the WS host`.
+
+Useful checks:
+
+```sh
+codex mcp list
+lsof -nP -iTCP -sTCP:LISTEN | rg "13469|34872|StudioMCP|rojo"
+curl --max-time 2 http://127.0.0.1:13469/health
+```
+
+Healthy Studio MCP reports `OK`, `Studios: 1`, and cached tools. If the bridge is stale, kill only the `StudioMCP` processes and let a fresh MCP client start `/Applications/RobloxStudio.app/Contents/MacOS/StudioMCP`; Studio should reconnect to the new host after a few seconds. On 2026-05-29 this reset restored access to `NewWorld Map Cleanup Copy`, and a harmless Luau ping returned `MCP ping ok: game-template`.
+
 ## Available Agent Checks
 
 Agents can use Studio MCP to:

@@ -96,14 +96,17 @@ return function()
                 local chances = EggPetPreviewService:CalculatePetChances("basic_egg")
 
                 local variants = {}
+                local totalChance = 0
                 for _, chance in ipairs(chances) do
                     variants[chance.variant] = true
                     expect(chance.variant).to.equal("basic")
                     -- Chance should be the raw pet type weight; golden/rainbow is a second hidden roll.
                     expect(chance.chance > 0).to.equal(true)
+                    totalChance += chance.chance
                 end
 
                 expect(variants.basic).to.equal(true)
+                expect(math.abs(totalChance - 1) < 0.000001).to.equal(true)
 
                 local bearBasicChance = nil
                 for _, chance in ipairs(chances) do

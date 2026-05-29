@@ -103,6 +103,8 @@ The current NewWorld mapping uses `Workspace.Maps.Home.LegacyEggHatchers.BasicEa
 
 Before stamping, run `scripts/studio/audit_authored_map_candidates.luau` to list likely egg/portal/shop candidates with paths and positions. The audit is intentionally advisory: it reduces search work for a human or AI agent, but final mapping still needs judgement because imported maps often contain duplicate names, decorative props, or old scripts.
 
+See [Egg Authoring And Admin Testing](EGG_AUTHORING_AND_ADMIN_TESTING.md) for the current egg authoring checklist, two-stage hatch rules, hatch entitlement admin stubs, and Studio smoke commands.
+
 ## Imported Breakable Surfaces
 
 For a production map, a designer can name the playable grass/floor however they like. A setup pass should stamp the intended surface with:

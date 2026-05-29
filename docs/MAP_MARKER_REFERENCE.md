@@ -68,6 +68,10 @@ The engine supports both modes:
 - blank/template maps synthesize invisible `EggStand` hooks and spawn placeholder egg models from config;
 - authored maps can tag visible egg models directly, and the engine attaches proximity UI/hatching behavior without cloning another egg on top.
 
+Egg proximity distance is not a marker attribute today. It is controlled globally by `configs/egg_system.lua` `proximity.max_distance`; if the UI triggers from the wrong spot on an authored hatcher, first retag the actual interaction part, then tune the config if needed.
+
+Golden and rainbow eggs are not required as separate authored stands. The current egg pipeline rolls the pet family first and the variant second, so a single authored `basic_egg` stand can still hatch Basic, Golden, or Rainbow outcomes according to `configs/pets.lua` `egg_sources.<id>.variant_rolls`.
+
 ## World Builder Rule
 
 For an authored map, place invisible parts with the tags and attributes above. Visual names can change freely. Behavior must remain stable as long as the tags, attributes, and declared contracted names remain intact.

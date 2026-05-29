@@ -961,7 +961,7 @@ return function()
                     hatching = {
                         max_count = 99,
                         default_requested_count = 1,
-                        default_max_entitled_count = 99,
+                        default_max_entitled_count = 3,
                         allow_partial = true,
                         transaction_lock_seconds = 0.35,
                         failed_request_lock_seconds = 0.2,
@@ -1005,6 +1005,15 @@ return function()
                                 pulse_scale = 1.18,
                                 pulse_duration = 0.35,
                             },
+                            result_stack = {
+                                enabled = true,
+                                show_name = true,
+                                show_count = true,
+                                count_minimum = 2,
+                                move_tween_seconds = 0.35,
+                                recenter_tween_seconds = 0.45,
+                                hold_seconds = 1,
+                            },
                             reveal_badges = {
                                 enabled = true,
                                 show_rarity = true,
@@ -1018,7 +1027,7 @@ return function()
                         shop_stubs = {
                             max_hatch_count = {
                                 enabled = true,
-                                default_value = 99,
+                                default_value = 3,
                             },
                             auto_hatch = {
                                 enabled = true,
@@ -1055,6 +1064,13 @@ return function()
                         },
                     },
                     ui = {
+                        interaction_prompt = {
+                            mode = "clean",
+                            clean_text = "%s Hatch",
+                            clean_max_text = "%s Max Hatch",
+                            clean_auto_text = "%s Auto Hatch",
+                            advertised_text = "%s Hatch | %s Max | %s Auto",
+                        },
                         hatch_panel = {
                             enabled = true,
                             width = 500,
@@ -1063,7 +1079,23 @@ return function()
                             count_step = 1,
                             count_large_step = 10,
                             default_selected_count = 1,
+                            default_action_mode = "single",
+                            show_inline_controls = false,
                             status_display_time = 3,
+                            action_modes = {
+                                single = {
+                                    label = "Single Hatch",
+                                    description = "Press E to hatch one egg.",
+                                },
+                                max = {
+                                    label = "Max Hatch",
+                                    description = "Press E to hatch the maximum allowed count.",
+                                },
+                                auto = {
+                                    label = "Auto Hatch",
+                                    description = "Press E to start or stop auto hatching.",
+                                },
+                            },
                             responsive = {
                                 margin = 16,
                                 min_scale = 0.64,
@@ -1190,6 +1222,15 @@ return function()
                 ).to.be.ok()
             end)
 
+            it("should reject invalid hatch result stack config", function()
+                local invalidConfig = makeValidEggSystemConfig()
+                invalidConfig.hatching.animation.result_stack.hold_seconds = 0
+
+                local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "hatching.animation.result_stack.hold_seconds", 1, true)).to.be.ok()
+            end)
+
             it("should reject special hatch rarity ids that are not configured", function()
                 local invalidConfig = makeValidEggSystemConfig()
                 invalidConfig.hatching.animation.special_rarities.missing_rarity = true
@@ -1253,6 +1294,38 @@ return function()
                 local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
                 expect(isValid).to.equal(false)
                 expect(string.find(error, "ui.hatch_panel.responsive.max_scale", 1, true)).to.be.ok()
+            end)
+
+            it("should reject invalid hatch action settings", function()
+                local invalidConfig = makeValidEggSystemConfig()
+                invalidConfig.ui.hatch_panel.default_action_mode = "triple"
+
+                local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "ui.hatch_panel.default_action_mode", 1, true)).to.be.ok()
+
+                invalidConfig = makeValidEggSystemConfig()
+                invalidConfig.ui.hatch_panel.show_inline_controls = "no"
+
+                isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "ui.hatch_panel.show_inline_controls", 1, true)).to.be.ok()
+            end)
+
+            it("should reject invalid egg interaction prompt settings", function()
+                local invalidConfig = makeValidEggSystemConfig()
+                invalidConfig.ui.interaction_prompt.mode = "busy"
+
+                local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "ui.interaction_prompt.mode", 1, true)).to.be.ok()
+
+                invalidConfig = makeValidEggSystemConfig()
+                invalidConfig.ui.interaction_prompt.clean_text = false
+
+                isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "ui.interaction_prompt.clean_text", 1, true)).to.be.ok()
             end)
 
             it("should reject non-boolean hatch mode defaults", function()

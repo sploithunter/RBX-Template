@@ -32,6 +32,7 @@ local hatchRequestInFlight = false
 local autoHatchEnabled = false
 local autoHatchSessionId = 0
 local selectedHatchCount = 1
+local hatchActionMode = "single"
 local hatchPanelGui = nil
 local hatchPanel = nil
 local hatchPanelFields = {}
@@ -265,6 +266,47 @@ local function getDefaultSelectedHatchCount()
     )
 end
 
+local function sanitizeHatchActionMode(value)
+    local valid = { single = true, max = true, auto = true }
+    local panel = getHatchPanelConfig()
+    local defaultMode = tostring(panel.default_action_mode or "single"):lower()
+    if not valid[defaultMode] then
+        defaultMode = "single"
+    end
+
+    value = tostring(value or defaultMode):lower()
+    if valid[value] then
+        return value
+    end
+    return defaultMode
+end
+
+local function getHatchActionModeLabel(actionMode)
+    actionMode = sanitizeHatchActionMode(actionMode)
+    local actionConfig = getHatchPanelConfig().action_modes or {}
+    local cfg = actionConfig[actionMode] or {}
+    local fallback = actionMode:gsub("^%l", string.upper) .. " Hatch"
+    return tostring(cfg.label or fallback)
+end
+
+local function getPersistedHatchActionMode()
+    local settingsFolder = player:FindFirstChild("Settings")
+    local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
+    local hatchFolder = autoFolder and autoFolder:FindFirstChild("Hatch")
+    local actionValue = hatchFolder and hatchFolder:FindFirstChild("ActionMode")
+    if actionValue and actionValue:IsA("StringValue") then
+        return sanitizeHatchActionMode(actionValue.Value)
+    end
+    return nil
+end
+
+local function persistHatchActionMode(actionMode)
+    hatchActionMode = sanitizeHatchActionMode(actionMode)
+    Signals.HatchSettings_SetActionMode:FireServer({
+        actionMode = hatchActionMode,
+    })
+end
+
 local function getPersistedSelectedHatchCount()
     local settingsFolder = player:FindFirstChild("Settings")
     local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
@@ -307,6 +349,40 @@ local function getPersistedHatchModes()
         end
     end
     return found and modes or nil
+end
+
+local function readBoolSetFolder(parent, folderName)
+    local result = {}
+    local folder = parent and parent:FindFirstChild(folderName)
+    if not folder then
+        return result
+    end
+
+    for _, child in ipairs(folder:GetChildren()) do
+        if child:IsA("BoolValue") and child.Value == true then
+            result[child.Name] = true
+        end
+    end
+
+    return result
+end
+
+local function getPersistedAutoDeleteStatus()
+    local settingsFolder = player:FindFirstChild("Settings")
+    local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
+    local autoDeleteFolder = autoFolder and autoFolder:FindFirstChild("AutoDelete")
+    if not autoDeleteFolder then
+        return nil
+    end
+
+    local enabledValue = autoDeleteFolder:FindFirstChild("Enabled")
+    return {
+        enabled = enabledValue and enabledValue:IsA("BoolValue") and enabledValue.Value == true
+            or false,
+        rarities = readBoolSetFolder(autoDeleteFolder, "Rarities"),
+        pet_types = readBoolSetFolder(autoDeleteFolder, "PetTypes"),
+        variants = readBoolSetFolder(autoDeleteFolder, "Variants"),
+    }
 end
 
 local function hatchModesKey(modes)
@@ -426,6 +502,16 @@ local function setToArray(set)
     end
     table.sort(values)
     return values
+end
+
+local function countSet(set)
+    local count = 0
+    for _, enabled in pairs(set or {}) do
+        if enabled == true then
+            count += 1
+        end
+    end
+    return count
 end
 
 local function titleCaseId(id)
@@ -587,6 +673,51 @@ local function getProtectedAutoDeleteText()
     return "Protected: " .. table.concat(labels, ", ")
 end
 
+local function formatAutoDeleteSummary()
+    local filterConfig = getHatchPanelConfig().auto_delete or {}
+    local rarityCount = countSet(autoDeleteState.rarities)
+    local petTypeCount = countSet(autoDeleteState.pet_types)
+    local variantCount = countSet(autoDeleteState.variants)
+    local totalCount = rarityCount + petTypeCount + variantCount
+
+    if totalCount <= 0 then
+        return tostring(filterConfig.summary_empty or "Auto-delete: Off (no filters)"),
+            totalCount,
+            rarityCount,
+            petTypeCount,
+            variantCount
+    end
+
+    local formatText = autoDeleteState.enabled and filterConfig.summary_enabled_format
+        or filterConfig.summary_disabled_format
+    formatText = tostring(formatText or "Auto-delete: %s (%d filters)")
+    local ok, text = pcall(function()
+        if formatText:find("%s", 1, true) then
+            return string.format(
+                formatText,
+                autoDeleteState.enabled and "On" or "Off",
+                totalCount,
+                rarityCount,
+                petTypeCount,
+                variantCount
+            )
+        end
+        return string.format(formatText, totalCount, rarityCount, petTypeCount, variantCount)
+    end)
+
+    if ok then
+        return text, totalCount, rarityCount, petTypeCount, variantCount
+    end
+
+    return "Auto-delete: " .. (autoDeleteState.enabled and "On" or "Off") .. " (" .. tostring(
+        totalCount
+    ) .. " filters)",
+        totalCount,
+        rarityCount,
+        petTypeCount,
+        variantCount
+end
+
 function EggInteractionService:CreateButton(parent, name, text, size, position, color, callback)
     local button = Instance.new("TextButton")
     button.Name = name
@@ -646,7 +777,9 @@ function EggInteractionService:RefreshHatchCostDisplay(eggType)
 
     local costMultiplier = getSelectedCostMultiplier()
     local costEach = math.floor((eggData.cost * costMultiplier) + 0.5)
-    local totalCost = costEach * selectedHatchCount
+    local displayCount = hatchActionMode == "max" and getEffectiveMaxHatchCount()
+        or selectedHatchCount
+    local totalCost = costEach * displayCount
     local balance = getPlayerCurrencyBalance(eggData.currency)
     local affordableCount = balance and math.floor(balance / math.max(1, costEach)) or nil
     hatchPanelFields.title.Text = eggData.name
@@ -658,13 +791,14 @@ function EggInteractionService:RefreshHatchCostDisplay(eggType)
     )
     if hatchPanelFields.costDetail then
         hatchPanelFields.costDetail.Text =
-            formatCostDetail(costEach, costMultiplier, selectedHatchCount, affordableCount)
+            formatCostDetail(costEach, costMultiplier, displayCount, affordableCount)
     end
     hatchPanel:SetAttribute("HatchCurrency", eggData.currency)
     hatchPanel:SetAttribute("BaseCostEach", eggData.cost)
     hatchPanel:SetAttribute("CostMultiplier", costMultiplier)
     hatchPanel:SetAttribute("EstimatedCostEach", costEach)
     hatchPanel:SetAttribute("EstimatedTotalCost", totalCost)
+    hatchPanel:SetAttribute("EstimatedDisplayCount", displayCount)
     hatchPanel:SetAttribute("EstimatedAffordableCount", affordableCount)
 end
 
@@ -807,6 +941,18 @@ function EggInteractionService:CreateHatchPanel()
     costDetail.TextXAlignment = Enum.TextXAlignment.Left
     costDetail.Parent = frame
 
+    local actionModeLabel = Instance.new("TextLabel")
+    actionModeLabel.Name = "ActionMode"
+    actionModeLabel.Size = UDim2.new(0.46, -12, 0, 24)
+    actionModeLabel.Position = UDim2.new(0.52, 4, 0, 44)
+    actionModeLabel.BackgroundTransparency = 1
+    actionModeLabel.Text = ""
+    actionModeLabel.TextColor3 = Color3.fromRGB(255, 214, 115)
+    actionModeLabel.TextScaled = true
+    actionModeLabel.Font = Enum.Font.GothamBold
+    actionModeLabel.TextXAlignment = Enum.TextXAlignment.Right
+    actionModeLabel.Parent = frame
+
     local countLabel = Instance.new("TextBox")
     countLabel.Name = "Count"
     countLabel.Size = UDim2.new(0, 104, 0, 36)
@@ -831,7 +977,7 @@ function EggInteractionService:CreateHatchPanel()
     countCorner.CornerRadius = UDim.new(0, 8)
     countCorner.Parent = countLabel
 
-    self:CreateButton(
+    local countDownButton = self:CreateButton(
         frame,
         "CountDown",
         "-",
@@ -843,7 +989,7 @@ function EggInteractionService:CreateHatchPanel()
             self:SetSelectedHatchCount(selectedHatchCount - step)
         end
     )
-    self:CreateButton(
+    local countUpButton = self:CreateButton(
         frame,
         "CountUp",
         "+",
@@ -941,7 +1087,10 @@ function EggInteractionService:CreateHatchPanel()
         title = title,
         cost = cost,
         costDetail = costDetail,
+        actionMode = actionModeLabel,
         count = countLabel,
+        countDownButton = countDownButton,
+        countUpButton = countUpButton,
         status = status,
         hatchButton = hatchButton,
         maxButton = maxButton,
@@ -957,6 +1106,7 @@ function EggInteractionService:CreateHatchPanel()
     self:CreateModeSettings(settings)
     self:CreateHatchHelpText(settings)
     self:ApplyPersistedHatchModes({ persist = false })
+    hatchActionMode = getPersistedHatchActionMode() or sanitizeHatchActionMode(nil)
     self:SetSelectedHatchCount(
         getPersistedSelectedHatchCount() or getDefaultSelectedHatchCount(),
         { persist = false }
@@ -969,7 +1119,7 @@ function EggInteractionService:CreateAutoDeleteSettings(parent)
 
     local header = Instance.new("TextLabel")
     header.Name = "Header"
-    header.Size = UDim2.new(1, -16, 0, 24)
+    header.Size = UDim2.new(1, -108, 0, 24)
     header.Position = UDim2.new(0, 8, 0, 8)
     header.BackgroundTransparency = 1
     header.Text = "Auto-delete"
@@ -978,6 +1128,7 @@ function EggInteractionService:CreateAutoDeleteSettings(parent)
     header.Font = Enum.Font.GothamBold
     header.TextXAlignment = Enum.TextXAlignment.Left
     header.Parent = parent
+    hatchPanelFields.autoDeleteHeader = header
     self:BindHelpText(header, filterConfig.description)
 
     local enabledButton = self:CreateButton(
@@ -1200,8 +1351,22 @@ function EggInteractionService:RefreshAutoDeleteButtons()
     end
 
     local enabledButton = hatchPanelFields.filterButtons.enabled
+    local summaryText, totalCount, rarityCount, petTypeCount, variantCount =
+        formatAutoDeleteSummary()
+    if hatchPanelFields.autoDeleteHeader then
+        hatchPanelFields.autoDeleteHeader.Text = summaryText
+        hatchPanelFields.autoDeleteHeader:SetAttribute("SelectedFilterCount", totalCount)
+        hatchPanelFields.autoDeleteHeader:SetAttribute("SelectedRarityFilterCount", rarityCount)
+        hatchPanelFields.autoDeleteHeader:SetAttribute("SelectedPetTypeFilterCount", petTypeCount)
+        hatchPanelFields.autoDeleteHeader:SetAttribute("SelectedVariantFilterCount", variantCount)
+        hatchPanelFields.autoDeleteHeader:SetAttribute("AutoDeleteEnabled", autoDeleteState.enabled)
+    end
     if enabledButton then
         enabledButton.Text = autoDeleteState.enabled and "On" or "Off"
+        enabledButton:SetAttribute("SelectedFilterCount", totalCount)
+        enabledButton:SetAttribute("SelectedRarityFilterCount", rarityCount)
+        enabledButton:SetAttribute("SelectedPetTypeFilterCount", petTypeCount)
+        enabledButton:SetAttribute("SelectedVariantFilterCount", variantCount)
         enabledButton.BackgroundColor3 = autoDeleteState.enabled and Color3.fromRGB(39, 161, 92)
             or Color3.fromRGB(80, 85, 98)
     end
@@ -1309,6 +1474,80 @@ function EggInteractionService:BindReplicatedHatchSettings()
         local hatchFolder = autoFolder and autoFolder:WaitForChild("Hatch", 15)
         if not hatchFolder then
             return
+        end
+
+        local actionValue = hatchFolder:FindFirstChild("ActionMode")
+        if actionValue and actionValue:IsA("StringValue") then
+            local function applyActionMode()
+                hatchActionMode = sanitizeHatchActionMode(actionValue.Value)
+                self:UpdateHatchPanel()
+            end
+            applyActionMode()
+            table.insert(
+                settingsConnections,
+                actionValue:GetPropertyChangedSignal("Value"):Connect(applyActionMode)
+            )
+        end
+
+        local autoDeleteFolder = autoFolder:FindFirstChild("AutoDelete")
+        if autoDeleteFolder then
+            local filterConnections = {}
+            local function track(connection)
+                table.insert(settingsConnections, connection)
+                table.insert(filterConnections, connection)
+            end
+            local function disconnectFilterConnections()
+                for _, connection in ipairs(filterConnections) do
+                    connection:Disconnect()
+                end
+                filterConnections = {}
+            end
+            local function applyAutoDeleteValue()
+                local status = getPersistedAutoDeleteStatus()
+                if status then
+                    self:ApplyAutoDeleteStatus(status)
+                end
+            end
+            local function bindFilterFolder(folder)
+                if not folder or not folder:IsA("Folder") then
+                    return
+                end
+
+                track(folder.ChildAdded:Connect(function(child)
+                    if child:IsA("BoolValue") then
+                        track(child:GetPropertyChangedSignal("Value"):Connect(applyAutoDeleteValue))
+                    end
+                    applyAutoDeleteValue()
+                end))
+                track(folder.ChildRemoved:Connect(applyAutoDeleteValue))
+                for _, child in ipairs(folder:GetChildren()) do
+                    if child:IsA("BoolValue") then
+                        track(child:GetPropertyChangedSignal("Value"):Connect(applyAutoDeleteValue))
+                    end
+                end
+            end
+            local function bindAutoDeleteFolder()
+                disconnectFilterConnections()
+                local enabledValue = autoDeleteFolder:FindFirstChild("Enabled")
+                if enabledValue and enabledValue:IsA("BoolValue") then
+                    track(
+                        enabledValue:GetPropertyChangedSignal("Value"):Connect(applyAutoDeleteValue)
+                    )
+                end
+                bindFilterFolder(autoDeleteFolder:FindFirstChild("Rarities"))
+                bindFilterFolder(autoDeleteFolder:FindFirstChild("PetTypes"))
+                bindFilterFolder(autoDeleteFolder:FindFirstChild("Variants"))
+                track(autoDeleteFolder.ChildAdded:Connect(function()
+                    bindAutoDeleteFolder()
+                    applyAutoDeleteValue()
+                end))
+                track(autoDeleteFolder.ChildRemoved:Connect(function()
+                    bindAutoDeleteFolder()
+                    applyAutoDeleteValue()
+                end))
+                applyAutoDeleteValue()
+            end
+            bindAutoDeleteFolder()
         end
 
         local selectedValue = hatchFolder:FindFirstChild("SelectedCount")
@@ -1450,6 +1689,16 @@ function EggInteractionService:SetHatchSettingsOpen(open)
     self:UpdateHatchPanel()
 end
 
+function EggInteractionService:SetHatchActionMode(actionMode, options)
+    options = options or {}
+    hatchActionMode = sanitizeHatchActionMode(actionMode)
+    if options.persist ~= false then
+        persistHatchActionMode(hatchActionMode)
+    end
+    self:UpdateHatchPanel()
+    return hatchActionMode
+end
+
 function EggInteractionService:HatchSelectedCount(purchaseType)
     if not currentTargetService then
         return false
@@ -1548,6 +1797,25 @@ function EggInteractionService:UpdateHatchPanel()
     self:RefreshHatchCostDisplay(currentTarget)
 
     hatchPanelFields.count.Text = "x" .. tostring(selectedHatchCount)
+    if hatchPanelFields.actionMode then
+        hatchPanelFields.actionMode.Text = getHatchActionModeLabel(hatchActionMode)
+        hatchPanelFields.actionMode:SetAttribute("ActionMode", hatchActionMode)
+    end
+
+    local inlineControlsVisible = panelConfig.show_inline_controls == true
+    for _, fieldName in ipairs({
+        "count",
+        "countDownButton",
+        "countUpButton",
+        "hatchButton",
+        "maxButton",
+        "autoButton",
+        "settingsButton",
+    }) do
+        if hatchPanelFields[fieldName] then
+            hatchPanelFields[fieldName].Visible = inlineControlsVisible
+        end
+    end
     local busy = hatchRequestInFlight == true
     local autoOwned = isAutoHatchOwned()
     hatchPanelFields.hatchButton.Active = not busy
@@ -1570,6 +1838,8 @@ function EggInteractionService:UpdateHatchPanel()
     hatchPanel:SetAttribute("MaxHatchCount", getMaxHatchCount())
     hatchPanel:SetAttribute("MaxEntitledHatchCount", effectiveMaxCount)
     hatchPanel:SetAttribute("AutoHatchOwned", autoOwned)
+    hatchPanel:SetAttribute("HatchActionMode", hatchActionMode)
+    hatchPanel:SetAttribute("InlineControlsVisible", inlineControlsVisible)
     hatchPanelFields.count:SetAttribute("MaxEntitledHatchCount", effectiveMaxCount)
     hatchPanelFields.maxButton:SetAttribute("MaxEntitledHatchCount", effectiveMaxCount)
     hatchPanelFields.autoButton:SetAttribute("ModeOwned", autoOwned)
@@ -1600,9 +1870,16 @@ function EggInteractionService:OnEKeyPressed()
     Logger:Info("E pressed - attempting hatch", {
         context = "EggInteractionService",
         eggType = currentTarget,
+        actionMode = hatchActionMode,
         requestedCount = selectedHatchCount,
     })
-    self:HandleEggPurchase(currentTarget, selectedHatchCount, "Selected")
+    if hatchActionMode == "max" then
+        self:OnMaxHatchKeyPressed()
+    elseif hatchActionMode == "auto" then
+        self:ToggleAutoHatch()
+    else
+        self:HandleEggPurchase(currentTarget, 1, "Single")
+    end
 end
 
 function EggInteractionService:OnMaxHatchKeyPressed()
@@ -2149,6 +2426,14 @@ function EggInteractionService:GetHatchPanelDebugState()
         autoHatchEnabled = autoHatchEnabled == true,
         autoHatchSessionId = autoHatchSessionId,
         autoHatchOwned = isAutoHatchOwned(),
+        hatchActionMode = hatchActionMode,
+        persistedHatchActionMode = getPersistedHatchActionMode(),
+        autoDelete = getPersistedAutoDeleteStatus() or {
+            enabled = autoDeleteState.enabled,
+            rarities = autoDeleteState.rarities,
+            pet_types = autoDeleteState.pet_types,
+            variants = autoDeleteState.variants,
+        },
         selectedHatchCount = selectedHatchCount,
         persistedSelectedHatchCount = getPersistedSelectedHatchCount(),
         hatchModes = currentHatchModes(),

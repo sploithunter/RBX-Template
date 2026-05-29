@@ -1291,7 +1291,8 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                 local displayName = readStringValue(child, { "display_name", "DisplayName" })
                     or id
                     or child.Name
-                local strength = readNumberValue(child, { "strength", "Strength", "value", "Value" })
+                local strength =
+                    readNumberValue(child, { "strength", "Strength", "value", "Value" })
                 local profile = readStringValue(child, { "roll_profile", "RollProfile" })
                 table.insert(summaries, {
                     id = id,
@@ -2955,7 +2956,8 @@ function InventoryPanel:_readEnchantSummaries(folder)
             local displayName = self:_readStringValue(child, { "display_name", "DisplayName" })
                 or id
                 or child.Name
-            local strength = self:_readNumberValue(child, { "strength", "Strength", "value", "Value" })
+            local strength =
+                self:_readNumberValue(child, { "strength", "Strength", "value", "Value" })
             local profile = self:_readStringValue(child, { "roll_profile", "RollProfile" })
             table.insert(summaries, {
                 id = id,
@@ -3021,8 +3023,7 @@ function InventoryPanel:_refreshPetTooltipFromReplicatedState(item)
 
     local level = self:_readNumberValue(petFolder, { "level", "Level" }) or item.level or 1
     local exp = self:_readNumberValue(petFolder, { "exp", "Exp", "xp", "XP" }) or item.exp or 0
-    local maxLevel = self:_readNumberValue(petFolder, { "max_level", "MaxLevel" })
-        or item.maxLevel
+    local maxLevel = self:_readNumberValue(petFolder, { "max_level", "MaxLevel" }) or item.maxLevel
     local xpToNext = self:_readNumberValue(
         petFolder,
         { "xp_to_next_level", "XpToNextLevel", "XPToNextLevel" }
@@ -3673,8 +3674,16 @@ function InventoryPanel:_getEquippedUidForPetItem(item)
         return item.uid
     end
 
+    if typeof(item.id) == "string" and string.sub(item.id, 1, 6) == "stack|" then
+        return nil
+    end
+
     local rawUid = item.uid
     if typeof(rawUid) == "string" then
+        if string.sub(rawUid, 1, 6) == "stack|" then
+            return nil
+        end
+
         if self.equippedItems.pets[rawUid] then
             return rawUid
         end
@@ -3682,19 +3691,6 @@ function InventoryPanel:_getEquippedUidForPetItem(item)
         local specialUid = "special|" .. rawUid
         if self.equippedItems.pets[specialUid] then
             return specialUid
-        end
-    end
-
-    local stackKey = self:_getPetStackKey(item)
-    if stackKey then
-        local prefix = "stack|" .. stackKey .. "|"
-        for equippedUid in pairs(self.equippedItems.pets) do
-            if
-                typeof(equippedUid) == "string"
-                and string.sub(equippedUid, 1, #prefix) == prefix
-            then
-                return equippedUid
-            end
         end
     end
 
@@ -3863,7 +3859,10 @@ function InventoryPanel:_addConfiguredAction(options, actionConfig, item)
     if actionConfig.enabled == false then
         return
     end
-    if actionConfig.enabled_check and not self:_passesActionEnabledCheck(actionConfig.enabled_check, item) then
+    if
+        actionConfig.enabled_check
+        and not self:_passesActionEnabledCheck(actionConfig.enabled_check, item)
+    then
         return
     end
 

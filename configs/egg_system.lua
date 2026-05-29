@@ -36,7 +36,7 @@ return {
         transaction_lock_seconds = 0.35,
         failed_request_lock_seconds = 0.2,
         auto_loop_delay = 3,
-        default_max_entitled_count = 99,
+        default_max_entitled_count = 3,
         debug = {
             history_limit = 12,
             result_sample_limit = 20,
@@ -84,6 +84,15 @@ return {
                 pulse_scale = 1.18,
                 pulse_duration = 0.35,
             },
+            result_stack = {
+                enabled = true,
+                show_name = true,
+                show_count = true,
+                count_minimum = 2,
+                move_tween_seconds = 0.35,
+                recenter_tween_seconds = 0.45,
+                hold_seconds = 1,
+            },
             reveal_badges = {
                 enabled = true,
                 show_rarity = true,
@@ -97,7 +106,7 @@ return {
         shop_stubs = {
             max_hatch_count = {
                 enabled = true,
-                default_value = 99,
+                default_value = 3,
                 source = "config",
             },
             auto_hatch = {
@@ -150,6 +159,16 @@ return {
             height = 120, -- Increased height for three-line layout (name, price, prompt)
         },
 
+        interaction_prompt = {
+            -- "clean" follows the player's configured E-key hatch action.
+            -- "advertised_hotkeys" teaches the legacy E/R/T shortcut surface.
+            mode = "clean",
+            clean_text = "%s Hatch",
+            clean_max_text = "%s Max Hatch",
+            clean_auto_text = "%s Auto Hatch",
+            advertised_text = "%s Hatch | %s Max | %s Auto",
+        },
+
         hatch_panel = {
             enabled = true,
             width = 500,
@@ -159,7 +178,23 @@ return {
             count_step = 1,
             count_large_step = 10,
             default_selected_count = 1,
+            default_action_mode = "single",
+            show_inline_controls = false,
             status_display_time = 3,
+            action_modes = {
+                single = {
+                    label = "Single Hatch",
+                    description = "Press E to hatch one egg.",
+                },
+                max = {
+                    label = "Max Hatch",
+                    description = "Press E to hatch as many eggs as your unlocks, currency, and storage allow.",
+                },
+                auto = {
+                    label = "Auto Hatch",
+                    description = "Press E to start or stop auto hatching at the current egg.",
+                },
+            },
             responsive = {
                 margin = 16,
                 min_scale = 0.64,
@@ -174,6 +209,9 @@ return {
             auto_delete = {
                 description = "Choose pets that should be deleted as they hatch. Protected special rarities are still kept.",
                 enabled_description = "Turns hatch-time deletion on or off without changing the selected filters.",
+                summary_empty = "Auto-delete: Off (no filters)",
+                summary_enabled_format = "Auto-delete: On (%d filters)",
+                summary_disabled_format = "Auto-delete: Off (%d filters saved)",
                 rarity_description = "Delete hatched pets whose rarity matches the selected rarity filters.",
                 pet_type_description = "Delete hatched pets whose pet family matches the selected pet filters.",
                 variant_description = "Delete hatched pets whose Basic, Golden, or Rainbow variant matches.",

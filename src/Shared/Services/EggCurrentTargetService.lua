@@ -49,22 +49,68 @@ if loggerSuccess and loggerResult then
     Logger = loggerResult -- Use singleton directly
 else
     Logger = {
-        Info = function(self, message, context)
+        Info = function(_self, message, context)
             print("[INFO]", message, context)
         end,
-        Warn = function(self, message, context)
+        Warn = function(_self, message, context)
             warn("[WARN]", message, context)
         end,
-        Error = function(self, message, context)
+        Error = function(_self, message, context)
             warn("[ERROR]", message, context)
         end,
-        Debug = function(self, message, context)
+        Debug = function(_self, message, context)
             print("[DEBUG]", message, context)
         end,
     }
 end
 
 -- === HELPER FUNCTIONS ===
+
+local function safeFormat(template, ...)
+    template = tostring(template or "%s")
+    local ok, text = pcall(function(...)
+        return string.format(template, ...)
+    end, ...)
+    if ok then
+        return text
+    end
+    return table.concat({ ... }, " ")
+end
+
+local function getHatchActionPrompt()
+    local promptConfig = eggSystemConfig.ui.interaction_prompt or {}
+    local interactionKey = eggSystemConfig.proximity.interaction_key.Name
+    local maxKey = eggSystemConfig.proximity.hatch_max_key.Name
+    local autoKey = eggSystemConfig.proximity.auto_hatch_key.Name
+
+    if promptConfig.mode == "advertised_hotkeys" then
+        return safeFormat(
+            promptConfig.advertised_text or "%s Hatch | %s Max | %s Auto",
+            interactionKey,
+            maxKey,
+            autoKey
+        )
+    end
+
+    local settingsFolder = player:FindFirstChild("Settings")
+    local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
+    local hatchFolder = autoFolder and autoFolder:FindFirstChild("Hatch")
+    local actionModeValue = hatchFolder and hatchFolder:FindFirstChild("ActionMode")
+    local actionMode = actionModeValue
+            and actionModeValue:IsA("StringValue")
+            and actionModeValue.Value
+        or eggSystemConfig.ui.hatch_panel.default_action_mode
+        or "single"
+    actionMode = tostring(actionMode):lower()
+
+    if actionMode == "max" then
+        return safeFormat(promptConfig.clean_max_text or "%s Max Hatch", interactionKey)
+    elseif actionMode == "auto" then
+        return safeFormat(promptConfig.clean_auto_text or "%s Auto Hatch", interactionKey)
+    end
+
+    return safeFormat(promptConfig.clean_text or "%s Hatch", interactionKey)
+end
 
 function EggCurrentTargetService:DetermineClosest(eggsAvailable)
     local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -137,12 +183,7 @@ function EggCurrentTargetService:CreateEggUI()
     promptLabel.Size = UDim2.new(1, -10, 0.3, 0)
     promptLabel.Position = UDim2.new(0, 5, 0.7, 0)
     promptLabel.BackgroundTransparency = 1
-    promptLabel.Text = eggSystemConfig.proximity.interaction_key.Name
-        .. " Hatch | "
-        .. eggSystemConfig.proximity.hatch_max_key.Name
-        .. " Max | "
-        .. eggSystemConfig.proximity.auto_hatch_key.Name
-        .. " Auto"
+    promptLabel.Text = getHatchActionPrompt()
     promptLabel.TextColor3 = eggSystemConfig.ui.colors.text_secondary
     promptLabel.TextScaled = true
     promptLabel.Font = eggSystemConfig.ui.fonts.prompt
@@ -221,6 +262,8 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
                 end
             end
         end
+
+        frame.Prompt.Text = getHatchActionPrompt()
 
         -- Always update position (player might be moving around the egg)
         local anchor = self:GetEggAnchor(egg)

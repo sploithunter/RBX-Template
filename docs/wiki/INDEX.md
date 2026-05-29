@@ -23,6 +23,7 @@ Formal requirements and plans live outside the wiki and should be treated as sou
 - [Implementation Plan](../IMPLEMENTATION_PLAN.md)
 - [Asset Pipeline](../ASSET_PIPELINE.md)
 - [Map Marker Reference](../MAP_MARKER_REFERENCE.md)
+- [Egg Authoring And Admin Testing](../EGG_AUTHORING_AND_ADMIN_TESTING.md)
 
 ## Maintenance Rule
 

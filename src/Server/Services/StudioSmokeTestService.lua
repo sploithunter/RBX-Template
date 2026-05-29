@@ -39,6 +39,7 @@ local enchantService
 local modifierService
 local playerProgressionService
 local autoTargetService
+local settingsService
 
 local sessions = {}
 local travelSessions = {}
@@ -143,6 +144,7 @@ function StudioSmokeTestService:Init()
     modifierService = self._modules.ModifierService
     playerProgressionService = self._modules.PlayerProgressionService
     autoTargetService = self._modules.AutoTargetService
+    settingsService = self._modules.SettingsService
 end
 
 function StudioSmokeTestService:Start()
@@ -1460,6 +1462,9 @@ function StudioSmokeTestService:_restoreEggProximity(player)
         data.Settings.AutoSystems = deepCopy(session.originalAutoSystems)
         data.Stats = data.Stats or {}
         data.Stats.Counters = deepCopy(session.originalCounters)
+    end
+    if settingsService and settingsService.ReplicateAutoSystemSettings then
+        settingsService:ReplicateAutoSystemSettings(player)
     end
 
     for attributeName, record in pairs(session.originalAttributes or {}) do

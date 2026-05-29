@@ -2703,6 +2703,36 @@ function ConfigLoader:_validateEggSystemConfig(config)
             )
         end
     end
+    local resultStack = animation.result_stack or {}
+    if type(resultStack) ~= "table" then
+        return self:_configError("egg_system", "hatching.animation.result_stack", "expected table")
+    end
+    for _, fieldName in ipairs({ "enabled", "show_name", "show_count" }) do
+        if resultStack[fieldName] ~= nil and type(resultStack[fieldName]) ~= "boolean" then
+            return self:_configError(
+                "egg_system",
+                "hatching.animation.result_stack." .. fieldName,
+                "expected boolean"
+            )
+        end
+    end
+    for _, fieldName in ipairs({
+        "count_minimum",
+        "move_tween_seconds",
+        "recenter_tween_seconds",
+        "hold_seconds",
+    }) do
+        if resultStack[fieldName] ~= nil then
+            ok, err = self:_requirePositiveNumber(
+                "egg_system",
+                resultStack[fieldName],
+                "hatching.animation.result_stack." .. fieldName
+            )
+            if not ok then
+                return ok, err
+            end
+        end
+    end
     local revealBadges = animation.reveal_badges or {}
     if type(revealBadges) ~= "table" then
         return self:_configError("egg_system", "hatching.animation.reveal_badges", "expected table")
@@ -2807,6 +2837,36 @@ function ConfigLoader:_validateEggSystemConfig(config)
             end
         end
     end
+    local interactionPrompt = config.ui.interaction_prompt or {}
+    if type(interactionPrompt) ~= "table" then
+        return self:_configError("egg_system", "ui.interaction_prompt", "expected table")
+    end
+    local promptMode = interactionPrompt.mode or "clean"
+    if promptMode ~= "clean" and promptMode ~= "advertised_hotkeys" then
+        return self:_configError(
+            "egg_system",
+            "ui.interaction_prompt.mode",
+            "must be clean or advertised_hotkeys"
+        )
+    end
+    for _, fieldName in ipairs({
+        "clean_text",
+        "clean_max_text",
+        "clean_auto_text",
+        "advertised_text",
+    }) do
+        if
+            interactionPrompt[fieldName] ~= nil
+            and type(interactionPrompt[fieldName]) ~= "string"
+        then
+            return self:_configError(
+                "egg_system",
+                "ui.interaction_prompt." .. fieldName,
+                "expected string"
+            )
+        end
+    end
+
     if type(config.ui.hatch_panel) ~= "table" then
         return self:_configError("egg_system", "ui.hatch_panel", "expected table")
     end
@@ -2873,6 +2933,52 @@ function ConfigLoader:_validateEggSystemConfig(config)
             "ui.hatch_panel.default_selected_count",
             "must be less than or equal to hatching.max_count"
         )
+    end
+    local validActionModes = { single = true, max = true, auto = true }
+    if
+        config.ui.hatch_panel.default_action_mode ~= nil
+        and not validActionModes[config.ui.hatch_panel.default_action_mode]
+    then
+        return self:_configError(
+            "egg_system",
+            "ui.hatch_panel.default_action_mode",
+            "must be one of single, max, or auto"
+        )
+    end
+    if
+        config.ui.hatch_panel.show_inline_controls ~= nil
+        and type(config.ui.hatch_panel.show_inline_controls) ~= "boolean"
+    then
+        return self:_configError(
+            "egg_system",
+            "ui.hatch_panel.show_inline_controls",
+            "expected boolean"
+        )
+    end
+    local actionModes = config.ui.hatch_panel.action_modes or {}
+    if type(actionModes) ~= "table" then
+        return self:_configError("egg_system", "ui.hatch_panel.action_modes", "expected table")
+    end
+    for _, actionName in ipairs({ "single", "max", "auto" }) do
+        local actionConfig = actionModes[actionName]
+        if actionConfig ~= nil then
+            if type(actionConfig) ~= "table" then
+                return self:_configError(
+                    "egg_system",
+                    "ui.hatch_panel.action_modes." .. actionName,
+                    "expected table"
+                )
+            end
+            for _, fieldName in ipairs({ "label", "description" }) do
+                if actionConfig[fieldName] ~= nil and type(actionConfig[fieldName]) ~= "string" then
+                    return self:_configError(
+                        "egg_system",
+                        "ui.hatch_panel.action_modes." .. actionName .. "." .. fieldName,
+                        "expected string"
+                    )
+                end
+            end
+        end
     end
     ok, err = self:_requireNonNegativeNumber(
         "egg_system",
@@ -2945,6 +3051,9 @@ function ConfigLoader:_validateEggSystemConfig(config)
     for _, fieldName in ipairs({
         "description",
         "enabled_description",
+        "summary_empty",
+        "summary_enabled_format",
+        "summary_disabled_format",
         "rarity_description",
         "pet_type_description",
         "variant_description",

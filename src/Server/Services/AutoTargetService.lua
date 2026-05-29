@@ -21,6 +21,7 @@ local logger
 local configLoader
 local dataService
 local breakableService
+local settingsService
 local monetization
 local productIdMapper
 local autoConfig
@@ -79,6 +80,57 @@ local function getRootPosition(player)
     return root and root.Position or nil
 end
 
+local function upsertValue(parent, name, className, value)
+    local instance = parent:FindFirstChild(name)
+    if not instance or instance.ClassName ~= className then
+        if instance then
+            instance:Destroy()
+        end
+        instance = Instance.new(className)
+        instance.Name = name
+        instance.Parent = parent
+    end
+    instance.Value = value
+    return instance
+end
+
+local function syncBoolSetFolder(parent, name, values)
+    local folder = parent:FindFirstChild(name)
+    if not folder or not folder:IsA("Folder") then
+        if folder then
+            folder:Destroy()
+        end
+        folder = Instance.new("Folder")
+        folder.Name = name
+        folder.Parent = parent
+    end
+
+    local active = {}
+    if type(values) == "table" then
+        for key, value in pairs(values) do
+            local id = nil
+            if type(key) == "number" then
+                id = type(value) == "string" and value or nil
+            elseif value == true then
+                id = tostring(key)
+            end
+
+            if id and id ~= "" then
+                active[id] = true
+                upsertValue(folder, id, "BoolValue", true)
+            end
+        end
+    end
+
+    for _, child in ipairs(folder:GetChildren()) do
+        if not active[child.Name] then
+            child:Destroy()
+        end
+    end
+
+    return folder
+end
+
 local function getWorldShort(world)
     if world == "SpawnWorld" then
         return "Spawn"
@@ -91,6 +143,7 @@ function AutoTargetService:Init()
     configLoader = self._modules.ConfigLoader
     dataService = self._modules.DataService
     breakableService = self._modules.BreakableService
+    settingsService = self._modules.SettingsService
     monetization = self._modules.MonetizationService
     productIdMapper = self._modules.ProductIdMapper
     autoConfig = configLoader:LoadConfig("auto_systems")
@@ -262,6 +315,30 @@ function AutoTargetService:_sendStatus(player)
     })
 end
 
+function AutoTargetService:_replicateAutoDeleteSettings(player, deleteSettings)
+    local settingsFolder = player:FindFirstChild("Settings")
+    local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
+    if not autoFolder then
+        return
+    end
+
+    local deleteFolder = autoFolder:FindFirstChild("AutoDelete")
+    if not deleteFolder or not deleteFolder:IsA("Folder") then
+        if deleteFolder then
+            deleteFolder:Destroy()
+        end
+        deleteFolder = Instance.new("Folder")
+        deleteFolder.Name = "AutoDelete"
+        deleteFolder.Parent = autoFolder
+    end
+
+    deleteSettings = type(deleteSettings) == "table" and deleteSettings or {}
+    upsertValue(deleteFolder, "Enabled", "BoolValue", deleteSettings.enabled == true)
+    syncBoolSetFolder(deleteFolder, "Rarities", deleteSettings.rarities)
+    syncBoolSetFolder(deleteFolder, "PetTypes", deleteSettings.pet_types)
+    syncBoolSetFolder(deleteFolder, "Variants", deleteSettings.variants)
+end
+
 function AutoTargetService:_syncCompatibilityFlags(player)
     local free, paid = ensurePlayerFlags(player)
     local settings = self:_getSettings(player)
@@ -360,7 +437,11 @@ function AutoTargetService:SetAutoDeleteFilters(player, payload)
         self:_sanitizeFilterSet(payload.pet_types or payload.petTypes, "pet_type")
     deleteSettings.variants = self:_sanitizeFilterSet(payload.variants, "variant")
 
+    self:_replicateAutoDeleteSettings(player, deleteSettings)
     self:_sendStatus(player)
+    if settingsService and settingsService.ReplicateAutoSystemSettings then
+        settingsService:ReplicateAutoSystemSettings(player)
+    end
     self:_requestSave(player, "auto_delete_filters")
 
     return {

@@ -17,11 +17,10 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
-local StarterPlayer = game:GetService("StarterPlayer")
-local TweenService = game:GetService("TweenService")
 
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 -- Load Logger with wrapper (following the established pattern)
 local LoggerWrapper
@@ -33,10 +32,10 @@ if loggerSuccess and loggerResult then
     LoggerWrapper = {
         new = function(name)
             return {
-                info = function(self, ...) loggerResult:Info("[" .. name .. "] " .. tostring((...)), {context = name}) end,
-                warn = function(self, ...) loggerResult:Warn("[" .. name .. "] " .. tostring((...)), {context = name}) end,
-                error = function(self, ...) loggerResult:Error("[" .. name .. "] " .. tostring((...)), {context = name}) end,
-                debug = function(self, ...) loggerResult:Debug("[" .. name .. "] " .. tostring((...)), {context = name}) end,
+                info = function(_self, ...) loggerResult:Info("[" .. name .. "] " .. tostring((...)), {context = name}) end,
+                warn = function(_self, ...) loggerResult:Warn("[" .. name .. "] " .. tostring((...)), {context = name}) end,
+                error = function(_self, ...) loggerResult:Error("[" .. name .. "] " .. tostring((...)), {context = name}) end,
+                debug = function(_self, ...) loggerResult:Debug("[" .. name .. "] " .. tostring((...)), {context = name}) end,
             }
         end
     }
@@ -44,10 +43,10 @@ else
     LoggerWrapper = {
         new = function(name)
             return {
-                info = function(self, ...) print("[" .. name .. "] INFO:", ...) end,
-                warn = function(self, ...) warn("[" .. name .. "] WARN:", ...) end,
-                error = function(self, ...) warn("[" .. name .. "] ERROR:", ...) end,
-                debug = function(self, ...) print("[" .. name .. "] DEBUG:", ...) end,
+                info = function(_self, ...) print("[" .. name .. "] INFO:", ...) end,
+                warn = function(_self, ...) warn("[" .. name .. "] WARN:", ...) end,
+                error = function(_self, ...) warn("[" .. name .. "] ERROR:", ...) end,
+                debug = function(_self, ...) print("[" .. name .. "] DEBUG:", ...) end,
             }
         end
     }
@@ -103,8 +102,6 @@ end
 local SettingsPanel = {}
 SettingsPanel.__index = SettingsPanel
 
--- Use centralized admin checking via Locations
-local Locations = require(ReplicatedStorage.Shared.Locations)
 local AdminChecker = require(Locations.SharedUtils.AdminChecker)
 
 function SettingsPanel.new()
@@ -179,8 +176,6 @@ function SettingsPanel:Hide()
 end
 
 function SettingsPanel:_createUI(parent)
-    local theme = uiConfig.helpers.get_theme(uiConfig)
-    
     -- Create image-based panel using BaseUI system
     local BaseUI = require(script.Parent.Parent.BaseUI)
     local baseUI = BaseUI.new()
@@ -286,6 +281,7 @@ function SettingsPanel:_createUI(parent)
     self:_createAudioSettings()
     self:_createGraphicsSettings()
     self:_createUISettings()
+    self:_createHatchSettings()
     
     -- Admin section (only for admin users)
     if self.isAdmin then
@@ -568,7 +564,7 @@ function SettingsPanel:_createDropdownSetting(title, currentValue, options, layo
     valueLabel.Size = UDim2.new(1, -40, 1, 0)
     valueLabel.Position = UDim2.new(0, 10, 0, 0)
     valueLabel.BackgroundTransparency = 1
-    valueLabel.Text = currentValue
+    valueLabel.Text = tostring(currentValue)
     valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     valueLabel.TextSize = 14
     valueLabel.Font = Enum.Font.Gotham
@@ -596,9 +592,11 @@ function SettingsPanel:_createDropdownSetting(title, currentValue, options, layo
             break
         end
     end
+    if options[currentIndex] then
+        valueLabel.Text = options[currentIndex].display
+    end
     
-    local clickConnection
-    clickConnection = dropdownFrame.Activated:Connect(function()
+    dropdownFrame.Activated:Connect(function()
         currentIndex = currentIndex + 1
         if currentIndex > #options then
             currentIndex = 1
@@ -673,9 +671,6 @@ function SettingsPanel:_createDisplayPreferences()
         {value = "viewports", display = "🎮 3D Models (High Quality)"}
     }
     
-    local Players = game:GetService("Players")
-    local player = Players.LocalPlayer
-    
     -- Add dropdown for each controllable context
     local layoutOrder = 9
     for _, context in ipairs(controllableContexts) do
@@ -746,6 +741,95 @@ function SettingsPanel:_createUISettings()
     end)
 end
 
+function SettingsPanel:_getReplicatedHatchFolder()
+    local settingsFolder = Players.LocalPlayer:FindFirstChild("Settings")
+    local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
+    return autoFolder and autoFolder:FindFirstChild("Hatch") or nil
+end
+
+function SettingsPanel:_getHatchActionMode()
+    local hatchFolder = self:_getReplicatedHatchFolder()
+    local value = hatchFolder and hatchFolder:FindFirstChild("ActionMode")
+    if value and value:IsA("StringValue") then
+        return value.Value
+    end
+
+    local ok, eggConfig = pcall(function()
+        return Locations.getConfig("egg_system")
+    end)
+    if ok and eggConfig and eggConfig.ui and eggConfig.ui.hatch_panel then
+        return eggConfig.ui.hatch_panel.default_action_mode or "single"
+    end
+    return "single"
+end
+
+function SettingsPanel:_getHatchModeValue(optionName, defaultValue)
+    local hatchFolder = self:_getReplicatedHatchFolder()
+    local modesFolder = hatchFolder and hatchFolder:FindFirstChild("Modes")
+    local value = modesFolder and modesFolder:FindFirstChild(optionName)
+    if value and value:IsA("BoolValue") then
+        return value.Value == true
+    end
+    return defaultValue == true
+end
+
+function SettingsPanel:_setHatchModeValue(optionName, enabled)
+    local currentModes = {}
+    local hatchFolder = self:_getReplicatedHatchFolder()
+    local modesFolder = hatchFolder and hatchFolder:FindFirstChild("Modes")
+    if modesFolder then
+        for _, child in ipairs(modesFolder:GetChildren()) do
+            if child:IsA("BoolValue") then
+                currentModes[child.Name] = child.Value == true
+            end
+        end
+    end
+    currentModes[optionName] = enabled == true
+    Signals.HatchSettings_SetModes:FireServer({
+        modes = currentModes,
+    })
+end
+
+function SettingsPanel:_createHatchSettings()
+    self:_createSectionHeader("🥚 Egg Settings", 25)
+
+    local actionOptions = {
+        { value = "single", display = "Single Hatch" },
+        { value = "max", display = "Max Hatch" },
+        { value = "auto", display = "Auto Hatch" },
+    }
+
+    self:_createDropdownSetting(
+        "E Key Hatch Action",
+        self:_getHatchActionMode(),
+        actionOptions,
+        26,
+        function(value)
+            Signals.HatchSettings_SetActionMode:FireServer({
+                actionMode = value,
+            })
+        end
+    )
+
+    self:_createToggleSetting(
+        "Show Hatch Animation",
+        self:_getHatchModeValue("showHatch", true),
+        27,
+        function(value)
+            self:_setHatchModeValue("showHatch", value)
+        end
+    )
+
+    self:_createToggleSetting(
+        "Silent Hatch Audio",
+        self:_getHatchModeValue("silentHatch", false),
+        28,
+        function(value)
+            self:_setHatchModeValue("silentHatch", value)
+        end
+    )
+end
+
 function SettingsPanel:_createAdminSettings()
     self:_createSectionHeader("🛠️ Admin Tools", 30)
     
@@ -809,4 +893,4 @@ function SettingsPanel:Destroy()
     self.logger:info("Settings panel destroyed")
 end
 
-return SettingsPanel 
+return SettingsPanel

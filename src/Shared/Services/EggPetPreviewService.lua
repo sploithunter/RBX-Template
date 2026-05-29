@@ -161,33 +161,11 @@ function EggPetPreviewService:CalculatePetChances(eggType)
         totalWeight = totalWeight + weight
     end
 
-    -- Calculate chances for each pet type based on egg configuration
-    -- Determine appropriate denominator for weight calculations.
-    local weightDenominator = totalWeight
-    local anyWeightAbove100 = false
-    for _, w in pairs(eggData.pet_weights) do
-        if w > 100 then
-            anyWeightAbove100 = true
-            break
-        end
-    end
-    -- If any weight is above 100 we assume the designer is using an "out of 100 000" scale (a very common convention).
-    -- This lets us show familiar percentages like 25 % even if the individual weights don't sum to that denominator.
-    if anyWeightAbove100 then
-        weightDenominator = 100000
-    end
-
+    -- Calculate chances from the same relative weights used by simulateHatch.
+    -- Do not assume a fixed denominator such as 100 or 100000; weights are
+    -- designer-authored relative values and only their sum defines the odds.
     for petType, weight in pairs(eggData.pet_weights) do
-        -- Raw fractional chance for this pet type.
-        local rawChance = weight / weightDenominator
-        -- For common chances (≥ 0.5 %) we round to two decimals so values like 24.99 % become a clean 25 %.
-        -- Ultra-rare pets keep full precision so they never round down to 0 which broke earlier unit tests.
-        local petTypeChance
-        if rawChance >= 0.005 then
-            petTypeChance = math.floor(rawChance * 100 + 0.5) / 100
-        else
-            petTypeChance = rawChance
-        end
+        local petTypeChance = weight / totalWeight
 
         -- The egg preview answers "which pet can this hatch?"
         -- Golden/rainbow is a second hidden variant roll handled by hatching config.
