@@ -17,6 +17,7 @@ function AdminToolsService.new()
     self._petGrantService = nil
     self._petsConfig = nil
     self._inventoryConfig = nil
+    self._eggSystemConfig = nil
     return self
 end
 
@@ -32,6 +33,7 @@ function AdminToolsService:Init()
 
     self._petsConfig = self._configLoader:LoadConfig("pets")
     self._inventoryConfig = self._configLoader:LoadConfig("inventory")
+    self._eggSystemConfig = self._configLoader:LoadConfig("egg_system")
 
     Signals.Admin_GetPlayerSnapshot.OnServerEvent:Connect(function(player, data)
         self:_handleSnapshot(player, data)
@@ -47,6 +49,10 @@ function AdminToolsService:Init()
 
     Signals.Admin_SetZoneLock.OnServerEvent:Connect(function(player, data)
         self:_handleSetZoneLock(player, data)
+    end)
+
+    Signals.Admin_SetHatchEntitlement.OnServerEvent:Connect(function(player, data)
+        self:_handleSetHatchEntitlement(player, data)
     end)
 
     Signals.Admin_EventCommand.OnServerEvent:Connect(function(player, data)
@@ -196,6 +202,7 @@ function AdminToolsService:_buildSnapshot(targetPlayer)
         equippedPetCount = equippedPets,
         equippedPetLimit = self:_getPetEquipLimit(targetPlayer),
         extraPetSlots = playerData and playerData.Perks and playerData.Perks.extra_pet_slots or 0,
+        hatchEntitlements = self:_buildHatchEntitlementSnapshot(targetPlayer),
         autoTarget = {
             low = freeTarget and freeTarget.Value == true or false,
             high = paidTarget and paidTarget.Value == true or false,
@@ -209,6 +216,179 @@ function AdminToolsService:_buildSnapshot(targetPlayer)
             lastConfirmedAt = saveState and saveState.lastConfirmedAt or nil,
         },
     }
+end
+
+function AdminToolsService:_getHatchEntitlementDefinitions()
+    return {
+        autoHatch = {
+            attribute = "AutoHatchUnlocked",
+            label = "Auto Hatch",
+            type = "boolean",
+        },
+        goldenMode = {
+            attribute = "GoldenHatchUnlocked",
+            label = "Golden Mode",
+            type = "boolean",
+        },
+        chargedMode = {
+            attribute = "ChargedHatchUnlocked",
+            label = "Charged Mode",
+            type = "boolean",
+        },
+        fastHatch = {
+            attribute = "FastHatchUnlocked",
+            label = "Fast Hatch",
+            type = "boolean",
+        },
+        skipHatch = {
+            attribute = "SkipHatchUnlocked",
+            label = "Skip Hatch",
+            type = "boolean",
+        },
+        maxHatchCount = {
+            attribute = "MaxEggHatchCount",
+            label = "Max Hatch Count",
+            type = "number",
+        },
+    }
+end
+
+function AdminToolsService:_getDefaultHatchEntitlement(entitlementId)
+    local hatching = self._eggSystemConfig and self._eggSystemConfig.hatching or {}
+    local stubs = hatching.shop_stubs or {}
+    if entitlementId == "autoHatch" then
+        return (stubs.auto_hatch or {}).owned_by_default == true
+    elseif entitlementId == "goldenMode" then
+        return (stubs.golden_mode or {}).owned_by_default == true
+    elseif entitlementId == "chargedMode" then
+        return (stubs.charged_mode or {}).owned_by_default == true
+    elseif entitlementId == "fastHatch" then
+        return (stubs.fast_hatch or {}).owned_by_default == true
+    elseif entitlementId == "skipHatch" then
+        return (stubs.skip_hatch or {}).owned_by_default == true
+    elseif entitlementId == "maxHatchCount" then
+        return tonumber((stubs.max_hatch_count or {}).default_value)
+            or tonumber(hatching.default_max_entitled_count)
+            or tonumber(hatching.max_count)
+            or 99
+    end
+    return nil
+end
+
+function AdminToolsService:_buildHatchEntitlementSnapshot(targetPlayer)
+    local snapshot = {}
+    for entitlementId, definition in pairs(self:_getHatchEntitlementDefinitions()) do
+        local value = targetPlayer:GetAttribute(definition.attribute)
+        local effective = value
+        if effective == nil then
+            effective = self:_getDefaultHatchEntitlement(entitlementId)
+        end
+        snapshot[entitlementId] = {
+            attribute = definition.attribute,
+            label = definition.label,
+            value = value,
+            effective = effective,
+            default = self:_getDefaultHatchEntitlement(entitlementId),
+        }
+    end
+    return snapshot
+end
+
+function AdminToolsService:_setHatchEntitlement(targetPlayer, entitlementId, value)
+    local definitions = self:_getHatchEntitlementDefinitions()
+    local definition = definitions[entitlementId]
+    if not definition then
+        return false, "Unknown hatch entitlement: " .. tostring(entitlementId)
+    end
+
+    if value == nil then
+        targetPlayer:SetAttribute(definition.attribute, nil)
+        return true, string.format("Reset %s to config default", definition.label)
+    end
+
+    if definition.type == "number" then
+        local hatching = self._eggSystemConfig and self._eggSystemConfig.hatching or {}
+        local maxCount = math.clamp(math.floor(tonumber(hatching.max_count) or 99), 1, 99)
+        local numericValue = tonumber(value)
+        if not numericValue then
+            return false, string.format("%s requires a number", definition.label)
+        end
+        local count = math.clamp(math.floor(numericValue), 1, maxCount)
+        targetPlayer:SetAttribute(definition.attribute, count)
+        return true, string.format("Set %s to %d", definition.label, count)
+    end
+
+    targetPlayer:SetAttribute(definition.attribute, value == true)
+    return true, string.format("%s %s", value == true and "Unlocked" or "Locked", definition.label)
+end
+
+function AdminToolsService:_handleSetHatchEntitlement(adminPlayer, data)
+    local targetPlayer, errorMessage =
+        self:_resolveTarget(adminPlayer, "manageHatchEntitlements", data)
+    if not targetPlayer then
+        self:_sendResult(adminPlayer, {
+            kind = "hatch_entitlement",
+            success = false,
+            message = errorMessage,
+        })
+        return
+    end
+
+    data = type(data) == "table" and data or {}
+    local mode = tostring(data.mode or "set")
+    local entitlementId = data.entitlement and tostring(data.entitlement) or nil
+    local success = true
+    local messages = {}
+
+    if mode == "status" then
+        table.insert(messages, "Hatch entitlement status loaded for " .. targetPlayer.Name)
+    elseif mode == "reset_all" then
+        for id in pairs(self:_getHatchEntitlementDefinitions()) do
+            local ok, message = self:_setHatchEntitlement(targetPlayer, id, nil)
+            success = success and ok
+            table.insert(messages, message)
+        end
+    elseif mode == "unlock_all_modes" or mode == "lock_all_modes" then
+        local enabled = mode == "unlock_all_modes"
+        for _, id in ipairs({ "autoHatch", "goldenMode", "chargedMode", "fastHatch", "skipHatch" }) do
+            local ok, message = self:_setHatchEntitlement(targetPlayer, id, enabled)
+            success = success and ok
+            table.insert(messages, message)
+        end
+    elseif entitlementId then
+        local value = data.value
+        if mode == "reset" then
+            value = nil
+        elseif mode == "toggle" then
+            local definitions = self:_getHatchEntitlementDefinitions()
+            local definition = definitions[entitlementId]
+            if definition and definition.type == "number" then
+                value = data.value
+            elseif definition then
+                local current = targetPlayer:GetAttribute(definition.attribute)
+                local effective = current
+                if effective == nil then
+                    effective = self:_getDefaultHatchEntitlement(entitlementId)
+                end
+                value = not (effective == true)
+            end
+        end
+
+        local ok, message = self:_setHatchEntitlement(targetPlayer, entitlementId, value)
+        success = ok == true
+        table.insert(messages, message)
+    else
+        success = false
+        table.insert(messages, "Missing hatch entitlement id")
+    end
+
+    self:_sendResult(adminPlayer, {
+        kind = "hatch_entitlement",
+        success = success,
+        message = table.concat(messages, "; "),
+        hatchEntitlements = self:_buildHatchEntitlementSnapshot(targetPlayer),
+        snapshot = self:_buildSnapshot(targetPlayer),
+    })
 end
 
 function AdminToolsService:_handleSnapshot(adminPlayer, data)

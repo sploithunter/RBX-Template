@@ -161,6 +161,10 @@ function EggProximitySmoke.run(options)
                 "Hatch panel missing Golden mode toggle"
             )
             assert(
+                settings:FindFirstChild("Mode_chargedMode"),
+                "Hatch panel missing Charged mode toggle"
+            )
+            assert(
                 settings:FindFirstChild("Mode_skipHatch"),
                 "Hatch panel missing Skip mode toggle"
             )

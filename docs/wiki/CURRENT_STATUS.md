@@ -62,6 +62,7 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Egg hatching is treated as two-stage: first roll chooses the pet species, second hidden roll chooses basic/golden/rainbow. Egg previews stay species-only and show basic-form pets, while `egg_sources.<id>.variant_rolls` controls allowed variants and optional cost multipliers such as the starter `20x` no-basic/golden mode.
 - Special hatch reveal metadata is driven by `egg_system.hatching.animation`: configured rarities mark per-result special outcomes, aggregate reveal metadata is returned to the client, and Skip Hatch remains a hard animation-suppression preference instead of being overridden by rare outcomes.
 - Hatch mode stubs now include Golden and Charged. Golden removes basic variants and uses its configured multiplier; Charged uses its configured multiplier plus hatch-luck and secret-luck bonuses. Both are server-entitlement checked and surfaced through the hatch settings drawer.
+- Admin hatch entitlement tools now expose the egg shop stubs before the shop UI exists. Developers can view, lock, unlock, reset, or directly set Auto, Golden, Charged, Fast, Skip, and max hatch count attributes from the admin panel; snapshots include effective hatch entitlement status.
 
 ## Phase 0 Verification
 
@@ -135,6 +136,7 @@ Last checked: 2026-05-27
 - Targeted StyLua check for the new/clean Phase 5 files passes.
 - `git diff --check`: passes.
 - `Phase5AutoSystemsSmoke` passes through Studio MCP after Rojo edit-mode sync. It creates a temporary `Phase5Smoke` breakable world, verifies nearest/highest value/weakest/strongest/selected-currency server target selection, verifies auto-delete rarity/type/variant matches, verifies protected Exclusive Colorado is not auto-deleted, and restores profile/map state.
+- `HatchEntitlementAdminSmoke` passes through Studio MCP after stopping Play to let Rojo sync the new module, then restarting Play. It verifies status, lock-all, unlock-all, reset-all, and max hatch count changes for hatch entitlement attributes, then restores the player's original state.
 
 ## Admin/Map Test Verification
 

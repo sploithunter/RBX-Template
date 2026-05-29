@@ -198,6 +198,13 @@ local TEST_CATEGORIES = {
             { name = "🗺️ Lock Meadow", action = "lock_zone_meadow" },
             { name = "🗺️ Unlock Meadow", action = "unlock_zone_meadow" },
             { name = "🗺️ Bypass Unlock Meadow", action = "unlock_zone_meadow_bypass" },
+            { name = "🥚 Hatch Unlock Status", action = "hatch_entitlement_status" },
+            { name = "🥚 Unlock All Hatch Modes", action = "hatch_entitlement_unlock_all" },
+            { name = "🥚 Lock All Hatch Modes", action = "hatch_entitlement_lock_all" },
+            { name = "🥚 Reset Hatch Unlocks", action = "hatch_entitlement_reset_all" },
+            { name = "🥚 Toggle Golden Hatch", action = "hatch_entitlement_toggle_golden" },
+            { name = "🥚 Toggle Charged Hatch", action = "hatch_entitlement_toggle_charged" },
+            { name = "🥚 Set Max Hatch 99", action = "hatch_entitlement_max_99" },
         },
         customInputs = {
             {
@@ -209,6 +216,11 @@ local TEST_CATEGORIES = {
                 label = "Set Zone Lock (zoneId:toggle|lock|unlock|bypass):",
                 placeholder = "e.g. Meadow:toggle, Meadow:lock, meadow_island:bypass",
                 action = "set_zone_lock_custom",
+            },
+            {
+                label = "Set Hatch Unlock (name:mode/value):",
+                placeholder = "e.g. goldenMode:unlock, chargedMode:lock, maxHatchCount:25",
+                action = "set_hatch_entitlement_custom",
             },
         },
     },
@@ -758,6 +770,8 @@ function AdminPanel:_executeTestAction(action, testName)
         or action:find("^unlock_zone_")
     then
         self:_executeZoneLockAction(action)
+    elseif action:find("^hatch_entitlement_") then
+        self:_executeHatchEntitlementAction(action)
 
     -- Effects actions
     elseif action == "run_diagnostics" then
@@ -1064,6 +1078,8 @@ function AdminPanel:_executeCustomAction(action, inputValue)
         self:_executeCustomPetGrant(inputValue)
     elseif action == "set_zone_lock_custom" then
         self:_executeCustomZoneLock(inputValue)
+    elseif action == "set_hatch_entitlement_custom" then
+        self:_executeCustomHatchEntitlement(inputValue)
     elseif action == "hatch_custom_eggs" or action == "hatch_specific_pet" then
         -- Handle egg hatching custom inputs
         self:_executeCustomEggHatching({
@@ -1426,13 +1442,100 @@ function AdminPanel:_executeCustomZoneLock(inputValue)
     self:_showAdminResult("Zone lock change requested: " .. zoneId, true)
 end
 
+function AdminPanel:_executeHatchEntitlementAction(action)
+    local quickActions = {
+        hatch_entitlement_status = {
+            mode = "status",
+        },
+        hatch_entitlement_unlock_all = {
+            mode = "unlock_all_modes",
+        },
+        hatch_entitlement_lock_all = {
+            mode = "lock_all_modes",
+        },
+        hatch_entitlement_reset_all = {
+            mode = "reset_all",
+        },
+        hatch_entitlement_toggle_golden = {
+            entitlement = "goldenMode",
+            mode = "toggle",
+        },
+        hatch_entitlement_toggle_charged = {
+            entitlement = "chargedMode",
+            mode = "toggle",
+        },
+        hatch_entitlement_max_99 = {
+            entitlement = "maxHatchCount",
+            value = 99,
+        },
+    }
+
+    local entitlementData = quickActions[action]
+    if not entitlementData then
+        self.logger:warn("Unknown hatch entitlement action:", action)
+        return
+    end
+
+    Signals.Admin_SetHatchEntitlement:FireServer(self:_getAdminActionData(entitlementData))
+    self:_showAdminResult("Hatch entitlement change requested", true)
+end
+
+function AdminPanel:_executeCustomHatchEntitlement(inputValue)
+    local entitlementId, rawValue = inputValue:match("^%s*([^:%s]+)%s*:%s*(.-)%s*$")
+    if not entitlementId or entitlementId == "" or not rawValue or rawValue == "" then
+        self:_showAdminResult(
+            "Invalid hatch entitlement format. Use name:unlock|lock|toggle|reset or maxHatchCount:number",
+            false
+        )
+        return
+    end
+
+    rawValue = tostring(rawValue):lower()
+    local payload = {
+        entitlement = entitlementId,
+    }
+
+    if rawValue == "unlock" or rawValue == "on" or rawValue == "true" then
+        payload.value = true
+    elseif rawValue == "lock" or rawValue == "off" or rawValue == "false" then
+        payload.value = false
+    elseif rawValue == "toggle" then
+        payload.mode = "toggle"
+    elseif rawValue == "reset" or rawValue == "default" then
+        payload.mode = "reset"
+    else
+        local numericValue = tonumber(rawValue)
+        if numericValue then
+            payload.value = numericValue
+        else
+            self:_showAdminResult(
+                "Invalid hatch entitlement value. Use unlock, lock, toggle, reset, or a number.",
+                false
+            )
+            return
+        end
+    end
+
+    Signals.Admin_SetHatchEntitlement:FireServer(self:_getAdminActionData(payload))
+    self:_showAdminResult("Hatch entitlement change requested: " .. entitlementId, true)
+end
+
 function AdminPanel:_formatSnapshot(snapshot)
     local currencies = snapshot.currencies or {}
     local save = snapshot.save or {}
     local autoTarget = snapshot.autoTarget or {}
+    local hatchParts = {}
+    for entitlementId, entitlement in pairs(snapshot.hatchEntitlements or {}) do
+        table.insert(
+            hatchParts,
+            string.format("%s=%s", entitlementId, tostring(entitlement and entitlement.effective))
+        )
+    end
+    table.sort(hatchParts)
+    local hatchSummary = #hatchParts > 0 and table.concat(hatchParts, ", ") or "none"
 
     return string.format(
-        "%s | Coins %s, Gems %s, Crystals %s | Pets %d (%d entries), Equipped %d/%d | Auto low=%s high=%s | Data %s/%s | Save dirty=%s scheduled=%s inFlight=%s reason=%s",
+        "%s | Coins %s, Gems %s, Crystals %s | Pets %d (%d entries), Equipped %d/%d | Hatch %s | Auto low=%s high=%s | Data %s/%s | Save dirty=%s scheduled=%s inFlight=%s reason=%s",
         snapshot.name or "Player",
         tostring(currencies.coins or 0),
         tostring(currencies.gems or 0),
@@ -1441,6 +1544,7 @@ function AdminPanel:_formatSnapshot(snapshot)
         snapshot.petEntryCount or 0,
         snapshot.equippedPetCount or 0,
         snapshot.equippedPetLimit or 0,
+        hatchSummary,
         tostring(autoTarget.low == true),
         tostring(autoTarget.high == true),
         snapshot.dataLoaded and "loaded" or "not loaded",
@@ -1474,6 +1578,22 @@ function AdminPanel:_handleAdminToolResult(result)
             if #modifierParts > 0 then
                 message ..= "\nModifiers: " .. table.concat(modifierParts, ", ")
             end
+        end
+    elseif result.kind == "hatch_entitlement" and result.hatchEntitlements then
+        local entitlementParts = {}
+        for entitlementId, entitlement in pairs(result.hatchEntitlements) do
+            table.insert(
+                entitlementParts,
+                string.format(
+                    "%s=%s",
+                    entitlementId,
+                    tostring(entitlement and entitlement.effective)
+                )
+            )
+        end
+        table.sort(entitlementParts)
+        if #entitlementParts > 0 then
+            message ..= "\nHatch unlocks: " .. table.concat(entitlementParts, ", ")
         end
     end
 

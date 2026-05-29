@@ -13,14 +13,16 @@ Implemented so far:
 - `EggInteractionService` now owns a config-driven hatch panel with selected-count controls, Hatch/Max/Auto buttons, stop/status messaging, and a compact auto-delete filter drawer for rarity, pet-family, and variant filters backed by the existing server filter event.
 - Hatch mode toggles now flow through the same request contract: Golden mode is server-entitlement checked, gives locked-mode feedback, applies the configured cost multiplier, and excludes basic variants; Fast/Silent/Skip are returned as presentation options for hatch animation.
 - Charged mode now uses the same config-first hatch mode path: it is server-entitlement checked, has a configured cost multiplier, and applies configured hatch-luck and secret-luck bonuses before the pet/variant roll.
+- Admin hatch entitlement controls now expose the current shop stubs for testing: Auto, Golden, Charged, Fast, Skip, and max hatch count can be locked/unlocked/reset from the admin panel without changing code or waiting for the shop UI.
 - `EggBatchHatchSmoke` covers multi-hatch cost/count behavior, rapid-repeat rejection, partial hatching when funds or storage only cover a smaller count, hatch-time auto-delete inventory/stat behavior, locked Auto/Golden/Charged mode rejection, auto session id echo on errors, Golden mode cost/no-basic behavior, and Charged mode cost behavior.
 - `EggProximitySmoke` also verifies the hatch panel appears near eggs with its expected controls.
+- `HatchEntitlementAdminSmoke` covers the admin-managed hatch entitlement path and restores player attributes after testing.
 - Authored egg animation ViewportFrames use config-driven scale: a global default in `egg_system.hatching.animation.authored_visual_scale` plus per-egg overrides such as `pets.egg_sources.basic_egg.animation.authored_visual_scale`.
 
 Still to build:
 
 - Richer near-egg hatch UI polish and direct Studio visual QA across desktop/mobile layouts.
-- Richer hatch setting UI polish and entitlement surfacing beyond the first Golden-mode locked feedback.
+- Richer hatch setting UI polish and player-facing entitlement education beyond the first locked-mode feedback.
 - Clearer player explanations for hatch settings and auto-delete filters.
 - Richer authored egg animation polish beyond the first ViewportFrame clone/scale pass.
 - Direct Studio visual QA across desktop/mobile layouts for the expanded hatch drawer.
@@ -157,7 +159,7 @@ Shop and entitlement stubs:
 
 - Add a server-side entitlement resolver that initially reads dev/test config and player attributes/profile settings.
 - Stub entitlements for `max_hatch_count`, `auto_hatch`, `fast_hatch`, `skip_hatch`, `golden_mode`, `charged_mode`, `luck_bonus`, `secret_luck_bonus`.
-- Do not require the shop UI to exist yet; expose admin/dev commands or config flags to toggle entitlements for testing.
+- Do not require the shop UI to exist yet; expose admin/dev commands or config flags to toggle entitlements for testing. The first admin panel controls now exist, but the future shop should call the same entitlement source instead of hardcoding egg behavior.
 - Later shop/monetization should call the same entitlement resolver, not change egg code.
 
 Testing:
@@ -171,6 +173,7 @@ Testing:
 - Studio smoke: auto-delete prevents inventory writes but increments hatch stats.
 - Studio smoke: auto hatch stops on no funds/storage/too far.
 - Studio smoke: authored egg animation payload names/uses the current rock egg.
+- Studio smoke: admin hatch entitlement controls can lock/unlock/reset shop stubs and max hatch count.
 - Regression: existing egg proximity, pet grant, pet index, achievements, and leaderboards still pass.
 
 Documentation:
@@ -197,7 +200,7 @@ Later polish:
 4. Add auto-hatch loop with stop reasons and server/session guard.
 5. Add full auto-delete/filter UI and hatch settings.
 6. Add golden/charged mode toggles and balance hooks.
-7. Add smoke tests and admin tools for every mode.
+7. Add smoke tests and admin tools for every mode. First-pass admin hatch entitlement controls are in place; keep expanding coverage as future hatch settings become real shop/upgrades.
 
 ## Open Questions
 

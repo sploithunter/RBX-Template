@@ -32,6 +32,7 @@ return {
         adjustCurrency = true, -- Can add/remove currency amounts
         giveItems = true, -- Can give items to players
         unlockZones = true, -- Can unlock configured areas/zones for testing
+        manageHatchEntitlements = true, -- Can toggle hatch unlock/shop-stub attributes
         resetData = true, -- Can reset player data
         forceSaveData = true, -- Can force-save own profile during testing
         manageEffects = true, -- Can start/stop effects
@@ -43,6 +44,7 @@ return {
         adjustCurrencyOthers = true, -- Can adjust currency for other players
         giveItemsOthers = true, -- Can give items to other players
         unlockZonesOthers = true, -- Can unlock configured areas/zones for other players
+        manageHatchEntitlementsOthers = true, -- Can toggle hatch unlock/shop-stub attributes for others
         resetDataOthers = true, -- Can reset other players' data
         forceSaveDataOthers = true, -- Can force-save other players during testing
         manageEffectsOthers = true, -- Can manage effects for other players

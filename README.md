@@ -42,6 +42,7 @@ The playable baseline currently includes:
 - Hatch panel controls and hotkeys for selected-count, max, and auto hatch, backed by the same server batch endpoint and server-validated auto entitlement/session handling.
 - Compact hatch auto-delete filter drawer for rarity, pet-family, and variant filters, backed by the server-authoritative auto-delete settings event.
 - Hatch mode toggles for Golden/Charged/Fast/Skip/Silent; Golden and Charged are server-entitlement checked, explain locked access, and use configured cost/roll modifiers.
+- Admin hatch entitlement controls for testing Auto, Golden, Charged, Fast, Skip, and max hatch count shop stubs before the shop UI exists.
 - Special hatch metadata is config-driven for reveal polish, and Skip Hatch remains a hard animation-suppression preference for auto-hatching.
 - Admin panel tools and Studio MCP smoke-test tooling for repeatable validation.
 
@@ -156,6 +157,7 @@ return require(game:GetService("ReplicatedStorage").Tests.studio.EternalPowerSmo
 return require(game:GetService("ReplicatedStorage").Tests.studio.Phase4PetProgressionSmoke).runText()
 return require(game:GetService("ReplicatedStorage").Tests.studio.Phase5AutoSystemsSmoke).runText()
 return require(game:GetService("ReplicatedStorage").Tests.studio.EggBatchHatchSmoke).runText()
+return require(game:GetService("ReplicatedStorage").Tests.studio.HatchEntitlementAdminSmoke).runText()
 ```
 
 ## Project Structure
@@ -185,6 +187,7 @@ Latest local checkpoint:
 - `Phase5AutoSystemsSmoke`: passes in Studio for server-selected nearest/highest/weakest/strongest/selected-currency targets, hatch auto-delete filters, protected special rarity behavior, and profile restoration.
 - `EggBatchHatchSmoke`: added for server batch hatch count/cost behavior, rapid-repeat hatch lock rejection, partial hatch by available funds/storage, hatch-time auto-delete inventory/stat behavior, locked Auto/Golden mode rejection, and Golden mode cost/no-basic behavior.
 - `EggProximitySmoke`: now also checks the near-egg hatch panel appears with Hatch/Max/Auto/count controls.
+- `HatchEntitlementAdminSmoke`: added for admin-managed hatch entitlement/shop-stub attributes, including lock/unlock/reset and max hatch count restoration.
 
 See `docs/wiki/CURRENT_STATUS.md` for detailed verification history and `docs/IMPLEMENTATION_PLAN.md` for the phase roadmap.
 
