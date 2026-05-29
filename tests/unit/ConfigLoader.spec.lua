@@ -894,6 +894,184 @@ return function()
                 expect(string.find(error, "must reference auto_target.modes", 1, true)).to.be.ok()
             end)
 
+            local function makeValidEggSystemConfig()
+                return {
+                    version = "1.0.0",
+                    proximity = {
+                        max_distance = 18,
+                    },
+                    performance = {
+                        update_interval = 0.1,
+                    },
+                    cooldowns = {
+                        purchase_cooldown = 3,
+                    },
+                    hatching = {
+                        max_count = 99,
+                        default_requested_count = 1,
+                        default_max_entitled_count = 99,
+                        allow_partial = true,
+                        transaction_lock_seconds = 0.35,
+                        failed_request_lock_seconds = 0.2,
+                        auto_loop_delay = 3,
+                        debug = {
+                            history_limit = 12,
+                            result_sample_limit = 20,
+                        },
+                        animation = {
+                            max_visible_eggs = 99,
+                            use_authored_egg_visual = true,
+                            authored_visual_scale = 1.25,
+                            special_reveal_enabled = true,
+                            special_world_fx = true,
+                            respect_silent_for_special = false,
+                            special_reveal_min_duration = 1.1,
+                            special_rarities = {
+                                mythic = true,
+                                secret = true,
+                            },
+                            reveal_badges = {
+                                enabled = true,
+                                show_rarity = true,
+                                show_variant = true,
+                                show_basic_variant = false,
+                                show_auto_deleted = true,
+                                special_badge_text = "SPECIAL",
+                                auto_deleted_text = "AUTO-DELETED",
+                            },
+                        },
+                        shop_stubs = {
+                            max_hatch_count = {
+                                enabled = true,
+                                default_value = 99,
+                            },
+                            auto_hatch = {
+                                enabled = true,
+                                owned_by_default = true,
+                            },
+                            fast_hatch = {
+                                enabled = true,
+                                owned_by_default = false,
+                            },
+                            skip_hatch = {
+                                enabled = true,
+                                owned_by_default = false,
+                            },
+                            golden_mode = {
+                                enabled = true,
+                                owned_by_default = false,
+                                cost_multiplier = 20,
+                            },
+                            charged_mode = {
+                                enabled = true,
+                                owned_by_default = false,
+                                cost_multiplier = 5,
+                                luck_bonus = 1,
+                                secret_luck_bonus = 0.25,
+                            },
+                            luck_bonus = {
+                                enabled = true,
+                                default_multiplier = 0,
+                            },
+                            secret_luck_bonus = {
+                                enabled = true,
+                                default_multiplier = 0,
+                            },
+                        },
+                    },
+                    ui = {
+                        hatch_panel = {
+                            enabled = true,
+                            width = 500,
+                            height = 176,
+                            settings_height = 336,
+                            count_step = 1,
+                            count_large_step = 10,
+                            default_selected_count = 1,
+                            status_display_time = 3,
+                            buttons = {
+                                hatch = "Hatch",
+                                max = "Max",
+                                auto = "Auto",
+                                settings = "Filters",
+                            },
+                            auto_delete = {
+                                description = "Choose filters.",
+                                enabled_description = "Turn filtering on.",
+                                rarity_description = "By rarity.",
+                                pet_type_description = "By pet.",
+                                variant_description = "By variant.",
+                                rarity_filters = { "common" },
+                                pet_type_filters = { "bear" },
+                                variant_filters = { "basic" },
+                            },
+                            modes = {
+                                golden = {
+                                    label = "Golden",
+                                    option = "goldenMode",
+                                    description = "Costs more and removes Basic rolls.",
+                                    locked_description = "Locked.",
+                                    active_description = "Active.",
+                                    available_description = "Available.",
+                                },
+                            },
+                            help = {
+                                default = "Hover a control.",
+                                count = "Choose count.",
+                                hatch = "Hatch once.",
+                                max = "Request max.",
+                                auto = "Auto hatch.",
+                                settings = "Open filters.",
+                            },
+                        },
+                    },
+                    pet_preview = {},
+                    messages = {},
+                    spawning = {
+                        spawn_point_name = "EggSpawnPoint",
+                    },
+                    validation = {},
+                }
+            end
+
+            it("should validate egg hatch system settings", function()
+                local validConfig = makeValidEggSystemConfig()
+
+                local isValid, error = configLoader:ValidateConfig("egg_system", validConfig)
+                expect(isValid).to.equal(true)
+                expect(error).to.equal(nil)
+            end)
+
+            it("should reject hatch defaults above the configured hatch max", function()
+                local invalidConfig = makeValidEggSystemConfig()
+                invalidConfig.hatching.default_requested_count = 100
+
+                local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "hatching.default_requested_count", 1, true)).to.be.ok()
+            end)
+
+            it("should reject animation layouts above the configured hatch max", function()
+                local invalidConfig = makeValidEggSystemConfig()
+                invalidConfig.hatching.max_count = 20
+                invalidConfig.hatching.default_max_entitled_count = 20
+                invalidConfig.hatching.shop_stubs.max_hatch_count.default_value = 20
+                invalidConfig.hatching.animation.max_visible_eggs = 21
+
+                local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "hatching.animation.max_visible_eggs", 1, true)).to.be.ok()
+            end)
+
+            it("should reject incomplete hatch panel button config", function()
+                local invalidConfig = makeValidEggSystemConfig()
+                invalidConfig.ui.hatch_panel.buttons.auto = ""
+
+                local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "ui.hatch_panel.buttons.auto", 1, true)).to.be.ok()
+            end)
+
             it("should validate config-driven enchant roll profiles", function()
                 local validConfig = {
                     version = "1.0.0",

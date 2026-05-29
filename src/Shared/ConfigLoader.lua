@@ -15,7 +15,6 @@
 ]]
 
 local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
 
 local ConfigLoader = {}
 ConfigLoader.__index = ConfigLoader
@@ -65,42 +64,6 @@ local function hasId(list, id)
     end
 
     return false
-end
-
--- Simple config parser for our Lua config files
-local function parseConfig(content)
-    local result = {}
-    local currentSection = result
-    local stack = {}
-
-    for line in content:gmatch("[^\r\n]+") do
-        line = line:gsub("^%s*", ""):gsub("%s*$", "") -- trim
-
-        if line:sub(1, 1) == "#" or line == "" then
-            -- Skip comments and empty lines
-        elseif line:match(":$") then
-            -- Section header (e.g., "bridges:")
-            local key = line:sub(1, -2)
-            currentSection[key] = {}
-            table.insert(stack, currentSection)
-            currentSection = currentSection[key]
-        elseif line:match("^%s*%w+:%s*") then
-            -- Key-value pair (e.g., "rateLimit: 30")
-            local key, value = line:match("^%s*(%w+):%s*(.*)$")
-            if value == "true" then
-                value = true
-            elseif value == "false" then
-                value = false
-            elseif tonumber(value) then
-                value = tonumber(value)
-            elseif value:match('^".*"$') then
-                value = value:sub(2, -2) -- remove quotes
-            end
-            currentSection[key] = value
-        end
-    end
-
-    return result
 end
 
 -- Load configs from ReplicatedStorage
@@ -2369,15 +2332,102 @@ function ConfigLoader:_validateEggSystemConfig(config)
     if config.hatching.max_count > 99 then
         return self:_configError("egg_system", "hatching.max_count", "must be 99 or lower")
     end
+    if config.hatching.default_requested_count > config.hatching.max_count then
+        return self:_configError(
+            "egg_system",
+            "hatching.default_requested_count",
+            "must be less than or equal to hatching.max_count"
+        )
+    end
+    if config.hatching.default_max_entitled_count ~= nil then
+        ok, err = self:_requirePositiveNumber(
+            "egg_system",
+            config.hatching.default_max_entitled_count,
+            "hatching.default_max_entitled_count"
+        )
+        if not ok then
+            return ok, err
+        end
+        if config.hatching.default_max_entitled_count > config.hatching.max_count then
+            return self:_configError(
+                "egg_system",
+                "hatching.default_max_entitled_count",
+                "must be less than or equal to hatching.max_count"
+            )
+        end
+    end
     if
         config.hatching.allow_partial ~= nil
         and type(config.hatching.allow_partial) ~= "boolean"
     then
         return self:_configError("egg_system", "hatching.allow_partial", "expected boolean")
     end
+    if config.hatching.failed_request_lock_seconds ~= nil then
+        ok, err = self:_requireNonNegativeNumber(
+            "egg_system",
+            config.hatching.failed_request_lock_seconds,
+            "hatching.failed_request_lock_seconds"
+        )
+        if not ok then
+            return ok, err
+        end
+    end
+    local debugConfig = config.hatching.debug or {}
+    if type(debugConfig) ~= "table" then
+        return self:_configError("egg_system", "hatching.debug", "expected table")
+    end
+    for _, fieldName in ipairs({ "history_limit", "result_sample_limit" }) do
+        if debugConfig[fieldName] ~= nil then
+            ok, err = self:_requirePositiveNumber(
+                "egg_system",
+                debugConfig[fieldName],
+                "hatching.debug." .. fieldName
+            )
+            if not ok then
+                return ok, err
+            end
+        end
+    end
     local animation = config.hatching.animation or {}
     if type(animation) ~= "table" then
         return self:_configError("egg_system", "hatching.animation", "expected table")
+    end
+    if animation.max_visible_eggs ~= nil then
+        ok, err = self:_requirePositiveNumber(
+            "egg_system",
+            animation.max_visible_eggs,
+            "hatching.animation.max_visible_eggs"
+        )
+        if not ok then
+            return ok, err
+        end
+        if animation.max_visible_eggs > config.hatching.max_count then
+            return self:_configError(
+                "egg_system",
+                "hatching.animation.max_visible_eggs",
+                "must be less than or equal to hatching.max_count"
+            )
+        end
+    end
+    if
+        animation.use_authored_egg_visual ~= nil
+        and type(animation.use_authored_egg_visual) ~= "boolean"
+    then
+        return self:_configError(
+            "egg_system",
+            "hatching.animation.use_authored_egg_visual",
+            "expected boolean"
+        )
+    end
+    if animation.authored_visual_scale ~= nil then
+        ok, err = self:_requirePositiveNumber(
+            "egg_system",
+            animation.authored_visual_scale,
+            "hatching.animation.authored_visual_scale"
+        )
+        if not ok then
+            return ok, err
+        end
     end
     if
         animation.special_reveal_enabled ~= nil
@@ -2435,6 +2485,38 @@ function ConfigLoader:_validateEggSystemConfig(config)
                 "egg_system",
                 "hatching.animation.special_rarities." .. rarityId,
                 "expected boolean"
+            )
+        end
+    end
+    local revealBadges = animation.reveal_badges or {}
+    if type(revealBadges) ~= "table" then
+        return self:_configError(
+            "egg_system",
+            "hatching.animation.reveal_badges",
+            "expected table"
+        )
+    end
+    for _, fieldName in ipairs({
+        "enabled",
+        "show_rarity",
+        "show_variant",
+        "show_basic_variant",
+        "show_auto_deleted",
+    }) do
+        if revealBadges[fieldName] ~= nil and type(revealBadges[fieldName]) ~= "boolean" then
+            return self:_configError(
+                "egg_system",
+                "hatching.animation.reveal_badges." .. fieldName,
+                "expected boolean"
+            )
+        end
+    end
+    for _, fieldName in ipairs({ "special_badge_text", "auto_deleted_text" }) do
+        if revealBadges[fieldName] ~= nil and type(revealBadges[fieldName]) ~= "string" then
+            return self:_configError(
+                "egg_system",
+                "hatching.animation.reveal_badges." .. fieldName,
+                "expected string"
             )
         end
     end
@@ -2496,6 +2578,23 @@ function ConfigLoader:_validateEggSystemConfig(config)
                 end
             end
         end
+        if stubName == "max_hatch_count" and stub.default_value ~= nil then
+            ok, err = self:_requirePositiveNumber(
+                "egg_system",
+                stub.default_value,
+                "hatching.shop_stubs.max_hatch_count.default_value"
+            )
+            if not ok then
+                return ok, err
+            end
+            if stub.default_value > config.hatching.max_count then
+                return self:_configError(
+                    "egg_system",
+                    "hatching.shop_stubs.max_hatch_count.default_value",
+                    "must be less than or equal to hatching.max_count"
+                )
+            end
+        end
     end
     if type(config.ui.hatch_panel) ~= "table" then
         return self:_configError("egg_system", "ui.hatch_panel", "expected table")
@@ -2537,6 +2636,54 @@ function ConfigLoader:_validateEggSystemConfig(config)
     )
     if not ok then
         return ok, err
+    end
+    ok, err = self:_requirePositiveNumber(
+        "egg_system",
+        config.ui.hatch_panel.count_large_step or 1,
+        "ui.hatch_panel.count_large_step"
+    )
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requirePositiveNumber(
+        "egg_system",
+        config.ui.hatch_panel.default_selected_count or 1,
+        "ui.hatch_panel.default_selected_count"
+    )
+    if not ok then
+        return ok, err
+    end
+    if
+        config.ui.hatch_panel.default_selected_count ~= nil
+        and config.ui.hatch_panel.default_selected_count > config.hatching.max_count
+    then
+        return self:_configError(
+            "egg_system",
+            "ui.hatch_panel.default_selected_count",
+            "must be less than or equal to hatching.max_count"
+        )
+    end
+    ok, err = self:_requireNonNegativeNumber(
+        "egg_system",
+        config.ui.hatch_panel.status_display_time or 0,
+        "ui.hatch_panel.status_display_time"
+    )
+    if not ok then
+        return ok, err
+    end
+    local buttons = config.ui.hatch_panel.buttons or {}
+    if type(buttons) ~= "table" then
+        return self:_configError("egg_system", "ui.hatch_panel.buttons", "expected table")
+    end
+    for _, buttonName in ipairs({ "hatch", "max", "auto", "settings" }) do
+        local value = buttons[buttonName]
+        if type(value) ~= "string" or value == "" then
+            return self:_configError(
+                "egg_system",
+                "ui.hatch_panel.buttons." .. buttonName,
+                "expected non-empty string"
+            )
+        end
     end
     local autoDelete = config.ui.hatch_panel.auto_delete or {}
     if type(autoDelete) ~= "table" then
@@ -2596,7 +2743,14 @@ function ConfigLoader:_validateEggSystemConfig(config)
                 "expected table"
             )
         end
-        for _, fieldName in ipairs({ "label", "option", "description" }) do
+        for _, fieldName in ipairs({
+            "label",
+            "option",
+            "description",
+            "locked_description",
+            "active_description",
+            "available_description",
+        }) do
             if mode[fieldName] ~= nil and type(mode[fieldName]) ~= "string" then
                 return self:_configError(
                     "egg_system",

@@ -24,6 +24,7 @@ Implemented so far:
 - The hatch settings drawer now exposes mode entitlement state before the server rejects a hatch. Mode controls carry `ModeState`, `ModeOwned`, and dynamic help text attributes, and a `ModeStatus` line summarizes active and locked modes from config/player attributes.
 - `EggService` now keeps a bounded, config-sized recent hatch history for each player. The history records successes and rejected hatch requests with requested count, actual hatch count, cost, stop reason, options, entitlements, sampled results, auto-delete counts, special counts, and authored animation metadata. Admin tools can request this snapshot, and `EggHatchHistorySmoke` verifies the server debug contract.
 - Studio forced hatch setup is now deterministic. `EggService` reads `ForcePet`/`ForceVariant` player attributes before rolling instead of relying only on mutating a copied config table, so storage/history smokes can force unique or auto-deleted outcomes reliably.
+- `ConfigLoader` now validates the egg-system hatch contract more deeply: requested/default counts must fit inside `hatching.max_count`, animation capacity cannot exceed hatch capacity, debug history limits are positive, reveal badges have valid field types, shop max-count defaults stay within the configured hatch cap, and hatch-panel button labels must exist. `ConfigLoader.spec` covers the valid path plus count, animation, and UI-button failures.
 
 Still to build:
 
@@ -169,7 +170,7 @@ Shop and entitlement stubs:
 
 Testing:
 
-- Unit/config tests for hatch max count, partial count, cost math, and invalid config.
+- Unit/config tests for hatch max count relationships, animation capacity, UI button config, partial count, cost math, and invalid config. First-pass `ConfigLoader.spec` coverage exists for the config-shape pieces; service smokes cover partial count and cost math.
 - Studio smoke: far hatch rejects.
 - Studio smoke: single hatch succeeds and saves.
 - Studio smoke: rapid `E` returns cooldown/locked and never creates invisible hatches.

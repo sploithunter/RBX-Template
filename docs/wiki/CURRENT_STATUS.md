@@ -69,6 +69,7 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Hatch mode education now reads player entitlement state. The settings drawer grays locked modes, stores `ModeState`/`ModeOwned` attributes on each mode toggle, shows a `ModeStatus` summary, and uses config-driven locked/available/active help text.
 - Server hatch debugging now has a bounded recent-history path. `EggService` records successful and rejected hatches with request count, actual count, cost, stop reason, options, entitlements, sampled results, auto-delete counts, special counts, and authored animation metadata. Admin tools expose this through `Admin_RequestHatchHistory`, and the admin panel has a Recent Hatch History action.
 - Studio hatch forcing now uses player `ForcePet`/`ForceVariant` attributes directly before the roll, avoiding the earlier copied-config gotcha where mutating `Locations.getConfig("pets")` did not reliably affect `simulateHatch`.
+- `ConfigLoader` now validates the expanded egg-system hatch contract, including hatch count relationships, debug/history limits, animation capacity, reveal badge field types, shop max-count defaults, and hatch-panel button labels.
 
 ## Phase 0 Verification
 
@@ -149,6 +150,7 @@ Last checked: 2026-05-27
 - `StudioSmokeTestService` now supports `setupPetInventoryEmpty` for egg smokes so storage-limit tests can avoid accidental success through existing pet stacks.
 - `EggAnimationContractSmoke` passes through Studio MCP. It creates a synthetic special Exclusive Rainbow Colorado and an auto-deleted Common Bear hatch, then verifies frame metadata, rarity/variant/special/auto-delete badges, and visible reveal-state updates.
 - `EggHatchHistorySmoke` passes through Studio MCP. It verifies a deterministic auto-deleted batch hatch is recorded in server history with cost, count, sampled pet result, and auto-delete metadata.
+- `ConfigLoader.spec` passes through Studio MCP in Play mode with `52` passed, `0` failed, and `0` skipped, including the egg-system validator coverage.
 
 ## Admin/Map Test Verification
 

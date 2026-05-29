@@ -28,6 +28,8 @@ The current working Studio instance is `RBX-Template`.
 
 Rojo can occasionally enter an unsynced-looking state even while the server and Studio plugin appear connected. If new scripts/config do not appear in Studio, stop Play, disconnect Rojo in the Studio plugin, reconnect to the running Rojo server, and then restart Play. Agents should use Computer Use for this when the Rojo plugin UI must be operated directly.
 
+The Studio edit-command VM can also keep stale `require` results after Rojo updates a ModuleScript. If a module's `Source` is current but `require(module)` returns an old table, run the check in Play mode or restart the Studio session so Roblox creates a fresh Luau VM.
+
 ## Available Agent Checks
 
 Agents can use Studio MCP to:
