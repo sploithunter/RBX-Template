@@ -137,6 +137,36 @@ function EggAnimationContractSmoke.run(options)
 
     eggHatchingService:TestCleanup()
 
+    local skippedAnimation = eggHatchingService:StartHatchingAnimation({
+        {
+            eggType = options.eggType or "basic_egg",
+            imageId = "generated_image",
+            petImageId = "generated_image",
+            petType = "colorado",
+            variant = "rainbow",
+            rarityId = "exclusive",
+            rarityName = "Exclusive",
+            specialHatch = true,
+            autoDeleted = false,
+            animation = {
+                useAuthoredEggVisual = true,
+            },
+            hatchOptions = {
+                skipHatch = true,
+                silentHatch = true,
+            },
+        },
+    })
+    local skippedState = eggHatchingService:GetActiveAnimationDebugState()
+    assert(skippedAnimation.skipped == true, "Skip hatch did not return skipped result")
+    assert(skippedAnimation.isComplete == true, "Skip hatch did not complete immediately")
+    assert(skippedState.skipped == true, "Skip hatch debug flag missing")
+    assert(skippedState.timing.skipHatch == true, "Skip hatch timing flag missing")
+    assert(skippedState.guiStatus == "disabled", "Skip hatch left animation GUI enabled")
+    assert(skippedState.frameCount == 0, "Skip hatch created animation frames")
+
+    eggHatchingService:TestCleanup()
+
     return {
         frameCount = initial.frameCount,
         specialBadge = specialFrame.badges.SpecialBadge.text,
@@ -145,19 +175,21 @@ function EggAnimationContractSmoke.run(options)
         autoDeleteBadge = autoDeletedFrame.badges.AutoDeleteBadge.text,
         revealedStatus = revealed.guiStatus,
         animationComplete = animationResult.isComplete == true,
+        skipSuppressed = skippedAnimation.skipped == true,
     }
 end
 
 function EggAnimationContractSmoke.runText(options)
     local result = EggAnimationContractSmoke.run(options)
     return string.format(
-        "EggAnimationContractSmoke passed: frames=%d special=%q rarity=%q variant=%q autoDelete=%q revealedStatus=%s",
+        "EggAnimationContractSmoke passed: frames=%d special=%q rarity=%q variant=%q autoDelete=%q revealedStatus=%s skipSuppressed=%s",
         result.frameCount,
         result.specialBadge,
         result.rarityBadge,
         result.variantBadge,
         result.autoDeleteBadge,
-        result.revealedStatus
+        result.revealedStatus,
+        tostring(result.skipSuppressed)
     )
 end
 

@@ -1620,13 +1620,44 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
     -- PHASE 0: Initialize persistent GUI if needed
     self:InitializePersistentGui()
     self:CleanupExistingHatchingGUIs()
+    self:ClearEggFrames()
+
+    local timingDebug = resolveAnimationTiming(eggsData[1] and eggsData[1].hatchOptions)
+    self._persistentGui:SetAttribute("TimingPreset", timingDebug.preset)
+    self._persistentGui:SetAttribute(
+        "TimingPresetSpeedMultiplier",
+        timingDebug.presetSpeedMultiplier
+    )
+    self._persistentGui:SetAttribute("TimingFastHatch", timingDebug.fastHatch)
+    self._persistentGui:SetAttribute("TimingSilentHatch", timingDebug.silentHatch)
+    self._persistentGui:SetAttribute("TimingSkipHatch", timingDebug.skipHatch)
+    self._persistentGui:SetAttribute("TimingSpeedScale", timingDebug.speedScale)
+    self._persistentGui:SetAttribute("TimingShakeDuration", timingDebug.shakeDuration)
+    self._persistentGui:SetAttribute("TimingFlashDuration", timingDebug.flashDuration)
+    self._persistentGui:SetAttribute("TimingRevealDuration", timingDebug.revealDuration)
+    self._persistentGui:SetAttribute("TimingStaggerDelay", timingDebug.staggerDelay)
+    self._persistentGui:SetAttribute("TimingCompletionWait", timingDebug.completionWait)
+    self._persistentGui:SetAttribute("TimingDoStagger", timingDebug.doStagger)
+    self._persistentGui:SetAttribute("AnimationSkipped", timingDebug.skipHatch)
+
+    if timingDebug.skipHatch == true then
+        self._persistentGui.Enabled = false
+        return {
+            frames = {},
+            components = {},
+            gridInfo = nil,
+            container = self._persistentContainer,
+            animatedElements = {},
+            isComplete = true,
+            skipped = true,
+        }
+    end
 
     -- PHASE 1: Clear the screen cinematically
     print("🎬 Phase 1: Clearing screen for cinematic experience...")
     local animatedElements = self:ClearScreen()
 
     -- PHASE 2: Clear any existing egg frames and prepare container
-    self:ClearEggFrames()
     local container = self._persistentContainer
 
     -- Enable the persistent GUI
@@ -1646,23 +1677,6 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
     self._persistentGui:SetAttribute("GridEggSize", gridInfo.eggSize)
     self._persistentGui:SetAttribute("GridPadding", gridInfo.padding)
     self._persistentGui:SetAttribute("GridCompactMode", gridInfo.compactMode)
-    local timingDebug = resolveAnimationTiming(eggsData[1] and eggsData[1].hatchOptions)
-    self._persistentGui:SetAttribute("TimingPreset", timingDebug.preset)
-    self._persistentGui:SetAttribute(
-        "TimingPresetSpeedMultiplier",
-        timingDebug.presetSpeedMultiplier
-    )
-    self._persistentGui:SetAttribute("TimingFastHatch", timingDebug.fastHatch)
-    self._persistentGui:SetAttribute("TimingSilentHatch", timingDebug.silentHatch)
-    self._persistentGui:SetAttribute("TimingSkipHatch", timingDebug.skipHatch)
-    self._persistentGui:SetAttribute("TimingSpeedScale", timingDebug.speedScale)
-    self._persistentGui:SetAttribute("TimingShakeDuration", timingDebug.shakeDuration)
-    self._persistentGui:SetAttribute("TimingFlashDuration", timingDebug.flashDuration)
-    self._persistentGui:SetAttribute("TimingRevealDuration", timingDebug.revealDuration)
-    self._persistentGui:SetAttribute("TimingStaggerDelay", timingDebug.staggerDelay)
-    self._persistentGui:SetAttribute("TimingCompletionWait", timingDebug.completionWait)
-    self._persistentGui:SetAttribute("TimingDoStagger", timingDebug.doStagger)
-
     print(
         "🥚 Phase 2: Starting hatching animation for",
         eggCount,
@@ -2329,6 +2343,7 @@ function EggHatchingService:TestCleanup()
     self:CleanupExistingHatchingGUIs()
     if self._persistentGui then
         self._persistentGui.Enabled = false
+        self._persistentGui:SetAttribute("AnimationSkipped", false)
         self:ClearEggFrames()
     end
     print("🧪 Test cleanup completed")
@@ -2394,11 +2409,13 @@ function EggHatchingService:GetActiveAnimationDebugState()
     local state = {
         guiStatus = status,
         frameCount = 0,
+        skipped = false,
         layout = {},
         timing = {},
         frames = {},
     }
     if self._persistentGui then
+        state.skipped = self._persistentGui:GetAttribute("AnimationSkipped") == true
         state.layout = {
             containerWidth = self._persistentGui:GetAttribute("GridContainerWidth"),
             containerHeight = self._persistentGui:GetAttribute("GridContainerHeight"),

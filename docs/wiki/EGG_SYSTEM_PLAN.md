@@ -37,6 +37,7 @@ Implemented so far:
 - The expanded hatch drawer now has automated layout coverage. `EggProximitySmoke` opens the real `PlayerGui` drawer, verifies desktop/mobile fit math, and checks that visible drawer controls are not clipped inside the configured drawer bounds.
 - Special hatch animation polish now has a config-driven backdrop layer. `egg_system.hatching.animation.special_backdrop` controls a rarity-colored reveal backdrop behind special pets, `ConfigLoader` validates its fields, and `EggAnimationContractSmoke` verifies the visual contract.
 - Egg source unlock requirements now run through the server hatch pipeline. `EggService` checks `egg_sources.<id>.unlock_requirement` for real and simulated hatches, returns `egg_locked` with current/required progress, `ConfigLoader` validates the requirement shape, and `EggUnlockSmoke` verifies locked/unlocked golden egg behavior in Studio.
+- Skip Hatch is now guarded at the animation service boundary too. `EggInteractionService` already avoids calling hatch animation when `skipHatch` is active, and `EggHatchingService` now immediately returns a completed skipped result without enabling the animation GUI or creating frames if a future caller passes `skipHatch`; `EggAnimationContractSmoke` verifies this contract.
 
 Still to build:
 
@@ -161,7 +162,7 @@ Animation:
 - Use the authored egg visual from the current `EggStand`/world model when available, including rock-style placeholder eggs.
 - Keep fallback generated egg visuals for synthetic maps.
 - Support dynamic count layouts up to `99`.
-- Add stronger reveal metadata/effects for protected/special tiers when hatch animation is shown. Skip Hatch should still suppress the hatch animation entirely; Silent Hatch may suppress audio while config can decide whether special visual-only world FX still plays.
+- Add stronger reveal metadata/effects for protected/special tiers when hatch animation is shown. Skip Hatch suppresses the hatch animation entirely at both interaction and animation-service boundaries; Silent Hatch suppresses audio while config can decide whether special visual-only world FX still plays.
 - Include per-result rarity/variant colors and special effects.
 - Ensure animation completion/reentry does not control server correctness; it only controls client presentation.
 - Keep animation presentation choices configurable: grid layout sizes/padding, authored egg scale, reveal badges, special glow/backdrop, and future special effects should live in config rather than hardcoded UI constants.
