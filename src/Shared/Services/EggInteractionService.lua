@@ -34,6 +34,7 @@ local hatchPanelGui = nil
 local hatchPanel = nil
 local hatchPanelFields = {}
 local hatchPanelConnection = nil
+local entitlementConnections = {}
 local hatchSettingsOpen = false
 local autoDeleteState = {
     enabled = false,
@@ -153,8 +154,33 @@ local function getMaxHatchCount()
     return math.clamp(math.floor(tonumber(hatching.max_count) or 99), 1, 99)
 end
 
+local function getEffectiveMaxHatchCount()
+    local hatching = getHatchingConfig()
+    local stubs = hatching.shop_stubs or {}
+    local maxStub = stubs.max_hatch_count or {}
+    local configuredDefault = tonumber(maxStub.default_value)
+        or tonumber(hatching.default_max_entitled_count)
+        or getMaxHatchCount()
+    local attributeMax = tonumber(player:GetAttribute("MaxEggHatchCount"))
+    local effective = attributeMax or configuredDefault
+    return math.clamp(math.floor(tonumber(effective) or 1), 1, getMaxHatchCount())
+end
+
+local function isAutoHatchOwned()
+    local attributeValue = player:GetAttribute("AutoHatchUnlocked")
+    if attributeValue ~= nil then
+        return attributeValue == true
+    end
+
+    local autoStub = (getHatchingConfig().shop_stubs or {}).auto_hatch or {}
+    if autoStub.enabled == false then
+        return false
+    end
+    return autoStub.owned_by_default == true
+end
+
 local function clampSelectedCount(count)
-    return math.clamp(math.floor(tonumber(count) or 1), 1, getMaxHatchCount())
+    return math.clamp(math.floor(tonumber(count) or 1), 1, getEffectiveMaxHatchCount())
 end
 
 local function asSet(values)
@@ -953,6 +979,11 @@ function EggInteractionService:UpdateHatchPanel()
         return
     end
 
+    local effectiveMaxCount = getEffectiveMaxHatchCount()
+    if selectedHatchCount > effectiveMaxCount then
+        selectedHatchCount = effectiveMaxCount
+    end
+
     local width = tonumber(panelConfig.width) or 500
     local baseHeight = tonumber(panelConfig.height) or 176
     local settingsHeight = tonumber(panelConfig.settings_height) or 168
@@ -979,6 +1010,7 @@ function EggInteractionService:UpdateHatchPanel()
 
     hatchPanelFields.count.Text = "x" .. tostring(selectedHatchCount)
     local busy = hatchRequestInFlight == true
+    local autoOwned = isAutoHatchOwned()
     hatchPanelFields.hatchButton.Active = not busy
     hatchPanelFields.maxButton.Active = not busy
     hatchPanelFields.autoButton.Active = not busy
@@ -990,8 +1022,19 @@ function EggInteractionService:UpdateHatchPanel()
     hatchPanelFields.maxButton.BackgroundColor3 = busy and Color3.fromRGB(70, 76, 90)
         or Color3.fromRGB(72, 82, 103)
     hatchPanelFields.autoButton.Text = autoHatchEnabled and "Stop" or "Auto"
-    hatchPanelFields.autoButton.BackgroundColor3 = autoHatchEnabled and Color3.fromRGB(220, 82, 95)
-        or Color3.fromRGB(39, 161, 92)
+    hatchPanelFields.autoButton.BackgroundColor3 = busy and Color3.fromRGB(70, 76, 90)
+        or autoHatchEnabled and Color3.fromRGB(220, 82, 95)
+        or autoOwned and Color3.fromRGB(39, 161, 92)
+        or Color3.fromRGB(58, 62, 76)
+    hatchPanelFields.autoButton.TextColor3 = autoOwned and Color3.fromRGB(255, 255, 255)
+        or Color3.fromRGB(150, 158, 176)
+    hatchPanel:SetAttribute("MaxHatchCount", getMaxHatchCount())
+    hatchPanel:SetAttribute("MaxEntitledHatchCount", effectiveMaxCount)
+    hatchPanel:SetAttribute("AutoHatchOwned", autoOwned)
+    hatchPanelFields.count:SetAttribute("MaxEntitledHatchCount", effectiveMaxCount)
+    hatchPanelFields.maxButton:SetAttribute("MaxEntitledHatchCount", effectiveMaxCount)
+    hatchPanelFields.autoButton:SetAttribute("ModeOwned", autoOwned)
+    hatchPanelFields.autoButton:SetAttribute("ModeState", autoOwned and "available" or "locked")
 
     if os.clock() - lastStatusAt > (tonumber(panelConfig.status_display_time) or 3) then
         hatchPanelFields.status.Text = ""
@@ -1034,7 +1077,7 @@ function EggInteractionService:OnMaxHatchKeyPressed()
         return
     end
 
-    local maxCount = eggSystemConfig.hatching and eggSystemConfig.hatching.max_count or 99
+    local maxCount = getEffectiveMaxHatchCount()
     self:SetSelectedHatchCount(maxCount)
     self:HandleEggPurchase(currentTarget, maxCount, "Max")
 end
@@ -1044,6 +1087,13 @@ function EggInteractionService:ToggleAutoHatch()
         autoHatchEnabled = false
         autoHatchSessionId += 1
         self:SetPanelStatus("Auto hatch stopped", false)
+        self:UpdateHatchPanel()
+        return
+    end
+
+    if not isAutoHatchOwned() then
+        self:SetPanelStatus("Auto hatch locked", true)
+        self:ShowErrorMessage("Auto hatch locked")
         self:UpdateHatchPanel()
         return
     end
@@ -1493,6 +1543,24 @@ function EggInteractionService:Initialize()
 
     self:CreateHatchPanel()
 
+    for _, attributeName in ipairs({
+        "MaxEggHatchCount",
+        "AutoHatchUnlocked",
+        "GoldenHatchUnlocked",
+        "ChargedHatchUnlocked",
+        "FastHatchUnlocked",
+        "SkipHatchUnlocked",
+    }) do
+        table.insert(
+            entitlementConnections,
+            player:GetAttributeChangedSignal(attributeName):Connect(function()
+                self:SetSelectedHatchCount(selectedHatchCount)
+                self:RefreshModeButtons()
+                self:UpdateHatchPanel()
+            end)
+        )
+    end
+
     Signals.AutoTarget_Status.OnClientEvent:Connect(function(status)
         if type(status) == "table" then
             self:ApplyAutoDeleteStatus(status.auto_delete)
@@ -1536,7 +1604,10 @@ function EggInteractionService:GetHatchPanelDebugState()
     return {
         autoHatchEnabled = autoHatchEnabled == true,
         autoHatchSessionId = autoHatchSessionId,
+        autoHatchOwned = isAutoHatchOwned(),
         selectedHatchCount = selectedHatchCount,
+        maxHatchCount = getMaxHatchCount(),
+        maxEntitledHatchCount = getEffectiveMaxHatchCount(),
         statusText = hatchPanelFields.status and hatchPanelFields.status.Text or "",
         helpText = hatchPanelFields.helpText and hatchPanelFields.helpText.Text or "",
         modeStatus = hatchPanelFields.modeStatus and hatchPanelFields.modeStatus.Text or "",
@@ -1549,6 +1620,10 @@ function EggInteractionService:Destroy()
         hatchPanelConnection:Disconnect()
         hatchPanelConnection = nil
     end
+    for _, connection in ipairs(entitlementConnections) do
+        connection:Disconnect()
+    end
+    entitlementConnections = {}
     if hatchPanelGui then
         hatchPanelGui:Destroy()
         hatchPanelGui = nil

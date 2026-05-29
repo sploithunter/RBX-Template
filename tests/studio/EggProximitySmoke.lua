@@ -119,10 +119,12 @@ function EggProximitySmoke.run(options)
     local success, result = pcall(function()
         local begin = invoke(remote, "BeginEggProximity", {
             eggType = eggType,
+            setupAutoHatchUnlocked = false,
             setupGoldenModeUnlocked = false,
             setupChargedModeUnlocked = false,
             setupFastHatchUnlocked = false,
             setupSkipHatchUnlocked = false,
+            setupMaxHatchCount = 5,
         })
         started = true
 
@@ -156,6 +158,26 @@ function EggProximitySmoke.run(options)
             assert(hatchPanel:FindFirstChild("Max"), "Hatch panel missing Max button")
             assert(hatchPanel:FindFirstChild("Auto"), "Hatch panel missing Auto button")
             assert(hatchPanel:FindFirstChild("Count"), "Hatch panel missing count display")
+            assert(
+                hatchPanel:GetAttribute("MaxEntitledHatchCount") == 5,
+                "Hatch panel did not expose effective max hatch entitlement"
+            )
+            assert(
+                hatchPanel.Count:GetAttribute("MaxEntitledHatchCount") == 5,
+                "Hatch count label did not expose effective max hatch entitlement"
+            )
+            assert(
+                hatchPanel.Max:GetAttribute("MaxEntitledHatchCount") == 5,
+                "Max button did not expose effective max hatch entitlement"
+            )
+            assert(
+                hatchPanel.Auto:GetAttribute("ModeState") == "locked",
+                "Auto button did not expose locked state"
+            )
+            assert(
+                hatchPanel.Auto:GetAttribute("ModeOwned") == false,
+                "Auto button did not expose ownership state"
+            )
             local settings = hatchPanel:FindFirstChild("SettingsDrawer")
             assert(settings, "Hatch panel missing settings drawer")
             local helpText = settings:FindFirstChild("HelpText")

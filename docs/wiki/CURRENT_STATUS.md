@@ -71,6 +71,7 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Studio hatch forcing now uses player `ForcePet`/`ForceVariant` attributes directly before the roll, avoiding the earlier copied-config gotcha where mutating `Locations.getConfig("pets")` did not reliably affect `simulateHatch`.
 - `ConfigLoader` now validates the expanded egg-system hatch contract, including hatch count relationships, debug/history limits, animation capacity, reveal badge field types, shop max-count defaults, and hatch-panel button labels.
 - Egg hatching has a no-mutation simulation path for admin/testing. `EggService:SimulateHatchBatch` rolls the same server pet/variant/luck pipeline and reports costs, counts, auto-delete matches, special reveal counts, and animation metadata without spending currency, granting pets, incrementing stats, or playing client animation. Admin tools expose this through `Admin_RequestHatchSimulation`.
+- The near-egg hatch panel now reads the same effective Max Hatch and Auto Hatch entitlement state that the server uses. Selected hatch count clamps to player/config max entitlement, controls expose `MaxEntitledHatchCount`, and locked Auto is grayed/blocked client-side before the server-authoritative rejection path.
 
 ## Phase 0 Verification
 
@@ -153,6 +154,8 @@ Last checked: 2026-05-27
 - `EggHatchHistorySmoke` passes through Studio MCP. It verifies a deterministic auto-deleted batch hatch is recorded in server history with cost, count, sampled pet result, and auto-delete metadata.
 - `ConfigLoader.spec` passes through Studio MCP in Play mode with `52` passed, `0` failed, and `0` skipped, including the egg-system validator coverage.
 - `EggHatchSimulationSmoke` passes through Studio MCP. It forces a deterministic `7`-egg basic hatch simulation and verifies result counts plus no currency, inventory, or `eggs_hatched` counter mutation.
+- `EggProximitySmoke` passes through Studio MCP with the effective hatch entitlement UI contract. It now asserts a configured `MaxEntitledHatchCount` and locked Auto control state in addition to the near-egg hatch transaction.
+- `EggAutoHatchSmoke` still passes after the entitlement UI change, covering no-currency, no-storage, and too-far stop feedback.
 
 ## Admin/Map Test Verification
 

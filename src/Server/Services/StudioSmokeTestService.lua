@@ -1151,6 +1151,7 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
         "ChargedHatchUnlocked",
         "FastHatchUnlocked",
         "SkipHatchUnlocked",
+        "MaxEggHatchCount",
     }) do
         local value = player:GetAttribute(attributeName)
         originalAttributes[attributeName] = {
@@ -1183,6 +1184,12 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
     end
     if payload.setupSkipHatchUnlocked ~= nil then
         player:SetAttribute("SkipHatchUnlocked", payload.setupSkipHatchUnlocked == true)
+    end
+    if payload.setupMaxHatchCount ~= nil then
+        player:SetAttribute(
+            "MaxEggHatchCount",
+            math.max(1, math.floor(tonumber(payload.setupMaxHatchCount) or 1))
+        )
     end
 
     local maxDistance = eggSystemConfig.proximity.max_distance

@@ -26,11 +26,12 @@ Implemented so far:
 - Studio forced hatch setup is now deterministic. `EggService` reads `ForcePet`/`ForceVariant` player attributes before rolling instead of relying only on mutating a copied config table, so storage/history smokes can force unique or auto-deleted outcomes reliably.
 - `ConfigLoader` now validates the egg-system hatch contract more deeply: requested/default counts must fit inside `hatching.max_count`, animation capacity cannot exceed hatch capacity, debug history limits are positive, reveal badges have valid field types, shop max-count defaults stay within the configured hatch cap, and hatch-panel button labels must exist. `ConfigLoader.spec` covers the valid path plus count, animation, and UI-button failures.
 - `EggService:SimulateHatchBatch` now provides a no-mutation server hatch simulation path for admin/testing. It rolls the same pet/variant/luck pipeline and returns costs, entitlements, option resolution, result samples, pet/variant/rarity counts, special counts, auto-delete matches, and animation metadata without spending currency, granting pets, incrementing stats, or playing client animation. Admin tools expose it and `EggHatchSimulationSmoke` verifies the non-mutation contract.
+- The near-egg hatch panel now reflects effective hatch entitlements before a request is sent. It clamps the selected count to the same max-count source the server resolves from config/player attributes, exposes `MaxEntitledHatchCount` for testing/UI, and grays/blocks Auto when `AutoHatchUnlocked` is false.
 
 Still to build:
 
 - Richer near-egg hatch UI polish and direct Studio visual QA across desktop/mobile layouts.
-- Further hatch setting UI polish and richer player-facing entitlement education beyond the first mode status line and dynamic hover/focus help text.
+- Further hatch setting UI polish and richer player-facing entitlement education beyond the first mode status line, Max/Auto entitlement state, and dynamic hover/focus help text.
 - Richer authored egg animation visual polish beyond the first ViewportFrame clone/scale/reveal-badge pass.
 - Direct Studio visual QA across desktop/mobile layouts for the expanded hatch drawer.
 
@@ -182,6 +183,7 @@ Testing:
 - Studio smoke: authored egg animation payload names/uses the current rock egg.
 - Studio smoke: admin hatch entitlement controls can lock/unlock/reset shop stubs and max hatch count.
 - Studio smoke: no-mutation hatch simulation returns costs/counts/results without changing currency, inventory, or hatch stats.
+- Studio smoke: near-egg panel reports effective max hatch entitlement and locked Auto state before the server request. `EggProximitySmoke` covers this first Max/Auto entitlement UI contract.
 - Regression: existing egg proximity, pet grant, pet index, achievements, and leaderboards still pass.
 
 Documentation:
