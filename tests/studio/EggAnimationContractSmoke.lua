@@ -52,6 +52,7 @@ function EggAnimationContractSmoke.run(options)
                 useAuthoredEggVisual = true,
             },
             hatchOptions = {
+                fastHatch = true,
                 silentHatch = true,
             },
         },
@@ -70,6 +71,7 @@ function EggAnimationContractSmoke.run(options)
                 useAuthoredEggVisual = true,
             },
             hatchOptions = {
+                fastHatch = true,
                 silentHatch = true,
             },
         },
@@ -90,6 +92,12 @@ function EggAnimationContractSmoke.run(options)
     assert(
         initial.layout.eggSize >= layoutConfig.min_egg_size,
         "Animation egg size below configured min"
+    )
+    assert(initial.timing.fastHatch == true, "Fast hatch timing flag missing")
+    assert(initial.timing.silentHatch == true, "Silent hatch timing flag missing")
+    assert(
+        math.abs(initial.timing.speedScale - animationConfig.fast_hatch_speed_scale) < 0.001,
+        "Fast hatch speed scale did not match config"
     )
     assert(specialFrame.specialHatch == true, "Special hatch flag missing")
     assert(specialFrame.rarityId == "exclusive", "Special hatch rarity mismatch")

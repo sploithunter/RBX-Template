@@ -138,6 +138,42 @@ local function getLayoutPolicy()
     }
 end
 
+local function getFastHatchSpeedScale()
+    local scale = tonumber(getAnimationPolicy().fast_hatch_speed_scale)
+    if scale and scale > 0 then
+        return scale
+    end
+    return 0.5
+end
+
+local function resolveAnimationTiming(hatchOptions)
+    hatchOptions = type(hatchOptions) == "table" and hatchOptions or {}
+    local fastHatch = hatchOptions.fastHatch == true
+    local speedScale = fastHatch and getFastHatchSpeedScale() or 1
+    local doStagger = true
+    if hatchingConfig.advanced and hatchingConfig.advanced.batch_reveal_mode == "simultaneous" then
+        doStagger = false
+    end
+
+    return {
+        fastHatch = fastHatch,
+        silentHatch = hatchOptions.silentHatch == true,
+        skipHatch = hatchOptions.skipHatch == true,
+        speedScale = speedScale,
+        preset = hatchingConfig.current_preset,
+        presetSpeedMultiplier = hatchingConfig.helpers.get_speed_multiplier(),
+        shakeDuration = hatchingConfig.helpers.get_adjusted_timing("shake_duration") * speedScale,
+        shakeWaitDuration = hatchingConfig.helpers.get_adjusted_timing("shake_wait_duration")
+            * speedScale,
+        flashDuration = hatchingConfig.helpers.get_adjusted_timing("flash_duration") * speedScale,
+        revealDuration = hatchingConfig.helpers.get_adjusted_timing("reveal_duration") * speedScale,
+        staggerDelay = hatchingConfig.helpers.get_adjusted_timing("stagger_delay") * speedScale,
+        completionWait = hatchingConfig.helpers.get_adjusted_timing("reveal_completion_wait")
+            * speedScale,
+        doStagger = doStagger,
+    }
+end
+
 local function isSpecialEggData(eggData)
     if type(eggData) ~= "table" then
         return false
@@ -1512,6 +1548,22 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
     self._persistentGui:SetAttribute("GridEggSize", gridInfo.eggSize)
     self._persistentGui:SetAttribute("GridPadding", gridInfo.padding)
     self._persistentGui:SetAttribute("GridCompactMode", gridInfo.compactMode)
+    local timingDebug = resolveAnimationTiming(eggsData[1] and eggsData[1].hatchOptions)
+    self._persistentGui:SetAttribute("TimingPreset", timingDebug.preset)
+    self._persistentGui:SetAttribute(
+        "TimingPresetSpeedMultiplier",
+        timingDebug.presetSpeedMultiplier
+    )
+    self._persistentGui:SetAttribute("TimingFastHatch", timingDebug.fastHatch)
+    self._persistentGui:SetAttribute("TimingSilentHatch", timingDebug.silentHatch)
+    self._persistentGui:SetAttribute("TimingSkipHatch", timingDebug.skipHatch)
+    self._persistentGui:SetAttribute("TimingSpeedScale", timingDebug.speedScale)
+    self._persistentGui:SetAttribute("TimingShakeDuration", timingDebug.shakeDuration)
+    self._persistentGui:SetAttribute("TimingFlashDuration", timingDebug.flashDuration)
+    self._persistentGui:SetAttribute("TimingRevealDuration", timingDebug.revealDuration)
+    self._persistentGui:SetAttribute("TimingStaggerDelay", timingDebug.staggerDelay)
+    self._persistentGui:SetAttribute("TimingCompletionWait", timingDebug.completionWait)
+    self._persistentGui:SetAttribute("TimingDoStagger", timingDebug.doStagger)
 
     print(
         "🥚 Phase 2: Starting hatching animation for",
@@ -1592,7 +1644,14 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
     }
 
     task.spawn(function()
-        self:ExecuteHatchingSequence(eggComponents, eggsData, eggFrames, gridInfo, rollSound)
+        self:ExecuteHatchingSequence(
+            eggComponents,
+            eggsData,
+            eggFrames,
+            gridInfo,
+            rollSound,
+            timingDebug
+        )
 
         -- PHASE 4: After animations complete, wait a moment then restore screen
         local resultEnjoymentTime =
@@ -1619,33 +1678,26 @@ function EggHatchingService:ExecuteHatchingSequence(
     eggsData,
     eggFrames,
     gridInfo,
-    rollSound
+    rollSound,
+    timingDebug
 )
     local eggCount = #eggComponents
     local hatchOptions = eggsData[1] and eggsData[1].hatchOptions or {}
-    local silentHatch = hatchOptions.silentHatch == true
-    local speedScale = hatchOptions.fastHatch == true and 0.5 or 1
-
-    -- Get adjusted timings based on current speed preset
-    local shakeDuration = hatchingConfig.helpers.get_adjusted_timing("shake_duration") * speedScale
-    local shakeWaitDuration = hatchingConfig.helpers.get_adjusted_timing("shake_wait_duration")
-        * speedScale
-    local flashDuration = hatchingConfig.helpers.get_adjusted_timing("flash_duration") * speedScale
-    local revealDuration = hatchingConfig.helpers.get_adjusted_timing("reveal_duration")
-        * speedScale
-    local staggerDelay = hatchingConfig.helpers.get_adjusted_timing("stagger_delay") * speedScale
-    local doStagger = true
-    if hatchingConfig.advanced and hatchingConfig.advanced.batch_reveal_mode == "simultaneous" then
-        doStagger = false
-    end
-    local completionWait = hatchingConfig.helpers.get_adjusted_timing("reveal_completion_wait")
-        * speedScale
+    timingDebug = timingDebug or resolveAnimationTiming(hatchOptions)
+    local silentHatch = timingDebug.silentHatch == true
+    local shakeDuration = timingDebug.shakeDuration
+    local shakeWaitDuration = timingDebug.shakeWaitDuration
+    local flashDuration = timingDebug.flashDuration
+    local revealDuration = timingDebug.revealDuration
+    local staggerDelay = timingDebug.staggerDelay
+    local doStagger = timingDebug.doStagger == true
+    local completionWait = timingDebug.completionWait
 
     print(
         "⚡ Using",
-        hatchingConfig.current_preset,
+        timingDebug.preset,
         "speed preset (",
-        hatchingConfig.helpers.get_speed_multiplier(),
+        timingDebug.presetSpeedMultiplier,
         "x)"
     )
     print(
@@ -2245,6 +2297,7 @@ function EggHatchingService:GetActiveAnimationDebugState()
         guiStatus = status,
         frameCount = 0,
         layout = {},
+        timing = {},
         frames = {},
     }
     if self._persistentGui then
@@ -2255,6 +2308,20 @@ function EggHatchingService:GetActiveAnimationDebugState()
             eggSize = self._persistentGui:GetAttribute("GridEggSize"),
             padding = self._persistentGui:GetAttribute("GridPadding"),
             compactMode = self._persistentGui:GetAttribute("GridCompactMode") == true,
+        }
+        state.timing = {
+            preset = self._persistentGui:GetAttribute("TimingPreset"),
+            presetSpeedMultiplier = self._persistentGui:GetAttribute("TimingPresetSpeedMultiplier"),
+            fastHatch = self._persistentGui:GetAttribute("TimingFastHatch") == true,
+            silentHatch = self._persistentGui:GetAttribute("TimingSilentHatch") == true,
+            skipHatch = self._persistentGui:GetAttribute("TimingSkipHatch") == true,
+            speedScale = self._persistentGui:GetAttribute("TimingSpeedScale"),
+            shakeDuration = self._persistentGui:GetAttribute("TimingShakeDuration"),
+            flashDuration = self._persistentGui:GetAttribute("TimingFlashDuration"),
+            revealDuration = self._persistentGui:GetAttribute("TimingRevealDuration"),
+            staggerDelay = self._persistentGui:GetAttribute("TimingStaggerDelay"),
+            completionWait = self._persistentGui:GetAttribute("TimingCompletionWait"),
+            doStagger = self._persistentGui:GetAttribute("TimingDoStagger") == true,
         }
     end
 

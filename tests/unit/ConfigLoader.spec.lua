@@ -926,6 +926,7 @@ return function()
                             max_visible_eggs = 99,
                             use_authored_egg_visual = true,
                             authored_visual_scale = 1.25,
+                            fast_hatch_speed_scale = 0.5,
                             layout = {
                                 padding = 20,
                                 min_egg_size = 100,
@@ -1081,6 +1082,15 @@ return function()
                 local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
                 expect(isValid).to.equal(false)
                 expect(string.find(error, "hatching.animation.max_visible_eggs", 1, true)).to.be.ok()
+            end)
+
+            it("should reject fast hatch animation speed above normal speed", function()
+                local invalidConfig = makeValidEggSystemConfig()
+                invalidConfig.hatching.animation.fast_hatch_speed_scale = 1.5
+
+                local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "hatching.animation.fast_hatch_speed_scale", 1, true)).to.be.ok()
             end)
 
             it("should reject hatch animation layout min size above max size", function()

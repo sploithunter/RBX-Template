@@ -51,6 +51,7 @@ return {
             max_visible_eggs = 99,
             use_authored_egg_visual = true,
             authored_visual_scale = 1.25,
+            fast_hatch_speed_scale = 0.5,
             layout = {
                 padding = 20,
                 min_egg_size = 100,

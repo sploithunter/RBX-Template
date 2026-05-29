@@ -28,6 +28,7 @@ Implemented so far:
 - `EggService:SimulateHatchBatch` now provides a no-mutation server hatch simulation path for admin/testing. It rolls the same pet/variant/luck pipeline and returns costs, entitlements, option resolution, result samples, pet/variant/rarity counts, special counts, auto-delete matches, and animation metadata without spending currency, granting pets, incrementing stats, or playing client animation. Admin tools expose it and `EggHatchSimulationSmoke` verifies the non-mutation contract.
 - The near-egg hatch panel now reflects effective hatch entitlements before a request is sent. It clamps the selected count to the same max-count source the server resolves from config/player attributes, exposes `MaxEntitledHatchCount` for testing/UI, and grays/blocks Auto when `AutoHatchUnlocked` is false.
 - Hatch animation layout and special-result glow are now config-driven. `egg_system.hatching.animation.layout` controls grid padding and min/max egg sizes, `special_glow` controls the special rarity stroke/pulse, `EggHatchingService:GetActiveAnimationDebugState()` exposes the chosen layout/glow metadata, and `EggAnimationContractSmoke` verifies the client contract.
+- Fast Hatch animation speed is now config-driven through `egg_system.hatching.animation.fast_hatch_speed_scale`. The animation debug state exposes resolved timing/options, and `EggAnimationContractSmoke` verifies that Fast/Silent hatch options use the configured scale.
 
 Still to build:
 
@@ -156,6 +157,7 @@ Animation:
 - Include per-result rarity/variant colors and special effects.
 - Ensure animation completion/reentry does not control server correctness; it only controls client presentation.
 - Keep animation presentation choices configurable: grid layout sizes/padding, authored egg scale, reveal badges, special glow, and future special effects should live in config rather than hardcoded UI constants.
+- Fast Hatch speed should remain a config value, not a hardcoded client multiplier; current validation requires it to be positive and no slower than normal speed.
 
 Auto hatch:
 
@@ -187,6 +189,7 @@ Testing:
 - Studio smoke: no-mutation hatch simulation returns costs/counts/results without changing currency, inventory, or hatch stats.
 - Studio smoke: near-egg panel reports effective max hatch entitlement and locked Auto state before the server request. `EggProximitySmoke` covers this first Max/Auto entitlement UI contract.
 - Studio smoke: hatch animation debug state exposes configured grid layout and special glow pulse metadata. `EggAnimationContractSmoke` covers the current client-side contract.
+- Studio smoke: Fast/Silent hatch timing metadata matches config. `EggAnimationContractSmoke` covers the current client-side timing contract.
 - Regression: existing egg proximity, pet grant, pet index, achievements, and leaderboards still pass.
 
 Documentation:

@@ -2429,6 +2429,23 @@ function ConfigLoader:_validateEggSystemConfig(config)
             return ok, err
         end
     end
+    if animation.fast_hatch_speed_scale ~= nil then
+        ok, err = self:_requirePositiveNumber(
+            "egg_system",
+            animation.fast_hatch_speed_scale,
+            "hatching.animation.fast_hatch_speed_scale"
+        )
+        if not ok then
+            return ok, err
+        end
+        if animation.fast_hatch_speed_scale > 1 then
+            return self:_configError(
+                "egg_system",
+                "hatching.animation.fast_hatch_speed_scale",
+                "must be less than or equal to 1"
+            )
+        end
+    end
     local layout = animation.layout or {}
     if type(layout) ~= "table" then
         return self:_configError("egg_system", "hatching.animation.layout", "expected table")
