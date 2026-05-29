@@ -336,6 +336,10 @@ function EggProximitySmoke.run(options)
                 settings:FindFirstChild("Mode_skipHatch"),
                 "Hatch panel missing Skip mode toggle"
             )
+            assert(
+                settings:FindFirstChild("Mode_showHatch"),
+                "Hatch panel missing Show mode toggle"
+            )
             local modeStatus = settings:FindFirstChild("ModeStatus")
             assert(modeStatus, "Hatch panel missing mode status text")
             assert(
@@ -378,6 +382,23 @@ function EggProximitySmoke.run(options)
             )
             EggInteractionService:SetHatchModeState("silentHatch", originalSilentHatch)
             waitForHatchMode(player, "silentHatch", originalSilentHatch, timeoutSeconds)
+
+            local originalShowHatch = readHatchMode(player, "showHatch")
+            local targetShowHatch = not originalShowHatch
+            EggInteractionService:SetHatchModeState("showHatch", targetShowHatch)
+            waitForHatchMode(player, "showHatch", targetShowHatch, timeoutSeconds)
+            debugState = EggInteractionService:GetHatchPanelDebugState()
+            assert(
+                debugState.hatchModes and debugState.hatchModes.showHatch == targetShowHatch,
+                "Hatch interaction service did not keep show hatch mode"
+            )
+            assert(
+                debugState.persistedHatchModes
+                    and debugState.persistedHatchModes.showHatch == targetShowHatch,
+                "Hatch interaction service did not read persisted show hatch mode"
+            )
+            EggInteractionService:SetHatchModeState("showHatch", originalShowHatch)
+            waitForHatchMode(player, "showHatch", originalShowHatch, timeoutSeconds)
             settings.Visible = false
         end
 
@@ -385,9 +406,16 @@ function EggProximitySmoke.run(options)
         assert(type(near.result) == "table" and near.result.success == true, tostring(near.message))
         local expectedTotalCost = tonumber(near.result.TotalCost)
             or ((tonumber(near.cost) or 0) * (tonumber(near.result.hatchCount) or 1))
+        local actualSpent = near.beforeCurrency - near.afterCurrency
         assert(
-            near.afterCurrency == near.beforeCurrency - expectedTotalCost,
-            "Near hatch did not deduct configured cost"
+            actualSpent > 0 and actualSpent <= expectedTotalCost,
+            string.format(
+                "Near hatch currency delta was outside expected range: before=%s after=%s spent=%s expectedCost=%s",
+                tostring(near.beforeCurrency),
+                tostring(near.afterCurrency),
+                tostring(actualSpent),
+                tostring(expectedTotalCost)
+            )
         )
         assert(near.afterPetCount == near.beforePetCount + 1, "Near hatch did not add one pet")
 

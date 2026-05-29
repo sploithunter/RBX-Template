@@ -1089,6 +1089,7 @@ return function()
                                 golden = {
                                     label = "Golden",
                                     option = "goldenMode",
+                                    default_enabled = false,
                                     description = "Costs more and removes Basic rolls.",
                                     locked_description = "Locked.",
                                     active_description = "Active.",
@@ -1206,6 +1207,15 @@ return function()
                 local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
                 expect(isValid).to.equal(false)
                 expect(string.find(error, "ui.hatch_panel.responsive.max_scale", 1, true)).to.be.ok()
+            end)
+
+            it("should reject non-boolean hatch mode defaults", function()
+                local invalidConfig = makeValidEggSystemConfig()
+                invalidConfig.ui.hatch_panel.modes.golden.default_enabled = "yes"
+
+                local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "ui.hatch_panel.modes.golden.default_enabled", 1, true)).to.be.ok()
             end)
 
             it("should validate config-driven enchant roll profiles", function()

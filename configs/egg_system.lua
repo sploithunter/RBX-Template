@@ -196,6 +196,14 @@ return {
                 },
             },
             modes = {
+                show = {
+                    label = "Show",
+                    option = "showHatch",
+                    default_enabled = true,
+                    description = "Shows hatch animations for manual and auto hatches.",
+                    active_description = "Active: hatch animations are shown.",
+                    available_description = "Available: turn on Show to see hatch animations.",
+                },
                 golden = {
                     label = "Golden",
                     option = "goldenMode",

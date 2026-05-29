@@ -314,12 +314,13 @@ function SettingsService:_getHatchModeDefaults()
         if type(cfg) == "table" then
             local optionName = tostring(cfg.option or key)
             if optionName ~= "" then
-                defaults[optionName] = false
+                defaults[optionName] = cfg.default_enabled == true
             end
         end
     end
 
     if next(defaults) == nil then
+        defaults.showHatch = true
         defaults.goldenMode = false
         defaults.chargedMode = false
         defaults.fastHatch = false
@@ -337,7 +338,9 @@ function SettingsService:_sanitizeHatchModeSettings(modes)
     end
 
     for optionName in pairs(sanitized) do
-        sanitized[optionName] = modes[optionName] == true
+        if modes[optionName] ~= nil then
+            sanitized[optionName] = modes[optionName] == true
+        end
     end
     return sanitized
 end

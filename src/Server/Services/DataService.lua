@@ -1643,7 +1643,8 @@ function DataService:_migrateAutoSystemSettings(data)
     for key, cfg in pairs(panelConfig.modes or {}) do
         local optionName = type(cfg) == "table" and tostring(cfg.option or key) or ""
         if optionName ~= "" and autoSystems.hatch.modes[optionName] == nil then
-            autoSystems.hatch.modes[optionName] = false
+            autoSystems.hatch.modes[optionName] = type(cfg) == "table"
+                and cfg.default_enabled == true
             migrations += 1
         elseif optionName ~= "" and type(autoSystems.hatch.modes[optionName]) ~= "boolean" then
             autoSystems.hatch.modes[optionName] = autoSystems.hatch.modes[optionName] == true

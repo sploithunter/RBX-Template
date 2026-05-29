@@ -38,6 +38,7 @@ Implemented so far:
 - Special hatch animation polish now has a config-driven backdrop layer. `egg_system.hatching.animation.special_backdrop` controls a rarity-colored reveal backdrop behind special pets, `ConfigLoader` validates its fields, and `EggAnimationContractSmoke` verifies the visual contract.
 - Egg source unlock requirements now run through the server hatch pipeline. `EggService` checks `egg_sources.<id>.unlock_requirement` for real and simulated hatches, returns `egg_locked` with current/required progress, `ConfigLoader` validates the requirement shape, and `EggUnlockSmoke` verifies locked/unlocked golden egg behavior in Studio.
 - Skip Hatch is now guarded at the animation service boundary too. `EggInteractionService` already avoids calling hatch animation when `skipHatch` is active, and `EggHatchingService` now immediately returns a completed skipped result without enabling the animation GUI or creating frames if a future caller passes `skipHatch`; `EggAnimationContractSmoke` verifies this contract.
+- Show Hatch is now a free, persisted, default-on presentation preference. `egg_system.ui.hatch_panel.modes.show.default_enabled` seeds/migrates `Settings.AutoSystems.hatch.modes.showHatch`; turning it off suppresses hatch animations without needing the paid Skip Hatch entitlement, while Skip Hatch remains a separate hard animation suppressor.
 
 Still to build:
 
@@ -154,7 +155,7 @@ Client UI:
 - Show exact stop reasons: no funds, no storage, too far, locked area, on cooldown, feature locked.
 - Add auto-hatch state UI with visible running/stopped reason.
 - Add auto-delete filter UI backed by existing server settings: rarity, pet family, variant, protected tiers.
-- Add settings for show hatch, skip hatch, silence hatch, and fast hatch once entitlement stubs exist. First-pass persistent mode settings and help text exist; future polish should make locked/unlocked ownership more explicit.
+- Add settings for show hatch, skip hatch, silence hatch, and fast hatch once entitlement stubs exist. First-pass persistent mode settings and help text exist, and Show Hatch now works as a default-on free presentation preference. Future polish should make locked/unlocked ownership more explicit.
 
 Animation:
 

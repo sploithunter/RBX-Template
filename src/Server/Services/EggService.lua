@@ -158,6 +158,7 @@ end
 function EggService:CloneHatchOptions(options)
     options = type(options) == "table" and options or {}
     return {
+        showHatch = options.showHatch ~= false,
         goldenMode = options.goldenMode == true,
         chargedMode = options.chargedMode == true,
         fastHatch = options.fastHatch == true,
@@ -659,6 +660,7 @@ function EggService:ResolveHatchOptions(_player, request, entitlements)
     end
 
     local resolved = {
+        showHatch = options.showHatch ~= false,
         goldenMode = false,
         chargedMode = false,
         fastHatch = options.fastHatch == true and entitlements.fastHatch == true,

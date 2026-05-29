@@ -46,6 +46,7 @@ local autoDeleteState = {
     variants = {},
 }
 local hatchModeState = {
+    showHatch = true,
     goldenMode = false,
     chargedMode = false,
     fastHatch = false,
@@ -922,13 +923,13 @@ function EggInteractionService:CreateModeSettings(parent)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = parent
 
-    local orderedModes = { "golden", "charged", "fast", "skip", "silent" }
+    local orderedModes = { "show", "golden", "charged", "fast", "skip", "silent" }
+    local buttonWidth = #orderedModes > 5 and 58 or 70
+    local buttonGap = #orderedModes > 5 and 62 or 76
     for index, key in ipairs(orderedModes) do
         local cfg = modeConfig[key]
         if cfg then
             local optionName = cfg.option or key
-            local buttonWidth = 70
-            local buttonGap = 76
             local button = self:CreateButton(
                 parent,
                 "Mode_" .. optionName,
@@ -1175,6 +1176,7 @@ end
 
 function EggInteractionService:BuildHatchOptions()
     return {
+        showHatch = hatchModeState.showHatch ~= false,
         goldenMode = hatchModeState.goldenMode == true,
         chargedMode = hatchModeState.chargedMode == true,
         fastHatch = hatchModeState.fastHatch == true,
@@ -1691,7 +1693,11 @@ function EggInteractionService:ShowErrorMessage(errorMessage)
 end
 
 function EggInteractionService:ShowHatchingResults(result)
-    if type(result) == "table" and result.options and result.options.skipHatch == true then
+    if
+        type(result) == "table"
+        and result.options
+        and (result.options.skipHatch == true or result.options.showHatch == false)
+    then
         return
     end
 

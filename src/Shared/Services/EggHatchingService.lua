@@ -149,6 +149,8 @@ end
 local function resolveAnimationTiming(hatchOptions)
     hatchOptions = type(hatchOptions) == "table" and hatchOptions or {}
     local fastHatch = hatchOptions.fastHatch == true
+    local showHatch = hatchOptions.showHatch ~= false
+    local skipHatch = hatchOptions.skipHatch == true or showHatch == false
     local speedScale = fastHatch and getFastHatchSpeedScale() or 1
     local doStagger = true
     if hatchingConfig.advanced and hatchingConfig.advanced.batch_reveal_mode == "simultaneous" then
@@ -156,9 +158,10 @@ local function resolveAnimationTiming(hatchOptions)
     end
 
     return {
+        showHatch = showHatch,
         fastHatch = fastHatch,
         silentHatch = hatchOptions.silentHatch == true,
-        skipHatch = hatchOptions.skipHatch == true,
+        skipHatch = skipHatch,
         speedScale = speedScale,
         preset = hatchingConfig.current_preset,
         presetSpeedMultiplier = hatchingConfig.helpers.get_speed_multiplier(),
@@ -1630,6 +1633,7 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
     )
     self._persistentGui:SetAttribute("TimingFastHatch", timingDebug.fastHatch)
     self._persistentGui:SetAttribute("TimingSilentHatch", timingDebug.silentHatch)
+    self._persistentGui:SetAttribute("TimingShowHatch", timingDebug.showHatch)
     self._persistentGui:SetAttribute("TimingSkipHatch", timingDebug.skipHatch)
     self._persistentGui:SetAttribute("TimingSpeedScale", timingDebug.speedScale)
     self._persistentGui:SetAttribute("TimingShakeDuration", timingDebug.shakeDuration)
@@ -2429,6 +2433,7 @@ function EggHatchingService:GetActiveAnimationDebugState()
         state.timing = {
             preset = self._persistentGui:GetAttribute("TimingPreset"),
             presetSpeedMultiplier = self._persistentGui:GetAttribute("TimingPresetSpeedMultiplier"),
+            showHatch = self._persistentGui:GetAttribute("TimingShowHatch") ~= false,
             fastHatch = self._persistentGui:GetAttribute("TimingFastHatch") == true,
             silentHatch = self._persistentGui:GetAttribute("TimingSilentHatch") == true,
             skipHatch = self._persistentGui:GetAttribute("TimingSkipHatch") == true,

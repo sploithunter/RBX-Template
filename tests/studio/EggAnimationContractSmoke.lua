@@ -167,6 +167,36 @@ function EggAnimationContractSmoke.run(options)
 
     eggHatchingService:TestCleanup()
 
+    local hiddenAnimation = eggHatchingService:StartHatchingAnimation({
+        {
+            eggType = options.eggType or "basic_egg",
+            imageId = "generated_image",
+            petImageId = "generated_image",
+            petType = "colorado",
+            variant = "basic",
+            rarityId = "exclusive",
+            rarityName = "Exclusive",
+            specialHatch = true,
+            autoDeleted = false,
+            animation = {
+                useAuthoredEggVisual = true,
+            },
+            hatchOptions = {
+                showHatch = false,
+            },
+        },
+    })
+    local hiddenState = eggHatchingService:GetActiveAnimationDebugState()
+    assert(hiddenAnimation.skipped == true, "Show Hatch off did not return skipped result")
+    assert(hiddenAnimation.isComplete == true, "Show Hatch off did not complete immediately")
+    assert(hiddenState.skipped == true, "Show Hatch off debug skipped flag missing")
+    assert(hiddenState.timing.showHatch == false, "Show Hatch timing flag missing")
+    assert(hiddenState.timing.skipHatch == true, "Show Hatch off did not suppress animation")
+    assert(hiddenState.guiStatus == "disabled", "Show Hatch off left animation GUI enabled")
+    assert(hiddenState.frameCount == 0, "Show Hatch off created animation frames")
+
+    eggHatchingService:TestCleanup()
+
     return {
         frameCount = initial.frameCount,
         specialBadge = specialFrame.badges.SpecialBadge.text,

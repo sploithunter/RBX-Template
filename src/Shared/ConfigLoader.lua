@@ -3004,6 +3004,13 @@ function ConfigLoader:_validateEggSystemConfig(config)
                 )
             end
         end
+        if mode.default_enabled ~= nil and type(mode.default_enabled) ~= "boolean" then
+            return self:_configError(
+                "egg_system",
+                "ui.hatch_panel.modes." .. modeName .. ".default_enabled",
+                "expected boolean"
+            )
+        end
     end
 
     local help = config.ui.hatch_panel.help or {}
