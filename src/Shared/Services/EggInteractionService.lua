@@ -166,8 +166,17 @@ local function formatStopReason(stopReason)
         entitlement = "hatch limit",
         partial = "partial hatch",
         grant_failed = "grant issue",
+        no_storage = "storage full",
     }
     return labels[stopReason] or tostring(stopReason or "")
+end
+
+local function isTerminalAutoStopReason(stopReason)
+    return stopReason == "currency"
+        or stopReason == "storage"
+        or stopReason == "entitlement"
+        or stopReason == "grant_failed"
+        or stopReason == "partial"
 end
 
 local function getSelectedCostMultiplier()
@@ -776,7 +785,10 @@ function EggInteractionService:ToggleAutoHatch()
     autoHatchEnabled = true
     autoHatchSessionId += 1
     local sessionId = autoHatchSessionId
-    local waitSeconds = eggSystemConfig.cooldowns.purchase_cooldown or 3
+    local hatching = getHatchingConfig()
+    local waitSeconds = tonumber(hatching.auto_loop_delay)
+        or tonumber(eggSystemConfig.cooldowns.purchase_cooldown)
+        or 3
     self:SetPanelStatus("Auto hatch running", false)
     self:UpdateHatchPanel()
 
@@ -888,6 +900,10 @@ function EggInteractionService:HandleEggPurchase(
     hatchRequestInFlight = false
     self:UpdateHatchPanel()
 
+    if autoSessionId ~= nil and autoSessionId ~= autoHatchSessionId then
+        return false
+    end
+
     if success then
         Logger:Info(
             "Server call successful",
@@ -900,6 +916,11 @@ function EggInteractionService:HandleEggPurchase(
             local status = "Hatched " .. tostring(result.hatchCount or 1)
             if result.stopReason then
                 status ..= " - " .. formatStopReason(result.stopReason)
+            end
+            if autoSessionId ~= nil and isTerminalAutoStopReason(result.stopReason) then
+                autoHatchEnabled = false
+                autoHatchSessionId += 1
+                status = "Auto hatch stopped: " .. formatStopReason(result.stopReason)
             end
             self:SetPanelStatus(status, false)
             return true

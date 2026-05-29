@@ -116,6 +116,38 @@ function EggBatchHatchSmoke.run(options)
         )
 
         task.wait((batch.cooldown or 0) + 0.25)
+        invoke(remote, "RestoreEggProximity", {})
+        started = false
+        begin = invoke(remote, "BeginEggProximity", {
+            eggType = eggType,
+            setupHatchCount = 1,
+            setupAutoHatchUnlocked = false,
+        })
+        started = true
+        invoke(remote, "MoveEggProximity", { placement = "near" })
+        task.wait(0.2)
+
+        local lockedAuto = invoke(remote, "HatchEggProximity", {
+            requestedCount = 1,
+            purchaseType = "Auto",
+            autoSessionId = 1001,
+        })
+        assert(
+            type(lockedAuto.result) == "table" and lockedAuto.result.success == false,
+            "Locked auto hatch should fail"
+        )
+        assert(lockedAuto.result.code == "feature_locked", "Locked auto hatch code mismatch")
+        assert(
+            lockedAuto.result.details and lockedAuto.result.details.autoSessionId == 1001,
+            "Locked auto hatch response lost session id"
+        )
+        assert(
+            lockedAuto.afterCurrency == lockedAuto.beforeCurrency,
+            "Locked auto changed currency"
+        )
+        assert(lockedAuto.afterPetCount == lockedAuto.beforePetCount, "Locked auto changed pets")
+
+        task.wait((lockedAuto.cooldown or 0) + 0.25)
         local partialFundsCount = math.max(1, requestedCount - 2)
         invoke(remote, "RestoreEggProximity", {})
         started = false

@@ -9,9 +9,10 @@ Implemented so far:
 - Per-player hatch locks now cover the server transaction, blocking rapid repeat requests that previously created invisible hatches.
 - Batch responses include legacy `Pet`/`Type`/`Power` fields plus `requestedCount`, `hatchCount`, `results`, `stopReason`, `entitlements`, and authored egg animation metadata.
 - Client hatch controls now support `E` single hatch, `R` max hatch, and `T` auto hatch through the same server-authoritative endpoint.
+- Auto hatch now uses a config-driven loop delay, server-validated auto hatch entitlement, and session ids so stale stopped sessions do not drive client presentation.
 - `EggInteractionService` now owns a config-driven hatch panel with selected-count controls, Hatch/Max/Auto buttons, stop/status messaging, and a compact auto-delete filter drawer for rarity, pet-family, and variant filters backed by the existing server filter event.
 - Hatch mode toggles now flow through the same request contract: Golden mode is server-entitlement checked, gives locked-mode feedback, applies the configured cost multiplier, and excludes basic variants; Fast/Silent/Skip are returned as presentation options for hatch animation.
-- `EggBatchHatchSmoke` covers multi-hatch cost/count behavior, rapid-repeat rejection, partial hatching when funds or storage only cover a smaller count, locked Golden mode rejection, and Golden mode cost/no-basic behavior.
+- `EggBatchHatchSmoke` covers multi-hatch cost/count behavior, rapid-repeat rejection, partial hatching when funds or storage only cover a smaller count, locked Auto/Golden mode rejection, auto session id echo on errors, and Golden mode cost/no-basic behavior.
 - `EggProximitySmoke` also verifies the hatch panel appears near eggs with its expected controls.
 - Authored egg animation ViewportFrames use config-driven scale: a global default in `egg_system.hatching.animation.authored_visual_scale` plus per-egg overrides such as `pets.egg_sources.basic_egg.animation.authored_visual_scale`.
 

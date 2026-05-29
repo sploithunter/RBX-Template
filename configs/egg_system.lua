@@ -35,6 +35,7 @@ return {
         allow_partial = true,
         transaction_lock_seconds = 0.35,
         failed_request_lock_seconds = 0.2,
+        auto_loop_delay = 3,
         default_max_entitled_count = 99,
         compat_purchase_types = {
             Single = 1,

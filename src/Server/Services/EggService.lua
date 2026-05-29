@@ -123,12 +123,17 @@ function EggService:FormatError(request, message, code, details)
         return "Error", message
     end
 
+    details = details or {}
+    if request and request.autoSessionId ~= nil and details.autoSessionId == nil then
+        details.autoSessionId = request.autoSessionId
+    end
+
     return {
         ok = false,
         success = false,
         code = code or "error",
         message = message,
-        details = details or {},
+        details = details,
     }
 end
 
@@ -235,17 +240,20 @@ function EggService:ResolveHatchEntitlements(player)
         or self:GetMaxHatchCount()
     local attributeMax = tonumber(player:GetAttribute("MaxEggHatchCount"))
     local maxHatchCount = attributeMax or defaultMax
+    local function resolveBooleanEntitlement(attributeName, stubConfig)
+        local attributeValue = player:GetAttribute(attributeName)
+        if attributeValue ~= nil then
+            return attributeValue == true
+        end
+        return stubConfig and stubConfig.owned_by_default == true
+    end
 
     return {
         maxHatchCount = math.clamp(math.floor(maxHatchCount), 1, self:GetMaxHatchCount()),
-        autoHatch = player:GetAttribute("AutoHatchUnlocked") == true
-            or (shopStubs.auto_hatch and shopStubs.auto_hatch.owned_by_default == true),
-        fastHatch = player:GetAttribute("FastHatchUnlocked") == true
-            or (shopStubs.fast_hatch and shopStubs.fast_hatch.owned_by_default == true),
-        skipHatch = player:GetAttribute("SkipHatchUnlocked") == true
-            or (shopStubs.skip_hatch and shopStubs.skip_hatch.owned_by_default == true),
-        goldenMode = player:GetAttribute("GoldenHatchUnlocked") == true
-            or (shopStubs.golden_mode and shopStubs.golden_mode.owned_by_default == true),
+        autoHatch = resolveBooleanEntitlement("AutoHatchUnlocked", shopStubs.auto_hatch),
+        fastHatch = resolveBooleanEntitlement("FastHatchUnlocked", shopStubs.fast_hatch),
+        skipHatch = resolveBooleanEntitlement("SkipHatchUnlocked", shopStubs.skip_hatch),
+        goldenMode = resolveBooleanEntitlement("GoldenHatchUnlocked", shopStubs.golden_mode),
     }
 end
 
@@ -254,6 +262,14 @@ function EggService:ResolveHatchOptions(player, request, entitlements)
     local hatching = self:GetHatchingConfig()
     local shopStubs = hatching.shop_stubs or {}
     local goldenStub = shopStubs.golden_mode or {}
+
+    if
+        (request.purchaseType == "Auto" or request.autoSessionId ~= nil)
+        and entitlements.autoHatch ~= true
+    then
+        return nil, "Auto hatch is locked", "feature_locked"
+    end
+
     local resolved = {
         goldenMode = false,
         fastHatch = options.fastHatch == true and entitlements.fastHatch == true,
@@ -680,6 +696,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         stopReason = stopReason,
         entitlements = entitlements,
         options = hatchOptions,
+        autoSessionId = request.autoSessionId,
         animation = self:GetEggAnimationPayload(request.eggType, eggData),
     }
 

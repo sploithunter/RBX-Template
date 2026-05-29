@@ -2358,6 +2358,14 @@ function ConfigLoader:_validateEggSystemConfig(config)
     if not ok then
         return ok, err
     end
+    ok, err = self:_requirePositiveNumber(
+        "egg_system",
+        config.hatching.auto_loop_delay or 1,
+        "hatching.auto_loop_delay"
+    )
+    if not ok then
+        return ok, err
+    end
     if config.hatching.max_count > 99 then
         return self:_configError("egg_system", "hatching.max_count", "must be 99 or lower")
     end

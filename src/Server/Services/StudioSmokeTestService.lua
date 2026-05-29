@@ -1125,6 +1125,7 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
     end
     local originalAttributes = {}
     for _, attributeName in ipairs({
+        "AutoHatchUnlocked",
         "GoldenHatchUnlocked",
         "FastHatchUnlocked",
         "SkipHatchUnlocked",
@@ -1134,6 +1135,9 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
             hadValue = value ~= nil,
             value = value,
         }
+    end
+    if payload.setupAutoHatchUnlocked ~= nil then
+        player:SetAttribute("AutoHatchUnlocked", payload.setupAutoHatchUnlocked == true)
     end
     if payload.setupGoldenModeUnlocked ~= nil then
         player:SetAttribute("GoldenHatchUnlocked", payload.setupGoldenModeUnlocked == true)
@@ -1210,12 +1214,18 @@ function StudioSmokeTestService:_hatchEggProximity(player, payload)
     local beforePetCount = countPets(data.Inventory and data.Inventory.pets)
     local hatchResult, hatchMessage
     local requestedCount = math.max(1, math.floor(tonumber(payload.requestedCount) or 1))
-    if payload.batch == true or requestedCount ~= 1 then
+    if
+        payload.batch == true
+        or requestedCount ~= 1
+        or payload.purchaseType == "Auto"
+        or payload.autoSessionId ~= nil
+    then
         hatchResult, hatchMessage = EggService:HandleEggPurchase(player, {
             eggType = session.eggType,
             requestedCount = requestedCount,
             purchaseType = payload.purchaseType or "SmokeBatch",
             options = payload.options or payload.hatchOptions or {},
+            autoSessionId = payload.autoSessionId,
         })
     else
         if payload.options or payload.hatchOptions then
