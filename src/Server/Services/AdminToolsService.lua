@@ -60,6 +60,10 @@ function AdminToolsService:Init()
         self:_handleHatchHistory(player, data)
     end)
 
+    Signals.Admin_RequestHatchSimulation.OnServerEvent:Connect(function(player, data)
+        self:_handleHatchSimulation(player, data)
+    end)
+
     Signals.Admin_EventCommand.OnServerEvent:Connect(function(player, data)
         self:_handleEventCommand(player, data)
     end)
@@ -419,6 +423,45 @@ function AdminToolsService:_handleHatchHistory(adminPlayer, data)
             targetPlayer.Name
         ),
         hatchHistory = history,
+        snapshot = self:_buildSnapshot(targetPlayer),
+    })
+end
+
+function AdminToolsService:_handleHatchSimulation(adminPlayer, data)
+    local targetPlayer, errorMessage = self:_resolveTarget(adminPlayer, "viewDebugInfo", data)
+    if not targetPlayer then
+        self:_sendResult(adminPlayer, {
+            kind = "hatch_simulation",
+            success = false,
+            message = errorMessage,
+        })
+        return
+    end
+
+    data = type(data) == "table" and data or {}
+    local EggService = require(ServerScriptService.Server.Services.EggService)
+    local simulation = EggService:SimulateHatchBatch(targetPlayer, {
+        eggType = data.eggType or "basic_egg",
+        requestedCount = data.requestedCount or data.count or 25,
+        purchaseType = "AdminSimulation",
+        options = type(data.options) == "table" and data.options or {},
+    })
+
+    local success = type(simulation) == "table" and simulation.ok == true
+    self:_sendResult(adminPlayer, {
+        kind = "hatch_simulation",
+        success = success,
+        message = success
+                and string.format(
+                    "Simulated %d/%d %s hatch%s for %s without spending currency",
+                    simulation.hatchCount or 0,
+                    simulation.requestedCount or 0,
+                    tostring(simulation.eggType or simulation.EggType or "egg"),
+                    (simulation.hatchCount or 0) == 1 and "" or "es",
+                    targetPlayer.Name
+                )
+            or (simulation and simulation.message or "Hatch simulation failed"),
+        simulation = simulation,
         snapshot = self:_buildSnapshot(targetPlayer),
     })
 end

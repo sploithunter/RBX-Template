@@ -161,6 +161,8 @@ function StudioSmokeTestService:_handleRequest(player, action, payload)
         return self:_restoreEggProximity(player)
     elseif action == "GetEggHatchHistory" then
         return self:_getEggHatchHistory(player, payload)
+    elseif action == "SimulateEggHatch" then
+        return self:_simulateEggHatch(player, payload)
     elseif action == "BeginTravelSmoke" then
         return self:_beginTravelSmoke(player, payload)
     elseif action == "UseTravelSmoke" then
@@ -1238,6 +1240,72 @@ function StudioSmokeTestService:_getEggHatchHistory(player, payload)
     return {
         ok = true,
         history = EggService:GetHatchHistory(player, payload and payload.limit or nil),
+    }
+end
+
+function StudioSmokeTestService:_simulateEggHatch(player, payload)
+    payload = type(payload) == "table" and payload or {}
+    local eggType = payload.eggType or "basic_egg"
+    local petsConfig = Locations.getConfig("pets")
+    local eggData = petsConfig.egg_sources[eggType]
+    if not eggData then
+        return {
+            ok = false,
+            error = "Unknown egg type: " .. tostring(eggType),
+        }
+    end
+
+    local data = dataService:GetData(player)
+    if not data or not data.Inventory then
+        return {
+            ok = false,
+            error = "Player data not loaded",
+        }
+    end
+
+    local oldForcePet = player:GetAttribute("ForcePet")
+    local oldForceVariant = player:GetAttribute("ForceVariant")
+    if payload.forcePet ~= nil then
+        player:SetAttribute("ForcePet", payload.forcePet)
+    end
+    if payload.forceVariant ~= nil then
+        player:SetAttribute("ForceVariant", payload.forceVariant)
+    end
+
+    local beforeCurrency = dataService:GetCurrency(player, eggData.currency)
+    local beforePetCount = countPets(data.Inventory and data.Inventory.pets)
+    local beforeEggsHatched = dataService:GetCounter(player, "eggs_hatched")
+    local EggService = require(ServerScriptService.Server.Services.EggService)
+    local ok, simulation = pcall(function()
+        return EggService:SimulateHatchBatch(player, {
+            eggType = eggType,
+            requestedCount = payload.requestedCount or 25,
+            purchaseType = "SmokeSimulation",
+            options = payload.options or {},
+        })
+    end)
+
+    player:SetAttribute("ForcePet", oldForcePet)
+    player:SetAttribute("ForceVariant", oldForceVariant)
+
+    if not ok then
+        return {
+            ok = false,
+            error = tostring(simulation),
+        }
+    end
+
+    local afterData = dataService:GetData(player)
+    return {
+        ok = true,
+        simulation = simulation,
+        beforeCurrency = beforeCurrency,
+        afterCurrency = dataService:GetCurrency(player, eggData.currency),
+        beforePetCount = beforePetCount,
+        afterPetCount = countPets(afterData.Inventory and afterData.Inventory.pets),
+        beforeEggsHatched = beforeEggsHatched,
+        afterEggsHatched = dataService:GetCounter(player, "eggs_hatched"),
+        currency = eggData.currency,
     }
 end
 

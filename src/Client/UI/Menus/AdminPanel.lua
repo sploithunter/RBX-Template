@@ -206,6 +206,7 @@ local TEST_CATEGORIES = {
             { name = "🥚 Toggle Charged Hatch", action = "hatch_entitlement_toggle_charged" },
             { name = "🥚 Set Max Hatch 99", action = "hatch_entitlement_max_99" },
             { name = "🥚 Recent Hatch History", action = "hatch_history_recent" },
+            { name = "🥚 Simulate 25 Basic Egg", action = "hatch_simulation_basic_25" },
         },
         customInputs = {
             {
@@ -775,6 +776,11 @@ function AdminPanel:_executeTestAction(action, _testName)
         self:_executeHatchEntitlementAction(action)
     elseif action == "hatch_history_recent" then
         self:_requestHatchHistory()
+    elseif action == "hatch_simulation_basic_25" then
+        self:_requestHatchSimulation({
+            eggType = "basic_egg",
+            requestedCount = 25,
+        })
 
     -- Effects actions
     elseif action == "run_diagnostics" then
@@ -1527,6 +1533,23 @@ function AdminPanel:_requestHatchHistory()
     self:_showAdminResult("Hatch history requested", true)
 end
 
+function AdminPanel:_requestHatchSimulation(payload)
+    Signals.Admin_RequestHatchSimulation:FireServer(self:_getAdminActionData(payload or {
+        eggType = "basic_egg",
+        requestedCount = 25,
+    }))
+    self:_showAdminResult("Hatch simulation requested", true)
+end
+
+function AdminPanel:_formatCountMap(counts)
+    local parts = {}
+    for key, count in pairs(counts or {}) do
+        table.insert(parts, tostring(key) .. "=" .. tostring(count))
+    end
+    table.sort(parts)
+    return #parts > 0 and table.concat(parts, ", ") or "none"
+end
+
 function AdminPanel:_formatSnapshot(snapshot)
     local currencies = snapshot.currencies or {}
     local save = snapshot.save or {}
@@ -1623,6 +1646,22 @@ function AdminPanel:_handleAdminToolResult(result)
             )
         end
         message ..= "\nRecent hatches: " .. (#lines > 0 and table.concat(lines, "\n") or "none")
+    elseif result.kind == "hatch_simulation" and result.simulation then
+        local simulation = result.simulation
+        local counts = simulation.counts or {}
+        message ..= string.format(
+            "\nSimulation: requested=%s hatch=%s totalCost=%s %s stop=%s autoDel=%s special=%s",
+            tostring(simulation.requestedCount or 0),
+            tostring(simulation.hatchCount or 0),
+            tostring(simulation.totalCost or simulation.TotalCost or 0),
+            tostring(simulation.currency or simulation.Currency or ""),
+            tostring(simulation.stopReason or "-"),
+            tostring(simulation.autoDeletedCount or 0),
+            tostring(simulation.specialHatchCount or 0)
+        )
+        message ..= "\nPets: " .. self:_formatCountMap(counts.pets)
+        message ..= "\nVariants: " .. self:_formatCountMap(counts.variants)
+        message ..= "\nRarities: " .. self:_formatCountMap(counts.rarities)
     end
 
     self:_showAdminResult(message, result.success ~= false)

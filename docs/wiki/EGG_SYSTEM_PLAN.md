@@ -25,6 +25,7 @@ Implemented so far:
 - `EggService` now keeps a bounded, config-sized recent hatch history for each player. The history records successes and rejected hatch requests with requested count, actual hatch count, cost, stop reason, options, entitlements, sampled results, auto-delete counts, special counts, and authored animation metadata. Admin tools can request this snapshot, and `EggHatchHistorySmoke` verifies the server debug contract.
 - Studio forced hatch setup is now deterministic. `EggService` reads `ForcePet`/`ForceVariant` player attributes before rolling instead of relying only on mutating a copied config table, so storage/history smokes can force unique or auto-deleted outcomes reliably.
 - `ConfigLoader` now validates the egg-system hatch contract more deeply: requested/default counts must fit inside `hatching.max_count`, animation capacity cannot exceed hatch capacity, debug history limits are positive, reveal badges have valid field types, shop max-count defaults stay within the configured hatch cap, and hatch-panel button labels must exist. `ConfigLoader.spec` covers the valid path plus count, animation, and UI-button failures.
+- `EggService:SimulateHatchBatch` now provides a no-mutation server hatch simulation path for admin/testing. It rolls the same pet/variant/luck pipeline and returns costs, entitlements, option resolution, result samples, pet/variant/rarity counts, special counts, auto-delete matches, and animation metadata without spending currency, granting pets, incrementing stats, or playing client animation. Admin tools expose it and `EggHatchSimulationSmoke` verifies the non-mutation contract.
 
 Still to build:
 
@@ -118,7 +119,7 @@ Server pipeline:
 - Apply auto-delete before inventory write, preserving protected rarity rules.
 - Increment `eggs_hatched` by actual hatch count.
 - Return per-result metadata for rarity, variant, unique id, serial, auto-delete status, and display names.
-- Add admin/server utility to simulate hatch batches without client animation.
+- Add admin/server utility to simulate hatch batches without client animation. First-pass `EggService:SimulateHatchBatch`, admin panel button, and Studio smoke now exist.
 
 Config:
 
@@ -180,6 +181,7 @@ Testing:
 - Studio smoke: auto hatch stops on no funds/storage/too far.
 - Studio smoke: authored egg animation payload names/uses the current rock egg.
 - Studio smoke: admin hatch entitlement controls can lock/unlock/reset shop stubs and max hatch count.
+- Studio smoke: no-mutation hatch simulation returns costs/counts/results without changing currency, inventory, or hatch stats.
 - Regression: existing egg proximity, pet grant, pet index, achievements, and leaderboards still pass.
 
 Documentation:

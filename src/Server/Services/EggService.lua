@@ -253,6 +253,144 @@ function EggService:ClearHatchHistory(player)
     end
 end
 
+function EggService:AddSimulationCount(bucket, key, amount)
+    key = tostring(key or "")
+    if key == "" then
+        key = "unknown"
+    end
+    bucket[key] = (bucket[key] or 0) + (amount or 1)
+end
+
+function EggService:SimulateHatchBatch(player, rawRequest)
+    rawRequest = type(rawRequest) == "table" and rawRequest or {}
+    local request = self:NormalizeHatchRequest({
+        eggType = rawRequest.eggType or rawRequest.eggId or "basic_egg",
+        requestedCount = rawRequest.requestedCount or rawRequest.count or rawRequest.quantity or 1,
+        purchaseType = rawRequest.purchaseType or "Simulation",
+        options = rawRequest.options or {},
+        legacy = false,
+    })
+
+    local eggData = petConfig.egg_sources[request.eggType]
+    if not eggData then
+        return self:FormatError(request, "Invalid egg type", "invalid_egg")
+    end
+
+    local entitlements = self:ResolveHatchEntitlements(player)
+    local hatchOptions, optionMessage, optionCode, optionDetails =
+        self:ResolveHatchOptions(player, request, entitlements)
+    if not hatchOptions then
+        return self:FormatError(
+            request,
+            optionMessage or "Hatch mode locked",
+            optionCode or "feature_locked",
+            optionDetails
+        )
+    end
+
+    local eggCost = (petConfig.getEggCost and petConfig.getEggCost(request.eggType)) or eggData.cost
+    eggCost = math.max(0, tonumber(eggCost) or 0)
+    eggCost = math.floor((eggCost * (hatchOptions.costMultiplier or 1)) + 0.5)
+
+    local hatchCount = math.min(request.requestedCount, entitlements.maxHatchCount)
+    local playerData = self:BuildPlayerHatchData(player, request.eggType, eggData, hatchOptions)
+    playerData.hatchOptions = hatchOptions
+
+    local results = {}
+    local counts = {
+        pets = {},
+        variants = {},
+        rarities = {},
+        autoDeleteReasons = {},
+    }
+    local autoDeletedCount = 0
+    local specialHatchCount = 0
+    for _ = 1, hatchCount do
+        local hatchResult = self:GetForcedHatchOutcome(player, request.eggType)
+            or petConfig.simulateHatch(request.eggType, playerData)
+        if not hatchResult then
+            return self:FormatError(request, "Hatching failed", "hatch_failed")
+        end
+
+        local autoDeleted = false
+        local autoDeleteReason = nil
+        if self._autoTargetService and self._autoTargetService.ShouldAutoDeleteHatch then
+            autoDeleted, autoDeleteReason =
+                self._autoTargetService:ShouldAutoDeleteHatch(player, hatchResult)
+        end
+        if autoDeleted then
+            autoDeletedCount += 1
+            self:AddSimulationCount(counts.autoDeleteReasons, autoDeleteReason or "matched", 1)
+        end
+
+        local rarityId = hatchResult.petData and hatchResult.petData.rarity_id or nil
+        local rarityName = hatchResult.petData
+                and hatchResult.petData.rarity
+                and hatchResult.petData.rarity.name
+            or rarityId
+        local specialHatch = self:IsSpecialRevealOutcome(hatchResult)
+        if specialHatch then
+            specialHatchCount += 1
+        end
+
+        self:AddSimulationCount(counts.pets, hatchResult.pet, 1)
+        self:AddSimulationCount(counts.variants, hatchResult.variant or "basic", 1)
+        self:AddSimulationCount(counts.rarities, rarityId or "unknown", 1)
+
+        table.insert(results, {
+            Pet = hatchResult.pet,
+            Type = hatchResult.variant,
+            Power = hatchResult.petData and hatchResult.petData.power or 0,
+            RarityId = rarityId,
+            RarityName = rarityName,
+            SpecialHatch = specialHatch,
+            FinalGoldenChance = hatchResult.finalGoldenChance,
+            FinalRainbowChance = hatchResult.finalRainbowChance,
+            LuckMultiplier = hatchResult.luckMultiplier,
+            EggType = request.eggType,
+            Cost = eggCost,
+            AutoDeleted = autoDeleted,
+            AutoDeleteReason = autoDeleteReason,
+            pet = hatchResult.pet,
+            variant = hatchResult.variant,
+            power = hatchResult.petData and hatchResult.petData.power or 0,
+            rarityId = rarityId,
+            rarityName = rarityName,
+            specialHatch = specialHatch,
+            autoDeleted = autoDeleted,
+            autoDeleteReason = autoDeleteReason,
+        })
+    end
+
+    local animationPayload = self:GetEggAnimationPayload(request.eggType, eggData)
+    animationPayload.specialReveal = specialHatchCount > 0
+    animationPayload.specialRevealCount = specialHatchCount
+
+    return {
+        ok = true,
+        success = true,
+        simulated = true,
+        EggType = request.eggType,
+        eggType = request.eggType,
+        requestedCount = request.requestedCount,
+        hatchCount = hatchCount,
+        stopReason = hatchCount < request.requestedCount and "entitlement" or nil,
+        Cost = eggCost,
+        costEach = eggCost,
+        TotalCost = eggCost * hatchCount,
+        totalCost = eggCost * hatchCount,
+        Currency = eggData.currency,
+        currency = eggData.currency,
+        options = hatchOptions,
+        entitlements = entitlements,
+        results = results,
+        counts = counts,
+        autoDeletedCount = autoDeletedCount,
+        specialHatchCount = specialHatchCount,
+        animation = animationPayload,
+    }
+end
+
 function EggService:GetRequestedCountForPurchaseType(purchaseType)
     local hatching = self:GetHatchingConfig()
     local compat = hatching.compat_purchase_types or {}
