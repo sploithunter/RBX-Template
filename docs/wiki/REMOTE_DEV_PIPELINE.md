@@ -76,11 +76,13 @@ UI rendered / the player is where expected" but **state read back through the
 CommandBus is the source of truth** for pass/fail. Do not gate a test purely on
 a screenshot.
 
-### G6 — Player control vs. automated movement (soft, pending verification)
+### G6 — Player control vs. automated movement (mitigated, pending live verify)
 In play-solo the player's client control module can fight server `MoveTo`.
-`AutomationService:NavigateTo` mitigates with MoveTo re-issue + stall detection;
-the robust fix (client-side control disable, or an NPC proxy) needs live Studio
-verification. Not a hard limit — an open implementation item.
+`AutomationService:NavigateTo` now disables the player's controls for the
+duration via the `AutomationControl` RemoteEvent + the client
+`AutomationControlBridge` (Studio-only), always re-enabling afterward
+(pcall-wrapped), and still re-issues MoveTo + detects stalls as a backstop. The
+control-disable path needs one live Studio confirmation. Not a hard limit.
 
 ## One-time setup (human)
 

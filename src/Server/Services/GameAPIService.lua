@@ -39,6 +39,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local CommandBus = require(ReplicatedStorage.Shared.API.CommandBus)
+local Validators = require(ReplicatedStorage.Shared.API.Validators)
 
 local GameAPIService = {}
 GameAPIService.__index = GameAPIService
@@ -135,21 +136,19 @@ function GameAPIService:_setupNetworkTransport()
 end
 
 --[[
-    Register the template's command set. These few are illustrative adapters
-    showing the shape; the full migration registers one command per existing
-    action (egg hatch, zone travel, inventory ops, etc.).
+    Register the template's command set. Handlers are thin adapters that resolve
+    existing services from the locator and delegate to their public methods; arg
+    validation uses the shared Validators module. Reads return { ok = true, ... };
+    mutations pass the service's own { ok, reason } envelope through as result.
 ]]
 function GameAPIService:_registerCommands()
     local bus = self._bus
 
-    -- Read-only: quote an upgrade's next-level cost.
+    -- ECONOMY -------------------------------------------------------------
     bus:register("economy.getUpgradeCost", {
         description = "Return the cost to take an upgrade to its next level.",
         validate = function(args)
-            if type(args.upgradeId) ~= "string" then
-                return false, "upgradeId must be a string"
-            end
-            return true
+            return Validators.fields(args, { upgradeId = "string" })
         end,
         handler = function(context, args)
             local upgrades = self:_service("UpgradeService")
@@ -164,15 +163,10 @@ function GameAPIService:_registerCommands()
         end,
     })
 
-    -- Mutating, server-authoritative: purchase an upgrade. Delegates straight to
-    -- the existing service method, whose envelope becomes the bus result.
     bus:register("economy.purchaseUpgrade", {
         description = "Purchase the next level of a permanent upgrade.",
         validate = function(args)
-            if type(args.upgradeId) ~= "string" then
-                return false, "upgradeId must be a string"
-            end
-            return true
+            return Validators.fields(args, { upgradeId = "string" })
         end,
         handler = function(context, args)
             local upgrades = self:_service("UpgradeService")
@@ -183,7 +177,156 @@ function GameAPIService:_registerCommands()
         end,
     })
 
-    -- Introspection: list available commands (handy for an automation driver).
+    -- ZONES ---------------------------------------------------------------
+    bus:register("zone.getUnlocked", {
+        description = "List the zones the player has unlocked.",
+        handler = function(context)
+            local zone = self:_service("ZoneService")
+            if not zone then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, zones = zone:GetUnlockedZones(context.player) }
+        end,
+    })
+
+    bus:register("zone.isUnlocked", {
+        description = "Whether a given zone is unlocked for the player.",
+        validate = function(args)
+            return Validators.fields(args, { zoneId = "string" })
+        end,
+        handler = function(context, args)
+            local zone = self:_service("ZoneService")
+            if not zone then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, unlocked = zone:IsZoneUnlocked(context.player, args.zoneId) }
+        end,
+    })
+
+    bus:register("zone.getUnlockRequirement", {
+        description = "Return the unlock requirement payload for a zone.",
+        validate = function(args)
+            return Validators.fields(args, { zoneId = "string" })
+        end,
+        handler = function(context, args)
+            local zone = self:_service("ZoneService")
+            if not zone then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return {
+                ok = true,
+                requirement = zone:GetUnlockRequirement(context.player, args.zoneId),
+            }
+        end,
+    })
+
+    bus:register("zone.unlock", {
+        description = "Attempt to unlock a zone (server-authoritative).",
+        validate = function(args)
+            return Validators.fields(args, { zoneId = "string" })
+        end,
+        handler = function(context, args)
+            local zone = self:_service("ZoneService")
+            if not zone then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return zone:UnlockZone(context.player, args.zoneId)
+        end,
+    })
+
+    bus:register("zone.travel", {
+        description = "Travel the player to a target zone (server-authoritative).",
+        validate = function(args)
+            return Validators.fields(args, { zoneId = "string" })
+        end,
+        handler = function(context, args)
+            local zone = self:_service("ZoneService")
+            if not zone then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return zone:TravelToZone(context.player, args.zoneId)
+        end,
+    })
+
+    -- EGGS (read / no-mutation) ------------------------------------------
+    bus:register("egg.getMaxHatchCount", {
+        description = "The configured maximum hatch count (1..99).",
+        handler = function()
+            local egg = self:_service("EggService")
+            if not egg then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, maxHatch = egg:GetMaxHatchCount() }
+        end,
+    })
+
+    bus:register("egg.simulateHatch", {
+        description = "Preview hatch odds/cost for a request WITHOUT mutating state.",
+        validate = function(args)
+            return Validators.fields(args, {
+                eggType = "string",
+                count = { type = "int", min = 1, max = 99, optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local egg = self:_service("EggService")
+            if not egg then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, simulation = egg:SimulateHatchBatch(context.player, args) }
+        end,
+    })
+
+    bus:register("egg.getHatchHistory", {
+        description = "Recent hatch history for the player.",
+        validate = function(args)
+            return Validators.fields(args, {
+                limit = { type = "int", min = 1, max = 200, optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local egg = self:_service("EggService")
+            if not egg then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, history = egg:GetHatchHistory(context.player, args.limit) }
+        end,
+    })
+
+    -- INVENTORY (read) ---------------------------------------------------
+    bus:register("inventory.get", {
+        description = "Return the player's items in a bucket.",
+        validate = function(args)
+            return Validators.fields(args, { bucket = "string" })
+        end,
+        handler = function(context, args)
+            local inventory = self:_service("InventoryService")
+            if not inventory then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, items = inventory:GetInventory(context.player, args.bucket) }
+        end,
+    })
+
+    bus:register("inventory.slots", {
+        description = "Return used/total slot counts for a bucket.",
+        validate = function(args)
+            return Validators.fields(args, { bucket = "string" })
+        end,
+        handler = function(context, args)
+            local inventory = self:_service("InventoryService")
+            if not inventory then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return {
+                ok = true,
+                used = inventory:GetUsedSlots(context.player, args.bucket),
+                total = inventory:GetTotalSlots(context.player, args.bucket),
+            }
+        end,
+    })
+
+    -- SYSTEM --------------------------------------------------------------
     bus:register("system.listCommands", {
         description = "List every command the bus exposes to this caller.",
         handler = function(context)

@@ -40,6 +40,7 @@ AutomationService.__index = AutomationService
 local DEFAULT_ARRIVE_THRESHOLD = 4 -- studs
 local DEFAULT_TIMEOUT = 15 -- seconds
 local STUCK_EPSILON = 0.15 -- studs of progress per re-check to count as moving
+local CONTROL_REMOTE_NAME = "AutomationControl" -- paired with the client bridge
 
 local function deepCopy(value)
     if type(value) ~= "table" then
@@ -75,6 +76,17 @@ function AutomationService:Start()
         return -- never active outside Studio
     end
 
+    -- Control bridge: a RemoteEvent the client AutomationControlBridge listens to,
+    -- so NavigateTo can disable the player's controls during automated movement.
+    local existing = ReplicatedStorage:FindFirstChild(CONTROL_REMOTE_NAME)
+    if existing then
+        existing:Destroy()
+    end
+    local controlRemote = Instance.new("RemoteEvent")
+    controlRemote.Name = CONTROL_REMOTE_NAME
+    controlRemote.Parent = ReplicatedStorage
+    self._controlRemote = controlRemote
+
     -- Expose automation.* commands through the GameAPI bus (injected dependency,
     -- so it's available regardless of Start order) — one boundary for the harness.
     if self._gameApi and self._gameApi.GetBus then
@@ -83,6 +95,13 @@ function AutomationService:Start()
 
     if self._logger then
         self._logger:Info("AutomationService ready (Studio test driver)")
+    end
+end
+
+-- Toggle the local player's controls via the client bridge (best-effort).
+function AutomationService:_setPlayerControls(player, enabled)
+    if self._controlRemote then
+        self._controlRemote:FireClient(player, enabled)
     end
 end
 
@@ -112,11 +131,11 @@ end
 
     opts: { threshold = studs, timeout = seconds, speedMultiplier = number }
 
-    CONTROL CAVEAT: in play-solo the player's client control module re-issues
-    Move(0,0) when idle, which can cancel server MoveTo. We re-issue MoveTo each
-    sample and detect stalls (Navigation.madeProgress) to mitigate, but the
-    robust fix — a client-side control disable, or driving an NPC proxy — is the
-    documented follow-up. Verify this path live in Studio.
+    Controls are disabled for the duration (via the AutomationControl bridge) so
+    the client control module doesn't fight MoveTo, then always re-enabled — even
+    on error — by the pcall wrapper. As a second line of defense the follow loop
+    re-issues MoveTo each sample and detects stalls (Navigation.madeProgress).
+    Verify this path live in Studio (gap G6).
 ]]
 function AutomationService:NavigateTo(player, target, opts)
     opts = opts or {}
@@ -129,13 +148,32 @@ function AutomationService:NavigateTo(player, target, opts)
     end
 
     local humanoid = getHumanoid(player)
-    local root = getRootPart(player)
-    if not humanoid or not root then
+    if not humanoid or not getRootPart(player) then
         return { ok = false, reason = "character_not_ready" }
     end
 
     if opts.speedMultiplier then
         humanoid.WalkSpeed = humanoid.WalkSpeed * opts.speedMultiplier
+    end
+
+    self:_setPlayerControls(player, false)
+    local ok, result = pcall(function()
+        return self:_followPath(player, humanoid, destination, threshold, timeout)
+    end)
+    self:_setPlayerControls(player, true)
+
+    if not ok then
+        return { ok = false, reason = "navigate_error", error = tostring(result) }
+    end
+    return result
+end
+
+-- Walk the character to `destination` along a computed path. Assumes the caller
+-- has disabled controls. Returns a result envelope.
+function AutomationService:_followPath(player, humanoid, destination, threshold, timeout)
+    local root = getRootPart(player)
+    if not root then
+        return { ok = false, reason = "character_not_ready" }
     end
 
     -- Compute a path; fall back to a single direct waypoint on failure.
@@ -197,8 +235,8 @@ function AutomationService:NavigateTo(player, target, opts)
             break
         end
 
-        -- Stall guard: if we've stopped progressing well short of the goal, the
-        -- control module is likely fighting us. Surface it rather than hang.
+        -- Stall guard: if we've stopped progressing well short of the goal,
+        -- surface it rather than hang.
         if not Navigation.madeProgress(moved, STUCK_EPSILON) and elapsed > 1 then
             return { ok = false, reason = "stalled", reached = index, total = total }
         end
