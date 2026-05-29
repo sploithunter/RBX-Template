@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DEFAULT_TIMEOUT_SECONDS = 20
 local REMOTE_NAME = "StudioSmokeTest"
+local Locations = require(ReplicatedStorage.Shared.Locations)
 local EggInteractionService = require(ReplicatedStorage.Shared.Services.EggInteractionService)
 
 local function waitFor(description, timeoutSeconds, predicate)
@@ -145,6 +146,31 @@ local function readHatchMode(player, optionName)
     return modeValue and modeValue.Value == true or false
 end
 
+local function getClippedDrawerChildren(drawer)
+    local clipped = {}
+    local drawerPosition = drawer.AbsolutePosition
+    local drawerSize = drawer.AbsoluteSize
+
+    for _, child in ipairs(drawer:GetDescendants()) do
+        if child:IsA("GuiObject") and child.Visible == true then
+            local relativeX = child.AbsolutePosition.X - drawerPosition.X
+            local relativeY = child.AbsolutePosition.Y - drawerPosition.Y
+            local right = relativeX + child.AbsoluteSize.X
+            local bottom = relativeY + child.AbsoluteSize.Y
+            if
+                relativeX < -0.5
+                or relativeY < -0.5
+                or right > drawerSize.X + 0.5
+                or bottom > drawerSize.Y + 0.5
+            then
+                table.insert(clipped, child.Name)
+            end
+        end
+    end
+
+    return clipped
+end
+
 function EggProximitySmoke.run(options)
     options = options or {}
 
@@ -233,8 +259,29 @@ function EggProximitySmoke.run(options)
                 EggInteractionService:ComputeHatchPanelLayout(Vector2.new(360, 640), true)
             assert(mobileLayout.scale < 1, "Mobile hatch panel layout did not scale down")
             assert(mobileLayout.fitsWidth == true, "Mobile hatch panel layout overflowed width")
+            assert(mobileLayout.fitsHeight == true, "Mobile hatch panel layout overflowed height")
             local settings = hatchPanel:FindFirstChild("SettingsDrawer")
             assert(settings, "Hatch panel missing settings drawer")
+            local eggSystemConfig = Locations.getConfig("egg_system")
+            local panelConfig = eggSystemConfig.ui.hatch_panel
+            hatchPanel.Size =
+                UDim2.new(0, panelConfig.width, 0, panelConfig.height + panelConfig.settings_height)
+            settings.Visible = true
+            local openDrawer = waitFor("expanded hatch settings drawer", timeoutSeconds, function()
+                if settings.Visible == true and settings.AbsoluteSize.Y > 0 then
+                    return settings
+                end
+                return nil
+            end)
+            assert(
+                openDrawer.AbsoluteSize.X > 0 and openDrawer.AbsoluteSize.Y > 0,
+                "Hatch settings drawer did not report rendered dimensions"
+            )
+            local clippedChildren = getClippedDrawerChildren(openDrawer)
+            assert(
+                #clippedChildren == 0,
+                "Hatch settings drawer clipped children: " .. table.concat(clippedChildren, ", ")
+            )
             local helpText = settings:FindFirstChild("HelpText")
             assert(helpText, "Hatch panel missing config-driven help text")
             assert(
@@ -331,6 +378,7 @@ function EggProximitySmoke.run(options)
             )
             EggInteractionService:SetHatchModeState("silentHatch", originalSilentHatch)
             waitForHatchMode(player, "silentHatch", originalSilentHatch, timeoutSeconds)
+            settings.Visible = false
         end
 
         local near = invoke(remote, "HatchEggProximity")

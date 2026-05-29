@@ -322,6 +322,59 @@ local function currentHatchModes()
     return modes
 end
 
+local function getRelativeBounds(parent, child)
+    local parentPosition = parent.AbsolutePosition
+    local childPosition = child.AbsolutePosition
+    local childSize = child.AbsoluteSize
+
+    return {
+        x = childPosition.X - parentPosition.X,
+        y = childPosition.Y - parentPosition.Y,
+        width = childSize.X,
+        height = childSize.Y,
+        right = childPosition.X - parentPosition.X + childSize.X,
+        bottom = childPosition.Y - parentPosition.Y + childSize.Y,
+    }
+end
+
+local function getDrawerDebugLayout()
+    local drawer = hatchPanelFields.settings
+    if not drawer then
+        return nil
+    end
+
+    local drawerSize = drawer.AbsoluteSize
+    local children = {}
+    local clippedChildren = {}
+    for _, child in ipairs(drawer:GetDescendants()) do
+        if child:IsA("GuiObject") and child.Visible == true then
+            local bounds = getRelativeBounds(drawer, child)
+            local clipped = bounds.x < -0.5
+                or bounds.y < -0.5
+                or bounds.right > drawerSize.X + 0.5
+                or bounds.bottom > drawerSize.Y + 0.5
+            table.insert(children, {
+                name = child.Name,
+                className = child.ClassName,
+                clipped = clipped,
+                bounds = bounds,
+            })
+            if clipped then
+                table.insert(clippedChildren, child.Name)
+            end
+        end
+    end
+
+    return {
+        visible = drawer.Visible == true,
+        width = drawerSize.X,
+        height = drawerSize.Y,
+        childCount = #children,
+        clippedChildren = clippedChildren,
+        children = children,
+    }
+end
+
 local function persistHatchModes()
     local modes = currentHatchModes()
     local key = hatchModesKey(modes)
@@ -1172,6 +1225,11 @@ function EggInteractionService:SetSelectedHatchCount(count, options)
     self:UpdateHatchPanel()
 end
 
+function EggInteractionService:SetHatchSettingsOpen(open)
+    hatchSettingsOpen = open == true
+    self:UpdateHatchPanel()
+end
+
 function EggInteractionService:HatchSelectedCount(purchaseType)
     if not currentTargetService then
         return false
@@ -1889,6 +1947,7 @@ function EggInteractionService:GetHatchPanelDebugState()
         helpText = hatchPanelFields.helpText and hatchPanelFields.helpText.Text or "",
         modeStatus = hatchPanelFields.modeStatus and hatchPanelFields.modeStatus.Text or "",
         settingsOpen = hatchSettingsOpen == true,
+        drawerLayout = getDrawerDebugLayout(),
     }
 end
 
