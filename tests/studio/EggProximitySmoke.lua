@@ -16,7 +16,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DEFAULT_TIMEOUT_SECONDS = 20
 local REMOTE_NAME = "StudioSmokeTest"
-local Locations = require(ReplicatedStorage.Shared.Locations)
 local EggInteractionService = require(ReplicatedStorage.Shared.Services.EggInteractionService)
 
 local function waitFor(description, timeoutSeconds, predicate)
@@ -79,6 +78,7 @@ local function waitForTarget(player, expectedValue, timeoutSeconds)
             return {
                 currentTarget = currentTarget,
                 visible = frame and frame.Visible or false,
+                frame = frame,
             }
         end
         return nil
@@ -171,31 +171,6 @@ local function readHatchMode(player, optionName)
     return modeValue and modeValue.Value == true or false
 end
 
-local function getClippedDrawerChildren(drawer)
-    local clipped = {}
-    local drawerPosition = drawer.AbsolutePosition
-    local drawerSize = drawer.AbsoluteSize
-
-    for _, child in ipairs(drawer:GetDescendants()) do
-        if child:IsA("GuiObject") and child.Visible == true then
-            local relativeX = child.AbsolutePosition.X - drawerPosition.X
-            local relativeY = child.AbsolutePosition.Y - drawerPosition.Y
-            local right = relativeX + child.AbsoluteSize.X
-            local bottom = relativeY + child.AbsoluteSize.Y
-            if
-                relativeX < -0.5
-                or relativeY < -0.5
-                or right > drawerSize.X + 0.5
-                or bottom > drawerSize.Y + 0.5
-            then
-                table.insert(clipped, child.Name)
-            end
-        end
-    end
-
-    return clipped
-end
-
 function EggProximitySmoke.run(options)
     options = options or {}
 
@@ -255,224 +230,40 @@ function EggProximitySmoke.run(options)
         if assertUi then
             local targetState = waitForTarget(player, eggType, timeoutSeconds)
             assert(targetState.visible == true, "Egg target UI was not visible near the egg")
-            local hatchPanel = waitForHatchPanel(player, true, timeoutSeconds)
-            assert(hatchPanel:FindFirstChild("Hatch"), "Hatch panel missing Hatch button")
-            assert(hatchPanel:FindFirstChild("Max"), "Hatch panel missing Max button")
-            assert(hatchPanel:FindFirstChild("Auto"), "Hatch panel missing Auto button")
-            assert(hatchPanel:FindFirstChild("Count"), "Hatch panel missing count display")
-            assert(
-                hatchPanel:GetAttribute("InlineControlsVisible") == false,
-                "Hatch panel inline controls should be hidden by default"
-            )
-            assert(
-                hatchPanel:GetAttribute("HatchActionMode") == readHatchActionMode(player),
-                "Hatch panel did not expose the persisted hatch action mode"
-            )
-            assert(
-                hatchPanel:GetAttribute("MaxEntitledHatchCount") == 5,
-                "Hatch panel did not expose effective max hatch entitlement"
-            )
-            assert(
-                hatchPanel.Count:GetAttribute("MaxEntitledHatchCount") == 5,
-                "Hatch count label did not expose effective max hatch entitlement"
-            )
-            assert(
-                hatchPanel.Max:GetAttribute("MaxEntitledHatchCount") == 5,
-                "Max button did not expose effective max hatch entitlement"
-            )
-            assert(
-                hatchPanel.Auto:GetAttribute("ModeState") == "locked",
-                "Auto button did not expose locked state"
-            )
-            assert(
-                hatchPanel.Auto:GetAttribute("ModeOwned") == false,
-                "Auto button did not expose ownership state"
-            )
-            local desktopLayout =
-                EggInteractionService:ComputeHatchPanelLayout(Vector2.new(1280, 720), false)
-            assert(
-                desktopLayout.scale == 1,
-                "Desktop hatch panel layout should render at full scale"
-            )
-            local mobileLayout =
-                EggInteractionService:ComputeHatchPanelLayout(Vector2.new(360, 640), true)
-            assert(mobileLayout.scale < 1, "Mobile hatch panel layout did not scale down")
-            assert(mobileLayout.fitsWidth == true, "Mobile hatch panel layout overflowed width")
-            assert(mobileLayout.fitsHeight == true, "Mobile hatch panel layout overflowed height")
-            local settings = hatchPanel:FindFirstChild("SettingsDrawer")
-            assert(settings, "Hatch panel missing settings drawer")
-            local eggSystemConfig = Locations.getConfig("egg_system")
-            local panelConfig = eggSystemConfig.ui.hatch_panel
-            hatchPanel.Size =
-                UDim2.new(0, panelConfig.width, 0, panelConfig.height + panelConfig.settings_height)
-            settings.Visible = true
-            local openDrawer = waitFor("expanded hatch settings drawer", timeoutSeconds, function()
-                if settings.Visible == true and settings.AbsoluteSize.Y > 0 then
-                    return settings
+            waitForHatchPanel(player, false, timeoutSeconds)
+
+            local targetFrame = targetState.frame
+            assert(targetFrame, "Egg target UI frame missing")
+            assert(targetFrame:FindFirstChild("CostDetail"), "Egg target UI missing cost detail")
+            local originalActionMode = readHatchActionMode(player)
+            EggInteractionService:SetHatchActionMode("single")
+            waitForHatchActionMode(player, "single", timeoutSeconds)
+            targetFrame = waitFor("single hatch target display", timeoutSeconds, function()
+                local _, frame = getCurrentTarget(player)
+                if frame and frame:GetAttribute("EstimatedDisplayCount") == 1 then
+                    return frame
                 end
                 return nil
             end)
             assert(
-                openDrawer.AbsoluteSize.X > 0 and openDrawer.AbsoluteSize.Y > 0,
-                "Hatch settings drawer did not report rendered dimensions"
-            )
-            local clippedChildren = getClippedDrawerChildren(openDrawer)
-            assert(
-                #clippedChildren == 0,
-                "Hatch settings drawer clipped children: " .. table.concat(clippedChildren, ", ")
-            )
-            local helpText = settings:FindFirstChild("HelpText")
-            assert(helpText, "Hatch panel missing config-driven help text")
-            local protectedLabel = settings:FindFirstChild("ProtectedAutoDeleteRarities")
-            assert(protectedLabel, "Hatch panel missing protected auto-delete rarity list")
-            local protectedRarities =
-                tostring(protectedLabel:GetAttribute("ProtectedRarities") or "")
-            assert(
-                protectedRarities:find("exclusive", 1, true),
-                "Protected auto-delete list did not include exclusive rarity id"
+                targetFrame:GetAttribute("MaxEntitledHatchCount") == 5,
+                "Egg target UI did not expose effective max hatch entitlement"
             )
             assert(
-                protectedRarities:find("huge", 1, true),
-                "Protected auto-delete list did not include huge rarity id"
+                targetFrame:GetAttribute("EstimatedCostEach") == begin.cost,
+                "Egg target UI estimated per-egg cost mismatch"
             )
             assert(
-                tostring(protectedLabel.Text):find("Protected:", 1, true),
-                "Protected auto-delete list did not explain protected tiers"
+                targetFrame:GetAttribute("EstimatedTotalCost") == begin.cost,
+                "Egg target UI should show single-hatch cost by default"
             )
             assert(
-                settings:FindFirstChild("pet_types_bear"),
-                "Hatch panel missing pet-family auto-delete filter"
-            )
-            local autoDeleteState = waitFor(
-                "replicated auto-delete filters",
-                timeoutSeconds,
-                function()
-                    local state = EggInteractionService:GetHatchPanelDebugState().autoDelete
-                    if
-                        state
-                        and state.enabled == false
-                        and state.rarities
-                        and state.rarities.common == true
-                        and state.pet_types
-                        and state.pet_types.bear == true
-                        and state.variants
-                        and state.variants.golden == true
-                    then
-                        return state
-                    end
-                    return nil
-                end
-            )
-            assert(autoDeleteState.enabled == false, "Replicated auto-delete state changed enabled")
-            assert(
-                settings.AutoDeleteEnabled.Text == "Off",
-                "Hatch panel did not read replicated auto-delete enabled state"
-            )
-            assert(
-                settings.AutoDeleteEnabled:GetAttribute("SelectedFilterCount") == 3,
-                "Hatch panel did not summarize selected auto-delete filters"
-            )
-            assert(
-                settings.Header:GetAttribute("SelectedRarityFilterCount") == 1,
-                "Hatch panel auto-delete summary did not count rarity filters"
-            )
-            assert(
-                tostring(settings.Header.Text):find("3 filters", 1, true),
-                "Hatch panel auto-delete header did not summarize saved filters"
-            )
-            assert(
-                settings:FindFirstChild("Mode_goldenMode"),
-                "Hatch panel missing Golden mode toggle"
-            )
-            assert(
-                settings.Mode_goldenMode:GetAttribute("HelpText"),
-                "Golden mode toggle missing help text"
-            )
-            assert(
-                settings.Mode_goldenMode:GetAttribute("ModeState") == "locked",
-                "Golden mode toggle did not expose locked state"
-            )
-            assert(
-                settings.Mode_goldenMode:GetAttribute("LockedHelpText"),
-                "Golden mode toggle missing locked help text"
-            )
-            assert(
-                settings.Mode_goldenMode:GetAttribute("CostMultiplier") == 20,
-                "Golden mode toggle did not expose configured cost multiplier"
-            )
-            assert(
-                tostring(settings.Mode_goldenMode:GetAttribute("CurrentHelpText")):find(
-                    "20x",
-                    1,
-                    true
-                ),
-                "Golden mode help did not explain configured cost multiplier"
-            )
-            assert(
-                settings:FindFirstChild("Mode_chargedMode"),
-                "Hatch panel missing Charged mode toggle"
-            )
-            assert(
-                settings.Mode_chargedMode:GetAttribute("CostMultiplier") == 5,
-                "Charged mode toggle did not expose configured cost multiplier"
-            )
-            assert(
-                settings.Mode_chargedMode:GetAttribute("LuckBonus") == 1,
-                "Charged mode toggle did not expose configured hatch luck"
-            )
-            assert(
-                settings.Mode_chargedMode:GetAttribute("SecretLuckBonus") == 0.25,
-                "Charged mode toggle did not expose configured secret luck"
-            )
-            assert(
-                settings:FindFirstChild("Mode_skipHatch"),
-                "Hatch panel missing Skip mode toggle"
-            )
-            assert(
-                settings:FindFirstChild("Mode_showHatch"),
-                "Hatch panel missing Show mode toggle"
-            )
-            local modeStatus = settings:FindFirstChild("ModeStatus")
-            assert(modeStatus, "Hatch panel missing mode status text")
-            assert(
-                tostring(modeStatus.Text):find("Locked:", 1, true),
-                "Hatch panel mode status did not explain locked modes"
-            )
-            assert(
-                tostring(modeStatus.Text):find("20x", 1, true),
-                "Hatch panel mode status did not include configured mode details"
+                tostring(targetFrame.CostDetail.Text):find("each", 1, true),
+                "Egg target UI cost detail did not explain per-egg cost"
             )
 
-            assert(hatchPanel.Count:IsA("TextBox"), "Hatch count control should be editable")
             EggInteractionService:SubmitHatchCountInput("4")
             waitForHatchSelectedCount(player, 4, timeoutSeconds)
-            assert(hatchPanel.Count.Text == "x4", "Hatch count input did not show submitted count")
-            local costDetail = hatchPanel:FindFirstChild("CostDetail")
-            assert(costDetail, "Hatch panel missing cost detail label")
-            assert(
-                hatchPanel:GetAttribute("HatchCurrency") == begin.currency,
-                "Hatch panel did not expose hatch currency"
-            )
-            assert(
-                hatchPanel:GetAttribute("BaseCostEach") == begin.cost,
-                "Hatch panel did not expose base egg cost"
-            )
-            assert(
-                hatchPanel:GetAttribute("CostMultiplier") == 1,
-                "Hatch panel default cost multiplier should be one"
-            )
-            assert(
-                hatchPanel:GetAttribute("EstimatedCostEach") == begin.cost,
-                "Hatch panel estimated per-egg cost mismatch"
-            )
-            assert(
-                hatchPanel:GetAttribute("EstimatedTotalCost") == begin.cost * 4,
-                "Hatch panel estimated total cost mismatch"
-            )
-            assert(
-                tostring(costDetail.Text):find("each", 1, true),
-                "Hatch panel cost detail did not explain per-egg cost"
-            )
             local debugState = EggInteractionService:GetHatchPanelDebugState()
             assert(
                 debugState.selectedHatchCount == 4,
@@ -486,11 +277,14 @@ function EggProximitySmoke.run(options)
             EggInteractionService:SetSelectedHatchCount(1)
             waitForHatchSelectedCount(player, 1, timeoutSeconds)
 
-            local originalActionMode = readHatchActionMode(player)
             EggInteractionService:SetHatchActionMode("max")
             waitForHatchActionMode(player, "max", timeoutSeconds)
-            waitFor("max hatch cost display", timeoutSeconds, function()
-                return hatchPanel:GetAttribute("EstimatedDisplayCount") == 5
+            local maxTargetFrame = waitFor("max hatch target display", timeoutSeconds, function()
+                local _, frame = getCurrentTarget(player)
+                if frame and frame:GetAttribute("EstimatedDisplayCount") == 5 then
+                    return frame
+                end
+                return nil
             end)
             debugState = EggInteractionService:GetHatchPanelDebugState()
             assert(
@@ -498,8 +292,12 @@ function EggProximitySmoke.run(options)
                 "Hatch interaction service did not keep hatch action mode"
             )
             assert(
-                hatchPanel:GetAttribute("EstimatedTotalCost") == begin.cost * 5,
-                "Max hatch compact panel did not estimate the effective max hatch count"
+                maxTargetFrame:GetAttribute("EstimatedTotalCost") == begin.cost * 5,
+                "Egg target UI did not estimate the effective max hatch count"
+            )
+            assert(
+                tostring(maxTargetFrame.CostDetail.Text):find("max 5", 1, true),
+                "Egg target UI did not explain max hatch count"
             )
             assert(
                 debugState.persistedHatchActionMode == "max",
@@ -541,7 +339,6 @@ function EggProximitySmoke.run(options)
             )
             EggInteractionService:SetHatchModeState("showHatch", originalShowHatch)
             waitForHatchMode(player, "showHatch", originalShowHatch, timeoutSeconds)
-            settings.Visible = false
         end
 
         local near = invoke(remote, "HatchEggProximity")

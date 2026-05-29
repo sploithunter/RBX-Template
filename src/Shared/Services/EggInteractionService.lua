@@ -866,251 +866,18 @@ function EggInteractionService:CreateHatchPanel()
         hatchPanelGui:Destroy()
     end
 
-    local panelConfig = getHatchPanelConfig()
-    if panelConfig.enabled == false then
-        return
+    local staleGui = player.PlayerGui:FindFirstChild("EggHatchPanel")
+    if staleGui then
+        staleGui:Destroy()
     end
 
-    local width = tonumber(panelConfig.width) or 500
-    local height = tonumber(panelConfig.height) or 176
-    local settingsHeight = tonumber(panelConfig.settings_height) or 168
+    hatchPanelGui = nil
+    hatchPanel = nil
+    hatchPanelFields = {}
 
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "EggHatchPanel"
-    screenGui.ResetOnSpawn = false
-    screenGui.IgnoreGuiInset = true
-    screenGui.Parent = player.PlayerGui
-
-    local frame = Instance.new("Frame")
-    frame.Name = "Panel"
-    frame.AnchorPoint = Vector2.new(0.5, 1)
-    frame.Size = UDim2.new(0, width, 0, height)
-    frame.BackgroundColor3 = Color3.fromRGB(25, 28, 36)
-    frame.BackgroundTransparency = 0.04
-    frame.BorderSizePixel = 0
-    frame.Visible = false
-    frame.Parent = screenGui
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = frame
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Thickness = 2
-    stroke.Color = Color3.fromRGB(0, 210, 220)
-    stroke.Parent = frame
-
-    local responsiveScale = Instance.new("UIScale")
-    responsiveScale.Name = "ResponsiveScale"
-    responsiveScale.Scale = 1
-    responsiveScale.Parent = frame
-
-    local title = Instance.new("TextLabel")
-    title.Name = "Title"
-    title.Size = UDim2.new(1, -24, 0, 30)
-    title.Position = UDim2.new(0, 12, 0, 10)
-    title.BackgroundTransparency = 1
-    title.Text = "Egg"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextScaled = true
-    title.Font = Enum.Font.GothamBold
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = frame
-
-    local cost = Instance.new("TextLabel")
-    cost.Name = "Cost"
-    cost.Size = UDim2.new(0.52, -12, 0, 24)
-    cost.Position = UDim2.new(0, 12, 0, 44)
-    cost.BackgroundTransparency = 1
-    cost.Text = ""
-    cost.TextColor3 = Color3.fromRGB(205, 214, 230)
-    cost.TextScaled = true
-    cost.Font = Enum.Font.Gotham
-    cost.TextXAlignment = Enum.TextXAlignment.Left
-    cost.Parent = frame
-
-    local costDetail = Instance.new("TextLabel")
-    costDetail.Name = "CostDetail"
-    costDetail.Size = UDim2.new(0.52, -12, 0, 18)
-    costDetail.Position = UDim2.new(0, 12, 0, 66)
-    costDetail.BackgroundTransparency = 1
-    costDetail.Text = ""
-    costDetail.TextColor3 = Color3.fromRGB(156, 168, 190)
-    costDetail.TextScaled = true
-    costDetail.Font = Enum.Font.Gotham
-    costDetail.TextXAlignment = Enum.TextXAlignment.Left
-    costDetail.Parent = frame
-
-    local actionModeLabel = Instance.new("TextLabel")
-    actionModeLabel.Name = "ActionMode"
-    actionModeLabel.Size = UDim2.new(0.46, -12, 0, 24)
-    actionModeLabel.Position = UDim2.new(0.52, 4, 0, 44)
-    actionModeLabel.BackgroundTransparency = 1
-    actionModeLabel.Text = ""
-    actionModeLabel.TextColor3 = Color3.fromRGB(255, 214, 115)
-    actionModeLabel.TextScaled = true
-    actionModeLabel.Font = Enum.Font.GothamBold
-    actionModeLabel.TextXAlignment = Enum.TextXAlignment.Right
-    actionModeLabel.Parent = frame
-
-    local countLabel = Instance.new("TextBox")
-    countLabel.Name = "Count"
-    countLabel.Size = UDim2.new(0, 104, 0, 36)
-    countLabel.Position = UDim2.new(0.52, 4, 0, 38)
-    countLabel.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
-    countLabel.BorderSizePixel = 0
-    countLabel.Text = "x1"
-    countLabel.PlaceholderText = "1-" .. tostring(getMaxHatchCount())
-    countLabel.ClearTextOnFocus = false
-    countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    countLabel.TextScaled = true
-    countLabel.Font = Enum.Font.GothamBold
-    countLabel.Parent = frame
-    countLabel.Focused:Connect(function()
-        countLabel.Text = tostring(selectedHatchCount)
-    end)
-    countLabel.FocusLost:Connect(function()
-        self:SubmitHatchCountInput(countLabel.Text)
-    end)
-
-    local countCorner = Instance.new("UICorner")
-    countCorner.CornerRadius = UDim.new(0, 8)
-    countCorner.Parent = countLabel
-
-    local countDownButton = self:CreateButton(
-        frame,
-        "CountDown",
-        "-",
-        UDim2.new(0, 42, 0, 36),
-        UDim2.new(0.52, 112, 0, 38),
-        Color3.fromRGB(72, 82, 103),
-        function()
-            local step = tonumber(panelConfig.count_step) or 1
-            self:SetSelectedHatchCount(selectedHatchCount - step)
-        end
-    )
-    local countUpButton = self:CreateButton(
-        frame,
-        "CountUp",
-        "+",
-        UDim2.new(0, 42, 0, 36),
-        UDim2.new(0.52, 158, 0, 38),
-        Color3.fromRGB(72, 82, 103),
-        function()
-            local step = tonumber(panelConfig.count_step) or 1
-            self:SetSelectedHatchCount(selectedHatchCount + step)
-        end
-    )
-
-    local buttonY = 84
-    local buttons = panelConfig.buttons or {}
-    local help = getHatchPanelHelpConfig()
-    local hatchButton = self:CreateButton(
-        frame,
-        "Hatch",
-        buttons.hatch or "Hatch",
-        UDim2.new(0, 112, 0, 38),
-        UDim2.new(0, 12, 0, buttonY),
-        Color3.fromRGB(31, 138, 255),
-        function()
-            self:HatchSelectedCount("Button")
-        end
-    )
-    local maxButton = self:CreateButton(
-        frame,
-        "Max",
-        buttons.max or "Max",
-        UDim2.new(0, 96, 0, 38),
-        UDim2.new(0, 132, 0, buttonY),
-        Color3.fromRGB(72, 82, 103),
-        function()
-            self:OnMaxHatchKeyPressed()
-        end
-    )
-    local autoButton = self:CreateButton(
-        frame,
-        "Auto",
-        buttons.auto or "Auto",
-        UDim2.new(0, 96, 0, 38),
-        UDim2.new(0, 236, 0, buttonY),
-        Color3.fromRGB(39, 161, 92),
-        function()
-            self:ToggleAutoHatch()
-        end
-    )
-    local settingsButton = self:CreateButton(
-        frame,
-        "Settings",
-        buttons.settings or "Filters",
-        UDim2.new(0, 132, 0, 38),
-        UDim2.new(1, -144, 0, buttonY),
-        Color3.fromRGB(115, 85, 210),
-        function()
-            hatchSettingsOpen = not hatchSettingsOpen
-            self:UpdateHatchPanel()
-        end
-    )
-    self:BindHelpText(countLabel, help.count)
-    self:BindHelpText(hatchButton, help.hatch)
-    self:BindHelpText(maxButton, help.max)
-    self:BindHelpText(autoButton, help.auto)
-    self:BindHelpText(settingsButton, help.settings)
-
-    local status = Instance.new("TextLabel")
-    status.Name = "Status"
-    status.Size = UDim2.new(1, -24, 0, 26)
-    status.Position = UDim2.new(0, 12, 0, 132)
-    status.BackgroundTransparency = 1
-    status.Text = ""
-    status.TextColor3 = Color3.fromRGB(170, 255, 210)
-    status.TextScaled = true
-    status.Font = Enum.Font.Gotham
-    status.TextXAlignment = Enum.TextXAlignment.Left
-    status.Parent = frame
-
-    local settings = Instance.new("Frame")
-    settings.Name = "SettingsDrawer"
-    settings.Size = UDim2.new(1, -24, 0, settingsHeight)
-    settings.Position = UDim2.new(0, 12, 0, height - 4)
-    settings.BackgroundColor3 = Color3.fromRGB(16, 18, 26)
-    settings.BorderSizePixel = 0
-    settings.Visible = false
-    settings.Parent = frame
-
-    local settingsCorner = Instance.new("UICorner")
-    settingsCorner.CornerRadius = UDim.new(0, 8)
-    settingsCorner.Parent = settings
-
-    hatchPanelGui = screenGui
-    hatchPanel = frame
-    hatchPanelFields = {
-        title = title,
-        cost = cost,
-        costDetail = costDetail,
-        actionMode = actionModeLabel,
-        count = countLabel,
-        countDownButton = countDownButton,
-        countUpButton = countUpButton,
-        status = status,
-        hatchButton = hatchButton,
-        maxButton = maxButton,
-        autoButton = autoButton,
-        settingsButton = settingsButton,
-        settings = settings,
-        responsiveScale = responsiveScale,
-        filterButtons = {},
-        modeButtons = {},
-    }
-
-    self:CreateAutoDeleteSettings(settings)
-    self:CreateModeSettings(settings)
-    self:CreateHatchHelpText(settings)
-    self:ApplyPersistedHatchModes({ persist = false })
-    hatchActionMode = getPersistedHatchActionMode() or sanitizeHatchActionMode(nil)
-    self:SetSelectedHatchCount(
-        getPersistedSelectedHatchCount() or getDefaultSelectedHatchCount(),
-        { persist = false }
-    )
+    -- The proximity UI is intentionally owned by EggCurrentTargetService.
+    -- Keep this method as a stale-GUI cleanup hook so older synced panels
+    -- disappear after Rojo refreshes, but do not create a second screen.
 end
 
 function EggInteractionService:CreateAutoDeleteSettings(parent)
@@ -2362,6 +2129,12 @@ function EggInteractionService:Initialize()
     end
 
     self:CreateHatchPanel()
+    self:ApplyPersistedHatchModes({ persist = false })
+    hatchActionMode = getPersistedHatchActionMode() or sanitizeHatchActionMode(nil)
+    self:SetSelectedHatchCount(
+        getPersistedSelectedHatchCount() or getDefaultSelectedHatchCount(),
+        { persist = false }
+    )
     self:BindReplicatedHatchSettings()
 
     for _, attributeName in ipairs({

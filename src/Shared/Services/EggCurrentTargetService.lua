@@ -112,6 +112,71 @@ local function getHatchActionPrompt()
     return safeFormat(promptConfig.clean_text or "%s Hatch", interactionKey)
 end
 
+local function titleCaseId(value)
+    return tostring(value or ""):gsub("(%l)(%w*)", function(a, b)
+        return string.upper(a) .. b
+    end)
+end
+
+local function getCurrencyIcon(currency)
+    if currency == "gems" then
+        return "💎"
+    elseif currency == "crystals" then
+        return "🔮"
+    end
+    return "💰"
+end
+
+local function getCurrencyAttributeName(currency)
+    return tostring(currency or ""):gsub("^%l", string.upper)
+end
+
+local function getPlayerCurrencyBalance(currency)
+    local value = player:GetAttribute(getCurrencyAttributeName(currency))
+    if value == nil then
+        return nil
+    end
+    return math.max(0, tonumber(value) or 0)
+end
+
+local function getEffectiveMaxHatchCount()
+    local hatching = eggSystemConfig.hatching or {}
+    local stubs = hatching.shop_stubs or {}
+    local maxStub = stubs.max_hatch_count or {}
+    local maxCount = math.clamp(math.floor(tonumber(hatching.max_count) or 99), 1, 99)
+    local configuredDefault = tonumber(maxStub.default_value)
+        or tonumber(hatching.default_max_entitled_count)
+        or maxCount
+    local attributeMax = tonumber(player:GetAttribute("MaxEggHatchCount"))
+    local effective = attributeMax or configuredDefault
+    return math.clamp(math.floor(tonumber(effective) or 1), 1, maxCount)
+end
+
+local function getHatchActionMode()
+    local settingsFolder = player:FindFirstChild("Settings")
+    local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
+    local hatchFolder = autoFolder and autoFolder:FindFirstChild("Hatch")
+    local actionModeValue = hatchFolder and hatchFolder:FindFirstChild("ActionMode")
+    local actionMode = actionModeValue
+            and actionModeValue:IsA("StringValue")
+            and actionModeValue.Value
+        or eggSystemConfig.ui.hatch_panel.default_action_mode
+        or "single"
+    actionMode = tostring(actionMode):lower()
+    if actionMode == "max" or actionMode == "auto" then
+        return actionMode
+    end
+    return "single"
+end
+
+local function getHatchDisplayCount()
+    local actionMode = getHatchActionMode()
+    if actionMode == "max" or actionMode == "auto" then
+        return getEffectiveMaxHatchCount(), actionMode
+    end
+    return 1, actionMode
+end
+
 function EggCurrentTargetService:DetermineClosest(eggsAvailable)
     local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not root then
@@ -157,7 +222,7 @@ function EggCurrentTargetService:CreateEggUI()
 
     local eggNameLabel = Instance.new("TextLabel")
     eggNameLabel.Name = "EggName"
-    eggNameLabel.Size = UDim2.new(1, -10, 0.4, 0)
+    eggNameLabel.Size = UDim2.new(1, -10, 0.32, 0)
     eggNameLabel.Position = UDim2.new(0, 5, 0, 2)
     eggNameLabel.BackgroundTransparency = 1
     eggNameLabel.Text = "Basic Egg"
@@ -169,8 +234,8 @@ function EggCurrentTargetService:CreateEggUI()
     -- Price display
     local priceLabel = Instance.new("TextLabel")
     priceLabel.Name = "Price"
-    priceLabel.Size = UDim2.new(1, -10, 0.3, 0)
-    priceLabel.Position = UDim2.new(0, 5, 0.4, 0)
+    priceLabel.Size = UDim2.new(1, -10, 0.25, 0)
+    priceLabel.Position = UDim2.new(0, 5, 0.32, 0)
     priceLabel.BackgroundTransparency = 1
     priceLabel.Text = "💰 100 Coins" -- Will be dynamically set
     priceLabel.TextColor3 = eggSystemConfig.ui.colors.text_secondary
@@ -178,10 +243,21 @@ function EggCurrentTargetService:CreateEggUI()
     priceLabel.Font = eggSystemConfig.ui.fonts.prompt
     priceLabel.Parent = frame
 
+    local costDetailLabel = Instance.new("TextLabel")
+    costDetailLabel.Name = "CostDetail"
+    costDetailLabel.Size = UDim2.new(1, -10, 0.18, 0)
+    costDetailLabel.Position = UDim2.new(0, 5, 0.56, 0)
+    costDetailLabel.BackgroundTransparency = 1
+    costDetailLabel.Text = "100 each"
+    costDetailLabel.TextColor3 = eggSystemConfig.ui.colors.text_secondary
+    costDetailLabel.TextScaled = true
+    costDetailLabel.Font = eggSystemConfig.ui.fonts.prompt
+    costDetailLabel.Parent = frame
+
     local promptLabel = Instance.new("TextLabel")
     promptLabel.Name = "Prompt"
-    promptLabel.Size = UDim2.new(1, -10, 0.3, 0)
-    promptLabel.Position = UDim2.new(0, 5, 0.7, 0)
+    promptLabel.Size = UDim2.new(1, -10, 0.25, 0)
+    promptLabel.Position = UDim2.new(0, 5, 0.74, 0)
     promptLabel.BackgroundTransparency = 1
     promptLabel.Text = getHatchActionPrompt()
     promptLabel.TextColor3 = eggSystemConfig.ui.colors.text_secondary
@@ -197,6 +273,55 @@ function EggCurrentTargetService:CreateEggUI()
 
     currentTargetUI = screenGui
     return frame
+end
+
+function EggCurrentTargetService:GetEggDisplayData(eggType)
+    local eggConfig = self:GetEggConfig(eggType)
+    if not eggConfig then
+        return nil
+    end
+
+    local displayCost = tonumber(
+        (petConfig.getEggCost and petConfig.getEggCost(eggType)) or eggConfig.cost
+    ) or 0
+    local displayName = eggConfig.name or titleCaseId(eggType:gsub("_", " "))
+    local currency = eggConfig.currency or "coins"
+    local displayCount = getHatchDisplayCount()
+    local costEach = math.max(1, math.floor(displayCost + 0.5))
+    local totalCost = costEach * displayCount
+    local balance = getPlayerCurrencyBalance(currency)
+    local affordableCount = balance and math.floor(balance / costEach) or nil
+
+    local detailParts = {
+        self:FormatNumber(costEach) .. " each",
+    }
+    if displayCount > 1 then
+        table.insert(detailParts, "max " .. tostring(displayCount))
+    end
+    if affordableCount then
+        table.insert(
+            detailParts,
+            "afford "
+                .. tostring(math.min(displayCount, affordableCount))
+                .. "/"
+                .. tostring(displayCount)
+        )
+    end
+
+    return {
+        name = displayName,
+        currency = currency,
+        costEach = costEach,
+        displayCount = displayCount,
+        totalCost = totalCost,
+        affordableCount = affordableCount,
+        priceText = getCurrencyIcon(currency)
+            .. " "
+            .. self:FormatNumber(totalCost)
+            .. " "
+            .. titleCaseId(currency),
+        detailText = table.concat(detailParts, " • "),
+    }
 end
 
 function EggCurrentTargetService:UpdateEggUI(egg, eggType)
@@ -219,39 +344,9 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
             currentTarget = eggType
             currentTargetValue.Value = eggType
 
-            -- Get egg configuration for price display
-            local eggConfig = self:GetEggConfig(eggType)
-            local displayName = "Basic Egg"
-            local priceText = "💰 100 Coins"
-
-            if eggConfig then
-                local displayCost = (petConfig.getEggCost and petConfig.getEggCost(eggType))
-                    or eggConfig.cost
-                displayName = eggConfig.name
-                    or (eggType:gsub("_", " ")):gsub("(%l)(%w*)", function(a, b)
-                        return string.upper(a) .. b
-                    end)
-
-                -- Format price with currency icon
-                local currencyIcon = "💰"
-                if eggConfig.currency == "gems" then
-                    currencyIcon = "💎"
-                elseif eggConfig.currency == "crystals" then
-                    currencyIcon = "🔮"
-                end
-
-                priceText = currencyIcon
-                    .. " "
-                    .. self:FormatNumber(displayCost)
-                    .. " "
-                    .. eggConfig.currency:gsub("(%l)(%w*)", function(a, b)
-                        return string.upper(a) .. b
-                    end)
-            end
-
-            -- Update UI content only when target changes
-            frame.EggName.Text = displayName
-            frame.Price.Text = priceText
+            -- Update name only when target changes; dynamic cost details refresh below.
+            local displayData = self:GetEggDisplayData(eggType)
+            frame.EggName.Text = displayData and displayData.name or "Basic Egg"
             frame.Visible = true
 
             -- Show pet preview for new egg
@@ -263,6 +358,17 @@ function EggCurrentTargetService:UpdateEggUI(egg, eggType)
             end
         end
 
+        local displayData = self:GetEggDisplayData(eggType)
+        if displayData then
+            frame.Price.Text = displayData.priceText
+            frame.CostDetail.Text = displayData.detailText
+            frame:SetAttribute("HatchCurrency", displayData.currency)
+            frame:SetAttribute("EstimatedCostEach", displayData.costEach)
+            frame:SetAttribute("EstimatedTotalCost", displayData.totalCost)
+            frame:SetAttribute("EstimatedDisplayCount", displayData.displayCount)
+            frame:SetAttribute("EstimatedAffordableCount", displayData.affordableCount)
+            frame:SetAttribute("MaxEntitledHatchCount", getEffectiveMaxHatchCount())
+        end
         frame.Prompt.Text = getHatchActionPrompt()
 
         -- Always update position (player might be moving around the egg)
