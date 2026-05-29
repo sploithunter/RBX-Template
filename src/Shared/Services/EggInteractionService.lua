@@ -50,6 +50,20 @@ local hatchModeState = {
 }
 local lastStatusAt = 0
 
+local MODE_STUB_KEYS = {
+    goldenMode = "golden_mode",
+    chargedMode = "charged_mode",
+    fastHatch = "fast_hatch",
+    skipHatch = "skip_hatch",
+}
+
+local MODE_ENTITLEMENT_ATTRIBUTES = {
+    goldenMode = "GoldenHatchUnlocked",
+    chargedMode = "ChargedHatchUnlocked",
+    fastHatch = "FastHatchUnlocked",
+    skipHatch = "SkipHatchUnlocked",
+}
+
 -- Logger setup using singleton pattern
 local Logger
 local loggerSuccess, loggerResult = pcall(function()
@@ -60,16 +74,16 @@ if loggerSuccess and loggerResult then
     Logger = loggerResult -- Use singleton directly
 else
     Logger = {
-        Info = function(self, message, context)
+        Info = function(_self, message, context)
             print("[INFO]", message, context)
         end,
-        Warn = function(self, message, context)
+        Warn = function(_self, message, context)
             warn("[WARN]", message, context)
         end,
-        Error = function(self, message, context)
+        Error = function(_self, message, context)
             warn("[ERROR]", message, context)
         end,
-        Debug = function(self, message, context)
+        Debug = function(_self, message, context)
             print("[DEBUG]", message, context)
         end,
     }
@@ -85,6 +99,53 @@ end
 
 local function getHatchPanelHelpConfig()
     return getHatchPanelConfig().help or {}
+end
+
+local function getModeConfigByOption(optionName)
+    local modes = getHatchPanelConfig().modes or {}
+    for key, cfg in pairs(modes) do
+        if (cfg.option or key) == optionName then
+            return cfg
+        end
+    end
+    return nil
+end
+
+local function isModeOwned(optionName)
+    if optionName == "silentHatch" then
+        return true
+    end
+
+    local attributeName = MODE_ENTITLEMENT_ATTRIBUTES[optionName]
+    if attributeName then
+        local attributeValue = player:GetAttribute(attributeName)
+        if attributeValue ~= nil then
+            return attributeValue == true
+        end
+    end
+
+    local stubKey = MODE_STUB_KEYS[optionName]
+    local stub = stubKey and (getHatchingConfig().shop_stubs or {})[stubKey]
+    if type(stub) == "table" then
+        if stub.enabled == false then
+            return false
+        end
+        return stub.owned_by_default == true
+    end
+
+    return true
+end
+
+local function getModeHelpText(optionName, cfg)
+    cfg = cfg or getModeConfigByOption(optionName) or {}
+    local owned = isModeOwned(optionName)
+    if not owned then
+        return cfg.locked_description or cfg.description
+    end
+    if hatchModeState[optionName] == true then
+        return cfg.active_description or cfg.description
+    end
+    return cfg.available_description or cfg.description
 end
 
 local function getMaxHatchCount()
@@ -289,6 +350,37 @@ function EggInteractionService:BindHelpText(instance, helpText)
     if instance.SelectionGained then
         instance.SelectionGained:Connect(function()
             self:SetHatchHelp(helpText)
+        end)
+    end
+    if instance.SelectionLost then
+        instance.SelectionLost:Connect(function()
+            self:SetHatchHelp()
+        end)
+    end
+end
+
+function EggInteractionService:BindModeHelpText(instance, optionName, cfg)
+    if not instance then
+        return
+    end
+
+    instance:SetAttribute("HelpText", cfg.description or "")
+    instance:SetAttribute("LockedHelpText", cfg.locked_description or "")
+    instance:SetAttribute("ActiveHelpText", cfg.active_description or "")
+    instance:SetAttribute("AvailableHelpText", cfg.available_description or "")
+    if instance.MouseEnter then
+        instance.MouseEnter:Connect(function()
+            self:SetHatchHelp(getModeHelpText(optionName, cfg))
+        end)
+    end
+    if instance.MouseLeave then
+        instance.MouseLeave:Connect(function()
+            self:SetHatchHelp()
+        end)
+    end
+    if instance.SelectionGained then
+        instance.SelectionGained:Connect(function()
+            self:SetHatchHelp(getModeHelpText(optionName, cfg))
         end)
     end
     if instance.SelectionLost then
@@ -599,9 +691,25 @@ function EggInteractionService:CreateModeSettings(parent)
                 end
             )
             hatchPanelFields.modeButtons[optionName] = button
-            self:BindHelpText(button, cfg.description)
+            button:SetAttribute("ModeOption", optionName)
+            button:SetAttribute("ModeLabel", cfg.label or titleCaseId(key))
+            self:BindModeHelpText(button, optionName, cfg)
         end
     end
+
+    local modeStatus = Instance.new("TextLabel")
+    modeStatus.Name = "ModeStatus"
+    modeStatus.Size = UDim2.new(1, -16, 0, 26)
+    modeStatus.Position = UDim2.new(0, 8, 0, y + 34)
+    modeStatus.BackgroundTransparency = 1
+    modeStatus.Text = ""
+    modeStatus.TextColor3 = Color3.fromRGB(180, 190, 210)
+    modeStatus.TextScaled = true
+    modeStatus.TextWrapped = true
+    modeStatus.Font = Enum.Font.Gotham
+    modeStatus.TextXAlignment = Enum.TextXAlignment.Left
+    modeStatus.Parent = parent
+    hatchPanelFields.modeStatus = modeStatus
 end
 
 function EggInteractionService:CreateFilterRow(
@@ -730,10 +838,44 @@ function EggInteractionService:RefreshModeButtons()
         return
     end
 
+    local activeModes = {}
+    local lockedModes = {}
     for optionName, button in pairs(hatchPanelFields.modeButtons) do
+        local owned = isModeOwned(optionName)
         local enabled = hatchModeState[optionName] == true
-        button.BackgroundColor3 = enabled and Color3.fromRGB(244, 172, 54)
-            or Color3.fromRGB(80, 85, 98)
+        local label = button:GetAttribute("ModeLabel") or titleCaseId(optionName)
+        if not owned then
+            if enabled then
+                hatchModeState[optionName] = false
+            end
+            button.BackgroundColor3 = Color3.fromRGB(58, 62, 76)
+            button.TextColor3 = Color3.fromRGB(150, 158, 176)
+            button:SetAttribute("ModeOwned", false)
+            button:SetAttribute("ModeState", "locked")
+            table.insert(lockedModes, label)
+        else
+            button.BackgroundColor3 = enabled and Color3.fromRGB(244, 172, 54)
+                or Color3.fromRGB(80, 85, 98)
+            button.TextColor3 = Color3.fromRGB(255, 255, 255)
+            button:SetAttribute("ModeOwned", true)
+            button:SetAttribute("ModeState", enabled and "active" or "available")
+            if enabled then
+                table.insert(activeModes, label)
+            end
+        end
+        button:SetAttribute("CurrentHelpText", getModeHelpText(optionName))
+    end
+
+    if hatchPanelFields.modeStatus then
+        local parts = {}
+        if #activeModes > 0 then
+            table.insert(parts, "Active: " .. table.concat(activeModes, ", "))
+        end
+        if #lockedModes > 0 then
+            table.insert(parts, "Locked: " .. table.concat(lockedModes, ", "))
+        end
+        hatchPanelFields.modeStatus.Text = #parts > 0 and table.concat(parts, "  |  ")
+            or "Modes available"
     end
 end
 
@@ -1397,6 +1539,7 @@ function EggInteractionService:GetHatchPanelDebugState()
         selectedHatchCount = selectedHatchCount,
         statusText = hatchPanelFields.status and hatchPanelFields.status.Text or "",
         helpText = hatchPanelFields.helpText and hatchPanelFields.helpText.Text or "",
+        modeStatus = hatchPanelFields.modeStatus and hatchPanelFields.modeStatus.Text or "",
         settingsOpen = hatchSettingsOpen == true,
     }
 end

@@ -117,7 +117,13 @@ function EggProximitySmoke.run(options)
 
     local started = false
     local success, result = pcall(function()
-        local begin = invoke(remote, "BeginEggProximity", { eggType = eggType })
+        local begin = invoke(remote, "BeginEggProximity", {
+            eggType = eggType,
+            setupGoldenModeUnlocked = false,
+            setupChargedModeUnlocked = false,
+            setupFastHatchUnlocked = false,
+            setupSkipHatchUnlocked = false,
+        })
         started = true
 
         invoke(remote, "MoveEggProximity", { placement = "far" })
@@ -167,12 +173,26 @@ function EggProximitySmoke.run(options)
                 "Golden mode toggle missing help text"
             )
             assert(
+                settings.Mode_goldenMode:GetAttribute("ModeState") == "locked",
+                "Golden mode toggle did not expose locked state"
+            )
+            assert(
+                settings.Mode_goldenMode:GetAttribute("LockedHelpText"),
+                "Golden mode toggle missing locked help text"
+            )
+            assert(
                 settings:FindFirstChild("Mode_chargedMode"),
                 "Hatch panel missing Charged mode toggle"
             )
             assert(
                 settings:FindFirstChild("Mode_skipHatch"),
                 "Hatch panel missing Skip mode toggle"
+            )
+            local modeStatus = settings:FindFirstChild("ModeStatus")
+            assert(modeStatus, "Hatch panel missing mode status text")
+            assert(
+                tostring(modeStatus.Text):find("Locked:", 1, true),
+                "Hatch panel mode status did not explain locked modes"
             )
         end
 

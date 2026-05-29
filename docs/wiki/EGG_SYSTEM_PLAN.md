@@ -21,11 +21,12 @@ Implemented so far:
 - `HatchEntitlementAdminSmoke` covers the admin-managed hatch entitlement path and restores player attributes after testing.
 - Authored egg animation ViewportFrames use config-driven scale: a global default in `egg_system.hatching.animation.authored_visual_scale` plus per-egg overrides such as `pets.egg_sources.basic_egg.animation.authored_visual_scale`.
 - Hatch reveal polish is now partly config-driven. `egg_system.hatching.animation.reveal_badges` controls rarity, variant, special, and auto-delete badges, while `EggHatchingService:GetActiveAnimationDebugState()` exposes the active animation metadata for Studio smokes. `EggAnimationContractSmoke` verifies special and auto-deleted reveal markers on the client animation layer.
+- The hatch settings drawer now exposes mode entitlement state before the server rejects a hatch. Mode controls carry `ModeState`, `ModeOwned`, and dynamic help text attributes, and a `ModeStatus` line summarizes active and locked modes from config/player attributes.
 
 Still to build:
 
 - Richer near-egg hatch UI polish and direct Studio visual QA across desktop/mobile layouts.
-- Further hatch setting UI polish and richer player-facing entitlement education beyond the first locked-mode feedback and hover/focus help text.
+- Further hatch setting UI polish and richer player-facing entitlement education beyond the first mode status line and dynamic hover/focus help text.
 - Richer authored egg animation visual polish beyond the first ViewportFrame clone/scale/reveal-badge pass.
 - Direct Studio visual QA across desktop/mobile layouts for the expanded hatch drawer.
 
