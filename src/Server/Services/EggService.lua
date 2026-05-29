@@ -177,6 +177,8 @@ function EggService:CloneHatchEntitlements(entitlements)
         skipHatch = entitlements.skipHatch == true,
         goldenMode = entitlements.goldenMode == true,
         chargedMode = entitlements.chargedMode == true,
+        luckBonus = tonumber(entitlements.luckBonus) or 0,
+        secretLuckBonus = tonumber(entitlements.secretLuckBonus) or 0,
     }
 end
 
@@ -614,6 +616,10 @@ function EggService:IsPlayerNearEgg(player, eggType)
 end
 
 function EggService:ResolveHatchEntitlements(player)
+    if self._hatchEntitlementService and self._hatchEntitlementService.Resolve then
+        return self._hatchEntitlementService:Resolve(player)
+    end
+
     local hatching = self:GetHatchingConfig()
     local shopStubs = hatching.shop_stubs or {}
     local maxStub = shopStubs.max_hatch_count or {}
@@ -637,6 +643,8 @@ function EggService:ResolveHatchEntitlements(player)
         skipHatch = resolveBooleanEntitlement("SkipHatchUnlocked", shopStubs.skip_hatch),
         goldenMode = resolveBooleanEntitlement("GoldenHatchUnlocked", shopStubs.golden_mode),
         chargedMode = resolveBooleanEntitlement("ChargedHatchUnlocked", shopStubs.charged_mode),
+        luckBonus = tonumber((shopStubs.luck_bonus or {}).default_multiplier) or 0,
+        secretLuckBonus = tonumber((shopStubs.secret_luck_bonus or {}).default_multiplier) or 0,
     }
 end
 
@@ -666,6 +674,8 @@ function EggService:ResolveHatchOptions(_player, request, entitlements)
         fastHatch = options.fastHatch == true and entitlements.fastHatch == true,
         skipHatch = options.skipHatch == true and entitlements.skipHatch == true,
         silentHatch = options.silentHatch == true,
+        luckBonus = tonumber(entitlements.luckBonus) or 0,
+        secretLuckBonus = tonumber(entitlements.secretLuckBonus) or 0,
         costMultiplier = 1,
     }
 
@@ -741,6 +751,10 @@ function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
         playerData.secretLuckBoost = (tonumber(playerData.secretLuckBoost) or 0)
             + (tonumber(chargedStub.secret_luck_bonus) or 0)
     end
+    playerData.luckBoost = (tonumber(playerData.luckBoost) or 0)
+        + (tonumber(hatchOptions.luckBonus) or 0)
+    playerData.secretLuckBoost = (tonumber(playerData.secretLuckBoost) or 0)
+        + (tonumber(hatchOptions.secretLuckBonus) or 0)
 
     return playerData
 end
@@ -1299,6 +1313,7 @@ function EggService:Initialize(moduleLoader)
         self._petGrantService = moduleLoader:Get("PetGrantService")
         self._modifierService = moduleLoader:Get("ModifierService")
         self._autoTargetService = moduleLoader:Get("AutoTargetService")
+        self._hatchEntitlementService = moduleLoader:Get("HatchEntitlementService")
 
         if self._inventoryService then
             Logger:Info("EggService: InventoryService connection established")
@@ -1340,6 +1355,12 @@ function EggService:Initialize(moduleLoader)
             Logger:Info("EggService: AutoTargetService connection established")
         else
             Logger:Warn("EggService: AutoTargetService not available in module loader")
+        end
+
+        if self._hatchEntitlementService then
+            Logger:Info("EggService: HatchEntitlementService connection established")
+        else
+            Logger:Warn("EggService: HatchEntitlementService not available in module loader")
         end
     else
         Logger:Warn("EggService: No module loader provided")

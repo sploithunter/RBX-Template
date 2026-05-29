@@ -70,6 +70,8 @@ function EggHatchSimulationSmoke.run(options)
         requestedCount = requestedCount,
         forcePet = "bear",
         forceVariant = "basic",
+        setupHatchLuckBonus = 2,
+        setupSecretHatchLuckBonus = 0.5,
     })
     local simulation = response.simulation
     assert(type(simulation) == "table" and simulation.ok == true, "Simulation failed")
@@ -79,7 +81,10 @@ function EggHatchSimulationSmoke.run(options)
     assert(simulation.hatchCount == requestedCount, "Simulation hatch count mismatch")
     assert(type(simulation.results) == "table", "Simulation missing result list")
     assert(#simulation.results == requestedCount, "Simulation result count mismatch")
-    assert(simulation.counts and simulation.counts.pets.bear == requestedCount, "Pet count mismatch")
+    assert(
+        simulation.counts and simulation.counts.pets.bear == requestedCount,
+        "Pet count mismatch"
+    )
     assert(
         simulation.counts and simulation.counts.variants.basic == requestedCount,
         "Variant count mismatch"
@@ -89,6 +94,22 @@ function EggHatchSimulationSmoke.run(options)
     assert(
         response.beforeEggsHatched == response.afterEggsHatched,
         "Simulation changed hatch counter"
+    )
+    assert(
+        simulation.entitlements and simulation.entitlements.luckBonus == 2,
+        "Simulation did not resolve hatch luck entitlement"
+    )
+    assert(
+        simulation.entitlements and simulation.entitlements.secretLuckBonus == 0.5,
+        "Simulation did not resolve secret hatch luck entitlement"
+    )
+    assert(
+        simulation.options and simulation.options.luckBonus == 2,
+        "Simulation options missing hatch luck bonus"
+    )
+    assert(
+        simulation.options and simulation.options.secretLuckBonus == 0.5,
+        "Simulation options missing secret hatch luck bonus"
     )
 
     return {

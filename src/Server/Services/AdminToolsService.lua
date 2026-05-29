@@ -16,6 +16,7 @@ function AdminToolsService.new()
     self._eventService = nil
     self._zoneService = nil
     self._petGrantService = nil
+    self._hatchEntitlementService = nil
     self._petsConfig = nil
     self._inventoryConfig = nil
     self._eggSystemConfig = nil
@@ -31,6 +32,7 @@ function AdminToolsService:Init()
     self._eventService = self._modules.EventService
     self._zoneService = self._modules.ZoneService
     self._petGrantService = self._modules.PetGrantService
+    self._hatchEntitlementService = self._modules.HatchEntitlementService
 
     self._petsConfig = self._configLoader:LoadConfig("pets")
     self._inventoryConfig = self._configLoader:LoadConfig("inventory")
@@ -228,107 +230,19 @@ function AdminToolsService:_buildSnapshot(targetPlayer)
 end
 
 function AdminToolsService:_getHatchEntitlementDefinitions()
-    return {
-        autoHatch = {
-            attribute = "AutoHatchUnlocked",
-            label = "Auto Hatch",
-            type = "boolean",
-        },
-        goldenMode = {
-            attribute = "GoldenHatchUnlocked",
-            label = "Golden Mode",
-            type = "boolean",
-        },
-        chargedMode = {
-            attribute = "ChargedHatchUnlocked",
-            label = "Charged Mode",
-            type = "boolean",
-        },
-        fastHatch = {
-            attribute = "FastHatchUnlocked",
-            label = "Fast Hatch",
-            type = "boolean",
-        },
-        skipHatch = {
-            attribute = "SkipHatchUnlocked",
-            label = "Skip Hatch",
-            type = "boolean",
-        },
-        maxHatchCount = {
-            attribute = "MaxEggHatchCount",
-            label = "Max Hatch Count",
-            type = "number",
-        },
-    }
+    return self._hatchEntitlementService:GetDefinitions()
 end
 
 function AdminToolsService:_getDefaultHatchEntitlement(entitlementId)
-    local hatching = self._eggSystemConfig and self._eggSystemConfig.hatching or {}
-    local stubs = hatching.shop_stubs or {}
-    if entitlementId == "autoHatch" then
-        return (stubs.auto_hatch or {}).owned_by_default == true
-    elseif entitlementId == "goldenMode" then
-        return (stubs.golden_mode or {}).owned_by_default == true
-    elseif entitlementId == "chargedMode" then
-        return (stubs.charged_mode or {}).owned_by_default == true
-    elseif entitlementId == "fastHatch" then
-        return (stubs.fast_hatch or {}).owned_by_default == true
-    elseif entitlementId == "skipHatch" then
-        return (stubs.skip_hatch or {}).owned_by_default == true
-    elseif entitlementId == "maxHatchCount" then
-        return tonumber((stubs.max_hatch_count or {}).default_value)
-            or tonumber(hatching.default_max_entitled_count)
-            or tonumber(hatching.max_count)
-            or 99
-    end
-    return nil
+    return self._hatchEntitlementService:GetDefault(entitlementId)
 end
 
 function AdminToolsService:_buildHatchEntitlementSnapshot(targetPlayer)
-    local snapshot = {}
-    for entitlementId, definition in pairs(self:_getHatchEntitlementDefinitions()) do
-        local value = targetPlayer:GetAttribute(definition.attribute)
-        local effective = value
-        if effective == nil then
-            effective = self:_getDefaultHatchEntitlement(entitlementId)
-        end
-        snapshot[entitlementId] = {
-            attribute = definition.attribute,
-            label = definition.label,
-            value = value,
-            effective = effective,
-            default = self:_getDefaultHatchEntitlement(entitlementId),
-        }
-    end
-    return snapshot
+    return self._hatchEntitlementService:BuildSnapshot(targetPlayer)
 end
 
 function AdminToolsService:_setHatchEntitlement(targetPlayer, entitlementId, value)
-    local definitions = self:_getHatchEntitlementDefinitions()
-    local definition = definitions[entitlementId]
-    if not definition then
-        return false, "Unknown hatch entitlement: " .. tostring(entitlementId)
-    end
-
-    if value == nil then
-        targetPlayer:SetAttribute(definition.attribute, nil)
-        return true, string.format("Reset %s to config default", definition.label)
-    end
-
-    if definition.type == "number" then
-        local hatching = self._eggSystemConfig and self._eggSystemConfig.hatching or {}
-        local maxCount = math.clamp(math.floor(tonumber(hatching.max_count) or 99), 1, 99)
-        local numericValue = tonumber(value)
-        if not numericValue then
-            return false, string.format("%s requires a number", definition.label)
-        end
-        local count = math.clamp(math.floor(numericValue), 1, maxCount)
-        targetPlayer:SetAttribute(definition.attribute, count)
-        return true, string.format("Set %s to %d", definition.label, count)
-    end
-
-    targetPlayer:SetAttribute(definition.attribute, value == true)
-    return true, string.format("%s %s", value == true and "Unlocked" or "Locked", definition.label)
+    return self._hatchEntitlementService:SetPlayerOverride(targetPlayer, entitlementId, value)
 end
 
 function AdminToolsService:_handleSetHatchEntitlement(adminPlayer, data)
@@ -451,16 +365,14 @@ function AdminToolsService:_handleHatchSimulation(adminPlayer, data)
     self:_sendResult(adminPlayer, {
         kind = "hatch_simulation",
         success = success,
-        message = success
-                and string.format(
-                    "Simulated %d/%d %s hatch%s for %s without spending currency",
-                    simulation.hatchCount or 0,
-                    simulation.requestedCount or 0,
-                    tostring(simulation.eggType or simulation.EggType or "egg"),
-                    (simulation.hatchCount or 0) == 1 and "" or "es",
-                    targetPlayer.Name
-                )
-            or (simulation and simulation.message or "Hatch simulation failed"),
+        message = success and string.format(
+            "Simulated %d/%d %s hatch%s for %s without spending currency",
+            simulation.hatchCount or 0,
+            simulation.requestedCount or 0,
+            tostring(simulation.eggType or simulation.EggType or "egg"),
+            (simulation.hatchCount or 0) == 1 and "" or "es",
+            targetPlayer.Name
+        ) or (simulation and simulation.message or "Hatch simulation failed"),
         simulation = simulation,
         snapshot = self:_buildSnapshot(targetPlayer),
     })

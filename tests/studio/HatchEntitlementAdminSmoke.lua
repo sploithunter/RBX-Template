@@ -22,6 +22,14 @@ local ENTITLEMENTS = {
     fastHatch = "FastHatchUnlocked",
     skipHatch = "SkipHatchUnlocked",
     maxHatchCount = "MaxEggHatchCount",
+    luckBonus = "HatchLuckBonus",
+    secretLuckBonus = "SecretHatchLuckBonus",
+}
+
+local NUMERIC_ENTITLEMENTS = {
+    maxHatchCount = true,
+    luckBonus = true,
+    secretLuckBonus = true,
 }
 
 local function waitFor(description, timeoutSeconds, predicate)
@@ -84,7 +92,7 @@ end
 
 local function assertBooleanEntitlements(player, expectedValue)
     for entitlementId, attributeName in pairs(ENTITLEMENTS) do
-        if entitlementId ~= "maxHatchCount" then
+        if not NUMERIC_ENTITLEMENTS[entitlementId] then
             assert(
                 player:GetAttribute(attributeName) == expectedValue,
                 entitlementId .. " attribute mismatch"
@@ -145,6 +153,33 @@ function HatchEntitlementAdminSmoke.run(options)
             "Max hatch count not reflected in result"
         )
 
+        local luckResult = invokeAdminEntitlement({
+            entitlement = "luckBonus",
+            value = 2.5,
+        }, timeoutSeconds)
+        assert(player:GetAttribute("HatchLuckBonus") == 2.5, "Hatch luck bonus not set")
+        assert(
+            luckResult.hatchEntitlements
+                and luckResult.hatchEntitlements.luckBonus
+                and luckResult.hatchEntitlements.luckBonus.effective == 2.5,
+            "Hatch luck bonus not reflected in result"
+        )
+
+        local secretLuckResult = invokeAdminEntitlement({
+            entitlement = "secretLuckBonus",
+            value = 0.5,
+        }, timeoutSeconds)
+        assert(
+            player:GetAttribute("SecretHatchLuckBonus") == 0.5,
+            "Secret hatch luck bonus not set"
+        )
+        assert(
+            secretLuckResult.hatchEntitlements
+                and secretLuckResult.hatchEntitlements.secretLuckBonus
+                and secretLuckResult.hatchEntitlements.secretLuckBonus.effective == 0.5,
+            "Secret hatch luck bonus not reflected in result"
+        )
+
         invokeAdminEntitlement({
             mode = "reset_all",
         }, timeoutSeconds)
@@ -154,7 +189,7 @@ function HatchEntitlementAdminSmoke.run(options)
 
         return {
             player = player.Name,
-            checked = 6,
+            checked = 8,
         }
     end)
 

@@ -1318,11 +1318,22 @@ function StudioSmokeTestService:_simulateEggHatch(player, payload)
 
     local oldForcePet = player:GetAttribute("ForcePet")
     local oldForceVariant = player:GetAttribute("ForceVariant")
+    local oldHatchLuckBonus = player:GetAttribute("HatchLuckBonus")
+    local oldSecretHatchLuckBonus = player:GetAttribute("SecretHatchLuckBonus")
     if payload.forcePet ~= nil then
         player:SetAttribute("ForcePet", payload.forcePet)
     end
     if payload.forceVariant ~= nil then
         player:SetAttribute("ForceVariant", payload.forceVariant)
+    end
+    if payload.setupHatchLuckBonus ~= nil then
+        player:SetAttribute("HatchLuckBonus", tonumber(payload.setupHatchLuckBonus) or 0)
+    end
+    if payload.setupSecretHatchLuckBonus ~= nil then
+        player:SetAttribute(
+            "SecretHatchLuckBonus",
+            tonumber(payload.setupSecretHatchLuckBonus) or 0
+        )
     end
 
     local beforeCurrency = dataService:GetCurrency(player, eggData.currency)
@@ -1340,6 +1351,8 @@ function StudioSmokeTestService:_simulateEggHatch(player, payload)
 
     player:SetAttribute("ForcePet", oldForcePet)
     player:SetAttribute("ForceVariant", oldForceVariant)
+    player:SetAttribute("HatchLuckBonus", oldHatchLuckBonus)
+    player:SetAttribute("SecretHatchLuckBonus", oldSecretHatchLuckBonus)
 
     if not ok then
         return {

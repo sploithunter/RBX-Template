@@ -289,6 +289,11 @@ loader:RegisterModule(
     { "Logger", "DataService", "ConfigLoader" }
 )
 loader:RegisterModule(
+    "HatchEntitlementService",
+    ServerScriptService.Server.Services.HatchEntitlementService,
+    { "Logger", "ConfigLoader" }
+)
+loader:RegisterModule(
     "DiagnosticsService",
     ServerScriptService.Server.Services.DiagnosticsService,
     { "Logger", "InventoryService", "EconomyService", "RateLimitService", "DataService" }
@@ -305,6 +310,7 @@ registerFeatureModule(
             "InventoryService",
             "ConfigLoader",
             "PetGrantService",
+            "HatchEntitlementService",
         }, "global_events", "EventService"),
         "map_binding",
         "ZoneService"
@@ -394,6 +400,7 @@ local requiredModules = {
     "PetSerialService",
     "PetGrantService",
     "SettingsService",
+    "HatchEntitlementService",
     "DiagnosticsService",
 }
 appendIfEnabled(requiredModules, "stats", "StatsService")

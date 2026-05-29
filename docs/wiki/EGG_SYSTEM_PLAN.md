@@ -39,6 +39,7 @@ Implemented so far:
 - Egg source unlock requirements now run through the server hatch pipeline. `EggService` checks `egg_sources.<id>.unlock_requirement` for real and simulated hatches, returns `egg_locked` with current/required progress, `ConfigLoader` validates the requirement shape, and `EggUnlockSmoke` verifies locked/unlocked golden egg behavior in Studio.
 - Skip Hatch is now guarded at the animation service boundary too. `EggInteractionService` already avoids calling hatch animation when `skipHatch` is active, and `EggHatchingService` now immediately returns a completed skipped result without enabling the animation GUI or creating frames if a future caller passes `skipHatch`; `EggAnimationContractSmoke` verifies this contract.
 - Show Hatch is now a free, persisted, default-on presentation preference. `egg_system.ui.hatch_panel.modes.show.default_enabled` seeds/migrates `Settings.AutoSystems.hatch.modes.showHatch`; turning it off suppresses hatch animations without needing the paid Skip Hatch entitlement, while Skip Hatch remains a separate hard animation suppressor.
+- `HatchEntitlementService` now centralizes the server hatch shop/unlock stubs. `EggService` resolves Auto/Golden/Charged/Fast/Skip, max hatch count, hatch-luck bonus, and secret-luck bonus through the same service that admin tools use for snapshots and overrides.
 
 Still to build:
 
@@ -179,9 +180,9 @@ Auto hatch:
 
 Shop and entitlement stubs:
 
-- Add a server-side entitlement resolver that initially reads dev/test config and player attributes/profile settings.
-- Stub entitlements for `max_hatch_count`, `auto_hatch`, `fast_hatch`, `skip_hatch`, `golden_mode`, `charged_mode`, `luck_bonus`, `secret_luck_bonus`.
-- Do not require the shop UI to exist yet; expose admin/dev commands or config flags to toggle entitlements for testing. The first admin panel controls now exist, but the future shop should call the same entitlement source instead of hardcoding egg behavior.
+- Add a server-side entitlement resolver that initially reads dev/test config and player attributes/profile settings. First-pass `HatchEntitlementService` now exists.
+- Stub entitlements for `max_hatch_count`, `auto_hatch`, `fast_hatch`, `skip_hatch`, `golden_mode`, `charged_mode`, `luck_bonus`, `secret_luck_bonus`. These now resolve through `HatchEntitlementService`; future work can add player-facing shop purchase flows on top of the same resolver.
+- Do not require the shop UI to exist yet; expose admin/dev commands or config flags to toggle entitlements for testing. The first admin panel controls now exist, and future shop code should call `HatchEntitlementService` instead of hardcoding egg behavior.
 - Later shop/monetization should call the same entitlement resolver, not change egg code.
 
 Testing:
