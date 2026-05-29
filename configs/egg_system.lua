@@ -57,6 +57,15 @@ return {
                 exclusive = true,
                 huge = true,
             },
+            reveal_badges = {
+                enabled = true,
+                show_rarity = true,
+                show_variant = true,
+                show_basic_variant = false,
+                show_auto_deleted = true,
+                special_badge_text = "SPECIAL",
+                auto_deleted_text = "AUTO-DELETED",
+            },
         },
         shop_stubs = {
             max_hatch_count = {

@@ -136,6 +136,36 @@ local function isSpecialEggData(eggData)
     return type(eggData.rarityId) == "string" and specialRarities[eggData.rarityId] == true
 end
 
+local function getRarityDefinition(rarityId)
+    if type(rarityId) ~= "string" then
+        return nil
+    end
+
+    local rarities = petConfig and petConfig.rarities
+    return rarities and rarities[rarityId] or nil
+end
+
+local function getRarityDisplayName(rarityId)
+    local rarity = getRarityDefinition(rarityId)
+    return (rarity and rarity.name) or rarityId
+end
+
+local function getRarityColor(rarityId)
+    local rarity = getRarityDefinition(rarityId)
+    return (rarity and rarity.color) or Color3.fromRGB(255, 255, 255)
+end
+
+local function getVariantDisplayName(variant)
+    if type(variant) ~= "string" or variant == "" then
+        return nil
+    end
+    return variant:sub(1, 1):upper() .. variant:sub(2)
+end
+
+local function isAutoDeletedEggData(eggData)
+    return type(eggData) == "table" and eggData.autoDeleted == true
+end
+
 -- Persistent GUI that gets created once and reused
 EggHatchingService._persistentGui = nil
 EggHatchingService._persistentContainer = nil
@@ -363,12 +393,27 @@ local ANIMATION_STATE = {
 }
 
 function EggHatchingService:CreateEggFrame(position, eggData)
+    eggData = eggData or {}
+    local animationPolicy = getAnimationPolicy()
+    local badgePolicy = animationPolicy.reveal_badges or {}
+    local specialHatch = isSpecialEggData(eggData)
+    local rarityId = eggData.rarityId
+    local rarityColor = getRarityColor(rarityId)
+    local visualSource = "fallback"
+
     local frame = Instance.new("Frame")
     frame.Name = "EggFrame_" .. position.index
     frame.Size = UDim2.new(0, position.size, 0, position.size)
     frame.Position = UDim2.new(0, position.x, 0, position.y)
     frame.BackgroundTransparency = 1 -- Transparent
     frame.BorderSizePixel = 0
+    frame:SetAttribute("EggIndex", position.index)
+    frame:SetAttribute("EggType", eggData.eggType or "")
+    frame:SetAttribute("PetType", eggData.petType or "")
+    frame:SetAttribute("Variant", eggData.variant or "")
+    frame:SetAttribute("RarityId", rarityId or "")
+    frame:SetAttribute("SpecialHatch", specialHatch)
+    frame:SetAttribute("AutoDeleted", isAutoDeletedEggData(eggData))
 
     print(
         "🖼️ Creating egg frame at position:",
@@ -398,6 +443,7 @@ function EggHatchingService:CreateEggFrame(position, eggData)
     if eggData.animation and eggData.animation.useAuthoredEggVisual == true then
         eggImage = self:GetAuthoredEggViewport(eggData.eggType or "basic_egg")
         if eggImage then
+            visualSource = "authored"
             print("🖼️ Using authored egg ViewportFrame for:", eggData.eggType)
         else
             print("⚠️ No authored egg ViewportFrame found, using generated/fallback")
@@ -408,6 +454,7 @@ function EggHatchingService:CreateEggFrame(position, eggData)
         -- Get the actual generated ViewportFrame (same as inventory/egg preview)
         eggImage = self:GetGeneratedEggViewport(eggData.eggType or "basic_egg")
         if eggImage then
+            visualSource = "generated"
             print("🖼️ Using generated ViewportFrame for:", eggData.eggType)
         else
             print("⚠️ No generated ViewportFrame found, using fallback")
@@ -420,6 +467,7 @@ function EggHatchingService:CreateEggFrame(position, eggData)
         eggImage.Image = eggData.imageId or "rbxasset://textures/face.png"
         print("🖼️ Using fallback ImageLabel:", eggImage.Image)
     end
+    frame:SetAttribute("EggVisualSource", visualSource)
 
     eggImage.Name = "EggImage"
     eggImage.Size = UDim2.new(1, 0, 1, 0)
@@ -451,6 +499,11 @@ function EggHatchingService:CreateEggFrame(position, eggData)
     petReveal.Image = "" -- Will be set when revealing
     petReveal.Parent = frame
 
+    local badges = {}
+    if badgePolicy.enabled ~= false then
+        badges = self:CreateRevealBadges(frame, eggData, rarityColor, specialHatch, badgePolicy)
+    end
+
     -- Ensure the parent frame has a transparent background for the reveal
     frame.BackgroundTransparency = 1
 
@@ -459,8 +512,150 @@ function EggHatchingService:CreateEggFrame(position, eggData)
             egg = eggImage,
             flash = flashContainer,
             reveal = petReveal,
+            badges = badges,
             state = ANIMATION_STATE.IDLE,
         }
+end
+
+function EggHatchingService:CreateRevealBadge(parent, name, text, color, position, size)
+    local badge = Instance.new("TextLabel")
+    badge.Name = name
+    badge.AnchorPoint = Vector2.new(0.5, 0.5)
+    badge.Position = position
+    badge.Size = size
+    badge.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
+    badge.BackgroundTransparency = 0.12
+    badge.BorderSizePixel = 0
+    badge.Font = Enum.Font.GothamBold
+    badge.Text = text
+    badge.TextColor3 = color
+    badge.TextScaled = true
+    badge.TextStrokeTransparency = 0.35
+    badge.Visible = false
+    badge.ZIndex = (parent.ZIndex or 1) + 10
+    badge:SetAttribute("BadgeText", text)
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = badge
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Name = "BadgeStroke"
+    stroke.Color = color
+    stroke.Thickness = 2
+    stroke.Transparency = 0.1
+    stroke.Parent = badge
+
+    badge.Parent = parent
+    return badge
+end
+
+function EggHatchingService:CreateRevealBadges(
+    frame,
+    eggData,
+    rarityColor,
+    specialHatch,
+    badgePolicy
+)
+    local badges = {}
+    local rarityId = eggData.rarityId
+
+    if specialHatch then
+        local specialStroke = Instance.new("UIStroke")
+        specialStroke.Name = "SpecialRevealStroke"
+        specialStroke.Color = rarityColor
+        specialStroke.Thickness = 4
+        specialStroke.Transparency = 0.15
+        specialStroke.Parent = frame
+        frame:SetAttribute("HasSpecialRevealStroke", true)
+
+        local specialText = tostring(badgePolicy.special_badge_text or "SPECIAL")
+        local specialBadge = self:CreateRevealBadge(
+            frame,
+            "SpecialBadge",
+            specialText,
+            rarityColor,
+            UDim2.new(0.5, 0, 0.02, 0),
+            UDim2.new(0.72, 0, 0.16, 0)
+        )
+        badges.special = specialBadge
+        frame:SetAttribute("SpecialBadgeText", specialText)
+    end
+
+    if badgePolicy.show_rarity ~= false and type(rarityId) == "string" and rarityId ~= "" then
+        local rarityName = getRarityDisplayName(rarityId)
+        local rarityBadge = self:CreateRevealBadge(
+            frame,
+            "RarityBadge",
+            rarityName,
+            rarityColor,
+            UDim2.new(0.5, 0, 0.91, 0),
+            UDim2.new(0.68, 0, 0.14, 0)
+        )
+        badges.rarity = rarityBadge
+        frame:SetAttribute("RarityBadgeText", rarityName)
+    end
+
+    local variantText = getVariantDisplayName(eggData.variant)
+    local shouldShowVariant = badgePolicy.show_variant ~= false
+        and variantText ~= nil
+        and (eggData.variant ~= "basic" or badgePolicy.show_basic_variant == true)
+    if shouldShowVariant then
+        local variantBadge = self:CreateRevealBadge(
+            frame,
+            "VariantBadge",
+            variantText,
+            Color3.fromRGB(255, 255, 255),
+            UDim2.new(0.24, 0, 0.76, 0),
+            UDim2.new(0.42, 0, 0.12, 0)
+        )
+        badges.variant = variantBadge
+        frame:SetAttribute("VariantBadgeText", variantText)
+    end
+
+    if badgePolicy.show_auto_deleted ~= false and isAutoDeletedEggData(eggData) then
+        local autoDeletedText = tostring(badgePolicy.auto_deleted_text or "AUTO-DELETED")
+        local autoDeleteBadge = self:CreateRevealBadge(
+            frame,
+            "AutoDeleteBadge",
+            autoDeletedText,
+            Color3.fromRGB(255, 120, 120),
+            UDim2.new(0.76, 0, 0.76, 0),
+            UDim2.new(0.5, 0, 0.12, 0)
+        )
+        badges.autoDeleted = autoDeleteBadge
+        frame:SetAttribute("AutoDeleteBadgeText", autoDeletedText)
+    end
+
+    return badges
+end
+
+function EggHatchingService:ShowRevealBadges(eggComponents)
+    local badges = eggComponents.badges
+    if type(badges) ~= "table" then
+        return
+    end
+
+    for _, badge in pairs(badges) do
+        if badge and badge.Parent then
+            badge.Visible = true
+            badge.TextTransparency = 1
+            badge.BackgroundTransparency = 1
+            local stroke = badge:FindFirstChild("BadgeStroke")
+            if stroke and stroke:IsA("UIStroke") then
+                stroke.Transparency = 1
+            end
+            TweenService:Create(badge, TweenInfo.new(0.2), {
+                TextTransparency = 0,
+                BackgroundTransparency = 0.12,
+            }):Play()
+            if stroke and stroke:IsA("UIStroke") then
+                TweenService:Create(stroke, TweenInfo.new(0.2), {
+                    Transparency = 0.1,
+                }):Play()
+            end
+        end
+    end
 end
 
 -- Shake animation (egg wobbles)
@@ -794,7 +989,7 @@ function EggHatchingService:CreateConfettiEffect(container, config)
         child:Destroy()
     end
     local count = config.piece_count or 30
-    for i = 1, count do
+    for _ = 1, count do
         task.spawn(function()
             local piece = Instance.new("Frame")
             piece.Name = "Confetti"
@@ -854,7 +1049,7 @@ function EggHatchingService:CreateSparkleEffect(container, config)
     local scaleMax = config.pulsate_scale_max or 1.2
     local alphaMin = config.alpha_min or 0.1
     local alphaMax = config.alpha_max or 0.45
-    for i = 1, count do
+    for _ = 1, count do
         task.spawn(function()
             local spark = Instance.new("Frame")
             spark.Name = "Sparkle"
@@ -1107,9 +1302,7 @@ function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, du
     print("  📊 Set initial Position:", tostring(petReveal.Position))
 
     -- Handle transparency for both ImageLabel and ViewportFrame
-    local transparencyProperty = "ImageTransparency"
     if petReveal.ClassName == "ViewportFrame" then
-        transparencyProperty = "BackgroundTransparency"
         petReveal.BackgroundTransparency = 1
         print("  📊 Using BackgroundTransparency for ViewportFrame")
     else
@@ -1142,6 +1335,7 @@ function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, du
 
     print("  🎬 Starting reveal tween for", duration, "seconds...")
     revealTween:Play()
+    self:ShowRevealBadges(eggComponents)
 
     task.wait(duration)
 
@@ -1397,14 +1591,12 @@ function EggHatchingService:ExecuteHatchingSequence(
 
     -- PHASE 1: All eggs shake simultaneously
     print("🔄 Phase 1: Shaking", eggCount, "eggs")
-    local shakeCoroutines = {}
 
-    for i, components in ipairs(eggComponents) do
+    for _, components in ipairs(eggComponents) do
         local co = coroutine.create(function()
             self:AnimateShake(components, shakeDuration)
         end)
         coroutine.resume(co)
-        table.insert(shakeCoroutines, co)
     end
 
     -- Wait for all shaking to complete
@@ -1529,7 +1721,7 @@ end
 -- ═══════════════════════════════════════════════════════════════════════════════════
 
 -- Group identical pets and animate them stacking into a single representative per group
-function EggHatchingService:AnimateStackedResults(eggFrames, eggComponents, eggsData, gridInfo)
+function EggHatchingService:AnimateStackedResults(eggFrames, _eggComponents, eggsData, _gridInfo)
     if not eggFrames or #eggFrames == 0 then
         return
     end
@@ -1606,11 +1798,9 @@ function EggHatchingService:AnimateStackedResults(eggFrames, eggComponents, eggs
     end
 
     -- Tween non-representatives to the representative position and fade out
-    local tweens = {}
     for key, group in pairs(groups) do
         local indices = group.indices
         if #indices > 1 then
-            local repIndex = indices[1]
             local targetPos = targets[key]
             for idx = 2, #indices do
                 local i = indices[idx]
@@ -1631,7 +1821,6 @@ function EggHatchingService:AnimateStackedResults(eggFrames, eggComponents, eggs
                         }
                     )
                     tween:Play()
-                    table.insert(tweens, tween)
                     -- Also fade the image for visual clarity
                     if guiObj and guiObj:IsA("ImageLabel") then
                         TweenService:Create(guiObj, TweenInfo.new(0.35), { ImageTransparency = 1 })
@@ -1645,7 +1834,7 @@ function EggHatchingService:AnimateStackedResults(eggFrames, eggComponents, eggs
     task.wait(0.4)
 
     -- Hide non-representatives; keep representatives and labels on screen briefly
-    for key, group in pairs(groups) do
+    for _, group in pairs(groups) do
         if #group.indices > 1 then
             for idx = 2, #group.indices do
                 local i = group.indices[idx]
@@ -1728,7 +1917,6 @@ end
 
 -- DEBUG: Create a viewer to inspect egg ViewportFrames
 function EggHatchingService:CreateEggViewportDebugger()
-    local Players = game:GetService("Players")
     local player = Players.LocalPlayer
     if not player then
         return
@@ -1818,7 +2006,7 @@ function EggHatchingService:CreateEggViewportDebugger()
         local eggTypes = { "basic_egg", "golden_egg" } -- Add more as needed
         local yOffset = 10
 
-        for i, eggType in ipairs(eggTypes) do
+        for _, eggType in ipairs(eggTypes) do
             local eggViewport = self:GetGeneratedEggViewport(eggType)
 
             if eggViewport then
@@ -1976,6 +2164,71 @@ function EggHatchingService:GetPersistentGuiStatus()
         print("🔴 Persistent GUI is DISABLED")
         return "disabled"
     end
+end
+
+function EggHatchingService:GetActiveAnimationDebugState()
+    local status = "not_created"
+    if self._persistentGui then
+        status = self._persistentGui.Enabled and "enabled" or "disabled"
+    end
+
+    local state = {
+        guiStatus = status,
+        frameCount = 0,
+        frames = {},
+    }
+
+    local container = self._persistentContainer
+    if not container then
+        return state
+    end
+
+    local frames = {}
+    for _, child in ipairs(container:GetChildren()) do
+        if child.Name:match("^EggFrame_") then
+            table.insert(frames, child)
+        end
+    end
+
+    table.sort(frames, function(a, b)
+        return (a:GetAttribute("EggIndex") or 0) < (b:GetAttribute("EggIndex") or 0)
+    end)
+
+    state.frameCount = #frames
+    for _, frame in ipairs(frames) do
+        local frameState = {
+            name = frame.Name,
+            eggIndex = frame:GetAttribute("EggIndex"),
+            eggType = frame:GetAttribute("EggType"),
+            petType = frame:GetAttribute("PetType"),
+            variant = frame:GetAttribute("Variant"),
+            rarityId = frame:GetAttribute("RarityId"),
+            specialHatch = frame:GetAttribute("SpecialHatch") == true,
+            autoDeleted = frame:GetAttribute("AutoDeleted") == true,
+            eggVisualSource = frame:GetAttribute("EggVisualSource"),
+            hasSpecialRevealStroke = frame:GetAttribute("HasSpecialRevealStroke") == true,
+            badges = {},
+        }
+
+        for _, badgeName in ipairs({
+            "SpecialBadge",
+            "RarityBadge",
+            "VariantBadge",
+            "AutoDeleteBadge",
+        }) do
+            local badge = frame:FindFirstChild(badgeName)
+            if badge and badge:IsA("TextLabel") then
+                frameState.badges[badgeName] = {
+                    text = badge.Text,
+                    visible = badge.Visible,
+                }
+            end
+        end
+
+        table.insert(state.frames, frameState)
+    end
+
+    return state
 end
 
 function EggHatchingService:TestVisibility()

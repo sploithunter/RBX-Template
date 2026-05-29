@@ -65,6 +65,7 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Admin hatch entitlement tools now expose the egg shop stubs before the shop UI exists. Developers can view, lock, unlock, reset, or directly set Auto, Golden, Charged, Fast, Skip, and max hatch count attributes from the admin panel; snapshots include effective hatch entitlement status.
 - Hatch settings education is now config-driven. `configs/egg_system.lua` owns help copy for core hatch controls, mode toggles, and auto-delete filters; the hatch drawer renders a `HelpText` line and the interactive controls carry `HelpText` attributes for hover/focus updates.
 - Auto-hatch failure feedback now explicitly stops with a reason for no-currency and no-storage sessions, and the client loop also reports when the player moves too far away, e.g. `Auto hatch stopped: out of currency`, `Auto hatch stopped: storage full`, or `Auto hatch stopped: too far away`.
+- Hatch reveal markers are now config-driven. `egg_system.hatching.animation.reveal_badges` controls rarity, variant, special, and auto-delete badges, and `EggHatchingService:GetActiveAnimationDebugState()` lets Studio smokes inspect the live client animation contract without relying on screenshots.
 
 ## Phase 0 Verification
 
@@ -142,6 +143,7 @@ Last checked: 2026-05-27
 - `EggProximitySmoke` passes through Studio MCP with the hatch drawer help-text contract. It verifies the near-egg panel, expected Hatch/Max/Auto/count controls, mode/filter controls, and config-driven help metadata.
 - `EggAutoHatchSmoke` passes through Studio MCP. It initializes isolated client egg targeting/hatch panel services, verifies auto-hatch stop feedback for zero currency, zero pet storage, and moving out of range, then restores the profile.
 - `StudioSmokeTestService` now supports `setupPetInventoryEmpty` for egg smokes so storage-limit tests can avoid accidental success through existing pet stacks.
+- `EggAnimationContractSmoke` passes through Studio MCP. It creates a synthetic special Exclusive Rainbow Colorado and an auto-deleted Common Bear hatch, then verifies frame metadata, rarity/variant/special/auto-delete badges, and visible reveal-state updates.
 
 ## Admin/Map Test Verification
 
