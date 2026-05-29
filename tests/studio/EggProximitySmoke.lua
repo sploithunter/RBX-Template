@@ -284,6 +284,22 @@ function EggProximitySmoke.run(options)
             )
             local helpText = settings:FindFirstChild("HelpText")
             assert(helpText, "Hatch panel missing config-driven help text")
+            local protectedLabel = settings:FindFirstChild("ProtectedAutoDeleteRarities")
+            assert(protectedLabel, "Hatch panel missing protected auto-delete rarity list")
+            local protectedRarities =
+                tostring(protectedLabel:GetAttribute("ProtectedRarities") or "")
+            assert(
+                protectedRarities:find("exclusive", 1, true),
+                "Protected auto-delete list did not include exclusive rarity id"
+            )
+            assert(
+                protectedRarities:find("huge", 1, true),
+                "Protected auto-delete list did not include huge rarity id"
+            )
+            assert(
+                tostring(protectedLabel.Text):find("Protected:", 1, true),
+                "Protected auto-delete list did not explain protected tiers"
+            )
             assert(
                 settings:FindFirstChild("pet_types_bear"),
                 "Hatch panel missing pet-family auto-delete filter"

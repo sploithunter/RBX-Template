@@ -19,6 +19,7 @@ local Workspace = game:GetService("Workspace")
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local petConfig = Locations.getConfig("pets")
 local eggSystemConfig = Locations.getConfig("egg_system")
+local autoSystemsConfig = Locations.getConfig("auto_systems")
 local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
@@ -526,6 +527,32 @@ local function getFilterDisplayName(id)
         or titleCaseId(id)
 end
 
+local function getProtectedAutoDeleteRarities()
+    local autoDeleteConfig = autoSystemsConfig.auto_delete or {}
+    local values = {}
+    for rarityId, protected in pairs(autoDeleteConfig.protected_rarities or {}) do
+        if protected == true then
+            table.insert(values, tostring(rarityId))
+        end
+    end
+    table.sort(values)
+    return values
+end
+
+local function getProtectedAutoDeleteText()
+    local protectedRarities = getProtectedAutoDeleteRarities()
+    local labels = {}
+    for _, rarityId in ipairs(protectedRarities) do
+        table.insert(labels, getFilterDisplayName(rarityId))
+    end
+
+    if #labels == 0 then
+        return "Protected: none"
+    end
+
+    return "Protected: " .. table.concat(labels, ", ")
+end
+
 function EggInteractionService:CreateButton(parent, name, text, size, position, color, callback)
     local button = Instance.new("TextButton")
     button.Name = name
@@ -904,6 +931,24 @@ function EggInteractionService:CreateAutoDeleteSettings(parent)
         y + 116,
         filterConfig.variant_description
     )
+
+    local protectedLabel = Instance.new("TextLabel")
+    protectedLabel.Name = "ProtectedAutoDeleteRarities"
+    protectedLabel.Size = UDim2.new(1, -16, 0, 22)
+    protectedLabel.Position = UDim2.new(0, 8, 0, y + 148)
+    protectedLabel.BackgroundTransparency = 1
+    protectedLabel.Text = getProtectedAutoDeleteText()
+    protectedLabel.TextColor3 = Color3.fromRGB(170, 224, 214)
+    protectedLabel.TextScaled = true
+    protectedLabel.TextWrapped = true
+    protectedLabel.Font = Enum.Font.Gotham
+    protectedLabel.TextXAlignment = Enum.TextXAlignment.Left
+    protectedLabel.Parent = parent
+    protectedLabel:SetAttribute(
+        "ProtectedRarities",
+        table.concat(getProtectedAutoDeleteRarities(), ",")
+    )
+    self:BindHelpText(protectedLabel, filterConfig.description)
 end
 
 function EggInteractionService:CreateModeSettings(parent)

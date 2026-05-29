@@ -40,11 +40,12 @@ Implemented so far:
 - Skip Hatch is now guarded at the animation service boundary too. `EggInteractionService` already avoids calling hatch animation when `skipHatch` is active, and `EggHatchingService` now immediately returns a completed skipped result without enabling the animation GUI or creating frames if a future caller passes `skipHatch`; `EggAnimationContractSmoke` verifies this contract.
 - Show Hatch is now a free, persisted, default-on presentation preference. `egg_system.ui.hatch_panel.modes.show.default_enabled` seeds/migrates `Settings.AutoSystems.hatch.modes.showHatch`; turning it off suppresses hatch animations without needing the paid Skip Hatch entitlement, while Skip Hatch remains a separate hard animation suppressor.
 - `HatchEntitlementService` now centralizes the server hatch shop/unlock stubs. `EggService` resolves Auto/Golden/Charged/Fast/Skip, max hatch count, hatch-luck bonus, and secret-luck bonus through the same service that admin tools use for snapshots and overrides.
+- The hatch settings drawer now surfaces server-protected auto-delete tiers directly from `configs/auto_systems.lua`. Secret/Exclusive/Huge protection remains a single source of truth in `auto_delete.protected_rarities`, while the UI renders the current protected list and `EggProximitySmoke` verifies it.
 
 Still to build:
 
 - Richer near-egg hatch UI polish and direct Studio screenshot QA across desktop/mobile layouts when screenshot capture is available.
-- Further hatch setting UI polish beyond the current config-derived mode cost/luck education, Max/Auto entitlement state, and dynamic hover/focus help text.
+- Further hatch setting UI polish beyond the current config-derived mode cost/luck education, protected auto-delete tier list, Max/Auto entitlement state, and dynamic hover/focus help text.
 - Richer authored egg animation visual polish beyond the current ViewportFrame clone/scale/reveal-badge/glow/backdrop pass.
 - Direct Studio screenshot QA across desktop/mobile layouts for the expanded hatch drawer when screenshot capture is available; current automated geometry coverage exists.
 
@@ -155,7 +156,7 @@ Client UI:
 - Disable/gray controls while the server hatch lock is active.
 - Show exact stop reasons: no funds, no storage, too far, locked area, on cooldown, feature locked.
 - Add auto-hatch state UI with visible running/stopped reason.
-- Add auto-delete filter UI backed by existing server settings: rarity, pet family, variant, protected tiers.
+- Add auto-delete filter UI backed by existing server settings: rarity, pet family, variant, protected tiers. First-pass protected tier display is in place; future polish can improve layout/education.
 - Add settings for show hatch, skip hatch, silence hatch, and fast hatch once entitlement stubs exist. First-pass persistent mode settings and help text exist, and Show Hatch now works as a default-on free presentation preference. Future polish should make locked/unlocked ownership more explicit.
 
 Animation:

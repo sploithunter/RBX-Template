@@ -80,6 +80,7 @@ Locations.ConfigFiles = {
     ui = "ui",
     pets = "pets",
     egg_system = "egg_system",
+    auto_systems = "auto_systems",
     logging = "logging"
 }
 
@@ -183,11 +184,11 @@ function Locations.getConfigLoader()
         warn("ConfigLoader not available")
         return nil
     end
-    
+
     local success, configLoader = pcall(function()
         return require(Locations.ConfigLoader)
     end)
-    
+
     if success then
         return configLoader
     else
@@ -200,7 +201,7 @@ end
 function Locations.getConfig(configName)
     -- Look up the actual config file name
     local configFileName = Locations.ConfigFiles[configName]
-    
+
     local configLoader = Locations.getConfigLoader()
     if configLoader then
         return configLoader:LoadConfig(configFileName)
@@ -214,22 +215,22 @@ function Locations.getPackage(packageName)
         warn("Unknown package:", packageName)
         return nil
     end
-    
+
     if not Locations.Packages then
         warn("Packages folder not available")
         return nil
     end
-    
+
     local packageModule = Locations.Packages:FindFirstChild(Locations.PackageFiles[packageName])
     if not packageModule then
         warn("Package not found:", packageName)
         return nil
     end
-    
+
     local success, package = pcall(function()
         return require(packageModule)
     end)
-    
+
     if success then
         return package
     else
@@ -244,11 +245,11 @@ function Locations.getLibrary(libraryName)
         warn("Unknown library:", libraryName)
         return nil
     end
-    
+
     local success, library = pcall(function()
         return require(Locations.Libraries[libraryName])
     end)
-    
+
     if success then
         return library
     else
@@ -293,19 +294,19 @@ function Locations.validateCriticalPaths()
         "ConfigLoader"
         -- "NetworkBridge" removed - using Signals instead
     }
-    
+
     local missing = {}
-    
+
     for _, path in ipairs(critical) do
         if not Locations[path] then
             table.insert(missing, path)
         end
     end
-    
+
     if #missing > 0 then
         error("Critical paths missing: " .. table.concat(missing, ", "))
     end
-    
+
     return true
 end
 
@@ -327,4 +328,4 @@ if not pcall(Locations.validateCriticalPaths) then
     warn("Some critical paths are missing - check game structure")
 end
 
-return Locations 
+return Locations
