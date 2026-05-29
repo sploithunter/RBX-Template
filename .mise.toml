@@ -14,6 +14,9 @@
 # StyLua for code formatting
 stylua = "0.18.2"
 
+# Lune standalone Luau runtime for headless (no-Studio) pure-logic unit tests
+"github:lune-org/lune" = { version = "0.10.4", exe = "lune" }
+
 [env]
 # Environment variables for development
 ROJO_PORT = "34872"
@@ -57,6 +60,10 @@ run = "node scripts/meshy_asset.js balance"
 [tasks.test]
 description = "Run tests (requires Studio)"
 run = "echo 'Run tests/TestBootstrap.lua in Roblox Studio'"
+
+[tasks.test-headless]
+description = "Run headless pure-logic unit tests with lune (no Studio required)"
+run = "lune run tests/headless/run.luau"
 
 [tasks.lint]
 description = "Lint Lua files with Selene, failing on errors"
