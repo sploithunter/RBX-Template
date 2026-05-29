@@ -39,7 +39,7 @@ Pet Simulator X / 99 patterns worth adapting:
 - Auto-hatch is a loop state, not repeated manual clicking.
 - Premium hatch modifiers include faster hatch, skip hatch, luck, huge/secret luck, Magic Eggs-style golden/rainbow chance, golden-only/charged modes, and additional egg slots.
 - High-volume hatching depends on auto-delete/filtering so inventory and saves remain manageable.
-- Special hatches need stronger reveal treatment and may bypass skip/silent settings.
+- Special hatches need stronger reveal treatment when hatch animations are enabled. Skip Hatch is a hard player preference that hides the animation while auto-hatching; it should not be bypassed by special rarity outcomes.
 
 ColorfulClickers patterns worth preserving conceptually:
 
@@ -119,7 +119,7 @@ Config:
 - Add `egg_system.hatching.cooldown_seconds`, `lock_release_policy`, and `auto_loop_delay`.
 - Add `egg_system.hatching.compat_purchase_types` for temporary `"Single"`, `"Triple"`, and `"Auto"` mapping during migration.
 - Add `egg_system.ui.hatch_controls` for button visibility, labels, count selector, and hotkeys.
-- Add `egg_system.animation` for show/skip/silent/force-special rules, speed multipliers, and max supported count.
+- Add `egg_system.animation` for show/skip/silent/special-reveal rules, speed multipliers, and max supported count.
 - Extend config validation for max count, partial policy, animation max, and hatch-control fields.
 - Add shop/entitlement stub config for max hatch count, auto hatch, fast hatch, skip hatch, golden mode, charged mode, and luck sources.
 
@@ -140,7 +140,7 @@ Animation:
 - Use the authored egg visual from the current `EggStand`/world model when available, including rock-style placeholder eggs.
 - Keep fallback generated egg visuals for synthetic maps.
 - Support dynamic count layouts up to `99`.
-- Force special reveal for protected/special tiers even if skip/silent is enabled, unless config says otherwise.
+- Add stronger reveal metadata/effects for protected/special tiers when hatch animation is shown. Skip Hatch should still suppress the hatch animation entirely; Silent Hatch may suppress audio while config can decide whether special visual-only world FX still plays.
 - Include per-result rarity/variant colors and special effects.
 - Ensure animation completion/reentry does not control server correctness; it only controls client presentation.
 
@@ -203,5 +203,5 @@ Later polish:
 - Should the default selected count be `1`, player preference, or max affordable/storable up to max allowed?
 - Should multi-hatch count entitlement default to `99` during template development, then be tuned later by game-specific config/shop?
 - Do we want golden/charged modes immediately, or after basic multi/auto feels solid?
-- Should special hatches always force animation even when the player has skip/silent enabled?
+- Resolved: Skip Hatch is specifically an animation-suppression preference for auto-hatching and should not be overridden by special hatch outcomes. Special hatches can still carry reveal metadata and stronger effects when animations are enabled.
 - Should area currencies replace coins/crystals entirely per area, or should core currency stay global with area materials as side currencies?

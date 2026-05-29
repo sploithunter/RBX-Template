@@ -42,6 +42,7 @@ The playable baseline currently includes:
 - Hatch panel controls and hotkeys for selected-count, max, and auto hatch, backed by the same server batch endpoint and server-validated auto entitlement/session handling.
 - Compact hatch auto-delete filter drawer for rarity, pet-family, and variant filters, backed by the server-authoritative auto-delete settings event.
 - Hatch mode toggles for Golden/Fast/Skip/Silent; Golden mode is server-entitlement checked, explains locked access, costs the configured multiplier, and prevents basic variants.
+- Special hatch metadata is config-driven for reveal polish, and Skip Hatch remains a hard animation-suppression preference for auto-hatching.
 - Admin panel tools and Studio MCP smoke-test tooling for repeatable validation.
 
 ## In Process / Partially Implemented

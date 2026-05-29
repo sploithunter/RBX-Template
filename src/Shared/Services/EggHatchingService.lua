@@ -120,6 +120,22 @@ end
 local EggHatchingService = {}
 EggHatchingService.__index = EggHatchingService
 
+local function getAnimationPolicy()
+    return eggSystemConfig and eggSystemConfig.hatching and eggSystemConfig.hatching.animation or {}
+end
+
+local function isSpecialEggData(eggData)
+    if type(eggData) ~= "table" then
+        return false
+    end
+    if eggData.specialHatch == true then
+        return true
+    end
+    local policy = getAnimationPolicy()
+    local specialRarities = policy.special_rarities or {}
+    return type(eggData.rarityId) == "string" and specialRarities[eggData.rarityId] == true
+end
+
 -- Persistent GUI that gets created once and reused
 EggHatchingService._persistentGui = nil
 EggHatchingService._persistentContainer = nil
@@ -1399,6 +1415,17 @@ function EggHatchingService:ExecuteHatchingSequence(
 
     for i, components in ipairs(eggComponents) do
         local eggData = eggsData[i]
+        local animationPolicy = getAnimationPolicy()
+        local specialHatch = isSpecialEggData(eggData)
+        local entryRevealDuration = revealDuration
+        if specialHatch then
+            entryRevealDuration = math.max(
+                entryRevealDuration,
+                tonumber(animationPolicy.special_reveal_min_duration) or 0
+            )
+        end
+        local allowWorldFX = not silentHatch
+            or (specialHatch and animationPolicy.respect_silent_for_special == false)
 
         -- Optional stagger between eggs
         if doStagger and i > 1 then
@@ -1411,6 +1438,8 @@ function EggHatchingService:ExecuteHatchingSequence(
             components._indexInBatch = i
             -- Flash (non-yielding) and play sound immediately
             if silentHatch then
+                -- Silent hatch suppresses hatch sounds. Skip Hatch bypasses this
+                -- service entirely in EggInteractionService.
                 components._silentHatch = true
             end
             self:AnimateFlash(components, math.max(flashDuration, 0.01))
@@ -1442,10 +1471,7 @@ function EggHatchingService:ExecuteHatchingSequence(
             if eggData then
                 if eggData.worldPart and typeof(eggData.worldPart) == "Instance" then
                     shouldPlayWorldFX = true
-                elseif
-                    eggData.petType == "dragon"
-                    or (eggData.petData and eggData.petData.rarity_id == "secret")
-                then
+                elseif specialHatch and animationPolicy.special_world_fx ~= false then
                     -- Create a temporary local anchor near the player for special pets
                     local player = Players.LocalPlayer
                     local hrp = player
@@ -1474,8 +1500,8 @@ function EggHatchingService:ExecuteHatchingSequence(
                     end
                 end
             end
-            if shouldPlayWorldFX and worldPart and not silentHatch then
-                local playDuration = math.max(flashDuration, 0.2) + math.max(revealDuration, 0)
+            if shouldPlayWorldFX and worldPart and allowWorldFX then
+                local playDuration = math.max(flashDuration, 0.2) + math.max(entryRevealDuration, 0)
                 task.spawn(function()
                     pcall(function()
                         EggHatchFX.Play(worldPart, playDuration)
@@ -1483,7 +1509,7 @@ function EggHatchingService:ExecuteHatchingSequence(
                 end)
             end
             -- Reveal (pass the full eggData for pet info)
-            self:AnimateReveal(components, eggData.petImageId, eggData, revealDuration)
+            self:AnimateReveal(components, eggData.petImageId, eggData, entryRevealDuration)
         end)
     end
 

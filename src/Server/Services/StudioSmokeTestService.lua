@@ -16,6 +16,7 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local REMOTE_NAME = "StudioSmokeTest"
+local Locations = require(ReplicatedStorage.Shared.Locations)
 local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
 
 local logger
@@ -1063,7 +1064,7 @@ end
 
 function StudioSmokeTestService:_beginEggProximity(player, payload)
     local eggType = payload.eggType or "basic_egg"
-    local petsConfig = configLoader:LoadConfig("pets")
+    local petsConfig = Locations.getConfig("pets")
     local eggSystemConfig = configLoader:LoadConfig("egg_system")
     local eggData = petsConfig.egg_sources[eggType]
     if not eggData then
@@ -1306,7 +1307,7 @@ function StudioSmokeTestService:_restoreEggProximity(player)
         end
     end
 
-    local petsConfig = configLoader:LoadConfig("pets")
+    local petsConfig = Locations.getConfig("pets")
     if petsConfig then
         petsConfig.test_mode = deepCopy(session.originalPetTestMode)
     end

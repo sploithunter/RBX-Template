@@ -363,6 +363,23 @@ function EggService:IsSpecialPetOutcome(hatchResult)
         or rarityId == "huge"
 end
 
+function EggService:IsSpecialRevealOutcome(hatchResult)
+    local hatching = self:GetHatchingConfig()
+    local animation = hatching.animation or {}
+    if animation.special_reveal_enabled == false then
+        return false
+    end
+    if hatchResult.huge == true then
+        return true
+    end
+
+    local petData = hatchResult.petData
+        or (petConfig.getPet and petConfig.getPet(hatchResult.pet, hatchResult.variant))
+    local rarityId = petData and petData.rarity_id
+    local specialRarities = animation.special_rarities or {}
+    return type(rarityId) == "string" and specialRarities[rarityId] == true
+end
+
 function EggService:ResolveStorageLimitedOutcomes(player, outcomes)
     if not self._inventoryService then
         return outcomes, nil
@@ -584,6 +601,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
     local resultEntries = {}
     local processedCount = 0
     local grantFailed = nil
+    local specialRevealCount = 0
     for _, outcome in ipairs(outcomes) do
         local hatchResult = outcome.hatchResult
         local grantResult = nil
@@ -626,11 +644,23 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         end
 
         processedCount += 1
+        local rarityId = hatchResult.petData and hatchResult.petData.rarity_id or nil
+        local rarityName = hatchResult.petData
+                and hatchResult.petData.rarity
+                and hatchResult.petData.rarity.name
+            or rarityId
+        local specialHatch = self:IsSpecialRevealOutcome(hatchResult)
+        if specialHatch then
+            specialRevealCount += 1
+        end
         table.insert(resultEntries, {
             Pet = hatchResult.pet,
             PetNum = hatchResult.pet,
             Type = hatchResult.variant,
             Power = hatchResult.petData and hatchResult.petData.power or 0,
+            RarityId = rarityId,
+            RarityName = rarityName,
+            SpecialHatch = specialHatch,
             EggType = request.eggType,
             Cost = eggCost,
             AutoDeleted = outcome.autoDeleted,
@@ -639,6 +669,9 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
             pet = hatchResult.pet,
             variant = hatchResult.variant,
             power = hatchResult.petData and hatchResult.petData.power or 0,
+            rarityId = rarityId,
+            rarityName = rarityName,
+            specialHatch = specialHatch,
             autoDeleted = outcome.autoDeleted,
             autoDeleteReason = outcome.autoDeleteReason,
         })
@@ -677,6 +710,10 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
     end
 
     local first = resultEntries[1]
+    local animationPayload = self:GetEggAnimationPayload(request.eggType, eggData)
+    animationPayload.specialReveal = specialRevealCount > 0
+    animationPayload.specialRevealCount = specialRevealCount
+
     local response = {
         ok = true,
         success = true,
@@ -697,7 +734,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         entitlements = entitlements,
         options = hatchOptions,
         autoSessionId = request.autoSessionId,
-        animation = self:GetEggAnimationPayload(request.eggType, eggData),
+        animation = animationPayload,
     }
 
     Logger:Info("Egg hatch transaction complete", {

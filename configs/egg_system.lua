@@ -47,6 +47,16 @@ return {
             max_visible_eggs = 99,
             use_authored_egg_visual = true,
             authored_visual_scale = 1.25,
+            special_reveal_enabled = true,
+            special_world_fx = true,
+            respect_silent_for_special = false,
+            special_reveal_min_duration = 1.1,
+            special_rarities = {
+                mythic = true,
+                secret = true,
+                exclusive = true,
+                huge = true,
+            },
         },
         shop_stubs = {
             max_hatch_count = {

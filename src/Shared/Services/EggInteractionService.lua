@@ -1063,6 +1063,9 @@ function EggInteractionService:ShowHatchingResults(result)
                 ),
                 animation = result.animation,
                 hatchOptions = result.options,
+                rarityId = entry.RarityId or entry.rarityId,
+                rarityName = entry.RarityName or entry.rarityName,
+                specialHatch = entry.SpecialHatch == true or entry.specialHatch == true,
                 autoDeleted = entry.AutoDeleted or entry.autoDeleted,
                 autoDeleteReason = entry.AutoDeleteReason or entry.autoDeleteReason,
             })

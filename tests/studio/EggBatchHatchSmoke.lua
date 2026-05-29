@@ -347,6 +347,18 @@ function EggBatchHatchSmoke.run(options)
             partialStorage.afterPetCount == partialStorage.beforePetCount + storageLimitedCount,
             "Partial storage added wrong pet count"
         )
+        local specialEntry = partialStorage.result.results and partialStorage.result.results[1]
+        assert(specialEntry and specialEntry.SpecialHatch == true, "Special hatch flag missing")
+        assert(specialEntry.RarityId == "exclusive", "Special hatch rarity mismatch")
+        assert(
+            partialStorage.result.animation
+                and partialStorage.result.animation.specialReveal == true,
+            "Special hatch animation metadata missing"
+        )
+        assert(
+            partialStorage.result.animation.specialRevealCount == storageLimitedCount,
+            "Special hatch count mismatch"
+        )
 
         return {
             player = player.Name,

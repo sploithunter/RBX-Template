@@ -2375,6 +2375,69 @@ function ConfigLoader:_validateEggSystemConfig(config)
     then
         return self:_configError("egg_system", "hatching.allow_partial", "expected boolean")
     end
+    local animation = config.hatching.animation or {}
+    if type(animation) ~= "table" then
+        return self:_configError("egg_system", "hatching.animation", "expected table")
+    end
+    if
+        animation.special_reveal_enabled ~= nil
+        and type(animation.special_reveal_enabled) ~= "boolean"
+    then
+        return self:_configError(
+            "egg_system",
+            "hatching.animation.special_reveal_enabled",
+            "expected boolean"
+        )
+    end
+    if animation.special_world_fx ~= nil and type(animation.special_world_fx) ~= "boolean" then
+        return self:_configError(
+            "egg_system",
+            "hatching.animation.special_world_fx",
+            "expected boolean"
+        )
+    end
+    if
+        animation.respect_silent_for_special ~= nil
+        and type(animation.respect_silent_for_special) ~= "boolean"
+    then
+        return self:_configError(
+            "egg_system",
+            "hatching.animation.respect_silent_for_special",
+            "expected boolean"
+        )
+    end
+    ok, err = self:_requireNonNegativeNumber(
+        "egg_system",
+        animation.special_reveal_min_duration or 0,
+        "hatching.animation.special_reveal_min_duration"
+    )
+    if not ok then
+        return ok, err
+    end
+    local specialRarities = animation.special_rarities or {}
+    if type(specialRarities) ~= "table" then
+        return self:_configError(
+            "egg_system",
+            "hatching.animation.special_rarities",
+            "expected table"
+        )
+    end
+    for rarityId, enabled in pairs(specialRarities) do
+        if type(rarityId) ~= "string" or rarityId == "" then
+            return self:_configError(
+                "egg_system",
+                "hatching.animation.special_rarities",
+                "expected non-empty string keys"
+            )
+        end
+        if type(enabled) ~= "boolean" then
+            return self:_configError(
+                "egg_system",
+                "hatching.animation.special_rarities." .. rarityId,
+                "expected boolean"
+            )
+        end
+    end
     if type(config.ui.hatch_panel) ~= "table" then
         return self:_configError("egg_system", "ui.hatch_panel", "expected table")
     end
