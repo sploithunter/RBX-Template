@@ -1190,6 +1190,23 @@ return function()
                 ).to.be.ok()
             end)
 
+            it("should reject special hatch rarity ids that are not configured", function()
+                local invalidConfig = makeValidEggSystemConfig()
+                invalidConfig.hatching.animation.special_rarities.missing_rarity = true
+
+                local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(
+                    string.find(
+                        error,
+                        "hatching.animation.special_rarities.missing_rarity",
+                        1,
+                        true
+                    )
+                ).to.be.ok()
+                expect(string.find(error, "pets.rarities", 1, true)).to.be.ok()
+            end)
+
             it("should reject incomplete hatch panel button config", function()
                 local invalidConfig = makeValidEggSystemConfig()
                 invalidConfig.ui.hatch_panel.buttons.auto = ""
@@ -1198,6 +1215,35 @@ return function()
                 expect(isValid).to.equal(false)
                 expect(string.find(error, "ui.hatch_panel.buttons.auto", 1, true)).to.be.ok()
             end)
+
+            it(
+                "should reject hatch auto-delete filters that do not reference pet config",
+                function()
+                    local invalidConfig = makeValidEggSystemConfig()
+                    invalidConfig.ui.hatch_panel.auto_delete.pet_type_filters = { "missing_pet" }
+
+                    local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                    expect(isValid).to.equal(false)
+                    expect(
+                        string.find(error, "ui.hatch_panel.auto_delete.pet_type_filters.1", 1, true)
+                    ).to.be.ok()
+                    expect(string.find(error, "pets.pets", 1, true)).to.be.ok()
+
+                    invalidConfig = makeValidEggSystemConfig()
+                    invalidConfig.ui.hatch_panel.auto_delete.rarity_filters = { "missing_rarity" }
+
+                    isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                    expect(isValid).to.equal(false)
+                    expect(string.find(error, "pets.rarities", 1, true)).to.be.ok()
+
+                    invalidConfig = makeValidEggSystemConfig()
+                    invalidConfig.ui.hatch_panel.auto_delete.variant_filters = { "missing_variant" }
+
+                    isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                    expect(isValid).to.equal(false)
+                    expect(string.find(error, "pets.variants", 1, true)).to.be.ok()
+                end
+            )
 
             it("should reject hatch panel responsive scale inversions", function()
                 local invalidConfig = makeValidEggSystemConfig()

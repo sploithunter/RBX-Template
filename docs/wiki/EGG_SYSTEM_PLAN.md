@@ -43,6 +43,7 @@ Implemented so far:
 - Show Hatch is now a free, persisted, default-on presentation preference. `egg_system.ui.hatch_panel.modes.show.default_enabled` seeds/migrates `Settings.AutoSystems.hatch.modes.showHatch`; turning it off suppresses hatch animations without needing the paid Skip Hatch entitlement, while Skip Hatch remains a separate hard animation suppressor.
 - `HatchEntitlementService` now centralizes the server hatch shop/unlock stubs. `EggService` resolves Auto/Golden/Charged/Fast/Skip, max hatch count, hatch-luck bonus, and secret-luck bonus through the same service that admin tools use for snapshots and overrides.
 - The hatch settings drawer now surfaces server-protected auto-delete tiers directly from `configs/auto_systems.lua`. Secret/Exclusive/Huge protection remains a single source of truth in `auto_delete.protected_rarities`, while the UI renders the current protected list and `EggProximitySmoke` verifies it.
+- `ConfigLoader` now cross-validates egg-system rarity/filter references against pet config. Special hatch rarity ids must exist in `pets.rarities`, and hatch drawer auto-delete filter lists must reference configured rarity, pet family, and variant ids.
 
 Still to build:
 
@@ -148,6 +149,7 @@ Config:
 - Add `egg_system.ui.hatch_controls` for button visibility, labels, count selector, and hotkeys.
 - Add `egg_system.animation` for show/skip/silent/special-reveal rules, speed multipliers, and max supported count.
 - Extend config validation for max count, partial policy, animation max, and hatch-control fields.
+- Cross-reference hatch special rarity and auto-delete filter ids against `configs/pets.lua` so typoed config fails at startup instead of silently hiding UI/filter options.
 - Add shop/entitlement stub config for max hatch count, auto hatch, fast hatch, skip hatch, golden mode, charged mode, and luck sources.
 
 Client UI:

@@ -88,6 +88,7 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Hatch mode education now surfaces configured economics. Golden/Charged mode UI reads cost and luck values from `egg_system.hatching.shop_stubs`, exposes `CostMultiplier`/`LuckBonus`/`SecretLuckBonus` attributes for tests, and includes those details in help/status text.
 - Expanded hatch drawer layout is now covered without relying on screenshots. `EggProximitySmoke` opens the real `PlayerGui` drawer, verifies responsive desktop/mobile fit math, and asserts visible drawer controls stay inside the configured drawer bounds.
 - Special hatch reveal now includes a config-driven backdrop layer. `egg_system.hatching.animation.special_backdrop` controls a rarity-colored backdrop behind special pet reveals, `ConfigLoader` validates it, and animation debug state exposes the backdrop contract for Studio smokes.
+- Egg-system config validation now cross-references hatch special rarity ids and hatch auto-delete drawer filter ids against pet config. `hatching.animation.special_rarities` must reference `pets.rarities`, while hatch drawer `rarity_filters`, `pet_type_filters`, and `variant_filters` must reference configured rarities, pet families, and variants.
 
 ## Phase 0 Verification
 

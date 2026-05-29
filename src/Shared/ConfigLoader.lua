@@ -2293,6 +2293,7 @@ function ConfigLoader:_validateEggSystemConfig(config)
     if not ok then
         return ok, err
     end
+    local pets = self:_rawConfig("pets") or {}
 
     for _, key in ipairs({
         "version",
@@ -2585,6 +2586,13 @@ function ConfigLoader:_validateEggSystemConfig(config)
                 "egg_system",
                 "hatching.animation.special_rarities",
                 "expected non-empty string keys"
+            )
+        end
+        if pets.rarities and not pets.rarities[rarityId] then
+            return self:_configError(
+                "egg_system",
+                "hatching.animation.special_rarities." .. rarityId,
+                "must reference pets.rarities"
             )
         end
         if type(enabled) ~= "boolean" then
@@ -2949,11 +2957,21 @@ function ConfigLoader:_validateEggSystemConfig(config)
             )
         end
     end
-    for _, listName in ipairs({
-        "rarity_filters",
-        "pet_type_filters",
-        "variant_filters",
-    }) do
+    local autoDeleteFilterRefs = {
+        rarity_filters = {
+            allowed = pets.rarities,
+            target = "pets.rarities",
+        },
+        pet_type_filters = {
+            allowed = pets.pets,
+            target = "pets.pets",
+        },
+        variant_filters = {
+            allowed = pets.variants,
+            target = "pets.variants",
+        },
+    }
+    for _, listName in ipairs({ "rarity_filters", "pet_type_filters", "variant_filters" }) do
         local values = autoDelete[listName] or {}
         if type(values) ~= "table" then
             return self:_configError(
@@ -2968,6 +2986,14 @@ function ConfigLoader:_validateEggSystemConfig(config)
                     "egg_system",
                     "ui.hatch_panel.auto_delete." .. listName .. "." .. tostring(index),
                     "expected non-empty string"
+                )
+            end
+            local ref = autoDeleteFilterRefs[listName]
+            if ref and ref.allowed and not ref.allowed[id] then
+                return self:_configError(
+                    "egg_system",
+                    "ui.hatch_panel.auto_delete." .. listName .. "." .. tostring(index),
+                    "must reference " .. ref.target
                 )
             end
         end
