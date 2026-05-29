@@ -31,16 +31,13 @@ jobs:
 
       # mise's github backend can install release binaries without the execute
       # bit on the Linux runner (e.g. selene), causing "Permission denied".
-      # Ensure every tool's install dir is executable before running the gate.
+      # Tools are registered by full backend names (github:Kampfkarren/selene,
+      # etc.), so chmod the whole installs tree rather than guessing short names.
       - name: Make mise-installed tools executable
         run: |
-          for t in selene stylua rojo lune wally; do
-            d="$(mise where "$t" 2>/dev/null || true)"
-            if [ -n "$d" ] && [ -d "$d" ]; then
-              chmod -R u+x "$d" || true
-              echo "chmod +x $d"
-            fi
-          done
+          install_root="${MISE_DATA_DIR:-$HOME/.local/share/mise}/installs"
+          echo "chmod +x under: $install_root"
+          chmod -R u+x "$install_root" || true
 
       - name: Fast gate (selene + stylua + rojo build + headless tests)
         run: mise run ci
