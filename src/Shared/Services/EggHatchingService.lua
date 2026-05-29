@@ -299,6 +299,16 @@ local GRID_LAYOUTS = {
     { columns = 10, rows = 10, minItems = 91, maxItems = 100, name = "10x10" },
 }
 
+local function getResolvedAnimationViewportSize()
+    local camera = workspace.CurrentCamera
+    local viewportSize = camera and camera.ViewportSize or Vector2.new(0, 0)
+    if viewportSize.X >= 320 and viewportSize.Y >= 240 then
+        return viewportSize
+    end
+
+    return Vector2.new(1280, 720)
+end
+
 -- Calculate optimal grid layout for given number of eggs
 function EggHatchingService:CalculateGridLayout(eggCount, containerWidth, containerHeight)
     local layoutPolicy = getLayoutPolicy()
@@ -322,18 +332,20 @@ function EggHatchingService:CalculateGridLayout(eggCount, containerWidth, contai
     local availableWidth = containerWidth - (padding * (layout.columns + 1))
     local availableHeight = containerHeight - (padding * (layout.rows + 1))
 
-    local cellWidth = availableWidth / layout.columns
-    local cellHeight = availableHeight / layout.rows
+    local cellWidth = math.max(1, availableWidth / layout.columns)
+    local cellHeight = math.max(1, availableHeight / layout.rows)
 
     -- Keep eggs square (use smaller dimension)
     local eggSize = math.min(cellWidth, cellHeight)
 
     -- Enforce minimum and maximum egg sizes for visibility
-    local minEggSize = eggCount >= layoutPolicy.compactThreshold and layoutPolicy.compactMinEggSize
+    local configuredMinEggSize = eggCount >= layoutPolicy.compactThreshold
+            and layoutPolicy.compactMinEggSize
         or layoutPolicy.minEggSize
     local maxEggSize = layoutPolicy.maxEggSize
     local originalEggSize = eggSize
-    eggSize = math.max(minEggSize, math.min(maxEggSize, eggSize))
+    eggSize = math.min(maxEggSize, math.max(1, eggSize))
+    local minEggSize = math.min(configuredMinEggSize, eggSize)
 
     print("🔢 SIZE CALCULATION TRACE:")
     print("  📊 Container:", containerWidth .. "x" .. containerHeight)
@@ -1537,11 +1549,13 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
     self._persistentGui.Enabled = true
 
     -- Calculate grid layout using proper screen dimensions
-    local screenSize = workspace.CurrentCamera.ViewportSize
+    local screenSize = getResolvedAnimationViewportSize()
     local containerSize = Vector2.new(screenSize.X, screenSize.Y)
 
     local gridInfo = self:CalculateGridLayout(eggCount, containerSize.X, containerSize.Y)
     local positions = self:GenerateEggPositions(eggCount, gridInfo)
+    self._persistentGui:SetAttribute("GridContainerWidth", containerSize.X)
+    self._persistentGui:SetAttribute("GridContainerHeight", containerSize.Y)
     self._persistentGui:SetAttribute("GridLayoutName", gridInfo.layout.name)
     self._persistentGui:SetAttribute("GridColumns", gridInfo.layout.columns)
     self._persistentGui:SetAttribute("GridRows", gridInfo.layout.rows)
@@ -2302,6 +2316,8 @@ function EggHatchingService:GetActiveAnimationDebugState()
     }
     if self._persistentGui then
         state.layout = {
+            containerWidth = self._persistentGui:GetAttribute("GridContainerWidth"),
+            containerHeight = self._persistentGui:GetAttribute("GridContainerHeight"),
             name = self._persistentGui:GetAttribute("GridLayoutName"),
             columns = self._persistentGui:GetAttribute("GridColumns"),
             rows = self._persistentGui:GetAttribute("GridRows"),
@@ -2353,6 +2369,14 @@ function EggHatchingService:GetActiveAnimationDebugState()
             specialHatch = frame:GetAttribute("SpecialHatch") == true,
             autoDeleted = frame:GetAttribute("AutoDeleted") == true,
             eggVisualSource = frame:GetAttribute("EggVisualSource"),
+            position = {
+                x = frame.Position.X.Offset,
+                y = frame.Position.Y.Offset,
+            },
+            size = {
+                x = frame.Size.X.Offset,
+                y = frame.Size.Y.Offset,
+            },
             hasSpecialRevealStroke = frame:GetAttribute("HasSpecialRevealStroke") == true,
             specialGlowPulseEnabled = frame:GetAttribute("SpecialGlowPulseEnabled") == true,
             badges = {},
