@@ -1093,6 +1093,8 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
     local originalCurrency = dataService:GetCurrency(player, eggData.currency)
     local originalPetsBucket = deepCopy(data.Inventory.pets or { items = {} })
     local originalPetTestMode = deepCopy(petsConfig.test_mode)
+    local originalAutoSystems = deepCopy(data.Settings and data.Settings.AutoSystems or nil)
+    local originalCounters = deepCopy(data.Stats and data.Stats.Counters or {})
     local eggCost = (petsConfig.getEggCost and petsConfig.getEggCost(eggType)) or eggData.cost
     local setupHatchCount = math.max(1, math.floor(tonumber(payload.setupHatchCount) or 1))
     local requiredCurrency = payload.setupCurrencyAmount
@@ -1122,6 +1124,15 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
         petsConfig.test_mode.enabled = true
         petsConfig.test_mode.force_pet = payload.setupForceHatchPet
         petsConfig.test_mode.force_variant = payload.setupForceHatchVariant or "basic"
+    end
+    if payload.setupAutoDeleteFilters then
+        if not autoTargetService then
+            return {
+                ok = false,
+                error = "AutoTargetService is unavailable",
+            }
+        end
+        autoTargetService:SetAutoDeleteFilters(player, payload.setupAutoDeleteFilters)
     end
     local originalAttributes = {}
     for _, attributeName in ipairs({
@@ -1161,6 +1172,8 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
         originalPetCount = countPets(originalPetsBucket),
         originalAttributes = originalAttributes,
         originalPetTestMode = originalPetTestMode,
+        originalAutoSystems = originalAutoSystems,
+        originalCounters = originalCounters,
         farPosition = anchorPosition + Vector3.new(maxDistance + 80, 4, 0),
         nearPosition = anchorPosition + Vector3.new(0, 4, 0),
         cooldown = eggSystemConfig.cooldowns.purchase_cooldown or 0,
@@ -1212,6 +1225,7 @@ function StudioSmokeTestService:_hatchEggProximity(player, payload)
     local beforeCurrency = dataService:GetCurrency(player, session.currency)
     local data = dataService:GetData(player)
     local beforePetCount = countPets(data.Inventory and data.Inventory.pets)
+    local beforeEggsHatched = dataService:GetCounter(player, "eggs_hatched")
     local hatchResult, hatchMessage
     local requestedCount = math.max(1, math.floor(tonumber(payload.requestedCount) or 1))
     if
@@ -1251,6 +1265,8 @@ function StudioSmokeTestService:_hatchEggProximity(player, payload)
         afterCurrency = dataService:GetCurrency(player, session.currency),
         beforePetCount = beforePetCount,
         afterPetCount = countPets(afterData.Inventory and afterData.Inventory.pets),
+        beforeEggsHatched = beforeEggsHatched,
+        afterEggsHatched = dataService:GetCounter(player, "eggs_hatched"),
         currency = session.currency,
         cost = session.cost,
         cooldown = session.cooldown,
@@ -1274,6 +1290,12 @@ function StudioSmokeTestService:_restoreEggProximity(player)
         if inventoryService and inventoryService._updateBucketFolders then
             inventoryService:_updateBucketFolders(player, "pets")
         end
+    end
+    if data then
+        data.Settings = data.Settings or {}
+        data.Settings.AutoSystems = deepCopy(session.originalAutoSystems)
+        data.Stats = data.Stats or {}
+        data.Stats.Counters = deepCopy(session.originalCounters)
     end
 
     for attributeName, record in pairs(session.originalAttributes or {}) do

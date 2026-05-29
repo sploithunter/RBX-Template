@@ -182,6 +182,49 @@ function EggBatchHatchSmoke.run(options)
         task.wait((partialFunds.cooldown or 0) + 0.25)
         invoke(remote, "RestoreEggProximity", {})
         started = false
+        begin = invoke(remote, "BeginEggProximity", {
+            eggType = eggType,
+            setupHatchCount = 1,
+            setupCurrencyAmount = begin.cost,
+            setupForceHatchPet = "bear",
+            setupForceHatchVariant = "basic",
+            setupAutoDeleteFilters = {
+                enabled = true,
+                rarities = {
+                    common = true,
+                },
+            },
+        })
+        started = true
+        invoke(remote, "MoveEggProximity", { placement = "near" })
+        task.wait(0.2)
+
+        local autoDeleteHatch = invoke(remote, "HatchEggProximity", {
+            batch = true,
+            requestedCount = 1,
+        })
+        assert(
+            type(autoDeleteHatch.result) == "table" and autoDeleteHatch.result.success == true,
+            "Auto-delete hatch failed"
+        )
+        assert(autoDeleteHatch.result.AutoDeleted == true, "Auto-delete flag missing")
+        assert(autoDeleteHatch.result.AutoDeleteReason == "rarity", "Auto-delete reason mismatch")
+        assert(
+            autoDeleteHatch.afterPetCount == autoDeleteHatch.beforePetCount,
+            "Auto-delete hatch wrote to inventory"
+        )
+        assert(
+            autoDeleteHatch.afterEggsHatched == autoDeleteHatch.beforeEggsHatched + 1,
+            "Auto-delete hatch did not increment egg stats"
+        )
+        assert(
+            autoDeleteHatch.afterCurrency == autoDeleteHatch.beforeCurrency - autoDeleteHatch.cost,
+            "Auto-delete hatch deducted wrong amount"
+        )
+
+        task.wait((autoDeleteHatch.cooldown or 0) + 0.25)
+        invoke(remote, "RestoreEggProximity", {})
+        started = false
         local goldenCount = math.min(2, requestedCount)
         local goldenMultiplier = math.max(
             1,
@@ -313,6 +356,7 @@ function EggBatchHatchSmoke.run(options)
             requestedCount = requestedCount,
             hatchCount = batch.result.hatchCount,
             partialFundsCount = partialFunds.result.hatchCount,
+            autoDeletedCount = autoDeleteHatch.result.hatchCount,
             goldenCount = golden.result.hatchCount,
             partialStorageCount = partialStorage.result.hatchCount,
             stopReason = batch.result.stopReason,
@@ -335,11 +379,12 @@ end
 function EggBatchHatchSmoke.runText(options)
     local result = EggBatchHatchSmoke.run(options)
     return string.format(
-        "EggBatchHatchSmoke passed: player=%s egg=%s count=%d partialFunds=%d partialStorage=%d golden=%d cost=%d %s stop=%s restored=%s",
+        "EggBatchHatchSmoke passed: player=%s egg=%s count=%d partialFunds=%d autoDeleted=%d partialStorage=%d golden=%d cost=%d %s stop=%s restored=%s",
         result.player,
         result.eggType,
         result.hatchCount,
         result.partialFundsCount,
+        result.autoDeletedCount,
         result.partialStorageCount,
         result.goldenCount,
         result.cost,
