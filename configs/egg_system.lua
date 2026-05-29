@@ -78,6 +78,12 @@ return {
                 pulse_duration = 0.55,
                 pulse_repeats = 3,
             },
+            special_backdrop = {
+                enabled = true,
+                transparency = 0.82,
+                pulse_scale = 1.18,
+                pulse_duration = 0.35,
+            },
             reveal_badges = {
                 enabled = true,
                 show_rarity = true,

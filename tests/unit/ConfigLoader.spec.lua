@@ -951,6 +951,12 @@ return function()
                                 pulse_duration = 0.55,
                                 pulse_repeats = 3,
                             },
+                            special_backdrop = {
+                                enabled = true,
+                                transparency = 0.82,
+                                pulse_scale = 1.18,
+                                pulse_duration = 0.35,
+                            },
                             reveal_badges = {
                                 enabled = true,
                                 show_rarity = true,
@@ -1121,6 +1127,17 @@ return function()
                         1,
                         true
                     )
+                ).to.be.ok()
+            end)
+
+            it("should reject special hatch backdrop transparency above one", function()
+                local invalidConfig = makeValidEggSystemConfig()
+                invalidConfig.hatching.animation.special_backdrop.transparency = 1.5
+
+                local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(
+                    string.find(error, "hatching.animation.special_backdrop.transparency", 1, true)
                 ).to.be.ok()
             end)
 

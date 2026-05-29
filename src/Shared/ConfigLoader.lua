@@ -2614,6 +2614,50 @@ function ConfigLoader:_validateEggSystemConfig(config)
             return ok, err
         end
     end
+    local specialBackdrop = animation.special_backdrop or {}
+    if type(specialBackdrop) ~= "table" then
+        return self:_configError(
+            "egg_system",
+            "hatching.animation.special_backdrop",
+            "expected table"
+        )
+    end
+    if specialBackdrop.enabled ~= nil and type(specialBackdrop.enabled) ~= "boolean" then
+        return self:_configError(
+            "egg_system",
+            "hatching.animation.special_backdrop.enabled",
+            "expected boolean"
+        )
+    end
+    for _, fieldName in ipairs({ "pulse_scale", "pulse_duration" }) do
+        if specialBackdrop[fieldName] ~= nil then
+            ok, err = self:_requirePositiveNumber(
+                "egg_system",
+                specialBackdrop[fieldName],
+                "hatching.animation.special_backdrop." .. fieldName
+            )
+            if not ok then
+                return ok, err
+            end
+        end
+    end
+    if specialBackdrop.transparency ~= nil then
+        ok, err = self:_requireNonNegativeNumber(
+            "egg_system",
+            specialBackdrop.transparency,
+            "hatching.animation.special_backdrop.transparency"
+        )
+        if not ok then
+            return ok, err
+        end
+        if specialBackdrop.transparency > 1 then
+            return self:_configError(
+                "egg_system",
+                "hatching.animation.special_backdrop.transparency",
+                "must be less than or equal to 1"
+            )
+        end
+    end
     local revealBadges = animation.reveal_badges or {}
     if type(revealBadges) ~= "table" then
         return self:_configError("egg_system", "hatching.animation.reveal_badges", "expected table")

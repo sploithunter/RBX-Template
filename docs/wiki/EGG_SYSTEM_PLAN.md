@@ -35,12 +35,13 @@ Implemented so far:
 - Hatch animation now has explicit max-batch coverage. `EggHatchingService` resolves a sane fallback viewport when Studio reports an uninitialized `1x1` camera size, exposes resolved container/frame geometry through `GetActiveAnimationDebugState()`, and `EggAnimationMaxBatchSmoke` verifies `99` authored egg frames fit in the compact `10x10` layout.
 - Hatch mode education now includes config-derived economics. The hatch drawer reads mode cost/luck details from `egg_system.hatching.shop_stubs`, exposes them as UI attributes, and shows details such as Golden `20x` cost and Charged luck bonuses in help/status text.
 - The expanded hatch drawer now has automated layout coverage. `EggProximitySmoke` opens the real `PlayerGui` drawer, verifies desktop/mobile fit math, and checks that visible drawer controls are not clipped inside the configured drawer bounds.
+- Special hatch animation polish now has a config-driven backdrop layer. `egg_system.hatching.animation.special_backdrop` controls a rarity-colored reveal backdrop behind special pets, `ConfigLoader` validates its fields, and `EggAnimationContractSmoke` verifies the visual contract.
 
 Still to build:
 
 - Richer near-egg hatch UI polish and direct Studio screenshot QA across desktop/mobile layouts when screenshot capture is available.
 - Further hatch setting UI polish beyond the current config-derived mode cost/luck education, Max/Auto entitlement state, and dynamic hover/focus help text.
-- Richer authored egg animation visual polish beyond the first ViewportFrame clone/scale/reveal-badge/configured-glow pass.
+- Richer authored egg animation visual polish beyond the current ViewportFrame clone/scale/reveal-badge/glow/backdrop pass.
 - Direct Studio screenshot QA across desktop/mobile layouts for the expanded hatch drawer when screenshot capture is available; current automated geometry coverage exists.
 
 ## Goal
@@ -162,7 +163,7 @@ Animation:
 - Add stronger reveal metadata/effects for protected/special tiers when hatch animation is shown. Skip Hatch should still suppress the hatch animation entirely; Silent Hatch may suppress audio while config can decide whether special visual-only world FX still plays.
 - Include per-result rarity/variant colors and special effects.
 - Ensure animation completion/reentry does not control server correctness; it only controls client presentation.
-- Keep animation presentation choices configurable: grid layout sizes/padding, authored egg scale, reveal badges, special glow, and future special effects should live in config rather than hardcoded UI constants.
+- Keep animation presentation choices configurable: grid layout sizes/padding, authored egg scale, reveal badges, special glow/backdrop, and future special effects should live in config rather than hardcoded UI constants.
 - Fast Hatch speed should remain a config value, not a hardcoded client multiplier; current validation requires it to be positive and no slower than normal speed.
 
 Auto hatch:

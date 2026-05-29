@@ -464,6 +464,7 @@ function EggHatchingService:CreateEggFrame(position, eggData)
     local animationPolicy = getAnimationPolicy()
     local badgePolicy = animationPolicy.reveal_badges or {}
     local specialGlowPolicy = animationPolicy.special_glow or {}
+    local specialBackdropPolicy = animationPolicy.special_backdrop or {}
     local specialHatch = isSpecialEggData(eggData)
     local rarityId = eggData.rarityId
     local rarityColor = getRarityColor(rarityId)
@@ -565,6 +566,7 @@ function EggHatchingService:CreateEggFrame(position, eggData)
     petReveal.BorderSizePixel = 0
     petReveal.ImageTransparency = 1
     petReveal.Image = "" -- Will be set when revealing
+    petReveal.ZIndex = (frame.ZIndex or 1) + 3
     petReveal.Parent = frame
 
     local badges = {}
@@ -590,6 +592,10 @@ function EggHatchingService:CreateEggFrame(position, eggData)
                 0,
                 math.floor(tonumber(specialGlowPolicy.pulse_repeats) or 3)
             ),
+            specialBackdrop = frame:FindFirstChild("SpecialRevealBackdrop"),
+            specialBackdropPulseScale = tonumber(specialBackdropPolicy.pulse_scale) or 1.18,
+            specialBackdropPulseDuration = tonumber(specialBackdropPolicy.pulse_duration) or 0.35,
+            specialBackdropTransparency = tonumber(specialBackdropPolicy.transparency) or 0.82,
             state = ANIMATION_STATE.IDLE,
         }
 end
@@ -650,6 +656,49 @@ function EggHatchingService:CreateRevealBadges(
             specialStroke:SetAttribute("PulseEnabled", specialGlowPolicy.pulse_enabled ~= false)
             frame:SetAttribute("HasSpecialRevealStroke", true)
             frame:SetAttribute("SpecialGlowPulseEnabled", specialGlowPolicy.pulse_enabled ~= false)
+        end
+
+        local specialBackdropPolicy = animationPolicy.special_backdrop or {}
+        if specialBackdropPolicy.enabled ~= false then
+            local backdrop = Instance.new("Frame")
+            backdrop.Name = "SpecialRevealBackdrop"
+            backdrop.AnchorPoint = Vector2.new(0.5, 0.5)
+            backdrop.Position = UDim2.new(0.5, 0, 0.5, 0)
+            backdrop.Size = UDim2.new(0.9, 0, 0.9, 0)
+            backdrop.BackgroundColor3 = rarityColor
+            backdrop.BackgroundTransparency = 1
+            backdrop.BorderSizePixel = 0
+            backdrop.Visible = false
+            backdrop.ZIndex = (frame.ZIndex or 1) + 1
+            backdrop.Parent = frame
+
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0.5, 0)
+            corner.Parent = backdrop
+
+            local gradient = Instance.new("UIGradient")
+            gradient.Name = "SpecialRevealGradient"
+            gradient.Rotation = 35
+            gradient.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.15),
+                NumberSequenceKeypoint.new(0.5, 0.65),
+                NumberSequenceKeypoint.new(1, 0.15),
+            })
+            gradient.Parent = backdrop
+
+            frame:SetAttribute("HasSpecialRevealBackdrop", true)
+            frame:SetAttribute(
+                "SpecialRevealBackdropTransparency",
+                tonumber(specialBackdropPolicy.transparency) or 0.82
+            )
+            frame:SetAttribute(
+                "SpecialRevealBackdropPulseScale",
+                tonumber(specialBackdropPolicy.pulse_scale) or 1.18
+            )
+            frame:SetAttribute(
+                "SpecialRevealBackdropPulseDuration",
+                tonumber(specialBackdropPolicy.pulse_duration) or 0.35
+            )
         end
 
         local specialText = tostring(badgePolicy.special_badge_text or "SPECIAL")
@@ -764,6 +813,40 @@ function EggHatchingService:ShowRevealBadges(eggComponents)
             if specialGlow and specialGlow.Parent then
                 specialGlow.Thickness = baseThickness
                 specialGlow.Transparency = baseTransparency
+            end
+        end)
+    end
+
+    local specialBackdrop = eggComponents.specialBackdrop
+    if specialBackdrop and specialBackdrop.Parent then
+        specialBackdrop.Visible = true
+        specialBackdrop.BackgroundTransparency = 1
+        local originalSize = specialBackdrop.Size
+        local targetTransparency = math.clamp(eggComponents.specialBackdropTransparency, 0, 1)
+        local pulseScale = math.max(1, eggComponents.specialBackdropPulseScale)
+        local pulseDuration = math.max(0.05, eggComponents.specialBackdropPulseDuration)
+        local fade = TweenService:Create(specialBackdrop, TweenInfo.new(0.18), {
+            BackgroundTransparency = targetTransparency,
+        })
+        fade:Play()
+
+        local pulse = TweenService:Create(
+            specialBackdrop,
+            TweenInfo.new(pulseDuration, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, 1, true),
+            {
+                Size = UDim2.new(
+                    originalSize.X.Scale * pulseScale,
+                    originalSize.X.Offset,
+                    originalSize.Y.Scale * pulseScale,
+                    originalSize.Y.Offset
+                ),
+            }
+        )
+        pulse:Play()
+        pulse.Completed:Connect(function()
+            if specialBackdrop and specialBackdrop.Parent then
+                specialBackdrop.Size = originalSize
+                specialBackdrop.BackgroundTransparency = targetTransparency
             end
         end)
     end
@@ -1371,6 +1454,7 @@ function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, du
             petReveal.Name = "PetReveal"
             petReveal.BackgroundTransparency = 1 -- Ensure ViewportFrame is transparent
             petReveal.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- Set to white (will be transparent)
+            petReveal.ZIndex = (parent.ZIndex or 1) + 3
             petReveal.Parent = parent
             eggComponents.reveal = petReveal
             print("  ✅ New petReveal created and parented with transparency")
@@ -2359,6 +2443,7 @@ function EggHatchingService:GetActiveAnimationDebugState()
 
     state.frameCount = #frames
     for _, frame in ipairs(frames) do
+        local specialBackdrop = frame:FindFirstChild("SpecialRevealBackdrop")
         local frameState = {
             name = frame.Name,
             eggIndex = frame:GetAttribute("EggIndex"),
@@ -2379,6 +2464,16 @@ function EggHatchingService:GetActiveAnimationDebugState()
             },
             hasSpecialRevealStroke = frame:GetAttribute("HasSpecialRevealStroke") == true,
             specialGlowPulseEnabled = frame:GetAttribute("SpecialGlowPulseEnabled") == true,
+            hasSpecialRevealBackdrop = frame:GetAttribute("HasSpecialRevealBackdrop") == true,
+            specialRevealBackdropVisible = specialBackdrop and specialBackdrop.Visible == true
+                or false,
+            specialRevealBackdropTransparency = frame:GetAttribute(
+                "SpecialRevealBackdropTransparency"
+            ),
+            specialRevealBackdropPulseScale = frame:GetAttribute("SpecialRevealBackdropPulseScale"),
+            specialRevealBackdropPulseDuration = frame:GetAttribute(
+                "SpecialRevealBackdropPulseDuration"
+            ),
             badges = {},
         }
 

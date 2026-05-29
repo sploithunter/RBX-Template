@@ -103,6 +103,14 @@ function EggAnimationContractSmoke.run(options)
     assert(specialFrame.rarityId == "exclusive", "Special hatch rarity mismatch")
     assert(specialFrame.hasSpecialRevealStroke == true, "Special hatch stroke missing")
     assert(specialFrame.specialGlowPulseEnabled == true, "Special hatch glow pulse missing")
+    assert(specialFrame.hasSpecialRevealBackdrop == true, "Special hatch backdrop missing")
+    assert(
+        math.abs(
+            specialFrame.specialRevealBackdropTransparency
+                - animationConfig.special_backdrop.transparency
+        ) < 0.001,
+        "Special hatch backdrop transparency did not match config"
+    )
     assert(specialFrame.badges.SpecialBadge, "Special hatch badge missing")
     assert(specialFrame.badges.RarityBadge, "Special rarity badge missing")
     assert(specialFrame.badges.VariantBadge, "Special variant badge missing")
@@ -118,6 +126,7 @@ function EggAnimationContractSmoke.run(options)
             and second
             and first.badges.SpecialBadge
             and first.badges.SpecialBadge.visible == true
+            and first.specialRevealBackdropVisible == true
             and second.badges.AutoDeleteBadge
             and second.badges.AutoDeleteBadge.visible == true
         then
