@@ -120,16 +120,27 @@ talking to Studio; the bus is what makes both tiers exercise identical logic.
   `economy.purchaseUpgrade`, `system.listCommands`, test-only
   `test.grantCurrency`), exposes the `GameAPICommand` RemoteFunction (clients)
   and `:Execute()` (automation). Not yet wired into the boot loader.
+- `src/Shared/API/Navigation.lua` — pure movement core (planar/3D distance,
+  arrival threshold, waypoint advance, stall detection). Headless-tested by
+  `tests/headless/specs/navigation.spec.luau`.
+- `src/Server/Services/AutomationService.lua` — Studio-gated test driver:
+  `NavigateTo` (PathfindingService + `Humanoid:MoveTo` over the pure Navigation
+  core, with stall detection), `TeleportForSetup` (CFrame staging only),
+  `SnapshotState`/`RestoreState` (currency + inventory + position), and
+  `GetPlayerState`. `RegisterInto(bus)` exposes these as test-only `automation.*`
+  commands, so the harness drives movement/state through the same boundary.
+  Runtime paths await live Studio verification (see the control caveat).
 
 ## Roadmap (deferred)
 
-1. **Register `GameAPIService`** in `src/Server/init.server.lua` and verify boot
+1. **Register `GameAPIService` + `AutomationService`** in
+   `src/Server/init.server.lua` (Studio-gated for the latter) and verify boot
    against a clean Studio instance.
-2. **`AutomationService`** (Studio-gated): the "underneath the UI" driver —
-   movement helper (pathfinding + control-disable, wrapping
-   `character_navigation`), state snapshot/restore, seeded RNG, screenshot
-   coordination. Generalizes `StudioSmokeTestService`.
+2. **Verify the runtime paths live**: `NavigateTo` (and resolve the player
+   control-fight — client-side control disable or NPC proxy), snapshot/restore,
+   and a full command round-trip via the MCP `execute_luau`.
 3. **Migrate the command set**: register one command per existing action and
    route the GUI + `Signals` through the bus (UI becomes a thin view).
 4. **Automation test suite**: rewrite the `tests/studio/*` smokes as command
    sequences driven via the MCP, asserting on bus-read state + screenshots.
+5. **Determinism**: seeded RNG + frozen time affordances on `AutomationService`.
