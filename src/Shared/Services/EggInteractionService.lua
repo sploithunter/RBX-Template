@@ -37,6 +37,7 @@ local hatchPanelConnection = nil
 local entitlementConnections = {}
 local hatchSettingsOpen = false
 local lastPersistedHatchCount = nil
+local lastPersistedHatchModesKey = nil
 local autoDeleteState = {
     enabled = false,
     rarities = {},
@@ -212,6 +213,57 @@ local function persistSelectedHatchCount(count)
     lastPersistedHatchCount = count
     Signals.HatchSettings_SetCount:FireServer({
         selectedCount = count,
+    })
+end
+
+local function getPersistedHatchModes()
+    local settingsFolder = player:FindFirstChild("Settings")
+    local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
+    local hatchFolder = autoFolder and autoFolder:FindFirstChild("Hatch")
+    local modesFolder = hatchFolder and hatchFolder:FindFirstChild("Modes")
+    if not modesFolder then
+        return nil
+    end
+
+    local modes = {}
+    local found = false
+    for optionName in pairs(hatchModeState) do
+        local value = modesFolder:FindFirstChild(optionName)
+        if value and value:IsA("BoolValue") then
+            modes[optionName] = value.Value == true
+            found = true
+        end
+    end
+    return found and modes or nil
+end
+
+local function hatchModesKey(modes)
+    local parts = {}
+    for optionName in pairs(hatchModeState) do
+        table.insert(parts, optionName .. "=" .. tostring(modes and modes[optionName] == true))
+    end
+    table.sort(parts)
+    return table.concat(parts, ";")
+end
+
+local function currentHatchModes()
+    local modes = {}
+    for optionName, enabled in pairs(hatchModeState) do
+        modes[optionName] = enabled == true
+    end
+    return modes
+end
+
+local function persistHatchModes()
+    local modes = currentHatchModes()
+    local key = hatchModesKey(modes)
+    if lastPersistedHatchModesKey == key then
+        return
+    end
+
+    lastPersistedHatchModesKey = key
+    Signals.HatchSettings_SetModes:FireServer({
+        modes = modes,
     })
 end
 
@@ -649,6 +701,7 @@ function EggInteractionService:CreateHatchPanel()
     self:CreateAutoDeleteSettings(settings)
     self:CreateModeSettings(settings)
     self:CreateHatchHelpText(settings)
+    self:ApplyPersistedHatchModes({ persist = false })
     self:SetSelectedHatchCount(
         getPersistedSelectedHatchCount() or getDefaultSelectedHatchCount(),
         { persist = false }
@@ -746,9 +799,7 @@ function EggInteractionService:CreateModeSettings(parent)
                 UDim2.new(0, 88 + (index - 1) * buttonGap, 0, y),
                 Color3.fromRGB(80, 85, 98),
                 function()
-                    hatchModeState[optionName] = hatchModeState[optionName] ~= true
-                    self:RefreshModeButtons()
-                    self:UpdateHatchPanel()
+                    self:SetHatchModeState(optionName, hatchModeState[optionName] ~= true)
                 end
             )
             hatchPanelFields.modeButtons[optionName] = button
@@ -940,6 +991,43 @@ function EggInteractionService:RefreshModeButtons()
     end
 end
 
+function EggInteractionService:ApplyPersistedHatchModes(options)
+    options = options or {}
+    local persistedModes = getPersistedHatchModes()
+    if not persistedModes then
+        return
+    end
+
+    for optionName in pairs(hatchModeState) do
+        if persistedModes[optionName] ~= nil then
+            hatchModeState[optionName] = persistedModes[optionName] == true
+        end
+    end
+
+    if options.persist ~= false then
+        persistHatchModes()
+    else
+        lastPersistedHatchModesKey = hatchModesKey(currentHatchModes())
+    end
+    self:RefreshModeButtons()
+    self:UpdateHatchPanel()
+end
+
+function EggInteractionService:SetHatchModeState(optionName, enabled, options)
+    options = options or {}
+    if hatchModeState[optionName] == nil then
+        return false
+    end
+
+    hatchModeState[optionName] = enabled == true and isModeOwned(optionName)
+    if options.persist ~= false then
+        persistHatchModes()
+    end
+    self:RefreshModeButtons()
+    self:UpdateHatchPanel()
+    return true
+end
+
 function EggInteractionService:BuildHatchOptions()
     return {
         goldenMode = hatchModeState.goldenMode == true,
@@ -960,6 +1048,7 @@ function EggInteractionService:ApplyResolvedHatchOptions(options)
             hatchModeState[optionName] = options[optionName] == true
         end
     end
+    persistHatchModes()
     self:RefreshModeButtons()
     self:UpdateHatchPanel()
 end
@@ -973,6 +1062,7 @@ function EggInteractionService:HandleHatchError(result)
         elseif hatchModeState.goldenMode == true then
             hatchModeState.goldenMode = false
         end
+        persistHatchModes()
         self:RefreshModeButtons()
         self:UpdateHatchPanel()
         message = message .. " Turn off the locked mode or unlock it first."
@@ -1646,6 +1736,8 @@ function EggInteractionService:GetHatchPanelDebugState()
         autoHatchOwned = isAutoHatchOwned(),
         selectedHatchCount = selectedHatchCount,
         persistedSelectedHatchCount = getPersistedSelectedHatchCount(),
+        hatchModes = currentHatchModes(),
+        persistedHatchModes = getPersistedHatchModes(),
         maxHatchCount = getMaxHatchCount(),
         maxEntitledHatchCount = getEffectiveMaxHatchCount(),
         statusText = hatchPanelFields.status and hatchPanelFields.status.Text or "",

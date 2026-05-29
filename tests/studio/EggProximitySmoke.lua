@@ -118,6 +118,33 @@ local function waitForHatchSelectedCount(player, expectedCount, timeoutSeconds)
     )
 end
 
+local function waitForHatchMode(player, optionName, expectedEnabled, timeoutSeconds)
+    return waitFor(
+        "persisted hatch mode " .. tostring(optionName) .. "=" .. tostring(expectedEnabled),
+        timeoutSeconds,
+        function()
+            local settingsFolder = player:FindFirstChild("Settings")
+            local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
+            local hatchFolder = autoFolder and autoFolder:FindFirstChild("Hatch")
+            local modesFolder = hatchFolder and hatchFolder:FindFirstChild("Modes")
+            local modeValue = modesFolder and modesFolder:FindFirstChild(optionName)
+            if modeValue and modeValue.Value == expectedEnabled then
+                return true
+            end
+            return nil
+        end
+    )
+end
+
+local function readHatchMode(player, optionName)
+    local settingsFolder = player:FindFirstChild("Settings")
+    local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
+    local hatchFolder = autoFolder and autoFolder:FindFirstChild("Hatch")
+    local modesFolder = hatchFolder and hatchFolder:FindFirstChild("Modes")
+    local modeValue = modesFolder and modesFolder:FindFirstChild(optionName)
+    return modeValue and modeValue.Value == true or false
+end
+
 function EggProximitySmoke.run(options)
     options = options or {}
 
@@ -249,6 +276,23 @@ function EggProximitySmoke.run(options)
 
             EggInteractionService:SetSelectedHatchCount(1)
             waitForHatchSelectedCount(player, 1, timeoutSeconds)
+
+            local originalSilentHatch = readHatchMode(player, "silentHatch")
+            local targetSilentHatch = not originalSilentHatch
+            EggInteractionService:SetHatchModeState("silentHatch", targetSilentHatch)
+            waitForHatchMode(player, "silentHatch", targetSilentHatch, timeoutSeconds)
+            debugState = EggInteractionService:GetHatchPanelDebugState()
+            assert(
+                debugState.hatchModes and debugState.hatchModes.silentHatch == targetSilentHatch,
+                "Hatch interaction service did not keep silent hatch mode"
+            )
+            assert(
+                debugState.persistedHatchModes
+                    and debugState.persistedHatchModes.silentHatch == targetSilentHatch,
+                "Hatch interaction service did not read persisted silent hatch mode"
+            )
+            EggInteractionService:SetHatchModeState("silentHatch", originalSilentHatch)
+            waitForHatchMode(player, "silentHatch", originalSilentHatch, timeoutSeconds)
         end
 
         local near = invoke(remote, "HatchEggProximity")

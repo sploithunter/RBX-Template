@@ -216,6 +216,13 @@ function SettingsService:_replicateAutoSystemSettings(player)
         "IntValue",
         self:_clampHatchSelectedCount(hatchSettings.selected_count)
     )
+    local modesFolder = hatchFolder:FindFirstChild("Modes") or Instance.new("Folder")
+    modesFolder.Name = "Modes"
+    modesFolder.Parent = hatchFolder
+    local modes = self:_sanitizeHatchModeSettings(hatchSettings.modes)
+    for optionName, enabled in pairs(modes) do
+        self:_upsertValue(modesFolder, optionName, "BoolValue", enabled == true)
+    end
 end
 
 function SettingsService:_upsertValue(parent, name, className, value)
@@ -297,6 +304,44 @@ function SettingsService:_clampHatchSelectedCount(value)
     return math.clamp(count, 1, maxCount)
 end
 
+function SettingsService:_getHatchModeDefaults()
+    local eggConfig = self:_getEggSystemConfig()
+    local modesConfig = eggConfig.ui and eggConfig.ui.hatch_panel and eggConfig.ui.hatch_panel.modes
+        or {}
+    local defaults = {}
+
+    for key, cfg in pairs(modesConfig) do
+        if type(cfg) == "table" then
+            local optionName = tostring(cfg.option or key)
+            if optionName ~= "" then
+                defaults[optionName] = false
+            end
+        end
+    end
+
+    if next(defaults) == nil then
+        defaults.goldenMode = false
+        defaults.chargedMode = false
+        defaults.fastHatch = false
+        defaults.skipHatch = false
+        defaults.silentHatch = false
+    end
+
+    return defaults
+end
+
+function SettingsService:_sanitizeHatchModeSettings(modes)
+    local sanitized = self:_getHatchModeDefaults()
+    if type(modes) ~= "table" then
+        return sanitized
+    end
+
+    for optionName in pairs(sanitized) do
+        sanitized[optionName] = modes[optionName] == true
+    end
+    return sanitized
+end
+
 function SettingsService:_setHatchSelectedCount(player, count)
     if type(count) == "table" then
         count = count.selectedCount or count.selected_count or count.count
@@ -316,6 +361,30 @@ function SettingsService:_setHatchSelectedCount(player, count)
     self._logger:Info("Updated hatch selected count", {
         player = player.Name,
         selectedCount = data.Settings.AutoSystems.hatch.selected_count,
+    })
+
+    return true
+end
+
+function SettingsService:_setHatchModes(player, modes)
+    if type(modes) == "table" and type(modes.modes) == "table" then
+        modes = modes.modes
+    end
+
+    local data = self._dataService:GetData(player)
+    if not data then
+        return false
+    end
+
+    data.Settings = data.Settings or {}
+    data.Settings.AutoSystems = data.Settings.AutoSystems or {}
+    data.Settings.AutoSystems.hatch = data.Settings.AutoSystems.hatch or {}
+    data.Settings.AutoSystems.hatch.modes = self:_sanitizeHatchModeSettings(modes)
+    self:_replicateAutoSystemSettings(player)
+
+    self._logger:Info("Updated hatch mode settings", {
+        player = player.Name,
+        modes = data.Settings.AutoSystems.hatch.modes,
     })
 
     return true
@@ -351,6 +420,10 @@ function SettingsService:_setupNetworkSignals()
         self:_setHatchSelectedCount(player, count)
     end)
 
+    Signals.HatchSettings_SetModes.OnServerEvent:Connect(function(player, modes)
+        self:_setHatchModes(player, modes)
+    end)
+
     self._logger:Info("📡 Settings network signals configured")
 end
 
@@ -368,6 +441,10 @@ end
 
 function SettingsService:SetHatchSelectedCount(player, count)
     return self:_setHatchSelectedCount(player, count)
+end
+
+function SettingsService:SetHatchModes(player, modes)
+    return self:_setHatchModes(player, modes)
 end
 
 return SettingsService

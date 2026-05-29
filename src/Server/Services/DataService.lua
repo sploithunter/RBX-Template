@@ -124,6 +124,7 @@ local function generateProfileTemplate(configLoader)
                 },
                 hatch = {
                     selected_count = 1,
+                    modes = {},
                 },
             },
         },
@@ -315,6 +316,7 @@ local function generateProfileTemplate(configLoader)
                 },
                 hatch = {
                     selected_count = math.max(1, math.floor(tonumber(selectedHatchCount) or 1)),
+                    modes = {},
                 },
             }
         end
@@ -1633,6 +1635,20 @@ function DataService:_migrateAutoSystemSettings(data)
     if autoSystems.hatch.selected_count ~= selectedCount then
         autoSystems.hatch.selected_count = selectedCount
         migrations += 1
+    end
+    if type(autoSystems.hatch.modes) ~= "table" then
+        autoSystems.hatch.modes = {}
+        migrations += 1
+    end
+    for key, cfg in pairs(panelConfig.modes or {}) do
+        local optionName = type(cfg) == "table" and tostring(cfg.option or key) or ""
+        if optionName ~= "" and autoSystems.hatch.modes[optionName] == nil then
+            autoSystems.hatch.modes[optionName] = false
+            migrations += 1
+        elseif optionName ~= "" and type(autoSystems.hatch.modes[optionName]) ~= "boolean" then
+            autoSystems.hatch.modes[optionName] = autoSystems.hatch.modes[optionName] == true
+            migrations += 1
+        end
     end
 
     return migrations

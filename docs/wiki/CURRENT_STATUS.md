@@ -75,6 +75,7 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Hatch animation presentation has another config-first slice. `egg_system.hatching.animation.layout` controls grid padding and min/max egg sizes, `special_glow` controls the special hatch rarity stroke/pulse, and the client animation debug state exposes layout/glow metadata for Studio smokes.
 - Fast Hatch presentation speed is no longer hardcoded in `EggHatchingService`. `egg_system.hatching.animation.fast_hatch_speed_scale` owns the duration multiplier, `ConfigLoader` validates it, and the animation debug state exposes resolved Fast/Silent timing metadata.
 - Hatch selected count is now a persisted player setting. The near-egg panel writes changes through `HatchSettings_SetCount`, `SettingsService` stores them under `Settings.AutoSystems.hatch.selected_count`, and clients restore the replicated `Player.Settings.AutoSystems.Hatch.SelectedCount` value when the hatch panel is rebuilt.
+- Hatch mode toggles are now persisted player preferences too. `SettingsService` sanitizes the configured hatch mode keys, stores them under `Settings.AutoSystems.hatch.modes`, replicates `Player.Settings.AutoSystems.Hatch.Modes`, and `EggInteractionService` restores/persists Golden, Charged, Fast, Skip, and Silent toggles while the server still enforces entitlement on hatch requests.
 
 ## Phase 0 Verification
 
@@ -163,6 +164,7 @@ Last checked: 2026-05-27
 - Direct Studio validation of the new `egg_system` config rules passes: current config validates, invalid layout min/max fails, and invalid special glow transparency fails.
 - `EggAnimationContractSmoke` also verifies configured Fast/Silent hatch timing metadata, and direct Studio validation rejects `fast_hatch_speed_scale` values above normal speed.
 - `EggProximitySmoke` also verifies selected hatch count persistence by saving a count through the client interaction service, reading the replicated player setting/debug state, and resetting to one before the hatch transaction.
+- `EggProximitySmoke` also verifies hatch mode persistence by toggling Silent Hatch through the client interaction service, reading the replicated hatch mode setting/debug state, and restoring the original value before the hatch transaction.
 
 ## Admin/Map Test Verification
 

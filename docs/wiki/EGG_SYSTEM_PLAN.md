@@ -30,6 +30,7 @@ Implemented so far:
 - Hatch animation layout and special-result glow are now config-driven. `egg_system.hatching.animation.layout` controls grid padding and min/max egg sizes, `special_glow` controls the special rarity stroke/pulse, `EggHatchingService:GetActiveAnimationDebugState()` exposes the chosen layout/glow metadata, and `EggAnimationContractSmoke` verifies the client contract.
 - Fast Hatch animation speed is now config-driven through `egg_system.hatching.animation.fast_hatch_speed_scale`. The animation debug state exposes resolved timing/options, and `EggAnimationContractSmoke` verifies that Fast/Silent hatch options use the configured scale.
 - The near-egg hatch panel now persists the player's selected hatch count under `Settings.AutoSystems.hatch.selected_count`. `SettingsService` replicates it to `Player.Settings.AutoSystems.Hatch.SelectedCount`, the client restores it when the panel is created, and `EggProximitySmoke` verifies the replicated client/server round trip.
+- Hatch mode preferences now persist under `Settings.AutoSystems.hatch.modes`. `SettingsService` sanitizes mode keys from `egg_system.ui.hatch_panel.modes`, replicates them under `Player.Settings.AutoSystems.Hatch.Modes`, and `EggInteractionService` restores/persists Golden, Charged, Fast, Skip, and Silent mode toggles without making the server trust those preferences for entitlement.
 
 Still to build:
 
@@ -146,7 +147,7 @@ Client UI:
 - Show exact stop reasons: no funds, no storage, too far, locked area, on cooldown, feature locked.
 - Add auto-hatch state UI with visible running/stopped reason.
 - Add auto-delete filter UI backed by existing server settings: rarity, pet family, variant, protected tiers.
-- Add settings for show hatch, skip hatch, silence hatch, and fast hatch once entitlement stubs exist. First-pass mode help text exists; future polish should make locked/unlocked ownership more explicit.
+- Add settings for show hatch, skip hatch, silence hatch, and fast hatch once entitlement stubs exist. First-pass persistent mode settings and help text exist; future polish should make locked/unlocked ownership more explicit.
 
 Animation:
 
