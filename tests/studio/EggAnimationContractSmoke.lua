@@ -9,6 +9,7 @@
 local EggAnimationContractSmoke = {}
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Locations = require(ReplicatedStorage.Shared.Locations)
 
 local DEFAULT_TIMEOUT_SECONDS = 20
 
@@ -30,6 +31,9 @@ function EggAnimationContractSmoke.run(options)
     options = options or {}
     local timeoutSeconds = options.timeoutSeconds or DEFAULT_TIMEOUT_SECONDS
     local eggHatchingService = require(ReplicatedStorage.Shared.Services.EggHatchingService)
+    local eggSystemConfig = Locations.getConfig("egg_system")
+    local animationConfig = eggSystemConfig.hatching.animation
+    local layoutConfig = animationConfig.layout
 
     eggHatchingService:TestCleanup()
 
@@ -81,9 +85,16 @@ function EggAnimationContractSmoke.run(options)
 
     local specialFrame = initial.frames[1]
     local autoDeletedFrame = initial.frames[2]
+    assert(initial.layout.name == "2x1", "Animation layout name mismatch")
+    assert(initial.layout.padding == layoutConfig.padding, "Animation layout padding mismatch")
+    assert(
+        initial.layout.eggSize >= layoutConfig.min_egg_size,
+        "Animation egg size below configured min"
+    )
     assert(specialFrame.specialHatch == true, "Special hatch flag missing")
     assert(specialFrame.rarityId == "exclusive", "Special hatch rarity mismatch")
     assert(specialFrame.hasSpecialRevealStroke == true, "Special hatch stroke missing")
+    assert(specialFrame.specialGlowPulseEnabled == true, "Special hatch glow pulse missing")
     assert(specialFrame.badges.SpecialBadge, "Special hatch badge missing")
     assert(specialFrame.badges.RarityBadge, "Special rarity badge missing")
     assert(specialFrame.badges.VariantBadge, "Special variant badge missing")

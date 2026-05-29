@@ -131,3 +131,4 @@ Status: current
 ## 2026-05-29
 
 - Aligned near-egg hatch UI with server entitlement state. `EggInteractionService` now reads effective max hatch count and Auto Hatch ownership from the same config/player attributes as the server, clamps selected count before requests, exposes `MaxEntitledHatchCount` for UI/tests, and grays/blocks locked Auto client-side. Studio MCP verified `EggProximitySmoke` and `EggAutoHatchSmoke` after the change.
+- Moved more hatch animation presentation into config. `egg_system.hatching.animation.layout` now controls grid padding/min/max sizing, `special_glow` controls special hatch pulse styling, `ConfigLoader` validates those fields, and `EggAnimationContractSmoke` verifies the client debug contract in Studio.

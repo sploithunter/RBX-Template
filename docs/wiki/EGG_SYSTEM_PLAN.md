@@ -27,12 +27,13 @@ Implemented so far:
 - `ConfigLoader` now validates the egg-system hatch contract more deeply: requested/default counts must fit inside `hatching.max_count`, animation capacity cannot exceed hatch capacity, debug history limits are positive, reveal badges have valid field types, shop max-count defaults stay within the configured hatch cap, and hatch-panel button labels must exist. `ConfigLoader.spec` covers the valid path plus count, animation, and UI-button failures.
 - `EggService:SimulateHatchBatch` now provides a no-mutation server hatch simulation path for admin/testing. It rolls the same pet/variant/luck pipeline and returns costs, entitlements, option resolution, result samples, pet/variant/rarity counts, special counts, auto-delete matches, and animation metadata without spending currency, granting pets, incrementing stats, or playing client animation. Admin tools expose it and `EggHatchSimulationSmoke` verifies the non-mutation contract.
 - The near-egg hatch panel now reflects effective hatch entitlements before a request is sent. It clamps the selected count to the same max-count source the server resolves from config/player attributes, exposes `MaxEntitledHatchCount` for testing/UI, and grays/blocks Auto when `AutoHatchUnlocked` is false.
+- Hatch animation layout and special-result glow are now config-driven. `egg_system.hatching.animation.layout` controls grid padding and min/max egg sizes, `special_glow` controls the special rarity stroke/pulse, `EggHatchingService:GetActiveAnimationDebugState()` exposes the chosen layout/glow metadata, and `EggAnimationContractSmoke` verifies the client contract.
 
 Still to build:
 
 - Richer near-egg hatch UI polish and direct Studio visual QA across desktop/mobile layouts.
 - Further hatch setting UI polish and richer player-facing entitlement education beyond the first mode status line, Max/Auto entitlement state, and dynamic hover/focus help text.
-- Richer authored egg animation visual polish beyond the first ViewportFrame clone/scale/reveal-badge pass.
+- Richer authored egg animation visual polish beyond the first ViewportFrame clone/scale/reveal-badge/configured-glow pass.
 - Direct Studio visual QA across desktop/mobile layouts for the expanded hatch drawer.
 
 ## Goal
@@ -154,6 +155,7 @@ Animation:
 - Add stronger reveal metadata/effects for protected/special tiers when hatch animation is shown. Skip Hatch should still suppress the hatch animation entirely; Silent Hatch may suppress audio while config can decide whether special visual-only world FX still plays.
 - Include per-result rarity/variant colors and special effects.
 - Ensure animation completion/reentry does not control server correctness; it only controls client presentation.
+- Keep animation presentation choices configurable: grid layout sizes/padding, authored egg scale, reveal badges, special glow, and future special effects should live in config rather than hardcoded UI constants.
 
 Auto hatch:
 
@@ -184,6 +186,7 @@ Testing:
 - Studio smoke: admin hatch entitlement controls can lock/unlock/reset shop stubs and max hatch count.
 - Studio smoke: no-mutation hatch simulation returns costs/counts/results without changing currency, inventory, or hatch stats.
 - Studio smoke: near-egg panel reports effective max hatch entitlement and locked Auto state before the server request. `EggProximitySmoke` covers this first Max/Auto entitlement UI contract.
+- Studio smoke: hatch animation debug state exposes configured grid layout and special glow pulse metadata. `EggAnimationContractSmoke` covers the current client-side contract.
 - Regression: existing egg proximity, pet grant, pet index, achievements, and leaderboards still pass.
 
 Documentation:

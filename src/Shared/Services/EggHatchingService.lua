@@ -124,6 +124,20 @@ local function getAnimationPolicy()
     return eggSystemConfig and eggSystemConfig.hatching and eggSystemConfig.hatching.animation or {}
 end
 
+local function getLayoutPolicy()
+    local layout = getAnimationPolicy().layout
+    if type(layout) ~= "table" then
+        layout = {}
+    end
+    return {
+        padding = math.max(0, tonumber(layout.padding) or 20),
+        minEggSize = math.max(1, tonumber(layout.min_egg_size) or 100),
+        compactMinEggSize = math.max(1, tonumber(layout.compact_min_egg_size) or 70),
+        compactThreshold = math.max(1, math.floor(tonumber(layout.compact_threshold) or 37)),
+        maxEggSize = math.max(1, tonumber(layout.max_egg_size) or 300),
+    }
+end
+
 local function isSpecialEggData(eggData)
     if type(eggData) ~= "table" then
         return false
@@ -251,6 +265,7 @@ local GRID_LAYOUTS = {
 
 -- Calculate optimal grid layout for given number of eggs
 function EggHatchingService:CalculateGridLayout(eggCount, containerWidth, containerHeight)
+    local layoutPolicy = getLayoutPolicy()
     -- Find the best fitting grid layout
     local layout = nil
     for _, gridLayout in ipairs(GRID_LAYOUTS) do
@@ -267,7 +282,7 @@ function EggHatchingService:CalculateGridLayout(eggCount, containerWidth, contai
     end
 
     -- Calculate cell dimensions
-    local padding = 20 -- Space between eggs
+    local padding = layoutPolicy.padding
     local availableWidth = containerWidth - (padding * (layout.columns + 1))
     local availableHeight = containerHeight - (padding * (layout.rows + 1))
 
@@ -278,8 +293,9 @@ function EggHatchingService:CalculateGridLayout(eggCount, containerWidth, contai
     local eggSize = math.min(cellWidth, cellHeight)
 
     -- Enforce minimum and maximum egg sizes for visibility
-    local minEggSize = 100 -- Minimum 100 pixels
-    local maxEggSize = 300 -- Maximum 300 pixels
+    local minEggSize = eggCount >= layoutPolicy.compactThreshold and layoutPolicy.compactMinEggSize
+        or layoutPolicy.minEggSize
+    local maxEggSize = layoutPolicy.maxEggSize
     local originalEggSize = eggSize
     eggSize = math.max(minEggSize, math.min(maxEggSize, eggSize))
 
@@ -302,6 +318,9 @@ function EggHatchingService:CalculateGridLayout(eggCount, containerWidth, contai
         startX = startX,
         startY = startY,
         padding = padding,
+        minEggSize = minEggSize,
+        maxEggSize = maxEggSize,
+        compactMode = eggCount >= layoutPolicy.compactThreshold,
         totalWidth = gridWidth,
         totalHeight = gridHeight,
     }
@@ -396,6 +415,7 @@ function EggHatchingService:CreateEggFrame(position, eggData)
     eggData = eggData or {}
     local animationPolicy = getAnimationPolicy()
     local badgePolicy = animationPolicy.reveal_badges or {}
+    local specialGlowPolicy = animationPolicy.special_glow or {}
     local specialHatch = isSpecialEggData(eggData)
     local rarityId = eggData.rarityId
     local rarityColor = getRarityColor(rarityId)
@@ -513,6 +533,15 @@ function EggHatchingService:CreateEggFrame(position, eggData)
             flash = flashContainer,
             reveal = petReveal,
             badges = badges,
+            frame = frame,
+            specialGlow = frame:FindFirstChild("SpecialRevealStroke"),
+            specialGlowPulseEnabled = specialGlowPolicy.pulse_enabled ~= false,
+            specialGlowPulseScale = tonumber(specialGlowPolicy.pulse_scale) or 1.35,
+            specialGlowPulseDuration = tonumber(specialGlowPolicy.pulse_duration) or 0.55,
+            specialGlowPulseRepeats = math.max(
+                0,
+                math.floor(tonumber(specialGlowPolicy.pulse_repeats) or 3)
+            ),
             state = ANIMATION_STATE.IDLE,
         }
 end
@@ -561,13 +590,19 @@ function EggHatchingService:CreateRevealBadges(
     local rarityId = eggData.rarityId
 
     if specialHatch then
-        local specialStroke = Instance.new("UIStroke")
-        specialStroke.Name = "SpecialRevealStroke"
-        specialStroke.Color = rarityColor
-        specialStroke.Thickness = 4
-        specialStroke.Transparency = 0.15
-        specialStroke.Parent = frame
-        frame:SetAttribute("HasSpecialRevealStroke", true)
+        local animationPolicy = getAnimationPolicy()
+        local specialGlowPolicy = animationPolicy.special_glow or {}
+        if specialGlowPolicy.enabled ~= false then
+            local specialStroke = Instance.new("UIStroke")
+            specialStroke.Name = "SpecialRevealStroke"
+            specialStroke.Color = rarityColor
+            specialStroke.Thickness = tonumber(specialGlowPolicy.stroke_thickness) or 4
+            specialStroke.Transparency = tonumber(specialGlowPolicy.stroke_transparency) or 0.15
+            specialStroke.Parent = frame
+            specialStroke:SetAttribute("PulseEnabled", specialGlowPolicy.pulse_enabled ~= false)
+            frame:SetAttribute("HasSpecialRevealStroke", true)
+            frame:SetAttribute("SpecialGlowPulseEnabled", specialGlowPolicy.pulse_enabled ~= false)
+        end
 
         local specialText = tostring(badgePolicy.special_badge_text or "SPECIAL")
         local specialBadge = self:CreateRevealBadge(
@@ -632,29 +667,57 @@ end
 
 function EggHatchingService:ShowRevealBadges(eggComponents)
     local badges = eggComponents.badges
-    if type(badges) ~= "table" then
-        return
-    end
-
-    for _, badge in pairs(badges) do
-        if badge and badge.Parent then
-            badge.Visible = true
-            badge.TextTransparency = 1
-            badge.BackgroundTransparency = 1
-            local stroke = badge:FindFirstChild("BadgeStroke")
-            if stroke and stroke:IsA("UIStroke") then
-                stroke.Transparency = 1
-            end
-            TweenService:Create(badge, TweenInfo.new(0.2), {
-                TextTransparency = 0,
-                BackgroundTransparency = 0.12,
-            }):Play()
-            if stroke and stroke:IsA("UIStroke") then
-                TweenService:Create(stroke, TweenInfo.new(0.2), {
-                    Transparency = 0.1,
+    if type(badges) == "table" then
+        for _, badge in pairs(badges) do
+            if badge and badge.Parent then
+                badge.Visible = true
+                badge.TextTransparency = 1
+                badge.BackgroundTransparency = 1
+                local stroke = badge:FindFirstChild("BadgeStroke")
+                if stroke and stroke:IsA("UIStroke") then
+                    stroke.Transparency = 1
+                end
+                TweenService:Create(badge, TweenInfo.new(0.2), {
+                    TextTransparency = 0,
+                    BackgroundTransparency = 0.12,
                 }):Play()
+                if stroke and stroke:IsA("UIStroke") then
+                    TweenService:Create(stroke, TweenInfo.new(0.2), {
+                        Transparency = 0.1,
+                    }):Play()
+                end
             end
         end
+    end
+
+    local specialGlow = eggComponents.specialGlow
+    if
+        specialGlow
+        and specialGlow.Parent
+        and eggComponents.specialGlowPulseEnabled == true
+        and eggComponents.specialGlowPulseRepeats > 0
+    then
+        local baseThickness = specialGlow.Thickness
+        local baseTransparency = specialGlow.Transparency
+        local pulseThickness = baseThickness * eggComponents.specialGlowPulseScale
+        local pulseInfo = TweenInfo.new(
+            eggComponents.specialGlowPulseDuration,
+            Enum.EasingStyle.Sine,
+            Enum.EasingDirection.InOut,
+            eggComponents.specialGlowPulseRepeats,
+            true
+        )
+        local pulseTween = TweenService:Create(specialGlow, pulseInfo, {
+            Thickness = pulseThickness,
+            Transparency = math.max(0, baseTransparency - 0.08),
+        })
+        pulseTween:Play()
+        pulseTween.Completed:Connect(function()
+            if specialGlow and specialGlow.Parent then
+                specialGlow.Thickness = baseThickness
+                specialGlow.Transparency = baseTransparency
+            end
+        end)
     end
 end
 
@@ -1443,6 +1506,12 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
 
     local gridInfo = self:CalculateGridLayout(eggCount, containerSize.X, containerSize.Y)
     local positions = self:GenerateEggPositions(eggCount, gridInfo)
+    self._persistentGui:SetAttribute("GridLayoutName", gridInfo.layout.name)
+    self._persistentGui:SetAttribute("GridColumns", gridInfo.layout.columns)
+    self._persistentGui:SetAttribute("GridRows", gridInfo.layout.rows)
+    self._persistentGui:SetAttribute("GridEggSize", gridInfo.eggSize)
+    self._persistentGui:SetAttribute("GridPadding", gridInfo.padding)
+    self._persistentGui:SetAttribute("GridCompactMode", gridInfo.compactMode)
 
     print(
         "🥚 Phase 2: Starting hatching animation for",
@@ -2175,8 +2244,19 @@ function EggHatchingService:GetActiveAnimationDebugState()
     local state = {
         guiStatus = status,
         frameCount = 0,
+        layout = {},
         frames = {},
     }
+    if self._persistentGui then
+        state.layout = {
+            name = self._persistentGui:GetAttribute("GridLayoutName"),
+            columns = self._persistentGui:GetAttribute("GridColumns"),
+            rows = self._persistentGui:GetAttribute("GridRows"),
+            eggSize = self._persistentGui:GetAttribute("GridEggSize"),
+            padding = self._persistentGui:GetAttribute("GridPadding"),
+            compactMode = self._persistentGui:GetAttribute("GridCompactMode") == true,
+        }
+    end
 
     local container = self._persistentContainer
     if not container then
@@ -2207,6 +2287,7 @@ function EggHatchingService:GetActiveAnimationDebugState()
             autoDeleted = frame:GetAttribute("AutoDeleted") == true,
             eggVisualSource = frame:GetAttribute("EggVisualSource"),
             hasSpecialRevealStroke = frame:GetAttribute("HasSpecialRevealStroke") == true,
+            specialGlowPulseEnabled = frame:GetAttribute("SpecialGlowPulseEnabled") == true,
             badges = {},
         }
 

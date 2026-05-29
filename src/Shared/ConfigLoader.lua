@@ -2429,6 +2429,59 @@ function ConfigLoader:_validateEggSystemConfig(config)
             return ok, err
         end
     end
+    local layout = animation.layout or {}
+    if type(layout) ~= "table" then
+        return self:_configError("egg_system", "hatching.animation.layout", "expected table")
+    end
+    for _, fieldName in ipairs({
+        "padding",
+        "min_egg_size",
+        "compact_min_egg_size",
+        "max_egg_size",
+    }) do
+        if layout[fieldName] ~= nil then
+            ok, err = self:_requirePositiveNumber(
+                "egg_system",
+                layout[fieldName],
+                "hatching.animation.layout." .. fieldName
+            )
+            if not ok then
+                return ok, err
+            end
+        end
+    end
+    if layout.compact_threshold ~= nil then
+        ok, err = self:_requirePositiveNumber(
+            "egg_system",
+            layout.compact_threshold,
+            "hatching.animation.layout.compact_threshold"
+        )
+        if not ok then
+            return ok, err
+        end
+    end
+    if
+        layout.min_egg_size
+        and layout.max_egg_size
+        and layout.min_egg_size > layout.max_egg_size
+    then
+        return self:_configError(
+            "egg_system",
+            "hatching.animation.layout.min_egg_size",
+            "must be less than or equal to hatching.animation.layout.max_egg_size"
+        )
+    end
+    if
+        layout.compact_min_egg_size
+        and layout.max_egg_size
+        and layout.compact_min_egg_size > layout.max_egg_size
+    then
+        return self:_configError(
+            "egg_system",
+            "hatching.animation.layout.compact_min_egg_size",
+            "must be less than or equal to hatching.animation.layout.max_egg_size"
+        )
+    end
     if
         animation.special_reveal_enabled ~= nil
         and type(animation.special_reveal_enabled) ~= "boolean"
@@ -2488,13 +2541,65 @@ function ConfigLoader:_validateEggSystemConfig(config)
             )
         end
     end
+    local specialGlow = animation.special_glow or {}
+    if type(specialGlow) ~= "table" then
+        return self:_configError("egg_system", "hatching.animation.special_glow", "expected table")
+    end
+    for _, fieldName in ipairs({ "enabled", "pulse_enabled" }) do
+        if specialGlow[fieldName] ~= nil and type(specialGlow[fieldName]) ~= "boolean" then
+            return self:_configError(
+                "egg_system",
+                "hatching.animation.special_glow." .. fieldName,
+                "expected boolean"
+            )
+        end
+    end
+    for _, fieldName in ipairs({
+        "stroke_thickness",
+        "pulse_scale",
+        "pulse_duration",
+    }) do
+        if specialGlow[fieldName] ~= nil then
+            ok, err = self:_requirePositiveNumber(
+                "egg_system",
+                specialGlow[fieldName],
+                "hatching.animation.special_glow." .. fieldName
+            )
+            if not ok then
+                return ok, err
+            end
+        end
+    end
+    if specialGlow.stroke_transparency ~= nil then
+        ok, err = self:_requireNonNegativeNumber(
+            "egg_system",
+            specialGlow.stroke_transparency,
+            "hatching.animation.special_glow.stroke_transparency"
+        )
+        if not ok then
+            return ok, err
+        end
+        if specialGlow.stroke_transparency > 1 then
+            return self:_configError(
+                "egg_system",
+                "hatching.animation.special_glow.stroke_transparency",
+                "must be less than or equal to 1"
+            )
+        end
+    end
+    if specialGlow.pulse_repeats ~= nil then
+        ok, err = self:_requireNonNegativeNumber(
+            "egg_system",
+            specialGlow.pulse_repeats,
+            "hatching.animation.special_glow.pulse_repeats"
+        )
+        if not ok then
+            return ok, err
+        end
+    end
     local revealBadges = animation.reveal_badges or {}
     if type(revealBadges) ~= "table" then
-        return self:_configError(
-            "egg_system",
-            "hatching.animation.reveal_badges",
-            "expected table"
-        )
+        return self:_configError("egg_system", "hatching.animation.reveal_badges", "expected table")
     end
     for _, fieldName in ipairs({
         "enabled",
