@@ -258,8 +258,32 @@ function EggProximitySmoke.run(options)
                 "Golden mode toggle missing locked help text"
             )
             assert(
+                settings.Mode_goldenMode:GetAttribute("CostMultiplier") == 20,
+                "Golden mode toggle did not expose configured cost multiplier"
+            )
+            assert(
+                tostring(settings.Mode_goldenMode:GetAttribute("CurrentHelpText")):find(
+                    "20x",
+                    1,
+                    true
+                ),
+                "Golden mode help did not explain configured cost multiplier"
+            )
+            assert(
                 settings:FindFirstChild("Mode_chargedMode"),
                 "Hatch panel missing Charged mode toggle"
+            )
+            assert(
+                settings.Mode_chargedMode:GetAttribute("CostMultiplier") == 5,
+                "Charged mode toggle did not expose configured cost multiplier"
+            )
+            assert(
+                settings.Mode_chargedMode:GetAttribute("LuckBonus") == 1,
+                "Charged mode toggle did not expose configured hatch luck"
+            )
+            assert(
+                settings.Mode_chargedMode:GetAttribute("SecretLuckBonus") == 0.25,
+                "Charged mode toggle did not expose configured secret luck"
             )
             assert(
                 settings:FindFirstChild("Mode_skipHatch"),
@@ -270,6 +294,10 @@ function EggProximitySmoke.run(options)
             assert(
                 tostring(modeStatus.Text):find("Locked:", 1, true),
                 "Hatch panel mode status did not explain locked modes"
+            )
+            assert(
+                tostring(modeStatus.Text):find("20x", 1, true),
+                "Hatch panel mode status did not include configured mode details"
             )
 
             EggInteractionService:SetSelectedHatchCount(4)

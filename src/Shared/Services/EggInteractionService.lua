@@ -115,6 +115,67 @@ local function getModeConfigByOption(optionName)
     return nil
 end
 
+local function getModeStub(optionName)
+    local stubKey = MODE_STUB_KEYS[optionName]
+    if not stubKey then
+        return nil
+    end
+
+    local stub = (getHatchingConfig().shop_stubs or {})[stubKey]
+    return type(stub) == "table" and stub or nil
+end
+
+local function formatMultiplier(multiplier)
+    multiplier = tonumber(multiplier)
+    if not multiplier or multiplier == 1 then
+        return nil
+    end
+
+    if math.abs(multiplier - math.floor(multiplier)) < 0.001 then
+        return tostring(math.floor(multiplier)) .. "x"
+    end
+
+    return string.format("%.2fx", multiplier)
+end
+
+local function formatSignedNumber(value)
+    value = tonumber(value)
+    if not value or value == 0 then
+        return nil
+    end
+
+    if math.abs(value - math.floor(value)) < 0.001 then
+        return "+" .. tostring(math.floor(value))
+    end
+
+    return string.format("+%.2f", value)
+end
+
+local function getModeDetailText(optionName)
+    local stub = getModeStub(optionName)
+    if not stub then
+        return ""
+    end
+
+    local details = {}
+    local costMultiplier = formatMultiplier(stub.cost_multiplier)
+    if costMultiplier then
+        table.insert(details, "Cost " .. costMultiplier)
+    end
+
+    local luckBonus = formatSignedNumber(stub.luck_bonus)
+    if luckBonus then
+        table.insert(details, "Luck " .. luckBonus)
+    end
+
+    local secretLuckBonus = formatSignedNumber(stub.secret_luck_bonus)
+    if secretLuckBonus then
+        table.insert(details, "Secret " .. secretLuckBonus)
+    end
+
+    return table.concat(details, ", ")
+end
+
 local function isModeOwned(optionName)
     if optionName == "silentHatch" then
         return true
@@ -143,13 +204,19 @@ end
 local function getModeHelpText(optionName, cfg)
     cfg = cfg or getModeConfigByOption(optionName) or {}
     local owned = isModeOwned(optionName)
+    local detailText = getModeDetailText(optionName)
+    local baseText
     if not owned then
-        return cfg.locked_description or cfg.description
+        baseText = cfg.locked_description or cfg.description
+    elseif hatchModeState[optionName] == true then
+        baseText = cfg.active_description or cfg.description
+    else
+        baseText = cfg.available_description or cfg.description
     end
-    if hatchModeState[optionName] == true then
-        return cfg.active_description or cfg.description
+    if detailText ~= "" then
+        return tostring(baseText or "") .. " (" .. detailText .. ")"
     end
-    return cfg.available_description or cfg.description
+    return baseText
 end
 
 local function getMaxHatchCount()
@@ -973,6 +1040,13 @@ function EggInteractionService:RefreshModeButtons()
         local owned = isModeOwned(optionName)
         local enabled = hatchModeState[optionName] == true
         local label = button:GetAttribute("ModeLabel") or titleCaseId(optionName)
+        local detailText = getModeDetailText(optionName)
+        local statusLabel = detailText ~= "" and (label .. " (" .. detailText .. ")") or label
+        local stub = getModeStub(optionName) or {}
+        button:SetAttribute("ModeDetail", detailText)
+        button:SetAttribute("CostMultiplier", tonumber(stub.cost_multiplier) or 1)
+        button:SetAttribute("LuckBonus", tonumber(stub.luck_bonus) or 0)
+        button:SetAttribute("SecretLuckBonus", tonumber(stub.secret_luck_bonus) or 0)
         if not owned then
             if enabled then
                 hatchModeState[optionName] = false
@@ -981,7 +1055,7 @@ function EggInteractionService:RefreshModeButtons()
             button.TextColor3 = Color3.fromRGB(150, 158, 176)
             button:SetAttribute("ModeOwned", false)
             button:SetAttribute("ModeState", "locked")
-            table.insert(lockedModes, label)
+            table.insert(lockedModes, statusLabel)
         else
             button.BackgroundColor3 = enabled and Color3.fromRGB(244, 172, 54)
                 or Color3.fromRGB(80, 85, 98)
@@ -989,7 +1063,7 @@ function EggInteractionService:RefreshModeButtons()
             button:SetAttribute("ModeOwned", true)
             button:SetAttribute("ModeState", enabled and "active" or "available")
             if enabled then
-                table.insert(activeModes, label)
+                table.insert(activeModes, statusLabel)
             end
         end
         button:SetAttribute("CurrentHelpText", getModeHelpText(optionName))

@@ -78,6 +78,7 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Hatch mode toggles are now persisted player preferences too. `SettingsService` sanitizes the configured hatch mode keys, stores them under `Settings.AutoSystems.hatch.modes`, replicates `Player.Settings.AutoSystems.Hatch.Modes`, and `EggInteractionService` restores/persists Golden, Charged, Fast, Skip, and Silent toggles while the server still enforces entitlement on hatch requests.
 - The near-egg hatch panel now has config-driven responsive scaling. `configs/egg_system.lua` owns `ui.hatch_panel.responsive`, `ConfigLoader` validates its scale bounds, `EggInteractionService` applies a `UIScale` against the current viewport, and tests cover desktop/mobile fit math.
 - Hatch animation now has max-count Studio coverage. `EggHatchingService` falls back to a resolved `1280x720` animation viewport if Studio reports an uninitialized tiny camera size, exposes container/frame geometry in its debug state, and `EggAnimationMaxBatchSmoke` verifies all `99` authored egg frames fit in the compact `10x10` layout.
+- Hatch mode education now surfaces configured economics. Golden/Charged mode UI reads cost and luck values from `egg_system.hatching.shop_stubs`, exposes `CostMultiplier`/`LuckBonus`/`SecretLuckBonus` attributes for tests, and includes those details in help/status text.
 
 ## Phase 0 Verification
 
@@ -169,6 +170,7 @@ Last checked: 2026-05-27
 - `EggProximitySmoke` also verifies hatch mode persistence by toggling Silent Hatch through the client interaction service, reading the replicated hatch mode setting/debug state, and restoring the original value before the hatch transaction.
 - `EggProximitySmoke` also verifies the responsive hatch panel layout contract: full scale on a desktop-sized viewport, scaled down and width-safe on a mobile-sized viewport.
 - `EggAnimationMaxBatchSmoke` passes through Studio MCP. It starts a `99`-egg authored hatch animation, verifies the compact `10x10` layout, checks every frame stays inside the resolved animation viewport, and confirms all frames use the authored egg visual.
+- `EggProximitySmoke` also verifies the hatch settings drawer exposes Golden/Charged cost and luck details from config.
 
 ## Admin/Map Test Verification
 

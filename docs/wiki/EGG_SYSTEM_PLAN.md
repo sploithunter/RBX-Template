@@ -33,11 +33,12 @@ Implemented so far:
 - Hatch mode preferences now persist under `Settings.AutoSystems.hatch.modes`. `SettingsService` sanitizes mode keys from `egg_system.ui.hatch_panel.modes`, replicates them under `Player.Settings.AutoSystems.Hatch.Modes`, and `EggInteractionService` restores/persists Golden, Charged, Fast, Skip, and Silent mode toggles without making the server trust those preferences for entitlement.
 - The near-egg hatch panel now has config-driven responsive scaling. `egg_system.ui.hatch_panel.responsive` controls margin/min/max scale, `EggInteractionService:ComputeHatchPanelLayout()` exposes desktop/mobile fit math, and `EggProximitySmoke` verifies the panel remains full scale on desktop while fitting a mobile-width viewport.
 - Hatch animation now has explicit max-batch coverage. `EggHatchingService` resolves a sane fallback viewport when Studio reports an uninitialized `1x1` camera size, exposes resolved container/frame geometry through `GetActiveAnimationDebugState()`, and `EggAnimationMaxBatchSmoke` verifies `99` authored egg frames fit in the compact `10x10` layout.
+- Hatch mode education now includes config-derived economics. The hatch drawer reads mode cost/luck details from `egg_system.hatching.shop_stubs`, exposes them as UI attributes, and shows details such as Golden `20x` cost and Charged luck bonuses in help/status text.
 
 Still to build:
 
 - Richer near-egg hatch UI polish and direct Studio screenshot QA across desktop/mobile layouts after the first responsive layout pass.
-- Further hatch setting UI polish and richer player-facing entitlement education beyond the first mode status line, Max/Auto entitlement state, and dynamic hover/focus help text.
+- Further hatch setting UI polish beyond the current config-derived mode cost/luck education, Max/Auto entitlement state, and dynamic hover/focus help text.
 - Richer authored egg animation visual polish beyond the first ViewportFrame clone/scale/reveal-badge/configured-glow pass.
 - Direct Studio screenshot QA across desktop/mobile layouts for the expanded hatch drawer.
 
