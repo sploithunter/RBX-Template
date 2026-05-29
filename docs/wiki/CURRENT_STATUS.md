@@ -68,6 +68,7 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Hatch reveal markers are now config-driven. `egg_system.hatching.animation.reveal_badges` controls rarity, variant, special, and auto-delete badges, and `EggHatchingService:GetActiveAnimationDebugState()` lets Studio smokes inspect the live client animation contract without relying on screenshots.
 - Hatch mode education now reads player entitlement state. The settings drawer grays locked modes, stores `ModeState`/`ModeOwned` attributes on each mode toggle, shows a `ModeStatus` summary, and uses config-driven locked/available/active help text.
 - Server hatch debugging now has a bounded recent-history path. `EggService` records successful and rejected hatches with request count, actual count, cost, stop reason, options, entitlements, sampled results, auto-delete counts, special counts, and authored animation metadata. Admin tools expose this through `Admin_RequestHatchHistory`, and the admin panel has a Recent Hatch History action.
+- Egg source unlock requirements are now server-authoritative for both real hatches and no-mutation hatch simulations. `egg_sources.<id>.unlock_requirement` can point at a stat/counter threshold, rejected hatches return `egg_locked` with current/required progress, and auto-hatch feedback maps that code to `locked egg`.
 - Studio hatch forcing now uses player `ForcePet`/`ForceVariant` attributes directly before the roll, avoiding the earlier copied-config gotcha where mutating `Locations.getConfig("pets")` did not reliably affect `simulateHatch`.
 - `ConfigLoader` now validates the expanded egg-system hatch contract, including hatch count relationships, debug/history limits, animation capacity, reveal badge field types, shop max-count defaults, and hatch-panel button labels.
 - Egg hatching has a no-mutation simulation path for admin/testing. `EggService:SimulateHatchBatch` rolls the same server pet/variant/luck pipeline and reports costs, counts, auto-delete matches, special reveal counts, and animation metadata without spending currency, granting pets, incrementing stats, or playing client animation. Admin tools expose this through `Admin_RequestHatchSimulation`.
@@ -175,6 +176,8 @@ Last checked: 2026-05-27
 - `EggProximitySmoke` also verifies the hatch settings drawer exposes Golden/Charged cost and luck details from config.
 - `EggProximitySmoke` also verifies the expanded hatch settings drawer renders with nonzero dimensions and no clipped visible controls.
 - `EggAnimationContractSmoke` now verifies special hatch backdrop metadata and reveal visibility, and `ConfigLoader.spec` covers invalid backdrop transparency.
+- `EggUnlockSmoke` passes through Studio MCP. It verifies `golden_egg` rejects at `9/10` configured hatch progress with `egg_locked`, succeeds at `10/10`, deducts the effective golden egg cost, grants one pet, and restores the profile/map state. `ConfigLoader.spec` now passes with `58` passed, `0` failed, and `0` skipped after adding unlock-requirement shape validation.
+- `EggHatchSimulationSmoke` and `EggBatchHatchSmoke` still pass after the unlock gate change, covering the basic simulation and broader batch hatch regression paths.
 
 ## Admin/Map Test Verification
 

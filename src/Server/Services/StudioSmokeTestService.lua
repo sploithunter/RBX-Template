@@ -14,6 +14,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
+local Workspace = game:GetService("Workspace")
 
 local REMOTE_NAME = "StudioSmokeTest"
 local Locations = require(ReplicatedStorage.Shared.Locations)
@@ -76,7 +77,36 @@ local function getEggAnchor(egg)
     return EggWorldQuery.GetAnchor(egg)
 end
 
-local function getRootPart(player)
+local getRootPart
+
+local function createTemporaryEggStand(player, eggType)
+    local folder = Workspace:FindFirstChild("StudioSmokeTemp")
+    if not folder then
+        folder = Instance.new("Folder")
+        folder.Name = "StudioSmokeTemp"
+        folder.Parent = Workspace
+    end
+
+    local rootPart = getRootPart(player)
+    local basePosition = rootPart and rootPart.Position or Vector3.new(0, 10, 0)
+    local stand = Instance.new("Part")
+    stand.Name = "TemporaryEggStand_" .. tostring(eggType)
+    stand.Anchored = true
+    stand.CanCollide = false
+    stand.CanTouch = false
+    stand.CanQuery = true
+    stand.Transparency = 1
+    stand.Size = Vector3.new(4, 1, 4)
+    stand.Position = basePosition + Vector3.new(12, 0, 0)
+    stand:SetAttribute("EggType", eggType)
+    stand:SetAttribute("StudioSmokeTemporary", true)
+    stand.Parent = folder
+    CollectionService:AddTag(stand, "EggStand")
+
+    return stand
+end
+
+function getRootPart(player)
     local character = player.Character
     return character and character:FindFirstChild("HumanoidRootPart")
 end
@@ -1078,9 +1108,17 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
         }
     end
 
+    local temporaryEggStand = nil
     local egg = findEggByType(eggType)
+    if not egg and payload.setupTemporaryEggStand == true then
+        temporaryEggStand = createTemporaryEggStand(player, eggType)
+        egg = temporaryEggStand
+    end
     local anchor = getEggAnchor(egg)
     if not anchor then
+        if temporaryEggStand then
+            temporaryEggStand:Destroy()
+        end
         return {
             ok = false,
             error = "Egg anchor not found for " .. tostring(eggType),
@@ -1099,6 +1137,13 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
     local originalPetsBucket = deepCopy(data.Inventory.pets or { items = {} })
     local originalAutoSystems = deepCopy(data.Settings and data.Settings.AutoSystems or nil)
     local originalCounters = deepCopy(data.Stats and data.Stats.Counters or {})
+    if type(payload.setupCounters) == "table" then
+        for counterId, value in pairs(payload.setupCounters) do
+            if type(counterId) == "string" then
+                dataService:SetCounter(player, counterId, tonumber(value) or 0)
+            end
+        end
+    end
     local eggCost = (petsConfig.getEggCost and petsConfig.getEggCost(eggType)) or eggData.cost
     local setupHatchCount = math.max(1, math.floor(tonumber(payload.setupHatchCount) or 1))
     local requiredCurrency = payload.setupCurrencyAmount
@@ -1205,6 +1250,7 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
         originalAttributes = originalAttributes,
         originalAutoSystems = originalAutoSystems,
         originalCounters = originalCounters,
+        temporaryEggStand = temporaryEggStand,
         farPosition = anchorPosition + Vector3.new(maxDistance + 80, 4, 0),
         nearPosition = anchorPosition + Vector3.new(0, 4, 0),
         cooldown = eggSystemConfig.cooldowns.purchase_cooldown or 0,
@@ -1413,6 +1459,10 @@ function StudioSmokeTestService:_restoreEggProximity(player)
 
     local EggService = require(ServerScriptService.Server.Services.EggService)
     EggService:SetTestHatchOverride(player, nil, nil)
+
+    if session.temporaryEggStand and session.temporaryEggStand.Parent then
+        session.temporaryEggStand:Destroy()
+    end
 
     dataService:RequestSave(player, "egg_smoke_restore", { critical = true })
     sessions[player.UserId] = nil

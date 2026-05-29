@@ -83,6 +83,68 @@ function EggService:GetDebugConfig()
     return hatching.debug or {}
 end
 
+function EggService:GetUnlockCounterValue(player, counterId)
+    if counterId == "pets_hatched" then
+        counterId = "eggs_hatched"
+    end
+
+    if self._statsService and self._statsService.Get then
+        local ok, value = pcall(function()
+            return self._statsService:Get(player, counterId)
+        end)
+        if ok then
+            return tonumber(value) or 0
+        end
+    end
+
+    if self._dataService and self._dataService.GetCounter then
+        return tonumber(self._dataService:GetCounter(player, counterId)) or 0
+    end
+
+    return tonumber(player:GetAttribute(counterId)) or 0
+end
+
+function EggService:GetEggUnlockStatus(player, eggType, eggData)
+    eggData = eggData or (petConfig.egg_sources and petConfig.egg_sources[eggType])
+    local requirement = eggData and eggData.unlock_requirement
+    if requirement == nil then
+        return true, nil
+    end
+
+    if type(requirement) ~= "table" then
+        return false,
+            {
+                type = "invalid",
+                current = 0,
+                required = 1,
+                message = "Invalid egg unlock requirement",
+            }
+    end
+
+    local requirementType = tostring(requirement.type or "")
+    local requiredAmount = math.max(0, tonumber(requirement.amount) or 0)
+    if requirementType == "" or requiredAmount <= 0 then
+        return true,
+            {
+                type = requirementType,
+                current = 0,
+                required = requiredAmount,
+            }
+    end
+
+    local counterId = requirement.counter or requirement.stat or requirementType
+    local currentAmount = self:GetUnlockCounterValue(player, counterId)
+    local unlocked = currentAmount >= requiredAmount
+
+    return unlocked,
+        {
+            type = requirementType,
+            counter = counterId,
+            current = currentAmount,
+            required = requiredAmount,
+        }
+end
+
 function EggService:GetHatchHistoryLimit()
     local debugConfig = self:GetDebugConfig()
     return math.clamp(math.floor(tonumber(debugConfig.history_limit) or 12), 1, 50)
@@ -274,6 +336,10 @@ function EggService:SimulateHatchBatch(player, rawRequest)
     local eggData = petConfig.egg_sources[request.eggType]
     if not eggData then
         return self:FormatError(request, "Invalid egg type", "invalid_egg")
+    end
+    local unlocked, unlockDetails = self:GetEggUnlockStatus(player, request.eggType, eggData)
+    if not unlocked then
+        return self:FormatError(request, "Egg locked", "egg_locked", unlockDetails)
     end
 
     local entitlements = self:ResolveHatchEntitlements(player)
@@ -891,6 +957,16 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         Logger:Warn("Invalid egg type", { player = player.Name, eggType = request.eggType })
         self:ReleaseHatchLock(player, false)
         return self:ReturnHatchError(player, request, "Invalid egg type", "invalid_egg")
+    end
+    local unlocked, unlockDetails = self:GetEggUnlockStatus(player, request.eggType, eggData)
+    if not unlocked then
+        Logger:Warn("Player tried to hatch locked egg", {
+            player = player.Name,
+            eggType = request.eggType,
+            requirement = unlockDetails,
+        })
+        self:ReleaseHatchLock(player, false)
+        return self:ReturnHatchError(player, request, "Egg locked", "egg_locked", unlockDetails)
     end
     local eggCost = (petConfig.getEggCost and petConfig.getEggCost(request.eggType)) or eggData.cost
     eggCost = math.max(0, tonumber(eggCost) or 0)

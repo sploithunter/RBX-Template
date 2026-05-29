@@ -495,6 +495,7 @@ local function formatAutoErrorStopReason(result)
         no_storage = "storage full",
         too_far = "too far away",
         feature_locked = "locked feature",
+        egg_locked = "locked egg",
         partial_not_allowed = "partial hatch unavailable",
         invalid_egg = "egg unavailable",
     }

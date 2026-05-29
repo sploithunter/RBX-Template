@@ -1926,6 +1926,43 @@ function ConfigLoader:_validatePetsConfig(config)
         if type(egg.pet_weights) ~= "table" then
             return self:_configError("pets", basePath .. ".pet_weights", "expected table")
         end
+        if egg.unlock_requirement ~= nil then
+            if type(egg.unlock_requirement) ~= "table" then
+                return self:_configError(
+                    "pets",
+                    basePath .. ".unlock_requirement",
+                    "expected table"
+                )
+            end
+            if
+                type(egg.unlock_requirement.type) ~= "string"
+                or egg.unlock_requirement.type == ""
+            then
+                return self:_configError(
+                    "pets",
+                    basePath .. ".unlock_requirement.type",
+                    "expected non-empty string"
+                )
+            end
+            ok, err = self:_requireNonNegativeNumber(
+                "pets",
+                egg.unlock_requirement.amount,
+                basePath .. ".unlock_requirement.amount"
+            )
+            if not ok then
+                return ok, err
+            end
+            for _, key in ipairs({ "counter", "stat" }) do
+                local value = egg.unlock_requirement[key]
+                if value ~= nil and (type(value) ~= "string" or value == "") then
+                    return self:_configError(
+                        "pets",
+                        basePath .. ".unlock_requirement." .. key,
+                        "expected non-empty string"
+                    )
+                end
+            end
+        end
         if egg.variant_rolls ~= nil then
             if type(egg.variant_rolls) ~= "table" then
                 return self:_configError("pets", basePath .. ".variant_rolls", "expected table")

@@ -36,6 +36,7 @@ Implemented so far:
 - Hatch mode education now includes config-derived economics. The hatch drawer reads mode cost/luck details from `egg_system.hatching.shop_stubs`, exposes them as UI attributes, and shows details such as Golden `20x` cost and Charged luck bonuses in help/status text.
 - The expanded hatch drawer now has automated layout coverage. `EggProximitySmoke` opens the real `PlayerGui` drawer, verifies desktop/mobile fit math, and checks that visible drawer controls are not clipped inside the configured drawer bounds.
 - Special hatch animation polish now has a config-driven backdrop layer. `egg_system.hatching.animation.special_backdrop` controls a rarity-colored reveal backdrop behind special pets, `ConfigLoader` validates its fields, and `EggAnimationContractSmoke` verifies the visual contract.
+- Egg source unlock requirements now run through the server hatch pipeline. `EggService` checks `egg_sources.<id>.unlock_requirement` for real and simulated hatches, returns `egg_locked` with current/required progress, `ConfigLoader` validates the requirement shape, and `EggUnlockSmoke` verifies locked/unlocked golden egg behavior in Studio.
 
 Still to build:
 
@@ -121,7 +122,7 @@ Server pipeline:
 - Add consistent result envelopes: `{ ok = true, eggId, requestedCount, hatchCount, totalCost, currency, results, animation, autoDeleted, stopReason }` and `{ ok = false, code, message, details }`.
 - Support partial hatching: requested `99`, affordable/storable `N`, hatch `N` when `allow_partial = true`; otherwise reject.
 - Validate distance using `EggWorldQuery` and authored `EggStand` anchors.
-- Validate area/zone unlocks for eggs if configured.
+- Validate area/zone unlocks for eggs if configured. First-pass counter/stat unlock requirements are enforced through `egg_sources.<id>.unlock_requirement`; richer area/zone prerequisite checks can build on the same server gate.
 - Validate storage against stackable vs unique pet storage rules.
 - Deduct total currency once per batch with economy source metadata such as `egg_hatch_batch`.
 - Roll each hatch independently using current pet + variant + luck/enchant logic.
@@ -192,6 +193,7 @@ Testing:
 - Studio smoke: auto-delete prevents inventory writes but increments hatch stats.
 - Studio smoke: auto hatch stops on no funds/storage/too far.
 - Studio smoke: authored egg animation payload names/uses the current rock egg.
+- Studio smoke: configured egg unlock requirements reject below the threshold and hatch once the counter/stat requirement is met. `EggUnlockSmoke` covers the first counter-backed path.
 - Studio smoke: admin hatch entitlement controls can lock/unlock/reset shop stubs and max hatch count.
 - Studio smoke: no-mutation hatch simulation returns costs/counts/results without changing currency, inventory, or hatch stats.
 - Studio smoke: near-egg panel reports effective max hatch entitlement and locked Auto state before the server request. `EggProximitySmoke` covers this first Max/Auto entitlement UI contract.

@@ -367,6 +367,54 @@ return function()
                 expect(string.find(error, "must reference configs/currencies.lua", 1, true)).to.be.ok()
             end)
 
+            it("should reject pet eggs with invalid unlock requirements", function()
+                local invalidConfig = {
+                    version = "1.0.0",
+                    rarities = {
+                        common = { name = "Common" },
+                    },
+                    variants = {
+                        basic = { name = "Basic", rarity = "common" },
+                    },
+                    pets = {
+                        bear = {
+                            display_name = "Bear",
+                            category = "forest",
+                            rarity = "common",
+                            base_power = 10,
+                            base_health = 10,
+                            variants = {
+                                basic = {
+                                    asset_id = "rbxassetid://1",
+                                    display_name = "Bear",
+                                    power = 10,
+                                    health = 10,
+                                },
+                            },
+                        },
+                    },
+                    abilities = {},
+                    egg_sources = {
+                        basic_egg = {
+                            name = "Basic Egg",
+                            cost = 100,
+                            currency = "coins",
+                            unlock_requirement = {
+                                type = "pets_hatched",
+                                amount = "ten",
+                            },
+                            pet_weights = {
+                                bear = 1,
+                            },
+                        },
+                    },
+                }
+
+                local isValid, error = configLoader:ValidateConfig("pets", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "unlock_requirement.amount", 1, true)).to.be.ok()
+            end)
+
             it("should reject pet family rarity ids that are not configured", function()
                 local invalidConfig = {
                     version = "1.0.0",
