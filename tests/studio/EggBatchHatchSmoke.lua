@@ -164,6 +164,42 @@ function EggBatchHatchSmoke.run(options)
             eggType = eggType,
             setupHatchCount = goldenCount,
             setupCurrencyAmount = begin.cost * goldenMultiplier * goldenCount,
+        })
+        started = true
+        invoke(remote, "MoveEggProximity", { placement = "near" })
+        task.wait(0.2)
+
+        local lockedGolden = invoke(remote, "HatchEggProximity", {
+            batch = true,
+            requestedCount = goldenCount,
+            options = {
+                goldenMode = true,
+            },
+        })
+        assert(
+            type(lockedGolden.result) == "table" and lockedGolden.result.success == false,
+            "Locked Golden mode hatch should fail"
+        )
+        assert(
+            lockedGolden.result.code == "feature_locked",
+            "Locked Golden mode failed with wrong code"
+        )
+        assert(
+            lockedGolden.afterCurrency == lockedGolden.beforeCurrency,
+            "Locked Golden mode changed currency"
+        )
+        assert(
+            lockedGolden.afterPetCount == lockedGolden.beforePetCount,
+            "Locked Golden mode changed pet count"
+        )
+
+        task.wait((lockedGolden.cooldown or 0) + 0.25)
+        invoke(remote, "RestoreEggProximity", {})
+        started = false
+        begin = invoke(remote, "BeginEggProximity", {
+            eggType = eggType,
+            setupHatchCount = goldenCount,
+            setupCurrencyAmount = begin.cost * goldenMultiplier * goldenCount,
             setupGoldenModeUnlocked = true,
         })
         started = true

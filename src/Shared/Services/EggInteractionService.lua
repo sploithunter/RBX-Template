@@ -606,6 +606,35 @@ function EggInteractionService:BuildHatchOptions()
     }
 end
 
+function EggInteractionService:ApplyResolvedHatchOptions(options)
+    if type(options) ~= "table" then
+        return
+    end
+
+    for optionName in pairs(hatchModeState) do
+        if options[optionName] ~= nil then
+            hatchModeState[optionName] = options[optionName] == true
+        end
+    end
+    self:RefreshModeButtons()
+    self:UpdateHatchPanel()
+end
+
+function EggInteractionService:HandleHatchError(result)
+    local message = result.message or "Purchase failed"
+    if result.code == "feature_locked" then
+        if hatchModeState.goldenMode == true then
+            hatchModeState.goldenMode = false
+            self:RefreshModeButtons()
+            self:UpdateHatchPanel()
+        end
+        message = message .. " Turn off the locked mode or unlock it first."
+    end
+
+    self:ShowErrorMessage(message)
+    self:SetPanelStatus(message, true)
+end
+
 function EggInteractionService:SetSelectedHatchCount(count)
     selectedHatchCount = clampSelectedCount(count)
     self:UpdateHatchPanel()
@@ -866,6 +895,7 @@ function EggInteractionService:HandleEggPurchase(
         )
         if type(result) == "table" and result.success then
             Logger:Info("Purchase successful", { context = "EggInteractionService" })
+            self:ApplyResolvedHatchOptions(result.options)
             self:ShowHatchingResults(result)
             local status = "Hatched " .. tostring(result.hatchCount or 1)
             if result.stopReason then
@@ -879,8 +909,7 @@ function EggInteractionService:HandleEggPurchase(
                 message = result.message or "Purchase failed",
                 code = result.code,
             })
-            self:ShowErrorMessage(result.message or "Purchase failed")
-            self:SetPanelStatus(result.message or "Purchase failed", true)
+            self:HandleHatchError(result)
             return false
         elseif result == "Error" then
             Logger:Warn(

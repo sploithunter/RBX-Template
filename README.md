@@ -41,7 +41,7 @@ The playable baseline currently includes:
 - Config-driven hatch auto-delete filters by rarity, pet family, and variant, with protected special rarities.
 - Hatch panel controls and hotkeys for selected-count, max, and auto hatch, backed by the same server batch endpoint.
 - Compact hatch auto-delete filter drawer for rarity, pet-family, and variant filters, backed by the server-authoritative auto-delete settings event.
-- Hatch mode toggles for Golden/Fast/Skip/Silent; Golden mode is server-entitlement checked, costs the configured multiplier, and prevents basic variants.
+- Hatch mode toggles for Golden/Fast/Skip/Silent; Golden mode is server-entitlement checked, explains locked access, costs the configured multiplier, and prevents basic variants.
 - Admin panel tools and Studio MCP smoke-test tooling for repeatable validation.
 
 ## In Process / Partially Implemented
@@ -52,7 +52,7 @@ These systems exist but still need polish or later-phase expansion:
 - Pet follow/mining still runs through a stabilized legacy cloned script. Phase 4 now routes its damage/cadence through the modifier pipeline, but a cleaner PetWork/Combat service should replace that script.
 - Enchanter UI works and now explains config descriptions, but richer player education such as signs/help panels is still future polish.
 - Auto systems currently have server/config/smoke coverage and compatibility with the existing Low/High buttons; richer settings UI controls are still future polish.
-- Egg hatching now has the server transaction foundation and a first-pass near-egg Hatch/Max/Auto panel, but the UI still needs visual QA and richer locked-mode explanations.
+- Egg hatching now has the server transaction foundation and a first-pass near-egg Hatch/Max/Auto panel, but the UI still needs visual QA and broader player education around settings/filter behavior.
 - Egg hatch responses include authored egg visual metadata and `EggHatchingService` has a first-pass authored ViewportFrame clone/scale path, but the animation still needs richer UI polish.
 - Offline balance tooling reads the current player-level curve, but it remains a rough calculator rather than a full economy simulator.
 - Authored-map workflow works through markers, but visible production map fixtures/gate art are still early.
