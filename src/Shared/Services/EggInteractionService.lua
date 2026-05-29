@@ -180,6 +180,14 @@ local function getSelectedCostMultiplier()
     return 1
 end
 
+local function getFilterDisplayName(id)
+    local petFamily = petConfig.pets and petConfig.pets[id]
+    return (petConfig.rarities[id] and petConfig.rarities[id].name)
+        or (petFamily and (petFamily.display_name or petFamily.name))
+        or (petConfig.variants[id] and petConfig.variants[id].name)
+        or titleCaseId(id)
+end
+
 function EggInteractionService:CreateButton(parent, name, text, size, position, color, callback)
     local button = Instance.new("TextButton")
     button.Name = name
@@ -446,13 +454,20 @@ function EggInteractionService:CreateAutoDeleteSettings(parent)
     local filterConfig = panelConfig.auto_delete or {}
     local y = 44
     self:CreateFilterRow(parent, "Rarities", filterConfig.rarity_filters or {}, "rarities", y)
-    self:CreateFilterRow(parent, "Variants", filterConfig.variant_filters or {}, "variants", y + 58)
+    self:CreateFilterRow(parent, "Pets", filterConfig.pet_type_filters or {}, "pet_types", y + 58)
+    self:CreateFilterRow(
+        parent,
+        "Variants",
+        filterConfig.variant_filters or {},
+        "variants",
+        y + 116
+    )
 end
 
 function EggInteractionService:CreateModeSettings(parent)
     local panelConfig = getHatchPanelConfig()
     local modeConfig = panelConfig.modes or {}
-    local y = 132
+    local y = 218
 
     local label = Instance.new("TextLabel")
     label.Name = "ModesLabel"
@@ -509,9 +524,7 @@ function EggInteractionService:CreateFilterRow(parent, labelText, filterIds, buc
         local button = self:CreateButton(
             parent,
             bucketName .. "_" .. id,
-            (petConfig.rarities[id] and petConfig.rarities[id].name)
-                or (petConfig.variants[id] and petConfig.variants[id].name)
-                or titleCaseId(id),
+            getFilterDisplayName(id),
             UDim2.new(0, 84, 0, 28),
             UDim2.new(0, x, 0, y + row * 32),
             Color3.fromRGB(80, 85, 98),
@@ -569,28 +582,28 @@ function EggInteractionService:RefreshAutoDeleteButtons()
                     or Color3.fromRGB(80, 85, 98)
             end
         end
-
-        function EggInteractionService:RefreshModeButtons()
-            if not hatchPanelFields.modeButtons then
-                return
-            end
-
-            for optionName, button in pairs(hatchPanelFields.modeButtons) do
-                local enabled = hatchModeState[optionName] == true
-                button.BackgroundColor3 = enabled and Color3.fromRGB(244, 172, 54)
-                    or Color3.fromRGB(80, 85, 98)
-            end
-        end
-
-        function EggInteractionService:BuildHatchOptions()
-            return {
-                goldenMode = hatchModeState.goldenMode == true,
-                fastHatch = hatchModeState.fastHatch == true,
-                skipHatch = hatchModeState.skipHatch == true,
-                silentHatch = hatchModeState.silentHatch == true,
-            }
-        end
     end
+end
+
+function EggInteractionService:RefreshModeButtons()
+    if not hatchPanelFields.modeButtons then
+        return
+    end
+
+    for optionName, button in pairs(hatchPanelFields.modeButtons) do
+        local enabled = hatchModeState[optionName] == true
+        button.BackgroundColor3 = enabled and Color3.fromRGB(244, 172, 54)
+            or Color3.fromRGB(80, 85, 98)
+    end
+end
+
+function EggInteractionService:BuildHatchOptions()
+    return {
+        goldenMode = hatchModeState.goldenMode == true,
+        fastHatch = hatchModeState.fastHatch == true,
+        skipHatch = hatchModeState.skipHatch == true,
+        silentHatch = hatchModeState.silentHatch == true,
+    }
 end
 
 function EggInteractionService:SetSelectedHatchCount(count)

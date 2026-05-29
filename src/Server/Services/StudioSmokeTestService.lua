@@ -1092,12 +1092,37 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
 
     local originalCurrency = dataService:GetCurrency(player, eggData.currency)
     local originalPetsBucket = deepCopy(data.Inventory.pets or { items = {} })
+    local originalPetTestMode = deepCopy(petsConfig.test_mode)
     local eggCost = (petsConfig.getEggCost and petsConfig.getEggCost(eggType)) or eggData.cost
     local setupHatchCount = math.max(1, math.floor(tonumber(payload.setupHatchCount) or 1))
     local requiredCurrency = payload.setupCurrencyAmount
         or ((eggCost * setupHatchCount) + math.max(25, math.floor(eggCost * 0.1)))
 
     dataService:SetCurrency(player, eggData.currency, requiredCurrency, "egg_smoke_setup")
+    if payload.setupPetStorageAvailableSlots ~= nil then
+        local petsBucket = data.Inventory.pets
+        if not petsBucket then
+            petsBucket = {
+                items = {},
+                used_slots = 0,
+                total_slots = 0,
+            }
+            data.Inventory.pets = petsBucket
+        end
+        local availableSlots =
+            math.max(0, math.floor(tonumber(payload.setupPetStorageAvailableSlots) or 0))
+        local usedSlots = math.max(0, tonumber(petsBucket.used_slots) or 0)
+        petsBucket.total_slots = usedSlots + availableSlots
+        if inventoryService and inventoryService._updateBucketFolders then
+            inventoryService:_updateBucketFolders(player, "pets")
+        end
+    end
+    if payload.setupForceHatchPet or payload.setupForceHatchVariant then
+        petsConfig.test_mode = petsConfig.test_mode or {}
+        petsConfig.test_mode.enabled = true
+        petsConfig.test_mode.force_pet = payload.setupForceHatchPet
+        petsConfig.test_mode.force_variant = payload.setupForceHatchVariant or "basic"
+    end
     local originalAttributes = {}
     for _, attributeName in ipairs({
         "GoldenHatchUnlocked",
@@ -1131,6 +1156,7 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
         originalPetsBucket = originalPetsBucket,
         originalPetCount = countPets(originalPetsBucket),
         originalAttributes = originalAttributes,
+        originalPetTestMode = originalPetTestMode,
         farPosition = anchorPosition + Vector3.new(maxDistance + 80, 4, 0),
         nearPosition = anchorPosition + Vector3.new(0, 4, 0),
         cooldown = eggSystemConfig.cooldowns.purchase_cooldown or 0,
@@ -1246,6 +1272,11 @@ function StudioSmokeTestService:_restoreEggProximity(player)
         else
             player:SetAttribute(attributeName, nil)
         end
+    end
+
+    local petsConfig = configLoader:LoadConfig("pets")
+    if petsConfig then
+        petsConfig.test_mode = deepCopy(session.originalPetTestMode)
     end
 
     dataService:RequestSave(player, "egg_smoke_restore", { critical = true })

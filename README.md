@@ -40,7 +40,7 @@ The playable baseline currently includes:
 - Config-driven auto-target modes: nearest, highest value, weakest, strongest, and selected currency.
 - Config-driven hatch auto-delete filters by rarity, pet family, and variant, with protected special rarities.
 - Hatch panel controls and hotkeys for selected-count, max, and auto hatch, backed by the same server batch endpoint.
-- Compact hatch auto-delete filter drawer for rarity/variant filters, backed by the server-authoritative auto-delete settings event.
+- Compact hatch auto-delete filter drawer for rarity, pet-family, and variant filters, backed by the server-authoritative auto-delete settings event.
 - Hatch mode toggles for Golden/Fast/Skip/Silent; Golden mode is server-entitlement checked, costs the configured multiplier, and prevents basic variants.
 - Admin panel tools and Studio MCP smoke-test tooling for repeatable validation.
 
@@ -63,7 +63,7 @@ Planned or intentionally deferred work:
 
 - Potions, boosts, shops, and other player enhancements that feed the shared modifier pipeline.
 - Richer auto-system UI controls and player-facing explanations.
-- Richer egg UI: Hatch/Max/Auto buttons, selected-count control, stop-reason display, fast/skip/silent/golden mode toggles, and player-facing hatch settings.
+- Richer egg UI polish: locked-mode explanations, responsive layout QA, special reveal presentation, and fuller player-facing hatch education.
 - Daily gifts, reward tracks, codes, stock/limited items, and Pet of the Day style rotations.
 - Chaseables, seasonal/event currencies, and more authored-world content.
 - Trading/marketplace with Roblox-native escrow and anti-duplication guarantees.
@@ -182,7 +182,7 @@ Latest local checkpoint:
 - Phase 3 Studio smoke coverage exists for pet index, achievements, leaderboards, and Phase 2 regressions.
 - `Phase4PetProgressionSmoke`: passes in Studio for hatch enchants, breakable XP, manual reroll, player-level slot rewards, hatch/secret luck, pet damage, team power, pet efficiency, and profile restoration.
 - `Phase5AutoSystemsSmoke`: passes in Studio for server-selected nearest/highest/weakest/strongest/selected-currency targets, hatch auto-delete filters, protected special rarity behavior, and profile restoration.
-- `EggBatchHatchSmoke`: added for server batch hatch count/cost behavior, rapid-repeat hatch lock rejection, partial hatch by available funds, and Golden mode cost/no-basic behavior.
+- `EggBatchHatchSmoke`: added for server batch hatch count/cost behavior, rapid-repeat hatch lock rejection, partial hatch by available funds/storage, and Golden mode cost/no-basic behavior.
 - `EggProximitySmoke`: now also checks the near-egg hatch panel appears with Hatch/Max/Auto/count controls.
 
 See `docs/wiki/CURRENT_STATUS.md` for detailed verification history and `docs/IMPLEMENTATION_PLAN.md` for the phase roadmap.

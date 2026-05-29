@@ -153,6 +153,10 @@ function EggProximitySmoke.run(options)
             local settings = hatchPanel:FindFirstChild("SettingsDrawer")
             assert(settings, "Hatch panel missing settings drawer")
             assert(
+                settings:FindFirstChild("pet_types_bear"),
+                "Hatch panel missing pet-family auto-delete filter"
+            )
+            assert(
                 settings:FindFirstChild("Mode_goldenMode"),
                 "Hatch panel missing Golden mode toggle"
             )

@@ -99,7 +99,7 @@ return {
             enabled = true,
             width = 500,
             height = 176,
-            settings_height = 168,
+            settings_height = 252,
             bottom_offset = 126,
             count_step = 1,
             count_large_step = 10,
@@ -117,6 +117,12 @@ return {
                     "uncommon",
                     "rare",
                     "epic",
+                },
+                pet_type_filters = {
+                    "bear",
+                    "doggy",
+                    "bunny",
+                    "colorado",
                 },
                 variant_filters = {
                     "basic",

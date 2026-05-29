@@ -195,6 +195,48 @@ function EggBatchHatchSmoke.run(options)
             assert(entry.Type ~= "basic", "Golden mode hatched a basic variant")
         end
 
+        task.wait((golden.cooldown or 0) + 0.25)
+        invoke(remote, "RestoreEggProximity", {})
+        started = false
+        local storageLimitedCount = math.min(2, requestedCount)
+        begin = invoke(remote, "BeginEggProximity", {
+            eggType = eggType,
+            setupHatchCount = requestedCount,
+            setupCurrencyAmount = begin.cost * requestedCount,
+            setupPetStorageAvailableSlots = storageLimitedCount,
+            setupForceHatchPet = "colorado",
+            setupForceHatchVariant = "basic",
+        })
+        started = true
+        invoke(remote, "MoveEggProximity", { placement = "near" })
+        task.wait(0.2)
+
+        local partialStorage = invoke(remote, "HatchEggProximity", {
+            batch = true,
+            requestedCount = requestedCount,
+        })
+        assert(
+            type(partialStorage.result) == "table" and partialStorage.result.success == true,
+            "Partial storage hatch failed"
+        )
+        assert(
+            partialStorage.result.hatchCount == storageLimitedCount,
+            "Partial storage hatch count mismatch"
+        )
+        assert(
+            partialStorage.result.stopReason == "storage",
+            "Partial storage stop reason mismatch"
+        )
+        assert(
+            partialStorage.afterCurrency
+                == partialStorage.beforeCurrency - (partialStorage.cost * storageLimitedCount),
+            "Partial storage deducted wrong amount"
+        )
+        assert(
+            partialStorage.afterPetCount == partialStorage.beforePetCount + storageLimitedCount,
+            "Partial storage added wrong pet count"
+        )
+
         return {
             player = player.Name,
             eggType = begin.eggType,
@@ -204,6 +246,7 @@ function EggBatchHatchSmoke.run(options)
             hatchCount = batch.result.hatchCount,
             partialFundsCount = partialFunds.result.hatchCount,
             goldenCount = golden.result.hatchCount,
+            partialStorageCount = partialStorage.result.hatchCount,
             stopReason = batch.result.stopReason,
         }
     end)
@@ -224,11 +267,12 @@ end
 function EggBatchHatchSmoke.runText(options)
     local result = EggBatchHatchSmoke.run(options)
     return string.format(
-        "EggBatchHatchSmoke passed: player=%s egg=%s count=%d partialFunds=%d golden=%d cost=%d %s stop=%s restored=%s",
+        "EggBatchHatchSmoke passed: player=%s egg=%s count=%d partialFunds=%d partialStorage=%d golden=%d cost=%d %s stop=%s restored=%s",
         result.player,
         result.eggType,
         result.hatchCount,
         result.partialFundsCount,
+        result.partialStorageCount,
         result.goldenCount,
         result.cost,
         result.currency,

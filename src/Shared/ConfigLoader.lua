@@ -2394,11 +2394,46 @@ function ConfigLoader:_validateEggSystemConfig(config)
     end
     ok, err = self:_requirePositiveNumber(
         "egg_system",
+        config.ui.hatch_panel.settings_height or 1,
+        "ui.hatch_panel.settings_height"
+    )
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requirePositiveNumber(
+        "egg_system",
         config.ui.hatch_panel.count_step or 1,
         "ui.hatch_panel.count_step"
     )
     if not ok then
         return ok, err
+    end
+    local autoDelete = config.ui.hatch_panel.auto_delete or {}
+    if type(autoDelete) ~= "table" then
+        return self:_configError("egg_system", "ui.hatch_panel.auto_delete", "expected table")
+    end
+    for _, listName in ipairs({
+        "rarity_filters",
+        "pet_type_filters",
+        "variant_filters",
+    }) do
+        local values = autoDelete[listName] or {}
+        if type(values) ~= "table" then
+            return self:_configError(
+                "egg_system",
+                "ui.hatch_panel.auto_delete." .. listName,
+                "expected table"
+            )
+        end
+        for index, id in ipairs(values) do
+            if type(id) ~= "string" or id == "" then
+                return self:_configError(
+                    "egg_system",
+                    "ui.hatch_panel.auto_delete." .. listName .. "." .. tostring(index),
+                    "expected non-empty string"
+                )
+            end
+        end
     end
 
     if
