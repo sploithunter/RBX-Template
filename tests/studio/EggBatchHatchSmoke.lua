@@ -235,6 +235,15 @@ function EggBatchHatchSmoke.run(options)
                     and eggSystemConfig.hatching.shop_stubs.golden_mode.cost_multiplier
             ) or 20
         )
+        local chargedMultiplier = math.max(
+            1,
+            tonumber(
+                eggSystemConfig.hatching
+                    and eggSystemConfig.hatching.shop_stubs
+                    and eggSystemConfig.hatching.shop_stubs.charged_mode
+                    and eggSystemConfig.hatching.shop_stubs.charged_mode.cost_multiplier
+            ) or 5
+        )
         begin = invoke(remote, "BeginEggProximity", {
             eggType = eggType,
             setupHatchCount = goldenCount,
@@ -309,6 +318,75 @@ function EggBatchHatchSmoke.run(options)
         task.wait((golden.cooldown or 0) + 0.25)
         invoke(remote, "RestoreEggProximity", {})
         started = false
+        begin = invoke(remote, "BeginEggProximity", {
+            eggType = eggType,
+            setupHatchCount = 1,
+            setupCurrencyAmount = begin.cost * chargedMultiplier,
+        })
+        started = true
+        invoke(remote, "MoveEggProximity", { placement = "near" })
+        task.wait(0.2)
+
+        local lockedCharged = invoke(remote, "HatchEggProximity", {
+            batch = true,
+            requestedCount = 1,
+            options = {
+                chargedMode = true,
+            },
+        })
+        assert(
+            type(lockedCharged.result) == "table" and lockedCharged.result.success == false,
+            "Locked Charged mode hatch should fail"
+        )
+        assert(
+            lockedCharged.result.code == "feature_locked",
+            "Locked Charged mode failed with wrong code"
+        )
+        assert(
+            lockedCharged.result.details and lockedCharged.result.details.mode == "chargedMode",
+            "Locked Charged mode did not identify the locked mode"
+        )
+        assert(
+            lockedCharged.afterCurrency == lockedCharged.beforeCurrency,
+            "Locked Charged mode changed currency"
+        )
+
+        task.wait((lockedCharged.cooldown or 0) + 0.25)
+        invoke(remote, "RestoreEggProximity", {})
+        started = false
+        begin = invoke(remote, "BeginEggProximity", {
+            eggType = eggType,
+            setupHatchCount = 1,
+            setupCurrencyAmount = begin.cost * chargedMultiplier,
+            setupChargedModeUnlocked = true,
+        })
+        started = true
+        invoke(remote, "MoveEggProximity", { placement = "near" })
+        task.wait(0.2)
+
+        local charged = invoke(remote, "HatchEggProximity", {
+            batch = true,
+            requestedCount = 1,
+            options = {
+                chargedMode = true,
+            },
+        })
+        assert(
+            type(charged.result) == "table" and charged.result.success == true,
+            "Charged hatch failed"
+        )
+        assert(
+            charged.result.options and charged.result.options.chargedMode == true,
+            "Charged mode not echoed"
+        )
+        assert(
+            charged.afterCurrency == charged.beforeCurrency - (charged.cost * chargedMultiplier),
+            "Charged hatch deducted wrong amount"
+        )
+
+        task.wait((charged.cooldown or 0) + 0.25)
+        invoke(remote, "RestoreEggProximity", {})
+        started = false
         local storageLimitedCount = math.min(2, requestedCount)
         begin = invoke(remote, "BeginEggProximity", {
             eggType = eggType,
@@ -370,6 +448,7 @@ function EggBatchHatchSmoke.run(options)
             partialFundsCount = partialFunds.result.hatchCount,
             autoDeletedCount = autoDeleteHatch.result.hatchCount,
             goldenCount = golden.result.hatchCount,
+            chargedCount = charged.result.hatchCount,
             partialStorageCount = partialStorage.result.hatchCount,
             stopReason = batch.result.stopReason,
         }
@@ -391,7 +470,7 @@ end
 function EggBatchHatchSmoke.runText(options)
     local result = EggBatchHatchSmoke.run(options)
     return string.format(
-        "EggBatchHatchSmoke passed: player=%s egg=%s count=%d partialFunds=%d autoDeleted=%d partialStorage=%d golden=%d cost=%d %s stop=%s restored=%s",
+        "EggBatchHatchSmoke passed: player=%s egg=%s count=%d partialFunds=%d autoDeleted=%d partialStorage=%d golden=%d charged=%d cost=%d %s stop=%s restored=%s",
         result.player,
         result.eggType,
         result.hatchCount,
@@ -399,6 +478,7 @@ function EggBatchHatchSmoke.runText(options)
         result.autoDeletedCount,
         result.partialStorageCount,
         result.goldenCount,
+        result.chargedCount,
         result.cost,
         result.currency,
         tostring(result.stopReason),

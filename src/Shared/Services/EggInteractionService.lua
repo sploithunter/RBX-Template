@@ -43,6 +43,7 @@ local autoDeleteState = {
 }
 local hatchModeState = {
     goldenMode = false,
+    chargedMode = false,
     fastHatch = false,
     skipHatch = false,
     silentHatch = false,
@@ -183,10 +184,15 @@ local function getSelectedCostMultiplier()
     local hatching = getHatchingConfig()
     local shopStubs = hatching.shop_stubs or {}
     local golden = shopStubs.golden_mode or {}
+    local charged = shopStubs.charged_mode or {}
+    local multiplier = 1
     if hatchModeState.goldenMode == true then
-        return math.max(1, tonumber(golden.cost_multiplier) or 20)
+        multiplier *= math.max(1, tonumber(golden.cost_multiplier) or 20)
     end
-    return 1
+    if hatchModeState.chargedMode == true then
+        multiplier *= math.max(1, tonumber(charged.cost_multiplier) or 5)
+    end
+    return multiplier
 end
 
 local function getFilterDisplayName(id)
@@ -490,17 +496,19 @@ function EggInteractionService:CreateModeSettings(parent)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = parent
 
-    local orderedModes = { "golden", "fast", "skip", "silent" }
+    local orderedModes = { "golden", "charged", "fast", "skip", "silent" }
     for index, key in ipairs(orderedModes) do
         local cfg = modeConfig[key]
         if cfg then
             local optionName = cfg.option or key
+            local buttonWidth = 70
+            local buttonGap = 76
             local button = self:CreateButton(
                 parent,
                 "Mode_" .. optionName,
                 cfg.label or titleCaseId(key),
-                UDim2.new(0, 84, 0, 28),
-                UDim2.new(0, 88 + (index - 1) * 92, 0, y),
+                UDim2.new(0, buttonWidth, 0, 28),
+                UDim2.new(0, 88 + (index - 1) * buttonGap, 0, y),
                 Color3.fromRGB(80, 85, 98),
                 function()
                     hatchModeState[optionName] = hatchModeState[optionName] ~= true
@@ -609,6 +617,7 @@ end
 function EggInteractionService:BuildHatchOptions()
     return {
         goldenMode = hatchModeState.goldenMode == true,
+        chargedMode = hatchModeState.chargedMode == true,
         fastHatch = hatchModeState.fastHatch == true,
         skipHatch = hatchModeState.skipHatch == true,
         silentHatch = hatchModeState.silentHatch == true,
@@ -632,11 +641,14 @@ end
 function EggInteractionService:HandleHatchError(result)
     local message = result.message or "Purchase failed"
     if result.code == "feature_locked" then
-        if hatchModeState.goldenMode == true then
+        local lockedMode = result.details and result.details.mode
+        if lockedMode and hatchModeState[lockedMode] ~= nil then
+            hatchModeState[lockedMode] = false
+        elseif hatchModeState.goldenMode == true then
             hatchModeState.goldenMode = false
-            self:RefreshModeButtons()
-            self:UpdateHatchPanel()
         end
+        self:RefreshModeButtons()
+        self:UpdateHatchPanel()
         message = message .. " Turn off the locked mode or unlock it first."
     end
 

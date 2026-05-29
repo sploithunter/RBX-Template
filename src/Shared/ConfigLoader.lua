@@ -2438,6 +2438,65 @@ function ConfigLoader:_validateEggSystemConfig(config)
             )
         end
     end
+    local shopStubs = config.hatching.shop_stubs or {}
+    if type(shopStubs) ~= "table" then
+        return self:_configError("egg_system", "hatching.shop_stubs", "expected table")
+    end
+    for _, stubName in ipairs({
+        "auto_hatch",
+        "fast_hatch",
+        "skip_hatch",
+        "golden_mode",
+        "charged_mode",
+        "luck_bonus",
+        "secret_luck_bonus",
+        "max_hatch_count",
+    }) do
+        local stub = shopStubs[stubName] or {}
+        if type(stub) ~= "table" then
+            return self:_configError(
+                "egg_system",
+                "hatching.shop_stubs." .. stubName,
+                "expected table"
+            )
+        end
+        if stub.enabled ~= nil and type(stub.enabled) ~= "boolean" then
+            return self:_configError(
+                "egg_system",
+                "hatching.shop_stubs." .. stubName .. ".enabled",
+                "expected boolean"
+            )
+        end
+        if stub.owned_by_default ~= nil and type(stub.owned_by_default) ~= "boolean" then
+            return self:_configError(
+                "egg_system",
+                "hatching.shop_stubs." .. stubName .. ".owned_by_default",
+                "expected boolean"
+            )
+        end
+        if stub.cost_multiplier ~= nil then
+            ok, err = self:_requirePositiveNumber(
+                "egg_system",
+                stub.cost_multiplier,
+                "hatching.shop_stubs." .. stubName .. ".cost_multiplier"
+            )
+            if not ok then
+                return ok, err
+            end
+        end
+        for _, fieldName in ipairs({ "luck_bonus", "secret_luck_bonus", "default_multiplier" }) do
+            if stub[fieldName] ~= nil then
+                ok, err = self:_requireNonNegativeNumber(
+                    "egg_system",
+                    stub[fieldName],
+                    "hatching.shop_stubs." .. stubName .. "." .. fieldName
+                )
+                if not ok then
+                    return ok, err
+                end
+            end
+        end
+    end
     if type(config.ui.hatch_panel) ~= "table" then
         return self:_configError("egg_system", "ui.hatch_panel", "expected table")
     end

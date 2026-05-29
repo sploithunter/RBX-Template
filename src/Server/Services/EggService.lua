@@ -254,6 +254,7 @@ function EggService:ResolveHatchEntitlements(player)
         fastHatch = resolveBooleanEntitlement("FastHatchUnlocked", shopStubs.fast_hatch),
         skipHatch = resolveBooleanEntitlement("SkipHatchUnlocked", shopStubs.skip_hatch),
         goldenMode = resolveBooleanEntitlement("GoldenHatchUnlocked", shopStubs.golden_mode),
+        chargedMode = resolveBooleanEntitlement("ChargedHatchUnlocked", shopStubs.charged_mode),
     }
 end
 
@@ -262,16 +263,23 @@ function EggService:ResolveHatchOptions(player, request, entitlements)
     local hatching = self:GetHatchingConfig()
     local shopStubs = hatching.shop_stubs or {}
     local goldenStub = shopStubs.golden_mode or {}
+    local chargedStub = shopStubs.charged_mode or {}
 
     if
         (request.purchaseType == "Auto" or request.autoSessionId ~= nil)
         and entitlements.autoHatch ~= true
     then
-        return nil, "Auto hatch is locked", "feature_locked"
+        return nil,
+            "Auto hatch is locked",
+            "feature_locked",
+            {
+                mode = "autoHatch",
+            }
     end
 
     local resolved = {
         goldenMode = false,
+        chargedMode = false,
         fastHatch = options.fastHatch == true and entitlements.fastHatch == true,
         skipHatch = options.skipHatch == true and entitlements.skipHatch == true,
         silentHatch = options.silentHatch == true,
@@ -280,16 +288,34 @@ function EggService:ResolveHatchOptions(player, request, entitlements)
 
     if options.goldenMode == true then
         if entitlements.goldenMode ~= true then
-            return nil, "Golden hatch mode is locked", "feature_locked"
+            return nil,
+                "Golden hatch mode is locked",
+                "feature_locked",
+                {
+                    mode = "goldenMode",
+                }
         end
         resolved.goldenMode = true
-        resolved.costMultiplier = math.max(1, tonumber(goldenStub.cost_multiplier) or 20)
+        resolved.costMultiplier *= math.max(1, tonumber(goldenStub.cost_multiplier) or 20)
+    end
+
+    if options.chargedMode == true then
+        if entitlements.chargedMode ~= true then
+            return nil,
+                "Charged hatch mode is locked",
+                "feature_locked",
+                {
+                    mode = "chargedMode",
+                }
+        end
+        resolved.chargedMode = true
+        resolved.costMultiplier *= math.max(1, tonumber(chargedStub.cost_multiplier) or 5)
     end
 
     return resolved
 end
 
-function EggService:BuildPlayerHatchData(player, eggType, eggData)
+function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
     local playerData = {
         level = player:GetAttribute("Level") or 1,
         petsHatched = player:GetAttribute("PetsHatched") or 0,
@@ -323,25 +349,63 @@ function EggService:BuildPlayerHatchData(player, eggType, eggData)
         playerData.secretLuckBoost = tonumber(secretLuck) or 0
     end
 
+    hatchOptions = type(hatchOptions) == "table" and hatchOptions or {}
+    if hatchOptions.chargedMode == true then
+        local hatching = self:GetHatchingConfig()
+        local chargedStub = hatching.shop_stubs and hatching.shop_stubs.charged_mode or {}
+        playerData.luckBoost = (tonumber(playerData.luckBoost) or 0)
+            + (tonumber(chargedStub.luck_bonus) or 0)
+        playerData.secretLuckBoost = (tonumber(playerData.secretLuckBoost) or 0)
+            + (tonumber(chargedStub.secret_luck_bonus) or 0)
+    end
+
     return playerData
 end
 
-function EggService:ApplyTestOverrides(player)
-    if not (petConfig.test_mode and petConfig.test_mode.enabled) then
+function EggService:SetTestHatchOverride(player, forcedPet, forcedVariant)
+    petConfig.test_mode = petConfig.test_mode or {}
+    if forcedPet or forcedVariant then
+        petConfig.test_mode.enabled = true
+        petConfig.test_mode.force_pet = forcedPet
+        petConfig.test_mode.force_variant = forcedVariant or "basic"
+        petConfig.test_mode._force_source_user_id = player and player.UserId or nil
         return
     end
 
+    if
+        player
+        and petConfig.test_mode._force_source_user_id ~= nil
+        and petConfig.test_mode._force_source_user_id ~= player.UserId
+    then
+        return
+    end
+
+    petConfig.test_mode.force_pet = nil
+    petConfig.test_mode.force_variant = nil
+    petConfig.test_mode._force_source_user_id = nil
+    if
+        not petConfig.test_mode.super_luck
+        and not petConfig.test_mode.pet_weight_overrides
+        and not petConfig.test_mode.rarity_overrides
+    then
+        petConfig.test_mode.enabled = false
+    end
+end
+
+function EggService:ApplyTestOverrides(player)
     local attrForcePet = player:GetAttribute("ForcePet")
     local attrForceVariant = player:GetAttribute("ForceVariant")
     if attrForcePet or attrForceVariant then
-        petConfig.test_mode.force_pet = attrForcePet
-        petConfig.test_mode.force_variant = attrForceVariant
+        self:SetTestHatchOverride(player, attrForcePet, attrForceVariant)
         Logger:Info("Hatch override active", {
             player = player.Name,
             force_pet = attrForcePet,
             force_variant = attrForceVariant,
         })
-    else
+        return
+    end
+
+    if not (petConfig.test_mode and petConfig.test_mode.enabled) then
         Logger:Debug("No hatch override attributes set", { player = player.Name })
     end
 end
@@ -490,14 +554,15 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
     end
 
     local entitlements = self:ResolveHatchEntitlements(player)
-    local hatchOptions, optionMessage, optionCode =
+    local hatchOptions, optionMessage, optionCode, optionDetails =
         self:ResolveHatchOptions(player, request, entitlements)
     if not hatchOptions then
         self:ReleaseHatchLock(player, false)
         return self:FormatError(
             request,
             optionMessage or "Hatch mode locked",
-            optionCode or "feature_locked"
+            optionCode or "feature_locked",
+            optionDetails
         )
     end
     eggCost = math.floor((eggCost * (hatchOptions.costMultiplier or 1)) + 0.5)
@@ -552,7 +617,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         })
     end
 
-    local playerData = self:BuildPlayerHatchData(player, request.eggType, eggData)
+    local playerData = self:BuildPlayerHatchData(player, request.eggType, eggData, hatchOptions)
     playerData.hatchOptions = hatchOptions
     self:ApplyTestOverrides(player)
 
@@ -661,6 +726,9 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
             RarityId = rarityId,
             RarityName = rarityName,
             SpecialHatch = specialHatch,
+            FinalGoldenChance = hatchResult.finalGoldenChance,
+            FinalRainbowChance = hatchResult.finalRainbowChance,
+            LuckMultiplier = hatchResult.luckMultiplier,
             EggType = request.eggType,
             Cost = eggCost,
             AutoDeleted = outcome.autoDeleted,
@@ -672,6 +740,9 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
             rarityId = rarityId,
             rarityName = rarityName,
             specialHatch = specialHatch,
+            finalGoldenChance = hatchResult.finalGoldenChance,
+            finalRainbowChance = hatchResult.finalRainbowChance,
+            luckMultiplier = hatchResult.luckMultiplier,
             autoDeleted = outcome.autoDeleted,
             autoDeleteReason = outcome.autoDeleteReason,
         })

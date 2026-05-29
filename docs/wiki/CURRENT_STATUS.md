@@ -61,6 +61,7 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Hatch auto-delete filters persist under `Settings.AutoSystems.auto_delete` and are enforced in `EggService` before `PetGrantService` writes inventory. Filters can match rarity, pet family, or variant, and Secret/Exclusive/Huge are protected by default.
 - Egg hatching is treated as two-stage: first roll chooses the pet species, second hidden roll chooses basic/golden/rainbow. Egg previews stay species-only and show basic-form pets, while `egg_sources.<id>.variant_rolls` controls allowed variants and optional cost multipliers such as the starter `20x` no-basic/golden mode.
 - Special hatch reveal metadata is driven by `egg_system.hatching.animation`: configured rarities mark per-result special outcomes, aggregate reveal metadata is returned to the client, and Skip Hatch remains a hard animation-suppression preference instead of being overridden by rare outcomes.
+- Hatch mode stubs now include Golden and Charged. Golden removes basic variants and uses its configured multiplier; Charged uses its configured multiplier plus hatch-luck and secret-luck bonuses. Both are server-entitlement checked and surfaced through the hatch settings drawer.
 
 ## Phase 0 Verification
 

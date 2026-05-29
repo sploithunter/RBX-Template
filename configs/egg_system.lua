@@ -85,6 +85,14 @@ return {
                 cost_multiplier = 20,
                 source = "stub",
             },
+            charged_mode = {
+                enabled = true,
+                owned_by_default = false,
+                cost_multiplier = 5,
+                luck_bonus = 1,
+                secret_luck_bonus = 0.25,
+                source = "stub",
+            },
             luck_bonus = {
                 enabled = true,
                 default_multiplier = 0,
@@ -145,6 +153,10 @@ return {
                 golden = {
                     label = "Golden",
                     option = "goldenMode",
+                },
+                charged = {
+                    label = "Charge",
+                    option = "chargedMode",
                 },
                 fast = {
                     label = "Fast",

@@ -1093,7 +1093,6 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
 
     local originalCurrency = dataService:GetCurrency(player, eggData.currency)
     local originalPetsBucket = deepCopy(data.Inventory.pets or { items = {} })
-    local originalPetTestMode = deepCopy(petsConfig.test_mode)
     local originalAutoSystems = deepCopy(data.Settings and data.Settings.AutoSystems or nil)
     local originalCounters = deepCopy(data.Stats and data.Stats.Counters or {})
     local eggCost = (petsConfig.getEggCost and petsConfig.getEggCost(eggType)) or eggData.cost
@@ -1120,12 +1119,6 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
             inventoryService:_updateBucketFolders(player, "pets")
         end
     end
-    if payload.setupForceHatchPet or payload.setupForceHatchVariant then
-        petsConfig.test_mode = petsConfig.test_mode or {}
-        petsConfig.test_mode.enabled = true
-        petsConfig.test_mode.force_pet = payload.setupForceHatchPet
-        petsConfig.test_mode.force_variant = payload.setupForceHatchVariant or "basic"
-    end
     if payload.setupAutoDeleteFilters then
         if not autoTargetService then
             return {
@@ -1137,8 +1130,11 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
     end
     local originalAttributes = {}
     for _, attributeName in ipairs({
+        "ForcePet",
+        "ForceVariant",
         "AutoHatchUnlocked",
         "GoldenHatchUnlocked",
+        "ChargedHatchUnlocked",
         "FastHatchUnlocked",
         "SkipHatchUnlocked",
     }) do
@@ -1148,11 +1144,25 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
             value = value,
         }
     end
+    if payload.setupForceHatchPet or payload.setupForceHatchVariant then
+        player:SetAttribute("ForcePet", payload.setupForceHatchPet)
+        player:SetAttribute("ForceVariant", payload.setupForceHatchVariant or "basic")
+
+        local EggService = require(ServerScriptService.Server.Services.EggService)
+        EggService:SetTestHatchOverride(
+            player,
+            payload.setupForceHatchPet,
+            payload.setupForceHatchVariant or "basic"
+        )
+    end
     if payload.setupAutoHatchUnlocked ~= nil then
         player:SetAttribute("AutoHatchUnlocked", payload.setupAutoHatchUnlocked == true)
     end
     if payload.setupGoldenModeUnlocked ~= nil then
         player:SetAttribute("GoldenHatchUnlocked", payload.setupGoldenModeUnlocked == true)
+    end
+    if payload.setupChargedModeUnlocked ~= nil then
+        player:SetAttribute("ChargedHatchUnlocked", payload.setupChargedModeUnlocked == true)
     end
     if payload.setupFastHatchUnlocked ~= nil then
         player:SetAttribute("FastHatchUnlocked", payload.setupFastHatchUnlocked == true)
@@ -1172,7 +1182,6 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
         originalPetsBucket = originalPetsBucket,
         originalPetCount = countPets(originalPetsBucket),
         originalAttributes = originalAttributes,
-        originalPetTestMode = originalPetTestMode,
         originalAutoSystems = originalAutoSystems,
         originalCounters = originalCounters,
         farPosition = anchorPosition + Vector3.new(maxDistance + 80, 4, 0),
@@ -1307,10 +1316,8 @@ function StudioSmokeTestService:_restoreEggProximity(player)
         end
     end
 
-    local petsConfig = Locations.getConfig("pets")
-    if petsConfig then
-        petsConfig.test_mode = deepCopy(session.originalPetTestMode)
-    end
+    local EggService = require(ServerScriptService.Server.Services.EggService)
+    EggService:SetTestHatchOverride(player, nil, nil)
 
     dataService:RequestSave(player, "egg_smoke_restore", { critical = true })
     sessions[player.UserId] = nil

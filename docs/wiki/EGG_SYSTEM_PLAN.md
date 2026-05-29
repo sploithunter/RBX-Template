@@ -12,7 +12,8 @@ Implemented so far:
 - Auto hatch now uses a config-driven loop delay, server-validated auto hatch entitlement, and session ids so stale stopped sessions do not drive client presentation.
 - `EggInteractionService` now owns a config-driven hatch panel with selected-count controls, Hatch/Max/Auto buttons, stop/status messaging, and a compact auto-delete filter drawer for rarity, pet-family, and variant filters backed by the existing server filter event.
 - Hatch mode toggles now flow through the same request contract: Golden mode is server-entitlement checked, gives locked-mode feedback, applies the configured cost multiplier, and excludes basic variants; Fast/Silent/Skip are returned as presentation options for hatch animation.
-- `EggBatchHatchSmoke` covers multi-hatch cost/count behavior, rapid-repeat rejection, partial hatching when funds or storage only cover a smaller count, hatch-time auto-delete inventory/stat behavior, locked Auto/Golden mode rejection, auto session id echo on errors, and Golden mode cost/no-basic behavior.
+- Charged mode now uses the same config-first hatch mode path: it is server-entitlement checked, has a configured cost multiplier, and applies configured hatch-luck and secret-luck bonuses before the pet/variant roll.
+- `EggBatchHatchSmoke` covers multi-hatch cost/count behavior, rapid-repeat rejection, partial hatching when funds or storage only cover a smaller count, hatch-time auto-delete inventory/stat behavior, locked Auto/Golden/Charged mode rejection, auto session id echo on errors, Golden mode cost/no-basic behavior, and Charged mode cost behavior.
 - `EggProximitySmoke` also verifies the hatch panel appears near eggs with its expected controls.
 - Authored egg animation ViewportFrames use config-driven scale: a global default in `egg_system.hatching.animation.authored_visual_scale` plus per-egg overrides such as `pets.egg_sources.basic_egg.animation.authored_visual_scale`.
 
@@ -202,6 +203,6 @@ Later polish:
 
 - Should the default selected count be `1`, player preference, or max affordable/storable up to max allowed?
 - Should multi-hatch count entitlement default to `99` during template development, then be tuned later by game-specific config/shop?
-- Do we want golden/charged modes immediately, or after basic multi/auto feels solid?
+- Resolved: Golden and Charged mode have first-pass config/server/client/test paths. Balance values remain template defaults.
 - Resolved: Skip Hatch is specifically an animation-suppression preference for auto-hatching and should not be overridden by special hatch outcomes. Special hatches can still carry reveal metadata and stronger effects when animations are enabled.
 - Should area currencies replace coins/crystals entirely per area, or should core currency stay global with area materials as side currencies?
