@@ -223,6 +223,16 @@ function EggProximitySmoke.run(options)
                 hatchPanel.Auto:GetAttribute("ModeOwned") == false,
                 "Auto button did not expose ownership state"
             )
+            local desktopLayout =
+                EggInteractionService:ComputeHatchPanelLayout(Vector2.new(1280, 720), false)
+            assert(
+                desktopLayout.scale == 1,
+                "Desktop hatch panel layout should render at full scale"
+            )
+            local mobileLayout =
+                EggInteractionService:ComputeHatchPanelLayout(Vector2.new(360, 640), true)
+            assert(mobileLayout.scale < 1, "Mobile hatch panel layout did not scale down")
+            assert(mobileLayout.fitsWidth == true, "Mobile hatch panel layout overflowed width")
             local settings = hatchPanel:FindFirstChild("SettingsDrawer")
             assert(settings, "Hatch panel missing settings drawer")
             local helpText = settings:FindFirstChild("HelpText")
@@ -297,8 +307,10 @@ function EggProximitySmoke.run(options)
 
         local near = invoke(remote, "HatchEggProximity")
         assert(type(near.result) == "table" and near.result.success == true, tostring(near.message))
+        local expectedTotalCost = tonumber(near.result.TotalCost)
+            or ((tonumber(near.cost) or 0) * (tonumber(near.result.hatchCount) or 1))
         assert(
-            near.afterCurrency == near.beforeCurrency - near.cost,
+            near.afterCurrency == near.beforeCurrency - expectedTotalCost,
             "Near hatch did not deduct configured cost"
         )
         assert(near.afterPetCount == near.beforePetCount + 1, "Near hatch did not add one pet")

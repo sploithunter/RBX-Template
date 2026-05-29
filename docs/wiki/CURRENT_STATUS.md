@@ -76,6 +76,7 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Fast Hatch presentation speed is no longer hardcoded in `EggHatchingService`. `egg_system.hatching.animation.fast_hatch_speed_scale` owns the duration multiplier, `ConfigLoader` validates it, and the animation debug state exposes resolved Fast/Silent timing metadata.
 - Hatch selected count is now a persisted player setting. The near-egg panel writes changes through `HatchSettings_SetCount`, `SettingsService` stores them under `Settings.AutoSystems.hatch.selected_count`, and clients restore the replicated `Player.Settings.AutoSystems.Hatch.SelectedCount` value when the hatch panel is rebuilt.
 - Hatch mode toggles are now persisted player preferences too. `SettingsService` sanitizes the configured hatch mode keys, stores them under `Settings.AutoSystems.hatch.modes`, replicates `Player.Settings.AutoSystems.Hatch.Modes`, and `EggInteractionService` restores/persists Golden, Charged, Fast, Skip, and Silent toggles while the server still enforces entitlement on hatch requests.
+- The near-egg hatch panel now has config-driven responsive scaling. `configs/egg_system.lua` owns `ui.hatch_panel.responsive`, `ConfigLoader` validates its scale bounds, `EggInteractionService` applies a `UIScale` against the current viewport, and tests cover desktop/mobile fit math.
 
 ## Phase 0 Verification
 
@@ -165,6 +166,7 @@ Last checked: 2026-05-27
 - `EggAnimationContractSmoke` also verifies configured Fast/Silent hatch timing metadata, and direct Studio validation rejects `fast_hatch_speed_scale` values above normal speed.
 - `EggProximitySmoke` also verifies selected hatch count persistence by saving a count through the client interaction service, reading the replicated player setting/debug state, and resetting to one before the hatch transaction.
 - `EggProximitySmoke` also verifies hatch mode persistence by toggling Silent Hatch through the client interaction service, reading the replicated hatch mode setting/debug state, and restoring the original value before the hatch transaction.
+- `EggProximitySmoke` also verifies the responsive hatch panel layout contract: full scale on a desktop-sized viewport, scaled down and width-safe on a mobile-sized viewport.
 
 ## Admin/Map Test Verification
 

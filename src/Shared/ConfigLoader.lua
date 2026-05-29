@@ -2793,6 +2793,48 @@ function ConfigLoader:_validateEggSystemConfig(config)
     if not ok then
         return ok, err
     end
+    local responsive = config.ui.hatch_panel.responsive or {}
+    if type(responsive) ~= "table" then
+        return self:_configError("egg_system", "ui.hatch_panel.responsive", "expected table")
+    end
+    ok, err = self:_requireNonNegativeNumber(
+        "egg_system",
+        responsive.margin or 0,
+        "ui.hatch_panel.responsive.margin"
+    )
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requirePositiveNumber(
+        "egg_system",
+        responsive.min_scale or 0.64,
+        "ui.hatch_panel.responsive.min_scale"
+    )
+    if not ok then
+        return ok, err
+    end
+    ok, err = self:_requirePositiveNumber(
+        "egg_system",
+        responsive.max_scale or 1,
+        "ui.hatch_panel.responsive.max_scale"
+    )
+    if not ok then
+        return ok, err
+    end
+    if responsive.min_scale ~= nil and responsive.min_scale > 1 then
+        return self:_configError(
+            "egg_system",
+            "ui.hatch_panel.responsive.min_scale",
+            "must be less than or equal to 1"
+        )
+    end
+    if responsive.max_scale ~= nil and responsive.max_scale < (responsive.min_scale or 0) then
+        return self:_configError(
+            "egg_system",
+            "ui.hatch_panel.responsive.max_scale",
+            "must be greater than or equal to responsive.min_scale"
+        )
+    end
     local buttons = config.ui.hatch_panel.buttons or {}
     if type(buttons) ~= "table" then
         return self:_configError("egg_system", "ui.hatch_panel.buttons", "expected table")

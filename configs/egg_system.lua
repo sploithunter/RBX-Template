@@ -154,6 +154,11 @@ return {
             count_large_step = 10,
             default_selected_count = 1,
             status_display_time = 3,
+            responsive = {
+                margin = 16,
+                min_scale = 0.64,
+                max_scale = 1,
+            },
             buttons = {
                 hatch = "Hatch",
                 max = "Max",

@@ -1010,6 +1010,11 @@ return function()
                             count_large_step = 10,
                             default_selected_count = 1,
                             status_display_time = 3,
+                            responsive = {
+                                margin = 16,
+                                min_scale = 0.64,
+                                max_scale = 1,
+                            },
                             buttons = {
                                 hatch = "Hatch",
                                 max = "Max",
@@ -1126,6 +1131,16 @@ return function()
                 local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
                 expect(isValid).to.equal(false)
                 expect(string.find(error, "ui.hatch_panel.buttons.auto", 1, true)).to.be.ok()
+            end)
+
+            it("should reject hatch panel responsive scale inversions", function()
+                local invalidConfig = makeValidEggSystemConfig()
+                invalidConfig.ui.hatch_panel.responsive.min_scale = 0.8
+                invalidConfig.ui.hatch_panel.responsive.max_scale = 0.7
+
+                local isValid, error = configLoader:ValidateConfig("egg_system", invalidConfig)
+                expect(isValid).to.equal(false)
+                expect(string.find(error, "ui.hatch_panel.responsive.max_scale", 1, true)).to.be.ok()
             end)
 
             it("should validate config-driven enchant roll profiles", function()

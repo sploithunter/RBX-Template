@@ -31,13 +31,14 @@ Implemented so far:
 - Fast Hatch animation speed is now config-driven through `egg_system.hatching.animation.fast_hatch_speed_scale`. The animation debug state exposes resolved timing/options, and `EggAnimationContractSmoke` verifies that Fast/Silent hatch options use the configured scale.
 - The near-egg hatch panel now persists the player's selected hatch count under `Settings.AutoSystems.hatch.selected_count`. `SettingsService` replicates it to `Player.Settings.AutoSystems.Hatch.SelectedCount`, the client restores it when the panel is created, and `EggProximitySmoke` verifies the replicated client/server round trip.
 - Hatch mode preferences now persist under `Settings.AutoSystems.hatch.modes`. `SettingsService` sanitizes mode keys from `egg_system.ui.hatch_panel.modes`, replicates them under `Player.Settings.AutoSystems.Hatch.Modes`, and `EggInteractionService` restores/persists Golden, Charged, Fast, Skip, and Silent mode toggles without making the server trust those preferences for entitlement.
+- The near-egg hatch panel now has config-driven responsive scaling. `egg_system.ui.hatch_panel.responsive` controls margin/min/max scale, `EggInteractionService:ComputeHatchPanelLayout()` exposes desktop/mobile fit math, and `EggProximitySmoke` verifies the panel remains full scale on desktop while fitting a mobile-width viewport.
 
 Still to build:
 
-- Richer near-egg hatch UI polish and direct Studio visual QA across desktop/mobile layouts.
+- Richer near-egg hatch UI polish and direct Studio screenshot QA across desktop/mobile layouts after the first responsive layout pass.
 - Further hatch setting UI polish and richer player-facing entitlement education beyond the first mode status line, Max/Auto entitlement state, and dynamic hover/focus help text.
 - Richer authored egg animation visual polish beyond the first ViewportFrame clone/scale/reveal-badge/configured-glow pass.
-- Direct Studio visual QA across desktop/mobile layouts for the expanded hatch drawer.
+- Direct Studio screenshot QA across desktop/mobile layouts for the expanded hatch drawer.
 
 ## Goal
 

@@ -13,6 +13,7 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 -- Dependencies
 local Locations = require(ReplicatedStorage.Shared.Locations)
@@ -265,6 +266,15 @@ local function persistHatchModes()
     Signals.HatchSettings_SetModes:FireServer({
         modes = modes,
     })
+end
+
+local function getViewportSize()
+    local camera = Workspace.CurrentCamera
+    if camera then
+        return camera.ViewportSize
+    end
+    local panelConfig = getHatchPanelConfig()
+    return Vector2.new((tonumber(panelConfig.width) or 500) + 64, 800)
 end
 
 local function asSet(values)
@@ -522,6 +532,7 @@ function EggInteractionService:CreateHatchPanel()
 
     local frame = Instance.new("Frame")
     frame.Name = "Panel"
+    frame.AnchorPoint = Vector2.new(0.5, 1)
     frame.Size = UDim2.new(0, width, 0, height)
     frame.BackgroundColor3 = Color3.fromRGB(25, 28, 36)
     frame.BackgroundTransparency = 0.04
@@ -537,6 +548,11 @@ function EggInteractionService:CreateHatchPanel()
     stroke.Thickness = 2
     stroke.Color = Color3.fromRGB(0, 210, 220)
     stroke.Parent = frame
+
+    local responsiveScale = Instance.new("UIScale")
+    responsiveScale.Name = "ResponsiveScale"
+    responsiveScale.Scale = 1
+    responsiveScale.Parent = frame
 
     local title = Instance.new("TextLabel")
     title.Name = "Title"
@@ -694,6 +710,7 @@ function EggInteractionService:CreateHatchPanel()
         autoButton = autoButton,
         settingsButton = settingsButton,
         settings = settings,
+        responsiveScale = responsiveScale,
         filterButtons = {},
         modeButtons = {},
     }
@@ -1095,6 +1112,50 @@ function EggInteractionService:HatchSelectedCount(purchaseType)
     return self:HandleEggPurchase(currentTarget, selectedHatchCount, purchaseType or "Selected")
 end
 
+function EggInteractionService:ComputeHatchPanelLayout(viewportSize, settingsOpenOverride)
+    local panelConfig = getHatchPanelConfig()
+    local width = tonumber(panelConfig.width) or 500
+    local baseHeight = tonumber(panelConfig.height) or 176
+    local settingsHeight = tonumber(panelConfig.settings_height) or 168
+    local settingsOpen = settingsOpenOverride
+    if settingsOpen == nil then
+        settingsOpen = hatchSettingsOpen
+    end
+    local height = settingsOpen and (baseHeight + settingsHeight) or baseHeight
+    local bottomOffset = tonumber(panelConfig.bottom_offset) or 126
+    local responsive = panelConfig.responsive or {}
+    local margin = math.max(0, tonumber(responsive.margin) or 16)
+    local minScale = math.clamp(tonumber(responsive.min_scale) or 0.64, 0.25, 1)
+    local maxScale = math.clamp(tonumber(responsive.max_scale) or 1, 0.25, 2)
+    if maxScale < minScale then
+        maxScale = minScale
+    end
+
+    viewportSize = viewportSize or getViewportSize()
+    local viewportWidth = math.max(1, tonumber(viewportSize.X) or width + margin * 2)
+    local viewportHeight = math.max(1, tonumber(viewportSize.Y) or height + bottomOffset + margin)
+    local widthFit = (viewportWidth - margin * 2) / math.max(1, width)
+    local heightFit = (viewportHeight - margin * 2) / math.max(1, height + bottomOffset)
+    local fitScale = math.min(widthFit, heightFit, maxScale)
+    local scale = fitScale >= minScale and fitScale or math.max(0.25, fitScale)
+    scale = math.clamp(scale, 0.25, maxScale)
+
+    return {
+        width = width,
+        height = height,
+        bottomOffset = bottomOffset,
+        margin = margin,
+        scale = scale,
+        scaledWidth = width * scale,
+        scaledHeight = height * scale,
+        viewportWidth = viewportWidth,
+        viewportHeight = viewportHeight,
+        fitsWidth = (width * scale) <= math.max(0, viewportWidth - margin * 2) + 0.01,
+        fitsHeight = ((height + bottomOffset) * scale)
+            <= math.max(0, viewportHeight - margin * 2) + 0.01,
+    }
+end
+
 function EggInteractionService:UpdateHatchPanel()
     if not hatchPanel then
         return
@@ -1113,14 +1174,20 @@ function EggInteractionService:UpdateHatchPanel()
         selectedHatchCount = effectiveMaxCount
     end
 
-    local width = tonumber(panelConfig.width) or 500
-    local baseHeight = tonumber(panelConfig.height) or 176
-    local settingsHeight = tonumber(panelConfig.settings_height) or 168
-    local height = hatchSettingsOpen and (baseHeight + settingsHeight) or baseHeight
-    local bottomOffset = tonumber(panelConfig.bottom_offset) or 126
+    local layout = self:ComputeHatchPanelLayout(getViewportSize(), hatchSettingsOpen)
 
-    hatchPanel.Size = UDim2.new(0, width, 0, height)
-    hatchPanel.Position = UDim2.new(0.5, -math.floor(width / 2), 1, -bottomOffset - height)
+    hatchPanel.Size = UDim2.new(0, layout.width, 0, layout.height)
+    hatchPanel.Position = UDim2.new(0.5, 0, 1, -math.floor(layout.bottomOffset * layout.scale))
+    hatchPanel:SetAttribute("ResponsiveScale", layout.scale)
+    hatchPanel:SetAttribute("ResponsiveScaledWidth", layout.scaledWidth)
+    hatchPanel:SetAttribute("ResponsiveScaledHeight", layout.scaledHeight)
+    hatchPanel:SetAttribute("ResponsiveFitsWidth", layout.fitsWidth)
+    hatchPanel:SetAttribute("ResponsiveFitsHeight", layout.fitsHeight)
+    hatchPanel:SetAttribute("ResponsiveViewportWidth", layout.viewportWidth)
+    hatchPanel:SetAttribute("ResponsiveViewportHeight", layout.viewportHeight)
+    if hatchPanelFields.responsiveScale then
+        hatchPanelFields.responsiveScale.Scale = layout.scale
+    end
     if hatchPanelFields.settings then
         hatchPanelFields.settings.Visible = hatchSettingsOpen
     end
@@ -1738,6 +1805,10 @@ function EggInteractionService:GetHatchPanelDebugState()
         persistedSelectedHatchCount = getPersistedSelectedHatchCount(),
         hatchModes = currentHatchModes(),
         persistedHatchModes = getPersistedHatchModes(),
+        responsiveScale = hatchPanel and hatchPanel:GetAttribute("ResponsiveScale") or nil,
+        responsiveFitsWidth = hatchPanel and hatchPanel:GetAttribute("ResponsiveFitsWidth") or nil,
+        responsiveFitsHeight = hatchPanel and hatchPanel:GetAttribute("ResponsiveFitsHeight")
+            or nil,
         maxHatchCount = getMaxHatchCount(),
         maxEntitledHatchCount = getEffectiveMaxHatchCount(),
         statusText = hatchPanelFields.status and hatchPanelFields.status.Text or "",
