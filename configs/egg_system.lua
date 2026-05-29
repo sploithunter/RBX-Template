@@ -118,7 +118,7 @@ return {
             enabled = true,
             width = 500,
             height = 176,
-            settings_height = 252,
+            settings_height = 304,
             bottom_offset = 126,
             count_step = 1,
             count_large_step = 10,
@@ -131,6 +131,11 @@ return {
                 settings = "Filters",
             },
             auto_delete = {
+                description = "Choose pets that should be deleted as they hatch. Protected special rarities are still kept.",
+                enabled_description = "Turns hatch-time deletion on or off without changing the selected filters.",
+                rarity_description = "Delete hatched pets whose rarity matches the selected rarity filters.",
+                pet_type_description = "Delete hatched pets whose pet family matches the selected pet filters.",
+                variant_description = "Delete hatched pets whose Basic, Golden, or Rainbow variant matches.",
                 rarity_filters = {
                     "common",
                     "uncommon",
@@ -153,23 +158,36 @@ return {
                 golden = {
                     label = "Golden",
                     option = "goldenMode",
+                    description = "Premium hatch mode: costs more and removes Basic variant rolls.",
                 },
                 charged = {
                     label = "Charge",
                     option = "chargedMode",
+                    description = "Premium hatch mode: costs more and adds hatch luck and secret luck.",
                 },
                 fast = {
                     label = "Fast",
                     option = "fastHatch",
+                    description = "Presentation option for faster hatch animations when unlocked.",
                 },
                 skip = {
                     label = "Skip",
                     option = "skipHatch",
+                    description = "Skips hatch animations, useful while auto-hatching.",
                 },
                 silent = {
                     label = "Silent",
                     option = "silentHatch",
+                    description = "Suppresses hatch audio while preserving server-side results.",
                 },
+            },
+            help = {
+                default = "Hover a hatch mode or filter to see what it changes.",
+                count = "Select how many eggs to request. The server hatches only what your unlocks, currency, and storage allow.",
+                hatch = "Hatch the selected count once.",
+                max = "Request the configured maximum hatch count.",
+                auto = "Keep hatching the selected count until you stop, move away, run out of currency, or fill storage.",
+                settings = "Open hatch modes and auto-delete filters.",
             },
         },
 

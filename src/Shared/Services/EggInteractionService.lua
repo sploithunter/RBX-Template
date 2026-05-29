@@ -83,6 +83,10 @@ local function getHatchPanelConfig()
     return eggSystemConfig.ui and eggSystemConfig.ui.hatch_panel or {}
 end
 
+local function getHatchPanelHelpConfig()
+    return getHatchPanelConfig().help or {}
+end
+
 local function getMaxHatchCount()
     local hatching = getHatchingConfig()
     return math.clamp(math.floor(tonumber(hatching.max_count) or 99), 1, 99)
@@ -180,6 +184,22 @@ local function isTerminalAutoStopReason(stopReason)
         or stopReason == "partial"
 end
 
+local function formatAutoErrorStopReason(result)
+    if type(result) ~= "table" then
+        return nil
+    end
+
+    local labels = {
+        insufficient_currency = "out of currency",
+        no_storage = "storage full",
+        too_far = "too far away",
+        feature_locked = "locked feature",
+        partial_not_allowed = "partial hatch unavailable",
+        invalid_egg = "egg unavailable",
+    }
+    return labels[result.code]
+end
+
 local function getSelectedCostMultiplier()
     local hatching = getHatchingConfig()
     local shopStubs = hatching.shop_stubs or {}
@@ -239,6 +259,43 @@ function EggInteractionService:SetPanelStatus(message, isError)
     hatchPanelFields.status.Text = tostring(message or "")
     hatchPanelFields.status.TextColor3 = isError and Color3.fromRGB(255, 150, 150)
         or Color3.fromRGB(170, 255, 210)
+end
+
+function EggInteractionService:SetHatchHelp(message)
+    if not hatchPanelFields.helpText then
+        return
+    end
+
+    local helpConfig = getHatchPanelHelpConfig()
+    hatchPanelFields.helpText.Text = tostring(message or helpConfig.default or "")
+end
+
+function EggInteractionService:BindHelpText(instance, helpText)
+    if not instance or not helpText or helpText == "" then
+        return
+    end
+
+    instance:SetAttribute("HelpText", helpText)
+    if instance.MouseEnter then
+        instance.MouseEnter:Connect(function()
+            self:SetHatchHelp(helpText)
+        end)
+    end
+    if instance.MouseLeave then
+        instance.MouseLeave:Connect(function()
+            self:SetHatchHelp()
+        end)
+    end
+    if instance.SelectionGained then
+        instance.SelectionGained:Connect(function()
+            self:SetHatchHelp(helpText)
+        end)
+    end
+    if instance.SelectionLost then
+        instance.SelectionLost:Connect(function()
+            self:SetHatchHelp()
+        end)
+    end
 end
 
 function EggInteractionService:CreateHatchPanel()
@@ -346,6 +403,7 @@ function EggInteractionService:CreateHatchPanel()
 
     local buttonY = 84
     local buttons = panelConfig.buttons or {}
+    local help = getHatchPanelHelpConfig()
     local hatchButton = self:CreateButton(
         frame,
         "Hatch",
@@ -391,6 +449,11 @@ function EggInteractionService:CreateHatchPanel()
             self:UpdateHatchPanel()
         end
     )
+    self:BindHelpText(countLabel, help.count)
+    self:BindHelpText(hatchButton, help.hatch)
+    self:BindHelpText(maxButton, help.max)
+    self:BindHelpText(autoButton, help.auto)
+    self:BindHelpText(settingsButton, help.settings)
 
     local status = Instance.new("TextLabel")
     status.Name = "Status"
@@ -435,10 +498,14 @@ function EggInteractionService:CreateHatchPanel()
 
     self:CreateAutoDeleteSettings(settings)
     self:CreateModeSettings(settings)
+    self:CreateHatchHelpText(settings)
     self:SetSelectedHatchCount(panelConfig.default_selected_count or 1)
 end
 
 function EggInteractionService:CreateAutoDeleteSettings(parent)
+    local panelConfig = getHatchPanelConfig()
+    local filterConfig = panelConfig.auto_delete or {}
+
     local header = Instance.new("TextLabel")
     header.Name = "Header"
     header.Size = UDim2.new(1, -16, 0, 24)
@@ -450,6 +517,7 @@ function EggInteractionService:CreateAutoDeleteSettings(parent)
     header.Font = Enum.Font.GothamBold
     header.TextXAlignment = Enum.TextXAlignment.Left
     header.Parent = parent
+    self:BindHelpText(header, filterConfig.description)
 
     local enabledButton = self:CreateButton(
         parent,
@@ -464,18 +532,32 @@ function EggInteractionService:CreateAutoDeleteSettings(parent)
         end
     )
     hatchPanelFields.filterButtons.enabled = enabledButton
+    self:BindHelpText(enabledButton, filterConfig.enabled_description)
 
-    local panelConfig = getHatchPanelConfig()
-    local filterConfig = panelConfig.auto_delete or {}
     local y = 44
-    self:CreateFilterRow(parent, "Rarities", filterConfig.rarity_filters or {}, "rarities", y)
-    self:CreateFilterRow(parent, "Pets", filterConfig.pet_type_filters or {}, "pet_types", y + 58)
+    self:CreateFilterRow(
+        parent,
+        "Rarities",
+        filterConfig.rarity_filters or {},
+        "rarities",
+        y,
+        filterConfig.rarity_description
+    )
+    self:CreateFilterRow(
+        parent,
+        "Pets",
+        filterConfig.pet_type_filters or {},
+        "pet_types",
+        y + 58,
+        filterConfig.pet_type_description
+    )
     self:CreateFilterRow(
         parent,
         "Variants",
         filterConfig.variant_filters or {},
         "variants",
-        y + 116
+        y + 116,
+        filterConfig.variant_description
     )
 end
 
@@ -517,11 +599,19 @@ function EggInteractionService:CreateModeSettings(parent)
                 end
             )
             hatchPanelFields.modeButtons[optionName] = button
+            self:BindHelpText(button, cfg.description)
         end
     end
 end
 
-function EggInteractionService:CreateFilterRow(parent, labelText, filterIds, bucketName, y)
+function EggInteractionService:CreateFilterRow(
+    parent,
+    labelText,
+    filterIds,
+    bucketName,
+    y,
+    helpText
+)
     local label = Instance.new("TextLabel")
     label.Name = bucketName .. "Label"
     label.Size = UDim2.new(0, 74, 0, 28)
@@ -533,6 +623,7 @@ function EggInteractionService:CreateFilterRow(parent, labelText, filterIds, buc
     label.Font = Enum.Font.Gotham
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = parent
+    self:BindHelpText(label, helpText)
 
     hatchPanelFields.filterButtons[bucketName] = hatchPanelFields.filterButtons[bucketName] or {}
     for index, id in ipairs(filterIds) do
@@ -552,7 +643,39 @@ function EggInteractionService:CreateFilterRow(parent, labelText, filterIds, buc
             end
         )
         hatchPanelFields.filterButtons[bucketName][id] = button
+        self:BindHelpText(button, helpText)
     end
+end
+
+function EggInteractionService:CreateHatchHelpText(parent)
+    local panelConfig = getHatchPanelConfig()
+    local helpConfig = panelConfig.help or {}
+    local helpText = Instance.new("TextLabel")
+    helpText.Name = "HelpText"
+    helpText.Size = UDim2.new(1, -16, 0, 42)
+    helpText.Position =
+        UDim2.new(0, 8, 0, math.max(252, (tonumber(panelConfig.settings_height) or 304) - 50))
+    helpText.BackgroundColor3 = Color3.fromRGB(25, 28, 36)
+    helpText.BackgroundTransparency = 0.12
+    helpText.BorderSizePixel = 0
+    helpText.Text = tostring(helpConfig.default or "")
+    helpText.TextColor3 = Color3.fromRGB(205, 214, 230)
+    helpText.TextScaled = true
+    helpText.TextWrapped = true
+    helpText.Font = Enum.Font.Gotham
+    helpText.TextXAlignment = Enum.TextXAlignment.Left
+    helpText.Parent = parent
+
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, 10)
+    padding.PaddingRight = UDim.new(0, 10)
+    padding.Parent = helpText
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = helpText
+
+    hatchPanelFields.helpText = helpText
 end
 
 function EggInteractionService:SendAutoDeleteFilters()
@@ -815,7 +938,10 @@ function EggInteractionService:ToggleAutoHatch()
 
             local ok = self:HandleEggPurchase(target, selectedHatchCount, "Auto", sessionId)
             if not ok then
-                autoHatchEnabled = false
+                if autoHatchEnabled and sessionId == autoHatchSessionId then
+                    autoHatchEnabled = false
+                    self:SetPanelStatus("Auto hatch stopped", true)
+                end
                 break
             end
 
@@ -943,6 +1069,14 @@ function EggInteractionService:HandleEggPurchase(
                 code = result.code,
             })
             self:HandleHatchError(result)
+            if autoSessionId ~= nil and autoSessionId == autoHatchSessionId then
+                local stopReason = formatAutoErrorStopReason(result)
+                if stopReason then
+                    autoHatchEnabled = false
+                    autoHatchSessionId += 1
+                    self:SetPanelStatus("Auto hatch stopped: " .. stopReason, true)
+                end
+            end
             return false
         elseif result == "Error" then
             Logger:Warn(
@@ -1254,6 +1388,17 @@ function EggInteractionService:Initialize()
     end)
 
     Logger:Info("Initialized with E key listening", { context = "EggInteractionService" })
+end
+
+function EggInteractionService:GetHatchPanelDebugState()
+    return {
+        autoHatchEnabled = autoHatchEnabled == true,
+        autoHatchSessionId = autoHatchSessionId,
+        selectedHatchCount = selectedHatchCount,
+        statusText = hatchPanelFields.status and hatchPanelFields.status.Text or "",
+        helpText = hatchPanelFields.helpText and hatchPanelFields.helpText.Text or "",
+        settingsOpen = hatchSettingsOpen == true,
+    }
 end
 
 function EggInteractionService:Destroy()

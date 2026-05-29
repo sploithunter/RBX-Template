@@ -2542,6 +2542,21 @@ function ConfigLoader:_validateEggSystemConfig(config)
     if type(autoDelete) ~= "table" then
         return self:_configError("egg_system", "ui.hatch_panel.auto_delete", "expected table")
     end
+    for _, fieldName in ipairs({
+        "description",
+        "enabled_description",
+        "rarity_description",
+        "pet_type_description",
+        "variant_description",
+    }) do
+        if autoDelete[fieldName] ~= nil and type(autoDelete[fieldName]) ~= "string" then
+            return self:_configError(
+                "egg_system",
+                "ui.hatch_panel.auto_delete." .. fieldName,
+                "expected string"
+            )
+        end
+    end
     for _, listName in ipairs({
         "rarity_filters",
         "pet_type_filters",
@@ -2563,6 +2578,49 @@ function ConfigLoader:_validateEggSystemConfig(config)
                     "expected non-empty string"
                 )
             end
+        end
+    end
+
+    local modes = config.ui.hatch_panel.modes or {}
+    if type(modes) ~= "table" then
+        return self:_configError("egg_system", "ui.hatch_panel.modes", "expected table")
+    end
+    for modeName, mode in pairs(modes) do
+        if type(modeName) ~= "string" or modeName == "" then
+            return self:_configError("egg_system", "ui.hatch_panel.modes", "expected string keys")
+        end
+        if type(mode) ~= "table" then
+            return self:_configError(
+                "egg_system",
+                "ui.hatch_panel.modes." .. modeName,
+                "expected table"
+            )
+        end
+        for _, fieldName in ipairs({ "label", "option", "description" }) do
+            if mode[fieldName] ~= nil and type(mode[fieldName]) ~= "string" then
+                return self:_configError(
+                    "egg_system",
+                    "ui.hatch_panel.modes." .. modeName .. "." .. fieldName,
+                    "expected string"
+                )
+            end
+        end
+    end
+
+    local help = config.ui.hatch_panel.help or {}
+    if type(help) ~= "table" then
+        return self:_configError("egg_system", "ui.hatch_panel.help", "expected table")
+    end
+    for fieldName, value in pairs(help) do
+        if type(fieldName) ~= "string" or fieldName == "" then
+            return self:_configError("egg_system", "ui.hatch_panel.help", "expected string keys")
+        end
+        if type(value) ~= "string" then
+            return self:_configError(
+                "egg_system",
+                "ui.hatch_panel.help." .. fieldName,
+                "expected string"
+            )
         end
     end
 

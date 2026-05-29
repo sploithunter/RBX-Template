@@ -14,16 +14,17 @@ Implemented so far:
 - Hatch mode toggles now flow through the same request contract: Golden mode is server-entitlement checked, gives locked-mode feedback, applies the configured cost multiplier, and excludes basic variants; Fast/Silent/Skip are returned as presentation options for hatch animation.
 - Charged mode now uses the same config-first hatch mode path: it is server-entitlement checked, has a configured cost multiplier, and applies configured hatch-luck and secret-luck bonuses before the pet/variant roll.
 - Admin hatch entitlement controls now expose the current shop stubs for testing: Auto, Golden, Charged, Fast, Skip, and max hatch count can be locked/unlocked/reset from the admin panel without changing code or waiting for the shop UI.
+- The hatch settings drawer now has config-driven help copy for auto-delete filters, hatch mode toggles, and core hatch controls. Hover/focus text is stored on the controls as `HelpText` attributes so player education stays data-driven.
 - `EggBatchHatchSmoke` covers multi-hatch cost/count behavior, rapid-repeat rejection, partial hatching when funds or storage only cover a smaller count, hatch-time auto-delete inventory/stat behavior, locked Auto/Golden/Charged mode rejection, auto session id echo on errors, Golden mode cost/no-basic behavior, and Charged mode cost behavior.
-- `EggProximitySmoke` also verifies the hatch panel appears near eggs with its expected controls.
+- `EggAutoHatchSmoke` covers the client auto-hatch no-currency stop path and verifies the player sees `Auto hatch stopped: out of currency`.
+- `EggProximitySmoke` also verifies the hatch panel appears near eggs with its expected controls and hatch drawer help text.
 - `HatchEntitlementAdminSmoke` covers the admin-managed hatch entitlement path and restores player attributes after testing.
 - Authored egg animation ViewportFrames use config-driven scale: a global default in `egg_system.hatching.animation.authored_visual_scale` plus per-egg overrides such as `pets.egg_sources.basic_egg.animation.authored_visual_scale`.
 
 Still to build:
 
 - Richer near-egg hatch UI polish and direct Studio visual QA across desktop/mobile layouts.
-- Richer hatch setting UI polish and player-facing entitlement education beyond the first locked-mode feedback.
-- Clearer player explanations for hatch settings and auto-delete filters.
+- Further hatch setting UI polish and richer player-facing entitlement education beyond the first locked-mode feedback and hover/focus help text.
 - Richer authored egg animation polish beyond the first ViewportFrame clone/scale pass.
 - Direct Studio visual QA across desktop/mobile layouts for the expanded hatch drawer.
 
@@ -135,7 +136,7 @@ Client UI:
 - Show exact stop reasons: no funds, no storage, too far, locked area, on cooldown, feature locked.
 - Add auto-hatch state UI with visible running/stopped reason.
 - Add auto-delete filter UI backed by existing server settings: rarity, pet family, variant, protected tiers.
-- Add settings for show hatch, skip hatch, silence hatch, and fast hatch once entitlement stubs exist.
+- Add settings for show hatch, skip hatch, silence hatch, and fast hatch once entitlement stubs exist. First-pass mode help text exists; future polish should make locked/unlocked ownership more explicit.
 
 Animation:
 
@@ -171,7 +172,7 @@ Testing:
 - Studio smoke: requested `99` with limited funds hatches affordable count.
 - Studio smoke: requested `99` with limited storage hatches storable count.
 - Studio smoke: auto-delete prevents inventory writes but increments hatch stats.
-- Studio smoke: auto hatch stops on no funds/storage/too far.
+- Studio smoke: auto hatch stops on no funds/storage/too far. The no-currency client stop path now has direct smoke coverage; storage/too-far loop stops still need direct client-loop smoke coverage.
 - Studio smoke: authored egg animation payload names/uses the current rock egg.
 - Studio smoke: admin hatch entitlement controls can lock/unlock/reset shop stubs and max hatch count.
 - Regression: existing egg proximity, pet grant, pet index, achievements, and leaderboards still pass.

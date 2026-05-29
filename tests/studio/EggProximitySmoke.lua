@@ -152,6 +152,8 @@ function EggProximitySmoke.run(options)
             assert(hatchPanel:FindFirstChild("Count"), "Hatch panel missing count display")
             local settings = hatchPanel:FindFirstChild("SettingsDrawer")
             assert(settings, "Hatch panel missing settings drawer")
+            local helpText = settings:FindFirstChild("HelpText")
+            assert(helpText, "Hatch panel missing config-driven help text")
             assert(
                 settings:FindFirstChild("pet_types_bear"),
                 "Hatch panel missing pet-family auto-delete filter"
@@ -159,6 +161,10 @@ function EggProximitySmoke.run(options)
             assert(
                 settings:FindFirstChild("Mode_goldenMode"),
                 "Hatch panel missing Golden mode toggle"
+            )
+            assert(
+                settings.Mode_goldenMode:GetAttribute("HelpText"),
+                "Golden mode toggle missing help text"
             )
             assert(
                 settings:FindFirstChild("Mode_chargedMode"),
