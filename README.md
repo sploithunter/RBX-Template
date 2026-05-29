@@ -188,7 +188,7 @@ Latest local checkpoint:
 - `Phase4PetProgressionSmoke`: passes in Studio for hatch enchants, breakable XP, manual reroll, player-level slot rewards, hatch/secret luck, pet damage, team power, pet efficiency, and profile restoration.
 - `Phase5AutoSystemsSmoke`: passes in Studio for server-selected nearest/highest/weakest/strongest/selected-currency targets, hatch auto-delete filters, protected special rarity behavior, and profile restoration.
 - `EggBatchHatchSmoke`: added for server batch hatch count/cost behavior, rapid-repeat hatch lock rejection, partial hatch by available funds/storage, hatch-time auto-delete inventory/stat behavior, locked Auto/Golden mode rejection, and Golden mode cost/no-basic behavior.
-- `EggAutoHatchSmoke`: added for client auto-hatch stop feedback when an auto session cannot afford the next hatch.
+- `EggAutoHatchSmoke`: added for client auto-hatch stop feedback when an auto session cannot afford the next hatch, has no storage, or moves too far from the egg.
 - `EggProximitySmoke`: now also checks the near-egg hatch panel appears with Hatch/Max/Auto/count controls and config-driven hatch drawer help text.
 - `HatchEntitlementAdminSmoke`: added for admin-managed hatch entitlement/shop-stub attributes, including lock/unlock/reset and max hatch count restoration.
 

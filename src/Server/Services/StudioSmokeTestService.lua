@@ -1101,6 +1101,16 @@ function StudioSmokeTestService:_beginEggProximity(player, payload)
         or ((eggCost * setupHatchCount) + math.max(25, math.floor(eggCost * 0.1)))
 
     dataService:SetCurrency(player, eggData.currency, requiredCurrency, "egg_smoke_setup")
+    if payload.setupPetInventoryEmpty == true then
+        data.Inventory.pets = {
+            items = {},
+            used_slots = 0,
+            total_slots = 0,
+        }
+        if inventoryService and inventoryService._updateBucketFolders then
+            inventoryService:_updateBucketFolders(player, "pets")
+        end
+    end
     if payload.setupPetStorageAvailableSlots ~= nil then
         local petsBucket = data.Inventory.pets
         if not petsBucket then

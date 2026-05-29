@@ -16,7 +16,7 @@ Implemented so far:
 - Admin hatch entitlement controls now expose the current shop stubs for testing: Auto, Golden, Charged, Fast, Skip, and max hatch count can be locked/unlocked/reset from the admin panel without changing code or waiting for the shop UI.
 - The hatch settings drawer now has config-driven help copy for auto-delete filters, hatch mode toggles, and core hatch controls. Hover/focus text is stored on the controls as `HelpText` attributes so player education stays data-driven.
 - `EggBatchHatchSmoke` covers multi-hatch cost/count behavior, rapid-repeat rejection, partial hatching when funds or storage only cover a smaller count, hatch-time auto-delete inventory/stat behavior, locked Auto/Golden/Charged mode rejection, auto session id echo on errors, Golden mode cost/no-basic behavior, and Charged mode cost behavior.
-- `EggAutoHatchSmoke` covers the client auto-hatch no-currency stop path and verifies the player sees `Auto hatch stopped: out of currency`.
+- `EggAutoHatchSmoke` covers client auto-hatch stop feedback for no currency, no storage, and moving too far away.
 - `EggProximitySmoke` also verifies the hatch panel appears near eggs with its expected controls and hatch drawer help text.
 - `HatchEntitlementAdminSmoke` covers the admin-managed hatch entitlement path and restores player attributes after testing.
 - Authored egg animation ViewportFrames use config-driven scale: a global default in `egg_system.hatching.animation.authored_visual_scale` plus per-egg overrides such as `pets.egg_sources.basic_egg.animation.authored_visual_scale`.
@@ -172,7 +172,7 @@ Testing:
 - Studio smoke: requested `99` with limited funds hatches affordable count.
 - Studio smoke: requested `99` with limited storage hatches storable count.
 - Studio smoke: auto-delete prevents inventory writes but increments hatch stats.
-- Studio smoke: auto hatch stops on no funds/storage/too far. The no-currency client stop path now has direct smoke coverage; storage/too-far loop stops still need direct client-loop smoke coverage.
+- Studio smoke: auto hatch stops on no funds/storage/too far.
 - Studio smoke: authored egg animation payload names/uses the current rock egg.
 - Studio smoke: admin hatch entitlement controls can lock/unlock/reset shop stubs and max hatch count.
 - Regression: existing egg proximity, pet grant, pet index, achievements, and leaderboards still pass.

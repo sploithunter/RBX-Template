@@ -59,6 +59,33 @@ local function prepareInteractionService(eggInteraction)
     return currentTargetService
 end
 
+local function ensureAutoStopped(eggInteraction)
+    local state = eggInteraction:GetHatchPanelDebugState()
+    if state.autoHatchEnabled then
+        eggInteraction:ToggleAutoHatch()
+        task.wait(0.2)
+    end
+end
+
+local function waitForTarget(currentTargetService, eggType, timeoutSeconds)
+    waitFor("egg current target " .. eggType, timeoutSeconds, function()
+        return currentTargetService:GetCurrentTarget() == eggType
+    end)
+end
+
+local function waitForAutoStopStatus(eggInteraction, expectedStatus, timeoutSeconds)
+    return waitFor("auto hatch stop status " .. expectedStatus, timeoutSeconds, function()
+        local current = eggInteraction:GetHatchPanelDebugState()
+        if
+            current.autoHatchEnabled == false
+            and tostring(current.statusText):find(expectedStatus, 1, true)
+        then
+            return current
+        end
+        return nil
+    end)
+end
+
 function EggAutoHatchSmoke.run(options)
     options = options or {}
 
@@ -77,17 +104,14 @@ function EggAutoHatchSmoke.run(options)
     local started = false
     local interactionPrepared = false
     local currentTargetService = nil
+    local statuses = {}
     local success, result = pcall(function()
         currentTargetService = prepareInteractionService(eggInteraction)
         interactionPrepared = true
 
-        local state = eggInteraction:GetHatchPanelDebugState()
-        if state.autoHatchEnabled then
-            eggInteraction:ToggleAutoHatch()
-            task.wait(0.2)
-        end
+        ensureAutoStopped(eggInteraction)
 
-        local begin = invoke(remote, "BeginEggProximity", {
+        local currencyBegin = invoke(remote, "BeginEggProximity", {
             eggType = eggType,
             setupHatchCount = 1,
             setupCurrencyAmount = 0,
@@ -96,33 +120,80 @@ function EggAutoHatchSmoke.run(options)
         started = true
 
         invoke(remote, "MoveEggProximity", { placement = "near" })
-        waitFor("egg current target " .. eggType, timeoutSeconds, function()
-            return currentTargetService:GetCurrentTarget() == eggType
-        end)
+        waitForTarget(currentTargetService, eggType, timeoutSeconds)
 
         eggInteraction:SetSelectedHatchCount(1)
         eggInteraction:ToggleAutoHatch()
 
-        local stoppedState = waitFor("auto hatch currency stop", timeoutSeconds, function()
+        local currencyState = waitForAutoStopStatus(
+            eggInteraction,
+            "Auto hatch stopped: out of currency",
+            timeoutSeconds
+        )
+        statuses.currency = currencyState.statusText
+
+        invoke(remote, "RestoreEggProximity", {})
+        started = false
+        ensureAutoStopped(eggInteraction)
+
+        local storageBegin = invoke(remote, "BeginEggProximity", {
+            eggType = eggType,
+            setupHatchCount = 1,
+            setupAutoHatchUnlocked = true,
+            setupPetInventoryEmpty = true,
+            setupPetStorageAvailableSlots = 0,
+        })
+        started = true
+
+        invoke(remote, "MoveEggProximity", { placement = "near" })
+        waitForTarget(currentTargetService, eggType, timeoutSeconds)
+
+        eggInteraction:SetSelectedHatchCount(1)
+        eggInteraction:ToggleAutoHatch()
+
+        local storageState = waitForAutoStopStatus(
+            eggInteraction,
+            "Auto hatch stopped: storage full",
+            timeoutSeconds
+        )
+        statuses.storage = storageState.statusText
+
+        invoke(remote, "RestoreEggProximity", {})
+        started = false
+        ensureAutoStopped(eggInteraction)
+
+        local farBegin = invoke(remote, "BeginEggProximity", {
+            eggType = eggType,
+            setupHatchCount = 1,
+            setupAutoHatchUnlocked = true,
+        })
+        started = true
+
+        invoke(remote, "MoveEggProximity", { placement = "near" })
+        waitForTarget(currentTargetService, eggType, timeoutSeconds)
+
+        eggInteraction:SetSelectedHatchCount(1)
+        eggInteraction:ToggleAutoHatch()
+        waitFor("first auto hatch result", timeoutSeconds, function()
             local current = eggInteraction:GetHatchPanelDebugState()
-            if
-                current.autoHatchEnabled == false
-                and tostring(current.statusText):find(
-                    "Auto hatch stopped: out of currency",
-                    1,
-                    true
-                )
-            then
-                return current
-            end
-            return nil
+            return tostring(current.statusText):find("Hatched 1", 1, true)
         end)
+
+        invoke(remote, "MoveEggProximity", { placement = "far" })
+        local farState = waitForAutoStopStatus(
+            eggInteraction,
+            "Auto hatch stopped: too far away",
+            timeoutSeconds
+        )
+        statuses.tooFar = farState.statusText
 
         return {
             player = player.Name,
-            eggType = begin.eggType,
-            currency = begin.currency,
-            statusText = stoppedState.statusText,
+            eggType = currencyBegin.eggType,
+            currency = currencyBegin.currency,
+            storageCurrency = storageBegin.currency,
+            farCurrency = farBegin.currency,
+            statuses = statuses,
         }
     end)
 
@@ -148,11 +219,13 @@ end
 function EggAutoHatchSmoke.runText(options)
     local result = EggAutoHatchSmoke.run(options)
     return string.format(
-        "EggAutoHatchSmoke passed: player=%s egg=%s currency=%s status=%q restored=%s",
+        "EggAutoHatchSmoke passed: player=%s egg=%s currency=%s statuses=%q|%q|%q restored=%s",
         result.player,
         result.eggType,
         result.currency,
-        result.statusText,
+        result.statuses.currency,
+        result.statuses.storage,
+        result.statuses.tooFar,
         tostring(result.restored)
     )
 end
