@@ -31,6 +31,7 @@ Implemented so far:
 - Fast Hatch animation speed is now config-driven through `egg_system.hatching.animation.fast_hatch_speed_scale`. The animation debug state exposes resolved timing/options, and `EggAnimationContractSmoke` verifies that Fast/Silent hatch options use the configured scale.
 - The near-egg hatch panel now persists the player's selected hatch count under `Settings.AutoSystems.hatch.selected_count`. `SettingsService` replicates it to `Player.Settings.AutoSystems.Hatch.SelectedCount`, the client restores it when the panel is created, and `EggProximitySmoke` verifies the replicated client/server round trip.
 - Hatch mode preferences now persist under `Settings.AutoSystems.hatch.modes`. `SettingsService` sanitizes mode keys from `egg_system.ui.hatch_panel.modes`, replicates them under `Player.Settings.AutoSystems.Hatch.Modes`, and `EggInteractionService` restores/persists Golden, Charged, Fast, Skip, and Silent mode toggles without making the server trust those preferences for entitlement.
+- The near-egg hatch panel now keeps replicated hatch settings live after creation. Changes to replicated selected count or mode values update the visible panel, and the panel exposes per-egg, multiplier, total, and affordable-count cost metadata for multi-hatch UI/debugging.
 - The near-egg hatch panel now has config-driven responsive scaling. `egg_system.ui.hatch_panel.responsive` controls margin/min/max scale, `EggInteractionService:ComputeHatchPanelLayout()` exposes desktop/mobile fit math, and `EggProximitySmoke` verifies the panel remains full scale on desktop while fitting a mobile-width viewport.
 - Hatch animation now has explicit max-batch coverage. `EggHatchingService` resolves a sane fallback viewport when Studio reports an uninitialized `1x1` camera size, exposes resolved container/frame geometry through `GetActiveAnimationDebugState()`, and `EggAnimationMaxBatchSmoke` verifies `99` authored egg frames fit in the compact `10x10` layout.
 - Hatch mode education now includes config-derived economics. The hatch drawer reads mode cost/luck details from `egg_system.hatching.shop_stubs`, exposes them as UI attributes, and shows details such as Golden `20x` cost and Charged luck bonuses in help/status text.
@@ -44,7 +45,7 @@ Implemented so far:
 
 Still to build:
 
-- Richer near-egg hatch UI polish and direct Studio screenshot QA across desktop/mobile layouts when screenshot capture is available.
+- Richer near-egg hatch UI polish beyond the current selected-count, entitlement, protected-tier, and cost-detail pass, plus direct Studio screenshot QA across desktop/mobile layouts when screenshot capture is available.
 - Further hatch setting UI polish beyond the current config-derived mode cost/luck education, protected auto-delete tier list, Max/Auto entitlement state, and dynamic hover/focus help text.
 - Richer authored egg animation visual polish beyond the current ViewportFrame clone/scale/reveal-badge/glow/backdrop pass.
 - Direct Studio screenshot QA across desktop/mobile layouts for the expanded hatch drawer when screenshot capture is available; current automated geometry coverage exists.

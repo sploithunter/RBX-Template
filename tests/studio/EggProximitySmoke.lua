@@ -369,6 +369,32 @@ function EggProximitySmoke.run(options)
 
             EggInteractionService:SetSelectedHatchCount(4)
             waitForHatchSelectedCount(player, 4, timeoutSeconds)
+            local costDetail = hatchPanel:FindFirstChild("CostDetail")
+            assert(costDetail, "Hatch panel missing cost detail label")
+            assert(
+                hatchPanel:GetAttribute("HatchCurrency") == begin.currency,
+                "Hatch panel did not expose hatch currency"
+            )
+            assert(
+                hatchPanel:GetAttribute("BaseCostEach") == begin.cost,
+                "Hatch panel did not expose base egg cost"
+            )
+            assert(
+                hatchPanel:GetAttribute("CostMultiplier") == 1,
+                "Hatch panel default cost multiplier should be one"
+            )
+            assert(
+                hatchPanel:GetAttribute("EstimatedCostEach") == begin.cost,
+                "Hatch panel estimated per-egg cost mismatch"
+            )
+            assert(
+                hatchPanel:GetAttribute("EstimatedTotalCost") == begin.cost * 4,
+                "Hatch panel estimated total cost mismatch"
+            )
+            assert(
+                tostring(costDetail.Text):find("each", 1, true),
+                "Hatch panel cost detail did not explain per-egg cost"
+            )
             local debugState = EggInteractionService:GetHatchPanelDebugState()
             assert(
                 debugState.selectedHatchCount == 4,

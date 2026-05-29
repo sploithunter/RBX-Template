@@ -37,7 +37,9 @@ local hatchPanel = nil
 local hatchPanelFields = {}
 local hatchPanelConnection = nil
 local entitlementConnections = {}
+local settingsConnections = {}
 local hatchSettingsOpen = false
+local lastHatchPanelEggType = nil
 local lastPersistedHatchCount = nil
 local lastPersistedHatchModesKey = nil
 local autoDeleteState = {
@@ -467,6 +469,38 @@ local function getCurrencyIcon(currency)
     return "💰"
 end
 
+local function getCurrencyAttributeName(currency)
+    currency = tostring(currency or "")
+    return currency:gsub("^%l", string.upper)
+end
+
+local function getPlayerCurrencyBalance(currency)
+    local attributeName = getCurrencyAttributeName(currency)
+    local value = player:GetAttribute(attributeName)
+    if value == nil then
+        return nil
+    end
+    return math.max(0, tonumber(value) or 0)
+end
+
+local function formatCostDetail(costEach, multiplier, selectedCount, affordableCount)
+    local parts = {}
+    table.insert(parts, formatNumber(costEach) .. " each")
+    if multiplier and multiplier > 1 then
+        table.insert(parts, formatMultiplier(multiplier))
+    end
+    if affordableCount then
+        table.insert(
+            parts,
+            "afford "
+                .. tostring(math.min(selectedCount, affordableCount))
+                .. "/"
+                .. tostring(selectedCount)
+        )
+    end
+    return table.concat(parts, " • ")
+end
+
 local function formatStopReason(stopReason)
     local labels = {
         currency = "out of currency",
@@ -600,6 +634,40 @@ function EggInteractionService:SetHatchHelp(message)
     hatchPanelFields.helpText.Text = tostring(message or helpConfig.default or "")
 end
 
+function EggInteractionService:RefreshHatchCostDisplay(eggType)
+    if not hatchPanel or not hatchPanelFields.cost then
+        return
+    end
+
+    local eggData = getEggDisplayData(eggType)
+    if not eggData then
+        return
+    end
+
+    local costMultiplier = getSelectedCostMultiplier()
+    local costEach = math.floor((eggData.cost * costMultiplier) + 0.5)
+    local totalCost = costEach * selectedHatchCount
+    local balance = getPlayerCurrencyBalance(eggData.currency)
+    local affordableCount = balance and math.floor(balance / math.max(1, costEach)) or nil
+    hatchPanelFields.title.Text = eggData.name
+    hatchPanelFields.cost.Text = string.format(
+        "%s %s %s",
+        getCurrencyIcon(eggData.currency),
+        formatNumber(totalCost),
+        titleCaseId(eggData.currency)
+    )
+    if hatchPanelFields.costDetail then
+        hatchPanelFields.costDetail.Text =
+            formatCostDetail(costEach, costMultiplier, selectedHatchCount, affordableCount)
+    end
+    hatchPanel:SetAttribute("HatchCurrency", eggData.currency)
+    hatchPanel:SetAttribute("BaseCostEach", eggData.cost)
+    hatchPanel:SetAttribute("CostMultiplier", costMultiplier)
+    hatchPanel:SetAttribute("EstimatedCostEach", costEach)
+    hatchPanel:SetAttribute("EstimatedTotalCost", totalCost)
+    hatchPanel:SetAttribute("EstimatedAffordableCount", affordableCount)
+end
+
 function EggInteractionService:BindHelpText(instance, helpText)
     if not instance or not helpText or helpText == "" then
         return
@@ -727,6 +795,18 @@ function EggInteractionService:CreateHatchPanel()
     cost.TextXAlignment = Enum.TextXAlignment.Left
     cost.Parent = frame
 
+    local costDetail = Instance.new("TextLabel")
+    costDetail.Name = "CostDetail"
+    costDetail.Size = UDim2.new(0.52, -12, 0, 18)
+    costDetail.Position = UDim2.new(0, 12, 0, 66)
+    costDetail.BackgroundTransparency = 1
+    costDetail.Text = ""
+    costDetail.TextColor3 = Color3.fromRGB(156, 168, 190)
+    costDetail.TextScaled = true
+    costDetail.Font = Enum.Font.Gotham
+    costDetail.TextXAlignment = Enum.TextXAlignment.Left
+    costDetail.Parent = frame
+
     local countLabel = Instance.new("TextLabel")
     countLabel.Name = "Count"
     countLabel.Size = UDim2.new(0, 104, 0, 36)
@@ -852,6 +932,7 @@ function EggInteractionService:CreateHatchPanel()
     hatchPanelFields = {
         title = title,
         cost = cost,
+        costDetail = costDetail,
         count = countLabel,
         status = status,
         hatchButton = hatchButton,
@@ -1204,6 +1285,73 @@ function EggInteractionService:ApplyPersistedHatchModes(options)
     self:UpdateHatchPanel()
 end
 
+function EggInteractionService:DisconnectSettingsConnections()
+    for _, connection in ipairs(settingsConnections) do
+        connection:Disconnect()
+    end
+    settingsConnections = {}
+end
+
+function EggInteractionService:BindReplicatedHatchSettings()
+    self:DisconnectSettingsConnections()
+
+    task.spawn(function()
+        local settingsFolder = player:WaitForChild("Settings", 15)
+        local autoFolder = settingsFolder and settingsFolder:WaitForChild("AutoSystems", 15)
+        local hatchFolder = autoFolder and autoFolder:WaitForChild("Hatch", 15)
+        if not hatchFolder then
+            return
+        end
+
+        local selectedValue = hatchFolder:FindFirstChild("SelectedCount")
+        if selectedValue and selectedValue:IsA("IntValue") then
+            local function applySelectedCount()
+                selectedHatchCount = clampSelectedCount(selectedValue.Value)
+                lastPersistedHatchCount = selectedHatchCount
+                self:UpdateHatchPanel()
+                if lastHatchPanelEggType then
+                    self:RefreshHatchCostDisplay(lastHatchPanelEggType)
+                end
+                if hatchPanelFields.count then
+                    hatchPanelFields.count.Text = "x" .. tostring(selectedHatchCount)
+                end
+            end
+            applySelectedCount()
+            table.insert(
+                settingsConnections,
+                selectedValue:GetPropertyChangedSignal("Value"):Connect(applySelectedCount)
+            )
+        end
+
+        local modesFolder = hatchFolder:FindFirstChild("Modes")
+        if modesFolder then
+            local function bindModeValue(value)
+                if not value:IsA("BoolValue") or hatchModeState[value.Name] == nil then
+                    return
+                end
+
+                local function applyModeValue()
+                    hatchModeState[value.Name] = value.Value == true
+                    lastPersistedHatchModesKey = hatchModesKey(currentHatchModes())
+                    self:RefreshModeButtons()
+                    self:UpdateHatchPanel()
+                end
+
+                applyModeValue()
+                table.insert(
+                    settingsConnections,
+                    value:GetPropertyChangedSignal("Value"):Connect(applyModeValue)
+                )
+            end
+
+            for _, value in ipairs(modesFolder:GetChildren()) do
+                bindModeValue(value)
+            end
+            table.insert(settingsConnections, modesFolder.ChildAdded:Connect(bindModeValue))
+        end
+    end)
+end
+
 function EggInteractionService:SetHatchModeState(optionName, enabled, options)
     options = options or {}
     if hatchModeState[optionName] == nil then
@@ -1271,6 +1419,12 @@ function EggInteractionService:SetSelectedHatchCount(count, options)
         persistSelectedHatchCount(selectedHatchCount)
     end
     self:UpdateHatchPanel()
+    if lastHatchPanelEggType then
+        self:RefreshHatchCostDisplay(lastHatchPanelEggType)
+    end
+    if hatchPanelFields.count then
+        hatchPanelFields.count.Text = "x" .. tostring(selectedHatchCount)
+    end
 end
 
 function EggInteractionService:SetHatchSettingsOpen(open)
@@ -1372,17 +1526,8 @@ function EggInteractionService:UpdateHatchPanel()
         hatchPanelFields.settings.Visible = hatchSettingsOpen
     end
 
-    local eggData = getEggDisplayData(currentTarget)
-    if eggData then
-        local totalCost = eggData.cost * getSelectedCostMultiplier() * selectedHatchCount
-        hatchPanelFields.title.Text = eggData.name
-        hatchPanelFields.cost.Text = string.format(
-            "%s %s %s",
-            getCurrencyIcon(eggData.currency),
-            formatNumber(totalCost),
-            titleCaseId(eggData.currency)
-        )
-    end
+    lastHatchPanelEggType = currentTarget
+    self:RefreshHatchCostDisplay(currentTarget)
 
     hatchPanelFields.count.Text = "x" .. tostring(selectedHatchCount)
     local busy = hatchRequestInFlight == true
@@ -1922,6 +2067,7 @@ function EggInteractionService:Initialize()
     end
 
     self:CreateHatchPanel()
+    self:BindReplicatedHatchSettings()
 
     for _, attributeName in ipairs({
         "MaxEggHatchCount",
@@ -2012,6 +2158,7 @@ function EggInteractionService:Destroy()
         connection:Disconnect()
     end
     entitlementConnections = {}
+    self:DisconnectSettingsConnections()
     if hatchPanelGui then
         hatchPanelGui:Destroy()
         hatchPanelGui = nil
