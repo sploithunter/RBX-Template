@@ -24,6 +24,10 @@ codex mcp add Roblox_Studio -- /Applications/RobloxStudio.app/Contents/MacOS/Stu
 
 The current working Studio instance is `RBX-Template`.
 
+## Rojo Sync Gotchas
+
+Rojo can occasionally enter an unsynced-looking state even while the server and Studio plugin appear connected. If new scripts/config do not appear in Studio, stop Play, disconnect Rojo in the Studio plugin, reconnect to the running Rojo server, and then restart Play. Agents should use Computer Use for this when the Rojo plugin UI must be operated directly.
+
 ## Available Agent Checks
 
 Agents can use Studio MCP to:

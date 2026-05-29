@@ -36,16 +36,16 @@ if loggerSuccess and loggerResult then
     LoggerWrapper = {
         new = function(name)
             return {
-                info = function(self, ...)
+                info = function(_self, ...)
                     loggerResult:Info("[" .. name .. "] " .. tostring((...)), { context = name })
                 end,
-                warn = function(self, ...)
+                warn = function(_self, ...)
                     loggerResult:Warn("[" .. name .. "] " .. tostring((...)), { context = name })
                 end,
-                error = function(self, ...)
+                error = function(_self, ...)
                     loggerResult:Error("[" .. name .. "] " .. tostring((...)), { context = name })
                 end,
-                debug = function(self, ...)
+                debug = function(_self, ...)
                     loggerResult:Debug("[" .. name .. "] " .. tostring((...)), { context = name })
                 end,
             }
@@ -55,16 +55,16 @@ else
     LoggerWrapper = {
         new = function(name)
             return {
-                info = function(self, ...)
+                info = function(_self, ...)
                     print("[" .. name .. "] INFO:", ...)
                 end,
-                warn = function(self, ...)
+                warn = function(_self, ...)
                     warn("[" .. name .. "] WARN:", ...)
                 end,
-                error = function(self, ...)
+                error = function(_self, ...)
                     warn("[" .. name .. "] ERROR:", ...)
                 end,
-                debug = function(self, ...)
+                debug = function(_self, ...)
                     print("[" .. name .. "] DEBUG:", ...)
                 end,
             }
@@ -205,6 +205,7 @@ local TEST_CATEGORIES = {
             { name = "🥚 Toggle Golden Hatch", action = "hatch_entitlement_toggle_golden" },
             { name = "🥚 Toggle Charged Hatch", action = "hatch_entitlement_toggle_charged" },
             { name = "🥚 Set Max Hatch 99", action = "hatch_entitlement_max_99" },
+            { name = "🥚 Recent Hatch History", action = "hatch_history_recent" },
         },
         customInputs = {
             {
@@ -460,7 +461,7 @@ end
 function AdminPanel:_createTestCategories()
     local layoutOrder = 1
 
-    for categoryKey, categoryData in pairs(TEST_CATEGORIES) do
+    for _, categoryData in pairs(TEST_CATEGORIES) do
         self:_createCategorySection(categoryData.title, categoryData, layoutOrder)
         layoutOrder = layoutOrder + 1
     end
@@ -528,13 +529,13 @@ function AdminPanel:_createCategorySection(title, categoryData, layoutOrder)
     local currentLayoutOrder = 1
 
     -- Create test buttons
-    for i, test in ipairs(tests) do
+    for _, test in ipairs(tests) do
         self:_createTestButton(test.name, test.action, currentLayoutOrder, testsContainer)
         currentLayoutOrder = currentLayoutOrder + 1
     end
 
     -- Create custom input fields
-    for i, inputConfig in ipairs(customInputs) do
+    for _, inputConfig in ipairs(customInputs) do
         self:_createCustomInput(inputConfig, currentLayoutOrder, testsContainer)
         currentLayoutOrder = currentLayoutOrder + 2 -- Takes 2 layout orders (label + input)
     end
@@ -748,7 +749,7 @@ function AdminPanel:_parseAmount(input)
     return finalAmount
 end
 
-function AdminPanel:_executeTestAction(action, testName)
+function AdminPanel:_executeTestAction(action, _testName)
     self.logger:info("Executing test action:", action)
 
     -- Economy actions
@@ -772,6 +773,8 @@ function AdminPanel:_executeTestAction(action, testName)
         self:_executeZoneLockAction(action)
     elseif action:find("^hatch_entitlement_") then
         self:_executeHatchEntitlementAction(action)
+    elseif action == "hatch_history_recent" then
+        self:_requestHatchHistory()
 
     -- Effects actions
     elseif action == "run_diagnostics" then
@@ -979,7 +982,7 @@ function AdminPanel:_performanceTest()
     local startTime = tick()
 
     -- Create and destroy many UI elements
-    for i = 1, 1000 do
+    for _ = 1, 1000 do
         local testFrame = Instance.new("Frame")
         testFrame.Size = UDim2.new(0, 10, 0, 10)
         testFrame.Parent = workspace
@@ -1097,7 +1100,7 @@ function AdminPanel:_initializeNetworking()
 
         -- Use new Signals system instead of old NetworkBridge
         self.economyBridge = {
-            Fire = function(_, action, data)
+            Fire = function(_, _action, data)
                 if Signals.PurchaseItem then
                     Signals.PurchaseItem:FireServer(data)
                 end
@@ -1293,10 +1296,7 @@ end
 
 function AdminPanel:_getAdminActionData(baseData)
     -- Add target player ID to action data if a target is selected
-    local actionData = {}
-    for key, value in pairs(baseData) do
-        actionData[key] = value
-    end
+    local actionData = table.clone(baseData)
 
     -- Add target player if one is selected
     if self.selectedTargetPlayerId then
@@ -1520,6 +1520,13 @@ function AdminPanel:_executeCustomHatchEntitlement(inputValue)
     self:_showAdminResult("Hatch entitlement change requested: " .. entitlementId, true)
 end
 
+function AdminPanel:_requestHatchHistory()
+    Signals.Admin_RequestHatchHistory:FireServer(self:_getAdminActionData({
+        limit = 8,
+    }))
+    self:_showAdminResult("Hatch history requested", true)
+end
+
 function AdminPanel:_formatSnapshot(snapshot)
     local currencies = snapshot.currencies or {}
     local save = snapshot.save or {}
@@ -1595,6 +1602,27 @@ function AdminPanel:_handleAdminToolResult(result)
         if #entitlementParts > 0 then
             message ..= "\nHatch unlocks: " .. table.concat(entitlementParts, ", ")
         end
+    elseif result.kind == "hatch_history" then
+        local lines = {}
+        for _, entry in ipairs(result.hatchHistory or {}) do
+            table.insert(
+                lines,
+                string.format(
+                    "#%s %s %s requested=%s hatched=%s cost=%s %s stop=%s autoDel=%s special=%s",
+                    tostring(entry.id or "?"),
+                    entry.ok == true and "OK" or tostring(entry.code or "ERR"),
+                    tostring(entry.eggType or "?"),
+                    tostring(entry.requestedCount or 0),
+                    tostring(entry.hatchCount or 0),
+                    tostring(entry.totalCost or 0),
+                    tostring(entry.currency or ""),
+                    tostring(entry.stopReason or "-"),
+                    tostring(entry.autoDeletedCount or 0),
+                    tostring(entry.specialHatchCount or 0)
+                )
+            )
+        end
+        message ..= "\nRecent hatches: " .. (#lines > 0 and table.concat(lines, "\n") or "none")
     end
 
     self:_showAdminResult(message, result.success ~= false)

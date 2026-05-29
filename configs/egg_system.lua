@@ -37,6 +37,10 @@ return {
         failed_request_lock_seconds = 0.2,
         auto_loop_delay = 3,
         default_max_entitled_count = 99,
+        debug = {
+            history_limit = 12,
+            result_sample_limit = 20,
+        },
         compat_purchase_types = {
             Single = 1,
             Triple = 3,

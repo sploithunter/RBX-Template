@@ -22,6 +22,8 @@ Implemented so far:
 - Authored egg animation ViewportFrames use config-driven scale: a global default in `egg_system.hatching.animation.authored_visual_scale` plus per-egg overrides such as `pets.egg_sources.basic_egg.animation.authored_visual_scale`.
 - Hatch reveal polish is now partly config-driven. `egg_system.hatching.animation.reveal_badges` controls rarity, variant, special, and auto-delete badges, while `EggHatchingService:GetActiveAnimationDebugState()` exposes the active animation metadata for Studio smokes. `EggAnimationContractSmoke` verifies special and auto-deleted reveal markers on the client animation layer.
 - The hatch settings drawer now exposes mode entitlement state before the server rejects a hatch. Mode controls carry `ModeState`, `ModeOwned`, and dynamic help text attributes, and a `ModeStatus` line summarizes active and locked modes from config/player attributes.
+- `EggService` now keeps a bounded, config-sized recent hatch history for each player. The history records successes and rejected hatch requests with requested count, actual hatch count, cost, stop reason, options, entitlements, sampled results, auto-delete counts, special counts, and authored animation metadata. Admin tools can request this snapshot, and `EggHatchHistorySmoke` verifies the server debug contract.
+- Studio forced hatch setup is now deterministic. `EggService` reads `ForcePet`/`ForceVariant` player attributes before rolling instead of relying only on mutating a copied config table, so storage/history smokes can force unique or auto-deleted outcomes reliably.
 
 Still to build:
 
@@ -88,7 +90,7 @@ High priority:
 - Hatch UI near eggs: requested count selector/input, Hatch, Auto, Golden/Charged toggles where unlocked.
 - Fast/skip/silent hatch settings.
 - Special hatch fanfare rules by rarity/trait.
-- Hatch history/debug panel for admin testing.
+- Hatch history/debug panel for admin testing. First server/admin snapshot exists; future polish can make it a richer visual panel instead of a text result.
 
 Config and balancing:
 

@@ -26,16 +26,16 @@ if loggerSuccess and loggerResult then
     Logger = loggerResult -- Use singleton directly
 else
     Logger = {
-        Info = function(self, message, context)
+        Info = function(_self, message, context)
             print("[INFO]", message, context)
         end,
-        Warn = function(self, message, context)
+        Warn = function(_self, message, context)
             warn("[WARN]", message, context)
         end,
-        Error = function(self, message, context)
+        Error = function(_self, message, context)
             warn("[ERROR]", message, context)
         end,
-        Debug = function(self, message, context)
+        Debug = function(_self, message, context)
             print("[DEBUG]", message, context)
         end,
     }
@@ -44,6 +44,8 @@ end
 -- Player cooldowns
 local playerCooldowns = {}
 local playerHatchLocks = {}
+local playerHatchHistory = {}
+local hatchHistorySequence = 0
 
 -- RemoteFunction for egg purchases
 local eggRemoteFunction = nil
@@ -74,6 +76,181 @@ end
 function EggService:GetMaxHatchCount()
     local hatching = self:GetHatchingConfig()
     return math.clamp(math.floor(tonumber(hatching.max_count) or 99), 1, 99)
+end
+
+function EggService:GetDebugConfig()
+    local hatching = self:GetHatchingConfig()
+    return hatching.debug or {}
+end
+
+function EggService:GetHatchHistoryLimit()
+    local debugConfig = self:GetDebugConfig()
+    return math.clamp(math.floor(tonumber(debugConfig.history_limit) or 12), 1, 50)
+end
+
+function EggService:GetHatchHistoryResultSampleLimit()
+    local debugConfig = self:GetDebugConfig()
+    return math.clamp(math.floor(tonumber(debugConfig.result_sample_limit) or 20), 1, 99)
+end
+
+function EggService:CloneHatchOptions(options)
+    options = type(options) == "table" and options or {}
+    return {
+        goldenMode = options.goldenMode == true,
+        chargedMode = options.chargedMode == true,
+        fastHatch = options.fastHatch == true,
+        skipHatch = options.skipHatch == true,
+        silentHatch = options.silentHatch == true,
+        costMultiplier = tonumber(options.costMultiplier) or nil,
+    }
+end
+
+function EggService:CloneHatchEntitlements(entitlements)
+    entitlements = type(entitlements) == "table" and entitlements or {}
+    return {
+        maxHatchCount = entitlements.maxHatchCount,
+        autoHatch = entitlements.autoHatch == true,
+        fastHatch = entitlements.fastHatch == true,
+        skipHatch = entitlements.skipHatch == true,
+        goldenMode = entitlements.goldenMode == true,
+        chargedMode = entitlements.chargedMode == true,
+    }
+end
+
+function EggService:SummarizeHatchResults(resultEntries)
+    local summary = {}
+    local autoDeletedCount = 0
+    local specialCount = 0
+    local sampleLimit = self:GetHatchHistoryResultSampleLimit()
+
+    for index, entry in ipairs(resultEntries or {}) do
+        if entry.AutoDeleted == true or entry.autoDeleted == true then
+            autoDeletedCount += 1
+        end
+        if entry.SpecialHatch == true or entry.specialHatch == true then
+            specialCount += 1
+        end
+        if index <= sampleLimit then
+            table.insert(summary, {
+                pet = entry.Pet or entry.pet,
+                variant = entry.Type or entry.variant,
+                rarityId = entry.RarityId or entry.rarityId,
+                specialHatch = entry.SpecialHatch == true or entry.specialHatch == true,
+                autoDeleted = entry.AutoDeleted == true or entry.autoDeleted == true,
+                autoDeleteReason = entry.AutoDeleteReason or entry.autoDeleteReason,
+                uid = entry.uid,
+            })
+        end
+    end
+
+    return summary, autoDeletedCount, specialCount
+end
+
+function EggService:RecordHatchHistory(player, entry)
+    if not player then
+        return nil
+    end
+
+    hatchHistorySequence += 1
+    local userId = player.UserId
+    local history = playerHatchHistory[userId]
+    if not history then
+        history = {}
+        playerHatchHistory[userId] = history
+    end
+
+    entry = type(entry) == "table" and entry or {}
+    entry.id = hatchHistorySequence
+    entry.createdAt = os.time()
+    entry.createdClock = os.clock()
+    entry.playerName = player.Name
+    entry.playerUserId = userId
+
+    table.insert(history, 1, entry)
+    local limit = self:GetHatchHistoryLimit()
+    while #history > limit do
+        table.remove(history)
+    end
+
+    return entry
+end
+
+function EggService:RecordHatchError(player, request, message, code, details)
+    return self:RecordHatchHistory(player, {
+        ok = false,
+        success = false,
+        code = code or "error",
+        message = message,
+        details = details or {},
+        eggType = request and request.eggType or nil,
+        purchaseType = request and request.purchaseType or nil,
+        requestedCount = request and request.requestedCount or nil,
+        autoSessionId = request and request.autoSessionId or nil,
+        resultCount = 0,
+        hatchCount = 0,
+        totalCost = 0,
+    })
+end
+
+function EggService:ReturnHatchError(player, request, message, code, details)
+    self:RecordHatchError(player, request, message, code, details)
+    return self:FormatError(request, message, code, details)
+end
+
+function EggService:RecordHatchSuccess(player, request, response)
+    local results, autoDeletedCount, specialCount = self:SummarizeHatchResults(response.results)
+    return self:RecordHatchHistory(player, {
+        ok = true,
+        success = true,
+        eggType = response.EggType,
+        purchaseType = request and request.purchaseType or nil,
+        requestedCount = response.requestedCount,
+        hatchCount = response.hatchCount,
+        stopReason = response.stopReason,
+        currency = response.Currency,
+        costEach = response.Cost,
+        totalCost = response.TotalCost,
+        autoSessionId = response.autoSessionId,
+        options = self:CloneHatchOptions(response.options),
+        entitlements = self:CloneHatchEntitlements(response.entitlements),
+        resultCount = response.hatchCount,
+        resultSampleLimit = self:GetHatchHistoryResultSampleLimit(),
+        results = results,
+        autoDeletedCount = autoDeletedCount,
+        specialHatchCount = specialCount,
+        animation = {
+            eggType = response.animation and response.animation.eggType or nil,
+            useAuthoredEggVisual = response.animation
+                    and response.animation.useAuthoredEggVisual == true
+                or false,
+            modelName = response.animation and response.animation.modelName or nil,
+            anchorName = response.animation and response.animation.anchorName or nil,
+            specialReveal = response.animation and response.animation.specialReveal == true
+                or false,
+            specialRevealCount = response.animation and response.animation.specialRevealCount or 0,
+        },
+    })
+end
+
+function EggService:GetHatchHistory(player, limit)
+    if not player then
+        return {}
+    end
+
+    local history = playerHatchHistory[player.UserId] or {}
+    local count =
+        math.clamp(math.floor(tonumber(limit) or #history), 0, self:GetHatchHistoryLimit())
+    local result = {}
+    for index = 1, math.min(count, #history) do
+        table.insert(result, history[index])
+    end
+    return result
+end
+
+function EggService:ClearHatchHistory(player)
+    if player then
+        playerHatchHistory[player.UserId] = {}
+    end
 end
 
 function EggService:GetRequestedCountForPurchaseType(purchaseType)
@@ -258,7 +435,7 @@ function EggService:ResolveHatchEntitlements(player)
     }
 end
 
-function EggService:ResolveHatchOptions(player, request, entitlements)
+function EggService:ResolveHatchOptions(_player, request, entitlements)
     local options = request.options or {}
     local hatching = self:GetHatchingConfig()
     local shopStubs = hatching.shop_stubs or {}
@@ -410,6 +587,34 @@ function EggService:ApplyTestOverrides(player)
     end
 end
 
+function EggService:GetForcedHatchOutcome(player, eggType)
+    local forcedPet = player and player:GetAttribute("ForcePet") or nil
+    local forcedVariant = player and player:GetAttribute("ForceVariant") or nil
+    if not forcedPet and not forcedVariant then
+        return nil
+    end
+
+    local eggData = petConfig.egg_sources[eggType]
+    if not eggData then
+        return nil
+    end
+
+    local pet = tostring(forcedPet or next(eggData.pet_weights or {}) or "")
+    local variant = tostring(forcedVariant or "basic")
+    if pet == "" then
+        return nil
+    end
+
+    return {
+        pet = pet,
+        variant = variant,
+        finalGoldenChance = 0,
+        finalRainbowChance = 0,
+        luckMultiplier = 1,
+        petData = petConfig.getPet and petConfig.getPet(pet, variant) or nil,
+    }
+end
+
 function EggService:IsSpecialPetOutcome(hatchResult)
     if hatchResult.huge == true then
         return true
@@ -531,9 +736,15 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
             player = player.Name,
             remainingTime = lockRemaining,
         })
-        return self:FormatError(request, "Please wait before hatching again", "hatch_locked", {
-            remainingTime = lockRemaining,
-        })
+        return self:ReturnHatchError(
+            player,
+            request,
+            "Please wait before hatching again",
+            "hatch_locked",
+            {
+                remainingTime = lockRemaining,
+            }
+        )
     end
 
     -- Validate egg type
@@ -541,7 +752,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
     if not eggData then
         Logger:Warn("Invalid egg type", { player = player.Name, eggType = request.eggType })
         self:ReleaseHatchLock(player, false)
-        return self:FormatError(request, "Invalid egg type", "invalid_egg")
+        return self:ReturnHatchError(player, request, "Invalid egg type", "invalid_egg")
     end
     local eggCost = (petConfig.getEggCost and petConfig.getEggCost(request.eggType)) or eggData.cost
     eggCost = math.max(0, tonumber(eggCost) or 0)
@@ -550,7 +761,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
     if not self:IsPlayerNearEgg(player, request.eggType) then
         Logger:Warn("Player too far from egg", { player = player.Name, eggType = request.eggType })
         self:ReleaseHatchLock(player, false)
-        return self:FormatError(request, "Too far away", "too_far")
+        return self:ReturnHatchError(player, request, "Too far away", "too_far")
     end
 
     local entitlements = self:ResolveHatchEntitlements(player)
@@ -558,7 +769,8 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         self:ResolveHatchOptions(player, request, entitlements)
     if not hatchOptions then
         self:ReleaseHatchLock(player, false)
-        return self:FormatError(
+        return self:ReturnHatchError(
+            player,
             request,
             optionMessage or "Hatch mode locked",
             optionCode or "feature_locked",
@@ -598,7 +810,8 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
             current = currentAmount,
         })
         self:ReleaseHatchLock(player, false)
-        return self:FormatError(
+        return self:ReturnHatchError(
+            player,
             request,
             "Insufficient " .. eggData.currency,
             "insufficient_currency",
@@ -611,10 +824,16 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
 
     if preliminaryCount < request.requestedCount and not allowPartial then
         self:ReleaseHatchLock(player, false)
-        return self:FormatError(request, "Cannot hatch requested amount", "partial_not_allowed", {
-            requestedCount = request.requestedCount,
-            availableCount = preliminaryCount,
-        })
+        return self:ReturnHatchError(
+            player,
+            request,
+            "Cannot hatch requested amount",
+            "partial_not_allowed",
+            {
+                requestedCount = request.requestedCount,
+                availableCount = preliminaryCount,
+            }
+        )
     end
 
     local playerData = self:BuildPlayerHatchData(player, request.eggType, eggData, hatchOptions)
@@ -623,11 +842,12 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
 
     local outcomes = {}
     for _ = 1, preliminaryCount do
-        local hatchResult = petConfig.simulateHatch(request.eggType, playerData)
+        local hatchResult = self:GetForcedHatchOutcome(player, request.eggType)
+            or petConfig.simulateHatch(request.eggType, playerData)
         if not hatchResult then
             Logger:Error("Hatching failed", { player = player.Name, eggType = request.eggType })
             self:ReleaseHatchLock(player, false)
-            return self:FormatError(request, "Hatching failed", "hatch_failed")
+            return self:ReturnHatchError(player, request, "Hatching failed", "hatch_failed")
         end
 
         local autoDeleted = false
@@ -647,11 +867,11 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
     local storageLimitedOutcomes, storageStop = self:ResolveStorageLimitedOutcomes(player, outcomes)
     if #storageLimitedOutcomes <= 0 then
         self:ReleaseHatchLock(player, false)
-        return self:FormatError(request, "No pet storage available", "no_storage")
+        return self:ReturnHatchError(player, request, "No pet storage available", "no_storage")
     end
     if #storageLimitedOutcomes < #outcomes and not allowPartial then
         self:ReleaseHatchLock(player, false)
-        return self:FormatError(request, "No pet storage available", "no_storage")
+        return self:ReturnHatchError(player, request, "No pet storage available", "no_storage")
     end
     outcomes = storageLimitedOutcomes
 
@@ -660,7 +880,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
     if not deductSuccess then
         Logger:Error("Failed to deduct currency", { player = player.Name })
         self:ReleaseHatchLock(player, false)
-        return self:FormatError(request, "Transaction failed", "deduct_failed")
+        return self:ReturnHatchError(player, request, "Transaction failed", "deduct_failed")
     end
 
     local resultEntries = {}
@@ -756,7 +976,12 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
     if processedCount <= 0 then
         self:AddCurrency(player, eggData.currency, totalCost, "egg_hatch_refund")
         self:ReleaseHatchLock(player, false)
-        return self:FormatError(request, grantFailed or "Failed to grant pet", "grant_failed")
+        return self:ReturnHatchError(
+            player,
+            request,
+            grantFailed or "Failed to grant pet",
+            "grant_failed"
+        )
     end
 
     if self._statsService then
@@ -817,6 +1042,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         totalCost = response.TotalCost,
     })
 
+    self:RecordHatchSuccess(player, request, response)
     self:ReleaseHatchLock(player, true)
     return response
 end
@@ -926,6 +1152,7 @@ function EggService:Initialize(moduleLoader)
     Players.PlayerRemoving:Connect(function(player)
         playerCooldowns[player.UserId] = nil
         playerHatchLocks[player.UserId] = nil
+        playerHatchHistory[player.UserId] = nil
         playerCurrentEggs[player.UserId] = nil
     end)
 

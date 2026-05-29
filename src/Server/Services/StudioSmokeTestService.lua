@@ -159,6 +159,8 @@ function StudioSmokeTestService:_handleRequest(player, action, payload)
         return self:_hatchEggProximity(player, payload)
     elseif action == "RestoreEggProximity" then
         return self:_restoreEggProximity(player)
+    elseif action == "GetEggHatchHistory" then
+        return self:_getEggHatchHistory(player, payload)
     elseif action == "BeginTravelSmoke" then
         return self:_beginTravelSmoke(player, payload)
     elseif action == "UseTravelSmoke" then
@@ -1228,6 +1230,14 @@ function StudioSmokeTestService:_moveEggProximity(player, payload)
         ok = success,
         error = errorMessage,
         placement = placement,
+    }
+end
+
+function StudioSmokeTestService:_getEggHatchHistory(player, payload)
+    local EggService = require(ServerScriptService.Server.Services.EggService)
+    return {
+        ok = true,
+        history = EggService:GetHatchHistory(player, payload and payload.limit or nil),
     }
 end
 

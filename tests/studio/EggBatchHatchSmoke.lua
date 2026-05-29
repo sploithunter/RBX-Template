@@ -392,9 +392,13 @@ function EggBatchHatchSmoke.run(options)
             eggType = eggType,
             setupHatchCount = requestedCount,
             setupCurrencyAmount = begin.cost * requestedCount,
+            setupPetInventoryEmpty = true,
             setupPetStorageAvailableSlots = storageLimitedCount,
             setupForceHatchPet = "colorado",
             setupForceHatchVariant = "basic",
+            setupAutoDeleteFilters = {
+                enabled = false,
+            },
         })
         started = true
         invoke(remote, "MoveEggProximity", { placement = "near" })

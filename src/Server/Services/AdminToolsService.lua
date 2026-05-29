@@ -1,4 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
@@ -53,6 +54,10 @@ function AdminToolsService:Init()
 
     Signals.Admin_SetHatchEntitlement.OnServerEvent:Connect(function(player, data)
         self:_handleSetHatchEntitlement(player, data)
+    end)
+
+    Signals.Admin_RequestHatchHistory.OnServerEvent:Connect(function(player, data)
+        self:_handleHatchHistory(player, data)
     end)
 
     Signals.Admin_EventCommand.OnServerEvent:Connect(function(player, data)
@@ -387,6 +392,33 @@ function AdminToolsService:_handleSetHatchEntitlement(adminPlayer, data)
         success = success,
         message = table.concat(messages, "; "),
         hatchEntitlements = self:_buildHatchEntitlementSnapshot(targetPlayer),
+        snapshot = self:_buildSnapshot(targetPlayer),
+    })
+end
+
+function AdminToolsService:_handleHatchHistory(adminPlayer, data)
+    local targetPlayer, errorMessage = self:_resolveTarget(adminPlayer, "viewDebugInfo", data)
+    if not targetPlayer then
+        self:_sendResult(adminPlayer, {
+            kind = "hatch_history",
+            success = false,
+            message = errorMessage,
+        })
+        return
+    end
+
+    local EggService = require(ServerScriptService.Server.Services.EggService)
+    local history = EggService:GetHatchHistory(targetPlayer, data and data.limit or nil)
+    self:_sendResult(adminPlayer, {
+        kind = "hatch_history",
+        success = true,
+        message = string.format(
+            "Loaded %d recent hatch transaction%s for %s",
+            #history,
+            #history == 1 and "" or "s",
+            targetPlayer.Name
+        ),
+        hatchHistory = history,
         snapshot = self:_buildSnapshot(targetPlayer),
     })
 end

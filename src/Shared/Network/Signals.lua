@@ -28,6 +28,7 @@ local Signals = {
     Admin_GrantPet = Net:RemoteEvent("Admin_GrantPet"), -- c->s admin grant configured pet
     Admin_SetZoneLock = Net:RemoteEvent("Admin_SetZoneLock"), -- c->s admin lock/unlock configured zone
     Admin_SetHatchEntitlement = Net:RemoteEvent("Admin_SetHatchEntitlement"), -- c->s admin hatch unlock/testing stubs
+    Admin_RequestHatchHistory = Net:RemoteEvent("Admin_RequestHatchHistory"), -- c->s recent hatch debug snapshot
     Admin_EventCommand = Net:RemoteEvent("Admin_EventCommand"), -- c->s admin global event command
     AdminToolResult = Net:RemoteEvent("AdminToolResult"), -- s->c admin action result
 
