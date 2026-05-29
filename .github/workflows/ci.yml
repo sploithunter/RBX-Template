@@ -29,5 +29,18 @@ jobs:
       - name: Install Wally packages
         run: mise exec -- wally install
 
+      # mise's github backend can install release binaries without the execute
+      # bit on the Linux runner (e.g. selene), causing "Permission denied".
+      # Ensure every tool's install dir is executable before running the gate.
+      - name: Make mise-installed tools executable
+        run: |
+          for t in selene stylua rojo lune wally; do
+            d="$(mise where "$t" 2>/dev/null || true)"
+            if [ -n "$d" ] && [ -d "$d" ]; then
+              chmod -R u+x "$d" || true
+              echo "chmod +x $d"
+            fi
+          done
+
       - name: Fast gate (selene + stylua + rojo build + headless tests)
         run: mise run ci
