@@ -29,6 +29,7 @@ Implemented so far:
 - The near-egg hatch panel now reflects effective hatch entitlements before a request is sent. It clamps the selected count to the same max-count source the server resolves from config/player attributes, exposes `MaxEntitledHatchCount` for testing/UI, and grays/blocks Auto when `AutoHatchUnlocked` is false.
 - Hatch animation layout and special-result glow are now config-driven. `egg_system.hatching.animation.layout` controls grid padding and min/max egg sizes, `special_glow` controls the special rarity stroke/pulse, `EggHatchingService:GetActiveAnimationDebugState()` exposes the chosen layout/glow metadata, and `EggAnimationContractSmoke` verifies the client contract.
 - Fast Hatch animation speed is now config-driven through `egg_system.hatching.animation.fast_hatch_speed_scale`. The animation debug state exposes resolved timing/options, and `EggAnimationContractSmoke` verifies that Fast/Silent hatch options use the configured scale.
+- The near-egg hatch panel now persists the player's selected hatch count under `Settings.AutoSystems.hatch.selected_count`. `SettingsService` replicates it to `Player.Settings.AutoSystems.Hatch.SelectedCount`, the client restores it when the panel is created, and `EggProximitySmoke` verifies the replicated client/server round trip.
 
 Still to build:
 
@@ -128,7 +129,7 @@ Config:
 
 - Add `egg_system.hatching.max_count = 99`.
 - Add `egg_system.hatching.allow_partial = true`.
-- Add `egg_system.hatching.default_requested_count = 1` and per-player setting support.
+- Add `egg_system.hatching.default_requested_count = 1`; per-player selected-count persistence now lives under `Settings.AutoSystems.hatch.selected_count`.
 - Add `egg_system.hatching.cooldown_seconds`, `lock_release_policy`, and `auto_loop_delay`.
 - Add `egg_system.hatching.compat_purchase_types` for temporary `"Single"`, `"Triple"`, and `"Auto"` mapping during migration.
 - Add `egg_system.ui.hatch_controls` for button visibility, labels, count selector, and hotkeys.

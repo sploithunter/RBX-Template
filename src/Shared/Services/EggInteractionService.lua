@@ -36,6 +36,7 @@ local hatchPanelFields = {}
 local hatchPanelConnection = nil
 local entitlementConnections = {}
 local hatchSettingsOpen = false
+local lastPersistedHatchCount = nil
 local autoDeleteState = {
     enabled = false,
     rarities = {},
@@ -181,6 +182,37 @@ end
 
 local function clampSelectedCount(count)
     return math.clamp(math.floor(tonumber(count) or 1), 1, getEffectiveMaxHatchCount())
+end
+
+local function getDefaultSelectedHatchCount()
+    local hatching = getHatchingConfig()
+    local panel = getHatchPanelConfig()
+    return clampSelectedCount(
+        tonumber(panel.default_selected_count) or tonumber(hatching.default_requested_count) or 1
+    )
+end
+
+local function getPersistedSelectedHatchCount()
+    local settingsFolder = player:FindFirstChild("Settings")
+    local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
+    local hatchFolder = autoFolder and autoFolder:FindFirstChild("Hatch")
+    local selectedValue = hatchFolder and hatchFolder:FindFirstChild("SelectedCount")
+    if selectedValue and selectedValue:IsA("IntValue") then
+        return clampSelectedCount(selectedValue.Value)
+    end
+    return nil
+end
+
+local function persistSelectedHatchCount(count)
+    count = clampSelectedCount(count)
+    if lastPersistedHatchCount == count then
+        return
+    end
+
+    lastPersistedHatchCount = count
+    Signals.HatchSettings_SetCount:FireServer({
+        selectedCount = count,
+    })
 end
 
 local function asSet(values)
@@ -617,7 +649,10 @@ function EggInteractionService:CreateHatchPanel()
     self:CreateAutoDeleteSettings(settings)
     self:CreateModeSettings(settings)
     self:CreateHatchHelpText(settings)
-    self:SetSelectedHatchCount(panelConfig.default_selected_count or 1)
+    self:SetSelectedHatchCount(
+        getPersistedSelectedHatchCount() or getDefaultSelectedHatchCount(),
+        { persist = false }
+    )
 end
 
 function EggInteractionService:CreateAutoDeleteSettings(parent)
@@ -947,8 +982,12 @@ function EggInteractionService:HandleHatchError(result)
     self:SetPanelStatus(message, true)
 end
 
-function EggInteractionService:SetSelectedHatchCount(count)
+function EggInteractionService:SetSelectedHatchCount(count, options)
+    options = options or {}
     selectedHatchCount = clampSelectedCount(count)
+    if options.persist ~= false then
+        persistSelectedHatchCount(selectedHatchCount)
+    end
     self:UpdateHatchPanel()
 end
 
@@ -1554,7 +1593,7 @@ function EggInteractionService:Initialize()
         table.insert(
             entitlementConnections,
             player:GetAttributeChangedSignal(attributeName):Connect(function()
-                self:SetSelectedHatchCount(selectedHatchCount)
+                self:SetSelectedHatchCount(selectedHatchCount, { persist = false })
                 self:RefreshModeButtons()
                 self:UpdateHatchPanel()
             end)
@@ -1606,6 +1645,7 @@ function EggInteractionService:GetHatchPanelDebugState()
         autoHatchSessionId = autoHatchSessionId,
         autoHatchOwned = isAutoHatchOwned(),
         selectedHatchCount = selectedHatchCount,
+        persistedSelectedHatchCount = getPersistedSelectedHatchCount(),
         maxHatchCount = getMaxHatchCount(),
         maxEntitledHatchCount = getEffectiveMaxHatchCount(),
         statusText = hatchPanelFields.status and hatchPanelFields.status.Text or "",

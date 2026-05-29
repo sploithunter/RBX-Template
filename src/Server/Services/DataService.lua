@@ -122,6 +122,9 @@ local function generateProfileTemplate(configLoader)
                     pet_types = {},
                     variants = {},
                 },
+                hatch = {
+                    selected_count = 1,
+                },
             },
         },
 
@@ -287,6 +290,17 @@ local function generateProfileTemplate(configLoader)
         if autoSuccess and autoConfig then
             local autoTarget = autoConfig.auto_target or {}
             local autoDelete = autoConfig.auto_delete or {}
+            local selectedHatchCount = 1
+            local eggSuccess, eggConfig = pcall(function()
+                return configLoader:LoadConfig("egg_system")
+            end)
+            if eggSuccess and type(eggConfig) == "table" then
+                local hatching = eggConfig.hatching or {}
+                local panel = eggConfig.ui and eggConfig.ui.hatch_panel or {}
+                selectedHatchCount = tonumber(panel.default_selected_count)
+                    or tonumber(hatching.default_requested_count)
+                    or selectedHatchCount
+            end
             template.Settings.AutoSystems = {
                 auto_target = {
                     enabled = autoTarget.default_enabled == true,
@@ -298,6 +312,9 @@ local function generateProfileTemplate(configLoader)
                     rarities = autoDelete.defaults and autoDelete.defaults.rarities or {},
                     pet_types = autoDelete.defaults and autoDelete.defaults.pet_types or {},
                     variants = autoDelete.defaults and autoDelete.defaults.variants or {},
+                },
+                hatch = {
+                    selected_count = math.max(1, math.floor(tonumber(selectedHatchCount) or 1)),
                 },
             }
         end
@@ -1554,6 +1571,17 @@ function DataService:_migrateAutoSystemSettings(data)
 
     local targetConfig = autoConfig.auto_target or {}
     local deleteConfig = autoConfig.auto_delete or {}
+    local eggConfig
+    local eggSuccess = pcall(function()
+        eggConfig = self._configLoader:LoadConfig("egg_system")
+    end)
+    eggConfig = eggSuccess and eggConfig or {}
+    local hatchingConfig = eggConfig.hatching or {}
+    local panelConfig = eggConfig.ui and eggConfig.ui.hatch_panel or {}
+    local defaultHatchCount = tonumber(panelConfig.default_selected_count)
+        or tonumber(hatchingConfig.default_requested_count)
+        or 1
+    local maxHatchCount = math.max(1, math.floor(tonumber(hatchingConfig.max_count) or 99))
 
     local autoSystems = data.Settings.AutoSystems
     if type(autoSystems.auto_target) ~= "table" then
@@ -1592,6 +1620,18 @@ function DataService:_migrateAutoSystemSettings(data)
     end
     if type(autoSystems.auto_delete.variants) ~= "table" then
         autoSystems.auto_delete.variants = {}
+        migrations += 1
+    end
+
+    if type(autoSystems.hatch) ~= "table" then
+        autoSystems.hatch = {}
+        migrations += 1
+    end
+    local selectedCount =
+        math.floor(tonumber(autoSystems.hatch.selected_count) or defaultHatchCount)
+    selectedCount = math.clamp(selectedCount, 1, maxHatchCount)
+    if autoSystems.hatch.selected_count ~= selectedCount then
+        autoSystems.hatch.selected_count = selectedCount
         migrations += 1
     end
 

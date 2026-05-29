@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DEFAULT_TIMEOUT_SECONDS = 20
 local REMOTE_NAME = "StudioSmokeTest"
+local EggInteractionService = require(ReplicatedStorage.Shared.Services.EggInteractionService)
 
 local function waitFor(description, timeoutSeconds, predicate)
     local deadline = os.clock() + (timeoutSeconds or DEFAULT_TIMEOUT_SECONDS)
@@ -94,6 +95,23 @@ local function waitForHatchPanel(player, expectedVisible, timeoutSeconds)
             end
             if expectedVisible == false and not panel then
                 return true
+            end
+            return nil
+        end
+    )
+end
+
+local function waitForHatchSelectedCount(player, expectedCount, timeoutSeconds)
+    return waitFor(
+        "persisted hatch selected count " .. tostring(expectedCount),
+        timeoutSeconds,
+        function()
+            local settingsFolder = player:FindFirstChild("Settings")
+            local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
+            local hatchFolder = autoFolder and autoFolder:FindFirstChild("Hatch")
+            local selected = hatchFolder and hatchFolder:FindFirstChild("SelectedCount")
+            if selected and selected.Value == expectedCount then
+                return selected.Value
             end
             return nil
         end
@@ -216,6 +234,21 @@ function EggProximitySmoke.run(options)
                 tostring(modeStatus.Text):find("Locked:", 1, true),
                 "Hatch panel mode status did not explain locked modes"
             )
+
+            EggInteractionService:SetSelectedHatchCount(4)
+            waitForHatchSelectedCount(player, 4, timeoutSeconds)
+            local debugState = EggInteractionService:GetHatchPanelDebugState()
+            assert(
+                debugState.selectedHatchCount == 4,
+                "Hatch interaction service did not keep selected count"
+            )
+            assert(
+                debugState.persistedSelectedHatchCount == 4,
+                "Hatch interaction service did not read persisted selected count"
+            )
+
+            EggInteractionService:SetSelectedHatchCount(1)
+            waitForHatchSelectedCount(player, 1, timeoutSeconds)
         end
 
         local near = invoke(remote, "HatchEggProximity")
