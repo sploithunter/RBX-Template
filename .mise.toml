@@ -37,6 +37,10 @@ run = "rojo serve"
 description = "Build the project for production"
 run = "rojo build --output game.rbxl"
 
+[tasks.release]
+description = "Publish to Roblox via Open Cloud (rojo upload). Needs ROBLOX_OPEN_CLOUD_KEY/UNIVERSE_ID/PLACE_ID env; refuses if unset. DRY_RUN=1 to validate only."
+run = "bash scripts/release.sh"
+
 [tasks.asset-report]
 description = "Report tracked pet assets and source-file gaps"
 run = "node scripts/assets_report.js"
@@ -64,6 +68,19 @@ run = "echo 'Run tests/TestBootstrap.lua in Roblox Studio'"
 [tasks.test-headless]
 description = "Run headless pure-logic unit tests with lune (no Studio required)"
 run = "lune run tests/headless/run.luau"
+
+[tasks.fmt-check]
+description = "StyLua --check on pipeline-owned paths (whole-repo stylua is a separate cleanup lane)"
+run = "stylua --check src/Shared/API src/Server/Services/GameAPIService.lua src/Server/Services/AutomationService.lua tests/headless"
+
+[tasks.ci]
+description = "Fast gate (no Studio): selene errors + format (owned paths) + rojo build + headless tests"
+run = [
+    "selene --allow-warnings src configs tests",
+    "stylua --check src/Shared/API src/Server/Services/GameAPIService.lua src/Server/Services/AutomationService.lua tests/headless",
+    "rojo build --output game.rbxl",
+    "lune run tests/headless/run.luau",
+]
 
 [tasks.lint]
 description = "Lint Lua files with Selene, failing on errors"

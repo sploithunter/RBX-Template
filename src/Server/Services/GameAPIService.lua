@@ -64,15 +64,10 @@ end
 function GameAPIService:Start()
     self:_setupNetworkTransport()
 
-    -- In Studio, let the automation test driver expose its commands on our bus.
-    -- AutomationService also tries from its own Start(); RegisterInto is
-    -- idempotent, so whichever starts last wins and double-registration is safe.
-    if RunService:IsStudio() then
-        local automation = self:_service("AutomationService")
-        if automation and automation.RegisterInto then
-            automation:RegisterInto(self._bus)
-        end
-    end
+    -- AutomationService (Studio-only) registers its automation.* commands into
+    -- this bus from its own Start(), via its injected GameAPIService dependency.
+    -- We don't pull it here because the _G locator isn't populated until after
+    -- the loader's LoadAll() completes.
 
     if self._logger then
         self._logger:Info("GameAPIService ready", {

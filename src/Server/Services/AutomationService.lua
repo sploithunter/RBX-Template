@@ -65,6 +65,7 @@ end
 function AutomationService:Init()
     self._logger = self._modules and self._modules.Logger
     self._dataService = self._modules and self._modules.DataService
+    self._gameApi = self._modules and self._modules.GameAPIService
     self._snapshots = {}
     self._nextSnapshotId = 0
 end
@@ -74,12 +75,10 @@ function AutomationService:Start()
         return -- never active outside Studio
     end
 
-    -- If the GameAPI bus is up, expose automation.* commands through it so the
-    -- harness has one boundary. Safe if GameAPIService isn't registered yet.
-    local locator = _G.RBXTemplateServices
-    local api = locator and locator:Get("GameAPIService")
-    if api and api.GetBus then
-        self:RegisterInto(api:GetBus())
+    -- Expose automation.* commands through the GameAPI bus (injected dependency,
+    -- so it's available regardless of Start order) — one boundary for the harness.
+    if self._gameApi and self._gameApi.GetBus then
+        self:RegisterInto(self._gameApi:GetBus())
     end
 
     if self._logger then
