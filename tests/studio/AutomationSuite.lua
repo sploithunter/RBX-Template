@@ -533,22 +533,16 @@ function AutomationSuite.run(opts)
         "a pet is still anchored"
     )
 
-    -- Movement is client-side now: the server unanchors each pet and hands its
-    -- network ownership to the owning player so the client PetFollowController
-    -- drives it smoothly. Confirm the server prepped a pet (unanchored + owned).
+    -- The service owns each pet's movement: it creates a single AlignPosition
+    -- (_FollowAlign) on the pet and drives its Position each tick (follow
+    -- formation when idle, the target when attacking). Confirm the service-owned
+    -- constraint is present + active on a spawned pet.
     local probe = petModels[1]
-    local prepped = probe and probe:GetAttribute("PetFollowPrepped") == true
-    local ownedByPlayer = false
-    if probe and probe.PrimaryPart then
-        local ok, owner = pcall(function()
-            return probe.PrimaryPart:GetNetworkOwner()
-        end)
-        ownedByPlayer = ok and owner == player
-    end
+    local pAlign = probe and probe:FindFirstChild("_FollowAlign")
     report:expect(
-        "server hands pet movement to the owning client (prepped + owned + unanchored)",
-        prepped and ownedByPlayer and probe.PrimaryPart.Anchored == false,
-        "pet not prepped/owned — server should unanchor + SetNetworkOwner"
+        "service-owned movement constraint exists + active on the pet",
+        pAlign ~= nil and pAlign.Enabled == true,
+        "_FollowAlign missing or disabled — service not driving the pet"
     )
 
     -- Mining (no regression): pets only mine breakables within the player's leash

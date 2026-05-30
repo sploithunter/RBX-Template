@@ -45,30 +45,13 @@ return {
         attack_responsiveness = 75,
     },
 
-    -- Attack mode: pets SURROUND the target in an animated ring (client-driven
-    -- visualization). Switch `style` to experiment.
-    --   leash_distance — how far the PLAYER can walk before a pet abandons its
-    --                    target and returns to following (server-authoritative).
-    --   style          — "orbit" (ring spins), "static_ring" (held ring),
-    --                    "lunge" (ring slots jab toward the center).
+    -- Attack mode: how close the pet sits to its target, and how far the PLAYER
+    -- can walk from a target before the pet abandons it and returns to following.
     attack = {
+        approach_distance = 6,
         leash_distance = 45,
-        style = "orbit",
-        ring_radius = 6,
-        ring_height = 3,
-        orbit_speed = 2.5, -- radians/sec wheel spin (orbit)
-        lunge_distance = 3, -- jab depth toward center (lunge)
-        lunge_speed = 6,
     },
 
-    -- Client movement smoothing (movement is a CLIENT-side visualization; the
-    -- pet position is lerped toward its target each frame). 0..1 per frame.
-    movement = {
-        follow_lerp = 0.18,
-        attack_lerp = 0.35,
-    },
-
-    -- Server tick throttle (seconds) for the authoritative work: target leash +
-    -- the mining damage tick. Movement is NOT done here (it's client-side).
+    -- Heartbeat throttle for the service loop (seconds between position updates).
     update_interval = 0.1,
 }

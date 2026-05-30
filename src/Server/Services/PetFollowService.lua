@@ -1,20 +1,21 @@
 --[[
-    PetFollowService — server authority for the pet work loop (issue #4).
+    PetFollowService — Feature: service-owned pet work loop (issue #4).
 
-    Responsibilities (SERVER ONLY):
-      - Mining damage tick: read each pet's TargetID and apply damage to the
-        breakable via CombatService:ResolvePetDamage + PetCombat (Contrib ledger).
-      - Target leash: clear TargetID when the player walks beyond leash_distance
-        from the target (so the pet returns to following). BreakableService
-        re-assigns when the player is near again.
-      - Hand MOVEMENT to the owning client: unanchor each pet and
-        SetNetworkOwner(player) so the client-side PetFollowController drives
-        position/animation smoothly at full framerate (replicated to everyone).
+    Replaces the legacy cloned per-pet PetScripts/Follow + FollowBox scripts with a
+    single server-owned, config-driven loop. Movement is computed by the pure
+    `PetFormation` core; damage flows through `CombatService:ResolvePetDamage`
+    (the modifier pipeline + PetCombat, built in Phase 4.d). No behavior lives in
+    cloned per-model scripts.
 
-    Movement/visualisation is NOT done here — it's a pure client concern (see
-    src/Client/Systems/PetFollowController.lua). Damage stays server-authoritative.
+    ROLLOUT FLAG: the entire loop only runs when `configs/pet_follow.lua`
+    `service_owned == true`. While false the service is inert and the legacy
+    cloned scripts drive movement exactly as before (flag-gated, reversible).
 
-    Gated on configs/pet_follow.lua `service_owned`.
+    Runtime contract preserved: pets remain Models under workspace.PlayerPets[name]
+    with PositionNumber / TargetID / TargetType / TargetWorld / Power and the
+    PetType/PetVariant attributes; TargetID is assigned externally (BreakableService
+    / BreakableSpawner) and read here (==0 follow, ~=0 attack a breakable, HP +
+    Contrib ledger).
 ]]
 
 local Players = game:GetService("Players")
@@ -22,6 +23,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
 local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
 
 local PetFollowService = {}
@@ -32,6 +34,7 @@ function PetFollowService:Init()
     self._configLoader = self._modules and self._modules.ConfigLoader
     self._config = self._configLoader:LoadConfig("pet_follow")
     self._nextHit = {} -- pet model -> os.clock() of next allowed mining hit
+    self._started = 0 -- service start clock (for the float phase)
 end
 
 function PetFollowService:_combatService()
@@ -48,14 +51,18 @@ end
 function PetFollowService:Start()
     if not self._config.service_owned then
         if self._logger then
-            self._logger:Info("PetFollowService inert (pet_follow.service_owned=false)")
+            self._logger:Info(
+                "PetFollowService inert (pet_follow.service_owned=false); legacy scripts own movement"
+            )
         end
         return
     end
-    -- Tell the legacy cloned scripts to stand down (issue #4).
+    self._started = os.clock()
+    -- Signal the legacy cloned scripts (Follow/FollowBox) to stand down — they
+    -- read this flag at the top and no-op, so this service owns movement.
     _G.PetFollowServiceOwned = true
     if self._logger then
-        self._logger:Info("PetFollowService active — server damage + client-owned movement")
+        self._logger:Info("PetFollowService active — owning the pet follow loop")
     end
     local accum = 0
     RunService.Heartbeat:Connect(function(dt)
@@ -70,30 +77,47 @@ function PetFollowService:Start()
     end)
 end
 
--- Unanchor + give the owning client network ownership so its PetFollowController
--- can move the pet smoothly. Done once per pet (attribute-guarded). Also strips
--- any stale server-side movement constraints from earlier builds.
-function PetFollowService:_prepPet(pet, player)
+-- One position attachment + Align constraints per pet, created lazily and reused.
+function PetFollowService:_ensureConstraints(pet)
     local primary = pet.PrimaryPart
     if not primary then
-        return
+        return nil
     end
-    if pet:GetAttribute("PetFollowPrepped") then
-        return
+    local att = primary:FindFirstChild("attachmentPet")
+    if not att then
+        att = Instance.new("Attachment")
+        att.Name = "attachmentPet"
+        att.Parent = primary
     end
-    for _, name in ipairs({ "_FollowAlign", "_FollowAlignO" }) do
-        local c = pet:FindFirstChild(name)
-        if c then
-            c:Destroy()
-        end
+    local align = pet:FindFirstChild("_FollowAlign")
+    if not align then
+        align = Instance.new("AlignPosition")
+        align.Name = "_FollowAlign"
+        align.Mode = Enum.PositionAlignmentMode.OneAttachment
+        align.Attachment0 = att
+        align.RigidityEnabled = false
+        -- Apply the pull at the center of mass so it never induces spin (the
+        -- attachment sits on an off-center part — that torque caused tumbling).
+        align.ApplyAtCenterOfMass = true
+        align.MaxForce = self._config.align.follow_max_force
+        align.Responsiveness = self._config.align.follow_responsiveness
+        align.Parent = pet
+    end
+    local alignO = pet:FindFirstChild("_FollowAlignO")
+    if not alignO then
+        alignO = Instance.new("AlignOrientation")
+        alignO.Name = "_FollowAlignO"
+        alignO.Mode = Enum.OrientationAlignmentMode.OneAttachment
+        alignO.Attachment0 = att
+        -- Rigid orientation snaps the pet to the target CFrame each step, so it
+        -- stays upright and never tumbles regardless of the position force.
+        alignO.RigidityEnabled = true
+        alignO.Parent = pet
     end
     if primary.Anchored then
         primary.Anchored = false
     end
-    pcall(function()
-        primary:SetNetworkOwner(player)
-    end)
-    pet:SetAttribute("PetFollowPrepped", true)
+    return align, alignO
 end
 
 -- Locate a breakable Model by id under its type/world folder (any nesting depth).
@@ -116,14 +140,26 @@ function PetFollowService:_findBreakable(targetType, world, id)
     return nil
 end
 
--- One mining hit on the pet's current target (server-authoritative damage).
-function PetFollowService:_mine(player, pet, breakable)
+-- Apply one mining hit to the pet's current breakable target (position-independent,
+-- mirrors the legacy doDamage but routed through the service-owned damage path).
+function PetFollowService:_mine(player, pet)
+    local targetId = pet:FindFirstChild("TargetID")
+    if not targetId or targetId.Value == 0 then
+        return
+    end
     local now = os.clock()
     if self._nextHit[pet] and now < self._nextHit[pet] then
         return
     end
+    local targetType = pet:FindFirstChild("TargetType")
+    local targetWorld = pet:FindFirstChild("TargetWorld")
+    local breakable = self:_findBreakable(
+        targetType and targetType.Value,
+        targetWorld and targetWorld.Value,
+        targetId.Value
+    )
     local combat = self:_combatService()
-    if not combat then
+    if not breakable or not combat then
         return
     end
     local hp = breakable:GetAttribute("HP") or 0
@@ -165,29 +201,74 @@ function PetFollowService:_tickPlayer(player)
     if not hrp or not petsFolder then
         return
     end
+
+    local pets = {}
+    for _, child in ipairs(petsFolder:GetChildren()) do
+        if child:IsA("Model") and child.PrimaryPart then
+            table.insert(pets, child)
+        end
+    end
+    local count = #pets
+    if count == 0 then
+        return
+    end
+
+    local cf = hrp.CFrame
+    local frame = {
+        position = { x = cf.Position.X, y = cf.Position.Y, z = cf.Position.Z },
+        look = { x = cf.LookVector.X, y = cf.LookVector.Y, z = cf.LookVector.Z },
+        right = { x = cf.RightVector.X, y = cf.RightVector.Y, z = cf.RightVector.Z },
+    }
+    local phase = os.clock() - self._started
+
+    -- Horizontal forward, so pets face the player's heading and stay upright.
+    local flatLook = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
+    local upFwd = flatLook.Magnitude > 0.01 and flatLook.Unit or Vector3.new(0, 0, -1)
     local leash = self._config.attack.leash_distance
 
-    for _, pet in ipairs(petsFolder:GetChildren()) do
-        if pet:IsA("Model") and pet.PrimaryPart then
-            self:_prepPet(pet, player)
+    for slot, pet in ipairs(pets) do
+        local posNV = pet:FindFirstChild("PositionNumber")
+        local index = (posNV and posNV.Value > 0) and posNV.Value or slot
+        local align, alignO = self:_ensureConstraints(pet)
+        if align then
             local targetId = pet:FindFirstChild("TargetID")
+            local breakable = nil
             if targetId and targetId.Value ~= 0 then
                 local targetType = pet:FindFirstChild("TargetType")
                 local targetWorld = pet:FindFirstChild("TargetWorld")
-                local breakable = self:_findBreakable(
+                breakable = self:_findBreakable(
                     targetType and targetType.Value,
                     targetWorld and targetWorld.Value,
                     targetId.Value
                 )
-                -- leash: abandon a gone/distant target so the pet follows again
+                -- Leash: if the target is gone, or the PLAYER has walked away from
+                -- it, abandon it and return to following (the legacy script did
+                -- this; BreakableService re-assigns when the player is near again).
                 if
                     not breakable
-                    or (breakable:GetPivot().Position - hrp.Position).Magnitude > leash
+                    or (breakable:GetPivot().Position - cf.Position).Magnitude > leash
                 then
                     targetId.Value = 0
-                else
-                    self:_mine(player, pet, breakable)
+                    breakable = nil
                 end
+            end
+
+            if breakable then
+                -- attack mode: sit near the breakable, face it, and mine it
+                local bpos = breakable:GetPivot().Position
+                local pos = bpos + Vector3.new(0, self._config.attack.approach_distance, 0)
+                align.Position = pos
+                local toB = Vector3.new(bpos.X - pos.X, 0, bpos.Z - pos.Z)
+                local dir = toB.Magnitude > 0.01 and toB.Unit or upFwd
+                alignO.CFrame = CFrame.lookAt(pos, pos + dir)
+                self:_mine(player, pet)
+            else
+                -- follow mode: hold the formation slot (with a gentle bob), upright
+                local t = PetFormation.targetPosition(frame, index, count, self._config.formation)
+                local bob = PetFormation.floatOffset(phase + index, self._config.float)
+                local pos = Vector3.new(t.x, t.y + bob, t.z)
+                align.Position = pos
+                alignO.CFrame = CFrame.lookAt(pos, pos + upFwd)
             end
         end
     end
