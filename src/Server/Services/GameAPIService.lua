@@ -742,6 +742,45 @@ function GameAPIService:_registerTestCommands()
         end,
     })
 
+    -- Reuse an existing unique (huge) test pet of this type, or grant one only if
+    -- none exists — so repeated test runs don't accumulate Huge Bears in the
+    -- profile. Returns a uid suitable for the Spirit Form / squad tests.
+    self._bus:register("game.getOrGrantUniquePet", {
+        description = "[test] Reuse an existing huge test pet of this type, or grant one (no accumulation).",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { petType = "string" })
+        end,
+        handler = function(context, args)
+            local inventory = self:_service("InventoryService")
+            if inventory then
+                local bucket = inventory:GetInventory(context.player, "pets")
+                local items = bucket and bucket.items
+                if items then
+                    for uid, rec in pairs(items) do
+                        if type(rec) == "table" and rec.huge == true and rec.id == args.petType then
+                            return { ok = true, uid = uid, reused = true }
+                        end
+                    end
+                end
+            end
+            local grant = self:_service("PetGrantService")
+            if not grant then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            local result = grant:GrantPet(context.player, {
+                petType = args.petType,
+                variant = "basic",
+                huge = true,
+                source = "phase3_e2e",
+            })
+            if not result.ok then
+                return { ok = false, reason = result.error or "grant_failed" }
+            end
+            return { ok = true, uid = result.uid, reused = false }
+        end,
+    })
+
     self._bus:register("game.rechargePet", {
         description = "[test] Instant-recharge a unique pet (clear Spirit Form).",
         testOnly = true,

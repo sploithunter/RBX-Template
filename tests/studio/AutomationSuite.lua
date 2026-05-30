@@ -338,10 +338,14 @@ function AutomationSuite.run(opts)
         return false
     end
 
-    -- a UNIQUE pet (huge) has its own uid + spirit-form state
-    local unique =
-        api:Execute(player, "game.grantPet", { petType = "bear", variant = "basic", huge = true })
-    report:expect("granted a unique pet", domainOk(unique), unique.error or "grant failed")
+    -- a UNIQUE (huge) pet with its own uid + spirit-form state. Reuse an existing
+    -- one across runs so the suite doesn't accumulate Huge Bears in the profile.
+    local unique = api:Execute(player, "game.getOrGrantUniquePet", { petType = "bear" })
+    report:expect(
+        "have a unique test pet (reused or granted)",
+        domainOk(unique),
+        unique.error or "grant failed"
+    )
     local uid = unique.result and unique.result.uid
 
     report:expect(
