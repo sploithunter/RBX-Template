@@ -153,8 +153,16 @@ automation, not vision-based "computer use." It publishes the open session (code
 - It's **UI-dependent** (menu item name "Publish to Roblox"), so it can need
   re-tuning across Studio versions — less robust than the Open Cloud API.
 
-For a **computer-use** agent or human, plain **File → Publish** is simplest;
-Open Cloud remains right for CI / Rojo-owned staging places.
+**Why an MCP-only agent should prefer the AppleScript lane over Open Cloud:** the
+Open Cloud path requires **closing the place in Studio** (to avoid the `Conflict`
+error), which **drops the Rojo plugin connection** — and reconnecting means
+clicking the in-canvas **"Connect"** button, which *is* vision-based computer use
+the agent doesn't have. So Open Cloud silently breaks the live dev loop. The
+AppleScript publish keeps **Studio + Rojo connected the whole time** — publish
+in place, keep iterating. Reserve Open Cloud for CI / Rojo-owned staging where no
+Studio session is involved.
+
+For a **computer-use** agent or human, plain **File → Publish** is simplest.
 
 **Open Cloud path — setup gotchas (learned live):**
 - The Open Cloud key needs the **`universe-places`** API system with **Write**
