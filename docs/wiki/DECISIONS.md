@@ -92,6 +92,16 @@ The template (reusable infrastructure) and the game (Pet Realm) live in **one op
 
 Coordination is by **process, not repo separation**: branch-by-domain (`template/*`, `game/*`/`pet-realm/*`, `agent/*`), everything lands on `main` via PR gated by `mise run ci`, and `.github/CODEOWNERS` documents the template-vs-game path boundary. Cross-domain fixes follow **hybrid-by-size**: small/obvious template improvements found during game work are made on a `template/*` branch + PR; larger ones become GitHub issues labeled `template`. The real conflict surfaces are shared files (`docs/wiki/LOG.md`, `CURRENT_STATUS.md`, `.mise.toml`, `default.project.json`), which are treated append-only / dedicated-PR. Operational rules live in `AGENTS.md`.
 
+## Roblox Places (Multi-Agent)
+
+Agents use **separate Roblox places**, one per domain — not a shared place. Rationale: DataStores are universe-scoped, so a shared place means shared, interfering save data during tests; publishing conflicts when a place is open in Studio (two agents would collide constantly); and the game needs an **authored map** while the template needs a **clean/synthetic baseplate**. Code is shared via git (the source of truth); places are just runtime targets that legitimately differ in authored Workspace content and save data.
+
+Assignment:
+- **Pet Realm game place** (game agent): the authored ring map + game; Studio-published. Universe/Place IDs: _TBD — create via Studio "Publish As → new experience", then record here._
+- **Template / staging place** = "Place1", universe `10242349813`, place `117209749436107` (template agent + CI): mapless/synthetic (the template synthesizes hooks on a blank map); also the Open Cloud publish/staging target (`.env.local`).
+
+Caveat: authored maps live in the place, not git (per the Rojo/Studio boundary). The Pet Realm map exists only in the Pet Realm place; an agent needing it opens that place in its own Studio.
+
 ## Links
 
 - [Map Integration Contract](MAP_INTEGRATION_CONTRACT.md)
