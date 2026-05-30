@@ -603,6 +603,56 @@ Deferred (with reasons):
   resolution + spirit-form-on-down are verified through the bus, but a player has
   not yet fought an authored enemy in-world. Needs Studio-authored enemy models.
 
+## Halo & Horns — Phase 7 (Reward spine: Quests / Daily / Shop / Rewards)
+
+Last checked: 2026-05-30
+
+A single backbone that collapses four menu features into one machine: **Triggers
+bump Counters → Conditions decide what's Claimable → a Claim grants a Reward Bundle
+(once, audited) → Shop is a Claim whose gate is a cost instead of a condition.**
+
+Pure cores (headless-tested, `src/Shared/Game/`):
+- **RewardBundle** — the universal "what you get" (currencies/pets/items/effects/
+  slots): `normalize`, `merge`, `isEmpty`. Everything terminates here.
+- **Condition** — the universal gate: `isMet` / `progress` over a snapshot
+  (counters/level/currency). Types: counter_at_least, level_at_least,
+  currency_at_least, all_of, any_of. `progress()` feeds UI bars.
+- **ClaimLogic** — anti-replay: `canClaim(met, count, def)` → not_met /
+  already_claimed / out_of_stock (claim-once | repeatable | limit).
+- **DailyStreak** — `resolve(lastDay, today, streak, cfg)` (clockless; day indices
+  passed in) → claimable / newStreak / claimDay (calendar wraps) / reset.
+- **ShopLogic** — `affordable` / `canPurchase(offer, balances, count)` (cost is an
+  inverse bundle) → insufficient_funds / out_of_stock.
+
+Services:
+- **RewardService** — `Grant(player, bundle, source)` is the one place a bundle
+  becomes real: fans out to DataService (currencies), InventoryService (items),
+  PetGrantService (pets), PlayerEffectsService (timed effects), Upgrades (capacity),
+  and writes a capped, source-keyed grant-history audit log (`reward.log`).
+- **QuestService** — condition-gated claims; ledger `profile.QuestClaims`; `List`
+  (progress + claimable), `Claim`, `Pending` (the badge count).
+- **DailyService** — cadence-gated claims; state `profile.Daily`; `Status` / `Claim`.
+- **ShopService** — cost-gated claims; counts `profile.ShopPurchases`; `List` /
+  `Purchase` (spend cost → grant reward).
+
+Bus: `quest.list/claim`, `daily.status/claim`, `shop.list/purchase`,
+`rewards.summary` (the menu-badge aggregator) + test `reward.grant/simulate/log`,
+`test.setCounter/setLevel`, `claim.reset`. Configs: `rewards/quests/daily/shop.lua`.
+
+Verification: headless `mise run test-headless` **282/282 across 33 specs**;
+`mise run ci` green; live `AutomationSuite` **113/113** in Halo & Horns (reward
+grant +25 crystals + audit entry; quest not_met→claim→already_claimed; daily
+day1→2 streak + same-day block; shop purchase + limit-1 out_of_stock; summary).
+
+Deferred (with reasons):
+- The [studio]/UI halves behind the existing menu buttons: Quest list + progress
+  bars, Daily streak calendar, Shop grid + confirm, the Rewards badge wiring. All
+  server logic + bus + the badge aggregator are done; the panels are the next layer.
+- Effect-reward application reads back through PlayerEffectsService folders (the
+  grant call is wired; live effect-stat assertions are [studio]).
+- Achievements already carry `reward_type`/`reward` in config — routing them through
+  RewardService is a small follow-up (the spine is built to absorb them).
+
 ## Balance follow-up (config-only)
 - Huge pets' base-power floor scales with pet level (huge_base_power × level mult →
   e.g. 152% at lvl 27). Flagged by the user as too high; tune later (config /

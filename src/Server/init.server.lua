@@ -397,6 +397,27 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.FusionService,
     { "Logger", "ConfigLoader", "DataService" }
 )
+-- Reward spine (Phase 7): RewardService grants bundles; Quest/Daily/Shop gate them.
+loader:RegisterModule(
+    "RewardService",
+    ServerScriptService.Server.Services.RewardService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
+loader:RegisterModule(
+    "QuestService",
+    ServerScriptService.Server.Services.QuestService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
+loader:RegisterModule(
+    "DailyService",
+    ServerScriptService.Server.Services.DailyService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
+loader:RegisterModule(
+    "ShopService",
+    ServerScriptService.Server.Services.ShopService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- FocusService: Halo & Horns player Focus pool + invulnerability (Feature 12).
 loader:RegisterModule(
     "FocusService",
@@ -548,6 +569,10 @@ table.insert(requiredModules, "RosterService")
 table.insert(requiredModules, "PartyService")
 table.insert(requiredModules, "TradeService")
 table.insert(requiredModules, "FusionService")
+table.insert(requiredModules, "RewardService")
+table.insert(requiredModules, "QuestService")
+table.insert(requiredModules, "DailyService")
+table.insert(requiredModules, "ShopService")
 table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "PetFollowService")

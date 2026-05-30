@@ -871,6 +871,96 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    -- REWARD SPINE (Quests / Daily / Shop / Rewards) ----------------------
+    bus:register("quest.list", {
+        description = "List quests with progress + claimable state.",
+        handler = function(context)
+            local s = self:_service("QuestService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:List(context.player)
+        end,
+    })
+    bus:register("quest.claim", {
+        description = "Claim a quest's reward (gated by its condition + claim policy).",
+        validate = function(args)
+            return Validators.fields(args, { questId = "string" })
+        end,
+        handler = function(context, args)
+            local s = self:_service("QuestService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Claim(context.player, args.questId)
+        end,
+    })
+    bus:register("daily.status", {
+        description = "Daily login streak status (claimable today? current/next streak).",
+        validate = function(args)
+            return Validators.fields(args, { day = { type = "int", optional = true } })
+        end,
+        handler = function(context, args)
+            local s = self:_service("DailyService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Status(context.player, context.isTest and args.day or nil)
+        end,
+    })
+    bus:register("daily.claim", {
+        description = "Claim today's daily login reward and advance the streak.",
+        validate = function(args)
+            return Validators.fields(args, { day = { type = "int", optional = true } })
+        end,
+        handler = function(context, args)
+            local s = self:_service("DailyService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Claim(context.player, context.isTest and args.day or nil)
+        end,
+    })
+    bus:register("shop.list", {
+        description = "List shop offers with affordability + purchase limits.",
+        handler = function(context)
+            local s = self:_service("ShopService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:List(context.player)
+        end,
+    })
+    bus:register("shop.purchase", {
+        description = "Purchase a shop offer (spend cost, grant reward bundle).",
+        validate = function(args)
+            return Validators.fields(args, { offerId = "string" })
+        end,
+        handler = function(context, args)
+            local s = self:_service("ShopService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Purchase(context.player, args.offerId)
+        end,
+    })
+    bus:register("rewards.summary", {
+        description = "Aggregate claimable count across quests + daily (the menu badges).",
+        handler = function(context)
+            local quest = self:_service("QuestService")
+            local daily = self:_service("DailyService")
+            local questPending = quest and quest:Pending(context.player) or 0
+            local dailyStatus = daily and daily:Status(context.player) or { claimable = false }
+            local dailyPending = dailyStatus.claimable and 1 or 0
+            return {
+                ok = true,
+                quest = questPending,
+                daily = dailyPending,
+                total = questPending + dailyPending,
+            }
+        end,
+    })
+
     -- SYSTEM --------------------------------------------------------------
     bus:register("system.listCommands", {
         description = "List every command the bus exposes to this caller.",
@@ -1240,6 +1330,105 @@ function GameAPIService:_registerTestCommands()
                 return { ok = false, reason = "service_unavailable" }
             end
             return s:GetFusionLog(args.userId)
+        end,
+    })
+
+    -- Reward spine test affordances ---------------------------------------
+    self._bus:register("test.setCounter", {
+        description = "[test] Set a stat counter (drive quest conditions).",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { counter = "string", value = "number" })
+        end,
+        handler = function(context, args)
+            local stats = self:_service("StatsService")
+            if not stats then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            stats:Set(context.player, args.counter, args.value)
+            return { ok = true, counter = args.counter, value = args.value }
+        end,
+    })
+
+    self._bus:register("test.setLevel", {
+        description = "[test] Set the player's level (drive level conditions).",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { level = { type = "int", min = 1 } })
+        end,
+        handler = function(context, args)
+            local data = self:_service("DataService")
+            if not data then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            local profile = data:GetData(context.player)
+            profile.Stats = profile.Stats or {}
+            profile.Stats.Level = args.level
+            return { ok = true, level = args.level }
+        end,
+    })
+
+    self._bus:register("reward.grant", {
+        description = "[test] Grant an arbitrary reward bundle to the player.",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, {
+                bundle = "table",
+                source = { type = "string", optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local s = self:_service("RewardService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Grant(context.player, args.bundle, args.source or "test_grant")
+        end,
+    })
+
+    self._bus:register("reward.simulate", {
+        description = "[test] Normalize a reward bundle without applying it.",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { bundle = "table" })
+        end,
+        handler = function(_, args)
+            local s = self:_service("RewardService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Simulate(args.bundle)
+        end,
+    })
+
+    self._bus:register("reward.log", {
+        description = "[test] Query the reward grant-history audit log.",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { userId = { type = "int", optional = true } })
+        end,
+        handler = function(_, args)
+            local s = self:_service("RewardService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:GetGrantLog(args.userId)
+        end,
+    })
+
+    self._bus:register("claim.reset", {
+        description = "[test] Clear quest claims, daily streak, and shop purchases.",
+        testOnly = true,
+        handler = function(context)
+            local data = self:_service("DataService")
+            if not data then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            local profile = data:GetData(context.player)
+            profile.QuestClaims = {}
+            profile.Daily = { lastDay = nil, streak = 0 }
+            profile.ShopPurchases = {}
+            return { ok = true }
         end,
     })
 end

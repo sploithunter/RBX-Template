@@ -857,6 +857,81 @@ function AutomationSuite.run(opts)
         "chaotic"
     )
 
+    -- Phase 7: reward spine (Quests / Daily / Shop / Rewards), live through the bus.
+    api:Execute(player, "claim.reset", {}) -- clean slate for deterministic claims
+
+    -- RewardService: grant a bundle, verify it lands (crystals aren't mined, so no noise).
+    local crystalsBefore = (api:Execute(player, "automation.getPlayerState", {}).result or {}).currencies
+    crystalsBefore = (crystalsBefore and crystalsBefore.crystals) or 0
+    local grantR = api:Execute(player, "reward.grant", {
+        bundle = { currencies = { crystals = 25 } },
+        source = "test:phase7",
+    })
+    report:expect("reward.grant dispatches", domainOk(grantR), grantR.error or "grant failed")
+    local crystalsAfter = (api:Execute(player, "automation.getPlayerState", {}).result or {}).currencies
+    crystalsAfter = (crystalsAfter and crystalsAfter.crystals) or 0
+    report:expectEqual("reward bundle grants +25 crystals", crystalsAfter, crystalsBefore + 25)
+    report:expect(
+        "grant is written to the audit log",
+        #(
+                (api:Execute(player, "reward.log", { userId = player.UserId }).result or {}).records
+                or {}
+            ) > 0,
+        "grant ledger empty"
+    )
+
+    -- Quests: condition gate + claim-once anti-replay.
+    api:Execute(player, "test.setCounter", { counter = "breakables_broken", value = 0 })
+    report:expectEqual(
+        "quest not claimable below its threshold",
+        api:Execute(player, "quest.claim", { questId = "crystal_crusher" }).result.reason,
+        "not_met"
+    )
+    api:Execute(player, "test.setCounter", { counter = "breakables_broken", value = 50 })
+    report:expect(
+        "quest claimable once the counter hits 50",
+        domainOk(api:Execute(player, "quest.claim", { questId = "crystal_crusher" })),
+        "quest claim failed at threshold"
+    )
+    report:expectEqual(
+        "re-claiming the quest is rejected (already_claimed)",
+        api:Execute(player, "quest.claim", { questId = "crystal_crusher" }).result.reason,
+        "already_claimed"
+    )
+
+    -- Daily streak: claim advances the streak; same day blocked; next day continues.
+    local d1 = api:Execute(player, "daily.claim", { day = 1000 })
+    report:expect("daily day-1 claim ok", domainOk(d1), d1.error or "daily claim failed")
+    report:expectEqual("daily streak starts at 1", d1.result and d1.result.streak, 1)
+    report:expectEqual(
+        "same-day re-claim is rejected",
+        api:Execute(player, "daily.claim", { day = 1000 }).result.reason,
+        "already_claimed_today"
+    )
+    report:expectEqual(
+        "next consecutive day advances the streak to 2",
+        api:Execute(player, "daily.claim", { day = 1001 }).result.streak,
+        2
+    )
+
+    -- Shop: spend cost → grant reward; the limit-1 offer can't be bought twice.
+    api:Execute(player, "test.grantCurrency", { currency = "coins", amount = 2000 })
+    local buy = api:Execute(player, "shop.purchase", { offerId = "starter_pack" })
+    report:expect("shop purchase ok with funds", domainOk(buy), buy.error or "purchase failed")
+    report:expectEqual(
+        "limited offer can't be purchased twice (out_of_stock)",
+        api:Execute(player, "shop.purchase", { offerId = "starter_pack" }).result.reason,
+        "out_of_stock"
+    )
+
+    -- Rewards summary: the menu badge aggregator returns a numeric total.
+    local summary = api:Execute(player, "rewards.summary", {})
+    report:expect(
+        "rewards.summary returns aggregate badge counts",
+        domainOk(summary) and type(summary.result.total) == "number",
+        "summary missing total"
+    )
+
     return HttpService:JSONEncode(report:summary())
 end
 
