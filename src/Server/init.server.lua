@@ -371,6 +371,13 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.HotbarService,
     { "Logger", "ConfigLoader", "DataService" }
 )
+-- RosterService: Halo & Horns named rosters + injury-rule deploy (Feature 17).
+-- Resolves SpiritFormService at runtime for pet readiness.
+loader:RegisterModule(
+    "RosterService",
+    ServerScriptService.Server.Services.RosterService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- FocusService: Halo & Horns player Focus pool + invulnerability (Feature 12).
 loader:RegisterModule(
     "FocusService",
@@ -518,6 +525,7 @@ table.insert(requiredModules, "ArchetypeService")
 table.insert(requiredModules, "PowerService")
 table.insert(requiredModules, "AugmentationService")
 table.insert(requiredModules, "HotbarService")
+table.insert(requiredModules, "RosterService")
 table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "PetFollowService")

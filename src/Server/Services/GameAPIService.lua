@@ -759,6 +759,56 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("roster.list", {
+        description = "The player's named rosters.",
+        handler = function(context)
+            local s = self:_service("RosterService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:List(context.player)
+        end,
+    })
+
+    bus:register("roster.create", {
+        description = "Create/replace a named roster (max_to_deploy clamps to squad cap).",
+        validate = function(args)
+            return Validators.fields(args, {
+                name = "string",
+                orderedPets = "table",
+                maxToDeploy = { type = "int", min = 0, optional = true },
+                injuryRule = { type = "string", optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local s = self:_service("RosterService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Create(
+                context.player,
+                args.name,
+                args.orderedPets,
+                args.maxToDeploy,
+                args.injuryRule
+            )
+        end,
+    })
+
+    bus:register("roster.invoke", {
+        description = "Deploy a roster into the active squad (per its injury rule).",
+        validate = function(args)
+            return Validators.fields(args, { name = "string" })
+        end,
+        handler = function(context, args)
+            local s = self:_service("RosterService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Invoke(context.player, args.name)
+        end,
+    })
+
     -- SYSTEM --------------------------------------------------------------
     bus:register("system.listCommands", {
         description = "List every command the bus exposes to this caller.",
@@ -1021,6 +1071,22 @@ function GameAPIService:_registerTestCommands()
                 return { ok = false, reason = "service_unavailable" }
             end
             return s:Respec(context.player, args.archetype)
+        end,
+    })
+
+    -- Remove a pet ref from all rosters (simulates delete/trade, Feature 17).
+    self._bus:register("roster.removePetRef", {
+        description = "[test] Remove a pet ref from all rosters (delete/trade).",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { petRef = "string" })
+        end,
+        handler = function(context, args)
+            local s = self:_service("RosterService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:RemovePetReference(context.player, args.petRef)
         end,
     })
 
