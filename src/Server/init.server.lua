@@ -378,6 +378,12 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.RosterService,
     { "Logger", "ConfigLoader", "DataService" }
 )
+-- PartyService: Halo & Horns group play (Feature 18) — membership + group math.
+loader:RegisterModule(
+    "PartyService",
+    ServerScriptService.Server.Services.PartyService,
+    { "Logger", "ConfigLoader" }
+)
 -- FocusService: Halo & Horns player Focus pool + invulnerability (Feature 12).
 loader:RegisterModule(
     "FocusService",
@@ -526,6 +532,7 @@ table.insert(requiredModules, "PowerService")
 table.insert(requiredModules, "AugmentationService")
 table.insert(requiredModules, "HotbarService")
 table.insert(requiredModules, "RosterService")
+table.insert(requiredModules, "PartyService")
 table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "PetFollowService")

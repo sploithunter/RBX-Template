@@ -809,6 +809,36 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("party.get", {
+        description = "The player's party state (members + size).",
+        handler = function(context)
+            local s = self:_service("PartyService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:GetState(context.player)
+        end,
+    })
+
+    bus:register("party.simulate", {
+        description = "Group math: difficulty scaling, equal loot split, damage attribution.",
+        validate = function(args)
+            return Validators.fields(args, {
+                baseHp = { type = "number", optional = true },
+                partySize = { type = "int", min = 1, optional = true },
+                loot = { type = "table", optional = true },
+                contributions = { type = "table", optional = true },
+            })
+        end,
+        handler = function(_, args)
+            local s = self:_service("PartyService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Simulate(args)
+        end,
+    })
+
     -- SYSTEM --------------------------------------------------------------
     bus:register("system.listCommands", {
         description = "List every command the bus exposes to this caller.",
