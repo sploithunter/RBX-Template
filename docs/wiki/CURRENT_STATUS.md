@@ -270,6 +270,44 @@ Deferred (with reasons, per the implementation plan):
 - Formal ProfileStore schema entry + migration for Soul fields — currently
   lazy-initialized; can be formalized when convenient.
 
+## Halo & Horns — Phase 1 (Pets & Power)
+
+Last checked: 2026-05-30
+
+Pet element identity + runtime power, built test-first (pure cores headless, then
+wired live). Power is always computed, never persisted.
+
+- **Element resonance** (Feature 6): `configs/elements.lua` + pure
+  `src/Shared/Game/ElementResonance.lua` (light/shadow opposing-dominant 1.5,
+  home 1.2; chaotic flat 1.3; neutral 1.0).
+- **Theme utility** (Feature 6): `configs/theme_utility.lua` + pure `ThemeUtility`
+  (passive active only in the theme's dichotomy biome). Module tested; live
+  wiring waits on pets gaining a biome `theme` (they currently have `category`).
+- **Power formula** (Feature 6): pure `PowerFormula` — multiplicative base ×
+  variant × level × enchant × element × theme_utility × stack × buff (rounded).
+- **Element at hatch** (Feature 5): `configs/layers.lua` `hatch_element` +
+  `realm_alignment` maps + pure `PetElement` (elementForLayer, realm alignment,
+  element-in-stack-key). `PetGrantService` stamps `petData.element` from the hatch
+  layer (base → neutral now; Heaven/Hell activate with LayerService in Phase 2);
+  additive field, no schema migration.
+- **Bus command** `pet.power`: base × variant × element-resonance for a context
+  (never persisted); test-only `game.grantPet` returns the granted record.
+
+Verification:
+- Headless `mise run test-headless`: 94/94 across 13 specs (all Feature 5/6 [unit]
+  scenarios). `mise run ci` green.
+- Live in Halo & Horns: `AutomationSuite` 25/25 incl. element neutral at grant,
+  power-not-persisted, and resonance arithmetic (bear: neutral 10 / Hell 15 /
+  Heaven 12; golden 15).
+
+Deferred (with reasons):
+- Element-in-stack-key (different element → new stack) — mechanism built + tested;
+  only matters once Heaven/Hell hatches produce non-neutral elements (Phase 2).
+- Theme-utility on live pets — needs pets to carry a biome `theme` (content/Phase 2).
+- Power recalc on live biome/layer travel ([studio]) — needs the world (Phase 2);
+  dynamic recalc is already shown via `pet.power` varying by realm with no save.
+- Element via fusion (chaotic) — Phase 6 fusion.
+
 ## Recent Planning State
 
 The project now has two high-level source documents:
