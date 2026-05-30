@@ -330,6 +330,22 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.LayerService,
     { "Logger", "ConfigLoader", "DataService" }
 )
+-- Phase 3 party core (Halo & Horns): active squad, spirit form, stack pool.
+loader:RegisterModule(
+    "ActiveSquadService",
+    ServerScriptService.Server.Services.ActiveSquadService,
+    { "Logger", "ConfigLoader", "DataService", "InventoryService" }
+)
+loader:RegisterModule(
+    "SpiritFormService",
+    ServerScriptService.Server.Services.SpiritFormService,
+    { "Logger", "ConfigLoader", "DataService", "InventoryService", "ActiveSquadService" }
+)
+loader:RegisterModule(
+    "StackPoolService",
+    ServerScriptService.Server.Services.StackPoolService,
+    { "Logger", "ConfigLoader" }
+)
 -- GameAPIService: the unified command-bus boundary (see
 -- docs/wiki/AUTOMATION_API_DESIGN.md). Handlers resolve target services from the
 -- _G.RBXTemplateServices locator at runtime, so it only needs Logger to boot.
@@ -449,6 +465,9 @@ appendIfEnabled(requiredModules, "pet_progression", "PetProgressionService")
 appendIfEnabled(requiredModules, "enchants", "EnchantService")
 table.insert(requiredModules, "AlignmentService")
 table.insert(requiredModules, "LayerService")
+table.insert(requiredModules, "ActiveSquadService")
+table.insert(requiredModules, "SpiritFormService")
+table.insert(requiredModules, "StackPoolService")
 table.insert(requiredModules, "GameAPIService")
 if RunService:IsStudio() then
     table.insert(requiredModules, "StudioSmokeTestService")

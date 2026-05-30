@@ -498,6 +498,102 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    -- PARTY: active squad / spirit form / stack pool (Phase 3) -----------
+    bus:register("squad.get", {
+        description = "The player's active squad (array of pet refs).",
+        handler = function(context)
+            local s = self:_service("ActiveSquadService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, squad = s:Get(context.player) }
+        end,
+    })
+
+    bus:register("squad.deploy", {
+        description = "Deploy a pet (uid/stack key) to the active squad.",
+        validate = function(args)
+            return Validators.fields(args, { ref = "string" })
+        end,
+        handler = function(context, args)
+            local s = self:_service("ActiveSquadService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Deploy(context.player, args.ref)
+        end,
+    })
+
+    bus:register("squad.remove", {
+        description = "Remove a pet from the active squad.",
+        validate = function(args)
+            return Validators.fields(args, { ref = "string" })
+        end,
+        handler = function(context, args)
+            local s = self:_service("ActiveSquadService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Remove(context.player, args.ref)
+        end,
+    })
+
+    bus:register("squad.swap", {
+        description = "Swap one active-squad pet for another (in-combat cooldown).",
+        validate = function(args)
+            return Validators.fields(args, {
+                outRef = "string",
+                inRef = "string",
+                inCombat = { type = "boolean", optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local s = self:_service("ActiveSquadService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Swap(context.player, args.outRef, args.inRef, args.inCombat)
+        end,
+    })
+
+    bus:register("spirit.status", {
+        description = "Spirit-form state + deployability of a unique pet.",
+        validate = function(args)
+            return Validators.fields(args, {
+                uid = "string",
+                inHeaven = { type = "boolean", optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local s = self:_service("SpiritFormService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Status(context.player, args.uid, args.inHeaven)
+        end,
+    })
+
+    bus:register("stack.simulate", {
+        description = "Run the stacked-pet pool model (refresh + contribution).",
+        validate = function(args)
+            return Validators.fields(args, {
+                total = { type = "int", min = 0 },
+                ready = { type = "int", min = 0 },
+                elapsed = { type = "int", min = 0, optional = true },
+                recharge = { type = "number", optional = true },
+                basePower = { type = "number", optional = true },
+                curve = { type = "string", optional = true },
+            })
+        end,
+        handler = function(_, args)
+            local s = self:_service("StackPoolService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Simulate(args)
+        end,
+    })
+
     -- SYSTEM --------------------------------------------------------------
     bus:register("system.listCommands", {
         description = "List every command the bus exposes to this caller.",
@@ -566,6 +662,7 @@ function GameAPIService:_registerTestCommands()
                 petType = "string",
                 variant = { type = "string", optional = true },
                 element = { type = "string", optional = true },
+                huge = { type = "boolean", optional = true },
             })
         end,
         handler = function(context, args)
@@ -577,6 +674,7 @@ function GameAPIService:_registerTestCommands()
                 petType = args.petType,
                 variant = args.variant or "basic",
                 element = args.element, -- nil -> from layer (base -> neutral)
+                huge = args.huge, -- huge -> a unique pet record (own uid)
                 source = "phase1_e2e",
             })
             if not result.ok then
@@ -590,6 +688,40 @@ function GameAPIService:_registerTestCommands()
                 variant = petData.variant,
                 hasPowerField = petData.power ~= nil, -- should be false (power not persisted on the stored record)
             }
+        end,
+    })
+
+    -- Down / recharge a unique pet (real combat down triggers arrive in Phase 4).
+    self._bus:register("game.downPet", {
+        description = "[test] Down a unique pet (Spirit Form); auto-returns from squad.",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, {
+                uid = "string",
+                tier = { type = "string", optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local s = self:_service("SpiritFormService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Down(context.player, args.uid, args.tier or "mid_tier")
+        end,
+    })
+
+    self._bus:register("game.rechargePet", {
+        description = "[test] Instant-recharge a unique pet (clear Spirit Form).",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { uid = "string" })
+        end,
+        handler = function(context, args)
+            local s = self:_service("SpiritFormService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:InstantRecharge(context.player, args.uid)
         end,
     })
 
