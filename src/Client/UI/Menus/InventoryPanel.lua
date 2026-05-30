@@ -24,6 +24,9 @@ local UserInputService = game:GetService("UserInputService")
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local ConfigLoader = require(ReplicatedStorage.Shared.ConfigLoader)
+-- Single source of truth for configured base power (huge-aware), shared with the
+-- server so the displayed power matches the power that mines/fights.
+local PetPower = require(ReplicatedStorage.Shared.Game.PetPower)
 local petVisualsOk, PetVariantVisuals = pcall(function()
     return require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
 end)
@@ -1209,12 +1212,13 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
         return 1 + bonus
     end
 
-    local function getConfiguredPowerForLevel(pdata, level)
-        local configuredPower = tonumber(pdata and pdata.power) or 0
-        if configuredPower <= 0 then
+    local function getConfiguredPowerForLevel(pdata, level, isHuge)
+        -- Shared source of truth: huge pets use huge_base_power, then level scaling.
+        local base = PetPower.configuredBasePower(pdata, isHuge == true)
+        if base <= 0 then
             return 0
         end
-        return math.max(1, math.floor(configuredPower * getPowerMultiplierForLevel(level)))
+        return PetPower.withLevel(base, level, petProgressionConfig)
     end
 
     local function getConfiguredMaxEnchantments(rarityId)
@@ -1454,7 +1458,7 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                     local enchantable = maxEnchantments > 0
                         or (storedEnchantable == true and storedRarityId == rarityId)
                     local level = readNumberValue(uidFolder, { "level", "Level" }) or 1
-                    local power = getConfiguredPowerForLevel(pdata, level)
+                    local power = getConfiguredPowerForLevel(pdata, level, isHuge)
                     local basePower = power
                     local effectivePower = power
                     local eternalBaselinePower = nil
@@ -2982,7 +2986,7 @@ function InventoryPanel:_getReplicatedSpecialPetFolder(uid)
     return specialFolder and specialFolder:FindFirstChild(uid) or nil
 end
 
-function InventoryPanel:_getConfiguredPetPower(petType, variant, level)
+function InventoryPanel:_getConfiguredPetPower(petType, variant, level, isHuge)
     local okPets, petsConfig = pcall(function()
         return ConfigLoader:LoadConfig("pets")
     end)
@@ -2991,24 +2995,19 @@ function InventoryPanel:_getConfiguredPetPower(petType, variant, level)
     end
 
     local pdata = petsConfig.getPet(petType, variant)
-    local configuredPower = tonumber(pdata and pdata.power) or 0
-    if configuredPower <= 0 then
+    -- Shared source of truth (huge-aware): huge pets use huge_base_power.
+    local base = PetPower.configuredBasePower(pdata, isHuge == true)
+    if base <= 0 then
         return nil
     end
 
-    local multiplier = 1
-    local okProgression, progressionConfig = pcall(function()
-        return ConfigLoader:LoadConfig("pet_progression")
-    end)
-    if okProgression and progressionConfig and progressionConfig.enabled ~= false then
-        local scaling = progressionConfig.power_scaling or {}
-        local perLevel = tonumber(scaling.percent_per_level) or 0
-        local maxBonus = tonumber(scaling.max_bonus_percent) or 0
-        local bonus = math.min(maxBonus, math.max(0, (math.max(1, level or 1) - 1) * perLevel))
-        multiplier = 1 + bonus
-    end
-
-    return math.max(1, math.floor(configuredPower * multiplier))
+    local progressionConfig = select(
+        2,
+        pcall(function()
+            return ConfigLoader:LoadConfig("pet_progression")
+        end)
+    )
+    return PetPower.withLevel(base, level, progressionConfig)
 end
 
 function InventoryPanel:_refreshPetTooltipFromReplicatedState(item)
@@ -3053,8 +3052,9 @@ function InventoryPanel:_refreshPetTooltipFromReplicatedState(item)
     end
     item.tooltipFields = tooltipFields
 
-    local basePower = self:_getConfiguredPetPower(item.petType, item.variant, 1)
-    local leveledPower = self:_getConfiguredPetPower(item.petType, item.variant, item.level)
+    local isHuge = self:_readBoolValue(petFolder, { "huge", "Huge" }) == true or item.huge == true
+    local basePower = self:_getConfiguredPetPower(item.petType, item.variant, 1, isHuge)
+    local leveledPower = self:_getConfiguredPetPower(item.petType, item.variant, item.level, isHuge)
     if basePower then
         item.basePower = basePower
     end
