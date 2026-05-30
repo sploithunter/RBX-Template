@@ -67,6 +67,39 @@ function PetFormation.targetPosition(frame, index, count, formation)
     }
 end
 
+-- Attack-ring offset RELATIVE TO the target center, so multiple pets attacking
+-- the same thing surround it instead of stacking on one point. `phase` (elapsed
+-- seconds) drives the animation. Styles (attack.style):
+--   "orbit"       — evenly spaced on a ring, the whole wheel rotates over time
+--   "static_ring" — evenly spaced on a ring, no rotation
+--   "lunge"       — ring slots that rhythmically jab in toward the center
+-- Returns { x, y, z } to add to the target's world position. 1-based index.
+function PetFormation.attackOffset(index, count, phase, attack)
+    local n = math.max(count, 1)
+    local i = index - 1
+    local baseAngle = (i / n) * 2 * math.pi
+    local style = attack.style or "orbit"
+
+    local angle = baseAngle
+    if style == "orbit" then
+        angle = baseAngle + phase * (attack.orbit_speed or 0)
+    end
+
+    local radius = attack.ring_radius
+    if style == "lunge" then
+        -- 0 (out, at ring_radius) .. lunge_distance (in toward center)
+        local jab = (attack.lunge_distance or 0)
+            * (0.5 + 0.5 * math.sin(phase * (attack.lunge_speed or 0) + i))
+        radius = radius - jab
+    end
+
+    return {
+        x = radius * math.cos(angle),
+        y = attack.ring_height,
+        z = radius * math.sin(angle),
+    }
+end
+
 -- Vertical bob from a phase (e.g. elapsed time). Deterministic; no clock here.
 function PetFormation.floatOffset(phase, floatConfig)
     if not floatConfig or floatConfig.amplitude == 0 then
