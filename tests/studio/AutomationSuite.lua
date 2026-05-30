@@ -627,6 +627,131 @@ function AutomationSuite.run(opts)
         "no mining activity observed in 6s next to a crystal — mining loop may not be firing"
     )
 
+    -- Phase 5: build depth (Archetypes / Powers / Augmentation / Hotbar / Rosters).
+    -- Test level overrides are honored only in test context (isTest).
+
+    -- Archetype (Feature 13): respec to a clean slate, select, gate re-selection.
+    api:Execute(player, "game.respec", {}) -- clears archetype/powers/slots
+    local selA = api:Execute(player, "archetype.select", { archetype = "geomancer" })
+    report:expect("select archetype geomancer", domainOk(selA), selA.error or "select failed")
+    report:expectEqual(
+        "re-selecting is rejected (already_selected)",
+        api:Execute(player, "archetype.select", { archetype = "pyromancer" }).result.reason,
+        "already_selected"
+    )
+    local arch = api:Execute(player, "archetype.get", {})
+    report:expectEqual(
+        "archetype.get -> geomancer",
+        arch.result and arch.result.archetype,
+        "geomancer"
+    )
+    report:expectEqual("geomancer pool has 3 powers", #(arch.result.available or {}), 3)
+
+    -- Power selection (Feature 14): level gates + archetype gating + accumulation.
+    report:expectEqual(
+        "no pending power at level 4",
+        api:Execute(player, "power.get", { level = 4 }).result.pending,
+        0
+    )
+    report:expectEqual(
+        "1 pending at level 5",
+        api:Execute(player, "power.get", { level = 5 }).result.pending,
+        1
+    )
+    report:expect(
+        "select stone_skin at level 5",
+        domainOk(api:Execute(player, "power.select", { powerId = "stone_skin", level = 5 })),
+        "power select failed"
+    )
+    report:expectEqual(
+        "another archetype's power is rejected",
+        api:Execute(player, "power.select", { powerId = "frost_bind", level = 9 }).result.reason,
+        "not_in_archetype_pool"
+    )
+    report:expectEqual(
+        "second pick at level 5 rejected (no pending)",
+        api:Execute(player, "power.select", { powerId = "bulwark", level = 5 }).result.reason,
+        "no_pending_selection"
+    )
+
+    -- Augmentation (Feature 15): grant by level, lock gate, set bonus at 3 matching.
+    report:expectEqual(
+        "1 unallocated slot at level 8",
+        api:Execute(player, "augment.get", { level = 8 }).result.unallocated,
+        1
+    )
+    report:expectEqual(
+        "slot rejected on a locked (unselected) power",
+        api:Execute(
+            player,
+            "augment.place",
+            { powerId = "bulwark", slotType = "recharge", level = 8 }
+        ).result.reason,
+        "power_locked"
+    )
+    local lastAug
+    for _ = 1, 3 do
+        lastAug = api:Execute(player, "augment.place", {
+            powerId = "stone_skin",
+            slotType = "recharge",
+            level = 18, -- 3 slots granted by level 18
+        })
+    end
+    local hasSetBonus = false
+    for _, b in ipairs(lastAug.result and lastAug.result.setBonuses or {}) do
+        if b.type == "recharge" and b.tier == 3 then
+            hasSetBonus = true
+        end
+    end
+    report:expect(
+        "3 matching recharge slots trigger the set bonus",
+        hasSetBonus,
+        "no 3-tier set bonus"
+    )
+
+    -- Hotbar (Feature 16): archetype defaults + rebind.
+    local hb = api:Execute(player, "hotbar.get", {})
+    report:expectEqual(
+        "hotbar slot 1 defaults to a geomancer power",
+        hb.result and hb.result.hotbar and hb.result.hotbar["1"] and hb.result.hotbar["1"].type,
+        "power"
+    )
+    api:Execute(
+        player,
+        "hotbar.rebind",
+        { slot = 1, bind = { type = "roster", target = "Healer Team" } }
+    )
+    report:expectEqual(
+        "rebound hotbar slot 1 -> roster",
+        api:Execute(player, "hotbar.get", {}).result.hotbar["1"].type,
+        "roster"
+    )
+
+    -- Rosters (Feature 17): create (max clamps to squad cap), invoke, remove-ref.
+    api:Execute(player, "game.rechargePet", { uid = uid }) -- ensure ready
+    local createR = api:Execute(player, "roster.create", {
+        name = "Test Team",
+        orderedPets = { uid },
+        maxToDeploy = 10, -- should clamp to 5
+        injuryRule = "ready_only",
+    })
+    report:expectEqual(
+        "roster max_to_deploy clamps to squad capacity (5)",
+        createR.result and createR.result.roster and createR.result.roster.max_to_deploy,
+        5
+    )
+    local invokeR = api:Execute(player, "roster.invoke", { name = "Test Team" })
+    report:expect(
+        "invoking the roster deploys the ready pet",
+        domainOk(invokeR) and invokeR.result.squad[1] == uid,
+        "roster invoke did not deploy the pet"
+    )
+    report:expect(
+        "removing a pet ref prunes it from rosters (delete/trade)",
+        domainOk(api:Execute(player, "roster.removePetRef", { petRef = uid })),
+        "removePetRef failed"
+    )
+
     return HttpService:JSONEncode(report:summary())
 end
 
