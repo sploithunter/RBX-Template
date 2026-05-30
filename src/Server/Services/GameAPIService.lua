@@ -417,7 +417,7 @@ function GameAPIService:_registerCommands()
                 levelMultiplier = { type = "number", optional = true },
             })
         end,
-        handler = function(_, args)
+        handler = function(context, args)
             local pets = self:_config("pets")
             local elements = self:_config("elements")
             if not pets or not pets.getPet or not elements then
@@ -428,7 +428,20 @@ function GameAPIService:_registerCommands()
                 return { ok = false, reason = "unknown_pet" }
             end
             local element = args.element or "neutral"
-            local realm = args.realm or "neutral"
+            -- Default the realm to the player's CURRENT layer (power follows where
+            -- the player is — Feature 6 dynamic recalculation). Explicit realm wins.
+            local realm = args.realm
+            if realm == nil then
+                local layersConfig = self:_config("layers")
+                local layerService = self:_service("LayerService")
+                local current = (layerService and layerService:GetCurrentLayer(context.player))
+                    or "base"
+                realm = (
+                    layersConfig
+                    and layersConfig.realm_alignment
+                    and layersConfig.realm_alignment[current]
+                ) or "neutral"
+            end
             local elementMult = ElementResonance.multiplier(element, realm, elements)
             local power = PowerFormula.compute({
                 base = def.base_power or 1,

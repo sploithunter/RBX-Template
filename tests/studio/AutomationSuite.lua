@@ -231,6 +231,80 @@ function AutomationSuite.run(opts)
         15
     )
 
+    -- Phase 2: layers & portals (Feature 3) — server-authoritative ascend
+    api:Execute(player, "layer.use", { layer = "base" }) -- ensure base
+    api:Execute(player, "game.resetAlignment", {})
+    report:expectEqual(
+        "current layer defaults to base",
+        api:Execute(player, "layer.current", {}).result.layer,
+        "base"
+    )
+
+    -- soul +20 requires a full clockwise ring tour (5 conquests)
+    for _, biome in ipairs({ "earth", "ice", "lava", "desert", "beach" }) do
+        api:Execute(player, "game.conquer", { biome = biome })
+    end
+    report:expectEqual(
+        "clockwise ring tour -> soul 20",
+        api:Execute(player, "soul.get", {}).result.soul,
+        20
+    )
+
+    report:expectEqual(
+        "heaven_1 rejected without tokens",
+        api:Execute(player, "layer.use", { layer = "heaven_1" }).result.reason,
+        "insufficient_tokens"
+    )
+    report:expectEqual(
+        "rejected ascend keeps player in base",
+        api:Execute(player, "layer.current", {}).result.layer,
+        "base"
+    )
+
+    api:Execute(player, "test.grantCurrency", { currency = "light_tokens", amount = 150 })
+    local beforeTokens = api:Execute(player, "automation.getPlayerState", {}).result.currencies.light_tokens
+        or 0
+    local ascend = api:Execute(player, "layer.use", { layer = "heaven_1" })
+    report:expect("ascend to heaven_1 ok", domainOk(ascend), ascend.error or "ascend failed")
+    report:expectEqual(
+        "now in heaven_1",
+        api:Execute(player, "layer.current", {}).result.layer,
+        "heaven_1"
+    )
+    local afterTokens = api:Execute(player, "automation.getPlayerState", {}).result.currencies.light_tokens
+        or 0
+    report:expectEqual("ascend deducted 100 light tokens", beforeTokens - afterTokens, 100)
+
+    report:expectEqual(
+        "hell_1 rejected with positive soul",
+        api:Execute(player, "layer.use", { layer = "hell_1" }).result.reason,
+        "soul_wrong_direction"
+    )
+
+    -- activated deferral: hatching in Heaven now yields a light element
+    report:expectEqual(
+        "hatch in Heaven -> light element",
+        api:Execute(player, "game.grantPet", { petType = "bear", variant = "basic" }).result.element,
+        "light"
+    )
+
+    -- activated deferral: pet.power follows the current layer (light bear, heaven home 1.2 -> 12)
+    local powHeaven = api:Execute(player, "pet.power", { petType = "bear", element = "light" })
+    report:expectEqual(
+        "pet.power uses current layer realm (heaven)",
+        powHeaven.result and powHeaven.result.realm,
+        "heaven"
+    )
+    report:expectEqual(
+        "light bear in heaven (current layer) -> 12",
+        powHeaven.result and powHeaven.result.power,
+        12
+    )
+
+    -- cleanup
+    api:Execute(player, "layer.use", { layer = "base" })
+    api:Execute(player, "game.resetAlignment", {})
+
     return HttpService:JSONEncode(report:summary())
 end
 
