@@ -347,6 +347,45 @@ Deferred — needs authored map work (your hands in Studio):
 - Cross-path "visit" portals — pure logic supports it; wiring waits on authored
   visit portals (it's intentionally not a client-settable flag).
 
+## Halo & Horns — Phase 3 (Pet Party Core)
+
+Last checked: 2026-05-30
+
+Spirit Form, the stacked-pet token-bucket pool, and the active-squad hierarchy —
+pure cores test-first, then wired live.
+
+- **Spirit Form** (Feature 7): `configs/spirit_form.lua` (cooldown tiers; Heaven 2×
+  recharge) + pure `SpiritForm` (effectiveCooldown, status, down, instantRecharge).
+  `SpiritFormService` persists lastDownedAt/cooldown_seconds on unique pet records
+  (by uid) and auto-returns a downed pet from the squad.
+- **Stack Pool** (Feature 8): `configs/stack_pool.lua` + pure `StackPool`
+  (token-bucket: newStack, lazy refresh, down, linear & sqrt_diminishing
+  contribution, add/remove). `StackPoolService.Simulate` runs the model live.
+- **Active Squad** (Feature 9): `configs/squad.lua` (limits; 5s in-combat swap
+  cooldown) + pure `ActiveSquad` (canDeploy max, canSwap cooldown).
+  `ActiveSquadService` owns `profile.ActiveSquad` (deploy/remove/swap; ownership +
+  Spirit-Form gating; stacked pet = 1 slot; swap cooldown session-only).
+- **Bus commands**: `squad.get/deploy/remove/swap`, `spirit.status`,
+  `stack.simulate`; test-only `game.downPet/rechargePet`; `game.grantPet` gained
+  `huge` (unique-record) support.
+
+Verification:
+- Headless `mise run test-headless`: 129/129 across 17 specs (Feature 7/8/9 [unit]
+  incl. token-bucket 29/cap/80/~89.4, cooldown/Heaven-halving, squad limits/swap).
+  `mise run ci` green.
+- Live in Halo & Horns: `AutomationSuite` 49/49 incl. deploy → down → auto-return
+  + Spirit Form → redeploy blocked → instant recharge → redeployable, and the
+  stack-pool model.
+
+Deferred (with reasons):
+- Staged degradation visuals (Strained/Critical auras), the real combat **down**
+  trigger, the Recall command, and "all-squad-downed → graceful end" — [studio] /
+  combat (Phase 4). Downing is exposed as a test command now.
+- StackPool bound to real inventory stacks (ready_count decremented by combat
+  downs) — Phase 4; the pool math is live-verified via `stack.simulate`.
+- In-combat swap cooldown live verification ([studio]) — logic tested headless +
+  in the service; live combat-swap arrives with combat.
+
 ## Recent Planning State
 
 The project now has two high-level source documents:
