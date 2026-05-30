@@ -123,7 +123,22 @@ staging universe only, so automated publishes can never touch the real
 authored-map game. The real game is published from Studio; staging is the
 agent's deploy/test sandbox.
 
-**Key setup gotchas (learned live):**
+**Choosing a publish method (by who/what is publishing):**
+
+| Publisher | Method | Needs | Best for |
+|-----------|--------|-------|----------|
+| Headless / CLI agent (MCP-only), or CI | `rojo upload` (Open Cloud) | Rojo-owned tree, API key, **place closed in Studio** | automated deploys to a code-only / staging place |
+| Agent **with computer use**, or a human | Studio **File → Publish to Roblox** | an open Studio session (no key) | the real **Studio-authored-map** game — preserves the map, no key, no close needed |
+
+A computer-use agent should prefer the **Studio publish** for authored-map games:
+it publishes the open session (synced code **and** the authored Workspace) in one
+click, avoiding both the mapless-build footgun and the close-Studio conflict that
+the Open Cloud path requires. The Open Cloud path remains the right tool for a
+headless agent (no desktop control, like the Studio-MCP-only setup here) and for
+CI, targeting a Rojo-owned staging place. (The Studio MCP does not currently
+expose a publish action, so an MCP-only agent must use Open Cloud.)
+
+**Open Cloud path — setup gotchas (learned live):**
 - The Open Cloud key needs the **`universe-places`** API system with **Write**
   (not plain `universe`), scoped to the staging universe. Wrong/missing scope →
   `Unauthorized: API Key has insufficient scopes`.
