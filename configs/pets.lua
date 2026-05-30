@@ -19,6 +19,12 @@ local petConfig = {
     -- acts as a floor (see PetPower / PetHandler resolveEffectivePetPower).
     eternal = {
         huge_power_percent = 120,
+        -- The eternal power base = average of the player's top-N pets (N = equip
+        -- capacity). By default eternal/huge pets are EXCLUDED from that baseline
+        -- (so their power never feeds the baseline that defines them). Set true to
+        -- include them — simpler, and acceptable since a fixed base power only
+        -- falls in relevance as stronger non-eternal pets are hatched over time.
+        baseline_includes_eternal = false,
     },
 
     serials = {
