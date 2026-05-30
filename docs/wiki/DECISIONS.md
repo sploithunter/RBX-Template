@@ -106,6 +106,14 @@ Assignment:
 
 Caveat: authored maps live in the place, not git (per the Rojo/Studio boundary). The Pet Realm map exists only in the Pet Realm place; an agent needing it opens that place in its own Studio.
 
+## Focus Regen At Zero (Feature 12)
+
+Open GWT question (Feature 12 — "Focus regen pauses while at zero"): resolved to **always regenerate** — no stun-at-zero. Rationale: the player is a no-HP, invulnerable *supporter*; locking their only resource at 0 punishes the support fantasy and adds a state with no counterplay. Sundering already provides the disruption pressure (it drains Focus and may extend power cooldowns) without a hard lockout. The behavior is config-flagged (`configs/focus.lua` `regen_pauses_at_zero = false`) so a future game can opt into a stun without code changes (`FocusMath.regen` honors the flag).
+
+## Combat / Legacy Pet Loop (Phase 4)
+
+Phase 4 builds combat (Feature 10) + Focus (Feature 12) as **server-owned, config-driven, headless-testable** systems: pure cores (`FocusMath`, `Targeting`, `CombatMath`) + `FocusService`/`CombatService`, with damage flowing through `PowerFormula` + the modifier pipeline (not cloned per-model scripts). This is also the home of issue #4 (replace the legacy `PetScripts/*` follow/mining-damage loop). The pure cores and the modifier-routed damage path are template-generic (reusable by any game on the template); the enemies/combat/focus *configs* are game-specific. Live spawning, auto-attack traversal, player-invulnerability visuals, and full removal of the legacy cloned scripts depend on authored enemy spawners / a Hell combat zone in the place (map work, user's hands) and are sequenced accordingly.
+
 ## Links
 
 - [Map Integration Contract](MAP_INTEGRATION_CONTRACT.md)
