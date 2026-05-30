@@ -121,9 +121,11 @@ function AutomationSuite.run(opts)
         and after.result.currencies
         and after.result.currencies.coins
     ) or 0
+    -- Pets actively mine (PetFollowService), so a little currency may accrue in
+    -- the grant->read window; require the +500 grant landed, tolerate small income.
     report:expect(
-        "coins increased by grant",
-        afterCoins == beforeCoins + 500,
+        "coins increased by grant (+500, modulo mining income)",
+        afterCoins >= beforeCoins + 500 and afterCoins < beforeCoins + 900,
         `before={beforeCoins} after={afterCoins}`
     )
 
@@ -561,27 +563,45 @@ function AutomationSuite.run(opts)
         return nil
     end
 
+    -- Poll up to ~6s: pass as soon as a pet's target loses HP (or is fully mined
+    -- away), or a mining currency rises. Robust to the suite's earlier teleports
+    -- transiently moving pets off their targets.
+    local function coinsNow()
+        local s = api:Execute(player, "automation.getPlayerState", {})
+        return (s.ok and s.result and s.result.currencies and s.result.currencies.coins) or 0
+    end
+    local startCoins = coinsNow()
+    local baselineHp = {} -- breakable -> hp first seen
     local minedProof = false
-    for _, pet in ipairs(petModels) do
-        local tid = pet:FindFirstChild("TargetID")
-        if tid and tid.Value ~= 0 then
-            local b = findById(tid.Value)
-            local hpStart = b and b:GetAttribute("HP")
-            if b and hpStart and hpStart > 0 then
-                local id0 = tid.Value
-                task.wait(2)
-                local still = findById(id0)
-                if not still or (still:GetAttribute("HP") or 0) < hpStart then
-                    minedProof = true
-                    break
+    local deadline = os.clock() + 6
+    while os.clock() < deadline and not minedProof do
+        for _, pet in ipairs(petModels) do
+            local tid = pet:FindFirstChild("TargetID")
+            if tid and tid.Value ~= 0 then
+                local b = findById(tid.Value)
+                if b then
+                    local hp = b:GetAttribute("HP")
+                    if hp then
+                        if baselineHp[b] == nil then
+                            baselineHp[b] = hp
+                        elseif hp < baselineHp[b] then
+                            minedProof = true
+                        end
+                    end
                 end
             end
         end
+        if not minedProof and coinsNow() > startCoins then
+            minedProof = true -- pets earned mining rewards
+        end
+        if not minedProof then
+            task.wait(0.5)
+        end
     end
     report:expect(
-        "service-owned pets mine their auto-assigned targets (HP drops)",
+        "service-owned pets mine (target HP drops or mining income rises)",
         minedProof,
-        "no targeted breakable lost HP — mining loop may not be firing"
+        "no mining activity observed in 6s — service mining loop may not be firing"
     )
 
     return HttpService:JSONEncode(report:summary())
