@@ -386,6 +386,61 @@ Deferred (with reasons):
 - In-combat swap cooldown live verification ([studio]) — logic tested headless +
   in the service; live combat-swap arrives with combat.
 
+## Halo & Horns — Phase 4 (Combat & Focus)
+
+Last checked: 2026-05-30
+
+Combat (Feature 10) + the player Focus/Spirit-Presence model (Feature 12) +
+the legacy pet-damage refactor (issue #4) — pure cores test-first, then services,
+then live through the bus.
+
+- **Focus** (Feature 12): `configs/focus.lua` (focus_max 100, regen 5/s,
+  `regen_pauses_at_zero=false`) + pure `FocusMath` (cast/canCast, regen clamp,
+  sunder clamp-to-0). `FocusService` owns `profile.Focus` (lazy-init to max) and a
+  CharacterAdded **invulnerability** hook (MaxHealth=∞, Dead state disabled — no HP,
+  can't die). Open design Q resolved (always regenerate; DECISIONS.md).
+- **Combat** (Feature 10): `configs/enemies.lua` (hp, attack {damage,cadence,
+  sundering}, drop_table) + `configs/combat.lua` (spawners, auto_target nearest,
+  group_scaling, pet-down threshold). Pure `Targeting` (nearestEnemy) +
+  `CombatMath` (damage/defeat/encounter-end/group-scaling/sunder/deterministic
+  loot) + `CombatSim` (dependency-injected deterministic full fight).
+  `CombatService` exposes read-only `Simulate` plus the real interconnections:
+  `AwardLoot` → currency, `SunderPlayer` → FocusService, `DownPetInCombat` →
+  SpiritFormService (the **combat down trigger** deferred from Phase 3; auto-returns
+  the pet from the squad).
+- **Legacy refactor** (issue #4): pure `PetCombat` (damagePerHit floor+min1,
+  applyDamage clamp+contribution, attackInterval clamp) + `CombatService:ResolvePetDamage`
+  / `ResolvePetAttackInterval` route pet power through the ModifierService pipeline
+  (pet_damage / pet_efficiency) then PetCombat — one tested source of truth. The
+  cloned `PetScripts/Follow.server.lua` now prefers the service path with a
+  behavior-identical inline fallback (no mining-loop regression). `Targeting`
+  covers the pure movement-targeting side.
+- **Bus**: `focus.get`, `combat.simulate` (read); test-only `focus.cast/regenTick`,
+  `combat.sunder/awardLoot/downPet`. `Validators` gained a `table` type.
+
+Verification:
+- Headless `mise run test-headless`: 166/166 across 21 specs (Feature 10/12 +
+  issue #4 cores; incl. CombatSim full-fight loot 62/8, 4p group-scale 2500,
+  pet-down threshold, focus cast/regen/sunder clamps). `mise run ci` green.
+- Live in Halo & Horns: `AutomationSuite` 64/64 incl. focus cast→80 / over-cast
+  rejected / Sundering brute −20, combat.simulate clears hell_1_lava (5 defeated,
+  62 lava_coins + 8 shadow_tokens), and combat.downPet → Spirit Form (trash_mob)
+  → squad auto-return. Also fixed a latent light_tokens state-pollution flake in
+  the suite.
+
+Deferred — needs the user's hands (authored map) or a decision:
+- **Authored Hell combat zone + enemy spawner markers** ([studio]): live enemy
+  *spawning*, pet auto-attack *traversal*, the 0-damage *player-invuln visual*,
+  and the ethereal alignment aura. The resolution math + economy/Spirit-Form/Focus
+  interconnections are done + live-verified through the bus; what remains is
+  in-world geometry/models.
+- **Full removal of the cloned `PetScripts/*`** (issue #4 acceptance "reduced to
+  thin visuals"): the damage/cadence formula is now service-owned + tested, but
+  ripping out the ~1100-line constraint-based follow loop and re-verifying live
+  needs the authored map and a regression pass on the mining/contribution loop —
+  sequenced with the authored-combat milestone. The behavior-preserving bridge
+  stays until then.
+
 ## Recent Planning State
 
 The project now has two high-level source documents:
