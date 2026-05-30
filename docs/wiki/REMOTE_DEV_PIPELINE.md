@@ -76,6 +76,20 @@ UI rendered / the player is where expected" but **state read back through the
 CommandBus is the source of truth** for pass/fail. Do not gate a test purely on
 a screenshot.
 
+### G7 — MCP `execute_luau` is client-attached during Play
+In play-solo, the Studio MCP runs `execute_luau` in the **client** Lua state, and
+`get_console_output` surfaces client output only. So `_G.RBXTemplateServices` and
+server services aren't directly reachable from the MCP during Play. Two
+consequences, both handled:
+- **Production commands** are driven over the `GameAPICommand` RemoteFunction
+  (client → server bus), exactly as a real client would — and test-only commands
+  are correctly *forbidden* on that path.
+- **Test-only / automation commands** need server context, so AutomationService
+  exposes a Studio-only `RunAutomationSuite` RemoteFunction the client invokes;
+  the suite then runs server-side (isTest=true). Server boot errors aren't
+  visible via the MCP in Play — diagnose those in edit mode (init-simulate) or by
+  reading state through these remotes.
+
 ### G6 — Player control vs. automated movement (mitigated, pending live verify)
 In play-solo the player's client control module can fight server `MoveTo`.
 `AutomationService:NavigateTo` now disables the player's controls for the

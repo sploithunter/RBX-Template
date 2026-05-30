@@ -87,6 +87,30 @@ function AutomationService:Start()
     controlRemote.Parent = ReplicatedStorage
     self._controlRemote = controlRemote
 
+    -- Studio-only: let an MCP-driven client trigger a SERVER-side run of the
+    -- integration suite, where test-only commands are permitted. The remote only
+    -- exists in Studio, so there is no production exposure.
+    local existingSuite = ReplicatedStorage:FindFirstChild("RunAutomationSuite")
+    if existingSuite then
+        existingSuite:Destroy()
+    end
+    local suiteRemote = Instance.new("RemoteFunction")
+    suiteRemote.Name = "RunAutomationSuite"
+    suiteRemote.OnServerInvoke = function(invokingPlayer)
+        local ok, suiteOrErr = pcall(function()
+            return require(ReplicatedStorage.Tests.studio.AutomationSuite)
+        end)
+        if not ok then
+            return game:GetService("HttpService"):JSONEncode({
+                ok = false,
+                error = "failed to load AutomationSuite: " .. tostring(suiteOrErr),
+            })
+        end
+        return suiteOrErr.run({ player = invokingPlayer })
+    end
+    suiteRemote.Parent = ReplicatedStorage
+    self._suiteRemote = suiteRemote
+
     -- Expose automation.* commands through the GameAPI bus (injected dependency,
     -- so it's available regardless of Start order) — one boundary for the harness.
     if self._gameApi and self._gameApi.GetBus then

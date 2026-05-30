@@ -37,6 +37,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local CommandBus = require(ReplicatedStorage.Shared.API.CommandBus)
 local Validators = require(ReplicatedStorage.Shared.API.Validators)
@@ -78,11 +79,31 @@ function GameAPIService:Start()
     end
 end
 
--- Resolve a sibling service from the global locator established in
--- init.server.lua (_G.RBXTemplateServices:Get(name)).
+-- Resolve a loader-registered service from the global locator established in
+-- init.server.lua (_G.RBXTemplateServices:Get(name)). The locator's Get() RAISES
+-- for unregistered names, so we pcall and return nil — handlers then report
+-- service_unavailable instead of crashing.
 function GameAPIService:_service(name)
     local locator = _G.RBXTemplateServices
-    return locator and locator:Get(name)
+    if not locator then
+        return nil
+    end
+    local ok, service = pcall(function()
+        return locator:Get(name)
+    end)
+    return ok and service or nil
+end
+
+-- EggService is required directly at boot (not registered in the loader), so it
+-- isn't reachable via the locator. Resolve it via a cached direct require.
+function GameAPIService:_eggService()
+    if self._egg == nil then
+        local ok, egg = pcall(function()
+            return require(ServerScriptService.Server.Services.EggService)
+        end)
+        self._egg = (ok and egg) or false
+    end
+    return self._egg or nil
 end
 
 -- Expose the bus for in-Studio tests / introspection.
@@ -252,7 +273,7 @@ function GameAPIService:_registerCommands()
     bus:register("egg.getMaxHatchCount", {
         description = "The configured maximum hatch count (1..99).",
         handler = function()
-            local egg = self:_service("EggService")
+            local egg = self:_eggService()
             if not egg then
                 return { ok = false, reason = "service_unavailable" }
             end
@@ -269,7 +290,7 @@ function GameAPIService:_registerCommands()
             })
         end,
         handler = function(context, args)
-            local egg = self:_service("EggService")
+            local egg = self:_eggService()
             if not egg then
                 return { ok = false, reason = "service_unavailable" }
             end
@@ -285,7 +306,7 @@ function GameAPIService:_registerCommands()
             })
         end,
         handler = function(context, args)
-            local egg = self:_service("EggService")
+            local egg = self:_eggService()
             if not egg then
                 return { ok = false, reason = "service_unavailable" }
             end
