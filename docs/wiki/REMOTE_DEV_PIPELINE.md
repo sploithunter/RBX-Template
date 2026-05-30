@@ -102,9 +102,26 @@ gate (static + headless + build) is the CI-runnable portion.
 - per-release **authorization** (publishing mutates a public resource).
 
 The agent never handles the secret value — the release script reads it from the
-`ROBLOX_OPEN_CLOUD_KEY` environment variable. Account/credential creation is a
-user-only action. The agent builds and validates the release command but does
-not execute the publish.
+`ROBLOX_OPEN_CLOUD_KEY` environment variable (or a gitignored `.env.local`).
+Account/credential creation is a user-only action.
+
+**Footgun — `rojo upload` assumes Rojo owns the whole place.** A `rojo build`
+produces a place from the project tree, so a `Workspace` defined as just
+`{ "$ignoreUnknownInstances": true }` (this project) builds an **empty
+Workspace**. Uploading that to a place with a **Studio-authored map would wipe
+the map.** Therefore:
+- **Games with Studio-authored maps** (this project) publish from **Studio
+  (File → Publish)**, which keeps the synced code *and* the authored map. No key
+  needed.
+- **`rojo upload` / Open Cloud** is for places where **Rojo is the full source
+  of truth** — code-only or Rojo-defined-map places.
+
+**Agent-publish pattern (safe):** point the release script at a **dedicated
+staging experience that Rojo fully owns** (no authored map; the template
+synthesizes its hooks on a blank map). The Open Cloud key is scoped to that
+staging universe only, so automated publishes can never touch the real
+authored-map game. The real game is published from Studio; staging is the
+agent's deploy/test sandbox.
 
 ### G5 — `screen_capture` is a backstop, not a gate
 The MCP screenshot can time out (observed locally). Visual checks confirm "the

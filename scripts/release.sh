@@ -17,6 +17,15 @@
 
 set -euo pipefail
 
+# Load local secrets if present (.env.local is gitignored). Put the three
+# ROBLOX_* vars there so the key is never typed on the command line or committed.
+if [ -f .env.local ]; then
+    set -a
+    # shellcheck disable=SC1091
+    . ./.env.local
+    set +a
+fi
+
 : "${ROBLOX_OPEN_CLOUD_KEY:?refusing to publish: set ROBLOX_OPEN_CLOUD_KEY (Open Cloud API key)}"
 : "${ROBLOX_UNIVERSE_ID:?refusing to publish: set ROBLOX_UNIVERSE_ID}"
 : "${ROBLOX_PLACE_ID:?refusing to publish: set ROBLOX_PLACE_ID}"
