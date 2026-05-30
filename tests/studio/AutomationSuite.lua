@@ -765,6 +765,98 @@ function AutomationSuite.run(opts)
         "removePetRef failed"
     )
 
+    -- Phase 6: social / endgame (Party / Trade / Fusion / Rifts), live through the bus.
+
+    -- Party (Feature 18): group math — difficulty scaling, loot split, attribution.
+    local sim = api:Execute(player, "party.simulate", {
+        baseHp = 1000,
+        partySize = 4,
+        loot = { lava_coins = 100 },
+        contributions = { p1 = 300, p2 = 100 },
+    })
+    report:expect("party.simulate dispatches", domainOk(sim), sim.error or "party.simulate failed")
+    report:expectEqual("4-player HP scales 1000 -> 2500", sim.result and sim.result.scaledHp, 2500)
+    report:expectEqual(
+        "boss loot splits 100/4 = 25 each",
+        sim.result and sim.result.loot and sim.result.loot.lava_coins,
+        25
+    )
+    report:expectEqual(
+        "damage attribution names the MVP",
+        sim.result and sim.result.attribution and sim.result.attribution.mvp,
+        "p1"
+    )
+    report:expect(
+        "party.get returns a solo party of size 1",
+        (api:Execute(player, "party.get", {}).result or {}).size == 1,
+        "party.get did not report solo size 1"
+    )
+
+    -- Trade (Feature 19): tradeable rules + both-confirm gate + audit record.
+    report:expect(
+        "trade.canAdd allows an unlocked pet",
+        domainOk(api:Execute(player, "trade.canAdd", { category = "pets", id = "bear" })),
+        "trade rejected an unlocked pet"
+    )
+    report:expectEqual(
+        "trade.canAdd rejects currencies",
+        api:Execute(player, "trade.canAdd", { category = "currencies", id = "lava_coins" }).result.reason,
+        "currencies_not_tradeable"
+    )
+    report:expectEqual(
+        "trade.canAdd rejects a locked pet",
+        api:Execute(player, "trade.canAdd", { category = "pets", id = "bear", locked = true }).result.reason,
+        "pet_locked"
+    )
+    local tradeSim = api:Execute(player, "trade.simulate", {
+        offerA = { items = { { id = "bear" } }, confirmed = true },
+        offerB = { items = { { id = "wolf" } }, confirmed = true },
+        a = "alice",
+        b = "bob",
+        timestamp = 123,
+    })
+    report:expect(
+        "trade.simulate executes when both sides confirm + writes an audit record",
+        domainOk(tradeSim)
+            and tradeSim.result.canExecute
+            and tradeSim.result.canExecute.ok == true
+            and tradeSim.result.audit ~= nil,
+        "both-confirm trade did not produce an audit record"
+    )
+
+    -- Fusion (Feature 20): Light + Shadow -> Chaotic; reject same/chaotic/neutral.
+    report:expect(
+        "fusion.canFuse accepts Light + Shadow",
+        domainOk(api:Execute(player, "fusion.canFuse", { elemA = "light", elemB = "shadow" })),
+        "valid Light+Shadow fusion was rejected"
+    )
+    report:expectEqual(
+        "fusion rejects same-element inputs",
+        api:Execute(player, "fusion.canFuse", { elemA = "light", elemB = "light" }).result.reason,
+        "not_light_shadow"
+    )
+    report:expectEqual(
+        "fusion rejects a Chaotic input",
+        api:Execute(player, "fusion.canFuse", { elemA = "chaotic", elemB = "shadow" }).result.reason,
+        "chaotic_input"
+    )
+    report:expectEqual(
+        "fusion rejects a Neutral input",
+        api:Execute(player, "fusion.canFuse", { elemA = "neutral", elemB = "light" }).result.reason,
+        "neutral_input"
+    )
+    local fuseSim = api:Execute(player, "fusion.simulate", {
+        elemA = "light",
+        elemB = "shadow",
+        themeA = "frost",
+        themeB = "ember",
+    })
+    report:expectEqual(
+        "fusion output element is Chaotic",
+        fuseSim.result and fuseSim.result.outputElement,
+        "chaotic"
+    )
+
     return HttpService:JSONEncode(report:summary())
 end
 

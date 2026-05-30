@@ -559,6 +559,50 @@ Deferred (with reasons):
   the power-cast/cooldown runtime).
 - Respec ritual cost/flow ([studio]); archetype-change ritual question (open in spec).
 
+## Halo & Horns — Phase 6 (Social / endgame: Party / Trade / Fusion / Chaos Rifts)
+
+Last checked: 2026-05-30
+
+Four social/endgame systems (Features 18–21), each config-driven with a pure
+headless-tested core. The cross-player handshakes + UIs are [studio]; the math,
+rules, and server contracts are bus-testable solo.
+
+- **Party / Group Play (18)**: `configs/party.lua` (max 4, loot rule, MVP bonus) +
+  pure `PartyMath` (canJoin, scaledHp, splitLoot, attribution). `PartyService` owns
+  session membership + group math (difficulty scaling pulls
+  `combat.group_scaling.per_extra_player`). Bus `party.get/simulate`.
+- **Trade (19)**: `configs/trade.lua` (pets yes-unless-locked, currencies no,
+  cosmetics yes) + pure `TradeLogic` (canAddItem, both-confirm canExecute,
+  auditRecord). `TradeService` owns sessions (Open/Add/Confirm/Cancel), the atomic
+  validate-then-apply swap (no partial-completion window → anti-dup), and a capped
+  queryable trade-history audit log. Bus `trade.canAdd` + test `trade.simulate/auditLog`.
+- **Chaotic Fusion (20)**: `configs/fusion.lua` (output Chaotic, Light+Shadow recipe)
+  + pure `FusionLogic` (validateInputs with exact spec rejection messages,
+  outputElement, resolveTheme, fusionRecord). `FusionService` validates → consumes
+  both inputs → produces a Chaotic pet → logs fusion history. Bus `fusion.canFuse` +
+  test `fusion.simulate/log`.
+- **Chaos Rifts (21) [deferred]**: `configs/rifts.lua` (per-element multipliers:
+  Chaotic 2.0×, others 0.5×) + pure `RiftMultiplier` (multiplierFor, applyToPower).
+  Only the power math is implemented + tested; the event scheduler, rift spawn,
+  notifications, and Aether drops remain [deferred].
+
+Verification: headless `mise run test-headless` **261/261 across 32 specs**;
+`mise run ci` green; live `AutomationSuite` **100/100** in Halo & Horns (party
+scaling 1000→2500 + 100/4 loot split + MVP attribution, trade allow-pet/reject-
+currency/reject-locked + both-confirm audit, fusion Light+Shadow→Chaotic with
+same-element/Chaotic/Neutral rejections).
+
+Deferred (with reasons):
+- Cross-player [studio] halves: party invite/accept UI + cross-player support
+  powers; trade two-player invite/confirm handshake + offer UI; fusion altar +
+  confirmation modal. All server rules + contracts are done.
+- Chaos Rift live event system (scheduler, spawn, notifications, Aether drops) —
+  marked [deferred] in the spec; the multiplier math is ready for PowerFormula to
+  call once rifts go live.
+- Combat animations + a hand-authored live enemy zone (Phase 4 deferral): combat
+  resolution + spirit-form-on-down are verified through the bus, but a player has
+  not yet fought an authored enemy in-world. Needs Studio-authored enemy models.
+
 ## Balance follow-up (config-only)
 - Huge pets' base-power floor scales with pet level (huge_base_power × level mult →
   e.g. 152% at lvl 27). Flagged by the user as too high; tune later (config /
