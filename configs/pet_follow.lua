@@ -46,11 +46,10 @@ return {
 
     -- Attack mode: pets SURROUND the target in an animated ring (client-driven).
     -- Switch `style` to experiment (also live via the PetAttackStyle attribute).
-    --   leash_distance — how far the PLAYER can walk before a pet abandons its
-    --                    target and follows again (server-authoritative).
-    --   style          — "orbit" (ring spins), "static_ring", "lunge" (jab in).
+    --   style — "orbit" (ring spins), "static_ring", "lunge" (jab toward center).
+    -- (No distance leash: AutoTargetService owns target selection + range; the pet
+    --  clears its target only when the breakable is mined out, like the legacy.)
     attack = {
-        leash_distance = 45,
         style = "orbit",
         ring_radius = 6,
         ring_height = 3,

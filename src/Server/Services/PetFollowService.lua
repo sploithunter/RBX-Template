@@ -162,7 +162,6 @@ function PetFollowService:_tickPlayer(player)
     if not hrp or not petsFolder then
         return
     end
-    local leash = self._config.attack.leash_distance
 
     for _, pet in ipairs(petsFolder:GetChildren()) do
         if pet:IsA("Model") and pet.PrimaryPart then
@@ -176,11 +175,12 @@ function PetFollowService:_tickPlayer(player)
                     targetWorld and targetWorld.Value,
                     targetId.Value
                 )
-                if
-                    not breakable
-                    or (breakable:GetPivot().Position - hrp.Position).Magnitude > leash
-                then
-                    targetId.Value = 0 -- abandon gone/distant target -> follow
+                -- Clear ONLY when the target is gone (mined out / removed), like the
+                -- legacy script — never on distance. AutoTargetService owns target
+                -- selection + range; a distance leash here fought it and made the
+                -- pet flicker between attack and follow during auto-mining.
+                if not breakable then
+                    targetId.Value = 0 -- target gone -> follow until AutoTargetService reassigns
                 else
                     self:_mine(player, pet, breakable)
                 end
