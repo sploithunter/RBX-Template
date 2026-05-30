@@ -516,6 +516,54 @@ control boxes + clones the stub scripts each spawn (harmless dead weight) — fu
 removing that box machinery + deleting the stub files is a separate cleanup with
 spawn-path risk, deferred from this pass.
 
+## Halo & Horns — Phase 5 (Build depth: Archetypes / Powers / Augmentation / Hotbar / Rosters)
+
+Last checked: 2026-05-30
+
+Five build-depth systems (Features 13–17), each config-driven with a pure
+headless-tested core, a server service, and bus commands.
+
+- **Archetypes (13)**: `configs/archetypes.lua` (4 archetypes + power pools) +
+  pure `ArchetypeLogic`. `ArchetypeService` owns `profile.Archetype` (one-time
+  select; respec resets powers + slots + hotbar). Bus `archetype.get/list/select`.
+- **Power Selection (14)**: `configs/powers.lua` (12 powers + `selection_levels`)
+  + pure `PowerSelection` (pending-by-level, one-per-level, archetype-gated, no
+  dup). `PowerService` owns `profile.Powers` (level via PlayerProgressionService).
+  Bus `power.get/select`.
+- **Augmentation (15)**: `configs/augmentation.lua` (grant levels, 6 slot types,
+  max 6/power, set-bonus tiers) + pure `Augmentation` (grant-by-level, placement
+  rules, stacking set bonuses). `AugmentationService` owns `profile.Slots`. Bus
+  `augment.get/place`.
+- **Hotbar (16)**: `configs/hotbar.lua` (20 slots, 4 bind types, defaults) + pure
+  `HotbarLogic` (archetype defaults, rebind validation, empty-slot no-op).
+  `HotbarService` owns `profile.Hotbar`. Bus `hotbar.get/rebind`.
+- **Rosters (17)**: `configs/rosters.lua` (injury rules) + pure `RosterLogic`
+  (clampMaxToDeploy, removeRef, resolveDeploy for ready_only/best_available/
+  deploy_anyway). `RosterService` owns `profile.Rosters` (create clamps to squad
+  cap; invoke pulls Spirit-Form readiness → replaces active squad; remove-ref on
+  delete/trade). Bus `roster.list/create/invoke` + test `roster.removePetRef`.
+
+Test-only level overrides on power/augment commands are gated to `isTest`.
+
+Verification: headless `mise run test-headless` **232/232 across 28 specs**;
+`mise run ci` green; live `AutomationSuite` **86/86** in Halo & Horns (archetype
+select+gate+pool, power level/archetype gating + accumulation, augment grant/lock/
+set-bonus, hotbar defaults+rebind, roster max-clamp+invoke+remove-ref).
+
+Deferred (with reasons):
+- The [studio]/UI halves: archetype-selection UI, level-up power-selection prompt,
+  slot-allocation UI, hotbar key-press firing + cooldown overlays, mobile layout —
+  logic + bus are done; the GUI is the next layer.
+- Augmentation effective-cooldown application through the live ModifierPipeline (the
+  pure set-bonus/per-slot math is done; wiring to the cooldown system arrives with
+  the power-cast/cooldown runtime).
+- Respec ritual cost/flow ([studio]); archetype-change ritual question (open in spec).
+
+## Balance follow-up (config-only)
+- Huge pets' base-power floor scales with pet level (huge_base_power × level mult →
+  e.g. 152% at lvl 27). Flagged by the user as too high; tune later (config /
+  decide whether the floor should ignore level). Logic is correct; purely balance.
+
 ## Recent Planning State
 
 The project now has two high-level source documents:
