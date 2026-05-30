@@ -30,6 +30,21 @@ fi
 : "${ROBLOX_UNIVERSE_ID:?refusing to publish: set ROBLOX_UNIVERSE_ID}"
 : "${ROBLOX_PLACE_ID:?refusing to publish: set ROBLOX_PLACE_ID}"
 
+# Safety denylist: places with a Studio-authored map must NEVER be rojo-upload'd.
+# A `rojo build` produces an empty Workspace, so uploading it would WIPE the map.
+# Publish those via `mise run publish-studio` (AppleScript) instead. Place IDs are
+# public, so listing them here is safe.
+#   133323124203350  Halo & Horns (game place — authored ring map)
+ROJO_UPLOAD_DENYLIST="133323124203350"
+for denied in $ROJO_UPLOAD_DENYLIST; do
+    if [ "${ROBLOX_PLACE_ID}" = "${denied}" ]; then
+        echo "ERROR: refusing to rojo-upload to place ${ROBLOX_PLACE_ID} (authored-map game place)." >&2
+        echo "  rojo upload builds an empty Workspace and would WIPE the authored map." >&2
+        echo "  Publish the game with:  mise run publish-studio" >&2
+        exit 1
+    fi
+done
+
 echo "Release target: universe ${ROBLOX_UNIVERSE_ID}, place ${ROBLOX_PLACE_ID} (Open Cloud)"
 
 if [ -n "${DRY_RUN:-}" ]; then
