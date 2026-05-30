@@ -231,6 +231,45 @@ Last checked: 2026-05-29
 - Observed (unresolved): HUD vs Pet Shop currency displays disagree for the same player — possible UI sync bug, separate from this work.
 - **Release stage verified live**: `mise run release` published the build to the Rojo-owned staging experience (universe `10242349813`) via Open Cloud `rojo upload` (exit 0). The full develop → test → build → release pipeline is proven end-to-end. Gotchas (key needs `universe-places:write`; Universe ID ≠ Place ID; close the place in Studio before publishing) are documented in `REMOTE_DEV_PIPELINE.md`.
 
+## Halo & Horns — Phase 0 (Data Spine)
+
+Last checked: 2026-05-30
+
+The config-driven world model + alignment + themed currencies, built test-first
+(pure cores headless-tested, then wired to a service and verified live). All pure
+logic is Roblox-API-free and consumes injected config (config-as-code).
+
+- **0.1 Ring topology** (Feature 1): `configs/biomes.lua` (clockwise order
+  earth→ice→lava→desert→beach, theme, dichotomy earth↔desert/ice↔lava, themed
+  currency) + pure `src/Shared/Game/RingTopology.lua` (neighbors w/ wrap, theme,
+  dichotomy, currency, adjacency). Adding a biome is config-only.
+- **0.2 Soul stat** (Feature 2): `configs/soul.lua` (delta 5, range ±100,
+  Halo/Horns bands) + pure `src/Shared/Game/SoulMath.lua` (`applyConquest`:
+  clockwise +delta / ccw −delta / non-adjacent 0 / first-conquest / re-conquest
+  no-op / clamp; `alignment` label). `AlignmentService` persists
+  Soul/LastConqueredBiome/ConqueredBiomes via DataService (lazy-init, no schema
+  migration).
+- **0.3 Themed currencies** (Feature 4): `configs/layers.lua` (reward multipliers
+  base 1.0 / Heaven·Hell 1.5–2.0; Light/Shadow tokens) + pure
+  `src/Shared/Game/RewardResolver.lua`. Themed currencies registered (non-tradeable)
+  in `configs/currencies.lua`.
+- **Bus commands**: `world.ringInfo`, `soul.get` (reads); test-only `game.conquer`
+  / `game.resetAlignment`.
+
+Verification:
+- Headless `mise run test-headless`: 69/69 across 9 specs (ring/soul/reward unit
+  scenarios + an interconnected conquest-flow integration test). `mise run ci` green.
+- Live in Halo & Horns (Rojo connected): `AutomationSuite` 18/18 incl. the
+  alignment chain (ring info, reset→conquer→soul 5→halo, persisted via DataService).
+
+Deferred (with reasons, per the implementation plan):
+- Soul HUD + real-time meter/notification ([studio]) — no UI yet (UI phase).
+- Live themed-currency breakable drops + Light/Shadow token drops ([integration])
+  — need biomes/layers present in the world (Phase 2).
+- Currency non-tradeable enforcement — needs trade (Phase 6).
+- Formal ProfileStore schema entry + migration for Soul fields — currently
+  lazy-initialized; can be formalized when convenient.
+
 ## Recent Planning State
 
 The project now has two high-level source documents:
