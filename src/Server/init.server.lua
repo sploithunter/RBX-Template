@@ -384,6 +384,13 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.PartyService,
     { "Logger", "ConfigLoader" }
 )
+-- TradeService: Halo & Horns trading (Feature 19) — session offers, both-confirm
+-- gate, atomic swap, and the trade-history audit log.
+loader:RegisterModule(
+    "TradeService",
+    ServerScriptService.Server.Services.TradeService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- FocusService: Halo & Horns player Focus pool + invulnerability (Feature 12).
 loader:RegisterModule(
     "FocusService",
@@ -533,6 +540,7 @@ table.insert(requiredModules, "AugmentationService")
 table.insert(requiredModules, "HotbarService")
 table.insert(requiredModules, "RosterService")
 table.insert(requiredModules, "PartyService")
+table.insert(requiredModules, "TradeService")
 table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "PetFollowService")

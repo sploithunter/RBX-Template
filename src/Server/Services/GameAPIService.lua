@@ -839,6 +839,24 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("trade.canAdd", {
+        description = "Whether an item may be offered in a trade (pets yes unless locked; currencies no).",
+        validate = function(args)
+            return Validators.fields(args, {
+                category = "string",
+                id = { type = "string", optional = true },
+                locked = { type = "boolean", optional = true },
+            })
+        end,
+        handler = function(_, args)
+            local s = self:_service("TradeService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:CanAdd(args.category, { id = args.id, locked = args.locked })
+        end,
+    })
+
     -- SYSTEM --------------------------------------------------------------
     bus:register("system.listCommands", {
         description = "List every command the bus exposes to this caller.",
@@ -1133,6 +1151,44 @@ function GameAPIService:_registerTestCommands()
                 return { ok = false, reason = "service_unavailable" }
             end
             return alignment:ApplyConquest(context.player, args.biome)
+        end,
+    })
+
+    -- Trade rules / execute-gate / audit-record logic without two live players.
+    self._bus:register("trade.simulate", {
+        description = "[test] Run trade add-rules, both-confirm gate, and audit-record build.",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, {
+                adds = { type = "table", optional = true },
+                offerA = { type = "table", optional = true },
+                offerB = { type = "table", optional = true },
+                a = { type = "string", optional = true },
+                b = { type = "string", optional = true },
+                timestamp = { type = "number", optional = true },
+            })
+        end,
+        handler = function(_, args)
+            local s = self:_service("TradeService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Simulate(args)
+        end,
+    })
+
+    self._bus:register("trade.auditLog", {
+        description = "[test] Query the trade-history audit log (optionally by userId).",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { userId = { type = "int", optional = true } })
+        end,
+        handler = function(_, args)
+            local s = self:_service("TradeService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:GetAuditLog(args.userId)
         end,
     })
 end
