@@ -857,6 +857,20 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("fusion.canFuse", {
+        description = "Whether two pet elements may be fused (one Light + one Shadow -> Chaotic).",
+        validate = function(args)
+            return Validators.fields(args, { elemA = "string", elemB = "string" })
+        end,
+        handler = function(_, args)
+            local s = self:_service("FusionService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:CanFuse(args.elemA, args.elemB)
+        end,
+    })
+
     -- SYSTEM --------------------------------------------------------------
     bus:register("system.listCommands", {
         description = "List every command the bus exposes to this caller.",
@@ -1189,6 +1203,43 @@ function GameAPIService:_registerTestCommands()
                 return { ok = false, reason = "service_unavailable" }
             end
             return s:GetAuditLog(args.userId)
+        end,
+    })
+
+    -- Fusion rule + output + record logic without live inventory.
+    self._bus:register("fusion.simulate", {
+        description = "[test] Run fusion validation, output element/theme, and audit record.",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, {
+                elemA = "string",
+                elemB = "string",
+                themeA = { type = "string", optional = true },
+                themeB = { type = "string", optional = true },
+                timestamp = { type = "number", optional = true },
+            })
+        end,
+        handler = function(_, args)
+            local s = self:_service("FusionService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Simulate(args)
+        end,
+    })
+
+    self._bus:register("fusion.log", {
+        description = "[test] Query the fusion-history audit log (optionally by userId).",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { userId = { type = "int", optional = true } })
+        end,
+        handler = function(_, args)
+            local s = self:_service("FusionService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:GetFusionLog(args.userId)
         end,
     })
 end

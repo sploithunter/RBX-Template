@@ -391,6 +391,12 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.TradeService,
     { "Logger", "ConfigLoader", "DataService" }
 )
+-- FusionService: Halo & Horns Chaotic fusion (Feature 20) — Light + Shadow -> Chaotic.
+loader:RegisterModule(
+    "FusionService",
+    ServerScriptService.Server.Services.FusionService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- FocusService: Halo & Horns player Focus pool + invulnerability (Feature 12).
 loader:RegisterModule(
     "FocusService",
@@ -541,6 +547,7 @@ table.insert(requiredModules, "HotbarService")
 table.insert(requiredModules, "RosterService")
 table.insert(requiredModules, "PartyService")
 table.insert(requiredModules, "TradeService")
+table.insert(requiredModules, "FusionService")
 table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "PetFollowService")
