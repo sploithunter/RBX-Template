@@ -32,6 +32,16 @@ conflict.
 - **Never commit directly to `main`.** Open a PR. `main` is gated by CI
   (`mise run ci`: selene + StyLua + rojo build + headless) — it must pass.
 - Keep PRs small and frequent; rebase on `main` often to minimize drift.
+- **Claim your work first.** Before starting, add a row to the pinned
+  **🚦 Active Work** issue (#2) — agent · domain · branch · scope — and open a
+  **draft PR** early so your branch is visible. Remove your row when done. This
+  is how agents (sharing one GitHub identity) avoid grabbing the same work.
+
+### Communication
+GitHub is the single channel: **issues** (work requests + threads), **PRs** (the
+change + review), the **wiki** (durable memory), and the pinned **🚦 Active Work**
+issue (#2) for who's-doing-what-now. No off-repo chat (Slack/Docs) for
+agent↔agent coordination — keep one canonical, versioned source of truth.
 
 ### Cross-domain changes — hybrid by size
 When game work uncovers a **template** improvement (or vice versa):
