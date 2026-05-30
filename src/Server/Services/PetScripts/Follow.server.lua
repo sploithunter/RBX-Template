@@ -959,19 +959,40 @@ if Player then
                 -- Apply small periodic damage per pet
                 local hp = breakable:GetAttribute("HP") or 0
                 if hp <= 0 then return end
-                -- Use pet Power as the base damage, then let the shared modifier pipeline adjust it.
+                -- Use pet Power as the base damage. Damage resolution is now owned
+                -- by CombatService (issue #4): power flows through the modifier
+                -- pipeline and the PetCombat rules in one tested place. Fall back to
+                -- the identical inline computation if the service isn't present.
                 local powerNV = script.Parent:FindFirstChild("Power")
                 local power = tonumber(powerNV and powerNV.Value) or 1
-                local dmg = resolveModifier(power, {
-                    player = Player,
-                    kind = "pet_damage",
+                local petCtx = {
+                    power = power,
                     petId = script.Parent:GetAttribute("PetType"),
                     variant = script.Parent:GetAttribute("PetVariant"),
                     breakableId = breakable:GetAttribute("BreakableId"),
                     currency = breakable:GetAttribute("Currency"),
-                    source = "PetFollow",
-                })
-                dmg = math.max(1, math.floor(dmg))
+                }
+                local dmg
+                local combatService = getLoadedService("CombatService")
+                if combatService and combatService.ResolvePetDamage then
+                    local ok, resolved = pcall(function()
+                        return combatService:ResolvePetDamage(Player, petCtx)
+                    end)
+                    if ok and type(resolved) == "number" then
+                        dmg = resolved
+                    end
+                end
+                if not dmg then
+                    dmg = math.max(1, math.floor(resolveModifier(power, {
+                        player = Player,
+                        kind = "pet_damage",
+                        petId = petCtx.petId,
+                        variant = petCtx.variant,
+                        breakableId = petCtx.breakableId,
+                        currency = petCtx.currency,
+                        source = "PetFollow",
+                    })))
+                end
                 local newHp = math.max(0, hp - dmg)
                 breakable:SetAttribute("HP", newHp)
                 -- Record contribution on the crystal if folder exists

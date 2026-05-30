@@ -28,6 +28,7 @@ local Targeting = require(ReplicatedStorage.Shared.Game.Targeting)
 local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local FocusMath = require(ReplicatedStorage.Shared.Game.FocusMath)
 local CombatSim = require(ReplicatedStorage.Shared.Game.CombatSim)
+local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
 
 local CombatService = {}
 CombatService.__index = CombatService
@@ -169,6 +170,59 @@ function CombatService:DownPetInCombat(player, uid, enemyId)
     local result = spirit:Down(player, uid, def.tier or "trash_mob")
     result.tier = def.tier
     return result
+end
+
+-- ── Pet work / mining damage (issue #4) ───────────────────────────────────
+-- Single, service-owned source of truth for pet damage + cadence, replacing the
+-- formula that used to live inline in the cloned PetScripts/Follow script. Pet
+-- power flows through the ModifierService pipeline (pet_damage / pet_efficiency
+-- stages), then the deterministic PetCombat rules are applied.
+
+-- ctx: { power, petId, variant, breakableId, currency }
+function CombatService:ResolvePetDamage(player, ctx)
+    ctx = ctx or {}
+    local power = ctx.power or 1
+    local resolved = power
+    local modifier = self:_service("ModifierService")
+    if modifier and modifier.Resolve then
+        local ok, value = pcall(function()
+            return modifier:Resolve(power, {
+                player = player,
+                kind = "pet_damage",
+                petId = ctx.petId,
+                variant = ctx.variant,
+                breakableId = ctx.breakableId,
+                currency = ctx.currency,
+                source = "PetWork",
+            })
+        end)
+        if ok then
+            resolved = tonumber(value) or power
+        end
+    end
+    return PetCombat.damagePerHit(resolved)
+end
+
+-- Seconds to wait between this pet's hits, from the pet_efficiency pipeline.
+function CombatService:ResolvePetAttackInterval(player, ctx)
+    ctx = ctx or {}
+    local efficiency = 1
+    local modifier = self:_service("ModifierService")
+    if modifier and modifier.Resolve then
+        local ok, value = pcall(function()
+            return modifier:Resolve(1, {
+                player = player,
+                kind = "pet_efficiency",
+                petId = ctx.petId,
+                variant = ctx.variant,
+                source = "PetWork",
+            })
+        end)
+        if ok then
+            efficiency = tonumber(value) or 1
+        end
+    end
+    return PetCombat.attackInterval(efficiency)
 end
 
 return CombatService
