@@ -448,6 +448,43 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    -- LAYERS (Halo & Horns, Feature 3) -----------------------------------
+    bus:register("layer.current", {
+        description = "The player's current layer.",
+        handler = function(context)
+            local layers = self:_service("LayerService")
+            if not layers then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, layer = layers:GetCurrentLayer(context.player) }
+        end,
+    })
+
+    bus:register("layer.accessible", {
+        description = "Layers the player can currently access (Soul + tokens).",
+        handler = function(context)
+            local layers = self:_service("LayerService")
+            if not layers then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, layers = layers:AccessibleLayers(context.player) }
+        end,
+    })
+
+    bus:register("layer.use", {
+        description = "Ascend/descend to a layer (server-authoritative Soul + token cost).",
+        validate = function(args)
+            return Validators.fields(args, { layer = "string" })
+        end,
+        handler = function(context, args)
+            local layers = self:_service("LayerService")
+            if not layers then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return layers:UseLayer(context.player, args.layer)
+        end,
+    })
+
     -- SYSTEM --------------------------------------------------------------
     bus:register("system.listCommands", {
         description = "List every command the bus exposes to this caller.",

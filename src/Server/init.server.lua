@@ -323,6 +323,13 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.AlignmentService,
     { "Logger", "ConfigLoader", "DataService" }
 )
+-- LayerService: Halo & Horns layer access (Feature 3). Server-authoritative
+-- Soul/token-gated ascend/descend; sets profile.CurrentLayer.
+loader:RegisterModule(
+    "LayerService",
+    ServerScriptService.Server.Services.LayerService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- GameAPIService: the unified command-bus boundary (see
 -- docs/wiki/AUTOMATION_API_DESIGN.md). Handlers resolve target services from the
 -- _G.RBXTemplateServices locator at runtime, so it only needs Logger to boot.
@@ -441,6 +448,7 @@ appendIfEnabled(requiredModules, "leaderboards", "LeaderboardService")
 appendIfEnabled(requiredModules, "pet_progression", "PetProgressionService")
 appendIfEnabled(requiredModules, "enchants", "EnchantService")
 table.insert(requiredModules, "AlignmentService")
+table.insert(requiredModules, "LayerService")
 table.insert(requiredModules, "GameAPIService")
 if RunService:IsStudio() then
     table.insert(requiredModules, "StudioSmokeTestService")
