@@ -148,9 +148,12 @@ function AutomationSuite.run(opts)
             and restored.result.currencies
             and restored.result.currencies.coins
         ) or 0
+        -- Pets now actively mine (PetFollowService), so a little currency may
+        -- accrue between restore and read. The restore must roll back the 500
+        -- grant; tolerate small background income (a failed restore = +500).
         report:expect(
-            "coins restored to baseline",
-            restoredCoins == beforeCoins,
+            "coins restored to baseline (modulo background mining income)",
+            restoredCoins >= beforeCoins and restoredCoins < beforeCoins + 400,
             `baseline={beforeCoins} restored={restoredCoins}`
         )
     end
@@ -495,6 +498,91 @@ function AutomationSuite.run(opts)
 
     api:Execute(player, "game.rechargePet", { uid = uid }) -- cleanup
     api:Execute(player, "squad.remove", { ref = uid }) -- cleanup
+
+    -- issue #4: PetFollowService owns the pet work loop (service-owned movement).
+    report:expect(
+        "PetFollowService is registered",
+        _G.RBXTemplateServices:Get("PetFollowService") ~= nil,
+        "PetFollowService not in the locator"
+    )
+    report:expectEqual("PetFollowService owns movement (flag set)", _G.PetFollowServiceOwned, true)
+
+    local petsFolder = workspace:FindFirstChild("PlayerPets")
+        and workspace.PlayerPets:FindFirstChild(player.Name)
+    local petModels = {}
+    if petsFolder then
+        for _, m in ipairs(petsFolder:GetChildren()) do
+            if m:IsA("Model") and m.PrimaryPart then
+                table.insert(petModels, m)
+            end
+        end
+    end
+    report:expect("player has spawned follow pets", #petModels > 0, "no pets spawned")
+
+    local allUnanchored = #petModels > 0
+    for _, m in ipairs(petModels) do
+        if m.PrimaryPart.Anchored then
+            allUnanchored = false
+        end
+    end
+    report:expect(
+        "spawned pets are unanchored (service drives physics)",
+        allUnanchored,
+        "a pet is still anchored"
+    )
+
+    -- The service owns each pet's movement: it creates a single AlignPosition
+    -- (_FollowAlign) on the pet and drives its Position each tick (follow
+    -- formation when idle, the target when attacking). Confirm the service-owned
+    -- constraint is present + active on a spawned pet.
+    local probe = petModels[1]
+    local pAlign = probe and probe:FindFirstChild("_FollowAlign")
+    report:expect(
+        "service-owned movement constraint exists + active on the pet",
+        pAlign ~= nil and pAlign.Enabled == true,
+        "_FollowAlign missing or disabled — service not driving the pet"
+    )
+
+    -- Mining (no regression): pets auto-target nearby breakables (TargetID is
+    -- assigned by BreakableService). Find a pet's CURRENT target and confirm the
+    -- service-owned work loop damages it (HP drops, or the breakable is fully
+    -- mined away). Robust to BreakableService reassigning targets mid-window.
+    local function findById(id)
+        local breakables = workspace:FindFirstChild("Game")
+            and workspace.Game:FindFirstChild("Breakables")
+        if not breakables then
+            return nil
+        end
+        for _, desc in ipairs(breakables:GetDescendants()) do
+            if desc.Name == "BreakableID" and desc:IsA("NumberValue") and desc.Value == id then
+                return desc.Parent
+            end
+        end
+        return nil
+    end
+
+    local minedProof = false
+    for _, pet in ipairs(petModels) do
+        local tid = pet:FindFirstChild("TargetID")
+        if tid and tid.Value ~= 0 then
+            local b = findById(tid.Value)
+            local hpStart = b and b:GetAttribute("HP")
+            if b and hpStart and hpStart > 0 then
+                local id0 = tid.Value
+                task.wait(2)
+                local still = findById(id0)
+                if not still or (still:GetAttribute("HP") or 0) < hpStart then
+                    minedProof = true
+                    break
+                end
+            end
+        end
+    end
+    report:expect(
+        "service-owned pets mine their auto-assigned targets (HP drops)",
+        minedProof,
+        "no targeted breakable lost HP — mining loop may not be firing"
+    )
 
     return HttpService:JSONEncode(report:summary())
 end
