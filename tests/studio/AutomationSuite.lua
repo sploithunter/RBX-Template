@@ -528,21 +528,9 @@ function AutomationSuite.run(opts)
         end
     end
     report:expect(
-        "spawned pets are unanchored (service drives physics)",
+        "spawned pets are unanchored (movement system drives physics)",
         allUnanchored,
         "a pet is still anchored"
-    )
-
-    -- The service owns each pet's movement: it creates a single AlignPosition
-    -- (_FollowAlign) on the pet and drives its Position each tick (follow
-    -- formation when idle, the target when attacking). Confirm the service-owned
-    -- constraint is present + active on a spawned pet.
-    local probe = petModels[1]
-    local pAlign = probe and probe:FindFirstChild("_FollowAlign")
-    report:expect(
-        "service-owned movement constraint exists + active on the pet",
-        pAlign ~= nil and pAlign.Enabled == true,
-        "_FollowAlign missing or disabled — service not driving the pet"
     )
 
     -- Mining (no regression): pets only mine breakables within the player's leash

@@ -14,7 +14,13 @@
 ]]
 
 return {
-    service_owned = true,
+    -- false: the legacy cloned Follow/FollowBox scripts own pet movement (they
+    -- include the teleport-watchdog + tuned forces that keep pets from falling
+    -- off the map — issue #4's known 10-months-ago bug). PetFollowService stays
+    -- inert. Damage still routes through CombatService (the legacy Follow calls
+    -- CombatService:ResolvePetDamage). A service-owned movement loop can only take
+    -- over once it ports that anti-fall machinery — see issue #4 / CURRENT_STATUS.
+    service_owned = false,
 
     -- How pets arrange behind/around the player.
     formation = {

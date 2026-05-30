@@ -1,14 +1,107 @@
---[[
-    FollowBox.server.lua — RETIRED (issue #4).
+-- issue #4: stand down when PetFollowService owns movement (the box-chain is
+-- unused; the service positions pets directly via PetFormation).
+if _G.PetFollowServiceOwned then
+    return
+end
 
-    The legacy control-box chain (each pet AlignPosition-linked to the box in
-    front of it) is replaced by PetFollowService, which positions pets directly
-    from the pure PetFormation core. The box-chaining code that used to live here
-    was removed.
+local Disabled = false
 
-    Kept only as an inert stub because PetHandler still clones it onto each control
-    box. The control boxes themselves are now vestigial (harmless); fully removing
-    PetHandler's box machinery is a separate cleanup (see docs/wiki/CURRENT_STATUS.md).
-]]
+-- Suppress verbose debug prints in this script unless explicitly enabled
+-- Silence debug output; keep default Roblox print behavior off
+local function print(...) end
+local Player = game.Players:FindFirstChild(script.Parent.Parent.Name)
 
-return
+-- Create Game folder if it doesn't exist
+local gameFolder = game.Workspace:FindFirstChild("Game")
+if not gameFolder then
+    gameFolder = Instance.new("Folder")
+    gameFolder.Name = "Game"
+    gameFolder.Parent = game.Workspace
+end
+
+-- Create Breakables folder if it doesn't exist
+local breakables = gameFolder:FindFirstChild("Breakables")
+if not breakables then
+    breakables = Instance.new("Folder")
+    breakables.Name = "Breakables"
+    breakables.Parent = gameFolder
+end
+
+-- DEBUG: follow setup prints are suppressed unless __PRINT_ENABLED=true above
+
+local function scanForID(folder, id, TargetType, TargetWorld)
+	local target = nil
+	for i, v in pairs(folder:GetChildren()) do
+		if v.Name == "BreakableID" and v.Value == id then
+			target = v
+			break
+		elseif #v:GetChildren() ~= 0 then
+			target = scanForID(v,id)
+			if target ~= nil then
+				break
+			end
+		end
+	end
+	if target then
+		return target
+	else
+		return nil
+	end
+end
+
+function GetPointOnCircle(CircleRadius, Degrees)
+	return Vector3.new(math.cos(math.rad(Degrees)) * CircleRadius, 1, math.sin(math.rad(Degrees))* CircleRadius)
+end
+
+local followType = 0
+
+if Player then
+	local frontAttachment
+	local centerAttachment = script.Parent.Center
+    local alignP = script.Parent.AlignPosition
+    local alignO = script.Parent.AlignOrientation
+    -- Use legacy defaults; do not cap force/velocity here
+	local followeeNumber = tonumber(script.Parent.Name) - 1
+	local originalPosition = Vector3.new(0,0,15)
+           if followeeNumber == 0 then
+               print("🔍 DEBUG FollowBox: Setting up first pet (followeeNumber = 0)")
+               local hrp = Player.Character.HumanoidRootPart
+               -- Ensure attachmentFar exists (normally created by PetCharacterAttachments)
+               local far = hrp:FindFirstChild("attachmentFar")
+               if not far then
+                   far = Instance.new("Attachment")
+                   far.Name = "attachmentFar"
+                   far.Parent = hrp
+                   far.Position = Vector3.new(0, 0, 30)
+               end
+               print("[FOLLOWBOX] First box:")
+               print("  - HRP path:", hrp:GetFullName())
+               print("  - attachmentFar path:", far:GetFullName())
+               print("  - attachmentFar position:", tostring(far.WorldCFrame.Position))
+               frontAttachment = far
+               alignP.Attachment0 = centerAttachment
+               alignP.Attachment1 = frontAttachment
+               alignO.Attachment0 = centerAttachment
+               alignO.Attachment1 = frontAttachment
+               print("  - AlignPosition connected: Center -> attachmentFar")
+               print("  - AlignOrientation connected: Center -> attachmentFar")
+                      else
+               print("[FOLLOWBOX] Box ", tostring(followeeNumber+1), " following previous pet")
+               local frontAttachmentPart = workspace.PlayerPetControl:WaitForChild(Player.Name):WaitForChild(tostring(followeeNumber))
+               print("  - Front box path:", frontAttachmentPart and frontAttachmentPart:GetFullName() or "<nil>")
+               if frontAttachmentPart then
+                   print("  - Has Back attachment:", frontAttachmentPart:FindFirstChild("Back") ~= nil)
+               end
+               -- Chain to the back of the previous pet's control box
+               frontAttachment = frontAttachmentPart.Back
+               alignP.Attachment0 = centerAttachment 
+               alignP.Attachment1 = frontAttachment
+               alignO.Attachment0 = centerAttachment
+               alignO.Attachment1 =  frontAttachment
+               print("  - Back attachment path:", frontAttachment and frontAttachment:GetFullName() or "<nil>")
+               print("  - AlignPosition connected: Center -> Back")
+               print("  - AlignOrientation connected: Center -> Back")
+           end
+else
+	-- Could not find Player in Follow
+end
