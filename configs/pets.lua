@@ -252,6 +252,21 @@ local petConfig = {
             base_power = 10,
             base_health = 150,
 
+            -- Huge bears: a much higher base power (used only when the pet carries
+            -- the huge trait — normal bears stay at base_power 10). Combined with
+            -- the huge eternal scaling (100% of top-team average) this makes huge
+            -- bears genuinely strong + raises the team baseline.
+            huge_base_power = 100,
+
+            -- Huge bears are visually larger. `huge_scale` is applied only to pets
+            -- with the huge trait (see PetHandler.applyHugePetScale); normal bears
+            -- render at `scale`.
+            asset_transform = {
+                scale = 1,
+                huge_scale = 3,
+                orientation = { x = 0, y = 0, z = 0 },
+            },
+
             -- Camera configuration for image generation
             camera = {
                 distance = 3.5,
@@ -803,6 +818,7 @@ function petConfig.getPet(petType, variant)
             power = power,
             health = health,
             base_power = pet.base_power,
+            huge_base_power = petVariant.huge_base_power or pet.huge_base_power,
             base_health = pet.base_health,
             power_multiplier = powerMultiplier,
             health_multiplier = healthMultiplier,

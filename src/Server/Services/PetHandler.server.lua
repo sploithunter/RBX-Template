@@ -388,6 +388,15 @@ end
 
 local function getPetFolderBasePower(petFolder, petIdName, petVariantName)
     local level = getPetFolderLevel(petFolder)
+    -- Huge pets use the configured huge_base_power (e.g. bear 100 vs normal 10),
+    -- scaled by level the same way; falls back to the normal power if unset.
+    if isHugePetFolder(petFolder) then
+        local petData = getPetConfigData(petIdName, petVariantName)
+        local hugeBase = petData and tonumber(petData.huge_base_power)
+        if hugeBase then
+            return math.max(1, math.floor(hugeBase * getPetProgressionPowerMultiplier(level)))
+        end
+    end
     return getConfiguredPetPower(petIdName, petVariantName, level)
 end
 
