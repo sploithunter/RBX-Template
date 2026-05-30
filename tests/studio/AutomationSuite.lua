@@ -525,16 +525,18 @@ function AutomationSuite.run(opts)
     end
     report:expect("player has spawned follow pets", #petModels > 0, "no pets spawned")
 
-    local allUnanchored = #petModels > 0
+    -- Service-owned movement anchors pets (can't fall) + preps them; the client
+    -- positions them kinematically. Confirm the server prepped a spawned pet.
+    local allPrepped = #petModels > 0
     for _, m in ipairs(petModels) do
-        if m.PrimaryPart.Anchored then
-            allUnanchored = false
+        if not (m:GetAttribute("PetFollowPrepped") == true and m.PrimaryPart.Anchored == true) then
+            allPrepped = false
         end
     end
     report:expect(
-        "spawned pets are unanchored (movement system drives physics)",
-        allUnanchored,
-        "a pet is still anchored"
+        "pets are prepped + anchored by the service (can't fall)",
+        allPrepped,
+        "a pet was not prepped/anchored — PetFollowService not owning movement"
     )
 
     -- Mining (no regression): pets only mine breakables within the player's leash

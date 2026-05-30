@@ -93,4 +93,61 @@ return function()
             )
         end)
     end)
+
+    describe("PetFormation.attackOffset", function()
+        local attack = {
+            style = "orbit",
+            ring_radius = 6,
+            ring_height = 3,
+            orbit_speed = 2,
+            lunge_distance = 3,
+            lunge_speed = 5,
+        }
+
+        local function mag2(o)
+            return math.sqrt(o.x * o.x + o.z * o.z)
+        end
+
+        it("spreads pets evenly on the ring (no two share a point)", function()
+            local a = PetFormation.attackOffset(1, 4, 0, attack)
+            local b = PetFormation.attackOffset(2, 4, 0, attack)
+            expect(mag2(a)).to.near(attack.ring_radius, 1e-6)
+            expect(mag2(b)).to.near(attack.ring_radius, 1e-6)
+            expect((a.x - b.x) ^ 2 + (a.z - b.z) ^ 2 > 0.01).to.equal(true)
+        end)
+
+        it("sits at the ring height", function()
+            expect(PetFormation.attackOffset(1, 3, 0, attack).y).to.equal(attack.ring_height)
+        end)
+
+        it("orbit rotates the wheel over time", function()
+            local t0 = PetFormation.attackOffset(1, 4, 0, attack)
+            local t1 = PetFormation.attackOffset(1, 4, 1, attack)
+            expect((t0.x - t1.x) ^ 2 + (t0.z - t1.z) ^ 2 > 0.01).to.equal(true)
+        end)
+
+        it("static_ring holds position (no rotation)", function()
+            local s = { style = "static_ring", ring_radius = 6, ring_height = 3 }
+            local a = PetFormation.attackOffset(1, 4, 0, s)
+            local b = PetFormation.attackOffset(1, 4, 5, s)
+            expect(a.x).to.near(b.x, 1e-6)
+            expect(a.z).to.near(b.z, 1e-6)
+        end)
+
+        it("lunge keeps the radius within [ring - lunge, ring]", function()
+            local l = {
+                style = "lunge",
+                ring_radius = 6,
+                ring_height = 3,
+                lunge_distance = 3,
+                lunge_speed = 5,
+            }
+            for step = 0, 10 do
+                local r = mag2(PetFormation.attackOffset(1, 3, step * 0.2, l))
+                local within = r <= l.ring_radius + 1e-6
+                    and r >= l.ring_radius - l.lunge_distance - 1e-6
+                expect(within).to.equal(true)
+            end
+        end)
+    end)
 end

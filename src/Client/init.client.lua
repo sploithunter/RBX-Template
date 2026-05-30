@@ -127,6 +127,18 @@ elseif gameConfig.GameMode == "TowerDefense" then
     -- systems.PathVisualizationSystem = require(...)
 end
 
+-- Pet follow movement (issue #4): client-side visualisation of the local
+-- player's pets (smooth, full-framerate). Self-gates on pet_follow.service_owned;
+-- pets are anchored server-side (can't fall) and positioned here each frame.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.PetFollowController).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start PetFollowController", { error = tostring(err) })
+    end
+end
+
 -- Studio-only: bridge that lets AutomationService disable/enable local controls
 -- during automated movement (see AutomationControlBridge).
 if RunService:IsStudio() then

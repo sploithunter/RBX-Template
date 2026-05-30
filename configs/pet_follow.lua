@@ -20,7 +20,7 @@ return {
     -- inert. Damage still routes through CombatService (the legacy Follow calls
     -- CombatService:ResolvePetDamage). A service-owned movement loop can only take
     -- over once it ports that anti-fall machinery — see issue #4 / CURRENT_STATUS.
-    service_owned = false,
+    service_owned = true,
 
     -- How pets arrange behind/around the player.
     formation = {
@@ -44,20 +44,29 @@ return {
         period = 2,
     },
 
-    -- AlignPosition/AlignOrientation tuning (parity with the legacy values).
-    align = {
-        follow_responsiveness = 200,
-        follow_max_force = 1e9,
-        attack_responsiveness = 75,
-    },
-
-    -- Attack mode: how close the pet sits to its target, and how far the PLAYER
-    -- can walk from a target before the pet abandons it and returns to following.
+    -- Attack mode: pets SURROUND the target in an animated ring (client-driven).
+    -- Switch `style` to experiment (also live via the PetAttackStyle attribute).
+    --   leash_distance — how far the PLAYER can walk before a pet abandons its
+    --                    target and follows again (server-authoritative).
+    --   style          — "orbit" (ring spins), "static_ring", "lunge" (jab in).
     attack = {
-        approach_distance = 6,
         leash_distance = 45,
+        style = "orbit",
+        ring_radius = 6,
+        ring_height = 3,
+        orbit_speed = 2.5, -- radians/sec wheel spin (orbit)
+        lunge_distance = 3, -- jab depth toward center (lunge)
+        lunge_speed = 6,
     },
 
-    -- Heartbeat throttle for the service loop (seconds between position updates).
+    -- Client movement smoothing (frame-rate-independent exponential approach;
+    -- higher = snappier, lower = more momentum/float). Used by PetFollowController.
+    movement = {
+        follow_lerp_rate = 10,
+        attack_lerp_rate = 16,
+    },
+
+    -- Server tick throttle (seconds): target leash + the mining damage tick only.
+    -- Movement is client-side (PetFollowController), not done here.
     update_interval = 0.1,
 }
