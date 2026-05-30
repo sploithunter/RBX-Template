@@ -14,7 +14,7 @@
 ]]
 
 return {
-    service_owned = false,
+    service_owned = true,
 
     -- How pets arrange behind/around the player.
     formation = {

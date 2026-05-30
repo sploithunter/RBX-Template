@@ -1,3 +1,9 @@
+-- issue #4: stand down when PetFollowService owns movement (the box-chain is
+-- unused; the service positions pets directly via PetFormation).
+if _G.PetFollowServiceOwned then
+    return
+end
+
 local Disabled = false
 
 -- Suppress verbose debug prints in this script unless explicitly enabled

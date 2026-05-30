@@ -58,6 +58,9 @@ function PetFollowService:Start()
         return
     end
     self._started = os.clock()
+    -- Signal the legacy cloned scripts (Follow/FollowBox) to stand down — they
+    -- read this flag at the top and no-op, so this service owns movement.
+    _G.PetFollowServiceOwned = true
     if self._logger then
         self._logger:Info("PetFollowService active — owning the pet follow loop")
     end

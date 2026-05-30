@@ -1,3 +1,10 @@
+-- issue #4: when PetFollowService owns movement (pet_follow.service_owned), this
+-- legacy cloned script stands down entirely. The service drives follow/attack
+-- positioning + the mining damage tick instead. Flag set by PetFollowService:Start.
+if _G.PetFollowServiceOwned then
+    return
+end
+
 local Disabled = false
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
