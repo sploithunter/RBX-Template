@@ -63,6 +63,12 @@ return function()
             local ok = Validators.fields({ on = "yes" }, { on = "boolean" })
             expect(ok).to.equal(false)
         end)
+
+        it("enforces table type", function()
+            expect(Validators.fields({ list = { 1, 2 } }, { list = "table" })).to.equal(true)
+            local ok = Validators.fields({ list = 5 }, { list = "table" })
+            expect(ok).to.equal(false)
+        end)
     end)
 
     describe("Validators single-value checks", function()

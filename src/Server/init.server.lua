@@ -346,6 +346,20 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.StackPoolService,
     { "Logger", "ConfigLoader" }
 )
+-- FocusService: Halo & Horns player Focus pool + invulnerability (Feature 12).
+loader:RegisterModule(
+    "FocusService",
+    ServerScriptService.Server.Services.FocusService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
+-- CombatService: Halo & Horns combat resolution (Feature 10). Resolves
+-- FocusService/SpiritFormService at runtime via the locator (no boot dep), so it
+-- only needs config + data to boot.
+loader:RegisterModule(
+    "CombatService",
+    ServerScriptService.Server.Services.CombatService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- GameAPIService: the unified command-bus boundary (see
 -- docs/wiki/AUTOMATION_API_DESIGN.md). Handlers resolve target services from the
 -- _G.RBXTemplateServices locator at runtime, so it only needs Logger to boot.
@@ -468,6 +482,8 @@ table.insert(requiredModules, "LayerService")
 table.insert(requiredModules, "ActiveSquadService")
 table.insert(requiredModules, "SpiritFormService")
 table.insert(requiredModules, "StackPoolService")
+table.insert(requiredModules, "FocusService")
+table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "GameAPIService")
 if RunService:IsStudio() then
     table.insert(requiredModules, "StudioSmokeTestService")

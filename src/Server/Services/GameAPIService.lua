@@ -594,6 +594,38 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("focus.get", {
+        description = "The player's Focus pool (current + max).",
+        handler = function(context)
+            local f = self:_service("FocusService")
+            if not f then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return f:Get(context.player)
+        end,
+    })
+
+    bus:register("combat.simulate", {
+        description = "Deterministic full-fight resolution (auto-target, damage, loot, sundering).",
+        validate = function(args)
+            return Validators.fields(args, {
+                spawner = { type = "string", optional = true },
+                partySize = { type = "int", min = 1, optional = true },
+                petPowers = { type = "table", optional = true },
+                buff = { type = "number", optional = true },
+                maxRounds = { type = "int", min = 1, optional = true },
+                focusStart = { type = "number", optional = true },
+            })
+        end,
+        handler = function(_, args)
+            local combat = self:_service("CombatService")
+            if not combat then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return combat:Simulate(args)
+        end,
+    })
+
     -- SYSTEM --------------------------------------------------------------
     bus:register("system.listCommands", {
         description = "List every command the bus exposes to this caller.",
@@ -722,6 +754,85 @@ function GameAPIService:_registerTestCommands()
                 return { ok = false, reason = "service_unavailable" }
             end
             return s:InstantRecharge(context.player, args.uid)
+        end,
+    })
+
+    -- Focus: cast a power (spend Focus) / regenerate (Feature 12).
+    self._bus:register("focus.cast", {
+        description = "[test] Spend Focus to cast a power of the given cost.",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { cost = { type = "number", min = 0 } })
+        end,
+        handler = function(context, args)
+            local f = self:_service("FocusService")
+            if not f then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return f:Cast(context.player, args.cost)
+        end,
+    })
+
+    self._bus:register("focus.regenTick", {
+        description = "[test] Regenerate Focus over an elapsed number of seconds.",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { elapsed = { type = "number", min = 0 } })
+        end,
+        handler = function(context, args)
+            local f = self:_service("FocusService")
+            if not f then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return f:RegenTick(context.player, args.elapsed)
+        end,
+    })
+
+    -- Combat: a Sundering enemy attack drains the player's Focus (Feature 10/12).
+    self._bus:register("combat.sunder", {
+        description = "[test] Apply an enemy's Sundering Focus drain to the player.",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { enemyId = "string" })
+        end,
+        handler = function(context, args)
+            local combat = self:_service("CombatService")
+            if not combat then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return combat:SunderPlayer(context.player, args.enemyId)
+        end,
+    })
+
+    -- Combat: credit a defeated enemy's loot (biome currency + Shadow Tokens).
+    self._bus:register("combat.awardLoot", {
+        description = "[test] Award a defeated enemy's drop table to the player.",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { enemyId = "string" })
+        end,
+        handler = function(context, args)
+            local combat = self:_service("CombatService")
+            if not combat then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return combat:AwardLoot(context.player, args.enemyId)
+        end,
+    })
+
+    -- Combat: the real "down a pet" trigger -> Spirit Form -> squad auto-return.
+    self._bus:register("combat.downPet", {
+        description = "[test] An enemy downs a pet (Spirit Form at the enemy's tier).",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { uid = "string", enemyId = "string" })
+        end,
+        handler = function(context, args)
+            local combat = self:_service("CombatService")
+            if not combat then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return combat:DownPetInCombat(context.player, args.uid, args.enemyId)
         end,
     })
 

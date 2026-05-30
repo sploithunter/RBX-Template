@@ -77,6 +77,10 @@ local function checkRule(field, value, rule)
         if type(value) ~= "boolean" then
             return false, `"{field}" must be a boolean`
         end
+    elseif ruleType == "table" then
+        if type(value) ~= "table" then
+            return false, `"{field}" must be a table`
+        end
     else
         return false, `unknown rule type "{tostring(ruleType)}" for "{field}"`
     end
