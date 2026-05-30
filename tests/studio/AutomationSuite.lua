@@ -393,6 +393,94 @@ function AutomationSuite.run(opts)
         29
     )
 
+    -- Phase 4: Combat (Feature 10) + Focus (Feature 12), live through the bus.
+
+    -- Focus pool: refill to baseline, then cast / reject / sunder.
+    api:Execute(player, "focus.regenTick", { elapsed = 1000 }) -- top up to max
+    local focus0 = api:Execute(player, "focus.get", {})
+    report:expectEqual("focus tops up to max", focus0.result and focus0.result.focus, 100)
+
+    local cast = api:Execute(player, "focus.cast", { cost = 20 })
+    report:expectEqual(
+        "casting a 20-cost power leaves focus 80",
+        cast.result and cast.result.focus,
+        80
+    )
+
+    local overCast = api:Execute(player, "focus.cast", { cost = 999 })
+    report:expectEqual(
+        "casting beyond the pool is rejected (insufficient_focus)",
+        overCast.result and overCast.result.reason,
+        "insufficient_focus"
+    )
+    report:expectEqual(
+        "rejected cast does not spend focus (still 80)",
+        api:Execute(player, "focus.get", {}).result.focus,
+        80
+    )
+
+    local sunder = api:Execute(player, "combat.sunder", { enemyId = "ember_brute" })
+    report:expectEqual(
+        "a Sundering brute drains 20 focus (80 -> 60)",
+        sunder.result and sunder.result.focus,
+        60
+    )
+    api:Execute(player, "focus.regenTick", { elapsed = 1000 }) -- restore
+
+    -- Combat simulation: two strong pets clear the Hell-1 Lava spawner; loot is
+    -- biome currency (lava_coins) + Shadow Tokens (Feature 10).
+    local sim = api:Execute(player, "combat.simulate", {
+        spawner = "hell_1_lava",
+        petPowers = { 300, 300 },
+    })
+    report:expect("combat.simulate dispatches", domainOk(sim), sim.error or "sim failed")
+    report:expectEqual(
+        "simulated encounter ends (all enemies defeated)",
+        sim.result and sim.result.ended,
+        true
+    )
+    report:expectEqual(
+        "all 5 spawner enemies defeated",
+        sim.result and sim.result.enemiesDefeated,
+        5
+    )
+    report:expectEqual(
+        "loot totals biome currency: 4*8 + 30 = 62 lava_coins",
+        sim.result and sim.result.loot and sim.result.loot.lava_coins,
+        62
+    )
+    report:expectEqual(
+        "loot totals Shadow Tokens: 4*1 + 4 = 8 (Hell drops)",
+        sim.result and sim.result.loot and sim.result.loot.shadow_tokens,
+        8
+    )
+
+    -- Real combat "down" trigger (deferred from Phase 3): an enemy downs a
+    -- squad pet -> Spirit Form at the enemy's tier -> auto-return from the squad.
+    report:expect("unique pet is deployed before combat-down", inSquad(uid), "pet not deployed")
+    local downCombat = api:Execute(player, "combat.downPet", { uid = uid, enemyId = "lava_imp" })
+    report:expect(
+        "combat.downPet ok",
+        domainOk(downCombat),
+        downCombat.error or "combat down failed"
+    )
+    report:expectEqual(
+        "downed at the enemy's content tier (lava_imp -> trash_mob)",
+        downCombat.result and downCombat.result.tier,
+        "trash_mob"
+    )
+    report:expect(
+        "combat-downed pet auto-returned from squad",
+        not inSquad(uid),
+        "pet still in squad"
+    )
+    report:expectEqual(
+        "combat-downed pet is in Spirit Form",
+        api:Execute(player, "spirit.status", { uid = uid }).result.state,
+        "Spirit Form"
+    )
+
+    api:Execute(player, "game.rechargePet", { uid = uid }) -- cleanup
     api:Execute(player, "squad.remove", { ref = uid }) -- cleanup
 
     return HttpService:JSONEncode(report:summary())
