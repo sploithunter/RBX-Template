@@ -75,7 +75,7 @@ run = "lune run tests/headless/run.luau"
 
 [tasks.fmt-check]
 description = "StyLua --check on pipeline-owned paths (whole-repo stylua is a separate cleanup lane)"
-run = "mise exec -- stylua --check src/Shared/API src/Server/Services/GameAPIService.lua src/Server/Services/AutomationService.lua tests/headless"
+run = "mise exec -- stylua --check src/Shared/API src/Shared/Game src/Server/Services/GameAPIService.lua src/Server/Services/AutomationService.lua tests/headless"
 
 # Tools are invoked via `mise exec --` so they resolve identically in local
 # shells and on CI runners (a bare tool name can hit a PATH/permission quirk
@@ -84,7 +84,7 @@ run = "mise exec -- stylua --check src/Shared/API src/Server/Services/GameAPISer
 description = "Fast gate (no Studio): selene errors + format (owned paths) + rojo build + headless tests"
 run = [
     "mise exec -- selene --allow-warnings src configs tests",
-    "mise exec -- stylua --check src/Shared/API src/Server/Services/GameAPIService.lua src/Server/Services/AutomationService.lua tests/headless",
+    "mise exec -- stylua --check src/Shared/API src/Shared/Game src/Server/Services/GameAPIService.lua src/Server/Services/AutomationService.lua tests/headless",
     "mise exec -- rojo build --output game.rbxl",
     "mise exec -- lune run tests/headless/run.luau",
 ]
