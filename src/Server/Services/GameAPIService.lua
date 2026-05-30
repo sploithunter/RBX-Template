@@ -694,6 +694,43 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("augment.get", {
+        description = "The player's augmentation slots + granted/unallocated counts.",
+        validate = function(args)
+            return Validators.fields(args, { level = { type = "int", min = 1, optional = true } })
+        end,
+        handler = function(context, args)
+            local s = self:_service("AugmentationService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:GetState(context.player, context.isTest and args.level or nil)
+        end,
+    })
+
+    bus:register("augment.place", {
+        description = "Place an augmentation slot of a type onto an unlocked power.",
+        validate = function(args)
+            return Validators.fields(args, {
+                powerId = "string",
+                slotType = "string",
+                level = { type = "int", min = 1, optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local s = self:_service("AugmentationService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Place(
+                context.player,
+                args.powerId,
+                args.slotType,
+                context.isTest and args.level or nil
+            )
+        end,
+    })
+
     -- SYSTEM --------------------------------------------------------------
     bus:register("system.listCommands", {
         description = "List every command the bus exposes to this caller.",

@@ -359,6 +359,12 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.PowerService,
     { "Logger", "ConfigLoader", "DataService" }
 )
+-- AugmentationService: Halo & Horns augmentation slots (Feature 15).
+loader:RegisterModule(
+    "AugmentationService",
+    ServerScriptService.Server.Services.AugmentationService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- FocusService: Halo & Horns player Focus pool + invulnerability (Feature 12).
 loader:RegisterModule(
     "FocusService",
@@ -504,6 +510,7 @@ table.insert(requiredModules, "SpiritFormService")
 table.insert(requiredModules, "StackPoolService")
 table.insert(requiredModules, "ArchetypeService")
 table.insert(requiredModules, "PowerService")
+table.insert(requiredModules, "AugmentationService")
 table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "PetFollowService")
