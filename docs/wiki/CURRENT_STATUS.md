@@ -434,12 +434,42 @@ Deferred — needs the user's hands (authored map) or a decision:
   and the ethereal alignment aura. The resolution math + economy/Spirit-Form/Focus
   interconnections are done + live-verified through the bus; what remains is
   in-world geometry/models.
-- **Full removal of the cloned `PetScripts/*`** (issue #4 acceptance "reduced to
-  thin visuals"): the damage/cadence formula is now service-owned + tested, but
-  ripping out the ~1100-line constraint-based follow loop and re-verifying live
-  needs the authored map and a regression pass on the mining/contribution loop —
-  sequenced with the authored-combat milestone. The behavior-preserving bridge
-  stays until then.
+- ~~Full removal of the cloned `PetScripts/*`~~ — **DONE** (issue #4 closed, see
+  the PetFollowService section below).
+
+## PetFollowService — service-owned pet movement (issue #4, DONE)
+
+Last checked: 2026-05-30
+
+Replaced the legacy cloned per-pet movement scripts with a single server-owned,
+config-driven follow/work loop (GitHub issue #4 closed). Flag-gated incremental
+rollout, live-verified, then the dead code was removed.
+
+- **Config + pure core**: `configs/pet_follow.lua` (formation/float/align/attack
+  tuning + the `service_owned` rollout flag) + pure `src/Shared/Game/PetFormation.lua`
+  (slotOffset rows/circle, targetPosition into the player frame, float bob) —
+  headless-tested.
+- **Service**: `src/Server/Services/PetFollowService.lua` — a throttled Heartbeat
+  loop that drives one `AlignPosition` per pet to its formation slot (follow) or
+  its target (attack), and runs the position-independent mining tick via
+  `CombatService:ResolvePetDamage` + `PetCombat.applyDamage` (Contrib ledger
+  preserved). Pets are auto-targeted by the existing `BreakableService`.
+- **Cleaner formation** (user's choice): pets hold config-driven slots behind the
+  player rather than the old control-box chain.
+- **Legacy removed**: `PetScripts/Follow.server.lua` (1114→18 lines) and
+  `FollowBox.server.lua` (101→14) gutted to inert stubs (~1180 lines of legacy
+  constraint/BodyMover/damage code deleted). They remain only because `PetHandler`
+  still clones them; movement is wholly service-owned.
+
+Verification: headless 175/175 (incl. PetFormation specs); live AutomationSuite
+**70/70** in Halo & Horns — service registered + owns movement, pets spawned +
+unanchored + driven by `_FollowAlign`, and pets mine their auto-assigned targets
+(HP drops / mining income rises). Screenshot confirmed pets holding formation.
+
+Follow-up (low-priority, flagged): `PetHandler` still creates the now-vestigial
+control boxes + clones the stub scripts each spawn (harmless dead weight) — fully
+removing that box machinery + deleting the stub files is a separate cleanup with
+spawn-path risk, deferred from this pass.
 
 ## Recent Planning State
 
