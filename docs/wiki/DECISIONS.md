@@ -2,6 +2,10 @@
 
 Status: current
 
+## Game Identity
+
+The game is **Halo & Horns** (working codename "Pet Realm"). Core fantasy: hatch soul-bound pets, conquer the elemental ring, and tip your **Soul** toward Heaven (Halo) or Hell (Horns) — no neutral ending. The published store description (kept ≤1000 chars) is in `docs/STORE_DESCRIPTION.md`. The Roblox experience is "Halo and Horns" (see Roblox Places below for IDs). Internal branch/codename slugs may still use `pet-realm`/`game`.
+
 ## Config As Code
 
 Content and tuning should live in `configs/*.lua`. Services should consume config rather than hardcoding content. Adding areas, breakables, eggs, pets, achievements, events, rewards, and similar content should usually be a config edit plus Studio markers, not a new script.
@@ -97,7 +101,7 @@ Coordination is by **process, not repo separation**: branch-by-domain (`template
 Agents use **separate Roblox places**, one per domain — not a shared place. Rationale: DataStores are universe-scoped, so a shared place means shared, interfering save data during tests; publishing conflicts when a place is open in Studio (two agents would collide constantly); and the game needs an **authored map** while the template needs a **clean/synthetic baseplate**. Code is shared via git (the source of truth); places are just runtime targets that legitimately differ in authored Workspace content and save data.
 
 Assignment:
-- **Pet Realm game place** (game agent): the authored ring map + game; Studio-published. Universe/Place IDs: _TBD — create via Studio "Publish As → new experience", then record here._
+- **Halo & Horns game place** (game agent): the authored ring map + game; Studio-published. Universe ID `10245881416`, Place ID `133323124203350`.
 - **Template / staging place** = "Place1", universe `10242349813`, place `117209749436107` (template agent + CI): mapless/synthetic (the template synthesizes hooks on a blank map); also the Open Cloud publish/staging target (`.env.local`).
 
 Caveat: authored maps live in the place, not git (per the Rojo/Studio boundary). The Pet Realm map exists only in the Pet Realm place; an agent needing it opens that place in its own Studio.
