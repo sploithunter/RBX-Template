@@ -466,30 +466,43 @@ local function calculateTopTeamAverage(basePowerValues, teamCapacity)
     return math.max(1, total / limit)
 end
 
-local function calculateTeamPowerContext(equippedFolders, teamCapacity)
+local function calculateTeamPowerContext(equippedFolders, inventoryFolders, teamCapacity)
     local strongestBasePower = 1
-    local topTeamAverageBasePower = 1
     local basePowers = {}
     local eternalPercents = {}
-    local basePowerValues = {}
 
+    -- Per-equipped pet: its own base power + eternal percent (used to resolve that
+    -- pet's effective power below).
     for _, petFolder in ipairs(equippedFolders) do
         local petIdName, petVariantName = extractIdAndVariantFromFolder(petFolder)
         petIdName = petIdName or (petFolder.Name:match("^([^_]+)") or petFolder.Name)
         petVariantName = petVariantName or "basic"
 
         local basePower = getPetFolderBasePower(petFolder, petIdName, petVariantName)
-        local eternalPercent = getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
         basePowers[petFolder] = basePower
-        eternalPercents[petFolder] = eternalPercent
-        table.insert(basePowerValues, basePower)
+        eternalPercents[petFolder] = getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
         strongestBasePower = math.max(strongestBasePower, basePower)
     end
-    topTeamAverageBasePower = calculateTopTeamAverage(basePowerValues, teamCapacity)
+
+    -- Eternal baseline = average of the top-N (N = equip capacity) NON-eternal pets
+    -- across the WHOLE inventory. Eternal/huge pets are excluded so their own power
+    -- never feeds the baseline that defines them (which previously inflated it).
+    local nonEternalBasePowers = {}
+    for _, petFolder in ipairs(inventoryFolders or equippedFolders) do
+        local petIdName, petVariantName = extractIdAndVariantFromFolder(petFolder)
+        petIdName = petIdName or (petFolder.Name:match("^([^_]+)") or petFolder.Name)
+        petVariantName = petVariantName or "basic"
+        if getPetFolderEternalPercent(petFolder, petIdName, petVariantName) <= 0 then
+            table.insert(
+                nonEternalBasePowers,
+                getPetFolderBasePower(petFolder, petIdName, petVariantName)
+            )
+        end
+    end
 
     return {
         strongestBasePower = strongestBasePower,
-        topTeamAverageBasePower = topTeamAverageBasePower,
+        topTeamAverageBasePower = calculateTopTeamAverage(nonEternalBasePowers, teamCapacity),
         teamCapacity = math.max(1, tonumber(teamCapacity) or #equippedFolders),
         basePowers = basePowers,
         eternalPercents = eternalPercents,
@@ -935,6 +948,7 @@ function loadEquipped(Player)
 
         -- Get equipped pets (those with Equipped.Value = true)
         local CurrentlyEquipped = {}
+        local AllPetFolders = {} -- whole inventory (for the eternal baseline)
         local inventoryFolder = Player:FindFirstChild("Inventory")
         if not inventoryFolder then
             warn("PetHandler: No Inventory folder found for", Player.Name)
@@ -951,6 +965,7 @@ function loadEquipped(Player)
             if not folder or not folder:IsA("Folder") then
                 return
             end
+            table.insert(AllPetFolders, folder) -- every owned pet (baseline pool)
             local name = folder.Name or ""
             local equippedValue = folder:FindFirstChild("Equipped")
             -- Treat explicit Equipped=true OR ephemeral equip_<id> folders as equipped sources
@@ -989,7 +1004,7 @@ function loadEquipped(Player)
             print("  • Equipped ->", pf.Name, "id=", id, "variant=", variant)
         end
         local teamCapacity = getEquippedTeamCapacity(Player, #CurrentlyEquipped)
-        local teamPowerContext = calculateTeamPowerContext(CurrentlyEquipped, teamCapacity)
+        local teamPowerContext = calculateTeamPowerContext(CurrentlyEquipped, AllPetFolders, teamCapacity)
 
         -- Create pets
         local Increment = 360 / math.max(#CurrentlyEquipped, 1)
