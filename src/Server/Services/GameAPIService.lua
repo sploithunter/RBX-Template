@@ -1,0 +1,398 @@
+--[[
+    GameAPIService  (SCAFFOLD)
+
+    Server-side owner of the template CommandBus — the single boundary every
+    gameplay action flows through. See docs/wiki/AUTOMATION_API_DESIGN.md.
+
+    Three callers, one command set:
+      • Network  — clients invoke the `GameAPICommand` RemoteFunction. These are
+        UNTRUSTED: origin = Network, isTest = false, so test-only commands and
+        privileged paths can never be reached from a real client.
+      • Automation/tests — call GameAPIService:Execute(player, name, args) on the
+        server (via the Studio MCP `execute_luau`, or an in-Studio test). In
+        Studio these may run test-only commands.
+      • Internal — other services may dispatch through the bus too.
+
+    Adapter pattern
+    ---------------
+    Handlers are thin adapters that delegate to existing services resolved from
+    the `_G.RBXTemplateServices` locator. We do NOT rewrite services — their
+    public methods (e.g. UpgradeService:PurchaseUpgrade) already return
+    { ok = ..., reason = ... } domain envelopes, which become the bus result.
+
+    STATUS: scaffold. This service is intentionally NOT yet registered in
+    src/Server/init.server.lua. Wiring it into the boot loader + migrating the
+    GUI/Signals to dispatch through it is the next step, done once we can verify
+    against a clean Studio instance. To register (later), add alongside the other
+    services:
+
+        loader:RegisterModule(
+            "GameAPIService",
+            ServerScriptService.Server.Services.GameAPIService,
+            { "Logger" }
+        )
+
+    and Start() it with the rest.
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local CommandBus = require(ReplicatedStorage.Shared.API.CommandBus)
+local Validators = require(ReplicatedStorage.Shared.API.Validators)
+
+local GameAPIService = {}
+GameAPIService.__index = GameAPIService
+
+local REMOTE_NAME = "GameAPICommand"
+
+function GameAPIService:Init()
+    self._logger = self._modules and self._modules.Logger
+    self._bus = CommandBus.new({
+        onError = function(err, name)
+            if self._logger then
+                self._logger:Warn("GameAPI command handler error", {
+                    command = name,
+                    error = tostring(err),
+                })
+            end
+        end,
+    })
+
+    self:_registerCommands()
+end
+
+function GameAPIService:Start()
+    self:_setupNetworkTransport()
+
+    -- AutomationService (Studio-only) registers its automation.* commands into
+    -- this bus from its own Start(), via its injected GameAPIService dependency.
+    -- We don't pull it here because the _G locator isn't populated until after
+    -- the loader's LoadAll() completes.
+
+    if self._logger then
+        self._logger:Info("GameAPIService ready", {
+            commands = #self._bus:list(),
+            studio = RunService:IsStudio(),
+        })
+    end
+end
+
+-- Resolve a loader-registered service from the global locator established in
+-- init.server.lua (_G.RBXTemplateServices:Get(name)). The locator's Get() RAISES
+-- for unregistered names, so we pcall and return nil — handlers then report
+-- service_unavailable instead of crashing.
+function GameAPIService:_service(name)
+    local locator = _G.RBXTemplateServices
+    if not locator then
+        return nil
+    end
+    local ok, service = pcall(function()
+        return locator:Get(name)
+    end)
+    return ok and service or nil
+end
+
+-- EggService is required directly at boot (not registered in the loader), so it
+-- isn't reachable via the locator. Resolve it via a cached direct require.
+function GameAPIService:_eggService()
+    if self._egg == nil then
+        local ok, egg = pcall(function()
+            return require(ServerScriptService.Server.Services.EggService)
+        end)
+        self._egg = (ok and egg) or false
+    end
+    return self._egg or nil
+end
+
+-- Expose the bus for in-Studio tests / introspection.
+function GameAPIService:GetBus()
+    return self._bus
+end
+
+--[[
+    Programmatic entry point for automation and server-internal callers.
+
+    player : the acting player (or a Studio test double)
+    name   : command name
+    args   : payload table
+    opts   : optional { origin = CommandBus.Origin.*, isTest = boolean }
+
+    isTest defaults to true ONLY in Studio, so test-only commands are reachable
+    from the MCP-driven harness but never in a live server.
+]]
+function GameAPIService:Execute(player, name, args, opts)
+    opts = opts or {}
+    local isTest = opts.isTest
+    if isTest == nil then
+        isTest = RunService:IsStudio()
+    end
+
+    return self._bus:execute({
+        player = player,
+        origin = opts.origin or CommandBus.Origin.Automation,
+        isTest = isTest,
+    }, name, args)
+end
+
+function GameAPIService:_setupNetworkTransport()
+    -- Replace any stale remote (e.g. after a Rojo hot-sync in Studio).
+    local existing = ReplicatedStorage:FindFirstChild(REMOTE_NAME)
+    if existing then
+        existing:Destroy()
+    end
+
+    local remote = Instance.new("RemoteFunction")
+    remote.Name = REMOTE_NAME
+    remote.OnServerInvoke = function(player, name, args)
+        -- Client-originated: never trusted, never a test.
+        return self._bus:execute({
+            player = player,
+            origin = CommandBus.Origin.Network,
+            isTest = false,
+        }, name, type(args) == "table" and args or {})
+    end
+    remote.Parent = ReplicatedStorage
+end
+
+--[[
+    Register the template's command set. Handlers are thin adapters that resolve
+    existing services from the locator and delegate to their public methods; arg
+    validation uses the shared Validators module. Reads return { ok = true, ... };
+    mutations pass the service's own { ok, reason } envelope through as result.
+]]
+function GameAPIService:_registerCommands()
+    local bus = self._bus
+
+    -- ECONOMY -------------------------------------------------------------
+    bus:register("economy.getUpgradeCost", {
+        description = "Return the cost to take an upgrade to its next level.",
+        validate = function(args)
+            return Validators.fields(args, { upgradeId = "string" })
+        end,
+        handler = function(context, args)
+            local upgrades = self:_service("UpgradeService")
+            if not upgrades then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            local cost, err = upgrades:GetUpgradeCost(context.player, args.upgradeId)
+            if not cost then
+                return { ok = false, reason = err or "no_cost" }
+            end
+            return { ok = true, cost = cost }
+        end,
+    })
+
+    bus:register("economy.purchaseUpgrade", {
+        description = "Purchase the next level of a permanent upgrade.",
+        validate = function(args)
+            return Validators.fields(args, { upgradeId = "string" })
+        end,
+        handler = function(context, args)
+            local upgrades = self:_service("UpgradeService")
+            if not upgrades then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return upgrades:PurchaseUpgrade(context.player, args.upgradeId)
+        end,
+    })
+
+    -- ZONES ---------------------------------------------------------------
+    bus:register("zone.getUnlocked", {
+        description = "List the zones the player has unlocked.",
+        handler = function(context)
+            local zone = self:_service("ZoneService")
+            if not zone then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, zones = zone:GetUnlockedZones(context.player) }
+        end,
+    })
+
+    bus:register("zone.isUnlocked", {
+        description = "Whether a given zone is unlocked for the player.",
+        validate = function(args)
+            return Validators.fields(args, { zoneId = "string" })
+        end,
+        handler = function(context, args)
+            local zone = self:_service("ZoneService")
+            if not zone then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, unlocked = zone:IsZoneUnlocked(context.player, args.zoneId) }
+        end,
+    })
+
+    bus:register("zone.getUnlockRequirement", {
+        description = "Return the unlock requirement payload for a zone.",
+        validate = function(args)
+            return Validators.fields(args, { zoneId = "string" })
+        end,
+        handler = function(context, args)
+            local zone = self:_service("ZoneService")
+            if not zone then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return {
+                ok = true,
+                requirement = zone:GetUnlockRequirement(context.player, args.zoneId),
+            }
+        end,
+    })
+
+    bus:register("zone.unlock", {
+        description = "Attempt to unlock a zone (server-authoritative).",
+        validate = function(args)
+            return Validators.fields(args, { zoneId = "string" })
+        end,
+        handler = function(context, args)
+            local zone = self:_service("ZoneService")
+            if not zone then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return zone:UnlockZone(context.player, args.zoneId)
+        end,
+    })
+
+    bus:register("zone.travel", {
+        description = "Travel the player to a target zone (server-authoritative).",
+        validate = function(args)
+            return Validators.fields(args, { zoneId = "string" })
+        end,
+        handler = function(context, args)
+            local zone = self:_service("ZoneService")
+            if not zone then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return zone:TravelToZone(context.player, args.zoneId)
+        end,
+    })
+
+    -- EGGS (read / no-mutation) ------------------------------------------
+    bus:register("egg.getMaxHatchCount", {
+        description = "The configured maximum hatch count (1..99).",
+        handler = function()
+            local egg = self:_eggService()
+            if not egg then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, maxHatch = egg:GetMaxHatchCount() }
+        end,
+    })
+
+    bus:register("egg.simulateHatch", {
+        description = "Preview hatch odds/cost for a request WITHOUT mutating state.",
+        validate = function(args)
+            return Validators.fields(args, {
+                eggType = "string",
+                count = { type = "int", min = 1, max = 99, optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local egg = self:_eggService()
+            if not egg then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, simulation = egg:SimulateHatchBatch(context.player, args) }
+        end,
+    })
+
+    bus:register("egg.getHatchHistory", {
+        description = "Recent hatch history for the player.",
+        validate = function(args)
+            return Validators.fields(args, {
+                limit = { type = "int", min = 1, max = 200, optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local egg = self:_eggService()
+            if not egg then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, history = egg:GetHatchHistory(context.player, args.limit) }
+        end,
+    })
+
+    -- INVENTORY (read) ---------------------------------------------------
+    bus:register("inventory.get", {
+        description = "Return the player's items in a bucket.",
+        validate = function(args)
+            return Validators.fields(args, { bucket = "string" })
+        end,
+        handler = function(context, args)
+            local inventory = self:_service("InventoryService")
+            if not inventory then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, items = inventory:GetInventory(context.player, args.bucket) }
+        end,
+    })
+
+    bus:register("inventory.slots", {
+        description = "Return used/total slot counts for a bucket.",
+        validate = function(args)
+            return Validators.fields(args, { bucket = "string" })
+        end,
+        handler = function(context, args)
+            local inventory = self:_service("InventoryService")
+            if not inventory then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return {
+                ok = true,
+                used = inventory:GetUsedSlots(context.player, args.bucket),
+                total = inventory:GetTotalSlots(context.player, args.bucket),
+            }
+        end,
+    })
+
+    -- SYSTEM --------------------------------------------------------------
+    bus:register("system.listCommands", {
+        description = "List every command the bus exposes to this caller.",
+        handler = function(context)
+            local out = {}
+            for _, entry in ipairs(bus:list()) do
+                -- Hide test-only commands from non-test callers.
+                if not entry.testOnly or context.isTest then
+                    table.insert(out, entry)
+                end
+            end
+            return { ok = true, commands = out }
+        end,
+    })
+
+    if RunService:IsStudio() then
+        self:_registerTestCommands()
+    end
+end
+
+-- Test-only commands: setup affordances for the automation harness. Gated by
+-- both RunService:IsStudio() (not registered in production) AND the bus's
+-- testOnly flag (context.isTest required), so there is no path to them from a
+-- live client.
+function GameAPIService:_registerTestCommands()
+    self._bus:register("test.grantCurrency", {
+        description = "[test] Add currency to a player for test setup.",
+        testOnly = true,
+        validate = function(args)
+            if type(args.currency) ~= "string" then
+                return false, "currency must be a string"
+            end
+            if type(args.amount) ~= "number" then
+                return false, "amount must be a number"
+            end
+            return true
+        end,
+        handler = function(context, args)
+            local data = self:_service("DataService")
+            if not data then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            data:AddCurrency(context.player, args.currency, args.amount, "automation_test_grant")
+            return { ok = true, currency = args.currency, amount = args.amount }
+        end,
+    })
+end
+
+return GameAPIService

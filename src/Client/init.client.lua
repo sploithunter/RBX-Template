@@ -127,6 +127,17 @@ elseif gameConfig.GameMode == "TowerDefense" then
     -- systems.PathVisualizationSystem = require(...)
 end
 
+-- Studio-only: bridge that lets AutomationService disable/enable local controls
+-- during automated movement (see AutomationControlBridge).
+if RunService:IsStudio() then
+    local ok, err = pcall(function()
+        require(script.Systems.AutomationControlBridge).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start AutomationControlBridge", { error = tostring(err) })
+    end
+end
+
 -- Start Matter loop with client systems
 local systemsList = {}
 for name, system in pairs(systems) do

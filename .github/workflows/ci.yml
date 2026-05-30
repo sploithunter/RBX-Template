@@ -1,0 +1,43 @@
+# Continuous integration — the FAST GATE of the remote dev pipeline.
+#
+# This runs the fully-automatable stages on every push/PR:
+#   selene (lint errors) → stylua --check (owned paths) → rojo build → lune headless tests
+#
+# NOT run here (see docs/wiki/REMOTE_DEV_PIPELINE.md, gap analysis):
+#   • Studio integration tier — needs an open Roblox Studio + the MCP; hosted
+#     runners have no Studio, and run-in-roblox is unreliable on CI. Run locally.
+#   • Release (`rojo upload`) — needs the ROBLOX_OPEN_CLOUD_KEY secret + per-release
+#     authorization; intentionally not auto-published from CI.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  fast-gate:
+    name: Fast gate (static + headless)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain (mise → rojo, wally, selene, stylua, lune)
+        uses: jdx/mise-action@v2
+
+      - name: Install Wally packages
+        run: mise exec -- wally install
+
+      # mise's github backend can install release binaries without the execute
+      # bit on the Linux runner (e.g. selene), causing "Permission denied".
+      # Tools are registered by full backend names (github:Kampfkarren/selene,
+      # etc.), so chmod the whole installs tree rather than guessing short names.
+      - name: Make mise-installed tools executable
+        run: |
+          install_root="${MISE_DATA_DIR:-$HOME/.local/share/mise}/installs"
+          echo "chmod +x under: $install_root"
+          chmod -R u+x "$install_root" || true
+
+      - name: Fast gate (selene + stylua + rojo build + headless tests)
+        run: mise run ci

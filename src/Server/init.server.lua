@@ -316,7 +316,23 @@ registerFeatureModule(
         "ZoneService"
     )
 )
+-- GameAPIService: the unified command-bus boundary (see
+-- docs/wiki/AUTOMATION_API_DESIGN.md). Handlers resolve target services from the
+-- _G.RBXTemplateServices locator at runtime, so it only needs Logger to boot.
+loader:RegisterModule(
+    "GameAPIService",
+    ServerScriptService.Server.Services.GameAPIService,
+    { "Logger" }
+)
 if RunService:IsStudio() then
+    -- AutomationService: Studio-only test driver. Depends on GameAPIService so it
+    -- can register its automation.* commands onto the bus at Start time.
+    loader:RegisterModule(
+        "AutomationService",
+        ServerScriptService.Server.Services.AutomationService,
+        { "Logger", "DataService", "GameAPIService" }
+    )
+
     local studioSmokeDeps = {
         "Logger",
         "ConfigLoader",
@@ -417,8 +433,10 @@ appendIfEnabled(requiredModules, "achievements", "AchievementsService")
 appendIfEnabled(requiredModules, "leaderboards", "LeaderboardService")
 appendIfEnabled(requiredModules, "pet_progression", "PetProgressionService")
 appendIfEnabled(requiredModules, "enchants", "EnchantService")
+table.insert(requiredModules, "GameAPIService")
 if RunService:IsStudio() then
     table.insert(requiredModules, "StudioSmokeTestService")
+    table.insert(requiredModules, "AutomationService")
 end
 for _, moduleName in ipairs(requiredModules) do
     local module = loader:Get(moduleName)

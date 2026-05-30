@@ -8,6 +8,8 @@ This is the living project wiki for the RBX Template pet/clicker game. It follow
 - [Decisions](DECISIONS.md) — durable decisions and rationale.
 - [Architecture](ARCHITECTURE.md) — system shape and service boundaries.
 - [Studio Workflow](STUDIO_WORKFLOW.md) — Rojo, Roblox Studio, MCP, and verification workflow.
+- [Remote Dev Pipeline](REMOTE_DEV_PIPELINE.md) — develop → test → build → release from a CLI/AI agent; the layered testing methodology and hard-limit gap analysis.
+- [Automation API Design](AUTOMATION_API_DESIGN.md) — the CommandBus boundary, GameAPIService, and AutomationService that let tests drive the game below the GUI.
 - [Map Integration Contract](MAP_INTEGRATION_CONTRACT.md) — how Rojo systems bind to Studio-authored worlds.
 - [Egg System Plan](EGG_SYSTEM_PLAN.md) — planned hatch modes, auto hatch, multi hatch, animation, and egg config architecture.
 - [Reference Game Insights](REFERENCE_GAME_INSIGHTS.md) — useful ideas from ColorfulClickers.

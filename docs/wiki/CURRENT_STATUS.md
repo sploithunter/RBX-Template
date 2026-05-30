@@ -207,6 +207,29 @@ Last checked: 2026-05-27
 - Studio MCP admin zone-lock smoke passes: it verifies Meadow travel rejects while locked, admin bypass unlock succeeds, portal/pad travel reaches Meadow, admin lock re-locks Meadow, and profile/travel state restores.
 - Studio MCP prompt state smoke passes: locked Meadow shows the `Unlock 100 crystals` prompt, unlocking Meadow hides it for that player, and touch/server travel still moves to Meadow.
 
+## Automation API & Remote Dev Pipeline
+
+Last checked: 2026-05-29
+
+- The template now has a GUI-bypassing **command boundary** so tests and tools can drive the game below the UI. `src/Shared/API/CommandBus.lua` is a pure dispatcher (register/execute, uniform `{ok, code, result}` envelope, arg validation via `src/Shared/API/Validators.lua`, test-only gating, origin tracking). `GameAPIService` owns the bus, exposes a single `GameAPICommand` RemoteFunction (untrusted clients, `isTest=false`) plus a server-side `:Execute`, and registers adapter commands that delegate to existing services via the `_G.RBXTemplateServices` locator (economy, zone, egg, inventory) — services are not rewritten.
+- `AutomationService` (Studio-only) is the runtime test driver: pathfinding `NavigateTo` (with a client `AutomationControlBridge` that disables player controls during automated movement), `SnapshotState`/`RestoreState`, `TeleportForSetup`, and `GetPlayerState`, exposed as test-only `automation.*` commands. A Studio-only `RunAutomationSuite` RemoteFunction lets an MCP-driven client trigger the server-side suite.
+- A **headless test loop** runs pure-logic specs with no Studio: `mise run test-headless` (lune) over `tests/headless/specs/*.spec.luau`, currently 35/35 across CommandBus, Navigation, Validators, TestReport, and the runner self-test.
+- A **fast gate** `mise run ci` (selene + StyLua on owned paths + `rojo build` + headless) runs locally and in GitHub Actions (`.github/workflows/ci.yml`) on every push.
+- A **release path** exists: `scripts/release.sh` / `mise run release` wraps `rojo upload` (Open Cloud), reading `ROBLOX_OPEN_CLOUD_KEY`/`ROBLOX_UNIVERSE_ID`/`ROBLOX_PLACE_ID` from env, refusing if unset (`DRY_RUN=1` validates).
+- **Testing methodology** is documented in `REMOTE_DEV_PIPELINE.md`: (1) headless pure logic, (2) primary = server-side command-bus integration asserting authoritative state, (3) thin UI sanity via the MCP (`character_navigation` + `user_mouse_input`/`user_keyboard_input`) with 1–2 decisive screenshots. State proves; pixels confirm.
+
+### Automation Pipeline Verification
+
+Last checked: 2026-05-29
+
+- `mise run ci` green: selene 0 errors, StyLua clean on owned paths, `rojo build` passes, headless 35/35.
+- GitHub Actions fast gate green on `template/automation-api`.
+- Live in Studio (Place1, Rojo on this branch): production network path verified — `system.listCommands` returns 13 network-visible commands (test-only hidden), economy/zone/egg/inventory adapters dispatch against live services, validation rejects bad args, and `test.*`/`automation.*` are forbidden over the network.
+- Server-side `AutomationSuite` passed 11/11 incl. `snapshot → grant → coins increased → teleport → restore → coins restored` against `DataService`.
+- Full UI-driven E2E verified live: `character_navigation` to the egg (proximity UI triggered) and a `user_keyboard_input` `E` hatch → server granted a pet (`inventory.slots{pets}` used 0→1, coins 100→0).
+- Two bugs found live and fixed: `_service` now pcalls the locator (Get raises on unregistered names); `EggService` (direct-required at boot) is reached via a dedicated `_eggService()`.
+- Observed (unresolved): HUD vs Pet Shop currency displays disagree for the same player — possible UI sync bug, separate from this work.
+
 ## Recent Planning State
 
 The project now has two high-level source documents:
