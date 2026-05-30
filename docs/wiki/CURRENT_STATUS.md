@@ -52,7 +52,7 @@ This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code
 - Equipped unique pets now receive configurable breakable-destroy XP through `PetProgressionService:AwardBreakableDestroyed`. `BreakableSpawner` calls this after contribution rewards, and pet XP can itself be modified by enchant effects such as `scholar`.
 - `configs/player_progression.lua` and `PlayerProgressionService` now make player level affect team power through the modifier pipeline and grant extra equipped pet slots at configured level milestones. The initial default is +1% team power per level after level 1, capped at +100%, and +1 equipped pet slot every 10 levels capped at +3 bonus slots.
 - `scripts/balance_team_power.py` is available for offline balance passes. It reads current pet/progression/player-progression configs and estimates team power across team size, pet level, eternal/huge rules, and the configured player-level power curve.
-- Pet mining still uses a stabilized legacy `Follow` script cloned onto pet models. Phase 4 routes pet damage and efficiency modifiers through it, but a future service-owned PetWork/Combat loop should replace this bridge for cleaner tests and configuration.
+- Pet mining still uses a stabilized legacy `Follow` script cloned onto pet models. Phase 4 routes pet damage and efficiency modifiers through it, but a future service-owned PetWork/Combat loop should replace this bridge for cleaner tests and configuration. **Tracked: template issue #4** (do during Phase 4 Combat).
 - Huge-and-above provenance is now captured as separate hatcher metadata. Future grants stamp `hatcher_name`/`hatcher_user_id` for pets meeting the configured provenance threshold; `grant_source` remains non-displayed audit data. `tests/studio/BackfillPetHatcherProvenance.lua` can backfill existing qualifying pets for the current Studio player.
 - Pet tooltip metadata visibility is driven by `configs/inventory.lua` `tooltip_fields`, so fields can be hidden, labeled, or ordered without editing `InventoryPanel`.
 - Pet inventory cards now distinguish rarity/specialness and variant separately. Rarity rings are config-driven and can animate around the card using a `UIGradient`; the default rarity ladder currently includes Common, Uncommon, Rare, Epic, Legendary, Mythical, Secret, Exclusive, and Huge. Variant backgrounds are also config-driven, including darker gold and rainbow fills. Inventory display reads rarity names/colors from `configs/pets.lua`.
@@ -361,7 +361,7 @@ Those documents define the planned foundation work: stats, modifier pipeline, sa
 Continue Phase 5 and follow-up polish while keeping cleanup space for Studio and tooling warnings:
 
 1. Add richer UI controls for auto-target modes, selected currency, and hatch auto-delete filters.
-2. Replace the legacy pet follow/mining script with a service-owned PetWork/Combat loop when hands-on play-feel testing is available.
+2. Replace the legacy pet follow/mining script with a service-owned PetWork/Combat loop when hands-on play-feel testing is available. (Tracked: template issue #4; Phase 4 Combat.)
 3. Improve the first enchanter UI with richer result animation, better before/after messaging, and future enchant lock/protection options.
 4. Improve enchant education/discoverability beyond the first config-sourced description text.
 5. Expand the authored-map workflow with visible gate art/fixtures attached to the invisible `TeleportPad`/`Portal` hooks.
