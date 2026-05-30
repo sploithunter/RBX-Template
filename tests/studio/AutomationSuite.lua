@@ -250,6 +250,19 @@ function AutomationSuite.run(opts)
         20
     )
 
+    -- isolation: zero any light_tokens left over from prior runs so the
+    -- no-tokens rejection is deterministic (the ascend below spends 100 of 150,
+    -- leaving residue that would otherwise accumulate across runs).
+    local residualLT = api:Execute(player, "automation.getPlayerState", {}).result.currencies.light_tokens
+        or 0
+    if residualLT > 0 then
+        api:Execute(
+            player,
+            "test.grantCurrency",
+            { currency = "light_tokens", amount = -residualLT }
+        )
+    end
+
     report:expectEqual(
         "heaven_1 rejected without tokens",
         api:Execute(player, "layer.use", { layer = "heaven_1" }).result.reason,
