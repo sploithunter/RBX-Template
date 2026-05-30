@@ -66,6 +66,7 @@ function ArchetypeService:Respec(player, newArchetype)
     end
     data.Powers = {}
     data.Slots = {}
+    data.Hotbar = {} -- fresh hotbar for the new archetype (re-defaults on next read)
     data.Archetype = newArchetype -- nil => must re-select
     self._dataService:RequestSave(player, "archetype_respec", { critical = true })
     return { ok = true, archetype = data.Archetype }
