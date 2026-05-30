@@ -352,6 +352,13 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.ArchetypeService,
     { "Logger", "ConfigLoader", "DataService" }
 )
+-- PowerService: Halo & Horns power selection at level-up (Feature 14). Resolves
+-- PlayerProgressionService at runtime for the player's level.
+loader:RegisterModule(
+    "PowerService",
+    ServerScriptService.Server.Services.PowerService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- FocusService: Halo & Horns player Focus pool + invulnerability (Feature 12).
 loader:RegisterModule(
     "FocusService",
@@ -496,6 +503,7 @@ table.insert(requiredModules, "ActiveSquadService")
 table.insert(requiredModules, "SpiritFormService")
 table.insert(requiredModules, "StackPoolService")
 table.insert(requiredModules, "ArchetypeService")
+table.insert(requiredModules, "PowerService")
 table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "PetFollowService")
