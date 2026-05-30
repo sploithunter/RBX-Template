@@ -13,6 +13,14 @@
 local petConfig = {
     version = "1.0.0",
 
+    -- Eternal pets scale to a percentage of the player's "eternal power base"
+    -- (the average of their top-N non-eternal pets, N = equip capacity). Huge
+    -- pets use this percent (1.2 = 120%); balance-tunable. The pet's huge_base_power
+    -- acts as a floor (see PetPower / PetHandler resolveEffectivePetPower).
+    eternal = {
+        huge_power_percent = 120,
+    },
+
     serials = {
         store_name = "PetSerials_v1",
     },
