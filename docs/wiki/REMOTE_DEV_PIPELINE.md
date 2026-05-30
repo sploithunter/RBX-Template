@@ -25,6 +25,42 @@ and the Roblox Studio MCP, not by clicking the screen.
 | Build artifact | `rojo build --output game.rbxl` | ✅ yes | Place/model file. Runs in CI. |
 | Release | `rojo upload` (Open Cloud) | ✅ yes* | *Needs an Open Cloud API key + universe/place IDs (user-provisioned) and per-release authorization. No GUI. |
 
+## Testing methodology (the layered process)
+
+The test pyramid for this project. **Push every assertion down to the cheapest
+layer that can catch the bug. State proves; pixels only confirm.**
+
+1. **Headless pure logic (lune)** — the bulk. `CommandBus`, `Navigation`,
+   `Validators`, `TestReport`, and any Roblox-API-free game math. Instant, no
+   Studio, runs in CI. Most logic bugs die here.
+2. **Server-side integration via the command bus — the PRIMARY validation.**
+   Fire commands through `GameAPIService:Execute` / the `AutomationSuite`
+   (server-side, via the `RunAutomationSuite` bridge) and assert on
+   **authoritative state** (currency, inventory, position, zone) read back
+   through the bus. Fast, deterministic, **no screenshots**. This is where the
+   vast majority of runtime behavior is verified.
+3. **UI sanity check — thin, last-mile, sparing.** Drive the *real* player UI
+   with the MCP (`character_navigation` + `user_mouse_input` /
+   `user_keyboard_input`) and capture **one or two decisive screenshots**. This
+   only confirms the human-facing path renders and wires up — it is NOT for
+   logic correctness (that's layer 2's job). Used sparingly because screenshots
+   are slow and occasionally flaky (`screen_capture` can time out — see G5).
+
+Per feature: write the logic pure (1) → register the command and validate it
+through the bus (2) → run a single UI-sanity pass (3) before calling it done.
+
+**Worked example — egg hatch (verified live in Place1):**
+- *Action via the real UI (layer 3):* `character_navigation` walks the avatar to
+  the egg; `user_keyboard_input` presses `E`; one `screen_capture` confirms the
+  proximity UI + result.
+- *Validation via the bus (layer 2):* read `inventory.slots { bucket = "pets" }`
+  before/after → `used` went `0 → 1`, confirming the server granted a pet (and
+  coins `100 → 0`). The screenshot is the sanity check; the bus read is the proof.
+
+These input tools already exist in the Studio MCP (`user_mouse_input`,
+`user_keyboard_input`, `character_navigation`) — no custom MCP server is needed
+for UI-driven E2E.
+
 ## GAP ANALYSIS — hard limits
 
 These cannot be closed with the current Claude Code harness + Roblox Studio
