@@ -308,6 +308,45 @@ Deferred (with reasons):
   dynamic recalc is already shown via `pet.power` varying by realm with no save.
 - Element via fusion (chaotic) — Phase 6 fusion.
 
+## Halo & Horns — Phase 2 (Heaven Vertical Slice — logic)
+
+Last checked: 2026-05-30
+
+Layer access & portals (Feature 3) as server-authoritative logic; Heaven farming
+reward scaling (Feature 11) is already covered by RewardResolver (Phase 0.3). The
+**logic half of the vertical slice is done and live-verified**; the **visual half
+(authored stacked geometry + portals + actual teleport) is deferred to map work.**
+
+- **Layer access** (Feature 3): `configs/layers.lua` gains per-layer `access`
+  (y_offset, requires_soul, token_cost) for base + heaven_1/2/3 + hell_1/2/3. Pure
+  `src/Shared/Game/LayerAccess.lua` (canAccess: Heaven soul>=req, Hell soul<=req,
+  cross-path visit ignores Soul, token cost; accessibleLayers).
+- **LayerService** (server): AccessibleLayers + UseLayer — re-validates cost from
+  config (never trusts client), deducts the token currency via DataService, sets
+  `profile.CurrentLayer` (lazy-init/persist). GameAPI commands: `layer.current`,
+  `layer.accessible` (reads), `layer.use` (mutate, server-authoritative).
+- **Cross-cutting activations**: with `CurrentLayer` set, Heaven hatches now stamp
+  `light` element (Feature 5) and `pet.power` defaults its realm to the current
+  layer (Feature 6 dynamic recalculation — power follows where you are).
+
+Verification:
+- Headless `mise run test-headless`: 104/104 across 14 specs (Feature 3 [unit]
+  access scenarios). `mise run ci` green.
+- Live in Halo & Horns: `AutomationSuite` 36/36 incl. base default, ring-tour →
+  soul 20, ascend to heaven_1 (100 light tokens deducted, server-validated),
+  reject-without-tokens / reject-Hell-with-positive-soul, Heaven-hatch → light
+  element, and pet.power realm following the current layer.
+
+Deferred — needs authored map work (your hands in Studio):
+- Stacked Y-offset geometry (base 0, heaven +2000/4000/6000, hell −2000/…) and the
+  **visual portals + actual character teleport** ([studio]). `LayerService` sets
+  the logical layer + cost now; the teleport binds when the geometry exists.
+- StreamingEnabled radius tuning for the stacked world.
+- Heaven farming live drops + Light-token drops ([integration]) — need breakables
+  placed in the biomes/layers (world content). Reward math (RewardResolver) is done.
+- Cross-path "visit" portals — pure logic supports it; wiring waits on authored
+  visit portals (it's intentionally not a client-settable flag).
+
 ## Recent Planning State
 
 The project now has two high-level source documents:
