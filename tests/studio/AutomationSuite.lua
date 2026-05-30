@@ -191,6 +191,46 @@ function AutomationSuite.run(opts)
 
     api:Execute(player, "game.resetAlignment", {}) -- cleanup
 
+    -- Phase 1: element-at-hatch (Feature 5) + power calc (Feature 6)
+    local granted = api:Execute(player, "game.grantPet", { petType = "bear", variant = "basic" })
+    report:expect("game.grantPet ok", domainOk(granted), granted.error or "grant failed")
+    report:expectEqual(
+        "pet hatched in base layer has neutral element",
+        granted.result and granted.result.element,
+        "neutral"
+    )
+    report:expect(
+        "power is NOT persisted on the stored pet record",
+        granted.result and granted.result.hasPowerField == false,
+        "stored record should have no power field"
+    )
+
+    -- power arithmetic (bear base_power 10): element resonance by realm
+    report:expectEqual(
+        "light pet in neutral realm -> base 10",
+        api:Execute(player, "pet.power", { petType = "bear", element = "light", realm = "neutral" }).result.power,
+        10
+    )
+    report:expectEqual(
+        "light pet in Hell (opposing 1.5x) -> 15",
+        api:Execute(player, "pet.power", { petType = "bear", element = "light", realm = "hell" }).result.power,
+        15
+    )
+    report:expectEqual(
+        "light pet in Heaven (home 1.2x) -> 12",
+        api:Execute(player, "pet.power", { petType = "bear", element = "light", realm = "heaven" }).result.power,
+        12
+    )
+    report:expectEqual(
+        "golden variant (1.5x) -> 15 in neutral",
+        api:Execute(
+            player,
+            "pet.power",
+            { petType = "bear", variant = "golden", element = "neutral", realm = "neutral" }
+        ).result.power,
+        15
+    )
+
     return HttpService:JSONEncode(report:summary())
 end
 

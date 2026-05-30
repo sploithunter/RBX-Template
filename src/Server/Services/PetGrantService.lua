@@ -6,6 +6,9 @@
     instead of writing pet inventory records directly.
 ]]
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PetElement = require(ReplicatedStorage.Shared.Game.PetElement)
+
 local PetGrantService = {}
 PetGrantService.__index = PetGrantService
 
@@ -31,6 +34,7 @@ function PetGrantService:Init()
     self._petProgressionService = self._modules.PetProgressionService
     self._enchantService = self._modules.EnchantService
     self._petsConfig = self._configLoader:LoadConfig("pets")
+    self._layersConfig = self._configLoader:LoadConfig("layers")
 
     self._logger:Info("PetGrantService initialized", {
         context = "PetGrantService",
@@ -112,6 +116,7 @@ function PetGrantService:_normalizeGrant(request)
         locked = request.locked,
         nickname = request.nickname,
         source = request.source or "pet_grant",
+        element = request.element and tostring(request.element):lower() or nil,
     }
 end
 
@@ -134,6 +139,16 @@ function PetGrantService:BuildPetData(request, player)
         locked = grant.locked ~= nil and grant.locked == true or grant.huge == true,
         grant_source = grant.source,
     }
+
+    -- Element at hatch (Feature 5): from the layer the hatch happens on
+    -- (base -> neutral; Heaven -> light; Hell -> shadow once LayerService exists).
+    -- An explicit request.element overrides (test/fusion). Chaotic is fusion-only.
+    local hatchLayer = "base"
+    if self._dataService then
+        local data = self._dataService:GetData(player)
+        hatchLayer = (data and data.CurrentLayer) or "base"
+    end
+    petData.element = grant.element or PetElement.elementForLayer(hatchLayer, self._layersConfig)
 
     if petConfig.rarity_id then
         petData.rarity_id = petConfig.rarity_id

@@ -41,6 +41,8 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local CommandBus = require(ReplicatedStorage.Shared.API.CommandBus)
 local Validators = require(ReplicatedStorage.Shared.API.Validators)
+local ElementResonance = require(ReplicatedStorage.Shared.Game.ElementResonance)
+local PowerFormula = require(ReplicatedStorage.Shared.Game.PowerFormula)
 
 local GameAPIService = {}
 GameAPIService.__index = GameAPIService
@@ -109,6 +111,16 @@ end
 -- Expose the bus for in-Studio tests / introspection.
 function GameAPIService:GetBus()
     return self._bus
+end
+
+-- Lazily load + cache a config via the locator's ConfigLoader.
+function GameAPIService:_config(name)
+    self._configs = self._configs or {}
+    if self._configs[name] == nil then
+        local configLoader = self:_service("ConfigLoader")
+        self._configs[name] = (configLoader and configLoader:LoadConfig(name)) or false
+    end
+    return self._configs[name] or nil
 end
 
 --[[
@@ -392,6 +404,50 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    -- PETS / POWER (Halo & Horns, Feature 6) -----------------------------
+    -- Runtime power = base x variant x level x element-resonance (never persisted).
+    bus:register("pet.power", {
+        description = "Compute a pet's runtime power for a context (element resonance by realm).",
+        validate = function(args)
+            return Validators.fields(args, {
+                petType = "string",
+                variant = { type = "string", optional = true },
+                element = { type = "string", optional = true },
+                realm = { type = "string", optional = true },
+                levelMultiplier = { type = "number", optional = true },
+            })
+        end,
+        handler = function(_, args)
+            local pets = self:_config("pets")
+            local elements = self:_config("elements")
+            if not pets or not pets.getPet or not elements then
+                return { ok = false, reason = "config_unavailable" }
+            end
+            local def = pets.getPet(args.petType, args.variant or "basic")
+            if not def then
+                return { ok = false, reason = "unknown_pet" }
+            end
+            local element = args.element or "neutral"
+            local realm = args.realm or "neutral"
+            local elementMult = ElementResonance.multiplier(element, realm, elements)
+            local power = PowerFormula.compute({
+                base = def.base_power or 1,
+                variant = def.power_multiplier or 1,
+                level = tonumber(args.levelMultiplier) or 1,
+                element = elementMult,
+            })
+            return {
+                ok = true,
+                power = power,
+                base = def.base_power,
+                variant = def.power_multiplier,
+                element = element,
+                realm = realm,
+                elementMultiplier = elementMult,
+            }
+        end,
+    })
+
     -- SYSTEM --------------------------------------------------------------
     bus:register("system.listCommands", {
         description = "List every command the bus exposes to this caller.",
@@ -449,6 +505,41 @@ function GameAPIService:_registerTestCommands()
                 return { ok = false, reason = "service_unavailable" }
             end
             return alignment:Reset(context.player)
+        end,
+    })
+
+    -- Grant a pet and return its record (proves element-at-hatch, Feature 5).
+    self._bus:register("game.grantPet", {
+        description = "[test] Grant a pet to the player; returns the record incl. element.",
+        validate = function(args)
+            return Validators.fields(args, {
+                petType = "string",
+                variant = { type = "string", optional = true },
+                element = { type = "string", optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local grant = self:_service("PetGrantService")
+            if not grant then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            local result = grant:GrantPet(context.player, {
+                petType = args.petType,
+                variant = args.variant or "basic",
+                element = args.element, -- nil -> from layer (base -> neutral)
+                source = "phase1_e2e",
+            })
+            if not result.ok then
+                return { ok = false, reason = result.error or "grant_failed" }
+            end
+            local petData = result.petData or {}
+            return {
+                ok = true,
+                uid = result.uid,
+                element = petData.element,
+                variant = petData.variant,
+                hasPowerField = petData.power ~= nil, -- should be false (power not persisted on the stored record)
+            }
         end,
     })
 
