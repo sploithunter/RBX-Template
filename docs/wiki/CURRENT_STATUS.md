@@ -437,7 +437,33 @@ Deferred — needs the user's hands (authored map) or a decision:
 - ~~Full removal of the cloned `PetScripts/*`~~ — **DONE** (issue #4 closed, see
   the PetFollowService section below).
 
-## PetFollowService — service-owned pet movement (issue #4, DONE)
+## Pet movement (issue #4) — REVERTED to legacy; movement half reopened
+
+Last checked: 2026-05-30
+
+**Status correction.** The service-owned *movement* replacement was reverted: both
+the server-positioning and client-RenderStepped variants dropped the legacy Follow
+script's teleport-watchdog + tuned forces, so pets drifted/fell off the map and
+were destroyed (the known ~10-months-ago bug the legacy script fixes). Early
+(~6s-after-spawn) verification missed the *delayed* fall.
+
+Current working state:
+- Legacy `PetScripts/Follow.server.lua` + `FollowBox.server.lua` restored and own
+  movement (`configs/pet_follow.lua` `service_owned=false`). Pets are stable,
+  upright, don't fall (verified ~28s live), and mine. The watchdog is the fix.
+- **Damage stays service-owned** (Phase 4.d holds): the legacy Follow routes mining
+  damage through `CombatService:ResolvePetDamage` (PowerFormula + modifier
+  pipeline) with an inline fallback.
+- `PetFollowService` + pure `PetFormation` remain in-tree but **inert** (flag off).
+- GitHub issue #4 reopened. A future service-owned movement loop must port the
+  drift/teleport watchdog + correct network-ownership for the massless pet
+  assemblies, and be verified watching pets 30s+ (not just at spawn). Desired but
+  still-open polish: attack pets should SURROUND the target in an animated ring
+  (orbit/lunge) rather than stack on one point; smooth client-side movement.
+
+----
+
+## (superseded) PetFollowService — service-owned pet movement
 
 Last checked: 2026-05-30
 
