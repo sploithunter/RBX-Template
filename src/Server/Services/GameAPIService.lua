@@ -439,6 +439,19 @@ function GameAPIService:_registerTestCommands()
         end,
     })
 
+    -- Reset alignment to a fresh state (for repeatable tests).
+    self._bus:register("game.resetAlignment", {
+        description = "[test] Reset the player's Soul/conquest state to fresh.",
+        testOnly = true,
+        handler = function(context)
+            local alignment = self:_service("AlignmentService")
+            if not alignment then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return alignment:Reset(context.player)
+        end,
+    })
+
     -- Drive a biome conquest (real conquest triggers arrive with combat, Phase 4).
     self._bus:register("game.conquer", {
         description = "[test] Apply a biome conquest to the player (shifts Soul).",

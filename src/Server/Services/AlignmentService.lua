@@ -59,6 +59,19 @@ function AlignmentService:GetState(player)
     }
 end
 
+-- Reset alignment state to a fresh profile (test/dev affordance).
+function AlignmentService:Reset(player)
+    local data = self._dataService:GetData(player)
+    if not data then
+        return { ok = false, reason = "data_not_loaded" }
+    end
+    data.Soul = 0
+    data.LastConqueredBiome = nil
+    data.ConqueredBiomes = {}
+    self._dataService:RequestSave(player, "alignment_reset", { critical = true })
+    return { ok = true, soul = 0 }
+end
+
 -- Apply a biome conquest: shift Soul per SoulMath and persist.
 function AlignmentService:ApplyConquest(player, conqueredBiome)
     if not self._topology:has(conqueredBiome) then

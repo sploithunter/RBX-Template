@@ -155,6 +155,42 @@ function AutomationSuite.run(opts)
         )
     end
 
+    -- Phase 0: alignment / Soul (Halo & Horns) — live through the bus + DataService
+    local ring = api:Execute(player, "world.ringInfo", { biome = "earth" })
+    report:expect(
+        "world.ringInfo earth -> clockwise ice",
+        ring.ok and ring.result and ring.result.clockwise == "ice",
+        ring.error or "ring info wrong"
+    )
+    report:expectEqual(
+        "world.ringInfo earth -> dichotomy desert",
+        ring.result and ring.result.dichotomy,
+        "desert"
+    )
+
+    api:Execute(player, "game.resetAlignment", {})
+    local soul0 = api:Execute(player, "soul.get", {})
+    report:expectEqual("soul resets to 0", soul0.result and soul0.result.soul, 0)
+
+    api:Execute(player, "game.conquer", { biome = "earth" }) -- first conquest, delta 0
+    report:expectEqual(
+        "first conquest keeps soul 0",
+        api:Execute(player, "soul.get", {}).result.soul,
+        0
+    )
+
+    local conquerIce = api:Execute(player, "game.conquer", { biome = "ice" }) -- clockwise: +5
+    report:expect("game.conquer ice ok", domainOk(conquerIce), conquerIce.error or "conquer failed")
+    local afterIce = api:Execute(player, "soul.get", {})
+    report:expectEqual("clockwise conquest -> soul 5", afterIce.result and afterIce.result.soul, 5)
+    report:expectEqual(
+        "soul 5 reads as halo alignment",
+        afterIce.result and afterIce.result.alignment,
+        "halo"
+    )
+
+    api:Execute(player, "game.resetAlignment", {}) -- cleanup
+
     return HttpService:JSONEncode(report:summary())
 end
 
