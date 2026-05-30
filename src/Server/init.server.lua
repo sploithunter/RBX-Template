@@ -316,6 +316,13 @@ registerFeatureModule(
         "ZoneService"
     )
 )
+-- AlignmentService: Halo & Horns Soul stat (Feature 2). Pure SoulMath core over
+-- profile state; reads biomes/soul configs.
+loader:RegisterModule(
+    "AlignmentService",
+    ServerScriptService.Server.Services.AlignmentService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- GameAPIService: the unified command-bus boundary (see
 -- docs/wiki/AUTOMATION_API_DESIGN.md). Handlers resolve target services from the
 -- _G.RBXTemplateServices locator at runtime, so it only needs Logger to boot.
@@ -433,6 +440,7 @@ appendIfEnabled(requiredModules, "achievements", "AchievementsService")
 appendIfEnabled(requiredModules, "leaderboards", "LeaderboardService")
 appendIfEnabled(requiredModules, "pet_progression", "PetProgressionService")
 appendIfEnabled(requiredModules, "enchants", "EnchantService")
+table.insert(requiredModules, "AlignmentService")
 table.insert(requiredModules, "GameAPIService")
 if RunService:IsStudio() then
     table.insert(requiredModules, "StudioSmokeTestService")

@@ -347,6 +347,51 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    -- WORLD / ALIGNMENT (Halo & Horns) -----------------------------------
+    bus:register("world.ringInfo", {
+        description = "Ring topology: biome count, and neighbors/theme/dichotomy for a biome.",
+        validate = function(args)
+            return Validators.fields(args, { biome = { type = "string", optional = true } })
+        end,
+        handler = function(_, args)
+            local alignment = self:_service("AlignmentService")
+            if not alignment then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            local topo = alignment:GetTopology()
+            local info = { ok = true, count = topo:count() }
+            if type(args.biome) == "string" and topo:has(args.biome) then
+                info.biome = args.biome
+                info.theme = topo:theme(args.biome)
+                info.clockwise = topo:clockwiseNeighbor(args.biome)
+                info.counterclockwise = topo:counterclockwiseNeighbor(args.biome)
+                info.dichotomy = topo:dichotomyPartner(args.biome)
+                info.currency = topo:currency(args.biome)
+            end
+            return info
+        end,
+    })
+
+    bus:register("soul.get", {
+        description = "The acting player's Soul value, last conquered biome, and alignment.",
+        handler = function(context)
+            local alignment = self:_service("AlignmentService")
+            if not alignment then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            local state = alignment:GetState(context.player)
+            if not state then
+                return { ok = false, reason = "data_not_loaded" }
+            end
+            return {
+                ok = true,
+                soul = state.soul,
+                last_conquered_biome = state.last_conquered_biome,
+                alignment = state.alignment,
+            }
+        end,
+    })
+
     -- SYSTEM --------------------------------------------------------------
     bus:register("system.listCommands", {
         description = "List every command the bus exposes to this caller.",
@@ -391,6 +436,22 @@ function GameAPIService:_registerTestCommands()
             end
             data:AddCurrency(context.player, args.currency, args.amount, "automation_test_grant")
             return { ok = true, currency = args.currency, amount = args.amount }
+        end,
+    })
+
+    -- Drive a biome conquest (real conquest triggers arrive with combat, Phase 4).
+    self._bus:register("game.conquer", {
+        description = "[test] Apply a biome conquest to the player (shifts Soul).",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { biome = "string" })
+        end,
+        handler = function(context, args)
+            local alignment = self:_service("AlignmentService")
+            if not alignment then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return alignment:ApplyConquest(context.player, args.biome)
         end,
     })
 end
