@@ -41,6 +41,10 @@ run = "rojo build --output game.rbxl"
 description = "Publish to Roblox via Open Cloud (rojo upload). Needs ROBLOX_OPEN_CLOUD_KEY/UNIVERSE_ID/PLACE_ID env; refuses if unset. DRY_RUN=1 to validate only."
 run = "bash scripts/release.sh"
 
+[tasks.publish-studio]
+description = "Publish the place open in Roblox Studio via File -> Publish (AppleScript; macOS; needs Accessibility). Preserves the authored map, no Open Cloud key. Works for a headless agent."
+run = "bash scripts/studio_publish.sh"
+
 [tasks.asset-report]
 description = "Report tracked pet assets and source-file gaps"
 run = "node scripts/assets_report.js"

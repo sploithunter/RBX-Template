@@ -87,6 +87,13 @@ These are **one-time, per-session human setup actions**. After bring-up, the MCP
 automates the rest (`execute_luau`, `start_stop_play`, `screen_capture`,
 `character_navigation`, `get_console_output`, inspection).
 
+**macOS caveat (partial workaround):** with an **Accessibility** grant, a headless
+agent *can* drive Studio's **menu bar** via AppleScript (`osascript` → System
+Events) — e.g. `scripts/studio_publish.sh` clicks File → Publish. This is
+script-driven, not vision-based, so it covers menu-bar actions (publish, etc.)
+but not in-canvas widgets like the Rojo plugin's Connect button, nor launching
+Studio itself.
+
 ### G3 — Studio integration tier is not CI-runnable
 GitHub-hosted runners have no Roblox Studio. `run-in-roblox` (the community
 headless-Studio test launcher) needs Studio installed and is unreliable on
@@ -129,14 +136,25 @@ agent's deploy/test sandbox.
 |-----------|--------|-------|----------|
 | Headless / CLI agent (MCP-only), or CI | `rojo upload` (Open Cloud) | Rojo-owned tree, API key, **place closed in Studio** | automated deploys to a code-only / staging place |
 | Agent **with computer use**, or a human | Studio **File → Publish to Roblox** | an open Studio session (no key) | the real **Studio-authored-map** game — preserves the map, no key, no close needed |
+| **Headless agent on macOS** (no computer use) | **`mise run publish-studio`** — AppleScript drives File → Publish | Studio open on an associated place + **Accessibility** grant | shipping a Studio-authored-map game from a headless agent — preserves the map, no key |
 
-A computer-use agent should prefer the **Studio publish** for authored-map games:
-it publishes the open session (synced code **and** the authored Workspace) in one
-click, avoiding both the mapless-build footgun and the close-Studio conflict that
-the Open Cloud path requires. The Open Cloud path remains the right tool for a
-headless agent (no desktop control, like the Studio-MCP-only setup here) and for
-CI, targeting a Rojo-owned staging place. (The Studio MCP does not currently
-expose a publish action, so an MCP-only agent must use Open Cloud.)
+The Studio MCP exposes no publish action, so an MCP-only agent can't publish
+through the MCP. But on **macOS** it doesn't need Open Cloud for an authored-map
+game: `scripts/studio_publish.sh` uses **AppleScript (`osascript` → System
+Events)** to click **File → Publish to Roblox** by name — script-driven GUI
+automation, not vision-based "computer use." It publishes the open session (code
+**and** the authored map), needing no key and no close. This is **verified live**
+(Place1). Requirements/caveats:
+- Studio must be **open on the target place** and that place must already be
+  **associated** with a Roblox place (a brand-new place opens a "Publish As"
+  dialog the script doesn't drive).
+- The controlling app needs **Accessibility** (System Settings → Privacy &
+  Security → Accessibility); without it, System Events errors `-1719`.
+- It's **UI-dependent** (menu item name "Publish to Roblox"), so it can need
+  re-tuning across Studio versions — less robust than the Open Cloud API.
+
+For a **computer-use** agent or human, plain **File → Publish** is simplest;
+Open Cloud remains right for CI / Rojo-owned staging places.
 
 **Open Cloud path — setup gotchas (learned live):**
 - The Open Cloud key needs the **`universe-places`** API system with **Write**
