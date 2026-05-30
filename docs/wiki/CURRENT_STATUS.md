@@ -229,6 +229,7 @@ Last checked: 2026-05-29
 - Full UI-driven E2E verified live: `character_navigation` to the egg (proximity UI triggered) and a `user_keyboard_input` `E` hatch → server granted a pet (`inventory.slots{pets}` used 0→1, coins 100→0).
 - Two bugs found live and fixed: `_service` now pcalls the locator (Get raises on unregistered names); `EggService` (direct-required at boot) is reached via a dedicated `_eggService()`.
 - Observed (unresolved): HUD vs Pet Shop currency displays disagree for the same player — possible UI sync bug, separate from this work.
+- **Release stage verified live**: `mise run release` published the build to the Rojo-owned staging experience (universe `10242349813`) via Open Cloud `rojo upload` (exit 0). The full develop → test → build → release pipeline is proven end-to-end. Gotchas (key needs `universe-places:write`; Universe ID ≠ Place ID; close the place in Studio before publishing) are documented in `REMOTE_DEV_PIPELINE.md`.
 
 ## Recent Planning State
 

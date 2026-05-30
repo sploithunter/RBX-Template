@@ -123,6 +123,19 @@ staging universe only, so automated publishes can never touch the real
 authored-map game. The real game is published from Studio; staging is the
 agent's deploy/test sandbox.
 
+**Key setup gotchas (learned live):**
+- The Open Cloud key needs the **`universe-places`** API system with **Write**
+  (not plain `universe`), scoped to the staging universe. Wrong/missing scope →
+  `Unauthorized: API Key has insufficient scopes`.
+- **Universe ID ≠ Place ID** even with one place — read both from the
+  create.roblox.com experience URL, or resolve the universe from a place via
+  `GET https://apis.roblox.com/universes/v1/places/{placeId}/universe` (public).
+- **Close the place in Studio before publishing.** Open Cloud cannot save a new
+  version over a place that's open in a Studio session — it returns
+  `Conflict: "Save failed. Server is busy..."`. Closing Studio clears it.
+- Status: **verified live** — a real `rojo upload` to the staging place
+  (universe `10242349813`) returned exit 0 after closing Studio.
+
 ### G5 — `screen_capture` is a backstop, not a gate
 The MCP screenshot can time out (observed locally). Visual checks confirm "the
 UI rendered / the player is where expected" but **state read back through the
