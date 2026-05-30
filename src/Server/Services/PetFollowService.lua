@@ -96,6 +96,9 @@ function PetFollowService:_ensureConstraints(pet)
         align.Mode = Enum.PositionAlignmentMode.OneAttachment
         align.Attachment0 = att
         align.RigidityEnabled = false
+        -- Apply the pull at the center of mass so it never induces spin (the
+        -- attachment sits on an off-center part — that torque caused tumbling).
+        align.ApplyAtCenterOfMass = true
         align.MaxForce = self._config.align.follow_max_force
         align.Responsiveness = self._config.align.follow_responsiveness
         align.Parent = pet
@@ -106,8 +109,9 @@ function PetFollowService:_ensureConstraints(pet)
         alignO.Name = "_FollowAlignO"
         alignO.Mode = Enum.OrientationAlignmentMode.OneAttachment
         alignO.Attachment0 = att
-        alignO.RigidityEnabled = false
-        alignO.Responsiveness = self._config.align.follow_responsiveness
+        -- Rigid orientation snaps the pet to the target CFrame each step, so it
+        -- stays upright and never tumbles regardless of the position force.
+        alignO.RigidityEnabled = true
         alignO.Parent = pet
     end
     if primary.Anchored then
@@ -217,37 +221,54 @@ function PetFollowService:_tickPlayer(player)
     }
     local phase = os.clock() - self._started
 
+    -- Horizontal forward, so pets face the player's heading and stay upright.
+    local flatLook = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
+    local upFwd = flatLook.Magnitude > 0.01 and flatLook.Unit or Vector3.new(0, 0, -1)
+    local leash = self._config.attack.leash_distance
+
     for slot, pet in ipairs(pets) do
         local posNV = pet:FindFirstChild("PositionNumber")
         local index = (posNV and posNV.Value > 0) and posNV.Value or slot
         local align, alignO = self:_ensureConstraints(pet)
         if align then
             local targetId = pet:FindFirstChild("TargetID")
+            local breakable = nil
             if targetId and targetId.Value ~= 0 then
-                -- attack mode: sit near the breakable, and mine it
                 local targetType = pet:FindFirstChild("TargetType")
                 local targetWorld = pet:FindFirstChild("TargetWorld")
-                local breakable = self:_findBreakable(
+                breakable = self:_findBreakable(
                     targetType and targetType.Value,
                     targetWorld and targetWorld.Value,
                     targetId.Value
                 )
-                if breakable then
-                    local bpos = breakable:GetPivot().Position
-                    align.Position = bpos + Vector3.new(0, self._config.attack.approach_distance, 0)
+                -- Leash: if the target is gone, or the PLAYER has walked away from
+                -- it, abandon it and return to following (the legacy script did
+                -- this; BreakableService re-assigns when the player is near again).
+                if
+                    not breakable
+                    or (breakable:GetPivot().Position - cf.Position).Magnitude > leash
+                then
+                    targetId.Value = 0
+                    breakable = nil
                 end
+            end
+
+            if breakable then
+                -- attack mode: sit near the breakable, face it, and mine it
+                local bpos = breakable:GetPivot().Position
+                local pos = bpos + Vector3.new(0, self._config.attack.approach_distance, 0)
+                align.Position = pos
+                local toB = Vector3.new(bpos.X - pos.X, 0, bpos.Z - pos.Z)
+                local dir = toB.Magnitude > 0.01 and toB.Unit or upFwd
+                alignO.CFrame = CFrame.lookAt(pos, pos + dir)
                 self:_mine(player, pet)
             else
-                -- follow mode: hold the formation slot (with a gentle bob)
+                -- follow mode: hold the formation slot (with a gentle bob), upright
                 local t = PetFormation.targetPosition(frame, index, count, self._config.formation)
                 local bob = PetFormation.floatOffset(phase + index, self._config.float)
-                align.Position = Vector3.new(t.x, t.y + bob, t.z)
-                if alignO then
-                    alignO.CFrame = CFrame.lookAt(
-                        Vector3.new(t.x, t.y, t.z),
-                        Vector3.new(t.x, t.y, t.z) + cf.LookVector
-                    )
-                end
+                local pos = Vector3.new(t.x, t.y + bob, t.z)
+                align.Position = pos
+                alignO.CFrame = CFrame.lookAt(pos, pos + upFwd)
             end
         end
     end

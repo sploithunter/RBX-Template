@@ -45,9 +45,11 @@ return {
         attack_responsiveness = 75,
     },
 
-    -- Attack mode: how close the pet sits to its target.
+    -- Attack mode: how close the pet sits to its target, and how far the PLAYER
+    -- can walk from a target before the pet abandons it and returns to following.
     attack = {
         approach_distance = 6,
+        leash_distance = 45,
     },
 
     -- Heartbeat throttle for the service loop (seconds between position updates).
