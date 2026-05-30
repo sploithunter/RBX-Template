@@ -626,6 +626,42 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("archetype.get", {
+        description = "The player's archetype + its available power pool.",
+        handler = function(context)
+            local s = self:_service("ArchetypeService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:GetState(context.player)
+        end,
+    })
+
+    bus:register("archetype.list", {
+        description = "All selectable archetypes.",
+        handler = function()
+            local s = self:_service("ArchetypeService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:List()
+        end,
+    })
+
+    bus:register("archetype.select", {
+        description = "Select the player's archetype (one-time; respec to change).",
+        validate = function(args)
+            return Validators.fields(args, { archetype = "string" })
+        end,
+        handler = function(context, args)
+            local s = self:_service("ArchetypeService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Select(context.player, args.archetype)
+        end,
+    })
+
     -- SYSTEM --------------------------------------------------------------
     bus:register("system.listCommands", {
         description = "List every command the bus exposes to this caller.",
@@ -872,6 +908,22 @@ function GameAPIService:_registerTestCommands()
                 return { ok = false, reason = "service_unavailable" }
             end
             return combat:DownPetInCombat(context.player, args.uid, args.enemyId)
+        end,
+    })
+
+    -- Respec ritual (Feature 13): reset powers + slots, optionally re-pick archetype.
+    self._bus:register("game.respec", {
+        description = "[test] Respec: reset powers/slots; optional new archetype.",
+        testOnly = true,
+        validate = function(args)
+            return Validators.fields(args, { archetype = { type = "string", optional = true } })
+        end,
+        handler = function(context, args)
+            local s = self:_service("ArchetypeService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Respec(context.player, args.archetype)
         end,
     })
 

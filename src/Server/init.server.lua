@@ -346,6 +346,12 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.StackPoolService,
     { "Logger", "ConfigLoader" }
 )
+-- ArchetypeService: Halo & Horns archetype selection + respec (Feature 13).
+loader:RegisterModule(
+    "ArchetypeService",
+    ServerScriptService.Server.Services.ArchetypeService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- FocusService: Halo & Horns player Focus pool + invulnerability (Feature 12).
 loader:RegisterModule(
     "FocusService",
@@ -489,6 +495,7 @@ table.insert(requiredModules, "LayerService")
 table.insert(requiredModules, "ActiveSquadService")
 table.insert(requiredModules, "SpiritFormService")
 table.insert(requiredModules, "StackPoolService")
+table.insert(requiredModules, "ArchetypeService")
 table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "PetFollowService")

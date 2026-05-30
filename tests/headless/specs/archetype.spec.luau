@@ -1,0 +1,46 @@
+--[[
+    Feature 13: Archetype System — [unit] scenarios.
+    Run: mise run test-headless
+]]
+
+local ArchetypeLogic = loadModule("src/Shared/Game/ArchetypeLogic.lua")
+local config = loadModule("configs/archetypes.lua")
+
+return function()
+    describe("ArchetypeLogic.isValid", function()
+        it("accepts the configured archetypes", function()
+            expect(ArchetypeLogic.isValid("geomancer", config)).to.equal(true)
+            expect(ArchetypeLogic.isValid("pyromancer", config)).to.equal(true)
+        end)
+
+        it("rejects unknown / nil archetypes", function()
+            expect(ArchetypeLogic.isValid("wizard", config)).to.equal(false)
+            expect(ArchetypeLogic.isValid(nil, config)).to.equal(false)
+        end)
+    end)
+
+    describe("ArchetypeLogic.availablePowers", function()
+        it("returns the archetype's own power pool", function()
+            local powers = ArchetypeLogic.availablePowers("geomancer", config)
+            expect(#powers).to.equal(3)
+            expect(ArchetypeLogic.hasPower("geomancer", "stone_skin", config)).to.equal(true)
+        end)
+
+        it("does NOT include other archetypes' powers", function()
+            -- geomancer pool must exclude cryo/pyro powers (Feature 13 [unit])
+            expect(ArchetypeLogic.hasPower("geomancer", "frost_bind", config)).to.equal(false)
+            expect(ArchetypeLogic.hasPower("geomancer", "mark_of_flame", config)).to.equal(false)
+        end)
+
+        it("is empty for an invalid/nil archetype", function()
+            expect(#ArchetypeLogic.availablePowers(nil, config)).to.equal(0)
+            expect(#ArchetypeLogic.availablePowers("wizard", config)).to.equal(0)
+        end)
+    end)
+
+    describe("ArchetypeLogic.list", function()
+        it("lists all four prototype archetypes", function()
+            expect(#ArchetypeLogic.list(config)).to.equal(4)
+        end)
+    end)
+end
