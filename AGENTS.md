@@ -2,6 +2,56 @@
 
 This project uses a lightweight Karpathy-style LLM wiki. Treat the wiki as persistent project memory.
 
+## Multi-Agent Collaboration
+
+This is a single open **monorepo** worked by multiple agents across multiple
+machines — currently game development (Pet Realm content) and template
+development (reusable infrastructure) — and designed to add more (e.g. fast
+Cursor agents for small, well-scoped tasks). Follow these rules so agents don't
+conflict.
+
+### Repo model
+- **One repo.** The template (reusable infra) and the game (Pet Realm) coexist,
+  separated by **path ownership** (`.github/CODEOWNERS`), not by separate repos.
+  The template can be extracted later via `git filter-repo` if it ever becomes a
+  standalone starter. (See the "Multi-Agent Collaboration" decision in
+  `docs/wiki/DECISIONS.md`.)
+
+### Ownership — who edits what
+- **Template paths** (reusable infra): `src/Shared/`, infrastructure services in
+  `src/Server/Services/`, `scripts/`, `.github/`, `tests/headless/`, `.mise.toml`,
+  and the pipeline/architecture wiki pages (`REMOTE_DEV_PIPELINE.md`,
+  `AUTOMATION_API_DESIGN.md`).
+- **Game paths** (Pet Realm): game-specific configs and services, maps, and the
+  Pet Realm design/wiki pages.
+- `.github/CODEOWNERS` is the authoritative map.
+
+### Branches & PRs — everything lands via PR
+- Branch by domain: `template/*` (template work), `game/*` or `pet-realm/*`
+  (game work), `agent/<who>/*` for ad-hoc/delegated tasks.
+- **Never commit directly to `main`.** Open a PR. `main` is gated by CI
+  (`mise run ci`: selene + StyLua + rojo build + headless) — it must pass.
+- Keep PRs small and frequent; rebase on `main` often to minimize drift.
+
+### Cross-domain changes — hybrid by size
+When game work uncovers a **template** improvement (or vice versa):
+- **Small / obvious** → make it on a `template/*` branch + PR (CODEOWNERS routes
+  review).
+- **Larger / needs design** → open a GitHub issue labeled `template`, then build
+  around it or stub it.
+Label issues/PRs `template` or `game`. `good first issue` marks small
+self-contained tasks suitable for a fast delegated agent.
+
+### Shared files — the real conflict surfaces, handle with care
+- `docs/wiki/LOG.md`, `docs/wiki/CURRENT_STATUS.md`: **append-only**. Add new
+  lines; don't reflow existing ones. Additive conflicts resolve trivially.
+- `.mise.toml`, `default.project.json`, `wally.toml`: change only in small,
+  dedicated PRs, and call it out — every agent depends on these.
+
+### Before opening a PR
+- `mise run ci` passes.
+- Wiki updated per the rules below (dated `docs/wiki/LOG.md` entry; relevant page).
+
 ## Start Of Work
 
 1. Read `docs/wiki/INDEX.md`.
@@ -33,5 +83,7 @@ Do not update the wiki for tiny mechanical edits, formatting-only changes, or fa
 
 ## Useful Commands
 
-- `python3 scripts/wiki_status.py`
+- `mise run ci` — fast gate (selene + StyLua + rojo build + headless tests) before any PR.
+- `mise run test-headless` — pure-logic unit tests (no Studio).
+- `python3 scripts/wiki_status.py` — wiki consistency check.
 

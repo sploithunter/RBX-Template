@@ -86,6 +86,12 @@ Automated Studio tests should move the player through real gameplay hooks rather
 
 The reference game's external database/webhook marketplace should not be copied. If marketplace/exchange is implemented, it should be Roblox-native with escrow and anti-duplication guarantees.
 
+## Multi-Agent Collaboration
+
+The template (reusable infrastructure) and the game (Pet Realm) live in **one open monorepo**, worked by multiple agents on multiple machines (game agent, template agent, and delegated agents such as Cursor for small tasks). Rationale for one repo over two: Roblox has no clean way to depend on a whole template *project* (Wally packages libraries, not scaffolds; submodules add friction); the template is only meaningfully validated against a real consuming game; and one repo means one CI, one wiki, one issue tracker, and one PR queue — the universal substrate every agent understands. The template can be extracted to its own repo later via `git filter-repo` if it becomes a reusable starter; that decision is deferred until there is a second game.
+
+Coordination is by **process, not repo separation**: branch-by-domain (`template/*`, `game/*`/`pet-realm/*`, `agent/*`), everything lands on `main` via PR gated by `mise run ci`, and `.github/CODEOWNERS` documents the template-vs-game path boundary. Cross-domain fixes follow **hybrid-by-size**: small/obvious template improvements found during game work are made on a `template/*` branch + PR; larger ones become GitHub issues labeled `template`. The real conflict surfaces are shared files (`docs/wiki/LOG.md`, `CURRENT_STATUS.md`, `.mise.toml`, `default.project.json`), which are treated append-only / dedicated-PR. Operational rules live in `AGENTS.md`.
+
 ## Links
 
 - [Map Integration Contract](MAP_INTEGRATION_CONTRACT.md)
