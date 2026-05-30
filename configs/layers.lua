@@ -26,4 +26,23 @@ return {
         hell_1 = "shadow_tokens",
         hell_2 = "shadow_tokens",
     },
+
+    -- Realm alignment of each layer (drives element resonance, Feature 6).
+    realm_alignment = {
+        base = "neutral",
+        heaven_1 = "heaven",
+        heaven_2 = "heaven",
+        hell_1 = "hell",
+        hell_2 = "hell",
+    },
+
+    -- Element a pet is born with when hatched on each layer (Feature 5).
+    -- Chaotic is never assigned at hatch (fusion only).
+    hatch_element = {
+        base = "neutral",
+        heaven_1 = "light",
+        heaven_2 = "light",
+        hell_1 = "shadow",
+        hell_2 = "shadow",
+    },
 }
