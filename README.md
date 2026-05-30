@@ -176,6 +176,19 @@ tests/studio/             Studio command-bar/MCP smoke runners
 tests/unit/               Unit specs for config and service behavior
 ```
 
+## Automation API & Remote Dev Pipeline
+
+The template can be developed, tested, and released from a CLI/AI agent without GUI clicking — by driving the game through a command boundary and the Roblox Studio MCP instead of the screen.
+
+- **Command boundary** (`src/Shared/API/CommandBus.lua`) — a pure dispatcher every gameplay action flows through. The GUI, the network layer, and automated tests are just different callers of the same commands, so tests exercise the exact code path a button would. `GameAPIService` owns the bus and exposes one `GameAPICommand` RemoteFunction; handlers are thin adapters over existing services (untrusted clients can never reach test-only commands).
+- **Headless tests** — `mise run test-headless` runs pure-logic specs (lune) with no Studio (`CommandBus`, `Navigation`, `Validators`, `TestReport`).
+- **Fast gate / CI** — `mise run ci` (selene + StyLua on owned paths + `rojo build` + headless) runs locally and in **GitHub Actions** (`.github/workflows/ci.yml`) on every push.
+- **Studio integration** — `AutomationService` (Studio-only) drives pathfinding movement, state snapshot/restore, and assertions, exposed as test-only `automation.*` commands; `RunAutomationSuite` runs the server-side suite via the MCP.
+- **UI sanity** — the Studio MCP's `character_navigation` + `user_mouse_input`/`user_keyboard_input` drive the *real* UI for last-mile end-to-end checks (used sparingly).
+- **Release** — `mise run release` publishes via `rojo upload` (Open Cloud); secrets read from `ROBLOX_OPEN_CLOUD_KEY`/`ROBLOX_UNIVERSE_ID`/`ROBLOX_PLACE_ID` env only (`DRY_RUN=1` validates).
+
+Testing methodology (the test pyramid): **pure logic → server-side command-bus integration (primary, state-based) → thin UI sanity with screenshots.** State proves; pixels confirm. See [Remote Dev Pipeline](docs/wiki/REMOTE_DEV_PIPELINE.md) (incl. the hard-limit gap analysis) and [Automation API Design](docs/wiki/AUTOMATION_API_DESIGN.md).
+
 ## Verification Baseline
 
 Latest local checkpoint:
@@ -184,6 +197,8 @@ Latest local checkpoint:
 - `selene configs src tests --allow-warnings`: passes with existing warnings.
 - `python3 scripts/wiki_status.py`: passes.
 - `git diff --check`: passes.
+- `mise run ci` (fast gate): green — selene 0 errors, StyLua clean on owned paths, `rojo build`, headless 35/35. GitHub Actions runs the same gate on every push.
+- Live Studio E2E (Place1): command-bus network path verified, server-side `AutomationSuite` 11/11, and a full UI-driven egg hatch (navigate → press `E` → pet granted, verified via the bus).
 - Phase 3 Studio smoke coverage exists for pet index, achievements, leaderboards, and Phase 2 regressions.
 - `Phase4PetProgressionSmoke`: passes in Studio for hatch enchants, breakable XP, manual reroll, player-level slot rewards, hatch/secret luck, pet damage, team power, pet efficiency, and profile restoration.
 - `Phase5AutoSystemsSmoke`: passes in Studio for server-selected nearest/highest/weakest/strongest/selected-currency targets, hatch auto-delete filters, protected special rarity behavior, and profile restoration.
