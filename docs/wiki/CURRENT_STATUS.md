@@ -437,15 +437,34 @@ Deferred — needs the user's hands (authored map) or a decision:
 - ~~Full removal of the cloned `PetScripts/*`~~ — **DONE** (issue #4 closed, see
   the PetFollowService section below).
 
-## Pet movement (issue #4) — REVERTED to legacy; movement half reopened
+## Pet movement (issue #4) — service movement restored (anchored + client-driven)
 
 Last checked: 2026-05-30
 
-**Status correction.** The service-owned *movement* replacement was reverted: both
-the server-positioning and client-RenderStepped variants dropped the legacy Follow
-script's teleport-watchdog + tuned forces, so pets drifted/fell off the map and
-were destroyed (the known ~10-months-ago bug the legacy script fixes). Early
-(~6s-after-spawn) verification missed the *delayed* fall.
+**Current approach (working, pending user confirmation).** After an earlier
+service-movement attempt let pets fall off the map (it dropped the legacy
+teleport-watchdog), the retry sidesteps the whole physics-fall class: the server
+**anchors** each pet (anchored parts can't fall/drift), and the client
+`PetFollowController` sets each pet's CFrame every RenderStepped (smooth,
+frame-rate-independent lerp). Follow = config formation; **attack = surround the
+target in an animated ring** (orbit / static_ring / lunge — `PetFormation.attackOffset`,
+headless-tested; live style switch via `localPlayer:SetAttribute("PetAttackStyle", …)`).
+Server keeps damage (`CombatService:ResolvePetDamage`) + target leash. Verified
+live: pets stable + upright + on-map across 35s, following in formation; mining
+works (AutomationSuite 69/69). **Open follow-up:** multiplayer position replication
+(other clients seeing a player's pets move) — currently drives the local view only;
+the planned approach is sending pet id+position to shared state. Issue #4 stays open
+until the user confirms in-session + replication lands.
+
+----
+
+### (history) The earlier service-movement attempt fell off the map
+
+Both the server-positioning and an earlier client-RenderStepped variant dropped the
+legacy Follow script's teleport-watchdog + tuned forces, so pets drifted/fell off
+the map and were destroyed (the known ~10-months-ago bug). Early (~6s-after-spawn)
+verification missed the *delayed* fall. Lesson: verify physics/visual changes over
+time (30s+), not just at spawn.
 
 Current working state:
 - Legacy `PetScripts/Follow.server.lua` + `FollowBox.server.lua` restored and own
