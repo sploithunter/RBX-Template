@@ -305,6 +305,96 @@ function AutomationSuite.run(opts)
     api:Execute(player, "layer.use", { layer = "base" })
     api:Execute(player, "game.resetAlignment", {})
 
+    -- Phase 3: party core (Spirit Form + Active Squad + Stack Pool)
+    -- clear any leftover squad for idempotency
+    for _, ref in ipairs(api:Execute(player, "squad.get", {}).result.squad or {}) do
+        api:Execute(player, "squad.remove", { ref = ref })
+    end
+
+    local function inSquad(uid)
+        for _, r in ipairs(api:Execute(player, "squad.get", {}).result.squad or {}) do
+            if r == uid then
+                return true
+            end
+        end
+        return false
+    end
+
+    -- a UNIQUE pet (huge) has its own uid + spirit-form state
+    local unique =
+        api:Execute(player, "game.grantPet", { petType = "bear", variant = "basic", huge = true })
+    report:expect("granted a unique pet", domainOk(unique), unique.error or "grant failed")
+    local uid = unique.result and unique.result.uid
+
+    report:expect(
+        "deploy unique pet to squad",
+        domainOk(api:Execute(player, "squad.deploy", { ref = uid })),
+        "deploy failed"
+    )
+    report:expect("squad contains the pet", inSquad(uid), "pet not in squad")
+    report:expectEqual(
+        "healthy pet is deployable",
+        api:Execute(player, "spirit.status", { uid = uid }).result.deployable,
+        true
+    )
+
+    -- down it -> Spirit Form + auto-return from squad
+    report:expect(
+        "down unique pet ok",
+        domainOk(api:Execute(player, "game.downPet", { uid = uid, tier = "mid_tier" })),
+        "down failed"
+    )
+    report:expect("downed pet auto-returned from squad", not inSquad(uid), "pet still in squad")
+    report:expectEqual(
+        "downed pet is in Spirit Form",
+        api:Execute(player, "spirit.status", { uid = uid }).result.state,
+        "Spirit Form"
+    )
+    report:expectEqual(
+        "spirit-form pet cannot redeploy",
+        api:Execute(player, "squad.deploy", { ref = uid }).result.reason,
+        "pet_in_spirit_form"
+    )
+
+    -- instant recharge -> deployable again
+    report:expect(
+        "instant recharge ok",
+        domainOk(api:Execute(player, "game.rechargePet", { uid = uid })),
+        "recharge failed"
+    )
+    report:expectEqual(
+        "recharged pet is deployable",
+        api:Execute(player, "spirit.status", { uid = uid }).result.deployable,
+        true
+    )
+    report:expect(
+        "can redeploy after recharge",
+        domainOk(api:Execute(player, "squad.deploy", { ref = uid })),
+        "redeploy failed"
+    )
+
+    -- stack pool model (live through the service)
+    report:expectEqual(
+        "linear stack contribution 100 x 24/30 = 80",
+        api:Execute(
+            player,
+            "stack.simulate",
+            { total = 30, ready = 24, elapsed = 0, basePower = 100, curve = "linear" }
+        ).result.contribution,
+        80
+    )
+    report:expectEqual(
+        "stack refills lazily to 29 after 1500s",
+        api:Execute(
+            player,
+            "stack.simulate",
+            { total = 30, ready = 24, elapsed = 1500, recharge = 300, basePower = 100 }
+        ).result.ready,
+        29
+    )
+
+    api:Execute(player, "squad.remove", { ref = uid }) -- cleanup
+
     return HttpService:JSONEncode(report:summary())
 end
 
