@@ -365,6 +365,12 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.AugmentationService,
     { "Logger", "ConfigLoader", "DataService" }
 )
+-- HotbarService: Halo & Horns hotbar / command bar (Feature 16).
+loader:RegisterModule(
+    "HotbarService",
+    ServerScriptService.Server.Services.HotbarService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- FocusService: Halo & Horns player Focus pool + invulnerability (Feature 12).
 loader:RegisterModule(
     "FocusService",
@@ -511,6 +517,7 @@ table.insert(requiredModules, "StackPoolService")
 table.insert(requiredModules, "ArchetypeService")
 table.insert(requiredModules, "PowerService")
 table.insert(requiredModules, "AugmentationService")
+table.insert(requiredModules, "HotbarService")
 table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "PetFollowService")

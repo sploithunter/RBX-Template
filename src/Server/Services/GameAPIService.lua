@@ -731,6 +731,34 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("hotbar.get", {
+        description = "The player's hotbar bindings (archetype defaults if unset).",
+        handler = function(context)
+            local s = self:_service("HotbarService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:GetState(context.player)
+        end,
+    })
+
+    bus:register("hotbar.rebind", {
+        description = "Bind/clear a hotbar slot ({type,target} or omit bind to clear).",
+        validate = function(args)
+            return Validators.fields(args, {
+                slot = { type = "int", min = 1 },
+                bind = { type = "table", optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local s = self:_service("HotbarService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Rebind(context.player, args.slot, args.bind)
+        end,
+    })
+
     -- SYSTEM --------------------------------------------------------------
     bus:register("system.listCommands", {
         description = "List every command the bus exposes to this caller.",
