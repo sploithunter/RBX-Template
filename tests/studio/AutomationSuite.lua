@@ -545,10 +545,10 @@ function AutomationSuite.run(opts)
         "_FollowAlign missing or disabled — service not driving the pet"
     )
 
-    -- Mining (no regression): pets auto-target nearby breakables (TargetID is
-    -- assigned by BreakableService). Find a pet's CURRENT target and confirm the
-    -- service-owned work loop damages it (HP drops, or the breakable is fully
-    -- mined away). Robust to BreakableService reassigning targets mid-window.
+    -- Mining (no regression): pets only mine breakables within the player's leash
+    -- (they follow elsewhere). Teleport the player next to a live crystal so a
+    -- target is in range, then confirm the service-owned work loop damages it
+    -- (HP drops / fully mined / mining income rises).
     local function findById(id)
         local breakables = workspace:FindFirstChild("Game")
             and workspace.Game:FindFirstChild("Breakables")
@@ -563,13 +563,42 @@ function AutomationSuite.run(opts)
         return nil
     end
 
-    -- Poll up to ~6s: pass as soon as a pet's target loses HP (or is fully mined
-    -- away), or a mining currency rises. Robust to the suite's earlier teleports
-    -- transiently moving pets off their targets.
+    -- Any crystal with HP > 0, plus its world position.
+    local function findAnyCrystal()
+        local breakables = workspace:FindFirstChild("Game")
+            and workspace.Game:FindFirstChild("Breakables")
+        local crystals = breakables and breakables:FindFirstChild("Crystals")
+        if not crystals then
+            return nil
+        end
+        for _, desc in ipairs(crystals:GetDescendants()) do
+            if desc.Name == "BreakableID" and desc:IsA("NumberValue") then
+                local model = desc.Parent
+                local hp = model and model:GetAttribute("HP")
+                if hp and hp > 0 and model.GetPivot then
+                    return model, model:GetPivot().Position
+                end
+            end
+        end
+        return nil
+    end
+
     local function coinsNow()
         local s = api:Execute(player, "automation.getPlayerState", {})
         return (s.ok and s.result and s.result.currencies and s.result.currencies.coins) or 0
     end
+
+    local crystal, cpos = findAnyCrystal()
+    if crystal and cpos then
+        -- stand next to the crystal so BreakableService assigns it + it's in leash
+        api:Execute(
+            player,
+            "automation.teleportForSetup",
+            { x = cpos.X + 8, y = cpos.Y, z = cpos.Z }
+        )
+        task.wait(1.5)
+    end
+
     local startCoins = coinsNow()
     local baselineHp = {} -- breakable -> hp first seen
     local minedProof = false
@@ -599,9 +628,9 @@ function AutomationSuite.run(opts)
         end
     end
     report:expect(
-        "service-owned pets mine (target HP drops or mining income rises)",
+        "service-owned pets mine a nearby breakable (HP drops / income rises)",
         minedProof,
-        "no mining activity observed in 6s — service mining loop may not be firing"
+        "no mining activity observed in 6s next to a crystal — mining loop may not be firing"
     )
 
     return HttpService:JSONEncode(report:summary())
