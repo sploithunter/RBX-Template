@@ -360,6 +360,13 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.CombatService,
     { "Logger", "ConfigLoader", "DataService" }
 )
+-- PetFollowService: service-owned pet follow/work loop (issue #4). Inert unless
+-- configs/pet_follow.lua service_owned=true; resolves CombatService at runtime.
+loader:RegisterModule(
+    "PetFollowService",
+    ServerScriptService.Server.Services.PetFollowService,
+    { "Logger", "ConfigLoader" }
+)
 -- GameAPIService: the unified command-bus boundary (see
 -- docs/wiki/AUTOMATION_API_DESIGN.md). Handlers resolve target services from the
 -- _G.RBXTemplateServices locator at runtime, so it only needs Logger to boot.
@@ -484,6 +491,7 @@ table.insert(requiredModules, "SpiritFormService")
 table.insert(requiredModules, "StackPoolService")
 table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
+table.insert(requiredModules, "PetFollowService")
 table.insert(requiredModules, "GameAPIService")
 if RunService:IsStudio() then
     table.insert(requiredModules, "StudioSmokeTestService")
