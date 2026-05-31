@@ -15,6 +15,16 @@
 local BreakableSpawner = {}
 BreakableSpawner.__index = BreakableSpawner
 
+-- Silence verbose debug prints (mining / health-bar chatter that fired on every click).
+-- Warnings and errors still surface via warn(). Toggle for local debugging.
+local __RAW_PRINT = print
+local __PRINT_ENABLED = false
+local function print(...)
+    if __PRINT_ENABLED then
+        __RAW_PRINT(...)
+    end
+end
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")

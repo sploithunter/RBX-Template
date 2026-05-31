@@ -25,6 +25,16 @@ local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventory
 local InventoryService = {}
 InventoryService.__index = InventoryService
 
+-- Honor the configured "warn" log level: silence the raw boot/admin print() banners that
+-- bypassed the Logger. Warnings/errors still surface via warn(). Toggle for local debugging.
+local __RAW_PRINT = print
+local __PRINT_ENABLED = false
+local function print(...)
+    if __PRINT_ENABLED then
+        __RAW_PRINT(...)
+    end
+end
+
 -- Helper to safely require configs
 local function tryLoadConfig(configLoader, name)
     local ok, result = pcall(function()

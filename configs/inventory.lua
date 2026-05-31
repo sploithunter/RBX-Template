@@ -435,9 +435,9 @@ return {
         uid_prefix_length = 8, -- Length of random suffix
         uid_include_timestamp = true,
 
-        -- Debug settings
-        debug_logging = true, -- Enable detailed logging for development
-        trace_operations = true, -- Trace all inventory operations
+        -- Debug settings (keep off; flip on locally when debugging inventory)
+        debug_logging = false, -- Detailed inventory logging
+        trace_operations = false, -- Trace every inventory operation
         validate_on_load = true, -- Validate inventory structure on player join
     },
 
