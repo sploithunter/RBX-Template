@@ -188,7 +188,9 @@ function PetProgressionService:AddPetExperience(player, petUid, amount, reason)
     petData.exp = exp
     self:ApplyProgression(petData, petConfig)
 
-    if self._inventoryService and self._inventoryService._updateBucketFolders then
+    if self._inventoryService and self._inventoryService.RebuildPetProjections then
+        self._inventoryService:RebuildPetProjections(player)
+    elseif self._inventoryService and self._inventoryService._updateBucketFolders then
         self._inventoryService:_updateBucketFolders(player, "pets")
     end
     self._dataService:RequestSave(player, "pet_progression_" .. tostring(reason or "xp"), {

@@ -485,8 +485,13 @@ function InventoryService:RemoveItem(player, bucketName, uid, quantity)
     end
 
     if success then
-        -- Update folder replication
-        self:_updateBucketFolders(player, bucketName)
+        -- Update folder replication. For pets, rebuild BOTH mirrors (a removed pet may
+        -- have been equipped — the equipped slot must clear too).
+        if bucketName == "pets" then
+            self:RebuildPetProjections(player)
+        else
+            self:_updateBucketFolders(player, bucketName)
+        end
 
         self._logger:Info("✅ REMOVE ITEM SUCCESS", {
             player = player.Name,
@@ -591,9 +596,11 @@ function InventoryService:_connectPlayerLevelRewards(player)
         return
     end
 
-    self._playerLevelConnections[player] = player:GetAttributeChangedSignal("Level"):Connect(function()
-        self:_updateEquippedFolders(player, "pets")
-    end)
+    self._playerLevelConnections[player] = player
+        :GetAttributeChangedSignal("Level")
+        :Connect(function()
+            self:_updateEquippedFolders(player, "pets")
+        end)
 end
 
 function InventoryService:_createInventoryFolders(player)
@@ -1289,8 +1296,13 @@ function InventoryService:_handleDeleteInventoryItem(player, data)
         })
     end
 
-    -- Update replication folders immediately
-    self:_updateBucketFolders(player, data.bucket)
+    -- Update replication folders immediately. For pets, rebuild BOTH mirrors so a
+    -- deleted equipped pet also clears its equipped slot.
+    if data.bucket == "pets" then
+        self:RebuildPetProjections(player)
+    else
+        self:_updateBucketFolders(player, data.bucket)
+    end
 end
 
 function InventoryService:_handleCleanupInventory(player, data)
@@ -1736,6 +1748,18 @@ function InventoryService:_toggleToolEquipment(player, toolUid, tool, playerData
         equippedTools["slot_1"] = toolUid
         return true, { action = "equipped", slot = "slot_1", replaced = true }
     end
+end
+
+-- SSOT (Phase 11) single projection entry point. EVERY pet mutation (add / remove /
+-- equip / unequip / delete / trade / fusion / progression / enchant) calls this so the
+-- folder mirror AND the equipped mirror are always rebuilt together from the data —
+-- no mutation hand-edits one projection and forgets the other (the class of bug that
+-- left a deleted/traded equipped pet stale in the Equipped folder). Today it wraps the
+-- existing rebuilds (behavior-identical); later stages swap the bodies to derive purely
+-- from PetInventoryView without changing any caller.
+function InventoryService:RebuildPetProjections(player)
+    self:_updateBucketFolders(player, "pets")
+    self:_updateEquippedFolders(player, "pets")
 end
 
 function InventoryService:_updateEquippedFolders(player, category)

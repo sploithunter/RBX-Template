@@ -78,8 +78,9 @@ function EnchantService:Start()
     self._signals = require(game:GetService("ReplicatedStorage").Shared.Network.Signals)
     self._signals.EnchantPetRequest.OnServerEvent:Connect(function(player, payload)
         local result = self:RerollPetEnchant(player, payload)
-        local revealDelay = result and result.ok == true
-            and math.max(0, tonumber(result.reveal_delay_seconds) or 0)
+        local revealDelay = result
+                and result.ok == true
+                and math.max(0, tonumber(result.reveal_delay_seconds) or 0)
             or 0
         if revealDelay > 0 then
             task.delay(revealDelay, function()
@@ -224,10 +225,8 @@ function EnchantService:RollInitialEnchantments(player, petData, petConfig, sour
 
     local rarityId = petData.rarity_id or (petConfig and petConfig.rarity_id)
     local maxEnchantments = math.max(0, math.floor(tonumber(petData.max_enchantments) or 0))
-    local unlockedSlots = math.max(
-        0,
-        math.floor(tonumber(petData.unlocked_enchant_slots) or maxEnchantments)
-    )
+    local unlockedSlots =
+        math.max(0, math.floor(tonumber(petData.unlocked_enchant_slots) or maxEnchantments))
     if maxEnchantments <= 0 then
         return petData
     end
@@ -365,10 +364,12 @@ function EnchantService:_chargeRerollCost(player)
         return false, "invalid_reroll_cost"
     end
     if not self._dataService:CanAfford(player, currency, amount) then
-        return false, "insufficient_currency", {
-            currency = currency,
-            cost = amount,
-        }
+        return false,
+            "insufficient_currency",
+            {
+                currency = currency,
+                cost = amount,
+            }
     end
     self._dataService:RemoveCurrency(player, currency, amount, "pet_enchant_reroll")
     return true, nil, {
@@ -553,7 +554,10 @@ function EnchantService:_connectStationTouch(station, touchPart, stationId, stat
         local now = os.clock()
         self._stationTouchDebounce[player] = self._stationTouchDebounce[player] or {}
         local playerDebounce = self._stationTouchDebounce[player]
-        if playerDebounce[touchPart] and now - playerDebounce[touchPart] < TOUCH_DEBOUNCE_SECONDS then
+        if
+            playerDebounce[touchPart]
+            and now - playerDebounce[touchPart] < TOUCH_DEBOUNCE_SECONDS
+        then
             return
         end
         playerDebounce[touchPart] = now
@@ -569,10 +573,8 @@ function EnchantService:_connectStationTouch(station, touchPart, stationId, stat
             return
         end
 
-        self._stationTouchCounts[touchPart] = math.max(
-            0,
-            (self._stationTouchCounts[touchPart] or 1) - 1
-        )
+        self._stationTouchCounts[touchPart] =
+            math.max(0, (self._stationTouchCounts[touchPart] or 1) - 1)
         if stationConfig.animation and stationConfig.animation.active_when_near == true then
             task.delay(0.25, function()
                 if (self._stationTouchCounts[touchPart] or 0) <= 0 then
@@ -777,10 +779,8 @@ function EnchantService:RerollPetEnchant(player, payload)
     end
 
     local petUid = tostring(payload.petUid or payload.uid or "")
-    local slot = math.max(
-        1,
-        math.floor(tonumber(payload.slot) or tonumber(reroll.default_slot) or 1)
-    )
+    local slot =
+        math.max(1, math.floor(tonumber(payload.slot) or tonumber(reroll.default_slot) or 1))
     local petData, petError = self:_getPetRecord(player, petUid)
     if not petData then
         return {
@@ -791,10 +791,8 @@ function EnchantService:RerollPetEnchant(player, payload)
     end
 
     local maxEnchantments = math.max(0, math.floor(tonumber(petData.max_enchantments) or 0))
-    local unlockedSlots = math.max(
-        0,
-        math.floor(tonumber(petData.unlocked_enchant_slots) or maxEnchantments)
-    )
+    local unlockedSlots =
+        math.max(0, math.floor(tonumber(petData.unlocked_enchant_slots) or maxEnchantments))
     if maxEnchantments <= 0 or slot > unlockedSlots then
         return {
             ok = false,
@@ -839,7 +837,9 @@ function EnchantService:RerollPetEnchant(player, payload)
     enchant.source = payload.source or "manual_reroll"
     petData.enchantments[slot] = enchant
 
-    if self._inventoryService and self._inventoryService._updateBucketFolders then
+    if self._inventoryService and self._inventoryService.RebuildPetProjections then
+        self._inventoryService:RebuildPetProjections(player)
+    elseif self._inventoryService and self._inventoryService._updateBucketFolders then
         self._inventoryService:_updateBucketFolders(player, "pets")
     end
     local revealDelay = self:_playEnchantSuccessEffect(player, petData)
