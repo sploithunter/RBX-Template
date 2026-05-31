@@ -997,6 +997,72 @@ end
 
 -- Scripts are now handled directly in the pet setup process
 
+-- Self-heal stale equip markers: an `equip_<id>` folder with no backing owned pet
+-- (e.g. left behind when a pet was traded/removed during the pre-fix window) would
+-- otherwise respawn a "phantom" follower. Prune equip_ markers that EXCEED the owned
+-- count for their id:variant — count-based, so legitimately-equipped pets (and
+-- duplicates) are never touched.
+local function reconcileOrphanEquips(petsFolder)
+    if not petsFolder then
+        return
+    end
+    local owned = {} -- "id:variant" -> count of real owned pets
+    local function addOwned(id, variant, n)
+        if not id then
+            return
+        end
+        local key = tostring(id) .. ":" .. tostring(variant or "basic")
+        owned[key] = (owned[key] or 0) + (n or 1)
+    end
+
+    local stacks = petsFolder:FindFirstChild("Stacks")
+    if stacks then
+        for _, stack in ipairs(stacks:GetChildren()) do
+            if stack:IsA("Folder") then
+                local id = stack:FindFirstChild("ItemId") and stack.ItemId.Value
+                local variant = (stack:FindFirstChild("Variant") and stack.Variant.Value) or "basic"
+                local qty = tonumber(stack:FindFirstChild("Quantity") and stack.Quantity.Value) or 0
+                if qty > 0 then
+                    addOwned(id, variant, qty)
+                end
+            end
+        end
+    end
+    local special = petsFolder:FindFirstChild("Special")
+    if special then
+        for _, sp in ipairs(special:GetChildren()) do
+            if sp:IsA("Folder") then
+                local id, variant = extractIdAndVariantFromFolder(sp)
+                addOwned(id, variant, 1)
+            end
+        end
+    end
+
+    -- Group equip_ markers by id:variant, then drop any beyond the owned count.
+    local markers = {}
+    for _, child in ipairs(petsFolder:GetChildren()) do
+        if child:IsA("Folder") and string.sub(child.Name, 1, 6) == "equip_" then
+            local id, variant = extractIdAndVariantFromFolder(child)
+            if id then
+                local key = tostring(id) .. ":" .. tostring(variant or "basic")
+                markers[key] = markers[key] or {}
+                table.insert(markers[key], child)
+            end
+        end
+    end
+    for key, list in pairs(markers) do
+        local allowed = owned[key] or 0
+        for i = allowed + 1, #list do
+            __RAW_PRINT(
+                "🧹 PetHandler: pruning orphaned equip marker",
+                list[i].Name,
+                "(no backing pet)"
+            )
+            list[i]:Destroy()
+        end
+    end
+end
+
 -- Main loadEquipped function (adapted from original)
 function loadEquipped(Player)
     -- Cross-script/process lock using a BoolValue on the Player
@@ -1078,6 +1144,9 @@ function loadEquipped(Player)
             warn("PetHandler: No pets folder found in Inventory for", Player.Name)
             return "Error"
         end
+
+        -- Self-heal any orphaned equip markers before deciding what to spawn.
+        reconcileOrphanEquips(petsFolder)
 
         local function considerFolder(folder)
             if not folder or not folder:IsA("Folder") then
