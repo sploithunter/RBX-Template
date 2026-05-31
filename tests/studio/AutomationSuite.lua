@@ -1012,6 +1012,114 @@ function AutomationSuite.run(opts)
         "no_trade"
     )
 
+    -- Phase 10 (two-player): the full escrow swap, server-driven across both players.
+    -- Only runs when a second player is present (a 2-client Studio session).
+    local roster = Players:GetPlayers()
+    if #roster >= 2 then
+        local p1 = roster[1]
+        local p2 = roster[2]
+
+        -- Clean slate, then give each a distinct, identifiable pet.
+        api:Execute(p1, "trade.cancel", {})
+        api:Execute(p2, "trade.cancel", {})
+        api:Execute(p1, "game.grantPet", { petType = "bear", variant = "basic" })
+        api:Execute(p2, "game.grantPet", { petType = "cat", variant = "basic" })
+
+        local function pets(p)
+            return (api:Execute(p, "trade.myPets", {}).result or {}).pets or {}
+        end
+        local function countId(list, id)
+            local n = 0
+            for _, x in ipairs(list) do
+                if x.id == id then
+                    n += 1
+                end
+            end
+            return n
+        end
+        local function firstTradeable(list)
+            for _, x in ipairs(list) do
+                if not x.locked then
+                    return x.uid, x.id
+                end
+            end
+        end
+        local function hasUid(list, uid)
+            for _, x in ipairs(list) do
+                if x.uid == uid then
+                    return true
+                end
+            end
+            return false
+        end
+
+        local p1Before, p2Before = pets(p1), pets(p2)
+        local u1, id1 = firstTradeable(p1Before)
+        local u2, id2 = firstTradeable(p2Before)
+
+        if u1 and u2 then
+            -- p2's count of the id p1 is giving, and vice versa (delta-checked).
+            local p2HasId1Before = countId(p2Before, id1)
+            local p1HasId2Before = countId(p1Before, id2)
+
+            api:Execute(p1, "trade.request", { targetUserId = p2.UserId })
+            local opened =
+                api:Execute(p2, "trade.respond", { fromUserId = p1.UserId, accept = true })
+            report:expect(
+                "2P: session opens on accept",
+                domainOk(opened),
+                opened.error or "open failed"
+            )
+
+            api:Execute(p1, "trade.add", { uid = u1 })
+            api:Execute(p2, "trade.add", { uid = u2 })
+
+            -- Escrow lock: the offered pet has left the owner's inventory already.
+            report:expect(
+                "2P: escrow moved p1's offered pet out of inventory",
+                not hasUid(pets(p1), u1),
+                "p1's offered pet was not escrowed"
+            )
+
+            api:Execute(p1, "trade.confirm", {})
+            local done = api:Execute(p2, "trade.confirm", {})
+            report:expect(
+                "2P: both-confirm executes the swap",
+                domainOk(done) and done.result.executed == true,
+                "swap did not execute on both-confirm"
+            )
+
+            local p1After, p2After = pets(p1), pets(p2)
+            report:expectEqual(
+                "2P: p1 received p2's pet (" .. tostring(id2) .. ")",
+                countId(p1After, id2),
+                p1HasId2Before + 1
+            )
+            report:expectEqual(
+                "2P: p2 received p1's pet (" .. tostring(id1) .. ")",
+                countId(p2After, id1),
+                p2HasId1Before + 1
+            )
+            report:expect(
+                "2P: p1 no longer holds the escrowed pet",
+                not hasUid(p1After, u1),
+                "p1 still holds the traded-away pet"
+            )
+        else
+            report:record(
+                "2P: both players have a tradeable pet",
+                false,
+                "grant/myPets returned no tradeable pet"
+            )
+        end
+    else
+        report:record(
+            "2P trade swap (needs a 2nd player)",
+            true,
+            "skipped: only 1 player in session — start a 2-player playtest to exercise the live swap"
+        )
+    end
+
     return HttpService:JSONEncode(report:summary())
 end
 
