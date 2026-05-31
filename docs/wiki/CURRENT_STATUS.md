@@ -653,6 +653,33 @@ Deferred (with reasons):
 - Achievements already carry `reward_type`/`reward` in config — routing them through
   RewardService is a small follow-up (the spine is built to absorb them).
 
+## Halo & Horns — Phase 8 (Achievements → spine + Quest UI panel)
+
+Last checked: 2026-05-30
+
+- **Achievements routed through RewardService.** `AchievementsService._grantReward`
+  now translates a tier reward into a RewardBundle (legacy `{type=currency,...}` +
+  forward-looking `{bundle=...}`) and grants via `RewardService:Grant` — one audited
+  terminal that also handles items/pets/effects/slots — with a legacy currency
+  fallback if RewardService is unavailable. `test.resetAchievements` re-arms grants
+  for testing.
+- **Quest UI panel** (`src/Client/UI/Menus/QuestPanel.lua`): mirrors the ShopPanel
+  contract (.new/Show/Hide/GetFrame/IsVisible/Destroy), registered in
+  `init.client.lua` so the existing "Quest" side-menu button opens it. Teal card
+  rows (name + reward + progress bar + Claim/Locked/Claimed), sorted claimable-first.
+  Data is live through the `GameAPICommand` bus bridge (`quest.list`/`quest.claim`);
+  claiming refreshes the list. No bespoke remotes — reuses the generic bus transport.
+
+Verification: `mise run ci` green; headless **282/282**; selene 0 warnings; rojo
+build OK; live `AutomationSuite` **114/114** (incl. "achievement reward granted
+through RewardService (audited)"); Quest panel screenshot-verified rendering 4 live
+quest rows with correct claimable/locked/claimed states.
+
+Known follow-up (pre-existing, surfaced by the panel): the quest level condition
+reads `PlayerProgressionService:GetLevel` (profile.Stats.Level) which can disagree
+with the XP-derived HUD level (HUD showed Level 15 while "Reach level 10" read 1/10).
+The level data source needs unifying; the panel faithfully shows the bus value.
+
 ## Balance follow-up (config-only)
 - Huge pets' base-power floor scales with pet level (huge_base_power × level mult →
   e.g. 152% at lvl 27). Flagged by the user as too high; tune later (config /

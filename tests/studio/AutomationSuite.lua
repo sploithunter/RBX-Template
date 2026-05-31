@@ -870,7 +870,13 @@ function AutomationSuite.run(opts)
     report:expect("reward.grant dispatches", domainOk(grantR), grantR.error or "grant failed")
     local crystalsAfter = (api:Execute(player, "automation.getPlayerState", {}).result or {}).currencies
     crystalsAfter = (crystalsAfter and crystalsAfter.crystals) or 0
-    report:expectEqual("reward bundle grants +25 crystals", crystalsAfter, crystalsBefore + 25)
+    -- Pets mine crystal breakables in the background, so crystals can also accrue in
+    -- the grant->read window; require the +25 grant landed, tolerate small income.
+    report:expect(
+        "reward bundle grants +25 crystals (modulo mining income)",
+        crystalsAfter >= crystalsBefore + 25 and crystalsAfter < crystalsBefore + 200,
+        `before={crystalsBefore} after={crystalsAfter}`
+    )
     report:expect(
         "grant is written to the audit log",
         #(
