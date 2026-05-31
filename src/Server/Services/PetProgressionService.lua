@@ -203,8 +203,10 @@ function PetProgressionService:AddPetExperience(player, petUid, amount, reason)
     petData.exp = exp
     self:ApplyProgression(petData, petConfig)
 
-    if self._inventoryService and self._inventoryService.RebuildPetProjections then
-        self._inventoryService:RebuildPetProjections(player)
+    -- XP only changes a special's level/exp display, never equip — light refresh (called
+    -- per-equipped-pet on every breakable destroyed, so avoid the equip re-validate).
+    if self._inventoryService and self._inventoryService.RefreshPetInventory then
+        self._inventoryService:RefreshPetInventory(player)
     elseif self._inventoryService and self._inventoryService._updateBucketFolders then
         self._inventoryService:_updateBucketFolders(player, "pets")
     end

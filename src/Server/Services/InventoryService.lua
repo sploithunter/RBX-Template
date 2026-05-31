@@ -198,10 +198,11 @@ function InventoryService:AddItem(player, bucketName, itemData)
     end
 
     if success then
-        -- Update folder replication. Pets rebuild both projections (used_slots + equipped
-        -- mirror) from the records so nothing drifts.
+        -- Update folder replication. Adding a pet only INCREASES ownership — it can never
+        -- invalidate an equip ref — so refresh the inventory folder only (no equip re-validate
+        -- / equipped-folder churn). This keeps mass hatching cheap.
         if bucketName == "pets" then
-            self:RebuildPetProjections(player)
+            self:RefreshPetInventory(player)
         else
             self:_updateBucketFolders(player, bucketName)
         end
@@ -1938,18 +1939,25 @@ function InventoryService:_toggleToolEquipment(player, toolUid, tool, playerData
     end
 end
 
--- SSOT (Phase 11) single projection entry point. EVERY pet mutation (add / remove /
--- equip / unequip / delete / trade / fusion / progression / enchant) calls this so the
--- folder mirror AND the equipped mirror are always rebuilt together from the data —
--- no mutation hand-edits one projection and forgets the other (the class of bug that
--- left a deleted/traded equipped pet stale in the Equipped folder). Today it wraps the
--- existing rebuilds (behavior-identical); later stages swap the bodies to derive purely
--- from PetInventoryView without changing any caller.
+-- FULL rebuild — use ONLY on paths that can invalidate equip (remove / delete / trade /
+-- equip-toggle / load). Re-validates the equip layer against inventory ("re-equip from
+-- truth": rewrites Equipped.pets to the valid Equipped ∩ inventory set, dropping dangling/
+-- over-cap refs) then rebuilds both the inventory and equipped folders. This is also the
+-- reboot self-heal: on load the equipped state is reconstructed from saved inventory, never
+-- trusted blindly.
 function InventoryService:RebuildPetProjections(player)
     self:_recomputePetUsedSlots(player)
     self:_validateEquippedTable(player)
     self:_updateBucketFolders(player, "pets")
     self:_updateEquippedFolders(player, "pets")
+end
+
+-- LIGHT refresh — use on ownership-only changes that CANNOT invalidate equip (add/hatch,
+-- XP, enchant). Refreshes the inventory folder + slot count only; never touches the equip
+-- layer or the equipped folder. Keeps mass hatching / per-breakable XP awards cheap.
+function InventoryService:RefreshPetInventory(player)
+    self:_recomputePetUsedSlots(player)
+    self:_updateBucketFolders(player, "pets")
 end
 
 -- The "re-equip from truth" pass: live equipped = Equipped ∩ inventory. Rewrites Equipped.pets

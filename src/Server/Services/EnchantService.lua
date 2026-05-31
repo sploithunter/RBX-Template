@@ -849,8 +849,9 @@ function EnchantService:RerollPetEnchant(player, payload)
     enchant.source = payload.source or "manual_reroll"
     petData.enchantments[slot] = enchant
 
-    if self._inventoryService and self._inventoryService.RebuildPetProjections then
-        self._inventoryService:RebuildPetProjections(player)
+    -- Enchanting changes a special's enchant data, never equip — light refresh.
+    if self._inventoryService and self._inventoryService.RefreshPetInventory then
+        self._inventoryService:RefreshPetInventory(player)
     elseif self._inventoryService and self._inventoryService._updateBucketFolders then
         self._inventoryService:_updateBucketFolders(player, "pets")
     end
