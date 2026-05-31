@@ -260,6 +260,13 @@ EggHatchingService._persistentContainer = nil
 -- ═══════════════════════════════════════════════════════════════════════════════════
 
 function EggHatchingService:ClearScreen()
+    -- Idempotent across overlapping hatches: if a prior (still-in-flight) hatch already hid the
+    -- HUD, reuse that captured set instead of re-capturing the already-hidden GUIs (which would
+    -- capture them as "originally hidden" and leave the HUD stuck hidden after restore).
+    if self._hiddenScreenGuis then
+        return self._hiddenScreenGuis
+    end
+
     local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
     local animatedGUIs = {}
 
@@ -281,7 +288,7 @@ function EggHatchingService:ClearScreen()
 
     print("🎭 Disabled", #animatedGUIs, "ScreenGuis for cinematic mode")
 
-    -- No wait needed since this is instant
+    self._hiddenScreenGuis = animatedGUIs
     return animatedGUIs
 end
 
@@ -305,7 +312,8 @@ function EggHatchingService:RestoreScreen(animatedElements)
 
     print("✨ Screen restoration complete!")
 
-    -- No wait needed since this is instant
+    -- Clear the shared hidden-set so the next hatch captures fresh (the HUD is visible again).
+    self._hiddenScreenGuis = nil
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
@@ -1660,6 +1668,12 @@ end
 function EggHatchingService:StartHatchingAnimation(eggsData)
     local eggCount = #eggsData
 
+    -- Each hatch claims a generation token. The shared persistent GUI is reused across hatches,
+    -- so a previous hatch's DELAYED cleanup must not tear down a newer hatch that started during
+    -- its enjoyment/pause window — the deferred cleanup below only runs if it's still current.
+    self._hatchGeneration = (self._hatchGeneration or 0) + 1
+    local hatchGen = self._hatchGeneration
+
     -- PHASE 0: Initialize persistent GUI if needed
     self:InitializePersistentGui()
     self:CleanupExistingHatchingGUIs()
@@ -1813,12 +1827,27 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
         local resultEnjoymentTime =
             hatchingConfig.helpers.get_adjusted_timing("result_enjoyment_time")
         task.wait(resultEnjoymentTime) -- Let player enjoy the result
+
+        -- If a newer hatch started during the wait, it now owns the shared GUI/frames — bail so
+        -- we don't restore the screen or clear the new hatch's pets out from under it.
+        if self._hatchGeneration ~= hatchGen then
+            cleanupResult.isComplete = true
+            return
+        end
+
         print("🎬 Phase 4: Restoring screen...")
         self:RestoreScreen(animatedElements)
 
         -- PHASE 5: Auto cleanup after a short delay - just disable the GUI
         local cleanupPauseTime = hatchingConfig.helpers.get_adjusted_timing("cleanup_pause_time")
         task.wait(cleanupPauseTime) -- Brief pause to see the restoration
+
+        -- Same guard before the destructive cleanup (disable GUI + clear frames).
+        if self._hatchGeneration ~= hatchGen then
+            cleanupResult.isComplete = true
+            return
+        end
+
         print("🧹 Auto-cleanup: Disabling hatching GUI...")
         self._persistentGui.Enabled = false
         self:ClearEggFrames() -- Clean up egg frames for next use
