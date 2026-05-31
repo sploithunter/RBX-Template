@@ -712,6 +712,45 @@ render live data; HUD reads "Level 10 · 0/1000 XP" live after the XP grant.
 Follow-up: per-breakable XP gain isn't wired yet (XP currently comes from the spine —
 quests/daily/achievements/shop). Add a per-mine XP grant + curve tuning when balancing.
 
+## Halo & Horns — Phase 10 (Escrow two-player trade + Trade UI)
+
+Last checked: 2026-05-30
+
+Roblox has **no native in-experience trading/escrow API** (the platform Trading
+System is for avatar catalog Limiteds + Robux between accounts; the old web Trade
+API was deprecated). So the escrow *pattern* is implemented server-authoritatively.
+
+- **TradeService (escrow model)** rebuilt from the Feature 19 engine:
+  `Request`/`Respond` invite handshake, `ListPlayers` (online targets). **`Add`
+  MOVES the pet out of inventory into a server-held escrow** the moment it's
+  offered — so it can't be sold, deleted, or offered in a second trade (anti-dup at
+  the source). `Remove` returns it; both-`Confirm` **delivers each side's escrow to
+  the other (all-or-nothing)**; `Cancel`/decline/**disconnect refunds** escrow to
+  its owner (PlayerRemoving hook). Live state pushed to both clients via the
+  **TradeUpdate RemoteEvent**. `GetState`/`ListMyPets` for the UI. Pure rules
+  (tradeable / both-confirm / audit) still in the shared TradeLogic core; capped
+  audit log retained. Bus: `trade.players/request/respond/add/remove/confirm/
+  cancel/state/myPets` (+ original `trade.canAdd` and test `trade.simulate/auditLog`).
+- **TradePanel**: the "Trade" side-menu button opens the **online-player list**
+  (click → request). A self-managed ScreenGui live layer shows the **incoming-request
+  popup** (Accept/Decline) and the **two-player window** (your removable offer +
+  pet picker, the partner's offer, per-side confirm indicators, Confirm/Cancel),
+  driven by TradeUpdate so it works even when the menu is closed. No bespoke
+  remotes — all via the GameAPICommand bridge.
+
+Verification: `mise run ci` green; headless **291/291 across 34 specs**; selene 0
+errors on new files; rojo build OK; live `AutomationSuite` **122/122** (trade
+command surface + guards: players/myPets dispatch, no-session-by-default,
+self-request rejected, add-without-session rejected). Screenshot-verified: the
+two-player window (You: golden bear/cat + Add Pet; partner confirmed ✓ with HUGE
+dragon; Confirm/Cancel) and the Accept/Decline request popup render correctly.
+
+Deferred (true two-client only): the full escrow swap end-to-end (request → accept →
+both add+confirm → delivery) needs a 2-player session — solo Studio can't run two
+real players, so it's verified by the headless rules + the solo command-surface
+guards and flagged for a multiplayer test. Optional polish: a poll fallback if a
+TradeUpdate push is missed (the bus `trade.state` exists for it).
+
 ## Balance follow-up (config-only)
 - Huge pets' base-power floor scales with pet level (huge_base_power × level mult →
   e.g. 152% at lvl 27). Flagged by the user as too high; tune later (config /

@@ -375,7 +375,7 @@ function TradePanel:_showRequestPopup(fromUserId, fromName)
     local pop = Instance.new("Frame")
     pop.Name = "RequestPopup"
     pop.Size = UDim2.new(0, 360, 0, 150)
-    pop.Position = UDim2.new(0.5, 0, 0, 90)
+    pop.Position = UDim2.new(0.5, 0, 0, 200)
     pop.AnchorPoint = Vector2.new(0.5, 0)
     pop.BackgroundColor3 = COLORS.panel
     pop.ZIndex = 200
