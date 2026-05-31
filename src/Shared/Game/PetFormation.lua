@@ -100,6 +100,169 @@ function PetFormation.attackOffset(index, count, phase, attack)
     }
 end
 
+-- ============================================================================
+-- Size-aware formations (resolve). Each pet carries a `.footprint` (studs, e.g.
+-- the model's XZ extent); huge pets have a larger footprint. resolve() sorts
+-- smallest -> front, scales gaps by footprint so huge pets never overlap their
+-- neighbours, and lays the pets out per the selected `formation.mode`:
+--   "conga"  — single file; gap between pets grows with their footprints.
+--   "risers" — tiered rows; front row smallest, huge anchored in the back row
+--              with extra column spacing (size-aware evolution of "rows").
+--   "arc"    — concave cradle behind the player; smallest at the centre-closest,
+--              huge curling back at the horns.
+-- ============================================================================
+
+-- Stable ascending sort by footprint (smallest first = front). Returns a new array.
+function PetFormation.sortBySize(pets)
+    local indexed = {}
+    for i, p in ipairs(pets) do
+        indexed[i] = { p = p, i = i, f = tonumber(p.footprint) or 0 }
+    end
+    table.sort(indexed, function(a, b)
+        if a.f ~= b.f then
+            return a.f < b.f
+        end
+        return a.i < b.i
+    end)
+    local out = {}
+    for i, e in ipairs(indexed) do
+        out[i] = e.p
+    end
+    return out
+end
+
+local function footprintList(sorted)
+    local f = {}
+    for i, p in ipairs(sorted) do
+        f[i] = tonumber(p.footprint) or 0
+    end
+    return f
+end
+
+-- conga: single file; back accumulates (f[i-1]+f[i])/2 + gap so bigger pets push more space.
+local function congaOffsets(f, fm)
+    local size = fm.size or {}
+    local gap = tonumber(size.gap) or 1.5
+    local height = fm.height or 0
+    local d0 = fm.follow_distance or 0
+    local offs, back = {}, d0
+    for i = 1, #f do
+        if i == 1 then
+            back = d0 + f[1] / 2
+        else
+            back = back + (f[i - 1] + f[i]) / 2 + gap
+        end
+        offs[i] = { x = 0, y = height, back = back }
+    end
+    return offs
+end
+
+-- risers: rows of per_row; row depth + column spacing scale with that row's largest footprint.
+local function risersOffsets(f, fm)
+    local r = fm.risers or {}
+    local perRow = math.max(1, math.floor(tonumber(r.per_row) or 3))
+    local rowGap = tonumber(r.row_gap) or 2
+    local colSpacing = tonumber(r.col_spacing) or 3
+    local height = fm.height or 0
+    local d0 = fm.follow_distance or 0
+    local n = #f
+    local rows = math.max(1, math.ceil(n / perRow))
+
+    local rowMax = {}
+    for row = 0, rows - 1 do
+        local mx = 0
+        for c = 0, perRow - 1 do
+            local idx = row * perRow + c + 1
+            if f[idx] then
+                mx = math.max(mx, f[idx])
+            end
+        end
+        rowMax[row] = mx
+    end
+
+    local rowBack = {}
+    rowBack[0] = d0 + (rowMax[0] or 0) / 2
+    for row = 1, rows - 1 do
+        rowBack[row] = rowBack[row - 1] + (rowMax[row - 1] + rowMax[row]) / 2 + rowGap
+    end
+
+    local offs = {}
+    for i = 1, n do
+        local row = math.floor((i - 1) / perRow)
+        local col = (i - 1) % perRow
+        local inRow = math.min(perRow, n - row * perRow)
+        local center = (inRow - 1) / 2
+        offs[i] = {
+            x = (col - center) * (colSpacing + (rowMax[row] or 0)),
+            y = height,
+            back = rowBack[row],
+        }
+    end
+    return offs
+end
+
+-- arc: concave cradle. Center-out slot assignment (smallest near centre) on a back-curving arc.
+local function arcOffsets(f, fm)
+    local a = fm.arc or {}
+    local R = tonumber(a.radius) or 11
+    local step = degToRad(tonumber(a.arc_step_degrees) or 20)
+    local spread = tonumber(a.spread_factor) or 0
+    local depth = tonumber(a.depth_factor) or 0
+    local height = fm.height or 0
+    local d0 = fm.follow_distance or 0
+    local offs = {}
+    for i = 1, #f do
+        -- center-out slot: 1->0, 2->+1, 3->-1, 4->+2, 5->-2, ...
+        local s
+        if i == 1 then
+            s = 0
+        else
+            local k = math.floor(i / 2)
+            s = (i % 2 == 0) and k or -k
+        end
+        local ang = s * step
+        local sign = (s > 0 and 1) or (s < 0 and -1) or 0
+        offs[i] = {
+            x = R * math.sin(ang) + sign * f[i] * spread,
+            y = height,
+            back = d0 + R * (1 - math.cos(ang)) + math.abs(s) * f[i] * depth,
+        }
+    end
+    return offs
+end
+
+-- Resolve a full formation: sort by size, lay out per mode. `pets` is an array of tables each
+-- carrying `.footprint`. Returns an array (front -> back) of { pet = <input>, slot, offset }.
+function PetFormation.resolve(pets, formation)
+    local sorted = PetFormation.sortBySize(pets)
+    local f = footprintList(sorted)
+    local mode = formation.mode
+    local offs
+    if mode == "conga" then
+        offs = congaOffsets(f, formation)
+    elseif mode == "arc" then
+        offs = arcOffsets(f, formation)
+    else
+        offs = risersOffsets(f, formation) -- default size-aware layout
+    end
+    local out = {}
+    for i, p in ipairs(sorted) do
+        out[i] = { pet = p, slot = i, offset = offs[i] }
+    end
+    return out
+end
+
+-- Convert a local offset { x, y, back } to a world position against the player frame.
+-- world = position + right*x + up*y + (-look)*back
+function PetFormation.toWorld(frame, offset)
+    local p, look, right = frame.position, frame.look, frame.right
+    return {
+        x = p.x + right.x * offset.x - look.x * offset.back,
+        y = p.y + offset.y - look.y * offset.back + right.y * offset.x,
+        z = p.z + right.z * offset.x - look.z * offset.back,
+    }
+end
+
 -- Vertical bob from a phase (e.g. elapsed time). Deterministic; no clock here.
 function PetFormation.floatOffset(phase, floatConfig)
     if not floatConfig or floatConfig.amplitude == 0 then

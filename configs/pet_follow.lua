@@ -36,6 +36,21 @@ return {
         -- circle mode
         radius = 8,
         arc_degrees = 120,
+
+        -- === Size-aware formations (PetFormation.resolve; wired in Stage 2+) ===
+        -- Pets are sorted smallest -> front, huge -> back, and gaps scale with each
+        -- pet's footprint. `default_mode` is the fallback; each player overrides it
+        -- with their saved choice (Stage 3). Modes: "conga" | "risers" | "arc".
+        default_mode = "risers",
+        size = {
+            default_footprint = 4, -- studs, used when a pet's model extents are unknown
+            gap = 1.5, -- base gap added between neighbours, on top of their radii
+        },
+        -- conga: single file (uses follow_distance + size.gap)
+        -- risers: tiered rows; huge anchored in the back row
+        risers = { per_row = 3, row_gap = 2, col_spacing = 3 },
+        -- arc: concave cradle; huge curling back at the horns
+        arc = { radius = 11, arc_step_degrees = 20, spread_factor = 0.15, depth_factor = 0.1 },
     },
 
     -- Gentle vertical bob (replaces the legacy globalPetFloat oscillator).

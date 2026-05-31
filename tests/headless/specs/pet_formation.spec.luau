@@ -150,4 +150,82 @@ return function()
             end
         end)
     end)
+
+    describe("PetFormation.resolve (size-aware)", function()
+        local fm = {
+            mode = "conga",
+            follow_distance = 6,
+            height = 2,
+            size = { gap = 1 },
+            risers = { per_row = 3, row_gap = 2, col_spacing = 3 },
+            arc = { radius = 10, arc_step_degrees = 20, spread_factor = 0, depth_factor = 0 },
+        }
+
+        local function pets(...)
+            local t = {}
+            for i, f in ipairs({ ... }) do
+                t[i] = { footprint = f, id = "p" .. i }
+            end
+            return t
+        end
+
+        it("sorts smallest -> front regardless of input order", function()
+            local r = PetFormation.resolve(pets(7, 2, 5), fm)
+            expect(r[1].pet.footprint).to.equal(2)
+            expect(r[2].pet.footprint).to.equal(5)
+            expect(r[3].pet.footprint).to.equal(7)
+            expect(r[1].offset.back < r[3].offset.back).to.equal(true)
+        end)
+
+        describe("conga", function()
+            it("is single file with size-scaled accumulating gaps", function()
+                -- footprints sorted {2,2,4}: back = 7, 10, 14; x all 0
+                local r = PetFormation.resolve(pets(2, 4, 2), fm)
+                expect(r[1].offset.x).to.equal(0)
+                expect(r[1].offset.back).to.near(7)
+                expect(r[2].offset.back).to.near(10)
+                expect(r[3].offset.back).to.near(14)
+            end)
+
+            it("a huge neighbour widens the gap (size-aware spacing)", function()
+                local small = PetFormation.resolve(pets(2, 2), fm)
+                local huge = PetFormation.resolve(pets(2, 8), fm)
+                local gapSmall = small[2].offset.back - small[1].offset.back
+                local gapHuge = huge[2].offset.back - huge[1].offset.back
+                expect(gapHuge > gapSmall).to.equal(true)
+            end)
+        end)
+
+        describe("risers", function()
+            local rs = table.clone(fm)
+            rs.mode = "risers"
+            it("anchors the largest in the back row, behind the front row", function()
+                -- 3 small front row + 1 huge -> huge alone in the back row, further back
+                local r = PetFormation.resolve(pets(1, 1, 1, 9), rs)
+                expect(r[4].pet.footprint).to.equal(9)
+                expect(r[4].offset.back > r[1].offset.back).to.equal(true)
+            end)
+        end)
+
+        describe("arc", function()
+            local ac = table.clone(fm)
+            ac.mode = "arc"
+            it("is concave: centre closest, ends curl back, huge at the ends", function()
+                local r = PetFormation.resolve(pets(1, 2, 3, 4, 5), ac)
+                expect(r[1].offset.back < r[2].offset.back).to.equal(true)
+                expect(r[2].offset.back < r[4].offset.back).to.equal(true)
+                expect(r[5].pet.footprint).to.equal(5)
+                local maxBack = 0
+                for _, e in ipairs(r) do
+                    maxBack = math.max(maxBack, e.offset.back)
+                end
+                expect(r[5].offset.back).to.near(maxBack)
+            end)
+
+            it("is laterally symmetric about the centre", function()
+                local r = PetFormation.resolve(pets(1, 1, 1, 1, 1), ac)
+                expect(r[2].offset.x).to.near(-r[3].offset.x)
+            end)
+        end)
+    end)
 end
