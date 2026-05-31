@@ -187,6 +187,7 @@ local TEST_CATEGORIES = {
         tests = {
             { name = "📋 Snapshot Target Player", action = "admin_snapshot" },
             { name = "💾 Force Save Target Player", action = "admin_force_save" },
+            { name = "🗑️ Reset Pets (Target)", action = "admin_reset_pets" },
             { name = "🐻 Grant Bear Basic", action = "grant_bear_basic" },
             { name = "🐉 Grant Dragon Basic", action = "grant_dragon_basic" },
             { name = "🐻 Grant Golden Bear", action = "grant_bear_golden" },
@@ -764,6 +765,8 @@ function AdminPanel:_executeTestAction(action, _testName)
         self:_requestPlayerSnapshot()
     elseif action == "admin_force_save" then
         self:_requestForceSave()
+    elseif action == "admin_reset_pets" then
+        self:_requestResetPets()
     elseif action:find("^grant_") then
         self:_executePetGrantAction(action)
     elseif
@@ -1320,6 +1323,11 @@ end
 function AdminPanel:_requestForceSave()
     Signals.Admin_ForceSave:FireServer(self:_getAdminActionData({}))
     self:_showAdminResult("Force save requested...", true)
+end
+
+function AdminPanel:_requestResetPets()
+    Signals.Admin_ResetPets:FireServer(self:_getAdminActionData({}))
+    self:_showAdminResult("Reset pets requested for target...", true)
 end
 
 function AdminPanel:_executePetGrantAction(action)

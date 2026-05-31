@@ -50,6 +50,10 @@ function AdminToolsService:Init()
         self:_handleGrantPet(player, data)
     end)
 
+    Signals.Admin_ResetPets.OnServerEvent:Connect(function(player, data)
+        self:_handleResetPets(player, data)
+    end)
+
     Signals.Admin_SetZoneLock.OnServerEvent:Connect(function(player, data)
         self:_handleSetZoneLock(player, data)
     end)
@@ -393,6 +397,65 @@ function AdminToolsService:_handleSnapshot(adminPlayer, data)
         kind = "snapshot",
         success = true,
         message = "Snapshot loaded for " .. targetPlayer.Name,
+        snapshot = self:_buildSnapshot(targetPlayer),
+    })
+end
+
+-- Wipe a player's pet inventory + equips back to empty (a clean slate for testing). Uses the
+-- resetData / resetDataOthers permission (Studio-gated). Re-replicates from the empty truth.
+function AdminToolsService:_handleResetPets(adminPlayer, data)
+    local targetPlayer, errorMessage = self:_resolveTarget(adminPlayer, "resetData", data)
+    if not targetPlayer then
+        self:_sendResult(adminPlayer, {
+            kind = "reset_pets",
+            success = false,
+            message = errorMessage,
+        })
+        return
+    end
+
+    local playerData = self._dataService:GetData(targetPlayer)
+    local pets = playerData and playerData.Inventory and playerData.Inventory.pets
+    if type(pets) ~= "table" then
+        self:_sendResult(adminPlayer, {
+            kind = "reset_pets",
+            success = false,
+            message = "No pet inventory for " .. targetPlayer.Name,
+        })
+        return
+    end
+
+    -- Reset OWNERSHIP (the SSOT) and the equip layer to empty.
+    pets.items = {}
+    pets.used_slots = 0
+    if playerData.Equipped then
+        playerData.Equipped.pets = {}
+    end
+
+    -- Re-replicate from the now-empty truth, then despawn any world follow models.
+    if self._inventoryService and self._inventoryService.RebuildPetProjections then
+        self._inventoryService:RebuildPetProjections(targetPlayer)
+    end
+    if type(_G.RBXReloadEquippedPets) == "function" then
+        pcall(function()
+            _G.RBXReloadEquippedPets(targetPlayer)
+        end)
+    end
+
+    self._dataService:RequestSave(targetPlayer, "admin_reset_pets", {
+        critical = true,
+        debounceSeconds = 0,
+    })
+
+    self._logger:Warn("🗑️ ADMIN RESET PETS", {
+        admin = adminPlayer.Name,
+        target = targetPlayer.Name,
+    })
+
+    self:_sendResult(adminPlayer, {
+        kind = "reset_pets",
+        success = true,
+        message = "Pets reset for " .. targetPlayer.Name,
         snapshot = self:_buildSnapshot(targetPlayer),
     })
 end
