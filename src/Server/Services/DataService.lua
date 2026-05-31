@@ -23,6 +23,7 @@ local ProfileStore = Locations.getPackage("ProfileStore")
 local Promise = Locations.getPackage("Promise")
 local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
 local PetMigrationV5 = require(ReplicatedStorage.Shared.Inventory.PetMigrationV5)
+local PetCompaction = require(ReplicatedStorage.Shared.Inventory.PetCompaction)
 
 local DataService = {}
 DataService.__index = DataService
@@ -33,7 +34,7 @@ local DEFAULT_SAVE_DEBOUNCE_SECONDS = 15
 local CRITICAL_SAVE_DEBOUNCE_SECONDS = 1
 local PERIODIC_SAVE_SECONDS = 60
 local SAVE_CONFIRM_TIMEOUT_SECONDS = 10
-local CURRENT_SCHEMA_VERSION = 5
+local CURRENT_SCHEMA_VERSION = 6
 
 local function countInventoryItems(inventory)
     local counts = {}
@@ -402,6 +403,15 @@ end
 SchemaMigrations[4] = function(self, data)
     local migrations = self:_migratePetsToSsotV5(data)
     data.SchemaVersion = 5
+    return migrations + 1
+end
+
+-- v5 -> v6: collapse the exploded per-uid COMMON records back into compact stacks
+-- (commons cost O(distinct kinds), not O(total pets)). Specials stay per-uid. Idempotent,
+-- conservation-guarded. A fresh v4 profile runs v4->v5 (explode) then this (collapse).
+SchemaMigrations[5] = function(self, data)
+    local migrations = self:_migratePetsToCompactV6(data)
+    data.SchemaVersion = 6
     return migrations + 1
 end
 
@@ -1762,6 +1772,46 @@ function DataService:_migratePetsToSsotV5(data)
         equipped = result.report.migratedEquipped,
         reminted = #result.report.remintedStackSlots,
         orphansDropped = #result.report.orphanSlots,
+        usedSlots = pets.used_slots,
+    })
+
+    return 1
+end
+
+-- v5 -> v6 collapse: fold exploded per-uid commons into compact stacks. Commits only when
+-- ownership is conserved.
+function DataService:_migratePetsToCompactV6(data)
+    local pets = data.Inventory and data.Inventory.pets
+    if type(pets) ~= "table" or type(pets.items) ~= "table" then
+        return 0
+    end
+
+    local capability = self:_petCapabilityFromConfig()
+    local viewConfig = self:_petViewConfig()
+    local result = PetCompaction.collapse(pets.items, {
+        isSpecial = function(record)
+            return PetInventoryView.isSpecial(record, capability)
+        end,
+        stackKey = function(record)
+            return PetInventoryView.stackKey(record, viewConfig)
+        end,
+    })
+
+    if not result.report.conserved then
+        self._logger:Error("🛑 PET COMPACTION ABORTED - conservation failed", {
+            ownedBefore = result.report.ownedBefore,
+            ownedAfter = result.report.ownedAfter,
+        })
+        return 0
+    end
+
+    PetInventoryView.normalize(result.items)
+    pets.items = result.items
+    pets.used_slots = PetInventoryView.usedSlots(result.items, viewConfig, capability)
+
+    self._logger:Info("✅ PET COMPACTION v6 complete", {
+        owned = result.report.ownedAfter,
+        equipped = result.report.equippedAfter,
         usedSlots = pets.used_slots,
     })
 

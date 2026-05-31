@@ -223,12 +223,22 @@ local function descriptorFromRecord(uid, rec)
 end
 
 -- Re-add an escrowed pet to a player, minting a fresh uid but preserving every other field.
+-- For a common the descriptor is a single copy (quantity 1) which AddItem folds back into the
+-- recipient's stack; for a special it is the full record.
 local function grantDescriptor(inventory, player, descriptor)
     local petData = deepCopy(descriptor)
     petData.uid = nil
     petData.equipped_slot = nil
+    petData.equipped_slots = nil
     petData.quantity = 1
     inventory:AddItem(player, PETS_BUCKET, petData)
+end
+
+-- Synthetic, unique escrow key for an offered COMMON copy (commons have no uid).
+local offerSeq = 0
+local function nextOfferId()
+    offerSeq += 1
+    return "offer_" .. tostring(offerSeq)
 end
 
 -- Detach a pet from references before it leaves the inventory. Under the SSOT model
@@ -264,21 +274,12 @@ function TradeService:Add(player, uid)
     if not inventory then
         return { ok = false, reason = "service_unavailable" }
     end
-    -- The client may pass a legacy identifier (stack key / stack|key|eph); resolve it to the
-    -- concrete record uid so escrow/removal operate on a real instance.
-    if inventory.ResolvePetUid then
-        uid = inventory:ResolvePetUid(player, uid) or uid
-    end
+    -- Resolve the client identifier to a concrete target (special uid or common stack).
+    local target = inventory.ResolvePetTarget and inventory:ResolvePetTarget(player, uid) or nil
     local bucket = inventory:GetInventory(player, PETS_BUCKET)
-    local rec = bucket and bucket.items and bucket.items[uid]
-    if not rec then
+    local items = bucket and bucket.items
+    if not target or not items then
         return { ok = false, reason = "pet_not_found" }
-    end
-
-    local verdict =
-        TradeLogic.canAddItem("pets", { id = rec.id, locked = rec.locked }, self._config)
-    if not verdict.ok then
-        return verdict
     end
 
     local offer = session.offers[player.UserId]
@@ -286,13 +287,46 @@ function TradeService:Add(player, uid)
         return { ok = false, reason = "offer_full" }
     end
 
-    -- Escrow lock: unequip + drop references, then remove from inventory (anti-dup),
-    -- then force an equipped-pets rebuild so the world model despawns (no phantom).
-    self:_detachPet(player, uid, rec)
-    inventory:RemoveItem(player, PETS_BUCKET, uid, 1)
+    local descriptor
+    if target.kind == "special" then
+        local rec = items[target.uid]
+        if not rec then
+            return { ok = false, reason = "pet_not_found" }
+        end
+        local verdict =
+            TradeLogic.canAddItem("pets", { id = rec.id, locked = rec.locked }, self._config)
+        if not verdict.ok then
+            return verdict
+        end
+        -- Escrow lock: drop references, remove the record (anti-dup), then despawn the model.
+        self:_detachPet(player, target.uid, rec)
+        inventory:RemoveItem(player, PETS_BUCKET, target.uid, 1)
+        descriptor = descriptorFromRecord(target.uid, rec)
+    else
+        local stack = items[target.stackKey]
+        if not stack or (tonumber(stack.quantity) or 0) <= 0 then
+            return { ok = false, reason = "pet_not_found" }
+        end
+        local verdict =
+            TradeLogic.canAddItem("pets", { id = stack.id, locked = stack.locked }, self._config)
+        if not verdict.ok then
+            return verdict
+        end
+        -- Move ONE copy out of the stack into escrow (single-copy descriptor).
+        inventory:RemoveItem(player, PETS_BUCKET, target.stackKey, 1)
+        descriptor = {
+            uid = nextOfferId(),
+            id = stack.id,
+            variant = stack.variant or "basic",
+            quantity = 1,
+        }
+        if stack.element ~= nil then
+            descriptor.element = stack.element
+        end
+    end
+
     self:_reloadEquipped(player)
-    local descriptor = descriptorFromRecord(uid, rec)
-    session.escrow[player.UserId][uid] = descriptor
+    session.escrow[player.UserId][descriptor.uid] = descriptor
     table.insert(offer.items, descriptor)
 
     -- Any change invalidates both confirmations.
