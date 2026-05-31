@@ -66,6 +66,19 @@ local config = {
         screen_restore_duration = 0.3,  -- Time for UI elements to animate back
     },
     
+    -- === HATCH LOCK (re-entry guard) ===
+    -- A hatch holds a lock from the moment its animation starts until teardown completes,
+    -- so a second hatch can't overlap the first (the cause of the "pets don't display on
+    -- rapid re-hatch" bug). Normal release happens on completion; the watchdog below is a
+    -- BACKUP timer that frees the lock if a UI/menu glitch prevents the normal teardown.
+    -- The watchdog must exceed the worst-case animation, so it scales with egg count.
+    -- (Speed presets only make hatches faster, so this upper bound always holds.)
+    hatch_lock = {
+        watchdog_base_seconds = 20,    -- fixed ceiling for a single-egg hatch
+        watchdog_per_egg_seconds = 2,  -- added per egg (covers staggered Max-hatch reveals)
+        watchdog_max_seconds = 120,    -- absolute cap regardless of count
+    },
+
     -- === CURRENT ACTIVE PRESET ===
     -- Change this to use different speed presets
     current_preset = "very_fast",  -- Options: "normal", "fast", "very_fast", "ultra_fast", "slow"

@@ -29,6 +29,23 @@ local player = Players.LocalPlayer
 -- Current target service reference
 local currentTargetService = nil
 local hatchRequestInFlight = false
+
+-- Cached EggHatchingService handle. Consulted via IsHatchReady() to gate re-entry: a hatch
+-- holds an animation lock from start until teardown completes, so HandleEggPurchase / auto-hatch
+-- won't start a second hatch on top of one that's still animating.
+local cachedHatchingService = nil
+local function getHatchingService()
+    if cachedHatchingService then
+        return cachedHatchingService
+    end
+    local ok, service = pcall(function()
+        return require(ReplicatedStorage.Shared.Services.EggHatchingService)
+    end)
+    if ok and service then
+        cachedHatchingService = service
+    end
+    return cachedHatchingService
+end
 local autoHatchEnabled = false
 local autoHatchSessionId = 0
 local selectedHatchCount = 1
@@ -1711,6 +1728,21 @@ function EggInteractionService:ToggleAutoHatch()
                 break
             end
 
+            -- Pace on the hatch lock: wait for any in-progress animation to finish before the
+            -- next request, so the re-entry gate doesn't read as a hard failure and stop auto.
+            local readyService = getHatchingService()
+            while
+                readyService
+                and not readyService:IsHatchReady()
+                and autoHatchEnabled
+                and sessionId == autoHatchSessionId
+            do
+                task.wait(0.1)
+            end
+            if not (autoHatchEnabled and sessionId == autoHatchSessionId) then
+                break
+            end
+
             local ok = self:HandleEggPurchase(target, selectedHatchCount, "Auto", sessionId)
             if not ok then
                 if autoHatchEnabled and sessionId == autoHatchSessionId then
@@ -1734,7 +1766,11 @@ function EggInteractionService:HandleEggPurchase(
     purchaseType,
     autoSessionId
 )
-    if hatchRequestInFlight then
+    -- Gate re-entry. hatchRequestInFlight covers the server round-trip; the hatching service's
+    -- IsHatchReady() covers the *animation* window that runs after the response (the gap where a
+    -- rapid second hatch used to overlap and the new pets failed to display).
+    local hatchingService = getHatchingService()
+    if hatchRequestInFlight or (hatchingService and not hatchingService:IsHatchReady()) then
         self:ShowErrorMessage("Please wait before hatching again")
         return false
     end

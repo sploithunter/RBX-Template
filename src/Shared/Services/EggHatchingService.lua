@@ -117,8 +117,30 @@ else
     print("⚠️ Using fallback egg hatching timing config")
 end
 
+-- Backup watchdog duration for the hatch lock (see StartHatchingAnimation). Must exceed the
+-- worst-case animation so it never trips a legitimate (possibly large Max-) hatch mid-flight;
+-- it only fires if normal teardown is prevented by a UI/menu glitch. Scales with egg count.
+local function hatchLockWatchdogSeconds(eggCount)
+    local lockCfg = hatchingConfig.hatch_lock or {}
+    local base = tonumber(lockCfg.watchdog_base_seconds) or 20
+    local perEgg = tonumber(lockCfg.watchdog_per_egg_seconds) or 2
+    local cap = tonumber(lockCfg.watchdog_max_seconds) or 120
+    local seconds = base + perEgg * math.max(eggCount or 1, 1)
+    return math.min(seconds, cap)
+end
+
 local EggHatchingService = {}
 EggHatchingService.__index = EggHatchingService
+
+-- Hatch re-entry lock. A hatch holds this from the moment its animation starts until teardown
+-- completes; HandleEggPurchase / auto-hatch consult IsHatchReady() before starting another.
+-- Defaults to ready (unlocked) until the first hatch.
+EggHatchingService._hatchLocked = false
+
+-- True when no hatch animation is currently in progress, so a new hatch may start.
+function EggHatchingService:IsHatchReady()
+    return self._hatchLocked ~= true
+end
 
 local function getAnimationPolicy()
     return eggSystemConfig and eggSystemConfig.hatching and eggSystemConfig.hatching.animation or {}
@@ -1813,6 +1835,22 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
         isComplete = false,
     }
 
+    -- Acquire the hatch lock for the duration of this animation. The normal release happens at
+    -- the end of the deferred cleanup below (true completion); the watchdog is a BACKUP that
+    -- frees the lock if a UI/menu glitch prevents that teardown from running, so the player is
+    -- never permanently locked out. Both are keyed to hatchGen so a superseding hatch owns its
+    -- own lock + watchdog and this one's stale timer no-ops.
+    self._hatchLocked = true
+    task.delay(hatchLockWatchdogSeconds(eggCount), function()
+        if self._hatchGeneration == hatchGen and self._hatchLocked then
+            self._hatchLocked = false
+            warn(
+                "[EggHatchingService] Hatch lock released by watchdog (teardown did not complete) — gen "
+                    .. tostring(hatchGen)
+            )
+        end
+    end)
+
     task.spawn(function()
         self:ExecuteHatchingSequence(
             eggComponents,
@@ -1853,6 +1891,11 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
         self:ClearEggFrames() -- Clean up egg frames for next use
         print("✅ Auto-cleanup complete - GUI ready for reuse")
         cleanupResult.isComplete = true
+
+        -- Teardown finished for the current hatch: release the lock so the next hatch may start.
+        -- (The earlier generation-mismatch bails above intentionally do NOT release — a newer
+        --  hatch already owns the lock there. Only the still-current hatch reaches here.)
+        self._hatchLocked = false
     end)
 
     return cleanupResult
