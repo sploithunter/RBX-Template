@@ -225,6 +225,11 @@ local TEST_CATEGORIES = {
                 placeholder = "e.g. goldenMode:unlock, chargedMode:lock, maxHatchCount:25",
                 action = "set_hatch_entitlement_custom",
             },
+            {
+                label = "Set Max Hatch (3-99):",
+                placeholder = "e.g. 25 (clamped to 3-99)",
+                action = "set_max_hatch_count",
+            },
         },
     },
     logging = {
@@ -1092,6 +1097,8 @@ function AdminPanel:_executeCustomAction(action, inputValue)
         self:_executeCustomZoneLock(inputValue)
     elseif action == "set_hatch_entitlement_custom" then
         self:_executeCustomHatchEntitlement(inputValue)
+    elseif action == "set_max_hatch_count" then
+        self:_setMaxHatchCount(inputValue)
     elseif action == "hatch_custom_eggs" or action == "hatch_specific_pet" then
         -- Handle egg hatching custom inputs
         self:_executeCustomEggHatching({
@@ -1532,6 +1539,23 @@ function AdminPanel:_executeCustomHatchEntitlement(inputValue)
 
     Signals.Admin_SetHatchEntitlement:FireServer(self:_getAdminActionData(payload))
     self:_showAdminResult("Hatch entitlement change requested: " .. entitlementId, true)
+end
+
+-- Dedicated control for the max-hatch-count entitlement: takes a number, clamps to [3, 99],
+-- and routes through the same Admin_SetHatchEntitlement path as the other hatch controls.
+function AdminPanel:_setMaxHatchCount(inputValue)
+    local count = tonumber(inputValue)
+    if not count then
+        self:_showAdminResult("Enter a number 3-99 for max hatch", false)
+        return
+    end
+
+    count = math.clamp(math.floor(count), 3, 99)
+    Signals.Admin_SetHatchEntitlement:FireServer(self:_getAdminActionData({
+        entitlement = "maxHatchCount",
+        value = count,
+    }))
+    self:_showAdminResult("Max hatch set to " .. count .. " for target", true)
 end
 
 function AdminPanel:_requestHatchHistory()
