@@ -1,8 +1,9 @@
 --[[
-    Phase 11: PetInventoryView — the pure SSOT projection module (hybrid storage):
-      - COMMON STACK entry: { id, variant, quantity, equipped_slots = {n…} }  (key = id:variant)
-      - SPECIAL entry:      { uid, id, variant, equipped_slot = nil|n, … }     (key = uid)
-    quantity = total owned (never decremented on equip); equipping just adds a slot.
+    Phase 11: PetInventoryView — pure projection authority (separated model):
+      OWNERSHIP in items:  common stack { id, variant, quantity }  (key = id:variant)
+                           special      { uid, id, variant, ... }   (key = uid)
+      EQUIP in a separate Equipped table: slot -> ref ("<uid>" | "stack|id:variant").
+    Live equipped = Equipped ∩ inventory (resolveEquipped), validated + capped by quantity.
     Run: mise run test-headless
 ]]
 
@@ -17,139 +18,104 @@ end
 
 return function()
     describe("PetInventoryView.isStackEntry", function()
-        it("true for an entry with numeric quantity, false for a uid record", function()
-            expect(View.isStackEntry({ id = "bear", variant = "basic", quantity = 5 })).to.equal(
-                true
-            )
-            expect(View.isStackEntry({ uid = "x", id = "bear", equipped_slot = 1 })).to.equal(false)
+        it("true for an entry keyed by id:variant, false for a uid record", function()
+            local items = {
+                ["bear:basic"] = { id = "bear", variant = "basic", quantity = 5 },
+                u1 = { uid = "u1", id = "bear" },
+            }
+            expect(View.isStackEntry(items["bear:basic"], "bear:basic")).to.equal(true)
+            expect(View.isStackEntry(items.u1, "u1")).to.equal(false)
         end)
     end)
 
-    describe("PetInventoryView.stackKey", function()
-        it("joins the configured fields for a common", function()
-            expect(View.stackKey({ id = "bear", variant = "golden" }, CONFIG)).to.equal(
-                "bear:golden"
-            )
-        end)
-        it("keys a special uniquely by uid when capability is given", function()
-            expect(
-                View.stackKey(
-                    { uid = "u9", id = "bear", variant = "basic", huge = true },
-                    CONFIG,
-                    CAP
-                )
-            ).to.equal("uid:u9")
+    describe("PetInventoryView.parseRef", function()
+        it("decodes special (bare uid / special|uid) and common (stack|key)", function()
+            expect(View.parseRef("bear_1_a").kind).to.equal("special")
+            expect(View.parseRef("bear_1_a").uid).to.equal("bear_1_a")
+            expect(View.parseRef("special|h9").uid).to.equal("h9")
+            local s = View.parseRef("stack|bear:basic")
+            expect(s.kind).to.equal("stack")
+            expect(s.stackKey).to.equal("bear:basic")
         end)
     end)
 
-    describe("PetInventoryView.normalize", function()
-        it(
-            "common stack: coerces quantity + equipped_slots, strips uid/_kind/equipped_slot",
-            function()
-                local m = map({
-                    ["bear:basic"] = {
-                        id = "bear",
-                        variant = "basic",
-                        quantity = 3,
-                        equipped_slots = { 3, 3, 1, 0, "x" },
-                        uid = "bogus",
-                        _kind = "stack",
-                        equipped_slot = 2,
-                    },
-                })
-                View.normalize(m)
-                local e = m["bear:basic"]
-                expect(e.quantity).to.equal(3)
-                expect(e.uid).to.equal(nil)
-                expect(e._kind).to.equal(nil)
-                expect(e.equipped_slot).to.equal(nil)
-                expect(#e.equipped_slots).to.equal(2) -- {1,3} (deduped, sorted, ≤quantity)
-                expect(e.equipped_slots[1]).to.equal(1)
-                expect(e.equipped_slots[2]).to.equal(3)
-            end
-        )
-        it("clamps equipped_slots count to quantity", function()
-            local m = map({
-                ["c:basic"] = {
-                    id = "c",
-                    variant = "basic",
-                    quantity = 1,
-                    equipped_slots = { 1, 2, 3 },
-                },
-            })
-            View.normalize(m)
-            expect(#m["c:basic"].equipped_slots).to.equal(1)
-        end)
-        it(
-            "special: uid=key, coerces equipped_slot, strips quantity/equipped_slots/_kind",
-            function()
-                local m = map({
-                    u1 = {
-                        id = "bear",
-                        variant = "basic",
-                        huge = true,
-                        equipped_slot = "2",
-                        quantity = 1,
-                        _kind = "special",
-                    },
-                })
-                View.normalize(m)
-                expect(m.u1.uid).to.equal("u1")
-                expect(m.u1.equipped_slot).to.equal(2)
-                expect(m.u1.quantity).to.equal(nil)
-                expect(m.u1._kind).to.equal(nil)
-            end
-        )
-        it("is idempotent", function()
+    describe("PetInventoryView.normalize (records are pure ownership)", function()
+        it("strips equip fields off records", function()
             local m = map({
                 ["bear:basic"] = {
                     id = "bear",
                     variant = "basic",
-                    quantity = 4,
-                    equipped_slots = { 2 },
+                    quantity = 3,
+                    equipped_slots = { 1 },
+                    uid = "x",
+                    _kind = "stack",
+                },
+                u1 = {
+                    id = "bear",
+                    variant = "basic",
+                    huge = true,
+                    equipped_slot = 2,
+                    quantity = 1,
                 },
             })
             View.normalize(m)
-            View.normalize(m)
-            expect(m["bear:basic"].quantity).to.equal(4)
-            expect(#m["bear:basic"].equipped_slots).to.equal(1)
+            expect(m["bear:basic"].quantity).to.equal(3)
+            expect(m["bear:basic"].equipped_slots).to.equal(nil)
+            expect(m["bear:basic"].uid).to.equal(nil)
+            expect(m.u1.uid).to.equal("u1")
+            expect(m.u1.equipped_slot).to.equal(nil)
+            expect(m.u1.quantity).to.equal(nil)
         end)
     end)
 
-    describe("PetInventoryView.groups", function()
-        it("a common stack is one group with total=quantity", function()
-            local m = map({
-                ["bear:golden"] = { id = "bear", variant = "golden", quantity = 3, obtained_at = 1 },
-            })
-            local g = View.groups(m, CONFIG, CAP)
-            expect(#g).to.equal(1)
-            expect(g[1].key).to.equal("bear:golden")
-            expect(g[1].total).to.equal(3)
-            expect(g[1].isSpecial).to.equal(false)
+    describe("PetInventoryView.resolveEquipped (validated Equipped ∩ inventory)", function()
+        local items = map({
+            ["bunny:basic"] = { id = "bunny", variant = "basic", quantity = 2 },
+            h1 = { uid = "h1", id = "bear", variant = "basic", huge = true },
+        })
+        it("maps valid special + common slots", function()
+            local equipped = { slot_1 = "h1", slot_2 = "stack|bunny:basic" }
+            local slotMap, byKey = View.resolveEquipped(items, equipped, 6)
+            expect(slotMap[1].kind).to.equal("special")
+            expect(slotMap[1].uid).to.equal("h1")
+            expect(slotMap[2].kind).to.equal("stack")
+            expect(byKey["uid:h1"]).to.equal(1)
+            expect(byKey["bunny:basic"]).to.equal(1)
         end)
-        it("tracks equipped/unequipped from equipped_slots", function()
-            local m = map({
-                ["bunny:basic"] = {
-                    id = "bunny",
-                    variant = "basic",
-                    quantity = 3,
-                    equipped_slots = { 4 },
-                    obtained_at = 1,
-                },
-            })
-            local g = View.groups(m, CONFIG, CAP)
-            expect(g[1].total).to.equal(3)
-            expect(g[1].equippedCount).to.equal(1)
-            expect(g[1].unequippedCount).to.equal(2)
+        it("caps a common kind at its quantity (extra slot ignored)", function()
+            local equipped = {
+                slot_1 = "stack|bunny:basic",
+                slot_2 = "stack|bunny:basic",
+                slot_3 = "stack|bunny:basic",
+            }
+            local slotMap, byKey = View.resolveEquipped(items, equipped, 6)
+            expect(byKey["bunny:basic"]).to.equal(2) -- only 2 owned
+            expect(slotMap[1]).never.to.equal(nil)
+            expect(slotMap[2]).never.to.equal(nil)
+            expect(slotMap[3]).to.equal(nil) -- over cap, ignored (no phantom)
         end)
-        it("huge specials never merge into the common stack of the same id:variant", function()
-            local m = map({
-                ["bear:basic"] = { id = "bear", variant = "basic", quantity = 80, obtained_at = 5 },
-                h1 = { uid = "h1", id = "bear", variant = "basic", huge = true, obtained_at = 1000 },
-                h2 = { uid = "h2", id = "bear", variant = "basic", huge = true, obtained_at = 1001 },
-            })
-            local g = View.groups(m, CONFIG, CAP)
-            expect(#g).to.equal(3) -- 1 common bear:basic + 2 singleton huge
+        it("ignores a dangling special ref (pet no longer owned)", function()
+            local equipped = { slot_1 = "ghost_gone", slot_2 = "h1" }
+            local slotMap = View.resolveEquipped(items, equipped, 6)
+            expect(slotMap[1]).to.equal(nil) -- dangling -> ignored
+            expect(slotMap[2].uid).to.equal("h1")
+        end)
+        it("ignores slots beyond maxSlots", function()
+            local slotMap = View.resolveEquipped(items, { slot_9 = "h1" }, 6)
+            expect(slotMap[9]).to.equal(nil)
+        end)
+    end)
+
+    describe("PetInventoryView.groups (ownership + equipped overlay)", function()
+        local items = map({
+            ["bear:basic"] = { id = "bear", variant = "basic", quantity = 80, obtained_at = 5 },
+            ["bunny:basic"] = { id = "bunny", variant = "basic", quantity = 29, obtained_at = 1 },
+            h1 = { uid = "h1", id = "bear", variant = "basic", huge = true, obtained_at = 1000 },
+            h2 = { uid = "h2", id = "bear", variant = "basic", huge = true, obtained_at = 1001 },
+        })
+        it("huge specials never merge into the common stack of same id:variant", function()
+            local g = View.groups(items, CONFIG, CAP)
+            expect(#g).to.equal(4) -- bear:basic + bunny:basic + h1 + h2
             local common
             for _, grp in ipairs(g) do
                 if grp.key == "bear:basic" then
@@ -159,120 +125,43 @@ return function()
             expect(common.total).to.equal(80)
             expect(common.isSpecial).to.equal(false)
         end)
-        it("equipped special counts toward its singleton group", function()
-            local m = map({
-                h1 = {
-                    uid = "h1",
-                    id = "bear",
-                    variant = "basic",
-                    huge = true,
-                    equipped_slot = 1,
-                    obtained_at = 1,
-                },
-            })
-            local g = View.groups(m, CONFIG, CAP)
-            expect(g[1].total).to.equal(1)
-            expect(g[1].equippedCount).to.equal(1)
-            expect(g[1].uids[1]).to.equal("h1")
-        end)
-    end)
-
-    describe("PetInventoryView.equippedSlots", function()
-        it("maps stack slots and special slots into one slot map", function()
-            local m = map({
-                ["bear:basic"] = {
-                    id = "bear",
-                    variant = "basic",
-                    quantity = 4,
-                    equipped_slots = { 1, 3 },
-                    obtained_at = 1,
-                },
-                h1 = {
-                    uid = "h1",
-                    id = "bear",
-                    variant = "basic",
-                    huge = true,
-                    equipped_slot = 2,
-                    obtained_at = 2,
-                },
-            })
-            local slots = View.equippedSlots(m, 6)
-            expect(slots[1].kind).to.equal("stack")
-            expect(slots[1].key).to.equal("bear:basic")
-            expect(slots[2].kind).to.equal("special")
-            expect(slots[2].uid).to.equal("h1")
-            expect(slots[3].kind).to.equal("stack")
-            expect(slots[4]).to.equal(nil)
-        end)
-        it("resolves a slot collision: comparator-smaller wins, loser is a conflict", function()
-            local m = map({
-                ["bear:basic"] = {
-                    id = "bear",
-                    variant = "basic",
-                    quantity = 1,
-                    equipped_slots = { 1 },
-                    obtained_at = 1,
-                },
-                h1 = {
-                    uid = "h1",
-                    id = "wolf",
-                    variant = "basic",
-                    huge = true,
-                    equipped_slot = 1,
-                    obtained_at = 2,
-                },
-            })
-            local slots, conflicts = View.equippedSlots(m, 6)
-            expect(slots[1].kind).to.equal("stack") -- obtained_at 1 wins
-            expect(#conflicts).to.equal(1)
-            expect(conflicts[1].uid).to.equal("h1")
-        end)
-        it("ignores slots beyond maxSlots", function()
-            local m = map({
-                ["bear:basic"] = {
-                    id = "bear",
-                    variant = "basic",
-                    quantity = 1,
-                    equipped_slots = { 9 },
-                },
-            })
-            expect(View.equippedSlots(m, 6)[9]).to.equal(nil)
+        it("overlays equipped/unequipped from equippedByKey", function()
+            local _, byKey =
+                View.resolveEquipped(items, { slot_1 = "h1", slot_2 = "stack|bunny:basic" }, 6)
+            local g = View.groups(items, CONFIG, CAP, byKey)
+            local bunny, hugeH1
+            for _, grp in ipairs(g) do
+                if grp.key == "bunny:basic" then
+                    bunny = grp
+                elseif grp.key == "uid:h1" then
+                    hugeH1 = grp
+                end
+            end
+            expect(bunny.total).to.equal(29)
+            expect(bunny.equippedCount).to.equal(1)
+            expect(bunny.unequippedCount).to.equal(28)
+            expect(hugeH1.equippedCount).to.equal(1)
         end)
     end)
 
     describe("PetInventoryView.usedSlots / categoryCounts", function()
-        local m = map({
-            ["bear:basic"] = { id = "bear", variant = "basic", quantity = 80, obtained_at = 5 },
-            ["bunny:basic"] = {
-                id = "bunny",
-                variant = "basic",
-                quantity = 29,
-                equipped_slots = { 4 },
-                obtained_at = 1,
-            },
-            h1 = { uid = "h1", id = "bear", variant = "basic", huge = true, obtained_at = 1000 },
+        local items = map({
+            ["bear:basic"] = { id = "bear", variant = "basic", quantity = 80 },
+            ["bunny:basic"] = { id = "bunny", variant = "basic", quantity = 29 },
+            h1 = { uid = "h1", id = "bear", variant = "basic", huge = true },
         })
-        it("usedSlots = #stack kinds + #specials (count_stacks_as_single)", function()
-            expect(View.usedSlots(m, CONFIG, CAP)).to.equal(3) -- bear:basic + bunny:basic + h1
-        end)
-        it("usedSlots expands quantity when count_stacks_as_single = false", function()
-            expect(
-                View.usedSlots(
-                    m,
-                    { stack_key_fields = { "id", "variant" }, count_stacks_as_single = false },
-                    CAP
-                )
-            ).to.equal(110) -- 80 + 29 + 1
+        it("usedSlots = #stack kinds + #specials", function()
+            expect(View.usedSlots(items, CONFIG, CAP)).to.equal(3)
         end)
         it("categoryCounts: display groups vs total instances", function()
-            local c = View.categoryCounts(m, CONFIG, CAP)
+            local c = View.categoryCounts(items, CONFIG, CAP)
             expect(c.display).to.equal(3)
-            expect(c.total).to.equal(110)
+            expect(c.total).to.equal(110) -- 80 + 29 + 1
         end)
     end)
 
     describe("PetInventoryView capability gating", function()
-        it("huge / special-rarity pets are levelable+enchantable; plain commons are not", function()
+        it("huge / special-rarity levelable+enchantable; plain commons not", function()
             expect(View.isLevelable({ id = "bear", variant = "basic", huge = true }, CAP)).to.equal(
                 true
             )

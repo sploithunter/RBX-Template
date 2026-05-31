@@ -274,20 +274,23 @@ end
 function PetProgressionService:GetEquippedUniquePetUids(player)
     local data = self._dataService:GetData(player)
     local items = data and data.Inventory and data.Inventory.pets and data.Inventory.pets.items
-    if type(items) ~= "table" then
+    local equipped = data and data.Equipped and data.Equipped.pets
+    if type(items) ~= "table" or type(equipped) ~= "table" then
         return {}
     end
 
-    -- SSOT: equip lives on the record. An equipped, levelable (special) pet earns XP.
+    -- Equip lives in the separate Equipped.pets layer; an equipped, levelable (special) pet
+    -- earns XP. Validate the ref against inventory (ignore dangling), dedupe.
     local capability = self:_petCapability()
-    local uids = {}
-    for uid, petData in pairs(items) do
-        if
-            type(petData) == "table"
-            and petData.equipped_slot ~= nil
-            and PetInventoryView.isLevelable(petData, capability)
-        then
-            table.insert(uids, uid)
+    local seen, uids = {}, {}
+    for _, ref in pairs(equipped) do
+        local desc = PetInventoryView.parseRef(ref)
+        if desc and desc.kind == "special" and not seen[desc.uid] then
+            local petData = items[desc.uid]
+            if type(petData) == "table" and PetInventoryView.isLevelable(petData, capability) then
+                seen[desc.uid] = true
+                table.insert(uids, desc.uid)
+            end
         end
     end
     return uids

@@ -884,23 +884,23 @@ end
 function EnchantService:_getEquippedUniquePets(player)
     local data = self._dataService and self._dataService:GetData(player)
     local items = data and data.Inventory and data.Inventory.pets and data.Inventory.pets.items
-    if type(items) ~= "table" then
+    local equipped = data and data.Equipped and data.Equipped.pets
+    if type(items) ~= "table" or type(equipped) ~= "table" then
         return {}
     end
 
-    -- SSOT: equip lives on the record; an equipped enchantable pet qualifies.
+    -- Equip lives in the separate Equipped.pets layer; an equipped enchantable pet qualifies.
+    -- Validate refs against inventory (ignore dangling), dedupe.
     local capability = self:_petCapability()
-    local pets = {}
-    for uid, petData in pairs(items) do
-        if
-            type(petData) == "table"
-            and petData.equipped_slot ~= nil
-            and PetInventoryView.isEnchantable(petData, capability)
-        then
-            table.insert(pets, {
-                uid = uid,
-                data = petData,
-            })
+    local seen, pets = {}, {}
+    for _, ref in pairs(equipped) do
+        local desc = PetInventoryView.parseRef(ref)
+        if desc and desc.kind == "special" and not seen[desc.uid] then
+            local petData = items[desc.uid]
+            if type(petData) == "table" and PetInventoryView.isEnchantable(petData, capability) then
+                seen[desc.uid] = true
+                table.insert(pets, { uid = desc.uid, data = petData })
+            end
         end
     end
     return pets

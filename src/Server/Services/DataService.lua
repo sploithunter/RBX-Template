@@ -24,6 +24,7 @@ local Promise = Locations.getPackage("Promise")
 local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
 local PetMigrationV5 = require(ReplicatedStorage.Shared.Inventory.PetMigrationV5)
 local PetCompaction = require(ReplicatedStorage.Shared.Inventory.PetCompaction)
+local PetEquipMigration = require(ReplicatedStorage.Shared.Inventory.PetEquipMigration)
 
 local DataService = {}
 DataService.__index = DataService
@@ -34,7 +35,7 @@ local DEFAULT_SAVE_DEBOUNCE_SECONDS = 15
 local CRITICAL_SAVE_DEBOUNCE_SECONDS = 1
 local PERIODIC_SAVE_SECONDS = 60
 local SAVE_CONFIRM_TIMEOUT_SECONDS = 10
-local CURRENT_SCHEMA_VERSION = 6
+local CURRENT_SCHEMA_VERSION = 7
 
 local function countInventoryItems(inventory)
     local counts = {}
@@ -412,6 +413,14 @@ end
 SchemaMigrations[5] = function(self, data)
     local migrations = self:_migratePetsToCompactV6(data)
     data.SchemaVersion = 6
+    return migrations + 1
+end
+
+-- v6 -> v7: lift equip OFF the inventory records into a separate Equipped.pets layer, so
+-- inventory.items is pure ownership and Equipped is the validated restore/preference layer.
+SchemaMigrations[6] = function(self, data)
+    local migrations = self:_migratePetsToEquipLayerV7(data)
+    data.SchemaVersion = 7
     return migrations + 1
 end
 
@@ -1815,6 +1824,36 @@ function DataService:_migratePetsToCompactV6(data)
         usedSlots = pets.used_slots,
     })
 
+    return 1
+end
+
+-- v6 -> v7: move equip from records into Equipped.pets (the validated restore layer).
+function DataService:_migratePetsToEquipLayerV7(data)
+    local pets = data.Inventory and data.Inventory.pets
+    if type(pets) ~= "table" or type(pets.items) ~= "table" then
+        return 0
+    end
+
+    local equipped = PetEquipMigration.extractToEquipped(pets.items)
+    PetInventoryView.normalize(pets.items) -- records become pure ownership (equip stripped)
+    data.Equipped = data.Equipped or {}
+    data.Equipped.pets = equipped
+    pets.used_slots = PetInventoryView.usedSlots(
+        pets.items,
+        self:_petViewConfig(),
+        self:_petCapabilityFromConfig()
+    )
+
+    self._logger:Info("✅ PET EQUIP-LAYER v7 complete", {
+        equippedRefs = (function()
+            local n = 0
+            for _ in pairs(equipped) do
+                n += 1
+            end
+            return n
+        end)(),
+        usedSlots = pets.used_slots,
+    })
     return 1
 end
 
