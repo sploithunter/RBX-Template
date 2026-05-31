@@ -680,6 +680,38 @@ reads `PlayerProgressionService:GetLevel` (profile.Stats.Level) which can disagr
 with the XP-derived HUD level (HUD showed Level 15 while "Reach level 10" read 1/10).
 The level data source needs unifying; the panel faithfully shows the bus value.
 
+## Halo & Horns — Phase 9 (Level unification + Daily & Shop panels)
+
+Last checked: 2026-05-30
+
+- **Player level unified on an XP source of truth.** Total XP
+  (profile.Stats.Experience) is now the single source; level is derived via a pure
+  curve (`src/Shared/Game/LevelCurve.lua`, config `player_progression.xp`,
+  headless-tested, xpForLevel<->levelForXp inverse). `PlayerProgressionService:GetLevel`
+  derives from XP; `AddExperience`/`SetLevel`/`GetProgress` added; `Start()` publishes
+  Level/XP/XPForNext player attributes. `RewardBundle` gained an `experience` field so
+  quests/daily/achievements/shop can award XP through the spine; `test.setLevel` now
+  writes the curve's XP threshold. The HUD (BaseUI) reads the real Level/XP attributes
+  (seed + live refresh), replacing the hardcoded "Level 15 / 750-1000 XP" mock. This
+  fixes quests AND the Phase 5 power/augment level gates consistently.
+- **Daily panel** (`DailyPanel.lua`): 7-day streak calendar (claimed/today/upcoming
+  cards with per-day reward), streak count, Claim button. `daily.status` now returns
+  the calendar + cycle length so the UI is config-free.
+- **Shop panel** (`RewardShopPanel.lua`): offer-card grid (name, reward, cost, -% sale
+  tag, Buy/Owned/Can't-afford), replacing the old mock ShopPanel. `shop.list` returns
+  each offer's reward.
+
+Both panels use the `GameAPICommand` bus bridge (no bespoke remotes) and are wired so
+the existing Daily/Shop side-menu buttons open them.
+
+Verification: `mise run ci` green; headless **291/291 across 34 specs**; selene 0
+errors; rojo build OK; live `AutomationSuite` **117/117** (incl. setLevel(10)->level
+quest claimable, +900xp->level 10). Screenshot-verified: Quest/Daily/Shop panels
+render live data; HUD reads "Level 10 · 0/1000 XP" live after the XP grant.
+
+Follow-up: per-breakable XP gain isn't wired yet (XP currently comes from the spine —
+quests/daily/achievements/shop). Add a per-mine XP grant + curve tuning when balancing.
+
 ## Balance follow-up (config-only)
 - Huge pets' base-power floor scales with pet level (huge_base_power × level mult →
   e.g. 152% at lvl 27). Flagged by the user as too high; tune later (config /
