@@ -25,6 +25,7 @@ local SoundService = game:GetService("SoundService")
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local EggHatchFX = require(ReplicatedStorage.Shared.Effects.EggHatchFX)
 local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
+local HatchTiming = require(ReplicatedStorage.Shared.Game.HatchTiming)
 
 local eggSystemConfig = Locations.getConfig("egg_system")
 local petConfig = Locations.getConfig("pets")
@@ -117,18 +118,6 @@ else
     print("⚠️ Using fallback egg hatching timing config")
 end
 
--- Backup watchdog duration for the hatch lock (see StartHatchingAnimation). Must exceed the
--- worst-case animation so it never trips a legitimate (possibly large Max-) hatch mid-flight;
--- it only fires if normal teardown is prevented by a UI/menu glitch. Scales with egg count.
-local function hatchLockWatchdogSeconds(eggCount)
-    local lockCfg = hatchingConfig.hatch_lock or {}
-    local base = tonumber(lockCfg.watchdog_base_seconds) or 20
-    local perEgg = tonumber(lockCfg.watchdog_per_egg_seconds) or 2
-    local cap = tonumber(lockCfg.watchdog_max_seconds) or 120
-    local seconds = base + perEgg * math.max(eggCount or 1, 1)
-    return math.min(seconds, cap)
-end
-
 local EggHatchingService = {}
 EggHatchingService.__index = EggHatchingService
 
@@ -213,6 +202,23 @@ local function resolveAnimationTiming(hatchOptions)
             * speedScale,
         doStagger = doStagger,
     }
+end
+
+-- Backup watchdog duration for the hatch lock (see StartHatchingAnimation). Derived from the
+-- EXPECTED animation duration (HatchTiming) so it tracks preset/count/fast-hatch automatically;
+-- it only fires if normal teardown is prevented by a UI/menu glitch. The same HatchTiming math
+-- drives the server-side cooldown, keeping the two in lockstep.
+local function hatchLockWatchdogSeconds(eggCount, hatchOptions)
+    local lockCfg = hatchingConfig.hatch_lock or {}
+    local timing = HatchTiming.resolve(hatchingConfig, hatchOptions, {
+        fastHatchSpeedScale = getFastHatchSpeedScale(),
+    })
+    return HatchTiming.watchdogSeconds(eggCount, timing, {
+        safetyFactor = lockCfg.watchdog_safety_factor,
+        marginSeconds = lockCfg.watchdog_margin_seconds,
+        minSeconds = lockCfg.watchdog_min_seconds,
+        maxSeconds = lockCfg.watchdog_max_seconds,
+    })
 end
 
 local function isSpecialEggData(eggData)
@@ -1841,7 +1847,7 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
     -- never permanently locked out. Both are keyed to hatchGen so a superseding hatch owns its
     -- own lock + watchdog and this one's stale timer no-ops.
     self._hatchLocked = true
-    task.delay(hatchLockWatchdogSeconds(eggCount), function()
+    task.delay(hatchLockWatchdogSeconds(eggCount, eggsData[1] and eggsData[1].hatchOptions), function()
         if self._hatchGeneration == hatchGen and self._hatchLocked then
             self._hatchLocked = false
             warn(

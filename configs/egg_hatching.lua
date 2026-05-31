@@ -71,12 +71,15 @@ local config = {
     -- so a second hatch can't overlap the first (the cause of the "pets don't display on
     -- rapid re-hatch" bug). Normal release happens on completion; the watchdog below is a
     -- BACKUP timer that frees the lock if a UI/menu glitch prevents the normal teardown.
-    -- The watchdog must exceed the worst-case animation, so it scales with egg count.
-    -- (Speed presets only make hatches faster, so this upper bound always holds.)
+    -- The watchdog is derived from the EXPECTED animation duration (Shared/Game/HatchTiming),
+    -- so it tracks the preset/count automatically: watchdog = expected * factor + margin,
+    -- clamped to [min, max]. The same HatchTiming math drives the server-side cooldown, so
+    -- an injected client that skips the client lock still can't out-pace the animation.
     hatch_lock = {
-        watchdog_base_seconds = 20,    -- fixed ceiling for a single-egg hatch
-        watchdog_per_egg_seconds = 2,  -- added per egg (covers staggered Max-hatch reveals)
-        watchdog_max_seconds = 120,    -- absolute cap regardless of count
+        watchdog_safety_factor = 3, -- multiple of the expected animation duration
+        watchdog_margin_seconds = 5, -- fixed slack added on top
+        watchdog_min_seconds = 8, -- never trip faster than this (covers a quick single hatch)
+        watchdog_max_seconds = 120, -- absolute cap regardless of count
     },
 
     -- === CURRENT ACTIVE PRESET ===

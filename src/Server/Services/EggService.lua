@@ -16,6 +16,19 @@ local petConfig = Locations.getConfig("pets")
 local eggSystemConfig = Locations.getConfig("egg_system")
 local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
 local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
+local HatchTiming = require(ReplicatedStorage.Shared.Game.HatchTiming)
+
+-- Egg-hatch animation timing (not registered in Locations.ConfigFiles; require directly like
+-- the client does). Used to size the post-success cooldown so it tracks the client animation.
+local eggHatchingConfig
+do
+    local ok, cfg = pcall(function()
+        return require(ReplicatedStorage.Configs.egg_hatching)
+    end)
+    if ok then
+        eggHatchingConfig = cfg
+    end
+end
 
 -- Logger setup using singleton pattern
 local Logger
@@ -42,8 +55,9 @@ else
     }
 end
 
--- Player cooldowns
-local playerCooldowns = {}
+-- Per-player hatch state. The post-success cooldown is enforced via playerHatchLocks
+-- (AcquireHatchLock / ReleaseHatchLock); the older tick()-based IsOnCooldown was superseded
+-- and removed.
 local playerHatchLocks = {}
 local playerHatchHistory = {}
 local hatchHistorySequence = 0
@@ -55,20 +69,6 @@ local eggRemoteFunction = nil
 local playerCurrentEggs = {}
 
 -- === HELPER FUNCTIONS ===
-
-function EggService:IsOnCooldown(player)
-    local playerId = player.UserId
-    local lastPurchase = playerCooldowns[playerId] or 0
-    local cooldownTime = eggSystemConfig.cooldowns.purchase_cooldown
-    local currentTime = tick()
-
-    if currentTime - lastPurchase < cooldownTime then
-        return true, cooldownTime - (currentTime - lastPurchase)
-    end
-
-    playerCooldowns[playerId] = currentTime
-    return false, 0
-end
 
 function EggService:GetHatchingConfig()
     return eggSystemConfig.hatching or {}
@@ -538,12 +538,35 @@ function EggService:AcquireHatchLock(player)
     return true, 0
 end
 
-function EggService:ReleaseHatchLock(player, success)
+-- Expected client-side animation/lock duration for a hatch, from the shared HatchTiming SSOT.
+-- Server-authoritative pacing: the post-success cooldown is held at least this long so an
+-- injected client that skips the client-side lock still can't out-pace the animation. Returns 0
+-- when the timing config is unavailable or the hatch is skipped (auto/skip-hatch), letting the
+-- purchase_cooldown floor apply.
+function EggService:ExpectedHatchSeconds(context)
+    if type(context) ~= "table" or not eggHatchingConfig then
+        return 0
+    end
+    local count = tonumber(context.count) or 1
+    local animation = eggSystemConfig.hatching and eggSystemConfig.hatching.animation
+    local fastScale = animation and tonumber(animation.fast_hatch_speed_scale) or nil
+    local timing = HatchTiming.resolve(eggHatchingConfig, context.options, {
+        fastHatchSpeedScale = fastScale,
+    })
+    return HatchTiming.expectedSeconds(count, timing)
+end
+
+function EggService:ReleaseHatchLock(player, success, context)
     local playerId = player.UserId
     local hatching = self:GetHatchingConfig()
     local holdSeconds
     if success then
         holdSeconds = tonumber(eggSystemConfig.cooldowns.purchase_cooldown) or 0
+        -- Never let the cooldown fall below the client's expected animation duration.
+        local expected = self:ExpectedHatchSeconds(context)
+        if expected and expected > holdSeconds then
+            holdSeconds = expected
+        end
     else
         holdSeconds = tonumber(hatching.failed_request_lock_seconds) or 0.2
     end
@@ -1296,7 +1319,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
     })
 
     self:RecordHatchSuccess(player, request, response)
-    self:ReleaseHatchLock(player, true)
+    self:ReleaseHatchLock(player, true, { count = processedCount, options = hatchOptions })
     return response
 end
 
@@ -1410,7 +1433,6 @@ function EggService:Initialize(moduleLoader)
 
     -- Clean up when players leave
     Players.PlayerRemoving:Connect(function(player)
-        playerCooldowns[player.UserId] = nil
         playerHatchLocks[player.UserId] = nil
         playerHatchHistory[player.UserId] = nil
         playerCurrentEggs[player.UserId] = nil
