@@ -644,8 +644,13 @@ end
 local LogService = game:GetService("LogService")
 LogService.MessageOut:Connect(function(message, messageType)
     if messageType == Enum.MessageType.MessageError then
-        -- Filter out Studio plugin errors (not our template's responsibility)
-        if not string.find(message, "plugin") and not string.find(message, "Plugin") then
+        -- Skip Studio plugin errors + asset-access/load noise (already printed natively with a
+        -- clickable "Click to share access" link; don't mirror/bury them).
+        if
+            not string.find(message, "plugin")
+            and not string.find(message, "Plugin")
+            and not (Logger.isSuppressedConsoleError and Logger.isSuppressedConsoleError(message))
+        then
             Logger:Error("Client script error", {
                 message = message,
                 messageType = messageType.Name,
