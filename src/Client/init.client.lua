@@ -820,6 +820,11 @@ if game:GetService("RunService"):IsStudio() then
         local dailyPanel = DailyPanel.new()
         menuManager:RegisterPanel("Daily", dailyPanel)
 
+        -- Trade panel: escrow two-player trade (online-player list + live window).
+        local TradePanel = require(script.UI.Menus.TradePanel)
+        local tradePanel = TradePanel.new()
+        menuManager:RegisterPanel("Trade", tradePanel)
+
         local EffectsPanel = require(script.UI.Menus.EffectsPanel)
         local effectsPanel = EffectsPanel.new()
         menuManager:RegisterPanel("Effects", effectsPanel)

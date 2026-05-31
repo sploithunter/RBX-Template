@@ -984,6 +984,34 @@ function AutomationSuite.run(opts)
         "XP grant did not advance the level past 10"
     )
 
+    -- Phase 10: escrow trade command surface + guards (the full two-player swap
+    -- needs a 2-client session; these are the solo-deterministic guarantees).
+    report:expect(
+        "trade.players dispatches",
+        domainOk(api:Execute(player, "trade.players", {})),
+        "trade.players failed"
+    )
+    report:expect(
+        "trade.myPets returns the player's pets",
+        domainOk(api:Execute(player, "trade.myPets", {})),
+        "trade.myPets failed"
+    )
+    report:expectEqual(
+        "no active trade session by default",
+        api:Execute(player, "trade.state", {}).result.active,
+        false
+    )
+    report:expectEqual(
+        "trade.request to self is rejected",
+        api:Execute(player, "trade.request", { targetUserId = player.UserId }).result.reason,
+        "cannot_trade_self"
+    )
+    report:expectEqual(
+        "trade.add with no active session is rejected",
+        api:Execute(player, "trade.add", { uid = "nonexistent" }).result.reason,
+        "no_trade"
+    )
+
     return HttpService:JSONEncode(report:summary())
 end
 

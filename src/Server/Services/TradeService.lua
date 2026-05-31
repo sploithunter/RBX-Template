@@ -1,31 +1,59 @@
 --[[
-    TradeService — Feature 19 (Trade System).
+    TradeService — Feature 19 (Trade System), escrow model (Phase 10).
 
-    Server-authoritative trading: session-scoped offers, both-player confirm gate,
-    atomic (anti-duplication) execution, and a queryable trade-history audit log.
-    Pure rules live in the shared TradeLogic core; this service owns sessions, the
-    inventory swap, and the audit ledger.
+    Roblox has NO native in-experience trading/escrow API (the platform Trading
+    System is for avatar catalog Limiteds + Robux between accounts; the old web
+    Trade API was deprecated). So we implement the escrow PATTERN ourselves,
+    server-authoritatively:
 
-    The two-player invite/confirm handshake + UI are [studio]; the rules, the
-    atomic-swap contract, and the audit log are bus-testable solo via trade.canAdd
-    and the test-only trade.simulate.
+      Request -> Accept -> (each Add MOVES the pet into server escrow) ->
+      both Confirm -> deliver each side's escrow to the other (all-or-nothing) ->
+      Cancel / Decline / disconnect -> refund escrow to its owner.
+
+    Escrow is the anti-duplication guarantee: an offered pet leaves the owner's
+    inventory immediately, so it can't be sold, deleted, or offered in a second
+    trade while pending. Live state is pushed to both clients via the TradeUpdate
+    RemoteEvent. Pure rules (tradeable / both-confirm / audit record) live in the
+    shared TradeLogic core.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 
 local TradeLogic = require(ReplicatedStorage.Shared.Game.TradeLogic)
 
 local TradeService = {}
 TradeService.__index = TradeService
 
+local UPDATE_REMOTE = "TradeUpdate"
+local PETS_BUCKET = "pets"
+
 function TradeService:Init()
     self._logger = self._modules and self._modules.Logger
     self._configLoader = self._modules and self._modules.ConfigLoader
+    self._dataService = self._modules and self._modules.DataService
     self._config = self._configLoader:LoadConfig("trade")
-    self._sessions = {} -- sessionId -> { a, b, offers = { [userId] = { items, confirmed } } }
+    self._sessions = {} -- sessionId -> session
     self._playerSession = {} -- userId -> sessionId
+    self._invites = {} -- targetUserId -> { from = userId }
     self._nextId = 0
-    self._auditLog = {} -- append-only, capped at config.audit_log_limit
+    self._auditLog = {} -- append-only, capped
+
+    -- Server -> client push channel (recreated to survive Studio hot-sync).
+    local existing = ReplicatedStorage:FindFirstChild(UPDATE_REMOTE)
+    if existing then
+        existing:Destroy()
+    end
+    local remote = Instance.new("RemoteEvent")
+    remote.Name = UPDATE_REMOTE
+    remote.Parent = ReplicatedStorage
+    self._remote = remote
+end
+
+function TradeService:Start()
+    Players.PlayerRemoving:Connect(function(player)
+        self:_onLeave(player)
+    end)
 end
 
 function TradeService:_service(name)
@@ -39,129 +67,317 @@ function TradeService:_service(name)
     return ok and service or nil
 end
 
--- Rule check for a single item, exposed to the UI/bus (trade.canAdd).
+-- Pure rule check (kept for the original Feature 19 bus command / tests).
 function TradeService:CanAdd(category, item)
     return TradeLogic.canAddItem(category, item, self._config)
 end
 
-function TradeService:_offerOf(session, userId)
-    session.offers[userId] = session.offers[userId] or { items = {}, confirmed = false }
-    return session.offers[userId]
+----------------------------------------------------------------------
+-- Session helpers
+----------------------------------------------------------------------
+
+local function playerById(userId)
+    return Players:GetPlayerByUserId(userId)
 end
 
--- Open a trade session between two players (server side of the invite-accept).
-function TradeService:Open(playerA, playerB)
-    if self._playerSession[playerA.UserId] or self._playerSession[playerB.UserId] then
+function TradeService:_sessionOf(userId)
+    local id = self._playerSession[userId]
+    return id and self._sessions[id]
+end
+
+-- Per-recipient view: your side + the partner's side (offers + confirm flags).
+function TradeService:_view(session, forUserId)
+    local otherId = (forUserId == session.a) and session.b or session.a
+    local other = playerById(otherId)
+    return {
+        sessionId = session.id,
+        you = {
+            items = session.offers[forUserId].items,
+            confirmed = session.offers[forUserId].confirmed,
+        },
+        them = {
+            userId = otherId,
+            name = other and other.Name or "Player",
+            items = session.offers[otherId].items,
+            confirmed = session.offers[otherId].confirmed,
+        },
+    }
+end
+
+function TradeService:_push(session, eventType)
+    for _, userId in ipairs({ session.a, session.b }) do
+        local plr = playerById(userId)
+        if plr then
+            self._remote:FireClient(plr, { type = eventType, state = self:_view(session, userId) })
+        end
+    end
+end
+
+function TradeService:_notify(player, payload)
+    if player then
+        self._remote:FireClient(player, payload)
+    end
+end
+
+----------------------------------------------------------------------
+-- Online-player list + invite handshake
+----------------------------------------------------------------------
+
+function TradeService:ListPlayers(player)
+    local out = {}
+    for _, other in ipairs(Players:GetPlayers()) do
+        if other ~= player then
+            table.insert(out, {
+                userId = other.UserId,
+                name = other.Name,
+                busy = self._playerSession[other.UserId] ~= nil,
+            })
+        end
+    end
+    return { ok = true, players = out }
+end
+
+function TradeService:Request(player, targetUserId)
+    if targetUserId == player.UserId then
+        return { ok = false, reason = "cannot_trade_self" }
+    end
+    local target = playerById(targetUserId)
+    if not target then
+        return { ok = false, reason = "player_not_found" }
+    end
+    if self._playerSession[player.UserId] or self._playerSession[targetUserId] then
         return { ok = false, reason = "already_trading" }
     end
+    self._invites[targetUserId] = { from = player.UserId }
+    self:_notify(target, { type = "request", fromUserId = player.UserId, fromName = player.Name })
+    return { ok = true, pending = true }
+end
+
+function TradeService:Respond(player, fromUserId, accept)
+    local invite = self._invites[player.UserId]
+    if not invite or invite.from ~= fromUserId then
+        return { ok = false, reason = "no_invite" }
+    end
+    self._invites[player.UserId] = nil
+    local requester = playerById(fromUserId)
+
+    if not accept then
+        self:_notify(requester, { type = "declined", byUserId = player.UserId })
+        return { ok = true, accepted = false }
+    end
+    if not requester then
+        return { ok = false, reason = "player_not_found" }
+    end
+    if self._playerSession[player.UserId] or self._playerSession[fromUserId] then
+        return { ok = false, reason = "already_trading" }
+    end
+    return self:_open(requester, player)
+end
+
+function TradeService:_open(playerA, playerB)
     self._nextId += 1
     local id = self._nextId
-    self._sessions[id] = {
+    local session = {
+        id = id,
         a = playerA.UserId,
         b = playerB.UserId,
-        offers = {},
+        offers = {
+            [playerA.UserId] = { items = {}, confirmed = false },
+            [playerB.UserId] = { items = {}, confirmed = false },
+        },
+        escrow = {
+            [playerA.UserId] = {}, -- uid -> normalized pet descriptor
+            [playerB.UserId] = {},
+        },
     }
+    self._sessions[id] = session
     self._playerSession[playerA.UserId] = id
     self._playerSession[playerB.UserId] = id
+    self:_push(session, "opened")
     return { ok = true, sessionId = id }
 end
 
-function TradeService:Add(player, category, item)
-    local id = self._playerSession[player.UserId]
-    local session = id and self._sessions[id]
-    if not session then
-        return { ok = false, reason = "no_trade" }
-    end
-    local verdict = TradeLogic.canAddItem(category, item, self._config)
-    if not verdict.ok then
-        return verdict
-    end
-    local offer = self:_offerOf(session, player.UserId)
-    if #offer.items >= (self._config.max_offer_items or 10) then
-        return { ok = false, reason = "offer_full" }
-    end
-    -- Adding/removing items invalidates any prior confirmation (both must re-confirm).
-    session.offers[session.a] = session.offers[session.a] or { items = {}, confirmed = false }
-    session.offers[session.b] = session.offers[session.b] or { items = {}, confirmed = false }
-    session.offers[session.a].confirmed = false
-    session.offers[session.b].confirmed = false
-    table.insert(
-        offer.items,
-        { category = category, id = item.id, uid = item.uid, locked = item.locked }
-    )
-    return { ok = true, count = #offer.items }
+----------------------------------------------------------------------
+-- Escrow add / remove
+----------------------------------------------------------------------
+
+local function descriptorFromRecord(uid, rec)
+    return {
+        uid = uid,
+        id = rec.id,
+        variant = rec.variant or "basic",
+        element = rec.element,
+        huge = rec.huge,
+        locked = rec.locked,
+    }
 end
 
-function TradeService:Confirm(player)
-    local id = self._playerSession[player.UserId]
-    local session = id and self._sessions[id]
-    if not session then
-        return { ok = false, reason = "no_trade" }
-    end
-    self:_offerOf(session, player.UserId).confirmed = true
-    local offerA = session.offers[session.a]
-    local offerB = session.offers[session.b]
-    if TradeLogic.canExecute(offerA, offerB).ok then
-        return self:_execute(id)
-    end
-    return { ok = true, waiting = true }
-end
-
--- Atomic swap: move every offered pet from its owner to the other player. We snapshot
--- and validate ownership first; if anything is missing we abort BEFORE mutating, so the
--- trade is all-or-nothing (anti-duplication: no item ends up in both or neither).
-function TradeService:_execute(sessionId)
-    local session = self._sessions[sessionId]
+-- Add a pet to the offer: validate, then MOVE it out of inventory into escrow.
+function TradeService:Add(player, uid)
+    local session = self:_sessionOf(player.UserId)
     if not session then
         return { ok = false, reason = "no_trade" }
     end
     local inventory = self:_service("InventoryService")
-    local players = game:GetService("Players")
-    local pa = players:GetPlayerByUserId(session.a)
-    local pb = players:GetPlayerByUserId(session.b)
-    local offerA = session.offers[session.a] or { items = {} }
-    local offerB = session.offers[session.b] or { items = {} }
-
-    if inventory and pa and pb then
-        local moves = {}
-        local function plan(fromPlayer, toPlayer, items)
-            for _, it in ipairs(items) do
-                if it.category == "pets" and it.uid then
-                    local bucket = inventory:GetInventory(fromPlayer, "pets")
-                    local rec = bucket and bucket.items and bucket.items[it.uid]
-                    if not rec then
-                        return false -- ownership lost -> abort whole trade
-                    end
-                    table.insert(
-                        moves,
-                        { from = fromPlayer, to = toPlayer, uid = it.uid, rec = rec }
-                    )
-                end
-            end
-            return true
-        end
-        if not (plan(pa, pb, offerA.items) and plan(pb, pa, offerB.items)) then
-            return { ok = false, reason = "ownership_changed" }
-        end
-        -- All validated -> apply. (Single-frame server execution; no yield between
-        -- remove/add, so there is no partial-completion window.)
-        for _, m in ipairs(moves) do
-            inventory:RemoveItem(m.from, "pets", m.uid, 1)
-            inventory:AddItem(m.to, "pets", m.rec)
-        end
+    if not inventory then
+        return { ok = false, reason = "service_unavailable" }
+    end
+    local bucket = inventory:GetInventory(player, PETS_BUCKET)
+    local rec = bucket and bucket.items and bucket.items[uid]
+    if not rec then
+        return { ok = false, reason = "pet_not_found" }
     end
 
-    local rec = TradeLogic.auditRecord(session.a, session.b, offerA, offerB, os.time())
+    local verdict =
+        TradeLogic.canAddItem("pets", { id = rec.id, locked = rec.locked }, self._config)
+    if not verdict.ok then
+        return verdict
+    end
+
+    local offer = session.offers[player.UserId]
+    if #offer.items >= (self._config.max_offer_items or 10) then
+        return { ok = false, reason = "offer_full" }
+    end
+
+    -- Escrow lock: remove from the owner's inventory now (anti-dup).
+    inventory:RemoveItem(player, PETS_BUCKET, uid, 1)
+    local descriptor = descriptorFromRecord(uid, rec)
+    session.escrow[player.UserId][uid] = descriptor
+    table.insert(offer.items, descriptor)
+
+    -- Any change invalidates both confirmations.
+    session.offers[session.a].confirmed = false
+    session.offers[session.b].confirmed = false
+    self:_push(session, "updated")
+    return { ok = true, count = #offer.items }
+end
+
+-- Pull a pet back out of the offer and return it to the owner's inventory.
+function TradeService:Remove(player, uid)
+    local session = self:_sessionOf(player.UserId)
+    if not session then
+        return { ok = false, reason = "no_trade" }
+    end
+    local descriptor = session.escrow[player.UserId][uid]
+    if not descriptor then
+        return { ok = false, reason = "not_offered" }
+    end
+    local inventory = self:_service("InventoryService")
+    if inventory then
+        inventory:AddItem(player, PETS_BUCKET, {
+            id = descriptor.id,
+            variant = descriptor.variant,
+            element = descriptor.element,
+            huge = descriptor.huge,
+            quantity = 1,
+        })
+    end
+    session.escrow[player.UserId][uid] = nil
+    local offer = session.offers[player.UserId]
+    for i = #offer.items, 1, -1 do
+        if offer.items[i].uid == uid then
+            table.remove(offer.items, i)
+        end
+    end
+    session.offers[session.a].confirmed = false
+    session.offers[session.b].confirmed = false
+    self:_push(session, "updated")
+    return { ok = true }
+end
+
+----------------------------------------------------------------------
+-- Confirm / deliver / cancel / refund
+----------------------------------------------------------------------
+
+function TradeService:Confirm(player)
+    local session = self:_sessionOf(player.UserId)
+    if not session then
+        return { ok = false, reason = "no_trade" }
+    end
+    session.offers[player.UserId].confirmed = true
+    local offerA, offerB = session.offers[session.a], session.offers[session.b]
+    if TradeLogic.canExecute(offerA, offerB).ok then
+        return self:_deliver(session)
+    end
+    self:_push(session, "updated")
+    return { ok = true, waiting = true }
+end
+
+local function giveAll(inventory, player, escrowForOwner)
+    if not (inventory and player) then
+        return
+    end
+    for _, descriptor in pairs(escrowForOwner) do
+        inventory:AddItem(player, PETS_BUCKET, {
+            id = descriptor.id,
+            variant = descriptor.variant,
+            element = descriptor.element,
+            huge = descriptor.huge,
+            quantity = 1,
+        })
+    end
+end
+
+-- Both confirmed: deliver A's escrow to B and B's escrow to A. All-or-nothing —
+-- the items are already escrowed, so neither side can be left holding both/none.
+function TradeService:_deliver(session)
+    local inventory = self:_service("InventoryService")
+    local pa, pb = playerById(session.a), playerById(session.b)
+    giveAll(inventory, pb, session.escrow[session.a])
+    giveAll(inventory, pa, session.escrow[session.b])
+
+    local rec = TradeLogic.auditRecord(
+        session.a,
+        session.b,
+        session.offers[session.a],
+        session.offers[session.b],
+        os.time()
+    )
     self:_appendAudit(rec)
-    self:_close(sessionId)
+    self:_push(session, "completed")
+    self:_close(session.id)
+    if pa then
+        self._dataService:RequestSave(pa, "trade_complete", { critical = true })
+    end
+    if pb then
+        self._dataService:RequestSave(pb, "trade_complete", { critical = true })
+    end
     return { ok = true, executed = true, audit = rec }
 end
 
-function TradeService:_appendAudit(rec)
-    table.insert(self._auditLog, rec)
-    local limit = self._config.audit_log_limit or 100
-    while #self._auditLog > limit do
-        table.remove(self._auditLog, 1)
+-- Return every escrowed pet to its owner (cancel / decline / disconnect).
+function TradeService:_refund(session)
+    local inventory = self:_service("InventoryService")
+    for _, userId in ipairs({ session.a, session.b }) do
+        giveAll(inventory, playerById(userId), session.escrow[userId])
+        session.escrow[userId] = {}
+    end
+end
+
+function TradeService:Cancel(player)
+    local session = self:_sessionOf(player.UserId)
+    if not session then
+        return { ok = true }
+    end
+    self:_refund(session)
+    self:_push(session, "cancelled")
+    self:_close(session.id)
+    return { ok = true }
+end
+
+function TradeService:_onLeave(player)
+    -- Clear any invite addressed to or from the leaving player.
+    self._invites[player.UserId] = nil
+    for target, invite in pairs(self._invites) do
+        if invite.from == player.UserId then
+            self._invites[target] = nil
+        end
+    end
+    local session = self:_sessionOf(player.UserId)
+    if session then
+        self:_refund(session) -- refunds the leaver too (their save flushes on remove)
+        self:_push(session, "cancelled")
+        self:_close(session.id)
     end
 end
 
@@ -175,15 +391,48 @@ function TradeService:_close(sessionId)
     self._sessions[sessionId] = nil
 end
 
-function TradeService:Cancel(player)
-    local id = self._playerSession[player.UserId]
-    if id then
-        self:_close(id)
+-- The player's tradeable pets (for the offer picker). Pets already escrowed in an
+-- active trade are gone from inventory, so they naturally don't appear here.
+function TradeService:ListMyPets(player)
+    local inventory = self:_service("InventoryService")
+    if not inventory then
+        return { ok = false, reason = "service_unavailable" }
     end
-    return { ok = true }
+    local bucket = inventory:GetInventory(player, PETS_BUCKET)
+    local out = {}
+    for uid, rec in pairs((bucket and bucket.items) or {}) do
+        table.insert(out, {
+            uid = uid,
+            id = rec.id,
+            variant = rec.variant or "basic",
+            element = rec.element,
+            huge = rec.huge,
+            locked = rec.locked,
+        })
+    end
+    return { ok = true, pets = out }
 end
 
--- Queryable trade-history audit log (for support/audit). Optionally filtered to a userId.
+function TradeService:GetState(player)
+    local session = self:_sessionOf(player.UserId)
+    if not session then
+        return { ok = true, active = false }
+    end
+    return { ok = true, active = true, state = self:_view(session, player.UserId) }
+end
+
+----------------------------------------------------------------------
+-- Audit log + test affordance
+----------------------------------------------------------------------
+
+function TradeService:_appendAudit(rec)
+    table.insert(self._auditLog, rec)
+    local limit = self._config.audit_log_limit or 100
+    while #self._auditLog > limit do
+        table.remove(self._auditLog, 1)
+    end
+end
+
 function TradeService:GetAuditLog(userId)
     if not userId then
         return { ok = true, records = self._auditLog }
@@ -197,8 +446,7 @@ function TradeService:GetAuditLog(userId)
     return { ok = true, records = out }
 end
 
--- Test/UI affordance: run the rule + execute-gate + audit-record logic over a
--- described trade without two live players. Mirrors PartyService:Simulate.
+-- Rules + execute-gate + audit-record logic without two live players.
 function TradeService:Simulate(opts)
     opts = opts or {}
     local offerA = opts.offerA or { items = {}, confirmed = false }

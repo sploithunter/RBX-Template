@@ -857,6 +857,85 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    -- Two-player escrow trade flow (Feature 19 / Phase 10). Live state is pushed
+    -- to both clients via the TradeUpdate RemoteEvent; these are the actions.
+    local function tradeAction(method)
+        return function(context, args)
+            local s = self:_service("TradeService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return method(s, context.player, args)
+        end
+    end
+
+    bus:register("trade.players", {
+        description = "List other players in the server (trade targets).",
+        handler = tradeAction(function(s, player)
+            return s:ListPlayers(player)
+        end),
+    })
+    bus:register("trade.request", {
+        description = "Send a trade request to another player.",
+        validate = function(args)
+            return Validators.fields(args, { targetUserId = "int" })
+        end,
+        handler = tradeAction(function(s, player, args)
+            return s:Request(player, args.targetUserId)
+        end),
+    })
+    bus:register("trade.respond", {
+        description = "Accept or decline an incoming trade request.",
+        validate = function(args)
+            return Validators.fields(args, { fromUserId = "int", accept = "boolean" })
+        end,
+        handler = tradeAction(function(s, player, args)
+            return s:Respond(player, args.fromUserId, args.accept)
+        end),
+    })
+    bus:register("trade.add", {
+        description = "Offer a pet (moves it into escrow).",
+        validate = function(args)
+            return Validators.fields(args, { uid = "string" })
+        end,
+        handler = tradeAction(function(s, player, args)
+            return s:Add(player, args.uid)
+        end),
+    })
+    bus:register("trade.remove", {
+        description = "Pull a pet back out of your offer (returns it from escrow).",
+        validate = function(args)
+            return Validators.fields(args, { uid = "string" })
+        end,
+        handler = tradeAction(function(s, player, args)
+            return s:Remove(player, args.uid)
+        end),
+    })
+    bus:register("trade.confirm", {
+        description = "Confirm your side; both confirmed executes the swap.",
+        handler = tradeAction(function(s, player)
+            return s:Confirm(player)
+        end),
+    })
+    bus:register("trade.cancel", {
+        description = "Cancel the active trade (refunds escrow to both sides).",
+        handler = tradeAction(function(s, player)
+            return s:Cancel(player)
+        end),
+    })
+    bus:register("trade.state", {
+        description = "The player's current trade session view (poll fallback).",
+        handler = tradeAction(function(s, player)
+            return s:GetState(player)
+        end),
+    })
+    bus:register("trade.myPets", {
+        description = "The player's tradeable pets (for the offer picker).",
+        handler = tradeAction(function(s, player)
+            return s:ListMyPets(player)
+        end),
+    })
+
     bus:register("fusion.canFuse", {
         description = "Whether two pet elements may be fused (one Light + one Shadow -> Chaotic).",
         validate = function(args)
