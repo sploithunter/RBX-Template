@@ -26,6 +26,28 @@ local PetFollowController = {}
 
 local localPlayer = Players.LocalPlayer
 
+-- Per-pet footprint (studs) for size-aware formations — the model's larger XZ extent, so huge
+-- pets read bigger. Cached (weak keys) since extents don't change once the model is built.
+local footprintCache = setmetatable({}, { __mode = "k" })
+local function petFootprint(pet, config)
+    local cached = footprintCache[pet]
+    if cached then
+        return cached
+    end
+    local f
+    local ok, ext = pcall(function()
+        return pet:GetExtentsSize()
+    end)
+    if ok and ext then
+        f = math.max(ext.X, ext.Z)
+    end
+    if not f or f <= 0 then
+        f = (config.formation.size and config.formation.size.default_footprint) or 4
+    end
+    footprintCache[pet] = f
+    return f
+end
+
 local function findBreakable(targetType, world, id)
     local breakables = Workspace:FindFirstChild("Game")
         and Workspace.Game:FindFirstChild("Breakables")
@@ -122,12 +144,40 @@ function PetFollowController.start()
         end
 
         -- Followers: hold the formation slot behind the player.
-        for _, f in ipairs(followers) do
-            local t = PetFormation.targetPosition(frame, f.index, count, config.formation)
-            local bob = PetFormation.floatOffset(phase + f.index, config.float)
-            local target = Vector3.new(t.x, t.y + bob, t.z)
-            local goal = CFrame.lookAt(target, target + upFwd)
-            f.pet:PivotTo(f.pet:GetPivot():Lerp(goal, followAlpha))
+        -- Mode comes from the player's saved setting (PetFormationMode attribute, stage 3) or the
+        -- config default. The size-aware modes sort by footprint + scale spacing via resolve();
+        -- anything else falls back to the legacy index-based path.
+        local mode = localPlayer:GetAttribute("PetFormationMode") or config.formation.default_mode
+        local sizeAware = mode == "conga" or mode == "risers" or mode == "arc"
+
+        if sizeAware and #followers > 0 then
+            -- Stable input order by equip slot so equal-size pets keep a deterministic order.
+            table.sort(followers, function(lhs, rhs)
+                return lhs.index < rhs.index
+            end)
+            local input = {}
+            for _, f in ipairs(followers) do
+                input[#input + 1] = { model = f.pet, footprint = petFootprint(f.pet, config) }
+            end
+            local fm = table.clone(config.formation)
+            fm.mode = mode
+            local placed = PetFormation.resolve(input, fm)
+            for slot, e in ipairs(placed) do
+                local model = e.pet.model
+                local t = PetFormation.toWorld(frame, e.offset)
+                local bob = PetFormation.floatOffset(phase + slot, config.float)
+                local target = Vector3.new(t.x, t.y + bob, t.z)
+                local goal = CFrame.lookAt(target, target + upFwd)
+                model:PivotTo(model:GetPivot():Lerp(goal, followAlpha))
+            end
+        else
+            for _, f in ipairs(followers) do
+                local t = PetFormation.targetPosition(frame, f.index, count, config.formation)
+                local bob = PetFormation.floatOffset(phase + f.index, config.float)
+                local target = Vector3.new(t.x, t.y + bob, t.z)
+                local goal = CFrame.lookAt(target, target + upFwd)
+                f.pet:PivotTo(f.pet:GetPivot():Lerp(goal, followAlpha))
+            end
         end
 
         -- Attackers: surround the target in an animated ring, facing the center.
