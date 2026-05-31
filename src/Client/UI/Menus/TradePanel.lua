@@ -208,13 +208,16 @@ function TradePanel:Destroy()
     self:Hide()
 end
 
-function TradePanel:_buildHeader(parent, titleText, onClose)
+-- baseZ keeps the header above its parent frame on high-ZIndex surfaces (the pet
+-- picker sits at ZIndex 300, so its header children must be > 300).
+function TradePanel:_buildHeader(parent, titleText, onClose, baseZ)
+    baseZ = baseZ or 101
     local header = Instance.new("Frame")
     header.Name = "Header"
     header.Size = UDim2.new(1, 0, 0, 72)
     header.BackgroundColor3 = COLORS.header
     header.BorderSizePixel = 0
-    header.ZIndex = 101
+    header.ZIndex = baseZ
     header.Parent = parent
     corner(header, 20)
     local g = Instance.new("UIGradient")
@@ -233,6 +236,7 @@ function TradePanel:_buildHeader(parent, titleText, onClose)
         Enum.Font.GothamBold
     )
     title.TextXAlignment = Enum.TextXAlignment.Left
+    title.ZIndex = baseZ + 2
     local tc = Instance.new("UITextSizeConstraint")
     tc.MaxTextSize = 30
     tc.Parent = title
@@ -244,7 +248,7 @@ function TradePanel:_buildHeader(parent, titleText, onClose)
     close.TextColor3 = COLORS.text
     close.TextScaled = true
     close.Font = Enum.Font.GothamBold
-    close.ZIndex = 102
+    close.ZIndex = baseZ + 2
     close.Parent = header
     corner(close, 24)
     close.Activated:Connect(onClose)
@@ -390,11 +394,13 @@ function TradePanel:_showRequestPopup(fromUserId, fromName)
     local msg = label(
         pop,
         (fromName or "A player") .. " wants to trade",
-        UDim2.new(1, -20, 0, 40),
-        UDim2.new(0, 10, 0, 12),
+        UDim2.new(1, -20, 0, 50),
+        UDim2.new(0, 10, 0, 16),
         COLORS.text,
         Enum.Font.GothamBold
     )
+    msg.ZIndex = 202 -- above the popup frame (200)
+    msg.TextWrapped = true
     local mc = Instance.new("UITextSizeConstraint")
     mc.MaxTextSize = 20
     mc.Parent = msg
@@ -641,7 +647,7 @@ function TradePanel:_openPetPicker()
 
     self:_buildHeader(picker, "Choose a pet", function()
         self:_closePetPicker()
-    end)
+    end, 301)
 
     local list = Instance.new("ScrollingFrame")
     list.Size = UDim2.new(1, -16, 1, -84)

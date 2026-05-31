@@ -212,6 +212,27 @@ local function descriptorFromRecord(uid, rec)
     }
 end
 
+-- Detach a pet from everything that references it before it leaves the inventory:
+-- the Equipped folder slot (PetEquipmentBridge re-runs loadEquipped -> despawns the
+-- world model) and any roster references. Prevents a "phantom" equipped pet.
+function TradeService:_detachPet(player, uid)
+    local equipped = player:FindFirstChild("Equipped")
+    local petsFolder = equipped and equipped:FindFirstChild("pets")
+    if petsFolder then
+        for _, slot in ipairs(petsFolder:GetChildren()) do
+            if slot:IsA("StringValue") and slot.Value == uid then
+                slot:Destroy() -- bridge despawns the follow model + clears the equip
+            end
+        end
+    end
+    local rosters = self:_service("RosterService")
+    if rosters and rosters.RemovePetReference then
+        pcall(function()
+            rosters:RemovePetReference(player, uid)
+        end)
+    end
+end
+
 -- Add a pet to the offer: validate, then MOVE it out of inventory into escrow.
 function TradeService:Add(player, uid)
     local session = self:_sessionOf(player.UserId)
@@ -239,7 +260,8 @@ function TradeService:Add(player, uid)
         return { ok = false, reason = "offer_full" }
     end
 
-    -- Escrow lock: remove from the owner's inventory now (anti-dup).
+    -- Escrow lock: unequip + drop references, then remove from inventory (anti-dup).
+    self:_detachPet(player, uid)
     inventory:RemoveItem(player, PETS_BUCKET, uid, 1)
     local descriptor = descriptorFromRecord(uid, rec)
     session.escrow[player.UserId][uid] = descriptor
