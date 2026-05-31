@@ -799,9 +799,11 @@ if game:GetService("RunService"):IsStudio() then
         -- Make MenuManager globally accessible for network updates
         _G.MenuManager = menuManager
 
-        -- Create and register menu panels
-        local ShopPanel = require(script.UI.Menus.ShopPanel)
-        local shopPanel = ShopPanel.new()
+        -- Create and register menu panels.
+        -- Shop is now the reward-spine grid (shop.list/shop.purchase via the bus),
+        -- replacing the old mock ShopPanel stub.
+        local RewardShopPanel = require(script.UI.Menus.RewardShopPanel)
+        local shopPanel = RewardShopPanel.new()
         menuManager:RegisterPanel("Shop", shopPanel)
 
         local InventoryPanel = require(script.UI.Menus.InventoryPanel)
@@ -812,6 +814,11 @@ if game:GetService("RunService"):IsStudio() then
         local QuestPanel = require(script.UI.Menus.QuestPanel)
         local questPanel = QuestPanel.new()
         menuManager:RegisterPanel("Quest", questPanel)
+
+        -- Daily panel: reward-spine login streak calendar.
+        local DailyPanel = require(script.UI.Menus.DailyPanel)
+        local dailyPanel = DailyPanel.new()
+        menuManager:RegisterPanel("Daily", dailyPanel)
 
         local EffectsPanel = require(script.UI.Menus.EffectsPanel)
         local effectsPanel = EffectsPanel.new()

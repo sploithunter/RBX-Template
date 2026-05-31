@@ -63,6 +63,7 @@ function ShopService:List(player)
             id = id,
             name = offer.name,
             cost = offer.cost,
+            reward = offer.reward,
             discountPercent = offer.discount_percent,
             limit = offer.limit,
             purchasedCount = count,

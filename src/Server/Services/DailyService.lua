@@ -52,6 +52,12 @@ function DailyService:Status(player, today)
     local data = self._dataService:GetData(player)
     local s = state(data)
     local r = DailyStreak.resolve(s.lastDay, today, s.streak, self._config)
+    -- Surface the calendar (day -> reward bundle) + cycle length so the UI can render
+    -- the full week config-free.
+    local calendar = {}
+    for day, bundle in pairs(self._config.calendar or {}) do
+        calendar[tostring(day)] = bundle
+    end
     return {
         ok = true,
         claimable = r.claimable,
@@ -60,6 +66,8 @@ function DailyService:Status(player, today)
         nextStreak = r.newStreak,
         claimDay = r.claimDay,
         today = today,
+        calendar = calendar,
+        cycleLength = self._config.cycle_length or 7,
     }
 end
 
