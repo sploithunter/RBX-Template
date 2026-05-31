@@ -1470,46 +1470,43 @@ function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, du
     -- Handle generated images vs regular asset IDs
     if petImageId == "generated_image" and petData then
         print("  🔄 Using generated image path")
-        -- Try to get generated pet image
-        local generatedImage = self:GetGeneratedPetImage(petData.petType, petData.variant)
-        print("  📊 generatedImage found:", generatedImage ~= nil)
-        if generatedImage then
-            print("  📊 generatedImage.ClassName:", generatedImage.ClassName)
-            print("  📊 generatedImage.Name:", generatedImage.Name)
 
-            -- Store parent before destroying
-            local parent = petReveal.Parent
-            print("  📊 Parent before destroy:", parent and parent.Name or "NIL")
-
-            if not parent then
-                -- Hatching too fast: a newer reveal already tore down this one's container, so
-                -- this animation is stale/superseded. Bail gracefully instead of indexing a nil
-                -- parent (the visual-only "hatch too fast" crash at parent.ZIndex).
-                print(
-                    "  ⚠️ Reveal container gone (superseded by a faster hatch) — aborting reveal"
-                )
+        -- The reveal's container is the egg frame. On a fast hatch the previous frame can be
+        -- torn down (ClearEggFrames) while this reveal is mid-flight, so petReveal.Parent may be
+        -- nil — fall back to the known frame, and only bail if the FRAME ITSELF is gone (truly
+        -- superseded). This still displays the reveal whenever its frame is alive.
+        local parent = petReveal.Parent or eggComponents.frame
+        if not parent or not parent.Parent then
+            print("  ⚠️ Reveal frame gone (superseded by a faster hatch) — skipping reveal")
+            if petReveal then
                 petReveal:Destroy()
-                return
             end
-
-            -- Replace the ImageLabel with the generated ViewportFrame
-            petReveal:Destroy()
-            print("  ✅ Original petReveal destroyed")
-
-            petReveal = generatedImage:Clone()
-            petReveal.Name = "PetReveal"
-            petReveal.BackgroundTransparency = 1 -- Ensure ViewportFrame is transparent
-            petReveal.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- Set to white (will be transparent)
-            petReveal.ZIndex = ((parent and parent.ZIndex) or 1) + 3
-            petReveal.Parent = parent
-            eggComponents.reveal = petReveal
-            print("  ✅ New petReveal created and parented with transparency")
-            print("  📊 petReveal.ClassName:", petReveal.ClassName)
-            print("  📊 petReveal.BackgroundTransparency:", petReveal.BackgroundTransparency)
-            print("  📊 petReveal.BackgroundColor3:", tostring(petReveal.BackgroundColor3))
-        else
-            print("  ❌ Failed to get generated pet image!")
+            return
         end
+
+        if not petReveal:IsA("ViewportFrame") then
+            -- First reveal on these components: swap the ImageLabel for the generated viewport.
+            local generatedImage = self:GetGeneratedPetImage(petData.petType, petData.variant)
+            print("  📊 generatedImage found:", generatedImage ~= nil)
+            if generatedImage then
+                petReveal:Destroy()
+                petReveal = generatedImage:Clone()
+                petReveal.Name = "PetReveal"
+                petReveal.BackgroundTransparency = 1
+                petReveal.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                petReveal.Parent = parent
+                eggComponents.reveal = petReveal
+            else
+                print("  ❌ Failed to get generated pet image!")
+            end
+        elseif petReveal.Parent ~= parent then
+            -- Already swapped by a prior AnimateReveal (fast-hatch double-fire) but orphaned —
+            -- re-attach to the live frame instead of destroying it (which would kill the reveal
+            -- the prior call is animating).
+            petReveal.Parent = parent
+        end
+
+        petReveal.ZIndex = (parent.ZIndex or 1) + 3
     else
         print("  🔄 Using regular image path")
         -- Set regular image
