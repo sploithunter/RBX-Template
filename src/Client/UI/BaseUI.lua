@@ -280,11 +280,15 @@ function BaseUI.new()
     
     -- UI state
     self.isVisible = false
+    -- Level/XP come from server-published player attributes (PlayerProgressionService:
+    -- Level, XP = xp into the current level, XPForNext). Seeded here, kept live by
+    -- _bindLevelAttributes(). Defaults are the level-1 baseline before data loads.
+    local lp = game:GetService("Players").LocalPlayer
     self.playerData = {
         currencies = {}, -- Will be populated from player attributes
-        level = 15,
-        xp = 750,
-        maxXp = 1000
+        level = (lp and lp:GetAttribute("Level")) or 1,
+        xp = (lp and lp:GetAttribute("XP")) or 0,
+        maxXp = (lp and lp:GetAttribute("XPForNext")) or 100,
     }
     
     -- Quest/objectives data
@@ -1858,8 +1862,38 @@ function BaseUI:_createPlayerInfoElement(config, parent)
     levelLabel.TextXAlignment = Enum.TextXAlignment.Center
     levelLabel.ZIndex = 13
     levelLabel.Parent = parent
-    
+
+    -- Keep the level/XP readout live from server-published attributes.
+    self:_bindLevelAttributes()
+
     return nameLabel
+end
+
+-- Seed + live-update level/XP from LocalPlayer attributes (Level / XP / XPForNext),
+-- published by PlayerProgressionService. Binds once.
+function BaseUI:_bindLevelAttributes()
+    if self._levelAttributesBound then
+        return
+    end
+    self._levelAttributesBound = true
+
+    local lp = game:GetService("Players").LocalPlayer
+    if not lp then
+        return
+    end
+
+    local function refresh()
+        self:UpdatePlayerData({
+            level = lp:GetAttribute("Level") or self.playerData.level,
+            xp = lp:GetAttribute("XP") or self.playerData.xp,
+            maxXp = lp:GetAttribute("XPForNext") or self.playerData.maxXp,
+        })
+    end
+
+    refresh()
+    for _, attr in ipairs({ "Level", "XP", "XPForNext" }) do
+        lp:GetAttributeChangedSignal(attr):Connect(refresh)
+    end
 end
 
 -- Create quest tracker element for panes

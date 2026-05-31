@@ -1351,20 +1351,18 @@ function GameAPIService:_registerTestCommands()
     })
 
     self._bus:register("test.setLevel", {
-        description = "[test] Set the player's level (drive level conditions).",
+        description = "[test] Set the player's level (writes the curve's XP threshold).",
         testOnly = true,
         validate = function(args)
             return Validators.fields(args, { level = { type = "int", min = 1 } })
         end,
         handler = function(context, args)
-            local data = self:_service("DataService")
-            if not data then
+            local progression = self:_service("PlayerProgressionService")
+            if not progression or not progression.SetLevel then
                 return { ok = false, reason = "service_unavailable" }
             end
-            local profile = data:GetData(context.player)
-            profile.Stats = profile.Stats or {}
-            profile.Stats.Level = args.level
-            return { ok = true, level = args.level }
+            local p = progression:SetLevel(context.player, args.level)
+            return { ok = true, level = p.level, totalXp = p.totalXp }
         end,
     })
 

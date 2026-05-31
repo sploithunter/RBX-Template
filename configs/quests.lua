@@ -13,7 +13,7 @@ return {
             name = "Crystal Crusher",
             description = "Break 50 crystals.",
             condition = { type = "counter_at_least", counter = "breakables_broken", value = 50 },
-            reward = { currencies = { lava_coins = 500 } },
+            reward = { currencies = { lava_coins = 500 }, experience = 250 },
         },
         egg_enthusiast = {
             name = "Egg Enthusiast",
@@ -22,6 +22,7 @@ return {
             reward = {
                 currencies = { coins = 1000 },
                 items = { { id = "health_potion", qty = 3 } },
+                experience = 300,
             },
         },
         seasoned = {

@@ -98,6 +98,15 @@ function RewardService:Grant(player, bundle, source)
         table.insert(granted.effects, { id = effect.id, seconds = effect.seconds })
     end
 
+    -- Experience (drives the derived player level via PlayerProgressionService).
+    if (b.experience or 0) > 0 then
+        local progression = self:_service("PlayerProgressionService")
+        if progression and progression.AddExperience then
+            progression:AddExperience(player, b.experience)
+        end
+        granted.experience = b.experience
+    end
+
     -- Permanent capacity (upgrade levels), lazy-init on the profile.
     if next(b.slots) ~= nil and self._dataService then
         local data = self._dataService:GetData(player)

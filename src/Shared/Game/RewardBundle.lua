@@ -42,6 +42,7 @@ function RewardBundle.normalize(bundle)
         items = copyList(bundle.items),
         effects = copyList(bundle.effects),
         slots = copyMap(bundle.slots),
+        experience = tonumber(bundle.experience) or 0,
     }
 end
 
@@ -65,6 +66,7 @@ function RewardBundle.merge(a, b)
     for _, e in ipairs(nb.effects) do
         table.insert(out.effects, e)
     end
+    out.experience = (out.experience or 0) + (nb.experience or 0)
     return out
 end
 
@@ -75,6 +77,7 @@ function RewardBundle.isEmpty(bundle)
         and #n.items == 0
         and #n.effects == 0
         and next(n.slots) == nil
+        and (n.experience or 0) == 0
 end
 
 return RewardBundle

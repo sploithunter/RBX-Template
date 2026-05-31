@@ -958,6 +958,32 @@ function AutomationSuite.run(opts)
         "no achievement-sourced entry in the reward grant log"
     )
 
+    -- Phase 9: player level is derived from total XP (single source of truth).
+    -- test.setLevel writes the curve's XP threshold; GetLevel reads it back through
+    -- the quest level condition, and granting XP raises the level.
+    api:Execute(player, "claim.reset", {})
+    api:Execute(player, "test.setLevel", { level = 1 })
+    report:expectEqual(
+        "level-gated quest is not claimable at level 1",
+        api:Execute(player, "quest.claim", { questId = "seasoned" }).result.reason,
+        "not_met"
+    )
+    api:Execute(player, "test.setLevel", { level = 10 })
+    report:expect(
+        "setLevel(10) flows through GetLevel -> level quest claimable",
+        domainOk(api:Execute(player, "quest.claim", { questId = "seasoned" })),
+        "level-10 quest did not become claimable after setLevel(10)"
+    )
+    -- Granting XP advances the derived level: setLevel(9) then +900 XP reaches level 10.
+    api:Execute(player, "claim.reset", {})
+    api:Execute(player, "test.setLevel", { level = 9 })
+    api:Execute(player, "reward.grant", { bundle = { experience = 900 }, source = "test:xp" })
+    report:expect(
+        "granting XP raises the derived level (9 + 900xp -> 10)",
+        domainOk(api:Execute(player, "quest.claim", { questId = "seasoned" })),
+        "XP grant did not advance the level past 10"
+    )
+
     return HttpService:JSONEncode(report:summary())
 end
 

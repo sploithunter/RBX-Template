@@ -5,6 +5,11 @@
     contributions and level rewards such as extra equipped pet slots.
 ]]
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local LevelCurve = require(ReplicatedStorage.Shared.Game.LevelCurve)
+
 local PlayerProgressionService = {}
 PlayerProgressionService.__index = PlayerProgressionService
 
@@ -24,6 +29,7 @@ function PlayerProgressionService:Init()
     self._dataService = self._modules.DataService
     self._modifierService = self._modules.ModifierService
     self._config = self._configLoader:LoadConfig("player_progression")
+    self._xpConfig = self._config.xp or { mode = "linear", per_level = 100 }
 
     local teamPower = self._config.team_power or {}
     local stage = teamPower.stage or "boosts"
@@ -44,17 +50,84 @@ function PlayerProgressionService:IsEnabled()
     return self._config and self._config.enabled ~= false
 end
 
+-- Publish derived level/XP to player attributes so the client HUD can read them
+-- without a bespoke remote (Level, XP = xp into current level, XPForNext).
+function PlayerProgressionService:Start()
+    local function publishLater(player)
+        task.spawn(function()
+            local deadline = os.clock() + 15
+            while
+                player.Parent
+                and self._dataService
+                and self._dataService.IsDataLoaded
+                and not self._dataService:IsDataLoaded(player)
+                and os.clock() < deadline
+            do
+                task.wait(0.2)
+            end
+            if player.Parent then
+                self:_publish(player)
+            end
+        end)
+    end
+    Players.PlayerAdded:Connect(publishLater)
+    for _, player in ipairs(Players:GetPlayers()) do
+        publishLater(player)
+    end
+end
+
+function PlayerProgressionService:GetExperience(player)
+    if not player or not self._dataService or not self._dataService.GetStat then
+        return 0
+    end
+    return math.max(0, math.floor(tonumber(self._dataService:GetStat(player, "Experience")) or 0))
+end
+
+-- Level is DERIVED from total XP (single source of truth).
 function PlayerProgressionService:GetLevel(player)
     if not player then
         return 1
     end
+    return LevelCurve.levelForXp(self:GetExperience(player), self._xpConfig)
+end
 
-    local profileLevel
-    if self._dataService and self._dataService.GetStat then
-        profileLevel = self._dataService:GetStat(player, "Level")
+function PlayerProgressionService:GetProgress(player)
+    return LevelCurve.progress(self:GetExperience(player), self._xpConfig)
+end
+
+-- Mirror derived level/XP onto player attributes for the HUD.
+function PlayerProgressionService:_publish(player)
+    if not player then
+        return
     end
-    local attributeLevel = player:GetAttribute("Level")
-    return math.max(1, math.floor(tonumber(profileLevel or attributeLevel) or 1))
+    local p = self:GetProgress(player)
+    player:SetAttribute("Level", p.level)
+    player:SetAttribute("XP", p.xpIntoLevel)
+    player:SetAttribute("XPForNext", p.xpForNext)
+end
+
+-- Grant XP (the spine awards XP via RewardService -> here). Returns the new progress.
+function PlayerProgressionService:AddExperience(player, amount)
+    amount = math.floor(tonumber(amount) or 0)
+    if not player or amount <= 0 or not self._dataService then
+        return self:GetProgress(player)
+    end
+    local newXp = self:GetExperience(player) + amount
+    self._dataService:SetStat(player, "Experience", newXp)
+    self:_publish(player)
+    return self:GetProgress(player)
+end
+
+-- Set the player to exactly `level` by writing the curve's threshold XP (used by the
+-- test override + any admin grant). Level stays a pure function of XP.
+function PlayerProgressionService:SetLevel(player, level)
+    if not player or not self._dataService then
+        return self:GetProgress(player)
+    end
+    local xp = LevelCurve.xpForLevel(math.max(1, math.floor(tonumber(level) or 1)), self._xpConfig)
+    self._dataService:SetStat(player, "Experience", xp)
+    self:_publish(player)
+    return self:GetProgress(player)
 end
 
 function PlayerProgressionService:_getMilestoneCount(level, rewardConfig)
