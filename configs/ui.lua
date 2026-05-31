@@ -768,15 +768,12 @@ local uiConfig = {
             description = "Initiates gem purchase flow",
         },
 
-        exchange_action = {
-            type = "network_call",
-            service = "EconomyService",
-            method = "ConvertCurrency",
-            parameters = {
-                conversionId = "crystals_to_gems",
-                batches = 1,
-            },
-            description = "Converts mined crystals into gems",
+        trade_action = {
+            type = "menu_panel",
+            panel = "Trade",
+            transition = "slide_in_right",
+            sound = "button_click",
+            description = "Opens the player-to-player trade panel",
         },
 
         -- Conditional Actions
@@ -1068,10 +1065,10 @@ local uiConfig = {
                 {
                     type = "menu_button",
                     config = {
-                        name = "Exchange",
-                        icon = "💎",
+                        name = "Trade",
+                        icon = "🤝",
                         text = "Trade",
-                        action = "exchange_action",
+                        action = "trade_action",
                     },
                 },
 
