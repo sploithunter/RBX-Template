@@ -18,15 +18,22 @@ return {
 
     -- Bucket definitions
     buckets = {
+        -- PET STORAGE — single source of truth for OWNERSHIP lives in Inventory.pets.items:
+        --   • common (fungible) → one entry per kind, keyed "id:variant": { id, variant, quantity }
+        --   • special (unique)  → one entry per instance, keyed by uid: { uid, id, variant, ... }
+        -- EQUIP is a SEPARATE, validated layer in Equipped.pets (slot → "<uid>" | "stack|id:variant").
+        -- Equipping NEVER mutates ownership; the live equipped set is Equipped ∩ inventory
+        -- (PetInventoryView.resolveEquipped), capped per kind at quantity. See Shared/Inventory/.
         pets = {
             display_name = "Pets",
             icon = "🐾",
             base_limit = 50,
             storage_type = "mixed",
             stack_key_fields = { "id", "variant" },
+            count_stacks_as_single = true, -- one display/used slot per kind (commons) + per special
             max_stack_size = 99999,
             special_rarities = { "mythic", "secret", "exclusive", "huge" },
-            equip_individualization = "ephemeral", -- equipping pulls 1 from stack, tracked per-slot
+            equip_individualization = "equipped_layer", -- equip is tracked in Equipped.pets, not the stack
 
             -- Limit extensions via gamepasses
             limit_extensions = {

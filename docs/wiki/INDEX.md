@@ -7,6 +7,7 @@ This is the living project wiki for the RBX Template pet/clicker game. It follow
 - [Current Status](CURRENT_STATUS.md) — what exists right now.
 - [Decisions](DECISIONS.md) — durable decisions and rationale.
 - [Architecture](ARCHITECTURE.md) — system shape and service boundaries.
+- [Pet Inventory SSOT](PET_INVENTORY_SSOT.md) — the single-source-of-truth pet model: ownership in `Inventory.pets.items`, equip as a separate validated layer. Read before touching pet inventory/equip/trade.
 - [Studio Workflow](STUDIO_WORKFLOW.md) — Rojo, Roblox Studio, MCP, and verification workflow.
 - [Remote Dev Pipeline](REMOTE_DEV_PIPELINE.md) — develop → test → build → release from a CLI/AI agent; the layered testing methodology and hard-limit gap analysis.
 - [Automation API Design](AUTOMATION_API_DESIGN.md) — the CommandBus boundary, GameAPIService, and AutomationService that let tests drive the game below the GUI.

@@ -21,6 +21,18 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
+-- Silence verbose raw debug prints (right-click / card-size / context-menu chatter that
+-- fired on every interaction). Real logging goes through self.logger (gated by the
+-- "InventoryPanel" level in configs/logging.lua); warn()/error() still surface. Toggle for
+-- local debugging.
+local __RAW_PRINT = print
+local __PRINT_ENABLED = false
+local function print(...)
+    if __PRINT_ENABLED then
+        __RAW_PRINT(...)
+    end
+end
+
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local ConfigLoader = require(ReplicatedStorage.Shared.ConfigLoader)

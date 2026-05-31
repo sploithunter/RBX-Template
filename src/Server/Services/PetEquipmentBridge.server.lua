@@ -101,8 +101,12 @@ local function updatePetBooleanStates(player)
                             ensureAndSet(specialPet)
                         end
                     end
+                elseif child.Name == "Info" or child.Name == "Stacks" then
+                    -- Containers, not pets — skip. (Equipped commons spawn via equip_* folders,
+                    -- handled by the else branch; the Stacks display folders are not spawn
+                    -- sources and must not get a stray Equipped flag.)
                 else
-                    ensureAndSet(child)
+                    ensureAndSet(child) -- equip_* instances + any legacy direct-uid pet folder
                 end
             end
         end
