@@ -201,54 +201,42 @@ end
 -- Escrow add / remove
 ----------------------------------------------------------------------
 
-local function descriptorFromRecord(uid, rec)
-    return {
-        uid = uid,
-        id = rec.id,
-        variant = rec.variant or "basic",
-        element = rec.element,
-        huge = rec.huge,
-        locked = rec.locked,
-    }
+local function deepCopy(value)
+    if type(value) ~= "table" then
+        return value
+    end
+    local out = {}
+    for key, sub in pairs(value) do
+        out[key] = deepCopy(sub)
+    end
+    return out
 end
 
--- Detach a pet from everything that references it before it leaves the inventory,
--- so it doesn't linger as a "phantom" equipped pet (in the UI or in the world):
---   1. the Equipped.pets slot (normal pets), keyed by uid
---   2. the ephemeral equip_<...> folder (special/unique pets), matched by id+variant
---   3. roster references
--- _reloadEquipped() then forces a loadEquipped rebuild that despawns the orphan model.
-function TradeService:_detachPet(player, uid, rec)
-    local equipped = player:FindFirstChild("Equipped")
-    local equipSlots = equipped and equipped:FindFirstChild("pets")
-    if equipSlots then
-        for _, slot in ipairs(equipSlots:GetChildren()) do
-            if slot:IsA("StringValue") and slot.Value == uid then
-                slot:Destroy()
-            end
-        end
-    end
+-- Escrow the FULL record (deep copy) so a traded special pet keeps its level/exp/
+-- enchantments/serial — minimal descriptors silently dropped progression. equipped_slot is
+-- cleared (an escrowed pet is not equipped); uid is kept to key the escrow table.
+local function descriptorFromRecord(uid, rec)
+    local copy = deepCopy(rec)
+    copy.uid = uid
+    copy.equipped_slot = nil
+    return copy
+end
 
-    -- Special pets equip via an equip_<id> folder in Inventory.pets that RemoveItem
-    -- does not clean up; remove the one matching this pet so it won't respawn.
-    local inventory = player:FindFirstChild("Inventory")
-    local invPets = inventory and inventory:FindFirstChild("pets")
-    if invPets and rec then
-        for _, child in ipairs(invPets:GetChildren()) do
-            if child:IsA("Folder") and string.sub(child.Name, 1, 6) == "equip_" then
-                local itemId = child:FindFirstChild("ItemId")
-                local variant = child:FindFirstChild("Variant")
-                local matchesName = child.Name == ("equip_" .. tostring(uid))
-                local matchesData = itemId
-                    and itemId.Value == rec.id
-                    and (not variant or variant.Value == (rec.variant or "basic"))
-                if matchesName or matchesData then
-                    child:Destroy()
-                end
-            end
-        end
-    end
+-- Re-add an escrowed pet to a player, minting a fresh uid but preserving every other field.
+local function grantDescriptor(inventory, player, descriptor)
+    local petData = deepCopy(descriptor)
+    petData.uid = nil
+    petData.equipped_slot = nil
+    petData.quantity = 1
+    inventory:AddItem(player, PETS_BUCKET, petData)
+end
 
+-- Detach a pet from references before it leaves the inventory. Under the SSOT model
+-- the equipped state lives on the record itself, so RemoveItem (which deletes the record)
+-- plus RebuildPetProjections clears the equipped slot + folder automatically — no slot
+-- string or ephemeral equip_<...> folder to hand-clean. We only drop roster references
+-- here; _reloadEquipped() then despawns any orphaned world model.
+function TradeService:_detachPet(player, uid, _rec)
     local rosters = self:_service("RosterService")
     if rosters and rosters.RemovePetReference then
         pcall(function()
@@ -275,6 +263,11 @@ function TradeService:Add(player, uid)
     local inventory = self:_service("InventoryService")
     if not inventory then
         return { ok = false, reason = "service_unavailable" }
+    end
+    -- The client may pass a legacy identifier (stack key / stack|key|eph); resolve it to the
+    -- concrete record uid so escrow/removal operate on a real instance.
+    if inventory.ResolvePetUid then
+        uid = inventory:ResolvePetUid(player, uid) or uid
     end
     local bucket = inventory:GetInventory(player, PETS_BUCKET)
     local rec = bucket and bucket.items and bucket.items[uid]
@@ -321,13 +314,7 @@ function TradeService:Remove(player, uid)
     end
     local inventory = self:_service("InventoryService")
     if inventory then
-        inventory:AddItem(player, PETS_BUCKET, {
-            id = descriptor.id,
-            variant = descriptor.variant,
-            element = descriptor.element,
-            huge = descriptor.huge,
-            quantity = 1,
-        })
+        grantDescriptor(inventory, player, descriptor)
     end
     session.escrow[player.UserId][uid] = nil
     local offer = session.offers[player.UserId]
@@ -365,13 +352,7 @@ local function giveAll(inventory, player, escrowForOwner)
         return
     end
     for _, descriptor in pairs(escrowForOwner) do
-        inventory:AddItem(player, PETS_BUCKET, {
-            id = descriptor.id,
-            variant = descriptor.variant,
-            element = descriptor.element,
-            huge = descriptor.huge,
-            quantity = 1,
-        })
+        grantDescriptor(inventory, player, descriptor)
     end
 end
 

@@ -20,6 +20,7 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
 local Locations = require(ReplicatedStorage.Shared.Locations)
+local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
 
 local InventoryService = {}
 InventoryService.__index = InventoryService
@@ -173,16 +174,10 @@ function InventoryService:AddItem(player, bucketName, itemData)
     local uid = nil
     local success = false
 
-    -- Mixed behavior for pets: normal variants stack, special variants are unique
+    -- SSOT: every pet instance is its own uid record (no stacking in storage). A
+    -- quantity>1 add mints that many common records; specials are always singletons.
     if bucketName == "pets" then
-        local variant = itemData.variant or "basic"
-        local isSpecial = itemData.huge == true or self:_isSpecialPet(itemData.id, variant)
-        if isSpecial then
-            uid, success =
-                self:_addPetSpecialUnique(player, bucketName, itemData, bucket, bucketConfig)
-        else
-            uid, success = self:_addPetStack(player, itemData, bucket)
-        end
+        uid, success = self:_addPetRecords(player, itemData, bucket)
     else
         if bucketConfig.storage_type == "stackable" then
             uid, success =
@@ -193,8 +188,13 @@ function InventoryService:AddItem(player, bucketName, itemData)
     end
 
     if success then
-        -- Update folder replication
-        self:_updateBucketFolders(player, bucketName)
+        -- Update folder replication. Pets rebuild both projections (used_slots + equipped
+        -- mirror) from the records so nothing drifts.
+        if bucketName == "pets" then
+            self:RebuildPetProjections(player)
+        else
+            self:_updateBucketFolders(player, bucketName)
+        end
 
         self._logger:Info("✅ ADD ITEM SUCCESS", {
             player = player.Name,
@@ -225,13 +225,22 @@ end
 
 function InventoryService:_getRequiredSlotsForAdd(bucketName, itemData, bucket, bucketConfig)
     if bucketName == "pets" then
-        local variant = itemData.variant or "basic"
-        if itemData.huge == true or self:_isSpecialPet(itemData.id, variant) then
-            return 1
+        if self:_isSpecialPetData(itemData) then
+            return 1 -- a special always consumes its own display slot
         end
-
-        local stackKey = self:_petStackKey(itemData.id, variant)
-        return bucket.items and bucket.items[stackKey] and 0 or 1
+        -- A common needs a new slot only if no existing common record shares its stack key.
+        local targetKey = self:_petStackKey(itemData.id, itemData.variant or "basic")
+        local capability = self:_petCapability()
+        for _, rec in pairs(bucket.items or {}) do
+            if
+                type(rec) == "table"
+                and not PetInventoryView.isSpecial(rec, capability)
+                and self:_petStackKey(rec.id, rec.variant) == targetKey
+            then
+                return 0
+            end
+        end
+        return 1
     end
 
     if bucketConfig.storage_type == "stackable" and bucket.items and bucket.items[itemData.id] then
@@ -402,49 +411,196 @@ function InventoryService:_petStackKey(petId, variant)
     return string.format("%s:%s", petId, variant)
 end
 
--- Add a normal pet to stacks structure (quantity increments)
-function InventoryService:_addPetStack(player, itemData, bucket)
-    local stackKey = self:_petStackKey(itemData.id, itemData.variant)
-    local stackEntry = bucket.items[stackKey]
-    local maxStack = (
-        self._inventoryConfig
-        and self._inventoryConfig.buckets
-        and self._inventoryConfig.buckets.pets
-        and (self._inventoryConfig.buckets.pets.max_stack_size or 99999)
-    ) or 99999
-
-    if stackEntry then
-        local newQty = (stackEntry.quantity or 0) + (itemData.quantity or 1)
-        if newQty > maxStack then
-            return nil, false
-        end
-        stackEntry.quantity = newQty
-    else
-        bucket.items[stackKey] = {
-            id = itemData.id,
-            variant = itemData.variant or "basic",
-            quantity = itemData.quantity or 1,
-            obtained_at = os.time(),
-            _kind = "stack",
-        }
-        bucket.used_slots = (bucket.used_slots or 0) + 1
+-- ═══════════════════════════════════════════════════════════════════════════════════
+-- 🐾 SSOT PET HELPERS (capability + view config + selector resolution)
+-- ═══════════════════════════════════════════════════════════════════════════════════
+-- The capability ({specialRarities=set}) is THE classifier PetInventoryView uses to
+-- decide "is this pet unique-per-instance (special) or stackable (common)". Built once
+-- from config so server slot-accounting and the projection agree by construction.
+function InventoryService:_petCapability()
+    if self._petCapabilityCache then
+        return self._petCapabilityCache
     end
-
-    self._logger:Debug(
-        "📦 PET STACK ADD",
-        { player = player.Name, stackKey = stackKey, quantity = bucket.items[stackKey].quantity }
-    )
-    return stackKey, true
+    local specialRarities = {}
+    local petsCfg = self._inventoryConfig.buckets and self._inventoryConfig.buckets.pets
+    if petsCfg and type(petsCfg.special_rarities) == "table" then
+        for _, rarity in ipairs(petsCfg.special_rarities) do
+            specialRarities[rarity] = true
+        end
+    end
+    if
+        self._petsConfig
+        and self._petsConfig.enchanting
+        and type(self._petsConfig.enchanting.max_enchantments_by_rarity) == "table"
+    then
+        for rarity, maxEnch in pairs(self._petsConfig.enchanting.max_enchantments_by_rarity) do
+            if (tonumber(maxEnch) or 0) > 0 then
+                specialRarities[rarity] = true
+            end
+        end
+    end
+    self._petCapabilityCache = { specialRarities = specialRarities }
+    return self._petCapabilityCache
 end
 
--- Add a special pet as unique (delegates to unique path)
-function InventoryService:_addPetSpecialUnique(player, bucketName, itemData, bucket, bucketConfig)
-    local uid, ok = self:_addUniqueItem(player, bucketName, itemData, bucket, bucketConfig)
-    if ok then
-        local entry = bucket.items[uid]
-        entry._kind = "special"
+function InventoryService:_petViewConfig()
+    if self._petViewConfigCache then
+        return self._petViewConfigCache
     end
-    return uid, ok
+    local fields = { "id", "variant" }
+    local petsCfg = self._inventoryConfig.buckets and self._inventoryConfig.buckets.pets
+    if petsCfg and type(petsCfg.stack_key_fields) == "table" and #petsCfg.stack_key_fields > 0 then
+        fields = petsCfg.stack_key_fields
+    end
+    self._petViewConfigCache = {
+        stack_key_fields = fields,
+        count_stacks_as_single = (petsCfg and petsCfg.count_stacks_as_single) ~= false,
+    }
+    return self._petViewConfigCache
+end
+
+-- Public accessor so other services classify pets with the EXACT same capability the
+-- inventory projection uses (no divergent "is this special" logic across services).
+function InventoryService:GetPetCapability()
+    return self:_petCapability()
+end
+
+-- Public selector resolver (uid / special|uid / stack|key|eph / id:variant -> uid) for
+-- services that receive legacy client identifiers (e.g. TradeService).
+function InventoryService:ResolvePetUid(player, selector)
+    return self:_resolvePetUid(player, selector)
+end
+
+-- Is this record/itemData a special (unique-per-instance) pet? Combines the record-field
+-- classifier (what the projection uses) with the config lookup (catches specials whose
+-- itemData hasn't carried rarity_id yet).
+function InventoryService:_isSpecialPetData(data)
+    if type(data) ~= "table" then
+        return false
+    end
+    if PetInventoryView.isSpecial(data, self:_petCapability()) then
+        return true
+    end
+    return self:_isSpecialPet(data.id, data.variant)
+end
+
+-- Pick one common record matching a stack key (id:variant). Prefers an UNEQUIPPED copy
+-- (commons are fungible) in deterministic order. Returns its uid or nil.
+function InventoryService:_pickCommonUidByStackKey(items, stackKey)
+    local capability = self:_petCapability()
+    local matches = {}
+    for _, rec in pairs(items or {}) do
+        if
+            type(rec) == "table"
+            and not PetInventoryView.isSpecial(rec, capability)
+            and self:_petStackKey(rec.id, rec.variant) == stackKey
+        then
+            matches[#matches + 1] = rec
+        end
+    end
+    if #matches == 0 then
+        return nil
+    end
+    table.sort(matches, function(a, b)
+        local ae = a.equipped_slot ~= nil
+        local be = b.equipped_slot ~= nil
+        if ae ~= be then
+            return be -- unequipped (false) sorts first
+        end
+        local ao = tonumber(a.obtained_at) or 0
+        local bo = tonumber(b.obtained_at) or 0
+        if ao ~= bo then
+            return ao < bo
+        end
+        return tostring(a.uid) < tostring(b.uid)
+    end)
+    return matches[1].uid
+end
+
+-- Compatibility shim: translate a legacy client identifier into a concrete record uid.
+-- Handles real uids, "special|uid", "stack|id:variant|eph" (eph may itself be the equipped
+-- record's uid), and a bare "id:variant". Lets the UNCHANGED client keep driving pet ops
+-- while storage is uid-records. Returns uid or nil.
+function InventoryService:_resolvePetUid(player, selector)
+    if type(selector) ~= "string" or selector == "" then
+        return nil
+    end
+    local data = self._dataService:GetData(player)
+    local items = data and data.Inventory and data.Inventory.pets and data.Inventory.pets.items
+    if type(items) ~= "table" then
+        return nil
+    end
+    if items[selector] then
+        return selector -- already a real uid
+    end
+    local parts = string.split(selector, "|")
+    if parts[1] == "special" and parts[2] then
+        return items[parts[2]] and parts[2] or nil
+    elseif parts[1] == "stack" and parts[2] then
+        if parts[3] and items[parts[3]] then
+            return parts[3] -- eph carries the equipped record's uid (unequip round-trip)
+        end
+        return self:_pickCommonUidByStackKey(items, parts[2])
+    elseif #parts == 1 and string.find(selector, ":") then
+        return self:_pickCommonUidByStackKey(items, selector) -- bare id:variant
+    end
+    return nil
+end
+
+-- SSOT pet add: mint one uid record per instance. Commons with quantity>1 mint that many
+-- records; specials are always singletons. No `quantity`, no `_kind` — a "stack" is purely
+-- a display grouping computed by PetInventoryView at projection time.
+function InventoryService:_addPetRecords(player, itemData, bucket)
+    local count = math.max(1, math.floor(tonumber(itemData.quantity) or 1))
+    if self:_isSpecialPetData(itemData) then
+        count = 1
+    end
+
+    local lastUid
+    for _ = 1, count do
+        local uid = self:GenerateUID(itemData.id or "pet")
+        local record = {
+            id = itemData.id,
+            obtained_at = os.time(),
+            uid = uid,
+            equipped_slot = nil,
+        }
+        for key, value in pairs(itemData) do
+            if
+                key ~= "id"
+                and key ~= "quantity"
+                and key ~= "_kind"
+                and key ~= "uid"
+                and key ~= "obtained_at"
+                and key ~= "equipped_slot"
+            then
+                record[key] = value
+            end
+        end
+        record.variant = record.variant or "basic"
+
+        -- Self-describe specials with rarity_id so the projection classifies them
+        -- the same way the server does (no reliance on a config lookup at render time).
+        if record.rarity_id == nil and self:_isSpecialPet(record.id, record.variant) then
+            local cfg = self._petsConfig
+                and self._petsConfig.getPet
+                and self._petsConfig.getPet(record.id, record.variant)
+            if cfg and cfg.rarity_id then
+                record.rarity_id = cfg.rarity_id
+            end
+        end
+
+        bucket.items[uid] = record
+        lastUid = uid
+    end
+
+    -- used_slots is authoritatively recomputed by the projection rebuild.
+    self._logger:Debug("📦 PET RECORD ADD", {
+        player = player.Name,
+        itemId = itemData.id,
+        minted = count,
+    })
+    return lastUid, true
 end
 
 function InventoryService:RemoveItem(player, bucketName, uid, quantity)
@@ -466,6 +622,12 @@ function InventoryService:RemoveItem(player, bucketName, uid, quantity)
     local bucket = data.Inventory[bucketName]
     local bucketConfig = self._inventoryConfig.buckets[bucketName]
 
+    -- Pets: translate any legacy client identifier (stack key / stack|key|eph / special|uid)
+    -- into a concrete record uid. Each pet instance is its own record now.
+    if bucketName == "pets" then
+        uid = self:_resolvePetUid(player, uid) or uid
+    end
+
     if not bucket.items[uid] then
         self._logger:Warn("⚠️ REMOVE ITEM - Item not found", {
             player = player.Name,
@@ -478,7 +640,11 @@ function InventoryService:RemoveItem(player, bucketName, uid, quantity)
     local item = bucket.items[uid]
     local success = false
 
-    if bucketConfig.storage_type == "stackable" then
+    if bucketName == "pets" then
+        -- One record == one pet instance; removing it is always a full delete.
+        bucket.items[uid] = nil
+        success = true
+    elseif bucketConfig.storage_type == "stackable" then
         success = self:_removeStackableItem(player, bucketName, uid, quantity or 1, bucket, item)
     else
         success = self:_removeUniqueItem(player, bucketName, uid, bucket)
@@ -652,6 +818,12 @@ function InventoryService:_createInventoryFolders(player)
         self:_createEquippedFolder(player, category, equippedFolder)
     end
 
+    -- Pets: rebuild from records so the freshly-created folders + equipped mirror are
+    -- correct regardless of the order the skeleton folders were built above.
+    if data.Inventory and data.Inventory.pets then
+        self:RebuildPetProjections(player)
+    end
+
     self._logger:Info("✅ REPLICATION - Inventory folders created successfully", {
         player = player.Name,
         inventoryBuckets = self:_getBucketNames(data.Inventory),
@@ -689,28 +861,10 @@ function InventoryService:_createBucketFolder(player, bucketName, parentFolder)
     storageType.Value = bucketConfig and bucketConfig.storage_type or "unique"
     storageType.Parent = infoFolder
 
-    -- Pets use mixed replication: Stacks and Special subfolders
+    -- Pets use mixed replication (Stacks + Special), now PROJECTED from uid records via
+    -- PetInventoryView. RebuildPetProjections (called after folder creation) fills these.
     if bucketName == "pets" then
-        local stacksFolder = Instance.new("Folder")
-        stacksFolder.Name = "Stacks"
-        stacksFolder.Parent = bucketFolder
-
-        local specialFolder = Instance.new("Folder")
-        specialFolder.Name = "Special"
-        specialFolder.Parent = bucketFolder
-
-        for key, itemData in pairs(bucket.items or {}) do
-            if
-                itemData
-                and (
-                    itemData._kind == "stack" or (itemData._kind ~= "special" and itemData.quantity)
-                )
-            then
-                self:_createPetStackFolder(stacksFolder, key, itemData)
-            else
-                self:_createPetSpecialFolder(specialFolder, key, itemData)
-            end
-        end
+        self:_buildPetBucketFolders(bucketFolder, bucket.items or {})
     else
         -- Create item folders (legacy buckets)
         for uid, itemData in pairs(bucket.items or {}) do
@@ -839,35 +993,20 @@ function InventoryService:_updateBucketFolders(player, bucketName)
         end
     end
 
-    -- Remove old item folders (preserve Info)
+    -- Remove old item folders (preserve Info). For pets, also preserve any `equip_*`
+    -- folders that PetEquipmentBridge owns for spawning equipped-common follow models —
+    -- wiping them would desync the world pets. The bridge manages their lifecycle.
     for _, child in pairs(bucketFolder:GetChildren()) do
-        if child.Name ~= "Info" then
+        local isInfo = child.Name == "Info"
+        local isBridgeEquip = bucketName == "pets" and string.sub(child.Name, 1, 6) == "equip_"
+        if not isInfo and not isBridgeEquip then
             child:Destroy()
         end
     end
 
     local bucketConfig = self._inventoryConfig.buckets[bucketName]
     if bucketName == "pets" then
-        local stacksFolder = Instance.new("Folder")
-        stacksFolder.Name = "Stacks"
-        stacksFolder.Parent = bucketFolder
-
-        local specialFolder = Instance.new("Folder")
-        specialFolder.Name = "Special"
-        specialFolder.Parent = bucketFolder
-
-        for key, itemData in pairs(bucket.items or {}) do
-            if
-                itemData
-                and (
-                    itemData._kind == "stack" or (itemData._kind ~= "special" and itemData.quantity)
-                )
-            then
-                self:_createPetStackFolder(stacksFolder, key, itemData)
-            else
-                self:_createPetSpecialFolder(specialFolder, key, itemData)
-            end
-        end
+        self:_buildPetBucketFolders(bucketFolder, bucket.items or {})
     else
         for uid, itemData in pairs(bucket.items or {}) do
             self:_createItemFolder(bucketFolder, uid, itemData, bucketConfig)
@@ -881,6 +1020,37 @@ function InventoryService:_updateBucketFolders(player, bucketName)
             usedSlots = bucket.used_slots,
             itemCount = self:_countItems(bucket.items or {}),
         })
+    end
+end
+
+-- Project uid records into the legacy-shaped Stacks/Special folders the client reads.
+-- Commons group by id:variant (Quantity = UNEQUIPPED count; equipped commons surface via
+-- the equipped mirror as ghost cards). Each special is its own Special/<uid> folder. This
+-- is the ONLY place the pets bucket folder is built, derived purely from PetInventoryView.
+function InventoryService:_buildPetBucketFolders(bucketFolder, items)
+    local stacksFolder = Instance.new("Folder")
+    stacksFolder.Name = "Stacks"
+    stacksFolder.Parent = bucketFolder
+
+    local specialFolder = Instance.new("Folder")
+    specialFolder.Name = "Special"
+    specialFolder.Parent = bucketFolder
+
+    local config = self:_petViewConfig()
+    local capability = self:_petCapability()
+    for _, group in ipairs(PetInventoryView.groups(items, config, capability)) do
+        if group.isSpecial then
+            for _, uid in ipairs(group.uids) do
+                self:_createPetSpecialFolder(specialFolder, uid, items[uid])
+            end
+        else
+            local sample = group.sampleRecord
+            self:_createPetStackFolder(stacksFolder, group.key, {
+                id = sample.id,
+                variant = sample.variant,
+                quantity = group.unequippedCount,
+            })
+        end
     end
 end
 
@@ -922,9 +1092,23 @@ function InventoryService:_createPetSpecialFolder(parentFolder, uid, itemData)
     obtainedAt.Value = itemData.obtained_at or 0
     obtainedAt.Parent = itemFolder
 
-    -- Copy primitive/table fields to values/folders (excluding id/obtained_at)
+    -- Legacy special folders carried Quantity=1; keep it so client counts are unchanged.
+    local qty = Instance.new("IntValue")
+    qty.Name = "Quantity"
+    qty.Value = 1
+    qty.Parent = itemFolder
+
+    -- Copy remaining fields. Exclude internal SSOT fields (uid/equipped_slot/_kind/quantity)
+    -- — equip state is read from the equipped mirror, not the item folder.
     for key, value in pairs(itemData) do
-        if key ~= "id" and key ~= "obtained_at" and key ~= "_kind" then
+        if
+            key ~= "id"
+            and key ~= "obtained_at"
+            and key ~= "_kind"
+            and key ~= "uid"
+            and key ~= "equipped_slot"
+            and key ~= "quantity"
+        then
             local valueObj = self:_createValueObject(key, value)
             if valueObj then
                 valueObj.Parent = itemFolder
@@ -1088,28 +1272,15 @@ function InventoryService:_countItems(items)
     return count
 end
 
-function InventoryService:_restoreStackQuantityForEquippedValue(playerData, category, equippedValue)
-    if category ~= "pets" or type(equippedValue) ~= "string" then
-        return false
-    end
-
-    local parts = string.split(equippedValue, "|")
-    if #parts < 3 or parts[1] ~= "stack" then
-        return false
-    end
-
-    local stackKey = parts[2]
-    local stackEntry = playerData.Inventory
-        and playerData.Inventory.pets
-        and playerData.Inventory.pets.items
-        and playerData.Inventory.pets.items[stackKey]
-
-    if not stackEntry then
-        return false
-    end
-
-    stackEntry.quantity = (stackEntry.quantity or 0) + 1
-    return true
+-- Obsolete under the SSOT model: equipping a pet no longer decrements a stack quantity, so
+-- there is nothing to "restore" when an equipped slot is pruned. Kept as a no-op (callers
+-- still invoke it) to avoid ever writing a `quantity` field back onto a uid record.
+function InventoryService:_restoreStackQuantityForEquippedValue(
+    _playerData,
+    _category,
+    _equippedValue
+)
+    return false
 end
 
 function InventoryService:_pruneEquippedSlots(player, category, maxSlots)
@@ -1257,6 +1428,36 @@ function InventoryService:_handleDeleteInventoryItem(player, data)
     local bucketData = inventoryData[data.bucket]
     if not bucketData or not bucketData.items then
         self._logger:Warn("❌ Bucket not found", { bucket = data.bucket })
+        return
+    end
+
+    -- Pets: one record == one instance. Resolve the legacy identifier; for a common stack
+    -- delete up to `quantity` unequipped copies; otherwise delete the single resolved record.
+    if data.bucket == "pets" then
+        local deleteQuantity = math.max(1, math.floor(tonumber(data.quantity) or 1))
+        local deleted = 0
+        for _ = 1, deleteQuantity do
+            local uid = self:_resolvePetUid(player, data.itemUid)
+            if not uid or not bucketData.items[uid] then
+                break
+            end
+            bucketData.items[uid] = nil
+            deleted += 1
+        end
+        if deleted == 0 then
+            self._logger:Warn(
+                "❌ Pet not found for delete",
+                { itemUid = data.itemUid, bucket = data.bucket }
+            )
+            return
+        end
+        self._logger:Info("✅ Pet(s) deleted", {
+            player = player.Name,
+            itemUid = data.itemUid,
+            deleted = deleted,
+        })
+        self:RebuildPetProjections(player)
+        self._dataService:RequestSave(player, "inventory_delete_pets", { critical = true })
         return
     end
 
@@ -1474,13 +1675,6 @@ end
 -- ═══════════════════════════════════════════════════════════════════════════════════
 
 function InventoryService:_handleTogglePetEquipped(player, data)
-    if type(data) == "table" and type(data.itemUid) == "string" then
-        local parts = string.split(data.itemUid, "|")
-        if #parts >= 2 and parts[1] == "special" then
-            data.itemUid = parts[2]
-        end
-    end
-
     self._logger:Info("🐾 PET EQUIP REQUEST", {
         player = player.Name,
         bucket = data.bucket,
@@ -1499,124 +1693,44 @@ function InventoryService:_handleTogglePetEquipped(player, data)
         return
     end
 
-    -- Get player data
     local playerData = self._dataService:GetData(player)
     if not playerData or not playerData.Inventory or not playerData.Inventory.pets then
         self._logger:Warn("❌ No pet inventory found", { player = player.Name })
         return
     end
 
-    -- Parse stack-equip UIDs: "stack|<id:variant>|<eph>"
-    local isStackEquip = false
-    local stackKey, ephId = nil, nil
-    if type(data.itemUid) == "string" then
-        local parts = string.split(data.itemUid, "|")
-        if #parts >= 3 and parts[1] == "stack" then
-            isStackEquip = true
-            stackKey = parts[2]
-            ephId = parts[3]
-        elseif #parts == 2 and parts[1] == "stack" then
-            -- client may send without eph; generate one
-            isStackEquip = true
-            stackKey = parts[2]
-            ephId = tostring(os.clock()):gsub("%.", "")
-            data.itemUid = string.format("stack|%s|%s", stackKey, ephId)
-        end
+    -- Resolve the legacy client identifier (uid / special|uid / stack|key|eph / id:variant)
+    -- to the exact record. Equipping a common picks an unequipped copy; unequipping rides the
+    -- uid embedded in the equipped slot's eph so it hits the right instance.
+    local uid = self:_resolvePetUid(player, data.itemUid)
+    local record = uid and playerData.Inventory.pets.items[uid] or nil
+    if not record then
+        self._logger:Warn(
+            "❌ Pet not found in inventory",
+            { player = player.Name, itemUid = data.itemUid }
+        )
+        return
     end
 
-    local pet
-    if isStackEquip then
-        -- Resolve stack entry
-        local bucket = playerData.Inventory.pets
-        if not bucket or not bucket.items[stackKey] then
-            self._logger:Warn(
-                "❌ Stack not found for equip",
-                { player = player.Name, stackKey = stackKey }
-            )
-            return
-        end
-        pet = bucket.items[stackKey]
-        -- Allow equipping even when quantity reaches zero during session, but not below zero
-        if (pet.quantity or 0) <= 0 then
-            -- If this is an unequip (detected below), it will increment back.
-            -- For an equip request with zero quantity, reject.
-            -- We detect equip vs unequip after toggling result below, so pre-check cannot differentiate.
-        end
-    else
-        -- Unique pet path
-        pet = playerData.Inventory.pets.items[data.itemUid]
-        if not pet then
-            self._logger:Warn(
-                "❌ Pet not found in inventory",
-                { player = player.Name, itemUid = data.itemUid }
-            )
-            return
-        end
-    end
-
-    -- Initialize equipped pets if needed
-    if not playerData.Equipped then
-        playerData.Equipped = {}
-    end
-    if not playerData.Equipped.pets then
-        playerData.Equipped.pets = {}
-    end
-
-    local success, result = self:_togglePetEquipment(player, data.itemUid, pet, playerData)
+    local success, result = self:_togglePetEquipment(player, record, playerData)
 
     if success then
-        -- Adjust stack quantities for stack equips
-        if isStackEquip then
-            local stackEntry = playerData.Inventory.pets.items[stackKey]
-            if result.action == "equipped" then
-                if (stackEntry.quantity or 0) <= 0 then
-                    -- Guard: don't go below zero (reject equip and revert slot)
-                    self._logger:Warn(
-                        "❌ Stack has zero quantity",
-                        { player = player.Name, stackKey = stackKey }
-                    )
-                    -- Revert: remove the slot we just set
-                    for slotName, uid in pairs(playerData.Equipped.pets) do
-                        if uid == data.itemUid then
-                            playerData.Equipped.pets[slotName] = nil
-                            break
-                        end
-                    end
-                    -- Refresh folders and exit
-                    self:_updateEquippedFolders(player, "pets")
-                    return
-                end
-                stackEntry.quantity = math.max(0, (stackEntry.quantity or 0) - 1)
-            elseif result.action == "unequipped" then
-                stackEntry.quantity = (stackEntry.quantity or 0) + 1
-            end
-            -- Replicate pets bucket so clients receive updated stack quantities
-            self:_updateBucketFolders(player, "pets")
-        end
-        -- Update equipped folder replication
-        self:_updateEquippedFolders(player, "pets")
+        -- equip state changed on the record → rebuild every projection from the records.
+        self:RebuildPetProjections(player)
 
-        self._logger:Info("✅ Pet equipped successfully", {
+        self._logger:Info("✅ Pet equip toggled", {
             player = player.Name,
-            petId = pet.id or stackKey,
-            petUid = data.itemUid,
+            petId = record.id,
+            petUid = uid,
             slot = result.slot,
             action = result.action,
         })
 
-        -- Debug snapshot of equipped slots after update
-        local slotsDebug = {}
-        for slotName, uid in pairs(playerData.Equipped.pets or {}) do
-            table.insert(slotsDebug, string.format("%s=%s", slotName, uid))
-        end
-        self._logger:Info(
-            "📋 EQUIPPED SLOTS SNAPSHOT",
-            { player = player.Name, slots = table.concat(slotsDebug, ", ") }
-        )
+        self._dataService:RequestSave(player, "pet_equip_toggle", { critical = true })
     else
         self._logger:Warn("❌ Pet equip rejected", {
             player = player.Name,
-            petUid = data.itemUid,
+            petUid = uid,
             reason = result and result.reason or "unknown",
             maxSlots = result and result.maxSlots or nil,
         })
@@ -1683,38 +1797,31 @@ function InventoryService:_handleToggleToolEquipped(player, data)
     end
 end
 
-function InventoryService:_togglePetEquipment(player, petUid, pet, playerData)
-    local equippedPets = playerData.Equipped.pets
+-- SSOT equip toggle (the "programming 101" algorithm): equip = set equipped_slot to the
+-- first free slot; unequip = clear it. Ownership is never touched — equipping a pet does NOT
+-- remove it from inventory, so counts can't drift. RebuildPetProjections derives both folders
+-- (and the legacy slot table) from the records afterwards.
+function InventoryService:_togglePetEquipment(player, record, playerData)
     local petSlots = self._inventoryConfig.equipped.pets
-
     local maxSlots = self:_getMaxEquippedSlots(player, "pets", petSlots.slots)
-    self:_pruneEquippedSlots(player, "pets", maxSlots)
+    local items = playerData.Inventory.pets.items
 
-    -- Check if pet is already equipped
-    local currentSlot = nil
-    for slotName, equippedUid in pairs(equippedPets) do
-        if equippedUid == petUid then
-            currentSlot = slotName
-            break
+    if record.equipped_slot ~= nil then
+        local previous = record.equipped_slot
+        record.equipped_slot = nil
+        return true, { action = "unequipped", slot = previous }
+    end
+
+    -- Find the first slot not occupied by any record.
+    local slotMap = PetInventoryView.equippedSlots(items, maxSlots)
+    for slot = 1, maxSlots do
+        if slotMap[slot] == nil then
+            record.equipped_slot = slot
+            return true, { action = "equipped", slot = slot }
         end
     end
 
-    if currentSlot then
-        -- Unequip the pet
-        equippedPets[currentSlot] = nil
-        return true, { action = "unequipped", slot = currentSlot }
-    else
-        -- Find an empty slot to equip the pet (respect runtime maxSlots)
-        for i = 1, maxSlots do
-            local slotName = "slot_" .. i
-            if not equippedPets[slotName] then
-                equippedPets[slotName] = petUid
-                return true, { action = "equipped", slot = slotName }
-            end
-        end
-
-        return false, { action = "rejected", reason = "no_slots", maxSlots = maxSlots }
-    end
+    return false, { action = "rejected", reason = "no_slots", maxSlots = maxSlots }
 end
 
 function InventoryService:_toggleToolEquipment(player, toolUid, tool, playerData)
@@ -1758,8 +1865,73 @@ end
 -- existing rebuilds (behavior-identical); later stages swap the bodies to derive purely
 -- from PetInventoryView without changing any caller.
 function InventoryService:RebuildPetProjections(player)
+    self:_recomputePetUsedSlots(player)
+    self:_syncEquippedTableFromRecords(player)
     self:_updateBucketFolders(player, "pets")
     self:_updateEquippedFolders(player, "pets")
+end
+
+-- used_slots is a pure function of the records (one slot per common group + per special).
+function InventoryService:_recomputePetUsedSlots(player)
+    local data = self._dataService:GetData(player)
+    local pets = data and data.Inventory and data.Inventory.pets
+    if type(pets) ~= "table" or type(pets.items) ~= "table" then
+        return
+    end
+    pets.used_slots =
+        PetInventoryView.usedSlots(pets.items, self:_petViewConfig(), self:_petCapability())
+end
+
+-- Derive the legacy Equipped.pets slot table FROM the records' equipped_slot fields. This
+-- keeps the equipped-folder projection and PetEquipmentBridge working unchanged while equip
+-- truly lives on the records. Over-cap and colliding slots are cleared on the records here,
+-- so the equipped table is always valid by construction.
+function InventoryService:_syncEquippedTableFromRecords(player)
+    local data = self._dataService:GetData(player)
+    local pets = data and data.Inventory and data.Inventory.pets
+    if type(pets) ~= "table" or type(pets.items) ~= "table" then
+        return
+    end
+    local items = pets.items
+    PetInventoryView.normalize(items)
+
+    local configuredSlots = self._inventoryConfig.equipped
+        and self._inventoryConfig.equipped.pets
+        and self._inventoryConfig.equipped.pets.slots
+    local maxSlots = self:_getMaxEquippedSlots(player, "pets", configuredSlots)
+
+    local slotMap, conflicts = PetInventoryView.equippedSlots(items, maxSlots)
+    -- Clear losers of a slot collision.
+    for _, uid in ipairs(conflicts) do
+        if items[uid] then
+            items[uid].equipped_slot = nil
+        end
+    end
+    -- Clear any equipped_slot beyond the current cap (slot count can shrink).
+    for _, rec in pairs(items) do
+        if type(rec) == "table" and rec.equipped_slot ~= nil and rec.equipped_slot > maxSlots then
+            rec.equipped_slot = nil
+        end
+    end
+
+    -- Rebuild the legacy slot table: special → bare uid; common → "stack|id:variant|<uid>"
+    -- (the uid as eph lets the client's unequip request round-trip to the exact record).
+    local capability = self:_petCapability()
+    local equippedTable = {}
+    for slotNumber, uid in pairs(slotMap) do
+        local rec = items[uid]
+        if rec then
+            if PetInventoryView.isSpecial(rec, capability) then
+                equippedTable["slot_" .. slotNumber] = uid
+            else
+                equippedTable["slot_" .. slotNumber] =
+                    string.format("stack|%s|%s", self:_petStackKey(rec.id, rec.variant), uid)
+            end
+        end
+    end
+
+    data.Equipped = data.Equipped or {}
+    data.Equipped.pets = equippedTable
 end
 
 function InventoryService:_updateEquippedFolders(player, category)

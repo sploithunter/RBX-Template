@@ -150,6 +150,79 @@ return function()
         end)
     end)
 
+    describe(
+        "PetInventoryView.groups with capability (special never merges into commons)",
+        function()
+            local cap = { specialRarities = { huge = true } }
+            it(
+                "keeps each huge pet as its own group even sharing id:variant with a common stack",
+                function()
+                    -- The real-data trap: 2 common bear:basic + 2 huge bear:basic. Without
+                    -- capability they'd all collapse into one "bear:basic" group of 4.
+                    local m = items({
+                        { uid = "c1", id = "bear", variant = "basic", obtained_at = 1 },
+                        { uid = "c2", id = "bear", variant = "basic", obtained_at = 2 },
+                        {
+                            uid = "h1",
+                            id = "bear",
+                            variant = "basic",
+                            obtained_at = 3,
+                            huge = true,
+                            rarity_id = "huge",
+                        },
+                        {
+                            uid = "h2",
+                            id = "bear",
+                            variant = "basic",
+                            obtained_at = 4,
+                            huge = true,
+                            rarity_id = "huge",
+                        },
+                    })
+                    local g = View.groups(m, CONFIG, cap)
+                    expect(#g).to.equal(3) -- 1 common bear:basic group (total 2) + 2 singleton huge groups
+                    -- find the common group
+                    local commonGroup
+                    for _, grp in ipairs(g) do
+                        if grp.key == "bear:basic" then
+                            commonGroup = grp
+                        end
+                    end
+                    expect(commonGroup).never.to.equal(nil)
+                    expect(commonGroup.total).to.equal(2)
+                    expect(commonGroup.isSpecial).to.equal(false)
+                end
+            )
+            it("usedSlots = common groups + special records", function()
+                local m = items({
+                    { uid = "c1", id = "bear", variant = "basic", obtained_at = 1 },
+                    { uid = "c2", id = "bear", variant = "basic", obtained_at = 2 },
+                    { uid = "h1", id = "bear", variant = "basic", obtained_at = 3, huge = true },
+                    { uid = "h2", id = "bear", variant = "basic", obtained_at = 4, huge = true },
+                })
+                expect(View.usedSlots(m, CONFIG, cap)).to.equal(3) -- 1 + 2
+            end)
+            it("tracks unequippedCount = total - equippedCount per group", function()
+                local m = items({
+                    {
+                        uid = "a",
+                        id = "bunny",
+                        variant = "basic",
+                        obtained_at = 1,
+                        equipped_slot = 4,
+                    },
+                    { uid = "b", id = "bunny", variant = "basic", obtained_at = 2 },
+                    { uid = "c", id = "bunny", variant = "basic", obtained_at = 3 },
+                })
+                local g = View.groups(m, CONFIG, cap)
+                expect(#g).to.equal(1)
+                expect(g[1].total).to.equal(3)
+                expect(g[1].equippedCount).to.equal(1)
+                expect(g[1].unequippedCount).to.equal(2)
+            end)
+        end
+    )
+
     describe("PetInventoryView capability gating", function()
         local capability = { specialRarities = { huge = true, secret = true } }
         it("a huge pet is levelable/enchantable", function()

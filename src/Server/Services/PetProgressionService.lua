@@ -6,8 +6,20 @@
     one copy unique.
 ]]
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
+
 local PetProgressionService = {}
 PetProgressionService.__index = PetProgressionService
+
+-- Capability used to decide which pets can level (special / unique-per-instance), shared
+-- with the inventory projection so classification never diverges.
+function PetProgressionService:_petCapability()
+    if self._inventoryService and self._inventoryService.GetPetCapability then
+        return self._inventoryService:GetPetCapability()
+    end
+    return {}
+end
 
 function PetProgressionService.new()
     local self = setmetatable({}, PetProgressionService)
@@ -157,8 +169,11 @@ function PetProgressionService:AddPetExperience(player, petUid, amount, reason)
     local data = self._dataService:GetData(player)
     local petsBucket = data and data.Inventory and data.Inventory.pets
     local petData = petsBucket and petsBucket.items and petsBucket.items[petUid]
-    if type(petData) ~= "table" or petData._kind ~= "special" then
-        return false, "pet_not_unique"
+    if type(petData) ~= "table" then
+        return false, "pet_not_found"
+    end
+    if not PetInventoryView.isLevelable(petData, self:_petCapability()) then
+        return false, "pet_not_levelable"
     end
 
     local petConfig = self._petsConfig.getPet
@@ -258,19 +273,21 @@ end
 
 function PetProgressionService:GetEquippedUniquePetUids(player)
     local data = self._dataService:GetData(player)
-    local equipped = data and data.Equipped and data.Equipped.pets
     local items = data and data.Inventory and data.Inventory.pets and data.Inventory.pets.items
-    if type(equipped) ~= "table" or type(items) ~= "table" then
+    if type(items) ~= "table" then
         return {}
     end
 
+    -- SSOT: equip lives on the record. An equipped, levelable (special) pet earns XP.
+    local capability = self:_petCapability()
     local uids = {}
-    for _, uid in pairs(equipped) do
-        if type(uid) == "string" and not string.match(uid, "^stack|") then
-            local petData = items[uid]
-            if type(petData) == "table" and petData._kind == "special" then
-                table.insert(uids, uid)
-            end
+    for uid, petData in pairs(items) do
+        if
+            type(petData) == "table"
+            and petData.equipped_slot ~= nil
+            and PetInventoryView.isLevelable(petData, capability)
+        then
+            table.insert(uids, uid)
         end
     end
     return uids

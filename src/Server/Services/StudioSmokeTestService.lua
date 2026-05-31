@@ -20,6 +20,21 @@ local REMOTE_NAME = "StudioSmokeTest"
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
 
+-- SSOT: pet records no longer carry `_kind`. A special (unique-per-instance) pet is
+-- identified by huge / serial / per-copy progression. Commons carry none of these.
+local function isSpecialPetRecord(item)
+    if type(item) ~= "table" then
+        return false
+    end
+    if item.huge == true or item.serial ~= nil then
+        return true
+    end
+    if (tonumber(item.level) or 1) > 1 or (tonumber(item.exp) or 0) > 0 then
+        return true
+    end
+    return type(item.enchantments) == "table" and next(item.enchantments) ~= nil
+end
+
 local logger
 local configLoader
 local dataService
@@ -468,7 +483,7 @@ function StudioSmokeTestService:_cleanupColoradoGrantOrphans(player)
                 and string.match(key, "^colorado_")
                 and type(item) == "table"
                 and item.id == "colorado"
-                and item._kind ~= "special"
+                and not isSpecialPetRecord(item)
             then
                 bucket.items[key] = nil
                 bucket.used_slots = math.max(0, (bucket.used_slots or 1) - 1)
@@ -794,7 +809,7 @@ function StudioSmokeTestService:_backfillPetHatcherProvenance(player, payload)
     end
 
     local function isEligible(item)
-        if type(item) ~= "table" or item._kind == "stack" then
+        if type(item) ~= "table" or not isSpecialPetRecord(item) then
             return false
         end
 
@@ -905,7 +920,7 @@ function StudioSmokeTestService:_backfillPetPowerSourceOfTruth(player, payload)
     end
 
     local function applyProgressionMetadata(item, petConfig)
-        if type(item) ~= "table" or item._kind == "stack" then
+        if type(item) ~= "table" or not isSpecialPetRecord(item) then
             if clearField(item, "level") then
                 return true
             end

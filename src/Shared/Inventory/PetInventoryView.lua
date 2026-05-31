@@ -59,7 +59,34 @@ local function sortedRecords(items)
     return recs
 end
 
-function PetInventoryView.stackKey(record, config)
+-- Capability check: a record is "special" (per-instance unique, never stacked) when
+-- it is huge, or its rarity is in capability.specialRarities, or allowAll. This is the
+-- ONE classifier shared by the server (slot accounting, projection routing) and the
+-- view, so a pet is grouped/leveled/enchanted identically everywhere.
+function PetInventoryView.isSpecial(record, capability)
+    if type(record) ~= "table" then
+        return false
+    end
+    capability = capability or {}
+    if capability.allowAll == true then
+        return true
+    end
+    if record.huge == true then
+        return true
+    end
+    local rarity = record.rarity_id or record.variant
+    local special = capability.specialRarities
+    return special ~= nil and rarity ~= nil and special[rarity] == true
+end
+
+-- Display grouping key. Special records key uniquely by uid (so two huge bears with
+-- the same id:variant never merge, and never merge into the common bear stack);
+-- commons key by the configured stack fields (id:variant). `capability` is optional —
+-- without it every record groups by stack fields (legacy display behaviour).
+function PetInventoryView.stackKey(record, config, capability)
+    if capability ~= nil and PetInventoryView.isSpecial(record, capability) then
+        return "uid:" .. tostring(record.uid)
+    end
     local fields = (config and config.stack_key_fields) or DEFAULT_STACK_FIELDS
     local parts = {}
     for _, field in ipairs(fields) do
@@ -95,20 +122,31 @@ end
 
 -- Ordered display groups. Each group's sampleRecord is its comparator-smallest
 -- member; uids are comparator-sorted; the array is ordered by sampleRecord.
-function PetInventoryView.groups(items, config)
+function PetInventoryView.groups(items, config, capability)
     local order = {}
     local byKey = {}
     for _, rec in ipairs(sortedRecords(items)) do
-        local key = PetInventoryView.stackKey(rec, config)
+        local key = PetInventoryView.stackKey(rec, config, capability)
         local group = byKey[key]
         if not group then
-            group = { key = key, total = 0, equippedCount = 0, sampleRecord = rec, uids = {} }
+            group = {
+                key = key,
+                total = 0,
+                equippedCount = 0,
+                unequippedCount = 0,
+                isSpecial = capability ~= nil and PetInventoryView.isSpecial(rec, capability)
+                    or false,
+                sampleRecord = rec,
+                uids = {},
+            }
             byKey[key] = group
             order[#order + 1] = group
         end
         group.total += 1
         if rec.equipped_slot ~= nil then
             group.equippedCount += 1
+        else
+            group.unequippedCount += 1
         end
         group.uids[#group.uids + 1] = rec.uid
     end
@@ -145,9 +183,9 @@ end
 -- The slot-accounting authority. With count_stacks_as_single (default), one display
 -- group costs one slot (preserving the legacy effective capacity); otherwise every
 -- instance costs a slot.
-function PetInventoryView.usedSlots(items, config)
+function PetInventoryView.usedSlots(items, config, capability)
     if not config or config.count_stacks_as_single ~= false then
-        return #PetInventoryView.groups(items, config)
+        return #PetInventoryView.groups(items, config, capability)
     end
     local n = 0
     for _, rec in pairs(items or {}) do
@@ -158,40 +196,29 @@ function PetInventoryView.usedSlots(items, config)
     return n
 end
 
-function PetInventoryView.categoryCounts(items, config)
+function PetInventoryView.categoryCounts(items, config, capability)
     local total = 0
     for _, rec in pairs(items or {}) do
         if type(rec) == "table" then
             total += 1
         end
     end
-    return { display = #PetInventoryView.groups(items, config), total = total }
+    return {
+        display = #PetInventoryView.groups(items, config, capability),
+        total = total,
+    }
 end
 
--- Config-driven capability check replacing the deleted `_kind == "special"` guard.
--- capability = { specialRarities = {[rarity]=true}, allowAll = bool }
-local function hasSpecialCapability(record, capability)
-    if type(record) ~= "table" then
-        return false
-    end
-    capability = capability or {}
-    if capability.allowAll == true then
-        return true
-    end
-    if record.huge == true then
-        return true
-    end
-    local rarity = record.rarity_id or record.variant
-    local special = capability.specialRarities
-    return special ~= nil and rarity ~= nil and special[rarity] == true
-end
-
+-- Config-driven capability checks replacing the deleted `_kind == "special"` guard.
+-- capability = { specialRarities = {[rarity]=true}, allowAll = bool }. Both delegate to
+-- isSpecial so "can this pet level / be enchanted" and "is this pet unique-per-instance"
+-- are the same predicate by construction.
 function PetInventoryView.isLevelable(record, capability)
-    return hasSpecialCapability(record, capability)
+    return PetInventoryView.isSpecial(record, capability)
 end
 
 function PetInventoryView.isEnchantable(record, capability)
-    return hasSpecialCapability(record, capability)
+    return PetInventoryView.isSpecial(record, capability)
 end
 
 return PetInventoryView

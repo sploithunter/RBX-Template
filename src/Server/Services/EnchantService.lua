@@ -11,6 +11,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
+
 local EnchantService = {}
 EnchantService.__index = EnchantService
 
@@ -287,12 +289,22 @@ function EnchantService:RollInitialEnchantments(player, petData, petConfig, sour
     return petData
 end
 
+function EnchantService:_petCapability()
+    if self._inventoryService and self._inventoryService.GetPetCapability then
+        return self._inventoryService:GetPetCapability()
+    end
+    return {}
+end
+
 function EnchantService:_getPetRecord(player, petUid)
     local data = self._dataService and self._dataService:GetData(player)
     local items = data and data.Inventory and data.Inventory.pets and data.Inventory.pets.items
     local petData = items and items[petUid]
-    if type(petData) ~= "table" or petData._kind ~= "special" then
-        return nil, "pet_not_unique"
+    if type(petData) ~= "table" then
+        return nil, "pet_not_found"
+    end
+    if not PetInventoryView.isEnchantable(petData, self:_petCapability()) then
+        return nil, "pet_not_enchantable"
     end
     self:_normalizePetEnchantMetadata(petData)
     return petData, nil
@@ -871,22 +883,24 @@ end
 
 function EnchantService:_getEquippedUniquePets(player)
     local data = self._dataService and self._dataService:GetData(player)
-    local equipped = data and data.Equipped and data.Equipped.pets
     local items = data and data.Inventory and data.Inventory.pets and data.Inventory.pets.items
-    if type(equipped) ~= "table" or type(items) ~= "table" then
+    if type(items) ~= "table" then
         return {}
     end
 
+    -- SSOT: equip lives on the record; an equipped enchantable pet qualifies.
+    local capability = self:_petCapability()
     local pets = {}
-    for _, uid in pairs(equipped) do
-        if type(uid) == "string" and not string.match(uid, "^stack|") then
-            local petData = items[uid]
-            if type(petData) == "table" and petData._kind == "special" then
-                table.insert(pets, {
-                    uid = uid,
-                    data = petData,
-                })
-            end
+    for uid, petData in pairs(items) do
+        if
+            type(petData) == "table"
+            and petData.equipped_slot ~= nil
+            and PetInventoryView.isEnchantable(petData, capability)
+        then
+            table.insert(pets, {
+                uid = uid,
+                data = petData,
+            })
         end
     end
     return pets

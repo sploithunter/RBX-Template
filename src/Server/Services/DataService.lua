@@ -21,6 +21,8 @@ local RunService = game:GetService("RunService")
 local Locations = require(game.ReplicatedStorage.Shared.Locations)
 local ProfileStore = Locations.getPackage("ProfileStore")
 local Promise = Locations.getPackage("Promise")
+local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
+local PetMigrationV5 = require(ReplicatedStorage.Shared.Inventory.PetMigrationV5)
 
 local DataService = {}
 DataService.__index = DataService
@@ -31,7 +33,7 @@ local DEFAULT_SAVE_DEBOUNCE_SECONDS = 15
 local CRITICAL_SAVE_DEBOUNCE_SECONDS = 1
 local PERIODIC_SAVE_SECONDS = 60
 local SAVE_CONFIRM_TIMEOUT_SECONDS = 10
-local CURRENT_SCHEMA_VERSION = 4
+local CURRENT_SCHEMA_VERSION = 5
 
 local function countInventoryItems(inventory)
     local counts = {}
@@ -390,6 +392,16 @@ end
 SchemaMigrations[3] = function(self, data)
     local migrations = self:_migrateAutoSystemSettings(data)
     data.SchemaVersion = 4
+    return migrations + 1
+end
+
+-- v4 -> v5: collapse the MIXED pet store (stacks-by-quantity + specials-by-uid +
+-- Equipped.pets slot strings) into the SSOT model — one uid record per pet instance,
+-- equip held in `equipped_slot`. PetMigrationV5 does the pure transform and a
+-- conservation check; we only commit when ownership is preserved.
+SchemaMigrations[4] = function(self, data)
+    local migrations = self:_migratePetsToSsotV5(data)
+    data.SchemaVersion = 5
     return migrations + 1
 end
 
@@ -1653,6 +1665,107 @@ function DataService:_migrateAutoSystemSettings(data)
     end
 
     return migrations
+end
+
+-- Build the PetInventoryView capability ({specialRarities=set}) from config so the
+-- migration's slot accounting matches runtime classification exactly.
+function DataService:_petCapabilityFromConfig()
+    local specialRarities = {}
+    local okInv, inv = pcall(function()
+        return self._configLoader:LoadConfig("inventory")
+    end)
+    if
+        okInv
+        and inv
+        and inv.buckets
+        and inv.buckets.pets
+        and type(inv.buckets.pets.special_rarities) == "table"
+    then
+        for _, rarity in ipairs(inv.buckets.pets.special_rarities) do
+            specialRarities[rarity] = true
+        end
+    end
+    local okPets, pets = pcall(function()
+        return self._configLoader:LoadConfig("pets")
+    end)
+    if
+        okPets
+        and pets
+        and pets.enchanting
+        and type(pets.enchanting.max_enchantments_by_rarity) == "table"
+    then
+        for rarity, maxEnch in pairs(pets.enchanting.max_enchantments_by_rarity) do
+            if (tonumber(maxEnch) or 0) > 0 then
+                specialRarities[rarity] = true
+            end
+        end
+    end
+    return { specialRarities = specialRarities }
+end
+
+function DataService:_petViewConfig()
+    local fields = { "id", "variant" }
+    local okInv, inv = pcall(function()
+        return self._configLoader:LoadConfig("inventory")
+    end)
+    if
+        okInv
+        and inv
+        and inv.buckets
+        and inv.buckets.pets
+        and type(inv.buckets.pets.stack_key_fields) == "table"
+        and #inv.buckets.pets.stack_key_fields > 0
+    then
+        fields = inv.buckets.pets.stack_key_fields
+    end
+    return { stack_key_fields = fields, count_stacks_as_single = true }
+end
+
+-- v4 -> v5 pet store flip. Pure transform + conservation guard; commits only when safe.
+function DataService:_migratePetsToSsotV5(data)
+    local pets = data.Inventory and data.Inventory.pets
+    if type(pets) ~= "table" or type(pets.items) ~= "table" then
+        return 0 -- new/empty profile; nothing to migrate
+    end
+
+    local equipped = (data.Equipped and data.Equipped.pets) or {}
+    local result = PetMigrationV5.migrate(pets.items, equipped)
+
+    if not result.report.conserved then
+        -- Never destroy data on a failed check: keep the legacy store, log loudly, and
+        -- leave SchemaVersion to advance (the runtime still reads legacy shape until fixed).
+        self._logger:Error("🛑 PET SSOT MIGRATION ABORTED - conservation failed", {
+            legacyOwned = result.report.legacyOwned,
+            migratedOwned = result.report.migratedOwned,
+            legacyEquipped = result.report.legacyEquipped,
+            migratedEquipped = result.report.migratedEquipped,
+            orphanSlots = #result.report.orphanSlots,
+        })
+        return 0
+    end
+
+    PetInventoryView.normalize(result.items)
+    pets.items = result.items
+    pets.used_slots = PetInventoryView.usedSlots(
+        result.items,
+        self:_petViewConfig(),
+        self:_petCapabilityFromConfig()
+    )
+
+    -- Equip now lives on records; the legacy slot table is no longer the source of truth.
+    if data.Equipped then
+        data.Equipped.pets = {}
+    end
+
+    self._logger:Info("✅ PET SSOT MIGRATION v5 complete", {
+        owned = result.report.migratedOwned,
+        equipped = result.report.migratedEquipped,
+        reminted = #result.report.remintedStackSlots,
+        orphansDropped = #result.report.orphanSlots,
+        usedSlots = pets.used_slots,
+    })
+
+    return 1
 end
 
 function DataService:_migrateInventoryBuckets(data)

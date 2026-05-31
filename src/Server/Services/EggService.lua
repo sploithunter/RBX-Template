@@ -15,6 +15,7 @@ local Locations = require(ReplicatedStorage.Shared.Locations)
 local petConfig = Locations.getConfig("pets")
 local eggSystemConfig = Locations.getConfig("egg_system")
 local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
+local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
 
 -- Logger setup using singleton pattern
 local Logger
@@ -897,7 +898,29 @@ function EggService:ResolveStorageLimitedOutcomes(player, outcomes)
                     tostring(outcome.hatchResult.pet),
                     tostring(outcome.hatchResult.variant or "basic")
                 )
-                local hasExistingStack = bucket.items and bucket.items[stackKey] ~= nil
+                -- SSOT: a common "stack" exists if any non-special record shares the
+                -- id:variant key (records are uid-keyed, never keyed by the stack key).
+                local hasExistingStack = false
+                if bucket.items then
+                    local capability = self._inventoryService.GetPetCapability
+                            and self._inventoryService:GetPetCapability()
+                        or {}
+                    for _, rec in pairs(bucket.items) do
+                        if
+                            type(rec) == "table"
+                            and not PetInventoryView.isSpecial(rec, capability)
+                            and string.format(
+                                    "%s:%s",
+                                    tostring(rec.id),
+                                    tostring(rec.variant or "basic")
+                                )
+                                == stackKey
+                        then
+                            hasExistingStack = true
+                            break
+                        end
+                    end
+                end
                 if not hasExistingStack and not simulatedStacks[stackKey] then
                     requiresSlot = true
                     simulatedStacks[stackKey] = true
