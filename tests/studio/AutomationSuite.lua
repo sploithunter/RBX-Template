@@ -932,6 +932,26 @@ function AutomationSuite.run(opts)
         "summary missing total"
     )
 
+    -- Achievements now route through the reward spine: re-arm, trip a counter, and
+    -- confirm the grant lands in the reward audit log with an achievement source.
+    api:Execute(player, "test.resetAchievements", {})
+    api:Execute(player, "test.setCounter", { counter = "breakables_broken", value = 0 })
+    api:Execute(player, "test.setCounter", { counter = "breakables_broken", value = 100 })
+    task.wait(0.3) -- achievement evaluation is event-driven off CounterChanged
+    local rlog = api:Execute(player, "reward.log", { userId = player.UserId }).result
+    local sawAchievement = false
+    for _, rec in ipairs((rlog and rlog.records) or {}) do
+        if type(rec.source) == "string" and string.sub(rec.source, 1, 12) == "achievement_" then
+            sawAchievement = true
+            break
+        end
+    end
+    report:expect(
+        "achievement reward is granted through RewardService (audited)",
+        sawAchievement,
+        "no achievement-sourced entry in the reward grant log"
+    )
+
     return HttpService:JSONEncode(report:summary())
 end
 

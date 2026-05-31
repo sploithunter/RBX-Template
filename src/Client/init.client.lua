@@ -808,6 +808,11 @@ if game:GetService("RunService"):IsStudio() then
         local inventoryPanel = InventoryPanel.new()
         menuManager:RegisterPanel("Inventory", inventoryPanel)
 
+        -- Quest panel: reward-spine quests, live from the GameAPICommand bus bridge.
+        local QuestPanel = require(script.UI.Menus.QuestPanel)
+        local questPanel = QuestPanel.new()
+        menuManager:RegisterPanel("Quest", questPanel)
+
         local EffectsPanel = require(script.UI.Menus.EffectsPanel)
         local effectsPanel = EffectsPanel.new()
         menuManager:RegisterPanel("Effects", effectsPanel)

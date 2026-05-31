@@ -1431,6 +1431,20 @@ function GameAPIService:_registerTestCommands()
             return { ok = true }
         end,
     })
+
+    self._bus:register("test.resetAchievements", {
+        description = "[test] Clear earned-achievement records (re-arm reward grants).",
+        testOnly = true,
+        handler = function(context)
+            local data = self:_service("DataService")
+            if not data then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            local profile = data:GetData(context.player)
+            profile.Achievements = { Completed = {} }
+            return { ok = true }
+        end,
+    })
 end
 
 return GameAPIService
