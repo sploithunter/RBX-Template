@@ -882,6 +882,23 @@ function InventoryPanel:_calculateFolderCounts()
         folderCounts[folderName] = (folderCounts[folderName] or 0) + increment
     end
 
+    -- Equipped stack pets sit at quantity 0 (the equipped one is taken out of the
+    -- available stack), so they're not in inventoryData — but they DO render as
+    -- equipped "ghost" cards. Count them so the tab total matches the visible cards.
+    -- Mirror the exact ghost-render condition (stack slot with a backing stack entry).
+    local equippedFolder = self.player and self.player:FindFirstChild("Equipped")
+    local equippedPets = equippedFolder and equippedFolder:FindFirstChild("pets")
+    if equippedPets and self._stackDataByKey then
+        for _, slot in ipairs(equippedPets:GetChildren()) do
+            if slot:IsA("StringValue") and typeof(slot.Value) == "string" then
+                local parts = string.split(slot.Value, "|")
+                if #parts >= 2 and parts[1] == "stack" and self._stackDataByKey[parts[2]] then
+                    folderCounts["pets"] = (folderCounts["pets"] or 0) + 1
+                end
+            end
+        end
+    end
+
     self.logger:info("📊 FOLDER COUNTS DEBUG", folderCounts)
     return folderCounts
 end
@@ -926,6 +943,9 @@ end
 -- 🔄 REAL DATA LOADING
 function InventoryPanel:_loadRealInventoryData()
     self.inventoryData = {}
+    -- Rebuild the stack-display cache from scratch each load so traded/removed stacks
+    -- don't linger as stale ghost cards (or stale counts).
+    self._stackDataByKey = {}
 
     -- Try to find inventory folder in player
     local inventoryFolder = self.player:FindFirstChild("Inventory")
