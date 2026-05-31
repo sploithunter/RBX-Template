@@ -1481,6 +1481,17 @@ function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, du
             local parent = petReveal.Parent
             print("  📊 Parent before destroy:", parent and parent.Name or "NIL")
 
+            if not parent then
+                -- Hatching too fast: a newer reveal already tore down this one's container, so
+                -- this animation is stale/superseded. Bail gracefully instead of indexing a nil
+                -- parent (the visual-only "hatch too fast" crash at parent.ZIndex).
+                print(
+                    "  ⚠️ Reveal container gone (superseded by a faster hatch) — aborting reveal"
+                )
+                petReveal:Destroy()
+                return
+            end
+
             -- Replace the ImageLabel with the generated ViewportFrame
             petReveal:Destroy()
             print("  ✅ Original petReveal destroyed")
@@ -1489,7 +1500,7 @@ function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, du
             petReveal.Name = "PetReveal"
             petReveal.BackgroundTransparency = 1 -- Ensure ViewportFrame is transparent
             petReveal.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- Set to white (will be transparent)
-            petReveal.ZIndex = (parent.ZIndex or 1) + 3
+            petReveal.ZIndex = ((parent and parent.ZIndex) or 1) + 3
             petReveal.Parent = parent
             eggComponents.reveal = petReveal
             print("  ✅ New petReveal created and parented with transparency")
