@@ -212,23 +212,56 @@ local function descriptorFromRecord(uid, rec)
     }
 end
 
--- Detach a pet from everything that references it before it leaves the inventory:
--- the Equipped folder slot (PetEquipmentBridge re-runs loadEquipped -> despawns the
--- world model) and any roster references. Prevents a "phantom" equipped pet.
-function TradeService:_detachPet(player, uid)
+-- Detach a pet from everything that references it before it leaves the inventory,
+-- so it doesn't linger as a "phantom" equipped pet (in the UI or in the world):
+--   1. the Equipped.pets slot (normal pets), keyed by uid
+--   2. the ephemeral equip_<...> folder (special/unique pets), matched by id+variant
+--   3. roster references
+-- _reloadEquipped() then forces a loadEquipped rebuild that despawns the orphan model.
+function TradeService:_detachPet(player, uid, rec)
     local equipped = player:FindFirstChild("Equipped")
-    local petsFolder = equipped and equipped:FindFirstChild("pets")
-    if petsFolder then
-        for _, slot in ipairs(petsFolder:GetChildren()) do
+    local equipSlots = equipped and equipped:FindFirstChild("pets")
+    if equipSlots then
+        for _, slot in ipairs(equipSlots:GetChildren()) do
             if slot:IsA("StringValue") and slot.Value == uid then
-                slot:Destroy() -- bridge despawns the follow model + clears the equip
+                slot:Destroy()
             end
         end
     end
+
+    -- Special pets equip via an equip_<id> folder in Inventory.pets that RemoveItem
+    -- does not clean up; remove the one matching this pet so it won't respawn.
+    local inventory = player:FindFirstChild("Inventory")
+    local invPets = inventory and inventory:FindFirstChild("pets")
+    if invPets and rec then
+        for _, child in ipairs(invPets:GetChildren()) do
+            if child:IsA("Folder") and string.sub(child.Name, 1, 6) == "equip_" then
+                local itemId = child:FindFirstChild("ItemId")
+                local variant = child:FindFirstChild("Variant")
+                local matchesName = child.Name == ("equip_" .. tostring(uid))
+                local matchesData = itemId
+                    and itemId.Value == rec.id
+                    and (not variant or variant.Value == (rec.variant or "basic"))
+                if matchesName or matchesData then
+                    child:Destroy()
+                end
+            end
+        end
+    end
+
     local rosters = self:_service("RosterService")
     if rosters and rosters.RemovePetReference then
         pcall(function()
             rosters:RemovePetReference(player, uid)
+        end)
+    end
+end
+
+-- Force a clean respawn of equipped pets (despawns orphaned follow models).
+function TradeService:_reloadEquipped(player)
+    if type(_G.RBXReloadEquippedPets) == "function" then
+        pcall(function()
+            _G.RBXReloadEquippedPets(player)
         end)
     end
 end
@@ -260,9 +293,11 @@ function TradeService:Add(player, uid)
         return { ok = false, reason = "offer_full" }
     end
 
-    -- Escrow lock: unequip + drop references, then remove from inventory (anti-dup).
-    self:_detachPet(player, uid)
+    -- Escrow lock: unequip + drop references, then remove from inventory (anti-dup),
+    -- then force an equipped-pets rebuild so the world model despawns (no phantom).
+    self:_detachPet(player, uid, rec)
     inventory:RemoveItem(player, PETS_BUCKET, uid, 1)
+    self:_reloadEquipped(player)
     local descriptor = descriptorFromRecord(uid, rec)
     session.escrow[player.UserId][uid] = descriptor
     table.insert(offer.items, descriptor)

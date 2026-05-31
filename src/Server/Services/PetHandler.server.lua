@@ -394,7 +394,12 @@ local function getPetFolderBasePower(petFolder, petIdName, petVariantName)
     -- Single source of truth (shared with the client display): huge pets use
     -- huge_base_power, normal pets their variant power, then level scaling.
     local petData = getPetConfigData(petIdName, petVariantName)
-    return PetPower.basePowerForLevel(petData, isHugePetFolder(petFolder), level, petProgressionConfig)
+    return PetPower.basePowerForLevel(
+        petData,
+        isHugePetFolder(petFolder),
+        level,
+        petProgressionConfig
+    )
 end
 
 -- Configurable eternal percent for huge pets (configs/pets.lua eternal.huge_power_percent).
@@ -489,13 +494,17 @@ local function computeEternalPowerBaseFromInventory(petsFolder, teamCapacity)
                 local variant = (stack:FindFirstChild("Variant") and stack.Variant.Value) or "basic"
                 local quantity = math.max(
                     1,
-                    math.floor(tonumber(stack:FindFirstChild("Quantity") and stack.Quantity.Value) or 1)
+                    math.floor(
+                        tonumber(stack:FindFirstChild("Quantity") and stack.Quantity.Value) or 1
+                    )
                 )
                 local pdata = itemId and getPetConfigData(itemId, variant)
                 if pdata then
-                    local isEternal = type(pdata.eternal) == "table" and pdata.eternal.enabled == true
+                    local isEternal = type(pdata.eternal) == "table"
+                        and pdata.eternal.enabled == true
                     if includeEternal or not isEternal then
-                        local power = PetPower.basePowerForLevel(pdata, false, 1, petProgressionConfig)
+                        local power =
+                            PetPower.basePowerForLevel(pdata, false, 1, petProgressionConfig)
                         for _ = 1, math.min(capacity, quantity) do
                             table.insert(powers, power)
                         end
@@ -516,7 +525,10 @@ local function computeEternalPowerBaseFromInventory(petsFolder, teamCapacity)
                     includeEternal
                     or getPetFolderEternalPercent(petFolder, petIdName, petVariantName) <= 0
                 then
-                    table.insert(powers, getPetFolderBasePower(petFolder, petIdName, petVariantName))
+                    table.insert(
+                        powers,
+                        getPetFolderBasePower(petFolder, petIdName, petVariantName)
+                    )
                 end
             end
         end
@@ -592,7 +604,8 @@ local function calculateTeamPowerContext(equippedFolders, petsFolder, teamCapaci
 
         local basePower = getPetFolderBasePower(petFolder, petIdName, petVariantName)
         basePowers[petFolder] = basePower
-        eternalPercents[petFolder] = getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
+        eternalPercents[petFolder] =
+            getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
         strongestBasePower = math.max(strongestBasePower, basePower)
     end
 
@@ -621,7 +634,13 @@ local function resolveEffectivePetPower(basePower, eternalPercent, teamContext)
     return math.max(basePower, eternalPower)
 end
 
-local function resolveTeamModifiedPetPower(player, petIdName, petVariantName, effectivePower, teamContext)
+local function resolveTeamModifiedPetPower(
+    player,
+    petIdName,
+    petVariantName,
+    effectivePower,
+    teamContext
+)
     local modifierService = getLoadedService("ModifierService")
     if not (modifierService and modifierService.Resolve) then
         return effectivePower
@@ -1621,6 +1640,10 @@ function loadEquipped(Player)
         return "Error"
     end
 end
+
+-- Expose a direct rebuild trigger so other services (e.g. TradeService, after a pet
+-- leaves the inventory) can force a clean respawn of equipped pets / despawn orphans.
+_G.RBXReloadEquippedPets = loadEquipped
 
 -- Register with the bridge (wait for it to be available)
 local function registerWithBridge()
