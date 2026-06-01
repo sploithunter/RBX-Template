@@ -514,7 +514,10 @@ function PetFollowController.start()
                         local kind = (boltCfg.by_type and boltCfg.by_type[k.pet:GetAttribute("PetType")])
                             or boltCfg.kind
                             or "lightning"
-                        pcall(RangedFX.Play, k.pet, boltCfg, k.model, kind)
+                        -- Tie blast size to the hit: the server stamps LastHitCrit on the pet each
+                        -- hit; a crit fires the bigger impact tier.
+                        local isCrit = k.pet:GetAttribute("LastHitCrit") == true
+                        pcall(RangedFX.Play, k.pet, boltCfg, k.model, kind, isCrit)
                     end
                 end
             end

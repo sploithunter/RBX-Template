@@ -237,10 +237,11 @@ end
 
 -- Travelling orb (fireball / plasma / frost / poison): an emissive ball flies origin->target
 -- with a colour trail, then bursts. Themed entirely by `theme` (colors/size/travel_time/burst).
-local function playProjectile(originPart, endPos, theme)
+-- isCrit -> a bigger orb + the crit impact tier (theme.impact_crit, default "big").
+local function playProjectile(originPart, endPos, theme, isCrit)
     local c1 = toColor(theme.colors and theme.colors[1], Color3.fromRGB(255, 150, 40))
     local c2 = toColor(theme.colors and theme.colors[2], c1)
-    local size = tonumber(theme.size) or 1.5
+    local size = (tonumber(theme.size) or 1.5) * (isCrit and 1.4 or 1)
     local travel = math.max(0.05, tonumber(theme.travel_time) or 0.18)
     local startPos = originPart.Position + Vector3.new(0, 1, 0)
 
@@ -284,10 +285,18 @@ local function playProjectile(originPart, endPos, theme)
         { CFrame = CFrame.new(endPos) }
     )
     tween.Completed:Connect(function()
-        RangedFX.playImpact(theme.impact or "small", endPos, c1, c2, {
-            scale = (tonumber(theme.burst) or 3) * (size / 1.5),
-            sparks = theme.sparks,
-        })
+        if isCrit then
+            -- Crit: the crit tier at its own (bigger) default size.
+            RangedFX.playImpact(theme.impact_crit or "big", endPos, c1, c2, {
+                scale = theme.crit_scale,
+                sparks = theme.crit_sparks,
+            })
+        else
+            RangedFX.playImpact(theme.impact or "small", endPos, c1, c2, {
+                scale = (tonumber(theme.burst) or 3) * (size / 1.5),
+                sparks = theme.sparks,
+            })
+        end
         orb:Destroy()
     end)
     tween:Play()
@@ -296,7 +305,8 @@ local function playProjectile(originPart, endPos, theme)
 end
 
 -- Instant laser/energy beam: a neon cylinder spanning origin->target that flashes then fades.
-local function playBeam(originPart, endPos, theme)
+-- isCrit -> the crit impact tier at its end (theme.impact_crit, default "big").
+local function playBeam(originPart, endPos, theme, isCrit)
     local c1 = toColor(theme.colors and theme.colors[1], Color3.fromRGB(255, 70, 70))
     local thickness = tonumber(theme.thickness) or 0.5
     local duration = math.max(0.06, tonumber(theme.duration) or 0.18)
@@ -323,34 +333,44 @@ local function playBeam(originPart, endPos, theme)
         Size = Vector3.new(dist, 0.05, 0.05),
     }):Play()
     Debris:AddItem(beam, duration + 0.1)
-    RangedFX.playImpact(theme.impact or "small", endPos, c1, c1, {
-        scale = tonumber(theme.burst) or 2.5,
-        sparks = theme.sparks or 5,
-    })
+    if isCrit then
+        RangedFX.playImpact(theme.impact_crit or "big", endPos, c1, c1, {
+            scale = theme.crit_scale,
+            sparks = theme.crit_sparks,
+        })
+    else
+        RangedFX.playImpact(theme.impact or "small", endPos, c1, c1, {
+            scale = tonumber(theme.burst) or 2.5,
+            sparks = theme.sparks or 5,
+        })
+    end
     return true
 end
 
 -- Fire a ranged effect of `kind` from origin to target. Falls back to lightning for an
 -- unknown kind. config is the ranged_bolt block (target_offset already a Vector3 from caller).
-function RangedFX.Play(origin, config, target, kind)
+-- isCrit (from the server's LastHitCrit on the firing pet) bumps the impact to its crit tier.
+function RangedFX.Play(origin, config, target, kind, isCrit)
     config = type(config) == "table" and config or {}
     kind = kind or config.kind or "lightning"
 
     if kind == "lightning" then
         local ok = EnchantLightning.Play(origin, config, target)
-        -- Also play a library impact at the strike point (config.impact: none/small/medium/big),
-        -- tinted with the bolt's electric colours. c1 = core (blue), c2 = bright (white).
-        local impactName = config.impact
+        -- Also play a library impact at the strike point, tinted with the bolt's electric colours.
+        -- Normal -> config.impact (none/small/medium/big); crit -> config.impact_crit (default big).
+        local impactName = isCrit and (config.impact_crit or "big") or config.impact
         if impactName and impactName ~= "none" then
             local targetPart = partOf(target)
             if targetPart then
                 local cols = config.colors or {}
+                local opts = isCrit and { scale = config.crit_scale, sparks = config.crit_sparks }
+                    or { scale = config.impact_scale, sparks = config.impact_sparks }
                 RangedFX.playImpact(
                     impactName,
                     targetPart.Position + toVec(config.target_offset),
                     cols[1] or { 120, 150, 255 },
                     cols[2] or { 200, 235, 255 },
-                    { scale = config.impact_scale, sparks = config.impact_sparks }
+                    opts
                 )
             end
         end
@@ -365,12 +385,12 @@ function RangedFX.Play(origin, config, target, kind)
     local endPos = targetPart.Position + toVec(config.target_offset)
 
     if kind == "beam" then
-        return playBeam(originPart, endPos, config.beam or {})
+        return playBeam(originPart, endPos, config.beam or {}, isCrit)
     end
 
     -- Projectile family: theme comes from config.projectile[kind] (fireball/plasma/frost/...).
     local theme = (config.projectile and config.projectile[kind]) or {}
-    return playProjectile(originPart, endPos, theme)
+    return playProjectile(originPart, endPos, theme, isCrit)
 end
 
 return RangedFX

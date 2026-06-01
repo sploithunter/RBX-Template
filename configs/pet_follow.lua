@@ -210,15 +210,20 @@ return {
 
         -- Library impact played at the lightning strike point (RangedFX.IMPACTS), tinted with the
         -- electric colours above: "none" (arc + EnchantLightning's own flash only) | "small" |
-        -- "medium" | "big". impact_scale / impact_sparks optionally override the impact defaults.
+        -- "medium" | "big". `impact` is the normal-hit tier; `impact_crit` fires when the server
+        -- flags a crit (LastHitCrit on the pet) — so crits land a bigger blast. impact_scale /
+        -- impact_sparks (normal) and crit_scale / crit_sparks (crit) optionally override defaults.
         impact = "small",
+        impact_crit = "big",
 
         -- Projectile themes (kind = "fireball"/"plasma"/"frost"/"poison"): one travelling-orb
         -- engine, themed by colour/size/speed/burst. colors = { core, trail+burst }. travel_time
         -- = seconds orb takes to reach the target (keep < interval); burst = impact flash size;
-        -- sparks = ember/shard bits the impact explosion sprays outward (0 = flash only).
+        -- sparks = ember/shard bits the impact explosion sprays outward (0 = flash only). Each
+        -- theme also supports impact / impact_crit (RangedFX.IMPACTS tier names) — default normal
+        -- "small", crit "big" — so crits (server LastHitCrit) auto-land a bigger blast.
         projectile = {
-            fireball = { colors = { { 255, 150, 40 }, { 255, 90, 20 } }, size = 1.6, travel_time = 0.18, burst = 3.5, sparks = 9 },
+            fireball = { colors = { { 255, 150, 40 }, { 255, 90, 20 } }, size = 1.6, travel_time = 0.18, burst = 3.5, sparks = 9, impact = "small", impact_crit = "big" },
             plasma = { colors = { { 150, 90, 255 }, { 210, 170, 255 } }, size = 1.3, travel_time = 0.13, burst = 3, sparks = 7 },
             frost = { colors = { { 150, 220, 255 }, { 225, 245, 255 } }, size = 1.4, travel_time = 0.2, burst = 3, sparks = 8 },
             poison = { colors = { { 120, 230, 90 }, { 175, 255, 120 } }, size = 1.5, travel_time = 0.22, burst = 3.5, sparks = 8 },
