@@ -164,26 +164,39 @@ function PetFollowController.start()
         local followRate = config.movement.follow_lerp_rate or 10
         local attackRate = config.movement.attack_lerp_rate or 16
         local speedCfg = config.movement.speed
+        local maxTravel = config.movement.max_travel_speed
         local playerSpeed = localPlayer:GetAttribute("PetMoveSpeed")
-        local function alphaFor(baseRate, pet)
+
+        -- Move a pet toward its goal at `baseRate` smoothing, scaled by its move-speed
+        -- multiplier. Snap if catastrophically far (the player teleported). Otherwise
+        -- smooth-lerp BUT cap the per-frame travel to max_travel_speed*mult so a pet
+        -- flies over to a new target at a bounded speed instead of teleporting onto it
+        -- (the exponential lerp alone covers any distance almost instantly). Orientation
+        -- still uses the full lerp; only linear position is capped.
+        local catchupDist = config.movement.catchup_distance
+        local function moveToward(model, goal, baseRate)
             local mult = PetFormation.moveSpeedMultiplier(
                 playerSpeed,
-                pet:GetAttribute("MoveSpeedMult"),
+                model:GetAttribute("MoveSpeedMult"),
                 speedCfg
             )
-            return 1 - math.exp(-(baseRate * mult) * dt)
-        end
-
-        -- Move a pet toward its goal, snapping if it's catastrophically far (the player
-        -- teleported) instead of crawling across the map; otherwise smooth-lerp.
-        local catchupDist = config.movement.catchup_distance
-        local function moveToward(model, goal, alpha)
             local cur = model:GetPivot()
             if PetFormation.shouldSnap((cur.Position - goal.Position).Magnitude, catchupDist) then
                 model:PivotTo(goal)
-            else
-                model:PivotTo(cur:Lerp(goal, alpha))
+                return
             end
+            local alpha = 1 - math.exp(-(baseRate * mult) * dt)
+            local lerped = cur:Lerp(goal, alpha)
+            local newPos = lerped.Position
+            if maxTravel and maxTravel > 0 then
+                local step = newPos - cur.Position
+                local maxStep = maxTravel * mult * dt
+                if step.Magnitude > maxStep then
+                    newPos = cur.Position + step.Unit * maxStep
+                end
+            end
+            -- Capped position, lerped orientation.
+            model:PivotTo((lerped - lerped.Position) + newPos)
         end
 
         -- Full attack config (so every style's params reach attackOffset) with the player's
@@ -240,7 +253,7 @@ function PetFollowController.start()
                 local bob = PetFormation.floatOffset(phase + slot, config.float)
                 local target = Vector3.new(t.x, t.y + bob, t.z)
                 local goal = CFrame.lookAt(target, target + upFwd)
-                moveToward(model, goal, alphaFor(followRate, model))
+                moveToward(model, goal, followRate)
             end
         else
             for _, f in ipairs(followers) do
@@ -248,7 +261,7 @@ function PetFollowController.start()
                 local bob = PetFormation.floatOffset(phase + f.index, config.float)
                 local target = Vector3.new(t.x, t.y + bob, t.z)
                 local goal = CFrame.lookAt(target, target + upFwd)
-                moveToward(f.pet, goal, alphaFor(followRate, f.pet))
+                moveToward(f.pet, goal, followRate)
             end
         end
 
@@ -270,7 +283,7 @@ function PetFollowController.start()
                 local toC = Vector3.new(g.center.X - target.X, 0, g.center.Z - target.Z)
                 local dir = toC.Magnitude > 0.01 and toC.Unit or upFwd
                 local goal = CFrame.lookAt(target, target + dir)
-                moveToward(pet, goal, alphaFor(attackRate, pet))
+                moveToward(pet, goal, attackRate)
             end
         end
 

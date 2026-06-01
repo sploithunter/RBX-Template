@@ -101,8 +101,16 @@ return {
         follow_lerp_rate = 10,
         attack_lerp_rate = 16,
 
-        -- Pet move speed multiplies the lerp rates above. Driven by the player
-        -- attribute `PetMoveSpeed` (a stat/upgrade, default 1.0) and an optional
+        -- Hard cap on how fast (studs/sec) a pet can physically travel toward its
+        -- goal. Without this the exponential lerp above covers any distance almost
+        -- instantly, so a pet "teleports" onto a new mining target. The cap makes
+        -- pets visibly FLY OVER to a target (so move speed matters + mining DPS
+        -- ramps as they arrive). Scaled by the same move-speed multiplier below;
+        -- raise it for a snappier feel, lower it for slower, more deliberate travel.
+        max_travel_speed = 26,
+
+        -- Pet move speed multiplies the lerp rates + travel cap above. Driven by the
+        -- player attribute `PetMoveSpeed` (a stat/upgrade, default 1.0) and an optional
         -- per-pet model attribute `MoveSpeedMult` (for unique fast pets); the two
         -- multiply against `base`, clamped to [min, max].
         speed = { base = 1.0, min = 0.25, max = 4.0 },
