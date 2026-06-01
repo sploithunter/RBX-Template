@@ -26,10 +26,33 @@ local UserInputService = game:GetService("UserInputService")
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local POWER_ICONS = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_icons"))
+local PET_ROLES = require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
 
 local SquadHud = {}
 
 local localPlayer = Players.LocalPlayer
+
+-- Resolve a pet's archetype/role chip: PetRole attribute -> by_type[PetType] -> default.
+-- Returns { glyph, icon, color (Color3) }, cached per role id.
+local ROLE_CACHE = {}
+local function roleFor(pet)
+    local id = pet:GetAttribute("PetRole")
+        or (PET_ROLES.by_type and PET_ROLES.by_type[pet:GetAttribute("PetType")])
+        or PET_ROLES.default
+    local cached = ROLE_CACHE[id]
+    if cached then
+        return cached
+    end
+    local def = (PET_ROLES.roles and PET_ROLES.roles[id]) or {}
+    local c = def.color or { 90, 95, 110 }
+    cached = {
+        glyph = def.glyph or "?",
+        icon = def.icon or "",
+        color = Color3.fromRGB(c[1] or 90, c[2] or 95, c[3] or 110),
+    }
+    ROLE_CACHE[id] = cached
+    return cached
+end
 
 local STATE_COLOR = {
     Healthy = Color3.fromRGB(90, 210, 110),
@@ -285,13 +308,45 @@ function SquadHud.start()
         stroke.Transparency = 1 -- shown when selected
         stroke.Parent = frame
 
+        -- Archetype/role chip on the left (tank/melee/ranged/support/control). Coloured
+        -- letter glyph now; swaps to art when a role gets an icon in configs/pet_roles.
+        local roleChip = Instance.new("Frame")
+        roleChip.Name = "Role"
+        roleChip.AnchorPoint = Vector2.new(0, 0.5)
+        roleChip.Position = UDim2.new(0, 6, 0.5, 0)
+        roleChip.Size = UDim2.fromOffset(26, 26)
+        roleChip.BorderSizePixel = 0
+        roleChip.ClipsDescendants = true
+        roleChip.Parent = frame
+        local roleCorner = Instance.new("UICorner")
+        roleCorner.CornerRadius = UDim.new(0, 6)
+        roleCorner.Parent = roleChip
+        local roleGlyph = Instance.new("TextLabel")
+        roleGlyph.Name = "Glyph"
+        roleGlyph.BackgroundTransparency = 1
+        roleGlyph.Size = UDim2.fromScale(1, 1)
+        roleGlyph.Font = Enum.Font.GothamBold
+        roleGlyph.TextSize = 14
+        roleGlyph.TextColor3 = Color3.fromRGB(255, 255, 255)
+        roleGlyph.TextStrokeTransparency = 0.5
+        roleGlyph.Parent = roleChip
+        local roleIcon = Instance.new("ImageLabel")
+        roleIcon.Name = "Icon"
+        roleIcon.BackgroundTransparency = 1
+        roleIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+        roleIcon.Position = UDim2.fromScale(0.5, 0.5)
+        roleIcon.Size = UDim2.fromScale(1, 1)
+        roleIcon.ScaleType = Enum.ScaleType.Fit
+        roleIcon.Image = ""
+        roleIcon.Parent = roleChip
+
         -- Compact health bar: a near-black backing (so white text stays legible as the
         -- fill drains), a fill that goes green->yellow->red, the pet NAME inside it, and
         -- a right-aligned note (recharge countdown / Summon when downed). Rounded corners.
         local barBg = Instance.new("Frame")
         barBg.Name = "BarBg"
-        barBg.Position = UDim2.fromOffset(8, 6)
-        barBg.Size = UDim2.new(1, -16, 0, 20)
+        barBg.Position = UDim2.fromOffset(38, 6)
+        barBg.Size = UDim2.new(1, -46, 0, 20)
         barBg.BackgroundColor3 = Color3.fromRGB(12, 13, 18)
         barBg.BorderSizePixel = 0
         barBg.ClipsDescendants = true
@@ -340,8 +395,8 @@ function SquadHud.start()
         -- Hidden when the pet has no shield; rounded (pill) corners.
         local shieldBg = Instance.new("Frame")
         shieldBg.Name = "ShieldBg"
-        shieldBg.Position = UDim2.fromOffset(8, 28)
-        shieldBg.Size = UDim2.new(1, -16, 0, 4)
+        shieldBg.Position = UDim2.fromOffset(38, 28)
+        shieldBg.Size = UDim2.new(1, -46, 0, 4)
         shieldBg.BackgroundColor3 = Color3.fromRGB(12, 13, 18)
         shieldBg.BorderSizePixel = 0
         shieldBg.ClipsDescendants = true
@@ -390,6 +445,9 @@ function SquadHud.start()
             fill = fill,
             shieldBg = shieldBg,
             shieldFill = shieldFill,
+            roleChip = roleChip,
+            roleGlyph = roleGlyph,
+            roleIcon = roleIcon,
             status = status,
             badges = {},
         }
@@ -488,6 +546,13 @@ function SquadHud.start()
                         cards[s.slot] = card
                     end
                     card.name.Text = s.name .. (s.variant ~= "basic" and (" (" .. s.variant .. ")") or "")
+                    -- Archetype/role chip (icon if the role has art, else coloured glyph).
+                    local role = roleFor(pet)
+                    card.roleChip.BackgroundColor3 = role.color
+                    local hasRoleIcon = role.icon ~= ""
+                    card.roleIcon.Image = role.icon
+                    card.roleGlyph.Visible = not hasRoleIcon
+                    card.roleGlyph.Text = role.glyph
                     if s.downed then
                         -- Out of the fight: full bar in the recharge colour + a note.
                         card.fill.Size = UDim2.fromScale(1, 1)
