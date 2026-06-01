@@ -18,6 +18,8 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
+local InsertService = game:GetService("InsertService")
 
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
@@ -93,26 +95,64 @@ function EnemyService:_enemiesFolder()
     return folder
 end
 
--- Build the enemy model: a simple stationary dummy (slice 1a). PrimaryPart is the body so pet
--- formations surround its pivot; carries the target id + HP + archetype + contrib ledger.
-function EnemyService:_buildModel(enemyId, def, position, targetId)
-    local model = Instance.new("Model")
-    model.Name = "Enemy_" .. enemyId .. "_" .. targetId
+-- Load (once, cached) a real enemy art asset into a sanitized template: PrimaryPart
+-- set, every part anchored + non-colliding (movement is PivotTo, not physics), scaled
+-- to enemy size. Returns nil on any failure so spawning falls back to the procedural
+-- block. Cache stores `false` for known-bad ids so we don't re-yield on every spawn.
+function EnemyService:_enemyTemplate(assetId, scale)
+    self._modelCache = self._modelCache or {}
+    local cached = self._modelCache[assetId]
+    if cached ~= nil then
+        return cached or nil
+    end
 
-    local body = Instance.new("Part")
-    body.Name = "Body"
-    body.Shape = Enum.PartType.Block
-    body.Size = Vector3.new(5, 7, 5)
-    body.Color = Color3.fromRGB(180, 60, 60)
-    body.Material = Enum.Material.SmoothPlastic
-    body.Anchored = true -- stationary for slice 1a (no physics / no fall)
-    body.CanCollide = false
-    body.Position = position
-    body.Parent = model
-    model.PrimaryPart = body
+    local ok, container = pcall(function()
+        return InsertService:LoadAsset(assetId)
+    end)
+    local template
+    if ok and container then
+        template = container:FindFirstChildWhichIsA("Model") or container
+        if template ~= container then
+            template.Parent = nil
+            container:Destroy()
+        end
+        if not template.PrimaryPart then
+            template.PrimaryPart = template:FindFirstChildWhichIsA("BasePart", true)
+        end
+        if template.PrimaryPart then
+            for _, d in ipairs(template:GetDescendants()) do
+                if d:IsA("BasePart") then
+                    d.Anchored = true
+                    d.CanCollide = false
+                end
+            end
+            if scale and scale ~= 1 then
+                pcall(function()
+                    template:ScaleTo(scale)
+                end)
+            end
+            template.Parent = ServerStorage
+        else
+            template = nil
+        end
+    end
 
+    self._modelCache[assetId] = template or false
+    if not template and self._logger then
+        self._logger:Warn(
+            "Enemy model asset unusable; using procedural fallback",
+            { asset = assetId }
+        )
+    end
+    return template
+end
+
+-- Attach the combat contract every enemy needs regardless of art: the generic target
+-- id the pet plumbing keys on, the contrib ledger, HP/armor attributes, and an HP bar
+-- sized to sit above the model.
+function EnemyService:_attachEnemyDecor(model, body, enemyId, def, targetId)
     local idValue = Instance.new("NumberValue")
-    idValue.Name = "BreakableID" -- the generic target id the pet plumbing keys on
+    idValue.Name = "BreakableID"
     idValue.Value = targetId
     idValue.Parent = model
 
@@ -126,10 +166,17 @@ function EnemyService:_buildModel(enemyId, def, position, targetId)
     model:SetAttribute("IsEnemy", true)
     model:SetAttribute("Armor", def.armor or 0) -- defensive stat: mitigates pet damage
 
-    -- HP bar
+    local height = 7
+    local okExtents, sz = pcall(function()
+        return model:GetExtentsSize()
+    end)
+    if okExtents and sz then
+        height = sz.Y
+    end
+
     local bb = Instance.new("BillboardGui")
     bb.Size = UDim2.new(6, 0, 0.8, 0)
-    bb.StudsOffset = Vector3.new(0, 5, 0)
+    bb.StudsOffset = Vector3.new(0, height / 2 + 1.5, 0)
     bb.AlwaysOnTop = true
     bb.Adornee = body
     bb.Parent = body
@@ -144,7 +191,38 @@ function EnemyService:_buildModel(enemyId, def, position, targetId)
     fill.BackgroundColor3 = Color3.fromRGB(220, 70, 70)
     fill.BorderSizePixel = 0
     fill.Parent = bg
+end
 
+-- Build the enemy model. Uses the configured `model_asset` art when present (cloned
+-- from a cached template); otherwise a simple block dummy. PrimaryPart is the body so
+-- pet formations surround its pivot, and movement is via PivotTo (parts are anchored).
+function EnemyService:_buildModel(enemyId, def, position, targetId)
+    local model, body
+    if def.model_asset then
+        local template = self:_enemyTemplate(def.model_asset, def.model_scale)
+        if template then
+            model = template:Clone()
+            body = model.PrimaryPart
+        end
+    end
+
+    if not model then
+        model = Instance.new("Model")
+        body = Instance.new("Part")
+        body.Name = "Body"
+        body.Shape = Enum.PartType.Block
+        body.Size = Vector3.new(5, 7, 5)
+        body.Color = Color3.fromRGB(180, 60, 60)
+        body.Material = Enum.Material.SmoothPlastic
+        body.Anchored = true -- stationary base; chase moves it via PivotTo
+        body.CanCollide = false
+        body.Parent = model
+        model.PrimaryPart = body
+    end
+
+    model.Name = "Enemy_" .. enemyId .. "_" .. targetId
+    model:PivotTo(CFrame.new(position))
+    self:_attachEnemyDecor(model, body, enemyId, def, targetId)
     return model
 end
 

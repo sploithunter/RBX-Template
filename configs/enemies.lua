@@ -23,6 +23,11 @@ return {
             tier = "trash_mob",
             move_speed = 15, -- studs/sec while chasing (slice 2); skittery + fast
             armor = 0, -- defensive stat: pet damage mitigated by armor/(armor+k)
+            -- Real art (uploaded model). EnemyService clones+anchors+scales it; falls
+            -- back to the procedural block if the asset can't load. model_scale brings
+            -- the ~1.9-stud mesh up to enemy size (~7.6 tall).
+            model_asset = 110801864701636,
+            model_scale = 4,
             attack = { damage = 10, cadence = 1.5, sundering = 0 },
             drop_table = { lava_coins = 8, shadow_tokens = 1 },
         },
