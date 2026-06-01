@@ -17,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
 local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
@@ -127,6 +128,65 @@ function HotbarBar.start()
     local editMode = false
     local openPicker
 
+    -- Radial "edge-clock" cooldown overlay on a (circular) slot. Two clipped halves
+    -- each hold an oversized dark wedge pivoted at the circle centre; rotating them
+    -- sweeps a straight edge = a clock face. Returns set(elapsed, secondsLeft) where
+    -- elapsed is 0 (just cast, full dark) -> 1 (ready, hidden).
+    local function attachRadial(slotBtn)
+        local holder = Instance.new("Frame")
+        holder.Name = "Cool"
+        holder.Size = UDim2.fromScale(1, 1)
+        holder.BackgroundTransparency = 1
+        holder.Visible = false
+        holder.ZIndex = 4
+        holder.Parent = slotBtn
+        local wedges = {}
+        for _, side in ipairs({ "R", "L" }) do
+            local left = side == "L"
+            local clip = Instance.new("Frame")
+            clip.Name = side
+            clip.BackgroundTransparency = 1
+            clip.ClipsDescendants = true
+            clip.Size = UDim2.fromScale(0.5, 1)
+            clip.Position = left and UDim2.fromScale(0, 0) or UDim2.fromScale(0.5, 0)
+            clip.ZIndex = 4
+            clip.Parent = holder
+            local w = Instance.new("Frame")
+            w.AnchorPoint = left and Vector2.new(1, 0.5) or Vector2.new(0, 0.5)
+            w.Position = left and UDim2.fromScale(1, 0.5) or UDim2.fromScale(0, 0.5)
+            w.Size = UDim2.fromScale(2, 2)
+            w.BackgroundColor3 = Color3.fromRGB(8, 9, 13)
+            w.BackgroundTransparency = 0.3
+            w.BorderSizePixel = 0
+            w.ZIndex = 4
+            w.Parent = clip
+            wedges[side] = w
+        end
+        local num = Instance.new("TextLabel")
+        num.BackgroundTransparency = 1
+        num.Size = UDim2.fromScale(1, 1)
+        num.Font = Enum.Font.GothamBold
+        num.TextSize = 15
+        num.TextColor3 = Color3.fromRGB(255, 255, 255)
+        num.TextStrokeTransparency = 0.4
+        num.ZIndex = 5
+        num.Text = ""
+        num.Parent = holder
+        return function(elapsed, secondsLeft)
+            if not elapsed or elapsed >= 1 then
+                holder.Visible = false
+                return
+            end
+            holder.Visible = true
+            num.Text = secondsLeft and tostring(math.ceil(secondsLeft)) or ""
+            local remaining = 1 - elapsed -- dark cover represents remaining cooldown
+            local rightCovered = math.clamp(remaining * 2, 0, 1)
+            local leftCovered = math.clamp((remaining - 0.5) * 2, 0, 1)
+            wedges.R.Rotation = (1 - rightCovered) * 180
+            wedges.L.Rotation = -(1 - leftCovered) * 180
+        end
+    end
+
     -- Two rows of 10 slots. Bottom row = slots 1-10, top row = 11-20.
     local cards = {}
     local function makeRow(yOffset, base)
@@ -143,8 +203,9 @@ function HotbarBar.start()
             b.BackgroundTransparency = 0.15
             b.BorderSizePixel = 0
             b.Parent = root
+            b.ClipsDescendants = true
             local c = Instance.new("UICorner")
-            c.CornerRadius = UDim.new(0, 6)
+            c.CornerRadius = UDim.new(1, 0) -- circular slot
             c.Parent = b
 
             local key = Instance.new("TextLabel")
@@ -171,6 +232,8 @@ function HotbarBar.start()
             lbl.Text = ""
             lbl.Parent = b
 
+            local cool = attachRadial(b)
+
             b.MouseButton1Click:Connect(function()
                 if editMode then
                     openPicker(slot)
@@ -178,7 +241,7 @@ function HotbarBar.start()
                     Signals.Hotbar_Activate:FireServer({ slot = slot })
                 end
             end)
-            cards[slot] = { frame = b, bind = lbl }
+            cards[slot] = { frame = b, bind = lbl, cool = cool, bindObj = nil }
         end
     end
     makeRow(SLOT, 10) -- TOP row (upper): slots 11-20 = Shift+1-0
@@ -196,6 +259,7 @@ function HotbarBar.start()
             local card = cards[slot]
             if card then
                 local bind = state.hotbar[tostring(slot)] or state.hotbar[slot]
+                card.bindObj = bind
                 card.bind.Text = bindLabel(bind)
                 card.frame.BackgroundColor3 = bind and (TYPE_COLOR[bind.type] or Color3.fromRGB(26, 28, 38))
                     or Color3.fromRGB(26, 28, 38)
@@ -205,6 +269,31 @@ function HotbarBar.start()
     end
     Signals.Hotbar_State.OnClientEvent:Connect(applyState)
     Signals.Hotbar_RequestState:FireServer()
+
+    -- Power cooldowns -> the per-slot radial edge-clock. Stamp the local clock when the
+    -- push arrives so the sweep is smooth (server untilTime is only 1s-granular).
+    local powerCooldowns = {} -- powerId -> { startClock, cooldown }
+    Signals.Power_Cooldown.OnClientEvent:Connect(function(p)
+        if type(p) == "table" and p.power and (p.cooldown or 0) > 0 then
+            powerCooldowns[p.power] = { startClock = os.clock(), cooldown = p.cooldown }
+        end
+    end)
+    RunService.Heartbeat:Connect(function()
+        local nowC = os.clock()
+        for slot = 1, 20 do
+            local card = cards[slot]
+            if card and card.cool then
+                local b = card.bindObj
+                local cd = b and b.type == "power" and powerCooldowns[b.target]
+                if cd then
+                    local since = nowC - cd.startClock
+                    card.cool(since / cd.cooldown, cd.cooldown - since)
+                else
+                    card.cool(1) -- ready / not a power -> hide the clock
+                end
+            end
+        end
+    end)
     -- Re-request when pets/loadout likely changed.
     task.delay(2, function()
         Signals.Hotbar_RequestState:FireServer()
