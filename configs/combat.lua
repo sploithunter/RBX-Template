@@ -45,6 +45,10 @@ return {
         perception_interval = 0.75,
         leash_range = 90,
         default_move_speed = 12,
+        -- When chasing, the enemy presses this many studs INSIDE attack_range instead of
+        -- parking on its edge — otherwise it stalls just out of bite range of a kiting
+        -- target (float boundary) and never lands a hit. Keep < attack_range.
+        attack_press = 3,
         -- Client render smoothing: the server moves enemies in ~update_interval steps;
         -- EnemyMotion (client) interpolates the visible model toward each step at this
         -- exponential rate (higher = snappier, lower = floatier). Server stays the

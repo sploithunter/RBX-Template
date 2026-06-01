@@ -582,12 +582,15 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     local chaseTo = self:_petPosition(targetPet, pfs)
     local rooted = (model:GetAttribute("RootedUntil") or 0) > os.time()
     local moveSpeed = rooted and 0 or ((def and def.move_speed) or eng.default_move_speed or 12)
+    -- Press inside attack_range so the enemy closes into bite range instead of stalling
+    -- on its edge (where a kiting target floats just out of reach).
+    local chaseStop = math.max(1, atk - (eng.attack_press or 3))
     local np = EnemyAI.chaseStep(
         { x = ePos.X, y = ePos.Y, z = ePos.Z },
         { x = chaseTo.X, y = chaseTo.Y, z = chaseTo.Z },
         moveSpeed,
         dt or 0.15,
-        atk
+        chaseStop
     )
     if math.abs(np.x - ePos.X) > 1e-3 or math.abs(np.z - ePos.Z) > 1e-3 then
         local newPos = Vector3.new(np.x, np.y, np.z)
