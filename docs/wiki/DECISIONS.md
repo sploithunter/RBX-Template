@@ -120,3 +120,16 @@ Phase 4 builds combat (Feature 10) + Focus (Feature 12) as **server-owned, confi
 - [Studio Workflow](STUDIO_WORKFLOW.md)
 - [Reference Game Insights](REFERENCE_GAME_INSIGHTS.md)
 - [Foundation & Requirements](../FOUNDATION_AND_REQUIREMENTS.md)
+
+## Combat Down / Recover — Slot-Cooldown Model (2026-06-01)
+
+How a downed pet recovers, resolving the "stacked pets are OP" problem. Two timers, different jobs:
+
+- **Slot cooldown (player-managed):** an active-squad slot is a *crew position*. When its pet leaves, the SLOT recharges before it can be re-crewed — this paces *throughput* independent of stack depth, so owning 1000 pets can't be spammed indefinitely. **Recall (proactive pull of a Strained/Critical pet) = short cooldown** (rewards attention but still capped); **fully downed = long cooldown** (the real cost). Both in `configs/squad.lua slot_recovery` (`recall_cooldown_seconds`, `down_cooldown_seconds`) — pure balance knobs, tuned against enemy DPS.
+- **Per-pet / stack token bucket (kept as-is):** a downed instance is in spirit form; its stack's `ready_count` drops and refills over time (`StackPool`), and uniques use `lastDownedAt` (`SpiritForm`). You can't re-summon something that *just* went down; deep stacks are a resilience reserve, not infinite bodies.
+
+Common case: deep stack → slot frees → re-summon a ready instance of the slot's assigned loadout pet (manual click now; auto via game-pass later). The slot is the binding timer; the bucket only bites when you down a type faster than it refills. Difficulty = enemy down-rate vs slot recharge; all slots down → safe-zone teleport, no death (§16.4).
+
+Pets never die (§11.1). Staged degradation (Healthy→Strained→Critical→Spirit Form, §11.3) gives the agency to recall before a forced down. No potion revives (player-initiated **Sacrifice** power is the no-potion restore path, §16.5). Built systems (`SpiritForm`/`StackPool`/`ActiveSquad`) already model this; live combat (`EnemyService`) must be wired into them (currently uses a throwaway model-level `CombatDowned` flag).
+
+UI: a City-of-Heroes-style **right-side squad HUD** — per-slot portrait + state/health + cooldown, click a pet (world or HUD) to target, act on it (recall / summon / [heal / buff via powers, later]).

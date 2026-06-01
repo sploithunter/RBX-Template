@@ -56,6 +56,24 @@ function PetEndurance.canRegen(now, lastHitAt, delaySeconds)
     return (now - (lastHitAt or 0)) >= (delaySeconds or 0)
 end
 
+-- Staged degradation state (§11.3) for HUD + recall agency. The pet weakens through
+-- Strained -> Critical before it is Downed, so the player can recall it in time.
+-- thresholds: { strained_at, critical_at } health fractions (defaults 0.6 / 0.3).
+function PetEndurance.state(damageTaken, petPower, factor, thresholds)
+    if PetEndurance.isDowned(damageTaken, petPower, factor) then
+        return "Downed"
+    end
+    local hf = PetEndurance.healthFraction(damageTaken, petPower, factor)
+    local strainedAt = (thresholds and thresholds.strained_at) or 0.6
+    local criticalAt = (thresholds and thresholds.critical_at) or 0.3
+    if hf <= criticalAt then
+        return "Critical"
+    elseif hf <= strainedAt then
+        return "Strained"
+    end
+    return "Healthy"
+end
+
 -- Health fraction in [0,1] (1 = full, 0 = downed) for an endurance bar.
 function PetEndurance.healthFraction(damageTaken, petPower, factor)
     local max = PetEndurance.maxEndurance(petPower, factor)

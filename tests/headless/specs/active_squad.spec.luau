@@ -48,4 +48,29 @@ return function()
             expect(ActiveSquad.canSwap(true, 10000 - 6, 10000, cooldown).ok).to.equal(true) -- 6s ago
         end)
     end)
+
+    describe("ActiveSquad slot recovery", function()
+        local cfg = { slot_recovery = { recall_cooldown_seconds = 4, down_cooldown_seconds = 20 } }
+
+        it("recall leaves a short cooldown, a forced down a long one", function()
+            expect(ActiveSquad.slotCooldownSeconds("recall", cfg)).to.equal(4)
+            expect(ActiveSquad.slotCooldownSeconds("down", cfg)).to.equal(20)
+        end)
+
+        it("defaults the down cooldown for any non-recall reason", function()
+            expect(ActiveSquad.slotCooldownSeconds("anything", cfg)).to.equal(20)
+        end)
+
+        it("slotReady is true with no cooldown and once the time passes", function()
+            expect(ActiveSquad.slotReady(nil, 100)).to.equal(true)
+            expect(ActiveSquad.slotReady(120, 100)).to.equal(false)
+            expect(ActiveSquad.slotReady(120, 120)).to.equal(true)
+        end)
+
+        it("canSummon needs both the slot ready AND a ready instance", function()
+            expect(ActiveSquad.canSummon(true, true).ok).to.equal(true)
+            expect(ActiveSquad.canSummon(false, true).reason).to.equal("slot_recharging")
+            expect(ActiveSquad.canSummon(true, false).reason).to.equal("no_ready_instance")
+        end)
+    end)
 end

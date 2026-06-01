@@ -31,4 +31,34 @@ function ActiveSquad.canSwap(inCombat, lastSwapAt, now, cooldown)
     return { ok = false, reason = "swap_cooldown_active", remaining = cooldown - elapsed }
 end
 
+-- ===== Slot recovery (the player-managed timer) =====
+-- A squad slot is a crew position: when its pet leaves, the SLOT recharges before it
+-- can be re-crewed. This paces throughput independent of stack depth (1000 pets can't
+-- be spammed). A proactive RECALL leaves a short cooldown; a forced DOWN, a long one.
+
+function ActiveSquad.slotCooldownSeconds(reason, config)
+    local sr = (config and config.slot_recovery) or {}
+    if reason == "recall" then
+        return sr.recall_cooldown_seconds or 4
+    end
+    return sr.down_cooldown_seconds or 20 -- "down" (default) = the long cost
+end
+
+-- A slot can be re-crewed once its cooldown has elapsed (nil cooldown = ready).
+function ActiveSquad.slotReady(cooldownUntil, now)
+    return cooldownUntil == nil or now >= cooldownUntil
+end
+
+-- Summon is allowed only when the slot is off cooldown AND a ready instance exists
+-- (stack ready_count > 0, or a unique past its spirit-form cooldown).
+function ActiveSquad.canSummon(slotReady, hasReadyInstance)
+    if not slotReady then
+        return { ok = false, reason = "slot_recharging" }
+    end
+    if not hasReadyInstance then
+        return { ok = false, reason = "no_ready_instance" }
+    end
+    return { ok = true }
+end
+
 return ActiveSquad

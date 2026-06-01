@@ -63,6 +63,31 @@ return function()
         end)
     end)
 
+    describe("PetEndurance.state (staged degradation)", function()
+        -- power 100, factor 1.0 -> ceiling 100. thresholds: strained<=0.6, critical<=0.3
+        local th = { strained_at = 0.6, critical_at = 0.3 }
+        it("is Healthy above the strained threshold", function()
+            expect(PetEndurance.state(0, 100, 1.0, th)).to.equal("Healthy")
+            expect(PetEndurance.state(39, 100, 1.0, th)).to.equal("Healthy") -- hf 0.61
+        end)
+        it("is Strained between the thresholds", function()
+            expect(PetEndurance.state(40, 100, 1.0, th)).to.equal("Strained") -- hf 0.60
+            expect(PetEndurance.state(65, 100, 1.0, th)).to.equal("Strained") -- hf 0.35
+        end)
+        it("is Critical below the critical threshold", function()
+            expect(PetEndurance.state(75, 100, 1.0, th)).to.equal("Critical") -- hf 0.25
+            expect(PetEndurance.state(99, 100, 1.0, th)).to.equal("Critical") -- hf 0.01
+        end)
+        it("is Downed at/over the ceiling", function()
+            expect(PetEndurance.state(100, 100, 1.0, th)).to.equal("Downed")
+            expect(PetEndurance.state(140, 100, 1.0, th)).to.equal("Downed")
+        end)
+        it("falls back to default thresholds when none given", function()
+            expect(PetEndurance.state(0, 100, 1.0)).to.equal("Healthy")
+            expect(PetEndurance.state(100, 100, 1.0)).to.equal("Downed")
+        end)
+    end)
+
     describe("PetEndurance.healthFraction", function()
         it("is 1 at full health and 0 when downed", function()
             expect(PetEndurance.healthFraction(0, 100, 1.0)).to.equal(1)

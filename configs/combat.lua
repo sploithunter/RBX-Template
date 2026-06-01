@@ -50,6 +50,18 @@ return {
         },
     },
 
+    -- Staged degradation (§11.3): a pet visibly weakens before it is downed, so the
+    -- player can RECALL it first (the agency that makes recall worthwhile). Keyed off
+    -- the pet's health fraction (1 = full, 0 = downed): at/below strained_at -> Strained,
+    -- at/below critical_at -> Critical. The *_damage_penalty fractions reduce the damage
+    -- a pet DEALS in that state (0 = off for now; wired with the HUD's combat effects).
+    degradation = {
+        strained_at = 0.6,
+        critical_at = 0.3,
+        strained_damage_penalty = 0.0,
+        critical_damage_penalty = 0.0,
+    },
+
     spawners = {
         hell_1_lava = {
             biome = "lava",
