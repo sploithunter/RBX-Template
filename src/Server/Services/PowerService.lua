@@ -9,10 +9,50 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
 
 local PowerSelection = require(ReplicatedStorage.Shared.Game.PowerSelection)
 local ArchetypeLogic = require(ReplicatedStorage.Shared.Game.ArchetypeLogic)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+
+-- Placeholder cast VFX colour per effect family (swap for real art later).
+local FAMILY_COLOR = {
+    heal = Color3.fromRGB(90, 210, 110),
+    buff = Color3.fromRGB(235, 150, 60),
+    defense_buff = Color3.fromRGB(235, 200, 70),
+    absorb = Color3.fromRGB(235, 200, 70),
+    root = Color3.fromRGB(90, 200, 235),
+    vulnerable = Color3.fromRGB(235, 90, 90),
+}
+
+-- Temporary burst around the caster so AoE powers are visible (expands + fades, ~0.7s).
+local function spawnCastVisual(player, family)
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        return
+    end
+    local fx = Instance.new("Part")
+    fx.Name = "PowerCastFX"
+    fx.Shape = Enum.PartType.Ball
+    fx.Material = Enum.Material.Neon
+    fx.Color = FAMILY_COLOR[family] or Color3.fromRGB(220, 220, 220)
+    fx.Transparency = 0.45
+    fx.Anchored = true
+    fx.CanCollide = false
+    fx.CanQuery = false
+    fx.Massless = true
+    fx.Size = Vector3.new(3, 3, 3)
+    fx.CFrame = CFrame.new(hrp.Position)
+    fx.Parent = Workspace
+    TweenService:Create(
+        fx,
+        TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { Size = Vector3.new(26, 26, 26), Transparency = 1 }
+    ):Play()
+    Debris:AddItem(fx, 0.8)
+end
 
 local PowerService = {}
 PowerService.__index = PowerService
@@ -114,6 +154,7 @@ function PowerService:Cast(player, powerId)
     local kind = (self._powersConfig.effect_kinds and self._powersConfig.effect_kinds[def.effect])
         or { family = "heal", magnitude = 0, duration = 0 }
     self:_applyEffect(player, kind, now)
+    pcall(spawnCastVisual, player, kind.family) -- placeholder cast burst
 
     local cd = tonumber(def.cooldown_seconds) or 0
     cds[powerId] = now + cd
