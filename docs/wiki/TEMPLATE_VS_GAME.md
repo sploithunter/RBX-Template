@@ -69,7 +69,7 @@ These are the "applies to multiple games" systems you called out (trading, hatch
 | **Fusion** | `FusionLogic` | `FusionService` | Combine-items mechanic. |
 | **Resource pool** | `StackPool` | `StackPoolService` | Token-bucket (regenerating resource). |
 | **Combat math** ⚠️ | `CombatMath`, `CombatSim`, `Targeting` | `CombatService`, `AutoTargetService` | Math/targeting are generic; the "invulnerable spirit, pets deal damage" *rule* is Reference. |
-| **Follower movement** | `PetFormation` | `PetFollowService`, `PetFollowController` | Config-driven, **size-aware** formations (sort smallest→front, gaps scale by footprint) with player-selectable modes — conga/risers/arc — persisted via the `PetFormation` setting. Works for any follower game. |
+| **Follower / attack movement** | `PetFormation` | `PetFollowService`, `PetFollowController` | Config-driven, **size-aware** follow formations (conga/risers/arc) + attack formations (orbit/static_ring/lunge/spiral/pincer/firing_line/swarm), both player-selectable + persisted; per-player + per-pet **move speed**; teleport **catch-up snap**. Works for any follower game. |
 | **Conditions** | `Condition` | — | Generic predicate evaluation. |
 
 ## 🟨 Template-Reference — Pet Realm features worth shipping as examples
