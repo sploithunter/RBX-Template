@@ -92,7 +92,12 @@ function PowerService:_applyEffect(player, kind, now)
             for _, pet in ipairs(pets:GetChildren()) do
                 if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
                     local taken = pet:GetAttribute("CombatDamageTaken") or 0
-                    pet:SetAttribute("CombatDamageTaken", math.max(0, taken - mag))
+                    if taken > 0 then
+                        pet:SetAttribute("CombatDamageTaken", math.max(0, taken - mag))
+                        -- Instant-effect tell: blinking heal badge on the card (3s, mirrors
+                        -- combat.engagement.instant_fx_seconds) — same feedback as auto-heal.
+                        pet:SetAttribute("HealFxUntil", now + 3)
+                    end
                 end
             end
         end

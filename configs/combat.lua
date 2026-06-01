@@ -82,6 +82,10 @@ return {
             partial_per_second = 12,
             delay_seconds = 3,
         },
+        -- Instant effects (heals etc.) have no duration to show, so we flash a blinking
+        -- badge on the pet's squad card for this long + pop a world puff — a visible
+        -- "tell" of what just happened. Server stamps `HealFxUntil = os.time()+this`.
+        instant_fx_seconds = 3,
         -- Aggro / threat table (src/Shared/Game/AggroTable). The enemy chases + bites the
         -- highest-aggro attacker. Aggro builds from DAMAGE dealt to the enemy
         -- (damage_factor per point) plus PASSIVE threat each second (× the attacker's

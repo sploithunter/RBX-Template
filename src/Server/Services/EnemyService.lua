@@ -20,6 +20,8 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local InsertService = game:GetService("InsertService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
 
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
@@ -910,6 +912,34 @@ function EnemyService:_roleAutoHeal(pet)
     return def and def.auto_heal
 end
 
+-- A green heal puff above a pet (world-side "tell" that it was just healed). Expands +
+-- fades over ~0.7s; cleaned by Debris.
+function EnemyService:_spawnHealVisual(pet)
+    local pp = pet.PrimaryPart
+    if not pp then
+        return
+    end
+    local fx = Instance.new("Part")
+    fx.Name = "HealFX"
+    fx.Shape = Enum.PartType.Ball
+    fx.Material = Enum.Material.Neon
+    fx.Color = Color3.fromRGB(95, 225, 120)
+    fx.Transparency = 0.35
+    fx.Anchored = true
+    fx.CanCollide = false
+    fx.CanQuery = false
+    fx.Massless = true
+    fx.Size = Vector3.new(2, 2, 2)
+    fx.CFrame = pp.CFrame
+    fx.Parent = Workspace
+    TweenService:Create(
+        fx,
+        TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { Size = Vector3.new(8, 8, 8), Transparency = 1 }
+    ):Play()
+    Debris:AddItem(fx, 0.8)
+end
+
 -- Support pets (role.auto_heal) periodically mend the most-hurt non-downed ally in their
 -- own squad — reduce its accumulated CombatDamageTaken. The squad healer keeps the tank up.
 function EnemyService:_supportPass(now)
@@ -955,6 +985,14 @@ function EnemyService:_supportPass(now)
                                 factor
                             )
                         end
+                        -- Visual tell: blinking heal badge (HealFxUntil) + world heal puff,
+                        -- so an instant heal is visible even though it has no duration.
+                        local fxSec = (
+                            self._combatConfig.engagement
+                            and self._combatConfig.engagement.instant_fx_seconds
+                        ) or 3
+                        target:SetAttribute("HealFxUntil", os.time() + fxSec)
+                        self:_spawnHealVisual(target)
                     end
                 end
             end

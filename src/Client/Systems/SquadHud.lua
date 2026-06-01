@@ -127,6 +127,9 @@ end
 local PET_EFFECTS = {
     { key = "defense", source = "pet", untilAttr = "DefenseBuffUntil", color = Color3.fromRGB(235, 190, 70), label = "DEF", icon = POWER_ICONS.status.defense },
     { key = "damage", source = "player", untilAttr = "PetDamageBuffUntil", color = Color3.fromRGB(235, 90, 90), label = "DMG", icon = POWER_ICONS.status.damage },
+    -- Instant effects flash a blinking pulse badge (no countdown) for their FX window so
+    -- you can see what just happened. heal = the support/heal-power tell (HealFxUntil).
+    { key = "heal", source = "pet", untilAttr = "HealFxUntil", color = Color3.fromRGB(90, 210, 110), label = "HEAL", icon = POWER_ICONS.actions.heal, pulse = true },
     -- (shield is now the thin blue secondary bar on the card, not a badge)
 }
 
@@ -141,7 +144,8 @@ local function activeEffectsFor(pet, player, now)
                     key = e.key,
                     color = e.color,
                     label = e.label,
-                    timer = math.ceil(until_ - now) .. "s",
+                    -- Pulse effects (instant tells) show no countdown; timed buffs do.
+                    timer = e.pulse and "" or (math.ceil(until_ - now) .. "s"),
                     icon = e.icon,
                     remaining = until_ - now, -- seconds left (drives the expiry blink)
                 }
