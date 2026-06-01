@@ -164,9 +164,15 @@ function HotbarService:Activate(player, payload)
             return { ok = true, type = "pet", target = bind.target }
         end
         return { ok = false, reason = "summon_unavailable" }
+    elseif bind.type == "power" then
+        local power = self:_service("PowerService")
+        if power and power.Cast then
+            return power:Cast(player, bind.target)
+        end
+        return { ok = false, reason = "power_unavailable" }
     end
 
-    -- power / roster: effects not wired yet (support-power system is a later slice).
+    -- roster: deploy effects not wired yet.
     if self._logger then
         self._logger:Info("Hotbar activate (no effect yet)", {
             type = bind.type,

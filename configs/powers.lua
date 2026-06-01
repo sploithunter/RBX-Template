@@ -12,6 +12,31 @@ return {
     -- Levels that grant a power selection (one per level). Tunable.
     selection_levels = { 5, 9, 13, 17, 21, 25 },
 
+    -- How each `effect` keyword resolves to a concrete SUPPORT action when cast
+    -- (§16.5 firewall: player powers never deal direct damage — "damage" effects
+    -- become enemy VULNERABILITY so pets hit harder). Families the services apply:
+    --   heal      — refill `magnitude` endurance on the player's living pets
+    --   buff      — x`magnitude` pet damage for `duration`s (player PetDamageBuff)
+    --   root      — engaged enemies can't chase for `duration`s
+    --   vulnerable— engaged enemies take x`magnitude` pet damage for `duration`s
+    effect_kinds = {
+        shield = { family = "heal", magnitude = 40, duration = 0 },
+        team_shield = { family = "heal", magnitude = 60, duration = 0 },
+        ice_armor = { family = "heal", magnitude = 40, duration = 0 },
+        dune_shield = { family = "heal", magnitude = 40, duration = 0 },
+        ember_ward = { family = "heal", magnitude = 40, duration = 0 },
+        dodge = { family = "heal", magnitude = 30, duration = 0 },
+        damage_buff = { family = "buff", magnitude = 1.5, duration = 8 },
+        root = { family = "root", magnitude = 0, duration = 5 },
+        aoe_slow = { family = "root", magnitude = 0, duration = 5 },
+        blizzard = { family = "root", magnitude = 0, duration = 6 },
+        aoe_blind = { family = "vulnerable", magnitude = 1.5, duration = 6 },
+        damage_over_time = { family = "vulnerable", magnitude = 1.5, duration = 6 },
+        aoe_damage = { family = "vulnerable", magnitude = 2.0, duration = 5 },
+        mark_of_flame = { family = "vulnerable", magnitude = 1.5, duration = 8 },
+        eruption = { family = "vulnerable", magnitude = 2.0, duration = 5 },
+    },
+
     powers = {
         -- Geomancer
         stone_skin = {

@@ -413,9 +413,10 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     -- 4) CHASE the PLAYER until in attack range (the pet swarm — locked in attack
     -- formation around this enemy — moves with it, so chasing the player gives the
     -- "enemy + swarm pursue you" feel; chasing a pet would never move since pets
-    -- already orbit the enemy).
+    -- already orbit the enemy). A ROOTED enemy (Cryomancer control power) can't move.
     local chaseTo = hrp.Position
-    local moveSpeed = (def and def.move_speed) or eng.default_move_speed or 12
+    local rooted = (model:GetAttribute("RootedUntil") or 0) > os.time()
+    local moveSpeed = rooted and 0 or ((def and def.move_speed) or eng.default_move_speed or 12)
     local np = EnemyAI.chaseStep(
         { x = ePos.X, y = ePos.Y, z = ePos.Z },
         { x = chaseTo.X, y = chaseTo.Y, z = chaseTo.Z },

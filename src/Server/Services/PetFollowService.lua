@@ -221,6 +221,16 @@ function PetFollowService:_mine(player, pet, breakable)
         currency = breakable:GetAttribute("Currency"),
     }
     local dmg = combat:ResolvePetDamage(player, ctx)
+    -- Support-power modifiers (Feature 14): the player's active damage buff and the
+    -- target's vulnerability both scale pet damage (os.time-gated, set by PowerService).
+    local nowT = os.time()
+    if (player:GetAttribute("PetDamageBuffUntil") or 0) > nowT then
+        dmg = dmg * (player:GetAttribute("PetDamageBuff") or 1)
+    end
+    if (breakable:GetAttribute("VulnerableUntil") or 0) > nowT then
+        dmg = dmg * (breakable:GetAttribute("VulnerableMult") or 1)
+    end
+    dmg = math.floor(dmg + 0.5)
     local applied = PetCombat.applyDamage(hp, dmg)
     breakable:SetAttribute("HP", applied.hp)
 
