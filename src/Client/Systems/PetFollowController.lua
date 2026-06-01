@@ -49,6 +49,13 @@ local function petFootprint(pet, config)
     return f
 end
 
+-- Stable per-pet ordering key (the equip slot). Distinct + stable per equipped pet, so sorts
+-- that tie on size (identical pets) stay deterministic instead of swapping frame to frame.
+local function petSlot(pet)
+    local n = pet:FindFirstChild("PositionNumber")
+    return (n and n.Value) or 0
+end
+
 local function findBreakable(targetType, world, id)
     local breakables = Workspace:FindFirstChild("Game")
         and Workspace.Game:FindFirstChild("Breakables")
@@ -227,9 +234,14 @@ function PetFollowController.start()
 
         -- Attackers: arrange around the target per the attack style, facing the center.
         for _, g in pairs(groups) do
-            -- smallest -> first slot, so huge pets take the outer slots (spiral arm / line ends)
+            -- smallest -> first slot, so huge pets take the outer slots (spiral arm / line ends).
+            -- Tiebreak by equip slot so identical pets keep a fixed order (no frame-to-frame swap).
             table.sort(g.pets, function(p1, p2)
-                return petFootprint(p1, config) < petFootprint(p2, config)
+                local f1, f2 = petFootprint(p1, config), petFootprint(p2, config)
+                if f1 ~= f2 then
+                    return f1 < f2
+                end
+                return petSlot(p1) < petSlot(p2)
             end)
             local gcount = #g.pets
             for gi, pet in ipairs(g.pets) do
