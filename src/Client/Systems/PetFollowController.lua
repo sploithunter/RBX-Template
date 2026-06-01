@@ -39,6 +39,13 @@ local function roleStandoff(pet)
     return (def and tonumber(def.standoff)) or 0
 end
 
+-- Kiters (role.kite) hold their player-formation slot and snipe rather than orbiting the
+-- target, so a chasing enemy must close on them instead of drifting with the orbit.
+local function roleKites(pet)
+    local def = PetRoles.roles and PetRoles.roles[petRoleId(pet)]
+    return def and def.kite == true
+end
+
 local PetFollowController = {}
 
 local localPlayer = Players.LocalPlayer
@@ -145,11 +152,15 @@ function PetFollowController.start()
     -- be required headless, where Vector3 doesn't exist).
     local boltCfg = table.clone(config.ranged_bolt or {})
     local boltInterval = boltCfg.interval or 0.55
+    local castLockSeconds = boltCfg.cast_lock_seconds or 0
     if type(boltCfg.target_offset) == "table" then
         local o = boltCfg.target_offset
         boltCfg.target_offset = Vector3.new(o[1] or 0, o[2] or 0, o[3] or 0)
     end
     local nextBolt = setmetatable({}, { __mode = "k" }) -- pet model -> next os.clock to fire
+    -- Cast-lock: a ranged pet that just fired can't move until this clock — a melee enemy
+    -- gets a window to close the gap (counterplay to kiting).
+    local castLockUntil = setmetatable({}, { __mode = "k" })
 
     -- OTHER players' pets, server-relayed (the server never relays our own — those stay local).
     local remoteTargets = setmetatable({}, { __mode = "k" }) -- pet model -> latest relayed CFrame
@@ -251,6 +262,10 @@ function PetFollowController.start()
         end
 
         local function moveToward(model, goal, baseRate)
+            -- Cast-locked (just-fired ranged pet): hold position so it can't kite freely.
+            if castLockUntil[model] and dt and os.clock() < castLockUntil[model] then
+                return
+            end
             local mult = PetFormation.moveSpeedMultiplier(
                 playerSpeed,
                 model:GetAttribute("MoveSpeedMult"),
@@ -283,8 +298,9 @@ function PetFollowController.start()
         local attackCfg = table.clone(config.attack)
         attackCfg.style = localPlayer:GetAttribute("PetAttackStyle") or config.attack.style
 
-        local groups = {} -- id -> { center, pets = {} }
+        local groups = {} -- id -> { center, pets = {} }   (melee/tank: orbit the target)
         local followers = {}
+        local kiters = {} -- ranged: hold player formation + snipe the target
         for slot, pet in ipairs(pets) do
             local tid = pet:FindFirstChild("TargetID")
             local breakable = nil
@@ -293,7 +309,14 @@ function PetFollowController.start()
                 local tw = pet:FindFirstChild("TargetWorld")
                 breakable = findBreakable(tt and tt.Value, tw and tw.Value, tid.Value)
             end
-            if breakable then
+            local posNV = pet:FindFirstChild("PositionNumber")
+            local index = (posNV and posNV.Value > 0) and posNV.Value or slot
+            if breakable and roleKites(pet) then
+                -- Ranged: stays in the player formation (so a chasing enemy must close on
+                -- it) and fires from there.
+                table.insert(followers, { pet = pet, index = index })
+                table.insert(kiters, { pet = pet, model = breakable })
+            elseif breakable then
                 local g = groups[tid.Value]
                 if not g then
                     g = { center = breakable:GetPivot().Position, model = breakable, pets = {} }
@@ -301,8 +324,6 @@ function PetFollowController.start()
                 end
                 table.insert(g.pets, pet)
             else
-                local posNV = pet:FindFirstChild("PositionNumber")
-                local index = (posNV and posNV.Value > 0) and posNV.Value or slot
                 table.insert(followers, { pet = pet, index = index })
             end
         end
@@ -373,13 +394,21 @@ function PetFollowController.start()
                 local dir = toC.Magnitude > 0.01 and toC.Unit or upFwd
                 local goal = CFrame.lookAt(target, target + dir)
                 moveToward(pet, goal, attackRate)
+            end
+        end
 
-                -- Ranged pets zap their target with the enchanter lightning bolt on cadence.
-                if boltCfg.enabled ~= false and g.model and g.model.Parent and petRoleId(pet) == "ranged" then
-                    local nowC = os.clock()
-                    if not nextBolt[pet] or nowC >= nextBolt[pet] then
-                        nextBolt[pet] = nowC + boltInterval
-                        pcall(EnchantLightning.Play, pet, boltCfg, g.model)
+        -- Kiters (ranged): held in the player formation above; fire the enchanter
+        -- lightning bolt at their target on cadence from wherever they're standing.
+        if boltCfg.enabled ~= false then
+            local nowC = os.clock()
+            for _, k in ipairs(kiters) do
+                if k.model and k.model.Parent then
+                    if not nextBolt[k.pet] or nowC >= nextBolt[k.pet] then
+                        nextBolt[k.pet] = nowC + boltInterval
+                        if castLockSeconds > 0 then
+                            castLockUntil[k.pet] = nowC + castLockSeconds
+                        end
+                        pcall(EnchantLightning.Play, k.pet, boltCfg, k.model)
                     end
                 end
             end

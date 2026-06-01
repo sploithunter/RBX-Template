@@ -156,6 +156,10 @@ return {
     ranged_bolt = {
         enabled = true,
         interval = 0.55, -- seconds between bolts while engaged
+        -- Gap-close counter: after firing, the ranged pet is movement-locked this long
+        -- (it's "casting"), so it can't freely kite — a melee enemy gets a window to
+        -- close. Keep < interval so it frees up briefly between shots.
+        cast_lock_seconds = 0.45,
         duration = 0.3,
         thickness = 0.22,
         segments = 16,

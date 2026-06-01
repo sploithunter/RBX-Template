@@ -99,6 +99,17 @@ function PetFollowService:_combatService()
     return ok and service or nil
 end
 
+function PetFollowService:_enemyService()
+    local locator = _G.RBXTemplateServices
+    if not locator then
+        return nil
+    end
+    local ok, service = pcall(function()
+        return locator:Get("EnemyService")
+    end)
+    return ok and service or nil
+end
+
 function PetFollowService:Start()
     if not self._config.service_owned then
         if self._logger then
@@ -262,6 +273,20 @@ function PetFollowService:_mine(player, pet, breakable)
     dmg = math.floor(dmg + 0.5)
     local applied = PetCombat.applyDamage(hp, dmg)
     breakable:SetAttribute("HP", applied.hp)
+
+    -- Damage builds aggro: hurting an enemy makes it want to attack this pet (the threat
+    -- table the enemy targets from). Only enemies carry an EnemyId; crystals don't.
+    if breakable:GetAttribute("EnemyId") and applied.contributed > 0 then
+        local enemyService = self:_enemyService()
+        if enemyService then
+            local factor = (
+                self._combatConfig.engagement
+                and self._combatConfig.engagement.aggro
+                and self._combatConfig.engagement.aggro.damage_factor
+            ) or 1
+            enemyService:AddAggro(breakable, pet, applied.contributed * factor)
+        end
+    end
 
     local contrib = breakable:FindFirstChild("Contrib")
     if contrib then

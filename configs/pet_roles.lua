@@ -35,7 +35,9 @@ return {
     roles = {
         tank = { label = "Tank", glyph = "T", color = { 70, 130, 195 }, icon = "", attack_range = 9, standoff = 0 },
         melee = { label = "Melee", glyph = "M", color = { 205, 85, 70 }, icon = "", attack_range = 9, standoff = 0 },
-        ranged = { label = "Ranged", glyph = "R", color = { 120, 180, 85 }, icon = "", attack_range = 28, standoff = 17 },
+        -- kite = true: holds near the player and snipes instead of orbiting the enemy, so
+        -- an enemy chasing it has to close the gap (the melee-closes / ranged-kites loop).
+        ranged = { label = "Ranged", glyph = "R", color = { 120, 180, 85 }, icon = "", attack_range = 28, standoff = 17, kite = true },
         support = { label = "Support", glyph = "S", color = { 150, 110, 215 }, icon = "", attack_range = 16, standoff = 9 },
         control = { label = "Control", glyph = "C", color = { 90, 185, 205 }, icon = "", attack_range = 20, standoff = 12 },
     },

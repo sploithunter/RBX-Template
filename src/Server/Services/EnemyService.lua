@@ -23,6 +23,7 @@ local InsertService = game:GetService("InsertService")
 
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
+local AggroTable = require(ReplicatedStorage.Shared.Game.AggroTable)
 local ActiveSquad = require(ReplicatedStorage.Shared.Game.ActiveSquad)
 local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
@@ -93,6 +94,17 @@ function EnemyService:_enemiesFolder()
         folder.Parent = game
     end
     return folder
+end
+
+-- Add aggro for an attacker (pet Model / Player) on the enemy identified by `model`.
+-- Called when something hurts the enemy (PetFollowService mining) — damage builds threat.
+-- No-op if `model` isn't a tracked enemy. Public so other services can feed the table.
+function EnemyService:AddAggro(model, key, amount)
+    local idVal = model and model:FindFirstChild("BreakableID")
+    local entry = idVal and self._enemies[idVal.Value]
+    if entry and entry.aggro then
+        AggroTable.add(entry.aggro, key, amount)
+    end
 end
 
 -- Load (once, cached) a real enemy art asset into a sanitized template: PrimaryPart
@@ -504,20 +516,39 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     if not petsFolder then
         return
     end
-    local candidates = {}
+    -- Aggro upkeep: assign the (non-downed) squad to this enemy, DECAY the table, and tick
+    -- PASSIVE threat (× each pet's Threat stat, so a tank climbs fastest). `valid` is the
+    -- set of attackers still eligible to be targeted (present + not downed).
+    local aggroCfg = eng.aggro or {}
+    AggroTable.decay(entry.aggro, dt or 0.15, aggroCfg.decay_per_second or 4)
+    local valid = {}
     for _, pet in ipairs(petsFolder:GetChildren()) do
         if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
             self:_assignPetToEnemy(pet, targetId)
-            local d = (self:_petPosition(pet, pfs) - ePos).Magnitude
-            candidates[#candidates + 1] = { pet = pet, threat = self:_petThreat(pet), distance = d }
+            valid[pet] = true
+            AggroTable.add(
+                entry.aggro,
+                pet,
+                self:_petThreat(pet) * (aggroCfg.passive_per_second or 1.5) * (dt or 0.15)
+            )
         end
     end
 
-    -- 4) CHASE the PLAYER until in attack range (the pet swarm — locked in attack
-    -- formation around this enemy — moves with it, so chasing the player gives the
-    -- "enemy + swarm pursue you" feel; chasing a pet would never move since pets
-    -- already orbit the enemy). A ROOTED enemy (Cryomancer control power) can't move.
-    local chaseTo = hrp.Position
+    -- Target = the highest-aggro attacker still valid. If the top has decayed to/below the
+    -- disengage threshold (nothing is hurting this enemy anymore), give up and idle.
+    local targetPet = AggroTable.top(entry.aggro, aggroCfg.disengage_threshold or 0.5, function(k)
+        return valid[k] == true
+    end)
+    if not targetPet then
+        self:_releasePets(targetId)
+        entry.aggroPlayerName = nil
+        return
+    end
+
+    -- 4) CHASE the aggro target until in attack range. A tank/melee target orbits inside
+    -- attack_range so the enemy just holds + bites it; a ranged target kites near the
+    -- player, so the enemy has to close the gap. A ROOTED enemy can't move.
+    local chaseTo = self:_petPosition(targetPet, pfs)
     local rooted = (model:GetAttribute("RootedUntil") or 0) > os.time()
     local moveSpeed = rooted and 0 or ((def and def.move_speed) or eng.default_move_speed or 12)
     local np = EnemyAI.chaseStep(
@@ -539,16 +570,13 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         model:SetAttribute("MoveFace", faceTarget)
         entry.pos = newPos
         ePos = newPos
-        for _, c in ipairs(candidates) do
-            c.distance = (self:_petPosition(c.pet, pfs) - ePos).Magnitude
-        end
     end
 
-    -- 5) THREAT ATTACK: bite the highest-threat pet within attack range on cadence.
-    local idx = EnemyAI.selectThreatTarget(candidates, atk)
+    -- 5) ATTACK: bite the aggro target if it's within attack range, on cadence.
+    local targetDist = (self:_petPosition(targetPet, pfs) - ePos).Magnitude
     entry.nextAttack = entry.nextAttack or 0
-    if idx and now >= entry.nextAttack then
-        self:_hitPet(candidates[idx].pet, def, now, eng)
+    if targetDist <= atk and now >= entry.nextAttack then
+        self:_hitPet(targetPet, def, now, eng)
         entry.nextAttack = now + ((def and def.attack and def.attack.cadence) or 1.5)
     end
 end
@@ -848,7 +876,12 @@ function EnemyService:SpawnEnemy(player, enemyId)
     -- entry.pos = authoritative position (server never re-pivots the model after this
     -- initial placement). Seed MoveTarget so the gate + client render have a value
     -- before the first chase step.
-    self._enemies[targetId] = { model = model, enemyId = enemyId, pos = position }
+    self._enemies[targetId] = {
+        model = model,
+        enemyId = enemyId,
+        pos = position,
+        aggro = AggroTable.new(),
+    }
     model:SetAttribute("MoveTarget", position)
     model:SetAttribute("MoveFace", Vector3.new(hrp.Position.X, position.Y, hrp.Position.Z))
 

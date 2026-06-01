@@ -78,6 +78,20 @@ return {
             partial_per_second = 12,
             delay_seconds = 3,
         },
+        -- Aggro / threat table (src/Shared/Game/AggroTable). The enemy chases + bites the
+        -- highest-aggro attacker. Aggro builds from DAMAGE dealt to the enemy
+        -- (damage_factor per point) plus PASSIVE threat each second (× the attacker's
+        -- Threat stat, so a tank holds aggro). It DECAYS at decay_per_second, so once
+        -- nothing keeps hitting the enemy the top entry bleeds away; when the top drops
+        -- to/below disengage_threshold the enemy gives up and idles. taunt_amount is the
+        -- chunk a taunt/provoke power adds (player or tank drawing aggro; wired later).
+        aggro = {
+            passive_per_second = 1.5,
+            damage_factor = 1.0,
+            decay_per_second = 4,
+            disengage_threshold = 0.5,
+            taunt_amount = 250,
+        },
     },
 
     -- Staged degradation (§11.3): a pet visibly weakens before it is downed, so the
