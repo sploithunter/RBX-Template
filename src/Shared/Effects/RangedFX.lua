@@ -68,6 +68,30 @@ local function fxFolder()
     return f
 end
 
+-- Play a one-shot positional sound at `pos` from a config { id, volume, playback_speed }.
+-- No-ops if the config or its id is empty (so sounds can be added later without code changes).
+local function playSoundAt(pos, cfg)
+    if type(cfg) ~= "table" or not cfg.id or cfg.id == "" then
+        return
+    end
+    local holder = Instance.new("Part")
+    holder.Transparency = 1
+    holder.Size = Vector3.new(0.2, 0.2, 0.2)
+    holder.Anchored = true
+    holder.CanCollide = false
+    holder.CanQuery = false
+    holder.CFrame = CFrame.new(pos)
+    holder.Parent = fxFolder()
+    local s = Instance.new("Sound")
+    s.SoundId = cfg.id
+    s.Volume = cfg.volume or 0.6
+    s.PlaybackSpeed = cfg.playback_speed or 1
+    s.RollOffMaxDistance = cfg.max_distance or 120
+    s.Parent = holder
+    s:Play()
+    Debris:AddItem(holder, cfg.lifetime or 3)
+end
+
 -- ===================== Impact library =====================
 -- A catalogue of named impact effects (RangedFX.IMPACTS), each played at a hit point. Grow
 -- this table to build the library; reference an entry by name from a projectile theme
@@ -284,7 +308,7 @@ end
 -- Travelling orb (fireball / plasma / frost / poison): an emissive ball flies origin->target
 -- with a colour trail, then bursts. Themed entirely by `theme` (colors/size/travel_time/burst).
 -- isCrit -> a bigger orb + the crit impact tier (theme.impact_crit, default "big").
-local function playProjectile(originPart, endPos, theme, isCrit)
+local function playProjectile(originPart, endPos, theme, isCrit, impactSound)
     local c1 = toColor(theme.colors and theme.colors[1], Color3.fromRGB(255, 150, 40))
     local c2 = toColor(theme.colors and theme.colors[2], c1)
     local size = (tonumber(theme.size) or 1.5) * (isCrit and 1.4 or 1)
@@ -343,6 +367,7 @@ local function playProjectile(originPart, endPos, theme, isCrit)
                 sparks = theme.sparks,
             })
         end
+        playSoundAt(endPos, impactSound)
         orb:Destroy()
     end)
     tween:Play()
@@ -352,7 +377,7 @@ end
 
 -- Instant laser/energy beam: a neon cylinder spanning origin->target that flashes then fades.
 -- isCrit -> the crit impact tier at its end (theme.impact_crit, default "big").
-local function playBeam(originPart, endPos, theme, isCrit)
+local function playBeam(originPart, endPos, theme, isCrit, impactSound)
     local c1 = toColor(theme.colors and theme.colors[1], Color3.fromRGB(255, 70, 70))
     local thickness = tonumber(theme.thickness) or 0.5
     local duration = math.max(0.06, tonumber(theme.duration) or 0.18)
@@ -390,6 +415,7 @@ local function playBeam(originPart, endPos, theme, isCrit)
             sparks = theme.sparks or 5,
         })
     end
+    playSoundAt(endPos, impactSound)
     return true
 end
 
@@ -409,7 +435,7 @@ end
 -- lands with a dust impact. Uses the configured model_asset (a rock union; swap to a cactus id
 -- + green colours later); falls back to a procedural Slate block until the asset loads.
 -- isCrit -> bigger rock + the crit impact tier (theme.impact_crit, default "big").
-local function playRock(originPart, endPos, theme, isCrit)
+local function playRock(originPart, endPos, theme, isCrit, impactSound)
     local c1 = toColor(theme.colors and theme.colors[1], Color3.fromRGB(120, 105, 90))
     local c2 = toColor(theme.colors and theme.colors[2], Color3.fromRGB(170, 145, 110))
     local crit = isCrit and 1.4 or 1
@@ -457,6 +483,7 @@ local function playRock(originPart, endPos, theme, isCrit)
             scale = isCrit and theme.crit_scale or theme.impact_scale,
             sparks = isCrit and theme.crit_sparks or theme.sparks,
         })
+        playSoundAt(endPos, impactSound)
         rock:Destroy()
     end)
     tween:Play()
@@ -470,6 +497,13 @@ end
 function RangedFX.Play(origin, config, target, kind, isCrit)
     config = type(config) == "table" and config or {}
     kind = kind or config.kind or "lightning"
+
+    -- Delivery (launch) sound at the firing pet; impact sound rides each effect's hit.
+    local sounds = config.sounds or {}
+    local oPart = partOf(origin)
+    if oPart then
+        playSoundAt(oPart.Position + Vector3.new(0, 1, 0), sounds.delivery)
+    end
 
     if kind == "lightning" then
         local ok = EnchantLightning.Play(origin, config, target)
@@ -491,6 +525,10 @@ function RangedFX.Play(origin, config, target, kind, isCrit)
                 )
             end
         end
+        local tp = partOf(target)
+        if tp then
+            playSoundAt(tp.Position + toVec(config.target_offset), sounds.impact)
+        end
         return ok
     end
 
@@ -502,15 +540,15 @@ function RangedFX.Play(origin, config, target, kind, isCrit)
     local endPos = targetPart.Position + toVec(config.target_offset)
 
     if kind == "beam" then
-        return playBeam(originPart, endPos, config.beam or {}, isCrit)
+        return playBeam(originPart, endPos, config.beam or {}, isCrit, sounds.impact)
     end
     if kind == "rock" then
-        return playRock(originPart, endPos, config.rock or {}, isCrit)
+        return playRock(originPart, endPos, config.rock or {}, isCrit, sounds.impact)
     end
 
     -- Projectile family: theme comes from config.projectile[kind] (fireball/plasma/frost/...).
     local theme = (config.projectile and config.projectile[kind]) or {}
-    return playProjectile(originPart, endPos, theme, isCrit)
+    return playProjectile(originPart, endPos, theme, isCrit, sounds.impact)
 end
 
 return RangedFX

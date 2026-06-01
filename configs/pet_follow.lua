@@ -191,7 +191,16 @@ return {
             colorado = "fireball", -- TEST: colorado throws a fireball instead of lightning
         },
 
-        interval = 0.55, -- seconds between bolts while engaged
+        interval = 0.9, -- seconds between bolts while engaged (slowed so each shot reads clearly)
+
+        -- Sounds played by RangedFX: `delivery` at launch (the firing pet), `impact` at the hit.
+        -- An empty id = silent (so sounds can be added as we get them). impact uses the egg-pop
+        -- placeholder for now; swap to a crystal-crack/whoosh when available.
+        sounds = {
+            delivery = { id = "", volume = 0.5 },
+            impact = { id = "rbxassetid://98548849463653", volume = 0.55 },
+        },
+
         -- Gap-close counter: after firing, the ranged pet is movement-locked this long
         -- (it's "casting"), so it can't freely kite — a melee enemy gets a window to
         -- close. Keep < interval so it frees up briefly between shots.

@@ -219,6 +219,36 @@ local function fallingBits(pos, color, mat, count, fromHeight, spread, life, elo
     end
 end
 
+-- A ring of REAL Roblox Fire (not procedural) around the point — the lava look.
+local function fireRing(pos, count, radius, life, color, color2)
+    for i = 1, count do
+        local ang = (i / count) * math.pi * 2
+        local holder = Instance.new("Part")
+        holder.Transparency = 1
+        holder.Size = Vector3.new(1, 1, 1)
+        holder.Anchored = true
+        holder.CanCollide = false
+        holder.CanQuery = false
+        holder.CastShadow = false
+        holder.CFrame = CFrame.new(pos + Vector3.new(math.cos(ang) * radius, 0.5, math.sin(ang) * radius))
+        holder.Parent = fxFolder()
+        local fire = Instance.new("Fire")
+        fire.Size = math.max(4, radius * 0.7)
+        fire.Heat = 10
+        fire.Color = color
+        fire.SecondaryColor = color2
+        fire.Parent = holder
+        local light = Instance.new("PointLight")
+        light.Color = color
+        light.Brightness = 3
+        light.Range = radius
+        light.Parent = holder
+        TweenService:Create(fire, ti(life), { Size = 0 }):Play()
+        TweenService:Create(light, ti(life), { Brightness = 0 }):Play()
+        Debris:AddItem(holder, life + 0.4)
+    end
+end
+
 -- ===== The eight effects =====
 
 local EFFECTS = {
@@ -261,14 +291,13 @@ local EFFECTS = {
         groundRing(pos, c2, mat, radius * 2, life)
         debris(pos, c1, c2, mat, 10, radius, life)
     end,
-    -- LAVA self: Fire ring — a circle of flame columns + ember swirl (no dome).
+    -- LAVA self: Fire ring — a circle of REAL fire around the caster + ember swirl.
     lava_self = function(pos, c1, c2, mat, radius, life)
         groundRing(pos, c1, mat, radius * 1.7, life)
-        pillarsRing(pos, c1, mat, 8, radius * 0.9, radius * 0.55, 0.9, life)
-        pillarsRing(pos, c2, mat, 8, radius * 0.55, radius * 0.4, 0.6, life)
+        fireRing(pos, 10, radius * 0.85, life + 0.4, c1, c2)
         swirlMotes(pos, c2, mat, 12, radius, radius * 0.7, life)
     end,
-    -- LAVA targeted: Meteor — a ball drops from above, then a double shockwave + eruption.
+    -- LAVA targeted: Meteor — a ball drops from above, then real fire + shockwave erupt.
     lava_targeted = function(pos, c1, c2, mat, radius, life)
         local meteor = newPart(Enum.PartType.Ball, mat, c1, 0)
         local sz = radius * 0.5
@@ -278,10 +307,10 @@ local EFFECTS = {
         Debris:AddItem(meteor, 0.4)
         task.delay(0.18, function()
             meteor:Destroy()
+            fireRing(pos, 10, radius * 0.9, life + 0.4, c1, c2) -- fire around the impact zone
             column(pos, c2, mat, radius * 1.8, life * 0.7)
             groundRing(pos, c1, mat, radius * 2.6, life)
             groundRing(pos, c2, mat, radius * 3.6, life * 1.2)
-            dome(pos, c1, mat, radius * 0.9, life, 0.6)
             debris(pos, c1, c2, mat, 18, radius * 1.4, life)
         end)
     end,
