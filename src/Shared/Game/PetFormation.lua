@@ -272,6 +272,26 @@ function PetFormation.toWorld(frame, offset)
     }
 end
 
+-- Pet move-speed multiplier: base * player * pet, clamped to [min, max]. The controller
+-- multiplies the follow/attack lerp rates by this so a higher PetMoveSpeed stat (or a fast
+-- unique pet's MoveSpeedMult) makes pets keep up / reposition faster. Nil inputs default to 1.
+function PetFormation.moveSpeedMultiplier(playerMult, petMult, speedConfig)
+    speedConfig = type(speedConfig) == "table" and speedConfig or {}
+    local base = tonumber(speedConfig.base) or 1
+    local p = tonumber(playerMult) or 1
+    local q = tonumber(petMult) or 1
+    local lo = tonumber(speedConfig.min) or 0.1
+    local hi = tonumber(speedConfig.max) or 10
+    local m = base * p * q
+    if m < lo then
+        m = lo
+    end
+    if m > hi then
+        m = hi
+    end
+    return m
+end
+
 -- Vertical bob from a phase (e.g. elapsed time). Deterministic; no clock here.
 function PetFormation.floatOffset(phase, floatConfig)
     if not floatConfig or floatConfig.amplitude == 0 then

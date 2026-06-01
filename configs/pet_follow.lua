@@ -78,6 +78,12 @@ return {
     movement = {
         follow_lerp_rate = 10,
         attack_lerp_rate = 16,
+
+        -- Pet move speed multiplies the lerp rates above. Driven by the player
+        -- attribute `PetMoveSpeed` (a stat/upgrade, default 1.0) and an optional
+        -- per-pet model attribute `MoveSpeedMult` (for unique fast pets); the two
+        -- multiply against `base`, clamped to [min, max].
+        speed = { base = 1.0, min = 0.25, max = 4.0 },
     },
 
     -- Server tick throttle (seconds): target leash + the mining damage tick only.

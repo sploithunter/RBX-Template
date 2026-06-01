@@ -242,4 +242,24 @@ return function()
             end)
         end)
     end)
+
+    describe("PetFormation.moveSpeedMultiplier", function()
+        it("defaults nil player/pet to 1 (returns base)", function()
+            expect(PetFormation.moveSpeedMultiplier(nil, nil, { base = 1 })).to.near(1)
+            expect(PetFormation.moveSpeedMultiplier(nil, nil, { base = 2, max = 5 })).to.near(2)
+        end)
+
+        it("multiplies base * player * pet", function()
+            expect(PetFormation.moveSpeedMultiplier(2, 1.5, { base = 1, max = 10 })).to.near(3)
+        end)
+
+        it("clamps to [min, max]", function()
+            expect(PetFormation.moveSpeedMultiplier(0.01, 1, { base = 1, min = 0.25, max = 4 })).to.near(
+                0.25
+            )
+            expect(PetFormation.moveSpeedMultiplier(100, 1, { base = 1, min = 0.25, max = 4 })).to.near(
+                4
+            )
+        end)
+    end)
 end

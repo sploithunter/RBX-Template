@@ -104,9 +104,21 @@ function PetFollowController.start()
         local flat = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
         local upFwd = flat.Magnitude > 0.01 and flat.Unit or Vector3.new(0, 0, -1)
 
-        -- Frame-rate-independent smoothing factors (momentum feel).
-        local followAlpha = 1 - math.exp(-(config.movement.follow_lerp_rate or 10) * dt)
-        local attackAlpha = 1 - math.exp(-(config.movement.attack_lerp_rate or 16) * dt)
+        -- Frame-rate-independent smoothing (momentum feel), scaled per pet by move speed:
+        -- the player's PetMoveSpeed stat times the pet's optional MoveSpeedMult. Higher = the
+        -- pet catches its slot / repositions faster.
+        local followRate = config.movement.follow_lerp_rate or 10
+        local attackRate = config.movement.attack_lerp_rate or 16
+        local speedCfg = config.movement.speed
+        local playerSpeed = localPlayer:GetAttribute("PetMoveSpeed")
+        local function alphaFor(baseRate, pet)
+            local mult = PetFormation.moveSpeedMultiplier(
+                playerSpeed,
+                pet:GetAttribute("MoveSpeedMult"),
+                speedCfg
+            )
+            return 1 - math.exp(-(baseRate * mult) * dt)
+        end
 
         local a = config.attack
         local style = localPlayer:GetAttribute("PetAttackStyle") or a.style
@@ -168,7 +180,7 @@ function PetFollowController.start()
                 local bob = PetFormation.floatOffset(phase + slot, config.float)
                 local target = Vector3.new(t.x, t.y + bob, t.z)
                 local goal = CFrame.lookAt(target, target + upFwd)
-                model:PivotTo(model:GetPivot():Lerp(goal, followAlpha))
+                model:PivotTo(model:GetPivot():Lerp(goal, alphaFor(followRate, model)))
             end
         else
             for _, f in ipairs(followers) do
@@ -176,7 +188,7 @@ function PetFollowController.start()
                 local bob = PetFormation.floatOffset(phase + f.index, config.float)
                 local target = Vector3.new(t.x, t.y + bob, t.z)
                 local goal = CFrame.lookAt(target, target + upFwd)
-                f.pet:PivotTo(f.pet:GetPivot():Lerp(goal, followAlpha))
+                f.pet:PivotTo(f.pet:GetPivot():Lerp(goal, alphaFor(followRate, f.pet)))
             end
         end
 
@@ -189,7 +201,7 @@ function PetFollowController.start()
                 local toC = Vector3.new(g.center.X - target.X, 0, g.center.Z - target.Z)
                 local dir = toC.Magnitude > 0.01 and toC.Unit or upFwd
                 local goal = CFrame.lookAt(target, target + dir)
-                pet:PivotTo(pet:GetPivot():Lerp(goal, attackAlpha))
+                pet:PivotTo(pet:GetPivot():Lerp(goal, alphaFor(attackRate, pet)))
             end
         end
     end)
