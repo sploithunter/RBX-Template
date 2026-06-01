@@ -59,6 +59,29 @@ function PowerService:_applyEffect(player, kind, now)
     elseif family == "buff" then
         player:SetAttribute("PetDamageBuff", mag)
         player:SetAttribute("PetDamageBuffUntil", now + dur)
+    elseif family == "absorb" then
+        -- shield: add an absorption pool the squad soaks damage with before endurance
+        local pets = Workspace:FindFirstChild("PlayerPets")
+            and Workspace.PlayerPets:FindFirstChild(player.Name)
+        if pets then
+            for _, pet in ipairs(pets:GetChildren()) do
+                if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
+                    pet:SetAttribute("CombatShield", (pet:GetAttribute("CombatShield") or 0) + mag)
+                end
+            end
+        end
+    elseif family == "defense_buff" then
+        -- Bulwark: temporary +Defense (armor) on the squad = damage reduction
+        local pets = Workspace:FindFirstChild("PlayerPets")
+            and Workspace.PlayerPets:FindFirstChild(player.Name)
+        if pets then
+            for _, pet in ipairs(pets:GetChildren()) do
+                if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
+                    pet:SetAttribute("DefenseBuff", mag)
+                    pet:SetAttribute("DefenseBuffUntil", now + dur)
+                end
+            end
+        end
     elseif family == "root" then
         for _, enemy in ipairs(enemiesAlive()) do
             enemy:SetAttribute("RootedUntil", now + dur)

@@ -99,4 +99,30 @@ return function()
             expect(CombatMath.sunderAmount(enemiesConfig.enemies.lava_imp.attack)).to.equal(0)
         end)
     end)
+
+    describe("CombatMath.mitigate (armor curve)", function()
+        it("no armor takes full damage", function()
+            expect(CombatMath.mitigate(100, 0, 100)).to.equal(100)
+            expect(CombatMath.mitigate(100, nil, 100)).to.equal(100)
+        end)
+
+        it("armor == k halves the damage", function()
+            expect(CombatMath.mitigate(100, 100, 100)).to.near(50, 1e-6)
+        end)
+
+        it("3k armor leaves a quarter (diminishing returns, no hard cap)", function()
+            expect(CombatMath.mitigate(100, 300, 100)).to.near(25, 1e-6)
+        end)
+
+        it("more armor always helps but never reaches immunity", function()
+            local a = CombatMath.mitigate(100, 100, 100)
+            local b = CombatMath.mitigate(100, 1000, 100)
+            expect(b < a).to.equal(true)
+            expect(b > 0).to.equal(true)
+        end)
+
+        it("never returns negative", function()
+            expect(CombatMath.mitigate(0, 500, 100)).to.equal(0)
+        end)
+    end)
 end

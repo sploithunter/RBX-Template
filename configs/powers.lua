@@ -20,12 +20,14 @@ return {
     --   root      — engaged enemies can't chase for `duration`s
     --   vulnerable— engaged enemies take x`magnitude` pet damage for `duration`s
     effect_kinds = {
-        shield = { family = "heal", magnitude = 40, duration = 0 },
-        team_shield = { family = "heal", magnitude = 60, duration = 0 },
-        ice_armor = { family = "heal", magnitude = 40, duration = 0 },
-        dune_shield = { family = "heal", magnitude = 40, duration = 0 },
-        ember_ward = { family = "heal", magnitude = 40, duration = 0 },
-        dodge = { family = "heal", magnitude = 30, duration = 0 },
+        -- shields = ABSORPTION pools (soak `magnitude` damage before endurance), not heals
+        shield = { family = "absorb", magnitude = 40, duration = 0 },
+        ice_armor = { family = "absorb", magnitude = 40, duration = 0 },
+        dune_shield = { family = "absorb", magnitude = 40, duration = 0 },
+        ember_ward = { family = "absorb", magnitude = 40, duration = 0 },
+        -- Bulwark = squad DAMAGE REDUCTION for `duration`s (temp +Defense armor), per design
+        team_shield = { family = "defense_buff", magnitude = 120, duration = 15 },
+        dodge = { family = "absorb", magnitude = 30, duration = 0 },
         damage_buff = { family = "buff", magnitude = 1.5, duration = 8 },
         root = { family = "root", magnitude = 0, duration = 5 },
         aoe_slow = { family = "root", magnitude = 0, duration = 5 },

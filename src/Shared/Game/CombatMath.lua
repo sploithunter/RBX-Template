@@ -39,6 +39,20 @@ function CombatMath.isDefeated(enemyHp)
     return enemyHp <= 0
 end
 
+-- Damage after armor mitigation (the defensive stat). Armor curve with diminishing
+-- returns and no hard cap: mitigation = armor / (armor + k), so taken = dmg*(1 - that).
+-- armor 0 -> full damage; armor == k -> half; armor 3k -> quarter. k is the tuning
+-- constant (configs/combat.lua armor_curve_k). Never negative.
+function CombatMath.mitigate(dmg, armor, k)
+    armor = math.max(0, armor or 0)
+    k = k or 100
+    if armor <= 0 or k <= 0 then
+        return math.max(0, dmg or 0)
+    end
+    local taken = (dmg or 0) * (1 - armor / (armor + k))
+    return taken > 0 and taken or 0
+end
+
 -- The encounter ends when no enemy is still alive.
 function CombatMath.encounterEnded(enemies)
     for _, e in ipairs(enemies) do

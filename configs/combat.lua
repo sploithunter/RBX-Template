@@ -23,6 +23,12 @@ return {
 
     pet_down_threshold_factor = 1.0,
 
+    -- Defensive stat (armor curve). Damage is reduced by armor/(armor+k): a pet's
+    -- Defense attribute mitigates enemy hits, an enemy's Armor mitigates pet damage.
+    -- At armor == k the hit is halved; diminishing returns, never full immunity.
+    -- Tune k to set how much a point of armor is worth.
+    armor_curve_k = 100,
+
     -- Defensive inverse mining (Feature 10 slice 1b). An enemy "mines" the
     -- endurance of the pets attacking it; pets attack back when an enemy is in
     -- range (combat outranks auto-mine so pets don't scatter to crystals).

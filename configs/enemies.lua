@@ -22,6 +22,7 @@ return {
             hp = 120,
             tier = "trash_mob",
             move_speed = 15, -- studs/sec while chasing (slice 2); skittery + fast
+            armor = 0, -- defensive stat: pet damage mitigated by armor/(armor+k)
             attack = { damage = 10, cadence = 1.5, sundering = 0 },
             drop_table = { lava_coins = 8, shadow_tokens = 1 },
         },
@@ -29,6 +30,7 @@ return {
             hp = 400,
             tier = "mid_tier",
             move_speed = 10, -- heavier, slower
+            armor = 80, -- tougher: ~44% pet-damage reduction at k=100
             -- A Sundering attacker: drains player Focus on hit (Feature 12).
             attack = { damage = 25, cadence = 2.0, sundering = 20 },
             drop_table = { lava_coins = 30, shadow_tokens = 4, rare_drop_chance = 0.1 },
@@ -37,6 +39,7 @@ return {
             hp = 5000,
             tier = "boss",
             move_speed = 8, -- lumbering
+            armor = 200, -- heavily armored (~67% reduction at k=100)
             attack = { damage = 60, cadence = 2.5, sundering = 40 },
             drop_table = { lava_coins = 200, shadow_tokens = 25 },
         },

@@ -22,6 +22,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
 local ActiveSquad = require(ReplicatedStorage.Shared.Game.ActiveSquad)
+local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local EnemyService = {}
@@ -123,6 +124,7 @@ function EnemyService:_buildModel(enemyId, def, position, targetId)
     model:SetAttribute("HP", def.hp)
     model:SetAttribute("MaxHP", def.hp)
     model:SetAttribute("IsEnemy", true)
+    model:SetAttribute("Armor", def.armor or 0) -- defensive stat: mitigates pet damage
 
     -- HP bar
     local bb = Instance.new("BillboardGui")
@@ -318,6 +320,22 @@ function EnemyService:_hitPet(pet, def, now, eng)
     local power = self:_petPower(pet)
     local factor = self._combatConfig.pet_down_threshold_factor or 1
     local dmg = (def.attack and def.attack.damage) or 0
+    -- Defensive stat: the pet's Defense (its own + any active DefenseBuff from a power
+    -- like Bulwark) mitigates the hit on the armor curve. A real tank survives longer.
+    local nowT = os.time()
+    local defense = pet:GetAttribute("Defense") or 0
+    if (pet:GetAttribute("DefenseBuffUntil") or 0) > nowT then
+        defense = defense + (pet:GetAttribute("DefenseBuff") or 0)
+    end
+    dmg = CombatMath.mitigate(dmg, defense, self._combatConfig.armor_curve_k or 100)
+    -- Absorption shield (Stone Skin etc.) soaks mitigated damage before any reaches
+    -- endurance; it depletes as it absorbs.
+    local shield = pet:GetAttribute("CombatShield") or 0
+    if shield > 0 and dmg > 0 then
+        local absorbed = math.min(shield, dmg)
+        pet:SetAttribute("CombatShield", shield - absorbed)
+        dmg = dmg - absorbed
+    end
     local taken = PetEndurance.applyHit(pet:GetAttribute("CombatDamageTaken") or 0, dmg)
     pet:SetAttribute("CombatDamageTaken", taken)
     local pc = self._petCombat[pet]

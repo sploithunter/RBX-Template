@@ -26,6 +26,7 @@ local Workspace = game:GetService("Workspace")
 
 local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
 local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
+local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local PetFollowService = {}
@@ -35,6 +36,7 @@ function PetFollowService:Init()
     self._logger = self._modules and self._modules.Logger
     self._configLoader = self._modules and self._modules.ConfigLoader
     self._config = self._configLoader:LoadConfig("pet_follow")
+    self._combatConfig = self._configLoader:LoadConfig("combat")
     self._nextHit = {} -- pet model -> os.clock() of next allowed mining hit
     self._petPos = setmetatable({}, { __mode = "k" }) -- pet model -> { pos, t } (weak: dead pets GC)
 
@@ -229,6 +231,12 @@ function PetFollowService:_mine(player, pet, breakable)
     end
     if (breakable:GetAttribute("VulnerableUntil") or 0) > nowT then
         dmg = dmg * (breakable:GetAttribute("VulnerableMult") or 1)
+    end
+    -- Defensive stat: an enemy's Armor mitigates pet damage on the armor curve
+    -- (crystals have no Armor -> unchanged). Vulnerability above counteracts it.
+    local armor = breakable:GetAttribute("Armor") or 0
+    if armor > 0 then
+        dmg = CombatMath.mitigate(dmg, armor, self._combatConfig.armor_curve_k or 100)
     end
     dmg = math.floor(dmg + 0.5)
     local applied = PetCombat.applyDamage(hp, dmg)
