@@ -29,6 +29,16 @@ return {
     engagement = {
         aggro_range = 45, -- enemy engages a player's squad within this (studs)
         attack_range = 11, -- enemy damages a pet within this of itself (studs)
+        -- Chase + perception (slice 2). An idle enemy NOTICES a player by distance
+        -- x probability (rolled every perception_interval; certain on top, zero past
+        -- perception_range). Once it has aggro it CHASES (move_speed lives per enemy
+        -- in configs/enemies.lua) until within attack_range, biting the highest-THREAT
+        -- pet in range — so a tank pet (high Threat attribute, else its Power) pulls
+        -- aggro off squishier pets. It drops aggro if the player leaves leash_range.
+        perception_range = 70,
+        perception_interval = 0.75,
+        leash_range = 90,
+        default_move_speed = 12,
         -- A downed pet (taken all the way down) is out for this long, then fully
         -- heals — the "fully defeated takes X to heal" consequence. Partially
         -- damaged pets bleed their damage back at regen.partial_per_second once

@@ -20,6 +20,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
+local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
 
 local EnemyService = {}
 EnemyService.__index = EnemyService
@@ -128,27 +129,6 @@ function EnemyService:_buildModel(enemyId, def, position, targetId)
     fill.Parent = bg
 
     return model
-end
-
--- Assign all of a player's equipped pets to attack this enemy (mirrors BreakableService).
-function EnemyService:_assignPets(player, targetId)
-    local petsFolder = Workspace:FindFirstChild("PlayerPets")
-        and Workspace.PlayerPets:FindFirstChild(player.Name)
-    if not petsFolder then
-        return
-    end
-    for _, pet in ipairs(petsFolder:GetChildren()) do
-        local tt = pet:FindFirstChild("TargetType")
-        local tw = pet:FindFirstChild("TargetWorld")
-        local tid = pet:FindFirstChild("TargetID")
-        if tt and tid then -- TargetWorld is optional (enemy lookup is world-agnostic)
-            tt.Value = "Enemy"
-            if tw then
-                tw.Value = ""
-            end
-            tid.Value = targetId
-        end
-    end
 end
 
 -- Release any pets still targeting this enemy back to following.
@@ -359,44 +339,112 @@ function EnemyService:_hitPet(pet, def, now, eng)
     end
 end
 
--- One alive enemy: aggro every non-downed pet of nearby players (they attack back),
--- then bite the closest pet within attack range on the enemy's cadence.
-function EnemyService:_engageEnemy(entry, targetId, now, eng)
-    local model = entry.model
-    local ePos = model:GetPivot().Position
-    local aggro = eng.aggro_range or 45
-    local atk = eng.attack_range or 11
-    local pfs = self:_petFollowService()
+-- The threat a pet exerts (higher pulls aggro): an explicit Threat attribute marks
+-- a tank; otherwise the pet's Power is the default (stronger pets draw more).
+function EnemyService:_petThreat(pet)
+    local t = pet:GetAttribute("Threat")
+    if t and t > 0 then
+        return t
+    end
+    return self:_petPower(pet)
+end
 
-    local closest, closestDist
+-- Nearest player whose character is within maxRange of a point (or nil).
+function EnemyService:_nearestPlayer(ePos, maxRange)
+    local best, bestD
     for _, player in ipairs(Players:GetPlayers()) do
         local character = player.Character
         local hrp = character and character:FindFirstChild("HumanoidRootPart")
-        local pets = Workspace:FindFirstChild("PlayerPets")
-            and Workspace.PlayerPets:FindFirstChild(player.Name)
-        if hrp and pets and (hrp.Position - ePos).Magnitude <= aggro then
-            for _, pet in ipairs(pets:GetChildren()) do
-                if
-                    pet:IsA("Model")
-                    and pet.PrimaryPart
-                    and not pet:GetAttribute("CombatDowned")
-                then
-                    self:_assignPetToEnemy(pet, targetId)
-                    local d = (self:_petPosition(pet, pfs) - ePos).Magnitude
-                    if d <= atk and (not closestDist or d < closestDist) then
-                        closest, closestDist = pet, d
-                    end
-                end
+        if hrp then
+            local d = (hrp.Position - ePos).Magnitude
+            if d <= maxRange and (not bestD or d < bestD) then
+                best, bestD = player, d
             end
         end
     end
+    return best, bestD
+end
 
+-- One alive enemy, per tick: PERCEIVE a player (distance x probability) to acquire
+-- aggro, CHASE the aggro'd squad until in attack range, and bite the highest-THREAT
+-- pet in range (so a tank pet pulls aggro). Drops aggro past the leash range.
+function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
+    local model = entry.model
+    local ePos = model:GetPivot().Position
+    local atk = eng.attack_range or 11
+    local perceptionRange = eng.perception_range or 70
+    local leash = eng.leash_range or 90
     local def = self._enemiesConfig.enemies and self._enemiesConfig.enemies[entry.enemyId]
-    local cadence = (def and def.attack and def.attack.cadence) or 1.5
+    local pfs = self:_petFollowService()
+
+    -- 1) PERCEPTION: while unaware, roll to notice the nearest player by distance.
+    if not entry.aggroPlayerName then
+        entry.nextPerception = entry.nextPerception or 0
+        if now >= entry.nextPerception then
+            entry.nextPerception = now + (eng.perception_interval or 0.75)
+            local player, d = self:_nearestPlayer(ePos, perceptionRange)
+            if player and EnemyAI.shouldNotice(d, perceptionRange, math.random()) then
+                entry.aggroPlayerName = player.Name
+            end
+        end
+        if not entry.aggroPlayerName then
+            return -- still unaware: idle
+        end
+    end
+
+    -- 2) Resolve the aggro'd player; drop aggro if gone or past the leash.
+    local player = Players:FindFirstChild(entry.aggroPlayerName)
+    local character = player and player.Character
+    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+    if not hrp or (hrp.Position - ePos).Magnitude > leash then
+        self:_releasePets(targetId)
+        entry.aggroPlayerName = nil
+        return
+    end
+
+    -- 3) Aggro: point the (non-downed) squad at this enemy + gather threat candidates.
+    local petsFolder = Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+    if not petsFolder then
+        return
+    end
+    local candidates = {}
+    for _, pet in ipairs(petsFolder:GetChildren()) do
+        if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
+            self:_assignPetToEnemy(pet, targetId)
+            local d = (self:_petPosition(pet, pfs) - ePos).Magnitude
+            candidates[#candidates + 1] = { pet = pet, threat = self:_petThreat(pet), distance = d }
+        end
+    end
+
+    -- 4) CHASE the PLAYER until in attack range (the pet swarm — locked in attack
+    -- formation around this enemy — moves with it, so chasing the player gives the
+    -- "enemy + swarm pursue you" feel; chasing a pet would never move since pets
+    -- already orbit the enemy).
+    local chaseTo = hrp.Position
+    local moveSpeed = (def and def.move_speed) or eng.default_move_speed or 12
+    local np = EnemyAI.chaseStep(
+        { x = ePos.X, y = ePos.Y, z = ePos.Z },
+        { x = chaseTo.X, y = chaseTo.Y, z = chaseTo.Z },
+        moveSpeed,
+        dt or 0.15,
+        atk
+    )
+    if math.abs(np.x - ePos.X) > 1e-3 or math.abs(np.z - ePos.Z) > 1e-3 then
+        local newPos = Vector3.new(np.x, np.y, np.z)
+        model:PivotTo(CFrame.lookAt(newPos, Vector3.new(chaseTo.X, np.y, chaseTo.Z)))
+        ePos = newPos
+        for _, c in ipairs(candidates) do
+            c.distance = (self:_petPosition(c.pet, pfs) - ePos).Magnitude
+        end
+    end
+
+    -- 5) THREAT ATTACK: bite the highest-threat pet within attack range on cadence.
+    local idx = EnemyAI.selectThreatTarget(candidates, atk)
     entry.nextAttack = entry.nextAttack or 0
-    if closest and now >= entry.nextAttack then
-        self:_hitPet(closest, def, now, eng)
-        entry.nextAttack = now + cadence
+    if idx and now >= entry.nextAttack then
+        self:_hitPet(candidates[idx].pet, def, now, eng)
+        entry.nextAttack = now + ((def and def.attack and def.attack.cadence) or 1.5)
     end
 end
 
@@ -447,7 +495,7 @@ function EnemyService:_combatTick(dt)
     for targetId, entry in pairs(self._enemies) do
         local model = entry.model
         if model and model.Parent and (model:GetAttribute("HP") or 0) > 0 then
-            self:_engageEnemy(entry, targetId, now, eng)
+            self:_engageEnemy(entry, targetId, now, eng, dt)
         end
     end
 end
@@ -518,7 +566,9 @@ function EnemyService:SpawnEnemy(player, enemyId)
         end
     end)
 
-    self:_assignPets(player, targetId)
+    -- Admin-spawned enemies engage the spawning player immediately (skip the
+    -- perception roll — the combat tick handles chase + threat targeting from here).
+    self._enemies[targetId].aggroPlayerName = player.Name
     if self._logger then
         self._logger:Info("Enemy spawned", { enemyId = enemyId, targetId = targetId, hp = def.hp })
     end
