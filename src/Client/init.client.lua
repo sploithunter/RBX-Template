@@ -139,6 +139,17 @@ do
     end
 end
 
+-- Squad HUD (Feature 10): right-side City-of-Heroes-style squad strip — per-pet state,
+-- health, recharge, click-to-select, recall/summon. Reads pet attributes; no server feed.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.SquadHud).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start SquadHud", { error = tostring(err) })
+    end
+end
+
 -- Studio-only: bridge that lets AutomationService disable/enable local controls
 -- during automated movement (see AutomationControlBridge).
 if RunService:IsStudio() then
