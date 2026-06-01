@@ -148,6 +148,30 @@ return {
         bear = { style = "waddle", bob_height = 0.5, tilt_degrees = 13, stride_length = 4.5 },
     },
 
+    -- Ranged pets (pet_roles role == "ranged") fire a cosmetic lightning bolt from the
+    -- pet to its target while attacking — the same procedural bolt as the enchanter
+    -- (src/Shared/Effects/EnchantLightning). `interval` is the client-side cadence; the
+    -- rest are EnchantLightning params tuned for a short, snappy combat zap (no thunder
+    -- per shot). Purely visual; damage stays server-side via the mining tick.
+    ranged_bolt = {
+        enabled = true,
+        interval = 0.55, -- seconds between bolts while engaged
+        duration = 0.3,
+        thickness = 0.22,
+        segments = 16,
+        origin_limit = 1,
+        strands_per_origin = 1,
+        min_radius = 0,
+        max_radius = 0.6,
+        curve_size0 = 2,
+        curve_size1 = 2,
+        animation_speed = 9,
+        flicker = 0.4,
+        fade_out_seconds = 0.12,
+        target_offset = { 0, 1.5, 0 }, -- {x,y,z} aim mid-body (client builds the Vector3)
+        colors = { { 120, 150, 255 }, { 200, 235, 255 } }, -- electric blue/white
+    },
+
     -- Server tick throttle (seconds): target leash + the mining damage tick only.
     -- Movement is client-side (PetFollowController), not done here.
     update_interval = 0.1,

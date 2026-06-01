@@ -23,6 +23,7 @@ return {
         bunny = "support",
         cat = "ranged",
         bird = "ranged",
+        colorado = "ranged",
     },
 
     -- Role definitions. glyph = the placeholder letter; icon = "" until art exists.

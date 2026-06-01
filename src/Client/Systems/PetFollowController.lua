@@ -22,7 +22,16 @@ local Workspace = game:GetService("Workspace")
 
 local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
 local Gait = require(ReplicatedStorage.Shared.Game.Gait)
+local EnchantLightning = require(ReplicatedStorage.Shared.Effects.EnchantLightning)
+local PetRoles = require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+
+-- A pet's combat role (matches SquadHud): PetRole attr -> by_type[PetType] -> default.
+local function petRoleId(pet)
+    return pet:GetAttribute("PetRole")
+        or (PetRoles.by_type and PetRoles.by_type[pet:GetAttribute("PetType")])
+        or PetRoles.default
+end
 
 local PetFollowController = {}
 
@@ -124,6 +133,17 @@ function PetFollowController.start()
     end
     local baseCF = setmetatable({}, { __mode = "k" }) -- pet model -> clean CFrame (no gait)
     local gaitState = setmetatable({}, { __mode = "k" }) -- pet model -> { phase, amp }
+
+    -- Ranged pets fire a cosmetic lightning bolt at their target on a cadence. Clone the
+    -- config and rebuild target_offset as a Vector3 (stored as {x,y,z} so the config can
+    -- be required headless, where Vector3 doesn't exist).
+    local boltCfg = table.clone(config.ranged_bolt or {})
+    local boltInterval = boltCfg.interval or 0.55
+    if type(boltCfg.target_offset) == "table" then
+        local o = boltCfg.target_offset
+        boltCfg.target_offset = Vector3.new(o[1] or 0, o[2] or 0, o[3] or 0)
+    end
+    local nextBolt = setmetatable({}, { __mode = "k" }) -- pet model -> next os.clock to fire
 
     -- OTHER players' pets, server-relayed (the server never relays our own — those stay local).
     local remoteTargets = setmetatable({}, { __mode = "k" }) -- pet model -> latest relayed CFrame
@@ -270,7 +290,7 @@ function PetFollowController.start()
             if breakable then
                 local g = groups[tid.Value]
                 if not g then
-                    g = { center = breakable:GetPivot().Position, pets = {} }
+                    g = { center = breakable:GetPivot().Position, model = breakable, pets = {} }
                     groups[tid.Value] = g
                 end
                 table.insert(g.pets, pet)
@@ -337,6 +357,15 @@ function PetFollowController.start()
                 local dir = toC.Magnitude > 0.01 and toC.Unit or upFwd
                 local goal = CFrame.lookAt(target, target + dir)
                 moveToward(pet, goal, attackRate)
+
+                -- Ranged pets zap their target with the enchanter lightning bolt on cadence.
+                if boltCfg.enabled ~= false and g.model and g.model.Parent and petRoleId(pet) == "ranged" then
+                    local nowC = os.clock()
+                    if not nextBolt[pet] or nowC >= nextBolt[pet] then
+                        nextBolt[pet] = nowC + boltInterval
+                        pcall(EnchantLightning.Play, pet, boltCfg, g.model)
+                    end
+                end
             end
         end
 
