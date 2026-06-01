@@ -74,9 +74,12 @@ return {
         lunge_distance = 3, -- jab depth toward center (lunge)
         lunge_speed = 6,
 
-        -- spiral (rotating mining vortex): inner -> outer arm, rises with t
+        -- spiral (rotating mining vortex): inner -> outer arm, rises with t. The spin rate
+        -- lerps inner -> outer, so the inner ring whirls faster than the rim; set
+        -- spiral_outer_speed negative to make the two rings counter-rotate instead.
         spiral_turns = 1.5,
-        spiral_speed = 1.5,
+        spiral_inner_speed = 3.0, -- rad/sec at the centre
+        spiral_outer_speed = 1.5, -- rad/sec at the rim (half the inner -> inner spins ~2x)
         spiral_rise = 2,
         -- pincer (two arcs clamping the target)
         pincer_arc = 80, -- degrees each arc spans

@@ -156,7 +156,8 @@ return function()
             ring_radius = 10,
             ring_height = 3,
             spiral_turns = 1,
-            spiral_speed = 2,
+            spiral_inner_speed = 3,
+            spiral_outer_speed = 1.5,
             spiral_rise = 4,
             pincer_arc = 80,
             pincer_squeeze = 0,
@@ -186,6 +187,31 @@ return function()
             local a = PetFormation.attackOffset(2, 6, 0, c)
             local b = PetFormation.attackOffset(2, 6, 1, c)
             expect((a.x - b.x) ^ 2 + (a.z - b.z) ^ 2 > 0.01).to.equal(true)
+        end)
+
+        -- angular velocity of slot `i` of `n` from two close phases (turns isolated to spin).
+        local function spinRate(c, i, n)
+            local a0 = PetFormation.attackOffset(i, n, 0, c)
+            local a1 = PetFormation.attackOffset(i, n, 0.01, c)
+            return (math.atan2(a1.z, a1.x) - math.atan2(a0.z, a0.x)) / 0.01
+        end
+
+        it("spiral: inner ring spins faster than the outer", function()
+            local c = withStyle("spiral")
+            c.spiral_turns = 0 -- isolate spin (no static turn offset)
+            c.spiral_inner_speed = 4
+            c.spiral_outer_speed = 1
+            expect(spinRate(c, 1, 4)).to.near(4, 0.05) -- inner (t=0)
+            expect(spinRate(c, 4, 4)).to.near(1, 0.05) -- outer (t=1)
+        end)
+
+        it("spiral: counter-rotates when the outer speed is negative", function()
+            local c = withStyle("spiral")
+            c.spiral_turns = 0
+            c.spiral_inner_speed = 2
+            c.spiral_outer_speed = -2
+            expect(spinRate(c, 1, 4) > 0).to.equal(true) -- inner one way
+            expect(spinRate(c, 4, 4) < 0).to.equal(true) -- outer the other
         end)
 
         it("pincer: two clusters on opposite sides", function()

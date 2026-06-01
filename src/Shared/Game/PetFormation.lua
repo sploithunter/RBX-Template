@@ -87,8 +87,12 @@ function PetFormation.attackOffset(index, count, phase, attack)
 
     if style == "spiral" then
         local t = (n > 1) and (i / (n - 1)) or 0 -- 0 (inner) .. 1 (outer)
-        local angle = t * (attack.spiral_turns or 1.5) * 2 * math.pi
-            + phase * (attack.spiral_speed or 0)
+        -- Spin rate lerps inner -> outer: a faster inner ring (or, if the outer speed is
+        -- negative, the two rings counter-rotate) gives the vortex more life.
+        local inner = tonumber(attack.spiral_inner_speed) or 0
+        local outer = tonumber(attack.spiral_outer_speed) or inner
+        local spin = inner + (outer - inner) * t
+        local angle = t * (attack.spiral_turns or 1.5) * 2 * math.pi + phase * spin
         local radius = R * (0.35 + 0.65 * t)
         return {
             x = radius * math.cos(angle),
