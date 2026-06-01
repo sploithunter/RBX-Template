@@ -32,9 +32,11 @@ return {
     -- standoff < attack_range so the pet can still hit from where it stands. Melee/tank
     -- crowd in close (standoff 0); ranged hangs back and snipes; support/control sit at
     -- mid range. This is the melee-closes / ranged-kites dynamic.
+    -- threat_mult scales the aggro a role generates (passive threat × this), so a tank
+    -- holds the enemy's attention and soaks for the squad while dps/ranged stay safer.
     roles = {
-        tank = { label = "Tank", glyph = "T", color = { 70, 130, 195 }, icon = "", attack_range = 9, standoff = 0 },
-        melee = { label = "Melee", glyph = "M", color = { 205, 85, 70 }, icon = "", attack_range = 9, standoff = 0 },
+        tank = { label = "Tank", glyph = "T", color = { 70, 130, 195 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 5 },
+        melee = { label = "Melee", glyph = "M", color = { 205, 85, 70 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 1 },
         -- kite = true: holds near the player and snipes instead of orbiting the enemy, so
         -- an enemy chasing it has to close the gap (the melee-closes / ranged-kites loop).
         ranged = { label = "Ranged", glyph = "R", color = { 120, 180, 85 }, icon = "", attack_range = 28, standoff = 17, kite = true },

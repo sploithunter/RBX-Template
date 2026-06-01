@@ -38,6 +38,7 @@ function EnemyService:Init()
     self._petFollowConfig = self._configLoader:LoadConfig("pet_follow")
     self._combatConfig = self._configLoader:LoadConfig("combat")
     self._squadConfig = self._configLoader:LoadConfig("squad")
+    self._petRoles = self._configLoader:LoadConfig("pet_roles")
     self._nextId = 0
     self._enemies = {} -- targetId -> { model, enemyId, nextAttack }
     -- pet model -> { lastHit } (weak so dead pets GC). Accumulated damage, the downed
@@ -446,12 +447,26 @@ end
 
 -- The threat a pet exerts (higher pulls aggro): an explicit Threat attribute marks
 -- a tank; otherwise the pet's Power is the default (stronger pets draw more).
-function EnemyService:_petThreat(pet)
-    local t = pet:GetAttribute("Threat")
-    if t and t > 0 then
-        return t
+-- A role's threat multiplier (tanks pull harder): PetRole attr -> by_type[PetType] ->
+-- default; falls back to 1.
+function EnemyService:_roleThreatMult(pet)
+    local roles = self._petRoles
+    if not roles then
+        return 1
     end
-    return self:_petPower(pet)
+    local id = pet:GetAttribute("PetRole")
+        or (roles.by_type and roles.by_type[pet:GetAttribute("PetType")])
+        or roles.default
+    local def = roles.roles and roles.roles[id]
+    return (def and tonumber(def.threat_mult)) or 1
+end
+
+function EnemyService:_petThreat(pet)
+    local base = pet:GetAttribute("Threat")
+    if not (base and base > 0) then
+        base = self:_petPower(pet)
+    end
+    return base * self:_roleThreatMult(pet)
 end
 
 -- Nearest player whose character is within maxRange of a point (or nil).
@@ -588,11 +603,15 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         ePos = newPos
     end
 
-    -- 5) ATTACK: bite the aggro target if it's within attack range, on cadence.
-    local targetDist = (self:_petPosition(targetPet, pfs) - ePos).Magnitude
+    -- 5) ATTACK: bite the highest-aggro pet that is CURRENTLY within attack range — not
+    -- only the chase target. The enemy may be pursuing an unreachable top-aggro pet (a
+    -- ranged kiter), but anything in its face (the melee/tank orbiting it) still gets hit.
+    local biteTarget = AggroTable.top(entry.aggro, 0, function(k)
+        return valid[k] == true and (self:_petPosition(k, pfs) - ePos).Magnitude <= atk
+    end)
     entry.nextAttack = entry.nextAttack or 0
-    if targetDist <= atk and now >= entry.nextAttack then
-        self:_hitPet(targetPet, def, now, eng)
+    if biteTarget and now >= entry.nextAttack then
+        self:_hitPet(biteTarget, def, now, eng)
         entry.nextAttack = now + ((def and def.attack and def.attack.cadence) or 1.5)
     end
 end
