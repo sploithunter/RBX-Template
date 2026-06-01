@@ -40,6 +40,19 @@ local STATE_COLOR = {
     Empty = Color3.fromRGB(70, 70, 80),
 }
 
+-- Continuous health-bar colour: green (full) -> yellow (half) -> red (empty), so the
+-- fill itself reads the pet's condition (no separate state label needed).
+local HP_GREEN = Color3.fromRGB(70, 205, 95)
+local HP_YELLOW = Color3.fromRGB(235, 200, 60)
+local HP_RED = Color3.fromRGB(220, 70, 70)
+local function healthColor(f)
+    f = math.clamp(f, 0, 1)
+    if f >= 0.5 then
+        return HP_YELLOW:Lerp(HP_GREEN, (f - 0.5) * 2)
+    end
+    return HP_RED:Lerp(HP_YELLOW, f * 2)
+end
+
 local function petsFolder()
     local pp = Workspace:FindFirstChild("PlayerPets")
     return pp and pp:FindFirstChild(localPlayer.Name)
@@ -69,11 +82,16 @@ local function readSlot(pet, factor, thresholds)
     else
         state = PetEndurance.state(damage, power, factor, thresholds)
     end
+    local maxEnd = PetEndurance.maxEndurance(power, factor)
+    local shield = pet:GetAttribute("CombatShield") or 0
     return {
         slot = petSlot(pet),
         name = tostring(pet:GetAttribute("PetType") or pet.Name),
         variant = tostring(pet:GetAttribute("Variant") or "basic"),
         healthFraction = PetEndurance.healthFraction(damage, power, factor),
+        -- Shield (absorption pool) as a fraction of the pet's endurance ceiling, for the
+        -- thin secondary bar. Capped at 1 so a big shield just fills it.
+        shieldFraction = maxEnd > 0 and math.clamp(shield / maxEnd, 0, 1) or 0,
         downed = downed,
         state = state,
         cdRemaining = cdRemaining,
@@ -86,7 +104,7 @@ end
 local PET_EFFECTS = {
     { key = "defense", source = "pet", untilAttr = "DefenseBuffUntil", color = Color3.fromRGB(235, 190, 70), label = "DEF", icon = POWER_ICONS.status.defense },
     { key = "damage", source = "player", untilAttr = "PetDamageBuffUntil", color = Color3.fromRGB(235, 90, 90), label = "DMG", icon = POWER_ICONS.status.damage },
-    { key = "shield", source = "pet", poolAttr = "CombatShield", color = Color3.fromRGB(95, 170, 235), label = "SH", icon = POWER_ICONS.status.shield },
+    -- (shield is now the thin blue secondary bar on the card, not a badge)
 }
 
 local function activeEffectsFor(pet, player, now)
@@ -252,7 +270,7 @@ function SquadHud.start()
         frame.Name = "Slot_" .. slot
         frame.AutoButtonColor = false
         frame.Text = ""
-        frame.Size = UDim2.fromOffset(186, 56)
+        frame.Size = UDim2.fromOffset(186, 38)
         frame.BackgroundColor3 = Color3.fromRGB(28, 30, 40)
         frame.BackgroundTransparency = 0.1
         frame.BorderSizePixel = 0
@@ -267,56 +285,80 @@ function SquadHud.start()
         stroke.Transparency = 1 -- shown when selected
         stroke.Parent = frame
 
-        local nameLbl = Instance.new("TextLabel")
-        nameLbl.Name = "Name"
-        nameLbl.BackgroundTransparency = 1
-        nameLbl.Position = UDim2.fromOffset(8, 4)
-        nameLbl.Size = UDim2.new(1, -16, 0, 18)
-        nameLbl.Font = Enum.Font.GothamBold
-        nameLbl.TextSize = 14
-        nameLbl.TextXAlignment = Enum.TextXAlignment.Left
-        nameLbl.TextColor3 = Color3.fromRGB(235, 235, 245)
-        nameLbl.Parent = frame
-
-        local stateLbl = Instance.new("TextLabel")
-        stateLbl.Name = "State"
-        stateLbl.BackgroundTransparency = 1
-        stateLbl.Position = UDim2.fromOffset(8, 4)
-        stateLbl.Size = UDim2.new(1, -16, 0, 18)
-        stateLbl.Font = Enum.Font.GothamMedium
-        stateLbl.TextSize = 12
-        stateLbl.TextXAlignment = Enum.TextXAlignment.Right
-        stateLbl.Parent = frame
-
+        -- Compact health bar: a near-black backing (so white text stays legible as the
+        -- fill drains), a fill that goes green->yellow->red, the pet NAME inside it, and
+        -- a right-aligned note (recharge countdown / Summon when downed). Rounded corners.
         local barBg = Instance.new("Frame")
         barBg.Name = "BarBg"
-        barBg.Position = UDim2.fromOffset(8, 26)
-        barBg.Size = UDim2.new(1, -16, 0, 10)
-        barBg.BackgroundColor3 = Color3.fromRGB(15, 16, 22)
+        barBg.Position = UDim2.fromOffset(8, 6)
+        barBg.Size = UDim2.new(1, -16, 0, 20)
+        barBg.BackgroundColor3 = Color3.fromRGB(12, 13, 18)
         barBg.BorderSizePixel = 0
+        barBg.ClipsDescendants = true
         barBg.Parent = frame
         local barCorner = Instance.new("UICorner")
-        barCorner.CornerRadius = UDim.new(0, 4)
+        barCorner.CornerRadius = UDim.new(0, 6)
         barCorner.Parent = barBg
+
         local fill = Instance.new("Frame")
         fill.Name = "Fill"
         fill.Size = UDim2.fromScale(1, 1)
         fill.BorderSizePixel = 0
+        fill.ZIndex = 2
         fill.Parent = barBg
         local fillCorner = Instance.new("UICorner")
-        fillCorner.CornerRadius = UDim.new(0, 4)
+        fillCorner.CornerRadius = UDim.new(0, 6)
         fillCorner.Parent = fill
 
-        local cdLbl = Instance.new("TextLabel")
-        cdLbl.Name = "Cooldown"
-        cdLbl.BackgroundTransparency = 1
-        cdLbl.Position = UDim2.fromOffset(8, 38)
-        cdLbl.Size = UDim2.new(1, -16, 0, 16)
-        cdLbl.Font = Enum.Font.Gotham
-        cdLbl.TextSize = 11
-        cdLbl.TextXAlignment = Enum.TextXAlignment.Left
-        cdLbl.TextColor3 = Color3.fromRGB(180, 190, 205)
-        cdLbl.Parent = frame
+        local nameLbl = Instance.new("TextLabel")
+        nameLbl.Name = "Name"
+        nameLbl.BackgroundTransparency = 1
+        nameLbl.Position = UDim2.fromOffset(8, 0)
+        nameLbl.Size = UDim2.new(1, -16, 1, 0)
+        nameLbl.Font = Enum.Font.GothamBold
+        nameLbl.TextSize = 13
+        nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+        nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+        nameLbl.TextStrokeTransparency = 0.4 -- keeps it readable over any fill colour
+        nameLbl.ZIndex = 3
+        nameLbl.Parent = barBg
+
+        local noteLbl = Instance.new("TextLabel")
+        noteLbl.Name = "Note"
+        noteLbl.BackgroundTransparency = 1
+        noteLbl.Position = UDim2.fromOffset(8, 0)
+        noteLbl.Size = UDim2.new(1, -16, 1, 0)
+        noteLbl.Font = Enum.Font.GothamBold
+        noteLbl.TextSize = 11
+        noteLbl.TextXAlignment = Enum.TextXAlignment.Right
+        noteLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+        noteLbl.TextStrokeTransparency = 0.4
+        noteLbl.ZIndex = 3
+        noteLbl.Parent = barBg
+
+        -- Thin secondary bar = shield absorption pool (blue), CoH endurance-bar style.
+        -- Hidden when the pet has no shield; rounded (pill) corners.
+        local shieldBg = Instance.new("Frame")
+        shieldBg.Name = "ShieldBg"
+        shieldBg.Position = UDim2.fromOffset(8, 28)
+        shieldBg.Size = UDim2.new(1, -16, 0, 4)
+        shieldBg.BackgroundColor3 = Color3.fromRGB(12, 13, 18)
+        shieldBg.BorderSizePixel = 0
+        shieldBg.ClipsDescendants = true
+        shieldBg.Visible = false
+        shieldBg.Parent = frame
+        local shieldCorner = Instance.new("UICorner")
+        shieldCorner.CornerRadius = UDim.new(1, 0)
+        shieldCorner.Parent = shieldBg
+        local shieldFill = Instance.new("Frame")
+        shieldFill.Name = "ShieldFill"
+        shieldFill.Size = UDim2.fromScale(0, 1)
+        shieldFill.BackgroundColor3 = Color3.fromRGB(95, 170, 235)
+        shieldFill.BorderSizePixel = 0
+        shieldFill.Parent = shieldBg
+        local shieldFillCorner = Instance.new("UICorner")
+        shieldFillCorner.CornerRadius = UDim.new(1, 0)
+        shieldFillCorner.Parent = shieldFill
 
         -- Status-badge row: anchored at the card's left edge, growing toward screen
         -- centre (left) as more buffs/debuffs stack on this pet.
@@ -344,9 +386,10 @@ function SquadHud.start()
             frame = frame,
             stroke = stroke,
             name = nameLbl,
-            state = stateLbl,
+            note = noteLbl,
             fill = fill,
-            cd = cdLbl,
+            shieldBg = shieldBg,
+            shieldFill = shieldFill,
             status = status,
             badges = {},
         }
@@ -445,17 +488,22 @@ function SquadHud.start()
                         cards[s.slot] = card
                     end
                     card.name.Text = s.name .. (s.variant ~= "basic" and (" (" .. s.variant .. ")") or "")
-                    card.state.Text = s.state
-                    card.state.TextColor3 = STATE_COLOR[s.state] or STATE_COLOR.Empty
-                    card.fill.Size = UDim2.fromScale(math.clamp(s.healthFraction, 0, 1), 1)
-                    card.fill.BackgroundColor3 = STATE_COLOR[s.downed and "Recharging" or s.state]
-                        or STATE_COLOR.Healthy
                     if s.downed then
-                        card.cd.Text = s.cdRemaining > 0 and ("Recharging  " .. s.cdRemaining .. "s")
-                            or "READY — Summon"
+                        -- Out of the fight: full bar in the recharge colour + a note.
+                        card.fill.Size = UDim2.fromScale(1, 1)
+                        card.fill.BackgroundColor3 = s.cdRemaining > 0 and STATE_COLOR.Recharging
+                            or STATE_COLOR.Ready
+                        card.note.Text = s.cdRemaining > 0 and (s.cdRemaining .. "s") or "Summon"
                     else
-                        card.cd.Text = ""
+                        -- Health fill drains + recolours green->yellow->red.
+                        card.fill.Size = UDim2.fromScale(math.clamp(s.healthFraction, 0, 1), 1)
+                        card.fill.BackgroundColor3 = healthColor(s.healthFraction)
+                        card.note.Text = ""
                     end
+                    -- Shield (absorption) thin secondary bar — shown only when present.
+                    local shieldF = s.shieldFraction or 0
+                    card.shieldBg.Visible = shieldF > 0
+                    card.shieldFill.Size = UDim2.fromScale(shieldF, 1)
                     card.stroke.Transparency = (selectedSlot == s.slot) and 0 or 1
                     card.frame.BackgroundTransparency = (selectedSlot == s.slot) and 0 or 0.1
                     updateBadges(card, activeEffectsFor(pet, localPlayer, os.time()), blinkLead)
