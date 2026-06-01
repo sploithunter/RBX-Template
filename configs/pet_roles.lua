@@ -42,6 +42,11 @@ return {
     -- defense = innate damage reduction (the role's "toughness"), added to the pet's
     -- own Defense attribute + any DefenseBuff before the armor curve in _hitPet. Tanks
     -- are naturally tough; melee a little; ranged/support are squishy. Tune freely.
+    --
+    -- NOTE / TODO (damage tuning): pet damage to ENEMIES and to MINING targets currently share
+    -- the same damage_mult + roll path (PetFollowService:_mine -> ResolvePetDamage). These likely
+    -- want to scale DIFFERENTLY (combat balance vs ore/coin throughput), so split them into
+    -- separate configs/multipliers (e.g. damage_mult_combat vs damage_mult_mining) when balancing.
     roles = {
         tank = { label = "Tank", glyph = "T", color = { 70, 130, 195 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 5, implicit_taunt = true, damage_mult = 0.6, defense = 100 },
         melee = { label = "Melee", glyph = "M", color = { 205, 85, 70 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 1, damage_mult = 1.0, defense = 20 },
