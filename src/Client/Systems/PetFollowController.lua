@@ -77,7 +77,31 @@ function PetFollowController.start()
     local reportAccum = 0
     local reportInterval = (config.replication and config.replication.interval) or 0.1
 
+    -- OTHER players' pets, server-relayed (the server never relays our own — those stay local).
+    local remoteTargets = setmetatable({}, { __mode = "k" }) -- pet model -> latest relayed CFrame
+    Signals.PetPositionsRelay.OnClientEvent:Connect(function(list)
+        if type(list) ~= "table" then
+            return
+        end
+        for _, e in ipairs(list) do
+            if type(e) == "table" and typeof(e.pet) == "Instance" and typeof(e.cf) == "CFrame" then
+                remoteTargets[e.pet] = e.cf
+            end
+        end
+    end)
+
     RunService.RenderStepped:Connect(function(dt)
+        -- Smooth OTHER players' pets toward their relayed transforms (always, even if we have no
+        -- pets of our own). Our own pets are handled below, purely locally.
+        local remoteAlpha = 1 - math.exp(-(config.movement.remote_lerp_rate or 14) * dt)
+        for pet, targetCf in pairs(remoteTargets) do
+            if pet.Parent and pet:IsA("Model") and pet.PrimaryPart then
+                pet:PivotTo(pet:GetPivot():Lerp(targetCf, remoteAlpha))
+            else
+                remoteTargets[pet] = nil
+            end
+        end
+
         local char = localPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local petsFolder = Workspace:FindFirstChild("PlayerPets")

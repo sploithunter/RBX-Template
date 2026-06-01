@@ -55,16 +55,23 @@ function PetFollowService:_onPetPositions(player, report)
         return
     end
     local now = os.clock()
+    local valid = {}
     for _, entry in ipairs(report) do
         local pet = type(entry) == "table" and entry.pet
         local cf = type(entry) == "table" and entry.cf
         if typeof(pet) == "Instance" and pet:IsDescendantOf(folder) and typeof(cf) == "CFrame" then
-            self._petPos[pet] = { cf = cf, t = now }
-            -- Relay: applying the owner's reported transform server-side replicates it to ALL
-            -- clients, so other players see this player's pets move (the owner keeps overriding
-            -- it locally at full framerate, so their own view stays smooth). Anchored -> no physics.
-            if pet:IsA("Model") and pet.PrimaryPart then
-                pet:PivotTo(cf)
+            self._petPos[pet] = { cf = cf, t = now } -- for the mining gate
+            valid[#valid + 1] = entry
+        end
+    end
+
+    -- Relay to OTHER clients only — they render this player's pets from the server. The owning
+    -- client positions its OWN pets locally and is never sent / never applies the server copy,
+    -- so its own view stays smooth (no PivotTo here = no stale server transform fighting it).
+    if #valid > 0 then
+        for _, other in ipairs(Players:GetPlayers()) do
+            if other ~= player then
+                Signals.PetPositionsRelay:FireClient(other, valid)
             end
         end
     end

@@ -104,6 +104,11 @@ return {
         -- multiply against `base`, clamped to [min, max].
         speed = { base = 1.0, min = 0.25, max = 4.0 },
 
+        -- Smoothing for OTHER players' pets (server-relayed at ~10Hz): the client lerps them
+        -- toward each relayed transform so they read smooth despite the lower update rate. Your
+        -- OWN pets never use this — they're driven locally at full framerate.
+        remote_lerp_rate = 14,
+
         -- Catch-up safety: if a pet ends up further than this (studs) from its target — the
         -- player teleported (zone/realm change) — snap it there instead of slowly crawling
         -- across the whole map. Normal walking never opens a gap this large.
