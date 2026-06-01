@@ -79,6 +79,97 @@ local function readSlot(pet, factor, thresholds)
     }
 end
 
+-- Timed buffs/debuffs to show as badges on a pet's card. Read off the pet (or the
+-- player, for squad-wide buffs). Placeholder colour + short label now; set `icon`
+-- to an asset id later to swap the label for the real art.
+local PET_EFFECTS = {
+    { key = "defense", source = "pet", untilAttr = "DefenseBuffUntil", color = Color3.fromRGB(235, 190, 70), label = "DEF" },
+    { key = "damage", source = "player", untilAttr = "PetDamageBuffUntil", color = Color3.fromRGB(235, 90, 90), label = "DMG" },
+    { key = "shield", source = "pet", poolAttr = "CombatShield", color = Color3.fromRGB(95, 170, 235), label = "SH" },
+}
+
+local function activeEffectsFor(pet, player, now)
+    local out = {}
+    for _, e in ipairs(PET_EFFECTS) do
+        local src = (e.source == "player") and player or pet
+        if e.untilAttr then
+            local until_ = src:GetAttribute(e.untilAttr) or 0
+            if until_ > now then
+                out[#out + 1] =
+                    { key = e.key, color = e.color, label = e.label, timer = math.ceil(until_ - now) .. "s", icon = e.icon }
+            end
+        elseif e.poolAttr then
+            local v = src:GetAttribute(e.poolAttr) or 0
+            if v > 0 then
+                out[#out + 1] =
+                    { key = e.key, color = e.color, label = e.label, timer = tostring(math.floor(v)), icon = e.icon }
+            end
+        end
+    end
+    return out
+end
+
+-- A small status badge (icon-ready: an empty ImageLabel sits over the placeholder).
+local function makeBadge(parent)
+    local f = Instance.new("Frame")
+    f.Size = UDim2.fromOffset(24, 24)
+    f.BorderSizePixel = 0
+    f.Parent = parent
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, 5)
+    c.Parent = f
+    local icon = Instance.new("ImageLabel")
+    icon.Name = "Icon"
+    icon.BackgroundTransparency = 1
+    icon.Size = UDim2.fromScale(1, 1)
+    icon.Image = ""
+    icon.ZIndex = 3
+    icon.Parent = f
+    local label = Instance.new("TextLabel")
+    label.Name = "Label"
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.new(1, 0, 0.6, 0)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 9
+    label.TextColor3 = Color3.fromRGB(20, 22, 28)
+    label.Parent = f
+    local timer = Instance.new("TextLabel")
+    timer.Name = "Timer"
+    timer.BackgroundTransparency = 1
+    timer.Position = UDim2.fromScale(0, 0.55)
+    timer.Size = UDim2.new(1, 0, 0.45, 0)
+    timer.Font = Enum.Font.GothamBold
+    timer.TextSize = 9
+    timer.TextColor3 = Color3.fromRGB(20, 22, 28)
+    timer.Parent = f
+    return { frame = f, icon = icon, label = label, timer = timer }
+end
+
+-- Reconcile a card's badges against the pet's active effects (stack toward centre).
+local function updateBadges(card, effects)
+    local seen = {}
+    for i, eff in ipairs(effects) do
+        seen[eff.key] = true
+        local b = card.badges[eff.key]
+        if not b then
+            b = makeBadge(card.status)
+            b.frame.Name = eff.key
+            card.badges[eff.key] = b
+        end
+        b.frame.LayoutOrder = i
+        b.frame.BackgroundColor3 = eff.color
+        b.label.Text = (eff.icon and eff.icon ~= "") and "" or eff.label
+        b.icon.Image = eff.icon or ""
+        b.timer.Text = eff.timer or ""
+    end
+    for key, b in pairs(card.badges) do
+        if not seen[key] then
+            b.frame:Destroy()
+            card.badges[key] = nil
+        end
+    end
+end
+
 function SquadHud.start()
     local config = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("combat"))
     local factor = config.pet_down_threshold_factor or 1
@@ -204,6 +295,24 @@ function SquadHud.start()
         cdLbl.TextColor3 = Color3.fromRGB(180, 190, 205)
         cdLbl.Parent = frame
 
+        -- Status-badge row: anchored at the card's left edge, growing toward screen
+        -- centre (left) as more buffs/debuffs stack on this pet.
+        local status = Instance.new("Frame")
+        status.Name = "Status"
+        status.AnchorPoint = Vector2.new(1, 0.5)
+        status.Position = UDim2.new(0, -4, 0.5, 0)
+        status.Size = UDim2.fromOffset(0, 24)
+        status.AutomaticSize = Enum.AutomaticSize.X
+        status.BackgroundTransparency = 1
+        status.Parent = frame
+        local sLayout = Instance.new("UIListLayout")
+        sLayout.FillDirection = Enum.FillDirection.Horizontal
+        sLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+        sLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+        sLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        sLayout.Padding = UDim.new(0, 3)
+        sLayout.Parent = status
+
         frame.MouseButton1Click:Connect(function()
             setSelected(slot)
         end)
@@ -215,6 +324,8 @@ function SquadHud.start()
             state = stateLbl,
             fill = fill,
             cd = cdLbl,
+            status = status,
+            badges = {},
         }
     end
 
@@ -368,6 +479,7 @@ function SquadHud.start()
                     end
                     card.stroke.Transparency = (selectedSlot == s.slot) and 0 or 1
                     card.frame.BackgroundTransparency = (selectedSlot == s.slot) and 0 or 0.1
+                    updateBadges(card, activeEffectsFor(pet, localPlayer, os.time()))
                 end
             end
         end
