@@ -39,6 +39,18 @@ function AggroTable.clear(state, key)
     end
 end
 
+-- Raise an attacker's aggro UP TO a floor (never lowers it). Used for proximity aggro:
+-- a target close to the enemy keeps a baseline so decay can't drop it below the
+-- disengage threshold while it's near — the enemy won't "forget" something in its face.
+function AggroTable.reinforce(state, key, floor)
+    if key == nil or not floor or floor <= 0 then
+        return
+    end
+    if (state.values[key] or 0) < floor then
+        state.values[key] = floor
+    end
+end
+
 -- Bleed every entry toward 0 by ratePerSecond * dt; entries that reach 0 are removed.
 function AggroTable.decay(state, dt, ratePerSecond)
     local drop = (ratePerSecond or 0) * (dt or 0)

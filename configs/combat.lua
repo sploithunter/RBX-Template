@@ -91,6 +91,13 @@ return {
             decay_per_second = 4,
             disengage_threshold = 0.5,
             taunt_amount = 250,
+            -- Proximity aggro: any attacker within proximity_range of the enemy keeps a
+            -- baseline aggro of proximity_floor (> disengage_threshold), so decay can't
+            -- make the enemy "forget" a pet right next to it — get close enough and it
+            -- engages. Only once everything leaves range does aggro bleed to zero and the
+            -- enemy disengages. (A future stealth flag exempts a target from this floor.)
+            proximity_range = 30,
+            proximity_floor = 6,
         },
     },
 

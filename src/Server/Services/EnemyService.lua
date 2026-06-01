@@ -485,13 +485,19 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     local def = self._enemiesConfig.enemies and self._enemiesConfig.enemies[entry.enemyId]
     local pfs = self:_petFollowService()
 
-    -- 1) PERCEPTION: while unaware, roll to notice the nearest player by distance.
+    -- 1) PERCEPTION: while unaware, notice the nearest player. Within proximity_range it
+    -- engages for sure (get close enough and it attacks); out to perception_range it's a
+    -- distance-weighted roll.
     if not entry.aggroPlayerName then
         entry.nextPerception = entry.nextPerception or 0
         if now >= entry.nextPerception then
             entry.nextPerception = now + (eng.perception_interval or 0.75)
+            local proxRange = (eng.aggro and eng.aggro.proximity_range) or 30
             local player, d = self:_nearestPlayer(ePos, perceptionRange)
-            if player and EnemyAI.shouldNotice(d, perceptionRange, math.random()) then
+            if
+                player
+                and (d <= proxRange or EnemyAI.shouldNotice(d, perceptionRange, math.random()))
+            then
                 entry.aggroPlayerName = player.Name
             end
         end
@@ -522,6 +528,8 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     local aggroCfg = eng.aggro or {}
     AggroTable.decay(entry.aggro, dt or 0.15, aggroCfg.decay_per_second or 4)
     local valid = {}
+    local proxRange = aggroCfg.proximity_range or 30
+    local proxFloor = aggroCfg.proximity_floor or 6
     for _, pet in ipairs(petsFolder:GetChildren()) do
         if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
             self:_assignPetToEnemy(pet, targetId)
@@ -531,6 +539,14 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
                 pet,
                 self:_petThreat(pet) * (aggroCfg.passive_per_second or 1.5) * (dt or 0.15)
             )
+            -- Proximity floor: a pet within range (and not stealthed) keeps a baseline
+            -- aggro so the enemy never disengages from something right next to it.
+            if not pet:GetAttribute("Stealth") then
+                local d = (self:_petPosition(pet, pfs) - ePos).Magnitude
+                if d <= proxRange then
+                    AggroTable.reinforce(entry.aggro, pet, proxFloor)
+                end
+            end
         end
     end
 
