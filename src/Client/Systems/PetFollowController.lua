@@ -169,6 +169,11 @@ function PetFollowController.start()
         local o = boltCfg.target_offset
         boltCfg.target_offset = Vector3.new(o[1] or 0, o[2] or 0, o[3] or 0)
     end
+    -- Mining impact FX (impact-library test bed + mining visual): each mined ore plays a named
+    -- impact on a cadence. Keyed by the breakable model so multiple pets on one ore share a stream.
+    local miningFx = config.mining_fx or {}
+    local nextMineFx = setmetatable({}, { __mode = "k" }) -- breakable model -> next os.clock to fire
+
     local nextBolt = setmetatable({}, { __mode = "k" }) -- pet model -> next os.clock to fire
     -- Cast-lock: a ranged pet that just fired can't move until this clock — a melee enemy
     -- gets a window to close the gap (counterplay to kiting).
@@ -475,6 +480,22 @@ function PetFollowController.start()
                 -- layers on the facing — a spinning pet still orients to its prey underneath.
                 local anim = g.isEnemy and combatAnim or miningAnim
                 moveToward(pet, target, dir, attackRate, anim)
+            end
+
+            -- Mining impact FX: play a library impact at the ore on cadence (test bed + visual).
+            if miningFx.enabled and not g.isEnemy and g.model and g.model.Parent then
+                local nowC = os.clock()
+                if not nextMineFx[g.model] or nowC >= nextMineFx[g.model] then
+                    nextMineFx[g.model] = nowC + (miningFx.interval or 0.7)
+                    local cols = miningFx.colors or {}
+                    RangedFX.playImpact(
+                        miningFx.impact or "small",
+                        g.center + Vector3.new(0, 1, 0),
+                        cols[1] or { 255, 150, 40 },
+                        cols[2] or cols[1] or { 255, 90, 20 },
+                        { scale = miningFx.scale, sparks = miningFx.sparks }
+                    )
+                end
             end
         end
 

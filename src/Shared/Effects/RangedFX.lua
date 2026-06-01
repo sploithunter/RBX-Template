@@ -68,40 +68,43 @@ local function fxFolder()
     return f
 end
 
--- Impact explosion shared by the projectile themes: a bright expanding flash + a quick light
--- pop + a radial spray of ember/shard bits that fly outward and fade. Themed by the two colours
--- (c1 core, c2 trail/debris). `size` is the flash diameter; `sparks` the debris count.
-local function impactBurst(pos, c1, c2, size, sparks)
-    local parent = fxFolder()
+-- ===================== Impact library =====================
+-- A catalogue of named impact effects (RangedFX.IMPACTS), each played at a hit point. Grow
+-- this table to build the library; reference an entry by name from a projectile theme
+-- (theme.impact) or from mining_fx. Shared spawn helpers below keep each entry small.
+--   c1 = core colour, c2 = debris/secondary colour, opts.scale + opts.sparks tune size/count.
 
-    -- Core flash sphere — snaps out fast, fades.
+-- A neon flash sphere that snaps out and fades, with a quick PointLight pop.
+local function spawnFlash(pos, color, lightColor, size, life)
     local flash = Instance.new("Part")
     flash.Shape = Enum.PartType.Ball
     flash.Material = Enum.Material.Neon
-    flash.Color = c2
+    flash.Color = color
     flash.Anchored = true
     flash.CanCollide = false
     flash.CanQuery = false
     flash.CastShadow = false
     flash.Size = Vector3.new(0.5, 0.5, 0.5)
     flash.CFrame = CFrame.new(pos)
-    flash.Parent = parent
+    flash.Parent = fxFolder()
     local light = Instance.new("PointLight")
-    light.Color = c1
+    light.Color = lightColor
     light.Brightness = 7
-    light.Range = size * 4
+    light.Range = size * 2.5
     light.Parent = flash
-    TweenService:Create(flash, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+    TweenService:Create(flash, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         Size = Vector3.new(size, size, size),
         Transparency = 1,
     }):Play()
-    TweenService:Create(light, TweenInfo.new(0.2), { Brightness = 0 }):Play()
-    Debris:AddItem(flash, 0.35)
+    TweenService:Create(light, TweenInfo.new(life * 0.9), { Brightness = 0 }):Play()
+    Debris:AddItem(flash, life + 0.1)
+end
 
-    -- Ember/shard spray — bits fly radially outward (with a little upward lift), shrink + fade.
-    sparks = math.max(0, math.floor(tonumber(sparks) or 7))
-    for i = 1, sparks do
-        local ang = (i / sparks) * math.pi * 2 + math.random() * 0.6
+-- A radial spray of neon bits that fly outward (with upward lift), shrink + fade.
+local function spawnSparks(pos, c1, c2, count, bitSize, spread, life)
+    count = math.max(0, math.floor(count))
+    for i = 1, count do
+        local ang = (i / count) * math.pi * 2 + math.random() * 0.6
         local elev = 0.2 + math.random() * 0.6
         local dir = Vector3.new(math.cos(ang), elev, math.sin(ang)).Unit
         local bit = Instance.new("Part")
@@ -112,18 +115,88 @@ local function impactBurst(pos, c1, c2, size, sparks)
         bit.CanCollide = false
         bit.CanQuery = false
         bit.CastShadow = false
-        bit.Size = Vector3.new(size * 0.2, size * 0.2, size * 0.2)
+        bit.Size = Vector3.new(bitSize, bitSize, bitSize)
         bit.CFrame = CFrame.new(pos)
-        bit.Parent = parent
-        local dist = size * (0.8 + math.random() * 0.9)
-        local dest = pos + dir * dist - Vector3.new(0, size * 0.3, 0) -- arc out + settle down
-        TweenService:Create(bit, TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        bit.Parent = fxFolder()
+        local dist = spread * (0.7 + math.random() * 0.9)
+        local dest = pos + dir * dist - Vector3.new(0, spread * 0.25, 0)
+        TweenService:Create(bit, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
             CFrame = CFrame.new(dest),
             Size = Vector3.new(0.05, 0.05, 0.05),
             Transparency = 1,
         }):Play()
-        Debris:AddItem(bit, 0.42)
+        Debris:AddItem(bit, life + 0.1)
     end
+end
+
+-- A flat neon disc that expands outward + fades — a ground shockwave.
+local function spawnShockwave(pos, color, diameter, life)
+    local ring = Instance.new("Part")
+    ring.Shape = Enum.PartType.Cylinder
+    ring.Material = Enum.Material.Neon
+    ring.Color = color
+    ring.Anchored = true
+    ring.CanCollide = false
+    ring.CanQuery = false
+    ring.CastShadow = false
+    ring.Transparency = 0.2
+    ring.Size = Vector3.new(0.4, 1, 1) -- X = thin height; Y/Z = diameter
+    ring.CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, math.rad(90)) -- lay flat (X -> up)
+    ring.Parent = fxFolder()
+    TweenService:Create(ring, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = Vector3.new(0.2, diameter, diameter),
+        Transparency = 1,
+    }):Play()
+    Debris:AddItem(ring, life + 0.1)
+end
+
+-- A dark puff that swells + rises + fades — lingering smoke.
+local function spawnSmoke(pos, diameter, life)
+    local s = Instance.new("Part")
+    s.Shape = Enum.PartType.Ball
+    s.Material = Enum.Material.SmoothPlastic
+    s.Color = Color3.fromRGB(60, 55, 50)
+    s.Anchored = true
+    s.CanCollide = false
+    s.CanQuery = false
+    s.CastShadow = false
+    s.Transparency = 0.45
+    s.Size = Vector3.new(diameter * 0.4, diameter * 0.4, diameter * 0.4)
+    s.CFrame = CFrame.new(pos + Vector3.new(0, diameter * 0.2, 0))
+    s.Parent = fxFolder()
+    TweenService:Create(s, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = Vector3.new(diameter, diameter, diameter),
+        Transparency = 1,
+        CFrame = CFrame.new(pos + Vector3.new(0, diameter * 0.7, 0)),
+    }):Play()
+    Debris:AddItem(s, life + 0.1)
+end
+
+RangedFX.IMPACTS = {
+    -- small: a flash + light pop + a handful of embers (the original projectile impact).
+    small = function(pos, c1, c2, opts)
+        local scale = (opts and tonumber(opts.scale)) or 3
+        local sparks = (opts and tonumber(opts.sparks)) or 7
+        spawnFlash(pos, c2, c1, scale, 0.25)
+        spawnSparks(pos, c1, c2, sparks, scale * 0.2, scale, 0.32)
+    end,
+    -- big: a fat double flash + bright light + shockwave disc + heavy ember spray + smoke puff.
+    big = function(pos, c1, c2, opts)
+        local scale = (opts and tonumber(opts.scale)) or 7
+        local sparks = (opts and tonumber(opts.sparks)) or 18
+        spawnFlash(pos, c2, c1, scale, 0.35)
+        spawnFlash(pos, c1, c1, scale * 0.6, 0.22) -- inner core
+        spawnShockwave(pos, c2, scale * 2.4, 0.4)
+        spawnSparks(pos, c1, c2, sparks, scale * 0.22, scale * 1.6, 0.45)
+        spawnSmoke(pos, scale * 1.2, 0.6)
+    end,
+}
+
+-- Play a named impact at `pos`. c1/c2 accept Color3 or {r,g,b}. Unknown name -> small.
+function RangedFX.playImpact(name, pos, c1, c2, opts)
+    local fn = RangedFX.IMPACTS[name] or RangedFX.IMPACTS.small
+    local col1 = toColor(c1)
+    fn(pos, col1, toColor(c2, col1), opts)
 end
 
 -- Travelling orb (fireball / plasma / frost / poison): an emissive ball flies origin->target
@@ -175,7 +248,10 @@ local function playProjectile(originPart, endPos, theme)
         { CFrame = CFrame.new(endPos) }
     )
     tween.Completed:Connect(function()
-        impactBurst(endPos, c1, c2, (tonumber(theme.burst) or 3) * (size / 1.5), theme.sparks)
+        RangedFX.playImpact(theme.impact or "small", endPos, c1, c2, {
+            scale = (tonumber(theme.burst) or 3) * (size / 1.5),
+            sparks = theme.sparks,
+        })
         orb:Destroy()
     end)
     tween:Play()
@@ -211,7 +287,10 @@ local function playBeam(originPart, endPos, theme)
         Size = Vector3.new(dist, 0.05, 0.05),
     }):Play()
     Debris:AddItem(beam, duration + 0.1)
-    impactBurst(endPos, c1, c1, (tonumber(theme.burst) or 2.5), theme.sparks or 5)
+    RangedFX.playImpact(theme.impact or "small", endPos, c1, c1, {
+        scale = tonumber(theme.burst) or 2.5,
+        sparks = theme.sparks or 5,
+    })
     return true
 end
 

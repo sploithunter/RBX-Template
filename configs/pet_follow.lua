@@ -240,6 +240,19 @@ return {
         range = 9,
     },
 
+    -- Mining impact FX — a test bed for the impact library (RangedFX.IMPACTS) that doubles as a
+    -- mining visual. When enabled, each ore being mined plays a named impact on a cadence, so you
+    -- can preview ANY impact (small / big / future entries) just by walking up to ore — no enemy
+    -- or attack needed. `impact` = library entry name; colors = { core, debris }.
+    mining_fx = {
+        enabled = true,
+        impact = "big", -- "small" (the projectile hit) | "big" (flash + shockwave + smoke)
+        interval = 0.7, -- seconds between impacts per ore
+        colors = { { 255, 150, 40 }, { 255, 90, 20 } }, -- fiery; swap per taste
+        scale = 6,
+        sparks = 16,
+    },
+
     -- Client -> server pet position reporting (drives the mining gate; foundation for multiplayer
     -- pet visibility). Throttled to keep bandwidth modest.
     replication = {
