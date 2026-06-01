@@ -281,6 +281,7 @@ function SettingsPanel:_createUI(parent)
     self:_createAudioSettings()
     self:_createGraphicsSettings()
     self:_createUISettings()
+    self:_createPetSettings()
     self:_createHatchSettings()
     
     -- Admin section (only for admin users)
@@ -826,6 +827,36 @@ function SettingsPanel:_createHatchSettings()
         28,
         function(value)
             self:_setHatchModeValue("silentHatch", value)
+        end
+    )
+end
+
+-- Current equipped-pet formation, read from the replicated PetFormationMode attribute the
+-- server sets from the saved setting.
+function SettingsPanel:_getPetFormation()
+    local mode = Players.LocalPlayer:GetAttribute("PetFormationMode")
+    if type(mode) == "string" then
+        return mode
+    end
+    return "risers"
+end
+
+function SettingsPanel:_createPetSettings()
+    self:_createSectionHeader("🐾 Pet Settings", 22)
+
+    local formationOptions = {
+        { value = "risers", display = "Tiered Rows" },
+        { value = "conga", display = "Conga Line" },
+        { value = "arc", display = "Arc Cradle" },
+    }
+
+    self:_createDropdownSetting(
+        "Pet Formation",
+        self:_getPetFormation(),
+        formationOptions,
+        23,
+        function(value)
+            Signals.Settings_SetPetFormation:FireServer({ mode = value })
         end
     )
 end

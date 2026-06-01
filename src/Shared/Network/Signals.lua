@@ -91,6 +91,7 @@ local Signals = {
     HatchSettings_SetCount = Net:RemoteEvent("HatchSettings_SetCount"), -- c->s persist selected egg hatch count
     HatchSettings_SetActionMode = Net:RemoteEvent("HatchSettings_SetActionMode"), -- c->s persist what E does near eggs
     HatchSettings_SetModes = Net:RemoteEvent("HatchSettings_SetModes"), -- c->s persist selected egg hatch modes
+    Settings_SetPetFormation = Net:RemoteEvent("Settings_SetPetFormation"), -- c->s persist equipped-pet formation layout
     AutoTarget_Status = Net:RemoteEvent("AutoTarget_Status"), -- s->c push current auto-target status
 }
 

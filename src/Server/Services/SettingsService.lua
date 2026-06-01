@@ -127,6 +127,7 @@ function SettingsService:_createSettingsFolders(player)
             GraphicsQuality = "Auto",
             DisplayPreferences = {},
             AutoSystems = {},
+            PetFormation = self:_defaultPetFormation(),
         }
     end
 
@@ -164,6 +165,7 @@ function SettingsService:_createSettingsFolders(player)
     autoSystemsFolder.Parent = settingsFolder
 
     self:_replicateAutoSystemSettings(player)
+    self:_applyPetFormation(player)
 
     self._logger:Info("✅ SETTINGS - Settings folders created successfully", {
         player = player.Name,
@@ -477,6 +479,61 @@ function SettingsService:_setHatchModes(player, modes)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
+-- PET FORMATION (equipped-pet follow layout — persisted; applied as the player's
+-- PetFormationMode attribute, which PetFollowController reads each frame)
+-- ═══════════════════════════════════════════════════════════════════════════════════
+
+local PET_FORMATION_MODES = { conga = true, risers = true, arc = true }
+
+function SettingsService:_defaultPetFormation()
+    local ok, cfg = pcall(function()
+        return self._configLoader:LoadConfig("pet_follow")
+    end)
+    local mode = ok and cfg and cfg.formation and cfg.formation.default_mode
+    if type(mode) == "string" and PET_FORMATION_MODES[mode] then
+        return mode
+    end
+    return "risers"
+end
+
+function SettingsService:_sanitizePetFormation(value)
+    if type(value) == "table" then
+        value = value.mode or value.formation or value.value
+    end
+    value = type(value) == "string" and string.lower(value) or nil
+    if value and PET_FORMATION_MODES[value] then
+        return value
+    end
+    return self:_defaultPetFormation()
+end
+
+-- Push the saved formation onto the player as a (replicated) attribute the client reads.
+function SettingsService:_applyPetFormation(player)
+    local data = self._dataService:GetData(player)
+    local mode = self:_defaultPetFormation()
+    if data and data.Settings and type(data.Settings.PetFormation) == "string" then
+        mode = self:_sanitizePetFormation(data.Settings.PetFormation)
+    end
+    player:SetAttribute("PetFormationMode", mode)
+    return mode
+end
+
+function SettingsService:_setPetFormation(player, value)
+    local data = self._dataService:GetData(player)
+    if not data then
+        return false
+    end
+
+    data.Settings = data.Settings or {}
+    local mode = self:_sanitizePetFormation(value)
+    data.Settings.PetFormation = mode
+    player:SetAttribute("PetFormationMode", mode)
+
+    self._logger:Info("Updated pet formation", { player = player.Name, mode = mode })
+    return true
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════════
 -- NETWORK SIGNALS (following InventoryService pattern)
 -- ═══════════════════════════════════════════════════════════════════════════════════
 
@@ -514,6 +571,10 @@ function SettingsService:_setupNetworkSignals()
         self:_setHatchModes(player, modes)
     end)
 
+    Signals.Settings_SetPetFormation.OnServerEvent:Connect(function(player, payload)
+        self:_setPetFormation(player, payload)
+    end)
+
     self._logger:Info("📡 Settings network signals configured")
 end
 
@@ -543,6 +604,14 @@ end
 
 function SettingsService:ReplicateAutoSystemSettings(player)
     self:_replicateAutoSystemSettings(player)
+end
+
+function SettingsService:SetPetFormation(player, value)
+    return self:_setPetFormation(player, value)
+end
+
+function SettingsService:GetPetFormation(player)
+    return self:_applyPetFormation(player)
 end
 
 return SettingsService
