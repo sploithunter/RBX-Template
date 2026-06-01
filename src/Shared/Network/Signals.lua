@@ -32,6 +32,7 @@ local Signals = {
     Admin_SpawnEnemy = Net:RemoteEvent("Admin_SpawnEnemy"), -- c->s admin spawn a test combat enemy
     Squad_Recall = Net:RemoteEvent("Squad_Recall"), -- c->s recall a squad slot's pet (short cooldown)
     Squad_Summon = Net:RemoteEvent("Squad_Summon"), -- c->s re-summon a recovered squad slot's pet
+    Combat_SetAssist = Net:RemoteEvent("Combat_SetAssist"), -- c->s direct the squad to focus an enemy (assist target; 0 clears)
     Hotbar_Activate = Net:RemoteEvent("Hotbar_Activate"), -- c->s fire the bind on a hotbar slot (1-20)
     Hotbar_Rebind = Net:RemoteEvent("Hotbar_Rebind"), -- c->s assign/clear a hotbar slot's bind
     Power_Cooldown = Net:RemoteEvent("Power_Cooldown"), -- s->c a cast power's cooldown {power, untilTime, cooldown}

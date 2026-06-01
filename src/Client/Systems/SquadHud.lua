@@ -467,17 +467,27 @@ function SquadHud.start()
     -- (Removed the per-slot Recall/Summon/Heal/Buff action row — squad control now
     -- lives on the bottom hotbar. Card selection still drives assist-target + cycle.)
 
-    -- World click-to-select: clicking a visible pet selects its slot.
+    -- World click: clicking a pet selects its slot; clicking an ENEMY directs the squad
+    -- to focus it (assist target). Clicking empty space clears the assist.
+    local function enemiesFolder()
+        local g = Workspace:FindFirstChild("Game")
+        return g and g:FindFirstChild("Enemies")
+    end
     local mouse = localPlayer:GetMouse()
     mouse.Button1Down:Connect(function()
         local target = mouse.Target
-        if not target then
+        local model = target and target:FindFirstAncestorWhichIsA("Model")
+        local pets = petsFolder()
+        if model and pets and model:IsDescendantOf(pets) then
+            setSelected(petSlot(model))
             return
         end
-        local model = target:FindFirstAncestorWhichIsA("Model")
-        local folder = petsFolder()
-        if model and folder and model:IsDescendantOf(folder) then
-            setSelected(petSlot(model))
+        local enemies = enemiesFolder()
+        if model and enemies and model:IsDescendantOf(enemies) then
+            local bid = model:FindFirstChild("BreakableID")
+            Signals.Combat_SetAssist:FireServer({ targetId = bid and bid.Value or 0 })
+        elseif not model then
+            Signals.Combat_SetAssist:FireServer({ targetId = 0 }) -- clicked empty -> clear
         end
     end)
 

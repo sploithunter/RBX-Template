@@ -62,6 +62,13 @@ function EnemyService:Init()
             self:SummonPet(player, payload)
         end)
     end)
+
+    -- Assist target: the player directs the squad to focus an enemy (its BreakableID),
+    -- or 0 to clear. Pets prefer this over their aggro-picked target (player's edge).
+    Signals.Combat_SetAssist.OnServerEvent:Connect(function(player, payload)
+        local id = tonumber(type(payload) == "table" and payload.targetId or payload) or 0
+        player:SetAttribute("CombatAssistTarget", id)
+    end)
 end
 
 function EnemyService:_combatService()
@@ -612,7 +619,8 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     local proxFloor = aggroCfg.proximity_floor or 6
     for _, pet in ipairs(petsFolder:GetChildren()) do
         if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
-            self:_assignPetToEnemy(pet, targetId)
+            -- (pets self-select their target in _assignPetTargets; the enemy no longer
+            -- force-claims them — it just builds its aggro on the nearby squad here.)
             valid[pet] = true
             AggroTable.add(
                 entry.aggro,
@@ -1042,6 +1050,80 @@ function EnemyService:_supportPass(now)
     end
 end
 
+-- Each non-downed pet picks its enemy target: the player's ASSIST target if set, else
+-- the live enemy most aggro'd AT this pet (reciprocal — fight what's fighting you, which
+-- naturally spreads the squad), else the nearest engaged enemy. With no enemies it leaves
+-- the pet alone so AutoTarget mining continues.
+function EnemyService:_assignPetTargets(eng)
+    local playerPets = Workspace:FindFirstChild("PlayerPets")
+    if not playerPets then
+        return
+    end
+    local live = {}
+    local any = false
+    for tid, entry in pairs(self._enemies) do
+        if entry.model and entry.model.Parent and (entry.model:GetAttribute("HP") or 0) > 0 then
+            live[tid] = entry
+            any = true
+        end
+    end
+    if not any then
+        return -- no enemies: don't touch targets (mining/AutoTarget owns them)
+    end
+    local pfs = self:_petFollowService()
+    local aggroRange = eng.aggro_range or 45
+    for _, folder in ipairs(playerPets:GetChildren()) do
+        local player = Players:FindFirstChild(folder.Name)
+        local assist = player and player:GetAttribute("CombatAssistTarget")
+        for _, pet in ipairs(folder:GetChildren()) do
+            local tid = pet:FindFirstChild("TargetID")
+            local tt = pet:FindFirstChild("TargetType")
+            if
+                pet:IsA("Model")
+                and pet.PrimaryPart
+                and not pet:GetAttribute("CombatDowned")
+                and tid
+                and tt
+            then
+                local chosen
+                if assist and assist ~= 0 and live[assist] then
+                    chosen = assist -- player-directed
+                else
+                    local bestAggro = 0
+                    for etid, entry in pairs(live) do
+                        local a = AggroTable.get(entry.aggro, pet)
+                        if a > bestAggro then
+                            bestAggro, chosen = a, etid
+                        end
+                    end
+                    if not chosen then -- nobody's mad at this pet yet: engage the nearest
+                        local petPos = self:_petPosition(pet, pfs)
+                        local bestD
+                        for etid, entry in pairs(live) do
+                            local d = (entry.pos - petPos).Magnitude
+                            if d <= aggroRange and (not bestD or d < bestD) then
+                                bestD, chosen = d, etid
+                            end
+                        end
+                    end
+                end
+                if chosen then
+                    if tt.Value ~= "Enemy" or tid.Value ~= chosen then
+                        tt.Value = "Enemy"
+                        local tw = pet:FindFirstChild("TargetWorld")
+                        if tw then
+                            tw.Value = ""
+                        end
+                        tid.Value = chosen
+                    end
+                elseif tt.Value == "Enemy" then
+                    tid.Value = 0 -- enemy gone / out of range -> release to follow/mine
+                end
+            end
+        end
+    end
+end
+
 function EnemyService:_combatTick(dt)
     local eng = self._combatConfig.engagement or {}
     local now = os.clock()
@@ -1055,6 +1137,9 @@ function EnemyService:_combatTick(dt)
             self:_updateDebuffBadges(model, nowTime)
         end
     end
+    -- After enemies have updated their aggro this tick, let each pet self-select its
+    -- enemy target (assist > most-aggro'd-at-it > nearest engaged).
+    self:_assignPetTargets(eng)
 end
 
 function EnemyService:Start()
