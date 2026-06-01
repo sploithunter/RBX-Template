@@ -42,6 +42,11 @@ AttackAnim.STYLES = {
         local lunge = a.pounceDepth * math.max(0, math.sin(phase * math.pi))
         return 0, lunge, 0
     end,
+    -- Peck: repeated downward dip toward the target (headbutt/pickaxe), no yaw or lunge.
+    -- bobN rides in [-1, 0] so the pivot dips DOWN by bob_height; peck_speed = dips/sec-ish.
+    peck = function(t, a)
+        return 0, 0, -math.abs(math.sin(a.peckSpeed * t))
+    end,
 }
 
 -- Resolve a raw config block ({ style, spin_speed, pounce_depth, pounce_period, bob_height })
@@ -53,6 +58,7 @@ function AttackAnim.resolve(cfg)
         spinSpeed = cfg.spin_speed or 7,
         pounceDepth = cfg.pounce_depth or 3,
         pouncePeriod = cfg.pounce_period or 0.8,
+        peckSpeed = cfg.peck_speed or 6,
         bobHeight = cfg.bob_height or 0.6,
     }
     a.enabled = a.style ~= "none" and AttackAnim.STYLES[a.style] ~= nil

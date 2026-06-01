@@ -96,11 +96,16 @@ return {
 
         -- Attack FLOURISH layered on the base pivot while engaged (src/Shared/Game/AttackAnim.lua),
         -- the time-driven companion to the walk gait. Chosen by target type: `mining` plays on
-        -- breakables/ore, `combat` on enemies. Styles: "spin" (whirl about up — the mining spin
-        -- attack), "pounce" (periodic jab toward the target + back), "none" (just face the target).
-        -- More styles (spin_attack, etc.) drop into AttackAnim.STYLES; add a config block here.
+        -- breakables/ore, `combat` on enemies. Styles:
+        --   "pounce" — periodic jab toward the target + recoil (looks like striking it)
+        --   "peck"   — repeated downward dip toward the target (headbutt/pickaxe); peck_speed,
+        --              bob_height set the rhythm + dip depth
+        --   "none"   — no flourish, just face the target
+        --   "spin"   — whirl about up (available, but looked sloppy for mining — not used)
+        -- More styles drop into AttackAnim.STYLES; add a config block here. Swap mining.style
+        -- below to "peck" or "none" to taste.
         anim = {
-            mining = { style = "spin", spin_speed = 7, bob_height = 0.5 },
+            mining = { style = "pounce", pounce_depth = 1.5, pounce_period = 0.5 },
             combat = { style = "none" }, -- enemies: face them for now; pounce/etc. later
         },
     },
