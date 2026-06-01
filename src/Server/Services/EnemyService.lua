@@ -463,7 +463,10 @@ end
 -- pet in range (so a tank pet pulls aggro). Drops aggro past the leash range.
 function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     local model = entry.model
-    local ePos = model:GetPivot().Position
+    -- Authoritative position lives in entry.pos (NOT the model pivot): the server
+    -- never re-pivots the model after spawn, so its live CFrame is client-owned for
+    -- smooth rendering (EnemyMotion). entry.pos drives all server-side combat math.
+    local ePos = entry.pos or model:GetPivot().Position
     local atk = eng.attack_range or 11
     local perceptionRange = eng.perception_range or 70
     local leash = eng.leash_range or 90
@@ -526,7 +529,15 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     )
     if math.abs(np.x - ePos.X) > 1e-3 or math.abs(np.z - ePos.Z) > 1e-3 then
         local newPos = Vector3.new(np.x, np.y, np.z)
-        model:PivotTo(CFrame.lookAt(newPos, Vector3.new(chaseTo.X, np.y, chaseTo.Z)))
+        local faceTarget = Vector3.new(chaseTo.X, np.y, chaseTo.Z)
+        -- Publish the step target instead of pivoting the model. The client (EnemyMotion)
+        -- interpolates the visible model toward MoveTarget every frame; because the server
+        -- no longer writes the model CFrame, there's no replicated snap to fight, so the
+        -- motion is smooth. entry.pos is the authoritative position for combat math, and
+        -- MoveTarget is what the mining-distance gate reads.
+        model:SetAttribute("MoveTarget", newPos)
+        model:SetAttribute("MoveFace", faceTarget)
+        entry.pos = newPos
         ePos = newPos
         for _, c in ipairs(candidates) do
             c.distance = (self:_petPosition(c.pet, pfs) - ePos).Magnitude
@@ -633,7 +644,8 @@ function EnemyService:_nearestEnemyToPlayer(player)
     for _, entry in pairs(self._enemies) do
         local model = entry.model
         if model and model.Parent and (model:GetAttribute("HP") or 0) > 0 and model.PrimaryPart then
-            local d = (model.PrimaryPart.Position - hrp.Position).Magnitude
+            local ePos = entry.pos or model:GetPivot().Position
+            local d = (ePos - hrp.Position).Magnitude
             if not bestD or d < bestD then
                 best, bestD = model, d
             end
@@ -833,7 +845,12 @@ function EnemyService:SpawnEnemy(player, enemyId)
     local targetId = self._nextId
     local model = self:_buildModel(enemyId, def, position, targetId)
     model.Parent = self:_enemiesFolder()
-    self._enemies[targetId] = { model = model, enemyId = enemyId }
+    -- entry.pos = authoritative position (server never re-pivots the model after this
+    -- initial placement). Seed MoveTarget so the gate + client render have a value
+    -- before the first chase step.
+    self._enemies[targetId] = { model = model, enemyId = enemyId, pos = position }
+    model:SetAttribute("MoveTarget", position)
+    model:SetAttribute("MoveFace", Vector3.new(hrp.Position.X, position.Y, hrp.Position.Z))
 
     -- Watch HP -> death; also drive the HP bar.
     model:GetAttributeChangedSignal("HP"):Connect(function()

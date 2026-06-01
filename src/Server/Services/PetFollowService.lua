@@ -207,7 +207,11 @@ function PetFollowService:_mine(player, pet, breakable)
         or 0.5
     local dist
     if rec and (now - rec.t) <= staleSeconds then
-        dist = (rec.cf.Position - breakable:GetPivot().Position).Magnitude
+        -- Enemies publish their authoritative position as a MoveTarget attribute (the
+        -- server no longer pivots the model — the client owns the render CFrame for
+        -- smooth motion). Breakables have no such attribute, so fall back to the pivot.
+        local targetPos = breakable:GetAttribute("MoveTarget") or breakable:GetPivot().Position
+        dist = (rec.cf.Position - targetPos).Magnitude
     end
     local miningRange = self._config.mining and self._config.mining.range
     if not PetFormation.inMiningRange(dist, miningRange) then

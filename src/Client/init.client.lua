@@ -139,6 +139,18 @@ do
     end
 end
 
+-- Enemy movement smoothing (Feature 10): interpolates the visible enemy model toward
+-- the server's authoritative step target each frame, so chasing looks smooth despite
+-- the coarse server tick. Self-gates on pet_follow.service_owned.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.EnemyMotion).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start EnemyMotion", { error = tostring(err) })
+    end
+end
+
 -- Squad HUD (Feature 10): right-side City-of-Heroes-style squad strip — per-pet state,
 -- health, recharge, click-to-select, recall/summon. Reads pet attributes; no server feed.
 do

@@ -45,6 +45,11 @@ return {
         perception_interval = 0.75,
         leash_range = 90,
         default_move_speed = 12,
+        -- Client render smoothing: the server moves enemies in ~update_interval steps;
+        -- EnemyMotion (client) interpolates the visible model toward each step at this
+        -- exponential rate (higher = snappier, lower = floatier). Server stays the
+        -- authority for position; this only smooths what the player sees.
+        render_lerp_rate = 12,
         -- A downed pet (taken all the way down) is out for this long, then fully
         -- heals — the "fully defeated takes X to heal" consequence. Partially
         -- damaged pets bleed their damage back at regen.partial_per_second once
