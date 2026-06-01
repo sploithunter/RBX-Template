@@ -27,6 +27,11 @@ return {
         debris = 16,
         duration = 0.6,
     },
+    -- Lingering ground-hazard (e.g. lava "pit" = molten tar pit). Stays for `duration` seconds.
+    pit = {
+        radius = 8,
+        duration = 4, -- the pool bubbles this long, then fades
+    },
 
     themes = {
         -- Grassy nature burst — green growth + leafy motes.

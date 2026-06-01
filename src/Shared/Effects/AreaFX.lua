@@ -249,6 +249,98 @@ local function fireRing(pos, count, radius, life, color, color2)
     end
 end
 
+-- One-shot ParticleEmitter burst (embers / sparks / smoke) via :Emit() — the proper Roblox way
+-- vs tweening dozens of parts. opts: color1/color2, count, speed_min/max, life_min/max, size,
+-- spread, accel_y, light_emission. Default (blank) texture = the soft round particle.
+local function particleBurst(pos, opts)
+    opts = opts or {}
+    local holder = Instance.new("Part")
+    holder.Transparency = 1
+    holder.Size = Vector3.new(0.2, 0.2, 0.2)
+    holder.Anchored = true
+    holder.CanCollide = false
+    holder.CanQuery = false
+    holder.CastShadow = false
+    holder.CFrame = CFrame.new(pos)
+    holder.Parent = fxFolder()
+    local e = Instance.new("ParticleEmitter")
+    e.Color = ColorSequence.new(toColor(opts.color1), toColor(opts.color2, toColor(opts.color1)))
+    e.LightEmission = opts.light_emission or 0.5
+    e.Lifetime = NumberRange.new(opts.life_min or 0.4, opts.life_max or 0.9)
+    e.Speed = NumberRange.new(opts.speed_min or 6, opts.speed_max or 14)
+    e.SpreadAngle = Vector2.new(opts.spread or 180, opts.spread or 180)
+    e.Rotation = NumberRange.new(0, 360)
+    e.RotSpeed = NumberRange.new(-120, 120)
+    e.Acceleration = Vector3.new(0, opts.accel_y or -10, 0)
+    e.Drag = opts.drag or 4
+    local sz = opts.size or 1.2
+    e.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, sz),
+        NumberSequenceKeypoint.new(1, 0),
+    })
+    e.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.1),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    e.Enabled = false
+    e.Parent = holder
+    e:Emit(opts.count or 24)
+    Debris:AddItem(holder, (opts.life_max or 0.9) + 0.5)
+end
+
+-- Molten tar pit (lingering ground hazard): a dark pool disc + a continuous ParticleEmitter of
+-- rising, glowing bubbles. Stays for `life` seconds, then stops emitting + fades out.
+local function tarPit(pos, c1, c2, radius, life)
+    local pool = newPart(Enum.PartType.Cylinder, Enum.Material.Glass, Color3.fromRGB(28, 20, 16), 0.15)
+    pool.Reflectance = 0.05
+    pool.Size = Vector3.new(0.3, 1, 1)
+    pool.CFrame = CFrame.new(pos + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.rad(90))
+    TweenService:Create(pool, ti(0.5), { Size = Vector3.new(0.4, radius * 2, radius * 2) }):Play()
+    local light = Instance.new("PointLight")
+    light.Color = c1
+    light.Brightness = 1.5
+    light.Range = radius * 1.5
+    light.Parent = pool
+
+    -- Bubble emitter on a flat invisible holder so Top emits straight up.
+    local holder = newPart(Enum.PartType.Block, Enum.Material.SmoothPlastic, Color3.new(), 1)
+    holder.Size = Vector3.new(radius * 1.6, 0.2, radius * 1.6)
+    holder.CFrame = CFrame.new(pos + Vector3.new(0, 0.2, 0))
+    local e = Instance.new("ParticleEmitter")
+    e.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 28, 20)),
+        ColorSequenceKeypoint.new(0.6, c1),
+        ColorSequenceKeypoint.new(1, c2),
+    })
+    e.LightEmission = 0.5
+    e.Lifetime = NumberRange.new(1.0, 1.9)
+    e.Rate = math.max(6, radius * 2)
+    e.Speed = NumberRange.new(1, 3)
+    e.SpreadAngle = Vector2.new(18, 18)
+    e.Acceleration = Vector3.new(0, 1.5, 0)
+    e.EmissionDirection = Enum.NormalId.Top
+    e.Rotation = NumberRange.new(0, 360)
+    e.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.2),
+        NumberSequenceKeypoint.new(0.5, radius * 0.22),
+        NumberSequenceKeypoint.new(1, 0),
+    })
+    e.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.25),
+        NumberSequenceKeypoint.new(0.85, 0.3),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    e.Parent = holder
+
+    task.delay(life, function()
+        e.Enabled = false
+        TweenService:Create(pool, ti(0.7), { Transparency = 1 }):Play()
+        TweenService:Create(light, ti(0.7), { Brightness = 0 }):Play()
+        Debris:AddItem(pool, 2.5)
+        Debris:AddItem(holder, 2.5)
+    end)
+end
+
 -- ===== The eight effects =====
 
 local EFFECTS = {
@@ -291,11 +383,37 @@ local EFFECTS = {
         groundRing(pos, c2, mat, radius * 2, life)
         debris(pos, c1, c2, mat, 10, radius, life)
     end,
-    -- LAVA self: Fire ring — a circle of REAL fire around the caster + ember swirl.
+    -- LAVA self: Fire ring — a circle of REAL fire around the caster + an ember particle poof.
     lava_self = function(pos, c1, c2, mat, radius, life)
         groundRing(pos, c1, mat, radius * 1.7, life)
         fireRing(pos, 10, radius * 0.85, life + 0.4, c1, c2)
-        swirlMotes(pos, c2, mat, 12, radius, radius * 0.7, life)
+        particleBurst(pos + Vector3.new(0, 1, 0), {
+            color1 = c1,
+            color2 = c2,
+            count = 26,
+            speed_min = 6,
+            speed_max = 16,
+            accel_y = -12,
+            size = 1.4,
+            life_min = 0.5,
+            life_max = 1.1,
+        })
+    end,
+    -- LAVA pit: a molten tar pit — a dark bubbling pool that lingers (web-sourced ParticleEmitter).
+    lava_pit = function(pos, c1, c2, mat, radius, life)
+        tarPit(pos, c1, c2, radius, life)
+        groundRing(pos, c1, mat, radius * 2, 0.5)
+        particleBurst(pos + Vector3.new(0, 1, 0), {
+            color1 = c1,
+            color2 = c2,
+            count = 14,
+            speed_min = 4,
+            speed_max = 10,
+            accel_y = -8,
+            size = 1.4,
+            life_min = 0.5,
+            life_max = 1.0,
+        })
     end,
     -- LAVA targeted: Meteor — a ball drops from above, then real fire + shockwave erupt.
     lava_targeted = function(pos, c1, c2, mat, radius, life)
@@ -329,7 +447,7 @@ function AreaFX.Play(config, element, variant, originPos, targetPos)
     if not theme then
         return false
     end
-    variant = (variant == "targeted") and "targeted" or "self"
+    variant = variant or "self"
     local fn = EFFECTS[element .. "_" .. variant]
     if not fn then
         return false
@@ -338,7 +456,7 @@ function AreaFX.Play(config, element, variant, originPos, targetPos)
     local c1 = toColor(theme.color)
     local c2 = toColor(theme.color2, c1)
     local mat = materialOf(theme.material)
-    local params = (variant == "targeted") and (config.targeted or {}) or (config.self or {})
+    local params = config[variant] or config.self or {}
     local radius = tonumber(params.radius) or 10
     local life = tonumber(params.duration) or 0.6
 
