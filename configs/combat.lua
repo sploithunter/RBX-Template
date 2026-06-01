@@ -102,6 +102,16 @@ return {
             -- enemy disengages. (A future stealth flag exempts a target from this floor.)
             proximity_range = 30,
             proximity_floor = 6,
+            -- Implicit taunt: roles flagged `implicit_taunt` (tanks) automatically grab
+            -- the enemy's attention. Every `interval` seconds a taunting pet's aggro is
+            -- bumped to `lead` × the highest OTHER attacker — so it leads the pack and
+            -- holds the enemy. It is NOT absolute: between pulses a pet doing a huge burst
+            -- of damage out-aggros and rips the enemy off the tank until the next pulse.
+            -- Tune interval/lead to balance how sticky tanks are.
+            taunt = {
+                interval = 3,
+                lead = 1.3,
+            },
         },
     },
 

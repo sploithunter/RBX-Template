@@ -35,7 +35,7 @@ return {
     -- threat_mult scales the aggro a role generates (passive threat × this), so a tank
     -- holds the enemy's attention and soaks for the squad while dps/ranged stay safer.
     roles = {
-        tank = { label = "Tank", glyph = "T", color = { 70, 130, 195 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 5 },
+        tank = { label = "Tank", glyph = "T", color = { 70, 130, 195 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 5, implicit_taunt = true },
         melee = { label = "Melee", glyph = "M", color = { 205, 85, 70 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 1 },
         -- kite = true: holds near the player and snipes instead of orbiting the enemy, so
         -- an enemy chasing it has to close the gap (the melee-closes / ranged-kites loop).

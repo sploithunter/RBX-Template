@@ -469,6 +469,19 @@ function EnemyService:_petThreat(pet)
     return base * self:_roleThreatMult(pet)
 end
 
+-- Does this pet's role auto-taunt (tanks)? PetRole attr -> by_type[PetType] -> default.
+function EnemyService:_isTaunt(pet)
+    local roles = self._petRoles
+    if not roles then
+        return false
+    end
+    local id = pet:GetAttribute("PetRole")
+        or (roles.by_type and roles.by_type[pet:GetAttribute("PetType")])
+        or roles.default
+    local def = roles.roles and roles.roles[id]
+    return def ~= nil and def.implicit_taunt == true
+end
+
 -- Nearest player whose character is within maxRange of a point (or nil).
 function EnemyService:_nearestPlayer(ePos, maxRange)
     local best, bestD
@@ -561,6 +574,23 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
                 if d <= proxRange then
                     AggroTable.reinforce(entry.aggro, pet, proxFloor)
                 end
+            end
+        end
+    end
+
+    -- Implicit taunt: every taunt.interval, a taunting pet (tank) re-asserts itself to
+    -- `lead` × the highest OTHER attacker so it leads the pack. Not absolute — between
+    -- pulses a pet bursting damage can out-aggro and pull the enemy off the tank.
+    local tauntCfg = aggroCfg.taunt
+    if type(tauntCfg) == "table" and (tauntCfg.lead or 0) > 0 then
+        entry.tauntAt = entry.tauntAt or setmetatable({}, { __mode = "k" })
+        for pet in pairs(valid) do
+            if self:_isTaunt(pet) and (not entry.tauntAt[pet] or now >= entry.tauntAt[pet]) then
+                entry.tauntAt[pet] = now + (tauntCfg.interval or 3)
+                local _, topOther = AggroTable.top(entry.aggro, 0, function(k)
+                    return valid[k] == true and k ~= pet
+                end)
+                AggroTable.reinforce(entry.aggro, pet, tauntCfg.lead * (topOther or 0))
             end
         end
     end
