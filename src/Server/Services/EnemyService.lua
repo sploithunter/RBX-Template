@@ -99,7 +99,7 @@ end
 -- set, every part anchored + non-colliding (movement is PivotTo, not physics), scaled
 -- to enemy size. Returns nil on any failure so spawning falls back to the procedural
 -- block. Cache stores `false` for known-bad ids so we don't re-yield on every spawn.
-function EnemyService:_enemyTemplate(assetId, scale)
+function EnemyService:_enemyTemplate(assetId, scale, needsPrimaryPart)
     self._modelCache = self._modelCache or {}
     local cached = self._modelCache[assetId]
     if cached ~= nil then
@@ -116,7 +116,10 @@ function EnemyService:_enemyTemplate(assetId, scale)
             template.Parent = nil
             container:Destroy()
         end
-        if not template.PrimaryPart then
+        -- Only auto-assign a PrimaryPart when the config opts in (`needs_primary_part`).
+        -- Otherwise we respect the model's own PrimaryPart and treat its absence as a
+        -- load failure — so a multi-part model never silently picks the wrong part.
+        if needsPrimaryPart and not template.PrimaryPart then
             template.PrimaryPart = template:FindFirstChildWhichIsA("BasePart", true)
         end
         if template.PrimaryPart then
@@ -199,7 +202,8 @@ end
 function EnemyService:_buildModel(enemyId, def, position, targetId)
     local model, body
     if def.model_asset then
-        local template = self:_enemyTemplate(def.model_asset, def.model_scale)
+        local template =
+            self:_enemyTemplate(def.model_asset, def.model_scale, def.needs_primary_part)
         if template then
             model = template:Clone()
             body = model.PrimaryPart
