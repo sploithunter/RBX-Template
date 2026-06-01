@@ -352,66 +352,8 @@ function SquadHud.start()
         }
     end
 
-    -- Shared action row (acts on the selected slot).
-    local actions = Instance.new("Frame")
-    actions.Name = "Actions"
-    actions.Size = UDim2.fromOffset(186, 30)
-    actions.BackgroundTransparency = 1
-    actions.LayoutOrder = 9999
-    actions.Parent = root
-    local aLayout = Instance.new("UIListLayout")
-    aLayout.FillDirection = Enum.FillDirection.Horizontal
-    aLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-    aLayout.Padding = UDim.new(0, 4)
-    aLayout.Parent = actions
-
-    local function actionButton(label, color, enabled, onClick, icon)
-        local b = Instance.new("TextButton")
-        b.Size = UDim2.fromOffset(44, 28)
-        b.Text = icon and "" or label
-        b.Font = Enum.Font.GothamBold
-        b.TextSize = 12
-        b.TextColor3 = enabled and Color3.fromRGB(20, 22, 28) or Color3.fromRGB(150, 150, 160)
-        b.BackgroundColor3 = enabled and color or Color3.fromRGB(55, 58, 70)
-        b.AutoButtonColor = enabled
-        b.BorderSizePixel = 0
-        b.Active = enabled
-        local c = Instance.new("UICorner")
-        c.CornerRadius = UDim.new(0, 6)
-        c.Parent = b
-        if icon then
-            b.ClipsDescendants = true -- crop the icon's zoomed-out transparent border
-            b.BackgroundTransparency = enabled and 1 or 0 -- clear backing when art is live
-            local s = POWER_ICONS.scaleFor(icon)
-            local img = Instance.new("ImageLabel")
-            img.BackgroundTransparency = 1
-            img.AnchorPoint = Vector2.new(0.5, 0.5)
-            img.Position = UDim2.fromScale(0.5, 0.5)
-            img.ScaleType = Enum.ScaleType.Fit
-            img.Size = UDim2.fromScale(s, s) -- zoom past the art's transparent border
-            img.Image = icon
-            img.ImageTransparency = enabled and 0 or 0.45 -- dim while not yet wired
-            img.Parent = b
-        end
-        b.Parent = actions
-        if enabled and onClick then
-            b.MouseButton1Click:Connect(onClick)
-        end
-        return b
-    end
-
-    actionButton("Recall", Color3.fromRGB(225, 200, 70), true, function()
-        if selectedSlot then
-            Signals.Squad_Recall:FireServer({ slot = selectedSlot })
-        end
-    end)
-    actionButton("Summon", Color3.fromRGB(95, 170, 235), true, function()
-        if selectedSlot then
-            Signals.Squad_Summon:FireServer({ slot = selectedSlot })
-        end
-    end)
-    actionButton("Heal", Color3.fromRGB(90, 210, 110), false, nil, POWER_ICONS.actions.heal) -- via Powers (soon)
-    actionButton("Buff", Color3.fromRGB(180, 130, 235), false, nil, POWER_ICONS.actions.buff) -- via Powers (soon)
+    -- (Removed the per-slot Recall/Summon/Heal/Buff action row — squad control now
+    -- lives on the bottom hotbar. Card selection still drives assist-target + cycle.)
 
     -- World click-to-select: clicking a visible pet selects its slot.
     local mouse = localPlayer:GetMouse()
