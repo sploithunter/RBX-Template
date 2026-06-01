@@ -434,7 +434,14 @@ function SquadHud.start()
         sLayout.Parent = status
 
         frame.MouseButton1Click:Connect(function()
-            setSelected(slot)
+            -- A downed pet whose cooldown has elapsed shows "Summon" — clicking the card
+            -- re-summons it. Otherwise a click just selects the slot (assist target).
+            local c = cards[slot]
+            if c and c.summonReady then
+                Signals.Squad_Summon:FireServer({ slot = slot })
+            else
+                setSelected(slot)
+            end
         end)
 
         return {
@@ -559,11 +566,15 @@ function SquadHud.start()
                         card.fill.BackgroundColor3 = s.cdRemaining > 0 and STATE_COLOR.Recharging
                             or STATE_COLOR.Ready
                         card.note.Text = s.cdRemaining > 0 and (s.cdRemaining .. "s") or "Summon"
+                        -- Ready to re-summon -> a click on the card summons it (set the flag
+                        -- the click handler reads).
+                        card.summonReady = s.cdRemaining <= 0
                     else
                         -- Health fill drains + recolours green->yellow->red.
                         card.fill.Size = UDim2.fromScale(math.clamp(s.healthFraction, 0, 1), 1)
                         card.fill.BackgroundColor3 = healthColor(s.healthFraction)
                         card.note.Text = ""
+                        card.summonReady = false
                     end
                     -- Shield (absorption) thin secondary bar — shown only when present.
                     local shieldF = s.shieldFraction or 0
