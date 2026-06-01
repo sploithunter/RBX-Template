@@ -128,10 +128,18 @@ function HotbarBar.start()
     local editMode = false
     local openPicker
 
-    -- Radial "edge-clock" cooldown overlay on a (circular) slot. Two clipped halves
-    -- each hold an oversized dark wedge pivoted at the circle centre; rotating them
-    -- sweeps a straight edge = a clock face. Returns set(elapsed, secondsLeft) where
-    -- elapsed is 0 (just cast, full dark) -> 1 (ready, hidden).
+    -- Cooldown overlay on a (circular) slot, reusing the golden/rainbow-pet shimmer:
+    -- while recharging the icon dims, a rainbow UIGradient ring spins around it (same
+    -- look as the inventory variant ring), and a seconds countdown shows the exact time
+    -- left. Returns set(elapsed, secondsLeft); elapsed >= 1 (ready) hides it.
+    local RAINBOW = ColorSequence.new({
+        ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 90, 90)),
+        ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 205, 70)),
+        ColorSequenceKeypoint.new(0.4, Color3.fromRGB(95, 230, 120)),
+        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(70, 185, 255)),
+        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(185, 120, 255)),
+        ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255, 90, 90)),
+    })
     local function attachRadial(slotBtn)
         local holder = Instance.new("Frame")
         holder.Name = "Cool"
@@ -140,38 +148,36 @@ function HotbarBar.start()
         holder.Visible = false
         holder.ZIndex = 4
         holder.Parent = slotBtn
-        local wedges = {}
-        for _, side in ipairs({ "R", "L" }) do
-            local left = side == "L"
-            local clip = Instance.new("Frame")
-            clip.Name = side
-            clip.BackgroundTransparency = 1
-            clip.ClipsDescendants = true
-            clip.Size = UDim2.fromScale(0.5, 1)
-            clip.Position = left and UDim2.fromScale(0, 0) or UDim2.fromScale(0.5, 0)
-            clip.ZIndex = 4
-            clip.Parent = holder
-            local w = Instance.new("Frame")
-            w.AnchorPoint = left and Vector2.new(1, 0.5) or Vector2.new(0, 0.5)
-            w.Position = left and UDim2.fromScale(1, 0.5) or UDim2.fromScale(0, 0.5)
-            w.Size = UDim2.fromScale(2, 2)
-            w.BackgroundColor3 = Color3.fromRGB(8, 9, 13)
-            w.BackgroundTransparency = 0.3
-            w.BorderSizePixel = 0
-            w.ZIndex = 4
-            w.Parent = clip
-            wedges[side] = w
-        end
+
+        local dim = Instance.new("Frame") -- darkens the icon while recharging
+        dim.Size = UDim2.fromScale(1, 1)
+        dim.BackgroundColor3 = Color3.fromRGB(6, 7, 11)
+        dim.BackgroundTransparency = 0.45
+        dim.BorderSizePixel = 0
+        dim.ZIndex = 4
+        dim.Parent = holder
+        local dc = Instance.new("UICorner")
+        dc.CornerRadius = UDim.new(1, 0)
+        dc.Parent = dim
+
+        local ring = Instance.new("UIStroke") -- the spinning rainbow shimmer
+        ring.Thickness = 3
+        ring.Parent = dim
+        local grad = Instance.new("UIGradient")
+        grad.Color = RAINBOW
+        grad.Parent = ring
+
         local num = Instance.new("TextLabel")
         num.BackgroundTransparency = 1
         num.Size = UDim2.fromScale(1, 1)
         num.Font = Enum.Font.GothamBold
-        num.TextSize = 15
+        num.TextSize = 16
         num.TextColor3 = Color3.fromRGB(255, 255, 255)
-        num.TextStrokeTransparency = 0.4
+        num.TextStrokeTransparency = 0.3
         num.ZIndex = 5
         num.Text = ""
         num.Parent = holder
+
         return function(elapsed, secondsLeft)
             if not elapsed or elapsed >= 1 then
                 holder.Visible = false
@@ -179,11 +185,7 @@ function HotbarBar.start()
             end
             holder.Visible = true
             num.Text = secondsLeft and tostring(math.ceil(secondsLeft)) or ""
-            local remaining = 1 - elapsed -- dark cover represents remaining cooldown
-            local rightCovered = math.clamp(remaining * 2, 0, 1)
-            local leftCovered = math.clamp((remaining - 0.5) * 2, 0, 1)
-            wedges.R.Rotation = (1 - rightCovered) * 180
-            wedges.L.Rotation = -(1 - leftCovered) * 180
+            grad.Rotation = (os.clock() * 160) % 360 -- continuous shimmer spin
         end
     end
 
