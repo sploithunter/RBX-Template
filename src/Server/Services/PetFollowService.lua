@@ -37,6 +37,7 @@ function PetFollowService:Init()
     self._configLoader = self._modules and self._modules.ConfigLoader
     self._config = self._configLoader:LoadConfig("pet_follow")
     self._combatConfig = self._configLoader:LoadConfig("combat")
+    self._petRoles = self._configLoader:LoadConfig("pet_roles")
     self._nextHit = {} -- pet model -> os.clock() of next allowed mining hit
     self._petPos = setmetatable({}, { __mode = "k" }) -- pet model -> { pos, t } (weak: dead pets GC)
 
@@ -180,6 +181,22 @@ function PetFollowService:_findBreakable(targetType, world, id)
     return nil
 end
 
+-- A pet's effective attack range (mining-gate distance), by combat role: PetRole attr
+-- -> pet_roles.by_type[PetType] -> default. Ranged pets reach much further than melee,
+-- so they can deal damage from their standoff. Falls back to mining.range.
+function PetFollowService:_attackRange(pet)
+    local roles = self._petRoles
+    local fallback = (self._config.mining and self._config.mining.range) or 9
+    if not roles then
+        return fallback
+    end
+    local id = pet:GetAttribute("PetRole")
+        or (roles.by_type and roles.by_type[pet:GetAttribute("PetType")])
+        or roles.default
+    local def = roles.roles and roles.roles[id]
+    return (def and tonumber(def.attack_range)) or fallback
+end
+
 -- One mining hit on the pet's current target (server-authoritative damage).
 function PetFollowService:_mine(player, pet, breakable)
     if pet:GetAttribute("CombatDowned") then
@@ -213,7 +230,7 @@ function PetFollowService:_mine(player, pet, breakable)
         local targetPos = breakable:GetAttribute("MoveTarget") or breakable:GetPivot().Position
         dist = (rec.cf.Position - targetPos).Magnitude
     end
-    local miningRange = self._config.mining and self._config.mining.range
+    local miningRange = self:_attackRange(pet)
     if not PetFormation.inMiningRange(dist, miningRange) then
         return -- pet is reported far from the target — hasn't arrived yet
     end

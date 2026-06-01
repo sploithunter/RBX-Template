@@ -33,6 +33,12 @@ local function petRoleId(pet)
         or PetRoles.default
 end
 
+-- Studs the pet holds back from its target in the attack formation (role.standoff).
+local function roleStandoff(pet)
+    local def = PetRoles.roles and PetRoles.roles[petRoleId(pet)]
+    return (def and tonumber(def.standoff)) or 0
+end
+
 local PetFollowController = {}
 
 local localPlayer = Players.LocalPlayer
@@ -352,6 +358,16 @@ function PetFollowController.start()
             local gcount = #g.pets
             for gi, pet in ipairs(g.pets) do
                 local off = PetFormation.attackOffset(gi, gcount, phase, attackCfg)
+                -- Role standoff: ranged/support hold further out (push the slot radially
+                -- away from the target) so melee crowds in and ranged kites at distance.
+                local standoff = roleStandoff(pet)
+                if standoff > 0 then
+                    local horiz = Vector3.new(off.x, 0, off.z)
+                    if horiz.Magnitude > 0.01 then
+                        local pushed = horiz + horiz.Unit * standoff
+                        off = { x = pushed.X, y = off.y, z = pushed.Z }
+                    end
+                end
                 local target = g.center + Vector3.new(off.x, off.y, off.z)
                 local toC = Vector3.new(g.center.X - target.X, 0, g.center.Z - target.Z)
                 local dir = toC.Magnitude > 0.01 and toC.Unit or upFwd
