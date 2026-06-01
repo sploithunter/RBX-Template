@@ -11,7 +11,7 @@ return {
     keybinds = {
         -- Cycle the SELECTED squad pet in the right-side HUD. Hold Shift to cycle
         -- backward. Selecting a pet is what routes Recall/Summon (and, later, support
-        -- powers) at it.
-        squad_cycle = "Tab",
+        -- powers) at it. (Tab gets swallowed by Roblox GUI navigation — using Q.)
+        squad_cycle = "Q",
     },
 }
