@@ -208,6 +208,11 @@ return {
         target_offset = { 0, 1.5, 0 }, -- {x,y,z} aim mid-body (client builds the Vector3)
         colors = { { 120, 150, 255 }, { 200, 235, 255 } }, -- electric blue/white
 
+        -- Library impact played at the lightning strike point (RangedFX.IMPACTS), tinted with the
+        -- electric colours above: "none" (arc + EnchantLightning's own flash only) | "small" |
+        -- "medium" | "big". impact_scale / impact_sparks optionally override the impact defaults.
+        impact = "small",
+
         -- Projectile themes (kind = "fireball"/"plasma"/"frost"/"poison"): one travelling-orb
         -- engine, themed by colour/size/speed/burst. colors = { core, trail+burst }. travel_time
         -- = seconds orb takes to reach the target (keep < interval); burst = impact flash size;

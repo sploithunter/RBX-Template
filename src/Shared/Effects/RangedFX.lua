@@ -337,7 +337,24 @@ function RangedFX.Play(origin, config, target, kind)
     kind = kind or config.kind or "lightning"
 
     if kind == "lightning" then
-        return EnchantLightning.Play(origin, config, target)
+        local ok = EnchantLightning.Play(origin, config, target)
+        -- Also play a library impact at the strike point (config.impact: none/small/medium/big),
+        -- tinted with the bolt's electric colours. c1 = core (blue), c2 = bright (white).
+        local impactName = config.impact
+        if impactName and impactName ~= "none" then
+            local targetPart = partOf(target)
+            if targetPart then
+                local cols = config.colors or {}
+                RangedFX.playImpact(
+                    impactName,
+                    targetPart.Position + toVec(config.target_offset),
+                    cols[1] or { 120, 150, 255 },
+                    cols[2] or { 200, 235, 255 },
+                    { scale = config.impact_scale, sparks = config.impact_sparks }
+                )
+            end
+        end
+        return ok
     end
 
     local originPart = partOf(origin)
