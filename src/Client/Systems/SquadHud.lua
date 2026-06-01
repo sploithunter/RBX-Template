@@ -96,8 +96,14 @@ local function activeEffectsFor(pet, player, now)
         if e.untilAttr then
             local until_ = src:GetAttribute(e.untilAttr) or 0
             if until_ > now then
-                out[#out + 1] =
-                    { key = e.key, color = e.color, label = e.label, timer = math.ceil(until_ - now) .. "s", icon = e.icon }
+                out[#out + 1] = {
+                    key = e.key,
+                    color = e.color,
+                    label = e.label,
+                    timer = math.ceil(until_ - now) .. "s",
+                    icon = e.icon,
+                    remaining = until_ - now, -- seconds left (drives the expiry blink)
+                }
             end
         elseif e.poolAttr then
             local v = src:GetAttribute(e.poolAttr) or 0
@@ -151,7 +157,7 @@ local function makeBadge(parent)
 end
 
 -- Reconcile a card's badges against the pet's active effects (stack toward centre).
-local function updateBadges(card, effects)
+local function updateBadges(card, effects, blinkLead)
     local seen = {}
     for i, eff in ipairs(effects) do
         seen[eff.key] = true
@@ -161,6 +167,8 @@ local function updateBadges(card, effects)
             b.frame.Name = eff.key
             card.badges[eff.key] = b
         end
+        -- Flag for the blink loop: timed effect inside its expiry warning window.
+        b.blinking = eff.remaining ~= nil and eff.remaining <= (blinkLead or 0)
         b.frame.LayoutOrder = i
         local hasIcon = eff.icon and eff.icon ~= ""
         -- Real icon: clear backing so the art reads cleanly; else keep coloured chip.
@@ -186,6 +194,9 @@ function SquadHud.start()
     local config = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("combat"))
     local factor = config.pet_down_threshold_factor or 1
     local thresholds = config.degradation or { strained_at = 0.6, critical_at = 0.3 }
+    local badgeCfg = config.status_badges or {}
+    local blinkLead = badgeCfg.blink_lead_seconds or 5
+    local blinkPeriod = badgeCfg.blink_period_seconds or 0.5
 
     local gui = Instance.new("ScreenGui")
     gui.Name = "SquadHud"
@@ -505,7 +516,7 @@ function SquadHud.start()
                     end
                     card.stroke.Transparency = (selectedSlot == s.slot) and 0 or 1
                     card.frame.BackgroundTransparency = (selectedSlot == s.slot) and 0 or 0.1
-                    updateBadges(card, activeEffectsFor(pet, localPlayer, os.time()))
+                    updateBadges(card, activeEffectsFor(pet, localPlayer, os.time()), blinkLead)
                 end
             end
         end
@@ -519,6 +530,17 @@ function SquadHud.start()
         -- keep the world highlight tracking the selected pet's downed visibility
         if selectedSlot and worldHighlight.Adornee then
             worldHighlight.Enabled = not worldHighlight.Adornee:GetAttribute("CombatDowned")
+        end
+    end)
+
+    -- Expiry blink: runs every frame (not the 0.2s reconcile) so the flash is smooth.
+    -- Badges flagged `blinking` by updateBadges toggle visible on a config-tuned cycle.
+    RunService.RenderStepped:Connect(function()
+        local on = (os.clock() % blinkPeriod) < (blinkPeriod * 0.5)
+        for _, card in pairs(cards) do
+            for _, b in pairs(card.badges) do
+                b.frame.Visible = (not b.blinking) or on
+            end
         end
     end)
 end

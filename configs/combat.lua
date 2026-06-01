@@ -68,6 +68,15 @@ return {
         critical_damage_penalty = 0.0,
     },
 
+    -- Squad-HUD status badges (the buff/debuff icons on the right-side pet cards).
+    -- When a timed effect is within `blink_lead_seconds` of expiring, its badge
+    -- blinks so the player notices it's about to drop. `blink_period_seconds` is one
+    -- full on/off cycle. Pool effects with no expiry (e.g. shield) never blink.
+    status_badges = {
+        blink_lead_seconds = 5,
+        blink_period_seconds = 0.5,
+    },
+
     spawners = {
         hell_1_lava = {
             biome = "lava",
