@@ -28,12 +28,16 @@ local PetFollowController = {}
 local localPlayer = Players.LocalPlayer
 
 -- Per-pet footprint (studs) for size-aware formations — the model's larger XZ extent, so huge
--- pets read bigger. Cached (weak keys) since extents don't change once the model is built.
-local footprintCache = setmetatable({}, { __mode = "k" })
+-- pets read bigger. Measured ONCE and stamped on the pet (an attribute persists for the model's
+-- life), then QUANTIZED to 0.1 studs. Both matter: pet idle animations make GetExtentsSize
+-- breathe by a hair, so two identical pets read minutely different + fluctuating extents — left
+-- raw, that made the size-sort flip them frame to frame (the "swapping" bug). Quantizing collapses
+-- identical pets to the exact same value so the stable tiebreak (equip slot) wins; stamping keeps
+-- it from ever being recomputed.
 local function petFootprint(pet, config)
-    local cached = footprintCache[pet]
-    if cached then
-        return cached
+    local stored = pet:GetAttribute("PetFootprint")
+    if stored then
+        return stored
     end
     local f
     local ok, ext = pcall(function()
@@ -45,7 +49,8 @@ local function petFootprint(pet, config)
     if not f or f <= 0 then
         f = (config.formation.size and config.formation.size.default_footprint) or 4
     end
-    footprintCache[pet] = f
+    f = math.floor(f * 10 + 0.5) / 10 -- quantize to 0.1 stud
+    pet:SetAttribute("PetFootprint", f)
     return f
 end
 
