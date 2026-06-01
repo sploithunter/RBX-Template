@@ -48,7 +48,7 @@ return {
         -- kite = true: holds near the player and snipes instead of orbiting the enemy, so
         -- an enemy chasing it has to close the gap (the melee-closes / ranged-kites loop).
         ranged = { label = "Ranged", glyph = "R", color = { 120, 180, 85 }, icon = "", attack_range = 28, standoff = 17, kite = true, damage_mult = 1.0, defense = 0 },
-        support = { label = "Support", glyph = "S", color = { 150, 110, 215 }, icon = "", attack_range = 16, standoff = 9, damage_mult = 0.35, auto_heal = { interval = 1.5, amount = 30 }, defense = 10 },
+        support = { label = "Support", glyph = "S", color = { 150, 110, 215 }, icon = "", attack_range = 16, standoff = 9, damage_mult = 0.35, auto_heal = { interval = 1.5, fraction = 0.3 }, defense = 10 },
         control = { label = "Control", glyph = "C", color = { 90, 185, 205 }, icon = "", attack_range = 20, standoff = 12, damage_mult = 0.5, defense = 40 },
     },
 }

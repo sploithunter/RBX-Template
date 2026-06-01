@@ -28,6 +28,7 @@ local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
 local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
 local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
+local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local PetFollowService = {}
@@ -39,6 +40,7 @@ function PetFollowService:Init()
     self._config = self._configLoader:LoadConfig("pet_follow")
     self._combatConfig = self._configLoader:LoadConfig("combat")
     self._petRoles = self._configLoader:LoadConfig("pet_roles")
+    self._levelingConfig = self._configLoader:LoadConfig("leveling")
     self._nextHit = {} -- pet model -> os.clock() of next allowed mining hit
     self._petPos = setmetatable({}, { __mode = "k" }) -- pet model -> { pos, t } (weak: dead pets GC)
 
@@ -272,6 +274,12 @@ function PetFollowService:_mine(player, pet, breakable)
     local dmg = combat:ResolvePetDamage(player, ctx)
     -- Archetype damage curve: support/control hit softer, melee/ranged full.
     dmg = dmg * self:_roleDamageMult(pet)
+    -- Level scaling vs ENEMIES only (crystals have no Level): out-level it -> hit harder.
+    if breakable:GetAttribute("EnemyId") then
+        local petLevel = pet:GetAttribute("Level") or (player:GetAttribute("Level") or 1)
+        local enemyLevel = breakable:GetAttribute("Level") or petLevel
+        dmg = dmg * LevelScale.factor(petLevel, enemyLevel, self._levelingConfig.scale)
+    end
     -- Support-power modifiers (Feature 14): the player's active damage buff and the
     -- target's vulnerability both scale pet damage (os.time-gated, set by PowerService).
     local nowT = os.time()

@@ -27,6 +27,7 @@ local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
 local AggroTable = require(ReplicatedStorage.Shared.Game.AggroTable)
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
+local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
 local ActiveSquad = require(ReplicatedStorage.Shared.Game.ActiveSquad)
 local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
@@ -42,6 +43,7 @@ function EnemyService:Init()
     self._combatConfig = self._configLoader:LoadConfig("combat")
     self._squadConfig = self._configLoader:LoadConfig("squad")
     self._petRoles = self._configLoader:LoadConfig("pet_roles")
+    self._levelingConfig = self._configLoader:LoadConfig("leveling")
     self._nextId = 0
     self._enemies = {} -- targetId -> { model, enemyId, nextAttack }
     -- pet model -> { lastHit } (weak so dead pets GC). Accumulated damage, the downed
@@ -210,6 +212,27 @@ function EnemyService:_attachEnemyDecor(model, body, enemyId, def, targetId)
     fill.BackgroundColor3 = Color3.fromRGB(220, 70, 70)
     fill.BorderSizePixel = 0
     fill.Parent = bg
+
+    -- Name tag above the HP bar. The client (EnemyMotion) sets its text ("Name Lv N") and
+    -- COLOUR by difficulty relative to the viewing player's level — so it's per-viewer.
+    model:SetAttribute("DisplayName", def.display_name or enemyId)
+    local nameBb = Instance.new("BillboardGui")
+    nameBb.Name = "NameTag"
+    nameBb.Size = UDim2.new(8, 0, 1.1, 0)
+    nameBb.StudsOffset = Vector3.new(0, height / 2 + 3, 0)
+    nameBb.AlwaysOnTop = true
+    nameBb.Adornee = body
+    nameBb.Parent = body
+    local nameLbl = Instance.new("TextLabel")
+    nameLbl.Name = "Name"
+    nameLbl.BackgroundTransparency = 1
+    nameLbl.Size = UDim2.fromScale(1, 1)
+    nameLbl.Font = Enum.Font.GothamBold
+    nameLbl.TextScaled = true
+    nameLbl.TextColor3 = Color3.fromRGB(245, 245, 245)
+    nameLbl.TextStrokeTransparency = 0.35
+    nameLbl.Text = def.display_name or enemyId
+    nameLbl.Parent = nameBb
 end
 
 -- Build the enemy model. Uses the configured `model_asset` art when present (cloned
@@ -414,7 +437,7 @@ function EnemyService:_revivePet(pet)
 end
 
 -- One enemy hit on a pet (accumulate damage; down it if it crosses the ceiling).
-function EnemyService:_hitPet(pet, def, now, eng)
+function EnemyService:_hitPet(pet, def, now, eng, enemyLevel, petLevel)
     local power = self:_petPower(pet)
     local factor = self._combatConfig.pet_down_threshold_factor or 1
     local dmg = (def.attack and def.attack.damage) or 0
@@ -425,6 +448,8 @@ function EnemyService:_hitPet(pet, def, now, eng)
         return -- missed
     end
     dmg = dmg * roll.multiplier
+    -- Level scaling: a higher-level enemy hits harder; out-level it and it softens.
+    dmg = dmg * LevelScale.factor(enemyLevel or 1, petLevel or 1, self._levelingConfig.scale)
     pet:SetAttribute("LastHitCrit", roll.crit) -- for floating-text feedback (later)
     -- Defensive stat: the pet's Defense (its own + any active DefenseBuff from a power
     -- like Bulwark) mitigates the hit on the armor curve. A real tank survives longer.
@@ -680,7 +705,9 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     end)
     entry.nextAttack = entry.nextAttack or 0
     if biteTarget and now >= entry.nextAttack then
-        self:_hitPet(biteTarget, def, now, eng)
+        local enemyLevel = model:GetAttribute("Level") or 1
+        local petLevel = biteTarget:GetAttribute("Level") or (player:GetAttribute("Level") or 1)
+        self:_hitPet(biteTarget, def, now, eng, enemyLevel, petLevel)
         entry.nextAttack = now + ((def and def.attack and def.attack.cadence) or 1.5)
     end
 end
@@ -969,11 +996,7 @@ function EnemyService:_supportPass(now)
         for _, pet in ipairs(folder:GetChildren()) do
             if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
                 local heal = self:_roleAutoHeal(pet)
-                if
-                    heal
-                    and (heal.amount or 0) > 0
-                    and (not self._supportAt[pet] or now >= self._supportAt[pet])
-                then
+                if heal and (not self._supportAt[pet] or now >= self._supportAt[pet]) then
                     self._supportAt[pet] = now + (heal.interval or 1.5)
                     -- most-hurt non-downed ally in this squad
                     local target, worst
@@ -986,10 +1009,13 @@ function EnemyService:_supportPass(now)
                         end
                     end
                     if target then
-                        local newTaken = math.max(
-                            0,
-                            (target:GetAttribute("CombatDamageTaken") or 0) - heal.amount
-                        )
+                        -- Heal a FRACTION of the target's pool (keeps numbers proportional
+                        -- on the ~100 scale) — or a flat `amount` if configured instead.
+                        local pool = PetEndurance.maxEndurance(self:_petPower(target), factor)
+                        local healAmt = heal.fraction and (pool * heal.fraction)
+                            or (heal.amount or 0)
+                        local newTaken =
+                            math.max(0, (target:GetAttribute("CombatDamageTaken") or 0) - healAmt)
                         target:SetAttribute("CombatDamageTaken", newTaken)
                         if newTaken <= 0 then
                             self:_clearEnduranceBar(target)
@@ -1090,6 +1116,15 @@ function EnemyService:SpawnEnemy(player, enemyId)
     }
     model:SetAttribute("MoveTarget", position)
     model:SetAttribute("MoveFace", Vector3.new(hrp.Position.X, position.Y, hrp.Position.Z))
+
+    -- Effective level = base (config `level`, else the spawning player's level so a
+    -- standard mob reads "even"/white) + the elite rank offset (lieutenant/boss read
+    -- higher). Drives damage scaling + the difficulty colour label.
+    local playerLevel = player:GetAttribute("Level") or 1
+    local rankOff = (
+        self._levelingConfig.rank_offset and self._levelingConfig.rank_offset[def.tier]
+    ) or 0
+    model:SetAttribute("Level", LevelScale.effectiveLevel(def.level or playerLevel, rankOff))
 
     -- Watch HP -> death; also drive the HP bar.
     model:GetAttributeChangedSignal("HP"):Connect(function()

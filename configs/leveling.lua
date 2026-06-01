@@ -1,0 +1,32 @@
+--[[
+    Leveling / difficulty scaling — Halo & Horns [PROTOTYPE].
+
+    Combat numbers stay in a tight ~100 band; LEVEL DIFFERENCE does the scaling (see
+    src/Shared/Game/LevelScale). Pets level up to out-level enemies (tougher without HP
+    inflation); enemies show a difficulty colour relative to YOUR level.
+]]
+
+return {
+    -- Damage multiplier per level of (attacker - defender), clamped. +8% dmg per level up.
+    scale = { per_level = 0.08, min = 0.3, max = 2.5 },
+
+    -- Elite rank adds to an enemy's effective level vs its base (keyed by enemies.lua tier):
+    -- a lieutenant reads one level higher, a boss one above that.
+    rank_offset = {
+        trash_mob = 0, -- standard
+        mid_tier = 1, -- lieutenant
+        boss = 2, -- boss
+    },
+
+    -- Difficulty label colour by (enemy effective level - your level). Keys = LevelScale.tier.
+    -- {r,g,b}; the client builds the Color3.
+    tier_colors = {
+        purple = { 180, 95, 230 }, -- +3 or more (deadly)
+        red = { 225, 70, 70 }, -- +2
+        yellow = { 235, 210, 70 }, -- +1
+        white = { 245, 245, 245 }, -- even
+        blue = { 95, 170, 235 }, -- -1
+        green = { 110, 205, 110 }, -- -2
+        gray = { 150, 150, 160 }, -- -3 or less (trivial)
+    },
+}

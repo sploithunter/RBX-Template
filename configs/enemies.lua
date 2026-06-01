@@ -20,6 +20,7 @@ return {
     enemies = {
         lava_imp = {
             hp = 120,
+            display_name = "Lava Imp",
             tier = "trash_mob",
             move_speed = 15, -- studs/sec while chasing (slice 2); skittery + fast
             armor = 0, -- defensive stat: pet damage mitigated by armor/(armor+k)
@@ -38,6 +39,7 @@ return {
         },
         ember_brute = {
             hp = 400,
+            display_name = "Ember Brute",
             tier = "mid_tier",
             move_speed = 10, -- heavier, slower
             armor = 80, -- tougher: ~44% pet-damage reduction at k=100
@@ -49,6 +51,7 @@ return {
         },
         infernal_boss = {
             hp = 5000,
+            display_name = "Infernal Boss",
             tier = "boss",
             move_speed = 8, -- lumbering
             armor = 200, -- heavily armored (~67% reduction at k=100)
