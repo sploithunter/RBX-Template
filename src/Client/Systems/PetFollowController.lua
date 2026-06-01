@@ -21,6 +21,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
+local Gait = require(ReplicatedStorage.Shared.Game.Gait)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local PetFollowController = {}
@@ -103,6 +104,26 @@ function PetFollowController.start()
     local startClock = os.clock()
     local reportAccum = 0
     local reportInterval = (config.replication and config.replication.interval) or 0.1
+
+    -- Procedural walk gait (shared with enemies — src/Shared/Game/Gait.lua). Resolved
+    -- per PetType (gait_by_type override merged over the default), cached. baseCF holds
+    -- each pet's CLEAN target pivot (no gait) so the lerp + position report never feed
+    -- the bob/tilt back into themselves; gaitState carries the per-pet phase/amplitude.
+    local defaultGait = config.gait or {}
+    local gaitByType = config.gait_by_type or {}
+    local gaitCache = {}
+    local function resolveGait(petType)
+        local key = petType or "_default"
+        local cached = gaitCache[key]
+        if cached then
+            return cached
+        end
+        local g = Gait.resolve(defaultGait, gaitByType[petType])
+        gaitCache[key] = g
+        return g
+    end
+    local baseCF = setmetatable({}, { __mode = "k" }) -- pet model -> clean CFrame (no gait)
+    local gaitState = setmetatable({}, { __mode = "k" }) -- pet model -> { phase, amp }
 
     -- OTHER players' pets, server-relayed (the server never relays our own — those stay local).
     local remoteTargets = setmetatable({}, { __mode = "k" }) -- pet model -> latest relayed CFrame
@@ -187,15 +208,31 @@ function PetFollowController.start()
         -- (the exponential lerp alone covers any distance almost instantly). Orientation
         -- still uses the full lerp; only linear position is capped.
         local catchupDist = config.movement.catchup_distance
+
+        -- Store the clean (gait-free) pivot, advance the pet's walk gait by how far it
+        -- moved this frame, and PivotTo with the bob/tilt layered on. Keeping baseCF
+        -- clean means the gait never feeds back into the lerp or the position report.
+        local function applyGait(model, cleanPivot, stepDist)
+            baseCF[model] = cleanPivot
+            local st = gaitState[model]
+            if not st then
+                st = { phase = 0, amp = 0 }
+                gaitState[model] = st
+            end
+            local gait = resolveGait(model:GetAttribute("PetType"))
+            local bob, roll, yaw = Gait.advance(st, gait, stepDist, dt)
+            model:PivotTo(CFrame.new(0, bob, 0) * cleanPivot * CFrame.Angles(0, yaw, roll))
+        end
+
         local function moveToward(model, goal, baseRate)
             local mult = PetFormation.moveSpeedMultiplier(
                 playerSpeed,
                 model:GetAttribute("MoveSpeedMult"),
                 speedCfg
             )
-            local cur = model:GetPivot()
+            local cur = baseCF[model] or model:GetPivot()
             if PetFormation.shouldSnap((cur.Position - goal.Position).Magnitude, catchupDist) then
-                model:PivotTo(goal)
+                applyGait(model, goal, 0) -- teleport: reset to goal, no walk step
                 return
             end
             local alpha = 1 - math.exp(-(baseRate * mult) * dt)
@@ -208,8 +245,11 @@ function PetFollowController.start()
                     newPos = cur.Position + step.Unit * maxStep
                 end
             end
-            -- Capped position, lerped orientation.
-            model:PivotTo((lerped - lerped.Position) + newPos)
+            -- Capped position, lerped orientation = the clean base pivot for this frame.
+            local cleanPivot = (lerped - lerped.Position) + newPos
+            local stepDist =
+                (Vector3.new(cleanPivot.X, 0, cleanPivot.Z) - Vector3.new(cur.X, 0, cur.Z)).Magnitude
+            applyGait(model, cleanPivot, stepDist)
         end
 
         -- Full attack config (so every style's params reach attackOffset) with the player's
@@ -307,7 +347,9 @@ function PetFollowController.start()
             reportAccum = 0
             local report = {}
             for _, m in ipairs(pets) do
-                report[#report + 1] = { pet = m, cf = m:GetPivot() }
+                -- Report the clean base (no gait bob/tilt) so the server mining gate
+                -- measures true position, not the cosmetic waddle offset.
+                report[#report + 1] = { pet = m, cf = baseCF[m] or m:GetPivot() }
             end
             Signals.PetReportPositions:FireServer(report)
         end

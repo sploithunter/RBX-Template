@@ -128,6 +128,26 @@ return {
         catchup_distance = 200,
     },
 
+    -- Procedural walk gait (client, PetFollowController) — the SAME system enemies use
+    -- (src/Shared/Game/Gait.lua). Pets get a waddle/march/hop/etc. layered on their
+    -- follow/attack movement, driven by distance travelled so it scales with speed and
+    -- rests when still. `gait` is the default for every pet; `gait_by_type` overrides it
+    -- per pet PetType so different species move differently. Styles: waddle (bob + L/R
+    -- bank), march (stiff stomp), hop (one bounce/stride), slither (heading wiggle).
+    gait = {
+        enabled = true,
+        style = "waddle",
+        bob_height = 0.4, -- pets are smaller + already float; keep the bob gentle
+        tilt_degrees = 10,
+        stride_length = 4,
+        ref_speed = 12, -- pets travel faster than enemies; reach full waddle around here
+        ease_rate = 9,
+    },
+    gait_by_type = {
+        bunny = { style = "hop", bob_height = 0.9, tilt_degrees = 0, stride_length = 3 },
+        bear = { style = "waddle", bob_height = 0.5, tilt_degrees = 13, stride_length = 4.5 },
+    },
+
     -- Server tick throttle (seconds): target leash + the mining damage tick only.
     -- Movement is client-side (PetFollowController), not done here.
     update_interval = 0.1,
