@@ -393,31 +393,58 @@ local function playBeam(originPart, endPos, theme, isCrit)
     return true
 end
 
+-- A cloneable single-part template for a model asset (e.g. the rock / a future cactus). The
+-- SERVER preloads these into ReplicatedStorage.RangedFXAssets[tostring(assetId)] (InsertService
+-- is server-only); the client just clones the replicated part. Returns nil until it replicates
+-- (callers fall back to a procedural block meanwhile).
+local function getModelPart(assetId)
+    if not assetId then
+        return nil
+    end
+    local folder = ReplicatedStorage:FindFirstChild("RangedFXAssets")
+    return folder and folder:FindFirstChild(tostring(assetId)) or nil
+end
+
 -- Rock throw (DESERT): summon a boulder at the pet and hurl it, tumbling, at the target; it
--- lands with a dust impact. Non-neon (Slate). Themed by `theme` (colors/size/travel_time/impact).
+-- lands with a dust impact. Uses the configured model_asset (a rock union; swap to a cactus id
+-- + green colours later); falls back to a procedural Slate block until the asset loads.
 -- isCrit -> bigger rock + the crit impact tier (theme.impact_crit, default "big").
 local function playRock(originPart, endPos, theme, isCrit)
     local c1 = toColor(theme.colors and theme.colors[1], Color3.fromRGB(120, 105, 90))
     local c2 = toColor(theme.colors and theme.colors[2], Color3.fromRGB(170, 145, 110))
-    local size = (tonumber(theme.size) or 2.2) * (isCrit and 1.4 or 1)
+    local crit = isCrit and 1.4 or 1
     local travel = math.max(0.08, tonumber(theme.travel_time) or 0.3)
     local startPos = originPart.Position + Vector3.new(0, 2, 0)
 
-    local rock = Instance.new("Part")
-    rock.Material = Enum.Material.Slate
-    rock.Color = c1
+    local rock
+    local template = getModelPart(tonumber(theme.model_asset))
+    if template then
+        rock = template:Clone()
+        local nat = rock.Size
+        local scaleFactor = (tonumber(theme.size) or 3) / math.max(nat.X, nat.Y, nat.Z, 0.1)
+        rock.Size = nat * (scaleFactor * crit)
+        pcall(function()
+            rock.UsePartColor = true -- unions honour Color via this; tint for cacty variants
+        end)
+        rock.Color = c1
+    else
+        local s = (tonumber(theme.size) or 3) * crit
+        rock = Instance.new("Part")
+        rock.Material = Enum.Material.Slate
+        rock.Color = c1
+        rock.Size = Vector3.new(s, s * 0.85, s * 1.1)
+    end
     rock.Anchored = true
     rock.CanCollide = false
     rock.CanQuery = false
     rock.CastShadow = false
-    rock.Size = Vector3.new(size, size * 0.85, size * 1.1)
     rock.CFrame = CFrame.new(startPos)
     rock.Parent = fxFolder()
-    -- Quick "summon" pop-in: scale up from nothing.
-    rock.Size = Vector3.new(0.2, 0.2, 0.2)
-    TweenService:Create(rock, TweenInfo.new(0.08), { Size = Vector3.new(size, size * 0.85, size * 1.1) }):Play()
 
-    -- Hurl + tumble (end rotation interpolates into a tumble as it flies).
+    -- Quick "summon" pop-in, then hurl + tumble (end rotation interpolates into a tumble).
+    local fullSize = rock.Size
+    rock.Size = fullSize * 0.1
+    TweenService:Create(rock, TweenInfo.new(0.08), { Size = fullSize }):Play()
     local dest = CFrame.new(endPos) * CFrame.Angles(math.rad(170), math.rad(140), math.rad(80))
     local tween = TweenService:Create(
         rock,

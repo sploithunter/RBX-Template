@@ -48,6 +48,66 @@ function PetFollowService:Init()
     Signals.PetReportPositions.OnServerEvent:Connect(function(player, report)
         self:_onPetPositions(player, report)
     end)
+
+    -- Preload any model-based ranged FX (rock throw, future cactus) so the client can use them
+    -- (InsertService is server-only). Sanitized templates land in ReplicatedStorage.RangedFXAssets.
+    self:_preloadFxAssets()
+end
+
+-- Load model_asset ids referenced by ranged_bolt (rock + projectile themes) and stash a
+-- sanitized single-part template per id in ReplicatedStorage.RangedFXAssets[tostring(id)],
+-- which replicates to clients for RangedFX to clone. Failures are logged + skipped (the
+-- client falls back to a procedural block).
+function PetFollowService:_preloadFxAssets()
+    local bolt = (self._config and self._config.ranged_bolt) or {}
+    local ids = {}
+    if bolt.rock and bolt.rock.model_asset then
+        ids[bolt.rock.model_asset] = true
+    end
+    if type(bolt.projectile) == "table" then
+        for _, theme in pairs(bolt.projectile) do
+            if type(theme) == "table" and theme.model_asset then
+                ids[theme.model_asset] = true
+            end
+        end
+    end
+    if next(ids) == nil then
+        return
+    end
+    local folder = ReplicatedStorage:FindFirstChild("RangedFXAssets")
+    if not folder then
+        folder = Instance.new("Folder")
+        folder.Name = "RangedFXAssets"
+        folder.Parent = ReplicatedStorage
+    end
+    local InsertService = game:GetService("InsertService")
+    for id in pairs(ids) do
+        local name = tostring(id)
+        if not folder:FindFirstChild(name) then
+            task.spawn(function()
+                local ok, container = pcall(function()
+                    return InsertService:LoadAsset(id)
+                end)
+                if ok and container then
+                    local part = container:FindFirstChildWhichIsA("BasePart", true)
+                    if part then
+                        part = part:Clone()
+                        part.Anchored = true
+                        part.CanCollide = false
+                        part.CanQuery = false
+                        part.CastShadow = false
+                        part.Name = name
+                        part.Parent = folder
+                    elseif self._logger then
+                        self._logger:Warn("RangedFX asset has no BasePart", { asset = id })
+                    end
+                    container:Destroy()
+                elseif self._logger then
+                    self._logger:Warn("RangedFX asset load failed", { asset = id })
+                end
+            end)
+        end
+    end
 end
 
 -- Store reported positions for the player's OWN pets only (ignore anything else — anti-grief).

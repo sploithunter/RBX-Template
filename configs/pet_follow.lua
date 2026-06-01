@@ -235,9 +235,12 @@ return {
         },
         -- Beam theme (kind = "beam"): instant laser that flashes + fades.
         beam = { colors = { { 255, 70, 70 } }, thickness = 0.5, duration = 0.18, sparks = 5 },
-        -- Rock throw (kind = "rock"): summons a tumbling boulder and hurls it, landing with a
-        -- "dust" impact (tan cloud + rubble). DESERT theme. colors = { rock, rubble/dust }.
-        rock = { colors = { { 120, 105, 90 }, { 170, 145, 110 } }, size = 2.2, travel_time = 0.3, impact = "dust", impact_crit = "big" },
+        -- Rock throw (kind = "rock"): summons a tumbling boulder (model_asset, a rock union) and
+        -- hurls it, landing with a "dust" impact (tan cloud + rubble). DESERT theme. size = target
+        -- max studs; colors = { rock tint, rubble/dust }. For a CACTUS later: swap model_asset to
+        -- the cactus id and colors to greens (UsePartColor tints the union). Falls back to a
+        -- procedural Slate block until the asset loads.
+        rock = { model_asset = 122970818698817, colors = { { 130, 115, 95 }, { 175, 150, 115 } }, size = 3.5, travel_time = 0.3, impact = "dust", impact_crit = "big" },
     },
 
     -- Server tick throttle (seconds): target leash + the mining damage tick only.
