@@ -21,6 +21,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
+local ActiveSquad = require(ReplicatedStorage.Shared.Game.ActiveSquad)
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local EnemyService = {}
 EnemyService.__index = EnemyService
@@ -31,12 +33,25 @@ function EnemyService:Init()
     self._enemiesConfig = self._configLoader:LoadConfig("enemies")
     self._petFollowConfig = self._configLoader:LoadConfig("pet_follow")
     self._combatConfig = self._configLoader:LoadConfig("combat")
+    self._squadConfig = self._configLoader:LoadConfig("squad")
     self._nextId = 0
     self._enemies = {} -- targetId -> { model, enemyId, nextAttack }
-    -- pet model -> { lastHit, downedUntil } (weak so dead pets GC). The accumulated
-    -- damage + downed flag live as replicated attributes on the pet (so clients can
-    -- show the endurance bar); this table is just server-only timing.
+    -- pet model -> { lastHit } (weak so dead pets GC). Accumulated damage, the downed
+    -- flag, and the slot CooldownUntil all live as replicated attributes on the pet so
+    -- the squad HUD reads them directly; this table is just server-only hit timing.
     self._petCombat = setmetatable({}, { __mode = "k" })
+
+    -- Squad management: recall a pet (short slot cooldown) / re-summon a recovered one.
+    Signals.Squad_Recall.OnServerEvent:Connect(function(player, payload)
+        pcall(function()
+            self:RecallPet(player, payload)
+        end)
+    end)
+    Signals.Squad_Summon.OnServerEvent:Connect(function(player, payload)
+        pcall(function()
+            self:SummonPet(player, payload)
+        end)
+    end)
 end
 
 function EnemyService:_combatService()
@@ -269,54 +284,32 @@ function EnemyService:_clearEnduranceBar(pet)
     end
 end
 
--- Down a pet: it took all of its endurance. Out of combat for the long full-defeat
--- heal, then auto-heals (regen pass). Visibly tagged + drops its attack target so
--- it retreats to follow formation.
-function EnemyService:_downPet(pet, now, eng)
+-- Take a pet out of the fight. `reason` "down" (forced, long slot cooldown) or
+-- "recall" (player pulled it proactively, short cooldown). The pet hides client-side
+-- (PetFollowController) + drops its target; it stays out until the player SUMMONS it
+-- once the slot recharges (no auto-revive — recovery is a player action). The slot's
+-- recharge end is stamped on the pet as CooldownUntil (os.time) so the HUD counts down.
+function EnemyService:_downPet(pet, _now, _eng, reason)
     pet:SetAttribute("CombatDowned", true)
-    local pc = self._petCombat[pet]
-    if not pc then
-        pc = {}
-        self._petCombat[pet] = pc
-    end
-    pc.downedUntil = now + (eng.full_defeat_heal_seconds or 25)
+    pet:SetAttribute("DownedReason", reason or "down")
+    local cd = ActiveSquad.slotCooldownSeconds(reason or "down", self._squadConfig)
+    pet:SetAttribute("CooldownUntil", os.time() + cd)
     local tid = pet:FindFirstChild("TargetID")
     if tid then
-        tid.Value = 0 -- stop attacking; back to follow while healing
+        tid.Value = 0 -- stop attacking
     end
-    local pp = pet.PrimaryPart
-    if pp and not pp:FindFirstChild("DownedTag") then
-        local bb = Instance.new("BillboardGui")
-        bb.Name = "DownedTag"
-        bb.Size = UDim2.new(4, 0, 1, 0)
-        bb.StudsOffset = Vector3.new(0, 4.6, 0)
-        bb.AlwaysOnTop = true
-        local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.fromScale(1, 1)
-        lbl.BackgroundTransparency = 1
-        lbl.Text = "DOWNED"
-        lbl.TextColor3 = Color3.fromRGB(255, 110, 110)
-        lbl.TextStrokeTransparency = 0.3
-        lbl.TextScaled = true
-        lbl.Font = Enum.Font.GothamBold
-        lbl.Parent = bb
-        bb.Parent = pp
-    end
+    self:_clearEnduranceBar(pet) -- hidden pet shows no in-world bar; the HUD shows state
     if self._logger then
-        self._logger:Info("Pet downed in combat", { pet = pet.Name })
+        self._logger:Info("Pet left the fight", { pet = pet.Name, reason = reason or "down" })
     end
 end
 
+-- Re-summon a recovered pet back onto the field (clears the downed state + heals it).
 function EnemyService:_revivePet(pet)
     pet:SetAttribute("CombatDowned", false)
     pet:SetAttribute("CombatDamageTaken", 0)
-    local pp = pet.PrimaryPart
-    if pp then
-        local tag = pp:FindFirstChild("DownedTag")
-        if tag then
-            tag:Destroy()
-        end
-    end
+    pet:SetAttribute("CooldownUntil", 0)
+    pet:SetAttribute("DownedReason", "")
     self:_clearEnduranceBar(pet)
 end
 
@@ -335,7 +328,7 @@ function EnemyService:_hitPet(pet, def, now, eng)
     pc.lastHit = now
     self:_updateEnduranceBar(pet, taken, power, factor)
     if PetEndurance.isDowned(taken, power, factor) then
-        self:_downPet(pet, now, eng)
+        self:_downPet(pet, now, eng, "down")
     end
 end
 
@@ -448,9 +441,9 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     end
 end
 
--- Heal pass over ALL players' pets (runs even with no enemies): downed pets fully
--- heal after their long timer; partially-damaged pets bleed damage back once they
--- have been out of combat for the regen delay (the faster, partial heal).
+-- Partial-heal pass over ALL alive (non-downed) pets: chipped pets bleed their damage
+-- back once they have been out of combat for the regen delay. Downed pets do NOT auto-
+-- heal here — recovery is a player action (Summon) once the slot cooldown elapses.
 function EnemyService:_regenPass(now, dt, eng)
     local playerPets = Workspace:FindFirstChild("PlayerPets")
     if not playerPets then
@@ -461,30 +454,70 @@ function EnemyService:_regenPass(now, dt, eng)
     local factor = self._combatConfig.pet_down_threshold_factor or 1
     for _, folder in ipairs(playerPets:GetChildren()) do
         for _, pet in ipairs(folder:GetChildren()) do
-            if pet:IsA("Model") and pet.PrimaryPart then
-                if pet:GetAttribute("CombatDowned") then
+            if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
+                local taken = pet:GetAttribute("CombatDamageTaken") or 0
+                if taken > 0 then
                     local pc = self._petCombat[pet]
-                    if pc and pc.downedUntil and now >= pc.downedUntil then
-                        self:_revivePet(pet)
-                    end
-                else
-                    local taken = pet:GetAttribute("CombatDamageTaken") or 0
-                    if taken > 0 then
-                        local pc = self._petCombat[pet]
-                        local lastHit = (pc and pc.lastHit) or 0
-                        if PetEndurance.canRegen(now, lastHit, delay) then
-                            local newTaken = PetEndurance.regen(taken, dt, perSec)
-                            pet:SetAttribute("CombatDamageTaken", newTaken)
-                            if newTaken <= 0 then
-                                self:_clearEnduranceBar(pet)
-                            else
-                                self:_updateEnduranceBar(pet, newTaken, self:_petPower(pet), factor)
-                            end
+                    local lastHit = (pc and pc.lastHit) or 0
+                    if PetEndurance.canRegen(now, lastHit, delay) then
+                        local newTaken = PetEndurance.regen(taken, dt, perSec)
+                        pet:SetAttribute("CombatDamageTaken", newTaken)
+                        if newTaken <= 0 then
+                            self:_clearEnduranceBar(pet)
+                        else
+                            self:_updateEnduranceBar(pet, newTaken, self:_petPower(pet), factor)
                         end
                     end
                 end
             end
         end
+    end
+end
+
+-- Find a player's equipped pet by its squad slot (PositionNumber).
+function EnemyService:_findPlayerPetBySlot(player, slotIndex)
+    local folder = Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+    if not folder then
+        return nil
+    end
+    for _, pet in ipairs(folder:GetChildren()) do
+        if pet:IsA("Model") then
+            local pn = pet:FindFirstChild("PositionNumber")
+            if pn and pn.Value == slotIndex then
+                return pet
+            end
+        end
+    end
+    return nil
+end
+
+-- Recall (player action): pull a still-alive pet out of the fight for a SHORT slot
+-- cooldown — rewards pulling a Strained/Critical pet before it is forced down.
+function EnemyService:RecallPet(player, payload)
+    local slot = tonumber(type(payload) == "table" and payload.slot or payload)
+    if not slot then
+        return
+    end
+    local pet = self:_findPlayerPetBySlot(player, slot)
+    if pet and not pet:GetAttribute("CombatDowned") then
+        self:_downPet(pet, os.clock(), self._combatConfig.engagement or {}, "recall")
+    end
+end
+
+-- Summon (player action): bring a recovered pet back once its slot cooldown elapsed.
+function EnemyService:SummonPet(player, payload)
+    local slot = tonumber(type(payload) == "table" and payload.slot or payload)
+    if not slot then
+        return
+    end
+    local pet = self:_findPlayerPetBySlot(player, slot)
+    if not pet or not pet:GetAttribute("CombatDowned") then
+        return
+    end
+    local until_ = pet:GetAttribute("CooldownUntil") or 0
+    if os.time() >= until_ then
+        self:_revivePet(pet)
     end
 end
 

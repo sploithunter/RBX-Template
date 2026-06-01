@@ -133,3 +133,12 @@ Common case: deep stack → slot frees → re-summon a ready instance of the slo
 Pets never die (§11.1). Staged degradation (Healthy→Strained→Critical→Spirit Form, §11.3) gives the agency to recall before a forced down. No potion revives (player-initiated **Sacrifice** power is the no-potion restore path, §16.5). Built systems (`SpiritForm`/`StackPool`/`ActiveSquad`) already model this; live combat (`EnemyService`) must be wired into them (currently uses a throwaway model-level `CombatDowned` flag).
 
 UI: a City-of-Heroes-style **right-side squad HUD** — per-slot portrait + state/health + cooldown, click a pet (world or HUD) to target, act on it (recall / summon / [heal / buff via powers, later]).
+
+## Squad HUD — Layout + Assist Targeting (2026-06-01)
+
+- **Persistent right-side strip** (City-of-Heroes team-window style): one card per squad slot, always visible, **stable player-chosen order** (slot order = equip order, so players keep a preferred arrangement). v1 fixed to the right edge.
+- **Cards are selectable targets.** Selecting a pet card drives power targeting two ways (the CoH "assist" elegance):
+  - **Ally/support powers** (heal, buff, recall, summon) act on the selected pet.
+  - **Enemy/debuff powers** act on **the enemy that the selected pet is currently targeting** (target-through-ally). The server already carries each pet's `TargetID`, so the client resolves the assist target from the selected slot.
+- **Click-to-select from either side:** click the world pet model OR its strip card → selects that slot (highlights both).
+- **Stretch (deferred, may not be feasible in Roblox):** fully movable/dockable HUD like CoH (drag panels anywhere). v1 is fixed-right; revisit later.

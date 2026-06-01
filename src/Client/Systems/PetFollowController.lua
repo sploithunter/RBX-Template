@@ -137,10 +137,23 @@ function PetFollowController.start()
             return
         end
 
+        -- Downed pets are OUT of the fight: hide them (client-only LocalTransparencyModifier
+        -- so we never touch base Transparency) + any billboards, and skip positioning them.
+        -- They reappear when the player summons them (server clears CombatDowned).
         local pets = {}
         for _, m in ipairs(petsFolder:GetChildren()) do
             if m:IsA("Model") and m.PrimaryPart then
-                table.insert(pets, m)
+                local downed = m:GetAttribute("CombatDowned")
+                for _, d in ipairs(m:GetDescendants()) do
+                    if d:IsA("BasePart") then
+                        d.LocalTransparencyModifier = downed and 1 or 0
+                    elseif d:IsA("BillboardGui") then
+                        d.Enabled = not downed
+                    end
+                end
+                if not downed then
+                    table.insert(pets, m)
+                end
             end
         end
         local count = #pets
