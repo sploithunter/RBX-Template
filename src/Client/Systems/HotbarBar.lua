@@ -216,7 +216,8 @@ function HotbarBar.start()
             iconImg.BackgroundTransparency = 1
             iconImg.Position = UDim2.fromScale(0.5, 0.5)
             iconImg.AnchorPoint = Vector2.new(0.5, 0.5)
-            iconImg.Size = UDim2.fromScale(0.92, 0.92)
+            iconImg.ScaleType = Enum.ScaleType.Fit
+            iconImg.Size = UDim2.fromScale(1, 1) -- zoom set per-icon in applyState (border crop)
             iconImg.Image = ""
             iconImg.ZIndex = 2
             iconImg.Parent = b
@@ -275,13 +276,19 @@ function HotbarBar.start()
                 local bind = state.hotbar[tostring(slot)] or state.hotbar[slot]
                 card.bindObj = bind
                 -- Show the power's icon when we have one; otherwise fall back to the text label.
-                local icon = bind and bind.type == "power" and POWER_ICONS.powers[bind.target]
+                local icon = bind and bind.type == "power" and POWER_ICONS.powers[bind.target] or nil
                 card.icon.Image = icon or ""
+                if icon then
+                    local s = POWER_ICONS.scaleFor(icon) -- zoom past the art's transparent border
+                    card.icon.Size = UDim2.fromScale(s, s)
+                end
                 card.bind.Visible = not icon
                 card.bind.Text = bindLabel(bind)
                 card.frame.BackgroundColor3 = bind and (TYPE_COLOR[bind.type] or Color3.fromRGB(26, 28, 38))
                     or Color3.fromRGB(26, 28, 38)
-                card.frame.BackgroundTransparency = bind and 0.05 or 0.4
+                -- With a real icon present, let the art stand on a clear slot; keep the
+                -- coloured placeholder for text-only / empty slots so they're still legible.
+                card.frame.BackgroundTransparency = icon and 1 or (bind and 0.05 or 0.4)
             end
         end
     end

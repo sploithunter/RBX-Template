@@ -113,16 +113,20 @@ end
 -- A small status badge (icon-ready: an empty ImageLabel sits over the placeholder).
 local function makeBadge(parent)
     local f = Instance.new("Frame")
-    f.Size = UDim2.fromOffset(24, 24)
+    f.Size = UDim2.fromOffset(30, 30)
     f.BorderSizePixel = 0
+    f.ClipsDescendants = true -- crop the icon's zoomed-out transparent border
     f.Parent = parent
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 5)
+    c.CornerRadius = UDim.new(0, 6)
     c.Parent = f
     local icon = Instance.new("ImageLabel")
     icon.Name = "Icon"
     icon.BackgroundTransparency = 1
-    icon.Size = UDim2.fromScale(1, 1)
+    icon.AnchorPoint = Vector2.new(0.5, 0.5)
+    icon.Position = UDim2.fromScale(0.5, 0.5)
+    icon.ScaleType = Enum.ScaleType.Fit
+    icon.Size = UDim2.fromScale(1, 1) -- zoom set per-icon in updateBadges
     icon.Image = ""
     icon.ZIndex = 3
     icon.Parent = f
@@ -158,9 +162,16 @@ local function updateBadges(card, effects)
             card.badges[eff.key] = b
         end
         b.frame.LayoutOrder = i
+        local hasIcon = eff.icon and eff.icon ~= ""
+        -- Real icon: clear backing so the art reads cleanly; else keep coloured chip.
         b.frame.BackgroundColor3 = eff.color
-        b.label.Text = (eff.icon and eff.icon ~= "") and "" or eff.label
+        b.frame.BackgroundTransparency = hasIcon and 1 or 0
+        b.label.Text = hasIcon and "" or eff.label
         b.icon.Image = eff.icon or ""
+        if hasIcon then
+            local s = POWER_ICONS.scaleFor(eff.icon) -- zoom past the art's transparent border
+            b.icon.Size = UDim2.fromScale(s, s)
+        end
         b.timer.Text = eff.timer or ""
     end
     for key, b in pairs(card.badges) do
@@ -358,11 +369,15 @@ function SquadHud.start()
         c.CornerRadius = UDim.new(0, 6)
         c.Parent = b
         if icon then
+            b.ClipsDescendants = true -- crop the icon's zoomed-out transparent border
+            b.BackgroundTransparency = enabled and 1 or 0 -- clear backing when art is live
+            local s = POWER_ICONS.scaleFor(icon)
             local img = Instance.new("ImageLabel")
             img.BackgroundTransparency = 1
             img.AnchorPoint = Vector2.new(0.5, 0.5)
             img.Position = UDim2.fromScale(0.5, 0.5)
-            img.Size = UDim2.fromScale(0.85, 0.85)
+            img.ScaleType = Enum.ScaleType.Fit
+            img.Size = UDim2.fromScale(s, s) -- zoom past the art's transparent border
             img.Image = icon
             img.ImageTransparency = enabled and 0 or 0.45 -- dim while not yet wired
             img.Parent = b
