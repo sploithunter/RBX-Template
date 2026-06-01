@@ -708,6 +708,10 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         ePos = newPos
     end
 
+    -- Always face the current aggro target, even when standing still in bite range, so the
+    -- enemy visibly turns to whoever it's attacking (the client lerps toward MoveFace).
+    model:SetAttribute("MoveFace", Vector3.new(chaseTo.X, ePos.Y, chaseTo.Z))
+
     -- 5) ATTACK: bite the highest-aggro pet that is CURRENTLY within attack range — not
     -- only the chase target. The enemy may be pursuing an unreachable top-aggro pet (a
     -- ranged kiter), but anything in its face (the melee/tank orbiting it) still gets hit.

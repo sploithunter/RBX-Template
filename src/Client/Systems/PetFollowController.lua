@@ -22,6 +22,7 @@ local Workspace = game:GetService("Workspace")
 
 local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
 local Gait = require(ReplicatedStorage.Shared.Game.Gait)
+local AttackAnim = require(ReplicatedStorage.Shared.Game.AttackAnim)
 local EnchantLightning = require(ReplicatedStorage.Shared.Effects.EnchantLightning)
 local PetRoles = require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
@@ -146,6 +147,17 @@ function PetFollowController.start()
     end
     local baseCF = setmetatable({}, { __mode = "k" }) -- pet model -> clean CFrame (no gait)
     local gaitState = setmetatable({}, { __mode = "k" }) -- pet model -> { phase, amp }
+    local attackTimer = setmetatable({}, { __mode = "k" }) -- pet model -> { t } (attack-anim clock)
+
+    -- Attack flourishes (layered like the gait): one per target type, resolved once.
+    -- mining = breakables/ore (spin), combat = enemies (face for now). See AttackAnim.
+    local animCfg = (config.attack and config.attack.anim) or {}
+    local miningAnim = AttackAnim.resolve(animCfg.mining)
+    local combatAnim = AttackAnim.resolve(animCfg.combat)
+
+    -- Facing tuning: turn toward the heading when moving faster than this, else rest facing.
+    local faceTurnRate = (config.movement and config.movement.face_turn_rate) or 12
+    local faceMoveSpeed = (config.movement and config.movement.face_move_speed) or 2
 
     -- Ranged pets fire a cosmetic lightning bolt at their target on a cadence. Clone the
     -- config and rebuild target_offset as a Vector3 (stored as {x,y,z} so the config can
@@ -246,10 +258,33 @@ function PetFollowController.start()
         -- still uses the full lerp; only linear position is capped.
         local catchupDist = config.movement.catchup_distance
 
-        -- Store the clean (gait-free) pivot, advance the pet's walk gait by how far it
-        -- moved this frame, and PivotTo with the bob/tilt layered on. Keeping baseCF
-        -- clean means the gait never feeds back into the lerp or the position report.
-        local function applyGait(model, cleanPivot, stepDist)
+        -- Pick this frame's HEADING: face the way the pet is actually moving when it's
+        -- travelling above face_move_speed (so it heads forward instead of sliding), else
+        -- settle onto restDir (player-forward following / the target when attacking). The
+        -- turn is eased so it never snaps. Returns a horizontal unit Vector3.
+        local function facingFor(cur, curPos, newPos, restDir)
+            local moveVec = Vector3.new(newPos.X - curPos.X, 0, newPos.Z - curPos.Z)
+            local speed = moveVec.Magnitude / math.max(dt, 1e-3)
+            local desired
+            if speed > faceMoveSpeed and moveVec.Magnitude > 1e-4 then
+                desired = moveVec.Unit
+            elseif restDir and restDir.Magnitude > 1e-4 then
+                desired = restDir.Unit
+            end
+            local curLook = Vector3.new(cur.LookVector.X, 0, cur.LookVector.Z)
+            curLook = (curLook.Magnitude > 1e-4) and curLook.Unit or upFwd
+            if not desired then
+                return curLook
+            end
+            local turnAlpha = 1 - math.exp(-faceTurnRate * dt)
+            local newLook = curLook:Lerp(desired, turnAlpha)
+            return (newLook.Magnitude > 1e-4) and newLook.Unit or desired
+        end
+
+        -- Store the clean (gait-free, anim-free) pivot, then PivotTo with the walk gait AND
+        -- any attack flourish layered on. Keeping baseCF clean means neither feeds back into
+        -- the lerp or the position report. `anim` is a resolved AttackAnim (or nil to follow).
+        local function applyMotion(model, cleanPivot, stepDist, anim)
             baseCF[model] = cleanPivot
             local st = gaitState[model]
             if not st then
@@ -258,12 +293,36 @@ function PetFollowController.start()
             end
             local gait = resolveGait(model:GetAttribute("PetType"))
             local bob, roll, yaw = Gait.advance(st, gait, stepDist, dt)
-            model:PivotTo(CFrame.new(0, bob, 0) * cleanPivot * CFrame.Angles(0, yaw, roll))
+
+            -- Attack flourish (spin / pounce). Resets its clock when the pet stops attacking.
+            local aYaw, aLunge, aBob = 0, 0, 0
+            if anim and anim.enabled then
+                local ts = attackTimer[model]
+                if not ts then
+                    ts = { t = 0 }
+                    attackTimer[model] = ts
+                end
+                aYaw, aLunge, aBob = AttackAnim.advance(ts, anim, dt)
+            else
+                attackTimer[model] = nil
+            end
+
+            local pivot = cleanPivot
+            if aLunge ~= 0 then
+                pivot = cleanPivot * CFrame.new(0, 0, -aLunge) -- jab forward toward the faced target
+            end
+            model:PivotTo(CFrame.new(0, bob + aBob, 0) * pivot * CFrame.Angles(0, yaw + aYaw, roll))
         end
 
-        local function moveToward(model, goal, baseRate)
-            -- Cast-locked (just-fired ranged pet): hold position so it can't kite freely.
+        -- Move a pet toward goalPos (Vector3), facing its heading while moving / restDir at
+        -- rest, at baseRate smoothing scaled by move speed. `anim` (optional) layers a flourish.
+        local function moveToward(model, goalPos, restDir, baseRate, anim)
+            -- Cast-locked (just-fired ranged pet): hold position so it can't kite freely, but
+            -- keep facing its target (restDir) so it still aims at its prey while "casting".
             if castLockUntil[model] and dt and os.clock() < castLockUntil[model] then
+                local cur = baseCF[model] or model:GetPivot()
+                local face = facingFor(cur, cur.Position, cur.Position, restDir)
+                applyMotion(model, CFrame.lookAt(cur.Position, cur.Position + face), 0, anim)
                 return
             end
             local mult = PetFormation.moveSpeedMultiplier(
@@ -272,25 +331,26 @@ function PetFollowController.start()
                 speedCfg
             )
             local cur = baseCF[model] or model:GetPivot()
-            if PetFormation.shouldSnap((cur.Position - goal.Position).Magnitude, catchupDist) then
-                applyGait(model, goal, 0) -- teleport: reset to goal, no walk step
+            local curPos = cur.Position
+            if PetFormation.shouldSnap((curPos - goalPos).Magnitude, catchupDist) then
+                local face = (restDir and restDir.Magnitude > 1e-4) and restDir.Unit or upFwd
+                applyMotion(model, CFrame.lookAt(goalPos, goalPos + face), 0, anim) -- teleport
                 return
             end
             local alpha = 1 - math.exp(-(baseRate * mult) * dt)
-            local lerped = cur:Lerp(goal, alpha)
-            local newPos = lerped.Position
+            local newPos = curPos:Lerp(goalPos, alpha)
             if maxTravel and maxTravel > 0 then
-                local step = newPos - cur.Position
+                local step = newPos - curPos
                 local maxStep = maxTravel * mult * dt
                 if step.Magnitude > maxStep then
-                    newPos = cur.Position + step.Unit * maxStep
+                    newPos = curPos + step.Unit * maxStep
                 end
             end
-            -- Capped position, lerped orientation = the clean base pivot for this frame.
-            local cleanPivot = (lerped - lerped.Position) + newPos
+            local face = facingFor(cur, curPos, newPos, restDir)
+            local cleanPivot = CFrame.lookAt(newPos, newPos + face)
             local stepDist =
-                (Vector3.new(cleanPivot.X, 0, cleanPivot.Z) - Vector3.new(cur.X, 0, cur.Z)).Magnitude
-            applyGait(model, cleanPivot, stepDist)
+                (Vector3.new(newPos.X, 0, newPos.Z) - Vector3.new(curPos.X, 0, curPos.Z)).Magnitude
+            applyMotion(model, cleanPivot, stepDist, anim)
         end
 
         -- Full attack config (so every style's params reach attackOffset) with the player's
@@ -301,6 +361,7 @@ function PetFollowController.start()
         local groups = {} -- id -> { center, pets = {} }   (melee/tank: orbit the target)
         local followers = {}
         local kiters = {} -- ranged: hold player formation + snipe the target
+        local kiterFace = {} -- kiter pet -> its target model (so it faces what it snipes)
         for slot, pet in ipairs(pets) do
             local tid = pet:FindFirstChild("TargetID")
             local breakable = nil
@@ -313,19 +374,39 @@ function PetFollowController.start()
             local index = (posNV and posNV.Value > 0) and posNV.Value or slot
             if breakable and roleKites(pet) then
                 -- Ranged: stays in the player formation (so a chasing enemy must close on
-                -- it) and fires from there.
+                -- it) and fires from there — but faces the target it's sniping.
                 table.insert(followers, { pet = pet, index = index })
                 table.insert(kiters, { pet = pet, model = breakable })
+                kiterFace[pet] = breakable
             elseif breakable then
                 local g = groups[tid.Value]
                 if not g then
-                    g = { center = breakable:GetPivot().Position, model = breakable, pets = {} }
+                    g = {
+                        center = breakable:GetPivot().Position,
+                        model = breakable,
+                        isEnemy = breakable:GetAttribute("IsEnemy") == true,
+                        pets = {},
+                    }
                     groups[tid.Value] = g
                 end
                 table.insert(g.pets, pet)
             else
                 table.insert(followers, { pet = pet, index = index })
             end
+        end
+
+        -- A follower's rest facing: player-forward, unless it's a ranged kiter — then it
+        -- faces the target it's firing on (computed per pet from its world position).
+        local function followerRestDir(pet, targetPos)
+            local kt = kiterFace[pet]
+            if kt and kt.Parent and kt.PrimaryPart then
+                local p = kt:GetPivot().Position
+                local d = Vector3.new(p.X - targetPos.X, 0, p.Z - targetPos.Z)
+                if d.Magnitude > 1e-3 then
+                    return d.Unit
+                end
+            end
+            return upFwd
         end
 
         -- Followers: hold the formation slot behind the player.
@@ -352,16 +433,14 @@ function PetFollowController.start()
                 local t = PetFormation.toWorld(frame, e.offset)
                 local bob = PetFormation.floatOffset(phase + slot, config.float)
                 local target = Vector3.new(t.x, t.y + bob, t.z)
-                local goal = CFrame.lookAt(target, target + upFwd)
-                moveToward(model, goal, followRate)
+                moveToward(model, target, followerRestDir(model, target), followRate)
             end
         else
             for _, f in ipairs(followers) do
                 local t = PetFormation.targetPosition(frame, f.index, count, config.formation)
                 local bob = PetFormation.floatOffset(phase + f.index, config.float)
                 local target = Vector3.new(t.x, t.y + bob, t.z)
-                local goal = CFrame.lookAt(target, target + upFwd)
-                moveToward(f.pet, goal, followRate)
+                moveToward(f.pet, target, followerRestDir(f.pet, target), followRate)
             end
         end
 
@@ -392,8 +471,10 @@ function PetFollowController.start()
                 local target = g.center + Vector3.new(off.x, off.y, off.z)
                 local toC = Vector3.new(g.center.X - target.X, 0, g.center.Z - target.Z)
                 local dir = toC.Magnitude > 0.01 and toC.Unit or upFwd
-                local goal = CFrame.lookAt(target, target + dir)
-                moveToward(pet, goal, attackRate)
+                -- Mining (breakables) spins; combat (enemies) faces the target. The flourish
+                -- layers on the facing — a spinning pet still orients to its prey underneath.
+                local anim = g.isEnemy and combatAnim or miningAnim
+                moveToward(pet, target, dir, attackRate, anim)
             end
         end
 

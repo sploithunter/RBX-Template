@@ -93,6 +93,16 @@ return {
         swarm_radius_frac = 0.85,
         swarm_speed = 3,
         swarm_bob = 1.2,
+
+        -- Attack FLOURISH layered on the base pivot while engaged (src/Shared/Game/AttackAnim.lua),
+        -- the time-driven companion to the walk gait. Chosen by target type: `mining` plays on
+        -- breakables/ore, `combat` on enemies. Styles: "spin" (whirl about up — the mining spin
+        -- attack), "pounce" (periodic jab toward the target + back), "none" (just face the target).
+        -- More styles (spin_attack, etc.) drop into AttackAnim.STYLES; add a config block here.
+        anim = {
+            mining = { style = "spin", spin_speed = 7, bob_height = 0.5 },
+            combat = { style = "none" }, -- enemies: face them for now; pounce/etc. later
+        },
     },
 
     -- Client movement smoothing (frame-rate-independent exponential approach;
@@ -126,6 +136,14 @@ return {
         -- auto_target.max_target_distance (120) so a pet only ever snaps for a real
         -- teleport, never to reach a normal far target (which it should travel to).
         catchup_distance = 200,
+
+        -- Facing: a pet turns to face the direction it's actually MOVING whenever it's
+        -- travelling faster than face_move_speed (studs/sec) — so returning/repositioning
+        -- pets head forward instead of moonwalking. Below that speed it settles onto its
+        -- "rest facing" (player-forward when following, the target when attacking).
+        -- face_turn_rate is the exponential turn smoothing (higher = snaps to heading faster).
+        face_turn_rate = 12,
+        face_move_speed = 2,
     },
 
     -- Procedural walk gait (client, PetFollowController) — the SAME system enemies use
