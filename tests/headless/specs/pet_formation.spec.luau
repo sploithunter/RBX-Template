@@ -337,4 +337,17 @@ return function()
             expect(PetFormation.shouldSnap(1e9, nil)).to.equal(false)
         end)
     end)
+
+    describe("PetFormation.inMiningRange", function()
+        it("mines within range, withholds beyond it", function()
+            expect(PetFormation.inMiningRange(5, 9)).to.equal(true)
+            expect(PetFormation.inMiningRange(9, 9)).to.equal(true)
+            expect(PetFormation.inMiningRange(12, 9)).to.equal(false)
+        end)
+
+        it("is graceful: unknown distance or range allows mining", function()
+            expect(PetFormation.inMiningRange(nil, 9)).to.equal(true)
+            expect(PetFormation.inMiningRange(50, nil)).to.equal(true)
+        end)
+    end)
 end

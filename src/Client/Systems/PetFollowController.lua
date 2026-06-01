@@ -21,6 +21,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local PetFollowController = {}
 
@@ -73,6 +74,8 @@ function PetFollowController.start()
         return -- legacy scripts own movement; controller idle
     end
     local startClock = os.clock()
+    local reportAccum = 0
+    local reportInterval = (config.replication and config.replication.interval) or 0.1
 
     RunService.RenderStepped:Connect(function(dt)
         local char = localPlayer.Character
@@ -213,6 +216,18 @@ function PetFollowController.start()
                 local goal = CFrame.lookAt(target, target + dir)
                 moveToward(pet, goal, alphaFor(attackRate, pet))
             end
+        end
+
+        -- Throttled: report this player's pet positions to the server (drives the mining gate;
+        -- foundation for multiplayer pet visibility). Positions are post-move (this frame).
+        reportAccum += dt
+        if reportAccum >= reportInterval then
+            reportAccum = 0
+            local report = {}
+            for _, m in ipairs(pets) do
+                report[#report + 1] = { pet = m, cf = m:GetPivot() }
+            end
+            Signals.PetReportPositions:FireServer(report)
         end
     end)
 end

@@ -113,4 +113,19 @@ return {
     -- Server tick throttle (seconds): target leash + the mining damage tick only.
     -- Movement is client-side (PetFollowController), not done here.
     update_interval = 0.1,
+
+    -- Mining gate: a pet only deals mining damage once it's within `range` studs of its target,
+    -- so move speed affects mining throughput (DPS ramps as pets arrive). The server reads
+    -- per-pet positions the owning client reports (see `replication`). If a pet has no reported
+    -- position yet, mining is allowed — the gate never breaks the legacy "near = mines" behaviour.
+    mining = {
+        range = 9,
+    },
+
+    -- Client -> server pet position reporting (drives the mining gate; foundation for multiplayer
+    -- pet visibility). Throttled to keep bandwidth modest.
+    replication = {
+        interval = 0.1, -- seconds between position reports (~10 Hz)
+        stale_seconds = 0.5, -- a report older than this is ignored (gate falls back to "allow")
+    },
 }

@@ -346,6 +346,19 @@ function PetFormation.shouldSnap(distance, threshold)
     return d > t
 end
 
+-- Mining gate: whether a pet that is `distance` studs from its target may mine (within `range`).
+-- A nil distance (no position reported yet) or nil range returns true — the gate is graceful and
+-- never blocks the legacy "near the ore = mines" behaviour; it only withholds mining for a pet
+-- that has a known position still too far from the target.
+function PetFormation.inMiningRange(distance, range)
+    local d = tonumber(distance)
+    local r = tonumber(range)
+    if not d or not r then
+        return true
+    end
+    return d <= r
+end
+
 -- Vertical bob from a phase (e.g. elapsed time). Deterministic; no clock here.
 function PetFormation.floatOffset(phase, floatConfig)
     if not floatConfig or floatConfig.amplitude == 0 then

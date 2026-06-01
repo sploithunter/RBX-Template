@@ -25,6 +25,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
+local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local PetFollowService = {}
 PetFollowService.__index = PetFollowService
@@ -34,6 +36,38 @@ function PetFollowService:Init()
     self._configLoader = self._modules and self._modules.ConfigLoader
     self._config = self._configLoader:LoadConfig("pet_follow")
     self._nextHit = {} -- pet model -> os.clock() of next allowed mining hit
+    self._petPos = setmetatable({}, { __mode = "k" }) -- pet model -> { pos, t } (weak: dead pets GC)
+
+    -- Owning client reports its pet positions; we use them to gate mining on distance to target.
+    Signals.PetReportPositions.OnServerEvent:Connect(function(player, report)
+        self:_onPetPositions(player, report)
+    end)
+end
+
+-- Store reported positions for the player's OWN pets only (ignore anything else — anti-grief).
+function PetFollowService:_onPetPositions(player, report)
+    if type(report) ~= "table" then
+        return
+    end
+    local folder = Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+    if not folder then
+        return
+    end
+    local now = os.clock()
+    for _, entry in ipairs(report) do
+        local pet = type(entry) == "table" and entry.pet
+        local cf = type(entry) == "table" and entry.cf
+        if typeof(pet) == "Instance" and pet:IsDescendantOf(folder) and typeof(cf) == "CFrame" then
+            self._petPos[pet] = { cf = cf, t = now }
+            -- Relay: applying the owner's reported transform server-side replicates it to ALL
+            -- clients, so other players see this player's pets move (the owner keeps overriding
+            -- it locally at full framerate, so their own view stays smooth). Anchored -> no physics.
+            if pet:IsA("Model") and pet.PrimaryPart then
+                pet:PivotTo(cf)
+            end
+        end
+    end
 end
 
 function PetFollowService:_combatService()
@@ -127,6 +161,23 @@ function PetFollowService:_mine(player, pet, breakable)
     if hp <= 0 then
         return
     end
+
+    -- Mining gate: only mine once the pet has reached the target (within mining.range), so move
+    -- speed affects mining throughput (DPS ramps as pets arrive). Distance comes from the position
+    -- the owning client reports; a missing/stale report falls back to "allow" so the gate can
+    -- never break the legacy "near the ore = mines" behaviour.
+    local rec = self._petPos[pet]
+    local staleSeconds = (self._config.replication and self._config.replication.stale_seconds)
+        or 0.5
+    local dist
+    if rec and (now - rec.t) <= staleSeconds then
+        dist = (rec.cf.Position - breakable:GetPivot().Position).Magnitude
+    end
+    local miningRange = self._config.mining and self._config.mining.range
+    if not PetFormation.inMiningRange(dist, miningRange) then
+        return -- pet is reported far from the target — hasn't arrived yet
+    end
+
     local powerNV = pet:FindFirstChild("Power")
     local ctx = {
         power = tonumber(powerNV and powerNV.Value) or 1,
