@@ -50,6 +50,25 @@ return {
         -- exponential rate (higher = snappier, lower = floatier). Server stays the
         -- authority for position; this only smooths what the player sees.
         render_lerp_rate = 12,
+        -- Procedural walk gait (client, EnemyMotion): rig-less mesh enemies get a
+        -- waddle while moving — a vertical bob plus a bank/wiggle about the facing axis.
+        -- Driven by distance travelled, so it scales with speed and stops when the enemy
+        -- is still. This is the DEFAULT; each enemy in configs/enemies.lua can override
+        -- any field via its own `gait = {...}` (merged over this), so different pets move
+        -- differently. `style` selects the motion shape (EnemyMotion STYLES):
+        --   waddle  — bob 2x/stride + left/right bank 1x (the classic down->L->up->down->R->up)
+        --   march   — stiff bob, no tilt
+        --   hop     — one big bounce per stride, no tilt
+        --   slither — no bob, heading wiggles left/right (snake-like)
+        gait = {
+            enabled = true,
+            style = "waddle",
+            bob_height = 0.6, -- studs of vertical bob at full amplitude
+            tilt_degrees = 12, -- max bank / wiggle (degrees) at full amplitude
+            stride_length = 5, -- studs travelled per full cycle (2 bobs / 1 tilt L+R)
+            ref_speed = 8, -- speed (studs/s) at which the gait reaches full amplitude
+            ease_rate = 8, -- how fast the gait fades in/out as it starts/stops
+        },
         -- A downed pet (taken all the way down) is out for this long, then fully
         -- heals — the "fully defeated takes X to heal" consequence. Partially
         -- damaged pets bleed their damage back at regen.partial_per_second once

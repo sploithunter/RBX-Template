@@ -31,6 +31,8 @@ return {
             model_asset = 110801864701636,
             model_scale = 4,
             needs_primary_part = true,
+            -- Skittery little imp: quick, springy waddle with an exaggerated tilt.
+            gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 16, stride_length = 3.5 },
             attack = { damage = 10, cadence = 1.5, sundering = 0 },
             drop_table = { lava_coins = 8, shadow_tokens = 1 },
         },
@@ -39,6 +41,8 @@ return {
             tier = "mid_tier",
             move_speed = 10, -- heavier, slower
             armor = 80, -- tougher: ~44% pet-damage reduction at k=100
+            -- Heavy bruiser: a slow, stiff march with a deep stomp and little tilt.
+            gait = { style = "march", bob_height = 0.9, tilt_degrees = 4, stride_length = 7 },
             -- A Sundering attacker: drains player Focus on hit (Feature 12).
             attack = { damage = 25, cadence = 2.0, sundering = 20 },
             drop_table = { lava_coins = 30, shadow_tokens = 4, rare_drop_chance = 0.1 },
@@ -48,6 +52,8 @@ return {
             tier = "boss",
             move_speed = 8, -- lumbering
             armor = 200, -- heavily armored (~67% reduction at k=100)
+            -- Lumbering colossus: huge slow ground-shaking stomp, almost no tilt.
+            gait = { style = "march", bob_height = 1.3, tilt_degrees = 3, stride_length = 10 },
             attack = { damage = 60, cadence = 2.5, sundering = 40 },
             drop_table = { lava_coins = 200, shadow_tokens = 25 },
         },
