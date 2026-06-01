@@ -429,7 +429,9 @@ function EnemyService:_hitPet(pet, def, now, eng)
     -- Defensive stat: the pet's Defense (its own + any active DefenseBuff from a power
     -- like Bulwark) mitigates the hit on the armor curve. A real tank survives longer.
     local nowT = os.time()
-    local defense = pet:GetAttribute("Defense") or 0
+    -- Defense = innate role toughness (tanks are naturally tanky) + the pet's own Defense
+    -- attribute + any active DefenseBuff (Bulwark etc.). All feed the armor curve below.
+    local defense = self:_roleDefense(pet) + (pet:GetAttribute("Defense") or 0)
     if (pet:GetAttribute("DefenseBuffUntil") or 0) > nowT then
         defense = defense + (pet:GetAttribute("DefenseBuff") or 0)
     end
@@ -478,6 +480,20 @@ function EnemyService:_petThreat(pet)
         base = self:_petPower(pet)
     end
     return base * self:_roleThreatMult(pet)
+end
+
+-- A role's innate defense (toughness), added to the pet's Defense before mitigation:
+-- PetRole attr -> by_type[PetType] -> default; falls back to 0.
+function EnemyService:_roleDefense(pet)
+    local roles = self._petRoles
+    if not roles then
+        return 0
+    end
+    local id = pet:GetAttribute("PetRole")
+        or (roles.by_type and roles.by_type[pet:GetAttribute("PetType")])
+        or roles.default
+    local def = roles.roles and roles.roles[id]
+    return (def and tonumber(def.defense)) or 0
 end
 
 -- Does this pet's role auto-taunt (tanks)? PetRole attr -> by_type[PetType] -> default.
