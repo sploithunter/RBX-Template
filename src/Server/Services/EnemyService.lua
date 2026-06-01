@@ -521,6 +521,76 @@ function EnemyService:SummonPet(player, payload)
     end
 end
 
+-- Nearest alive enemy to a player (for focus-fire). Returns the model or nil.
+function EnemyService:_nearestEnemyToPlayer(player)
+    local character = player.Character
+    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        return nil
+    end
+    local best, bestD
+    for _, entry in pairs(self._enemies) do
+        local model = entry.model
+        if model and model.Parent and (model:GetAttribute("HP") or 0) > 0 and model.PrimaryPart then
+            local d = (model.PrimaryPart.Position - hrp.Position).Magnitude
+            if not bestD or d < bestD then
+                best, bestD = model, d
+            end
+        end
+    end
+    return best
+end
+
+-- Tactical command from the hotbar — a squad-wide order (no new power system):
+--   focus_fire — every non-downed pet attacks the nearest alive enemy
+--   scatter/regroup — clear enemy targets so pets return to follow / auto-mine
+--   retreat — recall every non-downed pet (short cooldown), pulling the squad out
+function EnemyService:ExecuteTactical(player, command)
+    local petsFolder = Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+    if not petsFolder then
+        return
+    end
+
+    if command == "focus_fire" then
+        local enemy = self:_nearestEnemyToPlayer(player)
+        if not enemy then
+            return
+        end
+        local bid = enemy:FindFirstChild("BreakableID")
+        local targetId = bid and bid.Value
+        if not targetId then
+            return
+        end
+        for _, pet in ipairs(petsFolder:GetChildren()) do
+            if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
+                self:_assignPetToEnemy(pet, targetId)
+            end
+        end
+    elseif command == "scatter" or command == "regroup" then
+        for _, pet in ipairs(petsFolder:GetChildren()) do
+            if pet:IsA("Model") then
+                local tid = pet:FindFirstChild("TargetID")
+                if tid then
+                    tid.Value = 0 -- back to follow / auto-mine
+                end
+            end
+        end
+    elseif command == "retreat" then
+        for _, pet in ipairs(petsFolder:GetChildren()) do
+            if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
+                local pn = pet:FindFirstChild("PositionNumber")
+                if pn then
+                    self:RecallPet(player, { slot = pn.Value })
+                end
+            end
+        end
+    end
+    if self._logger then
+        self._logger:Info("Tactical command", { player = player.Name, command = command })
+    end
+end
+
 function EnemyService:_combatTick(dt)
     local eng = self._combatConfig.engagement or {}
     local now = os.clock()
