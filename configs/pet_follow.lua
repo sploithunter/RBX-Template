@@ -210,15 +210,16 @@ return {
 
         -- Projectile themes (kind = "fireball"/"plasma"/"frost"/"poison"): one travelling-orb
         -- engine, themed by colour/size/speed/burst. colors = { core, trail+burst }. travel_time
-        -- = seconds orb takes to reach the target (keep < interval); burst = impact flash size.
+        -- = seconds orb takes to reach the target (keep < interval); burst = impact flash size;
+        -- sparks = ember/shard bits the impact explosion sprays outward (0 = flash only).
         projectile = {
-            fireball = { colors = { { 255, 150, 40 }, { 255, 90, 20 } }, size = 1.6, travel_time = 0.18, burst = 3.5 },
-            plasma = { colors = { { 150, 90, 255 }, { 210, 170, 255 } }, size = 1.3, travel_time = 0.13, burst = 3 },
-            frost = { colors = { { 150, 220, 255 }, { 225, 245, 255 } }, size = 1.4, travel_time = 0.2, burst = 3 },
-            poison = { colors = { { 120, 230, 90 }, { 175, 255, 120 } }, size = 1.5, travel_time = 0.22, burst = 3.5 },
+            fireball = { colors = { { 255, 150, 40 }, { 255, 90, 20 } }, size = 1.6, travel_time = 0.18, burst = 3.5, sparks = 9 },
+            plasma = { colors = { { 150, 90, 255 }, { 210, 170, 255 } }, size = 1.3, travel_time = 0.13, burst = 3, sparks = 7 },
+            frost = { colors = { { 150, 220, 255 }, { 225, 245, 255 } }, size = 1.4, travel_time = 0.2, burst = 3, sparks = 8 },
+            poison = { colors = { { 120, 230, 90 }, { 175, 255, 120 } }, size = 1.5, travel_time = 0.22, burst = 3.5, sparks = 8 },
         },
         -- Beam theme (kind = "beam"): instant laser that flashes + fades.
-        beam = { colors = { { 255, 70, 70 } }, thickness = 0.5, duration = 0.18 },
+        beam = { colors = { { 255, 70, 70 } }, thickness = 0.5, duration = 0.18, sparks = 5 },
     },
 
     -- Server tick throttle (seconds): target leash + the mining damage tick only.

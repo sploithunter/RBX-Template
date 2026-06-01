@@ -68,24 +68,62 @@ local function fxFolder()
     return f
 end
 
--- An expanding, fading neon sphere at `pos` — the impact burst shared by the projectile themes.
-local function burst(pos, color, size)
-    local b = Instance.new("Part")
-    b.Shape = Enum.PartType.Ball
-    b.Material = Enum.Material.Neon
-    b.Color = color
-    b.Anchored = true
-    b.CanCollide = false
-    b.CanQuery = false
-    b.CastShadow = false
-    b.Size = Vector3.new(0.5, 0.5, 0.5)
-    b.CFrame = CFrame.new(pos)
-    b.Parent = fxFolder()
-    TweenService:Create(b, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+-- Impact explosion shared by the projectile themes: a bright expanding flash + a quick light
+-- pop + a radial spray of ember/shard bits that fly outward and fade. Themed by the two colours
+-- (c1 core, c2 trail/debris). `size` is the flash diameter; `sparks` the debris count.
+local function impactBurst(pos, c1, c2, size, sparks)
+    local parent = fxFolder()
+
+    -- Core flash sphere — snaps out fast, fades.
+    local flash = Instance.new("Part")
+    flash.Shape = Enum.PartType.Ball
+    flash.Material = Enum.Material.Neon
+    flash.Color = c2
+    flash.Anchored = true
+    flash.CanCollide = false
+    flash.CanQuery = false
+    flash.CastShadow = false
+    flash.Size = Vector3.new(0.5, 0.5, 0.5)
+    flash.CFrame = CFrame.new(pos)
+    flash.Parent = parent
+    local light = Instance.new("PointLight")
+    light.Color = c1
+    light.Brightness = 7
+    light.Range = size * 4
+    light.Parent = flash
+    TweenService:Create(flash, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         Size = Vector3.new(size, size, size),
         Transparency = 1,
     }):Play()
-    Debris:AddItem(b, 0.3)
+    TweenService:Create(light, TweenInfo.new(0.2), { Brightness = 0 }):Play()
+    Debris:AddItem(flash, 0.35)
+
+    -- Ember/shard spray — bits fly radially outward (with a little upward lift), shrink + fade.
+    sparks = math.max(0, math.floor(tonumber(sparks) or 7))
+    for i = 1, sparks do
+        local ang = (i / sparks) * math.pi * 2 + math.random() * 0.6
+        local elev = 0.2 + math.random() * 0.6
+        local dir = Vector3.new(math.cos(ang), elev, math.sin(ang)).Unit
+        local bit = Instance.new("Part")
+        bit.Shape = Enum.PartType.Ball
+        bit.Material = Enum.Material.Neon
+        bit.Color = (i % 2 == 0) and c1 or c2
+        bit.Anchored = true
+        bit.CanCollide = false
+        bit.CanQuery = false
+        bit.CastShadow = false
+        bit.Size = Vector3.new(size * 0.2, size * 0.2, size * 0.2)
+        bit.CFrame = CFrame.new(pos)
+        bit.Parent = parent
+        local dist = size * (0.8 + math.random() * 0.9)
+        local dest = pos + dir * dist - Vector3.new(0, size * 0.3, 0) -- arc out + settle down
+        TweenService:Create(bit, TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            CFrame = CFrame.new(dest),
+            Size = Vector3.new(0.05, 0.05, 0.05),
+            Transparency = 1,
+        }):Play()
+        Debris:AddItem(bit, 0.42)
+    end
 end
 
 -- Travelling orb (fireball / plasma / frost / poison): an emissive ball flies origin->target
@@ -137,7 +175,7 @@ local function playProjectile(originPart, endPos, theme)
         { CFrame = CFrame.new(endPos) }
     )
     tween.Completed:Connect(function()
-        burst(endPos, c2, (tonumber(theme.burst) or 3) * (size / 1.5))
+        impactBurst(endPos, c1, c2, (tonumber(theme.burst) or 3) * (size / 1.5), theme.sparks)
         orb:Destroy()
     end)
     tween:Play()
@@ -173,6 +211,7 @@ local function playBeam(originPart, endPos, theme)
         Size = Vector3.new(dist, 0.05, 0.05),
     }):Play()
     Debris:AddItem(beam, duration + 0.1)
+    impactBurst(endPos, c1, c1, (tonumber(theme.burst) or 2.5), theme.sparks or 5)
     return true
 end
 
