@@ -33,6 +33,7 @@ local Signals = {
     Squad_Recall = Net:RemoteEvent("Squad_Recall"), -- c->s recall a squad slot's pet (short cooldown)
     Squad_Summon = Net:RemoteEvent("Squad_Summon"), -- c->s re-summon a recovered squad slot's pet
     Hotbar_Activate = Net:RemoteEvent("Hotbar_Activate"), -- c->s fire the bind on a hotbar slot (1-20)
+    Hotbar_Rebind = Net:RemoteEvent("Hotbar_Rebind"), -- c->s assign/clear a hotbar slot's bind
     Hotbar_RequestState = Net:RemoteEvent("Hotbar_RequestState"), -- c->s ask for the player's hotbar
     Hotbar_State = Net:RemoteEvent("Hotbar_State"), -- s->c push hotbar bindings for the command bar UI
     Admin_RequestHatchHistory = Net:RemoteEvent("Admin_RequestHatchHistory"), -- c->s recent hatch debug snapshot

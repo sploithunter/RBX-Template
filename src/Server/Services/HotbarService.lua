@@ -30,14 +30,46 @@ function HotbarService:Init()
     end)
     -- Client asks for its bindings to draw the command bar.
     Signals.Hotbar_RequestState.OnServerEvent:Connect(function(player)
-        local state = self:GetState(player)
-        if state.ok then
-            Signals.Hotbar_State:FireClient(player, {
-                hotbar = state.hotbar,
-                slot_count = state.slot_count,
-            })
-        end
+        self:_pushState(player)
     end)
+    -- Client assigns / clears a slot (the assignment UI).
+    Signals.Hotbar_Rebind.OnServerEvent:Connect(function(player, payload)
+        pcall(function()
+            if type(payload) ~= "table" then
+                return
+            end
+            local bind = payload.bind -- nil clears
+            self:Rebind(player, tonumber(payload.slot), bind)
+            self:_pushState(player) -- echo the authoritative result
+        end)
+    end)
+end
+
+-- The things a player may bind: their archetype's powers + the tactical commands.
+-- Pet-summons are added client-side from the equipped squad (the client owns that).
+function HotbarService:_assignablePalette(player)
+    local data = self._dataService:GetData(player)
+    local powers = {}
+    if data and data.Archetype then
+        powers = ArchetypeLogic.availablePowers(data.Archetype, self._archetypesConfig) or {}
+    end
+    return {
+        powers = powers,
+        tacticals = self._config.tactical_commands or {},
+    }
+end
+
+-- Push the player's current hotbar + the assignable palette to their client.
+function HotbarService:_pushState(player)
+    local state = self:GetState(player)
+    if not state.ok then
+        return
+    end
+    Signals.Hotbar_State:FireClient(player, {
+        hotbar = state.hotbar,
+        slot_count = state.slot_count,
+        available = self:_assignablePalette(player),
+    })
 end
 
 -- Resolve another service at runtime (avoids boot-order cycles).

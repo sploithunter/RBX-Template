@@ -16,6 +16,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
+local Workspace = game:GetService("Workspace")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
@@ -120,6 +121,12 @@ function HotbarBar.start()
         c.Parent = farmBtn
     end
 
+    -- Assignment (edit) state: the palette pushed by the server + a forward-declared
+    -- picker opener so a slot click can open it while in edit mode.
+    local available = { powers = {}, tacticals = {} }
+    local editMode = false
+    local openPicker
+
     -- Two rows of 10 slots. Bottom row = slots 1-10, top row = 11-20.
     local cards = {}
     local function makeRow(yOffset, base)
@@ -165,7 +172,11 @@ function HotbarBar.start()
             lbl.Parent = b
 
             b.MouseButton1Click:Connect(function()
-                Signals.Hotbar_Activate:FireServer({ slot = slot })
+                if editMode then
+                    openPicker(slot)
+                else
+                    Signals.Hotbar_Activate:FireServer({ slot = slot })
+                end
             end)
             cards[slot] = { frame = b, bind = lbl }
         end
@@ -177,6 +188,9 @@ function HotbarBar.start()
     local function applyState(state)
         if type(state) ~= "table" or type(state.hotbar) ~= "table" then
             return
+        end
+        if type(state.available) == "table" then
+            available = state.available
         end
         for slot = 1, 20 do
             local card = cards[slot]
@@ -251,6 +265,165 @@ function HotbarBar.start()
         if status.paid ~= wantPaid then
             Signals.AutoTarget_TogglePaid:FireServer()
         end
+    end)
+
+    -- ===== Assignment: Edit toggle + per-slot picker =====
+    local editBtn = Instance.new("TextButton")
+    editBtn.Name = "Edit"
+    editBtn.AnchorPoint = Vector2.new(0, 1)
+    editBtn.Position = UDim2.fromOffset(0, -2) -- just above the Farm button
+    editBtn.Size = UDim2.fromOffset(SLOT, 20)
+    editBtn.AutoButtonColor = false
+    editBtn.Font = Enum.Font.GothamBold
+    editBtn.TextSize = 11
+    editBtn.TextColor3 = Color3.fromRGB(235, 235, 245)
+    editBtn.Text = "Edit"
+    editBtn.BackgroundColor3 = Color3.fromRGB(60, 63, 76)
+    editBtn.BorderSizePixel = 0
+    editBtn.Parent = root
+    do
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(0, 6)
+        c.Parent = editBtn
+    end
+
+    local pickerFrame
+    local function closePicker()
+        if pickerFrame then
+            pickerFrame:Destroy()
+            pickerFrame = nil
+        end
+    end
+
+    -- Build the assignment picker for a slot: powers (server palette), pet summons
+    -- (the player's equipped squad), tacticals, and Clear. Selecting one rebinds.
+    openPicker = function(slot)
+        closePicker()
+        local p = Instance.new("Frame")
+        p.Name = "Picker"
+        p.AnchorPoint = Vector2.new(0.5, 1)
+        p.Position = UDim2.new(0.5, 0, 1, -(SLOT * 2 + PAD + 18))
+        p.Size = UDim2.fromOffset(320, 280)
+        p.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
+        p.BorderSizePixel = 0
+        p.Parent = gui
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(0, 8)
+        c.Parent = p
+        pickerFrame = p
+
+        local title = Instance.new("TextLabel")
+        title.BackgroundTransparency = 1
+        title.Size = UDim2.new(1, -28, 0, 24)
+        title.Position = UDim2.fromOffset(10, 4)
+        title.Font = Enum.Font.GothamBold
+        title.TextSize = 13
+        title.TextXAlignment = Enum.TextXAlignment.Left
+        title.TextColor3 = Color3.fromRGB(255, 215, 120)
+        title.Text = "Assign slot " .. slot
+        title.Parent = p
+
+        local close = Instance.new("TextButton")
+        close.Size = UDim2.fromOffset(22, 22)
+        close.Position = UDim2.new(1, -26, 0, 5)
+        close.Text = "✕"
+        close.Font = Enum.Font.GothamBold
+        close.TextSize = 14
+        close.TextColor3 = Color3.fromRGB(230, 230, 235)
+        close.BackgroundColor3 = Color3.fromRGB(50, 52, 64)
+        close.BorderSizePixel = 0
+        close.Parent = p
+        close.MouseButton1Click:Connect(closePicker)
+
+        local listFrame = Instance.new("ScrollingFrame")
+        listFrame.Position = UDim2.fromOffset(6, 30)
+        listFrame.Size = UDim2.new(1, -12, 1, -36)
+        listFrame.BackgroundTransparency = 1
+        listFrame.BorderSizePixel = 0
+        listFrame.ScrollBarThickness = 6
+        listFrame.CanvasSize = UDim2.new()
+        listFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        listFrame.Parent = p
+        local layout = Instance.new("UIListLayout")
+        layout.Padding = UDim.new(0, 3)
+        layout.Parent = listFrame
+
+        local order = 0
+        local function header(text)
+            order += 1
+            local h = Instance.new("TextLabel")
+            h.Size = UDim2.new(1, 0, 0, 16)
+            h.BackgroundTransparency = 1
+            h.Font = Enum.Font.GothamBold
+            h.TextSize = 11
+            h.TextXAlignment = Enum.TextXAlignment.Left
+            h.TextColor3 = Color3.fromRGB(150, 155, 170)
+            h.Text = text
+            h.LayoutOrder = order
+            h.Parent = listFrame
+        end
+        local function entry(label, color, bind)
+            order += 1
+            local e = Instance.new("TextButton")
+            e.Size = UDim2.new(1, 0, 0, 24)
+            e.AutoButtonColor = true
+            e.Font = Enum.Font.GothamMedium
+            e.TextSize = 12
+            e.TextXAlignment = Enum.TextXAlignment.Left
+            e.Text = "  " .. label
+            e.TextColor3 = Color3.fromRGB(235, 235, 245)
+            e.BackgroundColor3 = color
+            e.BorderSizePixel = 0
+            e.LayoutOrder = order
+            e.Parent = listFrame
+            local ec = Instance.new("UICorner")
+            ec.CornerRadius = UDim.new(0, 4)
+            ec.Parent = e
+            e.MouseButton1Click:Connect(function()
+                Signals.Hotbar_Rebind:FireServer({ slot = slot, bind = bind })
+                closePicker()
+            end)
+        end
+
+        header("Powers")
+        for _, id in ipairs(available.powers or {}) do
+            entry((tostring(id):gsub("_", " ")), TYPE_COLOR.power, { type = "power", target = id })
+        end
+        header("Summon pet")
+        local pf = Workspace:FindFirstChild("PlayerPets")
+            and Workspace.PlayerPets:FindFirstChild(localPlayer.Name)
+        if pf then
+            for _, pet in ipairs(pf:GetChildren()) do
+                local pn = pet:FindFirstChild("PositionNumber")
+                if pet:IsA("Model") and pn then
+                    local nm = tostring(pet:GetAttribute("PetType") or pet.Name)
+                    entry(
+                        "Summon " .. nm .. " (#" .. pn.Value .. ")",
+                        TYPE_COLOR.pet,
+                        { type = "pet", target = tostring(pn.Value) }
+                    )
+                end
+            end
+        end
+        header("Tactical")
+        for _, cmd in ipairs(available.tacticals or {}) do
+            entry((tostring(cmd):gsub("_", " ")), TYPE_COLOR.tactical, { type = "tactical", target = cmd })
+        end
+        header("")
+        entry("✖ Clear slot", Color3.fromRGB(70, 50, 50), nil)
+    end
+
+    local function paintEdit()
+        editBtn.Text = editMode and "Done" or "Edit"
+        editBtn.BackgroundColor3 = editMode and Color3.fromRGB(235, 170, 60)
+            or Color3.fromRGB(60, 63, 76)
+    end
+    editBtn.MouseButton1Click:Connect(function()
+        editMode = not editMode
+        if not editMode then
+            closePicker()
+        end
+        paintEdit()
     end)
 end
 
