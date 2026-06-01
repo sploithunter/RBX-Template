@@ -539,6 +539,9 @@ function AutoTargetService:_collectCandidates(player, mode)
     local currentWorld = self:_getCurrentWorld(player)
     local currentWorldOnly = targetConfig.current_world_only ~= false
     local playerPosition = getRootPosition(player)
+    -- Only target breakables within this range (studs). Keeps pets from being assigned
+    -- to ore across the map (which made them teleport-snap to it). 0/nil = unlimited.
+    local maxTargetDistance = tonumber(targetConfig.max_target_distance) or 0
     local candidates = {}
 
     for _, typeFolder in ipairs(breakables:GetChildren()) do
@@ -558,18 +561,25 @@ function AutoTargetService:_collectCandidates(player, mode)
                                 )
                             then
                                 local pivot = model:GetPivot()
-                                table.insert(candidates, {
-                                    model = model,
-                                    id = getBreakableId(model),
-                                    value = tonumber(model:GetAttribute("Value")) or 0,
-                                    hp = hp,
-                                    maxHp = tonumber(model:GetAttribute("MaxHP")) or hp,
-                                    currency = currency,
-                                    world = worldFolder.Name,
-                                    distance = playerPosition
-                                            and (pivot.Position - playerPosition).Magnitude
-                                        or 0,
-                                })
+                                local dist = playerPosition
+                                        and (pivot.Position - playerPosition).Magnitude
+                                    or 0
+                                if
+                                    maxTargetDistance <= 0
+                                    or not playerPosition
+                                    or dist <= maxTargetDistance
+                                then
+                                    table.insert(candidates, {
+                                        model = model,
+                                        id = getBreakableId(model),
+                                        value = tonumber(model:GetAttribute("Value")) or 0,
+                                        hp = hp,
+                                        maxHp = tonumber(model:GetAttribute("MaxHP")) or hp,
+                                        currency = currency,
+                                        world = worldFolder.Name,
+                                        distance = dist,
+                                    })
+                                end
                             end
                         end
                     end

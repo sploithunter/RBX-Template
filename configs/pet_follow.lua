@@ -120,10 +120,12 @@ return {
         -- OWN pets never use this — they're driven locally at full framerate.
         remote_lerp_rate = 14,
 
-        -- Catch-up safety: if a pet ends up further than this (studs) from its target — the
-        -- player teleported (zone/realm change) — snap it there instead of slowly crawling
-        -- across the whole map. Normal walking never opens a gap this large.
-        catchup_distance = 60,
+        -- Catch-up safety: if a pet ends up further than this (studs) from its target —
+        -- the player teleported (zone/realm change) — snap it there instead of crawling
+        -- across the map. INVARIANT: keep this ABOVE auto_systems.lua
+        -- auto_target.max_target_distance (120) so a pet only ever snaps for a real
+        -- teleport, never to reach a normal far target (which it should travel to).
+        catchup_distance = 200,
     },
 
     -- Server tick throttle (seconds): target leash + the mining damage tick only.

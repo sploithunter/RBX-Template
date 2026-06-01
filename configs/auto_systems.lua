@@ -13,6 +13,12 @@ return {
         default_selected_currency = "crystals",
         current_world_only = true,
         request_interval_seconds = 0.3,
+        -- Max distance (studs) a breakable can be auto-targeted from. Pets TRAVEL to
+        -- any target within this; nothing farther is picked. INVARIANT: keep this
+        -- BELOW pet_follow.lua movement.catchup_distance so the pet's teleport-snap
+        -- only fires for a real player teleport (zone change), never to reach a normal
+        -- target — otherwise pets appear to teleport to distant ore.
+        max_target_distance = 120,
         modes = {
             nearest = {
                 display_name = "Nearest",
