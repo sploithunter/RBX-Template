@@ -23,7 +23,7 @@ local Workspace = game:GetService("Workspace")
 local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
 local Gait = require(ReplicatedStorage.Shared.Game.Gait)
 local AttackAnim = require(ReplicatedStorage.Shared.Game.AttackAnim)
-local EnchantLightning = require(ReplicatedStorage.Shared.Effects.EnchantLightning)
+local RangedFX = require(ReplicatedStorage.Shared.Effects.RangedFX)
 local PetRoles = require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
@@ -489,7 +489,11 @@ function PetFollowController.start()
                         if castLockSeconds > 0 then
                             castLockUntil[k.pet] = nowC + castLockSeconds
                         end
-                        pcall(EnchantLightning.Play, k.pet, boltCfg, k.model)
+                        -- Effect selectable per PetType (by_type) over the default kind.
+                        local kind = (boltCfg.by_type and boltCfg.by_type[k.pet:GetAttribute("PetType")])
+                            or boltCfg.kind
+                            or "lightning"
+                        pcall(RangedFX.Play, k.pet, boltCfg, k.model, kind)
                     end
                 end
             end

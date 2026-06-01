@@ -178,6 +178,16 @@ return {
     -- per shot). Purely visual; damage stays server-side via the mining tick.
     ranged_bolt = {
         enabled = true,
+
+        -- Which ranged visual to fire (RangedFX dispatcher). `kind` is the default for every
+        -- ranged pet; `by_type` overrides it per PetType so you can test one pet in isolation.
+        -- Kinds: "lightning" (the arc below) | "fireball"/"plasma"/"frost"/"poison" (themed
+        -- projectile orbs, params under `projectile`) | "beam" (laser, params under `beam`).
+        kind = "lightning",
+        by_type = {
+            colorado = "fireball", -- TEST: colorado throws a fireball instead of lightning
+        },
+
         interval = 0.55, -- seconds between bolts while engaged
         -- Gap-close counter: after firing, the ranged pet is movement-locked this long
         -- (it's "casting"), so it can't freely kite — a melee enemy gets a window to
@@ -197,6 +207,18 @@ return {
         fade_out_seconds = 0.12,
         target_offset = { 0, 1.5, 0 }, -- {x,y,z} aim mid-body (client builds the Vector3)
         colors = { { 120, 150, 255 }, { 200, 235, 255 } }, -- electric blue/white
+
+        -- Projectile themes (kind = "fireball"/"plasma"/"frost"/"poison"): one travelling-orb
+        -- engine, themed by colour/size/speed/burst. colors = { core, trail+burst }. travel_time
+        -- = seconds orb takes to reach the target (keep < interval); burst = impact flash size.
+        projectile = {
+            fireball = { colors = { { 255, 150, 40 }, { 255, 90, 20 } }, size = 1.6, travel_time = 0.18, burst = 3.5 },
+            plasma = { colors = { { 150, 90, 255 }, { 210, 170, 255 } }, size = 1.3, travel_time = 0.13, burst = 3 },
+            frost = { colors = { { 150, 220, 255 }, { 225, 245, 255 } }, size = 1.4, travel_time = 0.2, burst = 3 },
+            poison = { colors = { { 120, 230, 90 }, { 175, 255, 120 } }, size = 1.5, travel_time = 0.22, burst = 3.5 },
+        },
+        -- Beam theme (kind = "beam"): instant laser that flashes + fades.
+        beam = { colors = { { 255, 70, 70 } }, thickness = 0.5, duration = 0.18 },
     },
 
     -- Server tick throttle (seconds): target leash + the mining damage tick only.
