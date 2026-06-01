@@ -1119,8 +1119,8 @@ local uiConfig = {
 
         -- Single Button Panes - All aligned to same bottom edge
         pets_button_pane = {
-            position = "bottom-center",
-            offset = { x = 0, y = -10 }, -- Standardized bottom alignment
+            position = "bottom-left",
+            offset = { x = 10, y = -155 }, -- lower-left, stacked just above the menu tray
             size = { width = 120, height = 60 },
             background = { enabled = false },
             layout = { type = "single" },
@@ -1137,43 +1137,8 @@ local uiConfig = {
             },
         },
 
-        -- Auto-target buttons flanking the Pets button
-        auto_low_button_pane = {
-            position = "bottom-center",
-            offset = { x = -140, y = -10 },
-            size = { width = 60, height = 60 },
-            background = { enabled = false },
-            layout = { type = "single" },
-            contents = {
-                {
-                    type = "menu_button",
-                    config = {
-                        name = "AutoLow",
-                        icon = "70726573",
-                        text = "Low",
-                        action = "autolow_action",
-                    },
-                },
-            },
-        },
-        auto_high_button_pane = {
-            position = "bottom-center",
-            offset = { x = 140, y = -10 },
-            size = { width = 60, height = 60 },
-            background = { enabled = false },
-            layout = { type = "single" },
-            contents = {
-                {
-                    type = "menu_button",
-                    config = {
-                        name = "AutoHigh",
-                        icon = "70726573",
-                        text = "High",
-                        action = "autohigh_action",
-                    },
-                },
-            },
-        },
+        -- (auto_low/auto_high panes removed — farming Off/Low/High is now the cycle
+        -- button on the left of the lower-center power hotbar; see HotbarBar.lua.)
 
         rewards_button_pane = {
             position = "bottom-right",
