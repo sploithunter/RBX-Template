@@ -61,6 +61,37 @@ return {
             auto_heal = { interval = 2.0, amount = 120, range = 45 },
             drop_table = { lava_coins = 12, shadow_tokens = 2 },
         },
+        raging_bear = {
+            hp = 350,
+            display_name = "Raging Bear",
+            tier = "mid_tier",
+            move_speed = 11, -- charges in faster than the brute
+            armor = 70, -- thick hide: ~41% pet-damage reduction at k=100
+            -- Real art (uploaded model: a bear MeshPart, no PrimaryPart). Native ~1.9 tall;
+            -- model_scale 5 brings it to ~9.5 — bigger and meaner than the imp.
+            model_asset = 99990991951749,
+            model_scale = 5,
+            needs_primary_part = true,
+            -- Heavy aggressive lope: a big springy waddle with a pronounced shoulder roll.
+            gait = { style = "waddle", bob_height = 0.8, tilt_degrees = 12, stride_length = 6 },
+            attack = { damage = 22, cadence = 1.8, sundering = 0 },
+            drop_table = { lava_coins = 35, shadow_tokens = 4, rare_drop_chance = 0.12 },
+        },
+        dire_bear = {
+            hp = 6500,
+            display_name = "Dire Bear",
+            tier = "boss",
+            move_speed = 8, -- lumbering colossus
+            armor = 230, -- ~70% pet-damage reduction at k=100
+            -- Same bear art, scaled WAY up for a boss: ~1.9 * 11 = ~21 studs tall.
+            model_asset = 99990991951749,
+            model_scale = 11,
+            needs_primary_part = true,
+            -- Ground-shaking march: deep slow stomp, minimal tilt (too massive to sway).
+            gait = { style = "march", bob_height = 1.4, tilt_degrees = 3, stride_length = 11 },
+            attack = { damage = 75, cadence = 2.6, sundering = 35 },
+            drop_table = { lava_coins = 280, shadow_tokens = 32, rare_drop_chance = 0.5 },
+        },
         infernal_boss = {
             hp = 5000,
             display_name = "Infernal Boss",

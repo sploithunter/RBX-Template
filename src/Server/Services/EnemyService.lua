@@ -121,10 +121,12 @@ function EnemyService:AddAggro(model, key, amount)
 end
 
 -- Load (once, cached) a real enemy art asset into a sanitized template: PrimaryPart
--- set, every part anchored + non-colliding (movement is PivotTo, not physics), scaled
--- to enemy size. Returns nil on any failure so spawning falls back to the procedural
--- block. Cache stores `false` for known-bad ids so we don't re-yield on every spawn.
-function EnemyService:_enemyTemplate(assetId, scale, needsPrimaryPart)
+-- set, every part anchored + non-colliding (movement is PivotTo, not physics). The
+-- template is cached UNSCALED and per-spawn scaling happens on the clone in _buildModel,
+-- so two enemies sharing one asset at different model_scale values don't collide. Returns
+-- nil on any failure so spawning falls back to the procedural block. Cache stores `false`
+-- for known-bad ids so we don't re-yield on every spawn.
+function EnemyService:_enemyTemplate(assetId, needsPrimaryPart)
     self._modelCache = self._modelCache or {}
     local cached = self._modelCache[assetId]
     if cached ~= nil then
@@ -153,11 +155,6 @@ function EnemyService:_enemyTemplate(assetId, scale, needsPrimaryPart)
                     d.Anchored = true
                     d.CanCollide = false
                 end
-            end
-            if scale and scale ~= 1 then
-                pcall(function()
-                    template:ScaleTo(scale)
-                end)
             end
             template.Parent = ServerStorage
         else
@@ -248,11 +245,17 @@ end
 function EnemyService:_buildModel(enemyId, def, position, targetId)
     local model, body
     if def.model_asset then
-        local template =
-            self:_enemyTemplate(def.model_asset, def.model_scale, def.needs_primary_part)
+        local template = self:_enemyTemplate(def.model_asset, def.needs_primary_part)
         if template then
             model = template:Clone()
             body = model.PrimaryPart
+            -- Scale the CLONE (not the shared cached template) so enemies that reuse the
+            -- same art at different model_scale values each get their own size.
+            if def.model_scale and def.model_scale ~= 1 then
+                pcall(function()
+                    model:ScaleTo(def.model_scale)
+                end)
+            end
         end
     end
 
