@@ -24,6 +24,7 @@ local InsertService = game:GetService("InsertService")
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
 local AggroTable = require(ReplicatedStorage.Shared.Game.AggroTable)
+local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local ActiveSquad = require(ReplicatedStorage.Shared.Game.ActiveSquad)
 local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
@@ -415,6 +416,14 @@ function EnemyService:_hitPet(pet, def, now, eng)
     local power = self:_petPower(pet)
     local factor = self._combatConfig.pet_down_threshold_factor or 1
     local dmg = (def.attack and def.attack.damage) or 0
+    -- Hit / crit roll: a miss deals nothing, a crit multiplies the bite (before mitigation).
+    local roll =
+        CombatRoll.resolve(eng.rolls and eng.rolls.enemy_attack, math.random(), math.random())
+    if roll.multiplier <= 0 then
+        return -- missed
+    end
+    dmg = dmg * roll.multiplier
+    pet:SetAttribute("LastHitCrit", roll.crit) -- for floating-text feedback (later)
     -- Defensive stat: the pet's Defense (its own + any active DefenseBuff from a power
     -- like Bulwark) mitigates the hit on the armor curve. A real tank survives longer.
     local nowT = os.time()
@@ -587,10 +596,19 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         for pet in pairs(valid) do
             if self:_isTaunt(pet) and (not entry.tauntAt[pet] or now >= entry.tauntAt[pet]) then
                 entry.tauntAt[pet] = now + (tauntCfg.interval or 3)
-                local _, topOther = AggroTable.top(entry.aggro, 0, function(k)
-                    return valid[k] == true and k ~= pet
-                end)
-                AggroTable.reinforce(entry.aggro, pet, tauntCfg.lead * (topOther or 0))
+                -- Taunt rolls too: a miss fizzles this pulse; a crit grabs harder (lead × mult).
+                local troll =
+                    CombatRoll.resolve(eng.rolls and eng.rolls.taunt, math.random(), math.random())
+                if troll.multiplier > 0 then
+                    local _, topOther = AggroTable.top(entry.aggro, 0, function(k)
+                        return valid[k] == true and k ~= pet
+                    end)
+                    AggroTable.reinforce(
+                        entry.aggro,
+                        pet,
+                        tauntCfg.lead * troll.multiplier * (topOther or 0)
+                    )
+                end
             end
         end
     end

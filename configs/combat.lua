@@ -113,6 +113,17 @@ return {
                 lead = 1.3,
             },
         },
+        -- Hit / crit rolls (src/Shared/Game/CombatRoll). Every attack and taunt rolls to
+        -- land and to crit; a miss does nothing, a crit multiplies the effect by crit_mult.
+        --   pet_attack  — a pet's damage to an enemy
+        --   enemy_attack — an enemy's bite on a pet
+        --   taunt       — a tank's implicit-taunt pulse (miss = the taunt fizzles this
+        --                 pulse; crit = a stronger grab, lead × crit_mult)
+        rolls = {
+            pet_attack = { hit_chance = 0.92, crit_chance = 0.15, crit_mult = 2.0 },
+            enemy_attack = { hit_chance = 0.85, crit_chance = 0.1, crit_mult = 1.8 },
+            taunt = { hit_chance = 0.9, crit_chance = 0.2, crit_mult = 1.5 },
+        },
     },
 
     -- Staged degradation (§11.3): a pet visibly weakens before it is downed, so the

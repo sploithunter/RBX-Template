@@ -27,6 +27,7 @@ local Workspace = game:GetService("Workspace")
 local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
 local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
 local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
+local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local PetFollowService = {}
@@ -270,6 +271,17 @@ function PetFollowService:_mine(player, pet, breakable)
     if armor > 0 then
         dmg = CombatMath.mitigate(dmg, armor, self._combatConfig.armor_curve_k or 100)
     end
+    -- Hit / crit roll: a miss deals nothing this swing, a crit multiplies the damage.
+    local roll = CombatRoll.resolve(
+        self._combatConfig.engagement
+            and self._combatConfig.engagement.rolls
+            and self._combatConfig.engagement.rolls.pet_attack,
+        math.random(),
+        math.random()
+    )
+    dmg = dmg * roll.multiplier
+    pet:SetAttribute("LastHitCrit", roll.crit) -- for floating-text feedback (later)
+
     dmg = math.floor(dmg + 0.5)
     local applied = PetCombat.applyDamage(hp, dmg)
     breakable:SetAttribute("HP", applied.hp)
