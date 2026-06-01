@@ -956,10 +956,11 @@ local uiConfig = {
             },
         },
 
-        -- Quest Tracker Pane (center-right with completely clear background)
+        -- Quest Tracker Pane (top-right, clear background — out of the way of the
+        -- center-right squad HUD strip).
         quest_tracker_pane = {
-            position = "center-right",
-            offset = { x = -15, y = 0 },
+            position = "top-right",
+            offset = { x = -15, y = 10 },
             size = { width = 350, height = 120 },
             background = {
                 enabled = false, -- Completely disabled background for full transparency
