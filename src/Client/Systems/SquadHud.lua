@@ -201,10 +201,17 @@ local function makeBadge(parent)
     return { frame = f, icon = icon, label = label, timer = timer }
 end
 
--- Reconcile a card's badges against the pet's active effects (stack toward centre).
+-- Reconcile a card's badges against the pet's active effects. Ordered so the SHORTEST
+-- remaining sits leftmost (toward screen centre, most urgent): the row grows left under
+-- HorizontalAlignment.Right, so a higher LayoutOrder = further left. The blink loop owns
+-- live transparency (badges are never hidden/destroyed mid-blink, so the row never shifts).
 local function updateBadges(card, effects, blinkLead)
+    local ordered = table.clone(effects)
+    table.sort(ordered, function(a, b)
+        return (a.remaining or math.huge) > (b.remaining or math.huge) -- shortest last -> leftmost
+    end)
     local seen = {}
-    for i, eff in ipairs(effects) do
+    for i, eff in ipairs(ordered) do
         seen[eff.key] = true
         local b = card.badges[eff.key]
         if not b then
@@ -212,13 +219,12 @@ local function updateBadges(card, effects, blinkLead)
             b.frame.Name = eff.key
             card.badges[eff.key] = b
         end
-        -- Flag for the blink loop: timed effect inside its expiry warning window.
         b.blinking = eff.remaining ~= nil and eff.remaining <= (blinkLead or 0)
         b.frame.LayoutOrder = i
         local hasIcon = eff.icon and eff.icon ~= ""
         -- Real icon: clear backing so the art reads cleanly; else keep coloured chip.
         b.frame.BackgroundColor3 = eff.color
-        b.frame.BackgroundTransparency = hasIcon and 1 or 0
+        b.bgBase = hasIcon and 1 or 0 -- base backing transparency; blink loop applies it
         b.label.Text = hasIcon and "" or eff.label
         b.icon.Image = eff.icon or ""
         if hasIcon then
@@ -267,6 +273,7 @@ function SquadHud.start()
     layout.Parent = root
 
     local selectedSlot = nil
+    local assistTargetBid = nil -- the enemy BreakableID the squad is directed to focus (Z / click)
     local cards = {} -- slot -> { frame, refs... }
     local worldHighlight = Instance.new("Highlight")
     worldHighlight.Name = "SquadSelectHighlight"
@@ -485,8 +492,10 @@ function SquadHud.start()
         local enemies = enemiesFolder()
         if model and enemies and model:IsDescendantOf(enemies) then
             local bid = model:FindFirstChild("BreakableID")
+            assistTargetBid = bid and bid.Value or nil
             Signals.Combat_SetAssist:FireServer({ targetId = bid and bid.Value or 0 })
         elseif not model then
+            assistTargetBid = nil
             Signals.Combat_SetAssist:FireServer({ targetId = 0 }) -- clicked empty -> clear
         end
     end)
@@ -535,14 +544,93 @@ function SquadHud.start()
         setSelected(slots[idx])
     end
 
+    -- Enemy assist cycle (Z): step the assist target through nearby enemies (and, if
+    -- configured, mining targets), directing the squad to focus one. Mirrors the Q cycle.
+    local enemyCycleName = (controls.keybinds and controls.keybinds.enemy_cycle) or "Z"
+    local okE, enemyCycleKey = pcall(function()
+        return Enum.KeyCode[enemyCycleName]
+    end)
+    if not okE or not enemyCycleKey then
+        enemyCycleKey = Enum.KeyCode.Z
+    end
+    local ecCfg = controls.enemy_cycle or {}
+    local cycleRange = ecCfg.range or 80
+    local includeMining = ecCfg.include_mining == true
+
+    local function orderedEnemies()
+        local out = {}
+        local char = localPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then
+            return out
+        end
+        local function add(m)
+            if m and m:IsA("Model") and m.PrimaryPart and (m:GetAttribute("HP") or 0) > 0 then
+                local bid = m:FindFirstChild("BreakableID")
+                if bid then
+                    local d = (m.PrimaryPart.Position - hrp.Position).Magnitude
+                    if d <= cycleRange then
+                        out[#out + 1] = { bid = bid.Value, dist = d }
+                    end
+                end
+            end
+        end
+        local enemies = enemiesFolder()
+        if enemies then
+            for _, m in ipairs(enemies:GetChildren()) do
+                add(m)
+            end
+        end
+        if includeMining then
+            local g = Workspace:FindFirstChild("Game")
+            local breakables = g and g:FindFirstChild("Breakables")
+            if breakables then
+                for _, d in ipairs(breakables:GetDescendants()) do
+                    if d.Name == "BreakableID" and d:IsA("NumberValue") then
+                        add(d.Parent)
+                    end
+                end
+            end
+        end
+        table.sort(out, function(a, b)
+            return a.dist < b.dist
+        end)
+        return out
+    end
+
+    local function cycleEnemy(dir)
+        local list = orderedEnemies()
+        if #list == 0 then
+            assistTargetBid = nil
+            Signals.Combat_SetAssist:FireServer({ targetId = 0 })
+            return
+        end
+        local idx
+        for i, e in ipairs(list) do
+            if e.bid == assistTargetBid then
+                idx = i
+                break
+            end
+        end
+        if not idx then
+            idx = (dir > 0) and 1 or #list
+        else
+            idx = ((idx - 1 + dir) % #list) + 1
+        end
+        assistTargetBid = list[idx].bid
+        Signals.Combat_SetAssist:FireServer({ targetId = assistTargetBid })
+    end
+
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then
             return -- don't cycle while typing in a TextBox, etc.
         end
+        local reverse = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
+            or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
         if input.KeyCode == cycleKey then
-            local reverse = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
-                or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
             cycle(reverse and -1 or 1)
+        elseif input.KeyCode == enemyCycleKey then
+            cycleEnemy(reverse and -1 or 1)
         end
     end)
 
@@ -614,12 +702,17 @@ function SquadHud.start()
     end)
 
     -- Expiry blink: runs every frame (not the 0.2s reconcile) so the flash is smooth.
-    -- Badges flagged `blinking` by updateBadges toggle visible on a config-tuned cycle.
+    -- Blinks via TRANSPARENCY (not Visible) so the badge keeps its layout slot — the row
+    -- doesn't re-pack/shift each blink. Badges flagged `blinking` fade on a tuned cycle.
     RunService.RenderStepped:Connect(function()
         local on = (os.clock() % blinkPeriod) < (blinkPeriod * 0.5)
         for _, card in pairs(cards) do
             for _, b in pairs(card.badges) do
-                b.frame.Visible = (not b.blinking) or on
+                local hidden = b.blinking and not on
+                b.icon.ImageTransparency = hidden and 1 or 0
+                b.label.TextTransparency = hidden and 1 or 0
+                b.timer.TextTransparency = hidden and 1 or 0
+                b.frame.BackgroundTransparency = hidden and 1 or (b.bgBase or 0)
             end
         end
     end)

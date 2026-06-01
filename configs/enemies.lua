@@ -49,6 +49,18 @@ return {
             attack = { damage = 25, cadence = 2.0, sundering = 20 },
             drop_table = { lava_coins = 30, shadow_tokens = 4, rare_drop_chance = 0.1 },
         },
+        ember_acolyte = {
+            hp = 200,
+            display_name = "Ember Acolyte",
+            tier = "trash_mob",
+            move_speed = 13,
+            armor = 0,
+            attack = { damage = 8, cadence = 2.0, sundering = 0 },
+            -- Enemy HEALER: restores HP to the most-hurt nearby enemy on a cadence (mirrors
+            -- the pet support role). Kill the acolyte first to flip the fight.
+            auto_heal = { interval = 2.0, amount = 120, range = 45 },
+            drop_table = { lava_coins = 12, shadow_tokens = 2 },
+        },
         infernal_boss = {
             hp = 5000,
             display_name = "Infernal Boss",

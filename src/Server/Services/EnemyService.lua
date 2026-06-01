@@ -1124,12 +1124,56 @@ function EnemyService:_assignPetTargets(eng)
     end
 end
 
+-- Enemy healers (enemies.lua auto_heal): restore HP to the most-hurt OTHER alive enemy
+-- within range, on a cadence (mirrors the pet support role). Players can focus the healer
+-- to flip the fight. Excludes self so a lone healer can still be brought down.
+function EnemyService:_enemyHealPass(now)
+    self._enemyHealAt = self._enemyHealAt or {}
+    for tid, entry in pairs(self._enemies) do
+        local model = entry.model
+        if model and model.Parent and (model:GetAttribute("HP") or 0) > 0 then
+            local def = self._enemiesConfig.enemies and self._enemiesConfig.enemies[entry.enemyId]
+            local heal = def and def.auto_heal
+            if
+                heal
+                and (heal.amount or 0) > 0
+                and (not self._enemyHealAt[tid] or now >= self._enemyHealAt[tid])
+            then
+                self._enemyHealAt[tid] = now + (heal.interval or 2)
+                local range = heal.range or 45
+                local target, worstFrac
+                for otid, oe in pairs(self._enemies) do
+                    if otid ~= tid and oe.model and oe.model.Parent then
+                        local hp = oe.model:GetAttribute("HP") or 0
+                        local maxhp = oe.model:GetAttribute("MaxHP") or 1
+                        if hp > 0 and hp < maxhp and (oe.pos - entry.pos).Magnitude <= range then
+                            local frac = hp / maxhp
+                            if not worstFrac or frac < worstFrac then
+                                worstFrac, target = frac, oe.model
+                            end
+                        end
+                    end
+                end
+                if target then
+                    local maxhp = target:GetAttribute("MaxHP") or 1
+                    target:SetAttribute(
+                        "HP",
+                        math.min(maxhp, (target:GetAttribute("HP") or 0) + heal.amount)
+                    )
+                    self:_spawnHealVisual(target) -- works on any model with a PrimaryPart
+                end
+            end
+        end
+    end
+end
+
 function EnemyService:_combatTick(dt)
     local eng = self._combatConfig.engagement or {}
     local now = os.clock()
     local nowTime = os.time()
     self:_regenPass(now, dt, eng)
     self:_supportPass(now)
+    self:_enemyHealPass(now)
     for targetId, entry in pairs(self._enemies) do
         local model = entry.model
         if model and model.Parent and (model:GetAttribute("HP") or 0) > 0 then
