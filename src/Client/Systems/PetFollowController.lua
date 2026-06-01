@@ -132,16 +132,10 @@ function PetFollowController.start()
             end
         end
 
-        local a = config.attack
-        local style = localPlayer:GetAttribute("PetAttackStyle") or a.style
-        local attackCfg = {
-            style = style,
-            ring_radius = a.ring_radius,
-            ring_height = a.ring_height,
-            orbit_speed = a.orbit_speed,
-            lunge_distance = a.lunge_distance,
-            lunge_speed = a.lunge_speed,
-        }
+        -- Full attack config (so every style's params reach attackOffset) with the player's
+        -- saved/live PetAttackStyle override.
+        local attackCfg = table.clone(config.attack)
+        attackCfg.style = localPlayer:GetAttribute("PetAttackStyle") or config.attack.style
 
         local groups = {} -- id -> { center, pets = {} }
         local followers = {}
@@ -204,8 +198,12 @@ function PetFollowController.start()
             end
         end
 
-        -- Attackers: surround the target in an animated ring, facing the center.
+        -- Attackers: arrange around the target per the attack style, facing the center.
         for _, g in pairs(groups) do
+            -- smallest -> first slot, so huge pets take the outer slots (spiral arm / line ends)
+            table.sort(g.pets, function(p1, p2)
+                return petFootprint(p1, config) < petFootprint(p2, config)
+            end)
             local gcount = #g.pets
             for gi, pet in ipairs(g.pets) do
                 local off = PetFormation.attackOffset(gi, gcount, phase, attackCfg)

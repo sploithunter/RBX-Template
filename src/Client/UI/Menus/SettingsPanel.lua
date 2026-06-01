@@ -841,24 +841,36 @@ function SettingsPanel:_getPetFormation()
     return "risers"
 end
 
+function SettingsPanel:_getPetAttackStyle()
+    local style = Players.LocalPlayer:GetAttribute("PetAttackStyle")
+    if type(style) == "string" then
+        return style
+    end
+    return "orbit"
+end
+
 function SettingsPanel:_createPetSettings()
     self:_createSectionHeader("🐾 Pet Settings", 22)
 
-    local formationOptions = {
+    self:_createDropdownSetting("Pet Formation", self:_getPetFormation(), {
         { value = "risers", display = "Tiered Rows" },
         { value = "conga", display = "Conga Line" },
         { value = "arc", display = "Arc Cradle" },
-    }
+    }, 23, function(value)
+        Signals.Settings_SetPetFormation:FireServer({ mode = value })
+    end)
 
-    self:_createDropdownSetting(
-        "Pet Formation",
-        self:_getPetFormation(),
-        formationOptions,
-        23,
-        function(value)
-            Signals.Settings_SetPetFormation:FireServer({ mode = value })
-        end
-    )
+    self:_createDropdownSetting("Pet Attack Style", self:_getPetAttackStyle(), {
+        { value = "orbit", display = "Orbit Ring" },
+        { value = "static_ring", display = "Static Ring" },
+        { value = "lunge", display = "Lunge" },
+        { value = "spiral", display = "Spiral Vortex" },
+        { value = "pincer", display = "Pincer" },
+        { value = "firing_line", display = "Firing Line" },
+        { value = "swarm", display = "Swarm" },
+    }, 24, function(value)
+        Signals.Settings_SetPetAttackStyle:FireServer({ style = value })
+    end)
 end
 
 function SettingsPanel:_createAdminSettings()

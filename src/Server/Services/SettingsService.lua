@@ -128,6 +128,7 @@ function SettingsService:_createSettingsFolders(player)
             DisplayPreferences = {},
             AutoSystems = {},
             PetFormation = self:_defaultPetFormation(),
+            PetAttackStyle = self:_defaultPetAttackStyle(),
         }
     end
 
@@ -166,6 +167,7 @@ function SettingsService:_createSettingsFolders(player)
 
     self:_replicateAutoSystemSettings(player)
     self:_applyPetFormation(player)
+    self:_applyPetAttackStyle(player)
 
     self._logger:Info("✅ SETTINGS - Settings folders created successfully", {
         player = player.Name,
@@ -533,6 +535,65 @@ function SettingsService:_setPetFormation(player, value)
     return true
 end
 
+local PET_ATTACK_STYLES = {
+    orbit = true,
+    static_ring = true,
+    lunge = true,
+    spiral = true,
+    pincer = true,
+    firing_line = true,
+    swarm = true,
+}
+
+function SettingsService:_defaultPetAttackStyle()
+    local ok, cfg = pcall(function()
+        return self._configLoader:LoadConfig("pet_follow")
+    end)
+    local style = ok and cfg and cfg.attack and cfg.attack.style
+    if type(style) == "string" and PET_ATTACK_STYLES[style] then
+        return style
+    end
+    return "orbit"
+end
+
+function SettingsService:_sanitizePetAttackStyle(value)
+    if type(value) == "table" then
+        value = value.style or value.mode or value.value
+    end
+    value = type(value) == "string" and string.lower(value) or nil
+    if value and PET_ATTACK_STYLES[value] then
+        return value
+    end
+    return self:_defaultPetAttackStyle()
+end
+
+-- Push the saved attack style onto the player as the (replicated) PetAttackStyle attribute the
+-- client's PetFollowController reads.
+function SettingsService:_applyPetAttackStyle(player)
+    local data = self._dataService:GetData(player)
+    local style = self:_defaultPetAttackStyle()
+    if data and data.Settings and type(data.Settings.PetAttackStyle) == "string" then
+        style = self:_sanitizePetAttackStyle(data.Settings.PetAttackStyle)
+    end
+    player:SetAttribute("PetAttackStyle", style)
+    return style
+end
+
+function SettingsService:_setPetAttackStyle(player, value)
+    local data = self._dataService:GetData(player)
+    if not data then
+        return false
+    end
+
+    data.Settings = data.Settings or {}
+    local style = self:_sanitizePetAttackStyle(value)
+    data.Settings.PetAttackStyle = style
+    player:SetAttribute("PetAttackStyle", style)
+
+    self._logger:Info("Updated pet attack style", { player = player.Name, style = style })
+    return true
+end
+
 -- ═══════════════════════════════════════════════════════════════════════════════════
 -- NETWORK SIGNALS (following InventoryService pattern)
 -- ═══════════════════════════════════════════════════════════════════════════════════
@@ -575,6 +636,10 @@ function SettingsService:_setupNetworkSignals()
         self:_setPetFormation(player, payload)
     end)
 
+    Signals.Settings_SetPetAttackStyle.OnServerEvent:Connect(function(player, payload)
+        self:_setPetAttackStyle(player, payload)
+    end)
+
     self._logger:Info("📡 Settings network signals configured")
 end
 
@@ -612,6 +677,14 @@ end
 
 function SettingsService:GetPetFormation(player)
     return self:_applyPetFormation(player)
+end
+
+function SettingsService:SetPetAttackStyle(player, value)
+    return self:_setPetAttackStyle(player, value)
+end
+
+function SettingsService:GetPetAttackStyle(player)
+    return self:_applyPetAttackStyle(player)
 end
 
 return SettingsService

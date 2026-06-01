@@ -59,11 +59,13 @@ return {
         period = 2,
     },
 
-    -- Attack mode: pets SURROUND the target in an animated ring (client-driven).
-    -- Switch `style` to experiment (also live via the PetAttackStyle attribute).
-    --   style — "orbit" (ring spins), "static_ring", "lunge" (jab toward center).
-    -- (No distance leash: AutoTargetService owns target selection + range; the pet
-    --  clears its target only when the breakable is mined out, like the legacy.)
+    -- Attack mode: pets arrange around the target while attacking (client-driven, purely
+    -- visual). `style` is the default; players override it with a saved PetAttackStyle setting,
+    -- live-switchable via the PetAttackStyle attribute.
+    --   "orbit" (ring spins) | "static_ring" | "lunge" (jab in) | "spiral" (vortex) |
+    --   "pincer" (two arcs squeeze) | "firing_line" (row, recoil volley) | "swarm" (jitter cloud)
+    -- (No distance leash: AutoTargetService owns target selection + range; the pet clears its
+    --  target only when the breakable is mined out, like the legacy.)
     attack = {
         style = "orbit",
         ring_radius = 6,
@@ -71,6 +73,23 @@ return {
         orbit_speed = 2.5, -- radians/sec wheel spin (orbit)
         lunge_distance = 3, -- jab depth toward center (lunge)
         lunge_speed = 6,
+
+        -- spiral (rotating mining vortex): inner -> outer arm, rises with t
+        spiral_turns = 1.5,
+        spiral_speed = 1.5,
+        spiral_rise = 2,
+        -- pincer (two arcs clamping the target)
+        pincer_arc = 80, -- degrees each arc spans
+        pincer_squeeze = 2, -- studs the clamp pulses in/out
+        pincer_speed = 3,
+        -- firing line (a row facing the target, staggered recoil volley)
+        line_spacing = 2.5,
+        line_recoil = 2,
+        line_speed = 5,
+        -- swarm (jitter cloud)
+        swarm_radius_frac = 0.85,
+        swarm_speed = 3,
+        swarm_bob = 1.2,
     },
 
     -- Client movement smoothing (frame-rate-independent exponential approach;

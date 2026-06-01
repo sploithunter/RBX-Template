@@ -151,6 +151,69 @@ return function()
         end)
     end)
 
+    describe("PetFormation.attackOffset (new styles)", function()
+        local base = {
+            ring_radius = 10,
+            ring_height = 3,
+            spiral_turns = 1,
+            spiral_speed = 2,
+            spiral_rise = 4,
+            pincer_arc = 80,
+            pincer_squeeze = 0,
+            pincer_speed = 0,
+            line_spacing = 3,
+            line_recoil = 0,
+            line_speed = 0,
+            swarm_radius_frac = 0.8,
+            swarm_speed = 0,
+            swarm_bob = 0,
+        }
+        local function withStyle(style)
+            local c = table.clone(base)
+            c.style = style
+            return c
+        end
+        local function radius(o)
+            return math.sqrt(o.x * o.x + o.z * o.z)
+        end
+
+        it("spiral: radius grows inner -> outer, and rotates over time", function()
+            local c = withStyle("spiral")
+            expect(
+                radius(PetFormation.attackOffset(1, 6, 0, c))
+                    < radius(PetFormation.attackOffset(6, 6, 0, c))
+            ).to.equal(true)
+            local a = PetFormation.attackOffset(2, 6, 0, c)
+            local b = PetFormation.attackOffset(2, 6, 1, c)
+            expect((a.x - b.x) ^ 2 + (a.z - b.z) ^ 2 > 0.01).to.equal(true)
+        end)
+
+        it("pincer: two clusters on opposite sides", function()
+            local c = withStyle("pincer")
+            expect(PetFormation.attackOffset(1, 6, 0, c).x > 0).to.equal(true)
+            expect(PetFormation.attackOffset(6, 6, 0, c).x < 0).to.equal(true)
+        end)
+
+        it("firing_line: a row on one side, x spread symmetric", function()
+            local c = withStyle("firing_line")
+            local first = PetFormation.attackOffset(1, 5, 0, c)
+            local last = PetFormation.attackOffset(5, 5, 0, c)
+            expect(first.z).to.near(-c.ring_radius)
+            expect(last.z).to.near(-c.ring_radius)
+            expect(first.x).to.near(-last.x)
+        end)
+
+        it("swarm: stays within the swarm radius", function()
+            local c = withStyle("swarm")
+            local rad = c.ring_radius * c.swarm_radius_frac
+            for i = 1, 8 do
+                local o = PetFormation.attackOffset(i, 8, 0.5, c)
+                expect(math.abs(o.x) <= rad + 1e-6).to.equal(true)
+                expect(math.abs(o.z) <= rad + 1e-6).to.equal(true)
+            end
+        end)
+    end)
+
     describe("PetFormation.resolve (size-aware)", function()
         local fm = {
             mode = "conga",

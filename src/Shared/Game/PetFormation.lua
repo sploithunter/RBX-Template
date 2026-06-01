@@ -67,37 +67,79 @@ function PetFormation.targetPosition(frame, index, count, formation)
     }
 end
 
--- Attack-ring offset RELATIVE TO the target center, so multiple pets attacking
--- the same thing surround it instead of stacking on one point. `phase` (elapsed
--- seconds) drives the animation. Styles (attack.style):
---   "orbit"       — evenly spaced on a ring, the whole wheel rotates over time
---   "static_ring" — evenly spaced on a ring, no rotation
---   "lunge"       — ring slots that rhythmically jab in toward the center
--- Returns { x, y, z } to add to the target's world position. 1-based index.
+-- Attack offset RELATIVE TO the target center, so multiple pets attacking the same thing
+-- arrange around it instead of stacking on one point. `phase` (elapsed seconds) drives the
+-- animation. Returns { x, y, z } to add to the target's world position. 1-based index.
+-- Styles (attack.style):
+--   "orbit"       — evenly spaced ring, the whole wheel rotates over time
+--   "static_ring" — evenly spaced ring, no rotation
+--   "lunge"       — ring slots that rhythmically jab in toward the centre
+--   "spiral"      — inner→outer spiral arm that slowly rotates (a mining vortex; rises with t)
+--   "pincer"      — two arcs clamping the target from opposite sides, squeezing in/out
+--   "firing_line" — a row on one side facing the target, staggered recoil (a volley)
+--   "swarm"       — a deterministic jitter cloud buzzing around the target
 function PetFormation.attackOffset(index, count, phase, attack)
     local n = math.max(count, 1)
     local i = index - 1
-    local baseAngle = (i / n) * 2 * math.pi
     local style = attack.style or "orbit"
+    local height = attack.ring_height or 0
+    local R = attack.ring_radius or 6
 
-    local angle = baseAngle
-    if style == "orbit" then
-        angle = baseAngle + phase * (attack.orbit_speed or 0)
+    if style == "spiral" then
+        local t = (n > 1) and (i / (n - 1)) or 0 -- 0 (inner) .. 1 (outer)
+        local angle = t * (attack.spiral_turns or 1.5) * 2 * math.pi
+            + phase * (attack.spiral_speed or 0)
+        local radius = R * (0.35 + 0.65 * t)
+        return {
+            x = radius * math.cos(angle),
+            y = height + (attack.spiral_rise or 0) * t,
+            z = radius * math.sin(angle),
+        }
+    elseif style == "pincer" then
+        local half = math.ceil(n / 2)
+        local firstHalf = i < half
+        local k = firstHalf and i or (i - half)
+        local cnt = firstHalf and half or (n - half)
+        local spread = (cnt > 1) and (k / (cnt - 1) - 0.5) or 0
+        local angle = (firstHalf and 0 or math.pi) + spread * math.rad(attack.pincer_arc or 80)
+        local squeeze = (attack.pincer_squeeze or 0)
+            * (0.5 + 0.5 * math.sin(phase * (attack.pincer_speed or 0)))
+        local radius = R - squeeze
+        return { x = radius * math.cos(angle), y = height, z = radius * math.sin(angle) }
+    elseif style == "firing_line" then
+        -- a row on the -z side; pets recoil toward the target (+z) in a staggered volley
+        local recoil = (attack.line_recoil or 0)
+            * math.max(0, math.sin(phase * (attack.line_speed or 0) - i * 0.5))
+        return {
+            x = (i - (n - 1) / 2) * (attack.line_spacing or 3),
+            y = height,
+            z = -R + recoil,
+        }
+    elseif style == "swarm" then
+        local sx = math.sin((i + 1) * 12.9898) -- deterministic per-pet base in [-1,1]
+        local sz = math.sin((i + 1) * 78.233)
+        local jx = math.sin(phase * (attack.swarm_speed or 0) + i * 2.1)
+        local jz = math.cos(phase * (attack.swarm_speed or 0) + i * 1.7)
+        local rad = R * (attack.swarm_radius_frac or 0.85)
+        return {
+            x = (sx * 0.6 + jx * 0.4) * rad,
+            y = height + math.sin(phase * 4 + i) * (attack.swarm_bob or 0),
+            z = (sz * 0.6 + jz * 0.4) * rad,
+        }
     end
 
-    local radius = attack.ring_radius
+    -- ring family: orbit (rotates) / static_ring / lunge (jabs in)
+    local angle = (i / n) * 2 * math.pi
+    if style == "orbit" then
+        angle = angle + phase * (attack.orbit_speed or 0)
+    end
+    local radius = R
     if style == "lunge" then
-        -- 0 (out, at ring_radius) .. lunge_distance (in toward center)
         local jab = (attack.lunge_distance or 0)
             * (0.5 + 0.5 * math.sin(phase * (attack.lunge_speed or 0) + i))
         radius = radius - jab
     end
-
-    return {
-        x = radius * math.cos(angle),
-        y = attack.ring_height,
-        z = radius * math.sin(angle),
-    }
+    return { x = radius * math.cos(angle), y = height, z = radius * math.sin(angle) }
 end
 
 -- ============================================================================
