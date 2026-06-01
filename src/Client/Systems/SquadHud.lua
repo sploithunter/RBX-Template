@@ -25,6 +25,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local POWER_ICONS = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_icons"))
 
 local SquadHud = {}
 
@@ -83,9 +84,9 @@ end
 -- player, for squad-wide buffs). Placeholder colour + short label now; set `icon`
 -- to an asset id later to swap the label for the real art.
 local PET_EFFECTS = {
-    { key = "defense", source = "pet", untilAttr = "DefenseBuffUntil", color = Color3.fromRGB(235, 190, 70), label = "DEF" },
-    { key = "damage", source = "player", untilAttr = "PetDamageBuffUntil", color = Color3.fromRGB(235, 90, 90), label = "DMG" },
-    { key = "shield", source = "pet", poolAttr = "CombatShield", color = Color3.fromRGB(95, 170, 235), label = "SH" },
+    { key = "defense", source = "pet", untilAttr = "DefenseBuffUntil", color = Color3.fromRGB(235, 190, 70), label = "DEF", icon = POWER_ICONS.status.defense },
+    { key = "damage", source = "player", untilAttr = "PetDamageBuffUntil", color = Color3.fromRGB(235, 90, 90), label = "DMG", icon = POWER_ICONS.status.damage },
+    { key = "shield", source = "pet", poolAttr = "CombatShield", color = Color3.fromRGB(95, 170, 235), label = "SH", icon = POWER_ICONS.status.shield },
 }
 
 local function activeEffectsFor(pet, player, now)
@@ -342,10 +343,10 @@ function SquadHud.start()
     aLayout.Padding = UDim.new(0, 4)
     aLayout.Parent = actions
 
-    local function actionButton(label, color, enabled, onClick)
+    local function actionButton(label, color, enabled, onClick, icon)
         local b = Instance.new("TextButton")
         b.Size = UDim2.fromOffset(44, 28)
-        b.Text = label
+        b.Text = icon and "" or label
         b.Font = Enum.Font.GothamBold
         b.TextSize = 12
         b.TextColor3 = enabled and Color3.fromRGB(20, 22, 28) or Color3.fromRGB(150, 150, 160)
@@ -356,6 +357,16 @@ function SquadHud.start()
         local c = Instance.new("UICorner")
         c.CornerRadius = UDim.new(0, 6)
         c.Parent = b
+        if icon then
+            local img = Instance.new("ImageLabel")
+            img.BackgroundTransparency = 1
+            img.AnchorPoint = Vector2.new(0.5, 0.5)
+            img.Position = UDim2.fromScale(0.5, 0.5)
+            img.Size = UDim2.fromScale(0.85, 0.85)
+            img.Image = icon
+            img.ImageTransparency = enabled and 0 or 0.45 -- dim while not yet wired
+            img.Parent = b
+        end
         b.Parent = actions
         if enabled and onClick then
             b.MouseButton1Click:Connect(onClick)
@@ -373,8 +384,8 @@ function SquadHud.start()
             Signals.Squad_Summon:FireServer({ slot = selectedSlot })
         end
     end)
-    actionButton("Heal", Color3.fromRGB(90, 210, 110), false) -- via Powers (soon)
-    actionButton("Buff", Color3.fromRGB(180, 130, 235), false) -- via Powers (soon)
+    actionButton("Heal", Color3.fromRGB(90, 210, 110), false, nil, POWER_ICONS.actions.heal) -- via Powers (soon)
+    actionButton("Buff", Color3.fromRGB(180, 130, 235), false, nil, POWER_ICONS.actions.buff) -- via Powers (soon)
 
     -- World click-to-select: clicking a visible pet selects its slot.
     local mouse = localPlayer:GetMouse()

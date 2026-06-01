@@ -20,6 +20,7 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local POWER_ICONS = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_icons"))
 
 local HotbarBar = {}
 
@@ -210,8 +211,19 @@ function HotbarBar.start()
             c.CornerRadius = UDim.new(1, 0) -- circular slot
             c.Parent = b
 
+            local iconImg = Instance.new("ImageLabel")
+            iconImg.Name = "Icon"
+            iconImg.BackgroundTransparency = 1
+            iconImg.Position = UDim2.fromScale(0.5, 0.5)
+            iconImg.AnchorPoint = Vector2.new(0.5, 0.5)
+            iconImg.Size = UDim2.fromScale(0.92, 0.92)
+            iconImg.Image = ""
+            iconImg.ZIndex = 2
+            iconImg.Parent = b
+
             local key = Instance.new("TextLabel")
             key.Name = "Key"
+            key.ZIndex = 3
             key.BackgroundTransparency = 1
             key.Position = UDim2.fromOffset(3, 1)
             key.Size = UDim2.fromOffset(SLOT - 6, 13)
@@ -243,7 +255,7 @@ function HotbarBar.start()
                     Signals.Hotbar_Activate:FireServer({ slot = slot })
                 end
             end)
-            cards[slot] = { frame = b, bind = lbl, cool = cool, bindObj = nil }
+            cards[slot] = { frame = b, bind = lbl, cool = cool, bindObj = nil, icon = iconImg }
         end
     end
     makeRow(SLOT, 10) -- TOP row (upper): slots 11-20 = Shift+1-0
@@ -262,6 +274,10 @@ function HotbarBar.start()
             if card then
                 local bind = state.hotbar[tostring(slot)] or state.hotbar[slot]
                 card.bindObj = bind
+                -- Show the power's icon when we have one; otherwise fall back to the text label.
+                local icon = bind and bind.type == "power" and POWER_ICONS.powers[bind.target]
+                card.icon.Image = icon or ""
+                card.bind.Visible = not icon
                 card.bind.Text = bindLabel(bind)
                 card.frame.BackgroundColor3 = bind and (TYPE_COLOR[bind.type] or Color3.fromRGB(26, 28, 38))
                     or Color3.fromRGB(26, 28, 38)
