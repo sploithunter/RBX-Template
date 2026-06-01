@@ -897,11 +897,77 @@ function EnemyService:_updateDebuffBadges(model, nowTime)
     end
 end
 
+-- A support pet's auto-heal config (role.auto_heal), or nil.
+function EnemyService:_roleAutoHeal(pet)
+    local roles = self._petRoles
+    if not roles then
+        return nil
+    end
+    local id = pet:GetAttribute("PetRole")
+        or (roles.by_type and roles.by_type[pet:GetAttribute("PetType")])
+        or roles.default
+    local def = roles.roles and roles.roles[id]
+    return def and def.auto_heal
+end
+
+-- Support pets (role.auto_heal) periodically mend the most-hurt non-downed ally in their
+-- own squad — reduce its accumulated CombatDamageTaken. The squad healer keeps the tank up.
+function EnemyService:_supportPass(now)
+    local playerPets = Workspace:FindFirstChild("PlayerPets")
+    if not playerPets then
+        return
+    end
+    self._supportAt = self._supportAt or setmetatable({}, { __mode = "k" })
+    local factor = self._combatConfig.pet_down_threshold_factor or 1
+    for _, folder in ipairs(playerPets:GetChildren()) do
+        for _, pet in ipairs(folder:GetChildren()) do
+            if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
+                local heal = self:_roleAutoHeal(pet)
+                if
+                    heal
+                    and (heal.amount or 0) > 0
+                    and (not self._supportAt[pet] or now >= self._supportAt[pet])
+                then
+                    self._supportAt[pet] = now + (heal.interval or 1.5)
+                    -- most-hurt non-downed ally in this squad
+                    local target, worst
+                    for _, ally in ipairs(folder:GetChildren()) do
+                        if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
+                            local taken = ally:GetAttribute("CombatDamageTaken") or 0
+                            if taken > 0 and (not worst or taken > worst) then
+                                worst, target = taken, ally
+                            end
+                        end
+                    end
+                    if target then
+                        local newTaken = math.max(
+                            0,
+                            (target:GetAttribute("CombatDamageTaken") or 0) - heal.amount
+                        )
+                        target:SetAttribute("CombatDamageTaken", newTaken)
+                        if newTaken <= 0 then
+                            self:_clearEnduranceBar(target)
+                        else
+                            self:_updateEnduranceBar(
+                                target,
+                                newTaken,
+                                self:_petPower(target),
+                                factor
+                            )
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
 function EnemyService:_combatTick(dt)
     local eng = self._combatConfig.engagement or {}
     local now = os.clock()
     local nowTime = os.time()
     self:_regenPass(now, dt, eng)
+    self:_supportPass(now)
     for targetId, entry in pairs(self._enemies) do
         local model = entry.model
         if model and model.Parent and (model:GetAttribute("HP") or 0) > 0 then

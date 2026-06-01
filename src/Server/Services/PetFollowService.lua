@@ -193,6 +193,20 @@ function PetFollowService:_findBreakable(targetType, world, id)
     return nil
 end
 
+-- A pet's role damage multiplier (archetype curve): PetRole attr -> by_type[PetType]
+-- -> default; falls back to 1. Support/control hit softer, melee/ranged full.
+function PetFollowService:_roleDamageMult(pet)
+    local roles = self._petRoles
+    if not roles then
+        return 1
+    end
+    local id = pet:GetAttribute("PetRole")
+        or (roles.by_type and roles.by_type[pet:GetAttribute("PetType")])
+        or roles.default
+    local def = roles.roles and roles.roles[id]
+    return (def and tonumber(def.damage_mult)) or 1
+end
+
 -- A pet's effective attack range (mining-gate distance), by combat role: PetRole attr
 -- -> pet_roles.by_type[PetType] -> default. Ranged pets reach much further than melee,
 -- so they can deal damage from their standoff. Falls back to mining.range.
@@ -256,6 +270,8 @@ function PetFollowService:_mine(player, pet, breakable)
         currency = breakable:GetAttribute("Currency"),
     }
     local dmg = combat:ResolvePetDamage(player, ctx)
+    -- Archetype damage curve: support/control hit softer, melee/ranged full.
+    dmg = dmg * self:_roleDamageMult(pet)
     -- Support-power modifiers (Feature 14): the player's active damage buff and the
     -- target's vulnerability both scale pet damage (os.time-gated, set by PowerService).
     local nowT = os.time()

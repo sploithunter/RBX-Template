@@ -34,13 +34,18 @@ return {
     -- mid range. This is the melee-closes / ranged-kites dynamic.
     -- threat_mult scales the aggro a role generates (passive threat × this), so a tank
     -- holds the enemy's attention and soaks for the squad while dps/ranged stay safer.
+    -- damage_mult scales the pet's own attack damage by the classic archetype curve:
+    -- blasters (ranged) + melee hit hardest (1.0), tanks moderate, support/control low
+    -- (they trade damage for utility). auto_heal makes a support pet periodically heal
+    -- the most-hurt ally (the bunny's grass-biome flavor; element-specific support
+    -- variants can key off this later).
     roles = {
-        tank = { label = "Tank", glyph = "T", color = { 70, 130, 195 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 5, implicit_taunt = true },
-        melee = { label = "Melee", glyph = "M", color = { 205, 85, 70 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 1 },
+        tank = { label = "Tank", glyph = "T", color = { 70, 130, 195 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 5, implicit_taunt = true, damage_mult = 0.6 },
+        melee = { label = "Melee", glyph = "M", color = { 205, 85, 70 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 1, damage_mult = 1.0 },
         -- kite = true: holds near the player and snipes instead of orbiting the enemy, so
         -- an enemy chasing it has to close the gap (the melee-closes / ranged-kites loop).
-        ranged = { label = "Ranged", glyph = "R", color = { 120, 180, 85 }, icon = "", attack_range = 28, standoff = 17, kite = true },
-        support = { label = "Support", glyph = "S", color = { 150, 110, 215 }, icon = "", attack_range = 16, standoff = 9 },
-        control = { label = "Control", glyph = "C", color = { 90, 185, 205 }, icon = "", attack_range = 20, standoff = 12 },
+        ranged = { label = "Ranged", glyph = "R", color = { 120, 180, 85 }, icon = "", attack_range = 28, standoff = 17, kite = true, damage_mult = 1.0 },
+        support = { label = "Support", glyph = "S", color = { 150, 110, 215 }, icon = "", attack_range = 16, standoff = 9, damage_mult = 0.35, auto_heal = { interval = 1.5, amount = 30 } },
+        control = { label = "Control", glyph = "C", color = { 90, 185, 205 }, icon = "", attack_range = 20, standoff = 12, damage_mult = 0.5 },
     },
 }
