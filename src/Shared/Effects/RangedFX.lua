@@ -150,12 +150,12 @@ local function spawnShockwave(pos, color, diameter, life)
     Debris:AddItem(ring, life + 0.1)
 end
 
--- A dark puff that swells + rises + fades — lingering smoke.
-local function spawnSmoke(pos, diameter, life)
+-- A puff that swells + rises + fades — lingering smoke (gray) or dust (tan via `color`).
+local function spawnSmoke(pos, diameter, life, color)
     local s = Instance.new("Part")
     s.Shape = Enum.PartType.Ball
     s.Material = Enum.Material.SmoothPlastic
-    s.Color = Color3.fromRGB(60, 55, 50)
+    s.Color = color or Color3.fromRGB(60, 55, 50)
     s.Anchored = true
     s.CanCollide = false
     s.CanQuery = false
@@ -195,6 +195,36 @@ local function spawnColumn(pos, color, height, life)
     Debris:AddItem(col, life + 0.1)
 end
 
+-- Pointed glass shards that fly outward + tumble + fade — an icy shatter spray.
+local function spawnShards(pos, c1, c2, count, len, spread, life)
+    count = math.max(0, math.floor(count))
+    for i = 1, count do
+        local ang = (i / count) * math.pi * 2 + math.random() * 0.6
+        local elev = 0.2 + math.random() * 0.7
+        local dir = Vector3.new(math.cos(ang), elev, math.sin(ang)).Unit
+        local shard = Instance.new("Part")
+        shard.Material = Enum.Material.Glass
+        shard.Color = (i % 2 == 0) and c1 or c2
+        shard.Transparency = 0.1
+        shard.Reflectance = 0.3
+        shard.Anchored = true
+        shard.CanCollide = false
+        shard.CanQuery = false
+        shard.CastShadow = false
+        shard.Size = Vector3.new(len * 0.22, len * 0.22, len) -- long axis = the point
+        shard.CFrame = CFrame.new(pos, pos + dir)
+        shard.Parent = fxFolder()
+        local dist = spread * (0.7 + math.random() * 0.9)
+        local dest = pos + dir * dist - Vector3.new(0, spread * 0.2, 0)
+        TweenService:Create(shard, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            CFrame = CFrame.new(dest) * CFrame.Angles(math.random() * 3, math.random() * 3, 0),
+            Size = Vector3.new(0.05, 0.05, 0.05),
+            Transparency = 1,
+        }):Play()
+        Debris:AddItem(shard, life + 0.1)
+    end
+end
+
 RangedFX.IMPACTS = {
     -- small: a flash + light pop + a handful of embers (the original projectile impact).
     small = function(pos, c1, c2, opts)
@@ -225,6 +255,22 @@ RangedFX.IMPACTS = {
         spawnColumn(pos, c1, scale * 2.2, 0.5) -- rising pillar
         spawnSparks(pos, c1, c2, sparks, scale * 0.22, scale * 2.0, 0.6)
         spawnSmoke(pos, scale * 1.7, 0.85)
+    end,
+    -- shatter (ICE): a quick flash + frost ring + a spray of glass shards. Crisp, not fiery.
+    shatter = function(pos, c1, c2, opts)
+        local scale = (opts and tonumber(opts.scale)) or 5
+        local shards = (opts and tonumber(opts.sparks)) or 12
+        spawnFlash(pos, c2, c1, scale * 0.8, 0.2)
+        spawnShockwave(pos, c1, scale * 1.8, 0.4)
+        spawnShards(pos, c1, c2, shards, scale * 0.5, scale * 1.4, 0.5)
+    end,
+    -- dust (DESERT): a low tan cloud + rubble bits + a ground ring. No bright flash — earthy.
+    dust = function(pos, c1, c2, opts)
+        local scale = (opts and tonumber(opts.scale)) or 5
+        local bits = (opts and tonumber(opts.sparks)) or 10
+        spawnShockwave(pos, c1, scale * 1.6, 0.45)
+        spawnSparks(pos, c1, c2, bits, scale * 0.24, scale * 1.2, 0.5) -- rubble
+        spawnSmoke(pos, scale * 1.5, 0.75, Color3.fromRGB(196, 170, 120)) -- tan dust cloud
     end,
 }
 
@@ -347,6 +393,50 @@ local function playBeam(originPart, endPos, theme, isCrit)
     return true
 end
 
+-- Rock throw (DESERT): summon a boulder at the pet and hurl it, tumbling, at the target; it
+-- lands with a dust impact. Non-neon (Slate). Themed by `theme` (colors/size/travel_time/impact).
+-- isCrit -> bigger rock + the crit impact tier (theme.impact_crit, default "big").
+local function playRock(originPart, endPos, theme, isCrit)
+    local c1 = toColor(theme.colors and theme.colors[1], Color3.fromRGB(120, 105, 90))
+    local c2 = toColor(theme.colors and theme.colors[2], Color3.fromRGB(170, 145, 110))
+    local size = (tonumber(theme.size) or 2.2) * (isCrit and 1.4 or 1)
+    local travel = math.max(0.08, tonumber(theme.travel_time) or 0.3)
+    local startPos = originPart.Position + Vector3.new(0, 2, 0)
+
+    local rock = Instance.new("Part")
+    rock.Material = Enum.Material.Slate
+    rock.Color = c1
+    rock.Anchored = true
+    rock.CanCollide = false
+    rock.CanQuery = false
+    rock.CastShadow = false
+    rock.Size = Vector3.new(size, size * 0.85, size * 1.1)
+    rock.CFrame = CFrame.new(startPos)
+    rock.Parent = fxFolder()
+    -- Quick "summon" pop-in: scale up from nothing.
+    rock.Size = Vector3.new(0.2, 0.2, 0.2)
+    TweenService:Create(rock, TweenInfo.new(0.08), { Size = Vector3.new(size, size * 0.85, size * 1.1) }):Play()
+
+    -- Hurl + tumble (end rotation interpolates into a tumble as it flies).
+    local dest = CFrame.new(endPos) * CFrame.Angles(math.rad(170), math.rad(140), math.rad(80))
+    local tween = TweenService:Create(
+        rock,
+        TweenInfo.new(travel, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+        { CFrame = dest }
+    )
+    tween.Completed:Connect(function()
+        local impactName = isCrit and (theme.impact_crit or "big") or (theme.impact or "dust")
+        RangedFX.playImpact(impactName, endPos, c2, c1, {
+            scale = isCrit and theme.crit_scale or theme.impact_scale,
+            sparks = isCrit and theme.crit_sparks or theme.sparks,
+        })
+        rock:Destroy()
+    end)
+    tween:Play()
+    Debris:AddItem(rock, travel + 0.7)
+    return true
+end
+
 -- Fire a ranged effect of `kind` from origin to target. Falls back to lightning for an
 -- unknown kind. config is the ranged_bolt block (target_offset already a Vector3 from caller).
 -- isCrit (from the server's LastHitCrit on the firing pet) bumps the impact to its crit tier.
@@ -386,6 +476,9 @@ function RangedFX.Play(origin, config, target, kind, isCrit)
 
     if kind == "beam" then
         return playBeam(originPart, endPos, config.beam or {}, isCrit)
+    end
+    if kind == "rock" then
+        return playRock(originPart, endPos, config.rock or {}, isCrit)
     end
 
     -- Projectile family: theme comes from config.projectile[kind] (fireball/plasma/frost/...).
