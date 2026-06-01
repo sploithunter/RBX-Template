@@ -210,15 +210,24 @@ local function arcOffsets(f, fm)
     local depth = tonumber(a.depth_factor) or 0
     local height = fm.height or 0
     local d0 = fm.follow_distance or 0
+    local n = #f
     local offs = {}
-    for i = 1, #f do
-        -- center-out slot: 1->0, 2->+1, 3->-1, 4->+2, 5->-2, ...
+    for i = 1, n do
+        -- center-out slot assignment, kept symmetric for BOTH parities:
+        --   odd count  -> a centre pet (s=0) plus mirrored pairs ±1, ±2, ...
+        --   even count -> straddle the centre (no centre pet): ±0.5, ±1.5, ...
+        -- smallest pet (i=1, post-sort) sits nearest the centre either way.
         local s
-        if i == 1 then
-            s = 0
+        if n % 2 == 1 then
+            if i == 1 then
+                s = 0
+            else
+                local k = math.floor(i / 2)
+                s = (i % 2 == 0) and k or -k
+            end
         else
-            local k = math.floor(i / 2)
-            s = (i % 2 == 0) and k or -k
+            local mag = math.ceil(i / 2) - 0.5 -- 0.5, 0.5, 1.5, 1.5, ...
+            s = (i % 2 == 1) and mag or -mag
         end
         local ang = s * step
         local sign = (s > 0 and 1) or (s < 0 and -1) or 0

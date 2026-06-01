@@ -222,9 +222,23 @@ return function()
                 expect(r[5].offset.back).to.near(maxBack)
             end)
 
-            it("is laterally symmetric about the centre", function()
+            it("is laterally symmetric about the centre (odd count)", function()
                 local r = PetFormation.resolve(pets(1, 1, 1, 1, 1), ac)
                 expect(r[2].offset.x).to.near(-r[3].offset.x)
+            end)
+
+            it("stays symmetric for an even count (straddles the centre, no centre pet)", function()
+                -- 4 equal pets -> slots ±0.5, ±1.5: laterals cancel and none sit at x=0
+                local r = PetFormation.resolve(pets(1, 1, 1, 1), ac)
+                local sum, anyCentre = 0, false
+                for _, e in ipairs(r) do
+                    sum = sum + e.offset.x
+                    if math.abs(e.offset.x) < 1e-6 then
+                        anyCentre = true
+                    end
+                end
+                expect(sum).to.near(0)
+                expect(anyCentre).to.equal(false)
             end)
         end)
     end)
