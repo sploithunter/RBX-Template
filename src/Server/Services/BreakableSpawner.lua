@@ -1623,7 +1623,31 @@ function BreakableSpawner:_trySpawnOne(
             local targetTypeVal = petInst:FindFirstChild("TargetType")
             local targetWorldVal = petInst:FindFirstChild("TargetWorld")
             if petIdVal and targetIdVal and targetTypeVal and targetWorldVal then
-                if targetIdVal.Value ~= targetId then
+                -- Combat outranks auto-mine: never yank a pet off a LIVE enemy
+                -- onto a crystal (otherwise pets scatter mid-fight).
+                local lockedOnEnemy = false
+                if targetTypeVal.Value == "Enemy" and targetIdVal.Value ~= 0 then
+                    local enemiesFolder = workspace:FindFirstChild("Game")
+                        and workspace.Game:FindFirstChild("Enemies")
+                    if enemiesFolder then
+                        for _, em in ipairs(enemiesFolder:GetChildren()) do
+                            local bid = em:FindFirstChild("BreakableID")
+                            if
+                                bid
+                                and bid.Value == targetIdVal.Value
+                                and (em:GetAttribute("HP") or 0) > 0
+                            then
+                                lockedOnEnemy = true
+                                break
+                            end
+                        end
+                    end
+                end
+                if
+                    targetIdVal.Value ~= targetId
+                    and not lockedOnEnemy
+                    and not petInst:GetAttribute("CombatDowned")
+                then
                     removePetIdFromBreakables(petIdVal.Value)
                     -- Add entry to this crystal's Pets folder
                     local petsFolder = model:FindFirstChild("Pets") or Instance.new("Folder")

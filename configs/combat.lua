@@ -23,6 +23,23 @@ return {
 
     pet_down_threshold_factor = 1.0,
 
+    -- Defensive inverse mining (Feature 10 slice 1b). An enemy "mines" the
+    -- endurance of the pets attacking it; pets attack back when an enemy is in
+    -- range (combat outranks auto-mine so pets don't scatter to crystals).
+    engagement = {
+        aggro_range = 45, -- enemy engages a player's squad within this (studs)
+        attack_range = 11, -- enemy damages a pet within this of itself (studs)
+        -- A downed pet (taken all the way down) is out for this long, then fully
+        -- heals — the "fully defeated takes X to heal" consequence. Partially
+        -- damaged pets bleed their damage back at regen.partial_per_second once
+        -- they have been out of combat for regen.delay_seconds (the faster heal).
+        full_defeat_heal_seconds = 25,
+        regen = {
+            partial_per_second = 12,
+            delay_seconds = 3,
+        },
+    },
+
     spawners = {
         hell_1_lava = {
             biome = "lava",

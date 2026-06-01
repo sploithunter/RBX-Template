@@ -38,6 +38,25 @@ local function findBreakableById(id)
     return nil
 end
 
+-- Combat outranks auto-mine: a pet currently locked on a LIVE enemy must not be
+-- yanked back to a crystal by auto-targeting (otherwise pets scatter mid-fight
+-- instead of attacking back). True only while that enemy still exists with HP > 0.
+local function petLockedOnLiveEnemy(petInst)
+    local tt = petInst:FindFirstChild("TargetType")
+    local tid = petInst:FindFirstChild("TargetID")
+    if not (tt and tt.Value == "Enemy" and tid and tid.Value ~= 0) then return false end
+    local gameFolder = workspace:FindFirstChild("Game")
+    local enemies = gameFolder and gameFolder:FindFirstChild("Enemies")
+    if not enemies then return false end
+    for _, m in ipairs(enemies:GetChildren()) do
+        local bid = m:FindFirstChild("BreakableID")
+        if bid and bid.Value == tid.Value and (m:GetAttribute("HP") or 0) > 0 then
+            return true
+        end
+    end
+    return false
+end
+
 local function assignPlayerPetsToTarget(player, breakableModel)
     if not player or not breakableModel then return end
     local petInstancesFolder = workspace:FindFirstChild("PlayerPets")
@@ -60,9 +79,13 @@ local function assignPlayerPetsToTarget(player, breakableModel)
         local targetTypeVal = petInst:FindFirstChild("TargetType")
         local targetWorldVal = petInst:FindFirstChild("TargetWorld")
         if petIdVal and targetIdVal and targetTypeVal and targetWorldVal then
-            targetTypeVal.Value = "Crystals"
-            targetWorldVal.Value = worldName
-            targetIdVal.Value = targetId
+            -- Skip pets locked on a live enemy (attack back) AND downed pets
+            -- (they are out healing — must not be pulled into mining).
+            if not petLockedOnLiveEnemy(petInst) and not petInst:GetAttribute("CombatDowned") then
+                targetTypeVal.Value = "Crystals"
+                targetWorldVal.Value = worldName
+                targetIdVal.Value = targetId
+            end
         end
     end
 

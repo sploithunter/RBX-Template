@@ -77,6 +77,14 @@ function PetFollowService:_onPetPositions(player, report)
     end
 end
 
+-- The latest client-reported CFrame for a pet (or nil if none/stale-cleaned).
+-- EnemyService uses this to measure enemy->pet distance (anchored pets are moved
+-- client-side, so the server's own pivot is stale).
+function PetFollowService:GetReportedPosition(pet)
+    local rec = self._petPos[pet]
+    return rec and rec.cf or nil
+end
+
 function PetFollowService:_combatService()
     local locator = _G.RBXTemplateServices
     if not locator then
@@ -172,6 +180,9 @@ end
 
 -- One mining hit on the pet's current target (server-authoritative damage).
 function PetFollowService:_mine(player, pet, breakable)
+    if pet:GetAttribute("CombatDowned") then
+        return -- downed pets are out healing; they neither mine nor fight
+    end
     local now = os.clock()
     if self._nextHit[pet] and now < self._nextHit[pet] then
         return
