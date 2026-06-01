@@ -263,9 +263,13 @@ function HotbarBar.start()
     makeRow(SLOT * 2 + PAD, 0) -- BOTTOM row (primary, nearest hand): slots 1-10 = 1-0
 
     -- Render bindings pushed from the server.
+    local stateApplied = false -- true once a non-empty hotbar has landed (stops join-retry)
     local function applyState(state)
         if type(state) ~= "table" or type(state.hotbar) ~= "table" then
             return
+        end
+        if next(state.hotbar) ~= nil then
+            stateApplied = true
         end
         if type(state.available) == "table" then
             available = state.available
@@ -319,9 +323,16 @@ function HotbarBar.start()
             end
         end
     end)
-    -- Re-request when pets/loadout likely changed.
-    task.delay(2, function()
-        Signals.Hotbar_RequestState:FireServer()
+    -- Join race: the first request can beat the server's profile/hotbar load, leaving
+    -- the bar blank. Keep re-requesting (backing off) until a non-empty state lands.
+    task.spawn(function()
+        for _ = 1, 10 do
+            if stateApplied then
+                break
+            end
+            task.wait(1)
+            Signals.Hotbar_RequestState:FireServer()
+        end
     end)
 
     -- Number-key activation: digit -> slot (bottom row), Shift+digit -> +10 (top row).
