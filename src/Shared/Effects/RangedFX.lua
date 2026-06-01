@@ -172,6 +172,29 @@ local function spawnSmoke(pos, diameter, life)
     Debris:AddItem(s, life + 0.1)
 end
 
+-- A vertical neon pillar that shoots up from the hit point and thins out as it fades.
+local function spawnColumn(pos, color, height, life)
+    local col = Instance.new("Part")
+    col.Shape = Enum.PartType.Cylinder
+    col.Material = Enum.Material.Neon
+    col.Color = color
+    col.Anchored = true
+    col.CanCollide = false
+    col.CanQuery = false
+    col.CastShadow = false
+    col.Transparency = 0.15
+    local diam = height * 0.18
+    col.Size = Vector3.new(1, diam, diam) -- X = length (vertical once rotated); Y/Z = diameter
+    col.CFrame = CFrame.new(pos + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+    col.Parent = fxFolder()
+    TweenService:Create(col, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = Vector3.new(height, diam * 0.3, diam * 0.3),
+        Transparency = 1,
+        CFrame = CFrame.new(pos + Vector3.new(0, height * 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+    }):Play()
+    Debris:AddItem(col, life + 0.1)
+end
+
 RangedFX.IMPACTS = {
     -- small: a flash + light pop + a handful of embers (the original projectile impact).
     small = function(pos, c1, c2, opts)
@@ -180,8 +203,8 @@ RangedFX.IMPACTS = {
         spawnFlash(pos, c2, c1, scale, 0.25)
         spawnSparks(pos, c1, c2, sparks, scale * 0.2, scale, 0.32)
     end,
-    -- big: a fat double flash + bright light + shockwave disc + heavy ember spray + smoke puff.
-    big = function(pos, c1, c2, opts)
+    -- medium: a fat double flash + bright light + shockwave disc + heavy ember spray + smoke puff.
+    medium = function(pos, c1, c2, opts)
         local scale = (opts and tonumber(opts.scale)) or 7
         local sparks = (opts and tonumber(opts.sparks)) or 18
         spawnFlash(pos, c2, c1, scale, 0.35)
@@ -189,6 +212,19 @@ RangedFX.IMPACTS = {
         spawnShockwave(pos, c2, scale * 2.4, 0.4)
         spawnSparks(pos, c1, c2, sparks, scale * 0.22, scale * 1.6, 0.45)
         spawnSmoke(pos, scale * 1.2, 0.6)
+    end,
+    -- big: a really big blast — double flash + huge bright light + DOUBLE shockwave ring + a
+    -- rising energy pillar + a thick ember storm + a big lingering smoke cloud.
+    big = function(pos, c1, c2, opts)
+        local scale = (opts and tonumber(opts.scale)) or 12
+        local sparks = (opts and tonumber(opts.sparks)) or 32
+        spawnFlash(pos, c2, c1, scale, 0.45)
+        spawnFlash(pos, c1, c1, scale * 0.6, 0.3) -- inner core
+        spawnShockwave(pos, c2, scale * 2.2, 0.45) -- inner ring
+        spawnShockwave(pos, c1, scale * 3.6, 0.65) -- outer, wider, slower ring
+        spawnColumn(pos, c1, scale * 2.2, 0.5) -- rising pillar
+        spawnSparks(pos, c1, c2, sparks, scale * 0.22, scale * 2.0, 0.6)
+        spawnSmoke(pos, scale * 1.7, 0.85)
     end,
 }
 
