@@ -292,6 +292,18 @@ function PetFormation.moveSpeedMultiplier(playerMult, petMult, speedConfig)
     return m
 end
 
+-- Catch-up safety: true when a pet is so far from its target (e.g. the player just teleported
+-- across the map) that it should snap directly there instead of slowly lerping across the world.
+-- `threshold` in studs; a nil threshold never snaps. Normal walking never reaches the gap.
+function PetFormation.shouldSnap(distance, threshold)
+    local d = tonumber(distance) or 0
+    local t = tonumber(threshold)
+    if not t then
+        return false
+    end
+    return d > t
+end
+
 -- Vertical bob from a phase (e.g. elapsed time). Deterministic; no clock here.
 function PetFormation.floatOffset(phase, floatConfig)
     if not floatConfig or floatConfig.amplitude == 0 then

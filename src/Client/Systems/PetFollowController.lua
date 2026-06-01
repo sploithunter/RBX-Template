@@ -120,6 +120,18 @@ function PetFollowController.start()
             return 1 - math.exp(-(baseRate * mult) * dt)
         end
 
+        -- Move a pet toward its goal, snapping if it's catastrophically far (the player
+        -- teleported) instead of crawling across the map; otherwise smooth-lerp.
+        local catchupDist = config.movement.catchup_distance
+        local function moveToward(model, goal, alpha)
+            local cur = model:GetPivot()
+            if PetFormation.shouldSnap((cur.Position - goal.Position).Magnitude, catchupDist) then
+                model:PivotTo(goal)
+            else
+                model:PivotTo(cur:Lerp(goal, alpha))
+            end
+        end
+
         local a = config.attack
         local style = localPlayer:GetAttribute("PetAttackStyle") or a.style
         local attackCfg = {
@@ -180,7 +192,7 @@ function PetFollowController.start()
                 local bob = PetFormation.floatOffset(phase + slot, config.float)
                 local target = Vector3.new(t.x, t.y + bob, t.z)
                 local goal = CFrame.lookAt(target, target + upFwd)
-                model:PivotTo(model:GetPivot():Lerp(goal, alphaFor(followRate, model)))
+                moveToward(model, goal, alphaFor(followRate, model))
             end
         else
             for _, f in ipairs(followers) do
@@ -188,7 +200,7 @@ function PetFollowController.start()
                 local bob = PetFormation.floatOffset(phase + f.index, config.float)
                 local target = Vector3.new(t.x, t.y + bob, t.z)
                 local goal = CFrame.lookAt(target, target + upFwd)
-                f.pet:PivotTo(f.pet:GetPivot():Lerp(goal, alphaFor(followRate, f.pet)))
+                moveToward(f.pet, goal, alphaFor(followRate, f.pet))
             end
         end
 
@@ -201,7 +213,7 @@ function PetFollowController.start()
                 local toC = Vector3.new(g.center.X - target.X, 0, g.center.Z - target.Z)
                 local dir = toC.Magnitude > 0.01 and toC.Unit or upFwd
                 local goal = CFrame.lookAt(target, target + dir)
-                pet:PivotTo(pet:GetPivot():Lerp(goal, alphaFor(attackRate, pet)))
+                moveToward(pet, goal, alphaFor(attackRate, pet))
             end
         end
     end)

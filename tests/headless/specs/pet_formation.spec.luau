@@ -262,4 +262,16 @@ return function()
             )
         end)
     end)
+
+    describe("PetFormation.shouldSnap", function()
+        it("snaps past the threshold, lerps within it", function()
+            expect(PetFormation.shouldSnap(100, 60)).to.equal(true)
+            expect(PetFormation.shouldSnap(20, 60)).to.equal(false)
+            expect(PetFormation.shouldSnap(60, 60)).to.equal(false)
+        end)
+
+        it("never snaps without a threshold", function()
+            expect(PetFormation.shouldSnap(1e9, nil)).to.equal(false)
+        end)
+    end)
 end

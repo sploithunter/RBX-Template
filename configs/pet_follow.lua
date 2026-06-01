@@ -84,6 +84,11 @@ return {
         -- per-pet model attribute `MoveSpeedMult` (for unique fast pets); the two
         -- multiply against `base`, clamped to [min, max].
         speed = { base = 1.0, min = 0.25, max = 4.0 },
+
+        -- Catch-up safety: if a pet ends up further than this (studs) from its target — the
+        -- player teleported (zone/realm change) — snap it there instead of slowly crawling
+        -- across the whole map. Normal walking never opens a gap this large.
+        catchup_distance = 60,
     },
 
     -- Server tick throttle (seconds): target leash + the mining damage tick only.
