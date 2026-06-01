@@ -62,8 +62,23 @@ local function petSlot(pet)
 end
 
 local function findBreakable(targetType, world, id)
-    local breakables = Workspace:FindFirstChild("Game")
-        and Workspace.Game:FindFirstChild("Breakables")
+    local game = Workspace:FindFirstChild("Game")
+    if not game then
+        return nil
+    end
+    if targetType == "Enemy" then
+        local enemies = game:FindFirstChild("Enemies")
+        if not enemies then
+            return nil
+        end
+        for _, desc in ipairs(enemies:GetDescendants()) do
+            if desc.Name == "BreakableID" and desc:IsA("NumberValue") and desc.Value == id then
+                return desc.Parent
+            end
+        end
+        return nil
+    end
+    local breakables = game:FindFirstChild("Breakables")
     if not breakables then
         return nil
     end

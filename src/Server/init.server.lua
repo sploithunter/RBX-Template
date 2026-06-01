@@ -439,6 +439,13 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.PetFollowService,
     { "Logger", "ConfigLoader" }
 )
+-- EnemyService: spawns live combat enemies pets attack like breakables (Feature 10,
+-- slice 1a). Resolves CombatService at runtime via the locator for loot awards.
+loader:RegisterModule(
+    "EnemyService",
+    ServerScriptService.Server.Services.EnemyService,
+    { "Logger", "ConfigLoader" }
+)
 -- GameAPIService: the unified command-bus boundary (see
 -- docs/wiki/AUTOMATION_API_DESIGN.md). Handlers resolve target services from the
 -- _G.RBXTemplateServices locator at runtime, so it only needs Logger to boot.

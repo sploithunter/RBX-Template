@@ -62,6 +62,10 @@ function AdminToolsService:Init()
         self:_handleSetHatchEntitlement(player, data)
     end)
 
+    Signals.Admin_SpawnEnemy.OnServerEvent:Connect(function(player, data)
+        self:_handleSpawnEnemy(player, data)
+    end)
+
     Signals.Admin_RequestHatchHistory.OnServerEvent:Connect(function(player, data)
         self:_handleHatchHistory(player, data)
     end)
@@ -75,6 +79,36 @@ function AdminToolsService:Init()
     end)
 
     self._logger:Info("AdminToolsService initialized")
+end
+
+function AdminToolsService:_handleSpawnEnemy(adminPlayer, data)
+    data = type(data) == "table" and data or {}
+    local targetPlayer, errorMessage = self:_resolveTarget(adminPlayer, "globalEffects", data)
+    if not targetPlayer then
+        self:_sendResult(
+            adminPlayer,
+            { kind = "spawn_enemy", success = false, message = errorMessage }
+        )
+        return
+    end
+
+    local enemyService = _G.RBXTemplateServices and _G.RBXTemplateServices:Get("EnemyService")
+    if not enemyService then
+        self:_sendResult(
+            adminPlayer,
+            { kind = "spawn_enemy", success = false, message = "EnemyService unavailable" }
+        )
+        return
+    end
+
+    local result = enemyService:SpawnEnemy(targetPlayer, data.enemy or data.enemyId)
+    local ok = result and result.ok == true
+    self:_sendResult(adminPlayer, {
+        kind = "spawn_enemy",
+        success = ok,
+        message = ok and ("Spawned " .. tostring(result.enemyId) .. " (hp " .. tostring(result.hp) .. ")")
+            or ("Spawn failed: " .. tostring(result and result.reason or "no result")),
+    })
 end
 
 function AdminToolsService:_handleEventCommand(adminPlayer, data)

@@ -122,6 +122,12 @@ return {
     -- Movement is client-side (PetFollowController), not done here.
     update_interval = 0.1,
 
+    -- Enemy spawning (Feature 10 combat). distance = studs in front of the player a test enemy
+    -- spawns (slice 1a: admin-spawned, stationary; pets engage it like a breakable).
+    enemy_spawn = {
+        distance = 16,
+    },
+
     -- Mining gate: a pet only deals mining damage once it's within `range` studs of its target,
     -- so move speed affects mining throughput (DPS ramps as pets arrive). The server reads
     -- per-pet positions the owning client reports (see `replication`). If a pet has no reported
