@@ -232,6 +232,21 @@ local TEST_CATEGORIES = {
             },
         },
     },
+    combat = {
+        title = "⚔️ Combat (test enemies)",
+        tests = {
+            { name = "👹 Spawn Lava Imp (trash)", action = "spawn_enemy_lava_imp" },
+            { name = "🔥 Spawn Ember Brute (mid)", action = "spawn_enemy_ember_brute" },
+            { name = "💀 Spawn Infernal Boss", action = "spawn_enemy_infernal_boss" },
+        },
+        customInputs = {
+            {
+                label = "Spawn Enemy (id):",
+                placeholder = "e.g. lava_imp, ember_brute, infernal_boss",
+                action = "spawn_enemy_custom",
+            },
+        },
+    },
     logging = {
         title = "📊 Logging Controls",
         tests = {
@@ -772,6 +787,8 @@ function AdminPanel:_executeTestAction(action, _testName)
         self:_requestForceSave()
     elseif action == "admin_reset_pets" then
         self:_requestResetPets()
+    elseif action:find("^spawn_enemy_") then
+        self:_executeSpawnEnemyAction(action)
     elseif action:find("^grant_") then
         self:_executePetGrantAction(action)
     elseif
@@ -1099,6 +1116,8 @@ function AdminPanel:_executeCustomAction(action, inputValue)
         self:_executeCustomHatchEntitlement(inputValue)
     elseif action == "set_max_hatch_count" then
         self:_setMaxHatchCount(inputValue)
+    elseif action == "spawn_enemy_custom" then
+        self:_spawnEnemy(inputValue)
     elseif action == "hatch_custom_eggs" or action == "hatch_specific_pet" then
         -- Handle egg hatching custom inputs
         self:_executeCustomEggHatching({
@@ -1556,6 +1575,23 @@ function AdminPanel:_setMaxHatchCount(inputValue)
         value = count,
     }))
     self:_showAdminResult("Max hatch set to " .. count .. " for target", true)
+end
+
+-- Spawn a test combat enemy near the target player so reverse mining can be tried
+-- live (pets attack back, enemy mines pet endurance, downs, chases). Routes through
+-- Admin_SpawnEnemy (server validates admin + globalEffects target).
+function AdminPanel:_spawnEnemy(enemyId)
+    enemyId = tostring(enemyId or ""):gsub("%s+", "")
+    if enemyId == "" then
+        enemyId = "lava_imp"
+    end
+    Signals.Admin_SpawnEnemy:FireServer(self:_getAdminActionData({ enemy = enemyId }))
+    self:_showAdminResult("Spawned enemy: " .. enemyId, true)
+end
+
+-- Button actions are "spawn_enemy_<id>" (e.g. spawn_enemy_lava_imp).
+function AdminPanel:_executeSpawnEnemyAction(action)
+    self:_spawnEnemy((action:gsub("^spawn_enemy_", "")))
 end
 
 function AdminPanel:_requestHatchHistory()
