@@ -21,6 +21,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
 
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
@@ -275,6 +276,61 @@ function SquadHud.start()
         local folder = petsFolder()
         if model and folder and model:IsDescendantOf(folder) then
             setSelected(petSlot(model))
+        end
+    end)
+
+    -- Keyboard cycle (default Tab, config-assignable; hold Shift to go backward).
+    local controls = require(ReplicatedStorage.Configs:WaitForChild("controls"))
+    local cycleName = (controls.keybinds and controls.keybinds.squad_cycle) or "Tab"
+    local okKey, cycleKey = pcall(function()
+        return Enum.KeyCode[cycleName]
+    end)
+    if not okKey or not cycleKey then
+        cycleKey = Enum.KeyCode.Tab
+    end
+
+    local function orderedSlots()
+        local slots = {}
+        local folder = petsFolder()
+        if folder then
+            for _, pet in ipairs(folder:GetChildren()) do
+                if pet:IsA("Model") and pet.PrimaryPart then
+                    slots[#slots + 1] = petSlot(pet)
+                end
+            end
+        end
+        table.sort(slots)
+        return slots
+    end
+
+    local function cycle(dir)
+        local slots = orderedSlots()
+        if #slots == 0 then
+            return
+        end
+        local idx
+        for i, s in ipairs(slots) do
+            if s == selectedSlot then
+                idx = i
+                break
+            end
+        end
+        if not idx then
+            idx = dir > 0 and 1 or #slots
+        else
+            idx = ((idx - 1 + dir) % #slots) + 1
+        end
+        setSelected(slots[idx])
+    end
+
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then
+            return -- don't cycle while typing in a TextBox, etc.
+        end
+        if input.KeyCode == cycleKey then
+            local reverse = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
+                or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
+            cycle(reverse and -1 or 1)
         end
     end)
 
