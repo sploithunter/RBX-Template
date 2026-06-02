@@ -16,14 +16,17 @@
 ]]
 
 return {
-    -- Reskins: temporarily retexture the WHOLE pet for a defensive effect (e.g. Stone Skin turns
-    -- the pet to rock). CombatFX.attach reads spec.reskin = one of these. material = a Roblox
-    -- Material name; color = the tint. (Variant pets re-apply their own colour each frame, so the
-    -- Material change is what reads on them; plain pets stone out fully.)
+    -- Armor reskins: temporarily retexture the WHOLE pet for a defensive (shield) effect — the
+    -- four armor origins. CombatFX.attach reads spec.reskin = one of these. material = a Roblox
+    -- Material name (real materials sell each look); color = the tint. (Variant pets re-apply
+    -- their own colour each frame so the Material reads on them; plain pets reskin fully.)
+    --   stone -> Geomancer (stone_skin)   lava -> Pyromancer (ember_ward)
+    --   ice   -> Cryomancer (ice_armor)   sand -> Sandwalker (dune_shield)
     reskins = {
-        stone = { material = "Slate", color = { 120, 114, 105 } }, -- Stone Skin
-        ice = { material = "Glacier", color = { 190, 228, 255 } }, -- Ice Armor (frozen shell)
-        obsidian = { material = "Basalt", color = { 60, 55, 65 } }, -- dark stone variant
+        stone = { material = "Slate", color = { 120, 114, 105 } },
+        lava = { material = "CrackedLava", color = { 95, 45, 30 } }, -- molten crust w/ glowing cracks
+        ice = { material = "Glacier", color = { 190, 228, 255 } },
+        sand = { material = "Sandstone", color = { 214, 184, 130 } },
     },
 
     attached = {
