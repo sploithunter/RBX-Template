@@ -16,6 +16,16 @@
 ]]
 
 return {
+    -- Reskins: temporarily retexture the WHOLE pet for a defensive effect (e.g. Stone Skin turns
+    -- the pet to rock). CombatFX.attach reads spec.reskin = one of these. material = a Roblox
+    -- Material name; color = the tint. (Variant pets re-apply their own colour each frame, so the
+    -- Material change is what reads on them; plain pets stone out fully.)
+    reskins = {
+        stone = { material = "Slate", color = { 120, 114, 105 } }, -- Stone Skin
+        ice = { material = "Glacier", color = { 190, 228, 255 } }, -- Ice Armor (frozen shell)
+        obsidian = { material = "Basalt", color = { 60, 55, 65 } }, -- dark stone variant
+    },
+
     attached = {
         duration = 5, -- default seconds an attached effect lasts (spec.duration overrides)
 

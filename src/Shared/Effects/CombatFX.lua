@@ -161,6 +161,63 @@ local function spawnShield(pp, theme, duration)
 end
 
 -- Attach a continual effect to an entity for a duration. Returns { stop() } or nil.
+local function materialEnum(name)
+    local ok, m = pcall(function()
+        return Enum.Material[name]
+    end)
+    return (ok and m) or Enum.Material.Slate
+end
+
+-- Temporarily RESKIN a model (e.g. Stone Skin -> Slate stone): swap every BasePart's Material +
+-- Color, strip MeshPart textures + decals, saving originals. Returns a stop() that restores.
+-- opts = { material = "Slate", color = {r,g,b}, hide_decals = true }.
+-- Note: "rainbow"/"golden" variant pets re-apply their colours each frame, so Color is fought
+-- (Material still changes); plain pets stone out fully. Suspending the variant skin is a follow-up.
+local function reskinEntity(model, opts)
+    opts = opts or {}
+    local mat = materialEnum(opts.material or "Slate")
+    local color = toColor(opts.color, Color3.fromRGB(120, 114, 105))
+    local saved = {}
+    for _, d in ipairs(model:GetDescendants()) do
+        if d:IsA("BasePart") then
+            local rec = { inst = d, material = d.Material, color = d.Color }
+            d.Material = mat
+            d.Color = color
+            if d:IsA("MeshPart") and d.TextureID ~= "" then
+                rec.texture = d.TextureID
+                d.TextureID = ""
+            end
+            saved[#saved + 1] = rec
+        elseif (d:IsA("Decal") or d:IsA("Texture")) and opts.hide_decals ~= false then
+            saved[#saved + 1] = { inst = d, transparency = d.Transparency }
+            d.Transparency = 1
+        end
+    end
+    local stopped = false
+    return function()
+        if stopped then
+            return
+        end
+        stopped = true
+        for _, rec in ipairs(saved) do
+            local d = rec.inst
+            if d and d.Parent then
+                if rec.material then
+                    d.Material = rec.material
+                    d.Color = rec.color
+                    if rec.texture then
+                        d.TextureID = rec.texture
+                    end
+                else
+                    d.Transparency = rec.transparency
+                end
+            end
+        end
+    end
+end
+
+-- Attach a continual effect to an entity for a duration. Returns { stop() } or nil.
+-- spec.reskin (or the theme's reskin) temporarily retextures the whole model (Stone Skin).
 function CombatFX.attach(entity, spec)
     spec = spec or {}
     local pp = partOf(entity)
@@ -169,14 +226,33 @@ function CombatFX.attach(entity, spec)
     end
     local cfg = config.attached or {}
     local theme = cfg.themes and cfg.themes[spec.element] and cfg.themes[spec.element][spec.category]
-    if not theme then
-        return nil -- no skin for this element/category yet
+    local reskinCfg = spec.reskin or (theme and theme.reskin)
+    if not theme and not reskinCfg then
+        return nil -- nothing to show for this element/category
     end
     local duration = spec.duration or cfg.duration or 5
-    if spec.category == "shield" then
-        return spawnShield(pp, theme, duration)
+
+    local reskinStop = reskinCfg and reskinEntity(pp.Parent, reskinCfg) or nil
+    local handle
+    if theme then
+        handle = (spec.category == "shield") and spawnShield(pp, theme, duration)
+            or spawnAura(pp, theme, duration)
     end
-    return spawnAura(pp, theme, duration)
+
+    if not reskinStop then
+        return handle
+    end
+    if duration and duration > 0 then
+        task.delay(duration, reskinStop)
+    end
+    return {
+        stop = function()
+            if handle and handle.stop then
+                handle.stop()
+            end
+            reskinStop()
+        end,
+    }
 end
 
 -- Resolve the RangedFX kind for a single-target attack spec.
