@@ -12,10 +12,28 @@ return {
     bind_types = { "power", "roster", "pet", "tactical" },
     tactical_commands = { "scatter", "focus_fire", "regroup", "retreat" },
 
-    -- Default layout for a new player: which slots get powers / rosters / tacticals.
+    -- Default layout for a new player: which slots get powers / rosters / tacticals. Power slots
+    -- are filled from the player's archetype pool in order (each archetype's bar shows its powers).
     defaults = {
-        power_slots = { 1, 2, 3, 4 },
-        roster_slots = { 5, 6, 7 },
-        tactical_slots = { 8, 9, 10 },
+        power_slots = { 1, 2, 3, 4, 5, 6 },
+        roster_slots = { 7, 8, 9 },
+        tactical_slots = { 10, 11, 12, 13 },
+    },
+
+    -- [PROTOTYPE] Explicit default bar OVERRIDE. When set, a fresh hotbar uses exactly this layout
+    -- (archetype-independent) instead of the archetype-pool fill above — handy for testing a
+    -- specific kit so a restart reliably comes up with it. Set to nil to fall back to per-archetype
+    -- defaults. Each entry is { slot, type, target }. Seeds the Pyromancer signature kit + tacticals.
+    default_binds = {
+        { slot = 1, type = "power", target = "cataclysm" },
+        { slot = 2, type = "power", target = "wildfire" },
+        { slot = 3, type = "power", target = "firestorm" },
+        { slot = 4, type = "power", target = "mark_of_flame" },
+        { slot = 5, type = "power", target = "ember_ward" },
+        { slot = 6, type = "power", target = "eruption" },
+        { slot = 7, type = "roster", target = "Roster 1" },
+        { slot = 8, type = "tactical", target = "scatter" },
+        { slot = 9, type = "tactical", target = "focus_fire" },
+        { slot = 10, type = "tactical", target = "regroup" },
     },
 }

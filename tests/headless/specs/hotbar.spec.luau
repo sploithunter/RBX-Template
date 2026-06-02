@@ -11,23 +11,35 @@ local ArchetypeLogic = loadModule("src/Shared/Game/ArchetypeLogic.lua")
 local geoPowers = ArchetypeLogic.availablePowers("geomancer", archetypes)
 
 return function()
-    describe("HotbarLogic.defaultBindings", function()
-        local b = HotbarLogic.defaultBindings(geoPowers, config)
+    describe("HotbarLogic.defaultBindings (archetype fill)", function()
+        -- without the prototype override, the bar fills from the archetype pool
+        local noOverride = table.clone(config)
+        noOverride.default_binds = nil
+        local b = HotbarLogic.defaultBindings(geoPowers, noOverride)
 
-        it("binds slots 1-3 to the archetype's powers", function()
+        it("binds the leading power slots to the archetype's powers", function()
             expect(b[1].type).to.equal("power")
             expect(b[1].target).to.equal(geoPowers[1])
             expect(b[3].target).to.equal(geoPowers[3])
         end)
 
-        it("binds roster slots 5-7 to roster macros", function()
-            expect(b[5].type).to.equal("roster")
-            expect(b[7].type).to.equal("roster")
+        it("binds roster + tactical slots from config", function()
+            expect(b[noOverride.defaults.roster_slots[1]].type).to.equal("roster")
+            local tSlot = noOverride.defaults.tactical_slots[1]
+            expect(b[tSlot].type).to.equal("tactical")
+            expect(b[tSlot].target).to.equal(config.tactical_commands[1])
         end)
+    end)
 
-        it("binds tactical slots 8-10 to tactical commands", function()
+    describe("HotbarLogic.defaultBindings (default_binds override)", function()
+        -- when config.default_binds is set, it wins regardless of archetype
+        local b = HotbarLogic.defaultBindings(geoPowers, config)
+
+        it("uses the explicit layout, ignoring the archetype pool", function()
+            expect(b[1].type).to.equal("power")
+            expect(b[1].target).to.equal("cataclysm")
             expect(b[8].type).to.equal("tactical")
-            expect(b[8].target).to.equal(config.tactical_commands[1])
+            expect(b[8].target).to.equal("scatter")
         end)
     end)
 

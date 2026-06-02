@@ -32,6 +32,23 @@ end
 -- placeholder roster macros, tactical slots -> configured tactical commands.
 function HotbarLogic.defaultBindings(availablePowers, config)
     local bindings = {}
+
+    -- [PROTOTYPE] Explicit override: a fixed, archetype-independent bar (config.default_binds).
+    -- Each entry is { slot, type, target }; invalid slots are skipped. Wins over the pool fill.
+    if type(config.default_binds) == "table" and #config.default_binds > 0 then
+        for _, b in ipairs(config.default_binds) do
+            if
+                type(b) == "table"
+                and HotbarLogic.isValidSlot(b.slot, config)
+                and b.type
+                and b.target
+            then
+                bindings[b.slot] = { type = b.type, target = b.target }
+            end
+        end
+        return bindings
+    end
+
     local defaults = config.defaults or {}
 
     for i, slot in ipairs(defaults.power_slots or {}) do
