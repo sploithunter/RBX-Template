@@ -210,6 +210,7 @@ return {
                 normal = { 255, 255, 255 },
                 crit = { 255, 200, 60 },
                 miss = { 175, 175, 175 },
+                heal = { 90, 230, 110 }, -- green "+N" on heals
             },
         },
 

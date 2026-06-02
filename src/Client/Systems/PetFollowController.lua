@@ -254,6 +254,37 @@ function PetFollowController.start()
         end
     end)
 
+    -- Heal numbers: a green "+N" floats over a healed pet (support auto-heal / heal power, to
+    -- the owner) or a healed enemy (enemy healer, broadcast — the "kill the healer" tell).
+    Signals.Combat_Heal.OnClientEvent:Connect(function(data)
+        if ctCfg.enabled == false or type(data) ~= "table" then
+            return
+        end
+        local target = data.target
+        if typeof(target) ~= "Instance" or not target.Parent then
+            return
+        end
+        local pos = (target.PrimaryPart and target.PrimaryPart.Position)
+            or (target:IsA("Model") and target:GetPivot().Position)
+        if not pos then
+            return
+        end
+        local up = 3
+        local okE, ext = pcall(function()
+            return target:GetExtentsSize()
+        end)
+        if okE and ext then
+            up = ext.Y * 0.5 + 1
+        end
+        local cols = ctCfg.colors or {}
+        FloatingText.show(pos + Vector3.new(0, up, 0), "+" .. tostring(data.amount or 0), {
+            color = ctRGB(cols.heal, 90, 230, 110),
+            size = ctCfg.size or 22,
+            rise = ctCfg.rise,
+            duration = ctCfg.duration,
+        })
+    end)
+
     -- OTHER players' pets, server-relayed (the server never relays our own — those stay local).
     local remoteTargets = setmetatable({}, { __mode = "k" }) -- pet model -> latest relayed CFrame
     Signals.PetPositionsRelay.OnClientEvent:Connect(function(list)

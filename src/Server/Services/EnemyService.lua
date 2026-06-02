@@ -1050,6 +1050,14 @@ function EnemyService:_supportPass(now)
                         ) or 3
                         target:SetAttribute("HealFxUntil", os.time() + fxSec)
                         self:_spawnHealVisual(target)
+                        -- Floating green heal number, to the squad's owner.
+                        local owner = Players:FindFirstChild(folder.Name)
+                        if owner and healAmt >= 1 then
+                            Signals.Combat_Heal:FireClient(
+                                owner,
+                                { target = target, amount = math.floor(healAmt + 0.5) }
+                            )
+                        end
                     end
                 end
             end
@@ -1163,11 +1171,16 @@ function EnemyService:_enemyHealPass(now)
                 end
                 if target then
                     local maxhp = target:GetAttribute("MaxHP") or 1
-                    target:SetAttribute(
-                        "HP",
-                        math.min(maxhp, (target:GetAttribute("HP") or 0) + heal.amount)
-                    )
+                    local before = target:GetAttribute("HP") or 0
+                    local after = math.min(maxhp, before + heal.amount)
+                    target:SetAttribute("HP", after)
                     self:_spawnHealVisual(target) -- works on any model with a PrimaryPart
+                    -- Green heal number to ALL clients, so you SEE the enemy healer working
+                    -- (the "kill the healer to flip the fight" tell).
+                    local healed = math.floor(after - before + 0.5)
+                    if healed >= 1 then
+                        Signals.Combat_Heal:FireAllClients({ target = target, amount = healed })
+                    end
                 end
             end
         end
