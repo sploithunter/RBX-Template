@@ -213,6 +213,9 @@ function LeaderboardService:_startGlobalPublishLoop()
                 end
             end
 
+            -- Publish each board's snapshot to clients. A connected client consumer
+            -- (LeaderboardController) caches these for the leaderboard UI; without a listener
+            -- these would queue per-client and drop ("invocation queue exhausted").
             for boardId in pairs(self._boardsById) do
                 Signals.LeaderboardUpdated:FireAllClients(self:GetSnapshot(boardId))
             end

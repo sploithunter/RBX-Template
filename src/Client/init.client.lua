@@ -162,6 +162,18 @@ do
     end
 end
 
+-- Leaderboard consumer: drains + caches LeaderboardService's periodic LeaderboardUpdated
+-- broadcast so it doesn't pile up unhandled (queue-exhaustion leak). Caches snapshots for a
+-- future leaderboard UI to read (LeaderboardController.Get / .OnUpdate).
+do
+    local ok, err = pcall(function()
+        require(script.Systems.LeaderboardController).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start LeaderboardController", { error = tostring(err) })
+    end
+end
+
 -- Power/command hotbar (Feature 16): lower-center 20-slot bar + farming-mode cycle.
 -- Number keys 1-0 / Shift+1-0 fire slots; bindings fed by HotbarService.
 do
