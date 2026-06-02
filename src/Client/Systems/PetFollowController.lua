@@ -50,6 +50,13 @@ local function roleKites(pet)
     return def and def.kite == true
 end
 
+-- How far the pet can hit from (role.attack_range). Used to decide whether a kiter can snipe
+-- its target from the player formation, or must advance to engage it.
+local function attackRangeOf(pet)
+    local def = PetRoles.roles and PetRoles.roles[petRoleId(pet)]
+    return (def and tonumber(def.attack_range)) or 9
+end
+
 local PetFollowController = {}
 
 local localPlayer = Players.LocalPlayer
@@ -263,7 +270,8 @@ function PetFollowController.start()
 
         -- Floating combat text: the damage number (or MISS) pops + rises above the target.
         if ctCfg.enabled ~= false then
-            local pos = (target.PrimaryPart and target.PrimaryPart.Position) or target:GetPivot().Position
+            local pos = (target.PrimaryPart and target.PrimaryPart.Position)
+                or target:GetPivot().Position
             local up = 3
             local okE, ext = pcall(function()
                 return target:GetExtentsSize()
@@ -503,8 +511,11 @@ function PetFollowController.start()
             end
             local face = facingFor(cur, curPos, newPos, restDir)
             local cleanPivot = CFrame.lookAt(newPos, newPos + face)
-            local stepDist =
-                (Vector3.new(newPos.X, 0, newPos.Z) - Vector3.new(curPos.X, 0, curPos.Z)).Magnitude
+            local stepDist = (Vector3.new(newPos.X, 0, newPos.Z) - Vector3.new(
+                curPos.X,
+                0,
+                curPos.Z
+            )).Magnitude
             applyMotion(model, cleanPivot, stepDist, anim)
         end
 
@@ -526,9 +537,18 @@ function PetFollowController.start()
             end
             local posNV = pet:FindFirstChild("PositionNumber")
             local index = (posNV and posNV.Value > 0) and posNV.Value or slot
+            -- A kiter snipes from the player formation ONLY while its target is within range of
+            -- the formation; if the target is farther than attack_range it advances to engage
+            -- (joins the attack group, holding at its standoff). Decision is target-vs-formation
+            -- (stable) so it doesn't flip-flop as the pet moves.
+            local kiteSnipe = false
             if breakable and roleKites(pet) then
-                -- Ranged: stays in the player formation (so a chasing enemy must close on
-                -- it) and fires from there — but faces the target it's sniping.
+                local c = breakable:GetPivot().Position
+                local d = Vector3.new(cf.Position.X - c.X, 0, cf.Position.Z - c.Z)
+                kiteSnipe = d.Magnitude <= attackRangeOf(pet)
+            end
+            if kiteSnipe then
+                -- Ranged in range: hold the player formation and fire, facing the target.
                 table.insert(followers, { pet = pet, index = index })
                 kiterFace[pet] = breakable
             elseif breakable then
