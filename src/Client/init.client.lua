@@ -185,6 +185,19 @@ do
     end
 end
 
+-- Reactive combat auras: watches the combat attributes PowerService sets (CombatShield,
+-- DefenseBuffUntil, HealFxUntil, player PetDamageBuffUntil, enemy Vulnerable/RootedUntil) and
+-- attaches CombatFX so powers read on the battlefield (shield bubble + armor reskin, buff/heal
+-- auras on pets, debuff auras on enemies).
+do
+    local ok, err = pcall(function()
+        require(script.Systems.CombatAuraController).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start CombatAuraController", { error = tostring(err) })
+    end
+end
+
 -- Studio-only: bridge that lets AutomationService disable/enable local controls
 -- during automated movement (see AutomationControlBridge).
 if RunService:IsStudio() then

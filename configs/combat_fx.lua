@@ -53,6 +53,16 @@ return {
             desert = "rock",
         },
 
+        -- Element -> armor reskin (configs/combat_fx.lua reskins): when a pet gains a shield in
+        -- live combat, CombatAuraController stones it out in its biome armor (grass->stone slate,
+        -- lava->cracked lava, ice->glacier, desert->sandstone) under the shield bubble.
+        element_reskin = {
+            grass = "stone",
+            lava = "lava",
+            ice = "ice",
+            desert = "sand",
+        },
+
         -- Per-element STAT modifiers (CombatOrigin.statMod). These give each origin a combat
         -- identity on top of its look, kept in a TIGHT band so no element dominates (avg ~1.0):
         --   attack_mult — multiplies the pet's outgoing damage (PetFollowService:_mine)
