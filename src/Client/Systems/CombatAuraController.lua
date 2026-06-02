@@ -82,18 +82,28 @@ local function remaining(entity, attr)
 end
 
 -- ===== Pets =====
-local function refreshShield(pet)
-    local shield = pet:GetAttribute("CombatShield") or 0
-    if shield > 0 then
-        if not (handles[pet] and handles[pet].shield) then
-            -- persists (duration 0) until the shield depletes; element bubble + armor reskin.
+-- A pet is "armored" while EITHER defensive power family is active:
+--   absorb (CombatShield > 0, e.g. Stone Skin / Ice Armor / Dune Shield / Ember Ward) — depletes
+--     as it soaks hits, so the look persists (duration 0) until it hits zero, OR
+--   defense_buff (DefenseBuffUntil in the future, e.g. Bulwark) — a timed team hardening.
+-- Either one shows the element shield bubble + armor reskin. The look attaches once on the
+-- bare->armored transition and clears on armored->bare (so CombatShield ticking down as it
+-- absorbs doesn't re-pop the bubble every hit).
+local function isArmored(pet)
+    return (pet:GetAttribute("CombatShield") or 0) > 0 or (pet:GetAttribute("DefenseBuffUntil") or 0) > os.time()
+end
+
+local function refreshArmor(pet)
+    local active = handles[pet] and handles[pet].shield
+    if isArmored(pet) then
+        if not active then
             -- element -> reskin KEY (origin.element_reskin) -> reskin {material,color} (config.reskins).
             local element = elementForPet(pet)
             local reskinKey = originCfg.element_reskin and originCfg.element_reskin[element]
             local reskin = reskinKey and reskinDefs[reskinKey]
             setSlot(pet, "shield", { category = "shield", element = element, reskin = reskin, duration = 0 })
         end
-    else
+    elseif active then
         stopSlot(pet, "shield")
     end
 end
@@ -113,18 +123,25 @@ local function hookPet(pet)
     end
     local list = {}
     conns[pet] = list
+    -- both defensive families -> armor look
     list[#list + 1] = pet:GetAttributeChangedSignal("CombatShield"):Connect(function()
-        refreshShield(pet)
+        refreshArmor(pet)
     end)
     list[#list + 1] = pet:GetAttributeChangedSignal("DefenseBuffUntil"):Connect(function()
-        refreshTimedAura(pet, "DefenseBuffUntil", "defense", "buff")
+        refreshArmor(pet)
+        -- defense_buff is time-gated and expires silently: re-check when it lapses to drop the armor.
+        local secs = remaining(pet, "DefenseBuffUntil")
+        if secs > 0 then
+            task.delay(secs + 0.1, function()
+                refreshArmor(pet)
+            end)
+        end
     end)
     list[#list + 1] = pet:GetAttributeChangedSignal("HealFxUntil"):Connect(function()
         refreshTimedAura(pet, "HealFxUntil", "heal", "heal")
     end)
     -- catch any already-active state at hook time
-    refreshShield(pet)
-    refreshTimedAura(pet, "DefenseBuffUntil", "defense", "buff")
+    refreshArmor(pet)
     refreshTimedAura(pet, "HealFxUntil", "heal", "heal")
 end
 
