@@ -366,6 +366,11 @@ function PetFollowService:_mine(player, pet, breakable)
     dmg = dmg * roll.multiplier
     pet:SetAttribute("LastHitCrit", roll.crit) -- for floating-text feedback (later)
 
+    -- Fire-rate <-> damage pacing: harder hits on a slower cadence (or vice versa). damage_mult
+    -- here, interval_mult on _nextHit below; equal values keep DPS constant.
+    local pacing = self._combatConfig.pet_attack_pacing or {}
+    dmg = dmg * (tonumber(pacing.damage_mult) or 1)
+
     dmg = math.floor(dmg + 0.5)
     local applied = PetCombat.applyDamage(hp, dmg)
     breakable:SetAttribute("HP", applied.hp)
@@ -396,7 +401,8 @@ function PetFollowService:_mine(player, pet, breakable)
         nv.Value += applied.contributed
     end
 
-    self._nextHit[pet] = now + combat:ResolvePetAttackInterval(player, ctx)
+    self._nextHit[pet] = now
+        + combat:ResolvePetAttackInterval(player, ctx) * (tonumber(pacing.interval_mult) or 1)
 
     -- Drive the attack VISUAL off the real hit: tell the owning client to play this pet's
     -- effect (bolt/projectile for ranged, impact for melee) at this exact moment + target, so

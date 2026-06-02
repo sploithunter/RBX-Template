@@ -23,6 +23,17 @@ return {
 
     pet_down_threshold_factor = 1.0,
 
+    -- Pet attack pacing (fire-rate <-> damage tradeoff). Applied to every pet swing in
+    -- PetFollowService:_mine: the per-pet attack interval is multiplied by interval_mult
+    -- (>1 = slower swings) and per-swing damage by damage_mult (>1 = harder hits). Setting
+    -- BOTH to the same value keeps DPS constant while changing the feel — e.g. { 2, 2 } =
+    -- half as many hits, each twice as big (net-same DPS, punchier + more readable). 1 = no-op.
+    -- Lets us "slow down how fast things shoot" without changing balance; tune freely.
+    pet_attack_pacing = {
+        interval_mult = 1.0,
+        damage_mult = 1.0,
+    },
+
     -- Defensive stat (armor curve). Damage is reduced by armor/(armor+k): a pet's
     -- Defense attribute mitigates enemy hits, an enemy's Armor mitigates pet damage.
     -- At armor == k the hit is halved; diminishing returns, never full immunity.
