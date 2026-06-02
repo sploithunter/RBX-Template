@@ -267,6 +267,9 @@ return {
             frost = { colors = { { 150, 220, 255 }, { 225, 245, 255 } }, size = 1.4, travel_time = 0.2, burst = 3, sparks = 8, impact = "shatter", impact_crit = "big" },
             ice_shard = { colors = { { 170, 225, 255 }, { 235, 250, 255 } }, size = 1.1, travel_time = 0.13, burst = 3, sparks = 6, impact = "shatter", impact_crit = "big" },
             poison = { colors = { { 120, 230, 90 }, { 175, 255, 120 } }, size = 1.5, travel_time = 0.22, burst = 3.5, sparks = 8 },
+            -- HEAL bolt: a soft green/gold orb that blooms (not explodes) on the ally. Used by
+            -- the CombatFX heal category for single-target heals (ranged support + touch-heal).
+            heal = { colors = { { 120, 230, 120 }, { 220, 255, 200 } }, size = 1.2, travel_time = 0.16, burst = 3, sparks = 10, impact = "bloom", impact_crit = "bloom" },
         },
         -- Beam theme (kind = "beam"): instant laser that flashes + fades.
         beam = { colors = { { 255, 70, 70 } }, thickness = 0.5, duration = 0.18, sparks = 5 },

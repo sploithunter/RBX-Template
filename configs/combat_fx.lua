@@ -35,6 +35,33 @@ return {
                 -- heal aura: warm restorative gold (heal reads warm even from a lava origin)
                 heal = { colors = { { 255, 220, 120 }, { 180, 255, 170 } }, rate = 14, rise = true, size = 0.7, light_emission = 0.5 },
             },
+            grass = {
+                -- nature growth — rising leafy green motes
+                buff = { colors = { { 90, 210, 80 }, { 180, 245, 130 } }, rate = 18, rise = true, size = 0.8, light_emission = 0.35 },
+                -- wither — sinking sickly brown/yellow
+                debuff = { colors = { { 110, 130, 50 }, { 70, 80, 40 } }, rate = 14, rise = false, size = 0.8, light_emission = 0.1 },
+                shield = { colors = { { 110, 220, 90 } }, transparency = 0.5, light_emission = 0.3 },
+                damage = { colors = { { 120, 230, 90 }, { 200, 255, 140 } }, rate = 22, rise = true, size = 0.7, light_emission = 0.4 },
+                heal = { colors = { { 130, 240, 130 }, { 220, 255, 200 } }, rate = 14, rise = true, size = 0.7, light_emission = 0.5 },
+            },
+            ice = {
+                -- frost — rising pale crystals
+                buff = { colors = { { 150, 220, 255 }, { 235, 250, 255 } }, rate = 18, rise = true, size = 0.7, light_emission = 0.45 },
+                -- chill — sinking deep-blue mist
+                debuff = { colors = { { 60, 110, 170 }, { 120, 160, 200 } }, rate = 14, rise = false, size = 0.9, light_emission = 0.2 },
+                shield = { colors = { { 170, 225, 255 } }, transparency = 0.45, light_emission = 0.45 },
+                damage = { colors = { { 140, 215, 255 }, { 225, 245, 255 } }, rate = 22, rise = true, size = 0.8, light_emission = 0.55 },
+                heal = { colors = { { 190, 245, 220 }, { 230, 255, 235 } }, rate = 14, rise = true, size = 0.7, light_emission = 0.5 },
+            },
+            desert = {
+                -- sand uplift — rising tan grains (earthy, low glow)
+                buff = { colors = { { 215, 185, 120 }, { 245, 225, 170 } }, rate = 18, rise = true, size = 0.8, light_emission = 0.15 },
+                -- sandblast debuff — sinking dusty brown
+                debuff = { colors = { { 150, 120, 80 }, { 90, 70, 50 } }, rate = 16, rise = false, size = 0.9, light_emission = 0.1 },
+                shield = { colors = { { 205, 175, 120 } }, transparency = 0.4, light_emission = 0.15 },
+                damage = { colors = { { 200, 165, 110 }, { 235, 205, 150 } }, rate = 20, rise = true, size = 0.85, light_emission = 0.2 },
+                heal = { colors = { { 235, 220, 150 }, { 215, 255, 190 } }, rate = 14, rise = true, size = 0.7, light_emission = 0.4 },
+            },
         },
     },
 }

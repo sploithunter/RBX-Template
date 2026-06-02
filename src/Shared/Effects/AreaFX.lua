@@ -383,6 +383,18 @@ local EFFECTS = {
         groundRing(pos, c2, mat, radius * 2, life)
         debris(pos, c1, c2, mat, 10, radius, life)
     end,
+    -- HEAL self: a gentle nova — soft dome + ring + rising sparkles (restorative, not explosive).
+    heal_self = function(pos, c1, c2, mat, radius, life)
+        groundRing(pos, c2, mat, radius * 1.9, life)
+        dome(pos, c1, mat, radius * 0.65, life, 0.72)
+        swirlMotes(pos, c1, mat, 18, radius, radius * 0.9, life + 0.1)
+    end,
+    -- HEAL targeted: a soft uplift at the point — rising column + ring + sparkles (cast tell handled).
+    heal_targeted = function(pos, c1, c2, mat, radius, life)
+        column(pos, c1, mat, radius * 1.2, life * 0.7)
+        groundRing(pos, c2, mat, radius * 2, life)
+        swirlMotes(pos, c1, mat, 14, radius, radius * 0.9, life)
+    end,
     -- LAVA self: Fire ring — a circle of REAL fire around the caster + an ember particle poof.
     lava_self = function(pos, c1, c2, mat, radius, life)
         groundRing(pos, c1, mat, radius * 1.7, life)

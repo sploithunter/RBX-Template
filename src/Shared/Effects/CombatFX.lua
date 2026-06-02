@@ -25,7 +25,6 @@
 
 local Debris = game:GetService("Debris")
 local TweenService = game:GetService("TweenService")
-local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RangedFX = require(ReplicatedStorage.Shared.Effects.RangedFX)
@@ -182,11 +181,22 @@ end
 
 -- Resolve the RangedFX kind for a single-target attack spec.
 local function rangedKind(spec)
+    if spec.category == "heal" then
+        return "heal" -- green heal-bolt that blooms on the ally (both origins)
+    end
     if spec.origin == "upfront" then
         return "melee"
     end
-    -- TODO(heal): a dedicated heal-bolt kind; for now ranged heal falls back to the element bolt.
     return RANGED_KIND[spec.element] or "fireball"
+end
+
+-- AreaFX skin for an area spec: the heal category uses the dedicated "heal" theme/effects
+-- (green nova / splash); everything else uses the biome element.
+local function areaElement(spec)
+    if spec.category == "heal" then
+        return "heal"
+    end
+    return spec.element
 end
 
 -- Play a one-shot or attached effect from a spec. ctx = { caster, target, point }.
@@ -213,13 +223,13 @@ function CombatFX.play(spec, ctx)
         if not tp then
             return false
         end
-        return AreaFX.Play(areaCfg, spec.element, "targeted", cp or tp, tp)
+        return AreaFX.Play(areaCfg, areaElement(spec), "targeted", cp or tp, tp)
     elseif pattern == "pbaoe" then
         local cp = (casterPart and casterPart.Position) or ctx.point
         if not cp then
             return false
         end
-        return AreaFX.Play(areaCfg, spec.element, "self", cp)
+        return AreaFX.Play(areaCfg, areaElement(spec), "self", cp)
     end
 
     return false

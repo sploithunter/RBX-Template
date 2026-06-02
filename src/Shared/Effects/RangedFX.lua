@@ -296,6 +296,14 @@ RangedFX.IMPACTS = {
         spawnSparks(pos, c1, c2, bits, scale * 0.24, scale * 1.2, 0.5) -- rubble
         spawnSmoke(pos, scale * 1.5, 0.75, Color3.fromRGB(196, 170, 120)) -- tan dust cloud
     end,
+    -- bloom (HEAL): a soft flash + gentle ring + sparkles — restorative, not explosive.
+    bloom = function(pos, c1, c2, opts)
+        local scale = (opts and tonumber(opts.scale)) or 3
+        local sparks = (opts and tonumber(opts.sparks)) or 10
+        spawnFlash(pos, c1, c2, scale * 0.8, 0.3)
+        spawnShockwave(pos, c2, scale * 1.6, 0.45)
+        spawnSparks(pos, c1, c2, sparks, scale * 0.16, scale * 1.0, 0.5)
+    end,
 }
 
 -- Play a named impact at `pos`. c1/c2 accept Color3 or {r,g,b}. Unknown name -> small.
