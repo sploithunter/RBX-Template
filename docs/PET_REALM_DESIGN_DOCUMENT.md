@@ -985,6 +985,11 @@ This respects the no-death rule while still giving combat real stakes (your A-te
 
 If a power deals damage directly, the game has crossed into ARPG territory. This firewall is non-negotiable.
 
+**Reaffirmed 2026-06-02** (see 17.8): the clinching argument is risk symmetry — pets are the only ones
+who can be damaged/downed, so they must be the only ones who deal damage, or the pet-collection economy
+becomes cosmetic. "Damage" capstones (e.g. Cataclysm) are **pet-damage amplification** anchored to the
+pets' targets and scaled by squad attack power — never a standalone player hit.
+
 ---
 
 ## 17. The Four Archetypes
@@ -1090,6 +1095,47 @@ Each archetype's power pool has roughly 9 powers across 5 tiers:
 Players end with **5 powers** out of 9 possible. Two players of the same archetype can have very different builds.
 
 **[TEMPLATE]** Power pool structure (tiers, choices per tier, gating levels) is config-driven.
+
+### 17.8 Signature Powers & Role-King Capstones — REVISED (2026-06-02)
+
+> This subsection supersedes the per-archetype lists in 17.3–17.6 as the **identity layer** of the
+> power system. The target is a **20-power pool per archetype** of which the player unlocks ~10 via
+> level-up (City-of-Heroes style: choices are permanent, no respec yet). That pool is built as:
+> **(a)** the 3 *exclusive signatures* below, **(b)** a set of *shared templates* skinned per element
+> (built once, reused across archetypes), and **(c)** elemental rock-paper-scissors tuning
+> (`CombatElementResonance`, separate from the heaven/hell `ElementResonance`). (b) and (c) are future
+> work; the signatures are locked here.
+
+**Firewall reaffirmed (see 16.5), with the damage clarification.** Pets remain the *sole* source of
+damage and the *sole* bearers of combat risk (they take aggro and can be downed; the player cannot be
+damaged). This is non-negotiable for a decisive reason: a player who can deal damage but cannot take
+it has no skin in the game and could clear content without pets — which makes the entire pet-collection
+economy cosmetic. Therefore **no player power deals standalone damage.** A power that reads as "damage"
+(e.g. Cataclysm) is an **amplification of pet damage** anchored to the pets' own targets — the burst is
+scaled by the squad's attack power and credited to the pets. A weak squad → a weak meteor.
+
+**Targeting model — the pet picks the target; the player augments it.** No reticle, no aim. Delivery types:
+- **single** — affects the enemy a pet is currently attacking (the squad focus).
+- **targeted AoE** — an AoE centered on what the squad is attacking.
+- **team AoE** — *every* pet erupts simultaneously around its own target.
+- **friendly** — applies to your own pets (heals/buffs/shields); some are tap-a-pet (Verdant Bloom).
+- **hybrid** (e.g. a life-transfer that damages + heals) rides single or AoE.
+
+Each archetype has **3 exclusive signatures** (not available to any other archetype): 2 mid-tier
+signatures + 1 high-level **capstone** that crowns it king of one role. The four capstones cover
+heal / buff / debuff / damage, so a 4-player team naturally wants one of each.
+
+| Archetype | Signature | Signature | ✦ Capstone (role-king) |
+|---|---|---|---|
+| 🟢 **Geomancer** (earth — defense) | **Tectonic Bastion** — *friendly*: squad encased in stone, heavy mitigation/absorb, briefly rooted | **Fissure** — *targeted AoE*: ground crack → knockdown/root + enemies take increased pet damage | **Verdant Bloom** — HEAL: *tap-a-pet* huge heal + splash heal to nearby pets, very long CD |
+| 🟤 **Sandwalker** (desert — utility) | **Mirage Legion** — *friendly*: sand decoys taunt/soak, squad briefly untargetable | **Quicksand Maw** — *targeted AoE*: pull to center + root + armor shred | **Sirocco** — BUFF: *friendly* squad attack-speed + damage + evasion for a window |
+| 🔵 **Cryomancer** (ice — control) | **Absolute Zero** — *targeted AoE*: mass hard freeze (full stun) | **Shatter** — *single/AoE*: detonate frozen/slowed enemies for massive **pet** damage (amplification payoff) | **Brittle Field** — DEBUFF: *targeted AoE* slow + brittle (enemies take greatly increased pet damage) |
+| 🔴 **Pyromancer** (lava — damage) | **Wildfire** — *single→spreading*: burn mark ramps pet damage and spreads to neighbors (contagion vulnerability) | **Firestorm** — *team AoE*: every pet's attacks erupt with a burning cleave / flame nova (reshaped from a cone) | **Cataclysm** — DAMAGE: *targeted AoE* meteor; burst = multiple of squad attack power (pet-credited) + lingering molten pool that amplifies pet damage |
+
+**New server mechanics these require** (signatures earn bespoke logic): pet-scaled "amplified-damage"
+burst tied to the squad's attack total; encase-root (Bastion); spreading/contagion vulnerability
+(Wildfire); conditional detonate on a CC'd target (Shatter); decoy entities (Mirage); team-AoE
+every-pet emission (Firestorm); tap-a-pet friendly targeting + splash (Verdant Bloom).
 
 ---
 
