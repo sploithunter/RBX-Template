@@ -13,11 +13,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DevSpawnPanel = {}
 local started = false
 
--- Each button: a label + the enemy id (configs/enemies.lua) + how many to spawn.
+-- Each button: a label + the args passed to combat.spawnEnemy. spread = ring radius so they don't
+-- stack; forward = push further out (the "Far Dummy" is an out-of-AoE-range control).
 local SPAWNS = {
-    { label = "🎯 Dummy ×3", enemyId = "training_dummy", count = 3, color = { 90, 140, 200 } },
-    { label = "👹 Imp ×3", enemyId = "lava_imp", count = 3, color = { 200, 90, 70 } },
-    { label = "🐻 Bear", enemyId = "raging_bear", count = 1, color = { 170, 110, 60 } },
+    { label = "🎯 Dummy ×3", args = { enemyId = "training_dummy", count = 3, spread = 7 }, color = { 90, 140, 200 } },
+    { label = "🎯 Far Dummy", args = { enemyId = "training_dummy", count = 1, forward = 40 }, color = { 70, 110, 160 } },
+    { label = "👹 Imp ×3", args = { enemyId = "lava_imp", count = 3, spread = 7 }, color = { 200, 90, 70 } },
+    { label = "🐻 Bear", args = { enemyId = "raging_bear", count = 1 }, color = { 170, 110, 60 } },
 }
 
 local function rgb(t)
@@ -90,7 +92,7 @@ function DevSpawnPanel.start()
 
     for i, s in ipairs(SPAWNS) do
         button(i, s.label, rgb(s.color), function()
-            fire("combat.spawnEnemy", { enemyId = s.enemyId, count = s.count })
+            fire("combat.spawnEnemy", s.args)
         end)
     end
     button(#SPAWNS + 1, "✖ Clear", Color3.fromRGB(80, 80, 100), function()

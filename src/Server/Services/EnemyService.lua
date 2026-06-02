@@ -1247,7 +1247,9 @@ function EnemyService:Start()
 end
 
 -- Public: spawn a stationary enemy near the player and engage their pets.
-function EnemyService:SpawnEnemy(player, enemyId)
+-- opts (optional, for test spreads): { forward = studs, right = studs } offsets the spawn in the
+-- player's local frame, on top of the base spawn distance.
+function EnemyService:SpawnEnemy(player, enemyId, opts)
     enemyId = tostring(enemyId or "lava_imp")
     local def = self._enemiesConfig.enemies and self._enemiesConfig.enemies[enemyId]
     if not def then
@@ -1264,7 +1266,10 @@ function EnemyService:SpawnEnemy(player, enemyId)
     local dist = tonumber(spawnCfg.distance) or 16
     local flat = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
     flat = flat.Magnitude > 0.01 and flat.Unit or Vector3.new(0, 0, -1)
-    local position = hrp.Position + flat * dist + Vector3.new(0, 3, 0)
+    local right = Vector3.new(flat.Z, 0, -flat.X) -- perpendicular on the ground plane
+    local fwd = (opts and tonumber(opts.forward)) or 0
+    local rt = (opts and tonumber(opts.right)) or 0
+    local position = hrp.Position + flat * (dist + fwd) + right * rt + Vector3.new(0, 3, 0)
 
     self._nextId += 1
     local targetId = self._nextId

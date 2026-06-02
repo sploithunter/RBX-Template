@@ -1312,6 +1312,8 @@ function GameAPIService:_registerTestCommands()
             return Validators.fields(args, {
                 enemyId = { type = "string", optional = true },
                 count = { type = "int", min = 1, max = 10, optional = true },
+                spread = { type = "number", min = 0, optional = true }, -- ring radius (studs)
+                forward = { type = "number", optional = true }, -- extra forward distance (far control)
             })
         end,
         handler = function(context, args)
@@ -1323,9 +1325,18 @@ function GameAPIService:_registerTestCommands()
                 return { ok = false, reason = "service_unavailable" }
             end
             local count = math.clamp(tonumber(args.count) or 1, 1, 10)
+            -- spread the spawns around a ring so they don't stack (default ~6 studs for count>1);
+            -- `forward` pushes the whole group further out (for an out-of-AoE-range control dummy).
+            local spread = tonumber(args.spread) or (count > 1 and 6 or 0)
+            local fwdBase = tonumber(args.forward) or 0
             local spawned, last = 0, nil
-            for _ = 1, count do
-                last = enemyService:SpawnEnemy(context.player, args.enemyId or "lava_imp")
+            for i = 1, count do
+                local angle = (count > 1) and ((i - 1) / count) * 2 * math.pi or 0
+                local off = {
+                    forward = fwdBase + math.cos(angle) * spread,
+                    right = math.sin(angle) * spread,
+                }
+                last = enemyService:SpawnEnemy(context.player, args.enemyId or "lava_imp", off)
                 if type(last) == "table" and last.ok ~= false then
                     spawned += 1
                 end
