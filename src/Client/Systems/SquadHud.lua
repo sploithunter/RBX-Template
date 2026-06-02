@@ -130,7 +130,9 @@ local PET_EFFECTS = {
     -- Instant effects flash a blinking pulse badge (no countdown) for their FX window so
     -- you can see what just happened. heal = the support/heal-power tell (HealFxUntil).
     { key = "heal", source = "pet", untilAttr = "HealFxUntil", color = Color3.fromRGB(90, 210, 110), label = "HEAL", icon = POWER_ICONS.actions.heal, pulse = true },
-    -- (shield is now the thin blue secondary bar on the card, not a badge)
+    -- Armor/absorb shield: now time-limited (CombatShieldUntil), so it shows as a countdown badge
+    -- on the card (the thin blue bar still shows the remaining pool magnitude).
+    { key = "shield", source = "pet", untilAttr = "CombatShieldUntil", color = Color3.fromRGB(235, 200, 70), label = "ARM", icon = POWER_ICONS.status.shield },
 }
 
 local function activeEffectsFor(pet, player, now)

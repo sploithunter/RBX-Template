@@ -28,6 +28,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CombatFX = require(ReplicatedStorage.Shared.Effects.CombatFX)
 local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
+local PowerIcons = require(ReplicatedStorage.Configs:WaitForChild("power_icons"))
 
 local CombatAuraController = {}
 
@@ -61,15 +62,13 @@ local function showArmorIcon(pet)
     bb.Size = UDim2.fromOffset(34, 34)
     bb.StudsOffset = Vector3.new(0, up, 0)
     bb.Adornee = pp
-    local lbl = Instance.new("TextLabel")
-    lbl.BackgroundTransparency = 1
-    lbl.Size = UDim2.fromScale(1, 1)
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextScaled = true
-    lbl.Text = "🛡️"
-    lbl.TextColor3 = Color3.fromRGB(235, 200, 70)
-    lbl.TextStrokeTransparency = 0.4
-    lbl.Parent = bb
+    -- the real shield art (same asset the squad card uses), not a platform emoji
+    local img = Instance.new("ImageLabel")
+    img.BackgroundTransparency = 1
+    img.Size = UDim2.fromScale(1, 1)
+    img.Image = (PowerIcons.status and PowerIcons.status.shield) or ""
+    img.ImageColor3 = Color3.fromRGB(235, 200, 70) -- gold tint
+    img.Parent = bb
     bb.Parent = pp
     armorIcons[pet] = bb
 end
