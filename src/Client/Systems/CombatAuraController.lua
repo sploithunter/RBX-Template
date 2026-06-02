@@ -37,6 +37,52 @@ local started = false
 -- per Instance -> { slot -> handle }; per Instance -> { connections } for cleanup.
 local handles = setmetatable({}, { __mode = "k" })
 local conns = setmetatable({}, { __mode = "k" })
+local armorIcons = setmetatable({}, { __mode = "k" }) -- pet -> BillboardGui (shield icon while armored)
+
+-- A gold shield badge that floats over an armored pet, so "this pet has armor" reads at a glance.
+local function showArmorIcon(pet)
+    if armorIcons[pet] and armorIcons[pet].Parent then
+        return
+    end
+    local pp = pet.PrimaryPart or pet:FindFirstChildWhichIsA("BasePart")
+    if not pp then
+        return
+    end
+    local up = 4
+    local okE, ext = pcall(function()
+        return pet:GetExtentsSize()
+    end)
+    if okE and ext then
+        up = ext.Y * 0.5 + 2
+    end
+    local bb = Instance.new("BillboardGui")
+    bb.Name = "ArmorIcon"
+    bb.AlwaysOnTop = true
+    bb.Size = UDim2.fromOffset(34, 34)
+    bb.StudsOffset = Vector3.new(0, up, 0)
+    bb.Adornee = pp
+    local lbl = Instance.new("TextLabel")
+    lbl.BackgroundTransparency = 1
+    lbl.Size = UDim2.fromScale(1, 1)
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextScaled = true
+    lbl.Text = "🛡️"
+    lbl.TextColor3 = Color3.fromRGB(235, 200, 70)
+    lbl.TextStrokeTransparency = 0.4
+    lbl.Parent = bb
+    bb.Parent = pp
+    armorIcons[pet] = bb
+end
+
+local function hideArmorIcon(pet)
+    local bb = armorIcons[pet]
+    if bb then
+        armorIcons[pet] = nil
+        pcall(function()
+            bb:Destroy()
+        end)
+    end
+end
 
 local originCfg = {}
 local reskinDefs = {} -- config.reskins: reskin key ("stone"/"lava"/...) -> { material, color }
@@ -103,8 +149,12 @@ local function refreshArmor(pet)
             local reskin = reskinKey and reskinDefs[reskinKey]
             setSlot(pet, "shield", { category = "shield", element = element, reskin = reskin, duration = 0 })
         end
+        showArmorIcon(pet)
     elseif active then
         stopSlot(pet, "shield")
+        hideArmorIcon(pet)
+    else
+        hideArmorIcon(pet)
     end
 end
 
@@ -160,6 +210,7 @@ local function unhook(entity)
         end
         handles[entity] = nil
     end
+    hideArmorIcon(entity)
 end
 
 -- Player-level damage buff -> a buff aura on every owned pet for the remaining duration.

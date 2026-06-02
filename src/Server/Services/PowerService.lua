@@ -172,13 +172,27 @@ function PowerService:_applyEffect(player, kind, now)
         player:SetAttribute("PetDamageBuff", mag)
         player:SetAttribute("PetDamageBuffUntil", now + dur)
     elseif family == "absorb" then
-        -- shield: add an absorption pool the squad soaks damage with before endurance
+        -- shield: add an absorption pool the squad soaks damage with before endurance. With a
+        -- duration it ALSO times out (no permanent armor): stamp CombatShieldUntil + schedule a
+        -- clear; a re-cast pushes the stamp later so an older timer won't drop a fresh shield.
         local pets = Workspace:FindFirstChild("PlayerPets")
             and Workspace.PlayerPets:FindFirstChild(player.Name)
         if pets then
             for _, pet in ipairs(pets:GetChildren()) do
                 if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
                     pet:SetAttribute("CombatShield", (pet:GetAttribute("CombatShield") or 0) + mag)
+                    if dur and dur > 0 then
+                        pet:SetAttribute("CombatShieldUntil", now + dur)
+                        task.delay(dur, function()
+                            if
+                                pet.Parent
+                                and (pet:GetAttribute("CombatShieldUntil") or 0) <= os.time()
+                            then
+                                pet:SetAttribute("CombatShield", 0)
+                                pet:SetAttribute("CombatShieldUntil", 0)
+                            end
+                        end)
+                    end
                 end
             end
         end
