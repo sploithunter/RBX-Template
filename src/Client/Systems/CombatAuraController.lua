@@ -39,6 +39,7 @@ local handles = setmetatable({}, { __mode = "k" })
 local conns = setmetatable({}, { __mode = "k" })
 
 local originCfg = {}
+local reskinDefs = {} -- config.reskins: reskin key ("stone"/"lava"/...) -> { material, color }
 
 local function elementForPet(pet)
     local petEl = originCfg.pettype_element and originCfg.pettype_element[pet:GetAttribute("PetType")]
@@ -86,8 +87,10 @@ local function refreshShield(pet)
     if shield > 0 then
         if not (handles[pet] and handles[pet].shield) then
             -- persists (duration 0) until the shield depletes; element bubble + armor reskin.
+            -- element -> reskin KEY (origin.element_reskin) -> reskin {material,color} (config.reskins).
             local element = elementForPet(pet)
-            local reskin = originCfg.element_reskin and originCfg.element_reskin[element]
+            local reskinKey = originCfg.element_reskin and originCfg.element_reskin[element]
+            local reskin = reskinKey and reskinDefs[reskinKey]
             setSlot(pet, "shield", { category = "shield", element = element, reskin = reskin, duration = 0 })
         end
     else
@@ -218,6 +221,7 @@ function CombatAuraController.start()
 
     local cfg = require(ReplicatedStorage.Configs:WaitForChild("combat_fx"))
     originCfg = cfg.origin or {}
+    reskinDefs = cfg.reskins or {}
 
     -- Pets: workspace.PlayerPets[<localPlayer>] (each level appears when pets first spawn).
     whenChild(Workspace, "PlayerPets", function(root)
