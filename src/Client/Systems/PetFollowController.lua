@@ -23,6 +23,7 @@ local Workspace = game:GetService("Workspace")
 local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
 local Gait = require(ReplicatedStorage.Shared.Game.Gait)
 local AttackAnim = require(ReplicatedStorage.Shared.Game.AttackAnim)
+local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local RangedFX = require(ReplicatedStorage.Shared.Effects.RangedFX)
 local FloatingText = require(ReplicatedStorage.Shared.Effects.FloatingText)
 local PetRoles = require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
@@ -171,6 +172,19 @@ function PetFollowController.start()
         boltCfg.target_offset = Vector3.new(o[1] or 0, o[2] or 0, o[3] or 0)
     end
 
+    -- Combat-origin element (CombatOrigin). Each pet fights as its own biome element (interim:
+    -- read from PetType via origin.pettype_element); origin.unify_to_player makes the whole squad
+    -- fight as the player's archetype element instead. The element drives the projectile kind
+    -- (origin.element_kind) and the per-biome melee/impact look (RangedFX melee_by_element).
+    local originCfg = require(ReplicatedStorage.Configs:WaitForChild("combat_fx")).origin or {}
+    local petTypeElement = originCfg.pettype_element or {}
+    local elementKind = originCfg.element_kind or {}
+    local function elementFor(pet)
+        local pe = petTypeElement[pet:GetAttribute("PetType")]
+        local archetype = localPlayer and localPlayer:GetAttribute("Archetype")
+        return CombatOrigin.resolve(pe, archetype, originCfg)
+    end
+
     -- Floating combat text (damage / crit / MISS numbers over the target). Config-driven.
     local ctCfg = config.combat_text or {}
     local function ctRGB(t, dr, dg, db)
@@ -204,18 +218,22 @@ function PetFollowController.start()
             return
         end
         local isCrit = data.crit == true
+        local element = elementFor(pet)
         local kind
         if roleKites(pet) then
+            -- ranged: a per-pet by_type override wins; otherwise the resolved element picks the
+            -- projectile (grass->lightning, lava->fireball, ice->frost, desert->rock).
             kind = (boltCfg.by_type and boltCfg.by_type[pet:GetAttribute("PetType")])
+                or elementKind[element]
                 or boltCfg.kind
                 or "lightning"
             if castLockSeconds > 0 then
                 castLockUntil[pet] = os.clock() + castLockSeconds
             end
         else
-            kind = "melee" -- impact-only at the target (pet is adjacent)
+            kind = "melee" -- impact-only at the target; element picks the biome melee look
         end
-        pcall(RangedFX.Play, pet, boltCfg, target, kind, isCrit)
+        pcall(RangedFX.Play, pet, boltCfg, target, kind, isCrit, element)
 
         -- Floating combat text: the damage number (or MISS) pops + rises above the target.
         if ctCfg.enabled ~= false then
