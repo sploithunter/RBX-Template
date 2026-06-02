@@ -82,15 +82,33 @@ local function enemiesAlive()
     return out
 end
 
--- Is the player's squad engaged with an enemy (a pet fighting something within engage_radius of
--- the squad)? Gates offensive powers — see Cast. Friendly powers don't call this.
+-- Is the player's squad engaged with an enemy? Gates offensive powers — see Cast. Friendly powers
+-- don't call this. Primary signal: a pet is actively attacking an ENEMY (its TargetID is set and
+-- TargetType == "Enemy") — literally "the pet is targeting something", robust to boss size and
+-- distance. Fallback: an alive enemy within engage_radius of the squad (covers the brief window
+-- after an assist target before a pet has latched on).
 function PowerService:_hasEngagedEnemy(player)
+    local pets = Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+
+    -- (a) any pet attacking an enemy
+    if pets then
+        for _, pet in ipairs(pets:GetChildren()) do
+            if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
+                local tid = pet:FindFirstChild("TargetID")
+                local ttype = pet:FindFirstChild("TargetType")
+                if tid and tid.Value ~= 0 and ttype and tostring(ttype.Value) == "Enemy" then
+                    return true
+                end
+            end
+        end
+    end
+
+    -- (b) fallback: an alive enemy near the squad
     local enemies = enemiesAlive()
     if #enemies == 0 then
         return false
     end
-    local pets = Workspace:FindFirstChild("PlayerPets")
-        and Workspace.PlayerPets:FindFirstChild(player.Name)
     local sx, sz, n = 0, 0, 0
     if pets then
         for _, pet in ipairs(pets:GetChildren()) do
