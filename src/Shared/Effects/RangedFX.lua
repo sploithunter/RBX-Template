@@ -545,6 +545,16 @@ function RangedFX.Play(origin, config, target, kind, isCrit)
     if kind == "rock" then
         return playRock(originPart, endPos, config.rock or {}, isCrit, sounds.impact)
     end
+    if kind == "melee" then
+        -- Melee/mining hit: the pet is already adjacent, so no projectile — just an impact at the
+        -- target + the hit sound. Tier scales with crit. Tinted by config.melee.colors.
+        local m = config.melee or {}
+        local cols = m.colors or {}
+        local impactName = isCrit and (m.impact_crit or "medium") or (m.impact or "small")
+        RangedFX.playImpact(impactName, endPos, cols[1] or { 255, 235, 190 }, cols[2] or { 255, 210, 140 }, {})
+        playSoundAt(endPos, sounds.impact)
+        return true
+    end
 
     -- Projectile family: theme comes from config.projectile[kind] (fireball/plasma/frost/...).
     local theme = (config.projectile and config.projectile[kind]) or {}

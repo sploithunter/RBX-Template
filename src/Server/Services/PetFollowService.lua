@@ -397,6 +397,12 @@ function PetFollowService:_mine(player, pet, breakable)
     end
 
     self._nextHit[pet] = now + combat:ResolvePetAttackInterval(player, ctx)
+
+    -- Drive the attack VISUAL off the real hit: tell the owning client to play this pet's
+    -- effect (bolt/projectile for ranged, impact for melee) at this exact moment + target, so
+    -- the animation, impact, sound and crit are the swing that actually happened — not a
+    -- parallel client timer. Owner-only (their pets are positioned locally).
+    Signals.Combat_PetHit:FireClient(player, { pet = pet, target = breakable, crit = roll.crit })
 end
 
 function PetFollowService:_tickPlayer(player)

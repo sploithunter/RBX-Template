@@ -191,7 +191,15 @@ return {
             colorado = "fireball", -- TEST: colorado throws a fireball instead of lightning
         },
 
-        interval = 0.9, -- seconds between bolts while engaged (slowed so each shot reads clearly)
+        -- NOTE: firing cadence is now the SERVER's real attack interval (PetCombat.attackInterval)
+        -- — each visual is driven by an actual hit via Combat_PetHit, not this client timer.
+        -- `interval` is retained only as a legacy/fallback knob and no longer paces the visuals.
+        interval = 0.9,
+
+        -- Melee/mining hit feedback (kind = "melee", fired by Combat_PetHit for non-ranged pets):
+        -- an impact at the target + the hit sound, no projectile (the pet is adjacent). Tier
+        -- scales with crit. colors = { core, accent }.
+        melee = { impact = "small", impact_crit = "medium", colors = { { 255, 235, 190 }, { 255, 210, 140 } } },
 
         -- Sounds played by RangedFX: `delivery` at launch (the firing pet), `impact` at the hit.
         -- An empty id = silent (so sounds can be added as we get them). impact uses the egg-pop

@@ -159,11 +159,11 @@ function PetFollowController.start()
     local faceTurnRate = (config.movement and config.movement.face_turn_rate) or 12
     local faceMoveSpeed = (config.movement and config.movement.face_move_speed) or 2
 
-    -- Ranged pets fire a cosmetic lightning bolt at their target on a cadence. Clone the
-    -- config and rebuild target_offset as a Vector3 (stored as {x,y,z} so the config can
-    -- be required headless, where Vector3 doesn't exist).
+    -- Attack VFX config (RangedFX). Firing is driven by the server's real hit (Combat_PetHit,
+    -- handler below) — not a client timer — so the bolt/impact/sound/crit are the swing that
+    -- actually landed. Clone + rebuild target_offset as a Vector3 (stored {x,y,z} so the config
+    -- stays headless-requireable, where Vector3 doesn't exist).
     local boltCfg = table.clone(config.ranged_bolt or {})
-    local boltInterval = boltCfg.interval or 0.55
     local castLockSeconds = boltCfg.cast_lock_seconds or 0
     if type(boltCfg.target_offset) == "table" then
         local o = boltCfg.target_offset
@@ -174,10 +174,39 @@ function PetFollowController.start()
     local miningFx = config.mining_fx or {}
     local nextMineFx = setmetatable({}, { __mode = "k" }) -- breakable model -> next os.clock to fire
 
-    local nextBolt = setmetatable({}, { __mode = "k" }) -- pet model -> next os.clock to fire
     -- Cast-lock: a ranged pet that just fired can't move until this clock — a melee enemy
-    -- gets a window to close the gap (counterplay to kiting).
+    -- gets a window to close the gap (counterplay to kiting). Set when the pet's hit lands.
     local castLockUntil = setmetatable({}, { __mode = "k" })
+
+    -- Server-driven attack visuals: the server fires Combat_PetHit on each real pet swing.
+    -- Ranged pets (role.kite) launch their configured projectile/bolt at the target; everyone
+    -- else plays a "melee" impact at the target. crit drives the bigger impact tier; the sound
+    -- + impact ride the actual hit. Replaces the old client-side bolt timer.
+    Signals.Combat_PetHit.OnClientEvent:Connect(function(data)
+        if type(data) ~= "table" then
+            return
+        end
+        local pet, target = data.pet, data.target
+        if typeof(pet) ~= "Instance" or typeof(target) ~= "Instance" then
+            return
+        end
+        if not pet.Parent or not target.Parent then
+            return
+        end
+        local isCrit = data.crit == true
+        local kind
+        if roleKites(pet) then
+            kind = (boltCfg.by_type and boltCfg.by_type[pet:GetAttribute("PetType")])
+                or boltCfg.kind
+                or "lightning"
+            if castLockSeconds > 0 then
+                castLockUntil[pet] = os.clock() + castLockSeconds
+            end
+        else
+            kind = "melee" -- impact-only at the target (pet is adjacent)
+        end
+        pcall(RangedFX.Play, pet, boltCfg, target, kind, isCrit)
+    end)
 
     -- OTHER players' pets, server-relayed (the server never relays our own — those stay local).
     local remoteTargets = setmetatable({}, { __mode = "k" }) -- pet model -> latest relayed CFrame
@@ -365,7 +394,6 @@ function PetFollowController.start()
 
         local groups = {} -- id -> { center, pets = {} }   (melee/tank: orbit the target)
         local followers = {}
-        local kiters = {} -- ranged: hold player formation + snipe the target
         local kiterFace = {} -- kiter pet -> its target model (so it faces what it snipes)
         for slot, pet in ipairs(pets) do
             local tid = pet:FindFirstChild("TargetID")
@@ -381,7 +409,6 @@ function PetFollowController.start()
                 -- Ranged: stays in the player formation (so a chasing enemy must close on
                 -- it) and fires from there — but faces the target it's sniping.
                 table.insert(followers, { pet = pet, index = index })
-                table.insert(kiters, { pet = pet, model = breakable })
                 kiterFace[pet] = breakable
             elseif breakable then
                 local g = groups[tid.Value]
@@ -499,29 +526,8 @@ function PetFollowController.start()
             end
         end
 
-        -- Kiters (ranged): held in the player formation above; fire the enchanter
-        -- lightning bolt at their target on cadence from wherever they're standing.
-        if boltCfg.enabled ~= false then
-            local nowC = os.clock()
-            for _, k in ipairs(kiters) do
-                if k.model and k.model.Parent then
-                    if not nextBolt[k.pet] or nowC >= nextBolt[k.pet] then
-                        nextBolt[k.pet] = nowC + boltInterval
-                        if castLockSeconds > 0 then
-                            castLockUntil[k.pet] = nowC + castLockSeconds
-                        end
-                        -- Effect selectable per PetType (by_type) over the default kind.
-                        local kind = (boltCfg.by_type and boltCfg.by_type[k.pet:GetAttribute("PetType")])
-                            or boltCfg.kind
-                            or "lightning"
-                        -- Tie blast size to the hit: the server stamps LastHitCrit on the pet each
-                        -- hit; a crit fires the bigger impact tier.
-                        local isCrit = k.pet:GetAttribute("LastHitCrit") == true
-                        pcall(RangedFX.Play, k.pet, boltCfg, k.model, kind, isCrit)
-                    end
-                end
-            end
-        end
+        -- (Attack visuals are no longer fired on a client timer here — they're driven by the
+        --  server's real hit via Combat_PetHit, connected once below in start().)
 
         -- Throttled: report this player's pet positions to the server (drives the mining gate;
         -- foundation for multiplayer pet visibility). Positions are post-move (this frame).
