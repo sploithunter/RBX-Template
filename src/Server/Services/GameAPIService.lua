@@ -1368,6 +1368,37 @@ function GameAPIService:_registerTestCommands()
         end,
     })
 
+    -- Combat: set the target-priority mode on the player's pets (all, or one PetType). Read by
+    -- EnemyService's targeting (src/Shared/Game/TargetPriority.lua); invalid modes fall back to the
+    -- squad default. This is the per-pet override the player picks.
+    self._bus:register("combat.setTargetPriority", {
+        description = "Set a pet target-priority mode (aggro/closest/furthest/strongest/weakest/team_threat).",
+        validate = function(args)
+            return Validators.fields(args, {
+                mode = "string",
+                petType = { type = "string", optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local folder = workspace:FindFirstChild("PlayerPets")
+                and workspace.PlayerPets:FindFirstChild(context.player.Name)
+            if not folder then
+                return { ok = false, reason = "no_pets" }
+            end
+            local set = 0
+            for _, pet in ipairs(folder:GetChildren()) do
+                if
+                    pet:IsA("Model")
+                    and (not args.petType or pet:GetAttribute("PetType") == args.petType)
+                then
+                    pet:SetAttribute("TargetPriority", args.mode)
+                    set += 1
+                end
+            end
+            return { ok = true, set = set, mode = args.mode }
+        end,
+    })
+
     -- Respec ritual (Feature 13): reset powers + slots, optionally re-pick archetype.
     self._bus:register("game.respec", {
         description = "[test] Respec: reset powers/slots; optional new archetype.",

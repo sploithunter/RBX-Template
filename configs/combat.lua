@@ -45,6 +45,11 @@ return {
     -- range (combat outranks auto-mine so pets don't scatter to crystals).
     engagement = {
         aggro_range = 45, -- enemy engages a player's squad within this (studs)
+        -- Which in-range enemy each pet attacks when there's no player assist target. Per-pet
+        -- override via the pet's TargetPriority attribute (src/Shared/Game/TargetPriority.lua);
+        -- this is the squad default. Modes: aggro (most angry at the pet, else closest) /
+        -- closest / furthest / strongest / weakest / team_threat.
+        target_priority = { default = "aggro" },
         attack_range = 11, -- enemy damages a pet within this of itself (studs)
         -- Chase + perception (slice 2). An idle enemy NOTICES a player by distance
         -- x probability (rolled every perception_interval; certain on top, zero past

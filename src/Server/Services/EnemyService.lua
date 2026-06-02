@@ -31,6 +31,7 @@ local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
 local ActiveSquad = require(ReplicatedStorage.Shared.Game.ActiveSquad)
 local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
+local TargetPriority = require(ReplicatedStorage.Shared.Game.TargetPriority)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local EnemyService = {}
@@ -1118,25 +1119,33 @@ function EnemyService:_assignPetTargets(eng)
             then
                 local chosen
                 if assist and assist ~= 0 and live[assist] then
-                    chosen = assist -- player-directed
+                    chosen = assist -- player-directed (assist target always wins)
                 else
-                    local bestAggro = 0
+                    -- per-pet target priority (TargetPriority): build the in-range candidates with
+                    -- the data the modes need, then pick by the pet's mode (attr -> config default).
+                    local petPos = self:_petPosition(pet, pfs)
+                    local candidates = {}
                     for etid, entry in pairs(live) do
-                        local a = AggroTable.get(entry.aggro, pet)
-                        if a > bestAggro then
-                            bestAggro, chosen = a, etid
+                        local d = (entry.pos - petPos).Magnitude
+                        if d <= aggroRange then
+                            local edef = self._enemiesConfig.enemies
+                                and self._enemiesConfig.enemies[entry.enemyId]
+                            candidates[#candidates + 1] = {
+                                id = etid,
+                                distance = d,
+                                strength = (entry.model and entry.model:GetAttribute("Level")) or 1,
+                                hp = (entry.model and entry.model:GetAttribute("HP")) or 0,
+                                aggro = AggroTable.get(entry.aggro, pet),
+                                teamDamage = (edef and edef.attack and edef.attack.damage) or 0,
+                            }
                         end
                     end
-                    if not chosen then -- nobody's mad at this pet yet: engage the nearest
-                        local petPos = self:_petPosition(pet, pfs)
-                        local bestD
-                        for etid, entry in pairs(live) do
-                            local d = (entry.pos - petPos).Magnitude
-                            if d <= aggroRange and (not bestD or d < bestD) then
-                                bestD, chosen = d, etid
-                            end
-                        end
+                    local mode = pet:GetAttribute("TargetPriority")
+                    if not TargetPriority.isMode(mode) then
+                        mode = (eng.target_priority and eng.target_priority.default)
+                            or TargetPriority.DEFAULT
                     end
+                    chosen = TargetPriority.pick(candidates, mode)
                 end
                 if chosen then
                     if tt.Value ~= "Enemy" or tid.Value ~= chosen then
