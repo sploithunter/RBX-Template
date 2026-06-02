@@ -1123,11 +1123,24 @@ function EnemyService:_assignPetTargets(eng)
                 else
                     -- per-pet target priority (TargetPriority): build the in-range candidates with
                     -- the data the modes need, then pick by the pet's mode (attr -> config default).
+                    -- A KITING pet (ranged/support/control) holds position, so it can only auto-pick
+                    -- enemies within its OWN attack_range — never one it can't reach. A chaser
+                    -- (melee/tank) advances, so it considers the whole aggro range. (A player ASSIST
+                    -- target bypasses this and will advance, handled above.)
+                    local roles = self._petRoles
+                    local roleId = pet:GetAttribute("PetRole")
+                        or (roles and roles.by_type and roles.by_type[pet:GetAttribute("PetType")])
+                        or (roles and roles.default)
+                    local roleDef = roles and roles.roles and roles.roles[roleId]
+                    local kites = roleDef
+                        and (roleDef.kite or (tonumber(roleDef.standoff) or 0) > 0)
+                    local reach = (kites and roleDef and tonumber(roleDef.attack_range))
+                        or aggroRange
                     local petPos = self:_petPosition(pet, pfs)
                     local candidates = {}
                     for etid, entry in pairs(live) do
                         local d = (entry.pos - petPos).Magnitude
-                        if d <= aggroRange then
+                        if d <= reach then
                             local edef = self._enemiesConfig.enemies
                                 and self._enemiesConfig.enemies[entry.enemyId]
                             candidates[#candidates + 1] = {
