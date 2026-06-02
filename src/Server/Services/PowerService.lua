@@ -82,6 +82,46 @@ local function enemiesAlive()
     return out
 end
 
+-- Is the player's squad engaged with an enemy (a pet fighting something within engage_radius of
+-- the squad)? Gates offensive powers — see Cast. Friendly powers don't call this.
+function PowerService:_hasEngagedEnemy(player)
+    local enemies = enemiesAlive()
+    if #enemies == 0 then
+        return false
+    end
+    local pets = Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+    local sx, sz, n = 0, 0, 0
+    if pets then
+        for _, pet in ipairs(pets:GetChildren()) do
+            if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") and pet.PrimaryPart then
+                sx, sz, n = sx + pet.PrimaryPart.Position.X, sz + pet.PrimaryPart.Position.Z, n + 1
+            end
+        end
+    end
+    local squadPos
+    if n > 0 then
+        squadPos = Vector3.new(sx / n, 0, sz / n)
+    else
+        local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then
+            return false
+        end
+        squadPos = Vector3.new(hrp.Position.X, 0, hrp.Position.Z)
+    end
+    local engageR = tonumber(self._powersConfig.engage_radius) or 60
+    for _, e in ipairs(enemies) do
+        local pp = e.PrimaryPart or e:FindFirstChildWhichIsA("BasePart")
+        if
+            pp
+            and (Vector3.new(pp.Position.X, 0, pp.Position.Z) - squadPos).Magnitude <= engageR
+        then
+            return true
+        end
+    end
+    return false
+end
+
 -- Apply a cast power's SUPPORT effect (no direct damage — see configs/powers.lua).
 function PowerService:_applyEffect(player, kind, now)
     local family = kind.family
@@ -271,6 +311,16 @@ function PowerService:Cast(player, powerId)
 
     local kind = (self._powersConfig.effect_kinds and self._powersConfig.effect_kinds[def.effect])
         or { family = "heal", magnitude = 0, duration = 0 }
+
+    -- Target gate: an offensive power reaches the enemy THROUGH the pets, so it can't fire unless
+    -- the squad is engaged with one (the pet is fighting something). Friendly powers (heal/buff/
+    -- shield) target your own pets and skip the gate. Refused casts don't spend the cooldown.
+    local enemyTargeted = self._powersConfig.enemy_targeted_families
+        and self._powersConfig.enemy_targeted_families[kind.family]
+    if enemyTargeted and not self:_hasEngagedEnemy(player) then
+        return { ok = false, reason = "no_target" }
+    end
+
     self:_applyEffect(player, kind, now)
     if kind.family ~= "amplified_burst" then
         pcall(spawnCastVisual, player, kind.family) -- placeholder caster burst (area powers show at the target)

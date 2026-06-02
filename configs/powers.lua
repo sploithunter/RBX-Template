@@ -12,6 +12,20 @@ return {
     -- Levels that grant a power selection (one per level). Tunable.
     selection_levels = { 5, 9, 13, 17, 21, 25 },
 
+    -- Families whose effect reaches an ENEMY through the pets (offensive / control / debuff /
+    -- pet-amplified damage). These can't be cast unless the squad is actually engaged with an
+    -- enemy (no firing a meteor into empty space). Friendly families (heal/buff/absorb/
+    -- defense_buff) target your own pets and are always castable. `engage_radius` = how close an
+    -- alive enemy must be to the squad to count as engaged.
+    enemy_targeted_families = {
+        vulnerable = true,
+        root = true,
+        amplified_burst = true,
+        burn_spread = true,
+        team_cleave = true,
+    },
+    engage_radius = 60,
+
     -- How each `effect` keyword resolves to a concrete SUPPORT action when cast
     -- (§16.5 firewall: player powers never deal direct damage — "damage" effects
     -- become enemy VULNERABILITY so pets hit harder). Families the services apply:
