@@ -218,6 +218,14 @@ return {
         -- an impact at the target + the hit sound, no projectile (the pet is adjacent). Tier
         -- scales with crit. colors = { core, accent }.
         melee = { impact = "small", impact_crit = "medium", colors = { { 255, 235, 190 }, { 255, 210, 140 } } },
+        -- Per-biome upfront/melee impacts (CombatFX passes the element) so an upfront grass pet
+        -- looks different from upfront lava — ice shatters, desert kicks up dust, etc.
+        melee_by_element = {
+            grass = { impact = "small", impact_crit = "medium", colors = { { 120, 220, 90 }, { 200, 255, 150 } } },
+            lava = { impact = "small", impact_crit = "medium", colors = { { 255, 150, 40 }, { 255, 210, 120 } } },
+            ice = { impact = "shatter", impact_crit = "big", colors = { { 150, 220, 255 }, { 235, 250, 255 } } },
+            desert = { impact = "dust", impact_crit = "big", colors = { { 200, 170, 115 }, { 150, 125, 90 } } },
+        },
 
         -- Sounds played by RangedFX: `delivery` at launch (the firing pet), `impact` at the hit.
         -- An empty id = silent (so sounds can be added as we get them). impact uses the egg-pop
@@ -270,6 +278,12 @@ return {
             -- HEAL bolt: a soft green/gold orb that blooms (not explodes) on the ally. Used by
             -- the CombatFX heal category for single-target heals (ranged support + touch-heal).
             heal = { colors = { { 120, 230, 120 }, { 220, 255, 200 } }, size = 1.2, travel_time = 0.16, burst = 3, sparks = 10, impact = "bloom", impact_crit = "bloom" },
+            -- Per-biome heal-bolt tints (CombatFX picks heal_<element>): green / warm-gold / mint /
+            -- amber — distinct per origin but still reads as a restorative bloom.
+            heal_grass = { colors = { { 130, 240, 130 }, { 220, 255, 200 } }, size = 1.2, travel_time = 0.16, burst = 3, sparks = 10, impact = "bloom", impact_crit = "bloom" },
+            heal_lava = { colors = { { 255, 215, 120 }, { 255, 245, 200 } }, size = 1.2, travel_time = 0.16, burst = 3, sparks = 10, impact = "bloom", impact_crit = "bloom" },
+            heal_ice = { colors = { { 170, 245, 215 }, { 230, 255, 240 } }, size = 1.2, travel_time = 0.16, burst = 3, sparks = 10, impact = "bloom", impact_crit = "bloom" },
+            heal_desert = { colors = { { 240, 220, 140 }, { 215, 255, 185 } }, size = 1.2, travel_time = 0.16, burst = 3, sparks = 10, impact = "bloom", impact_crit = "bloom" },
         },
         -- Beam theme (kind = "beam"): instant laser that flashes + fades.
         beam = { colors = { { 255, 70, 70 } }, thickness = 0.5, duration = 0.18, sparks = 5 },

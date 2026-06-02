@@ -502,7 +502,7 @@ end
 -- Fire a ranged effect of `kind` from origin to target. Falls back to lightning for an
 -- unknown kind. config is the ranged_bolt block (target_offset already a Vector3 from caller).
 -- isCrit (from the server's LastHitCrit on the firing pet) bumps the impact to its crit tier.
-function RangedFX.Play(origin, config, target, kind, isCrit)
+function RangedFX.Play(origin, config, target, kind, isCrit, element)
     config = type(config) == "table" and config or {}
     kind = kind or config.kind or "lightning"
 
@@ -555,8 +555,11 @@ function RangedFX.Play(origin, config, target, kind, isCrit)
     end
     if kind == "melee" then
         -- Melee/mining hit: the pet is already adjacent, so no projectile — just an impact at the
-        -- target + the hit sound. Tier scales with crit. Tinted by config.melee.colors.
-        local m = config.melee or {}
+        -- target + the hit sound. Tier scales with crit. Per-biome via melee_by_element[element]
+        -- (so upfront grass != upfront lava); falls back to the generic config.melee.
+        local m = (element and config.melee_by_element and config.melee_by_element[element])
+            or config.melee
+            or {}
         local cols = m.colors or {}
         local impactName = isCrit and (m.impact_crit or "medium") or (m.impact or "small")
         RangedFX.playImpact(impactName, endPos, cols[1] or { 255, 235, 190 }, cols[2] or { 255, 210, 140 }, {})

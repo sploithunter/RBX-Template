@@ -45,4 +45,13 @@ return {
         -- Heal — restorative green/gold (used by the heal category's nova + splash variants).
         heal = { color = { 120, 230, 120 }, color2 = { 220, 255, 200 }, material = "Neon" },
     },
+
+    -- Per-biome heal tints: CombatFX reuses the heal nova/splash SHAPES with these colours so an
+    -- ally heal reads with its biome origin (green / warm-gold / mint / amber) instead of one green.
+    heal_tints = {
+        grass = { color = { 130, 240, 130 }, color2 = { 220, 255, 200 }, material = "Neon" },
+        lava = { color = { 255, 215, 120 }, color2 = { 255, 245, 200 }, material = "Neon" },
+        ice = { color = { 170, 245, 215 }, color2 = { 230, 255, 240 }, material = "Neon" },
+        desert = { color = { 240, 220, 140 }, color2 = { 215, 255, 185 }, material = "Neon" },
+    },
 }

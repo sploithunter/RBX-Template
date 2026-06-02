@@ -182,21 +182,36 @@ end
 -- Resolve the RangedFX kind for a single-target attack spec.
 local function rangedKind(spec)
     if spec.category == "heal" then
-        return "heal" -- green heal-bolt that blooms on the ally (both origins)
+        -- per-biome heal-bolt tint (heal_lava/...) if defined, else the generic green heal bolt
+        local k = "heal_" .. tostring(spec.element)
+        if rangedCfg.projectile and rangedCfg.projectile[k] then
+            return k
+        end
+        return "heal"
     end
     if spec.origin == "upfront" then
-        return "melee"
+        return "melee" -- biome-distinct via RangedFX melee_by_element (element passed below)
     end
     return RANGED_KIND[spec.element] or "fireball"
 end
 
--- AreaFX skin for an area spec: the heal category uses the dedicated "heal" theme/effects
--- (green nova / splash); everything else uses the biome element.
+-- AreaFX shape for an area spec: heal uses the dedicated "heal" nova/splash shapes; everything
+-- else uses the biome element's own effect.
 local function areaElement(spec)
     if spec.category == "heal" then
         return "heal"
     end
     return spec.element
+end
+
+-- Per-biome heal tint (reuses the heal shapes with a biome colour) so heal honours
+-- "every origin unique graphics". nil for non-heal (the biome theme is used as-is).
+local function healOverride(spec)
+    if spec.category ~= "heal" then
+        return nil
+    end
+    local tints = areaCfg.heal_tints
+    return (tints and spec.element and tints[spec.element]) or nil
 end
 
 -- Play a one-shot or attached effect from a spec. ctx = { caster, target, point }.
@@ -216,20 +231,22 @@ function CombatFX.play(spec, ctx)
         if not (ctx.caster and ctx.target) then
             return false
         end
-        return RangedFX.Play(ctx.caster, rangedCfg, ctx.target, rangedKind(spec), spec.crit == true)
+        return RangedFX.Play(ctx.caster, rangedCfg, ctx.target, rangedKind(spec), spec.crit == true, spec.element)
     elseif pattern == "st_aoe" then
-        local cp = (casterPart and casterPart.Position) or ctx.point
-        local tp = ctx.point or (targetPart and targetPart.Position) or cp
+        local tp = ctx.point or (targetPart and targetPart.Position) or (casterPart and casterPart.Position)
         if not tp then
             return false
         end
-        return AreaFX.Play(areaCfg, areaElement(spec), "targeted", cp or tp, tp)
+        -- Upfront = slam at the adjacent target: origin == target suppresses AreaFX's ranged
+        -- cast beam. Ranged keeps the beam from the caster.
+        local cp = (spec.origin == "upfront") and tp or ((casterPart and casterPart.Position) or tp)
+        return AreaFX.Play(areaCfg, areaElement(spec), "targeted", cp, tp, healOverride(spec))
     elseif pattern == "pbaoe" then
         local cp = (casterPart and casterPart.Position) or ctx.point
         if not cp then
             return false
         end
-        return AreaFX.Play(areaCfg, areaElement(spec), "self", cp)
+        return AreaFX.Play(areaCfg, areaElement(spec), "self", cp, nil, healOverride(spec))
     end
 
     return false

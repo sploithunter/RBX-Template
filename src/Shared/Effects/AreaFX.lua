@@ -453,9 +453,11 @@ local function castTell(c2, mat, origin, target, radius, castTime)
 end
 
 -- Play an area effect. element keys config.themes; variant is "self" or "targeted".
-function AreaFX.Play(config, element, variant, originPos, targetPos)
+-- themeOverride (optional { color, color2, material }) reuses an effect's SHAPE with different
+-- colours — e.g. the heal nova/splash shapes tinted per biome without new EFFECTS entries.
+function AreaFX.Play(config, element, variant, originPos, targetPos, themeOverride)
     config = type(config) == "table" and config or {}
-    local theme = config.themes and config.themes[element]
+    local theme = themeOverride or (config.themes and config.themes[element])
     if not theme then
         return false
     end
