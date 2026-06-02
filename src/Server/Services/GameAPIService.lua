@@ -677,6 +677,20 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("power.cast", {
+        description = "Cast a power immediately by id (enforces its cooldown). For tools/tests.",
+        validate = function(args)
+            return Validators.fields(args, { powerId = "string" })
+        end,
+        handler = function(context, args)
+            local s = self:_service("PowerService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Cast(context.player, args.powerId)
+        end,
+    })
+
     bus:register("power.select", {
         description = "Select a power at level-up (archetype-gated, one per selection level).",
         validate = function(args)

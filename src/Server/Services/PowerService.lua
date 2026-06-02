@@ -14,6 +14,8 @@ local Debris = game:GetService("Debris")
 
 local PowerSelection = require(ReplicatedStorage.Shared.Game.PowerSelection)
 local ArchetypeLogic = require(ReplicatedStorage.Shared.Game.ArchetypeLogic)
+local AmplifiedBurst = require(ReplicatedStorage.Shared.Game.AmplifiedBurst)
+local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 -- Placeholder cast VFX colour per effect family (swap for real art later).
@@ -143,7 +145,111 @@ function PowerService:_applyEffect(player, kind, now)
             enemy:SetAttribute("VulnerableMult", mag)
             enemy:SetAttribute("VulnerableUntil", now + dur)
         end
+    elseif family == "amplified_burst" then
+        self:_amplifiedBurst(player, kind, now)
     end
+end
+
+-- Cataclysm-style "damage" power (firewall-safe, §16.5/§17.8): a burst that lands on the squad's
+-- engagement and whose size is an AMPLIFICATION of the squad's own attack power, credited to the
+-- pets (HP + Contrib, exactly like a pet swing). Then a molten pool lingers as vulnerability.
+function PowerService:_amplifiedBurst(player, kind, now)
+    local pets = Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+
+    -- Squad attack total + centroid (living, non-downed pets).
+    local squadAttack, sx, sz, n = 0, 0, 0, 0
+    if pets then
+        for _, pet in ipairs(pets:GetChildren()) do
+            if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") and pet.PrimaryPart then
+                local p = pet.PrimaryPart.Position
+                sx, sz, n = sx + p.X, sz + p.Z, n + 1
+                local pw = pet:FindFirstChild("Power")
+                squadAttack = squadAttack + (tonumber(pw and pw.Value) or 0)
+            end
+        end
+    end
+    local squadPos
+    if n > 0 then
+        squadPos = Vector3.new(sx / n, 0, sz / n)
+    else
+        local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        squadPos = (hrp and Vector3.new(hrp.Position.X, 0, hrp.Position.Z)) or Vector3.new(0, 0, 0)
+    end
+
+    -- Gather alive enemies with their flat distance to the squad.
+    local engaged = {}
+    for _, e in ipairs(enemiesAlive()) do
+        local pp = e.PrimaryPart or e:FindFirstChildWhichIsA("BasePart")
+        if pp then
+            local d = (Vector3.new(pp.Position.X, 0, pp.Position.Z) - squadPos).Magnitude
+            engaged[#engaged + 1] = { model = e, pos = pp.Position, d = d }
+        end
+    end
+
+    -- Engagement centre: centroid of enemies near the squad, else the nearest enemy, else the squad.
+    local engageR = tonumber(kind.engage_radius) or 60
+    local near = {}
+    for _, it in ipairs(engaged) do
+        if it.d <= engageR then
+            near[#near + 1] = it
+        end
+    end
+    local center
+    if #near > 0 then
+        local cx, cy, cz = 0, 0, 0
+        for _, it in ipairs(near) do
+            cx, cy, cz = cx + it.pos.X, cy + it.pos.Y, cz + it.pos.Z
+        end
+        center = Vector3.new(cx / #near, cy / #near, cz / #near)
+    elseif #engaged > 0 then
+        table.sort(engaged, function(a, b)
+            return a.d < b.d
+        end)
+        center = engaged[1].pos
+    else
+        center = Vector3.new(squadPos.X, 3, squadPos.Z) -- no enemies: visual only
+    end
+
+    -- Apply the pet-scaled burst to enemies in radius (HP + Contrib), then drop the molten pool.
+    local radius = tonumber(kind.radius) or 14
+    local hits = {}
+    for _, it in ipairs(engaged) do
+        local dist = (it.pos - center).Magnitude
+        if dist <= radius then
+            local dmg =
+                AmplifiedBurst.atDistance(squadAttack, kind.magnitude, dist, radius, kind.falloff)
+            if dmg > 0 then
+                local hp = it.model:GetAttribute("HP") or 0
+                local applied = PetCombat.applyDamage(hp, dmg)
+                it.model:SetAttribute("HP", applied.hp)
+                local contrib = it.model:FindFirstChild("Contrib")
+                if contrib then
+                    local key = tostring(player.UserId)
+                    local nv = contrib:FindFirstChild(key)
+                    if not nv then
+                        nv = Instance.new("NumberValue")
+                        nv.Name = key
+                        nv.Parent = contrib
+                    end
+                    nv.Value += applied.contributed
+                end
+                -- molten pool: lingering vulnerability so pets keep shredding the survivors
+                it.model:SetAttribute("VulnerableMult", tonumber(kind.pit_vulnerable) or 1.5)
+                it.model:SetAttribute("VulnerableUntil", now + (tonumber(kind.pit_duration) or 4))
+                hits[#hits + 1] = { pos = it.pos, amount = applied.contributed }
+            end
+        end
+    end
+
+    Signals.Power_AreaFx:FireClient(player, {
+        element = "lava",
+        variant = "targeted",
+        center = center,
+        radius = radius,
+        pit = true,
+        hits = hits,
+    })
 end
 
 -- Cast a power: enforce its cooldown, apply the support effect, tell the client when
@@ -166,7 +272,9 @@ function PowerService:Cast(player, powerId)
     local kind = (self._powersConfig.effect_kinds and self._powersConfig.effect_kinds[def.effect])
         or { family = "heal", magnitude = 0, duration = 0 }
     self:_applyEffect(player, kind, now)
-    pcall(spawnCastVisual, player, kind.family) -- placeholder cast burst
+    if kind.family ~= "amplified_burst" then
+        pcall(spawnCastVisual, player, kind.family) -- placeholder caster burst (area powers show at the target)
+    end
 
     local cd = tonumber(def.cooldown_seconds) or 0
     cds[powerId] = now + cd

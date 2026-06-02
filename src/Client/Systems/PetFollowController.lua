@@ -25,6 +25,7 @@ local Gait = require(ReplicatedStorage.Shared.Game.Gait)
 local AttackAnim = require(ReplicatedStorage.Shared.Game.AttackAnim)
 local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local RangedFX = require(ReplicatedStorage.Shared.Effects.RangedFX)
+local AreaFX = require(ReplicatedStorage.Shared.Effects.AreaFX)
 local FloatingText = require(ReplicatedStorage.Shared.Effects.FloatingText)
 local PetRoles = require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
@@ -193,6 +194,31 @@ function PetFollowController.start()
         end
         return Color3.fromRGB(dr, dg, db)
     end
+
+    -- Area power VFX (Cataclysm etc.): the server fires Power_AreaFx with the engagement centre +
+    -- per-enemy hits. Play the element eruption + a lingering molten pool, then float each number.
+    local areaCfg = require(ReplicatedStorage.Configs:WaitForChild("area_fx"))
+    Signals.Power_AreaFx.OnClientEvent:Connect(function(data)
+        if type(data) ~= "table" then
+            return
+        end
+        local center = data.center
+        local element = data.element or "lava"
+        if typeof(center) == "Vector3" then
+            pcall(AreaFX.Play, areaCfg, element, data.variant or "targeted", center, center)
+            if data.pit then
+                pcall(AreaFX.Play, areaCfg, element, "pit", center)
+            end
+        end
+        for _, h in ipairs(data.hits or {}) do
+            if type(h) == "table" and typeof(h.pos) == "Vector3" and h.amount then
+                FloatingText.show(h.pos + Vector3.new(0, 4, 0), tostring(h.amount), {
+                    color = ctRGB(ctCfg.colors and ctCfg.colors.crit, 255, 150, 60),
+                    size = (ctCfg.size or 22) + 4,
+                })
+            end
+        end
+    end)
     -- Mining impact FX (impact-library test bed + mining visual): each mined ore plays a named
     -- impact on a cadence. Keyed by the breakable model so multiple pets on one ore share a stream.
     local miningFx = config.mining_fx or {}

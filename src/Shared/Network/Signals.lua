@@ -38,6 +38,7 @@ local Signals = {
     Hotbar_Activate = Net:RemoteEvent("Hotbar_Activate"), -- c->s fire the bind on a hotbar slot (1-20)
     Hotbar_Rebind = Net:RemoteEvent("Hotbar_Rebind"), -- c->s assign/clear a hotbar slot's bind
     Power_Cooldown = Net:RemoteEvent("Power_Cooldown"), -- s->c a cast power's cooldown {power, untilTime, cooldown}
+    Power_AreaFx = Net:RemoteEvent("Power_AreaFx"), -- s->c play an area power's VFX {element, variant, center, radius, pit, hits=[{pos,amount}]}
     Hotbar_RequestState = Net:RemoteEvent("Hotbar_RequestState"), -- c->s ask for the player's hotbar
     Hotbar_State = Net:RemoteEvent("Hotbar_State"), -- s->c push hotbar bindings for the command bar UI
     Admin_RequestHatchHistory = Net:RemoteEvent("Admin_RequestHatchHistory"), -- c->s recent hatch debug snapshot
