@@ -30,6 +30,7 @@ local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
 local ActiveSquad = require(ReplicatedStorage.Shared.Game.ActiveSquad)
 local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
+local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local EnemyService = {}
@@ -44,6 +45,7 @@ function EnemyService:Init()
     self._squadConfig = self._configLoader:LoadConfig("squad")
     self._petRoles = self._configLoader:LoadConfig("pet_roles")
     self._levelingConfig = self._configLoader:LoadConfig("leveling")
+    self._originConfig = (self._configLoader:LoadConfig("combat_fx") or {}).origin or {}
     self._nextId = 0
     self._enemies = {} -- targetId -> { model, enemyId, nextAttack }
     -- pet model -> { lastHit } (weak so dead pets GC). Accumulated damage, the downed
@@ -471,6 +473,9 @@ function EnemyService:_hitPet(pet, def, now, eng, enemyLevel, petLevel)
         defense = defense + (pet:GetAttribute("DefenseBuff") or 0)
     end
     dmg = CombatMath.mitigate(dmg, defense, self._combatConfig.armor_curve_k or 100)
+    -- Combat-origin element: durability side. ice/desert take less, lava takes more — the mirror
+    -- of the outgoing attack_mult (configs/combat_fx.lua origin.element_stats).
+    dmg = dmg * self:_originTakenMult(pet)
     -- Absorption shield (Stone Skin etc.) soaks mitigated damage before any reaches
     -- endurance; it depletes as it absorbs.
     local shield = pet:GetAttribute("CombatShield") or 0
@@ -529,6 +534,17 @@ function EnemyService:_roleDefense(pet)
         or roles.default
     local def = roles.roles and roles.roles[id]
     return (def and tonumber(def.defense)) or 0
+end
+
+-- Incoming-damage multiplier from the pet's combat-origin element (CombatOrigin.statMod):
+-- element from PetType (origin.pettype_element); lower = tankier. Default 1.
+function EnemyService:_originTakenMult(pet)
+    local cfg = self._originConfig or {}
+    local petEl = cfg.pettype_element and cfg.pettype_element[pet:GetAttribute("PetType")]
+    -- archetype nil: unify-to-player needs a server-published Archetype (not wired yet); with
+    -- unify off this resolves to the pet's own element, which is the live behaviour today.
+    local element = CombatOrigin.resolve(petEl, nil, cfg)
+    return CombatOrigin.statMod(element, cfg).taken_mult
 end
 
 -- Does this pet's role auto-taunt (tanks)? PetRole attr -> by_type[PetType] -> default.

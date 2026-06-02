@@ -15,6 +15,12 @@ local CFG = {
         cryomancer = "ice",
         sandwalker = "desert",
     },
+    element_stats = {
+        grass = { attack_mult = 1.00, taken_mult = 1.00 },
+        lava = { attack_mult = 1.15, taken_mult = 1.12 },
+        ice = { attack_mult = 0.90, taken_mult = 0.88 },
+        desert = { attack_mult = 0.97, taken_mult = 0.95 },
+    },
 }
 
 local function withUnify(on)
@@ -59,6 +65,40 @@ return function()
         it("falls back to the pet element when the player has no/unknown archetype", function()
             expect(CombatOrigin.resolve("desert", nil, withUnify(true))).to.equal("desert")
             expect(CombatOrigin.resolve("lava", "wizard", withUnify(true))).to.equal("lava")
+        end)
+    end)
+
+    describe("CombatOrigin.statMod", function()
+        it("returns the configured attack/taken multipliers per element", function()
+            local lava = CombatOrigin.statMod("lava", CFG)
+            expect(lava.attack_mult).to.equal(1.15)
+            expect(lava.taken_mult).to.equal(1.12)
+            local ice = CombatOrigin.statMod("ice", CFG)
+            expect(ice.attack_mult).to.equal(0.90)
+            expect(ice.taken_mult).to.equal(0.88)
+        end)
+
+        it("defaults both multipliers to 1 for unknown/missing element or config", function()
+            local unknown = CombatOrigin.statMod("plasma", CFG)
+            expect(unknown.attack_mult).to.equal(1)
+            expect(unknown.taken_mult).to.equal(1)
+            local noCfg = CombatOrigin.statMod("lava", {})
+            expect(noCfg.attack_mult).to.equal(1)
+            expect(noCfg.taken_mult).to.equal(1)
+        end)
+
+        it("keeps the four elements in a balanced band (avg ~1.0, none dominant)", function()
+            local sumAtk, sumTaken = 0, 0
+            for _, el in ipairs({ "grass", "lava", "ice", "desert" }) do
+                local s = CombatOrigin.statMod(el, CFG)
+                sumAtk = sumAtk + s.attack_mult
+                sumTaken = sumTaken + s.taken_mult
+                -- no element more than 20% off neutral on either axis
+                expect(s.attack_mult >= 0.8 and s.attack_mult <= 1.2).to.equal(true)
+                expect(s.taken_mult >= 0.8 and s.taken_mult <= 1.2).to.equal(true)
+            end
+            expect(sumAtk / 4 >= 0.97 and sumAtk / 4 <= 1.03).to.equal(true)
+            expect(sumTaken / 4 >= 0.95 and sumTaken / 4 <= 1.02).to.equal(true)
         end)
     end)
 end

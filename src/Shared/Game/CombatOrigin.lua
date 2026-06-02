@@ -61,4 +61,18 @@ function CombatOrigin.resolve(petElement, playerArchetype, cfg)
     return set[default] and default or CombatOrigin.ELEMENTS[1]
 end
 
+-- Per-element STAT modifiers (cfg.element_stats[element]):
+--   attack_mult — multiplies the pet's outgoing damage
+--   taken_mult  — multiplies incoming damage to the pet (lower = tankier)
+-- Returns a table with both fields, defaulting any missing value to 1 (no change). Designed so
+-- the four elements stay in a tight band (no element dominates): lava trades durability for
+-- damage, ice the reverse, desert mildly defensive, grass the neutral baseline.
+function CombatOrigin.statMod(element, cfg)
+    local stats = cfg and cfg.element_stats and element and cfg.element_stats[element]
+    return {
+        attack_mult = (stats and tonumber(stats.attack_mult)) or 1,
+        taken_mult = (stats and tonumber(stats.taken_mult)) or 1,
+    }
+end
+
 return CombatOrigin

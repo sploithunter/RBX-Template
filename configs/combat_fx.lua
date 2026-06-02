@@ -52,6 +52,21 @@ return {
             ice = "frost",
             desert = "rock",
         },
+
+        -- Per-element STAT modifiers (CombatOrigin.statMod). These give each origin a combat
+        -- identity on top of its look, kept in a TIGHT band so no element dominates (avg ~1.0):
+        --   attack_mult — multiplies the pet's outgoing damage (PetFollowService:_mine)
+        --   taken_mult  — multiplies incoming damage to the pet (EnemyService); lower = tankier
+        -- grass  = neutral baseline (nature/geomancer)
+        -- lava   = glass cannon (pyro): hits hardest, also takes the most
+        -- ice    = durable controller (cryo): softer hits, tankiest
+        -- desert = sturdy skirmisher (sand): slightly under on offense, mildly tanky
+        element_stats = {
+            grass = { attack_mult = 1.00, taken_mult = 1.00 },
+            lava = { attack_mult = 1.15, taken_mult = 1.12 },
+            ice = { attack_mult = 0.90, taken_mult = 0.88 },
+            desert = { attack_mult = 0.97, taken_mult = 0.95 },
+        },
     },
 
     -- Armor reskins: temporarily retexture the WHOLE pet for a defensive (shield) effect — the

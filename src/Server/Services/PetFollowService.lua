@@ -29,6 +29,7 @@ local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
 local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
+local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local PetFollowService = {}
@@ -41,6 +42,7 @@ function PetFollowService:Init()
     self._combatConfig = self._configLoader:LoadConfig("combat")
     self._petRoles = self._configLoader:LoadConfig("pet_roles")
     self._levelingConfig = self._configLoader:LoadConfig("leveling")
+    self._originConfig = (self._configLoader:LoadConfig("combat_fx") or {}).origin or {}
     self._nextHit = {} -- pet model -> os.clock() of next allowed mining hit
     self._petPos = setmetatable({}, { __mode = "k" }) -- pet model -> { pos, t } (weak: dead pets GC)
 
@@ -269,6 +271,17 @@ function PetFollowService:_roleDamageMult(pet)
     return (def and tonumber(def.damage_mult)) or 1
 end
 
+-- A pet's combat-origin stat modifiers (CombatOrigin.statMod) — the same resolution the client
+-- VFX uses: element from PetType (origin.pettype_element), unified to the owner's archetype when
+-- origin.unify_to_player is set. Returns { attack_mult, taken_mult }, both default 1.
+function PetFollowService:_originStat(pet, player)
+    local cfg = self._originConfig or {}
+    local petEl = cfg.pettype_element and cfg.pettype_element[pet:GetAttribute("PetType")]
+    local archetype = player and player:GetAttribute("Archetype")
+    local element = CombatOrigin.resolve(petEl, archetype, cfg)
+    return CombatOrigin.statMod(element, cfg)
+end
+
 -- A pet's effective attack range (mining-gate distance), by combat role: PetRole attr
 -- -> pet_roles.by_type[PetType] -> default. Ranged pets reach much further than melee,
 -- so they can deal damage from their standoff. Falls back to mining.range.
@@ -334,6 +347,9 @@ function PetFollowService:_mine(player, pet, breakable)
     local dmg = combat:ResolvePetDamage(player, ctx)
     -- Archetype damage curve: support/control hit softer, melee/ranged full.
     dmg = dmg * self:_roleDamageMult(pet)
+    -- Combat-origin element: each element trades attack vs durability (lava hits hardest,
+    -- ice softest) — see configs/combat_fx.lua origin.element_stats. Outgoing side here.
+    dmg = dmg * self:_originStat(pet, player).attack_mult
     -- Level scaling vs ENEMIES only (crystals have no Level): out-level it -> hit harder.
     if breakable:GetAttribute("EnemyId") then
         local petLevel = pet:GetAttribute("Level") or (player:GetAttribute("Level") or 1)
