@@ -37,6 +37,21 @@ return {
             attack = { damage = 10, cadence = 1.5, sundering = 0 },
             drop_table = { lava_coins = 8, shadow_tokens = 1 },
         },
+        -- [TEST] A tanky, harmless training dummy for measuring damage + AoE. Enormous HP so it
+        -- survives a whole test session (damage keeps logging instead of one-shotting), zero attack
+        -- so it never hurts pets, stationary so an AoE cluster stays put, and zero armor so the
+        -- numbers you read are the pet's/power's RAW output (raise armor to test mitigation). Spawn
+        -- via the combat.spawnEnemy bus command; read damage as MaxHP-HP or the Contrib ledger.
+        training_dummy = {
+            hp = 100000,
+            display_name = "Training Dummy",
+            tier = "trash_mob",
+            move_speed = 0,
+            armor = 0,
+            attack = { damage = 0, cadence = 999, sundering = 0 },
+            gait = { style = "march", bob_height = 0, tilt_degrees = 0, stride_length = 0 },
+            drop_table = {},
+        },
         ember_brute = {
             hp = 400,
             display_name = "Ember Brute",
