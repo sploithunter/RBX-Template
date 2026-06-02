@@ -1303,6 +1303,37 @@ function GameAPIService:_registerTestCommands()
         end,
     })
 
+    -- Combat: spawn real enemies in front of the player (dev/test). Studio-gated rather than
+    -- testOnly so it's reachable over the player-facing remote (MCP live verification); a no-op
+    -- in production. Spawns `count` of `enemyId` (clustered ~16 studs ahead) for AoE testing.
+    self._bus:register("combat.spawnEnemy", {
+        description = "[studio] Spawn real combat enemies in front of the player for live testing.",
+        validate = function(args)
+            return Validators.fields(args, {
+                enemyId = { type = "string", optional = true },
+                count = { type = "int", min = 1, max = 10, optional = true },
+            })
+        end,
+        handler = function(context, args)
+            if not game:GetService("RunService"):IsStudio() then
+                return { ok = false, reason = "studio_only" }
+            end
+            local enemyService = self:_service("EnemyService")
+            if not enemyService then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            local count = math.clamp(tonumber(args.count) or 1, 1, 10)
+            local spawned, last = 0, nil
+            for _ = 1, count do
+                last = enemyService:SpawnEnemy(context.player, args.enemyId or "lava_imp")
+                if type(last) == "table" and last.ok ~= false then
+                    spawned += 1
+                end
+            end
+            return { ok = true, spawned = spawned, sample = last }
+        end,
+    })
+
     -- Respec ritual (Feature 13): reset powers + slots, optionally re-pick archetype.
     self._bus:register("game.respec", {
         description = "[test] Respec: reset powers/slots; optional new archetype.",
