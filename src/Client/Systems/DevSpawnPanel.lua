@@ -1,0 +1,101 @@
+--[[
+    DevSpawnPanel — Studio-only on-screen buttons to spawn test enemies + clear them.
+
+    A quick combat-testing rig: a small button strip on the primary HUD (left edge, by the pets
+    cluster) that fires the Studio-gated combat.spawnEnemy / combat.clearEnemies bus commands. Only
+    runs in Studio (RunService:IsStudio()) so it never ships to players. Tune SPAWNS to taste.
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local DevSpawnPanel = {}
+local started = false
+
+-- Each button: a label + the enemy id (configs/enemies.lua) + how many to spawn.
+local SPAWNS = {
+    { label = "🎯 Dummy ×3", enemyId = "training_dummy", count = 3, color = { 90, 140, 200 } },
+    { label = "👹 Imp ×3", enemyId = "lava_imp", count = 3, color = { 200, 90, 70 } },
+    { label = "🐻 Bear", enemyId = "raging_bear", count = 1, color = { 170, 110, 60 } },
+}
+
+local function rgb(t)
+    return Color3.fromRGB(t[1], t[2], t[3])
+end
+
+function DevSpawnPanel.start()
+    if started or not RunService:IsStudio() then
+        return -- dev-only; never present for real players
+    end
+    started = true
+
+    local player = Players.LocalPlayer
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "DevSpawnPanel"
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    gui.DisplayOrder = 50
+    gui.Parent = player:WaitForChild("PlayerGui")
+
+    local frame = Instance.new("Frame")
+    frame.AnchorPoint = Vector2.new(0, 0.5)
+    frame.Position = UDim2.new(0, 8, 0.5, -20) -- left edge, vertically centred (by the pets side)
+    frame.Size = UDim2.fromOffset(120, 10)
+    frame.BackgroundTransparency = 1
+    frame.Parent = gui
+
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 4)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = frame
+
+    local title = Instance.new("TextLabel")
+    title.LayoutOrder = 0
+    title.Size = UDim2.fromOffset(120, 16)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 11
+    title.TextColor3 = Color3.fromRGB(255, 210, 130)
+    title.TextStrokeTransparency = 0.4
+    title.Text = "DEV · SPAWN"
+    title.Parent = frame
+
+    local remote = ReplicatedStorage:WaitForChild("GameAPICommand")
+    local function fire(command, args)
+        task.spawn(function()
+            pcall(function()
+                remote:InvokeServer(command, args or {})
+            end)
+        end)
+    end
+
+    local function button(order, text, color, onClick)
+        local b = Instance.new("TextButton")
+        b.LayoutOrder = order
+        b.Size = UDim2.fromOffset(120, 28)
+        b.BackgroundColor3 = color
+        b.TextColor3 = Color3.new(1, 1, 1)
+        b.Font = Enum.Font.GothamBold
+        b.TextSize = 13
+        b.AutoButtonColor = true
+        b.Text = text
+        b.Parent = frame
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = b
+        b.Activated:Connect(onClick)
+        return b
+    end
+
+    for i, s in ipairs(SPAWNS) do
+        button(i, s.label, rgb(s.color), function()
+            fire("combat.spawnEnemy", { enemyId = s.enemyId, count = s.count })
+        end)
+    end
+    button(#SPAWNS + 1, "✖ Clear", Color3.fromRGB(80, 80, 100), function()
+        fire("combat.clearEnemies", {})
+    end)
+end
+
+return DevSpawnPanel

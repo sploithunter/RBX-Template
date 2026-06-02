@@ -1334,6 +1334,29 @@ function GameAPIService:_registerTestCommands()
         end,
     })
 
+    -- Combat: clear all live enemies (dev/test reset). Studio-gated. Sets each enemy's HP to 0 so
+    -- the normal defeat path runs (cleanup + removal); no-op in production.
+    self._bus:register("combat.clearEnemies", {
+        description = "[studio] Remove all live combat enemies (dev/test reset).",
+        handler = function(_context)
+            if not game:GetService("RunService"):IsStudio() then
+                return { ok = false, reason = "studio_only" }
+            end
+            local g = workspace:FindFirstChild("Game")
+            local folder = g and g:FindFirstChild("Enemies")
+            local cleared = 0
+            if folder then
+                for _, m in ipairs(folder:GetChildren()) do
+                    if m:IsA("Model") and (m:GetAttribute("HP") or 0) > 0 then
+                        m:SetAttribute("HP", 0) -- triggers EnemyService's defeat handler
+                        cleared += 1
+                    end
+                end
+            end
+            return { ok = true, cleared = cleared }
+        end,
+    })
+
     -- Respec ritual (Feature 13): reset powers + slots, optionally re-pick archetype.
     self._bus:register("game.respec", {
         description = "[test] Respec: reset powers/slots; optional new archetype.",

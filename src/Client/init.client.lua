@@ -209,6 +209,16 @@ if RunService:IsStudio() then
     end
 end
 
+-- Studio-only: on-screen buttons to spawn/clear test enemies (combat testing rig).
+if RunService:IsStudio() then
+    local ok, err = pcall(function()
+        require(script.Systems.DevSpawnPanel).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start DevSpawnPanel", { error = tostring(err) })
+    end
+end
+
 -- Start Matter loop with client systems
 local systemsList = {}
 for name, system in pairs(systems) do
