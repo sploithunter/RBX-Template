@@ -24,6 +24,7 @@ local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
 local Gait = require(ReplicatedStorage.Shared.Game.Gait)
 local AttackAnim = require(ReplicatedStorage.Shared.Game.AttackAnim)
 local RangedFX = require(ReplicatedStorage.Shared.Effects.RangedFX)
+local FloatingText = require(ReplicatedStorage.Shared.Effects.FloatingText)
 local PetRoles = require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
@@ -169,6 +170,15 @@ function PetFollowController.start()
         local o = boltCfg.target_offset
         boltCfg.target_offset = Vector3.new(o[1] or 0, o[2] or 0, o[3] or 0)
     end
+
+    -- Floating combat text (damage / crit / MISS numbers over the target). Config-driven.
+    local ctCfg = config.combat_text or {}
+    local function ctRGB(t, dr, dg, db)
+        if type(t) == "table" and t[1] then
+            return Color3.fromRGB(t[1], t[2] or 0, t[3] or 0)
+        end
+        return Color3.fromRGB(dr, dg, db)
+    end
     -- Mining impact FX (impact-library test bed + mining visual): each mined ore plays a named
     -- impact on a cadence. Keyed by the breakable model so multiple pets on one ore share a stream.
     local miningFx = config.mining_fx or {}
@@ -206,6 +216,42 @@ function PetFollowController.start()
             kind = "melee" -- impact-only at the target (pet is adjacent)
         end
         pcall(RangedFX.Play, pet, boltCfg, target, kind, isCrit)
+
+        -- Floating combat text: the damage number (or MISS) pops + rises above the target.
+        if ctCfg.enabled ~= false then
+            local pos = (target.PrimaryPart and target.PrimaryPart.Position) or target:GetPivot().Position
+            local up = 3
+            local okE, ext = pcall(function()
+                return target:GetExtentsSize()
+            end)
+            if okE and ext then
+                up = ext.Y * 0.5 + 1
+            end
+            pos = pos + Vector3.new(0, up, 0)
+            local cols = ctCfg.colors or {}
+            if data.miss then
+                FloatingText.show(pos, ctCfg.miss_text or "MISS", {
+                    color = ctRGB(cols.miss, 170, 170, 170),
+                    size = ctCfg.size or 22,
+                    rise = ctCfg.rise,
+                    duration = ctCfg.duration,
+                })
+            elseif isCrit then
+                FloatingText.show(pos, tostring(data.amount or 0) .. "!", {
+                    color = ctRGB(cols.crit, 255, 200, 60),
+                    size = ctCfg.crit_size or 32,
+                    rise = (ctCfg.rise or 6) + 2,
+                    duration = (ctCfg.duration or 0.9) + 0.2,
+                })
+            else
+                FloatingText.show(pos, tostring(data.amount or 0), {
+                    color = ctRGB(cols.normal, 255, 255, 255),
+                    size = ctCfg.size or 22,
+                    rise = ctCfg.rise,
+                    duration = ctCfg.duration,
+                })
+            end
+        end
     end)
 
     -- OTHER players' pets, server-relayed (the server never relays our own — those stay local).

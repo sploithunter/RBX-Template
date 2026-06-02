@@ -196,6 +196,23 @@ return {
         -- `interval` is retained only as a legacy/fallback knob and no longer paces the visuals.
         interval = 0.9,
 
+        -- Floating combat text over the target on each hit (Combat_PetHit): the damage number,
+        -- a bigger gold "N!" on a crit, or "MISS". enabled=false turns it off. rise = studs it
+        -- floats up; duration = seconds; size/crit_size = font px; colors = { r,g,b } each.
+        combat_text = {
+            enabled = true,
+            rise = 6,
+            duration = 0.9,
+            size = 22,
+            crit_size = 34,
+            miss_text = "MISS",
+            colors = {
+                normal = { 255, 255, 255 },
+                crit = { 255, 200, 60 },
+                miss = { 175, 175, 175 },
+            },
+        },
+
         -- Melee/mining hit feedback (kind = "melee", fired by Combat_PetHit for non-ranged pets):
         -- an impact at the target + the hit sound, no projectile (the pet is adjacent). Tier
         -- scales with crit. colors = { core, accent }.
