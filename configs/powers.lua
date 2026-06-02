@@ -37,6 +37,36 @@ return {
         aoe_damage = { family = "vulnerable", magnitude = 2.0, duration = 5 },
         mark_of_flame = { family = "vulnerable", magnitude = 1.5, duration = 8 },
         eruption = { family = "vulnerable", magnitude = 2.0, duration = 5 },
+
+        -- ===== Pyromancer signatures (Feature: signature powers, §17.8) =====
+        -- Firewall-safe (§16.5): none of these deal standalone player damage. "amplified_burst"
+        -- is PET-damage amplification — its burst is scaled by the squad's attack total and
+        -- credited to the pets (see AmplifiedBurst); the others are vulnerability/cleave buffs.
+        --   burn_spread   — a vulnerability mark on the pet's target that SPREADS to nearby
+        --                   enemies every `spread_interval`s within `spread_radius` (contagion)
+        --   team_cleave   — for `duration`s every pet's attacks deal x`magnitude` splash damage
+        --                   to other enemies within `cleave_radius`
+        --   amplified_burst — meteor on the engagement: each enemy within `radius` takes a burst
+        --                   = squad-attack-total x`magnitude` (radial falloff to `falloff` at the
+        --                   edge), credited to pets, then a molten pool lingers `pit_duration`s
+        --                   applying x`pit_vulnerable` vulnerability
+        wildfire = {
+            family = "burn_spread",
+            magnitude = 1.6,
+            duration = 8,
+            spread_radius = 14,
+            spread_interval = 1.5,
+        },
+        firestorm = { family = "team_cleave", magnitude = 0.5, duration = 6, cleave_radius = 8 },
+        cataclysm = {
+            family = "amplified_burst",
+            magnitude = 3.0,
+            duration = 5,
+            radius = 16,
+            falloff = 0.5,
+            pit_vulnerable = 1.5,
+            pit_duration = 4,
+        },
     },
 
     powers = {
@@ -115,6 +145,52 @@ return {
             focus_cost = 45,
             cooldown_seconds = 60,
             effect = "aoe_damage",
+        },
+
+        -- ===== Pyromancer SIGNATURES (§17.8) — exclusive, 2 mid-tier + 1 capstone =====
+        -- Extended schema (display_name/signature/capstone/role/element/target/glyph/unlock_level)
+        -- drives the hotbar icon (glyph + element tint + target badge) and CoH-style level gating.
+        -- target: single | single_spread | targeted_aoe | team_aoe | friendly (the pet picks the
+        -- actual target; the player only augments what the squad is already attacking).
+        wildfire = {
+            archetype = "pyromancer",
+            focus_cost = 25,
+            cooldown_seconds = 25,
+            effect = "wildfire",
+            display_name = "Wildfire",
+            signature = true,
+            role = "damage",
+            element = "lava",
+            target = "single_spread",
+            glyph = "debuff",
+            unlock_level = 15,
+        },
+        firestorm = {
+            archetype = "pyromancer",
+            focus_cost = 35,
+            cooldown_seconds = 40,
+            effect = "firestorm",
+            display_name = "Firestorm",
+            signature = true,
+            role = "damage",
+            element = "lava",
+            target = "team_aoe",
+            glyph = "burst",
+            unlock_level = 20,
+        },
+        cataclysm = {
+            archetype = "pyromancer",
+            focus_cost = 60,
+            cooldown_seconds = 90,
+            effect = "cataclysm",
+            display_name = "Cataclysm",
+            signature = true,
+            capstone = true,
+            role = "damage",
+            element = "lava",
+            target = "targeted_aoe",
+            glyph = "burst",
+            unlock_level = 30,
         },
     },
 }

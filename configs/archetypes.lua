@@ -37,7 +37,16 @@ return {
         pyromancer = {
             display_name = "Pyromancer",
             theme = "lava",
-            power_pool = { "mark_of_flame", "ember_ward", "eruption" },
+            -- mark_of_flame/ember_ward/eruption = shared-pool placeholders; wildfire/firestorm/
+            -- cataclysm = the exclusive signatures (§17.8), cataclysm the high-level capstone.
+            power_pool = {
+                "mark_of_flame",
+                "ember_ward",
+                "eruption",
+                "wildfire",
+                "firestorm",
+                "cataclysm",
+            },
         },
     },
 }
