@@ -16,6 +16,22 @@
 ]]
 
 return {
+    -- Combat element origin (CombatOrigin.resolve). Canonical elements = the four biomes:
+    -- grass / lava / ice / desert. Hybrid + configurable:
+    --   unify_to_player = false -> each pet fights as its OWN biome origin (collection variety)
+    --   unify_to_player = true  -> the whole squad fights as the PLAYER's archetype element
+    -- archetype_element maps each archetype's theme onto a canonical element (earth -> grass).
+    origin = {
+        unify_to_player = false,
+        default_element = "grass",
+        archetype_element = {
+            geomancer = "grass", -- "earth" theme reconciled to grass
+            pyromancer = "lava",
+            cryomancer = "ice",
+            sandwalker = "desert",
+        },
+    },
+
     -- Armor reskins: temporarily retexture the WHOLE pet for a defensive (shield) effect — the
     -- four armor origins. CombatFX.attach reads spec.reskin = one of these. material = a Roblox
     -- Material name (real materials sell each look); color = the tint. (Variant pets re-apply
