@@ -61,6 +61,10 @@ run = "node scripts/assets_report.js --prompts"
 description = "Run the local Meshy developer asset helper"
 run = "node scripts/meshy_asset.js"
 
+[tasks.decimate-mesh]
+description = "Decimate OBJ/FBX/GLB meshes to Roblox triangle budgets via Blender (needs Blender.app on macOS)"
+run = "bash scripts/decimate_mesh.sh"
+
 [tasks.asset-balance]
 description = "Show Meshy API credit balance"
 run = "node scripts/meshy_asset.js balance"

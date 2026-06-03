@@ -24,8 +24,26 @@ local ORE_PLACEHOLDER = {
 -- One entry per elemental zone. `variants` holds this element's cosmetic mesh IDs
 -- (fill when meshes are ready, e.g. { "rbxassetid://A", "rbxassetid://B", "rbxassetid://C" });
 -- empty = use the size placeholders above.
+-- Per-family: `variants` = cosmetic mesh IDs (for now mapped one-per-size-tier so all 3
+-- show; true random-variety-within-size is a follow-up). `scale` multiplies every tier's
+-- scale (use it to size a new mesh family up/down vs the placeholders). `orientation` lets
+-- a family override the import-orientation fix (different meshes import differently).
 local ORE_FAMILIES = {
-    { el = "grass", display = "Bloomstone", currency = "grass_coins", variants = {} },
+    {
+        el = "grass",
+        display = "Bloomstone",
+        currency = "grass_coins",
+        -- Cosmetic variants (random-pick per spawn). `norm` normalizes each mesh's wildly
+        -- different import size to a common ~6-stud base (measured native max: 7.7 / 1.9 / 1.9),
+        -- so the size tier alone decides how big it reads.
+        variants = {
+            { asset = "rbxassetid://100630669468901", norm = 0.78 }, -- Emerald_Crystal_1 (native 7.7)
+            { asset = "rbxassetid://72360244393742", norm = 3.16 }, -- Emerald_Crystal_2 (native 1.9)
+            { asset = "rbxassetid://121055776582247", norm = 3.16 }, -- Emerald_Crystal_3 (native 1.9)
+        },
+        scale = 1, -- family-wide multiplier on top of normalization
+        orientation = { x = 0, y = 0, z = 0 }, -- emerald meshes import upright (unlike the blue crystals)
+    },
     { el = "desert", display = "Sunglass", currency = "desert_coins", variants = {} },
     { el = "lava", display = "Emberstone", currency = "lava_coins", variants = {} },
     { el = "ice", display = "Frostshard", currency = "ice_coins", variants = {} },
@@ -33,10 +51,13 @@ local ORE_FAMILIES = {
 
 -- Size tiers: payoff scales with size. `scale` multiplies the mesh (when real single-mesh
 -- art lands); placement offsets mirror the crystals so each tier sits right on the floor.
+-- `scale` is used for PLACEHOLDER families (the blue-crystal meshes are already sized per
+-- tier, so scale stays 1). `size_scale` is used for real VARIANT families (normalized to a
+-- common base, so the tier supplies the size): Small/Medium/Large ≈ 3.6 / 6 / 10.8 studs.
 local ORE_TIERS = {
-    { suffix = "Small", scale = 1, health = 100, value = 5, placement = { height_offset = 1, sink_depth = 0.75 } },
-    { suffix = "Medium", scale = 1, health = 500, value = 25, placement = { height_offset = 2, sink_depth = 1.05 } },
-    { suffix = "Large", scale = 1, health = 2000, value = 100, placement = { height_offset = 7, sink_depth = 1.45 } },
+    { suffix = "Small", scale = 1, size_scale = 0.6, health = 100, value = 5, placement = { height_offset = 1, sink_depth = 0.75 } },
+    { suffix = "Medium", scale = 1, size_scale = 1.0, health = 500, value = 25, placement = { height_offset = 2, sink_depth = 1.05 } },
+    { suffix = "Large", scale = 1, size_scale = 1.8, health = 2000, value = 100, placement = { height_offset = 7, sink_depth = 1.45 } },
 }
 
 local M = {
@@ -138,7 +159,12 @@ local M = {
                 -- TEMP (Slice B verification): one ore per element in the starter area so the
                 -- zone-currency loop is testable before the 4 mining zones exist. Move these to
                 -- their own zone spawn_tables once the map zones are placed.
-                { name = "BloomstoneMedium", weight = 2 },
+                -- Grass emerald test: V1 across S/M/L (size range) + all 3 variants at Medium (variety).
+                { name = "BloomstoneSmallV1", weight = 1 },
+                { name = "BloomstoneLargeV1", weight = 1 },
+                { name = "BloomstoneMediumV1", weight = 1 },
+                { name = "BloomstoneMediumV2", weight = 1 },
+                { name = "BloomstoneMediumV3", weight = 1 },
                 { name = "SunglassMedium", weight = 2 },
                 { name = "EmberstoneMedium", weight = 2 },
                 { name = "FrostshardMedium", weight = 2 },
@@ -325,21 +351,38 @@ local M = {
 -- if provided, else the size placeholder (blue crystal). Registered into M.crystals so the
 -- existing preloader/spawner handle them with zero engine changes.
 for _, fam in ipairs(ORE_FAMILIES) do
+    local hasVariants = type(fam.variants) == "table" and #fam.variants > 0
     for _, tier in ipairs(ORE_TIERS) do
-        M.crystals[fam.display .. tier.suffix] = {
-            display_name = fam.display .. " (" .. tier.suffix .. ")",
-            asset_id = fam.variants[1] or ORE_PLACEHOLDER[tier.suffix],
-            scale = tier.scale,
-            health = tier.health,
-            value = tier.value,
-            currency = fam.currency,
-            -- Same import-orientation fix as the crystals (meshes import sideways).
-            default_orientation = { x = -90, y = 0, z = 0 },
-            placement = {
-                height_offset = tier.placement.height_offset,
-                sink_depth = tier.placement.sink_depth,
-            },
-        }
+        local orientation = fam.orientation or { x = -90, y = 0, z = 0 }
+        local function entry(name, asset, scale)
+            M.crystals[name] = {
+                display_name = fam.display .. " (" .. tier.suffix .. ")",
+                asset_id = asset,
+                scale = scale,
+                health = tier.health,
+                value = tier.value,
+                currency = fam.currency,
+                default_orientation = orientation,
+                placement = {
+                    height_offset = tier.placement.height_offset,
+                    sink_depth = tier.placement.sink_depth,
+                },
+            }
+        end
+        if hasVariants then
+            -- One entry per cosmetic variant (<Display><Tier>V<n>); the weighted spawn table
+            -- random-picks among them. norm * size_scale * family scale -> consistent size.
+            for vi, v in ipairs(fam.variants) do
+                entry(
+                    fam.display .. tier.suffix .. "V" .. vi,
+                    v.asset,
+                    (v.norm or 1) * tier.size_scale * (fam.scale or 1)
+                )
+            end
+        else
+            -- Placeholder family: one entry per tier using the size-matched blue crystal.
+            entry(fam.display .. tier.suffix, ORE_PLACEHOLDER[tier.suffix], tier.scale)
+        end
     end
 end
 
