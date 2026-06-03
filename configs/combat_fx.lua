@@ -54,6 +54,12 @@ return {
             penguin = "ice",
             snowleopard = "ice",
             polarbear = "ice",
+            -- Sand family = desert origin (RPS / element stats / VFX).
+            fennec = "desert",
+            camel = "desert",
+            meerkat = "desert",
+            desertiguana = "desert",
+            scorpion = "desert",
         },
 
         -- Canonical element -> ranged projectile kind (damage). Melee + heal are routed

@@ -23,6 +23,7 @@ local petConfig = {
     egg_stand_placements = {
         ["BasicEmber"] = { egg = "ember_egg", scale = 3.5, offset_y = 0.5 },
         ["BasicIce"] = { egg = "ice_egg", scale = 3.5, offset_y = 0.5 },
+        ["BasicSand"] = { egg = "sand_egg", scale = 3.5, offset_y = 0.5 },
     },
 
     -- Eternal pets scale to a percentage of the player's "eternal power base"
@@ -696,6 +697,188 @@ local petConfig = {
             },
         },
 
+        -- SAND FAMILY (BasicSand egg). Desert-biome pets; same scale/framing as ember/ice.
+        fennec = {
+            display_name = "Fennec",
+            category = "desert",
+            rarity = "common",
+            base_power = 12,
+            base_health = 130,
+            viewport_zoom = 1.5, -- sand card framing (see emberling note)
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://77266088122632",
+                    image_id = "rbxassetid://0",
+                    display_name = "Fennec",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://85924824230409",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Fennec",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://77266088122632",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Fennec",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+        camel = {
+            display_name = "Camel",
+            category = "desert",
+            rarity = "uncommon",
+            base_power = 16,
+            base_health = 150,
+            viewport_zoom = 1.5, -- sand card framing (see emberling note)
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://86029647986485",
+                    image_id = "rbxassetid://0",
+                    display_name = "Camel",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://115312269011682",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Camel",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://86029647986485",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Camel",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+        meerkat = {
+            display_name = "Meerkat",
+            category = "desert",
+            rarity = "rare",
+            base_power = 22,
+            base_health = 170,
+            viewport_zoom = 1.5, -- sand card framing (see emberling note)
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://83699970022054",
+                    image_id = "rbxassetid://0",
+                    display_name = "Meerkat",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://119309359317545",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Meerkat",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://83699970022054",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Meerkat",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+        desertiguana = {
+            display_name = "Desert Iguana",
+            category = "desert",
+            rarity = "epic",
+            base_power = 30,
+            base_health = 200,
+            viewport_zoom = 1.5, -- sand card framing (see emberling note)
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://129139046533482",
+                    image_id = "rbxassetid://0",
+                    display_name = "Desert Iguana",
+                    abilities = { "claw_swipe" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://140708476776029",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Desert Iguana",
+                    abilities = { "golden_claws", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://129139046533482",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Desert Iguana",
+                    abilities = { "rainbow_claws", "luck_aura" },
+                },
+            },
+        },
+        scorpion = {
+            display_name = "Scorpion",
+            category = "desert",
+            rarity = "legendary",
+            base_power = 42,
+            base_health = 260,
+            viewport_zoom = 1.5, -- sand card framing (see emberling note)
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://113134007876507",
+                    image_id = "rbxassetid://0",
+                    display_name = "Scorpion",
+                    abilities = { "claw_swipe" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://130738884436725",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Scorpion",
+                    abilities = { "golden_claws", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://113134007876507",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Scorpion",
+                    abilities = { "rainbow_claws", "luck_aura" },
+                },
+            },
+        },
+
         -- BUNNY FAMILY
         bunny = {
             display_name = "Bunny",
@@ -1154,6 +1337,54 @@ local petConfig = {
                 penguin = 18,
                 snowleopard = 6,
                 polarbear = 1,
+            },
+            -- Stage 2: variant rarity (basic mostly; small golden/rainbow chance).
+            rarity_rates = {
+                golden_chance = 0.05,
+                rainbow_chance = 0.005,
+            },
+            variant_rolls = {
+                enabled = true,
+                allow_basic = true,
+                allow_golden = true,
+                allow_rainbow = true,
+                cost_multiplier = 20,
+            },
+            modifier_support = {
+                supports_luck_gamepass = true,
+                supports_golden_gamepass = true,
+                supports_rainbow_gamepass = true,
+                max_luck_multiplier = 10.0,
+            },
+            hatching_time = 3,
+            guaranteed_shiny_chance = 0,
+            bonus_xp = 0,
+        },
+
+        -- SandEgg (desert biome). Place an EggStand part in the Desert zone with attribute
+        -- EggId = "sand_egg" (or via egg_stand_placements["BasicSand"]). Hatches the Sand family.
+        sand_egg = {
+            name = "Sand Egg",
+            description = "Desert-biome egg — hatches the Sand pets (Fennec up to Scorpion).",
+            world_placeable = true,
+            cost = 250,
+            currency = "desert_coins",
+            asset_id = "rbxassetid://86278537786961",
+            image_id = "rbxassetid://0",
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            -- Stage 1: which sand pet (rarer = lower weight).
+            pet_weights = {
+                fennec = 45,
+                camel = 30,
+                meerkat = 18,
+                desertiguana = 6,
+                scorpion = 1,
             },
             -- Stage 2: variant rarity (basic mostly; small golden/rainbow chance).
             rarity_rates = {
