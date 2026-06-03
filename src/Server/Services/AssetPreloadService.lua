@@ -814,7 +814,25 @@ function AssetPreloadService:LoadModelIntoFolder(
 
         local model = loadedAsset:FindFirstChildOfClass("Model")
         if not model then
-            error("No Model found in asset: " .. cleanId)
+            -- Some uploads are a bare MeshPart/part (mesh-only asset, like the enemy meshes)
+            -- rather than a packaged Model. Wrap the first BasePart in a Model so mesh-based pets
+            -- and eggs load instead of failing. Errors only if there's no usable part at all.
+            local part = loadedAsset:FindFirstChildWhichIsA("BasePart", true)
+            if part then
+                local wrap = Instance.new("Model")
+                wrap.Name = folderName or "WrappedMesh"
+                part.Parent = wrap
+                wrap.PrimaryPart = part
+                wrap.Parent = loadedAsset
+                model = wrap
+                logger:Info("🔧 LoadModelIntoFolder: wrapped a bare MeshPart in a Model", {
+                    cleanId = cleanId,
+                    partClass = part.ClassName,
+                })
+            end
+        end
+        if not model then
+            error("No Model or MeshPart found in asset: " .. cleanId)
         end
 
         logger:Info("✅ LoadModelIntoFolder: Model found in asset", {
