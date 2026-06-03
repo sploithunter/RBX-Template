@@ -317,6 +317,184 @@ local petConfig = {
             },
         },
 
+        -- EMBER FAMILY (lava biome — EmberEgg). One asset per pet for now; golden/rainbow reuse
+        -- the basic model until dedicated art exists (so variant-dependent systems don't break).
+        emberling = {
+            display_name = "Emberling",
+            category = "lava",
+            rarity = "common",
+            base_power = 12,
+            base_health = 130,
+            asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://102018563424862",
+                    image_id = "rbxassetid://0",
+                    display_name = "Emberling",
+                    abilities = { "ember" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://102018563424862",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Emberling",
+                    abilities = { "ember", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://102018563424862",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Emberling",
+                    abilities = { "ember", "luck_aura" },
+                },
+            },
+        },
+        emberfox = {
+            display_name = "Emberfox",
+            category = "lava",
+            rarity = "uncommon",
+            base_power = 16,
+            base_health = 150,
+            asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://117740863969382",
+                    image_id = "rbxassetid://0",
+                    display_name = "Emberfox",
+                    abilities = { "ember" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://117740863969382",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Emberfox",
+                    abilities = { "ember", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://117740863969382",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Emberfox",
+                    abilities = { "ember", "luck_aura" },
+                },
+            },
+        },
+        emberimp = {
+            display_name = "Ember Imp",
+            category = "lava",
+            rarity = "rare",
+            base_power = 22,
+            base_health = 170,
+            asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://111062651596295",
+                    image_id = "rbxassetid://0",
+                    display_name = "Ember Imp",
+                    abilities = { "ember" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://111062651596295",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Ember Imp",
+                    abilities = { "ember", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://111062651596295",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Ember Imp",
+                    abilities = { "ember", "luck_aura" },
+                },
+            },
+        },
+        emberowl = {
+            display_name = "Ember Owl",
+            category = "lava",
+            rarity = "epic",
+            base_power = 30,
+            base_health = 200,
+            asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://138609231264349",
+                    image_id = "rbxassetid://0",
+                    display_name = "Ember Owl",
+                    abilities = { "ember" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://138609231264349",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Ember Owl",
+                    abilities = { "ember", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://138609231264349",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Ember Owl",
+                    abilities = { "ember", "luck_aura" },
+                },
+            },
+        },
+        emberlion = {
+            display_name = "Ember Lion",
+            category = "lava",
+            rarity = "legendary",
+            base_power = 42,
+            base_health = 260,
+            asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://123822224997280",
+                    image_id = "rbxassetid://0",
+                    display_name = "Ember Lion",
+                    abilities = { "ember" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://123822224997280",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Ember Lion",
+                    abilities = { "ember", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://123822224997280",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Ember Lion",
+                    abilities = { "ember", "luck_aura" },
+                },
+            },
+        },
+
         -- BUNNY FAMILY
         bunny = {
             display_name = "Bunny",
@@ -700,6 +878,54 @@ local petConfig = {
             -- Egg-specific bonuses
             hatching_time = 3, -- 3 seconds of anticipation
             guaranteed_shiny_chance = 0, -- No guarantees
+            bonus_xp = 0,
+        },
+
+        -- EmberEgg (lava biome). Place a "Egg hatcher" / EggStand part in the Lava 1 zone with
+        -- attribute EggId = "ember_egg" (markers.lua) to spawn it there. Hatches the Ember family.
+        ember_egg = {
+            name = "Ember Egg",
+            description = "Lava-biome egg — hatches the Ember pets (Emberling up to Ember Lion).",
+            world_placeable = true,
+            cost = 250,
+            currency = "lava_coins",
+            asset_id = "rbxassetid://79770174701008",
+            image_id = "rbxassetid://0",
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            -- Stage 1: which ember pet (rarer = lower weight).
+            pet_weights = {
+                emberling = 45,
+                emberfox = 30,
+                emberimp = 18,
+                emberowl = 6,
+                emberlion = 1,
+            },
+            -- Stage 2: variant rarity (basic mostly; small golden/rainbow chance).
+            rarity_rates = {
+                golden_chance = 0.05,
+                rainbow_chance = 0.005,
+            },
+            variant_rolls = {
+                enabled = true,
+                allow_basic = true,
+                allow_golden = true,
+                allow_rainbow = true,
+                cost_multiplier = 20,
+            },
+            modifier_support = {
+                supports_luck_gamepass = true,
+                supports_golden_gamepass = true,
+                supports_rainbow_gamepass = true,
+                max_luck_multiplier = 10.0,
+            },
+            hatching_time = 3,
+            guaranteed_shiny_chance = 0,
             bonus_xp = 0,
         },
 
