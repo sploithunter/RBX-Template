@@ -16,8 +16,12 @@ local petConfig = {
     -- Place an egg model (egg_sources id) centered inside a named map stand. The EggStandPlacement
     -- server script clones the loaded egg model and centers it at the stand's UIanchor (or pivot).
     -- Just name the stand + the egg here — no per-instance attributes/tags needed.
+    -- Value may be a string (egg id) OR a table for tuning:
+    --   { egg = "<id>", scale = <number>, offset_y = <studs> }
+    --   scale    multiplies the egg model's size (Model:ScaleTo), default 1
+    --   offset_y raises the egg above the stand anchor in studs, default 0
     egg_stand_placements = {
-        ["Egg hatcher Lava 1"] = "ember_egg",
+        ["Egg hatcher Lava 1"] = { egg = "ember_egg", scale = 3.5, offset_y = 1.5 },
     },
 
     -- Eternal pets scale to a percentage of the player's "eternal power base"
