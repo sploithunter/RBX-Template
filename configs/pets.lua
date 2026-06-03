@@ -22,6 +22,7 @@ local petConfig = {
     --   offset_y raises the egg above the stand anchor in studs, default 0
     egg_stand_placements = {
         ["BasicEmber"] = { egg = "ember_egg", scale = 3.5, offset_y = 0.5 },
+        ["BasicIce"] = { egg = "ice_egg", scale = 3.5, offset_y = 0.5 },
     },
 
     -- Eternal pets scale to a percentage of the player's "eternal power base"
@@ -513,6 +514,188 @@ local petConfig = {
             },
         },
 
+        -- ICE FAMILY (BasicIce egg). Ice-biome pets; same scale/framing as the ember family.
+        snowflakeowl = {
+            display_name = "Snowflake Owl",
+            category = "ice",
+            rarity = "common",
+            base_power = 12,
+            base_health = 130,
+            viewport_zoom = 1.5, -- ice card framing (see emberling note)
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://83292549021438",
+                    image_id = "rbxassetid://0",
+                    display_name = "Snowflake Owl",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://86818999673257",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Snowflake Owl",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://83292549021438",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Snowflake Owl",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+        snowfox = {
+            display_name = "Snow Fox",
+            category = "ice",
+            rarity = "uncommon",
+            base_power = 16,
+            base_health = 150,
+            viewport_zoom = 1.5, -- ice card framing (see emberling note)
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://72606573858620",
+                    image_id = "rbxassetid://0",
+                    display_name = "Snow Fox",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://108502787971065",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Snow Fox",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://72606573858620",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Snow Fox",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+        penguin = {
+            display_name = "Penguin",
+            category = "ice",
+            rarity = "rare",
+            base_power = 22,
+            base_health = 170,
+            viewport_zoom = 1.5, -- ice card framing (see emberling note)
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://102826053899109",
+                    image_id = "rbxassetid://0",
+                    display_name = "Penguin",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://137944510499979",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Penguin",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://102826053899109",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Penguin",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+        snowleopard = {
+            display_name = "Snow Leopard",
+            category = "ice",
+            rarity = "epic",
+            base_power = 30,
+            base_health = 200,
+            viewport_zoom = 1.5, -- ice card framing (see emberling note)
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://84866938216699",
+                    image_id = "rbxassetid://0",
+                    display_name = "Snow Leopard",
+                    abilities = { "claw_swipe" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://86681945642413",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Snow Leopard",
+                    abilities = { "golden_claws", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://84866938216699",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Snow Leopard",
+                    abilities = { "rainbow_claws", "luck_aura" },
+                },
+            },
+        },
+        polarbear = {
+            display_name = "Polar Bear",
+            category = "ice",
+            rarity = "legendary",
+            base_power = 42,
+            base_health = 260,
+            viewport_zoom = 1.5, -- ice card framing (see emberling note)
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://71993023026266",
+                    image_id = "rbxassetid://0",
+                    display_name = "Polar Bear",
+                    abilities = { "claw_swipe" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://87286616937220",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Polar Bear",
+                    abilities = { "golden_claws", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://71993023026266",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Polar Bear",
+                    abilities = { "rainbow_claws", "luck_aura" },
+                },
+            },
+        },
+
         -- BUNNY FAMILY
         bunny = {
             display_name = "Bunny",
@@ -923,6 +1106,54 @@ local petConfig = {
                 emberimp = 18,
                 emberowl = 6,
                 emberlion = 1,
+            },
+            -- Stage 2: variant rarity (basic mostly; small golden/rainbow chance).
+            rarity_rates = {
+                golden_chance = 0.05,
+                rainbow_chance = 0.005,
+            },
+            variant_rolls = {
+                enabled = true,
+                allow_basic = true,
+                allow_golden = true,
+                allow_rainbow = true,
+                cost_multiplier = 20,
+            },
+            modifier_support = {
+                supports_luck_gamepass = true,
+                supports_golden_gamepass = true,
+                supports_rainbow_gamepass = true,
+                max_luck_multiplier = 10.0,
+            },
+            hatching_time = 3,
+            guaranteed_shiny_chance = 0,
+            bonus_xp = 0,
+        },
+
+        -- IceEgg (ice biome). Place an EggStand part in the Ice zone with attribute
+        -- EggId = "ice_egg" (or via egg_stand_placements["BasicIce"]). Hatches the Ice family.
+        ice_egg = {
+            name = "Ice Egg",
+            description = "Ice-biome egg — hatches the Ice pets (Snowflake Owl up to Polar Bear).",
+            world_placeable = true,
+            cost = 250,
+            currency = "ice_coins",
+            asset_id = "rbxassetid://96544163202240",
+            image_id = "rbxassetid://0",
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            -- Stage 1: which ice pet (rarer = lower weight).
+            pet_weights = {
+                snowflakeowl = 45,
+                snowfox = 30,
+                penguin = 18,
+                snowleopard = 6,
+                polarbear = 1,
             },
             -- Stage 2: variant rarity (basic mostly; small golden/rainbow chance).
             rarity_rates = {

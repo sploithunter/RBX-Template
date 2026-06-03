@@ -48,6 +48,12 @@ return {
             emberimp = "lava",
             emberowl = "lava",
             emberlion = "lava",
+            -- Ice family = ice origin (RPS / element stats / VFX).
+            snowflakeowl = "ice",
+            snowfox = "ice",
+            penguin = "ice",
+            snowleopard = "ice",
+            polarbear = "ice",
         },
 
         -- Canonical element -> ranged projectile kind (damage). Melee + heal are routed
