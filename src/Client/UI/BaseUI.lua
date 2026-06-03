@@ -2221,10 +2221,12 @@ function BaseUI:_bindQuestTracker()
         if not remote then
             return
         end
-        local ok, res = pcall(function()
+        local ok, envelope = pcall(function()
             return remote:InvokeServer("quest.list", {})
         end)
-        if not ok or type(res) ~= "table" or type(res.quests) ~= "table" then
+        -- The command bus wraps the handler's return under `.result`.
+        local res = (ok and type(envelope) == "table") and envelope.result or nil
+        if type(res) ~= "table" or type(res.quests) ~= "table" then
             return
         end
         local claimables = 0
@@ -2804,8 +2806,9 @@ end
 
 function BaseUI:_onRewardsButtonClicked()
     self.logger:info("Rewards button clicked")
-    -- Open the Quest panel (where completed quests are claimed) via the shared MenuManager.
-    local mm = _G.MenuManager
+    -- Open the Quest panel (where completed quests are claimed) via the same MenuManager the
+    -- toolbar uses (BaseUI holds its own reference; _G.MenuManager is a fallback).
+    local mm = self.menuManager or _G.MenuManager
     if mm and mm.TogglePanel then
         mm:TogglePanel("Quest")
     else
