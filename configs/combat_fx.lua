@@ -42,6 +42,12 @@ return {
             kitty = "ice",
             dragon = "lava",
             colorado = "lava",
+            -- Ember family = lava origin (RPS / element stats / VFX).
+            emberling = "lava",
+            emberfox = "lava",
+            emberimp = "lava",
+            emberowl = "lava",
+            emberlion = "lava",
         },
 
         -- Canonical element -> ranged projectile kind (damage). Melee + heal are routed
