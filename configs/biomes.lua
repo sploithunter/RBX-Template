@@ -19,7 +19,7 @@ return {
     -- Per-biome data. `dichotomy` is the mirror-opposite biome (nil if none).
     -- `currency` is the themed reward currency for that biome.
     biomes = {
-        earth = { id = "earth", theme = "earth", dichotomy = "desert", currency = "earth_coins" },
+        earth = { id = "earth", theme = "earth", dichotomy = "desert", currency = "grass_coins" },
         ice = { id = "ice", theme = "ice", dichotomy = "lava", currency = "ice_coins" },
         lava = { id = "lava", theme = "lava", dichotomy = "ice", currency = "lava_coins" },
         desert = { id = "desert", theme = "desert", dichotomy = "earth", currency = "desert_coins" },

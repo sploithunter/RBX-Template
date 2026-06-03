@@ -16,8 +16,19 @@ local TradeLogic = {}
 
 function TradeLogic.canAddItem(category, item, config)
     local tradeable = config and config.tradeable or {}
-    if category == "currencies" or tradeable[category] == false then
+    -- Currencies are non-tradeable EXCEPT an explicit per-currency allowlist
+    -- (config.tradeable_currencies = { gems = true }). Pet Realm design: the four
+    -- biome coins are soulbound; gems are the only trade currency.
+    if category == "currencies" then
+        local allow = config and config.tradeable_currencies or {}
+        local id = item and item.id
+        if id and allow[id] == true then
+            return { ok = true }
+        end
         return { ok = false, reason = "currencies_not_tradeable" }
+    end
+    if tradeable[category] == false then
+        return { ok = false, reason = "not_tradeable" }
     end
     if tradeable[category] ~= true then
         return { ok = false, reason = "not_tradeable" }

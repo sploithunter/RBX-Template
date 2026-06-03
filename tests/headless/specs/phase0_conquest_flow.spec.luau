@@ -74,7 +74,7 @@ return function()
         it("rewards are themed by the biome being conquered/farmed", function()
             -- as the player tours, a base-layer breakable in each biome pays that
             -- biome's currency (independent of Soul)
-            expect(resolver:resolveReward(10, "earth", "base").currency).to.equal("earth_coins")
+            expect(resolver:resolveReward(10, "earth", "base").currency).to.equal("grass_coins")
             expect(resolver:resolveReward(10, "ice", "base").currency).to.equal("ice_coins")
             expect(resolver:resolveReward(10, "lava", "base").currency).to.equal("lava_coins")
             -- and a Heaven run scales the same currency + grants Light tokens

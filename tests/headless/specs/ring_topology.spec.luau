@@ -49,7 +49,7 @@ return function()
         end)
 
         it("currency is config-driven per biome", function()
-            expect(ring:currency("earth")).to.equal("earth_coins")
+            expect(ring:currency("earth")).to.equal("grass_coins")
             expect(ring:currency("ice")).to.equal("ice_coins")
         end)
 

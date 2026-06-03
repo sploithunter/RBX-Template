@@ -15,21 +15,21 @@ return function()
             resolver = RewardResolver.new(RingTopology.new(biomeConfig), layersConfig)
         end)
 
-        it("earth breakable in base drops 10 earth_coins", function()
+        it("earth breakable in base drops 10 grass_coins", function()
             local r = resolver:resolveReward(10, "earth", "base")
-            expect(r.currency).to.equal("earth_coins")
+            expect(r.currency).to.equal("grass_coins")
             expect(r.amount).to.equal(10)
         end)
 
         it("earth breakable in Heaven 1 drops 15 of the SAME currency (1.5x)", function()
             local r = resolver:resolveReward(10, "earth", "heaven_1")
-            expect(r.currency).to.equal("earth_coins")
+            expect(r.currency).to.equal("grass_coins")
             expect(r.amount).to.equal(15)
         end)
 
-        it("earth breakable in Hell 1 drops 15 earth_coins (not a separate currency)", function()
+        it("earth breakable in Hell 1 drops 15 grass_coins (not a separate currency)", function()
             local r = resolver:resolveReward(10, "earth", "hell_1")
-            expect(r.currency).to.equal("earth_coins")
+            expect(r.currency).to.equal("grass_coins")
             expect(r.amount).to.equal(15)
         end)
 
@@ -39,10 +39,10 @@ return function()
         end)
 
         it("currency drops vary by biome", function()
-            expect(resolver:resolveReward(10, "earth", "base").currency).to.equal("earth_coins")
+            expect(resolver:resolveReward(10, "earth", "base").currency).to.equal("grass_coins")
             expect(resolver:resolveReward(10, "ice", "base").currency).to.equal("ice_coins")
-            -- ice breakable never yields earth_coins
-            expect(resolver:resolveReward(10, "ice", "base").currency).never.to.equal("earth_coins")
+            -- ice breakable never yields grass_coins
+            expect(resolver:resolveReward(10, "ice", "base").currency).never.to.equal("grass_coins")
         end)
 
         it("unknown layer falls back to 1.0x", function()

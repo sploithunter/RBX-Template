@@ -13,6 +13,11 @@ return {
         currencies = false,
         cosmetics = true,
     },
+    -- Per-currency trade allowlist (Pet Realm): the four biome coins are soulbound;
+    -- gems are the only tradeable currency. Anything not listed here is non-tradeable.
+    tradeable_currencies = {
+        gems = true,
+    },
     max_offer_items = 10,
     -- Cap the in-memory audit log per player (full audit would be a DataStore).
     audit_log_limit = 100,
