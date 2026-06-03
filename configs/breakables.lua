@@ -217,11 +217,11 @@ local M = {
         -- Emberstone ore only, paying lava_coins. Marked always-active in BreakableSpawner
         -- (_isWorldActive) for now; swap to proper enter-the-zone activation via the area system later.
         Lava = {
-            max = 14,
+            max = 100,
             interval = 8,
             spawn_area = {
                 name = "SpawnArea",
-                size = { x = 300, y = 1, z = 300 },
+                size = { x = 340, y = 1, z = 420 }, -- covers more of the 360x458 Lava pad
                 position = { x = -207, y = 0, z = 68 },
             },
             spawn_settings = {
@@ -237,10 +237,10 @@ local M = {
                 spawn_area_margin = 30,
                 spawn_center = { x = -207, z = 68 },
                 spawn_radius = 150,
-                spawn_exclusion_radius = 20,
+                spawn_exclusion_radius = 12,
                 embed_ratio = 0,
-                min_distance = 18,
-                spawn_attempts = 60,
+                min_distance = 12, -- tighter so 100 can fit the cluttered lava pad
+                spawn_attempts = 90, -- more tries (material-match rejects rock/gap candidates)
                 respawn_min_seconds = 5,
                 respawn_max_seconds = 60,
             },
