@@ -219,6 +219,16 @@ if RunService:IsStudio() then
     end
 end
 
+-- Biome unlock prompt: appears when you stand in a locked biome (reads CurrentArea), click to buy.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.ZoneUnlockPrompt).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start ZoneUnlockPrompt", { error = tostring(err) })
+    end
+end
+
 -- Start Matter loop with client systems
 local systemsList = {}
 for name, system in pairs(systems) do

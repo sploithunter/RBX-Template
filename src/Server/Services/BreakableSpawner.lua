@@ -668,6 +668,21 @@ function BreakableSpawner:Start()
         end)
     end
 
+    -- When a player unlocks a biome (ZoneService publishes UnlockedAreasJson), top up the worlds
+    -- immediately so the freshly-unlocked ore appears at once instead of on the next 5s sweep.
+    local function watchUnlocks(player)
+        player:GetAttributeChangedSignal("UnlockedAreasJson"):Connect(function()
+            local crystalsAssets = self._crystalsAssets
+            if crystalsAssets then
+                self:_fillAllWorlds(crystalsAssets)
+            end
+        end)
+    end
+    for _, player in ipairs(Players:GetPlayers()) do
+        watchUnlocks(player)
+    end
+    Players.PlayerAdded:Connect(watchUnlocks)
+
     task.spawn(function()
         self:_spawnLoop()
     end)
@@ -684,18 +699,46 @@ function BreakableSpawner:Start()
     end)
 end
 
+-- Resolve ZoneService lazily via the locator (ZoneService may load after BreakableSpawner).
+function BreakableSpawner:_zoneService()
+    local locator = _G.RBXTemplateServices
+    if not locator then
+        return nil
+    end
+    local ok, svc = pcall(function()
+        return locator:Get("ZoneService")
+    end)
+    return ok and svc or nil
+end
+
 function BreakableSpawner:_isWorldActive(worldName)
-    if not worldBindingService or not worldBindingService.IsAreaActive then
+    -- Spawn (grass) is the free starter zone — always active.
+    if worldName == "Spawn" or worldName == "SpawnWorld" then
         return true
     end
 
-    -- "Spawn" (grass) and "Lava" are always-active mining zones for now; other worlds activate
-    -- via the area-entry system. (Swap Lava to area-gated when the zone system is wired.)
-    return worldName == "Spawn"
-        or worldName == "Lava"
-        or worldName == "Ice"
-        or worldName == "Desert"
-        or worldBindingService:IsAreaActive(worldName)
+    -- A biome spawns ore only if at least one CURRENTLY-PRESENT player has it unlocked. This is
+    -- the authoritative lockout / anti-cheat layer: a player who C-frame-teleports into a locked
+    -- biome finds nothing to mine because the server never spawned ore there. (Per-player MINING
+    -- gating — so an un-unlocked player can't mine a node another player lit up — is a follow-up.)
+    local zone = self:_zoneService()
+    if zone and zone.IsZoneUnlocked then
+        for _, player in ipairs(Players:GetPlayers()) do
+            local ok, unlocked = pcall(function()
+                return zone:IsZoneUnlocked(player, worldName)
+            end)
+            if ok and unlocked then
+                return true
+            end
+        end
+        return false -- zone system present + nobody unlocked => asleep
+    end
+
+    -- Fallback (ZoneService not up yet): legacy area-entry activation.
+    if worldBindingService and worldBindingService.IsAreaActive then
+        return worldBindingService:IsAreaActive(worldName)
+    end
+    return false
 end
 
 function BreakableSpawner:_fillAreaWorld(areaId)

@@ -84,7 +84,10 @@ return {
             display_name = "Lava Fields",
             order = 3,
             unlock = {
-                unlocked_by_default = true,
+                unlocked_by_default = false,
+                required_zone = "Ice",
+                currency = "ice_coins",
+                cost = 3000,
             },
             boosts = {},
             -- Real authored "Lava" baseplate (Home.Lava): center ~(-207,0,68), top ~Y0.5.
@@ -110,8 +113,14 @@ return {
             parent = "ice_island",
             display_name = "Ice Fields",
             order = 4,
+            -- Unlock chain (ring order): grass(Spawn) -> Ice -> Lava -> Desert. Each biome is paid
+            -- for with the PREVIOUS biome's coins, so you mine one zone to afford the next.
+            -- Costs are first-pass and tunable here.
             unlock = {
-                unlocked_by_default = true,
+                unlocked_by_default = false,
+                required_zone = "Spawn",
+                currency = "grass_coins",
+                cost = 1000,
             },
             boosts = {},
             -- Real authored "Ice" baseplate (Home.Ice): center ~(-375,0,377).
@@ -138,7 +147,10 @@ return {
             display_name = "Desert Fields",
             order = 5,
             unlock = {
-                unlocked_by_default = true,
+                unlocked_by_default = false,
+                required_zone = "Lava",
+                currency = "lava_coins",
+                cost = 8000,
             },
             boosts = {},
             -- Real authored "Desert" baseplate (Home.Desert): center ~(-127,1,475).
