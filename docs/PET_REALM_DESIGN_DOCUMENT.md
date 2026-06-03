@@ -2032,4 +2032,50 @@ Hold the spine. Everything else can flex.
 
 ---
 
+## 32. Zone Economy & Mineable Currencies (locked 2026-06)
+
+Decisions locked with the user. This supersedes any earlier "themed currency" notes that
+implied beach as a fifth coin or tradeable biome coins.
+
+### 32.1 The five currencies
+- **Four zone coins — one per elemental zone, SOULBOUND (non-tradeable):**
+  `grass_coins` 🌿, `desert_coins` 🏜️, `lava_coins` 🌋, `ice_coins` 🧊.
+  (`grass_coins` was renamed from `earth_coins`; the biome id is still internally `earth`.)
+- **`gems` 💎 — the ONLY tradeable currency** (premium + the trade medium). Player-to-player
+  trading moves gems, never zone coins.
+- These four wallets **persist across Heaven/Hell layers** — currency is profile-global, so
+  ascending/descending never resets them. The `light_tokens`/`shadow_tokens` remain a SEPARATE
+  vertical-progression axis (how high in Heaven / deep in Hell), not "money".
+
+### 32.2 What you mine — one themed ore family per zone, 3 tiers
+Mirror the existing Small/Medium/Big crystal tiering, reskinned per element; each pays that
+zone's coins. No new art required to ship the loop (reskin the existing crystal mesh).
+
+| Zone (element) | Ore | Pays |
+|---|---|---|
+| Grass (earth) | **Bloomstone** (mossy green geode) | `grass_coins` |
+| Desert | **Sunglass** (amber heat-fused shard) | `desert_coins` |
+| Lava | **Emberstone** (cracked obsidian) | `lava_coins` |
+| Ice | **Frostshard** (the existing blue crystal) | `ice_coins` |
+
+Generic `coins` / `crystals` are **retired as mine outputs**; `gems` stays premium. (Full removal
+of `coins`/`crystals` from the template shop/upgrades/enchants/auto-target is a deferred phased
+migration — they're load-bearing in ~20 template files.)
+
+### 32.3 Beach — dropped
+Beach is removed from the design's currency set (no `beach_coins` as a mined currency). Trading
+is **global** (not zone-gated); a dedicated trading zone may come later but is not required.
+NOTE: physically removing `beach` from the biome ring (`biomes.lua` + RingTopology/conquest
+specs that hardcode beach's soul-math) is a deferred cleanup — it has no functional payoff for
+the mining economy.
+
+### 32.4 Implementation status
+- **Slice A (done):** gems-only trade rule (`TradeLogic` + `configs/trade.lua tradeable_currencies`),
+  `earth_coins`→`grass_coins` rename. Headless-tested.
+- **Slice B (next):** `breakables.lua` 4 ore families + per-element reskin field + spawner support;
+  4 in-world mining zones; live verify each zone pays its coin and persists cross-layer.
+- **Deferred:** beach removal from the ring; full `coins`/`crystals` retirement across the template.
+
+---
+
 *End of design document. Total target word count: ~15,000 words. Designed for handoff to coding agent or split into multiple architecture docs as needed.*
