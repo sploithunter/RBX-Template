@@ -387,4 +387,16 @@ for _, fam in ipairs(ORE_FAMILIES) do
     end
 end
 
+-- Active-mining BOOST (rewards active players over passive). Clicking the node you're mining
+-- builds its Boost (server-side, in BreakableSpawner); higher Boost amplifies YOUR pets' damage
+-- on that node (applied in PetFollowService) — firewall-clean: the player amplifies, pets deal.
+-- Small nodes die in one hit so boost only matters on big/substantial targets (by design — not
+-- a clicker game). Boost decays when you stop, so sustained focus is required.
+M.boost = {
+    per_click = 15, -- Boost gained per click (capped at max)
+    decay_per_sec = 5, -- Boost lost per second when not clicking
+    max = 100, -- MaxBoost
+    max_damage_bonus = 1.0, -- at full Boost, pet damage on the node is x(1 + this) = +100%
+}
+
 return M

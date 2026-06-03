@@ -1224,7 +1224,12 @@ function BreakableSpawner:_trySpawnOne(
         model:SetAttribute("Currency", tostring(resolveStat("currency", "crystals")))
         model:SetAttribute("Scale", scale)
         model:SetAttribute("Boost", 0)
-        model:SetAttribute("MaxBoost", 100)
+        model:SetAttribute("MaxBoost", (breakablesConfig.boost and breakablesConfig.boost.max) or 100)
+        -- Pet-damage amplification at full Boost (read by PetFollowService on each hit).
+        model:SetAttribute(
+            "BoostDamageBonus",
+            (breakablesConfig.boost and breakablesConfig.boost.max_damage_bonus) or 1.0
+        )
 
         -- Optional self-glow (Pet Realm zone ore). config: crystalCfg.glow =
         -- { color = {r,g,b}, brightness = 0.75, range = 16 }. Shadows off (cheap; a colored
@@ -1410,13 +1415,15 @@ function BreakableSpawner:_trySpawnOne(
     updateBoostBar()
     model:GetAttributeChangedSignal("Boost"):Connect(updateBoostBar)
 
-    -- Decay boost over time similar to MCP
+    -- Decay boost over time so sustained clicking is required to hold it up (config-driven).
+    local boostDecay = (breakablesConfig.boost and tonumber(breakablesConfig.boost.decay_per_sec))
+        or 1
     task.spawn(function()
         while model.Parent do
             task.wait(1)
             local b = tonumber(model:GetAttribute("Boost")) or 0
             if b > 0 then
-                model:SetAttribute("Boost", math.max(0, b - 1))
+                model:SetAttribute("Boost", math.max(0, b - boostDecay))
             end
         end
     end)
@@ -1758,13 +1765,7 @@ function BreakableSpawner:_trySpawnOne(
                 hum:Play()
             end
         end
-        -- Nudge boost
-        local b = tonumber(model:GetAttribute("Boost")) or 0
-        local m = tonumber(model:GetAttribute("MaxBoost")) or 100
-        b += 1
-        if b <= m then
-            model:SetAttribute("Boost", b)
-        end
+        -- (Boost is built by player CLICKS, not auto-assignment — see the ClickDetector handler.)
     end
 
     -- Add click-to-assign-pets and damage (server-side)
@@ -1775,40 +1776,19 @@ function BreakableSpawner:_trySpawnOne(
         cd.MaxActivationDistance = 50
         cd.Parent = part
         cd.MouseClick:Connect(function(player)
-            print("Breakable clicked", player.Name)
-            -- Assign player's pets to this target and play SFX/UI
-            assignPlayerPetsToTarget(player)
+            -- Active-mining: clicking the node you're mining ASSIGNS your pets to it and BUILDS
+            -- its Boost, which amplifies your pets' damage on it (PetFollowService). The click
+            -- itself deals NO damage — firewall-clean: the player amplifies, the pets deal.
             local hp = tonumber(model:GetAttribute("HP")) or 0
             if hp <= 0 then
-                print("[Breakables] Click ignored (0 HP)", breakableIdForLogs, player.Name)
                 return
             end
-            local before = hp
-            local after = math.max(0, hp - 5)
-            model:SetAttribute("HP", after)
-            print(
-                "[Breakables] Clicked",
-                breakableIdForLogs,
-                player.Name,
-                "HP:",
-                before,
-                "->",
-                after,
-                "part:",
-                part.Name
-            )
-
-            -- Record contribution
-            local delta = before - after
-            local key = tostring(player.UserId)
-            local nv = contribFolder:FindFirstChild(key)
-            if not nv then
-                nv = Instance.new("NumberValue")
-                nv.Name = key
-                nv.Value = 0
-                nv.Parent = contribFolder
-            end
-            nv.Value += math.max(0, delta)
+            assignPlayerPetsToTarget(player)
+            local cfg = breakablesConfig.boost or {}
+            local per = tonumber(cfg.per_click) or 10
+            local maxB = tonumber(model:GetAttribute("MaxBoost")) or 100
+            local b = math.min(maxB, (tonumber(model:GetAttribute("Boost")) or 0) + per)
+            model:SetAttribute("Boost", b)
         end)
     end
     if model.PrimaryPart then

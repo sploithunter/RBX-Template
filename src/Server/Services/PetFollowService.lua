@@ -387,6 +387,17 @@ function PetFollowService:_mine(player, pet, breakable)
     local pacing = self._combatConfig.pet_attack_pacing or {}
     dmg = dmg * (tonumber(pacing.damage_mult) or 1)
 
+    -- Active-mining boost: the player builds a node's Boost by clicking it (BreakableSpawner),
+    -- which amplifies their pets' damage on that node — rewards active over passive play.
+    -- Firewall-clean: the player amplifies, the pets still deal. Decays when they stop clicking.
+    local maxBoost = tonumber(breakable:GetAttribute("MaxBoost")) or 0
+    local curBoost = tonumber(breakable:GetAttribute("Boost")) or 0
+    if maxBoost > 0 and curBoost > 0 then
+        local frac = math.clamp(curBoost / maxBoost, 0, 1)
+        local bonus = tonumber(breakable:GetAttribute("BoostDamageBonus")) or 0
+        dmg = dmg * (1 + frac * bonus)
+    end
+
     dmg = math.floor(dmg + 0.5)
     local applied = PetCombat.applyDamage(hp, dmg)
     breakable:SetAttribute("HP", applied.hp)
