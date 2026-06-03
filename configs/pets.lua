@@ -338,8 +338,8 @@ local petConfig = {
             base_health = 130,
             -- Ember meshes are tight, full-silhouette MeshParts; pull the inventory-card camera back
             -- a touch so the art doesn't overflow the card (card-only — not the in-world size).
-            viewport_zoom = 1.0,
-            asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
                 angle_y = 0,
@@ -374,8 +374,8 @@ local petConfig = {
             rarity = "uncommon",
             base_power = 16,
             base_health = 150,
-            viewport_zoom = 1.0, -- ember card framing (see emberling note)
-            asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            viewport_zoom = 1.5, -- ember card framing (see emberling note)
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
                 angle_y = 0,
@@ -410,8 +410,8 @@ local petConfig = {
             rarity = "rare",
             base_power = 22,
             base_health = 170,
-            viewport_zoom = 1.0, -- ember card framing (see emberling note)
-            asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            viewport_zoom = 1.5, -- ember card framing (see emberling note)
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
                 angle_y = 0,
@@ -446,8 +446,8 @@ local petConfig = {
             rarity = "epic",
             base_power = 30,
             base_health = 200,
-            viewport_zoom = 1.0, -- ember card framing (see emberling note)
-            asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            viewport_zoom = 1.5, -- ember card framing (see emberling note)
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
                 angle_y = 0,
@@ -482,8 +482,8 @@ local petConfig = {
             rarity = "legendary",
             base_power = 42,
             base_health = 260,
-            viewport_zoom = 1.0, -- ember card framing (see emberling note)
-            asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            viewport_zoom = 1.5, -- ember card framing (see emberling note)
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
                 angle_y = 0,
