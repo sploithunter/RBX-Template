@@ -2180,7 +2180,85 @@ function BaseUI:_createQuestTrackerElement(config, parent)
     progressText.ZIndex = 15
     progressText.Parent = progressBG
 
+    -- Keep the tracker live from the real quest list (replaces the hardcoded placeholder).
+    self._questDesc = description
+    self._questFill = progressFill
+    self._questText = progressText
+    self:_bindQuestTracker()
+
     return title
+end
+
+-- Poll quest.list and show the most relevant quest (claimable first, else the closest to done).
+-- Quests are bus-driven (no push signal), so a light 4s poll keeps the HUD honest. Also refreshes
+-- the Rewards button badge with the claimable count.
+function BaseUI:_bindQuestTracker()
+    if self._questTrackerBound then
+        return
+    end
+    self._questTrackerBound = true
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+    local function pick(quests)
+        local claimable, best
+        for _, q in ipairs(quests) do
+            if q.claimable and not claimable then
+                claimable = q
+            end
+            local met = q.progress and q.progress.met
+            if not met then
+                local f = (q.progress and q.progress.fraction) or 0
+                if not best or f > ((best.progress and best.progress.fraction) or 0) then
+                    best = q
+                end
+            end
+        end
+        return claimable or best or quests[1]
+    end
+
+    local function refresh()
+        local remote = ReplicatedStorage:FindFirstChild("GameAPICommand")
+        if not remote then
+            return
+        end
+        local ok, res = pcall(function()
+            return remote:InvokeServer("quest.list", {})
+        end)
+        if not ok or type(res) ~= "table" or type(res.quests) ~= "table" then
+            return
+        end
+        local claimables = 0
+        for _, q in ipairs(res.quests) do
+            if q.claimable then
+                claimables += 1
+            end
+        end
+        self:_setRewardsBadge(claimables)
+
+        local q = pick(res.quests)
+        if not q then
+            return
+        end
+        local cur = math.floor((q.progress and q.progress.current) or 0)
+        local tgt = math.floor((q.progress and q.progress.target) or 1)
+        local frac = math.clamp((q.progress and q.progress.fraction) or 0, 0, 1)
+        if self._questDesc then
+            self._questDesc.Text = tostring(q.name or "Quest")
+        end
+        if self._questText then
+            self._questText.Text = q.claimable and "✓ Claim!" or (cur .. "/" .. tgt)
+        end
+        if self._questFill then
+            self._questFill.Size = UDim2.new(frac, 0, 1, 0)
+        end
+    end
+
+    task.spawn(function()
+        while self._questTrackerBound do
+            refresh()
+            task.wait(4)
+        end
+    end)
 end
 
 -- Create pets button element for panes
@@ -2408,6 +2486,7 @@ function BaseUI:_createRewardsButtonElement(config, parent)
     end
 
     -- Click handling
+    self._rewardsButton = rewardsButton
     rewardsButton.Activated:Connect(function()
         self:_onRewardsButtonClicked()
         self:_animateButtonPress(rewardsButton)
@@ -2725,7 +2804,57 @@ end
 
 function BaseUI:_onRewardsButtonClicked()
     self.logger:info("Rewards button clicked")
-    -- Handle rewards logic here
+    -- Open the Quest panel (where completed quests are claimed) via the shared MenuManager.
+    local mm = _G.MenuManager
+    if mm and mm.TogglePanel then
+        mm:TogglePanel("Quest")
+    else
+        self.logger:warn("Rewards button: MenuManager unavailable")
+    end
+end
+
+-- Update the Rewards button's notification badge to `count` (hidden at 0). Creates the badge
+-- on first use so it works whether or not the pane config seeded one.
+function BaseUI:_setRewardsBadge(count)
+    local button = self._rewardsButton
+    if not button or not button.Parent then
+        return
+    end
+    count = tonumber(count) or 0
+    local badge = button:FindFirstChild("NotificationBadge")
+    if count <= 0 then
+        if badge then
+            badge.Visible = false
+        end
+        return
+    end
+    if not badge then
+        badge = Instance.new("Frame")
+        badge.Name = "NotificationBadge"
+        badge.Size = UDim2.new(0, 20, 0, 20)
+        badge.Position = UDim2.new(1, -5, 0, -5)
+        badge.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+        badge.BorderSizePixel = 0
+        badge.ZIndex = 15
+        badge.Parent = button
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(0.5, 0)
+        c.Parent = badge
+        local t = Instance.new("TextLabel")
+        t.Name = "Count"
+        t.Size = UDim2.new(1, 0, 1, 0)
+        t.BackgroundTransparency = 1
+        t.TextColor3 = Color3.fromRGB(255, 255, 255)
+        t.TextScaled = true
+        t.Font = Enum.Font.GothamBold
+        t.ZIndex = 16
+        t.Parent = badge
+    end
+    badge.Visible = true
+    local txt = badge:FindFirstChild("Count") or badge:FindFirstChildWhichIsA("TextLabel")
+    if txt then
+        txt.Text = tostring(count)
+    end
 end
 
 -- Update methods for real-time data (now uses player attributes automatically)
