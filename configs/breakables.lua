@@ -155,22 +155,19 @@ local M = {
                 respawn_max_seconds = 60,
             },
             -- Optional weighted spawn table. Entries can override scale/health/value/currency/placement per area.
+            -- Starter area = the GRASS zone: only emerald (Bloomstone) ore now. All 3 cosmetic
+            -- variants across S/M/L, weighted small-common -> large-rare. (Coins + blue crystals
+            -- + other-element placeholders removed; desert/lava/ice get their own zones later.)
             spawn_table = {
-                { name = "SmallBlueCrystal", weight = 5 },
-                { name = "MediumBlueCrystal", weight = 1 },
-                { name = "CoinStack", weight = 4 },
-                -- TEMP (Slice B verification): one ore per element in the starter area so the
-                -- zone-currency loop is testable before the 4 mining zones exist. Move these to
-                -- their own zone spawn_tables once the map zones are placed.
-                -- Grass emerald test: V1 across S/M/L (size range) + all 3 variants at Medium (variety).
-                { name = "BloomstoneSmallV1", weight = 1 },
+                { name = "BloomstoneSmallV1", weight = 4 },
+                { name = "BloomstoneSmallV2", weight = 4 },
+                { name = "BloomstoneSmallV3", weight = 4 },
+                { name = "BloomstoneMediumV1", weight = 2 },
+                { name = "BloomstoneMediumV2", weight = 2 },
+                { name = "BloomstoneMediumV3", weight = 2 },
                 { name = "BloomstoneLargeV1", weight = 1 },
-                { name = "BloomstoneMediumV1", weight = 1 },
-                { name = "BloomstoneMediumV2", weight = 1 },
-                { name = "BloomstoneMediumV3", weight = 1 },
-                { name = "SunglassMedium", weight = 2 },
-                { name = "EmberstoneMedium", weight = 2 },
-                { name = "FrostshardMedium", weight = 2 },
+                { name = "BloomstoneLargeV2", weight = 1 },
+                { name = "BloomstoneLargeV3", weight = 1 },
             },
         },
         Meadow = {

@@ -1255,6 +1255,55 @@ function BreakableSpawner:_trySpawnOne(
     contribFolder.Name = "Contrib"
     contribFolder.Parent = model
 
+    -- Pet Realm ore meshes are bare MeshParts with no baked Health/Boost UI. Build simple
+    -- billboards so the bars below have something to drive. Skipped if the model already has a
+    -- baked Health bar (template blue crystals). Starts hidden; shown only while being attacked.
+    do
+        local pp = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+        local hasHealthUI = false
+        for _, d in ipairs(model:GetDescendants()) do
+            if d:IsA("BillboardGui") then
+                local container = d:FindFirstChildWhichIsA("Frame")
+                if d:FindFirstChild("Health") or (container and container:FindFirstChild("Health")) then
+                    hasHealthUI = true
+                    break
+                end
+            end
+        end
+        if pp and not hasHealthUI then
+            local _, bsize = model:GetBoundingBox()
+            local topY = (bsize.Y * 0.5) + 1.2
+            local function makeBar(guiName, fillName, fillColor, yOff)
+                local bb = Instance.new("BillboardGui")
+                bb.Name = guiName
+                bb.Size = UDim2.fromOffset(104, 12)
+                bb.StudsOffset = Vector3.new(0, yOff, 0)
+                bb.AlwaysOnTop = true
+                bb.LightInfluence = 0
+                bb.MaxDistance = 75
+                bb.Enabled = false -- hidden until attacked
+                bb.Adornee = pp
+                local bg = Instance.new("Frame")
+                bg.Name = "BG"
+                bg.Size = UDim2.fromOffset(104, 12)
+                bg.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+                bg.BackgroundTransparency = 0.25
+                bg.BorderSizePixel = 0
+                bg.Parent = bb
+                local fill = Instance.new("Frame")
+                fill.Name = fillName
+                fill.Size = UDim2.new(0, 100, 0, 10)
+                fill.Position = UDim2.fromOffset(2, 1)
+                fill.BackgroundColor3 = fillColor
+                fill.BorderSizePixel = 0
+                fill.Parent = bg
+                bb.Parent = pp
+            end
+            makeBar("HealthBillboardGui", "Health", Color3.fromRGB(80, 220, 90), topY + 0.45)
+            makeBar("BoostBillboardGui", "Boost", Color3.fromRGB(255, 205, 70), topY)
+        end
+    end
+
     -- Bind health bar UI (if present in model)
     -- Match MCP: find any descendant BillboardGui with a child Frame named 'Health'
     local healthFrames = {}
@@ -1270,52 +1319,52 @@ function BreakableSpawner:_trySpawnOne(
     local function repopulateHealthFrames()
         table.clear(healthFrames)
         -- Deep scan all descendants; handle multiple nested Billboards
-        print("[HB] scanning model:", model:GetFullName())
         for _, d in ipairs(model:GetDescendants()) do
             if d:IsA("BillboardGui") then
                 d.MaxDistance = 75
-                print("[HB] BillboardGui:", d:GetFullName())
                 local hf = d:FindFirstChild("Health")
-                if hf then
-                    print("[HB] direct Health found:", hf:GetFullName())
-                else
+                if not hf then
                     -- Some rigs put the Health under a container frame
                     local container = d:FindFirstChildWhichIsA("Frame")
                     if container then
-                        print("[HB] container frame:", container:GetFullName())
                         hf = container:FindFirstChild("Health")
-                        if hf then
-                            print("[HB] container Health found:", hf:GetFullName())
-                        end
                     end
                 end
                 if hf and (hf:IsA("Frame") or hf:IsA("ImageLabel") or hf:IsA("TextLabel")) then
                     table.insert(healthFrames, hf)
-                    print("[HB] added Health frame; total=", #healthFrames)
                 end
             end
         end
-        print("[HB] repopulate done; total healthFrames=", #healthFrames)
     end
 
     local function updateHealthBar()
         if #healthFrames == 0 then
             repopulateHealthFrames()
         end
-        print("updateHealthBar", #healthFrames)
         if #healthFrames == 0 then
             return
         end
         local maxHp = tonumber(model:GetAttribute("MaxHP")) or 0
         local hp = tonumber(model:GetAttribute("HP")) or 0
-        print("updateHealthBar", maxHp, hp)
         if maxHp <= 0 then
             return
         end
-        -- MCP behavior: width is percent [0..100] pixels, fixed height 10px
+        -- width is percent [0..100] pixels, fixed height 10px
         local percentPx = math.max(0, math.floor((hp / maxHp) * 100))
+        -- Pet Realm: show the bars ONLY while a node is being attacked (HP below max, not yet
+        -- destroyed). Toggle the parent billboard(s) + the boost billboard together.
+        local engaged = hp < maxHp and hp > 0
         for _, frame in ipairs(healthFrames) do
             frame.Size = UDim2.new(0, percentPx, 0, 10)
+            local bb = frame:FindFirstAncestorWhichIsA("BillboardGui")
+            if bb then
+                bb.Enabled = engaged
+            end
+        end
+        local ppNow = model.PrimaryPart
+        local boostBB = ppNow and ppNow:FindFirstChild("BoostBillboardGui")
+        if boostBB then
+            boostBB.Enabled = engaged
         end
     end
     updateHealthBar()
