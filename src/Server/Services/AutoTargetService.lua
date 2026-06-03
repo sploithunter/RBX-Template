@@ -14,8 +14,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local ZoneResolver = require(ReplicatedStorage.Shared.Game.ZoneResolver)
-
 local AutoTargetService = {}
 AutoTargetService.__index = AutoTargetService
 
@@ -28,10 +26,6 @@ local monetization
 local productIdMapper
 local autoConfig
 local petsConfig
--- Area-scoped farming: bounds (id -> {center,size}) from configs/areas.lua + the vertical band
--- from configs/zone_tracker.lua. Pets only target breakables inside the player's CurrentArea.
-local areaBoundsById
-local zoneVerticalBand
 
 local PAID_AUTOTARGET_PASS_ID = "auto_target_high"
 
@@ -154,16 +148,6 @@ function AutoTargetService:Init()
     productIdMapper = self._modules.ProductIdMapper
     autoConfig = configLoader:LoadConfig("auto_systems")
     petsConfig = configLoader:LoadConfig("pets")
-
-    -- Area-scoped farming bounds (see ZoneTrackerService). Build an id -> {center,size} lookup
-    -- from configs/areas.lua so candidate breakables can be filtered to the player's CurrentArea.
-    local areasConfig = configLoader:LoadConfig("areas")
-    areaBoundsById = {}
-    for _, b in ipairs(ZoneResolver.boundsFromAreas(areasConfig)) do
-        areaBoundsById[b.id] = b
-    end
-    local zoneCfg = configLoader:LoadConfig("zone_tracker") or {}
-    zoneVerticalBand = tonumber(zoneCfg.vertical_band) or 80
 
     local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
@@ -551,12 +535,6 @@ function AutoTargetService:_getCurrentArea(player)
     return self:_getCurrentWorld(player)
 end
 
--- The bounding box for the player's current area, or nil if unknown (then farming falls back to
--- the legacy world-name filter so we never accidentally target nothing).
-function AutoTargetService:_currentAreaBox(player)
-    return areaBoundsById and areaBoundsById[self:_getCurrentArea(player)] or nil
-end
-
 function AutoTargetService:_collectCandidates(player, mode)
     local root = workspace:FindFirstChild("Game")
     local breakables = root and root:FindFirstChild("Breakables")
@@ -568,14 +546,14 @@ function AutoTargetService:_collectCandidates(player, mode)
     local modeConfig = targetConfig.modes and targetConfig.modes[mode] or {}
     local settings = self:_getSettings(player)
     local selectedCurrency = settings.auto_target and settings.auto_target.selected_currency
-    local currentWorld = self:_getCurrentWorld(player)
+    -- Area scoping (the fix for farm low/high crossing zones): each breakable lives in a world
+    -- folder named by its biome (Spawn/Lava/Ice/Desert/Meadow), which matches the player's
+    -- CurrentArea 1:1. CurrentArea is the reliable ZoneTrackerService SSOT (config-bounds, not the
+    -- old stale touch value), so farming stays in whatever biome the player is standing in. Low
+    -- (weakest) / High (highest_value) now only re-order targets WITHIN that biome.
+    local currentArea = self:_getCurrentArea(player)
     local currentWorldOnly = targetConfig.current_world_only ~= false
     local playerPosition = getRootPosition(player)
-    -- Area scoping (the fix for farm low/high crossing zones): when we know the player's
-    -- CurrentArea box, pets may ONLY target breakables inside that box's footprint, regardless
-    -- of which world folder they live in or how the legacy CurrentWorld value reads. If the box
-    -- is unknown (no CurrentArea yet), fall back to the legacy world-name filter.
-    local areaBox = self:_currentAreaBox(player)
     -- Only target breakables within this range (studs). Keeps pets from being assigned
     -- to ore across the map (which made them teleport-snap to it). 0/nil = unlimited.
     local maxTargetDistance = tonumber(targetConfig.max_target_distance) or 0
@@ -583,12 +561,7 @@ function AutoTargetService:_collectCandidates(player, mode)
 
     for _, typeFolder in ipairs(breakables:GetChildren()) do
         for _, worldFolder in ipairs(typeFolder:GetChildren()) do
-            -- With an area box we scan every world folder and let the box decide; without one we
-            -- keep the legacy "current world folder only" name filter.
-            local worldAllowed = areaBox ~= nil
-                or not currentWorldOnly
-                or worldFolder.Name == currentWorld
-            if worldAllowed then
+            if not currentWorldOnly or getWorldShort(worldFolder.Name) == currentArea then
                 local items = worldFolder:FindFirstChild("Items")
                 if items then
                     for _, model in ipairs(items:GetChildren()) do
@@ -604,26 +577,13 @@ function AutoTargetService:_collectCandidates(player, mode)
                             then
                                 local pivot = model:GetPivot()
                                 local pos = pivot.Position
-                                -- Area-box gate: skip nodes outside the player's current area.
-                                local inArea = true
-                                if areaBox then
-                                    inArea = ZoneResolver.contains(
-                                        { x = pos.X, y = pos.Y, z = pos.Z },
-                                        areaBox,
-                                        zoneVerticalBand,
-                                        4 -- small footprint margin for nodes near the edge
-                                    )
-                                end
                                 local dist = playerPosition
                                         and (pos - playerPosition).Magnitude
                                     or 0
                                 if
-                                    inArea
-                                    and (
-                                        maxTargetDistance <= 0
-                                        or not playerPosition
-                                        or dist <= maxTargetDistance
-                                    )
+                                    maxTargetDistance <= 0
+                                    or not playerPosition
+                                    or dist <= maxTargetDistance
                                 then
                                     table.insert(candidates, {
                                         model = model,
