@@ -931,6 +931,76 @@ local uiConfig = {
             },
         },
 
+        -- Pet Realm biome coins (zone economy, design §32). Soulbound, mined per zone.
+        -- The server mirrors every currency to a Player attribute generically, so these
+        -- update automatically when mined. Stacked below crystals (y 80/116/152/188).
+        -- NOTE (future, deferred): when the player ENTERS a zone, that zone's coin could
+        -- become prominent (larger/brighter/front) while the other three shrink + dim.
+        grass_coins_pane = {
+            position = "center-left",
+            offset = { x = 15, y = 80 },
+            size = { width = 120, height = 32 },
+            background = {
+                enabled = true,
+                color = Color3.fromRGB(0, 0, 0),
+                transparency = 0.15,
+                corner_radius = 18,
+                border = { enabled = true, color = Color3.fromRGB(90, 210, 80), thickness = 2, transparency = 0.3 },
+            },
+            layout = { type = "single" },
+            contents = {
+                { type = "currency_display", config = { currency = "grass_coins", icon = "🌿", color = Color3.fromRGB(90, 210, 80) } },
+            },
+        },
+        desert_coins_pane = {
+            position = "center-left",
+            offset = { x = 15, y = 116 },
+            size = { width = 120, height = 32 },
+            background = {
+                enabled = true,
+                color = Color3.fromRGB(0, 0, 0),
+                transparency = 0.15,
+                corner_radius = 18,
+                border = { enabled = true, color = Color3.fromRGB(214, 184, 130), thickness = 2, transparency = 0.3 },
+            },
+            layout = { type = "single" },
+            contents = {
+                { type = "currency_display", config = { currency = "desert_coins", icon = "🏜️", color = Color3.fromRGB(214, 184, 130) } },
+            },
+        },
+        lava_coins_pane = {
+            position = "center-left",
+            offset = { x = 15, y = 152 },
+            size = { width = 120, height = 32 },
+            background = {
+                enabled = true,
+                color = Color3.fromRGB(0, 0, 0),
+                transparency = 0.15,
+                corner_radius = 18,
+                border = { enabled = true, color = Color3.fromRGB(255, 110, 30), thickness = 2, transparency = 0.3 },
+            },
+            layout = { type = "single" },
+            contents = {
+                { type = "currency_display", config = { currency = "lava_coins", icon = "🌋", color = Color3.fromRGB(255, 110, 30) } },
+            },
+        },
+        ice_coins_pane = {
+            position = "center-left",
+            offset = { x = 15, y = 188 },
+            size = { width = 120, height = 32 },
+            background = {
+                enabled = true,
+                color = Color3.fromRGB(0, 0, 0),
+                transparency = 0.15,
+                corner_radius = 18,
+                border = { enabled = true, color = Color3.fromRGB(150, 220, 255), thickness = 2, transparency = 0.3 },
+            },
+            layout = { type = "single" },
+            contents = {
+                { type = "currency_display", config = { currency = "ice_coins", icon = "🧊", color = Color3.fromRGB(150, 220, 255) } },
+            },
+        },
+
         -- Player Info Pane (top-center - Colorado Plays, Level, XP)
         player_info_pane = {
             position = "top-center",
