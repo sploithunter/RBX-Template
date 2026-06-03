@@ -355,7 +355,7 @@ local petConfig = {
                     abilities = { "fire_breath" },
                 },
                 golden = {
-                    asset_id = "rbxassetid://102018563424862",
+                    asset_id = "rbxassetid://125491041555430",
                     image_id = "rbxassetid://0",
                     display_name = "Golden Emberling",
                     abilities = { "golden_flame", "coin_magnet" },
@@ -391,7 +391,7 @@ local petConfig = {
                     abilities = { "fire_breath" },
                 },
                 golden = {
-                    asset_id = "rbxassetid://117740863969382",
+                    asset_id = "rbxassetid://131332151549245",
                     image_id = "rbxassetid://0",
                     display_name = "Golden Emberfox",
                     abilities = { "golden_flame", "coin_magnet" },
@@ -427,7 +427,7 @@ local petConfig = {
                     abilities = { "fire_breath" },
                 },
                 golden = {
-                    asset_id = "rbxassetid://111062651596295",
+                    asset_id = "rbxassetid://127129905024932",
                     image_id = "rbxassetid://0",
                     display_name = "Golden Ember Imp",
                     abilities = { "golden_flame", "coin_magnet" },
@@ -463,7 +463,7 @@ local petConfig = {
                     abilities = { "fire_breath" },
                 },
                 golden = {
-                    asset_id = "rbxassetid://138609231264349",
+                    asset_id = "rbxassetid://133184779588286",
                     image_id = "rbxassetid://0",
                     display_name = "Golden Ember Owl",
                     abilities = { "golden_flame", "coin_magnet" },
@@ -499,7 +499,7 @@ local petConfig = {
                     abilities = { "fire_breath" },
                 },
                 golden = {
-                    asset_id = "rbxassetid://123822224997280",
+                    asset_id = "rbxassetid://87755009672242",
                     image_id = "rbxassetid://0",
                     display_name = "Golden Ember Lion",
                     abilities = { "golden_flame", "coin_magnet" },
