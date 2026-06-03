@@ -37,6 +37,8 @@ function ZoneTrackerService:Init()
     self._verticalBand = tonumber(cfg.vertical_band) or 80
     self._boundaryMargin = tonumber(cfg.boundary_margin) or 6
     self._defaultArea = cfg.default_area or "Spawn"
+    self._baseplateArea = cfg.baseplate_area or {}
+    self._raycastDepth = tonumber(cfg.raycast_depth) or 60
 
     if self._logger then
         self._logger:Info("ZoneTrackerService initialized", {
@@ -64,6 +66,74 @@ local function rootPosition(player)
     return { x = p.X, y = p.Y, z = p.Z }
 end
 
+-- Resolve (and cache) the biome baseplate parts to raycast against: any workspace BasePart whose
+-- name is a key in baseplate_area (Grass/Lava/Ice/Desert). Cache is reused until a part leaves the
+-- world; when empty (map not loaded yet / names mismatch) rescans are throttled so we never do a
+-- full-workspace scan every poll.
+function ZoneTrackerService:_getBaseplateParts()
+    local cache = self._baseplateParts
+    if cache and #cache > 0 then
+        local valid = true
+        for _, p in ipairs(cache) do
+            if not p.Parent then
+                valid = false
+                break
+            end
+        end
+        if valid then
+            return cache
+        end
+    end
+
+    -- Throttle empty rescans (e.g. before the map streams in) to once every few seconds.
+    local now = os.clock()
+    if
+        (not cache or #cache == 0)
+        and self._lastBaseplateScan
+        and (now - self._lastBaseplateScan) < 5
+    then
+        return cache or {}
+    end
+    self._lastBaseplateScan = now
+
+    local parts = {}
+    for _, d in ipairs(workspace:GetDescendants()) do
+        if d:IsA("BasePart") and self._baseplateArea[d.Name] then
+            table.insert(parts, d)
+        end
+    end
+    self._baseplateParts = parts
+    return parts
+end
+
+-- PRIMARY area detection: raycast straight down with an INCLUDE filter limited to the biome
+-- baseplates, and map the floor we land on (Grass/Lava/Ice/Desert) to an area id. Because only
+-- baseplates are in the filter, sidewalks / paths / decorations / ore are ignored and the ray
+-- passes through them to the biome floor BENEATH — so standing on a path that crosses the grass
+-- still resolves to Spawn. Returns nil when no biome floor is below (off-map / over a gap).
+function ZoneTrackerService:_resolveByRaycast(player)
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        return nil
+    end
+    local parts = self:_getBaseplateParts()
+    if #parts == 0 then
+        return nil
+    end
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Include
+    params.FilterDescendantsInstances = parts
+    -- Start slightly above the HRP and cast down a generous depth so elevated structures over a
+    -- biome (towers, raised paths) still find the floor below.
+    local origin = hrp.Position + Vector3.new(0, 5, 0)
+    local hit = workspace:Raycast(origin, Vector3.new(0, -(self._raycastDepth + 5), 0), params)
+    if hit and hit.Instance then
+        return self._baseplateArea[hit.Instance.Name]
+    end
+    return nil
+end
+
 function ZoneTrackerService:_resolveFor(player)
     local pos = rootPosition(player)
     if not pos then
@@ -71,11 +141,19 @@ function ZoneTrackerService:_resolveFor(player)
     end
 
     local current = player:GetAttribute(CURRENT_AREA_ATTR)
-    local resolved = ZoneResolver.resolveSticky(pos, self._bounds, current, {
-        verticalBand = self._verticalBand,
-        margin = self._boundaryMargin,
-        default = self._defaultArea,
-    })
+
+    -- Primary: which baseplate are we physically standing on.
+    local resolved = self:_resolveByRaycast(player)
+    if not resolved then
+        -- Not on a known baseplate (mid-air/bridge): keep the last area rather than risk a
+        -- mis-resolve from the overlapping boxes. Use the box fallback only if we have no area yet.
+        resolved = current
+            or ZoneResolver.resolveSticky(pos, self._bounds, current, {
+                verticalBand = self._verticalBand,
+                margin = self._boundaryMargin,
+                default = self._defaultArea,
+            })
+    end
 
     if resolved ~= current then
         player:SetAttribute(CURRENT_AREA_ATTR, resolved)

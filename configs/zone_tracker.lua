@@ -30,4 +30,20 @@ return {
     -- Area to report when the player is outside every authored area box (e.g. mid-jump between
     -- islands, or on un-zoned geometry). Keeps a sane default for farming/music.
     default_area = "Spawn",
+
+    -- PRIMARY detection: raycast straight down and map the baseplate part we land on to an area.
+    -- This is the same surface approach the crystal spawner uses (surface_match_name) and is
+    -- robust to the irregular, overlapping authored baseplates — the axis-aligned boxes above
+    -- mis-resolve at the seams (e.g. the grass field extends into Lava's oversized box). The box
+    -- test is only a fallback for when the player isn't standing on a known baseplate.
+    baseplate_area = {
+        Grass = "Spawn",
+        Lava = "Lava",
+        Ice = "Ice",
+        Desert = "Desert",
+    },
+    -- How far down (studs) to look for a biome baseplate beneath the HumanoidRootPart. Generous
+    -- so a raised path/structure over a biome still resolves to that biome (Include filter makes
+    -- the long cast cheap — it only tests the baseplates).
+    raycast_depth = 120,
 }
