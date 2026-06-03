@@ -31,7 +31,7 @@ return {
 
   -- Halo & Horns themed currencies (Feature 4). Per-biome coins + Heaven/Hell
   -- tokens. All non-tradeable (see configs/biomes.lua + configs/layers.lua).
-  { id = "grass_coins", name = "Grass Coins", description = "Grass (earth) biome currency", maxAmount = 999999999, defaultAmount = 0, icon = "🌿", tradeable = false },
+  { id = "grass_coins", name = "Grass Coins", description = "Grass (earth) biome currency", maxAmount = 999999999, defaultAmount = 100, icon = "🌿", tradeable = false }, -- 100 starter grant: funds the first EarthEgg hatch before mining
   { id = "ice_coins", name = "Ice Coins", description = "Ice biome currency", maxAmount = 999999999, defaultAmount = 0, icon = "🧊", tradeable = false },
   { id = "lava_coins", name = "Lava Coins", description = "Lava biome currency", maxAmount = 999999999, defaultAmount = 0, icon = "🌋", tradeable = false },
   { id = "desert_coins", name = "Desert Coins", description = "Desert biome currency", maxAmount = 999999999, defaultAmount = 0, icon = "🏜️", tradeable = false },

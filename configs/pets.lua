@@ -21,6 +21,7 @@ local petConfig = {
     --   scale    multiplies the egg model's size (Model:ScaleTo), default 1
     --   offset_y raises the egg above the stand anchor in studs, default 0
     egg_stand_placements = {
+        ["BasicEarth"] = { egg = "earth_egg", scale = 3.5, offset_y = 0.5 },
         ["BasicEmber"] = { egg = "ember_egg", scale = 3.5, offset_y = 0.5 },
         ["BasicIce"] = { egg = "ice_egg", scale = 3.5, offset_y = 0.5 },
         ["BasicSand"] = { egg = "sand_egg", scale = 3.5, offset_y = 0.5 },
@@ -1385,6 +1386,57 @@ local petConfig = {
                 meerkat = 18,
                 desertiguana = 6,
                 scorpion = 1,
+            },
+            -- Stage 2: variant rarity (basic mostly; small golden/rainbow chance).
+            rarity_rates = {
+                golden_chance = 0.05,
+                rainbow_chance = 0.005,
+            },
+            variant_rolls = {
+                enabled = true,
+                allow_basic = true,
+                allow_golden = true,
+                allow_rainbow = true,
+                cost_multiplier = 20,
+            },
+            modifier_support = {
+                supports_luck_gamepass = true,
+                supports_golden_gamepass = true,
+                supports_rainbow_gamepass = true,
+                max_luck_multiplier = 10.0,
+            },
+            hatching_time = 3,
+            guaranteed_shiny_chance = 0,
+            bonus_xp = 0,
+        },
+
+        -- EarthEgg (grass biome) — the STARTER egg on the Spawn island (BasicEarth stand).
+        -- Costs grass_coins, but new players receive a 100 grass_coins starter grant (see
+        -- configs/currencies.lua defaultAmount) so the first hatch is affordable before mining.
+        -- Hatches the existing grass/earth pets (same roster as basic_egg); their meshes will be
+        -- re-pointed to new earth asset IDs later — keep the pet entries as-is for now.
+        earth_egg = {
+            name = "Earth Egg",
+            description = "Grass-biome starter egg — hatches the Earth pets (Bunny, Doggy, Bear...).",
+            world_placeable = true,
+            cost = 100,
+            currency = "grass_coins",
+            asset_id = "rbxassetid://95237477079273",
+            image_id = "rbxassetid://0",
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            -- Stage 1: which earth pet (same roster/weights as the original basic_egg).
+            pet_weights = {
+                bear = 24990,
+                bunny = 24990,
+                doggy = 24990,
+                kitty = 10,
+                dragon = 1,
             },
             -- Stage 2: variant rarity (basic mostly; small golden/rainbow chance).
             rarity_rates = {

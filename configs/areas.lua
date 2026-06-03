@@ -39,7 +39,7 @@ return {
                 spawn_position = { x = 0, y = 3, z = 0 },
                 egg_stands = {
                     {
-                        egg_id = "basic_egg",
+                        egg_id = "earth_egg",
                         spawn_id = "BasicEarth",
                         position = { x = 0, y = 0.5, z = -22 },
                     },
