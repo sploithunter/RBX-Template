@@ -219,6 +219,108 @@ function PowerService:_applyEffect(player, kind, now)
         end
     elseif family == "amplified_burst" then
         self:_amplifiedBurst(player, kind, now)
+    elseif family == "burn_spread" then
+        self:_burnSpread(player, kind, now)
+    elseif family == "team_cleave" then
+        -- Firestorm: for `duration`s every pet swing also splashes x`magnitude` to other enemies
+        -- within `cleave_radius` (applied in PetFollowService:_mine). Fire a nova so it reads as on.
+        player:SetAttribute("TeamCleaveUntil", now + dur)
+        player:SetAttribute("TeamCleaveFrac", mag)
+        player:SetAttribute("TeamCleaveRadius", tonumber(kind.cleave_radius) or 8)
+        local center = self:_squadCenter(player)
+        if center then
+            Signals.Power_AreaFx:FireClient(
+                player,
+                { element = "lava", variant = "self", center = center, pit = false, hits = {} }
+            )
+        end
+    end
+end
+
+-- Squad centroid (living pets), else the player's HRP. nil if neither is available.
+function PowerService:_squadCenter(player)
+    local pets = Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+    local sx, sy, sz, n = 0, 0, 0, 0
+    if pets then
+        for _, pet in ipairs(pets:GetChildren()) do
+            if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") and pet.PrimaryPart then
+                local p = pet.PrimaryPart.Position
+                sx, sy, sz, n = sx + p.X, sy + p.Y, sz + p.Z, n + 1
+            end
+        end
+    end
+    if n > 0 then
+        return Vector3.new(sx / n, sy / n, sz / n)
+    end
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    return hrp and hrp.Position or nil
+end
+
+-- Wildfire: mark the squad's engaged enemy with a burn (vulnerability), which then CONTAGIONS to
+-- nearby enemies every `spread_interval`s for `duration`s. The debuff aura is shown by the client's
+-- CombatAuraController (it reacts to VulnerableUntil), so this only needs to set the attributes.
+function PowerService:_burnSpread(player, kind, now)
+    local mag = tonumber(kind.magnitude) or 1.5
+    local dur = tonumber(kind.duration) or 8
+    local spreadR = tonumber(kind.spread_radius) or 14
+    local interval = math.max(0.5, tonumber(kind.spread_interval) or 1.5)
+
+    local function mark(enemy, untilT)
+        enemy:SetAttribute("VulnerableMult", mag)
+        enemy:SetAttribute("VulnerableUntil", untilT)
+    end
+    local function partOfEnemy(e)
+        return e.PrimaryPart or e:FindFirstChildWhichIsA("BasePart")
+    end
+
+    -- seed on the nearest engaged enemy to the squad
+    local center = self:_squadCenter(player)
+    if not center then
+        return
+    end
+    local enemies = enemiesAlive()
+    local seed, bestD
+    for _, e in ipairs(enemies) do
+        local pp = partOfEnemy(e)
+        if pp then
+            local d = (pp.Position - center).Magnitude
+            if not bestD or d < bestD then
+                bestD, seed = d, e
+            end
+        end
+    end
+    if not seed then
+        return
+    end
+    mark(seed, now + dur)
+
+    -- contagion ticks: each marked enemy spreads the burn to unmarked neighbours within spreadR.
+    local ticks = math.floor(dur / interval)
+    for i = 1, ticks do
+        task.delay(i * interval, function()
+            local live = enemiesAlive()
+            local nowT = os.time()
+            local marked = {}
+            for _, e in ipairs(live) do
+                if (e:GetAttribute("VulnerableUntil") or 0) > nowT then
+                    marked[#marked + 1] = e
+                end
+            end
+            for _, m in ipairs(marked) do
+                local mp = partOfEnemy(m)
+                if mp then
+                    for _, u in ipairs(live) do
+                        if (u:GetAttribute("VulnerableUntil") or 0) <= nowT then
+                            local up = partOfEnemy(u)
+                            if up and (up.Position - mp.Position).Magnitude <= spreadR then
+                                mark(u, nowT + dur)
+                            end
+                        end
+                    end
+                end
+            end
+        end)
     end
 end
 

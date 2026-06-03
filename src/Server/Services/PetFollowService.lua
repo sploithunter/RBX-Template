@@ -417,6 +417,45 @@ function PetFollowService:_mine(player, pet, breakable)
         nv.Value += applied.contributed
     end
 
+    -- Firestorm (team_cleave): while the player's TeamCleave is active, a pet's swing on an enemy
+    -- also splashes x frac to OTHER enemies within cleave_radius of the target (credited to pets).
+    if
+        dmg > 0
+        and breakable:GetAttribute("EnemyId")
+        and (player:GetAttribute("TeamCleaveUntil") or 0) > os.time()
+    then
+        local frac = tonumber(player:GetAttribute("TeamCleaveFrac")) or 0.5
+        local radius = tonumber(player:GetAttribute("TeamCleaveRadius")) or 8
+        local splash = math.floor(dmg * frac + 0.5)
+        local enemiesFolder = Workspace:FindFirstChild("Game")
+            and Workspace.Game:FindFirstChild("Enemies")
+        local tp = (breakable.PrimaryPart and breakable.PrimaryPart.Position)
+            or breakable:GetPivot().Position
+        if splash > 0 and enemiesFolder then
+            for _, e in ipairs(enemiesFolder:GetChildren()) do
+                if e ~= breakable and e:IsA("Model") and (e:GetAttribute("HP") or 0) > 0 then
+                    local ep = e.PrimaryPart or e:FindFirstChildWhichIsA("BasePart")
+                    if ep and (ep.Position - tp).Magnitude <= radius then
+                        local appliedSplash =
+                            PetCombat.applyDamage(e:GetAttribute("HP") or 0, splash)
+                        e:SetAttribute("HP", appliedSplash.hp)
+                        local sc = e:FindFirstChild("Contrib")
+                        if sc then
+                            local k = tostring(player.UserId)
+                            local nv2 = sc:FindFirstChild(k)
+                            if not nv2 then
+                                nv2 = Instance.new("NumberValue")
+                                nv2.Name = k
+                                nv2.Parent = sc
+                            end
+                            nv2.Value += appliedSplash.contributed
+                        end
+                    end
+                end
+            end
+        end
+    end
+
     self._nextHit[pet] = now
         + combat:ResolvePetAttackInterval(player, ctx) * (tonumber(pacing.interval_mult) or 1)
 
