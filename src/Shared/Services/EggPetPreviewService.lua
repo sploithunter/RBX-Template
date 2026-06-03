@@ -231,6 +231,7 @@ function EggPetPreviewService:CreatePetPreviewUI()
     frame.Name = "PetPreviewFrame"
     frame.Size = UDim2.fromScale(1, 1) -- Fill the billboard
     frame.BackgroundColor3 = config.colors.pet_preview_bg
+    frame.BackgroundTransparency = config.pet_preview_bg_transparency or 0
     frame.BorderSizePixel = 0
     frame.Visible = false
     frame.Parent = billboardGui
@@ -242,6 +243,7 @@ function EggPetPreviewService:CreatePetPreviewUI()
     local stroke = Instance.new("UIStroke")
     stroke.Thickness = config.border_thickness
     stroke.Color = config.colors.pet_preview_border
+    stroke.Transparency = config.pet_preview_border_transparency or 0
     stroke.Parent = frame
 
     -- Title (optional, based on configuration)

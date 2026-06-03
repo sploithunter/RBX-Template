@@ -338,6 +338,12 @@ return {
         corner_radius = 12,
         border_thickness = 2,
 
+        -- Pet-preview billboard background/border opacity (QoL). 1 = fully transparent
+        -- (just the floating pet cards, no box); 0 = solid. Applies to the EggPetPreview
+        -- BillboardGui frame in EggPetPreviewService.
+        pet_preview_bg_transparency = 1,
+        pet_preview_border_transparency = 1,
+
         -- Fonts
         fonts = {
             title = Enum.Font.GothamBold,
@@ -388,7 +394,7 @@ return {
         show_title = false, -- Whether to show title (saves space when false)
         title_text = "Pet Chances", -- Text to display in title (configurable)
         height_above_egg = 7, -- Default studs above egg to position billboard
-        billboard_size = { 10, 2.5 }, -- BillboardGui size in studs [width, height]
+        billboard_size = { 15, 4.5 }, -- BillboardGui size in studs [width, height]
 
         -- Per-egg height adjustments (optional - overrides default height_above_egg)
         -- Useful for eggs of different sizes that need custom spacing
