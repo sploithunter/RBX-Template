@@ -672,6 +672,9 @@ function BreakableSpawner:Start()
     -- immediately so the freshly-unlocked ore appears at once instead of on the next 5s sweep.
     local function watchUnlocks(player)
         player:GetAttributeChangedSignal("UnlockedAreasJson"):Connect(function()
+            -- Re-lock: clear ore from any biome that is now inactive (e.g. after an admin reset),
+            -- then top up the ones that are unlocked.
+            self:_despawnInactiveWorlds()
             local crystalsAssets = self._crystalsAssets
             if crystalsAssets then
                 self:_fillAllWorlds(crystalsAssets)
@@ -838,6 +841,31 @@ function BreakableSpawner:_spawnLoop()
             end
         end
     end)
+end
+
+-- Clear ore from worlds that are no longer active (locked again). Used when unlock state changes
+-- so a re-locked biome empties out instead of leaving its old nodes minable.
+function BreakableSpawner:_despawnInactiveWorlds()
+    local gameFolder = workspace:FindFirstChild("Game")
+    local breakablesWorlds = gameFolder and gameFolder:FindFirstChild("Breakables")
+    local crystalsWorlds = breakablesWorlds and breakablesWorlds:FindFirstChild("Crystals")
+    if not crystalsWorlds then
+        return
+    end
+    for _, worldFolder in ipairs(crystalsWorlds:GetChildren()) do
+        if worldFolder:IsA("Folder") and not self:_isWorldActive(worldFolder.Name) then
+            local items = worldFolder:FindFirstChild("Items")
+            if items then
+                for _, model in ipairs(items:GetChildren()) do
+                    model:Destroy()
+                end
+            end
+            local current = worldFolder:FindFirstChild("CurrentItems")
+            if current then
+                current.Value = 0 -- after the ChildRemoved handlers settle
+            end
+        end
+    end
 end
 
 function BreakableSpawner:_fillAllWorlds(crystalsAssets)

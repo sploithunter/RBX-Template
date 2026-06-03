@@ -188,6 +188,8 @@ local TEST_CATEGORIES = {
             { name = "📋 Snapshot Target Player", action = "admin_snapshot" },
             { name = "💾 Force Save Target Player", action = "admin_force_save" },
             { name = "🗑️ Reset Pets (Target)", action = "admin_reset_pets" },
+            { name = "🔄 Reset to Beginning (keep HUGE)", action = "admin_reset_to_beginning" },
+            { name = "🔎 Reset to Beginning — PREVIEW", action = "admin_reset_to_beginning_preview" },
             { name = "🐻 Grant Bear Basic", action = "grant_bear_basic" },
             { name = "🐉 Grant Dragon Basic", action = "grant_dragon_basic" },
             { name = "🐻 Grant Golden Bear", action = "grant_bear_golden" },
@@ -787,6 +789,10 @@ function AdminPanel:_executeTestAction(action, _testName)
         self:_requestForceSave()
     elseif action == "admin_reset_pets" then
         self:_requestResetPets()
+    elseif action == "admin_reset_to_beginning" then
+        self:_requestResetToBeginning(false)
+    elseif action == "admin_reset_to_beginning_preview" then
+        self:_requestResetToBeginning(true)
     elseif action:find("^spawn_enemy_") then
         self:_executeSpawnEnemyAction(action)
     elseif action:find("^grant_") then
@@ -1354,6 +1360,15 @@ end
 function AdminPanel:_requestResetPets()
     Signals.Admin_ResetPets:FireServer(self:_getAdminActionData({}))
     self:_showAdminResult("Reset pets requested for target...", true)
+end
+
+function AdminPanel:_requestResetToBeginning(dryRun)
+    Signals.Admin_ResetToBeginning:FireServer(self:_getAdminActionData({ dryRun = dryRun == true }))
+    self:_showAdminResult(
+        dryRun and "Reset-to-beginning PREVIEW requested..."
+            or "Reset to beginning (keep HUGE) requested...",
+        true
+    )
 end
 
 function AdminPanel:_executePetGrantAction(action)

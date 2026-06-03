@@ -54,6 +54,10 @@ function AdminToolsService:Init()
         self:_handleResetPets(player, data)
     end)
 
+    Signals.Admin_ResetToBeginning.OnServerEvent:Connect(function(player, data)
+        self:_handleResetToBeginning(player, data)
+    end)
+
     Signals.Admin_SetZoneLock.OnServerEvent:Connect(function(player, data)
         self:_handleSetZoneLock(player, data)
     end)
@@ -490,6 +494,129 @@ function AdminToolsService:_handleResetPets(adminPlayer, data)
         kind = "reset_pets",
         success = true,
         message = "Pets reset for " .. targetPlayer.Name,
+        snapshot = self:_buildSnapshot(targetPlayer),
+    })
+end
+
+-- "Reset to beginning, keep HUGE pets" (resetData permission, Studio-gated). Deletes every pet
+-- that is NOT huge (record.huge == true is the sole keep-flag), resets currencies to 100
+-- grass_coins + 0 everything else, and re-locks all gated zones. Pass { dryRun = true } to get a
+-- preview of exactly what would be kept/deleted WITHOUT mutating anything.
+function AdminToolsService:_handleResetToBeginning(adminPlayer, data)
+    local targetPlayer, errorMessage = self:_resolveTarget(adminPlayer, "resetData", data)
+    if not targetPlayer then
+        self:_sendResult(
+            adminPlayer,
+            { kind = "reset_to_beginning", success = false, message = errorMessage }
+        )
+        return
+    end
+
+    local playerData = self._dataService:GetData(targetPlayer)
+    local pets = playerData and playerData.Inventory and playerData.Inventory.pets
+    if type(pets) ~= "table" or type(pets.items) ~= "table" then
+        self:_sendResult(adminPlayer, {
+            kind = "reset_to_beginning",
+            success = false,
+            message = "No pet inventory for " .. targetPlayer.Name,
+        })
+        return
+    end
+
+    -- Classify: keep only records explicitly flagged huge == true.
+    local function describe(rec)
+        local s = tostring(rec.id) .. ":" .. tostring(rec.variant)
+        if rec.serial then
+            s = s .. " #" .. tostring(rec.serial)
+        end
+        return s
+    end
+    local kept, keptKeys, deleteCount = {}, {}, 0
+    for key, rec in pairs(pets.items) do
+        if type(rec) == "table" and rec.huge == true then
+            kept[#kept + 1] = describe(rec)
+            keptKeys[key] = rec
+        else
+            deleteCount += 1
+        end
+    end
+
+    local dryRun = type(data) == "table" and data.dryRun == true
+    if dryRun then
+        self:_sendResult(adminPlayer, {
+            kind = "reset_to_beginning",
+            success = true,
+            dryRun = true,
+            message = string.format(
+                "DRY RUN for %s — KEEP %d huge [%s], DELETE %d others",
+                targetPlayer.Name,
+                #kept,
+                table.concat(kept, ", "),
+                deleteCount
+            ),
+        })
+        return
+    end
+
+    -- 1) Pets: replace the SSOT with only the huge survivors. Equip refs to deleted pets are
+    --    dropped by RebuildPetProjections below.
+    pets.items = keptKeys
+    pets.used_slots = #kept
+
+    -- 2) Currencies: 100 grass_coins (the starter), 0 for every other defined currency.
+    local okCur, currencies = pcall(function()
+        return self._configLoader:LoadConfig("currencies")
+    end)
+    if okCur and type(currencies) == "table" then
+        for _, c in ipairs(currencies) do
+            local amt = (c.id == "grass_coins") and 100 or 0
+            self._dataService:SetCurrency(targetPlayer, c.id, amt, "admin_reset_to_beginning")
+        end
+    end
+
+    -- 3) Zones: relock everything (defaults re-merge to Spawn). Republish so the spawn-gate +
+    --    client prompt update immediately.
+    playerData.GameData = playerData.GameData or {}
+    playerData.GameData.UnlockedAreas = { "Spawn" }
+    if self._zoneService and self._zoneService._getUnlockSet then
+        pcall(function()
+            self._zoneService:_getUnlockSet(targetPlayer)
+        end)
+    end
+
+    -- 4) Re-replicate pet projections (drops stale equips + despawns removed follow models) + save.
+    if self._inventoryService and self._inventoryService.RebuildPetProjections then
+        self._inventoryService:RebuildPetProjections(targetPlayer)
+    end
+    if type(_G.RBXReloadEquippedPets) == "function" then
+        pcall(function()
+            _G.RBXReloadEquippedPets(targetPlayer)
+        end)
+    end
+    self._dataService:RequestSave(
+        targetPlayer,
+        "admin_reset_to_beginning",
+        { critical = true, debounceSeconds = 0 }
+    )
+
+    self._logger:Warn("🔄 ADMIN RESET TO BEGINNING (KEEP HUGE)", {
+        admin = adminPlayer.Name,
+        target = targetPlayer.Name,
+        keptHuge = #kept,
+        deleted = deleteCount,
+        kept = kept,
+    })
+
+    self:_sendResult(adminPlayer, {
+        kind = "reset_to_beginning",
+        success = true,
+        message = string.format(
+            "Reset %s — kept %d huge [%s], deleted %d, currencies + zones reset",
+            targetPlayer.Name,
+            #kept,
+            table.concat(kept, ", "),
+            deleteCount
+        ),
         snapshot = self:_buildSnapshot(targetPlayer),
     })
 end
