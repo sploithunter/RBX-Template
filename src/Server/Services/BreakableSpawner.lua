@@ -1225,6 +1225,23 @@ function BreakableSpawner:_trySpawnOne(
         model:SetAttribute("Scale", scale)
         model:SetAttribute("Boost", 0)
         model:SetAttribute("MaxBoost", 100)
+
+        -- Optional self-glow (Pet Realm zone ore). config: crystalCfg.glow =
+        -- { color = {r,g,b}, brightness = 0.75, range = 16 }. Shadows off (cheap; a colored
+        -- gem glow doesn't need dynamic shadows, and Roblox culls distant lights). Replicates
+        -- from the server. A pulse can be layered later via ONE shared client loop, not per-node.
+        local glow = type(crystalCfg) == "table" and crystalCfg.glow
+        local glowHost = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+        if type(glow) == "table" and glowHost and not glowHost:FindFirstChild("OreGlow") then
+            local c = glow.color or { 255, 255, 255 }
+            local light = Instance.new("PointLight")
+            light.Name = "OreGlow"
+            light.Color = Color3.fromRGB(c[1] or 255, c[2] or 255, c[3] or 255)
+            light.Brightness = tonumber(glow.brightness) or 0.75
+            light.Range = tonumber(glow.range) or 16
+            light.Shadows = false
+            light.Parent = glowHost
+        end
     end
 
     -- Unique breakable ID (for targeting). Using random large int similar to MCP

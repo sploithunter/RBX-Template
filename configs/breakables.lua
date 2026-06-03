@@ -43,10 +43,13 @@ local ORE_FAMILIES = {
         },
         scale = 1, -- family-wide multiplier on top of normalization
         orientation = { x = 0, y = 0, z = 0 }, -- emerald meshes import upright (unlike the blue crystals)
+        -- Self-glow: a soft PointLight in the node, themed per element (shadows off, cheap).
+        -- brightness 0.75 = the tuned "gentle gem shimmer" sweet spot; range keeps it local.
+        glow = { color = { 80, 255, 120 }, brightness = 0.75, range = 16 },
     },
-    { el = "desert", display = "Sunglass", currency = "desert_coins", variants = {} },
-    { el = "lava", display = "Emberstone", currency = "lava_coins", variants = {} },
-    { el = "ice", display = "Frostshard", currency = "ice_coins", variants = {} },
+    { el = "desert", display = "Sunglass", currency = "desert_coins", variants = {}, glow = { color = { 255, 205, 130 }, brightness = 0.75, range = 16 } },
+    { el = "lava", display = "Emberstone", currency = "lava_coins", variants = {}, glow = { color = { 255, 120, 40 }, brightness = 0.75, range = 16 } },
+    { el = "ice", display = "Frostshard", currency = "ice_coins", variants = {}, glow = { color = { 120, 220, 255 }, brightness = 0.75, range = 16 } },
 }
 
 -- Size tiers: payoff scales with size. `scale` multiplies the mesh (when real single-mesh
@@ -362,6 +365,7 @@ for _, fam in ipairs(ORE_FAMILIES) do
                 health = tier.health,
                 value = tier.value,
                 currency = fam.currency,
+                glow = fam.glow,
                 default_orientation = orientation,
                 placement = {
                     height_offset = tier.placement.height_offset,
