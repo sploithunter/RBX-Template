@@ -584,7 +584,31 @@ function AdminToolsService:_handleResetToBeginning(adminPlayer, data)
         end)
     end
 
-    -- 4) Re-replicate pet projections (drops stale equips + despawns removed follow models) + save.
+    -- 4) Progression: Level 1 / XP 0 (Level is derived from data.Stats.Experience). SetLevel
+    --    writes the level-1 threshold XP and republishes the Level/XP/XPForNext attributes.
+    local prog = _G.RBXTemplateServices and _G.RBXTemplateServices:Get("PlayerProgressionService")
+    if prog and prog.SetLevel then
+        pcall(function()
+            prog:SetLevel(targetPlayer, 1)
+        end)
+    else
+        if self._dataService.SetStat then
+            self._dataService:SetStat(targetPlayer, "Experience", 0)
+        end
+        playerData.Stats = playerData.Stats or {}
+        playerData.Stats.Level = 1
+        playerData.Stats.Experience = 0
+        targetPlayer:SetAttribute("Level", 1)
+        targetPlayer:SetAttribute("XP", 0)
+    end
+
+    -- 5) Pet slots back to the base 3: clear the extra-slot sources (the level-derived bonus
+    --    already drops to 0 at level 1). Perks + the ExtraPetSlots attribute are the rest.
+    playerData.Perks = playerData.Perks or {}
+    playerData.Perks.extra_pet_slots = nil
+    targetPlayer:SetAttribute("ExtraPetSlots", 0)
+
+    -- 6) Re-replicate pet projections (drops stale equips + despawns removed follow models) + save.
     if self._inventoryService and self._inventoryService.RebuildPetProjections then
         self._inventoryService:RebuildPetProjections(targetPlayer)
     end
@@ -611,7 +635,7 @@ function AdminToolsService:_handleResetToBeginning(adminPlayer, data)
         kind = "reset_to_beginning",
         success = true,
         message = string.format(
-            "Reset %s — kept %d huge [%s], deleted %d, currencies + zones reset",
+            "Reset %s — kept %d huge [%s], deleted %d; currencies/zones/level/XP/slots reset",
             targetPlayer.Name,
             #kept,
             table.concat(kept, ", "),
