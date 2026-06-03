@@ -226,15 +226,21 @@ local M = {
             },
             spawn_settings = {
                 upright = true,
-                surface_y = 0.5, -- top of the Lava baseplate
+                surface_y = 0.5, -- fallback; surface raycast (below) sets the real Y per node
                 use_spawner_bounds = true,
+                -- Raycast down per candidate and only place where it hits the "Lava" baseplate
+                -- (the labeled terrain), so ore sits on the lava texture and skips rocks/gaps.
+                surface_mode = "surface",
+                surface_match_name = "Lava",
+                surface_raycast_height = 140,
+                surface_normal_min_y = 0.5,
                 spawn_area_margin = 30,
                 spawn_center = { x = -207, z = 68 },
                 spawn_radius = 150,
                 spawn_exclusion_radius = 20,
                 embed_ratio = 0,
                 min_distance = 18,
-                spawn_attempts = 30,
+                spawn_attempts = 60,
                 respawn_min_seconds = 5,
                 respawn_max_seconds = 60,
             },

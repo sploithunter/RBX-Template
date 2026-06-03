@@ -334,6 +334,48 @@ local function raycastSpawnerSurface(spawner, candidate, placeCfg)
         candidate.Z
     )
 
+    -- Biome-terrain match: raycast down onto the WORLD and only accept the candidate when the
+    -- hit surface is the zone's terrain (by part name, e.g. "Lava", or by Material). This keeps
+    -- ore on the actual biome texture (and off rocks/gaps) on uneven authored maps.
+    local matchName = placeCfg.surface_match_name
+    local matchMaterial = placeCfg.surface_match_material
+    if matchName or matchMaterial then
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Exclude
+        params.IgnoreWater = true
+        local excludes = { spawner }
+        local worldFolder = spawner.Parent
+        local items = worldFolder and worldFolder:FindFirstChild("Items")
+        if items then
+            table.insert(excludes, items)
+        end
+        local pets = workspace:FindFirstChild("PlayerPets")
+        if pets then
+            table.insert(excludes, pets)
+        end
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr.Character then
+                table.insert(excludes, plr.Character)
+            end
+        end
+        params.FilterDescendantsInstances = excludes
+        local result = workspace:Raycast(origin, Vector3.new(0, -raycastHeight * 2, 0), params)
+        if not result then
+            return nil
+        end
+        if matchName and result.Instance.Name ~= matchName then
+            return nil
+        end
+        if matchMaterial and tostring(result.Material) ~= ("Enum.Material." .. matchMaterial) then
+            return nil
+        end
+        if result.Normal.Y < normalMinY then
+            return nil
+        end
+        return result.Position
+    end
+
+    -- Default: spawn onto the spawner part's own surface.
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Include
     params.FilterDescendantsInstances = { spawner }
