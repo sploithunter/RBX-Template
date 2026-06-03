@@ -48,7 +48,21 @@ local ORE_FAMILIES = {
         glow = { color = { 80, 255, 120 }, brightness = 0.75, range = 16 },
     },
     { el = "desert", display = "Sunglass", currency = "desert_coins", variants = {}, glow = { color = { 255, 205, 130 }, brightness = 0.75, range = 16 } },
-    { el = "lava", display = "Emberstone", currency = "lava_coins", variants = {}, glow = { color = { 255, 120, 40 }, brightness = 0.75, range = 16 } },
+    {
+        el = "lava",
+        display = "Emberstone",
+        currency = "lava_coins",
+        -- Cosmetic variants (random-pick). `norm` placeholders = 1 until measured live, then
+        -- set to 6/<native max studs> like the emeralds so all read ~6 studs at Medium.
+        variants = {
+            { asset = "rbxassetid://81424041024347", norm = 3.14 }, -- EmberCrystal1 (native 1.91)
+            { asset = "rbxassetid://91219330332155", norm = 3.14 }, -- EmberCrystal2 (native 1.91)
+            { asset = "rbxassetid://84600281598015", norm = 3.25 }, -- EmberCrystal3 (native 1.84)
+        },
+        scale = 1,
+        orientation = { x = 0, y = 0, z = 0 }, -- assume upright like emeralds; verify live
+        glow = { color = { 255, 120, 40 }, brightness = 0.75, range = 16 },
+    },
     { el = "ice", display = "Frostshard", currency = "ice_coins", variants = {}, glow = { color = { 120, 220, 255 }, brightness = 0.75, range = 16 } },
 }
 
@@ -197,6 +211,43 @@ local M = {
                 { name = "MediumBlueCrystal", weight = 3 },
                 { name = "BigBlueCrystal", weight = 1 },
                 { name = "CoinStack", weight = 2 },
+            },
+        },
+        -- LAVA ZONE: spawns on the flat "Lava" baseplate (Home.Lava, center ~-207,0,68, top Y~0.5).
+        -- Emberstone ore only, paying lava_coins. Marked always-active in BreakableSpawner
+        -- (_isWorldActive) for now; swap to proper enter-the-zone activation via the area system later.
+        Lava = {
+            max = 14,
+            interval = 8,
+            spawn_area = {
+                name = "SpawnArea",
+                size = { x = 300, y = 1, z = 300 },
+                position = { x = -207, y = 0, z = 68 },
+            },
+            spawn_settings = {
+                upright = true,
+                surface_y = 0.5, -- top of the Lava baseplate
+                use_spawner_bounds = true,
+                spawn_area_margin = 30,
+                spawn_center = { x = -207, z = 68 },
+                spawn_radius = 150,
+                spawn_exclusion_radius = 20,
+                embed_ratio = 0,
+                min_distance = 18,
+                spawn_attempts = 30,
+                respawn_min_seconds = 5,
+                respawn_max_seconds = 60,
+            },
+            spawn_table = {
+                { name = "EmberstoneSmallV1", weight = 4 },
+                { name = "EmberstoneSmallV2", weight = 4 },
+                { name = "EmberstoneSmallV3", weight = 4 },
+                { name = "EmberstoneMediumV1", weight = 2 },
+                { name = "EmberstoneMediumV2", weight = 2 },
+                { name = "EmberstoneMediumV3", weight = 2 },
+                { name = "EmberstoneLargeV1", weight = 1 },
+                { name = "EmberstoneLargeV2", weight = 1 },
+                { name = "EmberstoneLargeV3", weight = 1 },
             },
         },
     },

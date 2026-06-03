@@ -69,5 +69,32 @@ return {
                 egg_stands = {},
             },
         },
+        lava_island = {
+            id = "lava_island",
+            kind = "island",
+            parent = "spawn_world",
+            display_name = "Lava Island",
+            order = 3,
+            primary_area = "Lava",
+        },
+        Lava = {
+            id = "Lava",
+            kind = "area",
+            parent = "lava_island",
+            display_name = "Lava Fields",
+            order = 3,
+            unlock = {
+                unlocked_by_default = true,
+            },
+            boosts = {},
+            -- Real authored "Lava" baseplate (Home.Lava): center ~(-207,0,68), top ~Y0.5.
+            synthetic = {
+                center = { x = -207, y = 0, z = 68 },
+                size = { x = 360, y = 4, z = 458 },
+                floor_y = 0.5,
+                spawn_position = { x = -207, y = 5, z = 68 },
+                egg_stands = {},
+            },
+        },
     },
 }

@@ -628,7 +628,11 @@ function BreakableSpawner:_isWorldActive(worldName)
         return true
     end
 
-    return worldName == "Spawn" or worldBindingService:IsAreaActive(worldName)
+    -- "Spawn" (grass) and "Lava" are always-active mining zones for now; other worlds activate
+    -- via the area-entry system. (Swap Lava to area-gated when the zone system is wired.)
+    return worldName == "Spawn"
+        or worldName == "Lava"
+        or worldBindingService:IsAreaActive(worldName)
 end
 
 function BreakableSpawner:_fillAreaWorld(areaId)
@@ -746,6 +750,9 @@ function BreakableSpawner:_fillAllWorlds(crystalsAssets)
     self._crystalsAssets = crystalsAssets
     for _, worldFolder in ipairs(crystalsWorlds:GetChildren()) do
         if worldFolder:IsA("Folder") and self:_isWorldActive(worldFolder.Name) then
+            -- Ensure Items/Max/CurrentItems exist (idempotent) so a world that was added after
+            -- the initial setup pass (or missed the ChildAdded window) still self-heals + fills.
+            self:_setupWorld(worldFolder)
             self:_fillWorld(worldFolder)
         end
     end
@@ -788,6 +795,32 @@ function BreakableSpawner:_setupWorld(worldFolder)
         max.Parent = worldFolder
     end
     max.Value = configuredMax
+
+    -- If no spawner part exists for this world but config defines a spawn_area, synthesize an
+    -- invisible one from config. Authored maps provide spawner parts for their built-in zones
+    -- (e.g. Spawn), but a config-only zone (e.g. Lava on a labeled baseplate) has none, so
+    -- _findSpawnPoint would return nil and never spawn. Idempotent (guarded by the lookup).
+    if #self:_getSpawnerParts(worldFolder) == 0 then
+        local area = worldConfig.spawn_area
+        if type(area) == "table" and type(area.position) == "table" then
+            local sz = type(area.size) == "table" and area.size or {}
+            local part = Instance.new("Part")
+            part.Name = area.name or "SpawnArea"
+            part.Anchored = true
+            part.CanCollide = false
+            part.CanQuery = false
+            part.CanTouch = false
+            part.Transparency = 1
+            part.Size = Vector3.new(
+                tonumber(sz.x) or 100,
+                tonumber(sz.y) or 1,
+                tonumber(sz.z) or 100
+            )
+            part.Position =
+                Vector3.new(area.position.x or 0, area.position.y or 0, area.position.z or 0)
+            part.Parent = worldFolder
+        end
+    end
 
     -- Maintain count when items removed
     items.ChildRemoved:Connect(function()

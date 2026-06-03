@@ -41,8 +41,10 @@ function DevSpawnPanel.start()
     gui.Parent = player:WaitForChild("PlayerGui")
 
     local frame = Instance.new("Frame")
-    frame.AnchorPoint = Vector2.new(0, 0.5)
-    frame.Position = UDim2.new(0, 8, 0.5, -20) -- left edge, vertically centred (by the pets side)
+    frame.AnchorPoint = Vector2.new(0, 0)
+    -- Top-left, above the currency column (center-left) so the dev buttons don't cover the
+    -- biome-coin HUD during testing. (Studio-only temporary menu.)
+    frame.Position = UDim2.new(0, 8, 0, 96)
     frame.Size = UDim2.fromOffset(120, 10)
     frame.BackgroundTransparency = 1
     frame.Parent = gui
