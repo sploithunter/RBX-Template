@@ -47,7 +47,19 @@ local ORE_FAMILIES = {
         -- brightness 0.75 = the tuned "gentle gem shimmer" sweet spot; range keeps it local.
         glow = { color = { 80, 255, 120 }, brightness = 0.75, range = 16 },
     },
-    { el = "desert", display = "Sunglass", currency = "desert_coins", variants = {}, glow = { color = { 255, 205, 130 }, brightness = 0.75, range = 16 } },
+    {
+        el = "desert",
+        display = "Sunglass",
+        currency = "desert_coins",
+        variants = {
+            { asset = "rbxassetid://94786603011124", norm = 3.15 }, -- Citrine_Crystal_Cluster_1 (native 1.91)
+            { asset = "rbxassetid://90886294637792", norm = 3.15 }, -- Citrine_Crystal_Cluster_2 (native 1.91)
+            { asset = "rbxassetid://106635944648380", norm = 3.14 }, -- Citrine_Crystal_Cluster_3 (native 1.91)
+        },
+        scale = 1,
+        orientation = { x = 0, y = 0, z = 0 }, -- assume upright; verify live
+        glow = { color = { 255, 205, 130 }, brightness = 0.75, range = 16 },
+    },
     {
         el = "lava",
         display = "Emberstone",
@@ -308,6 +320,46 @@ local M = {
                 { name = "FrostshardLargeV1", weight = 1 },
                 { name = "FrostshardLargeV2", weight = 1 },
                 { name = "FrostshardLargeV3", weight = 1 },
+            },
+        },
+        -- DESERT ZONE: spawns on the flat "Desert" baseplate (Home.Desert, center ~-127,1,475).
+        -- Sunglass ore only, paying desert_coins. Always-active for now (see _isWorldActive).
+        Desert = {
+            max = 100,
+            interval = 8,
+            spawn_area = {
+                name = "SpawnArea",
+                size = { x = 310, y = 1, z = 280 }, -- within the 330x301 Desert pad
+                position = { x = -127, y = 1, z = 475 },
+            },
+            spawn_settings = {
+                upright = true,
+                surface_y = 1.5, -- fallback; surface raycast (below) sets the real Y per node
+                use_spawner_bounds = true,
+                surface_mode = "surface",
+                surface_match_name = "Desert",
+                surface_raycast_height = 140,
+                surface_normal_min_y = 0.5,
+                spawn_area_margin = 20,
+                spawn_center = { x = -127, z = 475 },
+                spawn_radius = 140,
+                spawn_exclusion_radius = 12,
+                embed_ratio = 0,
+                min_distance = 12,
+                spawn_attempts = 90,
+                respawn_min_seconds = 5,
+                respawn_max_seconds = 60,
+            },
+            spawn_table = {
+                { name = "SunglassSmallV1", weight = 4 },
+                { name = "SunglassSmallV2", weight = 4 },
+                { name = "SunglassSmallV3", weight = 4 },
+                { name = "SunglassMediumV1", weight = 2 },
+                { name = "SunglassMediumV2", weight = 2 },
+                { name = "SunglassMediumV3", weight = 2 },
+                { name = "SunglassLargeV1", weight = 1 },
+                { name = "SunglassLargeV2", weight = 1 },
+                { name = "SunglassLargeV3", weight = 1 },
             },
         },
     },

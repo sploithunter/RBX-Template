@@ -123,5 +123,32 @@ return {
                 egg_stands = {},
             },
         },
+        desert_island = {
+            id = "desert_island",
+            kind = "island",
+            parent = "spawn_world",
+            display_name = "Desert Island",
+            order = 5,
+            primary_area = "Desert",
+        },
+        Desert = {
+            id = "Desert",
+            kind = "area",
+            parent = "desert_island",
+            display_name = "Desert Fields",
+            order = 5,
+            unlock = {
+                unlocked_by_default = true,
+            },
+            boosts = {},
+            -- Real authored "Desert" baseplate (Home.Desert): center ~(-127,1,475).
+            synthetic = {
+                center = { x = -127, y = 1, z = 475 },
+                size = { x = 330, y = 4, z = 301 },
+                floor_y = 1.5,
+                spawn_position = { x = -127, y = 6, z = 475 },
+                egg_stands = {},
+            },
+        },
     },
 }

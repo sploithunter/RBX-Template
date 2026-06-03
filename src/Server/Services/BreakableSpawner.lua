@@ -675,6 +675,7 @@ function BreakableSpawner:_isWorldActive(worldName)
     return worldName == "Spawn"
         or worldName == "Lava"
         or worldName == "Ice"
+        or worldName == "Desert"
         or worldBindingService:IsAreaActive(worldName)
 end
 
