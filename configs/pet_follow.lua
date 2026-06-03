@@ -22,6 +22,18 @@ return {
     -- over once it ports that anti-fall machinery — see issue #4 / CURRENT_STATUS.
     service_owned = true,
 
+    -- Legacy "ring mining": the old animation where pets ORBIT a node while mining, via an
+    -- invisible Star ring of physics boxes BreakableSpawner builds on each mined node. Those boxes
+    -- are unanchored and simulated on the SERVER (plus a per-node server spin loop), so leaving
+    -- this on tanks server FPS once several nodes are being mined. The current pet system uses its
+    -- own mining animation and does NOT use this ring, so it is OFF. If ring-mining is ever brought
+    -- back, prefer wiring `enabled` to a player attack-style setting rather than a global on switch,
+    -- and keep point_count near the equipped-pet cap (10) — not the old hardcoded 108.
+    ring_mining = {
+        enabled = false,
+        point_count = 12,
+    },
+
     -- How pets arrange behind/around the player.
     formation = {
         mode = "rows", -- "rows" (marching grid) | "circle" (arc behind)

@@ -39,6 +39,14 @@ local petProgressionService
 
 -- Local state
 local breakablesConfig
+-- Legacy "ring mining": the invisible Star align-ring (unanchored physics boxes + AlignPosition/
+-- Orientation constraints per mined node) that made pets ORBIT a node while mining. The current
+-- pet system (PetFollowService) uses its own mining animation and never touches this ring, so it
+-- is OFF by default — building it spawns server-simulated rigid bodies (the spin loop + constraints
+-- run on the SERVER) that collapse FPS. Re-enable per configs/pet_follow.lua ring_mining only if
+-- bringing ring-mining back (ideally as a player-selectable attack style).
+local ringMiningEnabled = false
+local ringMiningPoints = 12
 
 -- Geometry helpers for crystal star ring
 local function getPointOnCircle(radius, degrees)
@@ -637,8 +645,19 @@ function BreakableSpawner:Init()
         breakablesConfig = cfg or { crystals = {} }
     end
 
+    -- Legacy ring-mining toggle (OFF by default — see decl above). The current pet system uses
+    -- its own mining animation, so the Star align-ring is not built unless ring_mining is enabled.
+    local okPF, petFollow = pcall(function()
+        return configLoader:LoadConfig("pet_follow")
+    end)
+    if okPF and type(petFollow) == "table" and type(petFollow.ring_mining) == "table" then
+        ringMiningEnabled = petFollow.ring_mining.enabled == true
+        ringMiningPoints = tonumber(petFollow.ring_mining.point_count) or ringMiningPoints
+    end
+
     logger:Info("BreakableSpawner initialized", {
         crystalsDefined = (breakablesConfig.crystals and #breakablesConfig.crystals) or 0,
+        ringMiningEnabled = ringMiningEnabled,
     })
 end
 
@@ -1576,9 +1595,12 @@ function BreakableSpawner:_trySpawnOne(
         end
         petsFolder.ChildAdded:Connect(function(child)
             -- Expect child is a NumberValue carrying PetID, with sub-values Leadership/Efficiency, mirroring MCP
-            if not model:FindFirstChild("Star") then
+            -- Legacy ring-mining only (OFF by default): build the orbit ring on first pet. The
+            -- current pet system has its own mining animation and never uses this, so it stays
+            -- absent — which also means it's torn down whenever nobody is mining (never built).
+            if ringMiningEnabled and not model:FindFirstChild("Star") then
                 local radius = model:GetExtentsSize().X + 12
-                createStarRing(model, radius, 108) -- >99 points for up to 99 pets
+                createStarRing(model, radius, ringMiningPoints)
             end
             local lead = child:FindFirstChild("Leadership")
             if lead and typeof(lead.Value) == "number" then
