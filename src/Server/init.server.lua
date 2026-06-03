@@ -446,6 +446,13 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.EnemyService,
     { "Logger", "ConfigLoader" }
 )
+-- ZoneTrackerService: config-bounds "which area am I in" → CurrentArea SSOT attribute.
+-- Drives area-scoped farming (AutoTargetService) and future area music / zone activation.
+loader:RegisterModule(
+    "ZoneTrackerService",
+    ServerScriptService.Server.Services.ZoneTrackerService,
+    { "Logger", "ConfigLoader" }
+)
 -- GameAPIService: the unified command-bus boundary (see
 -- docs/wiki/AUTOMATION_API_DESIGN.md). Handlers resolve target services from the
 -- _G.RBXTemplateServices locator at runtime, so it only needs Logger to boot.
@@ -583,6 +590,7 @@ table.insert(requiredModules, "ShopService")
 table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "PetFollowService")
+table.insert(requiredModules, "ZoneTrackerService")
 table.insert(requiredModules, "GameAPIService")
 if RunService:IsStudio() then
     table.insert(requiredModules, "StudioSmokeTestService")
