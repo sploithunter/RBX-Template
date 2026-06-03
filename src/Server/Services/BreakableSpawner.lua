@@ -1419,8 +1419,14 @@ function BreakableSpawner:_trySpawnOne(
     local boostDecay = (breakablesConfig.boost and tonumber(breakablesConfig.boost.decay_per_sec))
         or 1
     task.spawn(function()
-        while model.Parent do
+        -- Wait FIRST, then check parent: task.spawn runs synchronously up to the first yield, and
+        -- the model isn't parented into Items until later in this function — so checking
+        -- model.Parent before the wait would exit the loop immediately (decay never runs).
+        while true do
             task.wait(1)
+            if not model.Parent then
+                break
+            end
             local b = tonumber(model:GetAttribute("Boost")) or 0
             if b > 0 then
                 model:SetAttribute("Boost", math.max(0, b - boostDecay))
