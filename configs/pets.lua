@@ -336,6 +336,9 @@ local petConfig = {
             rarity = "common",
             base_power = 12,
             base_health = 130,
+            -- Ember meshes are tight, full-silhouette MeshParts; pull the inventory-card camera back
+            -- a touch so the art doesn't overflow the card (card-only — not the in-world size).
+            viewport_zoom = 1.0,
             asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
@@ -371,6 +374,7 @@ local petConfig = {
             rarity = "uncommon",
             base_power = 16,
             base_health = 150,
+            viewport_zoom = 1.0, -- ember card framing (see emberling note)
             asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
@@ -406,6 +410,7 @@ local petConfig = {
             rarity = "rare",
             base_power = 22,
             base_health = 170,
+            viewport_zoom = 1.0, -- ember card framing (see emberling note)
             asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
@@ -441,6 +446,7 @@ local petConfig = {
             rarity = "epic",
             base_power = 30,
             base_health = 200,
+            viewport_zoom = 1.0, -- ember card framing (see emberling note)
             asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
@@ -476,6 +482,7 @@ local petConfig = {
             rarity = "legendary",
             base_power = 42,
             base_health = 260,
+            viewport_zoom = 1.0, -- ember card framing (see emberling note)
             asset_transform = { scale = 1, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
@@ -1064,6 +1071,10 @@ function petConfig.getPet(petType, variant)
             asset_id = petVariant.asset_id,
             category = pet.category,
             camera = petVariant.camera or pet.camera,
+            -- Inventory-card framing zoom (card-only; does NOT affect in-world pet size, which is
+            -- asset_transform.scale). The card auto-fits the model bbox; distance = bbox/viewport_zoom,
+            -- so a LOWER value pushes the camera back and shrinks the art. Defaults to 1.5 in the panel.
+            viewport_zoom = petVariant.viewport_zoom or pet.viewport_zoom,
 
             -- Stats
             power = power,
