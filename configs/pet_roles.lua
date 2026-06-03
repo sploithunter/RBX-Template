@@ -20,10 +20,33 @@ return {
         bear = "tank",
         doggy = "melee",
         dog = "melee",
-        bunny = "support",
+        bunny = "support", -- Grass buffer (heal) — see support_auras
         cat = "ranged",
         bird = "ranged",
         colorado = "ranged",
+        -- One BUFFER (support archetype) per zone — trades attack for a team aura. Their
+        -- specific aura flavour lives in support_auras below.
+        penguin = "support", -- Ice buffer (defense)
+        emberimp = "support", -- Lava buffer (offense)
+        meerkat = "support", -- Desert buffer (yield)
+    },
+
+    -- Per-zone BUFFER auras (City-of-Heroes support). Resolved by SupportAura.forPet
+    -- (PetType key; a model `SupportAura` attribute can override later) and applied by
+    -- EnemyService:_supportPass every `interval` seconds while the buffer is deployed +
+    -- alive. The buff is short-lived (`duration`s) and refreshed each interval, so it
+    -- fades a beat after the buffer is recalled/downed. These run on a SEPARATE channel
+    -- from player Powers (Feature 14), so an aura STACKS with an activated power buff
+    -- instead of clobbering it. Every number is a dev knob.
+    --   heal     — mend the most-hurt non-downed ally; `fraction` of its pool (or flat `amount`).
+    --   defense  — TeamDefenseBuff on every ally (added on the armor curve in _hitPet); `amount`.
+    --   offense  — PetTeamDamageBuff on the owner; ×`mult` to mining AND combat damage (_mine).
+    --   yield    — CoinYieldBuff on the owner; ×`mult` to mined-coin payout (BreakableSpawner).
+    support_auras = {
+        bunny = { kind = "heal", interval = 1.5, fraction = 0.3 }, -- Grass
+        penguin = { kind = "defense", interval = 2.0, amount = 80, duration = 3 }, -- Ice
+        emberimp = { kind = "offense", interval = 2.0, mult = 1.25, duration = 3 }, -- Lava
+        meerkat = { kind = "yield", interval = 2.0, mult = 1.25, duration = 3 }, -- Desert
     },
 
     -- Role definitions. glyph = placeholder letter (until art exists via `icon`).
@@ -57,8 +80,8 @@ return {
         melee = { label = "Melee", glyph = "M", color = { 205, 85, 70 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 1, damage_mult = 1.0, mining_mult = 1.0, combat_mult = 1.0, defense = 20 },
         -- kite = true: holds near the player and snipes instead of orbiting the enemy, so
         -- an enemy chasing it has to close the gap (the melee-closes / ranged-kites loop).
-        ranged = { label = "Ranged", glyph = "R", color = { 120, 180, 85 }, icon = "", attack_range = 28, standoff = 17, kite = true, damage_mult = 1.0, mining_mult = 1.0, combat_mult = 1.0, defense = 0 },
-        support = { label = "Support", glyph = "S", color = { 150, 110, 215 }, icon = "", attack_range = 16, standoff = 9, damage_mult = 0.35, mining_mult = 0.35, combat_mult = 0.35, auto_heal = { interval = 1.5, fraction = 0.3 }, defense = 10 },
+        ranged = { label = "Blaster", glyph = "R", color = { 120, 180, 85 }, icon = "", attack_range = 28, standoff = 17, kite = true, damage_mult = 1.0, mining_mult = 1.0, combat_mult = 1.0, defense = 0 },
+        support = { label = "Buffer", glyph = "S", color = { 150, 110, 215 }, icon = "", attack_range = 16, standoff = 9, damage_mult = 0.35, mining_mult = 0.35, combat_mult = 0.35, auto_heal = { interval = 1.5, fraction = 0.3 }, defense = 10 },
         control = { label = "Control", glyph = "C", color = { 90, 185, 205 }, icon = "", attack_range = 20, standoff = 12, damage_mult = 0.5, mining_mult = 0.5, combat_mult = 0.5, defense = 40 },
     },
 }

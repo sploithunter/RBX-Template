@@ -1774,15 +1774,15 @@ function BreakableSpawner:_trySpawnOne(
 
         local function resolvePlayerAward(player, baseAmount)
             baseAmount = tonumber(baseAmount) or 0
+            local amount = baseAmount
             if economy and economy.ResolveRewardAmount and baseAmount > 0 then
-                local resolvedAmount = economy:ResolveRewardAmount(baseAmount, {
+                amount = economy:ResolveRewardAmount(baseAmount, {
                     player = player,
                     kind = "breakable_reward",
                     currency = currencyType,
                     breakableId = model:GetAttribute("BreakableId"),
                     source = "BreakableSpawner",
                 })
-                return resolvedAmount
             elseif eventService and baseAmount > 0 then
                 local rewardMultiplier = eventService:GetModifier("breakable_reward_multiplier", 1)
                     or 1
@@ -1790,9 +1790,19 @@ function BreakableSpawner:_trySpawnOne(
                     currencyType .. "_reward_multiplier",
                     1
                 ) or 1
-                return math.max(0, math.floor(baseAmount * rewardMultiplier * currencyMultiplier))
+                amount = math.max(0, math.floor(baseAmount * rewardMultiplier * currencyMultiplier))
             end
-            return baseAmount
+            -- Desert buffer's team YIELD aura (meerkat): a short-lived coin multiplier on the
+            -- player (set by EnemyService:_supportPass on a channel separate from event
+            -- modifiers, so it stacks). Applies to the mined-coin payout only.
+            if
+                player
+                and (player:GetAttribute("CoinYieldBuffUntil") or 0) > os.time()
+                and (tonumber(amount) or 0) > 0
+            then
+                amount = math.floor(amount * (player:GetAttribute("CoinYieldBuff") or 1))
+            end
+            return amount
         end
 
         if economy and valueAmount > 0 then

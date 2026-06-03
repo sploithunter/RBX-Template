@@ -90,4 +90,20 @@ function PetPowerView.displayRound(n)
     return PetPower.roundForDisplay(n, power.display_round)
 end
 
+-- Archetype chip data for a pet card / squad tooltip: resolves the role (explicit override ->
+-- by_type -> default) and returns its display label + colour from pet_roles. So the inventory
+-- can show "Tank / Melee / Blaster / Buffer / Control" at a glance.
+function PetPowerView.roleInfo(petType, explicit)
+    local _, roles = configs()
+    local rid = roleId(roles, petType, explicit)
+    local def = (roles.roles and roles.roles[rid]) or {}
+    local c = def.color
+    return {
+        id = rid,
+        label = def.label or rid,
+        glyph = def.glyph,
+        color = (type(c) == "table" and c[1] and { r = c[1], g = c[2], b = c[3] }) or nil,
+    }
+end
+
 return PetPowerView

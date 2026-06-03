@@ -169,18 +169,23 @@ return {
     -- rests when still. `gait` is the default for every pet; `gait_by_type` overrides it
     -- per pet PetType so different species move differently. Styles: waddle (bob + L/R
     -- bank), march (stiff stomp), hop (one bounce/stride), slither (heading wiggle).
+    -- stride_length is the WAVELENGTH of the waddle/hop in studs travelled: the gait phase
+    -- advances stepDist/stride per frame, so a BIGGER stride = the pet rocks back-and-forth
+    -- HALF as often (slower animation) WITHOUT changing how fast it actually moves. These were
+    -- doubled (4->8, etc.) to calm an over-bouncy idle/walk feel — raise further to slow the
+    -- rock more, lower to speed it up. (bob_height/tilt are AMPLITUDE, not speed.)
     gait = {
         enabled = true,
         style = "waddle",
         bob_height = 0.4, -- pets are smaller + already float; keep the bob gentle
         tilt_degrees = 10,
-        stride_length = 4,
+        stride_length = 8,
         ref_speed = 12, -- pets travel faster than enemies; reach full waddle around here
         ease_rate = 9,
     },
     gait_by_type = {
-        bunny = { style = "hop", bob_height = 0.9, tilt_degrees = 0, stride_length = 3 },
-        bear = { style = "waddle", bob_height = 0.5, tilt_degrees = 13, stride_length = 4.5 },
+        bunny = { style = "hop", bob_height = 0.9, tilt_degrees = 0, stride_length = 6 },
+        bear = { style = "waddle", bob_height = 0.5, tilt_degrees = 13, stride_length = 9 },
     },
 
     -- Ranged pets (pet_roles role == "ranged") fire a cosmetic lightning bolt from the

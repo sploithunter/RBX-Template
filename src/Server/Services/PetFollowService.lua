@@ -362,6 +362,12 @@ function PetFollowService:_mine(player, pet, breakable)
     if (player:GetAttribute("PetDamageBuffUntil") or 0) > nowT then
         dmg = dmg * (player:GetAttribute("PetDamageBuff") or 1)
     end
+    -- Lava buffer's team offense aura (emberimp) — a SEPARATE channel from the power buff
+    -- above, so an aura and an activated damage power stack. Boosts mining AND combat (this
+    -- path handles both ore and enemies).
+    if (player:GetAttribute("PetTeamDamageBuffUntil") or 0) > nowT then
+        dmg = dmg * (player:GetAttribute("PetTeamDamageBuff") or 1)
+    end
     if (breakable:GetAttribute("VulnerableUntil") or 0) > nowT then
         dmg = dmg * (breakable:GetAttribute("VulnerableMult") or 1)
     end

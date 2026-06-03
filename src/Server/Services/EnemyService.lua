@@ -32,6 +32,7 @@ local ActiveSquad = require(ReplicatedStorage.Shared.Game.ActiveSquad)
 local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local TargetPriority = require(ReplicatedStorage.Shared.Game.TargetPriority)
+local SupportAura = require(ReplicatedStorage.Shared.Game.SupportAura)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local EnemyService = {}
@@ -472,6 +473,11 @@ function EnemyService:_hitPet(pet, def, now, eng, enemyLevel, petLevel)
     local defense = self:_roleDefense(pet) + (pet:GetAttribute("Defense") or 0)
     if (pet:GetAttribute("DefenseBuffUntil") or 0) > nowT then
         defense = defense + (pet:GetAttribute("DefenseBuff") or 0)
+    end
+    -- Ice buffer's team defense aura (penguin) — separate channel from a power's DefenseBuff
+    -- above, so an aura + an activated shield STACK on the armor curve.
+    if (pet:GetAttribute("TeamDefenseBuffUntil") or 0) > nowT then
+        defense = defense + (pet:GetAttribute("TeamDefenseBuff") or 0)
     end
     dmg = CombatMath.mitigate(dmg, defense, self._combatConfig.armor_curve_k or 100)
     -- Combat-origin element: durability side. ice/desert take less, lava takes more — the mirror
@@ -974,17 +980,18 @@ function EnemyService:_updateDebuffBadges(model, nowTime)
     end
 end
 
--- A support pet's auto-heal config (role.auto_heal), or nil.
-function EnemyService:_roleAutoHeal(pet)
-    local roles = self._petRoles
-    if not roles then
-        return nil
+-- A buffer pet's team aura (configs/pet_roles.lua support_auras, keyed by PetType — a
+-- `SupportAura` model attribute can override later), or nil. The returned table carries
+-- `.kind` (heal | defense | offense | yield) + that flavour's tuning knobs.
+function EnemyService:_petAura(pet)
+    local override = pet:GetAttribute("SupportAura")
+    if type(override) == "string" and self._petRoles and self._petRoles.support_auras then
+        local a = self._petRoles.support_auras[override]
+        if a then
+            return a
+        end
     end
-    local id = pet:GetAttribute("PetRole")
-        or (roles.by_type and roles.by_type[pet:GetAttribute("PetType")])
-        or roles.default
-    local def = roles.roles and roles.roles[id]
-    return def and def.auto_heal
+    return SupportAura.forPet(pet:GetAttribute("PetType"), self._petRoles)
 end
 
 -- A green heal puff above a pet (world-side "tell" that it was just healed). Expands +
@@ -1015,66 +1022,98 @@ function EnemyService:_spawnHealVisual(pet)
     Debris:AddItem(fx, 0.8)
 end
 
--- Support pets (role.auto_heal) periodically mend the most-hurt non-downed ally in their
--- own squad — reduce its accumulated CombatDamageTaken. The squad healer keeps the tank up.
+-- Heal aura (Grass / bunny): mend the most-hurt non-downed ally in the squad — reduce its
+-- accumulated CombatDamageTaken. The squad healer keeps the tank up.
+function EnemyService:_auraHeal(folder, heal)
+    local factor = self._combatConfig.pet_down_threshold_factor or 1
+    local target, worst
+    for _, ally in ipairs(folder:GetChildren()) do
+        if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
+            local taken = ally:GetAttribute("CombatDamageTaken") or 0
+            if taken > 0 and (not worst or taken > worst) then
+                worst, target = taken, ally
+            end
+        end
+    end
+    if not target then
+        return
+    end
+    -- Heal a FRACTION of the target's pool (keeps numbers proportional on the ~100 scale)
+    -- — or a flat `amount` if configured instead.
+    local pool = PetEndurance.maxEndurance(self:_petPower(target), factor)
+    local healAmt = heal.fraction and (pool * heal.fraction) or (heal.amount or 0)
+    local newTaken = math.max(0, (target:GetAttribute("CombatDamageTaken") or 0) - healAmt)
+    target:SetAttribute("CombatDamageTaken", newTaken)
+    if newTaken <= 0 then
+        self:_clearEnduranceBar(target)
+    else
+        self:_updateEnduranceBar(target, newTaken, self:_petPower(target), factor)
+    end
+    -- Visual tell: blinking heal badge (HealFxUntil) + world heal puff, so an instant heal
+    -- is visible even though it has no duration.
+    local fxSec = (
+        self._combatConfig.engagement and self._combatConfig.engagement.instant_fx_seconds
+    ) or 3
+    target:SetAttribute("HealFxUntil", os.time() + fxSec)
+    self:_spawnHealVisual(target)
+    -- Floating green heal number, to the squad's owner.
+    local owner = Players:FindFirstChild(folder.Name)
+    if owner and healAmt >= 1 then
+        Signals.Combat_Heal:FireClient(
+            owner,
+            { target = target, amount = math.floor(healAmt + 0.5) }
+        )
+    end
+end
+
+-- Defense aura (Ice / penguin): a short-lived TeamDefenseBuff on EVERY ally. Consumed in
+-- _hitPet, added on the armor curve (separate from a power's DefenseBuff, so they stack).
+function EnemyService:_auraDefense(folder, aura)
+    local amount = tonumber(aura.amount) or 0
+    local until_ = os.time() + (tonumber(aura.duration) or 3)
+    for _, ally in ipairs(folder:GetChildren()) do
+        if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
+            ally:SetAttribute("TeamDefenseBuff", amount)
+            ally:SetAttribute("TeamDefenseBuffUntil", until_)
+        end
+    end
+end
+
+-- A team player-attribute buff (Lava offense -> PetTeamDamageBuff in _mine; Desert yield ->
+-- CoinYieldBuff in BreakableSpawner). Short-lived + refreshed each interval, on a channel
+-- separate from Powers so an aura stacks with an activated power buff.
+function EnemyService:_auraPlayerBuff(folder, attr, aura)
+    local owner = Players:FindFirstChild(folder.Name)
+    if not owner then
+        return
+    end
+    owner:SetAttribute(attr, tonumber(aura.mult) or 1)
+    owner:SetAttribute(attr .. "Until", os.time() + (tonumber(aura.duration) or 3))
+end
+
+-- Buffer pets (configs/pet_roles support_auras) project a team aura every `interval`s while
+-- deployed + alive. One flavour per zone: heal (Grass), defense (Ice), offense (Lava),
+-- yield (Desert). The non-heal buffs ride short-lived "Team*" attributes consumed downstream.
 function EnemyService:_supportPass(now)
     local playerPets = Workspace:FindFirstChild("PlayerPets")
     if not playerPets then
         return
     end
     self._supportAt = self._supportAt or setmetatable({}, { __mode = "k" })
-    local factor = self._combatConfig.pet_down_threshold_factor or 1
     for _, folder in ipairs(playerPets:GetChildren()) do
         for _, pet in ipairs(folder:GetChildren()) do
             if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
-                local heal = self:_roleAutoHeal(pet)
-                if heal and (not self._supportAt[pet] or now >= self._supportAt[pet]) then
-                    self._supportAt[pet] = now + (heal.interval or 1.5)
-                    -- most-hurt non-downed ally in this squad
-                    local target, worst
-                    for _, ally in ipairs(folder:GetChildren()) do
-                        if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
-                            local taken = ally:GetAttribute("CombatDamageTaken") or 0
-                            if taken > 0 and (not worst or taken > worst) then
-                                worst, target = taken, ally
-                            end
-                        end
-                    end
-                    if target then
-                        -- Heal a FRACTION of the target's pool (keeps numbers proportional
-                        -- on the ~100 scale) — or a flat `amount` if configured instead.
-                        local pool = PetEndurance.maxEndurance(self:_petPower(target), factor)
-                        local healAmt = heal.fraction and (pool * heal.fraction)
-                            or (heal.amount or 0)
-                        local newTaken =
-                            math.max(0, (target:GetAttribute("CombatDamageTaken") or 0) - healAmt)
-                        target:SetAttribute("CombatDamageTaken", newTaken)
-                        if newTaken <= 0 then
-                            self:_clearEnduranceBar(target)
-                        else
-                            self:_updateEnduranceBar(
-                                target,
-                                newTaken,
-                                self:_petPower(target),
-                                factor
-                            )
-                        end
-                        -- Visual tell: blinking heal badge (HealFxUntil) + world heal puff,
-                        -- so an instant heal is visible even though it has no duration.
-                        local fxSec = (
-                            self._combatConfig.engagement
-                            and self._combatConfig.engagement.instant_fx_seconds
-                        ) or 3
-                        target:SetAttribute("HealFxUntil", os.time() + fxSec)
-                        self:_spawnHealVisual(target)
-                        -- Floating green heal number, to the squad's owner.
-                        local owner = Players:FindFirstChild(folder.Name)
-                        if owner and healAmt >= 1 then
-                            Signals.Combat_Heal:FireClient(
-                                owner,
-                                { target = target, amount = math.floor(healAmt + 0.5) }
-                            )
-                        end
+                local aura = self:_petAura(pet)
+                if aura and (not self._supportAt[pet] or now >= self._supportAt[pet]) then
+                    self._supportAt[pet] = now + (aura.interval or 1.5)
+                    if aura.kind == "heal" then
+                        self:_auraHeal(folder, aura)
+                    elseif aura.kind == "defense" then
+                        self:_auraDefense(folder, aura)
+                    elseif aura.kind == "offense" then
+                        self:_auraPlayerBuff(folder, "PetTeamDamageBuff", aura)
+                    elseif aura.kind == "yield" then
+                        self:_auraPlayerBuff(folder, "CoinYieldBuff", aura)
                     end
                 end
             end

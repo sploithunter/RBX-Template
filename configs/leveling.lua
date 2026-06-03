@@ -11,9 +11,15 @@ return {
     -- enemy both feed the level bar; quests/daily/achievements add bigger chunks via RewardService.
     -- XP = max(min, floor(value * per_value)) where `value` is the activity's reward magnitude
     -- (ore Value for mining, loot total for combat). All knobs — tune to taste.
+    -- per_value = XP as a FRACTION of the activity's coin magnitude (so "5% of the coins
+    -- you earned"). Lowered 10x from the first pass (mining 0.5->0.05) because leveling was
+    -- far too fast. min = 1 guarantees any successful action grants at least 1 XP, so small
+    -- shares that floor to 0 still tick the bar (the "integer" floor — intentional). Tune
+    -- freely; raise per_value to level faster, or raise player_progression.xp.per_level to
+    -- make each level cost more (slows leveling without touching the per-action grant).
     xp_rewards = {
-        mining = { per_value = 0.5, min = 1 }, -- per ore broken (split by contribution share)
-        combat = { per_value = 1.0, min = 1 }, -- per enemy defeated (from its loot total)
+        mining = { per_value = 0.05, min = 1 }, -- ~5% of the ore's coin share (split per contributor)
+        combat = { per_value = 0.1, min = 1 }, -- ~10% of the enemy's loot total
     },
 
     -- Damage multiplier per level of (attacker - defender), clamped. +8% dmg per level up.

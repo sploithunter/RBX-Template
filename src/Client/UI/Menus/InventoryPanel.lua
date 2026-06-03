@@ -2738,6 +2738,33 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     powerLabel.ZIndex = 103
     powerLabel.Parent = itemFrame
 
+    -- Archetype chip (top-left): identifies the pet's role at a glance — Tank / Melee /
+    -- Blaster / Buffer / Control — so buffers (the per-zone support pets) are easy to spot.
+    if PetPowerView and item.category == "Pets" and item.petType then
+        local okRole, role = pcall(function()
+            return PetPowerView.roleInfo(item.petType, item.role)
+        end)
+        if okRole and role and role.label then
+            local tint = role.color and Color3.fromRGB(role.color.r, role.color.g, role.color.b)
+                or Color3.fromRGB(70, 70, 90)
+            local chip = Instance.new("TextLabel")
+            chip.Name = "RoleChip"
+            chip.Size = UDim2.new(0, math.max(28, math.floor(self.cardSize.X * 0.5)), 0, math.max(10, math.floor(self.cardSize.Y * 0.16)))
+            chip.Position = UDim2.new(0, 3, 0, 3)
+            chip.BackgroundColor3 = tint
+            chip.BackgroundTransparency = 0.15
+            chip.Text = " " .. tostring(role.label) .. " "
+            chip.TextColor3 = Color3.fromRGB(255, 255, 255)
+            chip.TextScaled = true
+            chip.Font = Enum.Font.GothamBold
+            chip.ZIndex = 104
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 4)
+            corner.Parent = chip
+            chip.Parent = itemFrame
+        end
+    end
+
     -- Add interaction system (includes hover effects)
     -- DEBUG SPAM SUPPRESSED
     self:_addItemInteractions(itemFrame, item)
