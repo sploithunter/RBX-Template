@@ -2798,13 +2798,22 @@ end
 function BaseUI:_setupCurrencyUpdates()
     -- Store previous values to detect changes
     local previousValues = {}
+    -- Gate animations until after the initial population, so the first refresh just seeds
+    -- text without firing a spurious "+N" indicator (but a genuine 0 -> N gain still animates).
+    local initialized = false
+
+    -- Map a currency id ("grass_coins") to its backing player attribute ("Grass_coins").
+    -- The server mirrors every currency to this attribute via DataService (same gsub), so the
+    -- two stay in lockstep — see DataService:SetCurrency.
+    local function attrFor(currencyType)
+        return (currencyType:gsub("^%l", string.upper))
+    end
 
     -- Update currency displays when player attributes change (like working TestEconomyGUI)
     local function updateAllCurrencies()
         for currencyType, display in pairs(self.currencyDisplays) do
             if display and display.amount then
-                local attributeName = currencyType:gsub("^%l", string.upper) -- coins -> Coins
-                local realAmount = self.player:GetAttribute(attributeName) or 0
+                local realAmount = self.player:GetAttribute(attrFor(currencyType)) or 0
                 local previousAmount = previousValues[currencyType] or 0
 
                 -- Update the text
@@ -2816,8 +2825,9 @@ function BaseUI:_setupCurrencyUpdates()
                     display.shadow.Text = formattedAmount
                 end
 
-                -- Animate if value changed (and not initial load)
-                if previousAmount > 0 and realAmount ~= previousAmount then
+                -- Animate any change after the initial seed (so a 0 -> N first gain still
+                -- shows the floating "+N" indicator).
+                if initialized and realAmount ~= previousAmount then
                     self:_animateCurrencyUpdate(display, realAmount - previousAmount)
                 end
 
@@ -2827,15 +2837,24 @@ function BaseUI:_setupCurrencyUpdates()
         end
     end
 
-    -- Connect to attribute changes for real-time updates
-    self.player:GetAttributeChangedSignal("Coins"):Connect(updateAllCurrencies)
-    self.player:GetAttributeChangedSignal("Gems"):Connect(updateAllCurrencies)
-    self.player:GetAttributeChangedSignal("Crystals"):Connect(updateAllCurrencies)
+    -- Listen to the GENERIC AttributeChanged signal (not a hardcoded Coins/Gems/Crystals
+    -- list) so EVERY currency — including the biome coins (Grass_coins, Lava_coins,
+    -- Ice_coins, Desert_coins) and any added later — refreshes live. We filter to attributes
+    -- that back a currency display so unrelated stat attributes (Level/XP/...) are ignored.
+    self.player.AttributeChanged:Connect(function(attributeName)
+        for currencyType in pairs(self.currencyDisplays) do
+            if attrFor(currencyType) == attributeName then
+                updateAllCurrencies()
+                return
+            end
+        end
+    end)
 
-    -- Initial update after a short delay
+    -- Initial population after a short delay (seeds previousValues without animating)
     task.spawn(function()
         task.wait(1) -- Wait for data to load
         updateAllCurrencies()
+        initialized = true
     end)
 
     self.logger:info("Currency update system initialized with animations")
