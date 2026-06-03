@@ -21,7 +21,7 @@ local petConfig = {
     --   scale    multiplies the egg model's size (Model:ScaleTo), default 1
     --   offset_y raises the egg above the stand anchor in studs, default 0
     egg_stand_placements = {
-        ["Egg hatcher Lava 1"] = { egg = "ember_egg", scale = 3.5, offset_y = 1.5 },
+        ["Egg hatcher Lava 1"] = { egg = "ember_egg", scale = 3.5, offset_y = 0.5 },
     },
 
     -- Eternal pets scale to a percentage of the player's "eternal power base"

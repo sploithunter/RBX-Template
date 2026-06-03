@@ -106,6 +106,14 @@ for standName, value in pairs(placements) do
         local stand = findByName(standName)
         if template and stand then
             placeEgg(stand, template, scale, offsetY)
+            -- Make the stand a real, hatchable egg target. EggWorldQuery.GetEggs() accepts any
+            -- workspace instance carrying an EggId attribute (the "EggStand" tag is optional), so
+            -- this lights up the existing proximity UI + E-to-hatch flow without spawning a
+            -- duplicate visual egg (EggSpawner only auto-spawns for TAGGED stands). The attribute
+            -- couldn't be set from edit-mode MCP because it didn't persist into Play; setting it
+            -- here at runtime does. ember_egg is a valid egg_sources entry, so hatching rolls the
+            -- ember pets.
+            stand:SetAttribute("EggId", tostring(eggId))
         end
     end)
 end
