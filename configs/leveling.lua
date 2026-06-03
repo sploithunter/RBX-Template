@@ -7,6 +7,15 @@
 ]]
 
 return {
+    -- XP rewards: EVERYTHING you do grants XP, not just quests. Mining a node and defeating an
+    -- enemy both feed the level bar; quests/daily/achievements add bigger chunks via RewardService.
+    -- XP = max(min, floor(value * per_value)) where `value` is the activity's reward magnitude
+    -- (ore Value for mining, loot total for combat). All knobs — tune to taste.
+    xp_rewards = {
+        mining = { per_value = 0.5, min = 1 }, -- per ore broken (split by contribution share)
+        combat = { per_value = 1.0, min = 1 }, -- per enemy defeated (from its loot total)
+    },
+
     -- Damage multiplier per level of (attacker - defender), clamped. +8% dmg per level up.
     scale = { per_level = 0.08, min = 0.3, max = 2.5 },
 

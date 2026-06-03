@@ -30,6 +30,8 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 
+local XpReward = require(ReplicatedStorage.Shared.Game.XpReward)
+
 -- Injected services
 local logger
 local configLoader
@@ -39,6 +41,7 @@ local petProgressionService
 
 -- Local state
 local breakablesConfig
+local xpRewardsConfig = {} -- configs/leveling.lua xp_rewards (mining grants XP — see _onBreak)
 -- Legacy "ring mining": the invisible Star align-ring (unanchored physics boxes + AlignPosition/
 -- Orientation constraints per mined node) that made pets ORBIT a node while mining. The current
 -- pet system (PetFollowService) uses its own mining animation and never touches this ring, so it
@@ -644,6 +647,12 @@ function BreakableSpawner:Init()
     else
         breakablesConfig = cfg or { crystals = {} }
     end
+
+    -- Mining XP: "everything you do grants XP". Load the rate knobs (configs/leveling.lua).
+    local okLvl, lvlCfg = pcall(function()
+        return configLoader:LoadConfig("leveling")
+    end)
+    xpRewardsConfig = (okLvl and type(lvlCfg) == "table" and lvlCfg.xp_rewards) or {}
 
     -- Legacy ring-mining toggle (OFF by default — see decl above). The current pet system uses
     -- its own mining animation, so the Star align-ring is not built unless ring_mining is enabled.
@@ -1760,6 +1769,8 @@ function BreakableSpawner:_trySpawnOne(
         local valueAmount = tonumber(model:GetAttribute("Value") or 0)
         local economy = (self._moduleLoader and self._moduleLoader:Get("EconomyService"))
             or (self._modules and self._modules.EconomyService)
+        local progression = self._moduleLoader
+            and self._moduleLoader:Get("PlayerProgressionService")
 
         local function resolvePlayerAward(player, baseAmount)
             baseAmount = tonumber(baseAmount) or 0
@@ -1810,6 +1821,15 @@ function BreakableSpawner:_trySpawnOne(
                                 )
                                 if stats then
                                     stats:Increment(plr, "breakables_broken", 1)
+                                end
+                                -- Mining grants XP (split by contribution share, same as the
+                                -- currency above). AddExperience publishes the XP attribute -> the
+                                -- HUD level bar ticks live.
+                                if progression and progression.AddExperience then
+                                    local xp = XpReward.fromValue(share, xpRewardsConfig.mining)
+                                    if xp > 0 then
+                                        progression:AddExperience(plr, xp)
+                                    end
                                 end
                                 if
                                     petProgressionService

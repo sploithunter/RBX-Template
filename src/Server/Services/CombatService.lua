@@ -29,6 +29,7 @@ local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local FocusMath = require(ReplicatedStorage.Shared.Game.FocusMath)
 local CombatSim = require(ReplicatedStorage.Shared.Game.CombatSim)
 local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
+local XpReward = require(ReplicatedStorage.Shared.Game.XpReward)
 
 local CombatService = {}
 CombatService.__index = CombatService
@@ -40,6 +41,11 @@ function CombatService:Init()
     self._combatConfig = self._configLoader:LoadConfig("combat")
     self._enemiesConfig = self._configLoader:LoadConfig("enemies")
     self._focusConfig = self._configLoader:LoadConfig("focus")
+    -- "Everything you do grants XP": defeating an enemy feeds the level bar (see AwardLoot).
+    local okLvl, lvlCfg = pcall(function()
+        return self._configLoader:LoadConfig("leveling")
+    end)
+    self._xpRewards = (okLvl and type(lvlCfg) == "table" and lvlCfg.xp_rewards) or {}
     self._deps = { Targeting = Targeting, CombatMath = CombatMath, FocusMath = FocusMath }
 end
 
@@ -133,10 +139,21 @@ function CombatService:AwardLoot(player, enemyId)
         return { ok = false, reason = "unknown_enemy" }
     end
     local loot = CombatMath.resolveLoot(def.drop_table)
+    local lootTotal = 0
     for currency, amount in pairs(loot) do
         self._dataService:AddCurrency(player, currency, amount, "combat_loot")
+        lootTotal += tonumber(amount) or 0
     end
-    return { ok = true, loot = loot }
+    -- Combat grants XP too: scale off the enemy's loot total so tougher drops = more XP.
+    -- AddExperience publishes the XP attribute -> the HUD level bar ticks live.
+    local xp = XpReward.fromValue(lootTotal, self._xpRewards and self._xpRewards.combat)
+    if xp > 0 then
+        local progression = self:_service("PlayerProgressionService")
+        if progression and progression.AddExperience then
+            progression:AddExperience(player, xp)
+        end
+    end
+    return { ok = true, loot = loot, xp = xp }
 end
 
 -- Apply this enemy attack's Sundering Focus drain to the player (Feature 12).
