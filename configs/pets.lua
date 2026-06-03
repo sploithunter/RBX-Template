@@ -13,6 +13,13 @@
 local petConfig = {
     version = "1.0.0",
 
+    -- Place an egg model (egg_sources id) centered inside a named map stand. The EggStandPlacement
+    -- server script clones the loaded egg model and centers it at the stand's UIanchor (or pivot).
+    -- Just name the stand + the egg here — no per-instance attributes/tags needed.
+    egg_stand_placements = {
+        ["Egg hatcher Lava 1"] = "ember_egg",
+    },
+
     -- Eternal pets scale to a percentage of the player's "eternal power base"
     -- (the average of their top-N non-eternal pets, N = equip capacity). Huge
     -- pets use this percent (1.2 = 120%); balance-tunable. The pet's huge_base_power
