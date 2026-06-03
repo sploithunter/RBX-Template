@@ -827,42 +827,10 @@ local uiConfig = {
     -- Modern component-based architecture where groups of elements live in configurable "panes"
     -- Think of these as "cards" in web development - containers that hold related UI elements
     panes = {
-        -- Individual Floating Currency Cards (like reference game)
-        coins_pane = {
-            position = "center-left",
-            offset = { x = 15, y = -40 },
-            size = { width = 120, height = 35 },
-            background = {
-                enabled = true,
-                color = Color3.fromRGB(0, 0, 0),
-                transparency = 0.15,
-                corner_radius = 18,
-                border = {
-                    enabled = true,
-                    color = Color3.fromRGB(255, 215, 0),
-                    thickness = 2,
-                    transparency = 0.3,
-                },
-            },
-            layout = { type = "single" },
-            contents = {
-                {
-                    type = "currency_display",
-                    config = {
-                        currency = "coins",
-                        icon = "6995302957",
-                        color = Color3.fromRGB(255, 215, 0),
-                        icon_config = {
-                            size = { width = 32, height = 32 },
-                            position = "left_outside", -- allow big icon to protrude outside
-                            offset = { x = -10, y = 0 }, -- negative X to push further left
-                            tint_with_color = true,
-                        },
-                    },
-                },
-            },
-        },
-
+        -- Individual Floating Currency Cards (like reference game).
+        -- Legacy `coins` and `crystals` panes were removed (Pet Realm uses gems + the four
+        -- soulbound biome coins). The currency ids still exist in configs/currencies.lua for
+        -- back-compat; full economy retirement is a later phase (design §32).
         gems_pane = {
             position = "center-left",
             offset = { x = 15, y = 0 },
@@ -897,48 +865,14 @@ local uiConfig = {
             },
         },
 
-        crystals_pane = {
-            position = "center-left",
-            offset = { x = 15, y = 40 },
-            size = { width = 120, height = 35 },
-            background = {
-                enabled = true,
-                color = Color3.fromRGB(0, 0, 0),
-                transparency = 0.15,
-                corner_radius = 18,
-                border = {
-                    enabled = true,
-                    color = Color3.fromRGB(0, 255, 255),
-                    thickness = 2,
-                    transparency = 0.3,
-                },
-            },
-            layout = { type = "single" },
-            contents = {
-                {
-                    type = "currency_display",
-                    config = {
-                        currency = "crystals",
-                        icon = "138067583",
-                        color = Color3.fromRGB(0, 255, 255),
-                        icon_config = {
-                            size = { width = 32, height = 32 },
-                            position = "left_outside",
-                            offset = { x = -10, y = 0 },
-                        },
-                    },
-                },
-            },
-        },
-
         -- Pet Realm biome coins (zone economy, design §32). Soulbound, mined per zone.
         -- The server mirrors every currency to a Player attribute generically, so these
-        -- update automatically when mined. Stacked below crystals (y 80/116/152/188).
+        -- update automatically when mined. Stacked below gems (y 40/76/112/148).
         -- NOTE (future, deferred): when the player ENTERS a zone, that zone's coin could
         -- become prominent (larger/brighter/front) while the other three shrink + dim.
         grass_coins_pane = {
             position = "center-left",
-            offset = { x = 15, y = 80 },
+            offset = { x = 15, y = 40 },
             size = { width = 120, height = 32 },
             background = {
                 enabled = true,
@@ -954,7 +888,7 @@ local uiConfig = {
         },
         desert_coins_pane = {
             position = "center-left",
-            offset = { x = 15, y = 116 },
+            offset = { x = 15, y = 76 },
             size = { width = 120, height = 32 },
             background = {
                 enabled = true,
@@ -970,7 +904,7 @@ local uiConfig = {
         },
         lava_coins_pane = {
             position = "center-left",
-            offset = { x = 15, y = 152 },
+            offset = { x = 15, y = 112 },
             size = { width = 120, height = 32 },
             background = {
                 enabled = true,
@@ -986,7 +920,7 @@ local uiConfig = {
         },
         ice_coins_pane = {
             position = "center-left",
-            offset = { x = 15, y = 188 },
+            offset = { x = 15, y = 148 },
             size = { width = 120, height = 32 },
             background = {
                 enabled = true,
