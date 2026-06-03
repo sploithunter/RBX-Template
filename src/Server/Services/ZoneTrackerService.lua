@@ -39,6 +39,7 @@ function ZoneTrackerService:Init()
     self._defaultArea = cfg.default_area or "Spawn"
     self._baseplateArea = cfg.baseplate_area or {}
     self._raycastDepth = tonumber(cfg.raycast_depth) or 60
+    self._baseplateMaxThickness = tonumber(cfg.baseplate_max_thickness) or 5
 
     if self._logger then
         self._logger:Info("ZoneTrackerService initialized", {
@@ -98,7 +99,13 @@ function ZoneTrackerService:_getBaseplateParts()
 
     local parts = {}
     for _, d in ipairs(workspace:GetDescendants()) do
-        if d:IsA("BasePart") and self._baseplateArea[d.Name] then
+        -- Flat slabs only — a tall biome-named structure (e.g. a 94-stud "Lava" rock) is not a
+        -- floor and would mis-detect the area near it.
+        if
+            d:IsA("BasePart")
+            and self._baseplateArea[d.Name]
+            and d.Size.Y <= self._baseplateMaxThickness
+        then
             table.insert(parts, d)
         end
     end

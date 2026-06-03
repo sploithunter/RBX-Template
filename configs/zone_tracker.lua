@@ -46,4 +46,9 @@ return {
     -- so a raised path/structure over a biome still resolves to that biome (Include filter makes
     -- the long cast cheap — it only tests the baseplates).
     raycast_depth = 120,
+
+    -- Only FLAT parts count as baseplates. Some biome-named parts are tall structures/pillars
+    -- (e.g. a 94-stud "Lava" rock), not the floor — including them would mis-detect the area near
+    -- them. Real baseplates are thin slabs (size.y ~= 0-1), so reject anything thicker than this.
+    baseplate_max_thickness = 5,
 }
