@@ -63,7 +63,21 @@ local ORE_FAMILIES = {
         orientation = { x = 0, y = 0, z = 0 }, -- assume upright like emeralds; verify live
         glow = { color = { 255, 120, 40 }, brightness = 0.75, range = 16 },
     },
-    { el = "ice", display = "Frostshard", currency = "ice_coins", variants = {}, glow = { color = { 120, 220, 255 }, brightness = 0.75, range = 16 } },
+    {
+        el = "ice",
+        display = "Frostshard",
+        currency = "ice_coins",
+        -- Cosmetic variants (random-pick). `norm` placeholders = 1 until measured live, then
+        -- set to 6/<native max studs> so all read ~6 studs at Medium.
+        variants = {
+            { asset = "rbxassetid://139713750428794", norm = 3.16 }, -- Azure_Crystal_Cluster_1 (native 1.90)
+            { asset = "rbxassetid://116652270757215", norm = 3.15 }, -- Azure_Crystal_Cluster_2 (native 1.91)
+            { asset = "rbxassetid://74298032032655", norm = 3.15 }, -- Azure_Crystal_Cluster_3 (native 1.91)
+        },
+        scale = 1,
+        orientation = { x = 0, y = 0, z = 0 }, -- assume upright; verify live
+        glow = { color = { 120, 220, 255 }, brightness = 0.75, range = 16 },
+    },
 }
 
 -- Size tiers: payoff scales with size. `scale` multiplies the mesh (when real single-mesh
@@ -254,6 +268,46 @@ local M = {
                 { name = "EmberstoneLargeV1", weight = 1 },
                 { name = "EmberstoneLargeV2", weight = 1 },
                 { name = "EmberstoneLargeV3", weight = 1 },
+            },
+        },
+        -- ICE ZONE: spawns on the flat "Ice" baseplate (Home.Ice, center ~-375,0,377).
+        -- Frostshard ore only, paying ice_coins. Always-active for now (see _isWorldActive).
+        Ice = {
+            max = 100,
+            interval = 8,
+            spawn_area = {
+                name = "SpawnArea",
+                size = { x = 300, y = 1, z = 300 }, -- within the 318x326 Ice pad
+                position = { x = -375, y = 0, z = 377 },
+            },
+            spawn_settings = {
+                upright = true,
+                surface_y = 0.5, -- fallback; surface raycast (below) sets the real Y per node
+                use_spawner_bounds = true,
+                surface_mode = "surface",
+                surface_match_name = "Ice",
+                surface_raycast_height = 140,
+                surface_normal_min_y = 0.5,
+                spawn_area_margin = 20,
+                spawn_center = { x = -375, z = 377 },
+                spawn_radius = 150,
+                spawn_exclusion_radius = 12,
+                embed_ratio = 0,
+                min_distance = 12,
+                spawn_attempts = 90,
+                respawn_min_seconds = 5,
+                respawn_max_seconds = 60,
+            },
+            spawn_table = {
+                { name = "FrostshardSmallV1", weight = 4 },
+                { name = "FrostshardSmallV2", weight = 4 },
+                { name = "FrostshardSmallV3", weight = 4 },
+                { name = "FrostshardMediumV1", weight = 2 },
+                { name = "FrostshardMediumV2", weight = 2 },
+                { name = "FrostshardMediumV3", weight = 2 },
+                { name = "FrostshardLargeV1", weight = 1 },
+                { name = "FrostshardLargeV2", weight = 1 },
+                { name = "FrostshardLargeV3", weight = 1 },
             },
         },
     },

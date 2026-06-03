@@ -96,5 +96,32 @@ return {
                 egg_stands = {},
             },
         },
+        ice_island = {
+            id = "ice_island",
+            kind = "island",
+            parent = "spawn_world",
+            display_name = "Ice Island",
+            order = 4,
+            primary_area = "Ice",
+        },
+        Ice = {
+            id = "Ice",
+            kind = "area",
+            parent = "ice_island",
+            display_name = "Ice Fields",
+            order = 4,
+            unlock = {
+                unlocked_by_default = true,
+            },
+            boosts = {},
+            -- Real authored "Ice" baseplate (Home.Ice): center ~(-375,0,377).
+            synthetic = {
+                center = { x = -375, y = 0, z = 377 },
+                size = { x = 318, y = 4, z = 326 },
+                floor_y = 0.5,
+                spawn_position = { x = -375, y = 5, z = 377 },
+                egg_stands = {},
+            },
+        },
     },
 }

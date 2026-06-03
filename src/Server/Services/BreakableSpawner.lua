@@ -674,6 +674,7 @@ function BreakableSpawner:_isWorldActive(worldName)
     -- via the area-entry system. (Swap Lava to area-gated when the zone system is wired.)
     return worldName == "Spawn"
         or worldName == "Lava"
+        or worldName == "Ice"
         or worldBindingService:IsAreaActive(worldName)
 end
 
