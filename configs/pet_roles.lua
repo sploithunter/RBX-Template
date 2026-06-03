@@ -47,13 +47,18 @@ return {
     -- the same damage_mult + roll path (PetFollowService:_mine -> ResolvePetDamage). These likely
     -- want to scale DIFFERENTLY (combat balance vs ore/coin throughput), so split them into
     -- separate configs/multipliers (e.g. damage_mult_combat vs damage_mult_mining) when balancing.
+    -- mining_mult / combat_mult: the INTRINSIC aptitude split (PetPower). A pet's role sets its
+    -- default skill at mining ore vs fighting enemies; pets.lua can override per pet. Seeded equal
+    -- to the legacy damage_mult so nothing changes until you diverge them — bump mining_mult on a
+    -- "miner" role/pet and combat_mult on a "fighter" to create specialists (which spawn trades).
+    -- damage_mult stays as the legacy fallback until S3 routes damage through PetPower.
     roles = {
-        tank = { label = "Tank", glyph = "T", color = { 70, 130, 195 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 5, implicit_taunt = true, damage_mult = 0.6, defense = 100 },
-        melee = { label = "Melee", glyph = "M", color = { 205, 85, 70 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 1, damage_mult = 1.0, defense = 20 },
+        tank = { label = "Tank", glyph = "T", color = { 70, 130, 195 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 5, implicit_taunt = true, damage_mult = 0.6, mining_mult = 0.6, combat_mult = 0.6, defense = 100 },
+        melee = { label = "Melee", glyph = "M", color = { 205, 85, 70 }, icon = "", attack_range = 9, standoff = 0, threat_mult = 1, damage_mult = 1.0, mining_mult = 1.0, combat_mult = 1.0, defense = 20 },
         -- kite = true: holds near the player and snipes instead of orbiting the enemy, so
         -- an enemy chasing it has to close the gap (the melee-closes / ranged-kites loop).
-        ranged = { label = "Ranged", glyph = "R", color = { 120, 180, 85 }, icon = "", attack_range = 28, standoff = 17, kite = true, damage_mult = 1.0, defense = 0 },
-        support = { label = "Support", glyph = "S", color = { 150, 110, 215 }, icon = "", attack_range = 16, standoff = 9, damage_mult = 0.35, auto_heal = { interval = 1.5, fraction = 0.3 }, defense = 10 },
-        control = { label = "Control", glyph = "C", color = { 90, 185, 205 }, icon = "", attack_range = 20, standoff = 12, damage_mult = 0.5, defense = 40 },
+        ranged = { label = "Ranged", glyph = "R", color = { 120, 180, 85 }, icon = "", attack_range = 28, standoff = 17, kite = true, damage_mult = 1.0, mining_mult = 1.0, combat_mult = 1.0, defense = 0 },
+        support = { label = "Support", glyph = "S", color = { 150, 110, 215 }, icon = "", attack_range = 16, standoff = 9, damage_mult = 0.35, mining_mult = 0.35, combat_mult = 0.35, auto_heal = { interval = 1.5, fraction = 0.3 }, defense = 10 },
+        control = { label = "Control", glyph = "C", color = { 90, 185, 205 }, icon = "", attack_range = 20, standoff = 12, damage_mult = 0.5, mining_mult = 0.5, combat_mult = 0.5, defense = 40 },
     },
 }

@@ -55,4 +55,60 @@ function PetPower.basePowerForLevel(petConfigData, isHuge, level, progressionCon
     )
 end
 
+-- === Mining/Combat power profile (Pet Realm "two numbers on the card") ===
+-- Splits a pet's resolved base power (the huge/level-aware number above, i.e. its Power value)
+-- into the two INTRINSIC card numbers (⛏ mining / ⚔ combat) and their live EFFECTIVE values.
+-- One function for both the inventory display and the damage path (via PetPowerView), so the
+-- shown number can never drift from the dealt number. Adding a future multiplier = add a key to
+-- `context`; display + damage update together.
+--
+--   input = {
+--     base,           -- resolved base power (Power value: dev base × huge × pet level)
+--     baseScale?,     -- global lever (config base_scale; default 1)
+--     elementMult?,   -- intrinsic element flat attack (combat_fx element_stats; default 1)
+--     variantMult?,   -- intrinsic golden/rainbow bump (pet_power.variant_mult; default 1)
+--     miningMult?,    -- intrinsic mining aptitude (role/pet; default 1)
+--     combatMult?,    -- intrinsic combat aptitude (role/pet; default 1)
+--     context = { lvl = m, boost = m, ... }  -- contextual multipliers (player), all default 1
+--   }
+local function num(v, default)
+    return tonumber(v) or default
+end
+
+function PetPower.resolveProfile(input)
+    input = input or {}
+    local base = num(input.base, 0) * num(input.baseScale, 1)
+    local intrinsicCommon = base * num(input.elementMult, 1) * num(input.variantMult, 1)
+    local miningBase = intrinsicCommon * num(input.miningMult, 1)
+    local combatBase = intrinsicCommon * num(input.combatMult, 1)
+
+    local contextMult = 1
+    if type(input.context) == "table" then
+        for _, v in pairs(input.context) do
+            contextMult = contextMult * num(v, 1)
+        end
+    end
+
+    return {
+        base = base,
+        intrinsicCommon = intrinsicCommon,
+        miningBase = miningBase,
+        combatBase = combatBase,
+        contextMult = contextMult,
+        miningEffective = miningBase * contextMult,
+        combatEffective = combatBase * contextMult,
+    }
+end
+
+-- Round a power number for DISPLAY only (damage keeps its own floor in PetCombat).
+function PetPower.roundForDisplay(n, mode)
+    n = num(n, 0)
+    if mode == "floor" then
+        return math.floor(n)
+    elseif mode == "ceil" then
+        return math.ceil(n)
+    end
+    return math.floor(n + 0.5)
+end
+
 return PetPower
