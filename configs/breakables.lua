@@ -1,4 +1,45 @@
-return {
+--[[
+    Breakables — crystals + Pet Realm zone ORE families.
+
+    Zone economy (design §32): each elemental zone has one ore family that pays that
+    zone's soulbound coin. One ore family per element, three size tiers (Small/Medium/
+    Large) for the payoff; the size is driven by `scale` (bounds-based floor alignment
+    re-sits any scale, with per-tier `sink_depth` to fine-tune the elevation).
+
+    MESHES (in progress): each element will get THREE cosmetic mesh variants for variety,
+    resized to S/M/L. Drop the asset IDs into `ORE_FAMILIES[*].variants` below — when a
+    family has >1 variant the preloader/spawner can pick one at random (follow-up). Until
+    real meshes land, every ore uses the existing blue-crystal meshes (sized S/M/L) as a
+    PLACEHOLDER so the economy loop is fully testable now. Random yaw + elevation offset
+    are already handled by BreakableSpawner (same as crystals).
+]]
+
+-- Placeholder meshes = the three existing blue crystals (already S/M/L sized).
+local ORE_PLACEHOLDER = {
+    Small = "rbxassetid://112188519963572",
+    Medium = "rbxassetid://113452230594676",
+    Large = "rbxassetid://109710590640681",
+}
+
+-- One entry per elemental zone. `variants` holds this element's cosmetic mesh IDs
+-- (fill when meshes are ready, e.g. { "rbxassetid://A", "rbxassetid://B", "rbxassetid://C" });
+-- empty = use the size placeholders above.
+local ORE_FAMILIES = {
+    { el = "grass", display = "Bloomstone", currency = "grass_coins", variants = {} },
+    { el = "desert", display = "Sunglass", currency = "desert_coins", variants = {} },
+    { el = "lava", display = "Emberstone", currency = "lava_coins", variants = {} },
+    { el = "ice", display = "Frostshard", currency = "ice_coins", variants = {} },
+}
+
+-- Size tiers: payoff scales with size. `scale` multiplies the mesh (when real single-mesh
+-- art lands); placement offsets mirror the crystals so each tier sits right on the floor.
+local ORE_TIERS = {
+    { suffix = "Small", scale = 1, health = 100, value = 5, placement = { height_offset = 1, sink_depth = 0.75 } },
+    { suffix = "Medium", scale = 1, health = 500, value = 25, placement = { height_offset = 2, sink_depth = 1.05 } },
+    { suffix = "Large", scale = 1, health = 2000, value = 100, placement = { height_offset = 7, sink_depth = 1.45 } },
+}
+
+local M = {
     -- Breakable objects configuration (crystals, ores, etc.)
     crystals = {
         SmallBlueCrystal = {
@@ -94,6 +135,13 @@ return {
                 { name = "SmallBlueCrystal", weight = 5 },
                 { name = "MediumBlueCrystal", weight = 1 },
                 { name = "CoinStack", weight = 4 },
+                -- TEMP (Slice B verification): one ore per element in the starter area so the
+                -- zone-currency loop is testable before the 4 mining zones exist. Move these to
+                -- their own zone spawn_tables once the map zones are placed.
+                { name = "BloomstoneMedium", weight = 2 },
+                { name = "SunglassMedium", weight = 2 },
+                { name = "EmberstoneMedium", weight = 2 },
+                { name = "FrostshardMedium", weight = 2 },
             },
         },
         Meadow = {
@@ -271,3 +319,28 @@ return {
         },
     },
 }
+
+-- Generate the zone ore breakables: <Display><Tier> (e.g. "BloomstoneSmall"), one per
+-- element × size tier, each paying that zone's coin. Mesh = the family's first variant
+-- if provided, else the size placeholder (blue crystal). Registered into M.crystals so the
+-- existing preloader/spawner handle them with zero engine changes.
+for _, fam in ipairs(ORE_FAMILIES) do
+    for _, tier in ipairs(ORE_TIERS) do
+        M.crystals[fam.display .. tier.suffix] = {
+            display_name = fam.display .. " (" .. tier.suffix .. ")",
+            asset_id = fam.variants[1] or ORE_PLACEHOLDER[tier.suffix],
+            scale = tier.scale,
+            health = tier.health,
+            value = tier.value,
+            currency = fam.currency,
+            -- Same import-orientation fix as the crystals (meshes import sideways).
+            default_orientation = { x = -90, y = 0, z = 0 },
+            placement = {
+                height_offset = tier.placement.height_offset,
+                sink_depth = tier.placement.sink_depth,
+            },
+        }
+    end
+end
+
+return M
