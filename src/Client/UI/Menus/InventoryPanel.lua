@@ -39,6 +39,13 @@ local ConfigLoader = require(ReplicatedStorage.Shared.ConfigLoader)
 -- Single source of truth for configured base power (huge-aware), shared with the
 -- server so the displayed power matches the power that mines/fights.
 local PetPower = require(ReplicatedStorage.Shared.Game.PetPower)
+-- Two-number card display (⛏ mining / ⚔ combat) — assembles the PetPower profile from config.
+local petPowerViewOk, PetPowerView = pcall(function()
+    return require(ReplicatedStorage.Shared.Game.PetPowerView)
+end)
+if not petPowerViewOk then
+    PetPowerView = nil
+end
 local petVisualsOk, PetVariantVisuals = pcall(function()
     return require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
 end)
@@ -2701,7 +2708,28 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     powerLabel.Position =
         UDim2.new(0, 4, 1, -math.max(8, math.floor(self.cardSize.Y * powerBottomOffsetScale)))
     powerLabel.BackgroundTransparency = 1
-    powerLabel.Text = (item.power and (powerPrefix .. tostring(item.power))) or ""
+    -- Pet cards show the TWO intrinsic numbers (⛏ mining / ⚔ combat) from PetPower so the card
+    -- matches what the pet actually does in-world. item.power is the player-independent base
+    -- (huge/level-aware); context multipliers (player level, boosts) are intentionally excluded so
+    -- the number is the same for everyone (fair trade comparison). Non-pets keep the single power.
+    local powerText = (item.power and (powerPrefix .. tostring(item.power))) or ""
+    if PetPowerView and item.category == "Pets" and item.petType and item.power then
+        local okProfile, profile = pcall(function()
+            return PetPowerView.profile({
+                base = item.power,
+                petType = item.petType,
+                variant = item.variant,
+            })
+        end)
+        if okProfile and profile then
+            powerText = string.format(
+                "⛏ %d  ⚔ %d",
+                PetPowerView.displayRound(profile.miningBase),
+                PetPowerView.displayRound(profile.combatBase)
+            )
+        end
+    end
+    powerLabel.Text = powerText
     powerLabel.TextColor3 = (useRarityColorForPower and item.color)
         or powerColorOverride
         or item.color
