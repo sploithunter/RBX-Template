@@ -840,48 +840,61 @@ function BreakableSpawner:_setupWorld(worldFolder)
     end
     max.Value = configuredMax
 
-    -- If no spawner part exists for this world but config defines a spawn_area, synthesize an
-    -- invisible one from config. Authored maps provide spawner parts for their built-in zones
-    -- (e.g. Spawn), but a config-only zone (e.g. Lava on a labeled baseplate) has none, so
-    -- _findSpawnPoint would return nil and never spawn. Idempotent (guarded by the lookup).
-    if #self:_getSpawnerParts(worldFolder) == 0 then
-        local area = worldConfig.spawn_area
-        if type(area) == "table" and type(area.position) == "table" then
-            local sz = type(area.size) == "table" and area.size or {}
-            local part = Instance.new("Part")
-            part.Name = area.name or "SpawnArea"
-            part.Anchored = true
-            part.CanCollide = false
-            part.CanQuery = false
-            part.CanTouch = false
-            part.Transparency = 1
-            part.Size = Vector3.new(
-                tonumber(sz.x) or 100,
-                tonumber(sz.y) or 1,
-                tonumber(sz.z) or 100
-            )
-            part.Position =
-                Vector3.new(area.position.x or 0, area.position.y or 0, area.position.z or 0)
-            part.Parent = worldFolder
-        end
-    end
+    -- Ensure this world has a spawner part (synthesize from config.spawn_area if missing).
+    self:_ensureSpawnArea(worldFolder, worldConfig)
 
-    -- Maintain count when items removed
-    items.ChildRemoved:Connect(function()
-        task.defer(function()
-            local c = current.Value
-            if c > 0 then
-                current.Value = c - 1
-            end
-            local placeCfg = getSpawnSettings(worldFolder.Name)
-            local minDelay = tonumber(placeCfg.respawn_min_seconds or 5)
-            local maxDelay = tonumber(placeCfg.respawn_max_seconds or 60)
-            local delaySec = math.random(minDelay, maxDelay)
-            task.delay(delaySec, function()
-                self:_trySpawnOne(worldFolder)
+    -- Maintain count when items removed. CRITICAL: connect this listener exactly ONCE per world.
+    -- _setupWorld is called repeatedly (initial pass, ChildAdded, and every 5s by _fillAllWorlds),
+    -- and re-connecting here each time leaked a new listener per cycle — after a few minutes a
+    -- single removal fired dozens of callbacks (over-decrementing CurrentItems + scheduling dozens
+    -- of respawn attempts), which spammed the log and degraded server performance.
+    self._removalWired = self._removalWired or {}
+    if not self._removalWired[worldFolder] then
+        self._removalWired[worldFolder] = true
+        items.ChildRemoved:Connect(function()
+            task.defer(function()
+                local c = current.Value
+                if c > 0 then
+                    current.Value = c - 1
+                end
+                local placeCfg = getSpawnSettings(worldFolder.Name)
+                local minDelay = tonumber(placeCfg.respawn_min_seconds or 5)
+                local maxDelay = tonumber(placeCfg.respawn_max_seconds or 60)
+                local delaySec = math.random(minDelay, maxDelay)
+                task.delay(delaySec, function()
+                    self:_trySpawnOne(worldFolder)
+                end)
             end)
         end)
-    end)
+    end
+end
+
+-- Synthesize an invisible SpawnArea part from config.spawn_area when a world has no spawner part.
+-- Authored maps / WorldBindingService provide spawners for built-in zones, but if that binding is
+-- absent (or disappears mid-session, as Spawn's did), _findSpawnPoint would return nil forever.
+-- Idempotent: only creates a part when none exists. Returns true if the world now has a spawner.
+function BreakableSpawner:_ensureSpawnArea(worldFolder, worldConfig)
+    if #self:_getSpawnerParts(worldFolder) > 0 then
+        return true
+    end
+    worldConfig = worldConfig or getWorldConfig(worldFolder.Name)
+    local area = worldConfig.spawn_area
+    if type(area) ~= "table" or type(area.position) ~= "table" then
+        return false
+    end
+    local sz = type(area.size) == "table" and area.size or {}
+    local part = Instance.new("Part")
+    part.Name = area.name or "SpawnArea"
+    part.Anchored = true
+    part.CanCollide = false
+    part.CanQuery = false
+    part.CanTouch = false
+    part.Transparency = 1
+    part.Size = Vector3.new(tonumber(sz.x) or 100, tonumber(sz.y) or 1, tonumber(sz.z) or 100)
+    part.Position =
+        Vector3.new(area.position.x or 0, area.position.y or 0, area.position.z or 0)
+    part.Parent = worldFolder
+    return true
 end
 
 function BreakableSpawner:_fillWorld(worldFolder)
@@ -894,10 +907,33 @@ function BreakableSpawner:_fillWorld(worldFolder)
     if not (current and max) then
         return
     end
+
+    -- Resolve the spawner ONCE (self-healing a SpawnArea if needed). If a world still has no
+    -- spawner, don't loop `deficit` times calling _trySpawnOne — that's what produced the
+    -- per-frame "No spawner parts" warn storm + wasted work. Warn at most once per world here.
+    self:_ensureSpawnArea(worldFolder)
+    if #self:_getSpawnerParts(worldFolder) == 0 then
+        self:_warnNoSpawnerOnce(worldFolder.Name)
+        return
+    end
+
     local deficit = math.max(0, (max.Value or 0) - (current.Value or 0))
     for _ = 1, deficit do
         self:_trySpawnOne(worldFolder)
     end
+end
+
+-- Rate-limited "no spawner" warning: at most once per world per 30s, so a misconfigured world
+-- surfaces in the log without spamming it (and without the per-call logging cost).
+function BreakableSpawner:_warnNoSpawnerOnce(worldName)
+    self._lastNoSpawnerWarn = self._lastNoSpawnerWarn or {}
+    local now = os.clock()
+    local last = self._lastNoSpawnerWarn[worldName]
+    if last and (now - last) < 30 then
+        return
+    end
+    self._lastNoSpawnerWarn[worldName] = now
+    logger:Warn("BreakableSpawner: No spawner parts in world", { world = worldName })
 end
 
 function BreakableSpawner:_selectCrystalSpawn(worldName)
@@ -1147,8 +1183,13 @@ function BreakableSpawner:_trySpawnOne(
 
     local spawner, spawnPosition = self:_findSpawnPoint(worldFolder)
     if not spawner then
-        logger:Warn("BreakableSpawner: No spawner parts in world", { world = worldFolder.Name })
-        return
+        -- Try to self-heal a SpawnArea from config, then retry the lookup once.
+        self:_ensureSpawnArea(worldFolder)
+        spawner, spawnPosition = self:_findSpawnPoint(worldFolder)
+        if not spawner then
+            self:_warnNoSpawnerOnce(worldFolder.Name) -- rate-limited (no per-call spam)
+            return
+        end
     end
 
     -- Clone and prepare model
