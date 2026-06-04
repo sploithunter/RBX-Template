@@ -185,6 +185,10 @@ function PlayerProgressionService:_publish(player)
     player:SetAttribute("PendingTraining", self:GetPendingTraining(player))
     player:SetAttribute("XP", prog.xpIntoLevel)
     player:SetAttribute("XPForNext", prog.xpForNext)
+    -- Total lifetime XP (monotonic; KEEPS growing past the level cap since AddExperience always
+    -- adds even when the derived level saturates). The per-level `XP` above freezes at the cap, so
+    -- the dev XP-rate bar reads this instead — it stays "spinning" at level 50.
+    player:SetAttribute("XPTotal", self:GetExperience(player))
     -- +1 egg max-hatch per claimed level (climbs ~3 -> ~52). HatchEntitlementService reads this
     -- `MaxEggHatchCount` override (clamped to its hard cap). Synced off CLAIMED level so the bump
     -- is part of the level-up reward. (If a gamepass later also grants hatch count, combine via

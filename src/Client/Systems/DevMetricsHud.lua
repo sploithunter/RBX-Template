@@ -54,8 +54,10 @@ function DevMetricsHud.start()
     self.hits = {} -- {t, v=damage}
     self.coins = {} -- {t, v=coinGain}
     self.speeds = {} -- {t, v=avgPetSpeed}
-    self.peaks = { dps = 1, coins = 1, speed = 1 }
+    self.xp = {} -- {t, v=xpGain} (from XPTotal attr deltas; keeps moving at the level cap)
+    self.peaks = { dps = 1, coins = 1, speed = 1, xp = 1 }
     self._lastCoinTotal = nil
+    self._lastXpTotal = nil
     self._petPos = {} -- pet -> last position
     self._lastSample = clock()
 
@@ -83,7 +85,7 @@ function DevMetricsHud:_build()
 
     local panel = Instance.new("Frame")
     panel.Name = "Panel"
-    panel.Size = UDim2.new(0, 240, 0, 84)
+    panel.Size = UDim2.new(0, 240, 0, 108)
     panel.Position = UDim2.new(0.34, 0, 0, 6) -- top, ~1/3 across
     panel.AnchorPoint = Vector2.new(0.5, 0)
     panel.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
@@ -135,6 +137,7 @@ function DevMetricsHud:_build()
     makeRow("dps", "⚔ DPS", Color3.fromRGB(225, 90, 80), 1)
     makeRow("coins", "💰 Coins/s", Color3.fromRGB(240, 200, 70), 2)
     makeRow("speed", "🐾 Pet Spd", Color3.fromRGB(95, 180, 235), 3)
+    makeRow("xp", "✨ XP/min", Color3.fromRGB(150, 110, 235), 4)
 end
 
 -- ---- data ---------------------------------------------------------------
@@ -168,6 +171,20 @@ function DevMetricsHud:_connect()
         self._lastCoinTotal = total
         if gain > 0 then
             self.coins[#self.coins + 1] = { t = clock(), v = gain }
+        end
+    end)
+
+    -- XP/min: positive deltas of XPTotal (lifetime XP; keeps climbing past the level cap).
+    self._lastXpTotal = tonumber(self.player:GetAttribute("XPTotal"))
+    self.player:GetAttributeChangedSignal("XPTotal"):Connect(function()
+        local total = tonumber(self.player:GetAttribute("XPTotal"))
+        if not total then
+            return
+        end
+        local gain = total - (self._lastXpTotal or total)
+        self._lastXpTotal = total
+        if gain > 0 then
+            self.xp[#self.xp + 1] = { t = clock(), v = gain }
         end
     end)
 
@@ -223,9 +240,15 @@ function DevMetricsHud:_refresh()
     self.speeds = keptS
     local spd = spdN > 0 and (spdSum / spdN) or 0
 
+    -- XP is reported per MINUTE (rates are small integers; reads better than per-second).
+    local xpSum, _, keptX = windowed(self.xp)
+    self.xp = keptX
+    local xpPerMin = (xpSum / elapsed) * 60
+
     self:_setRow("dps", dps, string.format("%.0f", dps))
     self:_setRow("coins", cps, string.format("%.1f", cps))
     self:_setRow("speed", spd, string.format("%.0f", spd))
+    self:_setRow("xp", xpPerMin, string.format("%.0f", xpPerMin))
 end
 
 function DevMetricsHud:_setRow(key, value, valueText)
