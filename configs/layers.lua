@@ -160,7 +160,17 @@ return {
                         dn = 80101487417158,
                     },
                 },
-                hell_4 = { textures = nil },
+                hell_4 = {
+                    textures = {
+                        ft = 115778938011231,
+                        bk = 140409478026965,
+                        lf = 106621185787267,
+                        rt = 133932701501959,
+                        up = 121688909163908,
+                        dn = 82579821400928,
+                        celestial_bodies_shown = false, -- custom sky: hide the default sun/moon
+                    },
+                },
                 hell_5 = { textures = nil },
             },
         },
