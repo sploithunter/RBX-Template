@@ -2,7 +2,7 @@
     HotbarBar — lower-center power/command bar (Feature 16 UI, slice B).
 
     20 slots laid out as two rows of 10 (bottom row 1-0, top row Shift+1-0), plus a
-    farming-mode cycle button on the left (Off -> Low -> High) that drives the
+    farming-mode cycle button on the left (Off -> Near -> High) that drives the
     auto-target toggles. Slots are fed by the server (Hotbar_State); pressing a slot's
     key OR clicking it fires Hotbar_Activate(slot), which the server resolves to the
     bound power / tactical / pet-summon.
@@ -48,7 +48,7 @@ local TYPE_COLOR = {
 }
 local FARM_COLOR = {
     Off = Color3.fromRGB(70, 72, 84),
-    Low = Color3.fromRGB(90, 200, 120),
+    Near = Color3.fromRGB(90, 200, 120),
     High = Color3.fromRGB(230, 120, 70),
 }
 
@@ -349,15 +349,16 @@ function HotbarBar.start()
         end
     end)
 
-    -- Farming-mode cycle: Off -> Low -> High -> Off, driven by the auto-target toggles.
-    -- Low = "free" targeting on, High = "paid" on; we flip whichever differs to reach
-    -- the next state. The label tracks the server's authoritative status.
+    -- Farming-mode cycle: Off -> Near -> High -> Off, driven by the auto-target toggles.
+    -- Near = "free" targeting on (auto_systems free_mode = nearest), High = "paid" on
+    -- (highest_value); we flip whichever differs to reach the next state. The label tracks
+    -- the server's authoritative status.
     local status = { free = false, paid = false }
     local function modeOf()
         if status.paid then
             return "High"
         elseif status.free then
-            return "Low"
+            return "Near"
         end
         return "Off"
     end
@@ -378,8 +379,8 @@ function HotbarBar.start()
         local m = modeOf()
         local wantFree, wantPaid
         if m == "Off" then
-            wantFree, wantPaid = true, false -- -> Low
-        elseif m == "Low" then
+            wantFree, wantPaid = true, false -- -> Near
+        elseif m == "Near" then
             wantFree, wantPaid = false, true -- -> High
         else
             wantFree, wantPaid = false, false -- -> Off
