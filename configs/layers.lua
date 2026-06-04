@@ -111,8 +111,8 @@ return {
             brightness = 0.02,
             contrast = 0.12,
             clock_time = 2,
-            ambient = { 120, 60, 55 }, -- was 25/8/8 — global red fill so the player is visible
-            outdoor_ambient = { 160, 92, 82 }, -- was 35/12/10 — sky fill that lit the silhouette
+            ambient = { 85, 40, 34 }, -- dark but the player's still visible (was an over-bright 120/60/55)
+            outdoor_ambient = { 120, 64, 54 },
             fog_color = { 45, 14, 12 },
             fog_end = 1000,
             atmosphere = {
@@ -301,15 +301,17 @@ return {
         enabled = true,
         model_asset_id = 87113428787101,
         template_name = "HellFace", -- runtime cache under ReplicatedStorage.RealmModels
-        scale = 120, -- target max-dimension in studs (model is ~2 -> scaled way up)
-        height = 600, -- studs above the player
-        spread = 480, -- horizontal ring radius
+        scale = 170, -- target max-dimension in studs (model is ~2 -> scaled way up; big = findable)
+        height = 450, -- absolute sky altitude (high, but findable when you look up)
+        spread = 420, -- horizontal ring radius
         base_count = 1, -- faces at depth 1
         per_depth_count = 1, -- +1 per layer of depth (hell_5 -> 5)
         light_color = { 255, 45, 25 },
-        light_brightness = 3, -- TURNED DOWN (the up-close preview was 14)
-        light_range = 180,
-        pulse_brightness = 5,
+        -- Light is a SELF-glow on the face only — small range so it never floods the world red
+        -- (that was the "everything is red" bug: low-spawned faces with big-range lights).
+        light_brightness = 1.5,
+        light_range = 60,
+        pulse_brightness = 3,
         pulse_seconds = 2.4,
     },
 }
