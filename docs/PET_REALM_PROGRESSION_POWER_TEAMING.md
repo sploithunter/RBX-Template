@@ -335,20 +335,25 @@ or debuff instead of HP damage.
 
 ---
 
-## 15. Eternal pets — Exclusive + Secret (concept; mechanics PENDING clarification)
+## 15. Eternal pets (EXISTING mechanic — already built; this just records it here)
 
-A pet class flagged **Eternal**, covering two categories that share that flag:
-- **Exclusive pets** — a *higher level* than normal pets; obtained only from exclusive sources:
-  an extremely rare hatch, an exclusive egg, or meeting a dev/Creator (ties to §7
-  Meet-the-Creator).
-- **Secret pets** — also **Eternal**; the ultra-rare hidden-odds class.
+**Eternal is dynamic team-scaling, NOT a fixed "higher level."** An eternal pet's effective power =
+`power_percent` × the **eternal power base** = the average of the player's **top-N non-eternal pets**
+(N = equip capacity). So it *auto-scales with your account* and stays relevant forever — the whole
+point is **eternal relevance, not raw dominance.** An eternal at 80–90% sits just under your best and
+never falls out of usefulness as you grow; it is *not* necessarily better than your top pet.
 
-**Open questions to resolve before binding this to the power model (§5):**
-1. What does **"Eternal"** confer mechanically — *permanence* (never sunset / never power-crept,
-   always relevant — fits the bounded-apex philosophy), a *rarity tier* above golden/rainbow, or
-   both?
-2. **"Higher level"** — does an Exclusive pet sit at a higher tier *within* the bounded,
-   Creator-capped band (stronger but still ≤ ceiling), or is it a separate axis? (Must not exceed
-   the §5 ceiling or it breaks the bounded model.)
-3. **Secret vs Exclusive** — is the distinction purely the *source* (Secret = hidden ultra-rare
-   hatch; Exclusive = events / exclusive eggs / dev), or do they differ mechanically too?
+- **Source of truth:** `configs/pets.lua` `eternal { huge_power_percent = 120,
+  baseline_includes_eternal = false }` + per-pet `eternal { enabled, power_percent }`. Resolved
+  server-side in `PetHandler.resolveEffectivePetPower` (the pet's configured base power is a FLOOR).
+  Wiki: `ARCHITECTURE.md`, `DECISIONS.md` (Pet Power SoT), smoke `tests/studio/EternalPowerSmoke.lua`.
+- **Huge is eternal** at 120% (clamped ≥100%) — always ≈1.2× your best non-eternal average.
+- **Respects the §5 ceiling for free:** it's a % of *your own* pets, which are themselves bounded
+  by `max_pet_power`; the Creator apex still holds. No new cap-breaking axis.
+- **Secret / Exclusive are existing rarities** (enchant slots: Secret 2 / Exclusive 2 / Huge 3;
+  stored as unique pet records). They are the *classes/sources* that carry the eternal flag:
+  **Exclusive** = rare hatch / exclusive egg / dev encounter (§7 Meet-the-Creator); **Secret** =
+  ultra-rare hidden-odds hatch.
+- **Why this is the §12 depth-desirability payoff:** deep-realm / rare-source rewards are *eternal*
+  pets — perpetually worth chasing precisely because eternal scaling keeps them good forever, while
+  the bounded model stops them from trivializing the ladder.
