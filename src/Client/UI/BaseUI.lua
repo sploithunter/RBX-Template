@@ -2079,23 +2079,29 @@ function BaseUI:_bindLevelAttributes()
     end
 
     local function refresh()
-        self.playerData.level = lp:GetAttribute("Level") or self.playerData.level
+        -- Badge shows the CLAIMED level (what the player has actually claimed via the level-up
+        -- sequence); the `Level` attribute is the earned-from-XP level used for combat scaling.
+        self.playerData.level = lp:GetAttribute("ClaimedLevel")
+            or lp:GetAttribute("Level")
+            or self.playerData.level
         self.playerData.xp = lp:GetAttribute("XP") or self.playerData.xp
         self.playerData.maxXp = lp:GetAttribute("XPForNext") or self.playerData.maxXp
         -- Update the label directly (robust against GUI-tree path changes).
         if self._levelLabel then
-            self._levelLabel.Text = "Level "
+            local base = "Level "
                 .. self.playerData.level
                 .. " • "
                 .. self.playerData.xp
                 .. "/"
                 .. self.playerData.maxXp
                 .. " XP"
+            local pending = lp:GetAttribute("PendingLevels") or 0
+            self._levelLabel.Text = (pending > 0) and (base .. "  ⬆" .. pending) or base
         end
     end
 
     refresh()
-    for _, attr in ipairs({ "Level", "XP", "XPForNext" }) do
+    for _, attr in ipairs({ "Level", "ClaimedLevel", "PendingLevels", "XP", "XPForNext" }) do
         lp:GetAttributeChangedSignal(attr):Connect(refresh)
     end
 end

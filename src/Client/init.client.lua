@@ -229,6 +229,16 @@ do
     end
 end
 
+-- Level-up sequence: "LEVEL UP!" button on PendingLevels, claim -> reveal + power pick / slotting.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.LevelUpController).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start LevelUpController", { error = tostring(err) })
+    end
+end
+
 -- Start Matter loop with client systems
 local systemsList = {}
 for name, system in pairs(systems) do
