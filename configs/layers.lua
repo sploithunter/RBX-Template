@@ -103,24 +103,25 @@ return {
                 haze = 2.0,
             },
         },
-        -- Hell deep (layer 5): the abyss — midnight, near-black ambient, close oppressive red fog.
-        -- Intentionally hard to see; "if you can't see enemies well, that's part of the game."
+        -- Hell deep (layer 5): red, oppressive MOOD — but lit enough to see your own character +
+        -- the ground (the dark/dramatic SKY now comes from the per-layer skybox, so the lighting
+        -- doesn't need to crush the world). Enemies can still lurk in the red murk.
         hell = {
-            tint = { 1, 0.5, 0.42 },
-            brightness = -0.1,
-            contrast = 0.25,
-            clock_time = 0,
-            ambient = { 25, 8, 8 },
-            outdoor_ambient = { 35, 12, 10 },
-            fog_color = { 15, 4, 4 },
-            fog_end = 600,
+            tint = { 1, 0.58, 0.5 },
+            brightness = 0.02,
+            contrast = 0.12,
+            clock_time = 2,
+            ambient = { 120, 60, 55 }, -- was 25/8/8 — global red fill so the player is visible
+            outdoor_ambient = { 160, 92, 82 }, -- was 35/12/10 — sky fill that lit the silhouette
+            fog_color = { 45, 14, 12 },
+            fog_end = 1000,
             atmosphere = {
-                density = 0.55,
-                offset = 0.25,
-                color = { 90, 20, 16 },
-                decay = { 40, 8, 6 },
-                glare = 0.15,
-                haze = 3.0,
+                density = 0.35, -- was 0.55 — thin the murk so you're not lost in it
+                offset = 0.2,
+                color = { 120, 40, 32 },
+                decay = { 80, 22, 16 },
+                glare = 0.2,
+                haze = 2.2,
             },
         },
         -- Per-LAYER skybox swap (RealmAtmosphere). One sky per layer — base + heaven_1-5 +
