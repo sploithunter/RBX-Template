@@ -56,7 +56,9 @@ return {
                 required_zone = "Spawn",
                 unlocked_by_default = false,
                 currency = "crystals",
-                cost = 100,
+                -- Meadow grants a PERMANENT +10% coins boost, so it must not be near-free.
+                -- ~3 min of grass mining at the fresh-squad rate.
+                cost = 2000,
             },
             boosts = {
                 coins = 1.1,
@@ -87,7 +89,7 @@ return {
                 unlocked_by_default = false,
                 required_zone = "Ice",
                 currency = "ice_coins",
-                cost = 3000,
+                cost = 18000, -- ~15 min of ice mining (see Ice unlock note + design doc §10)
             },
             boosts = {},
             -- Real authored "Lava" baseplate (Home.Lava): center ~(-207,0,68), top ~Y0.5.
@@ -115,12 +117,15 @@ return {
             order = 4,
             -- Unlock chain (ring order): grass(Spawn) -> Ice -> Lava -> Desert. Each biome is paid
             -- for with the PREVIOUS biome's coins, so you mine one zone to afford the next.
-            -- Costs are first-pass and tunable here.
+            -- PACING PRINCIPLE (see design doc §10/§11): a gate should cost a real *chapter* in the
+            -- current zone (~10-20 min fresh farming, a fraction of the ~20k-coin graduate arc), not
+            -- be trivially cheap. Tune the "minutes per zone" by scaling these. At ~10 cps fresh
+            -- grass, 8000 ~= 13 min.
             unlock = {
                 unlocked_by_default = false,
                 required_zone = "Spawn",
                 currency = "grass_coins",
-                cost = 1000,
+                cost = 8000,
             },
             boosts = {},
             -- Real authored "Ice" baseplate (Home.Ice): center ~(-375,0,377).
@@ -150,7 +155,7 @@ return {
                 unlocked_by_default = false,
                 required_zone = "Lava",
                 currency = "lava_coins",
-                cost = 8000,
+                cost = 35000, -- ~23 min of lava mining; last homeworld gate, biggest commitment
             },
             boosts = {},
             -- Real authored "Desert" baseplate (Home.Desert): center ~(-127,1,475).
