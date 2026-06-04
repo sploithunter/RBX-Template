@@ -61,12 +61,8 @@ local function resolvePart(inst)
     return nil
 end
 
-function RealmPortalService:_realmOfLayer(layerId)
-    return (self._layersConfig.realm_alignment and self._layersConfig.realm_alignment[layerId])
-        or "neutral"
-end
-
--- Toggle: if already in this portal's realm, return to base; otherwise enter its layer.
+-- Direct jump: enter this portal's exact layer; if already standing on it, return to base.
+-- (Per-layer toggle lets you hop base -> Halo3 -> Halo5 to test any depth, and step out anywhere.)
 function RealmPortalService:_onTriggered(player, destLayer)
     local layers = self:_layerService()
     if not layers then
@@ -74,9 +70,7 @@ function RealmPortalService:_onTriggered(player, destLayer)
     end
     local force = self._portalsConfig.bypass_access ~= false
     local current = layers:GetCurrentLayer(player)
-    local inThisRealm = self:_realmOfLayer(current) == self:_realmOfLayer(destLayer)
-        and current ~= "base"
-    local target = inThisRealm and "base" or destLayer
+    local target = (current == destLayer) and "base" or destLayer
     layers:UseLayer(player, target, { force = force })
 end
 

@@ -58,9 +58,20 @@ return {
         bypass_access = true,
         prompt_hold = 0,
         max_distance = 14,
+        -- Portal_Halo1-5 -> heaven_1-5, Portal_Horn1-5 -> hell_1-5. Each jumps DIRECTLY to its
+        -- layer (touch again while standing on it to return to base), so you can hop base ->
+        -- Halo3 -> Halo5 to test any depth.
         portals = {
-            { part = "Portal_Halo1", layer = "heaven_1", action = "Enter Heaven" },
-            { part = "Portal_Horn1", layer = "hell_1", action = "Enter Hell" },
+            { part = "Portal_Halo1", layer = "heaven_1", action = "Enter Heaven 1" },
+            { part = "Portal_Halo2", layer = "heaven_2", action = "Enter Heaven 2" },
+            { part = "Portal_Halo3", layer = "heaven_3", action = "Enter Heaven 3" },
+            { part = "Portal_Halo4", layer = "heaven_4", action = "Enter Heaven 4" },
+            { part = "Portal_Halo5", layer = "heaven_5", action = "Enter Heaven 5" },
+            { part = "Portal_Horn1", layer = "hell_1", action = "Enter Hell 1" },
+            { part = "Portal_Horn2", layer = "hell_2", action = "Enter Hell 2" },
+            { part = "Portal_Horn3", layer = "hell_3", action = "Enter Hell 3" },
+            { part = "Portal_Horn4", layer = "hell_4", action = "Enter Hell 4" },
+            { part = "Portal_Horn5", layer = "hell_5", action = "Enter Hell 5" },
         },
     },
 
