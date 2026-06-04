@@ -43,7 +43,12 @@ return {
             },
         },
         compatibility_toggles = {
-            free_mode = "weakest",
+            -- Free farming = NEAREST (minimize travel). With flat ~26 studs/s pets, the old free
+            -- mode (weakest) sent pets chasing the smallest crystals scattered across the zone, so
+            -- travel time dominated and effective DPS cratered to ~half of paid. Nearest keeps pets
+            -- on whatever's closest -> max uptime -> the best DPS the slow-pet baseline allows. The
+            -- paid pass adds value-targeting (camp the biggest payouts / AFK-friendly), not raw speed.
+            free_mode = "nearest",
             paid_mode = "highest_value",
         },
     },
