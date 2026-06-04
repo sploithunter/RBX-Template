@@ -260,6 +260,16 @@ do
     end
 end
 
+-- RealmHellFaces: floating demon faces in the Hell sky (clones the server-preloaded model).
+do
+    local ok, err = pcall(function()
+        require(script.Systems.RealmHellFaces).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start RealmHellFaces", { error = tostring(err) })
+    end
+end
+
 -- Start Matter loop with client systems
 local systemsList = {}
 for name, system in pairs(systems) do

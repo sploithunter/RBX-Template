@@ -292,4 +292,24 @@ return {
             requires_level = 50,
         },
     },
+
+    -- Floating demon faces in the Hell sky (RealmHellFaces). The server LoadAssets the model once
+    -- into ReplicatedStorage.RealmModels at boot; the client clones it, scales it up huge, hangs a
+    -- ring of them very high looking down, with a DIM pulsing light inside. Depth-scaled: Hell 1 =
+    -- one distant face, Hell 5 = a ring of `base_count + 4*per_depth_count`. Hell-only; client-side.
+    hell_faces = {
+        enabled = true,
+        model_asset_id = 87113428787101,
+        template_name = "HellFace", -- runtime cache under ReplicatedStorage.RealmModels
+        scale = 120, -- target max-dimension in studs (model is ~2 -> scaled way up)
+        height = 600, -- studs above the player
+        spread = 480, -- horizontal ring radius
+        base_count = 1, -- faces at depth 1
+        per_depth_count = 1, -- +1 per layer of depth (hell_5 -> 5)
+        light_color = { 255, 45, 25 },
+        light_brightness = 3, -- TURNED DOWN (the up-close preview was 14)
+        light_range = 180,
+        pulse_brightness = 5,
+        pulse_seconds = 2.4,
+    },
 }

@@ -101,7 +101,59 @@ function RealmPortalService:_ensurePrompt(part, def)
     return prompt
 end
 
+-- World S3: LoadAsset the Hell-face model once into ReplicatedStorage.RealmModels so the client
+-- RealmHellFaces system can clone it (runtime-created, so rojo never prunes it; works on published
+-- servers too). No-op if disabled / already loaded / load fails.
+function RealmPortalService:_preloadHellFace()
+    local cfg = self._layersConfig.hell_faces
+    if not cfg or cfg.enabled == false or not cfg.model_asset_id then
+        return
+    end
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local folder = ReplicatedStorage:FindFirstChild("RealmModels")
+    if not folder then
+        folder = Instance.new("Folder")
+        folder.Name = "RealmModels"
+        folder.Parent = ReplicatedStorage
+    end
+    local name = cfg.template_name or "HellFace"
+    if folder:FindFirstChild(name) then
+        return
+    end
+    local InsertService = game:GetService("InsertService")
+    local ok, container = pcall(function()
+        return InsertService:LoadAsset(cfg.model_asset_id)
+    end)
+    if not ok or not container then
+        if self._logger then
+            self._logger:Warn("RealmHellFaces: LoadAsset failed", { error = tostring(container) })
+        end
+        return
+    end
+    local model = container:GetChildren()[1]
+    if model then
+        model.Name = name
+        for _, p in ipairs(model:GetDescendants()) do
+            if p:IsA("BasePart") then
+                p.Anchored, p.CanCollide, p.CanQuery, p.CastShadow = true, false, false, false
+            end
+        end
+        if model:IsA("Model") and not model.PrimaryPart then
+            model.PrimaryPart = model:FindFirstChildWhichIsA("BasePart", true)
+        end
+        model.Parent = folder
+        if self._logger then
+            self._logger:Info(
+                "RealmHellFaces: cached model in ReplicatedStorage.RealmModels",
+                { name = name }
+            )
+        end
+    end
+    container:Destroy()
+end
+
 function RealmPortalService:Start()
+    self:_preloadHellFace()
     local portals = self._portalsConfig.portals or {}
     if #portals == 0 then
         return
