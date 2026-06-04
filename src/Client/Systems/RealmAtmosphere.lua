@@ -104,6 +104,61 @@ function RealmAtmosphere.start()
         },
     }
 
+    -- Per-layer skybox swap (configs/layers.lua atmosphere.sky.per_layer). Capture the base sky
+    -- faces so a layer with no textures restores the map's original sky.
+    local skyConfig = (type(themes.sky) == "table" and type(themes.sky.per_layer) == "table")
+            and themes.sky.per_layer
+        or {}
+    local sky = Lighting:FindFirstChildOfClass("Sky")
+    local baseSky
+    if sky then
+        baseSky = {
+            SkyboxFt = sky.SkyboxFt,
+            SkyboxBk = sky.SkyboxBk,
+            SkyboxLf = sky.SkyboxLf,
+            SkyboxRt = sky.SkyboxRt,
+            SkyboxUp = sky.SkyboxUp,
+            SkyboxDn = sky.SkyboxDn,
+            SunTextureId = sky.SunTextureId,
+            MoonTextureId = sky.MoonTextureId,
+            CelestialBodiesShown = sky.CelestialBodiesShown,
+        }
+    end
+
+    local function asset(id)
+        if type(id) == "number" then
+            return "rbxassetid://" .. id
+        end
+        return id
+    end
+
+    local function applySky(layerId)
+        local cfg = skyConfig[layerId]
+        local tx = cfg and cfg.textures
+        if type(tx) == "table" and (tx.ft or tx.up) then
+            if not sky then
+                sky = Instance.new("Sky")
+                sky.Parent = Lighting
+            end
+            sky.SkyboxFt = asset(tx.ft) or sky.SkyboxFt
+            sky.SkyboxBk = asset(tx.bk) or sky.SkyboxBk
+            sky.SkyboxLf = asset(tx.lf) or sky.SkyboxLf
+            sky.SkyboxRt = asset(tx.rt) or sky.SkyboxRt
+            sky.SkyboxUp = asset(tx.up) or sky.SkyboxUp
+            sky.SkyboxDn = asset(tx.dn) or sky.SkyboxDn
+            if tx.sun then
+                sky.SunTextureId = asset(tx.sun)
+            end
+            if tx.moon then
+                sky.MoonTextureId = asset(tx.moon)
+            end
+        elseif baseSky and sky then
+            for k, v in pairs(baseSky) do
+                sky[k] = v
+            end
+        end
+    end
+
     local function applyTheme(theme)
         TweenService:Create(Lighting, tweenInfo, {
             Ambient = c255(theme.ambient, Lighting.Ambient),
@@ -190,6 +245,7 @@ function RealmAtmosphere.start()
     local function refresh(announce)
         local layerId = player:GetAttribute("CurrentLayer") or "base"
         applyTheme(resolve(layerId))
+        applySky(layerId)
         if announce then
             banner(RealmTheme.realmOf(layerId), RealmTheme.depthOf(layerId))
         end

@@ -123,10 +123,28 @@ return {
                 haze = 3.0,
             },
         },
-        -- Skybox: intentionally NOT swapped. The base aurora sky reads as celestial (good for
-        -- heaven), and hell looks great under the dense red haze alone. A future per-realm skybox
-        -- swap (e.g. a "glowing red eyes looking down" hell sky) needs authored sky textures — see
-        -- task #157. The Atmosphere haze + lighting ramp already re-dress the sky-feel per depth.
+        -- Per-LAYER skybox swap (RealmAtmosphere). One sky per layer — base + heaven_1-5 +
+        -- hell_1-5 — so the sky escalates with depth alongside the lighting (Hell 1 = brooding red
+        -- clouds -> Hell 5 = the eyes-in-the-abyss). Authoring: generate an equirectangular 2:1
+        -- panorama per layer, convert to 6 cubemap faces, upload, and drop the asset ids below
+        -- (numbers or "rbxassetid://..."). `textures = { ft, bk, lf, rt, up, dn, sun?, moon? }`.
+        -- A layer left nil keeps the map's base sky (captured + restored), so fill them in as you
+        -- generate each. Applied per layer; the lighting ramp above scales intensity within it.
+        sky = {
+            per_layer = {
+                base = { textures = nil },
+                heaven_1 = { textures = nil },
+                heaven_2 = { textures = nil },
+                heaven_3 = { textures = nil },
+                heaven_4 = { textures = nil },
+                heaven_5 = { textures = nil },
+                hell_1 = { textures = nil },
+                hell_2 = { textures = nil },
+                hell_3 = { textures = nil },
+                hell_4 = { textures = nil },
+                hell_5 = { textures = nil },
+            },
+        },
     },
 
     multipliers = {
