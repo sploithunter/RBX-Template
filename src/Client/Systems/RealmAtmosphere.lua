@@ -152,6 +152,18 @@ function RealmAtmosphere.start()
             if tx.moon then
                 sky.MoonTextureId = asset(tx.moon)
             end
+            if tx.celestial_bodies_shown ~= nil then
+                sky.CelestialBodiesShown = tx.celestial_bodies_shown
+            end
+            if tx.star_count then
+                sky.StarCount = tx.star_count
+            end
+            if tx.sun_angular_size then
+                sky.SunAngularSize = tx.sun_angular_size
+            end
+            if tx.moon_angular_size then
+                sky.MoonAngularSize = tx.moon_angular_size
+            end
         elseif baseSky and sky then
             for k, v in pairs(baseSky) do
                 sky[k] = v
