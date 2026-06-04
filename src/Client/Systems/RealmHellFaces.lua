@@ -224,7 +224,11 @@ function RealmHellFaces.start()
     end
 
     refresh()
+    -- Listen to BOTH attributes: LayerService may publish CurrentLayer and CurrentRealm in either
+    -- order, so a CurrentLayer-only listener can fire while CurrentRealm is briefly stale and skip
+    -- the spawn. Watching both makes the Hell-5 gate fire regardless of publish order.
     player:GetAttributeChangedSignal("CurrentLayer"):Connect(refresh)
+    player:GetAttributeChangedSignal("CurrentRealm"):Connect(refresh)
 end
 
 return RealmHellFaces
