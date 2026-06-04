@@ -171,7 +171,17 @@ return {
                         celestial_bodies_shown = false, -- custom sky: hide the default sun/moon
                     },
                 },
-                hell_5 = { textures = nil },
+                hell_5 = {
+                    textures = {
+                        ft = 102213954263406,
+                        bk = 100049080158700,
+                        lf = 74423796663126,
+                        rt = 86898675313846,
+                        up = 138010467678345,
+                        dn = 70514714416769,
+                        celestial_bodies_shown = false, -- the abyss: custom sky, no default sun/moon
+                    },
+                },
             },
         },
     },
