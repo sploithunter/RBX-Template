@@ -14,7 +14,7 @@ return {
     xp = {
         mode = "linear",
         per_level = 100,
-        max_level = 0, -- 0 = uncapped
+        max_level = 50, -- level cap (City-of-Heroes-style top-out); earnedLevel saturates here
     },
 
     team_power = {

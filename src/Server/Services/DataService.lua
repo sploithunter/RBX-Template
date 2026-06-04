@@ -25,6 +25,7 @@ local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventory
 local PetMigrationV5 = require(ReplicatedStorage.Shared.Inventory.PetMigrationV5)
 local PetCompaction = require(ReplicatedStorage.Shared.Inventory.PetCompaction)
 local PetEquipMigration = require(ReplicatedStorage.Shared.Inventory.PetEquipMigration)
+local LevelCurve = require(ReplicatedStorage.Shared.Game.LevelCurve)
 
 local DataService = {}
 DataService.__index = DataService
@@ -35,7 +36,7 @@ local DEFAULT_SAVE_DEBOUNCE_SECONDS = 15
 local CRITICAL_SAVE_DEBOUNCE_SECONDS = 1
 local PERIODIC_SAVE_SECONDS = 60
 local SAVE_CONFIRM_TIMEOUT_SECONDS = 10
-local CURRENT_SCHEMA_VERSION = 7
+local CURRENT_SCHEMA_VERSION = 8
 
 local function countInventoryItems(inventory)
     local counts = {}
@@ -77,6 +78,11 @@ local function generateProfileTemplate(configLoader)
         Stats = {
             Level = 1,
             Experience = 0,
+            -- ClaimedLevel: the level-up CLAIM gate (City-of-Heroes-style). Reward/eligibility
+            -- (powers, augment slots, equip milestones, team-power) gate on this, not on the
+            -- earned-from-XP level. New players start at 1 (they have 0 XP anyway); existing
+            -- players are backfilled to their earned level by SchemaMigrations[7].
+            ClaimedLevel = 1,
             Health = 100,
             MaxHealth = 100,
             Counters = {},
@@ -421,6 +427,26 @@ end
 SchemaMigrations[6] = function(self, data)
     local migrations = self:_migratePetsToEquipLayerV7(data)
     data.SchemaVersion = 7
+    return migrations + 1
+end
+
+-- v7 -> v8: introduce Stats.ClaimedLevel (the level-up CLAIM gate). Backfill to the player's
+-- EARNED level (derived from total XP) so existing players keep ALL their level benefits and
+-- owe zero retroactive claims — a no-op for current behavior. The feature only governs FUTURE
+-- level-ups. New profiles default ClaimedLevel=1 via the template (they have 0 XP). Idempotent.
+SchemaMigrations[7] = function(self, data)
+    local migrations = 0
+    data.Stats = data.Stats or {}
+    if data.Stats.ClaimedLevel == nil then
+        local xpCfg
+        if self._configLoader then
+            local pp = self._configLoader:LoadConfig("player_progression")
+            xpCfg = pp and pp.xp
+        end
+        data.Stats.ClaimedLevel = LevelCurve.levelForXp(tonumber(data.Stats.Experience) or 0, xpCfg)
+        migrations += 1
+    end
+    data.SchemaVersion = 8
     return migrations + 1
 end
 
@@ -769,9 +795,20 @@ function DataService:LoadProfile(player)
             -- Store profile
             self.Profiles[player] = profile
 
-            -- Set player attributes for quick access
+            -- Set player attributes for quick access. Level = EARNED (from XP, for combat/egg
+            -- scaling); ClaimedLevel = the claim gate (HUD badge). PlayerProgressionService:_publish
+            -- republishes these + PendingLevels/XP shortly after; this just avoids a transient
+            -- stale value between load and that publish.
             player:SetAttribute("DataLoaded", true)
-            player:SetAttribute("Level", data.Stats.Level)
+            do
+                local xpCfg = self._configLoader
+                    and (self._configLoader:LoadConfig("player_progression") or {}).xp
+                player:SetAttribute(
+                    "Level",
+                    LevelCurve.levelForXp(tonumber(data.Stats.Experience) or 0, xpCfg)
+                )
+                player:SetAttribute("ClaimedLevel", tonumber(data.Stats.ClaimedLevel) or 1)
+            end
             -- Expose ALL currencies from configuration/profile dynamically
             for currencyId, amount in pairs(data.Currencies or {}) do
                 local attrName = currencyId:gsub("^%l", string.upper)
@@ -1262,7 +1299,12 @@ function DataService:SetStat(player, statName, value)
     data.Stats[statName] = value
 
     -- Update player attribute if it's a common stat
-    if statName == "Level" or statName == "Health" or statName == "MaxHealth" then
+    if
+        statName == "Level"
+        or statName == "ClaimedLevel"
+        or statName == "Health"
+        or statName == "MaxHealth"
+    then
         player:SetAttribute(statName, value)
     end
 

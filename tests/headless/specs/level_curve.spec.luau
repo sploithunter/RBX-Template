@@ -45,6 +45,20 @@ return function()
         end)
     end)
 
+    describe("LevelCurve level cap (max_level = 50)", function()
+        it("config tops out at level 50", function()
+            expect(xpCfg.max_level).to.equal(50)
+        end)
+        it("earned level saturates at the cap no matter how much XP", function()
+            -- XP far past the level-50 threshold still resolves to 50, not higher.
+            local hugeXp = LevelCurve.xpForLevel(50, xpCfg) + 10_000_000
+            expect(LevelCurve.levelForXp(hugeXp, xpCfg)).to.equal(50)
+        end)
+        it("reaches exactly 50 at its threshold", function()
+            expect(LevelCurve.levelForXp(LevelCurve.xpForLevel(50, xpCfg), xpCfg)).to.equal(50)
+        end)
+    end)
+
     describe("LevelCurve flat mode", function()
         it("every level costs the same", function()
             local flat = { mode = "flat", per_level = 50 }

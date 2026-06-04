@@ -83,27 +83,82 @@ function PlayerProgressionService:GetExperience(player)
     return math.max(0, math.floor(tonumber(self._dataService:GetStat(player, "Experience")) or 0))
 end
 
--- Level is DERIVED from total XP (single source of truth).
-function PlayerProgressionService:GetLevel(player)
+-- EARNED level — derived from total XP (single source of truth), saturated at the cap.
+-- Drives combat/egg "how strong is this player" scaling via the `Level` ATTRIBUTE and the
+-- claim gate. NOT the reward-eligibility level (that's claimed — see GetLevel below).
+function PlayerProgressionService:GetEarnedLevel(player)
     if not player then
         return 1
     end
     return LevelCurve.levelForXp(self:GetExperience(player), self._xpConfig)
 end
 
+-- CLAIMED level — what the player has actually claimed via the level-up sequence (stored
+-- stat, default 1, never above earned or the cap). This is the REWARD/ELIGIBILITY level:
+-- powers, augment slots, equip-slot milestones and the team-power boost all gate on it
+-- (they route through GetLevel), so you don't get a level's benefits until you claim it.
+function PlayerProgressionService:GetClaimedLevel(player)
+    if not player then
+        return 1
+    end
+    local stored = 1
+    if self._dataService and self._dataService.GetStat then
+        stored = math.floor(tonumber(self._dataService:GetStat(player, "ClaimedLevel")) or 1)
+    end
+    local earned = self:GetEarnedLevel(player)
+    return math.clamp(math.max(1, stored), 1, math.max(1, earned))
+end
+
+-- Reward/eligibility gates read GetLevel -> claimedLevel (the choke-point used by
+-- PowerService/AugmentationService/QuestService/InventoryService/team-power, so they become
+-- claim-gated with no edits). Combat/egg scaling reads the `Level` attribute = earnedLevel.
+function PlayerProgressionService:GetLevel(player)
+    return self:GetClaimedLevel(player)
+end
+
+function PlayerProgressionService:GetPendingLevels(player)
+    return math.max(0, self:GetEarnedLevel(player) - self:GetClaimedLevel(player))
+end
+
+-- Progress object at the EARNED level (used by AddExperience/SetLevel return values).
 function PlayerProgressionService:GetProgress(player)
     return LevelCurve.progress(self:GetExperience(player), self._xpConfig)
 end
 
--- Mirror derived level/XP onto player attributes for the HUD.
+-- XP-bar progress relative to the CLAIMED level's window: fills toward the next unclaimed
+-- level, so a full bar means "a level-up is waiting to be claimed". Saturates at the cap.
+function PlayerProgressionService:_claimedProgress(player, claimed)
+    local maxLevel = math.floor(tonumber(self._xpConfig.max_level) or 0)
+    if maxLevel > 0 and claimed >= maxLevel then
+        return { xpIntoLevel = 0, xpForNext = 0 } -- MAX
+    end
+    local xp = self:GetExperience(player)
+    local base = LevelCurve.xpForLevel(claimed, self._xpConfig)
+    local step = LevelCurve.stepCost(claimed, self._xpConfig)
+    local into = math.clamp(xp - base, 0, step)
+    return { xpIntoLevel = into, xpForNext = step }
+end
+
+-- Mirror earned/claimed level + XP onto player attributes for the HUD.
+--   Level        = earnedLevel (combat/egg scaling — unchanged from before)
+--   ClaimedLevel = the HUD badge / claim gate
+--   PendingLevels= earned - claimed (drives the "LEVEL UP!" button), clamped to remaining
+--   XP/XPForNext = progress within the next UNCLAIMED level
 function PlayerProgressionService:_publish(player)
     if not player then
         return
     end
-    local p = self:GetProgress(player)
-    player:SetAttribute("Level", p.level)
-    player:SetAttribute("XP", p.xpIntoLevel)
-    player:SetAttribute("XPForNext", p.xpForNext)
+    local earned = self:GetEarnedLevel(player)
+    local claimed = self:GetClaimedLevel(player)
+    local maxLevel = math.floor(tonumber(self._xpConfig.max_level) or 0)
+    local remaining = maxLevel > 0 and math.max(0, maxLevel - claimed) or math.huge
+    local pending = math.min(math.max(0, earned - claimed), remaining)
+    local prog = self:_claimedProgress(player, claimed)
+    player:SetAttribute("Level", earned)
+    player:SetAttribute("ClaimedLevel", claimed)
+    player:SetAttribute("PendingLevels", pending)
+    player:SetAttribute("XP", prog.xpIntoLevel)
+    player:SetAttribute("XPForNext", prog.xpForNext)
 end
 
 -- Grant XP (the spine awards XP via RewardService -> here). Returns the new progress.
@@ -124,8 +179,12 @@ function PlayerProgressionService:SetLevel(player, level)
     if not player or not self._dataService then
         return self:GetProgress(player)
     end
-    local xp = LevelCurve.xpForLevel(math.max(1, math.floor(tonumber(level) or 1)), self._xpConfig)
+    local target = math.max(1, math.floor(tonumber(level) or 1))
+    local xp = LevelCurve.xpForLevel(target, self._xpConfig)
     self._dataService:SetStat(player, "Experience", xp)
+    -- Admin/reset set-level gives a fully-CLAIMED level (not one owing claims), so the player
+    -- immediately has that level's powers/slots/boosts and no pending level-ups.
+    self._dataService:SetStat(player, "ClaimedLevel", target)
     self:_publish(player)
     return self:GetProgress(player)
 end
