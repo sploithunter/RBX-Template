@@ -235,7 +235,9 @@ Three tenets, in priority order. **Read before designing any gamepass or AFK fea
 
 1. **Active always beats passive.** Engaged play (roaming to fresh density, targeting, managing the
    squad) out-earns idle/AFK — *never* the reverse. The mining depletion throttle (§10) is the
-   live enforcement: campers sag, roamers sustain peak — true even among paying players.
+   live enforcement: campers sag, roamers sustain peak — true even among paying players. *Live
+   evidence:* a desert squad reads 115–190 DPS / 18–29 cps **moving vs idle** — the player's own
+   movement is worth ~40% more income, with zero gear difference.
 2. **Gamepasses absorb the cheating demand.** What cheaters script is *convenience/automation* —
    auto-farm, auto-target, AFK macros, auto-hatch. Ship those as official gamepasses instead of
    fighting an injector arms race.
@@ -247,12 +249,72 @@ paying *passive* player must still earn ≤ an active *free* player — the pass
 depletion throttle preserves the active edge. Never sell a flat earnings/power multiplier that lets
 AFK out-earn active. That's pay-to-win and breaks tenet #1.
 
-**Boundary of the philosophy — two complementary anti-cheat tools:**
+**Boundary of the philosophy — three complementary anti-cheat tools:**
 - *Automation cheats* (auto-click, auto-walk, AFK macros) → **cheap convenience gamepasses** (this §).
 - *Value-injection cheats* (fabricated coins/pets, speed hacks) → **server authority** (already in
   place: the server owns inventory, coins, pet records; the client can't fabricate them). Gamepasses
   can't and shouldn't try to cover this class.
+- *Abnormally-high earners* (botted farms AND legit whales) → **earning-rate enemy pressure**
+  (below). Don't *detect* cheating — make high income inherently *come with combat*.
+
+**Earning-rate enemy pressure (anti-cheat tool #3 + endgame challenge).** Track each player's
+*real-time* coins/sec (and/or DPS) per area; when it exceeds an area threshold, spawn enemies that
+scale with the overage. A bot raking coins gets swarmed (combat is far harder to auto-handle than
+mining); a legit high earner gets a fair challenge (and better drops). It self-balances — no
+allow/deny lists, no arms race — and reinforces tenet #1 (you can't passively rake while idle).
+**Critical caveat:** the coin counter is seeded from the DataStore on join, so the *first* sample
+shows a multi-thousand/sec spike that is NOT real earning. The rate tracker MUST **seed its baseline
+from the loaded total and only measure deltas after join + a grace window** (same pattern the
+DevMetricsHud client overlay already uses — `seedCoins()` on connect). Knobs: per-area thresholds,
+spawn rate/strength vs overage, grace period, cooldown.
 
 **Gamepass candidates that fit (all convenience, all common script targets):** auto-target
 `highest_value` (built — the `High` mode), auto-/bulk-hatch, offline/AFK earnings (capped *below*
 active), wider farm radius / multi-zone, extra target or equip slots. Price low.
+
+---
+
+## 12. Gates are on-ramps, not retention (the terminal-zone problem)
+
+A linear unlock chain (farm zone N coins → buy zone N+1) pulls players *forward* through the
+midgame but **cannot make them stay anywhere** — the moment the terminal zone/realm is unlocked,
+its currency buys nothing and the forward pull is gone. Reordering doesn't help: *whichever* zone
+ends up last inherits the dead-end. So gates are one-time **on-ramps**; retention is designed
+separately, via three levers (a zone — especially the last — needs all three):
+
+1. **Resident loop.** Each zone's coins must buy something *in that zone*, repeatedly — its
+   eggs/upgrades/pets — not just the next gate. (Partly built: ice coins → ice eggs → polar bears;
+   lava → ember owls.) The next-gate cost is a *secondary, one-time* use of the currency.
+2. **Desirability escalates with depth.** The resident loop only sticks if the *deepest* zone is
+   the *best place to be* — rarest variants, best shiny odds, exclusive species, apex chases.
+   Because pet power is bounded (Creator ceiling, §5), "best" means **rarity / variant / cosmetic
+   desirability, not bigger numbers** — shiny + exclusive-species hunting, never raw power creep.
+3. **The realm axis is the non-terminal endgame.** Heaven/hell are not "more zones to finish" —
+   they're loops that don't end: **conquest** (soul ±, recurring, social), **token-gated traversal**
+   (light/shadow tokens spent to move between layers — a *permanent sink*, not a one-time gate), and
+   exclusive realm pets. The deepest realm sticks because conquest + the rarest hunts live there,
+   not because a gate sits after it.
+
+**Consequence for layout:** the homeworld ring's terminal zone is not an endpoint — it's the
+**on-ramp into the realm axis** (this is the role "Meadow-as-gateway" was reaching toward; see §3).
+Meadow's exact pricing/position stays unresolved pending that decision.
+
+---
+
+## 13. Support pets — active targeted buff/debuff (experimental)
+
+Today's support pets are passive **auras** (radius heal/defense/offense/yield — built, task #135).
+The next experiment: support pets that **target like combat pets**, where the "hit" applies a buff
+or debuff instead of HP damage.
+
+- **Same engagement loop as combat** (perceive → pick target → "attack" on a cadence); the payload
+  is a status effect, not damage.
+- **Friendly target → buff** (e.g. PetDamageBuff / TeamDefenseBuff on an ally pet).
+- **Enemy target → debuff** (e.g. Vulnerable / weaken — the support's "indirect target").
+- **Heals are moot in mining** (no incoming damage to undo) — fine; they matter in combat only.
+- **Reuse existing channels:** the buff/debuff infrastructure already exists (PetDamageBuff,
+  PetTeamDamageBuff, Vulnerable, TeamDefenseBuff + status-effect badges, tasks #115/#125). The new
+  work is making a **friendly pet a valid target class** (combat targeting assumes enemies), plus
+  buff stacking/duration rules.
+- **Risk (flagged):** a "friendly pet" target class may perturb existing combat targeting/aggro.
+  Build behind a flag; verify enemy targeting is untouched.
