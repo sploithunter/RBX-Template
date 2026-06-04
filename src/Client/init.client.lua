@@ -239,6 +239,16 @@ do
     end
 end
 
+-- Dev metrics overlay (Studio-only): rolling 1-min DPS / Coins-per-sec / Pet-speed bars for balancing.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.DevMetricsHud).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start DevMetricsHud", { error = tostring(err) })
+    end
+end
+
 -- Start Matter loop with client systems
 local systemsList = {}
 for name, system in pairs(systems) do
