@@ -4,7 +4,7 @@ Status: current
 
 ## Summary
 
-This is a Rojo Roblox pet/clicker project being upgraded toward a config-as-code template. Phase 0 is complete, Phase 1 map integration is complete for the current synthetic/partial-authored baseline, Phase 2 economy depth is complete for the current baseline, Phase 3 stats-derived wins are complete for pet index, achievements, and live leaderboards, and Phase 4 progression depth is complete for the current baseline. Phase 5 has started with server-authoritative auto-target mode selection and hatch auto-delete filters. The playable loop includes breakable crystals, coin generation, eggs, hatching, persistent player data, imported pet assets, an admin panel, configurable currency conversion, basic global events/effects work, multi-area map hooks, server-authoritative area travel, active-zone spawner dormancy, config-driven upgrades, paid area unlocks, area-gated stronger breakables, first-time pet indexing, achievement rewards, K1-backed leaderboards, unique pet progression, enchant systems, player-level power, and first-pass auto systems.
+This is a Rojo Roblox project: a config-as-code template that **is becoming the game "Pet Realm" (Halo & Horns)** — a heaven/hell directional pet game. Template Phases 0–11 are complete (data spine, map integration, economy depth, stats/achievements/leaderboards, progression, the full Halo & Horns feature build P0–P10: data spine, pets & power, layer slice, party core, combat & focus, archetypes/powers/augment/hotbar/rosters, social/trade/fusion/rifts, reward spine, quest/daily/shop UI, escrow trade — plus P11 the SSOT pet-inventory model). On top of that baseline the **Pet Realm game layer** is the active lane: per-biome zone economy, mining/combat balance, the PetPower mining/combat split, an XP-everywhere level-50 system with a claimed-vs-earned split + Ascension Altar, a level-diff accuracy curve, and a bounded "pets-are-stars" power model with a Creator ceiling — all bound to the pinned progression/power/teaming design spec. See the **"Pet Realm" section below** for the current game state; the older phase sections remain as template-baseline history. The playable loop: mine biome ore → earn biome coins → hatch eggs → grow/equip a pet squad → claim levels (powers/slots/egg-hatch) → unlock zones toward the (planned) heaven/hell realm axis.
 
 ## Working Systems
 
@@ -751,6 +751,62 @@ real players, so it's verified by the headless rules + the solo command-surface
 guards and flagged for a multiplayer test. Optional polish: a poll fallback if a
 TradeUpdate push is missed (the bus `trade.state` exists for it).
 
+## Pet Realm (Halo & Horns) — progression, power, economy & balance (CURRENT game lane)
+
+The active game layer on top of the template baseline. Design SoT:
+`docs/PET_REALM_PROGRESSION_POWER_TEAMING.md` (§1–15) + `docs/PET_REALM_DESIGN_DOCUMENT.md`.
+
+**Zone economy (per-biome coins).** Four biome currencies — `grass_coins` / `ice_coins` /
+`lava_coins` / `desert_coins` (non-tradeable; gems-only trading). Each biome's ore family pays its
+own coin; HUD shows the four with a live `+N` gain indicator (legacy `coins`/`crystals` removed).
+`ZoneTrackerService` resolves the current area from config bounds by raycasting biome baseplates;
+farming is scoped to that area. Per-biome egg stands (Earth/Ember/Ice/Sand) place real hatch-target
+eggs. **Mining income identity: `coins/sec = DPS × (value/HP)`, ratio = 0.2** (`configs/breakables.lua`
+ORE_TIERS) — every crystal tier pays the same rate; bigger ones just take longer. Outer zones spawn
+`max=100` with 5–60s distributed respawn; the local depletion sag is a **designed throttle**
+(active>passive). Active-mining boost: clicking a node amplifies pet damage on it.
+
+**Targeting / farm modes (`configs/auto_systems.lua`).** Free = `nearest` (min travel — the best
+DPS the flat ~26 studs/s pets allow); paid gamepass = `highest_value` (camp big nodes). Hotbar cycle
+Off→Near→High.
+
+**Zone unlocks (`configs/areas.lua`).** Ring grass→Ice→Lava→Desert, each paid in the *prior* zone's
+coins (no skipping). Costs tuned to a "real chapter per zone": Ice 8k / Lava 18k / Desert 35k /
+Meadow 2k (Meadow = permanent +10% coins). **Open design (§12):** the ring's terminal zone should be
+an on-ramp into the heaven/hell realm axis, not a dead-end.
+
+**PetPower (mining/combat split + bounded ceiling).** `PetPower`/`PetPowerView` give every pet a
+two-number profile — ⛏ mining vs ⚔ combat (role aptitude × element × variant), shown on the card.
+Power S2: a bounded geometric tier curve + a code-enforced `max_pet_power` ceiling (the Creator apex;
+nothing out-powers Huge Rainbow Colorado) + a shiny axis (neutral 1.0). **Eternal pets** (Huge,
+Secret, Exclusive) scale dynamically: power = `power_percent` × the average of the player's top-N
+non-eternal pets (Huge=120%), so they stay relevant forever without breaking the ceiling
+(`PetHandler.resolveEffectivePetPower`, `configs/pets.lua`).
+
+**Accuracy curve (combat substrate).** Pure `Accuracy` to-hit = `clamp(base + step·(atk−def),
+floor, cap)` reading a single `EffectiveLevel` seam (teaming will override it); mining is flat 100%
+(fixed the old 8% crystal whiff). The three identity numbers: **EffectiveLevel** (combat scaling),
+**ClaimedLevel** (entitlements), **Soul** (heaven/hell alignment).
+
+**XP + level-up (cap 50).** Mining AND combat grant XP. **Claimed-vs-earned split:** XP earns
+levels; powers/slots/egg-hatch are *claimed* via a level-up sequence UI. Hybrid **Ascension Altar:**
+filler levels auto-claim in the field; power/slot/milestone levels train at the altar. Caps: **10
+equipped pets + 10 power picks**; +1 egg-hatch per claimed level. Dev XP reads a monotonic `XPTotal`
+attribute (keeps accruing past the cap).
+
+**Dev tooling.** Studio-only metrics overlay (rolling-1-min DPS / Coins-s / Pet-speed / XP-min bars).
+Admin panel "Add 100k Area Coins" funds all biome currencies. Audio Effects/Music/UI volume controls
+work (SoundGroups).
+
+**Verified balance (grass/ice/lava, farming Near):** fresh dogs ≈46 DPS→~10 cps; fresh bears ≈25
+DPS→~6 cps (tanks mine slow by design); graduated variant squads ≈85–150 DPS→~17–30 cps. The
+"~200-egg arc" (~20k coins) ≈ graduate a starter squad ≈ ~20–33 min.
+
+**Next (tracked tasks #149–156):** World S3 (realm axis as a non-terminal endgame — token earning
+loop + traversal-sink knob + depth=desirability via Eternal pets), Teaming S4, Creator S5,
+earning-rate enemy pressure (#155), support-pet targeted buff/debuff (#156), PetPower S3
+(display=dealt), Power S2b balance rebase, overnight memory-leak investigation.
+
 ## Balance follow-up (config-only)
 - Huge pets' base-power floor scales with pet level (huge_base_power × level mult →
   e.g. 152% at lvl 27). Flagged by the user as too high; tune later (config /
@@ -767,14 +823,23 @@ Those documents define the planned foundation work: stats, modifier pipeline, sa
 
 ## Next Likely Work
 
-Continue Phase 5 and follow-up polish while keeping cleanup space for Studio and tooling warnings:
+The active lane is the **Pet Realm game layer** (see the Pet Realm section above); the
+template-baseline polish below is parked behind it.
 
-1. Add richer UI controls for auto-target modes, selected currency, and hatch auto-delete filters.
-2. Replace the legacy pet follow/mining script with a service-owned PetWork/Combat loop when hands-on play-feel testing is available. (Tracked: template issue #4; Phase 4 Combat.)
-3. Improve the first enchanter UI with richer result animation, better before/after messaging, and future enchant lock/protection options.
-4. Improve enchant education/discoverability beyond the first config-sourced description text.
-5. Expand the authored-map workflow with visible gate art/fixtures attached to the invisible `TeleportPad`/`Portal` hooks.
-6. Clean up warning-level placeholder/test data in monetization, UI style rules, and saved effects.
+Pet Realm next (tracked tasks #149–156):
+1. **World S3** — heaven/hell realm axis as a non-terminal endgame (retention, not gates): expand
+   layers 3→5/side + `requires_level` gate (substrate S3.1), then the token earning loop, the
+   traversal-sink knob (`charge_on`), and depth=desirability via Eternal pets.
+2. **Teaming S4** — guest pass + lead-anchored sidekick/exemplar (power axis only).
+3. **Creator S5** — Creator class (dev-only, untradeable apex) + Meet-the-Creator + shiny pets.
+4. **Earning-rate enemy pressure** (#155) — anti-cheat tool #3 (high income → enemies; seed the
+   baseline off the DataStore-loaded total to skip the join spike).
+5. **Support-pet targeted buff/debuff** (#156, experimental); **PetPower S3** (display=dealt, #132);
+   **Power S2b** balance rebase (#153); **overnight memory-leak** investigation (#152).
+
+Template-baseline polish (parked): richer auto-target UI controls; replace the legacy pet
+follow/mining clone with a service-owned loop (template issue #4); enchanter UI polish; authored-map
+gate art on the `TeleportPad`/`Portal` hooks; clean up warning-level placeholder/test data.
 
 ## Links
 
