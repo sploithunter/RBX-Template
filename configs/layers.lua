@@ -146,7 +146,17 @@ return {
                 heaven_3 = { textures = nil },
                 heaven_4 = { textures = nil },
                 heaven_5 = { textures = nil },
-                hell_1 = { textures = nil },
+                hell_1 = {
+                    textures = {
+                        ft = 72553765826706,
+                        bk = 92241207750302,
+                        lf = 138038201122541,
+                        rt = 94865800916028,
+                        up = 89930062014588,
+                        dn = 97468777327797,
+                        celestial_bodies_shown = false,
+                    },
+                },
                 hell_2 = {
                     textures = {
                         ft = 104546429898763,
