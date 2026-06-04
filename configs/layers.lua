@@ -111,8 +111,8 @@ return {
             brightness = 0.02,
             contrast = 0.12,
             clock_time = 2,
-            ambient = { 85, 40, 34 }, -- dark but the player's still visible (was an over-bright 120/60/55)
-            outdoor_ambient = { 120, 64, 54 },
+            ambient = { 0, 0, 0 }, -- ambient OFF — pitch-black hell (user: "it was black, the red wash is wrong")
+            outdoor_ambient = { 0, 0, 0 },
             fog_color = { 45, 14, 12 },
             fog_end = 1000,
             atmosphere = {
@@ -293,25 +293,47 @@ return {
         },
     },
 
-    -- Floating demon faces in the Hell sky (RealmHellFaces). The server LoadAssets the model once
-    -- into ReplicatedStorage.RealmModels at boot; the client clones it, scales it up huge, hangs a
-    -- ring of them very high looking down, with a DIM pulsing light inside. Depth-scaled: Hell 1 =
-    -- one distant face, Hell 5 = a ring of `base_count + 4*per_depth_count`. Hell-only; client-side.
+    -- Giant demon head looming in the Hell sky (RealmHellFaces). The server LoadAssets the model
+    -- once into ReplicatedStorage.RealmModels at boot; the client clones it, scales it huge, and
+    -- hangs it OFF TO ONE SIDE up in the sky (NOT straight overhead — Roblox cameras hate looking
+    -- straight up), facing the player. The face body is darkened so it recedes into shadow; two
+    -- raycast-seated Neon eyes glow from deep in the sockets. Hell-only; client-side per player.
+    -- Tuned live (off-to-side placement, recessed glowing eyes) — see commit history.
     hell_faces = {
         enabled = true,
         model_asset_id = 87113428787101,
         template_name = "HellFace", -- runtime cache under ReplicatedStorage.RealmModels
-        scale = 170, -- target max-dimension in studs (model is ~2 -> scaled way up; big = findable)
-        height = 450, -- absolute sky altitude (high, but findable when you look up)
-        spread = 420, -- horizontal ring radius
-        base_count = 1, -- faces at depth 1
-        per_depth_count = 1, -- +1 per layer of depth (hell_5 -> 5)
+
+        scale = 240, -- target max-dimension in studs (huge, looming presence)
+        -- Placement is player-relative on Hell entry: off to one side, high, facing the player.
+        height = 350, -- studs above the player (so it sits ~35-40 deg up, a natural camera pitch)
+        distance = 450, -- horizontal offset to the side
+        azimuth_deg = 0, -- which world compass direction it sits (0 = +X; spin it to taste)
+        base_count = 1, -- one hero face
+        per_depth_count = 0, -- 0 = single face at every depth; >0 rings extra faces with depth
+
+        -- Face body: dark so only the eyes read (the head silhouettes against the skybox).
+        face_color = { 35, 12, 10 },
+        face_material = "SmoothPlastic",
+
+        -- Glowing eyes, raycast-seated into the actual mesh sockets and recessed for a sunken look.
+        eyes = {
+            enabled = true,
+            size = 34, -- orb diameter (studs)
+            up = 30, -- studs above head center (brow height)
+            side = 35, -- half-separation between the eyes
+            recess = 30, -- how deep into the sockets they sit (+ = deeper; raycast-seated)
+            color = { 255, 30, 12 }, -- Neon orb color (red, ~max for red Neon)
+            light_color = { 255, 40, 18 }, -- bloom halo color
+            light_brightness = 14, -- bloom intensity
+            light_range = 95, -- bloom reach
+        },
+
+        -- Legacy per-face interior light (off now; the eyes carry the glow). Kept for back-compat.
         light_color = { 255, 45, 25 },
-        -- Light is a SELF-glow on the face only — small range so it never floods the world red
-        -- (that was the "everything is red" bug: low-spawned faces with big-range lights).
-        light_brightness = 1.5,
-        light_range = 60,
-        pulse_brightness = 3,
+        light_brightness = 0,
+        light_range = 100,
+        pulse_brightness = 0,
         pulse_seconds = 2.4,
     },
 }
