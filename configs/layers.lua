@@ -313,7 +313,9 @@ return {
         follow_smoothing = 0.04, -- position/rotation lerp per frame (lower = laggier, dreamier glide)
 
         -- Intermittent presence: it only shows up SOMETIMES, fading in and back out.
-        appear_chance = 0.4, -- chance it's present on each roll
+        -- TESTING: appear_chance = 1.0 keeps it always present (no waiting / hunting in the dark).
+        -- For the real eerie effect drop this back toward ~0.4.
+        appear_chance = 1.0, -- chance it's present on each roll (1.0 = always there)
         appear_interval = 12, -- seconds between appear/vanish rolls
         fade_seconds = 1.5, -- fade in/out duration
 
