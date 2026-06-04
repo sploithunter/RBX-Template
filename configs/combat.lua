@@ -146,6 +146,20 @@ return {
         },
     },
 
+    -- Level-diff TO-HIT curve (src/Shared/Game/Accuracy). hit_chance = clamp(base_to_hit +
+    -- per_level_step*(attackerEffectiveLevel - defenderLevel), floor, cap). The defender's
+    -- published Level already bakes in its rank_offset (boss reads +2), so a boss is naturally
+    -- harder to land on — no separate rank term needed. MINING is exempt (crystals can't dodge):
+    -- mining_hit_chance applies to breakables with no EnemyId. This replaces the old flat
+    -- engagement.rolls.pet_attack.hit_chance for the HIT decision; CombatRoll still owns crit.
+    accuracy = {
+        base_to_hit = 0.92, -- even-level to-hit (8% miss baseline)
+        per_level_step = 0.04, -- to-hit lost per level the target is above you (gained if below)
+        floor = 0.05,
+        cap = 0.95,
+        mining_hit_chance = 1.0, -- crystals never miss (fixes the old 8% mining whiff)
+    },
+
     -- Staged degradation (§11.3): a pet visibly weakens before it is downed, so the
     -- player can RECALL it first (the agency that makes recall worthwhile). Keyed off
     -- the pet's health fraction (1 = full, 0 = downed): at/below strained_at -> Strained,

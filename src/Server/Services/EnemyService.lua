@@ -27,6 +27,7 @@ local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
 local AggroTable = require(ReplicatedStorage.Shared.Game.AggroTable)
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
+local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
 local ActiveSquad = require(ReplicatedStorage.Shared.Game.ActiveSquad)
 local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
@@ -455,9 +456,15 @@ function EnemyService:_hitPet(pet, def, now, eng, enemyLevel, petLevel)
     local power = self:_petPower(pet)
     local factor = self._combatConfig.pet_down_threshold_factor or 1
     local dmg = (def.attack and def.attack.damage) or 0
-    -- Hit / crit roll: a miss deals nothing, a crit multiplies the bite (before mitigation).
-    local roll =
-        CombatRoll.resolve(eng.rolls and eng.rolls.enemy_attack, math.random(), math.random())
+    -- Hit / crit roll. Hit chance from the level-diff Accuracy curve (a higher-level enemy lands
+    -- more reliably on a lower pet, and vice versa) — same module the pets use. CombatRoll still
+    -- owns the crit (chances from enemy_attack config).
+    local enemyAtkRoll = eng.rolls and eng.rolls.enemy_attack
+    local roll = CombatRoll.resolve({
+        hit_chance = Accuracy.combatToHit(enemyLevel, petLevel, self._combatConfig.accuracy),
+        crit_chance = enemyAtkRoll and enemyAtkRoll.crit_chance,
+        crit_mult = enemyAtkRoll and enemyAtkRoll.crit_mult,
+    }, math.random(), math.random())
     if roll.multiplier <= 0 then
         return -- missed
     end
@@ -744,7 +751,10 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     entry.nextAttack = entry.nextAttack or 0
     if biteTarget and now >= entry.nextAttack then
         local enemyLevel = model:GetAttribute("Level") or 1
-        local petLevel = biteTarget:GetAttribute("Level") or (player:GetAttribute("Level") or 1)
+        -- Pet defends at its owner's EFFECTIVE level (teaming seam), same value its own attacks use.
+        local petLevel = player:GetAttribute("EffectiveLevel")
+            or biteTarget:GetAttribute("Level")
+            or (player:GetAttribute("Level") or 1)
         self:_hitPet(biteTarget, def, now, eng, enemyLevel, petLevel)
         entry.nextAttack = now + ((def and def.attack and def.attack.cadence) or 1.5)
     end

@@ -129,6 +129,19 @@ function PlayerProgressionService:GetPendingLevels(player)
     return math.max(0, self:GetEarnedLevel(player) - self:GetClaimedLevel(player))
 end
 
+-- EFFECTIVE level — the COMBAT level every level-diff curve reads (accuracy + damage scaling +
+-- pet realization). Today it's just the earned level; the SEAM for teaming: sidekick/exemplar
+-- will override this (sync to the team lead) and every curve picks it up via the published
+-- `EffectiveLevel` attribute, with no curve rework. NOT an entitlement level (powers/access stay
+-- on claimed).
+function PlayerProgressionService:GetEffectiveLevel(player)
+    if not player then
+        return 1
+    end
+    -- Future: a team-sync override stored on the player; for now it's the earned/combat level.
+    return self:GetEarnedLevel(player)
+end
+
 -- Progress object at the EARNED level (used by AddExperience/SetLevel return values).
 function PlayerProgressionService:GetProgress(player)
     return LevelCurve.progress(self:GetExperience(player), self._xpConfig)
@@ -165,6 +178,9 @@ function PlayerProgressionService:_publish(player)
     local prog = self:_claimedProgress(player, claimed)
     player:SetAttribute("Level", earned)
     player:SetAttribute("ClaimedLevel", claimed)
+    -- Combat level the level-diff curves read (Accuracy + LevelScale). = earned today; teaming
+    -- will override this attribute to sync sidekicks/exemplars to the team lead.
+    player:SetAttribute("EffectiveLevel", self:GetEffectiveLevel(player))
     player:SetAttribute("PendingLevels", pending)
     player:SetAttribute("PendingTraining", self:GetPendingTraining(player))
     player:SetAttribute("XP", prog.xpIntoLevel)

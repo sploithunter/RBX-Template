@@ -28,6 +28,7 @@ local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
 local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
 local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
+local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
 local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
@@ -352,7 +353,11 @@ function PetFollowService:_mine(player, pet, breakable)
     dmg = dmg * self:_originStat(pet, player).attack_mult
     -- Level scaling vs ENEMIES only (crystals have no Level): out-level it -> hit harder.
     if breakable:GetAttribute("EnemyId") then
-        local petLevel = pet:GetAttribute("Level") or (player:GetAttribute("Level") or 1)
+        -- Attacker fights at the owner's EFFECTIVE level (the teaming seam) — same value the
+        -- accuracy curve below uses, so hit + damage scale together.
+        local petLevel = player:GetAttribute("EffectiveLevel")
+            or pet:GetAttribute("Level")
+            or (player:GetAttribute("Level") or 1)
         local enemyLevel = breakable:GetAttribute("Level") or petLevel
         dmg = dmg * LevelScale.factor(petLevel, enemyLevel, self._levelingConfig.scale)
     end
@@ -377,14 +382,28 @@ function PetFollowService:_mine(player, pet, breakable)
     if armor > 0 then
         dmg = CombatMath.mitigate(dmg, armor, self._combatConfig.armor_curve_k or 100)
     end
-    -- Hit / crit roll: a miss deals nothing this swing, a crit multiplies the damage.
-    local roll = CombatRoll.resolve(
-        self._combatConfig.engagement
-            and self._combatConfig.engagement.rolls
-            and self._combatConfig.engagement.rolls.pet_attack,
-        math.random(),
-        math.random()
-    )
+    -- Hit / crit roll. Hit chance now comes from the level-diff Accuracy curve (vs the enemy's
+    -- level, which bakes in rank); MINING never misses (crystals can't dodge — fixes the old 8%
+    -- whiff). CombatRoll still owns the crit (chances from the pet_attack config).
+    local accCfg = self._combatConfig.accuracy
+    local petAtkRoll = self._combatConfig.engagement
+        and self._combatConfig.engagement.rolls
+        and self._combatConfig.engagement.rolls.pet_attack
+    local hitChance
+    if breakable:GetAttribute("EnemyId") then
+        local atkLevel = player:GetAttribute("EffectiveLevel")
+            or pet:GetAttribute("Level")
+            or (player:GetAttribute("Level") or 1)
+        local enemyLevel = breakable:GetAttribute("Level") or atkLevel
+        hitChance = Accuracy.combatToHit(atkLevel, enemyLevel, accCfg)
+    else
+        hitChance = Accuracy.miningHitChance(accCfg)
+    end
+    local roll = CombatRoll.resolve({
+        hit_chance = hitChance,
+        crit_chance = petAtkRoll and petAtkRoll.crit_chance,
+        crit_mult = petAtkRoll and petAtkRoll.crit_mult,
+    }, math.random(), math.random())
     dmg = dmg * roll.multiplier
     pet:SetAttribute("LastHitCrit", roll.crit) -- for floating-text feedback (later)
 
