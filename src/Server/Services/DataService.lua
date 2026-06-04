@@ -36,7 +36,7 @@ local DEFAULT_SAVE_DEBOUNCE_SECONDS = 15
 local CRITICAL_SAVE_DEBOUNCE_SECONDS = 1
 local PERIODIC_SAVE_SECONDS = 60
 local SAVE_CONFIRM_TIMEOUT_SECONDS = 10
-local CURRENT_SCHEMA_VERSION = 8
+local CURRENT_SCHEMA_VERSION = 9
 
 local function countInventoryItems(inventory)
     local counts = {}
@@ -430,23 +430,37 @@ SchemaMigrations[6] = function(self, data)
     return migrations + 1
 end
 
--- v7 -> v8: introduce Stats.ClaimedLevel (the level-up CLAIM gate). Backfill to the player's
--- EARNED level (derived from total XP) so existing players keep ALL their level benefits and
--- owe zero retroactive claims — a no-op for current behavior. The feature only governs FUTURE
--- level-ups. New profiles default ClaimedLevel=1 via the template (they have 0 XP). Idempotent.
-SchemaMigrations[7] = function(self, data)
-    local migrations = 0
+-- Backfill Stats.ClaimedLevel = EARNED level (from total XP). Set UNCONDITIONALLY, not guarded
+-- on nil: profile:Reconcile() runs the template BEFORE migrations, so ClaimedLevel is already
+-- the template default (1) by the time a migration sees it. A migration step only runs ONCE per
+-- profile (version-gated), so this is a true one-time backfill — it does NOT clobber a later
+-- legitimately-claimed-lower level (the migration won't re-run once the profile is current).
+function DataService:_backfillClaimedLevel(data)
     data.Stats = data.Stats or {}
-    if data.Stats.ClaimedLevel == nil then
-        local xpCfg
-        if self._configLoader then
-            local pp = self._configLoader:LoadConfig("player_progression")
-            xpCfg = pp and pp.xp
-        end
-        data.Stats.ClaimedLevel = LevelCurve.levelForXp(tonumber(data.Stats.Experience) or 0, xpCfg)
-        migrations += 1
+    local xpCfg
+    if self._configLoader then
+        local pp = self._configLoader:LoadConfig("player_progression")
+        xpCfg = pp and pp.xp
     end
+    data.Stats.ClaimedLevel = LevelCurve.levelForXp(tonumber(data.Stats.Experience) or 0, xpCfg)
+    return 1
+end
+
+-- v7 -> v8: introduce Stats.ClaimedLevel (the level-up CLAIM gate). Backfill to earnedLevel so
+-- existing players keep ALL their level benefits and owe zero retroactive claims — a no-op for
+-- current behavior; the feature only governs FUTURE level-ups.
+SchemaMigrations[7] = function(self, data)
+    local migrations = self:_backfillClaimedLevel(data)
     data.SchemaVersion = 8
+    return migrations + 1
+end
+
+-- v8 -> v9: re-run the ClaimedLevel backfill. Repairs profiles that upgraded to v8 during the
+-- window where the v7 step skipped the backfill (it was nil-guarded, but Reconcile had already
+-- written the template default first). Idempotent; one-time.
+SchemaMigrations[8] = function(self, data)
+    local migrations = self:_backfillClaimedLevel(data)
+    data.SchemaVersion = 9
     return migrations + 1
 end
 
