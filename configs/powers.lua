@@ -9,8 +9,11 @@
 ]]
 
 return {
-    -- Levels that grant a power selection (one per level). Tunable.
-    selection_levels = { 5, 9, 13, 17, 21, 25 },
+    -- 10 power picks across 1->50 (target: 10 powers out of a larger pool). Pools
+    -- (archetypes.lua power_pool) are smaller than 10 today, so late picks gracefully show
+    -- "no powers available" until the pools are authored out. Keep in sync with
+    -- level_track.lua power_levels.
+    selection_levels = { 3, 7, 11, 15, 19, 24, 29, 34, 40, 46 },
 
     -- Families whose effect reaches an ENEMY through the pets (offensive / control / debuff /
     -- pet-amplified damage). These can't be cast unless the squad is actually engaged with an

@@ -1,10 +1,23 @@
 --[[
     LevelTrack — [unit] claim math + per-level reward lookup.
+    Uses a LOCAL fixture config so retuning configs/level_track.lua never breaks these tests.
     Run: mise run test-headless
 ]]
 
 local LevelTrack = loadModule("src/Shared/Game/LevelTrack.lua")
-local cfg = loadModule("configs/level_track.lua")
+
+-- Stable fixture (decoupled from the shipped cadence).
+local cfg = {
+    max_level = 50,
+    egg_hatch = { base = 3, per_level = 1 },
+    power_levels = { 5, 9 },
+    slot_levels = { 8, 12 },
+    slots_per_grant = 2,
+    milestones = { 10, 20 },
+    altar_kinds = { power = true, slot = true, milestone = true, reward = false },
+    rewards = { default = { currencies = { Gems = 5 } } },
+    milestone_rewards = { [10] = { currencies = { Gems = 25 } } },
+}
 
 return function()
     describe("LevelTrack.resolve (claim gate)", function()
@@ -24,7 +37,6 @@ return function()
         end)
 
         it("saturates at the level cap (50)", function()
-            -- earned can't exceed max; claimed at max cannot claim further
             local r = LevelTrack.resolve(50, 60, cfg)
             expect(r.atMax).to.equal(true)
             expect(r.canClaim).to.equal(false)
@@ -50,7 +62,7 @@ return function()
         it("slot levels grant enhancement slots", function()
             local e = LevelTrack.entryForLevel(8, cfg)
             expect(e.kind).to.equal("slot")
-            expect(e.slots > 0).to.equal(true)
+            expect(e.slots).to.equal(2)
             expect(e.powerPick).to.equal(false)
         end)
 
@@ -82,7 +94,7 @@ return function()
         end)
         it("pure-reward filler levels auto-claim (no altar)", function()
             expect(LevelTrack.entryForLevel(3, cfg).requiresAltar).to.equal(false)
-            expect(LevelTrack.entryForLevel(7, cfg).requiresAltar).to.equal(false)
+            expect(LevelTrack.entryForLevel(6, cfg).requiresAltar).to.equal(false)
         end)
         it("altar_kinds knob can flip a kind to auto", function()
             local autoCfg = {

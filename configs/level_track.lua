@@ -26,12 +26,12 @@ return {
     },
 
     -- Levels where the claim opens the POWER PICKER (PowerSelection / PowerService:Select).
-    -- Mirror of powers.lua selection_levels.
-    power_levels = { 5, 9, 13, 17, 21, 25 },
+    -- Mirror of powers.lua selection_levels (10 picks toward a 10-power build).
+    power_levels = { 3, 7, 11, 15, 19, 24, 29, 34, 40, 46 },
 
     -- Levels where the claim GRANTS enhancement slots to place on owned powers (Augmentation).
     -- Mirror of augmentation.lua slot_grant_levels. `slots_per_grant` enhancement slots each.
-    slot_levels = { 8, 12, 18, 25, 35, 45 },
+    slot_levels = { 8, 14, 21, 27, 33, 38, 44 },
     slots_per_grant = 2,
 
     -- Big moments. Headline flair + a bundle from milestone_rewards below.

@@ -394,7 +394,7 @@ return {
     equipped = {
         pets = {
             slots = 3, -- Base equipped pet slots
-            max_slots = 6, -- Hard cap after perks/gamepasses/rewards
+            max_slots = 10, -- Hard cap after perks/gamepasses/rewards (level progression -> 10)
             extra_slots_perk = "extra_pet_slots",
             display_name = "Active Pets",
             icon = "🐾",

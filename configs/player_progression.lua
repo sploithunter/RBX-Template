@@ -27,13 +27,16 @@ return {
     },
 
     level_rewards = {
+        -- Pet EQUIP slots from leveling: base 3 (inventory.lua) + up to +7 here = 10 by ~L41.
+        -- Granted as the player's CLAIMED level crosses each milestone (so it's altar/claim
+        -- gated like the rest of progression). Cap also bounded by inventory.lua max_slots (10).
         equip_slots = {
             pets = {
                 enabled = true,
-                start_level = 10,
-                every_levels = 10,
+                start_level = 5,
+                every_levels = 6, -- grants at 5,11,17,23,29,35,41 -> +7
                 slots_per_milestone = 1,
-                max_bonus_slots = 3,
+                max_bonus_slots = 7,
             },
         },
     },

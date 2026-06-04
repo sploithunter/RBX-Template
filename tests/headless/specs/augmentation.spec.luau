@@ -30,8 +30,8 @@ return function()
         end)
 
         it("unallocated = granted minus allocated", function()
-            -- level 18 -> 3 granted (8,12,18); 2 allocated -> 1 free
-            expect(Augmentation.unallocatedSlots(18, 2, grants)).to.equal(1)
+            -- at the 3rd grant level -> 3 granted; 2 allocated -> 1 free
+            expect(Augmentation.unallocatedSlots(grants[3], 2, grants)).to.equal(1)
         end)
     end)
 

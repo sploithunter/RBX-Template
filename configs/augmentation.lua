@@ -8,7 +8,8 @@
 ]]
 
 return {
-    slot_grant_levels = { 8, 12, 18, 25, 35, 45 },
+    -- Keep in sync with level_track.lua slot_levels (the level-up grants the slots here).
+    slot_grant_levels = { 8, 14, 21, 27, 33, 38, 44 },
     max_slots_per_power = 6,
     slot_types = { "recharge", "strength", "range", "duration", "efficiency", "reliability" },
 

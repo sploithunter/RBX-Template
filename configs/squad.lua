@@ -10,7 +10,7 @@ return {
     limits = {
         inventory = 1000,
         equipped = 10,
-        active_squad = 5,
+        active_squad = 10, -- all 10 equipped pets deploy + show in the right bar
     },
     swap_cooldown_seconds = 5,
 
