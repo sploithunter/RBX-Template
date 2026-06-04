@@ -73,6 +73,9 @@ function PlayerProgressionService:Start()
             end
             if player.Parent then
                 self:_publish(player)
+                -- Catch up any banked FILLER levels on join (e.g. earned offline); training
+                -- levels still stall for the altar.
+                self:_advanceAuto(player)
             end
         end)
     end

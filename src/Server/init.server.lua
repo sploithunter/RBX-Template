@@ -439,6 +439,14 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.PetFollowService,
     { "Logger", "ConfigLoader" }
 )
+-- AscensionAltarService: the "trainer" station — places the Ascension Altar (tagged part +
+-- ProximityPrompt) the player visits to claim TRAINING level-ups. Resolves
+-- PlayerProgressionService at runtime via the locator.
+loader:RegisterModule(
+    "AscensionAltarService",
+    ServerScriptService.Server.Services.AscensionAltarService,
+    { "Logger", "ConfigLoader" }
+)
 -- EnemyService: spawns live combat enemies pets attack like breakables (Feature 10,
 -- slice 1a). Resolves CombatService at runtime via the locator for loot awards.
 loader:RegisterModule(
@@ -590,6 +598,7 @@ table.insert(requiredModules, "ShopService")
 table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "PetFollowService")
+table.insert(requiredModules, "AscensionAltarService")
 table.insert(requiredModules, "ZoneTrackerService")
 table.insert(requiredModules, "GameAPIService")
 if RunService:IsStudio() then

@@ -87,11 +87,17 @@ function LevelUpController.start()
     self._claiming = false
     self:_build()
     self:_refreshButton()
-    self.player:GetAttributeChangedSignal("PendingLevels"):Connect(function()
+    -- The nudge tracks TRAINING levels owed (power/slot/milestone) — those are claimed at the
+    -- altar; filler levels auto-claim in the field (no button).
+    self.player:GetAttributeChangedSignal("PendingTraining"):Connect(function()
         self:_refreshButton()
     end)
     Signals.LevelUp_Claimed.OnClientEvent:Connect(function(data)
-        self:_showSequence(data)
+        if data and data.auto then
+            self:_toast(data) -- field auto-claim (filler) -> small toast
+        else
+            self:_showSequence(data) -- altar claim (training) -> reveal modal
+        end
     end)
     return self
 end
@@ -130,8 +136,10 @@ function LevelUpController:_build()
     pad.Parent = btn
     btn.Parent = gui
     self.button = btn
+    -- The button is a NUDGE, not a claim — training is claimed at the Ascension Altar. Tapping
+    -- it just reminds you where to go.
     btn.Activated:Connect(function()
-        self:_claim()
+        self:_toast({ title = "Ascend at the Ascension Altar", auto = true })
     end)
 
     -- gentle pulse so it draws the eye
@@ -286,33 +294,54 @@ function LevelUpController:_buildModal()
     end)
 end
 
--- ---- button --------------------------------------------------------------
+-- ---- nudge + toast ------------------------------------------------------
 
+-- The button is now a NUDGE: shown only when TRAINING levels are owed, reminding the player to
+-- visit the Ascension Altar (the claim itself happens at the altar's prompt).
 function LevelUpController:_refreshButton()
-    local pending = tonumber(self.player:GetAttribute("PendingLevels")) or 0
-    self.button.Visible = pending > 0
-    if pending > 1 then
-        self.button.Text = string.format("⬆  LEVEL UP!  (%d)", pending)
+    local training = tonumber(self.player:GetAttribute("PendingTraining")) or 0
+    self.button.Visible = training > 0
+    if training > 1 then
+        self.button.Text = string.format("✦  ASCEND  (%d)", training)
     else
-        self.button.Text = "⬆  LEVEL UP!"
+        self.button.Text = "✦  ASCEND"
     end
 end
 
-function LevelUpController:_claim()
-    if self._claiming then
-        return
-    end
-    self._claiming = true
-    self.button.Visible = false
-    local expected = tonumber(self.player:GetAttribute("ClaimedLevel")) or 1
-    task.spawn(function()
-        local res = callBus("levelup.claim", { expectedLevel = expected })
-        self._claiming = false
-        if not (res and res.ok) then
-            -- claim failed (stale/no pending) — restore the button if levels still pending
-            self:_refreshButton()
+-- A small auto-dismissing toast (top-center, below the nudge) for field auto-claims + hints.
+function LevelUpController:_toast(data)
+    data = data or {}
+    local text = data.title
+    if not text then
+        local parts = { "Level " .. tostring(data.level or "?") .. "!" }
+        if data.eggHatchTotal then
+            table.insert(parts, "🥚 " .. tostring(data.eggHatchTotal))
         end
-        -- success path is driven by the LevelUp_Claimed signal -> _showSequence
+        text = table.concat(parts, "   ")
+    end
+    local toast = Instance.new("TextLabel")
+    toast.Size = UDim2.new(0, 280, 0, 40)
+    toast.Position = UDim2.new(0.5, 0, 0.24, 20)
+    toast.AnchorPoint = Vector2.new(0.5, 0.5)
+    toast.BackgroundColor3 = PANEL
+    toast.BackgroundTransparency = 0.1
+    toast.Text = "  " .. text .. "  "
+    toast.TextColor3 = OK_GREEN
+    toast.TextScaled = true
+    toast.Font = Enum.Font.GothamBold
+    toast.ZIndex = 8
+    corner(toast, 10)
+    stroke(toast, GOLD_DEEP, 1)
+    toast.Parent = self.gui
+    TweenService:Create(toast, TweenInfo.new(0.25), { Position = UDim2.new(0.5, 0, 0.24, 0) }):Play()
+    task.delay(2.2, function()
+        local fade = TweenService:Create(toast, TweenInfo.new(0.4), {
+            TextTransparency = 1,
+            BackgroundTransparency = 1,
+        })
+        fade:Play()
+        fade.Completed:Wait()
+        toast:Destroy()
     end)
 end
 
