@@ -196,3 +196,63 @@ class** (decoupled from size math).
   gates), `light_tokens`/`shadow_tokens` (non-tradeable).
 - PetPower resolver + `pet_power.lua` (variant mults, context placeholders), ⛏/⚔ aptitude split.
 - LevelScale (damage curve) + enemy rank/armor; CombatRoll (the flat hit roll to replace).
+
+---
+
+## 10. Mining economy baseline (locked by live balance, grass→ice→lava)
+
+The mining economy is anchored to a single ratio. **Read this before tuning any zone's income.**
+
+- **Income identity: `coins/sec = DPS × (value ÷ HP)`.** The current ratio is **0.2** (crystal
+  `value` scales with `HP` so every tier — Small/Medium/Large — pays the *same* coins/sec; bigger
+  crystals just take longer to break, they don't pay more per second). Set in
+  `configs/breakables.lua` `ORE_TIERS` (20/100, 100/500, 400/2000). To raise/lower income, move the
+  ratio (e.g. 0.2 → 0.15), **not** individual tiers.
+- **Verified live (grass, farming `Near`):** 3 fresh dogs ≈ 46 DPS → ~10 cps; 3 fresh bears ≈ 25
+  DPS → ~6 cps (tanks mine slow *by design*, `mining_mult 0.6`); a graduated 2-golden+1-rainbow dog
+  squad ≈ 85 DPS → ~17 cps. Ice/lava hold the same ratio (150-DPS squads → ~30 cps). The small
+  overshoot vs `DPS×0.2` is the active-mining boost + crits — expected.
+- **Pacing anchor — the "200-egg arc":** ~200 hatches reliably yields strong variants (golden /
+  rainbow). At 100-coin grass eggs that's ~20,000 coins ≈ **~33 min fresh / ~20 min upgraded** to
+  "graduate your starter squad." Size new zones' egg cost + income so the graduate arc lands in
+  that ballpark. The hatch loop itself is snappy from minute one (an egg every ~10 s at 10 cps).
+- **Targeting modes (`configs/auto_systems.lua`):** `free_mode = nearest` (minimize travel — the
+  best DPS the flat ~26 studs/s pet speed allows), `paid_mode = highest_value` (camp big payouts).
+  `weakest` is the *worst* free mode (chases scattered small crystals → travel overhead halves
+  effective DPS); never make it the default. Pet speed is **flat across levels** (nothing scales
+  `PetMoveSpeed`); if we ever scale it, floor it at today's value so low levels never regress.
+- **Density depletion is a designed throttle, not a bug.** Outer zones spawn `max=100` with a
+  5–60 s distributed respawn. A strong squad mines its local cluster faster than it heals, so DPS
+  starts at peak and sags until refills arrive — this *enforces* active > passive (§11) and caps
+  sustained income. **Keep it.** Do not "fix" the sag by fast/at-location respawn unless we
+  explicitly want a frictionless arcade-farm (which raises sustained income ~30–50%).
+
+---
+
+## 11. Monetization & anti-cheat philosophy (steers every gamepass)
+
+Three tenets, in priority order. **Read before designing any gamepass or AFK feature.**
+
+1. **Active always beats passive.** Engaged play (roaming to fresh density, targeting, managing the
+   squad) out-earns idle/AFK — *never* the reverse. The mining depletion throttle (§10) is the
+   live enforcement: campers sag, roamers sustain peak — true even among paying players.
+2. **Gamepasses absorb the cheating demand.** What cheaters script is *convenience/automation* —
+   auto-farm, auto-target, AFK macros, auto-hatch. Ship those as official gamepasses instead of
+   fighting an injector arms race.
+3. **Undercut the injector.** Price the legit pass below the cost/friction/ban-risk of a script. A
+   player willing to pay for an injector becomes a customer, and the cheating incentive dies.
+
+**Hard constraint (keeps #2 from violating #1):** gamepasses sell **convenience, not power**. A
+paying *passive* player must still earn ≤ an active *free* player — the pass removes friction; the
+depletion throttle preserves the active edge. Never sell a flat earnings/power multiplier that lets
+AFK out-earn active. That's pay-to-win and breaks tenet #1.
+
+**Boundary of the philosophy — two complementary anti-cheat tools:**
+- *Automation cheats* (auto-click, auto-walk, AFK macros) → **cheap convenience gamepasses** (this §).
+- *Value-injection cheats* (fabricated coins/pets, speed hacks) → **server authority** (already in
+  place: the server owns inventory, coins, pet records; the client can't fabricate them). Gamepasses
+  can't and shouldn't try to cover this class.
+
+**Gamepass candidates that fit (all convenience, all common script targets):** auto-target
+`highest_value` (built — the `High` mode), auto-/bulk-hatch, offline/AFK earnings (capped *below*
+active), wider farm radius / multi-zone, extra target or equip slots. Price low.
