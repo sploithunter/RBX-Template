@@ -148,7 +148,18 @@ return {
                 heaven_5 = { textures = nil },
                 hell_1 = { textures = nil },
                 hell_2 = { textures = nil },
-                hell_3 = { textures = nil },
+                -- Hyper3D "nightmarish demon-infested hellscape, glowing red eyes, jagged spired
+                -- cities" — dramatic mid-hell (you can still see). One-line move to hell_2 if shallower.
+                hell_3 = {
+                    textures = {
+                        ft = 136769467498269,
+                        bk = 76076955500596,
+                        lf = 96726444149379,
+                        rt = 128315364827628,
+                        up = 128070223417654,
+                        dn = 80101487417158,
+                    },
+                },
                 hell_4 = { textures = nil },
                 hell_5 = { textures = nil },
             },
