@@ -55,7 +55,7 @@ local function elementMult(fx, petType)
     return (stats and tonumber(stats.attack_mult)) or 1, element
 end
 
--- input = { base, petType, variant, role?, context? }
+-- input = { base, petType, variant, shiny?, role?, context? }
 function PetPowerView.profile(input)
     input = input or {}
     local power, roles, fx, pets = configs()
@@ -72,14 +72,18 @@ function PetPowerView.profile(input)
     local variantMult = (power.variant_mult and power.variant_mult[input.variant])
         or power.default_variant_mult
         or 1
+    -- Shiny (5th axis): cosmetic, power-neutral at shiny_mult = 1.0. Only applies if the pet is shiny.
+    local shinyMult = input.shiny and (tonumber(power.shiny_mult) or 1) or 1
 
     return PetPower.resolveProfile({
         base = input.base,
         baseScale = tonumber(power.base_scale) or 1,
         elementMult = elemMult,
         variantMult = variantMult,
+        shinyMult = shinyMult,
         miningMult = miningMult,
         combatMult = combatMult,
+        maxPower = tonumber(power.max_pet_power) or math.huge,
         context = input.context,
     }),
         rid

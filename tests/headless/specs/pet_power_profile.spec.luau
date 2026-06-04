@@ -77,6 +77,50 @@ return function()
         end)
     end)
 
+    describe("PetPower.resolveProfile shiny axis (cosmetic, neutral at 1.0)", function()
+        it("shinyMult = 1 is a no-op", function()
+            local r = PetPower.resolveProfile({ base = 10, shinyMult = 1 })
+            expect(r.miningBase).to.equal(10)
+        end)
+        it("a non-1 shinyMult scales both numbers (if a dev ever opts in)", function()
+            local r = PetPower.resolveProfile({ base = 10, shinyMult = 2 })
+            expect(r.miningBase).to.equal(20)
+            expect(r.combatBase).to.equal(20)
+        end)
+    end)
+
+    describe("PetPower.resolveProfile max_pet_power ceiling", function()
+        it("clamps every output to maxPower (the Creator ceiling)", function()
+            local r = PetPower.resolveProfile({
+                base = 100,
+                variantMult = 2.5,
+                context = { boost = 100 },
+                maxPower = 150,
+            })
+            expect(r.miningBase).to.equal(150) -- 100*2.5 = 250 -> clamped
+            expect(r.combatEffective).to.equal(150) -- 250*100 -> clamped
+            expect(r.base).to.equal(100) -- under the cap, untouched
+        end)
+        it("omitting maxPower means no clamp (live-neutral default)", function()
+            local r = PetPower.resolveProfile({ base = 100, variantMult = 2.5 })
+            expect(r.miningBase).to.equal(250)
+        end)
+    end)
+
+    describe("PetPower.tierBase geometric ladder", function()
+        local cfg = { tier_curve = { starter_base = 1000, step = 1.4 }, max_pet_power = 1000000 }
+        it("tier 1 = starter base", function()
+            expect(PetPower.tierBase(1, cfg)).to.equal(1000)
+        end)
+        it("each tier multiplies by step", function()
+            expect(PetPower.tierBase(2, cfg)).to.near(1400, 1e-6)
+            expect(PetPower.tierBase(3, cfg)).to.near(1960, 1e-6)
+        end)
+        it("never exceeds the ceiling", function()
+            expect(PetPower.tierBase(999, cfg)).to.equal(1000000)
+        end)
+    end)
+
     describe("PetPower.roundForDisplay", function()
         it("rounds, floors, ceils per mode", function()
             expect(PetPower.roundForDisplay(2.8, "round")).to.equal(3)

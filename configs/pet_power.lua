@@ -42,4 +42,22 @@ return {
 
     -- How the card ROUNDS the displayed numbers (damage keeps its own floor in PetCombat).
     display_round = "round", -- "round" | "floor" | "ceil"
+
+    -- HARD CEILING on any pet's resolved power. The Creator-class apex (Creator Rainbow Colorado)
+    -- sits exactly here; NOTHING — huge / titanic / colossal / future tiers — can ever exceed it,
+    -- because PetPower.resolveProfile clamps to it. A guarantee, not a convention. Tune at balance.
+    max_pet_power = 1000000,
+
+    -- Geometric tier ladder — the bounded "pets are stars" curve. tierBase(tier) =
+    -- starter_base * step^(tier-1), clamped to max_pet_power. ~25-35 tiers carry ~1000 -> the
+    -- ceiling, each a clear upgrade. Pet definitions adopt tiers at the balance pass (S2b);
+    -- existing pets keep their base_power until then, so this is currently live-neutral.
+    tier_curve = {
+        starter_base = 1000,
+        step = 1.4,
+    },
+
+    -- Shiny — the 5th pet axis. COSMETIC prestige, power-NEUTRAL by default (1.0). The only source
+    -- today is the Meet-the-Creator egg (always shiny). Keep at 1.0 to stay out of the balance math.
+    shiny_mult = 1.0,
 }

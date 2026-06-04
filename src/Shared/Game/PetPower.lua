@@ -77,8 +77,18 @@ end
 
 function PetPower.resolveProfile(input)
     input = input or {}
+    -- Hard ceiling (config max_pet_power). Default huge so omitting it = no clamp (live-neutral).
+    -- The Creator-class apex sits at this value; NOTHING resolves above it.
+    local maxPower = num(input.maxPower, math.huge)
+    local function cap(x)
+        return math.min(x, maxPower)
+    end
+    -- shinyMult: the 5th pet axis — a flat cosmetic multiplier, power-neutral by default (1.0).
     local base = num(input.base, 0) * num(input.baseScale, 1)
-    local intrinsicCommon = base * num(input.elementMult, 1) * num(input.variantMult, 1)
+    local intrinsicCommon = base
+        * num(input.elementMult, 1)
+        * num(input.variantMult, 1)
+        * num(input.shinyMult, 1)
     local miningBase = intrinsicCommon * num(input.miningMult, 1)
     local combatBase = intrinsicCommon * num(input.combatMult, 1)
 
@@ -90,14 +100,27 @@ function PetPower.resolveProfile(input)
     end
 
     return {
-        base = base,
-        intrinsicCommon = intrinsicCommon,
-        miningBase = miningBase,
-        combatBase = combatBase,
+        base = cap(base),
+        intrinsicCommon = cap(intrinsicCommon),
+        miningBase = cap(miningBase),
+        combatBase = cap(combatBase),
         contextMult = contextMult,
-        miningEffective = miningBase * contextMult,
-        combatEffective = combatBase * contextMult,
+        miningEffective = cap(miningBase * contextMult),
+        combatEffective = cap(combatBase * contextMult),
     }
+end
+
+-- Bounded geometric tier ladder (the "pets are stars" curve). tierBase(tier) =
+-- starter_base * step^(tier-1), clamped to the ceiling. Pure; pet definitions adopt tiers at the
+-- balance pass. `powerConfig` = configs/pet_power.lua (reads tier_curve + max_pet_power).
+function PetPower.tierBase(tier, powerConfig)
+    powerConfig = powerConfig or {}
+    local tc = powerConfig.tier_curve or {}
+    local starter = num(tc.starter_base, 1000)
+    local step = num(tc.step, 1.4)
+    local maxPower = num(powerConfig.max_pet_power, math.huge)
+    tier = math.max(1, math.floor(num(tier, 1)))
+    return math.min(starter * step ^ (tier - 1), maxPower)
 end
 
 -- Round a power number for DISPLAY only (damage keeps its own floor in PetCombat).
