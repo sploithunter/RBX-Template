@@ -447,6 +447,14 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.AscensionAltarService,
     { "Logger", "ConfigLoader" }
 )
+-- RealmPortalService: binds named workspace portals (Portal_Halo1/Portal_Horn1) to a
+-- ProximityPrompt that toggles the player into a heaven/hell realm via LayerService (World S3
+-- test entry; resolves LayerService at runtime via the locator).
+loader:RegisterModule(
+    "RealmPortalService",
+    ServerScriptService.Server.Services.RealmPortalService,
+    { "Logger", "ConfigLoader" }
+)
 -- EnemyService: spawns live combat enemies pets attack like breakables (Feature 10,
 -- slice 1a). Resolves CombatService at runtime via the locator for loot awards.
 loader:RegisterModule(
@@ -599,6 +607,7 @@ table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "PetFollowService")
 table.insert(requiredModules, "AscensionAltarService")
+table.insert(requiredModules, "RealmPortalService")
 table.insert(requiredModules, "ZoneTrackerService")
 table.insert(requiredModules, "GameAPIService")
 if RunService:IsStudio() then

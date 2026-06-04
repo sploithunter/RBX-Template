@@ -49,6 +49,30 @@ return {
         hatch_luck_per_depth = 0.1,
     },
 
+    -- TEST portals (RealmPortalService): named workspace parts you walk up to, mapped to a realm
+    -- layer. Toggling enters that realm (or returns to base if already in it). `bypass_access`
+    -- skips the soul/level/token gate so the realm is reachable for testing before the economy
+    -- is grindable — flip false once gating is being verified. Reuses the same map (the
+    -- RealmAtmosphere client skin retints the world); not the production realm-geometry path.
+    realm_portals = {
+        bypass_access = true,
+        prompt_hold = 0,
+        max_distance = 14,
+        portals = {
+            { part = "Portal_Halo1", layer = "heaven_1", action = "Enter Heaven" },
+            { part = "Portal_Horn1", layer = "hell_1", action = "Enter Hell" },
+        },
+    },
+
+    -- Client lighting skin per realm (RealmAtmosphere). Same map, retinted: heaven = radiant
+    -- gold, hell = ember dark, neutral = unchanged. tint is a ColorCorrection TintColor (0-1 RGB).
+    atmosphere = {
+        tween_seconds = 1.0,
+        neutral = { tint = { 1, 1, 1 }, brightness = 0, contrast = 0, clock_time = 14 },
+        heaven = { tint = { 1, 0.96, 0.82 }, brightness = 0.12, contrast = 0.1, clock_time = 16 },
+        hell = { tint = { 1, 0.62, 0.5 }, brightness = -0.08, contrast = 0.22, clock_time = 4 },
+    },
+
     multipliers = {
         base = 1.0,
         heaven_1 = 1.5,

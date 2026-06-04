@@ -110,61 +110,77 @@ function LayerService:GrantHatchTokens(player)
     return self:_depositGrant(player, grant, "realm_hatch_tokens")
 end
 
+-- Publish the player's layer state for clients (the RealmAtmosphere skin reads CurrentRealm)
+-- + the depth-scaled hatch luck (S3.4).
+function LayerService:_publishLayer(player, layerId)
+    local realm = (
+        self._layersConfig.realm_alignment and self._layersConfig.realm_alignment[layerId]
+    ) or "neutral"
+    player:SetAttribute("CurrentLayer", layerId)
+    player:SetAttribute("CurrentRealm", realm)
+    player:SetAttribute("RealmHatchLuckBonus", self:GetHatchLuckBonus(player))
+end
+
 -- Attempt to move the player to a layer. Server re-validates cost from config.
-function LayerService:UseLayer(player, layerId)
+-- opts.force (test portals / dev) skips the soul/level/token gate AND the cost deduction —
+-- a pure teleport into the realm state, so the realm is reachable for testing before the
+-- economy is grindable. Production entry leaves force off.
+function LayerService:UseLayer(player, layerId, opts)
+    opts = opts or {}
     local data = self._dataService:GetData(player)
     if not data then
         return { ok = false, reason = "data_not_loaded" }
     end
-
-    local soul = data.Soul or 0
-    local currency = self._layersConfig.token_currency
-        and self._layersConfig.token_currency[layerId]
-    local balance = currency and (self._dataService:GetCurrency(player, currency) or 0) or 0
-
-    local decision = LayerAccess.canAccess(soul, balance, layerId, self._layersConfig, {
-        playerLevel = self:_playerLevel(player),
-        fromLayer = data.CurrentLayer or "base", -- applies the charge_on traversal sink
-    })
-    if not decision.ok then
-        return {
-            ok = false,
-            reason = decision.reason,
-            cost = decision.cost,
-            currency = decision.currency,
-        }
+    if not (self._layersConfig.access and self._layersConfig.access[layerId]) then
+        return { ok = false, reason = "unknown_layer" }
     end
 
-    -- Deduct the server-resolved cost (decision.cost from config, not the client).
-    if decision.cost and decision.cost > 0 and decision.currency then
-        self._dataService:RemoveCurrency(
-            player,
-            decision.currency,
-            decision.cost,
-            "layer_use_" .. layerId
-        )
+    local soul = data.Soul or 0
+    local cost, currency = 0, nil
+
+    if not opts.force then
+        currency = self._layersConfig.token_currency and self._layersConfig.token_currency[layerId]
+        local balance = currency and (self._dataService:GetCurrency(player, currency) or 0) or 0
+        local decision = LayerAccess.canAccess(soul, balance, layerId, self._layersConfig, {
+            playerLevel = self:_playerLevel(player),
+            fromLayer = data.CurrentLayer or "base", -- applies the charge_on traversal sink
+        })
+        if not decision.ok then
+            return {
+                ok = false,
+                reason = decision.reason,
+                cost = decision.cost,
+                currency = decision.currency,
+            }
+        end
+        cost, currency = decision.cost, decision.currency
+        -- Deduct the server-resolved cost (from config, not the client).
+        if cost and cost > 0 and currency then
+            self._dataService:RemoveCurrency(player, currency, cost, "layer_use_" .. layerId)
+        end
     end
 
     data.CurrentLayer = layerId
-    -- Publish the depth-scaled hatch luck so HatchEntitlementService picks it up (S3.4).
-    player:SetAttribute("RealmHatchLuckBonus", self:GetHatchLuckBonus(player))
+    self:_publishLayer(player, layerId)
     self._dataService:RequestSave(player, "layer_use_" .. layerId, { critical = true })
 
     if self._logger then
         self._logger:Info("Layer changed", {
             player = player.Name,
             layer = layerId,
-            cost = decision.cost,
-            currency = decision.currency,
+            cost = cost,
+            currency = currency,
+            forced = opts.force or nil,
         })
     end
 
     return {
         ok = true,
         layer = layerId,
-        cost = decision.cost,
-        currency = decision.currency,
+        cost = cost,
+        currency = currency,
         soul = soul,
+        forced = opts.force or nil,
     }
 end
 

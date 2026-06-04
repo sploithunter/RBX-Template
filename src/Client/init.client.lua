@@ -249,6 +249,17 @@ do
     end
 end
 
+-- RealmAtmosphere: retints Lighting to the player's current realm (heaven/hell skin on the
+-- same map, World S3) — driven by the server-published CurrentRealm attribute.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.RealmAtmosphere).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start RealmAtmosphere", { error = tostring(err) })
+    end
+end
+
 -- Start Matter loop with client systems
 local systemsList = {}
 for name, system in pairs(systems) do
