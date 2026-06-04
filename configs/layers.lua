@@ -293,24 +293,29 @@ return {
         },
     },
 
-    -- Giant demon head looming in the Hell sky (RealmHellFaces). The server LoadAssets the model
-    -- once into ReplicatedStorage.RealmModels at boot; the client clones it, scales it huge, and
-    -- hangs it OFF TO ONE SIDE up in the sky (NOT straight overhead — Roblox cameras hate looking
-    -- straight up), facing the player. The face body is darkened so it recedes into shadow; two
-    -- raycast-seated Neon eyes glow from deep in the sockets. Hell-only; client-side per player.
-    -- Tuned live (off-to-side placement, recessed glowing eyes) — see commit history.
+    -- The watcher: a giant demon head that haunts HELL 5 ONLY (RealmHellFaces). The server
+    -- LoadAssets the model once into ReplicatedStorage.RealmModels at boot; the client clones it,
+    -- scales it huge, darkens the face into shadow, and raycast-seats two recessed Neon eyes deep
+    -- in the sockets. It appears INTERMITTENTLY (not always there) and FOLLOWS the player — gliding
+    -- to hover at ~45 deg up, 200 studs out, always turning to face you. Client-side per player.
     hell_faces = {
         enabled = true,
         model_asset_id = 87113428787101,
         template_name = "HellFace", -- runtime cache under ReplicatedStorage.RealmModels
 
+        only_layer = "hell_5", -- ONLY ever appears in Hell 5 (nil = any hell layer)
         scale = 240, -- target max-dimension in studs (huge, looming presence)
-        -- Placement is player-relative on Hell entry: off to one side, high, facing the player.
-        height = 350, -- studs above the player (so it sits ~35-40 deg up, a natural camera pitch)
-        distance = 450, -- horizontal offset to the side
-        azimuth_deg = 0, -- which world compass direction it sits (0 = +X; spin it to taste)
-        base_count = 1, -- one hero face
-        per_depth_count = 0, -- 0 = single face at every depth; >0 rings extra faces with depth
+
+        -- Follow behavior: trails the player, gliding to face them.
+        follow_distance = 200, -- horizontal studs from the player
+        follow_height = 200, -- studs above the player (200 out + 200 up = ~45 deg elevation)
+        follow_azimuth_deg = 0, -- world bearing it hovers at relative to the player
+        follow_smoothing = 0.04, -- position/rotation lerp per frame (lower = laggier, dreamier glide)
+
+        -- Intermittent presence: it only shows up SOMETIMES, fading in and back out.
+        appear_chance = 0.4, -- chance it's present on each roll
+        appear_interval = 12, -- seconds between appear/vanish rolls
+        fade_seconds = 1.5, -- fade in/out duration
 
         -- Face body: dark so only the eyes read (the head silhouettes against the skybox).
         face_color = { 35, 12, 10 },
@@ -328,12 +333,5 @@ return {
             light_brightness = 14, -- bloom intensity
             light_range = 95, -- bloom reach
         },
-
-        -- Legacy per-face interior light (off now; the eyes carry the glow). Kept for back-compat.
-        light_color = { 255, 45, 25 },
-        light_brightness = 0,
-        light_range = 100,
-        pulse_brightness = 0,
-        pulse_seconds = 2.4,
     },
 }

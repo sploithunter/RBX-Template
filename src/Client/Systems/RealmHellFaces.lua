@@ -1,18 +1,20 @@
 --[[
-    RealmHellFaces (client) — a giant demon head looming in the Hell sky (World S3).
+    RealmHellFaces (client) — "the watcher": a giant demon head that haunts HELL 5 (World S3).
 
-    When the player is in a hell layer, clones the cached Hell-head model
-    (ReplicatedStorage.RealmModels.<template>, preloaded server-side by RealmPortalService),
-    scales it up huge, and hangs it OFF TO ONE SIDE high in the sky (not straight overhead —
-    Roblox cameras hate looking straight up), facing the player. The face body is darkened so it
-    recedes into shadow; two Neon eyes are RAYCAST-SEATED into the actual mesh sockets and recessed
-    so they glow from deep in the skull. Despawns when you leave Hell. Client-side (each player sees
-    their own). Depth-scaled: with per_depth_count > 0, deeper layers add more faces around you.
-    All knobs in configs/layers.lua `hell_faces`.
+    Only ever appears in Hell 5. Clones the cached Hell-head model (ReplicatedStorage.RealmModels,
+    preloaded server-side by RealmPortalService), scales it up huge, darkens the face into shadow,
+    and raycast-seats two recessed Neon eyes deep in the sockets. Then it:
+      - APPEARS INTERMITTENTLY: rolls a chance every few seconds to fade in or back out, so it's
+        not always there — you catch it watching, then it's gone.
+      - FOLLOWS THE PLAYER: glides each frame to hover at ~45 deg up, 200 studs out, always turning
+        to face you (head + eyes are one Model moved via PivotTo).
+    Despawns when you leave Hell 5. Client-side (each player sees their own). Knobs: layers.lua
+    `hell_faces`.
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local RealmHellFaces = {}
@@ -37,27 +39,17 @@ local function c255(t, fallback)
 end
 
 -- Darken the head so it recedes into shadow (only the eyes should read).
-local function darken(face, color, materialName)
-    local mat = Enum.Material[materialName or "SmoothPlastic"] or Enum.Material.SmoothPlastic
-    local function apply(p)
-        p.Material = mat
-        p.Color = color
-    end
-    if face:IsA("BasePart") then
-        apply(face)
-    elseif face:IsA("Model") then
-        for _, d in ipairs(face:GetDescendants()) do
-            if d:IsA("BasePart") then
-                apply(d)
-            end
-        end
-    end
+local function darken(part, color, materialName)
+    part.Material = Enum.Material[materialName or "SmoothPlastic"] or Enum.Material.SmoothPlastic
+    part.Color = color
 end
 
--- Raycast-seat two Neon eyes into the mesh sockets and recess them for a sunken, glowing look.
-local function seatEyes(face, eyesCfg)
+-- Raycast-seat two Neon eyes into the mesh sockets, recessed for a sunken glow. Parents them under
+-- `parent` (the assembly Model) and returns { {part=, light=, base=} } for fade control.
+local function seatEyes(head, eyesCfg, parent)
+    local eyes = {}
     if type(eyesCfg) ~= "table" or eyesCfg.enabled == false then
-        return
+        return eyes
     end
     local up = tonumber(eyesCfg.up) or 30
     local side = tonumber(eyesCfg.side) or 35
@@ -69,18 +61,14 @@ local function seatEyes(face, eyesCfg)
     local lightRange = tonumber(eyesCfg.light_range) or 95
 
     -- Raycasts need the head queryable; the preload sets CanQuery=false, so toggle it for the cast.
-    local prevQuery = face:IsA("BasePart") and face.CanQuery or nil
-    if face:IsA("BasePart") then
-        face.CanQuery = true
-    end
+    local prevQuery = head.CanQuery
+    head.CanQuery = true
 
-    local cf = face:IsA("Model") and face:GetPivot() or face.CFrame
-    local fcenter = cf.Position
-    local L, U, R = cf.LookVector, cf.UpVector, cf.RightVector
-
+    local cf = head.CFrame
+    local fcenter, L, U, R = cf.Position, cf.LookVector, cf.UpVector, cf.RightVector
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Include
-    params.FilterDescendantsInstances = { face }
+    params.FilterDescendantsInstances = { head }
 
     for _, sign in ipairs({ 1, -1 }) do
         local lateral = U * up + R * (side * sign)
@@ -100,12 +88,12 @@ local function seatEyes(face, eyesCfg)
         light.Brightness = lightBrightness
         light.Range = lightRange
         light.Parent = eye
-        eye.Parent = face
+        eye.Parent = parent
+        eyes[#eyes + 1] = { part = eye, light = light, base = lightBrightness }
     end
 
-    if face:IsA("BasePart") and prevQuery ~= nil then
-        face.CanQuery = prevQuery
-    end
+    head.CanQuery = prevQuery
+    return eyes
 end
 
 function RealmHellFaces.start()
@@ -120,8 +108,8 @@ function RealmHellFaces.start()
 
     local folder = ReplicatedStorage:WaitForChild("RealmModels", 30)
     local template = folder and folder:WaitForChild(cfg.template_name or "HellFace", 30)
-    if not template then
-        return -- server preload not present; nothing to spawn
+    if not template or not template:IsA("BasePart") then
+        return -- preload missing / unexpected shape
     end
 
     local container = Workspace:FindFirstChild("RealmHellFaces")
@@ -132,67 +120,106 @@ function RealmHellFaces.start()
     end
 
     local scale = tonumber(cfg.scale) or 240
-    local height = tonumber(cfg.height) or 350
-    local distance = tonumber(cfg.distance) or 450
-    local azimuth = math.rad(tonumber(cfg.azimuth_deg) or 0)
     local faceColor = c255(cfg.face_color, Color3.fromRGB(35, 12, 10))
 
-    local function placeOneFace(center, az)
-        local face = template:Clone()
-        -- scale to target max-dimension (Model -> ScaleTo; single MeshPart -> resize)
-        if face:IsA("Model") then
-            if not face.PrimaryPart then
-                face.PrimaryPart = face:FindFirstChildWhichIsA("BasePart", true)
-            end
-            local e = face:GetExtentsSize()
-            face:ScaleTo(scale / math.max(e.X, e.Y, e.Z, 0.01))
-        elseif face:IsA("BasePart") then
-            local m = math.max(face.Size.X, face.Size.Y, face.Size.Z, 0.01)
-            face.Size = face.Size * (scale / m)
-        end
-
-        -- off to one side, high, facing the player
-        local pos = Vector3.new(
-            center.X + math.cos(az) * distance,
-            center.Y + height,
-            center.Z + math.sin(az) * distance
-        )
-        local cf = CFrame.lookAt(pos, center)
-        if face:IsA("Model") then
-            face:PivotTo(cf)
-        elseif face:IsA("BasePart") then
-            face.CFrame = cf
-        end
-
-        darken(face, faceColor, cfg.face_material)
-        face.Parent = container -- parent first so the eye raycasts hit it in the world
-        seatEyes(face, cfg.eyes)
-    end
-
-    local function spawnFaces(depth)
-        container:ClearAllChildren()
-        local count = (tonumber(cfg.base_count) or 1)
-            + (depth - 1) * (tonumber(cfg.per_depth_count) or 0)
-        if count < 1 then
-            count = 1
-        end
+    -- where the head wants to be this instant: off at follow_distance / follow_height, facing player
+    local function targetCFrame()
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        local center = (hrp and hrp.Position) or Vector3.new(0, 0, 0)
-        for i = 1, count do
-            -- single face sits at the base azimuth; extra (depth) faces ring around the player
-            local az = azimuth + (count > 1 and ((i - 1) / count) * math.pi * 2 or 0)
-            placeOneFace(center, az)
+        local c = (hrp and hrp.Position) or Vector3.new(0, 0, 0)
+        local az = math.rad(tonumber(cfg.follow_azimuth_deg) or 0)
+        local dist = tonumber(cfg.follow_distance) or 200
+        local h = tonumber(cfg.follow_height) or 200
+        local pos = Vector3.new(c.X + math.cos(az) * dist, c.Y + h, c.Z + math.sin(az) * dist)
+        return CFrame.lookAt(pos, c)
+    end
+
+    local function applyVis(head, eyes, vis)
+        head.Transparency = 1 - vis
+        for _, e in ipairs(eyes) do
+            e.part.Transparency = 1 - vis
+            e.light.Brightness = e.base * vis
+            e.light.Enabled = vis > 0.02
         end
+    end
+
+    local session -- { alive, present, vis, current, model, head, eyes, heartbeat }
+
+    local function teardown()
+        if not session then
+            return
+        end
+        session.alive = false
+        if session.heartbeat then
+            session.heartbeat:Disconnect()
+        end
+        if session.model then
+            session.model:Destroy()
+        end
+        session = nil
+    end
+
+    local function spawn()
+        teardown()
+        local s = { alive = true, present = false, vis = 0 }
+        s.current = targetCFrame()
+
+        local model = Instance.new("Model")
+        model.Name = "HellHead"
+        local head = template:Clone()
+        local m = math.max(head.Size.X, head.Size.Y, head.Size.Z, 0.01)
+        head.Size = head.Size * (scale / m)
+        head.CFrame = s.current
+        darken(head, faceColor, cfg.face_material)
+        head.Parent = model
+        model.PrimaryPart = head
+        model.Parent = container
+
+        s.eyes = seatEyes(head, cfg.eyes, model) -- raycast against the seated head
+        s.model, s.head = model, head
+        applyVis(head, s.eyes, 0) -- start hidden; fade in when present
+
+        -- intermittent presence: roll to appear/vanish on an interval (first roll immediate)
+        task.spawn(function()
+            while s.alive do
+                s.present = math.random() < (tonumber(cfg.appear_chance) or 0.4)
+                task.wait(tonumber(cfg.appear_interval) or 12)
+            end
+        end)
+
+        -- glide-follow + fade every frame
+        local smoothing = math.clamp(tonumber(cfg.follow_smoothing) or 0.04, 0.001, 1)
+        local fadeSeconds = math.max(tonumber(cfg.fade_seconds) or 1.5, 0.01)
+        s.heartbeat = RunService.Heartbeat:Connect(function(dt)
+            if not s.alive or not model.Parent then
+                return
+            end
+            s.current = s.current:Lerp(targetCFrame(), smoothing)
+            model:PivotTo(s.current)
+            local goal = s.present and 1 or 0
+            local step = dt / fadeSeconds
+            if s.vis < goal then
+                s.vis = math.min(goal, s.vis + step)
+            elseif s.vis > goal then
+                s.vis = math.max(goal, s.vis - step)
+            end
+            applyVis(head, s.eyes, s.vis)
+        end)
+
+        session = s
     end
 
     local function refresh()
-        if (player:GetAttribute("CurrentRealm")) == "hell" then
-            local layer = tostring(player:GetAttribute("CurrentLayer") or "hell_1")
-            local depth = tonumber(layer:match("_(%d+)$")) or 1
-            spawnFaces(depth)
+        local inHell = player:GetAttribute("CurrentRealm") == "hell"
+        local layer = tostring(player:GetAttribute("CurrentLayer") or "")
+        local only = cfg.only_layer
+        local matches = inHell and (only == nil or layer == only)
+        if matches then
+            if not session then
+                spawn()
+            end
         else
-            container:ClearAllChildren()
+            teardown()
         end
     end
 
