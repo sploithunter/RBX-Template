@@ -38,6 +38,16 @@ function LayerService:_tokenBalances(player)
     }
 end
 
+-- Player level for the World-S3 requires_level gate: the published EffectiveLevel
+-- (combat level the curves read; teaming will sync it), falling back to Level.
+function LayerService:_playerLevel(player)
+    if not player then
+        return 0
+    end
+    local lvl = player:GetAttribute("EffectiveLevel") or player:GetAttribute("Level")
+    return tonumber(lvl) or 0
+end
+
 function LayerService:AccessibleLayers(player)
     local data = self._dataService:GetData(player)
     if not data then
@@ -46,7 +56,8 @@ function LayerService:AccessibleLayers(player)
     return LayerAccess.accessibleLayers(
         data.Soul or 0,
         self:_tokenBalances(player),
-        self._layersConfig
+        self._layersConfig,
+        self:_playerLevel(player)
     )
 end
 
@@ -62,7 +73,9 @@ function LayerService:UseLayer(player, layerId)
         and self._layersConfig.token_currency[layerId]
     local balance = currency and (self._dataService:GetCurrency(player, currency) or 0) or 0
 
-    local decision = LayerAccess.canAccess(soul, balance, layerId, self._layersConfig)
+    local decision = LayerAccess.canAccess(soul, balance, layerId, self._layersConfig, {
+        playerLevel = self:_playerLevel(player),
+    })
     if not decision.ok then
         return {
             ok = false,
