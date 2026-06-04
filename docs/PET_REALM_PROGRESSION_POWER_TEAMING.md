@@ -333,6 +333,19 @@ or debuff instead of HP damage.
   the final feel, so it must be tunable live, not committed in code.
 - **Depth = desirability (fork 3) → Eternal pets** live in the deepest/rarest sources (§15).
 
+**Build status — World S3 logic COMPLETE (drivable via the `layer.*` bus):**
+- S3.1 ✅ 5 layers/side + soul/level/token access gates (`LayerAccess`, `configs/layers.lua`).
+- S3.3 ✅ traversal sink as a config knob (`traversal.charge_on = deeper_only`, free to retreat).
+- S3.2 ✅ token earning (`RealmTokens` + `LayerService:Grant*`): income cut wired into the mining
+  payout; conquest hook in `AlignmentService`; hatch grant available.
+- S3.4 ✅ reward multiplier on income (deeper = richer) + depth-scaled hatch luck
+  (`RealmHatchLuckBonus` attr → `HatchEntitlementService`).
+- The loop: enter a realm (richer income + earns tokens) → spend tokens to descend (bigger
+  multiplier + better hatch luck), gated by soul/level. Headless-verified; bus-drivable.
+- **Remaining = authored art, not code:** in-world portal geometry at the layer Y-offsets
+  (±2000…±10000) so you can physically travel/feel it, + a live multiplayer verify. Until then
+  the realm is a logical state (CurrentLayer) entered via `layer.use`.
+
 ---
 
 ## 15. Eternal pets (EXISTING mechanic — already built; this just records it here)
