@@ -62,6 +62,21 @@ function LayerService:AccessibleLayers(player)
     )
 end
 
+-- Income/reward scaling for the player's current layer (layers.multipliers; 1.0 at base).
+-- The reward for descending: deeper realm = bigger income (+ bigger token cut, which is a
+-- fraction of that income).
+function LayerService:GetRewardMultiplier(player)
+    local layer = self:GetCurrentLayer(player)
+    local m = self._layersConfig.multipliers and self._layersConfig.multipliers[layer]
+    return tonumber(m) or 1
+end
+
+-- Depth-scaled hatch luck for the player's current layer (0 at base). Consumed by
+-- HatchEntitlementService via the published RealmHatchLuckBonus attribute.
+function LayerService:GetHatchLuckBonus(player)
+    return RealmTokens.hatchLuck(self:GetCurrentLayer(player), self._layersConfig)
+end
+
 -- ===== Token-earning loop (World S3 / RealmTokens) =====
 -- Tokens are earned only while the player is in a realm layer (heaven -> light_tokens,
 -- hell -> shadow_tokens). These are no-ops at base, so callers can fire them unconditionally.
@@ -131,6 +146,8 @@ function LayerService:UseLayer(player, layerId)
     end
 
     data.CurrentLayer = layerId
+    -- Publish the depth-scaled hatch luck so HatchEntitlementService picks it up (S3.4).
+    player:SetAttribute("RealmHatchLuckBonus", self:GetHatchLuckBonus(player))
     self._dataService:RequestSave(player, "layer_use_" .. layerId, { critical = true })
 
     if self._logger then

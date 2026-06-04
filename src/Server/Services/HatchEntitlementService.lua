@@ -154,7 +154,10 @@ function HatchEntitlementService:Resolve(player)
         skipHatch = self:GetEffective(player, "skipHatch") == true,
         goldenMode = self:GetEffective(player, "goldenMode") == true,
         chargedMode = self:GetEffective(player, "chargedMode") == true,
-        luckBonus = tonumber(self:GetEffective(player, "luckBonus")) or 0,
+        -- World S3 (depth = desirability): deeper realm layers add hatch luck on top of the
+        -- player's own entitlements. LayerService publishes RealmHatchLuckBonus on layer change.
+        luckBonus = (tonumber(self:GetEffective(player, "luckBonus")) or 0)
+            + (tonumber(player:GetAttribute("RealmHatchLuckBonus")) or 0),
         secretLuckBonus = tonumber(self:GetEffective(player, "secretLuckBonus")) or 0,
     }
 end

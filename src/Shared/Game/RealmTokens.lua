@@ -72,4 +72,16 @@ function RealmTokens.flat(kind, layerId, config)
     return { currency = currency, amount = n }
 end
 
+-- Depth-scaled hatch luck bonus (design doc §15 — deeper = rarer pulls). 0 at base.
+-- = layerDepth * depth_rewards.hatch_luck_per_depth.
+function RealmTokens.hatchLuck(layerId, config)
+    if not layerId or layerId == "base" then
+        return 0
+    end
+    local depth = tonumber(tostring(layerId):match("_(%d+)$")) or 0
+    local perDepth = tonumber(config.depth_rewards and config.depth_rewards.hatch_luck_per_depth)
+        or 0
+    return depth * perDepth
+end
+
 return RealmTokens

@@ -1808,6 +1808,14 @@ function BreakableSpawner:_trySpawnOne(
             then
                 amount = math.floor(amount * (player:GetAttribute("CoinYieldBuff") or 1))
             end
+            -- World S3: deeper realm layers scale income (layers.multipliers; 1.0 at base).
+            -- This is the carrot for the soul/level/token investment to descend.
+            if player and layerService and layerService.GetRewardMultiplier and amount > 0 then
+                local realmMult = layerService:GetRewardMultiplier(player)
+                if realmMult and realmMult ~= 1 then
+                    amount = math.floor(amount * realmMult)
+                end
+            end
             return amount
         end
 

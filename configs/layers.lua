@@ -42,6 +42,13 @@ return {
         hatch_tokens = 2,
     },
 
+    -- Depth = desirability (design doc §12/§15): deeper realm layers add hatch luck on top of
+    -- the player's own entitlements, so the rarest pulls (golden/rainbow/eternal) live deep.
+    -- hatch_luck_per_depth is added per layer depth (heaven_3 / hell_3 -> +0.3, the 5s -> +0.5).
+    depth_rewards = {
+        hatch_luck_per_depth = 0.1,
+    },
+
     multipliers = {
         base = 1.0,
         heaven_1 = 1.5,
