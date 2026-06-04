@@ -23,8 +23,31 @@ LayerAccess.Reason = {
     InsufficientTokens = "insufficient_tokens",
 }
 
+-- Magnitude depth of a layer (base = 0, heaven_3 = 3, hell_2 = 2). Drives the
+-- "deeper_only" traversal sink: a move is charged only when target depth > from depth.
+function LayerAccess.layerDepth(layerId)
+    if not layerId or layerId == "base" then
+        return 0
+    end
+    local n = tostring(layerId):match("_(%d+)$")
+    return tonumber(n) or 0
+end
+
+-- Whether moving from `fromLayer` to `toLayer` incurs the token cost, per config.traversal.charge_on.
+-- "deeper_only" charges only on a deeper move; "every_move" always charges. fromLayer nil => charge
+-- (no origin context — preserves the original every-move behavior for callers that don't supply it).
+function LayerAccess.isCharged(fromLayer, toLayer, config)
+    local mode = (config.traversal and config.traversal.charge_on) or "every_move"
+    if mode == "deeper_only" and fromLayer ~= nil then
+        return LayerAccess.layerDepth(toLayer) > LayerAccess.layerDepth(fromLayer)
+    end
+    return true
+end
+
 -- canAccess(soul, tokenBalance, layerId, config, opts) -> { ok, reason?, cost, currency, requiresLevel? }
--- opts: { crossPathVisit?: bool (ignore Soul direction), playerLevel?: number (enforce requires_level) }
+-- opts: { crossPathVisit?: bool (ignore Soul direction), playerLevel?: number (enforce
+--         requires_level), fromLayer?: string (current layer — applies the charge_on sink so a
+--         non-charged move costs 0 and needs no tokens) }
 function LayerAccess.canAccess(soul, tokenBalance, layerId, config, opts)
     opts = opts or {}
     local access = config.access and config.access[layerId]
@@ -32,7 +55,10 @@ function LayerAccess.canAccess(soul, tokenBalance, layerId, config, opts)
         return { ok = false, reason = LayerAccess.Reason.UnknownLayer }
     end
     local currency = config.token_currency and config.token_currency[layerId]
-    local cost = access.token_cost or 0
+    -- Effective cost honors the traversal sink: a non-charged move (e.g. retreating toward base
+    -- under "deeper_only") costs 0 and requires no tokens.
+    local charged = LayerAccess.isCharged(opts.fromLayer, layerId, config)
+    local cost = charged and (access.token_cost or 0) or 0
 
     if not opts.crossPathVisit and access.requires_soul ~= nil then
         local req = access.requires_soul

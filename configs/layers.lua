@@ -22,6 +22,15 @@
 ]]
 
 return {
+    -- Traversal sink shape (design doc §14, fork 2 — gameplay-tunable knob):
+    --   "deeper_only" = free to retreat toward base/neutral; pay the target layer's token_cost
+    --                   only when moving to a DEEPER layer (greater magnitude depth). [default]
+    --   "every_move"  = pay the target's token_cost on every layer change (the original behavior).
+    -- The recurring token sink that anchors the realm economy; flip live to compare feel.
+    traversal = {
+        charge_on = "deeper_only",
+    },
+
     multipliers = {
         base = 1.0,
         heaven_1 = 1.5,

@@ -109,6 +109,49 @@ return function()
         end)
     end)
 
+    describe("LayerAccess traversal sink (charge_on)", function()
+        -- layersConfig defaults charge_on = "deeper_only".
+        it("layerDepth: base 0, heaven_3 = 3, hell_2 = 2", function()
+            expect(LayerAccess.layerDepth("base")).to.equal(0)
+            expect(LayerAccess.layerDepth("heaven_3")).to.equal(3)
+            expect(LayerAccess.layerDepth("hell_2")).to.equal(2)
+        end)
+
+        it("deeper_only charges a deeper move", function()
+            expect(LayerAccess.isCharged("heaven_1", "heaven_2", layersConfig)).to.equal(true)
+        end)
+
+        it("deeper_only is free retreating toward base", function()
+            expect(LayerAccess.isCharged("heaven_3", "heaven_1", layersConfig)).to.equal(false)
+            expect(LayerAccess.isCharged("heaven_2", "base", layersConfig)).to.equal(false)
+        end)
+
+        it("canAccess: retreating costs 0 and needs no tokens (deeper_only)", function()
+            -- heaven_2 -> heaven_1: shallower, so free even with zero tokens (soul/level still met)
+            local r = LayerAccess.canAccess(50, 0, "heaven_1", layersConfig, {
+                playerLevel = 20,
+                fromLayer = "heaven_2",
+            })
+            expect(r.ok).to.equal(true)
+            expect(r.cost).to.equal(0)
+        end)
+
+        it("canAccess: descending deeper charges the target token_cost", function()
+            local r = LayerAccess.canAccess(60, 500, "heaven_3", layersConfig, {
+                playerLevel = 30,
+                fromLayer = "heaven_2",
+            })
+            expect(r.ok).to.equal(true)
+            expect(r.cost).to.equal(500)
+        end)
+
+        it("no fromLayer => charges (preserves every-move behavior)", function()
+            local r = LayerAccess.canAccess(25, 0, "heaven_1", layersConfig, { playerLevel = 10 })
+            expect(r.ok).to.equal(false)
+            expect(r.reason).to.equal("insufficient_tokens")
+        end)
+    end)
+
     describe("LayerAccess.accessibleLayers", function()
         it("a fresh player can only access base", function()
             local layers = LayerAccess.accessibleLayers(0, {}, layersConfig)

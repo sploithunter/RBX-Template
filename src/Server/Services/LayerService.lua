@@ -75,6 +75,7 @@ function LayerService:UseLayer(player, layerId)
 
     local decision = LayerAccess.canAccess(soul, balance, layerId, self._layersConfig, {
         playerLevel = self:_playerLevel(player),
+        fromLayer = data.CurrentLayer or "base", -- applies the charge_on traversal sink
     })
     if not decision.ok then
         return {
