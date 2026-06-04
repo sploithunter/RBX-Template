@@ -990,8 +990,7 @@ function BreakableSpawner:_ensureSpawnArea(worldFolder, worldConfig)
     part.CanTouch = false
     part.Transparency = 1
     part.Size = Vector3.new(tonumber(sz.x) or 100, tonumber(sz.y) or 1, tonumber(sz.z) or 100)
-    part.Position =
-        Vector3.new(area.position.x or 0, area.position.y or 0, area.position.z or 0)
+    part.Position = Vector3.new(area.position.x or 0, area.position.y or 0, area.position.z or 0)
     part.Parent = worldFolder
     return true
 end
@@ -1441,7 +1440,10 @@ function BreakableSpawner:_trySpawnOne(
         model:SetAttribute("Currency", tostring(resolveStat("currency", "crystals")))
         model:SetAttribute("Scale", scale)
         model:SetAttribute("Boost", 0)
-        model:SetAttribute("MaxBoost", (breakablesConfig.boost and breakablesConfig.boost.max) or 100)
+        model:SetAttribute(
+            "MaxBoost",
+            (breakablesConfig.boost and breakablesConfig.boost.max) or 100
+        )
         -- Pet-damage amplification at full Boost (read by PetFollowService on each hit).
         model:SetAttribute(
             "BoostDamageBonus",
@@ -1486,7 +1488,9 @@ function BreakableSpawner:_trySpawnOne(
         for _, d in ipairs(model:GetDescendants()) do
             if d:IsA("BillboardGui") then
                 local container = d:FindFirstChildWhichIsA("Frame")
-                if d:FindFirstChild("Health") or (container and container:FindFirstChild("Health")) then
+                if
+                    d:FindFirstChild("Health") or (container and container:FindFirstChild("Health"))
+                then
                     hasHealthUI = true
                     break
                 end
@@ -1771,6 +1775,8 @@ function BreakableSpawner:_trySpawnOne(
             or (self._modules and self._modules.EconomyService)
         local progression = self._moduleLoader
             and self._moduleLoader:Get("PlayerProgressionService")
+        -- World S3: a cut of mining income becomes realm tokens while in a realm layer (no-op at base).
+        local layerService = self._moduleLoader and self._moduleLoader:Get("LayerService")
 
         local function resolvePlayerAward(player, baseAmount)
             baseAmount = tonumber(baseAmount) or 0
@@ -1852,6 +1858,10 @@ function BreakableSpawner:_trySpawnOne(
                                         currency = currencyType,
                                         source = "BreakableSpawner",
                                     })
+                                end
+                                -- World S3: realm token cut on the same income share (no-op at base).
+                                if layerService and layerService.GrantIncomeCut then
+                                    layerService:GrantIncomeCut(plr, resolvedShare)
                                 end
                             end)
                         end

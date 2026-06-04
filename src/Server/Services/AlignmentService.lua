@@ -94,6 +94,15 @@ function AlignmentService:ApplyConquest(player, conqueredBiome)
     data.ConqueredBiomes = newState.conquered_biomes
     self._dataService:RequestSave(player, "alignment_conquest", { critical = true })
 
+    -- World S3: a conquest also grants realm tokens keyed to the player's current realm
+    -- (no-op at base / if LayerService isn't wired). Best-effort; never blocks the conquest.
+    local layerService = self._modules and self._modules.LayerService
+    if layerService and layerService.GrantConquestTokens then
+        pcall(function()
+            layerService:GrantConquestTokens(player)
+        end)
+    end
+
     if self._logger and result.fired then
         self._logger:Info("Conquest applied", {
             player = player.Name,

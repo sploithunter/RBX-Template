@@ -15,6 +15,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LayerAccess = require(ReplicatedStorage.Shared.Game.LayerAccess)
+local RealmTokens = require(ReplicatedStorage.Shared.Game.RealmTokens)
 
 local LayerService = {}
 LayerService.__index = LayerService
@@ -59,6 +60,39 @@ function LayerService:AccessibleLayers(player)
         self._layersConfig,
         self:_playerLevel(player)
     )
+end
+
+-- ===== Token-earning loop (World S3 / RealmTokens) =====
+-- Tokens are earned only while the player is in a realm layer (heaven -> light_tokens,
+-- hell -> shadow_tokens). These are no-ops at base, so callers can fire them unconditionally.
+
+function LayerService:_depositGrant(player, grant, reason)
+    if not grant or not player or not self._dataService then
+        return nil
+    end
+    self._dataService:AddCurrency(player, grant.currency, grant.amount, reason)
+    return grant
+end
+
+-- A cut of biome-coin income becomes the realm token (call from the mining/combat payout).
+function LayerService:GrantIncomeCut(player, incomeAmount)
+    local layer = self:GetCurrentLayer(player)
+    local grant = RealmTokens.fromIncome(incomeAmount, layer, self._layersConfig)
+    return self:_depositGrant(player, grant, "realm_income_cut")
+end
+
+-- Flat token grant for a conquest event, keyed to the player's current realm.
+function LayerService:GrantConquestTokens(player)
+    local layer = self:GetCurrentLayer(player)
+    local grant = RealmTokens.flat("conquest", layer, self._layersConfig)
+    return self:_depositGrant(player, grant, "realm_conquest_tokens")
+end
+
+-- Flat token grant for hatching an egg in a realm.
+function LayerService:GrantHatchTokens(player)
+    local layer = self:GetCurrentLayer(player)
+    local grant = RealmTokens.flat("hatch", layer, self._layersConfig)
+    return self:_depositGrant(player, grant, "realm_hatch_tokens")
 end
 
 -- Attempt to move the player to a layer. Server re-validates cost from config.

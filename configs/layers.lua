@@ -31,6 +31,17 @@ return {
         charge_on = "deeper_only",
     },
 
+    -- Token-earning loop (design doc §14, fork 1 — feeds the traversal sink above).
+    -- Light/shadow tokens are earned only while in a realm layer (heaven -> light,
+    -- hell -> shadow). income_cut converts that fraction of biome-coin income into the
+    -- realm token (income_min floors a positive trickle); conquest/hatch are flat grants.
+    earning = {
+        income_cut = 0.1,
+        income_min = 1,
+        conquest_tokens = 25,
+        hatch_tokens = 2,
+    },
+
     multipliers = {
         base = 1.0,
         heaven_1 = 1.5,
