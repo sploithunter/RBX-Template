@@ -1268,15 +1268,33 @@ function BreakableSpawner:_trySpawnOne(
 
     local assetModel = crystalsAssets:FindFirstChild(crystalName)
     if not assetModel or not assetModel:IsA("Model") then
-        local present = {}
+        -- Cosmetic variant meshes (…V1/V2/V3) are imported only partially, so the picked
+        -- variant is often absent. Fall back to ANY present variant of the same family+size
+        -- (strip the trailing Vn) instead of skipping the spawn + spamming a warning.
+        local base = tostring(crystalName):gsub("V%d+$", "")
         for _, child in ipairs(crystalsAssets:GetChildren()) do
-            table.insert(present, child.Name)
+            if child:IsA("Model") and (child.Name:gsub("V%d+$", "")) == base then
+                assetModel = child
+                crystalName = child.Name
+                break
+            end
         end
-        logger:Warn(
-            "BreakableSpawner: Crystal asset missing",
-            { name = crystalName, available = present }
-        )
-        return
+        if not assetModel or not assetModel:IsA("Model") then
+            -- No mesh at all for this family+size: warn once per base, not per spawn attempt.
+            self._warnedMissingCrystal = self._warnedMissingCrystal or {}
+            if not self._warnedMissingCrystal[base] then
+                self._warnedMissingCrystal[base] = true
+                local present = {}
+                for _, child in ipairs(crystalsAssets:GetChildren()) do
+                    table.insert(present, child.Name)
+                end
+                logger:Warn(
+                    "BreakableSpawner: Crystal asset missing (no variant for family/size)",
+                    { name = crystalName, base = base, available = present }
+                )
+            end
+            return
+        end
     end
 
     local spawner, spawnPosition = self:_findSpawnPoint(worldFolder)

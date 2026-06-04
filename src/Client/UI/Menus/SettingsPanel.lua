@@ -16,7 +16,6 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local SoundService = game:GetService("SoundService")
 
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
@@ -33,23 +32,39 @@ if loggerSuccess and loggerResult then
     LoggerWrapper = {
         new = function(name)
             return {
-                info = function(_self, ...) loggerResult:Info("[" .. name .. "] " .. tostring((...)), {context = name}) end,
-                warn = function(_self, ...) loggerResult:Warn("[" .. name .. "] " .. tostring((...)), {context = name}) end,
-                error = function(_self, ...) loggerResult:Error("[" .. name .. "] " .. tostring((...)), {context = name}) end,
-                debug = function(_self, ...) loggerResult:Debug("[" .. name .. "] " .. tostring((...)), {context = name}) end,
+                info = function(_self, ...)
+                    loggerResult:Info("[" .. name .. "] " .. tostring((...)), { context = name })
+                end,
+                warn = function(_self, ...)
+                    loggerResult:Warn("[" .. name .. "] " .. tostring((...)), { context = name })
+                end,
+                error = function(_self, ...)
+                    loggerResult:Error("[" .. name .. "] " .. tostring((...)), { context = name })
+                end,
+                debug = function(_self, ...)
+                    loggerResult:Debug("[" .. name .. "] " .. tostring((...)), { context = name })
+                end,
             }
-        end
+        end,
     }
 else
     LoggerWrapper = {
         new = function(name)
             return {
-                info = function(_self, ...) print("[" .. name .. "] INFO:", ...) end,
-                warn = function(_self, ...) warn("[" .. name .. "] WARN:", ...) end,
-                error = function(_self, ...) warn("[" .. name .. "] ERROR:", ...) end,
-                debug = function(_self, ...) print("[" .. name .. "] DEBUG:", ...) end,
+                info = function(_self, ...)
+                    print("[" .. name .. "] INFO:", ...)
+                end,
+                warn = function(_self, ...)
+                    warn("[" .. name .. "] WARN:", ...)
+                end,
+                error = function(_self, ...)
+                    warn("[" .. name .. "] ERROR:", ...)
+                end,
+                debug = function(_self, ...)
+                    print("[" .. name .. "] DEBUG:", ...)
+                end,
             }
-        end
+        end,
     }
 end
 
@@ -62,12 +77,16 @@ if templateSuccess and templateResult then
     TemplateManager = templateResult
 else
     TemplateManager = {
-        new = function() 
+        new = function()
             return {
-                CreatePanel = function() return nil end,
-                CreateFromTemplate = function() return nil end
-            } 
-        end 
+                CreatePanel = function()
+                    return nil
+                end,
+                CreateFromTemplate = function()
+                    return nil
+                end,
+            }
+        end,
     }
 end
 
@@ -80,23 +99,32 @@ if configSuccess and configResult then
     uiConfig = configResult
 else
     uiConfig = {
-        themes = { dark = { primary = { surface = Color3.fromRGB(40, 40, 45) }, text = { primary = Color3.fromRGB(255, 255, 255) } } },
+        themes = {
+            dark = {
+                primary = { surface = Color3.fromRGB(40, 40, 45) },
+                text = { primary = Color3.fromRGB(255, 255, 255) },
+            },
+        },
         active_theme = "dark",
-        helpers = { get_theme = function(config) return config.themes.dark end },
+        helpers = {
+            get_theme = function(config)
+                return config.themes.dark
+            end,
+        },
         defaults = {
             panel = {
                 header = {
                     close_button = {
                         icon = "89257673063270",
-                        size = {width = 30, height = 30},
-                        offset = {x = 10, y = -10},
+                        size = { width = 30, height = 30 },
+                        offset = { x = 10, y = -10 },
                         background_color = Color3.fromRGB(220, 60, 60),
                         hover_color = Color3.fromRGB(180, 40, 40),
-                        corner_radius = 8
-                    }
-                }
-            }
-        }
+                        corner_radius = 8,
+                    },
+                },
+            },
+        },
     }
 end
 
@@ -107,14 +135,14 @@ local AdminChecker = require(Locations.SharedUtils.AdminChecker)
 
 function SettingsPanel.new()
     local self = setmetatable({}, SettingsPanel)
-    
+
     self.logger = LoggerWrapper.new("SettingsPanel")
     self.templateManager = TemplateManager.new()
-    
+
     -- Panel state
     self.isVisible = false
     self.frame = nil
-    
+
     -- Settings state
     self.settings = {
         -- Default to full volume so the sliders' starting position matches actual loudness
@@ -123,57 +151,61 @@ function SettingsPanel.new()
             masterVolume = 1.0,
             effectsVolume = 1.0,
             musicVolume = 1.0,
-            uiSoundsEnabled = true
+            uiSoundsEnabled = true,
         },
         graphics = {
             quality = "medium", -- low, medium, high
             performanceMode = false,
             reducedMotion = false,
             -- Display method preferences
-            inventoryDisplay = "images",    -- images, viewports
-            eggPreviewDisplay = "images",   -- images, viewports
+            inventoryDisplay = "images", -- images, viewports
+            eggPreviewDisplay = "images", -- images, viewports
         },
         ui = {
             scale = 1.0,
             theme = "dark", -- dark, light
             showTooltips = true,
-            compactMode = false
+            compactMode = false,
         },
         accessibility = {
             highContrast = false,
             largeText = false,
-            keyboardNavigation = true
-        }
+            keyboardNavigation = true,
+        },
     }
-    
+
     -- Check if user is admin (using centralized AdminChecker)
     self.isAdmin = AdminChecker.IsCurrentPlayerAdmin()
-    
+
     -- Log admin status for debugging
     local adminStatus = AdminChecker.GetAdminStatus()
     self.logger:info("Admin status determined", adminStatus)
-    
+
     return self
 end
 
 function SettingsPanel:Show(parent)
-    if self.isVisible then return end
-    
+    if self.isVisible then
+        return
+    end
+
     self:_createUI(parent)
     self:_loadSettings()
-    
+
     self.isVisible = true
     self.logger:info("Settings panel shown")
 end
 
 function SettingsPanel:Hide()
-    if not self.isVisible then return end
-    
+    if not self.isVisible then
+        return
+    end
+
     if self.frame then
         self.frame:Destroy()
         self.frame = nil
     end
-    
+
     self.isVisible = false
     self.logger:info("Settings panel hidden")
 end
@@ -182,78 +214,83 @@ function SettingsPanel:_createUI(parent)
     -- Create image-based panel using BaseUI system
     local BaseUI = require(script.Parent.Parent.BaseUI)
     local baseUI = BaseUI.new()
-    
+
     -- Create professional image-based settings panel
     local panelResult = baseUI:CreateImagePanel("settings_panel", {
         size = UDim2.new(0.7, 0, 0.85, 0),
         position = UDim2.new(0.5, 0, 0.5, 0),
-        anchor_point = Vector2.new(0.5, 0.5)
+        anchor_point = Vector2.new(0.5, 0.5),
     }, parent)
-    
+
     self.frame = panelResult.panel
     self.frame.Name = "SettingsPanel"
     self.frame.Size = UDim2.new(0.7, 0, 0.85, 0)
     self.frame.Position = UDim2.new(0.5, 0, 0.5, 0)
     self.frame.AnchorPoint = Vector2.new(0.5, 0.5)
-    
+
     -- Store references
     self.header = panelResult.header
     self.content = panelResult.content
     self.baseUI = baseUI
-    
+
     -- Add close button to header if it exists
     if self.header then
         -- Get close button config from global defaults with safety checks
         local config = nil
-        if uiConfig and uiConfig.defaults and uiConfig.defaults.panel and 
-           uiConfig.defaults.panel.header and uiConfig.defaults.panel.header.close_button then
+        if
+            uiConfig
+            and uiConfig.defaults
+            and uiConfig.defaults.panel
+            and uiConfig.defaults.panel.header
+            and uiConfig.defaults.panel.header.close_button
+        then
             config = uiConfig.defaults.panel.header.close_button
         else
             -- Fallback configuration if config not found
             config = {
                 icon = "89257673063270",
-                size = {width = 30, height = 30},
-                offset = {x = 10, y = -10},
+                size = { width = 30, height = 30 },
+                offset = { x = 10, y = -10 },
                 background_color = Color3.fromRGB(220, 60, 60),
                 hover_color = Color3.fromRGB(180, 40, 40),
-                corner_radius = 8
+                corner_radius = 8,
             }
             self.logger:warn("Close button config not found, using fallback")
         end
-        
+
         local closeButton = Instance.new("ImageButton")
         closeButton.Name = "CloseButton"
         closeButton.Size = UDim2.new(0, config.size.width, 0, config.size.height)
-        
+
         -- Position in top-right-corner with offset (extends outside bounds)
         closeButton.Position = UDim2.new(1, config.offset.x, 0, config.offset.y)
-        closeButton.AnchorPoint = Vector2.new(1, 0)  -- Anchor to top-right
-        
+        closeButton.AnchorPoint = Vector2.new(1, 0) -- Anchor to top-right
+
         closeButton.BackgroundColor3 = config.background_color
         closeButton.BorderSizePixel = 0
         closeButton.Image = "rbxassetid://" .. config.icon
         closeButton.ScaleType = Enum.ScaleType.Fit
         closeButton.ZIndex = 17
         closeButton.Parent = self.header
-        
+
         local closeCorner = Instance.new("UICorner")
         closeCorner.CornerRadius = UDim.new(0, config.corner_radius)
         closeCorner.Parent = closeButton
-        
+
         -- Add hover effect
         closeButton.MouseEnter:Connect(function()
             closeButton.BackgroundColor3 = config.hover_color
         end)
-        
+
         closeButton.MouseLeave:Connect(function()
             closeButton.BackgroundColor3 = config.background_color
         end)
-        
+
         closeButton.Activated:Connect(function()
             self:Hide()
         end)
     end
-    
+
     -- Scroll frame for settings (use content area)
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Name = "SettingsScroll"
@@ -264,29 +301,29 @@ function SettingsPanel:_createUI(parent)
     scrollFrame.ScrollBarThickness = 8
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     scrollFrame.ZIndex = 15
-    scrollFrame.Parent = self.content or self.frame  -- Use content if available, fallback to frame
-    
+    scrollFrame.Parent = self.content or self.frame -- Use content if available, fallback to frame
+
     -- Layout for settings
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, 15)
     layout.Parent = scrollFrame
-    
+
     -- Update canvas size when layout changes
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         scrollFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
     end)
-    
+
     self.scrollFrame = scrollFrame
-    
+
     -- Create settings sections
     self:_createAudioSettings()
     self:_createGraphicsSettings()
     self:_createUISettings()
     self:_createPetSettings()
     self:_createHatchSettings()
-    
+
     -- Admin section (only for admin users)
     if self.isAdmin then
         self.logger:info("Creating admin settings - user is authorized admin")
@@ -294,14 +331,14 @@ function SettingsPanel:_createUI(parent)
     else
         self.logger:debug("Skipping admin settings - user is not authorized admin", {
             userId = Players.LocalPlayer.UserId,
-            userName = Players.LocalPlayer.Name
+            userName = Players.LocalPlayer.Name,
         })
     end
 end
 
 function SettingsPanel:_createSectionHeader(title, layoutOrder)
     local theme = uiConfig.helpers.get_theme(uiConfig)
-    
+
     local header = Instance.new("Frame")
     header.Name = title .. "Header"
     header.Size = UDim2.new(1, 0, 0, 40)
@@ -309,11 +346,11 @@ function SettingsPanel:_createSectionHeader(title, layoutOrder)
     header.BorderSizePixel = 0
     header.LayoutOrder = layoutOrder
     header.Parent = self.scrollFrame
-    
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = header
-    
+
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, -20, 1, 0)
     label.Position = UDim2.new(0, 10, 0, 0)
@@ -326,9 +363,16 @@ function SettingsPanel:_createSectionHeader(title, layoutOrder)
     label.Parent = header
 end
 
-function SettingsPanel:_createSliderSetting(name, currentValue, minValue, maxValue, layoutOrder, callback)
+function SettingsPanel:_createSliderSetting(
+    name,
+    currentValue,
+    minValue,
+    maxValue,
+    layoutOrder,
+    callback
+)
     local theme = uiConfig.helpers.get_theme(uiConfig)
-    
+
     local settingFrame = Instance.new("Frame")
     settingFrame.Name = name .. "Setting"
     settingFrame.Size = UDim2.new(1, 0, 0, 50)
@@ -336,11 +380,11 @@ function SettingsPanel:_createSliderSetting(name, currentValue, minValue, maxVal
     settingFrame.BorderSizePixel = 0
     settingFrame.LayoutOrder = layoutOrder
     settingFrame.Parent = self.scrollFrame
-    
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = settingFrame
-    
+
     -- Label
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(0.4, 0, 1, 0)
@@ -352,7 +396,7 @@ function SettingsPanel:_createSliderSetting(name, currentValue, minValue, maxVal
     label.Font = Enum.Font.Gotham
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = settingFrame
-    
+
     -- Slider background
     local sliderBG = Instance.new("Frame")
     sliderBG.Size = UDim2.new(0.35, 0, 0, 8)
@@ -360,11 +404,11 @@ function SettingsPanel:_createSliderSetting(name, currentValue, minValue, maxVal
     sliderBG.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     sliderBG.BorderSizePixel = 0
     sliderBG.Parent = settingFrame
-    
+
     local sliderCorner = Instance.new("UICorner")
     sliderCorner.CornerRadius = UDim.new(0, 4)
     sliderCorner.Parent = sliderBG
-    
+
     -- Slider fill
     local sliderFill = Instance.new("Frame")
     local fillPercent = (currentValue - minValue) / (maxValue - minValue)
@@ -373,11 +417,11 @@ function SettingsPanel:_createSliderSetting(name, currentValue, minValue, maxVal
     sliderFill.BackgroundColor3 = theme.primary.accent or Color3.fromRGB(0, 120, 180)
     sliderFill.BorderSizePixel = 0
     sliderFill.Parent = sliderBG
-    
+
     local fillCorner = Instance.new("UICorner")
     fillCorner.CornerRadius = UDim.new(0, 4)
     fillCorner.Parent = sliderFill
-    
+
     -- Value label
     local valueLabel = Instance.new("TextLabel")
     valueLabel.Size = UDim2.new(0.15, 0, 1, 0)
@@ -389,20 +433,24 @@ function SettingsPanel:_createSliderSetting(name, currentValue, minValue, maxVal
     valueLabel.Font = Enum.Font.Gotham
     valueLabel.TextXAlignment = Enum.TextXAlignment.Center
     valueLabel.Parent = settingFrame
-    
+
     -- Click handling for slider
     local function updateSlider(input)
-        local percent = math.clamp((input.Position.X - sliderBG.AbsolutePosition.X) / sliderBG.AbsoluteSize.X, 0, 1)
+        local percent = math.clamp(
+            (input.Position.X - sliderBG.AbsolutePosition.X) / sliderBG.AbsoluteSize.X,
+            0,
+            1
+        )
         local newValue = minValue + (maxValue - minValue) * percent
-        
+
         sliderFill.Size = UDim2.new(percent, 0, 1, 0)
         valueLabel.Text = tostring(math.floor(newValue * 100)) .. "%"
-        
+
         if callback then
             callback(newValue)
         end
     end
-    
+
     sliderBG.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             updateSlider(input)
@@ -413,16 +461,17 @@ end
 function SettingsPanel:_createToggleSetting(name, currentValue, layoutOrder, callback)
     -- Create image-based toggle using BaseUI system
     if self.baseUI then
-        local toggleElement = self.baseUI:CreateImageToggle(name, currentValue, nil, self.scrollFrame, callback)
-        
+        local toggleElement =
+            self.baseUI:CreateImageToggle(name, currentValue, nil, self.scrollFrame, callback)
+
         -- Set layout order for proper positioning
         toggleElement.container.LayoutOrder = layoutOrder
-        
+
         return toggleElement
     else
         -- Fallback to old system if BaseUI not available
         local theme = uiConfig.helpers.get_theme(uiConfig)
-        
+
         local settingFrame = Instance.new("Frame")
         settingFrame.Name = name .. "Setting"
         settingFrame.Size = UDim2.new(1, 0, 0, 40)
@@ -430,11 +479,11 @@ function SettingsPanel:_createToggleSetting(name, currentValue, layoutOrder, cal
         settingFrame.BorderSizePixel = 0
         settingFrame.LayoutOrder = layoutOrder
         settingFrame.Parent = self.scrollFrame
-        
+
         local corner = Instance.new("UICorner")
         corner.CornerRadius = UDim.new(0, 8)
         corner.Parent = settingFrame
-        
+
         -- Label
         local label = Instance.new("TextLabel")
         label.Size = UDim2.new(0.7, 0, 1, 0)
@@ -446,40 +495,42 @@ function SettingsPanel:_createToggleSetting(name, currentValue, layoutOrder, cal
         label.Font = Enum.Font.Gotham
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.Parent = settingFrame
-        
+
         -- Toggle button
         local toggleButton = Instance.new("TextButton")
         toggleButton.Size = UDim2.new(0, 60, 0, 25)
         toggleButton.Position = UDim2.new(1, -75, 0.5, -12.5)
-        toggleButton.BackgroundColor3 = currentValue and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(120, 120, 120)
+        toggleButton.BackgroundColor3 = currentValue and Color3.fromRGB(0, 180, 0)
+            or Color3.fromRGB(120, 120, 120)
         toggleButton.BorderSizePixel = 0
         toggleButton.Text = currentValue and "ON" or "OFF"
         toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
         toggleButton.TextSize = 12
         toggleButton.Font = Enum.Font.GothamBold
         toggleButton.Parent = settingFrame
-        
+
         local toggleCorner = Instance.new("UICorner")
         toggleCorner.CornerRadius = UDim.new(0, 12)
         toggleCorner.Parent = toggleButton
-        
+
         toggleButton.Activated:Connect(function()
             currentValue = not currentValue
-            toggleButton.BackgroundColor3 = currentValue and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(120, 120, 120)
+            toggleButton.BackgroundColor3 = currentValue and Color3.fromRGB(0, 180, 0)
+                or Color3.fromRGB(120, 120, 120)
             toggleButton.Text = currentValue and "ON" or "OFF"
-            
+
             if callback then
                 callback(currentValue)
             end
         end)
-        
-        return {container = settingFrame, toggle = toggleButton}
+
+        return { container = settingFrame, toggle = toggleButton }
     end
 end
 
 function SettingsPanel:_createButtonSetting(name, buttonText, layoutOrder, callback)
     local theme = uiConfig.helpers.get_theme(uiConfig)
-    
+
     local settingFrame = Instance.new("Frame")
     settingFrame.Name = name .. "Setting"
     settingFrame.Size = UDim2.new(1, 0, 0, 40)
@@ -487,11 +538,11 @@ function SettingsPanel:_createButtonSetting(name, buttonText, layoutOrder, callb
     settingFrame.BorderSizePixel = 0
     settingFrame.LayoutOrder = layoutOrder
     settingFrame.Parent = self.scrollFrame
-    
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = settingFrame
-    
+
     -- Label
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(0.6, 0, 1, 0)
@@ -503,23 +554,24 @@ function SettingsPanel:_createButtonSetting(name, buttonText, layoutOrder, callb
     label.Font = Enum.Font.Gotham
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = settingFrame
-    
+
     -- Action button
     local actionButton = Instance.new("TextButton")
     actionButton.Size = UDim2.new(0, 120, 0, 25)
     actionButton.Position = UDim2.new(1, -135, 0.5, -12.5)
-    actionButton.BackgroundColor3 = theme.button and theme.button.primary or Color3.fromRGB(0, 120, 180)
+    actionButton.BackgroundColor3 = theme.button and theme.button.primary
+        or Color3.fromRGB(0, 120, 180)
     actionButton.BorderSizePixel = 0
     actionButton.Text = buttonText
     actionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     actionButton.TextSize = 12
     actionButton.Font = Enum.Font.Gotham
     actionButton.Parent = settingFrame
-    
+
     local buttonCorner = Instance.new("UICorner")
     buttonCorner.CornerRadius = UDim.new(0, 6)
     buttonCorner.Parent = actionButton
-    
+
     actionButton.Activated:Connect(function()
         if callback then
             callback()
@@ -534,7 +586,7 @@ function SettingsPanel:_createDropdownSetting(title, currentValue, options, layo
     container.BackgroundTransparency = 1
     container.LayoutOrder = layoutOrder
     container.Parent = self.scrollFrame
-    
+
     -- Title label
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "Title"
@@ -547,7 +599,7 @@ function SettingsPanel:_createDropdownSetting(title, currentValue, options, layo
     titleLabel.Font = Enum.Font.Gotham
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.Parent = container
-    
+
     -- Dropdown button (changed from Frame to TextButton to support clicking)
     local dropdownFrame = Instance.new("TextButton")
     dropdownFrame.Name = "Dropdown"
@@ -555,13 +607,13 @@ function SettingsPanel:_createDropdownSetting(title, currentValue, options, layo
     dropdownFrame.Position = UDim2.new(0.5, 10, 0.5, -16)
     dropdownFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
     dropdownFrame.BorderSizePixel = 0
-    dropdownFrame.Text = ""  -- No text on the button itself
+    dropdownFrame.Text = "" -- No text on the button itself
     dropdownFrame.Parent = container
-    
+
     local dropdownCorner = Instance.new("UICorner")
     dropdownCorner.CornerRadius = UDim.new(0, 6)
     dropdownCorner.Parent = dropdownFrame
-    
+
     -- Current value label
     local valueLabel = Instance.new("TextLabel")
     valueLabel.Name = "ValueLabel"
@@ -574,7 +626,7 @@ function SettingsPanel:_createDropdownSetting(title, currentValue, options, layo
     valueLabel.Font = Enum.Font.Gotham
     valueLabel.TextXAlignment = Enum.TextXAlignment.Left
     valueLabel.Parent = dropdownFrame
-    
+
     -- Arrow icon
     local arrowLabel = Instance.new("TextLabel")
     arrowLabel.Name = "Arrow"
@@ -587,7 +639,7 @@ function SettingsPanel:_createDropdownSetting(title, currentValue, options, layo
     arrowLabel.Font = Enum.Font.Gotham
     arrowLabel.TextXAlignment = Enum.TextXAlignment.Center
     arrowLabel.Parent = dropdownFrame
-    
+
     -- Click to cycle through options
     local currentIndex = 1
     for i, option in ipairs(options) do
@@ -599,45 +651,68 @@ function SettingsPanel:_createDropdownSetting(title, currentValue, options, layo
     if options[currentIndex] then
         valueLabel.Text = options[currentIndex].display
     end
-    
+
     dropdownFrame.Activated:Connect(function()
         currentIndex = currentIndex + 1
         if currentIndex > #options then
             currentIndex = 1
         end
-        
+
         local selectedOption = options[currentIndex]
         valueLabel.Text = selectedOption.display
-        
+
         if callback then
             callback(selectedOption.value)
         end
     end)
-    
+
     return container
 end
 
 function SettingsPanel:_createAudioSettings()
     self:_createSectionHeader("🔊 Audio Settings", 1)
 
-    self:_createSliderSetting("Master Volume", self.settings.audio.masterVolume, 0, 1, 2, function(value)
-        self.settings.audio.masterVolume = value
-        SoundService.MasterVolume = value
-    end)
+    -- Each control updates its setting then re-applies all buses. (SoundService has NO
+    -- MasterVolume property, so Master is folded into the per-bus volumes below.)
+    self:_createSliderSetting(
+        "Master Volume",
+        self.settings.audio.masterVolume,
+        0,
+        1,
+        2,
+        function(value)
+            self.settings.audio.masterVolume = value
+            self:_applyAudioSettings()
+        end
+    )
 
-    self:_createSliderSetting("Effects Volume", self.settings.audio.effectsVolume, 0, 1, 3, function(value)
-        self.settings.audio.effectsVolume = value
-        SoundGroups.setVolume("effects", value) -- combat/mining/power VFX + hatch sounds
-    end)
+    self:_createSliderSetting(
+        "Effects Volume",
+        self.settings.audio.effectsVolume,
+        0,
+        1,
+        3,
+        function(value)
+            self.settings.audio.effectsVolume = value
+            self:_applyAudioSettings()
+        end
+    )
 
-    self:_createSliderSetting("Music Volume", self.settings.audio.musicVolume, 0, 1, 4, function(value)
-        self.settings.audio.musicVolume = value
-        SoundGroups.setVolume("music", value)
-    end)
+    self:_createSliderSetting(
+        "Music Volume",
+        self.settings.audio.musicVolume,
+        0,
+        1,
+        4,
+        function(value)
+            self.settings.audio.musicVolume = value
+            self:_applyAudioSettings()
+        end
+    )
 
     self:_createToggleSetting("UI Sounds", self.settings.audio.uiSoundsEnabled, 5, function(value)
         self.settings.audio.uiSoundsEnabled = value
-        SoundGroups.setVolume("ui", value and 1 or 0)
+        self:_applyAudioSettings()
     end)
 
     -- Sync the live audio buses to the displayed values so the controls reflect reality
@@ -645,28 +720,40 @@ function SettingsPanel:_createAudioSettings()
     self:_applyAudioSettings()
 end
 
--- Push the current audio settings onto the live SoundService master + bus volumes.
+-- Push the current audio settings onto the live SoundGroup bus volumes. Master is a
+-- multiplier across every bus (SoundService has no MasterVolume); all game sound routes
+-- through these three buses, so master scales effects + music + UI together.
 function SettingsPanel:_applyAudioSettings()
     local audio = self.settings.audio
-    SoundService.MasterVolume = audio.masterVolume
-    SoundGroups.setVolume("effects", audio.effectsVolume)
-    SoundGroups.setVolume("music", audio.musicVolume)
-    SoundGroups.setVolume("ui", audio.uiSoundsEnabled and 1 or 0)
+    local master = tonumber(audio.masterVolume) or 1
+    SoundGroups.setVolume("effects", (tonumber(audio.effectsVolume) or 1) * master)
+    SoundGroups.setVolume("music", (tonumber(audio.musicVolume) or 1) * master)
+    SoundGroups.setVolume("ui", (audio.uiSoundsEnabled and 1 or 0) * master)
 end
 
 function SettingsPanel:_createGraphicsSettings()
     self:_createSectionHeader("🎨 Graphics Settings", 6)
-    
-    self:_createToggleSetting("Performance Mode", self.settings.graphics.performanceMode, 7, function(value)
-        self.settings.graphics.performanceMode = value
-        -- Apply performance optimizations
-    end)
-    
-    self:_createToggleSetting("Reduced Motion", self.settings.graphics.reducedMotion, 8, function(value)
-        self.settings.graphics.reducedMotion = value
-        -- Disable/reduce animations
-    end)
-    
+
+    self:_createToggleSetting(
+        "Performance Mode",
+        self.settings.graphics.performanceMode,
+        7,
+        function(value)
+            self.settings.graphics.performanceMode = value
+            -- Apply performance optimizations
+        end
+    )
+
+    self:_createToggleSetting(
+        "Reduced Motion",
+        self.settings.graphics.reducedMotion,
+        8,
+        function(value)
+            self.settings.graphics.reducedMotion = value
+            -- Disable/reduce animations
+        end
+    )
+
     -- Display Method Preferences (only show if user control is allowed)
     self:_createDisplayPreferences()
 end
@@ -674,62 +761,70 @@ end
 function SettingsPanel:_createDisplayPreferences()
     -- Use simplified DisplayPreferences utility
     local DisplayPreferences = require(script.Parent.Parent.Parent.Utils.DisplayPreferences)
-    
+
     -- Get controllable contexts
     local controllableContexts = DisplayPreferences.GetControllableContexts()
-    
+
     if #controllableContexts == 0 then
         self.logger:debug("No user-controllable display contexts available")
         return
     end
-    
+
     -- Create dropdown options
     local displayOptions = {
-        {value = "images", display = "📷 Images (Fast)"},
-        {value = "viewports", display = "🎮 3D Models (High Quality)"}
+        { value = "images", display = "📷 Images (Fast)" },
+        { value = "viewports", display = "🎮 3D Models (High Quality)" },
     }
-    
+
     -- Add dropdown for each controllable context
     local layoutOrder = 9
     for _, context in ipairs(controllableContexts) do
         -- Get current user preference
         local currentPref = DisplayPreferences.GetDisplayMethod(context)
-        
+
         -- Create friendly context name
         local contextDisplayNames = {
             inventory = "Inventory Display",
             egg_preview = "Egg Preview Display",
-            shop_display = "Shop Display"
+            shop_display = "Shop Display",
         }
-        
+
         local contextTitle = contextDisplayNames[context] or (context .. " Display")
-        
+
         -- Create dropdown
-        self:_createDropdownSetting(contextTitle, currentPref, displayOptions, layoutOrder, function(value)
-            -- Set the preference via DisplayPreferences utility
-            DisplayPreferences.SetDisplayMethod(context, value)
-            
-            self.logger:info("Display preference updated", {
-                context = context,
-                value = value
-            })
-            
-            -- Show performance warning if switching to viewports
-            if value == "viewports" then
-                -- Simple performance warning
-                self:_showPerformanceWarning("Viewports may impact performance on older devices. Switch to Images if you experience frame drops.")
+        self:_createDropdownSetting(
+            contextTitle,
+            currentPref,
+            displayOptions,
+            layoutOrder,
+            function(value)
+                -- Set the preference via DisplayPreferences utility
+                DisplayPreferences.SetDisplayMethod(context, value)
+
+                self.logger:info("Display preference updated", {
+                    context = context,
+                    value = value,
+                })
+
+                -- Show performance warning if switching to viewports
+                if value == "viewports" then
+                    -- Simple performance warning
+                    self:_showPerformanceWarning(
+                        "Viewports may impact performance on older devices. Switch to Images if you experience frame drops."
+                    )
+                end
+
+                -- Update local settings cache
+                if context == "inventory" then
+                    self.settings.graphics.inventoryDisplay = value
+                elseif context == "egg_preview" then
+                    self.settings.graphics.eggPreviewDisplay = value
+                end
+
+                self:_saveSettings()
             end
-            
-            -- Update local settings cache
-            if context == "inventory" then
-                self.settings.graphics.inventoryDisplay = value
-            elseif context == "egg_preview" then
-                self.settings.graphics.eggPreviewDisplay = value
-            end
-            
-            self:_saveSettings()
-        end)
-        
+        )
+
         layoutOrder = layoutOrder + 1
     end
 end
@@ -737,23 +832,23 @@ end
 function SettingsPanel:_showPerformanceWarning(message)
     -- Create a temporary warning message
     self.logger:warn("Performance Warning: " .. message)
-    
+
     -- TODO: Could add a proper warning UI here
     -- For now, just log the warning
 end
 
 function SettingsPanel:_createUISettings()
     self:_createSectionHeader("📱 UI Settings", 20)
-    
+
     self:_createSliderSetting("UI Scale", self.settings.ui.scale, 0.8, 1.2, 21, function(value)
         self.settings.ui.scale = value
         -- Apply UI scaling
     end)
-    
+
     self:_createToggleSetting("Show Tooltips", self.settings.ui.showTooltips, 22, function(value)
         self.settings.ui.showTooltips = value
     end)
-    
+
     self:_createToggleSetting("Compact Mode", self.settings.ui.compactMode, 23, function(value)
         self.settings.ui.compactMode = value
     end)
@@ -869,39 +964,51 @@ end
 function SettingsPanel:_createPetSettings()
     self:_createSectionHeader("🐾 Pet Settings", 22)
 
-    self:_createDropdownSetting("Pet Formation", self:_getPetFormation(), {
-        { value = "risers", display = "Tiered Rows" },
-        { value = "conga", display = "Conga Line" },
-        { value = "arc", display = "Arc Cradle" },
-    }, 23, function(value)
-        Signals.Settings_SetPetFormation:FireServer({ mode = value })
-    end)
+    self:_createDropdownSetting(
+        "Pet Formation",
+        self:_getPetFormation(),
+        {
+            { value = "risers", display = "Tiered Rows" },
+            { value = "conga", display = "Conga Line" },
+            { value = "arc", display = "Arc Cradle" },
+        },
+        23,
+        function(value)
+            Signals.Settings_SetPetFormation:FireServer({ mode = value })
+        end
+    )
 
-    self:_createDropdownSetting("Pet Attack Style", self:_getPetAttackStyle(), {
-        { value = "orbit", display = "Orbit Ring" },
-        { value = "static_ring", display = "Static Ring" },
-        { value = "lunge", display = "Lunge" },
-        { value = "spiral", display = "Spiral Vortex" },
-        { value = "pincer", display = "Pincer" },
-        { value = "firing_line", display = "Firing Line" },
-        { value = "swarm", display = "Swarm" },
-    }, 24, function(value)
-        Signals.Settings_SetPetAttackStyle:FireServer({ style = value })
-    end)
+    self:_createDropdownSetting(
+        "Pet Attack Style",
+        self:_getPetAttackStyle(),
+        {
+            { value = "orbit", display = "Orbit Ring" },
+            { value = "static_ring", display = "Static Ring" },
+            { value = "lunge", display = "Lunge" },
+            { value = "spiral", display = "Spiral Vortex" },
+            { value = "pincer", display = "Pincer" },
+            { value = "firing_line", display = "Firing Line" },
+            { value = "swarm", display = "Swarm" },
+        },
+        24,
+        function(value)
+            Signals.Settings_SetPetAttackStyle:FireServer({ style = value })
+        end
+    )
 end
 
 function SettingsPanel:_createAdminSettings()
     self:_createSectionHeader("🛠️ Admin Tools", 30)
-    
+
     self:_createButtonSetting("Test Menu Access", "Open Admin Panel", 31, function()
         self:_openAdminPanel()
     end)
-    
+
     self:_createButtonSetting("Debug Mode", "Toggle Debug UI", 32, function()
         -- Toggle debug overlays
         self.logger:info("Debug mode toggled")
     end)
-    
+
     self:_createButtonSetting("Performance Monitor", "Show Stats", 33, function()
         -- Show performance statistics
         self.logger:info("Performance monitor toggled")
@@ -910,7 +1017,7 @@ end
 
 function SettingsPanel:_openAdminPanel()
     self.logger:info("Opening admin panel")
-    
+
     -- Create admin panel (this would open your test menu system)
     -- For now, we'll emit an event that MenuManager can listen to
     if self.onAdminPanelRequested then
