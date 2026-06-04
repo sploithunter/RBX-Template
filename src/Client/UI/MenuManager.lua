@@ -39,6 +39,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
+local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
 
 -- Load Logger with wrapper (following the established pattern)
 local LoggerWrapper
@@ -493,6 +494,7 @@ function MenuManager:_playPanelSound(soundType)
             local sound = Instance.new("Sound")
             sound.SoundId = soundId
             sound.Volume = uiConfig.sounds.volume or 0.5
+            SoundGroups.assign(sound, "ui")
             sound.Parent = SoundService
             
             sound:Play()

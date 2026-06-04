@@ -12,6 +12,8 @@ local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
+local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
+
 local EnchantLightning = {}
 
 local DEFAULT_COLORS = {
@@ -381,6 +383,7 @@ local function playThunder(station, config)
     sound.Volume = tonumber(config.volume) or sound.Volume or 0.8
     sound.PlaybackSpeed = tonumber(config.playback_speed) or sound.PlaybackSpeed or 1
     sound.RollOffMaxDistance = tonumber(config.roll_off_max_distance) or 90
+    SoundGroups.assign(sound, "effects")
     sound.Parent = SoundService
     sound:Play()
     Debris:AddItem(sound, math.max(2, tonumber(config.sound_lifetime_seconds) or 16))

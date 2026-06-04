@@ -28,6 +28,7 @@ local GuiService = game:GetService("GuiService")
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local uiConfig = Locations.getConfig("ui")
+local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
 
 -- Safety check for UI config
 if not uiConfig or not uiConfig.helpers then
@@ -54,9 +55,10 @@ local function createSound(soundId, volume)
     local sound = Instance.new("Sound")
     sound.SoundId = soundId
     sound.Volume = volume or 0.5
+    SoundGroups.assign(sound, "ui") -- clones inherit the SoundGroup
     sound.Parent = SoundService
     soundCache[soundId] = sound
-    
+
     return sound:Clone()
 end
 

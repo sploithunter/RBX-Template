@@ -24,6 +24,7 @@ local SoundService = game:GetService("SoundService")
 
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local EggHatchFX = require(ReplicatedStorage.Shared.Effects.EggHatchFX)
+local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
 local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
 local HatchTiming = require(ReplicatedStorage.Shared.Game.HatchTiming)
 
@@ -1093,6 +1094,7 @@ function EggHatchingService:AnimateFlash(eggComponents, duration)
                     s.Volume = volume
                     s.PlaybackSpeed = speed
                     s.RollOffMaxDistance = 100
+                    SoundGroups.assign(s, "effects")
                     s.Parent = SoundService
                     s:Play()
                     played = true
@@ -1110,6 +1112,7 @@ function EggHatchingService:AnimateFlash(eggComponents, duration)
             s.Volume = volume
             s.PlaybackSpeed = speed
             s.RollOffMaxDistance = 100
+            SoundGroups.assign(s, "effects")
             s.Parent = SoundService
             s:Play()
             task.delay(duration + 0.5, function()

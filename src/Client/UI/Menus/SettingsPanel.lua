@@ -21,6 +21,7 @@ local SoundService = game:GetService("SoundService")
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
 
 -- Load Logger with wrapper (following the established pattern)
 local LoggerWrapper
@@ -116,10 +117,12 @@ function SettingsPanel.new()
     
     -- Settings state
     self.settings = {
+        -- Default to full volume so the sliders' starting position matches actual loudness
+        -- (the buses default to 1.0 = "no change"); drag a bus to 0 to silence it.
         audio = {
-            masterVolume = 0.8,
-            effectsVolume = 0.7,
-            musicVolume = 0.6,
+            masterVolume = 1.0,
+            effectsVolume = 1.0,
+            musicVolume = 1.0,
             uiSoundsEnabled = true
         },
         graphics = {
@@ -616,25 +619,39 @@ end
 
 function SettingsPanel:_createAudioSettings()
     self:_createSectionHeader("🔊 Audio Settings", 1)
-    
+
     self:_createSliderSetting("Master Volume", self.settings.audio.masterVolume, 0, 1, 2, function(value)
         self.settings.audio.masterVolume = value
         SoundService.MasterVolume = value
     end)
-    
+
     self:_createSliderSetting("Effects Volume", self.settings.audio.effectsVolume, 0, 1, 3, function(value)
         self.settings.audio.effectsVolume = value
-        -- Apply to effects volume group
+        SoundGroups.setVolume("effects", value) -- combat/mining/power VFX + hatch sounds
     end)
-    
+
     self:_createSliderSetting("Music Volume", self.settings.audio.musicVolume, 0, 1, 4, function(value)
         self.settings.audio.musicVolume = value
-        -- Apply to music volume group
+        SoundGroups.setVolume("music", value)
     end)
-    
+
     self:_createToggleSetting("UI Sounds", self.settings.audio.uiSoundsEnabled, 5, function(value)
         self.settings.audio.uiSoundsEnabled = value
+        SoundGroups.setVolume("ui", value and 1 or 0)
     end)
+
+    -- Sync the live audio buses to the displayed values so the controls reflect reality
+    -- the moment the panel opens (not just after the user drags something).
+    self:_applyAudioSettings()
+end
+
+-- Push the current audio settings onto the live SoundService master + bus volumes.
+function SettingsPanel:_applyAudioSettings()
+    local audio = self.settings.audio
+    SoundService.MasterVolume = audio.masterVolume
+    SoundGroups.setVolume("effects", audio.effectsVolume)
+    SoundGroups.setVolume("music", audio.musicVolume)
+    SoundGroups.setVolume("ui", audio.uiSoundsEnabled and 1 or 0)
 end
 
 function SettingsPanel:_createGraphicsSettings()

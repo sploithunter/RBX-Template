@@ -22,6 +22,7 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local EnchantLightning = require(ReplicatedStorage.Shared.Effects.EnchantLightning)
+local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
 
 local RangedFX = {}
 
@@ -87,6 +88,7 @@ local function playSoundAt(pos, cfg)
     s.Volume = cfg.volume or 0.6
     s.PlaybackSpeed = cfg.playback_speed or 1
     s.RollOffMaxDistance = cfg.max_distance or 120
+    SoundGroups.assign(s, "effects")
     s.Parent = holder
     s:Play()
     Debris:AddItem(holder, cfg.lifetime or 3)
