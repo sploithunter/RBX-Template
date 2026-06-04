@@ -745,6 +745,33 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("levelup.getState", {
+        description = "Claim state for the level-up sequence: claimed/earned/pending + next reward.",
+        handler = function(context)
+            local s = self:_service("PlayerProgressionService")
+            if not s or not s.GetClaimState then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, state = s:GetClaimState(context.player) }
+        end,
+    })
+
+    bus:register("levelup.claim", {
+        description = "Claim ONE pending level (advances ClaimedLevel, pays rewards, fires sequence).",
+        validate = function(args)
+            return Validators.fields(args, {
+                expectedLevel = { type = "int", min = 1, optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local s = self:_service("PlayerProgressionService")
+            if not s or not s.ClaimLevel then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:ClaimLevel(context.player, args.expectedLevel)
+        end,
+    })
+
     bus:register("hotbar.get", {
         description = "The player's hotbar bindings (archetype defaults if unset).",
         handler = function(context)

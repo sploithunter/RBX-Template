@@ -9,6 +9,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local LevelCurve = require(ReplicatedStorage.Shared.Game.LevelCurve)
+local LevelTrack = require(ReplicatedStorage.Shared.Game.LevelTrack)
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local PlayerProgressionService = {}
 PlayerProgressionService.__index = PlayerProgressionService
@@ -30,6 +32,10 @@ function PlayerProgressionService:Init()
     self._modifierService = self._modules.ModifierService
     self._config = self._configLoader:LoadConfig("player_progression")
     self._xpConfig = self._config.xp or { mode = "linear", per_level = 100 }
+    local okTrack, track = pcall(function()
+        return self._configLoader:LoadConfig("level_track")
+    end)
+    self._levelTrack = (okTrack and type(track) == "table" and track) or {}
 
     local teamPower = self._config.team_power or {}
     local stage = teamPower.stage or "boosts"
@@ -159,6 +165,11 @@ function PlayerProgressionService:_publish(player)
     player:SetAttribute("PendingLevels", pending)
     player:SetAttribute("XP", prog.xpIntoLevel)
     player:SetAttribute("XPForNext", prog.xpForNext)
+    -- +1 egg max-hatch per claimed level (climbs ~3 -> ~52). HatchEntitlementService reads this
+    -- `MaxEggHatchCount` override (clamped to its hard cap). Synced off CLAIMED level so the bump
+    -- is part of the level-up reward. (If a gamepass later also grants hatch count, combine via
+    -- max() here instead of overwriting.)
+    player:SetAttribute("MaxEggHatchCount", LevelTrack.eggHatchForLevel(claimed, self._levelTrack))
 end
 
 -- Grant XP (the spine awards XP via RewardService -> here). Returns the new progress.
@@ -187,6 +198,102 @@ function PlayerProgressionService:SetLevel(player, level)
     self._dataService:SetStat(player, "ClaimedLevel", target)
     self:_publish(player)
     return self:GetProgress(player)
+end
+
+-- Runtime-resolve a peer service via the global locator (avoids an Init dependency cycle —
+-- RewardService already depends on this service for AddExperience).
+function PlayerProgressionService:_service(name)
+    local locator = _G.RBXTemplateServices
+    if not locator then
+        return nil
+    end
+    local ok, svc = pcall(function()
+        return locator:Get(name)
+    end)
+    return ok and svc or nil
+end
+
+-- Pay out a claimed level's reward bundle (per-level + milestone) via RewardService, so the
+-- audit ledger + fan-out (currencies/items/pets) are shared with every other reward source.
+function PlayerProgressionService:_grantLevelRewards(player, entry)
+    local rewardService = self:_service("RewardService")
+    if not rewardService or not rewardService.Grant then
+        return
+    end
+    if type(entry.rewards) == "table" then
+        rewardService:Grant(player, entry.rewards, "level_up:" .. tostring(entry.level))
+    end
+    if type(entry.milestoneRewards) == "table" then
+        rewardService:Grant(player, entry.milestoneRewards, "level_milestone:" .. tostring(entry.level))
+    end
+end
+
+-- Read-only claim state for the HUD / level-up sequence (the levelup.getState command).
+function PlayerProgressionService:GetClaimState(player)
+    local claimed = self:GetClaimedLevel(player)
+    local earned = self:GetEarnedLevel(player)
+    local r = LevelTrack.resolve(claimed, earned, self._levelTrack)
+    return {
+        claimedLevel = claimed,
+        earnedLevel = earned,
+        pendingLevels = r.pendingLevels,
+        canClaim = r.canClaim,
+        nextLevel = r.nextLevel,
+        atMax = r.atMax,
+        maxLevel = r.maxLevel,
+        nextEntry = r.nextLevel and LevelTrack.entryForLevel(r.nextLevel, self._levelTrack) or nil,
+    }
+end
+
+-- Claim ONE pending level. Synchronous compare-and-increment: if `expectedLevel` is given and
+-- doesn't match the current claimed level, reject — so a double-claim race is a harmless no-op.
+-- Advancing the claimed level is what unlocks that level's powers/slots/team-power (they gate on
+-- GetLevel -> claimed) + egg-hatch (synced in _publish); this also pays the bundled rewards and
+-- fires LevelUp_Claimed so the client can play the sequence (reveal + power picker / slotting).
+function PlayerProgressionService:ClaimLevel(player, expectedLevel)
+    if not player or not self._dataService then
+        return { ok = false, reason = "no_data" }
+    end
+    local claimed = self:GetClaimedLevel(player)
+    local earned = self:GetEarnedLevel(player)
+    local maxLevel = math.floor(tonumber(self._xpConfig.max_level) or 0)
+
+    if expectedLevel ~= nil and math.floor(tonumber(expectedLevel) or -1) ~= claimed then
+        return { ok = false, reason = "stale_level", claimedLevel = claimed }
+    end
+    if claimed >= earned then
+        return { ok = false, reason = "nothing_to_claim", claimedLevel = claimed }
+    end
+    if maxLevel > 0 and claimed >= maxLevel then
+        return { ok = false, reason = "at_max_level", claimedLevel = claimed }
+    end
+
+    local newLevel = claimed + 1
+    self._dataService:SetStat(player, "ClaimedLevel", newLevel)
+
+    local entry = LevelTrack.entryForLevel(newLevel, self._levelTrack)
+    self:_grantLevelRewards(player, entry)
+    self:_publish(player)
+
+    local payload = {
+        level = newLevel,
+        kind = entry.kind,
+        powerPick = entry.powerPick,
+        slots = entry.slots,
+        milestone = entry.milestone,
+        eggHatchTotal = entry.eggHatchTotal,
+        pendingLevels = self:GetPendingLevels(player),
+    }
+    pcall(function()
+        Signals.LevelUp_Claimed:FireClient(player, payload)
+    end)
+
+    return {
+        ok = true,
+        claimedLevel = newLevel,
+        pendingLevels = payload.pendingLevels,
+        entry = entry,
+    }
 end
 
 function PlayerProgressionService:_getMilestoneCount(level, rewardConfig)

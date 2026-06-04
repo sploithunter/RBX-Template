@@ -42,6 +42,7 @@ local Signals = {
     Power_AreaFx = Net:RemoteEvent("Power_AreaFx"), -- s->c play an area power's VFX {element, variant, center, radius, pit, hits=[{pos,amount}]}
     Hotbar_RequestState = Net:RemoteEvent("Hotbar_RequestState"), -- c->s ask for the player's hotbar
     Hotbar_State = Net:RemoteEvent("Hotbar_State"), -- s->c push hotbar bindings for the command bar UI
+    LevelUp_Claimed = Net:RemoteEvent("LevelUp_Claimed"), -- s->c a level was claimed {level, kind, powerPick, slots, milestone, eggHatchTotal, rewards, pendingLevels}
     Admin_RequestHatchHistory = Net:RemoteEvent("Admin_RequestHatchHistory"), -- c->s recent hatch debug snapshot
     Admin_RequestHatchSimulation = Net:RemoteEvent("Admin_RequestHatchSimulation"), -- c->s no-mutation hatch odds/cost preview
     Admin_EventCommand = Net:RemoteEvent("Admin_EventCommand"), -- c->s admin global event command
