@@ -97,13 +97,14 @@ local ORE_FAMILIES = {
 -- `scale` is used for PLACEHOLDER families (the blue-crystal meshes are already sized per
 -- tier, so scale stays 1). `size_scale` is used for real VARIANT families (normalized to a
 -- common base, so the tier supplies the size): Small/Medium/Large ≈ 3.6 / 6 / 10.8 studs.
--- value = coins per break. Doubled from 5/25/100 (live balance stab): measured ~5 coins/sec on a
--- ~101-DPS 8-pet lava squad = ~50s per 250-coin egg; 2x -> ~25s/egg so eggs keep flowing. DPS
--- itself felt good, so we lifted INCOME, not combat. Pure dev knob — dial freely as we playtest.
+-- value = coins per break. value/HP is the income RATIO (coins/sec = DPS x value/HP). Live grass
+-- homeworld: a 3-dog starter (~45 DPS) earned ~5 coins/sec, a 3-bear (~25 DPS) ~2.5 — too slow.
+-- Raised the ratio 0.1 -> 0.2 (was 5/25/100, then 10/50/200, now 20/100/400) so dogs ~9 coins/sec
+-- (100-coin grass egg in ~11s), bears ~5. DPS felt right; this lifts INCOME only. Pure dev knob.
 local ORE_TIERS = {
-    { suffix = "Small", scale = 1, size_scale = 0.6, health = 100, value = 10, placement = { height_offset = 1, sink_depth = 0.75 } },
-    { suffix = "Medium", scale = 1, size_scale = 1.0, health = 500, value = 50, placement = { height_offset = 2, sink_depth = 1.05 } },
-    { suffix = "Large", scale = 1, size_scale = 1.8, health = 2000, value = 200, placement = { height_offset = 7, sink_depth = 1.45 } },
+    { suffix = "Small", scale = 1, size_scale = 0.6, health = 100, value = 20, placement = { height_offset = 1, sink_depth = 0.75 } },
+    { suffix = "Medium", scale = 1, size_scale = 1.0, health = 500, value = 100, placement = { height_offset = 2, sink_depth = 1.05 } },
+    { suffix = "Large", scale = 1, size_scale = 1.8, health = 2000, value = 400, placement = { height_offset = 7, sink_depth = 1.45 } },
 }
 
 local M = {
