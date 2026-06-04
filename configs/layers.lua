@@ -123,8 +123,10 @@ return {
                 haze = 3.0,
             },
         },
-        -- sky_textures (optional, per realm, 6 faces) would swap the actual skybox if you author
-        -- heaven/hell skies later — omitted = keep the base sky, just re-haze it via Atmosphere.
+        -- Skybox: intentionally NOT swapped. The base aurora sky reads as celestial (good for
+        -- heaven), and hell looks great under the dense red haze alone. A future per-realm skybox
+        -- swap (e.g. a "glowing red eyes looking down" hell sky) needs authored sky textures — see
+        -- task #157. The Atmosphere haze + lighting ramp already re-dress the sky-feel per depth.
     },
 
     multipliers = {
