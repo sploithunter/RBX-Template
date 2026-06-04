@@ -75,13 +75,52 @@ return {
         },
     },
 
-    -- Client lighting skin per realm (RealmAtmosphere). Same map, retinted: heaven = radiant
-    -- gold, hell = ember dark, neutral = unchanged. tint is a ColorCorrection TintColor (0-1 RGB).
+    -- Client lighting skin per realm (RealmAtmosphere). Same map, re-dressed: heaven = radiant
+    -- gold, hell = ember dark (but lit enough to fight). neutral = the map's captured original
+    -- look (restored, not imposed). `tint` is a ColorCorrection TintColor (0-1); ambient / fog /
+    -- atmosphere colors are 0-255 RGB. `sky_textures` (optional, 6 faces) swaps the actual skybox
+    -- if you author heaven/hell skies later — empty = keep the base sky, just re-haze it.
     atmosphere = {
-        tween_seconds = 1.0,
-        neutral = { tint = { 1, 1, 1 }, brightness = 0, contrast = 0, clock_time = 14 },
-        heaven = { tint = { 1, 0.96, 0.82 }, brightness = 0.12, contrast = 0.1, clock_time = 16 },
-        hell = { tint = { 1, 0.62, 0.5 }, brightness = -0.08, contrast = 0.22, clock_time = 4 },
+        tween_seconds = 1.2,
+        heaven = {
+            tint = { 1, 0.97, 0.86 },
+            brightness = 0.12,
+            contrast = 0.06,
+            clock_time = 14,
+            ambient = { 170, 160, 130 },
+            outdoor_ambient = { 205, 196, 160 },
+            fog_color = { 245, 240, 216 },
+            fog_end = 2500,
+            atmosphere = {
+                density = 0.32,
+                offset = 0.1,
+                color = { 245, 242, 220 },
+                decay = { 235, 225, 196 },
+                glare = 0.5,
+                haze = 1.8,
+            },
+            sky_textures = nil,
+        },
+        hell = {
+            tint = { 1, 0.6, 0.5 },
+            brightness = 0.0,
+            contrast = 0.18,
+            clock_time = 1,
+            -- Raised ambient (vs near-black) so enemies stay visible; mood stays red via fog/tint.
+            ambient = { 80, 36, 30 },
+            outdoor_ambient = { 110, 48, 40 },
+            fog_color = { 36, 10, 8 },
+            fog_end = 1200,
+            atmosphere = {
+                density = 0.42,
+                offset = 0.2,
+                color = { 120, 36, 28 },
+                decay = { 72, 16, 12 },
+                glare = 0.25,
+                haze = 2.6,
+            },
+            sky_textures = nil,
+        },
     },
 
     multipliers = {
