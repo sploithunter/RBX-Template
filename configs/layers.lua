@@ -132,28 +132,15 @@ return {
         -- generate each. Applied per layer; the lighting ramp above scales intensity within it.
         sky = {
             per_layer = {
-                -- SAVED from the live "Halo and Horns" map (the aurora sky) so it's preserved in
-                -- source control before skybox tests overwrite the place's Sky. Restore = these IDs.
-                -- For the record, the aurora's mood (restored live by RealmAtmosphere from the
-                -- captured base, not from here): Atmosphere Density 0.28 / Color (0.247,0.635,0.220)
-                -- green / Haze 1; Lighting ClockTime 13 / Brightness 1.88 / Ambient (0.239,0.067,
-                -- 0.275) / OutdoorAmbient (0.071,0.275,0.024) / FogEnd 100000.
-                base = {
-                    textures = {
-                        ft = 340908468,
-                        bk = 340908398,
-                        lf = 340908504,
-                        rt = 340908530,
-                        up = 340908586,
-                        dn = 340908450,
-                        sun = "rbxasset://sky/sun.jpg",
-                        moon = "rbxasset://sky/moon.jpg",
-                        celestial_bodies_shown = false,
-                        star_count = 5000,
-                        sun_angular_size = 21,
-                        moon_angular_size = 11,
-                    },
-                },
+                -- base = nil means "don't swap" — RealmAtmosphere leaves the place's own Sky alone
+                -- (so whatever sky you set in the map shows in Play too). The ORIGINAL aurora sky
+                -- is RECORDED here for restore (not active, so it can't override your tests):
+                --   aurora faces: ft=340908468 bk=340908398 lf=340908504 rt=340908530
+                --                 up=340908586 dn=340908450  (CelestialBodiesShown=false, StarCount=5000)
+                --   aurora mood: Atmosphere Density 0.28 / Color (0.247,0.635,0.220) green / Haze 1;
+                --                Lighting ClockTime 13 / Brightness 1.88 / FogEnd 100000.
+                -- To make a layer use a sky, fill its `textures = { ft, bk, lf, rt, up, dn, ... }`.
+                base = { textures = nil },
                 heaven_1 = { textures = nil },
                 heaven_2 = { textures = nil },
                 heaven_3 = { textures = nil },
