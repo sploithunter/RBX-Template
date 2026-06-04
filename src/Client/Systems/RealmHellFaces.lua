@@ -78,14 +78,19 @@ function RealmHellFaces.start()
                 local extent = face:GetExtentsSize()
                 local maxdim = math.max(extent.X, extent.Y, extent.Z, 0.01)
                 face:ScaleTo(scale / maxdim)
+            elseif face:IsA("BasePart") then
+                -- single MeshPart: scale by resizing (Size drives the mesh scale)
+                local maxdim = math.max(face.Size.X, face.Size.Y, face.Size.Z, 0.01)
+                face.Size = face.Size * (scale / maxdim)
             end
             local angle = (i / count) * math.pi * 2
-            local pos = center
-                + Vector3.new(
-                    math.cos(angle) * spread,
-                    height + (i % 3) * (height * 0.08),
-                    math.sin(angle) * spread
-                )
+            -- Absolute sky altitude (NOT player-relative) so they always hang way up, centered on
+            -- the player's X/Z. (Player Y can be transient mid-fall/respawn.)
+            local pos = Vector3.new(
+                center.X + math.cos(angle) * spread,
+                height + (i % 3) * (height * 0.08),
+                center.Z + math.sin(angle) * spread
+            )
             local cf = CFrame.lookAt(pos, center) -- stare down at the player
             if face:IsA("Model") then
                 face:PivotTo(cf)
