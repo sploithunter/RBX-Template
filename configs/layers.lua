@@ -75,52 +75,56 @@ return {
         },
     },
 
-    -- Client lighting skin per realm (RealmAtmosphere). Same map, re-dressed: heaven = radiant
-    -- gold, hell = ember dark (but lit enough to fight). neutral = the map's captured original
-    -- look (restored, not imposed). `tint` is a ColorCorrection TintColor (0-1); ambient / fog /
-    -- atmosphere colors are 0-255 RGB. `sky_textures` (optional, 6 faces) swaps the actual skybox
-    -- if you author heaven/hell skies later — empty = keep the base sky, just re-haze it.
+    -- Client realm skin (RealmAtmosphere, World S3 A1) — DEPTH-SCALED. The client captures the
+    -- map's real base lighting and blends base -> the realm's `deep` anchor below by t = depth /
+    -- max_depth (RealmTheme): layer 1 = a faint 20% wash, the deepest layer = the full `deep` look.
+    -- So each descent step intensifies; the most dramatic look is reserved for layer 5.
+    -- `tint` is a ColorCorrection TintColor (0-1); ambient / fog / atmosphere colors are 0-255 RGB.
+    -- (Only the `deep` endpoint is configured — the shallow end is the live captured base.)
     atmosphere = {
         tween_seconds = 1.2,
+        max_depth = 5,
+        -- Heaven deep (layer 5): blinding, radiant celestial.
         heaven = {
-            tint = { 1, 0.97, 0.86 },
-            brightness = 0.12,
-            contrast = 0.06,
+            tint = { 1, 0.99, 0.92 },
+            brightness = 0.2,
+            contrast = 0.05,
             clock_time = 14,
-            ambient = { 170, 160, 130 },
-            outdoor_ambient = { 205, 196, 160 },
-            fog_color = { 245, 240, 216 },
-            fog_end = 2500,
+            ambient = { 200, 195, 170 },
+            outdoor_ambient = { 235, 228, 200 },
+            fog_color = { 250, 248, 235 },
+            fog_end = 4000,
             atmosphere = {
-                density = 0.32,
-                offset = 0.1,
-                color = { 245, 242, 220 },
-                decay = { 235, 225, 196 },
-                glare = 0.5,
-                haze = 1.8,
+                density = 0.4,
+                offset = 0.05,
+                color = { 252, 248, 235 },
+                decay = { 245, 238, 215 },
+                glare = 0.7,
+                haze = 2.0,
             },
-            sky_textures = nil,
         },
+        -- Hell deep (layer 5): the abyss — midnight, near-black ambient, close oppressive red fog.
+        -- Intentionally hard to see; "if you can't see enemies well, that's part of the game."
         hell = {
-            tint = { 1, 0.6, 0.5 },
-            brightness = 0.0,
-            contrast = 0.18,
-            clock_time = 1,
-            -- Raised ambient (vs near-black) so enemies stay visible; mood stays red via fog/tint.
-            ambient = { 80, 36, 30 },
-            outdoor_ambient = { 110, 48, 40 },
-            fog_color = { 36, 10, 8 },
-            fog_end = 1200,
+            tint = { 1, 0.5, 0.42 },
+            brightness = -0.1,
+            contrast = 0.25,
+            clock_time = 0,
+            ambient = { 25, 8, 8 },
+            outdoor_ambient = { 35, 12, 10 },
+            fog_color = { 15, 4, 4 },
+            fog_end = 600,
             atmosphere = {
-                density = 0.42,
-                offset = 0.2,
-                color = { 120, 36, 28 },
-                decay = { 72, 16, 12 },
-                glare = 0.25,
-                haze = 2.6,
+                density = 0.55,
+                offset = 0.25,
+                color = { 90, 20, 16 },
+                decay = { 40, 8, 6 },
+                glare = 0.15,
+                haze = 3.0,
             },
-            sky_textures = nil,
         },
+        -- sky_textures (optional, per realm, 6 faces) would swap the actual skybox if you author
+        -- heaven/hell skies later — omitted = keep the base sky, just re-haze it via Atmosphere.
     },
 
     multipliers = {

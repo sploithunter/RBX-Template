@@ -1,21 +1,23 @@
 --[[
-    RealmAtmosphere (client) — re-dress the world to signal the player's current realm (World S3).
+    RealmAtmosphere (client) — DEPTH-SCALED realm skin (World S3 A1).
 
-    Reuses the SAME map: instead of teleporting to authored heaven/hell geometry, this skins
-    Lighting (ColorCorrection tint, Ambient/OutdoorAmbient, Fog, ClockTime) + an Atmosphere haze
-    to a realm theme when the server-published `CurrentRealm` attribute changes. Heaven = radiant
-    gold, hell = ember dark (lit enough to fight), neutral (base) = the map's CAPTURED original look
-    (restored, never imposed). A brief centered banner announces the realm so it's instantly clear.
+    Reuses the SAME map. Captures the map's real base lighting at boot, then blends base -> the
+    realm's `deep` anchor (configs/layers.lua `atmosphere`) by t = depth / max_depth (RealmTheme):
+    layer 1 = a faint 20% wash, the deepest layer = the full deep look. So each descent step
+    intensifies, and the most dramatic look (hell = the dark abyss) is reserved for layer 5.
+    Driven by the server-published CurrentLayer attribute; neutral/base restores the captured look.
+    A brief centered banner names the realm + depth so it's instantly clear where you are.
 
-    Themes are config-as-code (configs/layers.lua `atmosphere`). Lighting is client-side, so each
-    player sees their own realm skin (the convenient solo-test path; true spatial separation is the
-    production geometry slice, task #157).
+    Lighting is client-side, so each player sees their own skin (the solo-test path; true spatial
+    separation is the production geometry slice, task #157).
 ]]
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local RealmTheme = require(ReplicatedStorage.Shared.Game.RealmTheme)
 
 local TINT_NAME = "RealmTint"
 
@@ -30,7 +32,7 @@ local function loadAtmosphere()
             return cfg.atmosphere
         end
     end
-    return { tween_seconds = 1.2 }
+    return { tween_seconds = 1.2, max_depth = 5 }
 end
 
 local function c01(t, fallback)
@@ -47,27 +49,22 @@ local function c255(t, fallback)
     return fallback
 end
 
+local function arrOf(c)
+    return { c.R * 255, c.G * 255, c.B * 255 }
+end
+
 function RealmAtmosphere.start()
     local player = Players.LocalPlayer
     if not player then
         return
     end
     local themes = loadAtmosphere()
+    local maxDepth = tonumber(themes.max_depth) or 5
     local tweenInfo = TweenInfo.new(
         tonumber(themes.tween_seconds) or 1.2,
         Enum.EasingStyle.Quad,
         Enum.EasingDirection.Out
     )
-
-    -- Capture the map's original look so "neutral" restores it exactly (never imposes defaults).
-    local original = {
-        Ambient = Lighting.Ambient,
-        OutdoorAmbient = Lighting.OutdoorAmbient,
-        FogColor = Lighting.FogColor,
-        FogEnd = Lighting.FogEnd,
-        Brightness = Lighting.Brightness,
-        ClockTime = Lighting.ClockTime,
-    }
 
     local tint = Lighting:FindFirstChild(TINT_NAME)
     if not tint then
@@ -77,32 +74,63 @@ function RealmAtmosphere.start()
         tint.Parent = Lighting
     end
 
-    -- Reuse an existing Atmosphere if the map has one (and remember its originals); otherwise
-    -- create one we manage and switch off (density 0) when neutral.
+    -- Reuse an existing Atmosphere or create+manage one (off at base).
     local atmos = Lighting:FindFirstChildWhichIsA("Atmosphere")
-    local atmosCreated = false
-    local atmosOriginal
-    if atmos then
-        atmosOriginal = {
-            Density = atmos.Density,
-            Offset = atmos.Offset,
-            Color = atmos.Color,
-            Decay = atmos.Decay,
-            Glare = atmos.Glare,
-            Haze = atmos.Haze,
-        }
-    else
+    if not atmos then
         atmos = Instance.new("Atmosphere")
         atmos.Density = 0
         atmos.Parent = Lighting
-        atmosCreated = true
     end
 
-    local function tween(inst, goal)
-        TweenService:Create(inst, tweenInfo, goal):Play()
+    -- The map's real base look, as a theme table (the shallow anchor — t=0). Darkness in deep
+    -- themes comes from ambient/clock/fog, NOT global Brightness, so we leave Lighting.Brightness
+    -- alone and only drive ColorCorrection.Brightness.
+    local baseTheme = {
+        tint = { 1, 1, 1 },
+        brightness = 0,
+        contrast = 0,
+        clock_time = Lighting.ClockTime,
+        ambient = arrOf(Lighting.Ambient),
+        outdoor_ambient = arrOf(Lighting.OutdoorAmbient),
+        fog_color = arrOf(Lighting.FogColor),
+        fog_end = Lighting.FogEnd,
+        atmosphere = {
+            density = atmos.Density,
+            offset = atmos.Offset,
+            color = arrOf(atmos.Color),
+            decay = arrOf(atmos.Decay),
+            glare = atmos.Glare,
+            haze = atmos.Haze,
+        },
+    }
+
+    local function applyTheme(theme)
+        TweenService:Create(Lighting, tweenInfo, {
+            Ambient = c255(theme.ambient, Lighting.Ambient),
+            OutdoorAmbient = c255(theme.outdoor_ambient, Lighting.OutdoorAmbient),
+            FogColor = c255(theme.fog_color, Lighting.FogColor),
+            FogEnd = tonumber(theme.fog_end) or Lighting.FogEnd,
+            ClockTime = tonumber(theme.clock_time) or Lighting.ClockTime,
+        }):Play()
+        TweenService:Create(tint, tweenInfo, {
+            TintColor = c01(theme.tint, Color3.new(1, 1, 1)),
+            Brightness = tonumber(theme.brightness) or 0,
+            Contrast = tonumber(theme.contrast) or 0,
+        }):Play()
+        local a = theme.atmosphere
+        if type(a) == "table" then
+            TweenService:Create(atmos, tweenInfo, {
+                Density = tonumber(a.density) or 0,
+                Offset = tonumber(a.offset) or 0,
+                Color = c255(a.color, atmos.Color),
+                Decay = c255(a.decay, atmos.Decay),
+                Glare = tonumber(a.glare) or 0,
+                Haze = tonumber(a.haze) or 0,
+            }):Play()
+        end
     end
 
-    local function banner(realm)
+    local function banner(realm, depth)
         local gui = player:FindFirstChild("PlayerGui")
         if not gui then
             return
@@ -131,10 +159,10 @@ function RealmAtmosphere.start()
             return
         end
         if realm == "heaven" then
-            label.Text = "✦  HEAVEN  ✦"
+            label.Text = string.format("✦  HEAVEN · %d  ✦", depth)
             label.TextColor3 = Color3.fromRGB(255, 240, 180)
         elseif realm == "hell" then
-            label.Text = "☠  HELL  ☠"
+            label.Text = string.format("☠  HELL · %d  ☠", depth)
             label.TextColor3 = Color3.fromRGB(255, 110, 90)
         else
             label.Text = "Returned to the Base Realm"
@@ -149,54 +177,28 @@ function RealmAtmosphere.start()
         end)
     end
 
-    local function apply(realm)
-        local theme = themes[realm]
-        if not theme then
-            -- Neutral / base: restore the captured original look.
-            tween(Lighting, original)
-            tween(tint, { TintColor = Color3.new(1, 1, 1), Brightness = 0, Contrast = 0 })
-            if atmosCreated then
-                tween(atmos, { Density = 0 })
-            elseif atmosOriginal then
-                tween(atmos, atmosOriginal)
-            end
-            return
+    local function resolve(layerId)
+        local realm = RealmTheme.realmOf(layerId)
+        local deep = realm and themes[realm]
+        if not deep then
+            return baseTheme -- base / neutral / unknown
         end
-        tween(Lighting, {
-            Ambient = c255(theme.ambient, original.Ambient),
-            OutdoorAmbient = c255(theme.outdoor_ambient, original.OutdoorAmbient),
-            FogColor = c255(theme.fog_color, original.FogColor),
-            FogEnd = tonumber(theme.fog_end) or original.FogEnd,
-            Brightness = tonumber(theme.brightness) or original.Brightness,
-            ClockTime = tonumber(theme.clock_time) or original.ClockTime,
-        })
-        tween(tint, {
-            TintColor = c01(theme.tint, Color3.new(1, 1, 1)),
-            Brightness = tonumber(theme.brightness) or 0,
-            Contrast = tonumber(theme.contrast) or 0,
-        })
-        local a = theme.atmosphere
-        if type(a) == "table" then
-            tween(atmos, {
-                Density = tonumber(a.density) or 0.3,
-                Offset = tonumber(a.offset) or 0.1,
-                Color = c255(a.color, Color3.fromRGB(200, 200, 200)),
-                Decay = c255(a.decay, Color3.fromRGB(150, 150, 150)),
-                Glare = tonumber(a.glare) or 0.2,
-                Haze = tonumber(a.haze) or 1.5,
-            })
+        local t = RealmTheme.progress(layerId, maxDepth)
+        return RealmTheme.interpolate(baseTheme, deep, t)
+    end
+
+    local function refresh(announce)
+        local layerId = player:GetAttribute("CurrentLayer") or "base"
+        applyTheme(resolve(layerId))
+        if announce then
+            banner(RealmTheme.realmOf(layerId), RealmTheme.depthOf(layerId))
         end
     end
 
-    local function onRealm()
-        local realm = player:GetAttribute("CurrentRealm") or "neutral"
-        apply(realm)
-        banner(realm)
-    end
-
-    -- Apply current state silently on join (no banner spam), then react to changes.
-    apply(player:GetAttribute("CurrentRealm") or "neutral")
-    player:GetAttributeChangedSignal("CurrentRealm"):Connect(onRealm)
+    refresh(false) -- silent on join
+    player:GetAttributeChangedSignal("CurrentLayer"):Connect(function()
+        refresh(true)
+    end)
 end
 
 return RealmAtmosphere
