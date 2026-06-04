@@ -318,3 +318,37 @@ or debuff instead of HP damage.
   buff stacking/duration rules.
 - **Risk (flagged):** a "friendly pet" target class may perturb existing combat targeting/aggro.
   Build behind a flag; verify enemy targeting is untouched.
+
+---
+
+## 14. Realm endgame loop — resolved knobs (World S3, §12 made concrete)
+
+- **Token earning = multi-source (fork 1).** `light_tokens`/`shadow_tokens` flow from THREE channels,
+  each a config-driven rate: (a) a *cut* of realm mining/combat income, (b) *conquest* events
+  (which also shift soul), and (c) possibly *in-realm egg hatches*. This is the loop's fuel — the
+  sink (traversal) was always there; this feeds it.
+- **Traversal sink = a knob, not a hardcode (fork 2).** `UseLayer` already deducts per-move.
+  Make the charge model a config switch — `charge_on = "deeper_only"` (free to retreat toward
+  neutral, pay to descend deeper) vs `"every_move"` — defaulting to `deeper_only`. Gameplay decides
+  the final feel, so it must be tunable live, not committed in code.
+- **Depth = desirability (fork 3) → Eternal pets** live in the deepest/rarest sources (§15).
+
+---
+
+## 15. Eternal pets — Exclusive + Secret (concept; mechanics PENDING clarification)
+
+A pet class flagged **Eternal**, covering two categories that share that flag:
+- **Exclusive pets** — a *higher level* than normal pets; obtained only from exclusive sources:
+  an extremely rare hatch, an exclusive egg, or meeting a dev/Creator (ties to §7
+  Meet-the-Creator).
+- **Secret pets** — also **Eternal**; the ultra-rare hidden-odds class.
+
+**Open questions to resolve before binding this to the power model (§5):**
+1. What does **"Eternal"** confer mechanically — *permanence* (never sunset / never power-crept,
+   always relevant — fits the bounded-apex philosophy), a *rarity tier* above golden/rainbow, or
+   both?
+2. **"Higher level"** — does an Exclusive pet sit at a higher tier *within* the bounded,
+   Creator-capped band (stronger but still ≤ ceiling), or is it a separate axis? (Must not exceed
+   the §5 ceiling or it breaks the bounded model.)
+3. **Secret vs Exclusive** — is the distinction purely the *source* (Secret = hidden ultra-rare
+   hatch; Exclusive = events / exclusive eggs / dev), or do they differ mechanically too?
