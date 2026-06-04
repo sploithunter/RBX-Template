@@ -74,6 +74,27 @@ return function()
         end)
     end)
 
+    describe("LevelTrack hybrid altar gate (requiresAltar)", function()
+        it("power, slot and milestone levels require the altar", function()
+            expect(LevelTrack.entryForLevel(5, cfg).requiresAltar).to.equal(true) -- power
+            expect(LevelTrack.entryForLevel(8, cfg).requiresAltar).to.equal(true) -- slot
+            expect(LevelTrack.entryForLevel(10, cfg).requiresAltar).to.equal(true) -- milestone
+        end)
+        it("pure-reward filler levels auto-claim (no altar)", function()
+            expect(LevelTrack.entryForLevel(3, cfg).requiresAltar).to.equal(false)
+            expect(LevelTrack.entryForLevel(7, cfg).requiresAltar).to.equal(false)
+        end)
+        it("altar_kinds knob can flip a kind to auto", function()
+            local autoCfg = {
+                power_levels = { 5 },
+                slot_levels = {},
+                milestones = {},
+                altar_kinds = { power = false },
+            }
+            expect(LevelTrack.entryForLevel(5, autoCfg).requiresAltar).to.equal(false)
+        end)
+    end)
+
     describe("LevelTrack.eggHatchForLevel (climbs ~3 -> ~52)", function()
         it("is base at level 1", function()
             expect(LevelTrack.eggHatchForLevel(1, cfg)).to.equal(3)

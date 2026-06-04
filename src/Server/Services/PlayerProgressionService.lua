@@ -163,6 +163,7 @@ function PlayerProgressionService:_publish(player)
     player:SetAttribute("Level", earned)
     player:SetAttribute("ClaimedLevel", claimed)
     player:SetAttribute("PendingLevels", pending)
+    player:SetAttribute("PendingTraining", self:GetPendingTraining(player))
     player:SetAttribute("XP", prog.xpIntoLevel)
     player:SetAttribute("XPForNext", prog.xpForNext)
     -- +1 egg max-hatch per claimed level (climbs ~3 -> ~52). HatchEntitlementService reads this
@@ -181,6 +182,8 @@ function PlayerProgressionService:AddExperience(player, amount)
     local newXp = self:GetExperience(player) + amount
     self._dataService:SetStat(player, "Experience", newXp)
     self:_publish(player)
+    -- Hybrid: auto-claim filler levels in the field; training levels stall for the altar.
+    self:_advanceAuto(player)
     return self:GetProgress(player)
 end
 
@@ -233,23 +236,97 @@ function PlayerProgressionService:GetClaimState(player)
     local claimed = self:GetClaimedLevel(player)
     local earned = self:GetEarnedLevel(player)
     local r = LevelTrack.resolve(claimed, earned, self._levelTrack)
+    local nextEntry = r.nextLevel and LevelTrack.entryForLevel(r.nextLevel, self._levelTrack) or nil
     return {
         claimedLevel = claimed,
         earnedLevel = earned,
         pendingLevels = r.pendingLevels,
+        pendingTraining = self:GetPendingTraining(player),
         canClaim = r.canClaim,
         nextLevel = r.nextLevel,
+        nextRequiresAltar = nextEntry and nextEntry.requiresAltar or false,
         atMax = r.atMax,
         maxLevel = r.maxLevel,
-        nextEntry = r.nextLevel and LevelTrack.entryForLevel(r.nextLevel, self._levelTrack) or nil,
+        nextEntry = nextEntry,
     }
 end
 
--- Claim ONE pending level. Synchronous compare-and-increment: if `expectedLevel` is given and
--- doesn't match the current claimed level, reject — so a double-claim race is a harmless no-op.
--- Advancing the claimed level is what unlocks that level's powers/slots/team-power (they gate on
--- GetLevel -> claimed) + egg-hatch (synced in _publish); this also pays the bundled rewards and
--- fires LevelUp_Claimed so the client can play the sequence (reveal + power picker / slotting).
+-- Count of TRAINING levels owed (in (claimed, earned]) — power/slot/milestone levels that must
+-- be claimed at the Ascension Altar. Drives the HUD nudge + the altar prompt.
+function PlayerProgressionService:GetPendingTraining(player)
+    local claimed = self:GetClaimedLevel(player)
+    local earned = self:GetEarnedLevel(player)
+    local maxLevel = math.floor(tonumber(self._xpConfig.max_level) or 0)
+    if maxLevel > 0 then
+        earned = math.min(earned, maxLevel)
+    end
+    local count = 0
+    for lvl = claimed + 1, earned do
+        if LevelTrack.entryForLevel(lvl, self._levelTrack).requiresAltar then
+            count += 1
+        end
+    end
+    return count
+end
+
+-- Apply ONE level: advance ClaimedLevel, pay its rewards, republish, and fire LevelUp_Claimed.
+-- `auto` distinguishes a field auto-claim (filler -> client toast) from an altar claim (training
+-- -> client reveal modal). Shared by _advanceAuto and ClaimLevel.
+function PlayerProgressionService:_applyLevel(player, newLevel, auto)
+    self._dataService:SetStat(player, "ClaimedLevel", newLevel)
+    local entry = LevelTrack.entryForLevel(newLevel, self._levelTrack)
+    self:_grantLevelRewards(player, entry)
+    self:_publish(player)
+    local payload = {
+        level = newLevel,
+        kind = entry.kind,
+        powerPick = entry.powerPick,
+        slots = entry.slots,
+        milestone = entry.milestone,
+        requiresAltar = entry.requiresAltar,
+        eggHatchTotal = entry.eggHatchTotal,
+        auto = auto == true,
+        pendingLevels = self:GetPendingLevels(player),
+        pendingTraining = self:GetPendingTraining(player),
+    }
+    pcall(function()
+        Signals.LevelUp_Claimed:FireClient(player, payload)
+    end)
+    return entry, payload
+end
+
+-- Auto-claim consecutive FILLER (non-altar) levels in the field. Stops at a training level (so
+-- the power/slot/milestone choice is made at the altar) or the cap. Called after AddExperience
+-- and after an altar claim. The `requiresAltar` break is the single guard that keeps a choice
+-- level from ever being silently claimed.
+function PlayerProgressionService:_advanceAuto(player)
+    if not player or not self._dataService then
+        return
+    end
+    local maxLevel = math.floor(tonumber(self._xpConfig.max_level) or 0)
+    local guard = 0
+    while guard < 200 do
+        guard += 1
+        local claimed = self:GetClaimedLevel(player)
+        local earned = self:GetEarnedLevel(player)
+        if claimed >= earned then
+            break
+        end
+        if maxLevel > 0 and claimed >= maxLevel then
+            break
+        end
+        local nextLevel = claimed + 1
+        if LevelTrack.entryForLevel(nextLevel, self._levelTrack).requiresAltar then
+            break -- stall: this level must be trained at the altar
+        end
+        self:_applyLevel(player, nextLevel, true)
+    end
+end
+
+-- Claim ONE pending level explicitly (the Ascension Altar / bus path — typically a TRAINING
+-- level, since field filler auto-claims). Synchronous compare-and-increment: a mismatched
+-- `expectedLevel` rejects, so a double-claim race is a harmless no-op. After claiming, roll any
+-- subsequent filler via _advanceAuto. Fires the reveal modal (auto=false).
 function PlayerProgressionService:ClaimLevel(player, expectedLevel)
     if not player or not self._dataService then
         return { ok = false, reason = "no_data" }
@@ -269,29 +346,14 @@ function PlayerProgressionService:ClaimLevel(player, expectedLevel)
     end
 
     local newLevel = claimed + 1
-    self._dataService:SetStat(player, "ClaimedLevel", newLevel)
-
-    local entry = LevelTrack.entryForLevel(newLevel, self._levelTrack)
-    self:_grantLevelRewards(player, entry)
-    self:_publish(player)
-
-    local payload = {
-        level = newLevel,
-        kind = entry.kind,
-        powerPick = entry.powerPick,
-        slots = entry.slots,
-        milestone = entry.milestone,
-        eggHatchTotal = entry.eggHatchTotal,
-        pendingLevels = self:GetPendingLevels(player),
-    }
-    pcall(function()
-        Signals.LevelUp_Claimed:FireClient(player, payload)
-    end)
+    local entry = self:_applyLevel(player, newLevel, false)
+    self:_advanceAuto(player) -- auto-claim any filler that follows the trained level
 
     return {
         ok = true,
-        claimedLevel = newLevel,
-        pendingLevels = payload.pendingLevels,
+        claimedLevel = self:GetClaimedLevel(player),
+        pendingLevels = self:GetPendingLevels(player),
+        pendingTraining = self:GetPendingTraining(player),
         entry = entry,
     }
 end

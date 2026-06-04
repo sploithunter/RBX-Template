@@ -37,6 +37,32 @@ return {
     -- Big moments. Headline flair + a bundle from milestone_rewards below.
     milestones = { 10, 20, 30, 40, 50 },
 
+    -- HYBRID gate (City-of-Heroes "train at a trainer"): which level KINDS must be claimed at
+    -- the Ascension Altar vs auto-claimed in the field. Filler reward levels auto-apply with a
+    -- toast; power/slot/milestone levels stall until you visit the altar (-> reveal modal).
+    -- Set all false to revert to claim-anywhere.
+    altar_kinds = {
+        power = true,
+        slot = true,
+        milestone = true,
+        reward = false,
+    },
+
+    -- The Ascension Altar station (a world part tagged "AscensionAltar"). If the map already has
+    -- a tagged part, that's used; otherwise AscensionAltarService spawns a placeholder pillar at
+    -- `position` (reskin later — the logic keys off the tag, not the visual).
+    altar = {
+        enabled = true,
+        position = { 0, 6, 0 }, -- near Spawn; tune to taste (studs)
+        size = { 6, 12, 6 },
+        color = { 255, 205, 70 },
+        action_text = "Ascend",
+        object_text = "Ascension Altar",
+        max_distance = 14,
+        hold_duration = 0,
+        key = "E",
+    },
+
     -- Reward bundles (RewardBundle shape: { currencies = {...}, pets = {...}, ... }).
     -- `default` is granted on every plain "filler" level; per-level overrides stack on top.
     -- Kept light for now (S2/S3 flesh these out); coins scale a touch so later levels feel

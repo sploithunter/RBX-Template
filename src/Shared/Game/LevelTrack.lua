@@ -71,6 +71,23 @@ function LevelTrack.entryForLevel(level, cfg)
     local milestoneRewards = (type(cfg.milestone_rewards) == "table" and cfg.milestone_rewards)
         or {}
 
+    -- Hybrid gate: a level that demands a CHOICE/ceremony must be claimed at the Ascension
+    -- Altar; pure-reward "filler" levels auto-claim in the field. `altar_kinds` is the dev knob
+    -- (default: power + slot + milestone require the altar; reward does not). Set all false to
+    -- make everything auto-claim (revert to the old claim-anywhere behaviour).
+    local altarKinds = (type(cfg.altar_kinds) == "table" and cfg.altar_kinds) or {}
+    local function gated(k, default)
+        local v = altarKinds[k]
+        if v == nil then
+            return default
+        end
+        return v == true
+    end
+    local requiresAltar = (isPower and gated("power", true))
+        or (isMilestone and gated("milestone", true))
+        or (slots > 0 and gated("slot", true))
+        or (kind == "reward" and gated("reward", false))
+
     return {
         level = level,
         kind = kind,
@@ -79,6 +96,7 @@ function LevelTrack.entryForLevel(level, cfg)
         powerPick = isPower,
         slots = slots,
         milestone = isMilestone,
+        requiresAltar = requiresAltar,
         -- The per-level reward bundle (override -> default) and the milestone bundle (if any).
         rewards = rewardsTable[level] or rewardsTable.default,
         milestoneRewards = isMilestone and milestoneRewards[level] or nil,
