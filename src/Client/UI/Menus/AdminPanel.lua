@@ -165,6 +165,10 @@ local TEST_CATEGORIES = {
             { name = "Add 1000 Coins", action = "add_coins_1000" },
             { name = "Add 100 Gems", action = "add_gems_100" },
             { name = "Add 50 Crystals", action = "add_crystals_50" },
+            -- Grants 100k to EACH per-biome currency (grass/ice/lava/desert) in one click.
+            -- The legacy "Add Coins" button grants the unused generic `coins`; the zone-unlock
+            -- gates + egg costs run on biome coins, so use this to test progression.
+            { name = "Add 100k Area Coins", action = "add_area_coins" },
             { name = "Reset All Currencies", action = "reset_currencies" },
         },
         customInputs = {
@@ -913,6 +917,18 @@ end
 function AdminPanel:_executeCurrencyAction(action)
     if not self.economyBridge then
         self.logger:warn("Economy bridge not available")
+        return
+    end
+
+    -- Grant a big stack to every per-biome currency at once (progression-testing helper).
+    -- Each fires its own AdjustCurrency (the remote takes a single currency per call).
+    if action == "add_area_coins" then
+        local areaCoins = { "grass_coins", "ice_coins", "lava_coins", "desert_coins" }
+        for _, currency in ipairs(areaCoins) do
+            local actionData = self:_getAdminActionData({ currency = currency, amount = 100000 })
+            Signals.AdjustCurrency:FireServer(actionData)
+        end
+        self.logger:info("Granted 100k to each area currency", { currencies = areaCoins })
         return
     end
 
