@@ -304,7 +304,7 @@ return {
         template_name = "HellFace", -- runtime cache under ReplicatedStorage.RealmModels
 
         only_layer = "hell_5", -- ONLY ever appears in Hell 5 (nil = any hell layer)
-        scale = 240, -- target max-dimension in studs (huge, looming presence)
+        scale = 168, -- target max-dimension in studs (70% of the original 240 — looming but not overwhelming)
 
         -- Follow behavior: trails the player at a fixed WORLD bearing (not camera-locked — a
         -- camera-locked offset at this distance would swing through a huge arc on every turn and
