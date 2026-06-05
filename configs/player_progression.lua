@@ -13,7 +13,10 @@ return {
     -- Total XP to REACH level L is the running sum of the step costs below it.
     xp = {
         mode = "linear",
-        per_level = 100,
+        -- per_level=700: L2=700, L3=2100, L4=4200, L5=7000 (step n->n+1 = per_level*n). Grass yields
+        -- ~1000 XP, so end-of-grass ~= level 2 (was level 5 at per_level=100). One knob for the whole
+        -- curve's pace — raise to slow further, lower to speed up.
+        per_level = 700,
         max_level = 50, -- level cap (City-of-Heroes-style top-out); earnedLevel saturates here
     },
 
