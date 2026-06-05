@@ -28,11 +28,12 @@ local M = {
         mountains_strength = id(102528688168498), -- damage buff aura
     },
 
-    -- Pet status-badge icons (keys match SquadHud PET_EFFECTS).
+    -- Pet status-badge icons (keys match SquadHud PET_EFFECTS). Use the new icon set so the
+    -- buff badges match the hotbar/squad badges (the old flat assets read "wrong" next to them).
     status = {
-        defense = id(73499491406959), -- DEF (Bulwark) -> shield
-        shield = id(73499491406959), -- SH (absorption pool) -> shield
-        damage = id(102528688168498), -- DMG (damage buff) -> damage buff
+        defense = id(99602330844217), -- DEF (Bulwark) -> ice armor disc (blue armor_chest)
+        shield = id(121311806877255), -- SH (absorption pool) -> white shield disc
+        damage = id(111373865269609), -- DMG (damage buff) -> green chevrons_up disc
     },
 
     -- Squad-HUD action buttons.
@@ -194,6 +195,12 @@ local M = {
     default_scale = 1.25,
     scales = {
         -- e.g. [id(73499491406959)] = 1.4,
+        -- New full-bleed disc icons fill the whole image (no transparent border to crop), so the
+        -- 1.25 default would overflow a clipping frame (status badges) -> cut-off edges. Sit them
+        -- just inside the frame instead.
+        [id(99602330844217)] = 0.9, -- status defense (ice armor disc)
+        [id(121311806877255)] = 0.9, -- status shield (white shield disc)
+        [id(111373865269609)] = 0.9, -- status damage (green chevrons disc)
     },
 }
 
