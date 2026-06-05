@@ -362,7 +362,7 @@ return {
         -- to the head. Offsets are FRACTIONS of the head's size so they hold at any scale. Tuned by
         -- hand on HellFaceGateTest. Set enabled=false to drop them (the face then needs its own glow).
         eyes = {
-            enabled = true,
+            enabled = false, -- pupils OFF — the internal face light lights the model's own eye sockets
             up_frac = 0.125, -- brow height as a fraction of head size
             side_frac = 0.146, -- half-separation
             recess_frac = 0.125, -- how deep into the socket
