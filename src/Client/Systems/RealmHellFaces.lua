@@ -46,19 +46,17 @@ end
 
 -- Raycast-seat two Neon eyes into the mesh sockets, recessed for a sunken glow. Parents them under
 -- `parent` (the assembly Model) and returns { {part=, light=, base=} } for fade control.
-local function seatEyes(head, eyesCfg, parent)
+local function seatEyes(head, eyesCfg)
     local eyes = {}
     if type(eyesCfg) ~= "table" or eyesCfg.enabled == false then
         return eyes
     end
     local up = tonumber(eyesCfg.up) or 30
     local side = tonumber(eyesCfg.side) or 35
-    local recess = tonumber(eyesCfg.recess) or 30
-    local sizeN = tonumber(eyesCfg.size) or 34
-    local orbColor = c255(eyesCfg.color, Color3.fromRGB(255, 30, 12))
+    local recess = tonumber(eyesCfg.recess) or 18
     local lightColor = c255(eyesCfg.light_color, Color3.fromRGB(255, 40, 18))
-    local lightBrightness = tonumber(eyesCfg.light_brightness) or 14
-    local lightRange = tonumber(eyesCfg.light_range) or 95
+    local lightBrightness = tonumber(eyesCfg.light_brightness) or 22
+    local lightRange = tonumber(eyesCfg.light_range) or 60
 
     -- Raycasts need the head queryable; the preload sets CanQuery=false, so toggle it for the cast.
     local prevQuery = head.CanQuery
@@ -75,21 +73,19 @@ local function seatEyes(head, eyesCfg, parent)
         local res = Workspace:Raycast(fcenter + L * 400 + lateral, -L * 800, params)
         local epos = res and (res.Position - L * recess) or (fcenter + lateral + L * 45)
 
-        local eye = Instance.new("Part")
-        eye.Name = sign > 0 and "HellEyeL" or "HellEyeR"
-        eye.Shape = Enum.PartType.Ball
-        eye.Anchored, eye.CanCollide, eye.CanQuery, eye.CastShadow = true, false, false, false
-        eye.Material = Enum.Material.Neon
-        eye.Color = orbColor
-        eye.Size = Vector3.new(sizeN, sizeN, sizeN)
-        eye.CFrame = CFrame.new(epos)
+        -- LIGHT in the socket (no solid orb): an Attachment pinned to the head at the socket, with
+        -- a PointLight, so the eye glows from within and rides with the head automatically.
+        local att = Instance.new("Attachment")
+        att.Name = sign > 0 and "EyeL" or "EyeR"
+        att.WorldPosition = epos
+        att.Parent = head
         local light = Instance.new("PointLight")
         light.Color = lightColor
         light.Brightness = lightBrightness
         light.Range = lightRange
-        light.Parent = eye
-        eye.Parent = parent
-        eyes[#eyes + 1] = { part = eye, light = light, base = lightBrightness }
+        light.Shadows = true
+        light.Parent = att
+        eyes[#eyes + 1] = { light = light, base = lightBrightness }
     end
 
     head.CanQuery = prevQuery
@@ -152,7 +148,6 @@ function RealmHellFaces.start()
     local function applyVis(head, eyes, vis)
         head.Transparency = 1 - vis
         for _, e in ipairs(eyes) do
-            e.part.Transparency = 1 - vis
             e.light.Brightness = e.base * vis
             e.light.Enabled = vis > 0.02
         end
@@ -195,7 +190,7 @@ function RealmHellFaces.start()
         model.PrimaryPart = head
         model.Parent = container
 
-        s.eyes = seatEyes(head, cfg.eyes, model) -- raycast against the seated head
+        s.eyes = seatEyes(head, cfg.eyes) -- socket lights pinned to the seated head
         s.model, s.head = model, head
         applyVis(head, s.eyes, 0) -- start hidden; fade in when present
 

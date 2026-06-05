@@ -332,17 +332,16 @@ return {
         face_color = { 35, 12, 10 },
         face_material = "SmoothPlastic",
 
-        -- Glowing eyes, raycast-seated into the actual mesh sockets and recessed for a sunken look.
+        -- Glowing eyes = LIGHTS in the sockets (no solid orb): a PointLight raycast-seated into each
+        -- eye socket, pinned to the head via an Attachment so it glows from within and rides along.
         eyes = {
             enabled = true,
-            size = 34, -- orb diameter (studs)
             up = 30, -- studs above head center (brow height)
             side = 35, -- half-separation between the eyes
-            recess = 30, -- how deep into the sockets they sit (+ = deeper; raycast-seated)
-            color = { 255, 30, 12 }, -- Neon orb color (red, ~max for red Neon)
-            light_color = { 255, 40, 18 }, -- bloom halo color
-            light_brightness = 14, -- bloom intensity
-            light_range = 95, -- bloom reach
+            recess = 18, -- how deep the light sits behind the socket (+ = deeper)
+            light_color = { 255, 40, 18 }, -- socket glow color
+            light_brightness = 22, -- glow intensity (brighter than an orb's bloom; lights a surface)
+            light_range = 60, -- reach (socket interior is close, so 60 is plenty)
         },
     },
 }
