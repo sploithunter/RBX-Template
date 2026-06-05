@@ -133,9 +133,18 @@ function RealmPortalService:_preloadHellFace()
     local model = container:GetChildren()[1]
     if model then
         model.Name = name
+        -- Anchor the model AND every descendant. NB: when the asset is a single MeshPart,
+        -- GetDescendants() does NOT include the part itself — so we must anchor `model` directly,
+        -- or the cached template ships unanchored and every spawned head gets physics-flung.
+        local function lockPart(p)
+            p.Anchored, p.CanCollide, p.CanQuery, p.CastShadow = true, false, false, false
+        end
+        if model:IsA("BasePart") then
+            lockPart(model)
+        end
         for _, p in ipairs(model:GetDescendants()) do
             if p:IsA("BasePart") then
-                p.Anchored, p.CanCollide, p.CanQuery, p.CastShadow = true, false, false, false
+                lockPart(p)
             end
         end
         if model:IsA("Model") and not model.PrimaryPart then

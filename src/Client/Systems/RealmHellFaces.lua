@@ -182,6 +182,14 @@ function RealmHellFaces.start()
         local model = Instance.new("Model")
         model.Name = "HellHead"
         local head = template:Clone()
+        -- CRITICAL: anchor the head. The template MeshPart ships unanchored (the preload's
+        -- GetDescendants() loop never touches the part itself), so without this the head is
+        -- physics-simulated and fights the per-frame PivotTo — jittering wildly and flinging any
+        -- child parts thousands of studs. Anchored = PivotTo is the sole authority = rock steady.
+        head.Anchored = true
+        head.CanCollide = false
+        head.CanQuery = false
+        head.Massless = true
         local m = math.max(head.Size.X, head.Size.Y, head.Size.Z, 0.01)
         head.Size = head.Size * (scale / m)
         head.CFrame = s.current
