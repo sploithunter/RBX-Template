@@ -339,8 +339,22 @@ return {
         face_light = {
             enabled = true,
             brightness = 4, -- resting intensity (lower = subtler; raise/animate for events)
-            range = 120,
+            range = 40, -- resting reach (kept low; lightning throws it far for a beat)
             color = { 255, 45, 25 },
+        },
+
+        -- Lightning: pulse the face light for a fraction of a second — brightness + range spike,
+        -- then snap back to resting. The range jump (40 -> 120) is what makes the glow flash out
+        -- and recoil. Auto-fires on a jittered interval now; the same pulse can be triggered by
+        -- future events (enemy wave incoming, etc.) to herald them.
+        lightning = {
+            enabled = true,
+            flash_brightness = 20,
+            flash_range = 120,
+            flash_seconds = 0.1, -- per-flicker on/off time
+            stutter = 3, -- flickers per strike (lightning stammer)
+            interval = 9, -- avg seconds between strikes
+            interval_jitter = 6, -- +/- randomization on the interval
         },
 
         -- Glowing eyes = NEON pupils raycast-seated into the sockets (self-emissive, so they read at

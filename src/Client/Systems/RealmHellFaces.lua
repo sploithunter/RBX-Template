@@ -216,6 +216,34 @@ function RealmHellFaces.start()
             fl.Parent = head
             s.faceLight = fl
             s.faceBrightness = tonumber(flCfg.brightness) or 4
+            s.faceRange = tonumber(flCfg.range) or 40
+
+            -- Lightning: occasionally pulse the face light (brightness + range spike) in a stutter,
+            -- then snap back to resting. s.flash (0..1) is read by the heartbeat; set it elsewhere
+            -- (e.g. an event) to herald enemy waves with the same strike.
+            local lit = cfg.lightning
+            if type(lit) == "table" and lit.enabled ~= false then
+                s.flashBrightness = tonumber(lit.flash_brightness) or 20
+                s.flashRange = tonumber(lit.flash_range) or 120
+                task.spawn(function()
+                    local on = tonumber(lit.flash_seconds) or 0.1
+                    local stutter = math.max(tonumber(lit.stutter) or 3, 1)
+                    local interval = math.max(tonumber(lit.interval) or 9, 0.5)
+                    local jitter = math.max(tonumber(lit.interval_jitter) or 6, 0)
+                    while s.alive do
+                        task.wait(interval + (math.random() * 2 - 1) * jitter)
+                        for _ = 1, stutter do
+                            if not s.alive then
+                                break
+                            end
+                            s.flash = 1
+                            task.wait(on * (0.4 + math.random() * 0.5))
+                            s.flash = 0
+                            task.wait(on * (0.3 + math.random() * 0.6))
+                        end
+                    end
+                end)
+            end
         end
 
         s.model, s.head = model, head
@@ -261,7 +289,16 @@ function RealmHellFaces.start()
             end
             applyVis(head, s.eyes, s.vis)
             if s.faceLight then
-                s.faceLight.Brightness = s.faceBrightness * s.vis -- fade the face glow with presence
+                -- resting glow, spiked by an active lightning flash (s.flash 0..1), faded by presence
+                local flash = s.flash or 0
+                local brightness = s.faceBrightness
+                if flash > 0 and s.flashBrightness then
+                    brightness = s.faceBrightness + (s.flashBrightness - s.faceBrightness) * flash
+                    s.faceLight.Range = s.faceRange + ((s.flashRange or s.faceRange) - s.faceRange) * flash
+                else
+                    s.faceLight.Range = s.faceRange
+                end
+                s.faceLight.Brightness = brightness * s.vis
             end
         end)
 
