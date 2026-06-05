@@ -22,6 +22,12 @@
 ]]
 
 return {
+    -- Boot-to-base: on join, reset the player to the base layer and publish the layer attributes
+    -- (CurrentLayer/CurrentRealm) so the client realm skin + RealmHellFaces apply on spawn. Without
+    -- the publish, those attributes were only ever set by a portal toggle, so a restored realm never
+    -- lit up on boot (and entering took two clicks). Realms are entered deliberately each session.
+    boot_to_base = true,
+
     -- Traversal sink shape (design doc §14, fork 2 — gameplay-tunable knob):
     --   "deeper_only" = free to retreat toward base/neutral; pay the target layer's token_cost
     --                   only when moving to a DEEPER layer (greater magnitude depth). [default]

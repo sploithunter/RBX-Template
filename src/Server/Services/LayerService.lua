@@ -12,6 +12,7 @@
     gating); the pure LayerAccess supports it for when visit portals are authored.
 ]]
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LayerAccess = require(ReplicatedStorage.Shared.Game.LayerAccess)
@@ -25,6 +26,45 @@ function LayerService:Init()
     self._configLoader = self._modules and self._modules.ConfigLoader
     self._dataService = self._modules and self._modules.DataService
     self._layersConfig = self._configLoader:LoadConfig("layers")
+end
+
+-- On join, settle the player's layer + PUBLISH the layer attributes (CurrentLayer/CurrentRealm/
+-- RealmHatchLuckBonus). Critical fix: those attributes were previously only set by UseLayer, so on
+-- spawn the client realm skin + RealmHellFaces had nothing to react to — the realm never lit up
+-- until you toggled a portal (and entry took two clicks). With boot_to_base on, we also reset to
+-- base so realms are entered deliberately each session (and the first portal press descends).
+function LayerService:_settleOnJoin(player)
+    if not (player and player.Parent and self._dataService) then
+        return
+    end
+    local deadline = os.clock() + 30
+    while player.Parent and not self._dataService:IsDataLoaded(player) and os.clock() < deadline do
+        task.wait(0.2)
+    end
+    if not (player.Parent and self._dataService:IsDataLoaded(player)) then
+        return
+    end
+    local data = self._dataService:GetData(player)
+    if not data then
+        return
+    end
+    if self._layersConfig.boot_to_base ~= false then
+        data.CurrentLayer = "base"
+    end
+    self:_publishLayer(player, data.CurrentLayer or "base")
+end
+
+function LayerService:Start()
+    for _, player in ipairs(Players:GetPlayers()) do
+        task.spawn(function()
+            self:_settleOnJoin(player)
+        end)
+    end
+    Players.PlayerAdded:Connect(function(player)
+        task.spawn(function()
+            self:_settleOnJoin(player)
+        end)
+    end)
 end
 
 function LayerService:GetCurrentLayer(player)
