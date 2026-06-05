@@ -171,6 +171,10 @@ function RealmHellFaces.start()
 
     local function spawn()
         teardown()
+        -- Defensive: wipe ANY stale heads in the container (e.g. an old contaminated head that got
+        -- saved into the place, or a leftover from a prior session) so we always run exactly one,
+        -- clean, anchored head.
+        container:ClearAllChildren()
         local s = { alive = true, present = false, vis = 0 }
         s.pos = Vector3.new(
             playerPos().X + bearingSeed.X * dist,
