@@ -837,6 +837,12 @@ Pet Realm next (tracked tasks #149–156):
 5. **Support-pet targeted buff/debuff** (#156, experimental); **PetPower S3** (display=dealt, #132);
    **Power S2b** balance rebase (#153); **overnight memory-leak** investigation (#152).
 
+**Shipped (2026-06-05): "The Watcher" (RealmHellFaces)** — a giant demon head that haunts **Hell 5
+only**, kite-following the player (anchored + capped `PivotTo`, no physics fling), glowing in the
+pitch-black realm via an internal face light, with a lightning pulse and stowed-but-ready Neon
+pupils. Pure ambience/horror (no mechanics yet); all knobs in `configs/layers.lua → hell_faces`.
+See LOG 2026-06-05 for the anchoring bug + the Rojo-sync lesson.
+
 Template-baseline polish (parked): richer auto-target UI controls; replace the legacy pet
 follow/mining clone with a service-owned loop (template issue #4); enchanter UI polish; authored-map
 gate art on the `TeleportPad`/`Portal` hooks; clean up warning-level placeholder/test data.
