@@ -122,16 +122,24 @@ function RealmHellFaces.start()
     local scale = tonumber(cfg.scale) or 240
     local faceColor = c255(cfg.face_color, Color3.fromRGB(35, 12, 10))
 
-    -- where the head wants to be this instant: off at follow_distance / follow_height, facing player
-    local function targetCFrame()
+    -- Movement tuning (mirrors pet_follow.movement: frame-rate-independent exp approach + a hard
+    -- speed cap + a catchup snap). Captured once; the head's orientation is CONSTANT (a fixed
+    -- inward/down gaze) so following never makes it spin.
+    local lerpRate = math.max(tonumber(cfg.follow_lerp_rate) or 4, 0.1)
+    local maxSpeed = math.max(tonumber(cfg.max_travel_speed) or 120, 1)
+    local catchup = math.max(tonumber(cfg.catchup_distance) or 400, 1)
+    local az = math.rad(tonumber(cfg.follow_azimuth_deg) or 0)
+    local dist = tonumber(cfg.follow_distance) or 100
+    local heightOff = tonumber(cfg.follow_height) or 100
+    -- constant gaze pointing back/down toward the player's side (never re-aimed -> never spins)
+    local gaze = Vector3.new(-math.cos(az), -1, -math.sin(az)).Unit
+
+    -- where the head wants to be this instant: off at follow_distance / follow_height
+    local function targetPos()
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local c = (hrp and hrp.Position) or Vector3.new(0, 0, 0)
-        local az = math.rad(tonumber(cfg.follow_azimuth_deg) or 0)
-        local dist = tonumber(cfg.follow_distance) or 200
-        local h = tonumber(cfg.follow_height) or 200
-        local pos = Vector3.new(c.X + math.cos(az) * dist, c.Y + h, c.Z + math.sin(az) * dist)
-        return CFrame.lookAt(pos, c)
+        return Vector3.new(c.X + math.cos(az) * dist, c.Y + heightOff, c.Z + math.sin(az) * dist)
     end
 
     local function applyVis(head, eyes, vis)
@@ -162,7 +170,8 @@ function RealmHellFaces.start()
     local function spawn()
         teardown()
         local s = { alive = true, present = false, vis = 0 }
-        s.current = targetCFrame()
+        s.pos = targetPos()
+        s.current = CFrame.lookAt(s.pos, s.pos + gaze)
 
         local model = Instance.new("Model")
         model.Name = "HellHead"
@@ -187,14 +196,25 @@ function RealmHellFaces.start()
             end
         end)
 
-        -- glide-follow + fade every frame
-        local smoothing = math.clamp(tonumber(cfg.follow_smoothing) or 0.04, 0.001, 1)
+        -- glide-follow (capped exp approach, no spin) + fade every frame
         local fadeSeconds = math.max(tonumber(cfg.fade_seconds) or 1.5, 0.01)
         s.heartbeat = RunService.Heartbeat:Connect(function(dt)
             if not s.alive or not model.Parent then
                 return
             end
-            s.current = s.current:Lerp(targetCFrame(), smoothing)
+            -- frame-rate-independent exponential approach toward the target, HARD-capped at
+            -- maxSpeed so it can never accelerate without bound; snap on a real teleport.
+            local tp = targetPos()
+            local delta = tp - s.pos
+            local d = delta.Magnitude
+            if d > catchup then
+                s.pos = tp
+            elseif d > 1e-3 then
+                local alpha = 1 - math.exp(-lerpRate * dt)
+                local moveDist = math.min(d * alpha, maxSpeed * dt)
+                s.pos = s.pos + delta.Unit * moveDist
+            end
+            s.current = CFrame.lookAt(s.pos, s.pos + gaze) -- constant orientation
             model:PivotTo(s.current)
             local goal = s.present and 1 or 0
             local step = dt / fadeSeconds

@@ -306,11 +306,17 @@ return {
         only_layer = "hell_5", -- ONLY ever appears in Hell 5 (nil = any hell layer)
         scale = 240, -- target max-dimension in studs (huge, looming presence)
 
-        -- Follow behavior: trails the player, gliding to face them.
-        follow_distance = 200, -- horizontal studs from the player
-        follow_height = 200, -- studs above the player (200 out + 200 up = ~45 deg elevation)
+        -- Follow behavior: trails the player at a fixed WORLD bearing (not camera-locked — a
+        -- camera-locked offset at this distance would swing through a huge arc on every turn and
+        -- whip the head at insane speed). Movement mirrors pet_follow.movement: frame-rate-
+        -- independent exponential approach + a HARD max_travel_speed cap (so it can never
+        -- accelerate without bound) + a catchup snap on real teleports (realm/zone change).
+        follow_distance = 100, -- horizontal studs from the player
+        follow_height = 100, -- studs above the player (100 out + 100 up = ~45 deg elevation)
         follow_azimuth_deg = 0, -- world bearing it hovers at relative to the player
-        follow_smoothing = 0.04, -- position/rotation lerp per frame (lower = laggier, dreamier glide)
+        follow_lerp_rate = 4, -- exponential approach rate (higher = snappier, lower = floatier)
+        max_travel_speed = 120, -- HARD studs/sec cap — the head can never move faster than this
+        catchup_distance = 400, -- beyond this (a real teleport) snap instead of flying across the map
 
         -- Intermittent presence: it only shows up SOMETIMES, fading in and back out.
         -- TESTING: appear_chance = 1.0 keeps it always present (no waiting / hunting in the dark).
