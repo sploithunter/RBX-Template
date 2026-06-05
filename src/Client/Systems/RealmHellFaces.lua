@@ -123,23 +123,30 @@ function RealmHellFaces.start()
     local faceColor = c255(cfg.face_color, Color3.fromRGB(35, 12, 10))
 
     -- Movement tuning (mirrors pet_follow.movement: frame-rate-independent exp approach + a hard
-    -- speed cap + a catchup snap). Captured once; the head's orientation is CONSTANT (a fixed
-    -- inward/down gaze) so following never makes it spin.
+    -- speed cap + a catchup snap). KITES: holds a `dist`-radius ring along its current bearing, so
+    -- closing in on it pushes it away (it never lets you walk up to it), and it gently turns to keep
+    -- facing you. The speed cap means it can never accelerate without bound regardless.
     local lerpRate = math.max(tonumber(cfg.follow_lerp_rate) or 4, 0.1)
     local maxSpeed = math.max(tonumber(cfg.max_travel_speed) or 120, 1)
     local catchup = math.max(tonumber(cfg.catchup_distance) or 400, 1)
+    local turnRate = math.max(tonumber(cfg.face_turn_rate) or 2, 0.1)
     local az = math.rad(tonumber(cfg.follow_azimuth_deg) or 0)
     local dist = tonumber(cfg.follow_distance) or 100
     local heightOff = tonumber(cfg.follow_height) or 100
-    -- constant gaze pointing back/down toward the player's side (never re-aimed -> never spins)
-    local gaze = Vector3.new(-math.cos(az), -1, -math.sin(az)).Unit
+    local bearingSeed = Vector3.new(math.cos(az), 0, math.sin(az)) -- until it has a real bearing
 
-    -- where the head wants to be this instant: off at follow_distance / follow_height
-    local function targetPos()
+    local function playerPos()
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        local c = (hrp and hrp.Position) or Vector3.new(0, 0, 0)
-        return Vector3.new(c.X + math.cos(az) * dist, c.Y + heightOff, c.Z + math.sin(az) * dist)
+        return (hrp and hrp.Position) or Vector3.new(0, 0, 0)
+    end
+
+    -- kite target: hold `dist` horizontally along the head's CURRENT bearing, `heightOff` up
+    local function targetPos(from)
+        local c = playerPos()
+        local horiz = Vector3.new(from.X - c.X, 0, from.Z - c.Z)
+        local bearing = horiz.Magnitude > 1 and horiz.Unit or bearingSeed
+        return Vector3.new(c.X + bearing.X * dist, c.Y + heightOff, c.Z + bearing.Z * dist)
     end
 
     local function applyVis(head, eyes, vis)
@@ -170,8 +177,12 @@ function RealmHellFaces.start()
     local function spawn()
         teardown()
         local s = { alive = true, present = false, vis = 0 }
-        s.pos = targetPos()
-        s.current = CFrame.lookAt(s.pos, s.pos + gaze)
+        s.pos = Vector3.new(
+            playerPos().X + bearingSeed.X * dist,
+            playerPos().Y + heightOff,
+            playerPos().Z + bearingSeed.Z * dist
+        )
+        s.current = CFrame.lookAt(s.pos, playerPos())
 
         local model = Instance.new("Model")
         model.Name = "HellHead"
@@ -202,9 +213,9 @@ function RealmHellFaces.start()
             if not s.alive or not model.Parent then
                 return
             end
-            -- frame-rate-independent exponential approach toward the target, HARD-capped at
+            -- frame-rate-independent exponential approach toward the kite target, HARD-capped at
             -- maxSpeed so it can never accelerate without bound; snap on a real teleport.
-            local tp = targetPos()
+            local tp = targetPos(s.pos)
             local delta = tp - s.pos
             local d = delta.Magnitude
             if d > catchup then
@@ -214,7 +225,10 @@ function RealmHellFaces.start()
                 local moveDist = math.min(d * alpha, maxSpeed * dt)
                 s.pos = s.pos + delta.Unit * moveDist
             end
-            s.current = CFrame.lookAt(s.pos, s.pos + gaze) -- constant orientation
+            -- gently turn to keep facing the player (slow slerp -> tracks you, never whips/spins)
+            local desired = CFrame.lookAt(s.pos, playerPos())
+            local rot = s.current.Rotation:Lerp(desired.Rotation, 1 - math.exp(-turnRate * dt))
+            s.current = CFrame.new(s.pos) * rot
             model:PivotTo(s.current)
             local goal = s.present and 1 or 0
             local step = dt / fadeSeconds

@@ -317,6 +317,9 @@ return {
         follow_lerp_rate = 4, -- exponential approach rate (higher = snappier, lower = floatier)
         max_travel_speed = 120, -- HARD studs/sec cap — the head can never move faster than this
         catchup_distance = 400, -- beyond this (a real teleport) snap instead of flying across the map
+        face_turn_rate = 2, -- how fast it turns to keep facing you (slow = gentle, never whips/spins)
+        -- KITING: it holds the `follow_distance` ring along its current bearing, so walking toward
+        -- it pushes it away (it never lets you reach it). Speed cap keeps the kite from whipping.
 
         -- Intermittent presence: it only shows up SOMETIMES, fading in and back out.
         -- TESTING: appear_chance = 1.0 keeps it always present (no waiting / hunting in the dark).
