@@ -38,25 +38,21 @@ local function c255(t, fallback)
     return fallback
 end
 
--- Darken the head so it recedes into shadow (only the eyes should read).
-local function darken(part, color, materialName)
-    part.Material = Enum.Material[materialName or "SmoothPlastic"] or Enum.Material.SmoothPlastic
-    part.Color = color
-end
-
--- Raycast-seat two Neon eyes into the mesh sockets, recessed for a sunken glow. Parents them under
--- `parent` (the assembly Model) and returns { {part=, light=, base=} } for fade control.
+-- Seat two NEON pupils into the eye sockets (self-emissive, so they read at any distance and in
+-- pitch black — a bare PointLight only lights nearby surfaces and is invisible from afar). Each is
+-- raycast-seated onto the real mesh, recessed, welded + anchored to the head. Offsets are fractions
+-- of the head's size so they hold up at any scale. This mirrors the hand-authored HellFaceGateTest.
 local function seatEyes(head, eyesCfg)
     local eyes = {}
     if type(eyesCfg) ~= "table" or eyesCfg.enabled == false then
         return eyes
     end
-    local up = tonumber(eyesCfg.up) or 30
-    local side = tonumber(eyesCfg.side) or 35
-    local recess = tonumber(eyesCfg.recess) or 18
-    local lightColor = c255(eyesCfg.light_color, Color3.fromRGB(255, 40, 18))
-    local lightBrightness = tonumber(eyesCfg.light_brightness) or 22
-    local lightRange = tonumber(eyesCfg.light_range) or 60
+    local maxdim = math.max(head.Size.X, head.Size.Y, head.Size.Z, 0.01)
+    local up = (tonumber(eyesCfg.up_frac) or 0.125) * maxdim
+    local side = (tonumber(eyesCfg.side_frac) or 0.146) * maxdim
+    local recess = (tonumber(eyesCfg.recess_frac) or 0.125) * maxdim
+    local pupilSize = (tonumber(eyesCfg.size_frac) or 0.14) * maxdim
+    local color = c255(eyesCfg.color, Color3.fromRGB(255, 30, 12))
 
     -- Raycasts need the head queryable; the preload sets CanQuery=false, so toggle it for the cast.
     local prevQuery = head.CanQuery
@@ -70,22 +66,22 @@ local function seatEyes(head, eyesCfg)
 
     for _, sign in ipairs({ 1, -1 }) do
         local lateral = U * up + R * (side * sign)
-        local res = Workspace:Raycast(fcenter + L * 400 + lateral, -L * 800, params)
-        local epos = res and (res.Position - L * recess) or (fcenter + lateral + L * 45)
+        local res = Workspace:Raycast(fcenter + L * (maxdim * 6) + lateral, -L * (maxdim * 12), params)
+        local epos = res and (res.Position - L * recess) or (fcenter + lateral + L * (maxdim * 0.4))
 
-        -- LIGHT in the socket (no solid orb): an Attachment pinned to the head at the socket, with
-        -- a PointLight, so the eye glows from within and rides with the head automatically.
-        local att = Instance.new("Attachment")
-        att.Name = sign > 0 and "EyeL" or "EyeR"
-        att.WorldPosition = epos
-        att.Parent = head
-        local light = Instance.new("PointLight")
-        light.Color = lightColor
-        light.Brightness = lightBrightness
-        light.Range = lightRange
-        light.Shadows = true
-        light.Parent = att
-        eyes[#eyes + 1] = { light = light, base = lightBrightness }
+        local pupil = Instance.new("Part")
+        pupil.Name = sign > 0 and "PupilL" or "PupilR"
+        pupil.Shape = Enum.PartType.Ball
+        pupil.Anchored, pupil.CanCollide, pupil.CanQuery, pupil.CastShadow = true, false, false, false
+        pupil.Material = Enum.Material.Neon
+        pupil.Color = color
+        pupil.Size = Vector3.new(pupilSize, pupilSize, pupilSize)
+        pupil.CFrame = CFrame.new(epos)
+        pupil.Parent = head
+        local weld = Instance.new("WeldConstraint") -- rigidly bound to the head
+        weld.Part0, weld.Part1 = head, pupil
+        weld.Parent = pupil
+        eyes[#eyes + 1] = { part = pupil }
     end
 
     head.CanQuery = prevQuery
@@ -116,7 +112,6 @@ function RealmHellFaces.start()
     end
 
     local scale = tonumber(cfg.scale) or 240
-    local faceColor = c255(cfg.face_color, Color3.fromRGB(35, 12, 10))
 
     -- Movement tuning (mirrors pet_follow.movement: frame-rate-independent exp approach + a hard
     -- speed cap + a catchup snap). KITES: holds a `dist`-radius ring along its current bearing, so
@@ -148,8 +143,13 @@ function RealmHellFaces.start()
     local function applyVis(head, eyes, vis)
         head.Transparency = 1 - vis
         for _, e in ipairs(eyes) do
-            e.light.Brightness = e.base * vis
-            e.light.Enabled = vis > 0.02
+            if e.part then
+                e.part.Transparency = 1 - vis
+            end
+            if e.light then
+                e.light.Brightness = e.base * vis
+                e.light.Enabled = vis > 0.02
+            end
         end
     end
 
@@ -197,7 +197,8 @@ function RealmHellFaces.start()
         local m = math.max(head.Size.X, head.Size.Y, head.Size.Z, 0.01)
         head.Size = head.Size * (scale / m)
         head.CFrame = s.current
-        darken(head, faceColor, cfg.face_material)
+        -- Keep the model's REAL material (the red-crystal look). Darkening it to flat plastic threw
+        -- the whole model away; the Neon pupils carry the glow in pitch black.
         head.Parent = model
         model.PrimaryPart = head
         model.Parent = container

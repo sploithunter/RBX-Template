@@ -332,16 +332,17 @@ return {
         face_color = { 35, 12, 10 },
         face_material = "SmoothPlastic",
 
-        -- Glowing eyes = LIGHTS in the sockets (no solid orb): a PointLight raycast-seated into each
-        -- eye socket, pinned to the head via an Attachment so it glows from within and rides along.
+        -- Glowing eyes = NEON pupils raycast-seated into the sockets (self-emissive, so they read at
+        -- any distance and in pitch black — a bare light is invisible from afar). Welded + anchored
+        -- to the head. Offsets are FRACTIONS of the head's size so they hold at any scale. Tuned by
+        -- hand on HellFaceGateTest. Set enabled=false to drop them (the face then needs its own glow).
         eyes = {
             enabled = true,
-            up = 30, -- studs above head center (brow height)
-            side = 35, -- half-separation between the eyes
-            recess = 18, -- how deep the light sits behind the socket (+ = deeper)
-            light_color = { 255, 40, 18 }, -- socket glow color
-            light_brightness = 10000, -- full intensity (sockets blaze; dial down if too hot)
-            light_range = 60, -- reach (PointLight caps at 60; socket interior is close anyway)
+            up_frac = 0.125, -- brow height as a fraction of head size
+            side_frac = 0.146, -- half-separation
+            recess_frac = 0.125, -- how deep into the socket
+            size_frac = 0.14, -- pupil diameter
+            color = { 255, 30, 12 }, -- Neon red
         },
     },
 }
