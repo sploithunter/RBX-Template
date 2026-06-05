@@ -5,7 +5,11 @@
 
 local LevelCurve = loadModule("src/Shared/Game/LevelCurve.lua")
 local config = loadModule("configs/player_progression.lua")
-local xpCfg = config.xp
+
+-- Test the curve MATH against a fixed literal cfg, NOT the live game-balance value (so retuning
+-- player_progression.xp.per_level never breaks these). The live config is sanity-checked for SHAPE
+-- only, below.
+local xpCfg = { mode = "linear", per_level = 100, max_level = 50 }
 
 return function()
     describe("LevelCurve (linear, per_level=100)", function()
@@ -42,6 +46,15 @@ return function()
             expect(p.xpIntoLevel).to.equal(50)
             expect(p.xpForNext).to.equal(200)
             expect(p.fraction).to.equal(0.25)
+        end)
+    end)
+
+    describe("live player_progression.xp config is well-formed", function()
+        it("ships a linear curve with a positive per_level and the level-50 cap", function()
+            expect(config.xp.mode).to.equal("linear")
+            expect(type(config.xp.per_level)).to.equal("number")
+            expect(config.xp.per_level > 0).to.equal(true)
+            expect(config.xp.max_level).to.equal(50)
         end)
     end)
 
