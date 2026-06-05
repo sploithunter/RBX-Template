@@ -48,6 +48,103 @@ local M = {
         shield_target = id(120424299023186),
     },
 
+    -- Ring FRAMES (the 5 grayscale rings, uploaded white; tinted per element via ImageColor3).
+    -- The SHAPE conveys TARGETING; the COLOR (tint) conveys element of origin. Layer a bright
+    -- disc behind a dark ring + a white symbol to build an archetype/power badge in code, so we
+    -- never have to upload a colored ring per element.
+    -- NB: ids below are the IMAGE content ids (resolved from the uploaded Decals via the
+    -- Decal.Texture each wraps). The Decal ids themselves do NOT render in ImageLabel.Image.
+    rings = {
+        target_in = id(73447619254562), -- single target (incoming pip)   [decal 116214377637854]
+        target_out = id(96971740848796), -- single friendly / ally target [decal 120073694232878]
+        aoe = id(128177741420839), -- enemy area-of-effect                [decal 115953506041881]
+        target_aoe = id(130533151036887), -- friendly / team AoE          [decal 78886679306044]
+        aura = id(121697559002218), -- plain ring (archetype / no dir)     [decal 76032353374470]
+    },
+
+    -- Map a power's targeting kind onto a ring SHAPE (above). UI: rings[targetingRing[kind]].
+    targeting_ring = {
+        single = "target_in",
+        ally = "target_out",
+        enemy_aoe = "aoe",
+        team_aoe = "target_aoe",
+        self = "aura",
+        none = "aura",
+    },
+
+    -- Rock-paper-scissors element tints, RECOVERED from the hand-colored reference rings
+    -- (colored = white_grayscale x ImageColor3, so the bright sample IS the multiplier). `bright`
+    -- tints the disc/element; `dark` (= bright x ~0.36) tints the ring frame. Element by COLOR,
+    -- archetype by the white SYMBOL shape. neutral = archetype with no/mixed element.
+    elements = {
+        earth = { bright = { 91, 255, 81 }, dark = { 33, 92, 29 } }, -- green (grass)
+        fire = { bright = { 255, 82, 89 }, dark = { 92, 30, 32 } }, -- red (lava)
+        desert = { bright = { 255, 209, 79 }, dark = { 92, 75, 28 } }, -- yellow (sand)
+        ice = { bright = { 81, 136, 255 }, dark = { 29, 49, 92 } }, -- blue (frost)
+        neutral = { bright = { 220, 220, 225 }, dark = { 70, 70, 78 } }, -- mixed / archetype-only
+    },
+
+    -- Canonical combat element (grass/lava/ice/desert, from CombatOrigin / combat_fx) -> the
+    -- badge element key above. The badge vocabulary is earth/fire; combat uses grass/lava.
+    element_alias = {
+        grass = "earth",
+        lava = "fire",
+        desert = "desert",
+        ice = "ice",
+        earth = "earth",
+        fire = "fire",
+    },
+
+    -- Archetype/role id (pet_roles / PetPowerView.roleInfo .id) -> the white SYMBOL to stamp on
+    -- the element disc. (melee = the IMPACT fist; control = the hand.)
+    role_symbol = {
+        tank = "armor_chest",
+        melee = "fist_impact",
+        ranged = "arrow_right",
+        support = "star_sparkle",
+        control = "hand_stop",
+    },
+
+    -- Pre-baked colored disc-icons: discs[element][symbol] = Image id. The element is the disc
+    -- COLOR (the pet's origin); the symbol is the archetype/power glyph baked onto it. Jason's
+    -- recolor script renders these per element; uploaded as Decals, ids here are the resolved
+    -- IMAGE content ids (see scripts/icon_ids.discs.json). The aura ring (rings.aura) tinted
+    -- elements[elem].dark frames it -> the universal two-layer badge (src/Client/UI/PetBadge).
+    discs = {
+        earth = {
+            armor_chest = id(117196376134677),
+            fist_impact = id(107483427967238),
+            arrow_right = id(89629994898328),
+            star_sparkle = id(70922319936021),
+            hand_stop = id(100801154207594),
+            shield = id(113193953850265),
+        },
+        fire = {
+            armor_chest = id(80412131835560),
+            fist_impact = id(111009476265182),
+            arrow_right = id(102767415664686),
+            star_sparkle = id(112938645728666),
+            hand_stop = id(129326094066674),
+            shield = id(87662561870844),
+        },
+        desert = {
+            armor_chest = id(138256777477472),
+            fist_impact = id(92759715093176),
+            arrow_right = id(95570155438599),
+            star_sparkle = id(115581368440623),
+            hand_stop = id(134819309651243),
+            shield = id(126464933309161),
+        },
+        ice = {
+            armor_chest = id(99602330844217),
+            fist_impact = id(138777877678894),
+            arrow_right = id(110668229230948),
+            star_sparkle = id(117884715579847),
+            hand_stop = id(86991673939412),
+            shield = id(127714891076758),
+        },
+    },
+
     -- Zoom applied inside the (clipping) container to crop a transparent border.
     -- 1 = fit exactly; >1 = zoom in. Per-asset overrides win over default_scale.
     default_scale = 1.25,
@@ -62,6 +159,41 @@ function M.scaleFor(image)
         return 1
     end
     return M.scales[image] or M.default_scale
+end
+
+-- Raw RGB triple {r,g,b} for an element badge layer. shade = "bright" (disc) | "dark" (ring).
+-- Pure (no Color3) so headless specs can read it; UI wraps it via M.elementColor3.
+function M.elementRGB(element, shade)
+    local e = M.elements[element] or M.elements.neutral
+    return e[shade] or e.bright
+end
+
+-- Color3 for an element badge layer (client UI only — touches the Color3 global).
+function M.elementColor3(element, shade)
+    local t = M.elementRGB(element, shade)
+    return Color3.fromRGB(t[1], t[2], t[3])
+end
+
+-- Ring image (rbxassetid string) for a TARGETING kind; falls back to the plain archetype ring.
+function M.ringFor(targetingKind)
+    local shape = M.targeting_ring[targetingKind or "none"] or "aura"
+    return M.rings[shape] or M.rings.aura
+end
+
+-- Normalize any element token (canonical grass/lava or badge earth/fire) to a badge key.
+function M.elementKey(element)
+    return M.element_alias[element or ""] or "neutral"
+end
+
+-- White symbol id for a role/archetype id ("" if none).
+function M.symbolForRole(role)
+    return M.role_symbol[role or ""]
+end
+
+-- Disc Image (rbxassetid string) for an element + symbol; nil if that combo wasn't uploaded.
+function M.discFor(element, symbol)
+    local e = M.discs[M.elementKey(element)]
+    return e and symbol and e[symbol] or nil
 end
 
 return M

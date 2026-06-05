@@ -46,6 +46,13 @@ end)
 if not petPowerViewOk then
     PetPowerView = nil
 end
+-- Universal archetype badge (element disc + tinted ring). Optional: falls back to the text chip.
+local petBadgeOk, PetBadge = pcall(function()
+    return require(script.Parent.Parent.PetBadge)
+end)
+if not petBadgeOk then
+    PetBadge = nil
+end
 local petVisualsOk, PetVariantVisuals = pcall(function()
     return require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
 end)
@@ -2745,23 +2752,50 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
             return PetPowerView.roleInfo(item.petType, item.role)
         end)
         if okRole and role and role.label then
-            local tint = role.color and Color3.fromRGB(role.color.r, role.color.g, role.color.b)
-                or Color3.fromRGB(70, 70, 90)
-            local chip = Instance.new("TextLabel")
-            chip.Name = "RoleChip"
-            chip.Size = UDim2.new(0, math.max(28, math.floor(self.cardSize.X * 0.5)), 0, math.max(10, math.floor(self.cardSize.Y * 0.16)))
-            chip.Position = UDim2.new(0, 3, 0, 3)
-            chip.BackgroundColor3 = tint
-            chip.BackgroundTransparency = 0.15
-            chip.Text = " " .. tostring(role.label) .. " "
-            chip.TextColor3 = Color3.fromRGB(255, 255, 255)
-            chip.TextScaled = true
-            chip.Font = Enum.Font.GothamBold
-            chip.ZIndex = 104
-            local corner = Instance.new("UICorner")
-            corner.CornerRadius = UDim.new(0, 4)
-            corner.Parent = chip
-            chip.Parent = itemFrame
+            -- Preferred: the universal element-disc + tinted-ring BADGE (top-left, square).
+            local built = false
+            if PetBadge then
+                local element = PetBadge.elementForPetType(item.petType)
+                -- Relative: a square badge sized to ~half the card's HEIGHT (aspect-ratio
+                -- constraint), poking off the top-left corner by a fraction of the card. No
+                -- pixel math — it scales with cardSize automatically.
+                local holder = Instance.new("Frame")
+                holder.Name = "RoleBadge"
+                holder.Size = UDim2.new(1, 0, 0.5, 0) -- full width box, half-height -> square fits to height
+                holder.Position = UDim2.fromScale(-0.1, -0.1)
+                holder.BackgroundTransparency = 1
+                holder.ZIndex = 106
+                holder.Parent = itemFrame
+                local hAspect = Instance.new("UIAspectRatioConstraint")
+                hAspect.AspectRatio = 1
+                hAspect.AspectType = Enum.AspectType.FitWithinMaxSize
+                hAspect.Parent = holder
+                local b = PetBadge.create(holder, { element = element, role = role.id, zIndex = 106 })
+                built = b and b.disc and b.disc.Visible == true
+                if not built then
+                    holder:Destroy() -- no disc art for this (element, role) -> fall back to text chip
+                end
+            end
+            -- Fallback: the original coloured text chip (Tank / Melee / ...).
+            if not built then
+                local tint = role.color and Color3.fromRGB(role.color.r, role.color.g, role.color.b)
+                    or Color3.fromRGB(70, 70, 90)
+                local chip = Instance.new("TextLabel")
+                chip.Name = "RoleChip"
+                chip.Size = UDim2.new(0, math.max(28, math.floor(self.cardSize.X * 0.5)), 0, math.max(10, math.floor(self.cardSize.Y * 0.16)))
+                chip.Position = UDim2.new(0, 3, 0, 3)
+                chip.BackgroundColor3 = tint
+                chip.BackgroundTransparency = 0.15
+                chip.Text = " " .. tostring(role.label) .. " "
+                chip.TextColor3 = Color3.fromRGB(255, 255, 255)
+                chip.TextScaled = true
+                chip.Font = Enum.Font.GothamBold
+                chip.ZIndex = 104
+                local corner = Instance.new("UICorner")
+                corner.CornerRadius = UDim.new(0, 4)
+                corner.Parent = chip
+                chip.Parent = itemFrame
+            end
         end
     end
 

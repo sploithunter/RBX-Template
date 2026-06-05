@@ -1,0 +1,53 @@
+{
+  "_README": "SINGLE SOURCE OF TRUTH for every icon uploaded to Roblox via scripts/upload_icons.js (Open Cloud, creator userId 3200870803 / coloradoplays). Each asset has BOTH ids: 'decal' (what Open Cloud returns; does NOT render in ImageLabel.Image) and 'image' (the wrapped Texture id resolved via InsertService:LoadAsset in Studio EDIT mode — this is what configs use). The 'image' ids are wired into configs/power_icons.lua. Element colors: earth=green, fire=red, desert=yellow, ice=blue. Last updated 2026-06-05.",
+  "rings": {
+    "_note": "5 grayscale targeting rings (tinted per element via ImageColor3). Source: assets/ui/ring_frames_white/.",
+    "ring_target_in":  { "decal": "116214377637854", "image": "73447619254562" },
+    "ring_target_out": { "decal": "120073694232878", "image": "96971740848796" },
+    "ring_aoe":        { "decal": "115953506041881", "image": "128177741420839" },
+    "ring_target_aoe": { "decal": "78886679306044",  "image": "130533151036887" },
+    "ring_aura":       { "decal": "76032353374470",  "image": "121697559002218" }
+  },
+  "discs": {
+    "_note": "Pre-baked colored archetype disc-icons, keyed [element_color][symbol]. Source: assets/ui/{green,red,yellow,blue,white}_icons/. Element key map: earth=green, fire=red, desert=yellow, ice=blue.",
+    "green": {
+      "armor_chest":  { "decal": "127913717830698", "image": "117196376134677" },
+      "fist_impact":  { "decal": "112705655520207", "image": "107483427967238" },
+      "arrow_right":  { "decal": "95525701970060",  "image": "89629994898328" },
+      "star_sparkle": { "decal": "136001611202585", "image": "70922319936021" },
+      "hand_stop":    { "decal": "90739359637615",  "image": "100801154207594" },
+      "shield":       { "decal": "119552166967679", "image": "113193953850265" }
+    },
+    "red": {
+      "armor_chest":  { "decal": "135021804612795", "image": "80412131835560" },
+      "fist_impact":  { "decal": "103058409596913", "image": "111009476265182" },
+      "arrow_right":  { "decal": "139831201487156", "image": "102767415664686" },
+      "star_sparkle": { "decal": "139778416105731", "image": "112938645728666" },
+      "hand_stop":    { "decal": "88453922997562",  "image": "129326094066674" },
+      "shield":       { "decal": "121556379009176", "image": "87662561870844" }
+    },
+    "yellow": {
+      "armor_chest":  { "decal": "97379022632922",  "image": "138256777477472" },
+      "fist_impact":  { "decal": "123387333225571", "image": "92759715093176" },
+      "arrow_right":  { "decal": "103996934990284", "image": "95570155438599" },
+      "star_sparkle": { "decal": "84935114971159",  "image": "115581368440623" },
+      "hand_stop":    { "decal": "113187996978618", "image": "134819309651243" },
+      "shield":       { "decal": "85274051743640",  "image": "126464933309161" }
+    },
+    "blue": {
+      "armor_chest":  { "decal": "90587021610726",  "image": "99602330844217" },
+      "fist_impact":  { "decal": "70395230522141",  "image": "138777877678894" },
+      "arrow_right":  { "decal": "122360153109609", "image": "110668229230948" },
+      "star_sparkle": { "decal": "134828874783973", "image": "117884715579847" },
+      "hand_stop":    { "decal": "88847454848367",  "image": "86991673939412" },
+      "shield":       { "decal": "130151995498288", "image": "127714891076758" }
+    },
+    "white": {
+      "shield":       { "decal": "93476465119360",  "image": "121311806877255" }
+    }
+  },
+  "legacy": {
+    "_note": "Superseded / one-off test uploads kept for traceability.",
+    "blue_shield_first_test": { "decal": "113196149447047", "image": null, "note": "first Open Cloud upload proof; superseded by discs.blue.shield" }
+  }
+}

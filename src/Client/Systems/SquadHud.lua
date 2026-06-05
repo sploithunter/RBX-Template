@@ -27,6 +27,7 @@ local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local POWER_ICONS = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_icons"))
 local PET_ROLES = require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
+local PetBadge = require(script.Parent.Parent.UI.PetBadge)
 
 local SquadHud = {}
 
@@ -68,6 +69,10 @@ local STATE_COLOR = {
 local HP_GREEN = Color3.fromRGB(70, 205, 95)
 local HP_YELLOW = Color3.fromRGB(235, 200, 60)
 local HP_RED = Color3.fromRGB(220, 70, 70)
+
+-- How far the role badge pokes off the card's inner (left) edge: the badge's anchor-X fraction.
+-- 0 = flush inside, 0.5 = half overhangs. Bigger = more "hanging off" the gems-pill style.
+local BADGE_OVERHANG = 0.35
 local function healthColor(f)
     f = math.clamp(f, 0, 1)
     if f >= 0.5 then
@@ -306,7 +311,7 @@ function SquadHud.start()
         frame.Name = "Slot_" .. slot
         frame.AutoButtonColor = false
         frame.Text = ""
-        frame.Size = UDim2.fromOffset(186, 38)
+        frame.Size = UDim2.fromOffset(186, 44)
         frame.BackgroundColor3 = Color3.fromRGB(28, 30, 40)
         frame.BackgroundTransparency = 0.1
         frame.BorderSizePixel = 0
@@ -315,22 +320,33 @@ function SquadHud.start()
         local corner = Instance.new("UICorner")
         corner.CornerRadius = UDim.new(0, 6)
         corner.Parent = frame
+        -- Always-on subtle outline on the black bar (so the badge poking off its edge reads);
+        -- brightens to the selection blue when this slot is selected/cycled (see render loop).
         local stroke = Instance.new("UIStroke")
-        stroke.Color = Color3.fromRGB(95, 170, 235)
-        stroke.Thickness = 2
-        stroke.Transparency = 1 -- shown when selected
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border -- draw a real outer border (Contextual was invisible here)
+        stroke.Color = Color3.fromRGB(70, 76, 96)
+        stroke.Thickness = 1.5
+        stroke.Transparency = 0.4
         stroke.Parent = frame
 
         -- Archetype/role chip on the left (tank/melee/ranged/support/control). Coloured
         -- letter glyph now; swaps to art when a role gets an icon in configs/pet_roles.
         local roleChip = Instance.new("Frame")
         roleChip.Name = "Role"
-        roleChip.AnchorPoint = Vector2.new(0, 0.5)
-        roleChip.Position = UDim2.new(0, 6, 0.5, 0)
-        roleChip.Size = UDim2.fromOffset(26, 26)
+        -- Anchored so the badge pokes off the card's inner edge (the "gems" look) — relative, no
+        -- pixel offset. BADGE_OVERHANG is the knob: anchor-X fraction, bigger = hangs further left.
+        roleChip.AnchorPoint = Vector2.new(BADGE_OVERHANG, 0.5)
+        roleChip.Position = UDim2.new(0, 0, 0.5, 0)
+        -- Relative: fill the card, then an aspect-ratio constraint (FitWithinMaxSize) squares it
+        -- to the smaller axis = the card's HEIGHT. Scales with the card automatically — no pixels.
+        roleChip.Size = UDim2.new(1, 0, 1, 0)
         roleChip.BorderSizePixel = 0
-        roleChip.ClipsDescendants = true
+        roleChip.ClipsDescendants = false
         roleChip.Parent = frame
+        local roleAspect = Instance.new("UIAspectRatioConstraint")
+        roleAspect.AspectRatio = 1
+        roleAspect.AspectType = Enum.AspectType.FitWithinMaxSize
+        roleAspect.Parent = roleChip
         local roleCorner = Instance.new("UICorner")
         roleCorner.CornerRadius = UDim.new(0, 6)
         roleCorner.Parent = roleChip
@@ -343,23 +359,37 @@ function SquadHud.start()
         roleGlyph.TextColor3 = Color3.fromRGB(255, 255, 255)
         roleGlyph.TextStrokeTransparency = 0.5
         roleGlyph.Parent = roleChip
+        -- The badge: a colored element DISC (roleIcon) inset behind a tinted framing RING
+        -- (roleRing), built once and re-skinned each tick by PetBadge.apply. Falls back to the
+        -- coloured glyph above when the (element, role) combo has no uploaded disc art.
         local roleIcon = Instance.new("ImageLabel")
         roleIcon.Name = "Icon"
         roleIcon.BackgroundTransparency = 1
         roleIcon.AnchorPoint = Vector2.new(0.5, 0.5)
         roleIcon.Position = UDim2.fromScale(0.5, 0.5)
-        roleIcon.Size = UDim2.fromScale(1, 1)
+        roleIcon.Size = UDim2.fromScale(0.82, 0.82)
         roleIcon.ScaleType = Enum.ScaleType.Fit
+        roleIcon.ZIndex = 2
         roleIcon.Image = ""
         roleIcon.Parent = roleChip
+        local roleRing = Instance.new("ImageLabel")
+        roleRing.Name = "Ring"
+        roleRing.BackgroundTransparency = 1
+        roleRing.AnchorPoint = Vector2.new(0.5, 0.5)
+        roleRing.Position = UDim2.fromScale(0.5, 0.5)
+        roleRing.Size = UDim2.fromScale(1, 1)
+        roleRing.ScaleType = Enum.ScaleType.Fit
+        roleRing.ZIndex = 3
+        roleRing.Image = ""
+        roleRing.Parent = roleChip
 
         -- Compact health bar: a near-black backing (so white text stays legible as the
         -- fill drains), a fill that goes green->yellow->red, the pet NAME inside it, and
         -- a right-aligned note (recharge countdown / Summon when downed). Rounded corners.
         local barBg = Instance.new("Frame")
         barBg.Name = "BarBg"
-        barBg.Position = UDim2.fromOffset(38, 6)
-        barBg.Size = UDim2.new(1, -46, 0, 20)
+        barBg.Position = UDim2.fromOffset(40, 9)
+        barBg.Size = UDim2.new(1, -48, 0, 20)
         barBg.BackgroundColor3 = Color3.fromRGB(12, 13, 18)
         barBg.BorderSizePixel = 0
         barBg.ClipsDescendants = true
@@ -408,8 +438,8 @@ function SquadHud.start()
         -- Hidden when the pet has no shield; rounded (pill) corners.
         local shieldBg = Instance.new("Frame")
         shieldBg.Name = "ShieldBg"
-        shieldBg.Position = UDim2.fromOffset(38, 28)
-        shieldBg.Size = UDim2.new(1, -46, 0, 4)
+        shieldBg.Position = UDim2.fromOffset(40, 31)
+        shieldBg.Size = UDim2.new(1, -48, 0, 4)
         shieldBg.BackgroundColor3 = Color3.fromRGB(12, 13, 18)
         shieldBg.BorderSizePixel = 0
         shieldBg.ClipsDescendants = true
@@ -468,6 +498,7 @@ function SquadHud.start()
             roleChip = roleChip,
             roleGlyph = roleGlyph,
             roleIcon = roleIcon,
+            roleRing = roleRing,
             status = status,
             badges = {},
         }
@@ -657,12 +688,18 @@ function SquadHud.start()
                         cards[s.slot] = card
                     end
                     card.name.Text = s.name .. (s.variant ~= "basic" and (" (" .. s.variant .. ")") or "")
-                    -- Archetype/role chip (icon if the role has art, else coloured glyph).
+                    -- Archetype/role badge: element DISC + tinted aura RING (the universal
+                    -- PetBadge). Element from the pet's origin; role from PetRole/by_type. Falls
+                    -- back to the coloured letter glyph when that (element, role) has no disc art.
                     local role = roleFor(pet)
+                    local roleId = pet:GetAttribute("PetRole")
+                        or (PET_ROLES.by_type and PET_ROLES.by_type[pet:GetAttribute("PetType")])
+                        or PET_ROLES.default
+                    local element = PetBadge.elementForPetType(pet:GetAttribute("PetType"))
+                    local hasBadge = PetBadge.apply(card.roleIcon, card.roleRing, element, roleId)
                     card.roleChip.BackgroundColor3 = role.color
-                    local hasRoleIcon = role.icon ~= ""
-                    card.roleIcon.Image = role.icon
-                    card.roleGlyph.Visible = not hasRoleIcon
+                    card.roleChip.BackgroundTransparency = hasBadge and 1 or 0
+                    card.roleGlyph.Visible = not hasBadge
                     card.roleGlyph.Text = role.glyph
                     if s.downed then
                         -- Out of the fight: full bar in the recharge colour + a note.
@@ -684,8 +721,13 @@ function SquadHud.start()
                     local shieldF = s.shieldFraction or 0
                     card.shieldBg.Visible = shieldF > 0
                     card.shieldFill.Size = UDim2.fromScale(shieldF, 1)
-                    card.stroke.Transparency = (selectedSlot == s.slot) and 0 or 1
-                    card.frame.BackgroundTransparency = (selectedSlot == s.slot) and 0 or 0.1
+                    -- Selection = an OUTLINE only (the gems-pill look): the dark bar stays dark, just
+                    -- the stroke pops to bright blue. No background colour change (that swamped it).
+                    local isSel = selectedSlot == s.slot
+                    card.stroke.Color = isSel and Color3.fromRGB(120, 200, 255) or Color3.fromRGB(70, 76, 96)
+                    card.stroke.Transparency = isSel and 0 or 0.5
+                    card.stroke.Thickness = isSel and 3 or 1.5
+                    card.frame.BackgroundTransparency = isSel and 0 or 0.1
                     updateBadges(card, activeEffectsFor(pet, localPlayer, os.time()), blinkLead)
                 end
             end
