@@ -53,14 +53,23 @@ return {
     -- `position` (reskin later — the logic keys off the tag, not the visual).
     altar = {
         enabled = true,
-        position = { 0, 6, 0 }, -- near Spawn; tune to taste (studs)
+        -- Bind the altar to a named map object (an invisible prompt host is placed at it) so the
+        -- station is the building, not a placeholder pillar. Falls back to a tagged part, then to
+        -- the placeholder at `position`. Tune the host with `bind_offset`.
+        bind_to_name = "Low Poly Shop",
+        bind_offset = { 0, 0, 0 }, -- nudge the prompt host off the bound object's ground-center (studs)
+        position = { 0, 6, 0 }, -- placeholder fallback position (only if bind_to_name not found)
         size = { 6, 12, 6 },
         color = { 255, 205, 70 },
         action_text = "Ascend",
         object_text = "Ascension Altar",
-        max_distance = 14,
+        max_distance = 18, -- a bit larger so you don't have to stand dead-center on a building
         hold_duration = 0,
         key = "E",
+        -- Floating label above the station ("" to hide).
+        label_text = "Level Up",
+        label_color = { 255, 230, 140 },
+        label_max_distance = 250,
     },
 
     -- Reward bundles (RewardBundle shape: { currencies = {...}, pets = {...}, ... }).

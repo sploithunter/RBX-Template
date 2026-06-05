@@ -63,7 +63,21 @@ local function color(t, fallback)
     return fallback
 end
 
--- Find an existing tagged altar part, or spawn a placeholder pillar at the config position.
+-- Find a Model/BasePart by exact name anywhere under Workspace (e.g. a shop building).
+local function findNamed(name)
+    if not name or name == "" then
+        return nil
+    end
+    for _, d in ipairs(Workspace:GetDescendants()) do
+        if d.Name == name and (d:IsA("Model") or d:IsA("BasePart")) then
+            return d
+        end
+    end
+    return nil
+end
+
+-- Find an existing tagged altar part; else bind to a named map object (invisible prompt host at
+-- it); else spawn a placeholder pillar at the config position.
 function AscensionAltarService:_ensureAltarPart()
     local tagged = CollectionService:GetTagged(ALTAR_TAG)
     for _, inst in ipairs(tagged) do
@@ -79,8 +93,28 @@ function AscensionAltarService:_ensureAltarPart()
         end
     end
 
-    -- No tagged altar in the map — spawn a placeholder pillar (reskin later).
     local cfg = self._altarConfig or {}
+
+    -- Bind to a named map object (e.g. "Low Poly Shop"): place an invisible, tagged prompt host at
+    -- its ground-centre so the building itself is the station. The label clears the object's top.
+    local target = findNamed(cfg.bind_to_name)
+    if target then
+        local pivot = target:IsA("Model") and target:GetPivot().Position or target.Position
+        local ext = target:IsA("Model") and target:GetExtentsSize() or target.Size
+        local host = Instance.new("Part")
+        host.Name = "AscensionAltar"
+        host.Anchored, host.CanCollide, host.CanQuery, host.CastShadow = true, false, false, false
+        host.Transparency = 1
+        host.Size = Vector3.new(4, 8, 4)
+        host.Position = Vector3.new(pivot.X, pivot.Y - ext.Y / 2 + 4, pivot.Z)
+            + vec(cfg.bind_offset, Vector3.new(0, 0, 0))
+        host:SetAttribute("LabelHeight", ext.Y + 4) -- float the label above the building's roof
+        CollectionService:AddTag(host, ALTAR_TAG)
+        host.Parent = Workspace
+        return host
+    end
+
+    -- No tag, no named object — spawn a placeholder pillar (reskin later).
     local part = Instance.new("Part")
     part.Name = "AscensionAltar"
     part.Anchored = true
@@ -124,6 +158,33 @@ function AscensionAltarService:_ensurePrompt(part)
     return prompt
 end
 
+-- Float a "Level Up" billboard over the station (above the bound building's roof when bound).
+function AscensionAltarService:_ensureLabel(part)
+    local cfg = self._altarConfig or {}
+    local text = cfg.label_text
+    if not text or text == "" or part:FindFirstChild("AscendLabel") then
+        return
+    end
+    local height = tonumber(part:GetAttribute("LabelHeight")) or tonumber(cfg.label_height) or 14
+    local bb = Instance.new("BillboardGui")
+    bb.Name = "AscendLabel"
+    bb.Size = UDim2.new(0, 220, 0, 56)
+    bb.StudsOffsetWorldSpace = Vector3.new(0, height, 0)
+    bb.AlwaysOnTop = true
+    bb.MaxDistance = tonumber(cfg.label_max_distance) or 250
+    bb.Adornee = part
+    bb.Parent = part
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.fromScale(1, 1)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = color(cfg.label_color, Color3.fromRGB(255, 230, 140))
+    lbl.TextStrokeTransparency = 0.35
+    lbl.Font = Enum.Font.GothamBlack
+    lbl.TextScaled = true
+    lbl.Parent = bb
+end
+
 -- Claim the next TRAINING level for the player (the prompt is already distance-validated).
 function AscensionAltarService:_onTriggered(player)
     local prog = self:_progression()
@@ -147,6 +208,7 @@ function AscensionAltarService:Start()
         local part = self:_ensureAltarPart()
         if part then
             self:_ensurePrompt(part)
+            self:_ensureLabel(part)
         end
     end)
     if not ok and self._logger then
