@@ -260,6 +260,41 @@ local function getVariantDisplayName(variant)
     return variant:sub(1, 1):upper() .. variant:sub(2)
 end
 
+-- A pet whose VARIANT is carried by colouring its NAME (golden = gold text, rainbow = gradient)
+-- rather than a separate badge pill.
+local function nameCarriesVariant(variant)
+    return variant == "golden" or variant == "rainbow"
+end
+
+local RAINBOW_NAME_SEQUENCE = ColorSequence.new({
+    ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 90, 90)),
+    ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 180, 60)),
+    ColorSequenceKeypoint.new(0.4, Color3.fromRGB(245, 240, 80)),
+    ColorSequenceKeypoint.new(0.6, Color3.fromRGB(95, 220, 120)),
+    ColorSequenceKeypoint.new(0.8, Color3.fromRGB(90, 170, 255)),
+    ColorSequenceKeypoint.new(1.0, Color3.fromRGB(200, 120, 255)),
+})
+
+-- Style a name TextLabel by variant. golden -> gold text; rainbow -> a rainbow UIGradient over
+-- white text; anything else -> the default light grey. Replaces the old "Golden"/"Rainbow" pill.
+local function styleNameByVariant(label, variant)
+    local existing = label:FindFirstChildOfClass("UIGradient")
+    if existing then
+        existing:Destroy()
+    end
+    if variant == "golden" then
+        label.TextColor3 = Color3.fromRGB(255, 215, 0)
+    elseif variant == "rainbow" then
+        label.TextColor3 = Color3.fromRGB(255, 255, 255) -- gradient multiplies onto white
+        local grad = Instance.new("UIGradient")
+        grad.Name = "RainbowName"
+        grad.Color = RAINBOW_NAME_SEQUENCE
+        grad.Parent = label
+    else
+        label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    end
+end
+
 local function getPetDisplayName(petType, sample)
     if sample and sample.petData and sample.petData.name then
         return sample.petData.name
@@ -803,6 +838,7 @@ function EggHatchingService:CreateRevealBadges(
     local variantText = getVariantDisplayName(eggData.variant)
     local shouldShowVariant = badgePolicy.show_variant ~= false
         and variantText ~= nil
+        and not nameCarriesVariant(eggData.variant) -- gold/rainbow are shown via the coloured name
         and (eggData.variant ~= "basic" or badgePolicy.show_basic_variant == true)
     if shouldShowVariant then
         local variantBadge = self:CreateRevealBadge(
@@ -2130,12 +2166,13 @@ function EggHatchingService:AnimateStackedResults(eggFrames, _eggComponents, egg
                 nameLabel.Position = UDim2.new(0.5, 0, 1, 2)
                 nameLabel.BackgroundTransparency = 1
                 nameLabel.Text = displayName
-                nameLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
                 nameLabel.TextStrokeTransparency = 0.2
                 nameLabel.Font = Enum.Font.GothamMedium
                 nameLabel.TextScaled = true
                 nameLabel.ZIndex = (repFrame.ZIndex or 1) + 5
                 nameLabel.Parent = repFrame
+                -- colour the name by variant (gold / rainbow) instead of a separate badge pill
+                styleNameByVariant(nameLabel, group.variant)
             end
 
             local count = #group.indices
