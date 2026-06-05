@@ -53,6 +53,7 @@ local function seatEyes(head, eyesCfg)
     local recess = (tonumber(eyesCfg.recess_frac) or 0.125) * maxdim
     local pupilSize = (tonumber(eyesCfg.size_frac) or 0.14) * maxdim
     local color = c255(eyesCfg.color, Color3.fromRGB(255, 30, 12))
+    local baseTransparency = math.clamp(tonumber(eyesCfg.transparency) or 0, 0, 1)
 
     -- Raycasts need the head queryable; the preload sets CanQuery=false, so toggle it for the cast.
     local prevQuery = head.CanQuery
@@ -75,13 +76,14 @@ local function seatEyes(head, eyesCfg)
         pupil.Anchored, pupil.CanCollide, pupil.CanQuery, pupil.CastShadow = true, false, false, false
         pupil.Material = Enum.Material.Neon
         pupil.Color = color
+        pupil.Transparency = baseTransparency
         pupil.Size = Vector3.new(pupilSize, pupilSize, pupilSize)
         pupil.CFrame = CFrame.new(epos)
         pupil.Parent = head
         local weld = Instance.new("WeldConstraint") -- rigidly bound to the head
         weld.Part0, weld.Part1 = head, pupil
         weld.Parent = pupil
-        eyes[#eyes + 1] = { part = pupil }
+        eyes[#eyes + 1] = { part = pupil, baseTransparency = baseTransparency }
     end
 
     head.CanQuery = prevQuery
@@ -144,7 +146,8 @@ function RealmHellFaces.start()
         head.Transparency = 1 - vis
         for _, e in ipairs(eyes) do
             if e.part then
-                e.part.Transparency = 1 - vis
+                -- honor each pupil's base transparency; presence only fades it further OUT
+                e.part.Transparency = 1 - vis * (1 - (e.baseTransparency or 0))
             end
             if e.light then
                 e.light.Brightness = e.base * vis
