@@ -203,7 +203,21 @@ function RealmHellFaces.start()
         model.PrimaryPart = head
         model.Parent = container
 
-        s.eyes = seatEyes(head, cfg.eyes) -- socket lights pinned to the seated head
+        s.eyes = seatEyes(head, cfg.eyes) -- Neon pupils welded into the seated head
+
+        -- Internal head light: lights the whole crystal face from within so it reads in pitch-black
+        -- hell. Its brightness is the master "intensity" dial (crank at runtime for events).
+        local flCfg = cfg.face_light
+        if type(flCfg) == "table" and flCfg.enabled ~= false then
+            local fl = Instance.new("PointLight")
+            fl.Color = c255(flCfg.color, Color3.fromRGB(255, 45, 25))
+            fl.Range = tonumber(flCfg.range) or 120
+            fl.Shadows = false
+            fl.Parent = head
+            s.faceLight = fl
+            s.faceBrightness = tonumber(flCfg.brightness) or 4
+        end
+
         s.model, s.head = model, head
         applyVis(head, s.eyes, 0) -- start hidden; fade in when present
 
@@ -246,6 +260,9 @@ function RealmHellFaces.start()
                 s.vis = math.max(goal, s.vis - step)
             end
             applyVis(head, s.eyes, s.vis)
+            if s.faceLight then
+                s.faceLight.Brightness = s.faceBrightness * s.vis -- fade the face glow with presence
+            end
         end)
 
         session = s

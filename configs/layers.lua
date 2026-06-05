@@ -332,6 +332,17 @@ return {
         face_color = { 35, 12, 10 },
         face_material = "SmoothPlastic",
 
+        -- Internal head light: a PointLight INSIDE the head that lights the whole crystal face from
+        -- within, so it glows in pitch-black hell with no world light. This is the master INTENSITY
+        -- knob — keep it modest for a subtle resting presence, then crank it at runtime for events
+        -- (e.g. an enemy wave) to make the head blaze. brightness 4 = the vivid hero look.
+        face_light = {
+            enabled = true,
+            brightness = 4, -- resting intensity (lower = subtler; raise/animate for events)
+            range = 120,
+            color = { 255, 45, 25 },
+        },
+
         -- Glowing eyes = NEON pupils raycast-seated into the sockets (self-emissive, so they read at
         -- any distance and in pitch black — a bare light is invisible from afar). Welded + anchored
         -- to the head. Offsets are FRACTIONS of the head's size so they hold at any scale. Tuned by
