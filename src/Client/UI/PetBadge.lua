@@ -40,6 +40,62 @@ function PetBadge.elementForPetType(petType)
     return POWER_ICONS.elementKey(pettypeElement()[petType or ""])
 end
 
+-- Lazy power/archetype configs (for power-slot badges in the hotbar).
+local _powers, _archetypes
+local function powersCfg()
+    if _powers == nil then
+        local ok, p = pcall(function()
+            return require(Configs:WaitForChild("powers"))
+        end)
+        _powers = (ok and p) or {}
+    end
+    return _powers
+end
+local function archetypesCfg()
+    if _archetypes == nil then
+        local ok, a = pcall(function()
+            return require(Configs:WaitForChild("archetypes"))
+        end)
+        _archetypes = (ok and a and a.archetypes) or {}
+    end
+    return _archetypes
+end
+
+-- Resolve a power id -> { element, symbol, ring } (ring = a ring SHAPE key), or nil if the power
+-- or its effect/glyph has no mapped symbol. Element = the power's element, else its archetype
+-- theme. Symbol + targeting come from power_icons.power_effect_badge / glyph / signature maps.
+function PetBadge.forPower(powerId)
+    local cfg = powersCfg()
+    local def = cfg.powers and cfg.powers[powerId]
+    if not def then
+        return nil
+    end
+    local rawElement = def.element
+    if not rawElement and def.archetype then
+        local arch = archetypesCfg()[def.archetype]
+        rawElement = arch and arch.theme
+    end
+    local element = POWER_ICONS.elementKey(rawElement)
+
+    local symbol, targetKind
+    if def.signature then
+        symbol = POWER_ICONS.power_glyph_symbol[def.glyph or ""]
+        targetKind = POWER_ICONS.power_signature_ring[def.target or ""] or "single"
+    else
+        local spec = POWER_ICONS.power_effect_badge[def.effect or ""]
+        if spec then
+            symbol = spec.symbol
+            targetKind = spec.target
+        end
+    end
+    if not symbol then
+        return nil
+    end
+    -- targeting kind -> ring shape key (aura/target_in/aoe/...)
+    local shape = POWER_ICONS.targeting_ring[targetKind or "none"] or "aura"
+    return { element = element, symbol = symbol, ring = shape }
+end
+
 -- Re-skin pre-existing disc + ring ImageLabels (the reuse path; e.g. SquadHud cards persist).
 -- element = canonical or badge token; role = role id; opts.symbol overrides the role symbol;
 -- opts.ring = ring shape (default "aura"). Returns true if a disc image was found.

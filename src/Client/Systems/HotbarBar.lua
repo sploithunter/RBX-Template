@@ -21,6 +21,7 @@ local RunService = game:GetService("RunService")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local POWER_ICONS = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_icons"))
+local PetBadge = require(script.Parent.Parent.UI.PetBadge)
 
 local HotbarBar = {}
 
@@ -222,6 +223,19 @@ function HotbarBar.start()
             iconImg.ZIndex = 2
             iconImg.Parent = b
 
+            -- Directional targeting ring framing the disc (powers only; hidden otherwise).
+            local ringImg = Instance.new("ImageLabel")
+            ringImg.Name = "Ring"
+            ringImg.BackgroundTransparency = 1
+            ringImg.Position = UDim2.fromScale(0.5, 0.5)
+            ringImg.AnchorPoint = Vector2.new(0.5, 0.5)
+            ringImg.ScaleType = Enum.ScaleType.Fit
+            ringImg.Size = UDim2.fromScale(1, 1)
+            ringImg.Image = ""
+            ringImg.Visible = false
+            ringImg.ZIndex = 3
+            ringImg.Parent = b
+
             local key = Instance.new("TextLabel")
             key.Name = "Key"
             key.ZIndex = 3
@@ -256,7 +270,7 @@ function HotbarBar.start()
                     Signals.Hotbar_Activate:FireServer({ slot = slot })
                 end
             end)
-            cards[slot] = { frame = b, bind = lbl, cool = cool, bindObj = nil, icon = iconImg }
+            cards[slot] = { frame = b, bind = lbl, cool = cool, bindObj = nil, icon = iconImg, ring = ringImg }
         end
     end
     makeRow(SLOT, 10) -- TOP row (upper): slots 11-20 = Shift+1-0
@@ -279,20 +293,37 @@ function HotbarBar.start()
             if card then
                 local bind = state.hotbar[tostring(slot)] or state.hotbar[slot]
                 card.bindObj = bind
-                -- Show the power's icon when we have one; otherwise fall back to the text label.
-                local icon = bind and bind.type == "power" and POWER_ICONS.powers[bind.target] or nil
-                card.icon.Image = icon or ""
-                if icon then
-                    local s = POWER_ICONS.scaleFor(icon) -- zoom past the art's transparent border
-                    card.icon.Size = UDim2.fromScale(s, s)
+                -- Power slots render the universal badge: element disc + tinted directional ring
+                -- (the ring's SHAPE = targeting). Falls back to the old flat icon, then to text.
+                local badge = bind and bind.type == "power" and PetBadge.forPower(bind.target) or nil
+                local discImg = badge and POWER_ICONS.discFor(badge.element, badge.symbol) or nil
+                local hasArt = false
+                if discImg then
+                    card.icon.Image = discImg
+                    card.icon.Size = UDim2.fromScale(0.82, 0.82) -- inset so the ring frames it
+                    card.ring.Image = POWER_ICONS.rings[badge.ring] or POWER_ICONS.rings.aura
+                    card.ring.ImageColor3 = POWER_ICONS.elementColor3(badge.element, "dark")
+                    card.ring.Visible = true
+                    card.bind.Visible = false
+                    hasArt = true
+                else
+                    -- Fallback: old flat power icon (no ring), else the text label.
+                    local icon = bind and bind.type == "power" and POWER_ICONS.powers[bind.target] or nil
+                    card.icon.Image = icon or ""
+                    if icon then
+                        local s = POWER_ICONS.scaleFor(icon) -- zoom past the art's transparent border
+                        card.icon.Size = UDim2.fromScale(s, s)
+                    end
+                    card.ring.Visible = false
+                    card.bind.Visible = not icon
+                    hasArt = icon ~= nil
                 end
-                card.bind.Visible = not icon
                 card.bind.Text = bindLabel(bind)
                 card.frame.BackgroundColor3 = bind and (TYPE_COLOR[bind.type] or Color3.fromRGB(26, 28, 38))
                     or Color3.fromRGB(26, 28, 38)
-                -- With a real icon present, let the art stand on a clear slot; keep the
-                -- coloured placeholder for text-only / empty slots so they're still legible.
-                card.frame.BackgroundTransparency = icon and 1 or (bind and 0.05 or 0.4)
+                -- With real art present, let it stand on a clear slot; keep the coloured
+                -- placeholder for text-only / empty slots so they're still legible.
+                card.frame.BackgroundTransparency = hasArt and 1 or (bind and 0.05 or 0.4)
             end
         end
     end

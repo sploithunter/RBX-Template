@@ -105,6 +105,34 @@ local M = {
         control = "hand_stop",
     },
 
+    -- Power badges. A power's disc COLOUR = its element (signature `element`, else the archetype
+    -- theme); SYMBOL + RING (targeting) come from these maps. `power_effect_badge` keys off the
+    -- power's `effect` (configs/powers.lua); signatures use `power_glyph_symbol` + the target map.
+    -- target values are targeting_ring keys (resolved to a ring shape via M.ringFor).
+    power_effect_badge = {
+        shield = { symbol = "shield", target = "self" }, -- absorb shields (stone_skin/ice_armor/...)
+        team_shield = { symbol = "armor_chest", target = "self" }, -- Bulwark squad defense
+        dodge = { symbol = "eye_hidden", target = "self" }, -- evasion (mirage_step)
+        damage_buff = { symbol = "chevrons_up", target = "self" }, -- Mountain's Strength
+        root = { symbol = "hand_stop", target = "enemy_aoe" }, -- frost_bind
+        aoe_slow = { symbol = "chevrons_down", target = "enemy_aoe" }, -- blizzard
+        aoe_blind = { symbol = "eye_hidden", target = "enemy_aoe" }, -- sandstorm
+        damage_over_time = { symbol = "contagion", target = "single" }, -- mark_of_flame
+        aoe_damage = { symbol = "fist_impact", target = "enemy_aoe" }, -- eruption
+    },
+    power_glyph_symbol = {
+        debuff = "contagion",
+        burst = "star_sparkle",
+        buff = "chevrons_up",
+    },
+    power_signature_ring = {
+        single = "single",
+        single_spread = "single",
+        targeted_aoe = "enemy_aoe",
+        team_aoe = "team_aoe",
+        friendly = "ally",
+    },
+
     -- Pre-baked colored disc-icons: discs[element][symbol] = Image id. The element is the disc
     -- COLOR (the pet's origin); the symbol is the archetype/power glyph baked onto it. Jason's
     -- recolor script renders these per element; uploaded as Decals, ids here are the resolved
@@ -118,6 +146,10 @@ local M = {
             star_sparkle = id(70922319936021),
             hand_stop = id(100801154207594),
             shield = id(113193953850265),
+            chevrons_up = id(111373865269609),
+            chevrons_down = id(116956260236978),
+            eye_hidden = id(124548851657627),
+            contagion = id(110049191538903),
         },
         fire = {
             armor_chest = id(80412131835560),
@@ -126,6 +158,10 @@ local M = {
             star_sparkle = id(112938645728666),
             hand_stop = id(129326094066674),
             shield = id(87662561870844),
+            chevrons_up = id(96245333568134),
+            chevrons_down = id(77890006849747),
+            eye_hidden = id(77250885695722),
+            contagion = id(76135092340255),
         },
         desert = {
             armor_chest = id(138256777477472),
@@ -134,6 +170,10 @@ local M = {
             star_sparkle = id(115581368440623),
             hand_stop = id(134819309651243),
             shield = id(126464933309161),
+            chevrons_up = id(102312434316877),
+            chevrons_down = id(91176982083127),
+            eye_hidden = id(133420622860824),
+            contagion = id(136303427822334),
         },
         ice = {
             armor_chest = id(99602330844217),
@@ -142,6 +182,10 @@ local M = {
             star_sparkle = id(117884715579847),
             hand_stop = id(86991673939412),
             shield = id(127714891076758),
+            chevrons_up = id(101680625896085),
+            chevrons_down = id(94391806359767),
+            eye_hidden = id(95538251553983),
+            contagion = id(127344507940994),
         },
     },
 
