@@ -63,17 +63,20 @@ local function showArmorIcon(pet)
     bb.Size = UDim2.fromOffset(34, 34)
     bb.StudsOffset = Vector3.new(0, up, 0)
     bb.Adornee = pp
-    -- the real shield art (same asset the squad card uses), not a platform emoji
-    local img = Instance.new("ImageLabel")
-    img.BackgroundTransparency = 1
-    img.Size = UDim2.fromScale(1, 1)
-    -- Same icon the hotbar + squad card use: the disc of the POWER that applied the shield (so it
-    -- matches everywhere). Element disc shows in its true colour; only the generic fallback is
-    -- gold-tinted to read as "armor".
-    local disc = PetBadge.powerDiscImage(pet:GetAttribute("CombatShieldPowerId"))
-    img.Image = disc or (PowerIcons.status and PowerIcons.status.shield) or ""
-    img.ImageColor3 = disc and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(235, 200, 70)
-    img.Parent = bb
+    -- The FULL badge the hotbar + squad card use (element disc + tinted ring) for the power that
+    -- applied the shield, so it matches everywhere. Falls back to a generic gold shield disc (no
+    -- ring) when nothing tagged it.
+    local badge = PetBadge.forPower(pet:GetAttribute("CombatShieldPowerId"))
+    if badge then
+        PetBadge.create(bb, { element = badge.element, symbol = badge.symbol, ring = badge.ring })
+    else
+        local img = Instance.new("ImageLabel")
+        img.BackgroundTransparency = 1
+        img.Size = UDim2.fromScale(1, 1)
+        img.Image = (PowerIcons.status and PowerIcons.status.shield) or ""
+        img.ImageColor3 = Color3.fromRGB(235, 200, 70)
+        img.Parent = bb
+    end
     bb.Parent = pp
     armorIcons[pet] = bb
 end

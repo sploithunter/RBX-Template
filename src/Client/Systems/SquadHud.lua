@@ -475,7 +475,9 @@ function SquadHud.start()
         local status = Instance.new("Frame")
         status.Name = "Status"
         status.AnchorPoint = Vector2.new(1, 0.5)
-        status.Position = UDim2.new(0, -4, 0.5, 0)
+        -- Start left of the overhanging role badge (which pokes ~15px off the card edge) so the
+        -- status badges grow further toward centre without colliding with it.
+        status.Position = UDim2.new(0, -20, 0.5, 0)
         status.Size = UDim2.fromOffset(0, 24)
         status.AutomaticSize = Enum.AutomaticSize.X
         status.BackgroundTransparency = 1
