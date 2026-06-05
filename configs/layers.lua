@@ -340,8 +340,8 @@ return {
             side = 35, -- half-separation between the eyes
             recess = 18, -- how deep the light sits behind the socket (+ = deeper)
             light_color = { 255, 40, 18 }, -- socket glow color
-            light_brightness = 22, -- glow intensity (brighter than an orb's bloom; lights a surface)
-            light_range = 60, -- reach (socket interior is close, so 60 is plenty)
+            light_brightness = 10000, -- full intensity (sockets blaze; dial down if too hot)
+            light_range = 60, -- reach (PointLight caps at 60; socket interior is close anyway)
         },
     },
 }
