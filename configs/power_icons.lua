@@ -195,12 +195,8 @@ local M = {
     default_scale = 1.25,
     scales = {
         -- e.g. [id(73499491406959)] = 1.4,
-        -- New full-bleed disc icons fill the whole image (no transparent border to crop), so the
-        -- 1.25 default would overflow a clipping frame (status badges) -> cut-off edges. Sit them
-        -- just inside the frame instead.
-        [id(99602330844217)] = 0.9, -- status defense (ice armor disc)
-        [id(121311806877255)] = 0.9, -- status shield (white shield disc)
-        [id(111373865269609)] = 0.9, -- status damage (green chevrons disc)
+        -- (Full-bleed disc icons are auto-registered at a slight inset below, after M is built.)
+        [id(121311806877255)] = 0.9, -- white shield disc (status fallback; not in M.discs loop)
     },
 }
 
@@ -245,6 +241,17 @@ end
 function M.discFor(element, symbol)
     local e = M.discs[M.elementKey(element)]
     return e and symbol and e[symbol] or nil
+end
+
+-- Auto-register every colored disc at a slight inset: they're full-bleed (no transparent border
+-- to crop), so the 1.25 border-zoom would overflow a clipping frame (status badges) and cut their
+-- edges. Any scaleFor() consumer gets ~0.92 for a disc unless explicitly overridden above.
+for _, byElement in pairs(M.discs) do
+    for _, image in pairs(byElement) do
+        if M.scales[image] == nil then
+            M.scales[image] = 0.92
+        end
+    end
 end
 
 return M

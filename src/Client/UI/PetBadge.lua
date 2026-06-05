@@ -96,6 +96,16 @@ function PetBadge.forPower(powerId)
     return { element = element, symbol = symbol, ring = shape }
 end
 
+-- Disc Image (rbxassetid string) for a power's badge, or nil. Shortcut for surfaces that only
+-- need the disc (status badges, the floating armor icon) so a buff shows the SAME icon as its power.
+function PetBadge.powerDiscImage(powerId)
+    if not powerId or powerId == "" then
+        return nil
+    end
+    local b = PetBadge.forPower(powerId)
+    return b and POWER_ICONS.discFor(b.element, b.symbol) or nil
+end
+
 -- Re-skin pre-existing disc + ring ImageLabels (the reuse path; e.g. SquadHud cards persist).
 -- element = canonical or badge token; role = role id; opts.symbol overrides the role symbol;
 -- opts.ring = ring shape (default "aura"). Returns true if a disc image was found.

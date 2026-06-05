@@ -140,8 +140,10 @@ function PowerService:_hasEngagedEnemy(player)
     return false
 end
 
--- Apply a cast power's SUPPORT effect (no direct damage — see configs/powers.lua).
-function PowerService:_applyEffect(player, kind, now)
+-- Apply a cast power's SUPPORT effect (no direct damage — see configs/powers.lua). `powerId` is
+-- stamped onto each buff it applies (CombatShieldPowerId / DefenseBuffPowerId / PetDamageBuffPowerId)
+-- so every UI surface resolves the SAME icon for it via PetBadge.forPower (no generic fallbacks).
+function PowerService:_applyEffect(player, kind, now, powerId)
     local family = kind.family
     local mag = kind.magnitude or 0
     local dur = kind.duration or 0
@@ -171,6 +173,7 @@ function PowerService:_applyEffect(player, kind, now)
     elseif family == "buff" then
         player:SetAttribute("PetDamageBuff", mag)
         player:SetAttribute("PetDamageBuffUntil", now + dur)
+        player:SetAttribute("PetDamageBuffPowerId", powerId)
     elseif family == "absorb" then
         -- shield: add an absorption pool the squad soaks damage with before endurance. With a
         -- duration it ALSO times out (no permanent armor): stamp CombatShieldUntil + schedule a
@@ -181,6 +184,7 @@ function PowerService:_applyEffect(player, kind, now)
             for _, pet in ipairs(pets:GetChildren()) do
                 if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
                     pet:SetAttribute("CombatShield", (pet:GetAttribute("CombatShield") or 0) + mag)
+                    pet:SetAttribute("CombatShieldPowerId", powerId)
                     if dur and dur > 0 then
                         pet:SetAttribute("CombatShieldUntil", now + dur)
                         task.delay(dur, function()
@@ -205,6 +209,7 @@ function PowerService:_applyEffect(player, kind, now)
                 if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
                     pet:SetAttribute("DefenseBuff", mag)
                     pet:SetAttribute("DefenseBuffUntil", now + dur)
+                    pet:SetAttribute("DefenseBuffPowerId", powerId)
                 end
             end
         end
@@ -455,7 +460,7 @@ function PowerService:Cast(player, powerId)
         return { ok = false, reason = "no_target" }
     end
 
-    self:_applyEffect(player, kind, now)
+    self:_applyEffect(player, kind, now, tostring(powerId))
     if kind.family ~= "amplified_burst" then
         pcall(spawnCastVisual, player, kind.family) -- placeholder caster burst (area powers show at the target)
     end

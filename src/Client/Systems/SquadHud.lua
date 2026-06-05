@@ -129,21 +129,33 @@ end
 -- Timed buffs/debuffs to show as badges on a pet's card. Read off the pet (or the
 -- player, for squad-wide buffs). Placeholder colour + short label now; set `icon`
 -- to an asset id later to swap the label for the real art.
+-- `powerIdAttr`: the attribute PowerService stamps with the power that applied this buff. When
+-- present, the badge resolves THAT power's disc (PetBadge) so it matches the hotbar + world icon;
+-- `icon` is only the fallback when no power tagged it.
 local PET_EFFECTS = {
-    { key = "defense", source = "pet", untilAttr = "DefenseBuffUntil", color = Color3.fromRGB(235, 190, 70), label = "DEF", icon = POWER_ICONS.status.defense },
-    { key = "damage", source = "player", untilAttr = "PetDamageBuffUntil", color = Color3.fromRGB(235, 90, 90), label = "DMG", icon = POWER_ICONS.status.damage },
+    { key = "defense", source = "pet", untilAttr = "DefenseBuffUntil", powerIdAttr = "DefenseBuffPowerId", color = Color3.fromRGB(235, 190, 70), label = "DEF", icon = POWER_ICONS.status.defense },
+    { key = "damage", source = "player", untilAttr = "PetDamageBuffUntil", powerIdAttr = "PetDamageBuffPowerId", color = Color3.fromRGB(235, 90, 90), label = "DMG", icon = POWER_ICONS.status.damage },
     -- Instant effects flash a blinking pulse badge (no countdown) for their FX window so
     -- you can see what just happened. heal = the support/heal-power tell (HealFxUntil).
     { key = "heal", source = "pet", untilAttr = "HealFxUntil", color = Color3.fromRGB(90, 210, 110), label = "HEAL", icon = POWER_ICONS.actions.heal, pulse = true },
     -- Armor/absorb shield: now time-limited (CombatShieldUntil), so it shows as a countdown badge
     -- on the card (the thin blue bar still shows the remaining pool magnitude).
-    { key = "shield", source = "pet", untilAttr = "CombatShieldUntil", color = Color3.fromRGB(235, 200, 70), label = "ARM", icon = POWER_ICONS.status.shield },
+    { key = "shield", source = "pet", untilAttr = "CombatShieldUntil", powerIdAttr = "CombatShieldPowerId", color = Color3.fromRGB(235, 200, 70), label = "ARM", icon = POWER_ICONS.status.shield },
 }
 
 local function activeEffectsFor(pet, player, now)
     local out = {}
     for _, e in ipairs(PET_EFFECTS) do
         local src = (e.source == "player") and player or pet
+        -- Resolve the badge icon from the POWER that applied this buff (so it matches the hotbar +
+        -- world shield), falling back to the static effect icon when nothing tagged it.
+        local icon = e.icon
+        if e.powerIdAttr then
+            local disc = PetBadge.powerDiscImage(src:GetAttribute(e.powerIdAttr))
+            if disc then
+                icon = disc
+            end
+        end
         if e.untilAttr then
             local until_ = src:GetAttribute(e.untilAttr) or 0
             if until_ > now then
@@ -153,7 +165,7 @@ local function activeEffectsFor(pet, player, now)
                     label = e.label,
                     -- Pulse effects (instant tells) show no countdown; timed buffs do.
                     timer = e.pulse and "" or (math.ceil(until_ - now) .. "s"),
-                    icon = e.icon,
+                    icon = icon,
                     remaining = until_ - now, -- seconds left (drives the expiry blink)
                 }
             end
@@ -161,7 +173,7 @@ local function activeEffectsFor(pet, player, now)
             local v = src:GetAttribute(e.poolAttr) or 0
             if v > 0 then
                 out[#out + 1] =
-                    { key = e.key, color = e.color, label = e.label, timer = tostring(math.floor(v)), icon = e.icon }
+                    { key = e.key, color = e.color, label = e.label, timer = tostring(math.floor(v)), icon = icon }
             end
         end
     end
