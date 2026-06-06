@@ -39,17 +39,24 @@ return {
         geomancer = {
             display_name = "Geomancer",
             theme = "earth",
-            power_pool = { "stone_skin", "bulwark", "mountains_strength" },
+            power_pool = {
+                "stone_skin",
+                "bulwark",
+                "mountains_strength",
+                "aegis",
+                "ironclad",
+                "sunder",
+            },
         },
         sandwalker = {
             display_name = "Sandwalker",
             theme = "desert",
-            power_pool = { "mirage_step", "sandstorm", "dune_shield" },
+            power_pool = { "mirage_step", "sandstorm", "dune_shield", "expose", "cripple" },
         },
         cryomancer = {
             display_name = "Cryomancer",
             theme = "ice",
-            power_pool = { "frost_bind", "ice_armor", "blizzard" },
+            power_pool = { "frost_bind", "ice_armor", "blizzard", "disarm", "focus_fire" },
         },
         pyromancer = {
             display_name = "Pyromancer",
@@ -60,6 +67,7 @@ return {
                 "mark_of_flame",
                 "ember_ward",
                 "eruption",
+                "strike",
                 "wildfire",
                 "firestorm",
                 "cataclysm",

@@ -72,6 +72,15 @@ return {
         recall = { family = "recall", magnitude = 0, duration = 0 }, -- teleport to saved spot
         world_travel = { family = "world_travel", magnitude = 0, duration = 0 }, -- teleport to a hub
 
+        -- ===== Attack-fill (origin-coloured) — reuse the enemy-debuff families (firewall-safe:
+        -- player powers don't deal direct damage; they make pets hit harder / lock enemies). =====
+        sunder = { family = "vulnerable", magnitude = 1.6, duration = 6 }, -- armor break (AoE)
+        expose = { family = "vulnerable", magnitude = 1.4, duration = 8 }, -- expose one target
+        disarm = { family = "vulnerable", magnitude = 1.3, duration = 6 }, -- weaken one target
+        focus_fire = { family = "vulnerable", magnitude = 1.5, duration = 6 }, -- designate + soften
+        cripple = { family = "root", magnitude = 0, duration = 4 }, -- slow/lock one target
+        strike = { family = "vulnerable", magnitude = 1.5, duration = 4 }, -- basic single hit
+
         -- ===== Pyromancer signatures (Feature: signature powers, §17.8) =====
         -- Firewall-safe (§16.5): none of these deal standalone player damage. "amplified_burst"
         -- is PET-damage amplification — its burst is scaled by the squad's attack total and
@@ -136,6 +145,44 @@ return {
             focus_cost = 10,
             cooldown_seconds = 30,
             effect = "world_travel",
+        },
+
+        -- Attack-fill (origin-coloured, per archetype). Element from the archetype theme.
+        sunder = {
+            archetype = "geomancer",
+            focus_cost = 18,
+            cooldown_seconds = 25,
+            effect = "sunder",
+        },
+        expose = {
+            archetype = "sandwalker",
+            focus_cost = 15,
+            cooldown_seconds = 20,
+            effect = "expose",
+        },
+        cripple = {
+            archetype = "sandwalker",
+            focus_cost = 20,
+            cooldown_seconds = 30,
+            effect = "cripple",
+        },
+        disarm = {
+            archetype = "cryomancer",
+            focus_cost = 18,
+            cooldown_seconds = 25,
+            effect = "disarm",
+        },
+        focus_fire = {
+            archetype = "cryomancer",
+            focus_cost = 12,
+            cooldown_seconds = 15,
+            effect = "focus_fire",
+        },
+        strike = {
+            archetype = "pyromancer",
+            focus_cost = 10,
+            cooldown_seconds = 12,
+            effect = "strike",
         },
 
         -- Single-target defensive powers: target = "single_pet" lands on the SELECTED squad pet
