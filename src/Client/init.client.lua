@@ -260,6 +260,17 @@ do
     end
 end
 
+-- Buff-stats overlay (Studio-only): current effective buff multipliers (attack/defense/coin/luck/…),
+-- resolved via the same BuffStack math the server uses — for verifying powers + auras while testing.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.BuffStatsHud).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start BuffStatsHud", { error = tostring(err) })
+    end
+end
+
 -- RealmAtmosphere: retints Lighting to the player's current realm (heaven/hell skin on the
 -- same map, World S3) — driven by the server-published CurrentRealm attribute.
 do
