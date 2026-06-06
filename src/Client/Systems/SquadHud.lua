@@ -165,10 +165,14 @@ local PET_EFFECTS = {
     -- Support-pet AURAS a pet currently HAS (every affected pet, not just the buffer). Fixed
     -- element-disc per kind so the badge reads the providing biome: defense=ice, offense=lava,
     -- yield=desert. The buffer pet itself wears its badge too (it's one of the allies).
+    -- `steady = true`: this buff is CONTINUOUSLY REFRESHED while the buffer pet is deployed (it's
+    -- effectively permanent), so the badge sits solid — no countdown, no near-expiry blink. (Timed
+    -- powers below keep their countdown + blink-when-about-to-expire.)
     {
         key = "teamdef",
         source = "pet",
         untilAttr = "TeamDefenseBuffUntil",
+        steady = true,
         color = Color3.fromRGB(120, 180, 255),
         label = "DEF",
         icon = POWER_ICONS.discFor("ice", "armor_chest"),
@@ -177,6 +181,7 @@ local PET_EFFECTS = {
         key = "offense",
         source = "pet",
         untilAttr = "OffenseFxUntil",
+        steady = true,
         color = Color3.fromRGB(235, 120, 90),
         label = "ATK",
         icon = POWER_ICONS.discFor("fire", "chevrons_up"),
@@ -185,6 +190,7 @@ local PET_EFFECTS = {
         key = "yield",
         source = "pet",
         untilAttr = "YieldFxUntil",
+        steady = true,
         color = Color3.fromRGB(235, 205, 90),
         label = "COIN",
         icon = POWER_ICONS.discFor("desert", "coins_up"),
@@ -227,11 +233,12 @@ local function activeEffectsFor(pet, player, now)
                     key = e.key,
                     color = e.color,
                     label = e.label,
-                    -- Pulse effects (instant tells) show no countdown; timed buffs do.
-                    timer = e.pulse and "" or (math.ceil(until_ - now) .. "s"),
+                    -- Pulse/steady effects show no countdown; timed buffs do.
+                    timer = (e.pulse or e.steady) and "" or (math.ceil(until_ - now) .. "s"),
                     icon = icon,
                     ringImg = ringImg,
                     ringColor = ringColor,
+                    steady = e.steady, -- steady buffs never blink (continuously refreshed = permanent)
                     remaining = until_ - now, -- seconds left (drives the expiry blink)
                 }
             end
@@ -323,7 +330,8 @@ local function updateBadges(card, effects, blinkLead)
             b.frame.Name = eff.key
             card.badges[eff.key] = b
         end
-        b.blinking = eff.remaining ~= nil and eff.remaining <= (blinkLead or 0)
+        -- Steady (continuously-refreshed) buffs never blink; timed ones blink near expiry.
+        b.blinking = not eff.steady and eff.remaining ~= nil and eff.remaining <= (blinkLead or 0)
         b.frame.LayoutOrder = i
         local hasIcon = eff.icon and eff.icon ~= ""
         -- Real icon: clear backing so the art reads cleanly; else keep coloured chip.
