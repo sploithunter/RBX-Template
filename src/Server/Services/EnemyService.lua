@@ -1085,8 +1085,8 @@ end
 
 -- Defense aura (Ice / penguin): a short-lived TeamDefenseBuff on EVERY ally. Consumed in
 -- _hitPet, added on the armor curve (separate from a power's DefenseBuff, so they stack).
-function EnemyService:_auraDefense(folder, aura)
-    local amount = tonumber(aura.amount) or 0
+function EnemyService:_auraDefense(folder, aura, count)
+    local amount = (tonumber(aura.amount) or 0) * (count or 1) -- N penguins stack defense
     local until_ = os.time() + (tonumber(aura.duration) or 3)
     for _, ally in ipairs(folder:GetChildren()) do
         if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
@@ -1099,12 +1099,16 @@ end
 -- A team player-attribute buff (Lava offense -> PetTeamDamageBuff in _mine; Desert yield ->
 -- CoinYieldBuff in BreakableSpawner). Short-lived + refreshed each interval, on a channel
 -- separate from Powers so an aura stacks with an activated power buff.
-function EnemyService:_auraPlayerBuff(folder, attr, aura)
+function EnemyService:_auraPlayerBuff(folder, attr, aura, count)
     local owner = Players:FindFirstChild(folder.Name)
     if not owner then
         return
     end
-    owner:SetAttribute(attr, tonumber(aura.mult) or 1)
+    -- Stored as a multiplier; each buffer contributes (mult - 1), so N buffers STACK additively
+    -- (2 meerkats @1.25 => 1 + 0.25*2 = x1.5). The consumer sums this with any power on the same
+    -- axis via BuffStack, clamped to the axis cap.
+    local frac = ((tonumber(aura.mult) or 1) - 1) * (count or 1)
+    owner:SetAttribute(attr, 1 + frac)
     owner:SetAttribute(attr .. "Until", os.time() + (tonumber(aura.duration) or 3))
 end
 
@@ -1127,24 +1131,43 @@ function EnemyService:_supportPass(now)
     if not playerPets then
         return
     end
-    self._supportAt = self._supportAt or setmetatable({}, { __mode = "k" })
+    -- Per-folder, per-KIND interval gate so the AGGREGATED aura pulses once per interval (not once
+    -- per buffer). Keyed by player name -> { kind -> nextTime }.
+    self._supportAt = self._supportAt or {}
     for _, folder in ipairs(playerPets:GetChildren()) do
+        -- Count live buffers of each kind so multiple buffers of the same kind STACK additively
+        -- (2 meerkats => 2x the coin-yield contribution, clamped by the axis cap downstream).
+        local counts, rep = {}, {}
         for _, pet in ipairs(folder:GetChildren()) do
             if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
                 local aura = self:_petAura(pet)
-                if aura and (not self._supportAt[pet] or now >= self._supportAt[pet]) then
-                    self._supportAt[pet] = now + (aura.interval or 1.5)
-                    if aura.kind == "heal" then
+                if aura and aura.kind then
+                    counts[aura.kind] = (counts[aura.kind] or 0) + 1
+                    rep[aura.kind] = rep[aura.kind] or aura
+                end
+            end
+        end
+        local gate = self._supportAt[folder.Name]
+        if not gate then
+            gate = {}
+            self._supportAt[folder.Name] = gate
+        end
+        for kind, count in pairs(counts) do
+            local aura = rep[kind]
+            if not gate[kind] or now >= gate[kind] then
+                gate[kind] = now + (aura.interval or 1.5)
+                if kind == "heal" then
+                    for _ = 1, count do -- N healers => N mends
                         self:_auraHeal(folder, aura)
-                    elseif aura.kind == "defense" then
-                        self:_auraDefense(folder, aura)
-                    elseif aura.kind == "offense" then
-                        self:_auraPlayerBuff(folder, "PetTeamDamageBuff", aura)
-                        self:_stampAuraFx(folder, "OffenseFxUntil", aura)
-                    elseif aura.kind == "yield" then
-                        self:_auraPlayerBuff(folder, "CoinYieldBuff", aura)
-                        self:_stampAuraFx(folder, "YieldFxUntil", aura)
                     end
+                elseif kind == "defense" then
+                    self:_auraDefense(folder, aura, count)
+                elseif kind == "offense" then
+                    self:_auraPlayerBuff(folder, "PetTeamDamageBuff", aura, count)
+                    self:_stampAuraFx(folder, "OffenseFxUntil", aura)
+                elseif kind == "yield" then
+                    self:_auraPlayerBuff(folder, "CoinYieldBuff", aura, count)
+                    self:_stampAuraFx(folder, "YieldFxUntil", aura)
                 end
             end
         end
