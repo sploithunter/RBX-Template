@@ -2,68 +2,666 @@
   "_README": "SINGLE SOURCE OF TRUTH for every icon uploaded to Roblox via scripts/upload_icons.js (Open Cloud, creator userId 3200870803 / coloradoplays). Each asset has BOTH ids: 'decal' (what Open Cloud returns; does NOT render in ImageLabel.Image) and 'image' (the wrapped Texture id resolved via InsertService:LoadAsset in Studio EDIT mode — this is what configs use). The 'image' ids are wired into configs/power_icons.lua. Element colors: earth=green, fire=red, desert=yellow, ice=blue. Last updated 2026-06-05.",
   "rings": {
     "_note": "5 grayscale targeting rings (tinted per element via ImageColor3). Source: assets/ui/ring_frames_white/.",
-    "ring_target_in":  { "decal": "116214377637854", "image": "73447619254562" },
-    "ring_target_out": { "decal": "120073694232878", "image": "96971740848796" },
-    "ring_aoe":        { "decal": "115953506041881", "image": "128177741420839" },
-    "ring_target_aoe": { "decal": "78886679306044",  "image": "130533151036887" },
-    "ring_aura":       { "decal": "76032353374470",  "image": "121697559002218" }
+    "ring_target_in": {
+      "decal": "116214377637854",
+      "image": "73447619254562"
+    },
+    "ring_target_out": {
+      "decal": "120073694232878",
+      "image": "96971740848796"
+    },
+    "ring_aoe": {
+      "decal": "115953506041881",
+      "image": "128177741420839"
+    },
+    "ring_target_aoe": {
+      "decal": "78886679306044",
+      "image": "130533151036887"
+    },
+    "ring_aura": {
+      "decal": "76032353374470",
+      "image": "121697559002218"
+    }
   },
   "discs": {
     "_note": "Pre-baked colored archetype disc-icons, keyed [element_color][symbol]. Source: assets/ui/{green,red,yellow,blue,white}_icons/. Element key map: earth=green, fire=red, desert=yellow, ice=blue.",
     "green": {
-      "armor_chest":  { "decal": "127913717830698", "image": "117196376134677" },
-      "fist_impact":  { "decal": "112705655520207", "image": "107483427967238" },
-      "arrow_right":  { "decal": "95525701970060",  "image": "89629994898328" },
-      "star_sparkle": { "decal": "136001611202585", "image": "70922319936021" },
-      "hand_stop":    { "decal": "90739359637615",  "image": "100801154207594" },
-      "shield":       { "decal": "119552166967679", "image": "113193953850265" },
-      "chevrons_up":   { "decal": "101177628149410", "image": "111373865269609" },
-      "chevrons_down": { "decal": "100414607726972", "image": "116956260236978" },
-      "eye_hidden":    { "decal": "76692911725633",  "image": "124548851657627" },
-      "contagion":     { "decal": "125776819381806", "image": "110049191538903" }
+      "armor_chest": {
+        "decal": "127913717830698",
+        "image": "117196376134677"
+      },
+      "fist_impact": {
+        "decal": "112705655520207",
+        "image": "107483427967238"
+      },
+      "arrow_right": {
+        "decal": "95525701970060",
+        "image": "89629994898328"
+      },
+      "star_sparkle": {
+        "decal": "136001611202585",
+        "image": "70922319936021"
+      },
+      "hand_stop": {
+        "decal": "90739359637615",
+        "image": "100801154207594"
+      },
+      "shield": {
+        "decal": "119552166967679",
+        "image": "113193953850265"
+      },
+      "chevrons_up": {
+        "decal": "101177628149410",
+        "image": "111373865269609"
+      },
+      "chevrons_down": {
+        "decal": "100414607726972",
+        "image": "116956260236978"
+      },
+      "eye_hidden": {
+        "decal": "76692911725633",
+        "image": "124548851657627"
+      },
+      "contagion": {
+        "decal": "125776819381806",
+        "image": "110049191538903"
+      },
+      "fist": {
+        "decal": "99101807120545",
+        "image": "123265599475562"
+      },
+      "target": {
+        "decal": "111014655112608",
+        "image": "106806695050142"
+      },
+      "capacitor": {
+        "decal": "85267286438942",
+        "image": "132576142333829"
+      },
+      "clover_huge": {
+        "decal": "125969484170540",
+        "image": "85472066787685"
+      },
+      "clover_lucky": {
+        "decal": "88003384226508",
+        "image": "99767413523343"
+      },
+      "coins_up": {
+        "decal": "130800181327489",
+        "image": "77775980299764"
+      },
+      "eye": {
+        "decal": "139434369798018",
+        "image": "82164342725632"
+      },
+      "fist_broken": {
+        "decal": "73963338781136",
+        "image": "122185451777532"
+      },
+      "gift_up": {
+        "decal": "137043981768069",
+        "image": "71694795054504"
+      },
+      "history": {
+        "decal": "125678365425964",
+        "image": "137817222692684"
+      },
+      "knockback": {
+        "decal": "97071689409695",
+        "image": "88354379477141"
+      },
+      "magnet": {
+        "decal": "110382969110806",
+        "image": "120605254891717"
+      },
+      "pet_transfer": {
+        "decal": "71488236035409",
+        "image": "91064723981252"
+      },
+      "plus": {
+        "decal": "135561966604922",
+        "image": "114487919457431"
+      },
+      "plus_down": {
+        "decal": "79167735052174",
+        "image": "101572781400593"
+      },
+      "portal": {
+        "decal": "93040109677086",
+        "image": "115353666420450"
+      },
+      "revive": {
+        "decal": "108576175549422",
+        "image": "100502716481433"
+      },
+      "shield_broken": {
+        "decal": "124867079130999",
+        "image": "112271154759467"
+      },
+      "target_down": {
+        "decal": "107653852942697",
+        "image": "70679339606536"
+      },
+      "user_desk": {
+        "decal": "75608648113458",
+        "image": "97358312822231"
+      },
+      "xp_up": {
+        "decal": "74175591002733",
+        "image": "128984395614337"
+      }
     },
     "red": {
-      "armor_chest":  { "decal": "135021804612795", "image": "80412131835560" },
-      "fist_impact":  { "decal": "103058409596913", "image": "111009476265182" },
-      "arrow_right":  { "decal": "139831201487156", "image": "102767415664686" },
-      "star_sparkle": { "decal": "139778416105731", "image": "112938645728666" },
-      "hand_stop":    { "decal": "88453922997562",  "image": "129326094066674" },
-      "shield":       { "decal": "121556379009176", "image": "87662561870844" },
-      "chevrons_up":   { "decal": "124245235944813", "image": "96245333568134" },
-      "chevrons_down": { "decal": "120076243153532", "image": "77890006849747" },
-      "eye_hidden":    { "decal": "105599279770322", "image": "77250885695722" },
-      "contagion":     { "decal": "119521781506628", "image": "76135092340255" }
+      "armor_chest": {
+        "decal": "135021804612795",
+        "image": "80412131835560"
+      },
+      "fist_impact": {
+        "decal": "103058409596913",
+        "image": "111009476265182"
+      },
+      "arrow_right": {
+        "decal": "139831201487156",
+        "image": "102767415664686"
+      },
+      "star_sparkle": {
+        "decal": "139778416105731",
+        "image": "112938645728666"
+      },
+      "hand_stop": {
+        "decal": "88453922997562",
+        "image": "129326094066674"
+      },
+      "shield": {
+        "decal": "121556379009176",
+        "image": "87662561870844"
+      },
+      "chevrons_up": {
+        "decal": "124245235944813",
+        "image": "96245333568134"
+      },
+      "chevrons_down": {
+        "decal": "120076243153532",
+        "image": "77890006849747"
+      },
+      "eye_hidden": {
+        "decal": "105599279770322",
+        "image": "77250885695722"
+      },
+      "contagion": {
+        "decal": "119521781506628",
+        "image": "76135092340255"
+      },
+      "capacitor": {
+        "decal": "113522363672761",
+        "image": "107115003595020"
+      },
+      "clover_huge": {
+        "decal": "114289331818036",
+        "image": "133116816596184"
+      },
+      "clover_lucky": {
+        "decal": "91068890011701",
+        "image": "126973331818636"
+      },
+      "coins_up": {
+        "decal": "97802433778853",
+        "image": "131955976431628"
+      },
+      "eye": {
+        "decal": "130523446368411",
+        "image": "81572577005502"
+      },
+      "fist": {
+        "decal": "110246067188802",
+        "image": "73466803916760"
+      },
+      "fist_broken": {
+        "decal": "112585484320848",
+        "image": "120518808399585"
+      },
+      "gift_up": {
+        "decal": "73605821993631",
+        "image": "131153686048331"
+      },
+      "history": {
+        "decal": "99255018715826",
+        "image": "111013106614203"
+      },
+      "knockback": {
+        "decal": "70807272522864",
+        "image": "112432296526933"
+      },
+      "magnet": {
+        "decal": "117872297454901",
+        "image": "103114642504912"
+      },
+      "pet_transfer": {
+        "decal": "75057179810093",
+        "image": "111861341118577"
+      },
+      "plus": {
+        "decal": "75630293154035",
+        "image": "97783368416727"
+      },
+      "plus_down": {
+        "decal": "90466114913027",
+        "image": "71984492129840"
+      },
+      "portal": {
+        "decal": "131054563266076",
+        "image": "94702912306516"
+      },
+      "revive": {
+        "decal": "103687547057940",
+        "image": "90560056245389"
+      },
+      "shield_broken": {
+        "decal": "89615513279438",
+        "image": "118448924742156"
+      },
+      "target": {
+        "decal": "78706621141574",
+        "image": "96235698771954"
+      },
+      "target_down": {
+        "decal": "88714653720886",
+        "image": "76726536453987"
+      },
+      "user_desk": {
+        "decal": "130051449491639",
+        "image": "99953726908487"
+      },
+      "xp_up": {
+        "decal": "89149950355278",
+        "image": "105952169341507"
+      }
     },
     "yellow": {
-      "armor_chest":  { "decal": "97379022632922",  "image": "138256777477472" },
-      "fist_impact":  { "decal": "123387333225571", "image": "92759715093176" },
-      "arrow_right":  { "decal": "103996934990284", "image": "95570155438599" },
-      "star_sparkle": { "decal": "84935114971159",  "image": "115581368440623" },
-      "hand_stop":    { "decal": "113187996978618", "image": "134819309651243" },
-      "shield":       { "decal": "85274051743640",  "image": "126464933309161" },
-      "chevrons_up":   { "decal": "114810148876714", "image": "102312434316877" },
-      "chevrons_down": { "decal": "130047880281558", "image": "91176982083127" },
-      "eye_hidden":    { "decal": "127944135482914", "image": "133420622860824" },
-      "contagion":     { "decal": "82939292290512",  "image": "136303427822334" }
+      "armor_chest": {
+        "decal": "97379022632922",
+        "image": "138256777477472"
+      },
+      "fist_impact": {
+        "decal": "123387333225571",
+        "image": "92759715093176"
+      },
+      "arrow_right": {
+        "decal": "103996934990284",
+        "image": "95570155438599"
+      },
+      "star_sparkle": {
+        "decal": "84935114971159",
+        "image": "115581368440623"
+      },
+      "hand_stop": {
+        "decal": "113187996978618",
+        "image": "134819309651243"
+      },
+      "shield": {
+        "decal": "85274051743640",
+        "image": "126464933309161"
+      },
+      "chevrons_up": {
+        "decal": "114810148876714",
+        "image": "102312434316877"
+      },
+      "chevrons_down": {
+        "decal": "130047880281558",
+        "image": "91176982083127"
+      },
+      "eye_hidden": {
+        "decal": "127944135482914",
+        "image": "133420622860824"
+      },
+      "contagion": {
+        "decal": "82939292290512",
+        "image": "136303427822334"
+      },
+      "capacitor": {
+        "decal": "72657603324500",
+        "image": "119974622945204"
+      },
+      "clover_huge": {
+        "decal": "95219986806838",
+        "image": "77566262053623"
+      },
+      "clover_lucky": {
+        "decal": "95250212125129",
+        "image": "137877922374738"
+      },
+      "coins_up": {
+        "decal": "77092899779484",
+        "image": "139393710323123"
+      },
+      "eye": {
+        "decal": "98558917869814",
+        "image": "123878380827319"
+      },
+      "fist": {
+        "decal": "120231532575373",
+        "image": "104253092436502"
+      },
+      "fist_broken": {
+        "decal": "106151018798450",
+        "image": "132161656247002"
+      },
+      "gift_up": {
+        "decal": "89826663338561",
+        "image": "132364312048305"
+      },
+      "history": {
+        "decal": "140091984378640",
+        "image": "139806330688518"
+      },
+      "knockback": {
+        "decal": "71991141536904",
+        "image": "130037945299437"
+      },
+      "magnet": {
+        "decal": "81189985193291",
+        "image": "115757932350554"
+      },
+      "pet_transfer": {
+        "decal": "76445835168405",
+        "image": "73492604586312"
+      },
+      "plus": {
+        "decal": "119023729117177",
+        "image": "82220853845892"
+      },
+      "plus_down": {
+        "decal": "111984115001458",
+        "image": "82217174045040"
+      },
+      "portal": {
+        "decal": "95657854610837",
+        "image": "112637669064592"
+      },
+      "revive": {
+        "decal": "126095356937925",
+        "image": "139140997478782"
+      },
+      "shield_broken": {
+        "decal": "75435975429120",
+        "image": "94312011592496"
+      },
+      "target": {
+        "decal": "126661550910879",
+        "image": "132113717200960"
+      },
+      "target_down": {
+        "decal": "80084610295562",
+        "image": "127567664026788"
+      },
+      "user_desk": {
+        "decal": "99017020942203",
+        "image": "129358690883723"
+      },
+      "xp_up": {
+        "decal": "137089524446833",
+        "image": "110153594251628"
+      }
     },
     "blue": {
-      "armor_chest":  { "decal": "90587021610726",  "image": "99602330844217" },
-      "fist_impact":  { "decal": "70395230522141",  "image": "138777877678894" },
-      "arrow_right":  { "decal": "122360153109609", "image": "110668229230948" },
-      "star_sparkle": { "decal": "134828874783973", "image": "117884715579847" },
-      "hand_stop":    { "decal": "88847454848367",  "image": "86991673939412" },
-      "shield":       { "decal": "130151995498288", "image": "127714891076758" },
-      "chevrons_up":   { "decal": "127918365045898", "image": "101680625896085" },
-      "chevrons_down": { "decal": "114088321797303", "image": "94391806359767" },
-      "eye_hidden":    { "decal": "118568782352749", "image": "95538251553983" },
-      "contagion":     { "decal": "78390706862945",  "image": "127344507940994" }
+      "armor_chest": {
+        "decal": "90587021610726",
+        "image": "99602330844217"
+      },
+      "fist_impact": {
+        "decal": "70395230522141",
+        "image": "138777877678894"
+      },
+      "arrow_right": {
+        "decal": "122360153109609",
+        "image": "110668229230948"
+      },
+      "star_sparkle": {
+        "decal": "134828874783973",
+        "image": "117884715579847"
+      },
+      "hand_stop": {
+        "decal": "88847454848367",
+        "image": "86991673939412"
+      },
+      "shield": {
+        "decal": "130151995498288",
+        "image": "127714891076758"
+      },
+      "chevrons_up": {
+        "decal": "127918365045898",
+        "image": "101680625896085"
+      },
+      "chevrons_down": {
+        "decal": "114088321797303",
+        "image": "94391806359767"
+      },
+      "eye_hidden": {
+        "decal": "118568782352749",
+        "image": "95538251553983"
+      },
+      "contagion": {
+        "decal": "78390706862945",
+        "image": "127344507940994"
+      },
+      "capacitor": {
+        "decal": "131002282201158",
+        "image": "78339972210978"
+      },
+      "clover_huge": {
+        "decal": "127311606841037",
+        "image": "128878471009870"
+      },
+      "clover_lucky": {
+        "decal": "95226535048270",
+        "image": "131077380339761"
+      },
+      "coins_up": {
+        "decal": "115387119065262",
+        "image": "78256406802041"
+      },
+      "eye": {
+        "decal": "96102038468457",
+        "image": "106053432079500"
+      },
+      "fist": {
+        "decal": "93843865764470",
+        "image": "77826383907844"
+      },
+      "fist_broken": {
+        "decal": "139162711791656",
+        "image": "96035654952873"
+      },
+      "gift_up": {
+        "decal": "97357519947041",
+        "image": "122983965623055"
+      },
+      "history": {
+        "decal": "118596435147980",
+        "image": "104277840452044"
+      },
+      "knockback": {
+        "decal": "137493881743557",
+        "image": "89860327242948"
+      },
+      "magnet": {
+        "decal": "97499490000842",
+        "image": "119494509179874"
+      },
+      "pet_transfer": {
+        "decal": "119974809062488",
+        "image": "103002800233671"
+      },
+      "plus": {
+        "decal": "127561185319453",
+        "image": "138422343720287"
+      },
+      "plus_down": {
+        "decal": "131686882455705",
+        "image": "76519185425640"
+      },
+      "portal": {
+        "decal": "140278519871256",
+        "image": "105899942195851"
+      },
+      "revive": {
+        "decal": "140228642825209",
+        "image": "109980702231360"
+      },
+      "shield_broken": {
+        "decal": "72463213653826",
+        "image": "96070418456308"
+      },
+      "target": {
+        "decal": "129738889223773",
+        "image": "102744487629859"
+      },
+      "target_down": {
+        "decal": "74141881971063",
+        "image": "73686670588003"
+      },
+      "user_desk": {
+        "decal": "84744707443105",
+        "image": "139257367135281"
+      },
+      "xp_up": {
+        "decal": "113073643499239",
+        "image": "111863273027274"
+      }
     },
     "white": {
-      "shield":       { "decal": "93476465119360",  "image": "121311806877255" }
+      "shield": {
+        "decal": "93476465119360",
+        "image": "121311806877255"
+      },
+      "coins_up": {
+        "decal": "116560848333406",
+        "image": "132492282886186"
+      },
+      "armor_chest": {
+        "decal": "128242060923249",
+        "image": "118392407369189"
+      },
+      "arrow_right": {
+        "decal": "79997594405916",
+        "image": "110425060791320"
+      },
+      "capacitor": {
+        "decal": "108283981981236",
+        "image": "100424733432804"
+      },
+      "chevrons_down": {
+        "decal": "75036255482912",
+        "image": "114138335988555"
+      },
+      "chevrons_up": {
+        "decal": "84601019667768",
+        "image": "121737182832823"
+      },
+      "clover_huge": {
+        "decal": "134432369563308",
+        "image": "80173079833150"
+      },
+      "clover_lucky": {
+        "decal": "111501606531693",
+        "image": "116881643791850"
+      },
+      "contagion": {
+        "decal": "71306104888161",
+        "image": "139796031416601"
+      },
+      "eye": {
+        "decal": "88851516107857",
+        "image": "99763326274482"
+      },
+      "eye_hidden": {
+        "decal": "93419697845825",
+        "image": "71798549103156"
+      },
+      "fist": {
+        "decal": "139015811846841",
+        "image": "112126272013119"
+      },
+      "fist_broken": {
+        "decal": "140422177666949",
+        "image": "112588078729730"
+      },
+      "fist_impact": {
+        "decal": "87513702908074",
+        "image": "94355605128887"
+      },
+      "gift_up": {
+        "decal": "121557194942071",
+        "image": "137247356410917"
+      },
+      "hand_stop": {
+        "decal": "87143638902251",
+        "image": "76086314997896"
+      },
+      "history": {
+        "decal": "113277668531715",
+        "image": "103732280084238"
+      },
+      "knockback": {
+        "decal": "136375122062881",
+        "image": "76580207232413"
+      },
+      "magnet": {
+        "decal": "134484088381788",
+        "image": "104504454307206"
+      },
+      "pet_transfer": {
+        "decal": "97457173413550",
+        "image": "83597326084076"
+      },
+      "plus": {
+        "decal": "89665252558857",
+        "image": "118610865089179"
+      },
+      "plus_down": {
+        "decal": "137875960916636",
+        "image": "117928655686882"
+      },
+      "portal": {
+        "decal": "77589652365581",
+        "image": "117531690903215"
+      },
+      "revive": {
+        "decal": "85194259212032",
+        "image": "102239540112219"
+      },
+      "shield_broken": {
+        "decal": "82127678452060",
+        "image": "96355613165862"
+      },
+      "star_sparkle": {
+        "decal": "99384070472856",
+        "image": "113119197829653"
+      },
+      "target": {
+        "decal": "114081414728613",
+        "image": "111409954050055"
+      },
+      "target_down": {
+        "decal": "139890946345651",
+        "image": "132240204871886"
+      },
+      "user_desk": {
+        "decal": "79758849790850",
+        "image": "83207854883393"
+      },
+      "xp_up": {
+        "decal": "95523807222802",
+        "image": "94963122148958"
+      }
     }
   },
   "legacy": {
     "_note": "Superseded / one-off test uploads kept for traceability.",
-    "blue_shield_first_test": { "decal": "113196149447047", "image": null, "note": "first Open Cloud upload proof; superseded by discs.blue.shield" }
+    "blue_shield_first_test": {
+      "decal": "113196149447047",
+      "image": null,
+      "note": "first Open Cloud upload proof; superseded by discs.blue.shield"
+    }
   }
 }

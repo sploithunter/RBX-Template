@@ -16,6 +16,12 @@ local function id(n)
     return "rbxassetid://" .. n
 end
 
+-- Disc + ring IMAGE ids are GENERATED from scripts/asset_manifest.json into power_icons_assets.lua
+-- (single source of truth — never hand-edit ids). Re-run `mise run gen-icons` after uploading icons.
+-- discs[element][symbol] covers all 5 colors (earth/fire/desert/ice + neutral=white generic) × 31
+-- symbols; rings[shape] = the 5 targeting frames.
+local Assets = require(script.Parent:WaitForChild("power_icons_assets"))
+
 local M = {
     -- Hotbar slot icon per power id (falls back to the slot's text label if absent).
     powers = {
@@ -55,13 +61,7 @@ local M = {
     -- never have to upload a colored ring per element.
     -- NB: ids below are the IMAGE content ids (resolved from the uploaded Decals via the
     -- Decal.Texture each wraps). The Decal ids themselves do NOT render in ImageLabel.Image.
-    rings = {
-        target_in = id(73447619254562), -- single target (incoming pip)   [decal 116214377637854]
-        target_out = id(96971740848796), -- single friendly / ally target [decal 120073694232878]
-        aoe = id(128177741420839), -- enemy area-of-effect                [decal 115953506041881]
-        target_aoe = id(130533151036887), -- friendly / team AoE          [decal 78886679306044]
-        aura = id(121697559002218), -- plain ring (archetype / no dir)     [decal 76032353374470]
-    },
+    rings = Assets.rings, -- GENERATED (target_in/target_out/aoe/target_aoe/aura)
 
     -- Map a power's targeting kind onto a ring SHAPE (above). UI: rings[targetingRing[kind]].
     targeting_ring = {
@@ -140,56 +140,7 @@ local M = {
     -- recolor script renders these per element; uploaded as Decals, ids here are the resolved
     -- IMAGE content ids (see scripts/icon_ids.discs.json). The aura ring (rings.aura) tinted
     -- elements[elem].dark frames it -> the universal two-layer badge (src/Client/UI/PetBadge).
-    discs = {
-        earth = {
-            armor_chest = id(117196376134677),
-            fist_impact = id(107483427967238),
-            arrow_right = id(89629994898328),
-            star_sparkle = id(70922319936021),
-            hand_stop = id(100801154207594),
-            shield = id(113193953850265),
-            chevrons_up = id(111373865269609),
-            chevrons_down = id(116956260236978),
-            eye_hidden = id(124548851657627),
-            contagion = id(110049191538903),
-        },
-        fire = {
-            armor_chest = id(80412131835560),
-            fist_impact = id(111009476265182),
-            arrow_right = id(102767415664686),
-            star_sparkle = id(112938645728666),
-            hand_stop = id(129326094066674),
-            shield = id(87662561870844),
-            chevrons_up = id(96245333568134),
-            chevrons_down = id(77890006849747),
-            eye_hidden = id(77250885695722),
-            contagion = id(76135092340255),
-        },
-        desert = {
-            armor_chest = id(138256777477472),
-            fist_impact = id(92759715093176),
-            arrow_right = id(95570155438599),
-            star_sparkle = id(115581368440623),
-            hand_stop = id(134819309651243),
-            shield = id(126464933309161),
-            chevrons_up = id(102312434316877),
-            chevrons_down = id(91176982083127),
-            eye_hidden = id(133420622860824),
-            contagion = id(136303427822334),
-        },
-        ice = {
-            armor_chest = id(99602330844217),
-            fist_impact = id(138777877678894),
-            arrow_right = id(110668229230948),
-            star_sparkle = id(117884715579847),
-            hand_stop = id(86991673939412),
-            shield = id(127714891076758),
-            chevrons_up = id(101680625896085),
-            chevrons_down = id(94391806359767),
-            eye_hidden = id(95538251553983),
-            contagion = id(127344507940994),
-        },
-    },
+    discs = Assets.discs, -- GENERATED: discs[element][symbol], 5 colors (incl. neutral) × 31 symbols
 
     -- Zoom applied inside the (clipping) container to crop a transparent border.
     -- 1 = fit exactly; >1 = zoom in. Per-asset overrides win over default_scale.
