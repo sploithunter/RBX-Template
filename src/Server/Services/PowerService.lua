@@ -161,52 +161,41 @@ function PowerService:_hasEngagedEnemy(player)
     return false
 end
 
--- Crystals the squad is engaged with (#174). Primary signal mirrors _hasEngagedEnemy: a pet whose
--- TargetID is set and TargetType is NOT "Enemy" is mining a node. We can't cheaply resolve that id
--- to a Model here, so we treat "engaged with farming" as: a pet is mining (non-enemy target) AND
--- there are alive crystals within engage_radius of the squad — the same proximity rule combat uses.
--- Returns the in-range crystal Models (so the debuff applies to exactly what's being farmed).
+-- Crystals the squad is engaged with (#174). Mirrors _hasEngagedEnemy's primary signal: a pet whose
+-- TargetID is set and TargetType is NOT "Enemy" is mining that exact node. We resolve those ids to
+-- crystal Models by their `BreakableID` child — position-INDEPENDENT, because pets are moved on the
+-- client (RenderStepped), so their server-side PrimaryPart.Position is unreliable for a proximity
+-- check. Returns exactly the crystals the squad's pets are mining (so the debuff lands on them).
 function PowerService:_engagedBreakables(player)
     local pets = Workspace:FindFirstChild("PlayerPets")
         and Workspace.PlayerPets:FindFirstChild(player.Name)
-    local mining = false
-    local sx, sz, n = 0, 0, 0
-    if pets then
-        for _, pet in ipairs(pets:GetChildren()) do
-            if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
-                local tid = pet:FindFirstChild("TargetID")
-                local ttype = pet:FindFirstChild("TargetType")
-                if tid and tid.Value ~= 0 and ttype and tostring(ttype.Value) ~= "Enemy" then
-                    mining = true
-                end
-                if pet.PrimaryPart then
-                    sx, sz, n =
-                        sx + pet.PrimaryPart.Position.X, sz + pet.PrimaryPart.Position.Z, n + 1
-                end
+    if not pets then
+        return {}
+    end
+    -- collect the target ids of every pet currently mining a node (non-enemy target)
+    local wanted = {}
+    local anyMining = false
+    for _, pet in ipairs(pets:GetChildren()) do
+        if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
+            local tid = pet:FindFirstChild("TargetID")
+            local ttype = pet:FindFirstChild("TargetType")
+            if tid and tid.Value ~= 0 and ttype and tostring(ttype.Value) ~= "Enemy" then
+                wanted[tid.Value] = true
+                anyMining = true
             end
         end
     end
-    if not mining then
+    if not anyMining then
         return {}
     end
-    local squadPos
-    if n > 0 then
-        squadPos = Vector3.new(sx / n, 0, sz / n)
-    else
-        local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        squadPos = hrp and Vector3.new(hrp.Position.X, 0, hrp.Position.Z)
-    end
-    if not squadPos then
-        return {}
-    end
-    local engageR = tonumber(self._powersConfig.engage_radius) or 60
+    -- resolve those ids to the alive crystal Models (BreakableID child, or BreakableId attribute)
     local out = {}
     for _, c in ipairs(breakablesAlive()) do
-        local pp = c.PrimaryPart or c:FindFirstChildWhichIsA("BasePart")
-        if
-            pp
-            and (Vector3.new(pp.Position.X, 0, pp.Position.Z) - squadPos).Magnitude <= engageR
-        then
+        local idChild = c:FindFirstChild("BreakableID")
+        local cid = (idChild and idChild.Value)
+            or c:GetAttribute("BreakableId")
+            or c:GetAttribute("BreakableID")
+        if cid and wanted[cid] then
             out[#out + 1] = c
         end
     end
