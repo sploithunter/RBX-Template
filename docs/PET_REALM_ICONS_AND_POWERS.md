@@ -1,5 +1,18 @@
 # Pet Realm — Icons, Colors & Powers (Definitive Map)
 
+> **BUILD STATUS (implemented & verified):** All 155 icons uploaded + a generated registry
+> (`configs/power_icons_assets.lua` via `mise run gen-icons`). `BuffStack` additive stacking
+> (`src/Shared/Game/BuffStack.lua` + spec). Support-pet auras read on squad cards + inventory, and
+> **stack** (N meerkats = N×, N penguins = N× defense). Player self-power badges under the nameplate.
+> Generic pool (11) + attack-fill (6) wired into the pick-pool; archetype pools ~16–18 (pick 10).
+> Consumers live: coin_yield (Prospector/Windfall + meerkat, additive), mining (Mother Lode),
+> recharge (Hasten), xp (XP Surge), move_speed (Swift), pet_damage additive (de-compounded). Luck
+> (Fortune/Huge Fortune) feeds hatch odds. Mechanics: Revive (instant re-summon), Recall/World Travel
+> (teleport; Recall point = last hatched egg), single-target shield/armor (Aegis/Ironclad).
+> **REMAINING:** the **drops/pickup system** (#167) that Magnet + physical Windfall-bursts ride on —
+> a separate epic by design (instant-credit is the current default).
+
+
 **Status:** living SoT for the icon/badge system + the player power roster. Pairs with
 `configs/power_icons.lua` (icon art ids + symbol/effect maps), `configs/powers.lua` (power defs +
 effect kinds), `configs/pet_roles.lua` (support auras). Where this doc says **PROPOSED**, it's a
