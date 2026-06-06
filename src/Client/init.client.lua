@@ -198,6 +198,17 @@ do
     end
 end
 
+-- Player's OWN active power buffs (Hasten / Fortune / Prospector / …) as a small badge row under
+-- the player nameplate — the self-power counterpart to the squad cards' pet-buff badges.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.PlayerPowerBadges).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start PlayerPowerBadges", { error = tostring(err) })
+    end
+end
+
 -- Studio-only: bridge that lets AutomationService disable/enable local controls
 -- during automated movement (see AutomationControlBridge).
 if RunService:IsStudio() then
