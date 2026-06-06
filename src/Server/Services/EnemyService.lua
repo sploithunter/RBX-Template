@@ -74,6 +74,13 @@ function EnemyService:Init()
         local id = tonumber(type(payload) == "table" and payload.targetId or payload) or 0
         player:SetAttribute("CombatAssistTarget", id)
     end)
+
+    -- Buff target: the selected squad pet (its PositionNumber slot), used by single-target
+    -- defensive powers so a shield/armor lands on one pet instead of the whole squad. 0 clears.
+    Signals.Combat_SelectPetTarget.OnServerEvent:Connect(function(player, payload)
+        local slot = tonumber(type(payload) == "table" and payload.slot or payload) or 0
+        player:SetAttribute("CombatBuffTarget", slot)
+    end)
 end
 
 function EnemyService:_combatService()

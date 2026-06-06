@@ -143,6 +143,37 @@ end
 -- Apply a cast power's SUPPORT effect (no direct damage — see configs/powers.lua). `powerId` is
 -- stamped onto each buff it applies (CombatShieldPowerId / DefenseBuffPowerId / PetDamageBuffPowerId)
 -- so every UI surface resolves the SAME icon for it via PetBadge.forPower (no generic fallbacks).
+-- Which of the player's pets a buff applies to. Squad-wide by default; a power whose def carries
+-- target="single_pet" applies to ONE pet — the player's selected squad card (CombatBuffTarget = a
+-- PositionNumber), falling back to the first non-downed pet when nothing is selected (quick test).
+function PowerService:_targetPets(player, powerId)
+    local folder = Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+    if not folder then
+        return {}
+    end
+    local live = {}
+    for _, pet in ipairs(folder:GetChildren()) do
+        if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
+            live[#live + 1] = pet
+        end
+    end
+    local def = self._powersConfig.powers and self._powersConfig.powers[powerId]
+    if not (def and def.target == "single_pet") then
+        return live -- squad-wide
+    end
+    local sel = player:GetAttribute("CombatBuffTarget")
+    if sel and sel ~= 0 then
+        for _, pet in ipairs(live) do
+            local pn = pet:FindFirstChild("PositionNumber")
+            if pn and pn.Value == sel then
+                return { pet }
+            end
+        end
+    end
+    return live[1] and { live[1] } or {} -- fallback: first non-downed pet
+end
+
 function PowerService:_applyEffect(player, kind, now, powerId)
     local family = kind.family
     local mag = kind.magnitude or 0
@@ -175,43 +206,30 @@ function PowerService:_applyEffect(player, kind, now, powerId)
         player:SetAttribute("PetDamageBuffUntil", now + dur)
         player:SetAttribute("PetDamageBuffPowerId", powerId)
     elseif family == "absorb" then
-        -- shield: add an absorption pool the squad soaks damage with before endurance. With a
+        -- shield: add an absorption pool the pet soaks damage with before endurance. With a
         -- duration it ALSO times out (no permanent armor): stamp CombatShieldUntil + schedule a
         -- clear; a re-cast pushes the stamp later so an older timer won't drop a fresh shield.
-        local pets = Workspace:FindFirstChild("PlayerPets")
-            and Workspace.PlayerPets:FindFirstChild(player.Name)
-        if pets then
-            for _, pet in ipairs(pets:GetChildren()) do
-                if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
-                    pet:SetAttribute("CombatShield", (pet:GetAttribute("CombatShield") or 0) + mag)
-                    pet:SetAttribute("CombatShieldPowerId", powerId)
-                    if dur and dur > 0 then
-                        pet:SetAttribute("CombatShieldUntil", now + dur)
-                        task.delay(dur, function()
-                            if
-                                pet.Parent
-                                and (pet:GetAttribute("CombatShieldUntil") or 0) <= os.time()
-                            then
-                                pet:SetAttribute("CombatShield", 0)
-                                pet:SetAttribute("CombatShieldUntil", 0)
-                            end
-                        end)
+        -- Squad-wide unless the power is single_pet (-> the selected pet only).
+        for _, pet in ipairs(self:_targetPets(player, powerId)) do
+            pet:SetAttribute("CombatShield", (pet:GetAttribute("CombatShield") or 0) + mag)
+            pet:SetAttribute("CombatShieldPowerId", powerId)
+            if dur and dur > 0 then
+                pet:SetAttribute("CombatShieldUntil", now + dur)
+                task.delay(dur, function()
+                    if pet.Parent and (pet:GetAttribute("CombatShieldUntil") or 0) <= os.time() then
+                        pet:SetAttribute("CombatShield", 0)
+                        pet:SetAttribute("CombatShieldUntil", 0)
                     end
-                end
+                end)
             end
         end
     elseif family == "defense_buff" then
-        -- Bulwark: temporary +Defense (armor) on the squad = damage reduction
-        local pets = Workspace:FindFirstChild("PlayerPets")
-            and Workspace.PlayerPets:FindFirstChild(player.Name)
-        if pets then
-            for _, pet in ipairs(pets:GetChildren()) do
-                if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
-                    pet:SetAttribute("DefenseBuff", mag)
-                    pet:SetAttribute("DefenseBuffUntil", now + dur)
-                    pet:SetAttribute("DefenseBuffPowerId", powerId)
-                end
-            end
+        -- armor: temporary +Defense (damage reduction on the armor curve). Squad-wide (Bulwark)
+        -- unless the power is single_pet (-> the selected pet only).
+        for _, pet in ipairs(self:_targetPets(player, powerId)) do
+            pet:SetAttribute("DefenseBuff", mag)
+            pet:SetAttribute("DefenseBuffUntil", now + dur)
+            pet:SetAttribute("DefenseBuffPowerId", powerId)
         end
     elseif family == "root" then
         for _, enemy in ipairs(enemiesAlive()) do

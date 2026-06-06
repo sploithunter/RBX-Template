@@ -90,6 +90,23 @@ return {
     },
 
     powers = {
+        -- Single-target defensive powers: target = "single_pet" lands on the SELECTED squad pet
+        -- only (CombatBuffTarget), not the whole squad. aegis = a focused shield (bubble); ironclad
+        -- = a focused armor (reskin). Falls back to the first pet when nothing is selected.
+        aegis = {
+            archetype = "geomancer",
+            focus_cost = 12,
+            cooldown_seconds = 18,
+            effect = "shield", -- absorb pool -> bubble on the one selected pet
+            target = "single_pet",
+        },
+        ironclad = {
+            archetype = "geomancer",
+            focus_cost = 12,
+            cooldown_seconds = 18,
+            effect = "armor", -- +Defense % -> reskin on the one selected pet
+            target = "single_pet",
+        },
         -- Geomancer
         stone_skin = {
             archetype = "geomancer",

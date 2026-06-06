@@ -133,14 +133,46 @@ end
 -- present, the badge resolves THAT power's disc (PetBadge) so it matches the hotbar + world icon;
 -- `icon` is only the fallback when no power tagged it.
 local PET_EFFECTS = {
-    { key = "defense", source = "pet", untilAttr = "DefenseBuffUntil", powerIdAttr = "DefenseBuffPowerId", color = Color3.fromRGB(235, 190, 70), label = "DEF", icon = POWER_ICONS.status.defense },
-    { key = "damage", source = "player", untilAttr = "PetDamageBuffUntil", powerIdAttr = "PetDamageBuffPowerId", color = Color3.fromRGB(235, 90, 90), label = "DMG", icon = POWER_ICONS.status.damage },
+    {
+        key = "defense",
+        source = "pet",
+        untilAttr = "DefenseBuffUntil",
+        powerIdAttr = "DefenseBuffPowerId",
+        color = Color3.fromRGB(235, 190, 70),
+        label = "DEF",
+        icon = POWER_ICONS.status.defense,
+    },
+    {
+        key = "damage",
+        source = "player",
+        untilAttr = "PetDamageBuffUntil",
+        powerIdAttr = "PetDamageBuffPowerId",
+        color = Color3.fromRGB(235, 90, 90),
+        label = "DMG",
+        icon = POWER_ICONS.status.damage,
+    },
     -- Instant effects flash a blinking pulse badge (no countdown) for their FX window so
     -- you can see what just happened. heal = the support/heal-power tell (HealFxUntil).
-    { key = "heal", source = "pet", untilAttr = "HealFxUntil", color = Color3.fromRGB(90, 210, 110), label = "HEAL", icon = POWER_ICONS.actions.heal, pulse = true },
+    {
+        key = "heal",
+        source = "pet",
+        untilAttr = "HealFxUntil",
+        color = Color3.fromRGB(90, 210, 110),
+        label = "HEAL",
+        icon = POWER_ICONS.actions.heal,
+        pulse = true,
+    },
     -- Armor/absorb shield: now time-limited (CombatShieldUntil), so it shows as a countdown badge
     -- on the card (the thin blue bar still shows the remaining pool magnitude).
-    { key = "shield", source = "pet", untilAttr = "CombatShieldUntil", powerIdAttr = "CombatShieldPowerId", color = Color3.fromRGB(235, 200, 70), label = "ARM", icon = POWER_ICONS.status.shield },
+    {
+        key = "shield",
+        source = "pet",
+        untilAttr = "CombatShieldUntil",
+        powerIdAttr = "CombatShieldPowerId",
+        color = Color3.fromRGB(235, 200, 70),
+        label = "ARM",
+        icon = POWER_ICONS.status.shield,
+    },
 }
 
 local function activeEffectsFor(pet, player, now)
@@ -339,6 +371,11 @@ function SquadHud.start()
 
     local function setSelected(slot)
         selectedSlot = slot
+        -- Tell the server which pet is selected, so single-target buffs (aegis / ironclad) land on
+        -- it. The slot IS the pet's PositionNumber, which the server matches in _targetPets.
+        pcall(function()
+            Signals.Combat_SelectPetTarget:FireServer({ slot = slot or 0 })
+        end)
         -- world highlight follows the selected pet
         worldHighlight.Adornee = nil
         worldHighlight.Enabled = false
@@ -737,7 +774,8 @@ function SquadHud.start()
                         card = makeCard(s.slot)
                         cards[s.slot] = card
                     end
-                    card.name.Text = s.name .. (s.variant ~= "basic" and (" (" .. s.variant .. ")") or "")
+                    card.name.Text = s.name
+                        .. (s.variant ~= "basic" and (" (" .. s.variant .. ")") or "")
                     -- Archetype/role badge: element DISC + tinted aura RING (the universal
                     -- PetBadge). Element from the pet's origin; role from PetRole/by_type. Falls
                     -- back to the coloured letter glyph when that (element, role) has no disc art.
@@ -774,7 +812,8 @@ function SquadHud.start()
                     -- Selection = an OUTLINE only (the gems-pill look): the dark bar stays dark, just
                     -- the stroke pops to bright blue. No background colour change (that swamped it).
                     local isSel = selectedSlot == s.slot
-                    card.stroke.Color = isSel and Color3.fromRGB(120, 200, 255) or Color3.fromRGB(70, 76, 96)
+                    card.stroke.Color = isSel and Color3.fromRGB(120, 200, 255)
+                        or Color3.fromRGB(70, 76, 96)
                     card.stroke.Transparency = isSel and 0 or 0.5
                     card.stroke.Thickness = isSel and 3 or 1.5
                     card.frame.BackgroundTransparency = isSel and 0 or 0.1
