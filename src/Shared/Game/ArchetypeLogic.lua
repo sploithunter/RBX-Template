@@ -43,6 +43,12 @@ function ArchetypeLogic.availablePowers(archetype, config)
     for _, powerId in ipairs(entry.power_pool) do
         table.insert(out, powerId)
     end
+    -- Append the GENERIC pool (universal powers any archetype can pick), if defined.
+    if type(config) == "table" and type(config.generic_pool) == "table" then
+        for _, powerId in ipairs(config.generic_pool) do
+            table.insert(out, powerId)
+        end
+    end
     return out
 end
 
@@ -54,6 +60,14 @@ function ArchetypeLogic.hasPower(archetype, powerId, config)
     for _, id in ipairs(entry.power_pool) do
         if id == powerId then
             return true
+        end
+    end
+    -- generic powers are available to every archetype
+    if type(config) == "table" and type(config.generic_pool) == "table" then
+        for _, id in ipairs(config.generic_pool) do
+            if id == powerId then
+                return true
+            end
         end
     end
     return false

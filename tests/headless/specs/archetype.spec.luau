@@ -20,10 +20,13 @@ return function()
     end)
 
     describe("ArchetypeLogic.availablePowers", function()
-        it("returns the archetype's own power pool", function()
+        it("returns the archetype's own pool PLUS the shared generic pool", function()
             local powers = ArchetypeLogic.availablePowers("geomancer", config)
-            expect(#powers).to.equal(3)
+            local genericCount = #(config.generic_pool or {})
+            expect(#powers).to.equal(3 + genericCount)
             expect(ArchetypeLogic.hasPower("geomancer", "stone_skin", config)).to.equal(true)
+            -- generic powers are available to every archetype
+            expect(ArchetypeLogic.hasPower("geomancer", "fortune", config)).to.equal(true)
         end)
 
         it("does NOT include other archetypes' powers", function()

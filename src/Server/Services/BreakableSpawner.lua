@@ -31,6 +31,8 @@ local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 
 local XpReward = require(ReplicatedStorage.Shared.Game.XpReward)
+local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
+local buffsConfig = require(ReplicatedStorage.Configs:WaitForChild("buffs"))
 
 -- Injected services
 local logger
@@ -1819,12 +1821,29 @@ function BreakableSpawner:_trySpawnOne(
             -- Desert buffer's team YIELD aura (meerkat): a short-lived coin multiplier on the
             -- player (set by EnemyService:_supportPass on a channel separate from event
             -- modifiers, so it stacks). Applies to the mined-coin payout only.
-            if
-                player
-                and (player:GetAttribute("CoinYieldBuffUntil") or 0) > os.time()
-                and (tonumber(amount) or 0) > 0
-            then
-                amount = math.floor(amount * (player:GetAttribute("CoinYieldBuff") or 1))
+            -- coin_yield axis: the meerkat aura (CoinYieldBuff, a multiplier) and the Prospector/
+            -- Windfall power (CoinYieldPower, a fraction) are the SAME axis -> they ADD via BuffStack
+            -- (never compound), clamped to the axis cap.
+            if player and (tonumber(amount) or 0) > 0 then
+                local nowT = os.time()
+                local sources = {
+                    {
+                        fraction = (player:GetAttribute("CoinYieldBuff") or 1) - 1, -- aura (mult)
+                        expiry = player:GetAttribute("CoinYieldBuffUntil") or 0,
+                    },
+                    {
+                        fraction = player:GetAttribute("CoinYieldPower") or 0, -- power (fraction)
+                        expiry = player:GetAttribute("CoinYieldPowerUntil") or 0,
+                    },
+                }
+                local mult = BuffStack.multiplier(
+                    sources,
+                    nowT,
+                    buffsConfig.axes and buffsConfig.axes.coin_yield
+                )
+                if mult ~= 1 then
+                    amount = math.floor(amount * mult)
+                end
             end
             -- World S3: deeper realm layers scale income (layers.multipliers; 1.0 at base).
             -- This is the carrot for the soul/level/token investment to descend.

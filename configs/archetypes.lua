@@ -18,6 +18,23 @@ return {
     -- Respec ritual cost (changes archetype + resets powers/slots).
     respec_cost = { currency = "shadow_tokens", amount = 100 },
 
+    -- GENERIC pool — universal powers EVERY archetype can pick (farming / luck / utility). White
+    -- disc (no element origin). ArchetypeLogic.availablePowers appends these to the archetype pool,
+    -- so the player's pickable pool = origin powers + generic ≈ 20 (pick 10).
+    generic_pool = {
+        "prospector",
+        "mother_lode",
+        "windfall",
+        "fortune",
+        "huge_fortune",
+        "swift",
+        "hasten",
+        "revive",
+        "recall",
+        "world_travel",
+        "xp_surge",
+    },
+
     archetypes = {
         geomancer = {
             display_name = "Geomancer",

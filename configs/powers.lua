@@ -58,6 +58,20 @@ return {
         mark_of_flame = { family = "vulnerable", magnitude = 1.5, duration = 8 },
         eruption = { family = "vulnerable", magnitude = 2.0, duration = 5 },
 
+        -- ===== GENERIC pool (farming / luck / utility) — magnitude = FRACTION (+0.5 = +50%),
+        -- summed per axis via BuffStack (docs Part E). White disc (no element origin). =====
+        coin_yield = { family = "coin_yield", magnitude = 0.5, duration = 30 }, -- Prospector
+        windfall = { family = "coin_yield", magnitude = 2.0, duration = 10 }, -- Windfall (big burst)
+        mining_boost = { family = "mining", magnitude = 0.5, duration = 30 }, -- Mother Lode
+        luck = { family = "luck", magnitude = 0.5, duration = 60 }, -- Fortune
+        luck_huge = { family = "luck", magnitude = 2.0, duration = 30 }, -- Huge Fortune (marquee)
+        move_speed = { family = "move_speed", magnitude = 0.4, duration = 20 }, -- Swift
+        recharge = { family = "recharge", magnitude = 0.5, duration = 20 }, -- Hasten
+        xp_boost = { family = "xp", magnitude = 0.5, duration = 30 }, -- XP Surge
+        revive = { family = "revive", magnitude = 0, duration = 0 }, -- instant re-summon (mechanic)
+        recall = { family = "recall", magnitude = 0, duration = 0 }, -- teleport to saved spot
+        world_travel = { family = "world_travel", magnitude = 0, duration = 0 }, -- teleport to a hub
+
         -- ===== Pyromancer signatures (Feature: signature powers, §17.8) =====
         -- Firewall-safe (§16.5): none of these deal standalone player damage. "amplified_burst"
         -- is PET-damage amplification — its burst is scaled by the squad's attack total and
@@ -90,6 +104,40 @@ return {
     },
 
     powers = {
+        -- GENERIC powers (generic = true): any archetype can pick them; white disc (no element).
+        -- Farming + luck + utility — see configs/archetypes.lua generic_pool.
+        prospector = {
+            generic = true,
+            focus_cost = 20,
+            cooldown_seconds = 40,
+            effect = "coin_yield",
+        },
+        windfall = { generic = true, focus_cost = 30, cooldown_seconds = 60, effect = "windfall" },
+        mother_lode = {
+            generic = true,
+            focus_cost = 25,
+            cooldown_seconds = 45,
+            effect = "mining_boost",
+        },
+        fortune = { generic = true, focus_cost = 20, cooldown_seconds = 45, effect = "luck" },
+        huge_fortune = {
+            generic = true,
+            focus_cost = 50,
+            cooldown_seconds = 120,
+            effect = "luck_huge",
+        },
+        swift = { generic = true, focus_cost = 15, cooldown_seconds = 25, effect = "move_speed" },
+        hasten = { generic = true, focus_cost = 20, cooldown_seconds = 60, effect = "recharge" },
+        xp_surge = { generic = true, focus_cost = 25, cooldown_seconds = 60, effect = "xp_boost" },
+        revive = { generic = true, focus_cost = 25, cooldown_seconds = 30, effect = "revive" },
+        recall = { generic = true, focus_cost = 10, cooldown_seconds = 30, effect = "recall" },
+        world_travel = {
+            generic = true,
+            focus_cost = 10,
+            cooldown_seconds = 30,
+            effect = "world_travel",
+        },
+
         -- Single-target defensive powers: target = "single_pet" lands on the SELECTED squad pet
         -- only (CombatBuffTarget), not the whole squad. aegis = a focused shield (bubble); ironclad
         -- = a focused armor (reskin). Falls back to the first pet when nothing is selected.

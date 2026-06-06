@@ -174,6 +174,15 @@ function PowerService:_targetPets(player, powerId)
     return live[1] and { live[1] } or {} -- fallback: first non-downed pet
 end
 
+-- A player-wide AXIS buff (coin_yield / mining / luck / move_speed / recharge / xp). Stored as a
+-- FRACTION (+0.5 = +50%) + a timer + the power id (for the badge). Consumers sum it via BuffStack
+-- alongside any aura on the same axis (additive, never compounding — docs Part E).
+function PowerService:_setAxisBuff(player, attr, frac, now, dur, powerId)
+    player:SetAttribute(attr, frac)
+    player:SetAttribute(attr .. "Until", now + (dur or 0))
+    player:SetAttribute(attr .. "PowerId", powerId)
+end
+
 function PowerService:_applyEffect(player, kind, now, powerId)
     local family = kind.family
     local mag = kind.magnitude or 0
@@ -231,6 +240,18 @@ function PowerService:_applyEffect(player, kind, now, powerId)
             pet:SetAttribute("DefenseBuffUntil", now + dur)
             pet:SetAttribute("DefenseBuffPowerId", powerId)
         end
+    elseif family == "coin_yield" then
+        self:_setAxisBuff(player, "CoinYieldPower", mag, now, dur, powerId)
+    elseif family == "mining" then
+        self:_setAxisBuff(player, "MiningBuff", mag, now, dur, powerId)
+    elseif family == "luck" then
+        self:_setAxisBuff(player, "LuckBuff", mag, now, dur, powerId)
+    elseif family == "move_speed" then
+        self:_setAxisBuff(player, "MoveSpeedBuff", mag, now, dur, powerId)
+    elseif family == "recharge" then
+        self:_setAxisBuff(player, "RechargeBuff", mag, now, dur, powerId)
+    elseif family == "xp" then
+        self:_setAxisBuff(player, "XpBuff", mag, now, dur, powerId)
     elseif family == "root" then
         for _, enemy in ipairs(enemiesAlive()) do
             enemy:SetAttribute("RootedUntil", now + dur)
