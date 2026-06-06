@@ -252,6 +252,32 @@ function PowerService:_applyEffect(player, kind, now, powerId)
         self:_setAxisBuff(player, "RechargeBuff", mag, now, dur, powerId)
     elseif family == "xp" then
         self:_setAxisBuff(player, "XpBuff", mag, now, dur, powerId)
+    elseif family == "revive" then
+        -- Revive: instantly bring a DOWNED pet back, ignoring its recharge cooldown (the tactical
+        -- "summon before the clock" power, EnemyService:_revivePet's clears). Prefers the selected
+        -- squad pet (CombatBuffTarget), else the first downed pet.
+        local pets = Workspace:FindFirstChild("PlayerPets")
+            and Workspace.PlayerPets:FindFirstChild(player.Name)
+        if pets then
+            local sel = player:GetAttribute("CombatBuffTarget")
+            local target, firstDowned
+            for _, pet in ipairs(pets:GetChildren()) do
+                if pet:IsA("Model") and pet:GetAttribute("CombatDowned") then
+                    firstDowned = firstDowned or pet
+                    local pn = pet:FindFirstChild("PositionNumber")
+                    if sel and sel ~= 0 and pn and pn.Value == sel then
+                        target = pet
+                    end
+                end
+            end
+            target = target or firstDowned
+            if target then
+                target:SetAttribute("CombatDowned", false)
+                target:SetAttribute("CombatDamageTaken", 0)
+                target:SetAttribute("CooldownUntil", 0)
+                target:SetAttribute("DownedReason", "")
+            end
+        end
     elseif family == "root" then
         for _, enemy in ipairs(enemiesAlive()) do
             enemy:SetAttribute("RootedUntil", now + dur)
