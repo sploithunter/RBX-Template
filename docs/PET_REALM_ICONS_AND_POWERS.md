@@ -47,7 +47,13 @@ so you read *who it hits*:
 
 All symbols exist as art in 5 colors (white/blue/green/red/yellow), identical shape, different
 color. **Uploaded** = decal + resolved image id present in `scripts/icon_ids.*.json` and wired in
-`configs/power_icons.lua`. The other 14 have art but aren't uploaded/wired yet.
+`configs/power_icons.lua`; **🎨 art made** = drawn (the full blue set exists) but not uploaded yet;
+the original 10 are uploaded.
+
+> ⚠️ **Filenames are an agent's visual guesses, NOT game meaning.** The art was named by an agent
+> describing what each looked like with no game context. Treat the filename purely as the **asset
+> key**; the **"reads as (game)"** column below is the authoritative meaning. Several are misleading —
+> see A.4.
 
 | Symbol | Reads as | Uploaded? | Currently used by |
 |---|---|---|---|
@@ -75,7 +81,29 @@ color. **Uploaded** = decal + resolved image id present in `scripts/icon_ids.*.j
 | `eye` | reveal / accuracy / perception | ⬜ art only | *(free — expose / focus-fire)* |
 | `target` | designate / focus target | ⬜ art only | *(free — mark / assist)* |
 | `target_down` | weaken target | ⬜ art only | *(free — cripple)* |
-| `user_desk` | deploy / summon / collect | ⬜ art only | *(free — recall / magnet)* |
+| `magnet` | **collect / pull** (horseshoe magnet) | 🎨 art made | Magnet / drops collect |
+| `xp_up` | **XP / level boost** (star + up arrow) | 🎨 art made | XP boost power |
+| `revive` | **revive** (figure rising + up arrow) | 🎨 art made | instant re-summon a downed pet |
+| `knockback` | **knockback / repel** (arrows bursting outward) | 🎨 art made | push/repel control |
+| `portal` | **teleport / recall** (figure → platform) | 🎨 art made | Recall / world travel |
+| `pet_transfer` | **transfer a pet** (figure→figure + egg) | 🎨 art made | trade / gift pet, or teaming |
+| `user_desk` | **deploy / claim** (arrow up out of a box) | ⬜ art only | *open / unbox / claim — NOT a desk* |
+
+### A.4 Filenames that mislead (game meaning wins)
+
+The agent named the art by appearance. These read differently in game context — use the game meaning:
+
+| Asset key (filename) | Looks like (agent) | **Game meaning** |
+|---|---|---|
+| `portal` | two figures on platforms | **Teleport / Recall** — move the player between places (see B.5) |
+| `pet_transfer` | figures + an egg | **Transfer/gift a pet** (trade), or a teaming/guest hook |
+| `user_desk` | a desk?? | **Deploy / claim / unbox** — arrow up out of a box; nothing to do with a desk |
+| `capacitor` | a battery | **Energy / charge** — fits Overclock (mining) or a focus-regen utility |
+| `revive` | someone exercising | **Revive** — a downed figure rising (instant re-summon) |
+| `history` | a clock | **Recharge / Haste** — time arrow = cooldown reduction |
+
+Renaming the asset keys is optional (it'd touch the upload manifests); the doc is the SoT for
+meaning regardless.
 
 ---
 
@@ -164,8 +192,13 @@ Generic (⚪ white) unless an origin fits better. All use **existing art** unles
 |---|---|---|
 | Swift | `arrow_right` | +move speed (self + pets) |
 | Hasten | `history` | +power recharge rate |
-| Blink | `arrow_right` | short dash / reposition |
-| Regroup | `user_desk` | instant squad recall to the player |
+| **Revive** | `revive` | **instantly re-summon a downed pet, ignoring the recharge clock** (tactical clutch) |
+| **Recall** | `portal` | **teleport the player to their saved spot** (AFK-farm QoL — see B.5) |
+| **World Travel** | `portal` | teleport to a world / zone hub |
+
+> Revive **happens before Summon** in the down→recharge→summon flow: a downed pet normally waits out
+> `CooldownUntil` before it can be re-summoned; Revive clears that and summons it now. (Mechanic:
+> clear `CooldownUntil` + run the existing Summon path.)
 
 **Attack fill (origin-colored):**
 | Power | Symbol | Effect (proposed) |
@@ -177,18 +210,29 @@ Generic (⚪ white) unless an origin fits better. All use **existing art** unles
 | Cripple | `target_down` | slow + weaken one target |
 | Strike | `fist` | basic single-target hit (low-level filler) |
 
-**Icon shopping list (Jason to make — art gaps for high-value powers):**
+**Icon shopping list — ✅ all made.** `magnet`, `xp_up`, `revive`, `knockback`, `portal`,
+`pet_transfer`, and `clover_huge` are drawn (full blue set). The art set is now complete for the
+whole roster. Only **open art question**: if Recall and World Travel should read differently, mint a
+second travel icon (one stays `portal`, the other gets e.g. a globe/home) — otherwise they share
+`portal`. No other gaps.
 
-| Priority | Icon | Unlocks / why |
-|---|---|---|
-| ★ high | `magnet` (horseshoe) | Magnet / collect powers — reads far better than `user_desk` |
-| ★ high | `xp_up` (star + up arrow) | XP / level-boost power — a top-tier farming want; no good symbol today (`star_sparkle` taken) |
-| ◐ med | `revive` (plus over a downed glyph) | revive a downed pet — distinct from heal |
-| ◐ med | `knockback` (outward burst arrows) | repel / control — distinct from `hand_stop` (root) |
-| ○ low | `home` / `portal` | recall-to-base / travel |
+### B.5 Recall & travel mechanic (Jason's idea)
 
-`clover_huge` is already made (Huge Fortune). Everything else in the roster above maps to existing
-art — no other gaps.
+AFK farmers lose their spot on a server reboot (respawn at spawn). **Recall** teleports the player
+back to a saved location so they can re-seat with one tap. Design:
+
+- **Saved place** — a per-player stored position the player can SET ("set place here"), persisted so
+  it survives a reboot. Recall = teleport to it.
+- **Sensible default** — if no place is set, default the recall target to the **last egg the player
+  hatched from** (a spot they demonstrably care about and were farming near).
+- **Reboot-resilient** — the saved place lives in player data; on rejoin after a reboot, Recall (or
+  an auto-offer toast) returns them to it. This is the AFK-farmer win.
+- **World Travel** is the *separate* power — teleport to a world/zone hub (cross-area), not a personal
+  spot. Same `portal` art for now; give them distinct icons later if the reads need to differ.
+
+Open call for Jason: is **Recall** a **power** (costs a pick + slot + cooldown) or a **free UI
+button** (always available, light cooldown)? Reboot-recovery leans button; a mid-farm "teleport home"
+leans power. Could be both (button for recovery, power for combat repositioning).
 
 ---
 
