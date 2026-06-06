@@ -27,6 +27,13 @@ return {
         burn_spread = true,
         team_cleave = true,
     },
+    -- #174: families whose target-STRENGTH debuff also applies to FARMING (crystals), not just
+    -- enemies. Vulnerability speeds mining the same way it speeds combat, so a pet mining a node
+    -- counts as "engaged" for these. Control/CC families (root/disarm) are meaningless on a static
+    -- crystal, so they stay enemy-only (absent here).
+    farm_targeted_families = {
+        vulnerable = true,
+    },
     engage_radius = 60,
 
     -- How each `effect` keyword resolves to a concrete SUPPORT action when cast

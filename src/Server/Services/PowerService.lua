@@ -82,6 +82,27 @@ local function enemiesAlive()
     return out
 end
 
+-- All alive farm nodes (crystals/ore) — Models under Game.Breakables/<type>/<world> with HP > 0.
+-- These are NOT enemies (no EnemyId); a target-strength debuff (vulnerable) speeds mining the same
+-- way it speeds combat. #174: farming powers reach crystals through the pets, just like enemies.
+local function breakablesAlive()
+    local game = Workspace:FindFirstChild("Game")
+    local root = game and game:FindFirstChild("Breakables")
+    local out = {}
+    if root then
+        for _, desc in ipairs(root:GetDescendants()) do
+            if
+                desc:IsA("Model")
+                and (desc:GetAttribute("HP") or 0) > 0
+                and not desc:GetAttribute("EnemyId")
+            then
+                out[#out + 1] = desc
+            end
+        end
+    end
+    return out
+end
+
 -- Is the player's squad engaged with an enemy? Gates offensive powers — see Cast. Friendly powers
 -- don't call this. Primary signal: a pet is actively attacking an ENEMY (its TargetID is set and
 -- TargetType == "Enemy") — literally "the pet is targeting something", robust to boss size and
@@ -138,6 +159,63 @@ function PowerService:_hasEngagedEnemy(player)
         end
     end
     return false
+end
+
+-- Crystals the squad is engaged with (#174). Primary signal mirrors _hasEngagedEnemy: a pet whose
+-- TargetID is set and TargetType is NOT "Enemy" is mining a node. We can't cheaply resolve that id
+-- to a Model here, so we treat "engaged with farming" as: a pet is mining (non-enemy target) AND
+-- there are alive crystals within engage_radius of the squad — the same proximity rule combat uses.
+-- Returns the in-range crystal Models (so the debuff applies to exactly what's being farmed).
+function PowerService:_engagedBreakables(player)
+    local pets = Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+    local mining = false
+    local sx, sz, n = 0, 0, 0
+    if pets then
+        for _, pet in ipairs(pets:GetChildren()) do
+            if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
+                local tid = pet:FindFirstChild("TargetID")
+                local ttype = pet:FindFirstChild("TargetType")
+                if tid and tid.Value ~= 0 and ttype and tostring(ttype.Value) ~= "Enemy" then
+                    mining = true
+                end
+                if pet.PrimaryPart then
+                    sx, sz, n =
+                        sx + pet.PrimaryPart.Position.X, sz + pet.PrimaryPart.Position.Z, n + 1
+                end
+            end
+        end
+    end
+    if not mining then
+        return {}
+    end
+    local squadPos
+    if n > 0 then
+        squadPos = Vector3.new(sx / n, 0, sz / n)
+    else
+        local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        squadPos = hrp and Vector3.new(hrp.Position.X, 0, hrp.Position.Z)
+    end
+    if not squadPos then
+        return {}
+    end
+    local engageR = tonumber(self._powersConfig.engage_radius) or 60
+    local out = {}
+    for _, c in ipairs(breakablesAlive()) do
+        local pp = c.PrimaryPart or c:FindFirstChildWhichIsA("BasePart")
+        if
+            pp
+            and (Vector3.new(pp.Position.X, 0, pp.Position.Z) - squadPos).Magnitude <= engageR
+        then
+            out[#out + 1] = c
+        end
+    end
+    return out
+end
+
+-- True when a farm-targeting power may fire: the squad is mining crystals (#174). Cheap wrapper.
+function PowerService:_hasEngagedFarmTarget(player)
+    return #self:_engagedBreakables(player) > 0
 end
 
 -- Apply a cast power's SUPPORT effect (no direct damage — see configs/powers.lua). `powerId` is
@@ -310,6 +388,17 @@ function PowerService:_applyEffect(player, kind, now, powerId)
         for _, enemy in ipairs(enemiesAlive()) do
             enemy:SetAttribute("VulnerableMult", mag)
             enemy:SetAttribute("VulnerableUntil", now + dur)
+        end
+        -- #174: a target-strength debuff also applies to FARMING. Mark the crystals the squad is
+        -- mining so pets shred them x`mag` faster (PetFollowService:_mine reads VulnerableMult on
+        -- any breakable). Only families flagged farm_targeted reach crystals (root/disarm don't).
+        local farmTargeted = self._powersConfig.farm_targeted_families
+            and self._powersConfig.farm_targeted_families[family]
+        if farmTargeted then
+            for _, crystal in ipairs(self:_engagedBreakables(player)) do
+                crystal:SetAttribute("VulnerableMult", mag)
+                crystal:SetAttribute("VulnerableUntil", now + dur)
+            end
         end
     elseif family == "amplified_burst" then
         self:_amplifiedBurst(player, kind, now)
@@ -546,7 +635,13 @@ function PowerService:Cast(player, powerId)
     local enemyTargeted = self._powersConfig.enemy_targeted_families
         and self._powersConfig.enemy_targeted_families[kind.family]
     if enemyTargeted and not self:_hasEngagedEnemy(player) then
-        return { ok = false, reason = "no_target" }
+        -- #174: a farm-targeted debuff (vulnerable) may also fire when the squad is mining crystals,
+        -- not just fighting enemies — the pet still has a target, it's just a node.
+        local farmTargeted = self._powersConfig.farm_targeted_families
+            and self._powersConfig.farm_targeted_families[kind.family]
+        if not (farmTargeted and self:_hasEngagedFarmTarget(player)) then
+            return { ok = false, reason = "no_target" }
+        end
     end
 
     self:_applyEffect(player, kind, now, tostring(powerId))
