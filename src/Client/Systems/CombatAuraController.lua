@@ -93,6 +93,7 @@ end
 
 local originCfg = {}
 local reskinDefs = {} -- config.reskins: reskin key ("stone"/"lava"/...) -> { material, color }
+local powersCfg = {} -- configs/powers.lua: powerId -> def (for power-driven shield element)
 
 local function elementForPet(pet)
     local petEl = originCfg.pettype_element and originCfg.pettype_element[pet:GetAttribute("PetType")]
@@ -146,12 +147,26 @@ local function isArmored(pet)
     return (pet:GetAttribute("CombatShield") or 0) > 0 or (pet:GetAttribute("DefenseBuffUntil") or 0) > os.time()
 end
 
+-- Canonical combat element (grass/lava/ice/desert) of the POWER that applied the shield, so the
+-- bubble + reskin match the power (ember_ward=fire, ice_armor=ice, dune_shield=sand) even on a
+-- pet of another origin. nil if no power tagged it (-> fall back to the pet's own element).
+local function shieldPowerElement(pet)
+    local pid = pet:GetAttribute("CombatShieldPowerId") or pet:GetAttribute("DefenseBuffPowerId")
+    local def = pid and powersCfg.powers and powersCfg.powers[pid]
+    if not def then
+        return nil
+    end
+    return (def.archetype and originCfg.archetype_element and originCfg.archetype_element[def.archetype])
+        or def.element
+end
+
 local function refreshArmor(pet)
     local active = handles[pet] and handles[pet].shield
     if isArmored(pet) then
         if not active then
             -- element -> reskin KEY (origin.element_reskin) -> reskin {material,color} (config.reskins).
-            local element = elementForPet(pet)
+            -- Prefer the POWER's element (so a fire shield reskins lava even on a snow pet).
+            local element = shieldPowerElement(pet) or elementForPet(pet)
             local reskinKey = originCfg.element_reskin and originCfg.element_reskin[element]
             local reskin = reskinKey and reskinDefs[reskinKey]
             setSlot(pet, "shield", { category = "shield", element = element, reskin = reskin, duration = 0 })
@@ -297,6 +312,10 @@ function CombatAuraController.start()
     local cfg = require(ReplicatedStorage.Configs:WaitForChild("combat_fx"))
     originCfg = cfg.origin or {}
     reskinDefs = cfg.reskins or {}
+    local okP, powers = pcall(function()
+        return require(ReplicatedStorage.Configs:WaitForChild("powers"))
+    end)
+    powersCfg = (okP and powers) or {}
 
     -- Pets: workspace.PlayerPets[<localPlayer>] (each level appears when pets first spawn).
     whenChild(Workspace, "PlayerPets", function(root)
