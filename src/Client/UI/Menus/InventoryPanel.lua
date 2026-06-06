@@ -53,6 +53,26 @@ end)
 if not petBadgeOk then
     PetBadge = nil
 end
+-- Icon registry + support-aura config, for the "this pet provides X" badge on the card.
+local powerIconsOk, POWER_ICONS = pcall(function()
+    return require(ReplicatedStorage.Configs:WaitForChild("power_icons"))
+end)
+if not powerIconsOk then
+    POWER_ICONS = nil
+end
+local petRolesOk, PET_ROLES = pcall(function()
+    return require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
+end)
+if not petRolesOk then
+    PET_ROLES = nil
+end
+-- Support-aura kind -> { biome element for the disc colour, human label }.
+local SUPPORT_META = {
+    heal = { element = "earth", label = "Heal" },
+    defense = { element = "ice", label = "Defense" },
+    offense = { element = "fire", label = "Offense" },
+    yield = { element = "desert", label = "Coin Yield" },
+}
 local petVisualsOk, PetVariantVisuals = pcall(function()
     return require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
 end)
@@ -2770,7 +2790,8 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
                 hAspect.AspectRatio = 1
                 hAspect.AspectType = Enum.AspectType.FitWithinMaxSize
                 hAspect.Parent = holder
-                local b = PetBadge.create(holder, { element = element, role = role.id, zIndex = 106 })
+                local b =
+                    PetBadge.create(holder, { element = element, role = role.id, zIndex = 106 })
                 built = b and b.disc and b.disc.Visible == true
                 if not built then
                     holder:Destroy() -- no disc art for this (element, role) -> fall back to text chip
@@ -2782,7 +2803,12 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
                     or Color3.fromRGB(70, 70, 90)
                 local chip = Instance.new("TextLabel")
                 chip.Name = "RoleChip"
-                chip.Size = UDim2.new(0, math.max(28, math.floor(self.cardSize.X * 0.5)), 0, math.max(10, math.floor(self.cardSize.Y * 0.16)))
+                chip.Size = UDim2.new(
+                    0,
+                    math.max(28, math.floor(self.cardSize.X * 0.5)),
+                    0,
+                    math.max(10, math.floor(self.cardSize.Y * 0.16))
+                )
                 chip.Position = UDim2.new(0, 3, 0, 3)
                 chip.BackgroundColor3 = tint
                 chip.BackgroundTransparency = 0.15
@@ -2796,6 +2822,51 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
                 corner.Parent = chip
                 chip.Parent = itemFrame
             end
+        end
+    end
+
+    -- Support buff this pet PROVIDES (bottom-right): the per-zone buffer pets (bunny=Heal,
+    -- penguin=Defense, emberimp=Offense, meerkat=Coin Yield) emit a team aura — surface it so
+    -- "what does a meerkat do?" reads at a glance. Element-disc (biome colour) + short label.
+    if POWER_ICONS and PET_ROLES and item.category == "Pets" and item.petType then
+        local aura = PET_ROLES.support_auras and PET_ROLES.support_auras[item.petType]
+        local meta = aura and SUPPORT_META[aura.kind]
+        local symbol = aura and POWER_ICONS.support_symbol and POWER_ICONS.support_symbol[aura.kind]
+        local disc = meta and symbol and POWER_ICONS.discFor(meta.element, symbol)
+        if disc then
+            local holder = Instance.new("Frame")
+            holder.Name = "SupportBadge"
+            holder.Size = UDim2.new(0.4, 0, 0.4, 0) -- square (aspect), ~40% of card
+            holder.Position = UDim2.fromScale(0.66, 0.5) -- lower-right corner, slight overhang
+            holder.BackgroundTransparency = 1
+            holder.ZIndex = 107
+            holder.Parent = itemFrame
+            local aspect = Instance.new("UIAspectRatioConstraint")
+            aspect.AspectRatio = 1
+            aspect.AspectType = Enum.AspectType.FitWithinMaxSize
+            aspect.Parent = holder
+            local img = Instance.new("ImageLabel")
+            img.Name = "Icon"
+            img.Size = UDim2.fromScale(1, 1)
+            img.BackgroundTransparency = 1
+            img.Image = disc
+            img.ScaleType = Enum.ScaleType.Fit
+            img.ZIndex = 107
+            img.Parent = holder
+            -- short label hugging the bottom of the card
+            local lbl = Instance.new("TextLabel")
+            lbl.Name = "SupportLabel"
+            lbl.Size = UDim2.new(1, -4, 0, math.max(8, math.floor(self.cardSize.Y * 0.15)))
+            lbl.Position = UDim2.new(0, 2, 1, -math.max(8, math.floor(self.cardSize.Y * 0.15)))
+            lbl.BackgroundTransparency = 1
+            lbl.Text = meta.label
+            lbl.TextColor3 = Color3.fromRGB(255, 230, 140)
+            lbl.TextStrokeTransparency = 0.3
+            lbl.TextScaled = true
+            lbl.Font = Enum.Font.GothamBold
+            lbl.TextXAlignment = Enum.TextXAlignment.Right
+            lbl.ZIndex = 107
+            lbl.Parent = itemFrame
         end
     end
 
