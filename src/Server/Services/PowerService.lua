@@ -183,6 +183,24 @@ function PowerService:_setAxisBuff(player, attr, frac, now, dur, powerId)
     player:SetAttribute(attr .. "PowerId", powerId)
 end
 
+-- Teleport the player's character to `pos` (a Vector3) or, if nil, the world spawn (World Travel /
+-- recall fallback). A small lift keeps them above the floor.
+function PowerService:_teleportPlayer(player, pos)
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        return
+    end
+    local target = pos
+    if typeof(target) ~= "Vector3" then
+        local spawn = Workspace:FindFirstChildWhichIsA("SpawnLocation", true)
+        target = spawn and spawn.Position
+    end
+    if typeof(target) == "Vector3" then
+        hrp.CFrame = CFrame.new(target + Vector3.new(0, 4, 0))
+    end
+end
+
 function PowerService:_applyEffect(player, kind, now, powerId)
     local family = kind.family
     local mag = kind.magnitude or 0
@@ -278,6 +296,12 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                 target:SetAttribute("DownedReason", "")
             end
         end
+    elseif family == "recall" then
+        -- Recall: teleport to the player's saved spot (RecallPoint, stamped on each hatch), else
+        -- the world spawn — the AFK-farmer "get back to where I was" QoL.
+        self:_teleportPlayer(player, player:GetAttribute("RecallPoint"))
+    elseif family == "world_travel" then
+        self:_teleportPlayer(player, nil) -- to the world hub (spawn)
     elseif family == "root" then
         for _, enemy in ipairs(enemiesAlive()) do
             enemy:SetAttribute("RootedUntil", now + dur)

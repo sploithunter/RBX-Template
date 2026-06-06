@@ -774,6 +774,14 @@ function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
             + (player:GetAttribute("LuckBuff") or 0)
     end
 
+    -- Recall power: stamp where the player is hatching, so Recall (default target = last hatched
+    -- egg) brings an AFK farmer back here after a server reboot.
+    local recallChar = player.Character
+    local recallHrp = recallChar and recallChar:FindFirstChild("HumanoidRootPart")
+    if recallHrp then
+        player:SetAttribute("RecallPoint", recallHrp.Position)
+    end
+
     hatchOptions = type(hatchOptions) == "table" and hatchOptions or {}
     if hatchOptions.chargedMode == true then
         local hatching = self:GetHatchingConfig()
