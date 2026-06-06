@@ -129,12 +129,22 @@ async function uploadOne(file) {
   }
 
   const out = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, "utf8")) : {};
+  let uploaded = 0,
+    skipped = 0;
   for (const file of files) {
     const name = path.basename(file, ".png");
+    // Resume / no-duplicates: skip a symbol already recorded in the OUT manifest. Re-running is
+    // idempotent and only uploads the missing ones (use --force or delete the key to re-upload).
+    if (out[name] && !args.includes("--force")) {
+      console.log(`skip ${name} (already ${out[name]})`);
+      skipped += 1;
+      continue;
+    }
     process.stdout.write(`uploading ${name} ... `);
     try {
       const id = await uploadOne(file);
       out[name] = id;
+      uploaded += 1;
       console.log(id);
       fs.writeFileSync(OUT, JSON.stringify(out, null, 2)); // write incrementally
     } catch (e) {
@@ -142,5 +152,5 @@ async function uploadOne(file) {
       console.error("  " + e.message);
     }
   }
-  console.log(`\nWrote ${OUT}`);
+  console.log(`\nWrote ${OUT} (uploaded ${uploaded}, skipped ${skipped})`);
 })();
