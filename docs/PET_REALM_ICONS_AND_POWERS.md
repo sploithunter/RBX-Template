@@ -9,8 +9,14 @@
 > recharge (Hasten), xp (XP Surge), move_speed (Swift), pet_damage additive (de-compounded). Luck
 > (Fortune/Huge Fortune) feeds hatch odds. Mechanics: Revive (instant re-summon), Recall/World Travel
 > (teleport; Recall point = last hatched egg), single-target shield/armor (Aegis/Ironclad).
-> **REMAINING:** the **drops/pickup system** (#167) that Magnet + physical Windfall-bursts ride on —
-> a separate epic by design (instant-credit is the current default).
+> **Drops/pickup system (#167) DONE + verified:** mining pops physical coin pickups at the node
+> (`DropService` + `configs/drops.lua`, ON by default); a proximity loop collects them, the **Magnet**
+> generic power widens the collect radius (+30 studs), and coins are never lost (auto-collect on
+> despawn/cap). Farming debuffs apply to crystals (#174): a `vulnerable` power cast while mining marks
+> the mined node so pets shred it faster. Dev: a Studio-only **buff-stats readout** (live effective
+> attack/defense/coin/luck/… multipliers) + a permanent **training crystal** near spawn for testing.
+> **REMAINING (polish):** coin-yield stack visual on the player HUD (#173), floating coin text above
+> nodes (#172), CoH-style level-up XP bar (#170), physical Windfall burst (rides on drops).
 
 
 **Status:** living SoT for the icon/badge system + the player power roster. Pairs with
