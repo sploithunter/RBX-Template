@@ -369,6 +369,12 @@ function PowerService:_applyEffect(player, kind, now, powerId)
         self:_teleportPlayer(player, player:GetAttribute("RecallPoint"))
     elseif family == "world_travel" then
         self:_teleportPlayer(player, nil) -- to the world hub (spawn)
+    elseif family == "magnet" then
+        -- #167: widen the drop auto-collect radius by `magnitude` studs for `duration`s. DropService's
+        -- collect loop reads MagnetBuff while MagnetBuffUntil is live (a flat studs bonus, not an axis).
+        player:SetAttribute("MagnetBuff", mag)
+        player:SetAttribute("MagnetBuffUntil", now + dur)
+        player:SetAttribute("MagnetBuffPowerId", powerId)
     elseif family == "root" then
         for _, enemy in ipairs(enemiesAlive()) do
             enemy:SetAttribute("RootedUntil", now + dur)

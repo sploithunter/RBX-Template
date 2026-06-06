@@ -1797,6 +1797,26 @@ function BreakableSpawner:_trySpawnOne(
             and self._moduleLoader:Get("PlayerProgressionService")
         -- World S3: a cut of mining income becomes realm tokens while in a realm layer (no-op at base).
         local layerService = self._moduleLoader and self._moduleLoader:Get("LayerService")
+        -- #167: when drops are enabled, the COIN award pops out as a physical pickup instead of
+        -- crediting instantly (XP / pet-xp / realm cut below stay instant). DropService.SpawnCoinDrop
+        -- returns true when it took the coins; false => credit instantly (drops off / dust / no pos).
+        local dropService = self._moduleLoader and self._moduleLoader:Get("DropService")
+        local dropPos
+        do
+            local bp = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+            dropPos = bp and bp.Position
+        end
+        -- Credit `amount` of the node currency to `plr`, as a drop when possible, else instantly.
+        local function creditCoins(plr, amount, reason)
+            if
+                dropService
+                and dropService.SpawnCoinDrop
+                and dropService:SpawnCoinDrop(plr, currencyType, amount, dropPos)
+            then
+                return -- a pickup now carries the coins
+            end
+            economy:AddCurrency(plr, currencyType, amount, reason)
+        end
 
         local function resolvePlayerAward(player, baseAmount)
             baseAmount = tonumber(baseAmount) or 0
@@ -1874,12 +1894,7 @@ function BreakableSpawner:_trySpawnOne(
                         if plr and share > 0 then
                             local resolvedShare = resolvePlayerAward(plr, share)
                             pcall(function()
-                                economy:AddCurrency(
-                                    plr,
-                                    currencyType,
-                                    resolvedShare,
-                                    "crystal_break_split"
-                                )
+                                creditCoins(plr, resolvedShare, "crystal_break_split")
                                 if stats then
                                     stats:Increment(plr, "breakables_broken", 1)
                                 end
@@ -1921,12 +1936,7 @@ function BreakableSpawner:_trySpawnOne(
                     if topPlayer then
                         local resolvedRemainder = resolvePlayerAward(topPlayer, remainder)
                         pcall(function()
-                            economy:AddCurrency(
-                                topPlayer,
-                                currencyType,
-                                resolvedRemainder,
-                                "crystal_break_remainder"
-                            )
+                            creditCoins(topPlayer, resolvedRemainder, "crystal_break_remainder")
                         end)
                     end
                 end

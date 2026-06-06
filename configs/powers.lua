@@ -78,6 +78,7 @@ return {
         revive = { family = "revive", magnitude = 0, duration = 0 }, -- instant re-summon (mechanic)
         recall = { family = "recall", magnitude = 0, duration = 0 }, -- teleport to saved spot
         world_travel = { family = "world_travel", magnitude = 0, duration = 0 }, -- teleport to a hub
+        magnet = { family = "magnet", magnitude = 30, duration = 20 }, -- +30 studs collect radius (#167)
 
         -- ===== Attack-fill (origin-coloured) — reuse the enemy-debuff families (firewall-safe:
         -- player powers don't deal direct damage; they make pets hit harder / lock enemies). =====
@@ -147,6 +148,7 @@ return {
         xp_surge = { generic = true, focus_cost = 25, cooldown_seconds = 60, effect = "xp_boost" },
         revive = { generic = true, focus_cost = 25, cooldown_seconds = 30, effect = "revive" },
         recall = { generic = true, focus_cost = 10, cooldown_seconds = 30, effect = "recall" },
+        magnet = { generic = true, focus_cost = 15, cooldown_seconds = 30, effect = "magnet" },
         world_travel = {
             generic = true,
             focus_cost = 10,

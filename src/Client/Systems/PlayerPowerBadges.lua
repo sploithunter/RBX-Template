@@ -30,6 +30,7 @@ local BUFFS = {
     { attr = "MoveSpeedBuff", label = "SPD" }, -- Swift
     { attr = "RechargeBuff", label = "RCH" }, -- Hasten
     { attr = "XpBuff", label = "XP" }, -- XP Surge
+    { attr = "MagnetBuff", label = "MAG" }, -- Magnet (drop pull radius, #167)
 }
 
 local BLINK_LEAD = 5 -- seconds: blink in the final stretch

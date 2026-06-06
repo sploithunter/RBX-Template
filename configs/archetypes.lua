@@ -33,6 +33,7 @@ return {
         "recall",
         "world_travel",
         "xp_surge",
+        "magnet",
     },
 
     archetypes = {

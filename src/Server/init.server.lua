@@ -169,6 +169,12 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.BreakableService,
     { "Logger", "ConfigLoader" }
 )
+-- DropService (#167): physical coin pickups + Magnet collection. EconomyService resolved at runtime.
+loader:RegisterModule(
+    "DropService",
+    ServerScriptService.Server.Services.DropService,
+    { "Logger", "ConfigLoader" }
+)
 loader:RegisterModule(
     "PlayerEffectsService",
     ServerScriptService.Server.Services.PlayerEffectsService,
@@ -606,6 +612,7 @@ table.insert(requiredModules, "ShopService")
 table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "PetFollowService")
+table.insert(requiredModules, "DropService")
 table.insert(requiredModules, "AscensionAltarService")
 table.insert(requiredModules, "RealmPortalService")
 table.insert(requiredModules, "ZoneTrackerService")
