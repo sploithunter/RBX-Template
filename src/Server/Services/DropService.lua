@@ -1,21 +1,25 @@
 --[[
-    DropService (server, #167) — physical coin pickups + Magnet collection.
+    DropService (server, #167 + #177) — physical GEM pickups + Magnet collection.
 
     When a crystal breaks, BreakableSpawner hands the resolved COIN award to SpawnCoinDrop instead of
-    crediting it instantly (when configs/drops.lua.enabled). A pooled coin part pops out of the node;
-    a single Heartbeat loop collects it when the owner walks within `collect_radius` (+ the Magnet
-    power's MagnetBuff bonus), flying it in once close. Coins are never lost: a drop auto-collects to
-    its owner on despawn-timeout or when the per-server cap is exceeded. XP / pet-xp / realm cuts are
-    NOT handled here — they stay instant in BreakableSpawner; only the coin currency rides the drop.
+    crediting it instantly. The award SPLITS into one or more GEMS (payout by count — a fat node
+    bursts a fistful) that pop out and rest on the ground; a single Heartbeat loop collects them when
+    the owner walks within `collect_radius` (+ the Magnet power's MagnetBuff bonus), flying them in
+    once close. Coins are never lost: a gem auto-collects to its owner on despawn-timeout or when the
+    per-server cap is exceeded. XP / pet-xp / realm cuts stay instant in BreakableSpawner.
 
-    Pure-ish boundary: all gameplay numbers live in configs/drops.lua. EconomyService is resolved at
-    runtime (same pattern as BreakableSpawner) so crediting goes through the one currency path.
+    Each gem is a MODEL: a MeshPart (one of 3 shared form meshes + the biome-colour texture) with a
+    PointLight inside for glow (configs/gems.lua). Gem colour = biome currency; gem FORM = the chunk
+    it carries (single/pile/bag). Templates are built once (async) and cloned per drop; a tinted ball
+    is the fallback if a mesh fails to build, so drops never break. All numbers in configs/drops.lua
+    + configs/gems.lua.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local AssetService = game:GetService("AssetService")
 
 local DropService = {}
 DropService.__index = DropService
@@ -29,9 +33,12 @@ function DropService:Init()
     self._configLoader = self._modules and self._modules.ConfigLoader
     self._config = (self._configLoader and self._configLoader:LoadConfig("drops"))
         or require(ReplicatedStorage.Configs:WaitForChild("drops"))
+    self._gems = (self._configLoader and self._configLoader:LoadConfig("gems"))
+        or require(ReplicatedStorage.Configs:WaitForChild("gems"))
 
-    self._active = {} -- list of live drop records: { part, owner (userId), currency, amount, spawnAt, pulling }
-    self._pool = {} -- recycled parts
+    self._active = {} -- live drop records
+    self._pool = {} -- recycled gem models, keyed "color|form" (or "ball")
+    self._templates = {} -- built gem model templates, keyed "color|form"
 
     if not self._config.enabled then
         return -- inert: BreakableSpawner credits instantly when SpawnCoinDrop returns false
@@ -40,59 +47,181 @@ function DropService:Init()
     self._folder = Instance.new("Folder")
     self._folder.Name = "CoinDrops"
     self._folder.Parent = Workspace
+    self._templateHolder = Instance.new("Folder")
+    self._templateHolder.Name = "_GemTemplates"
+    self._templateHolder.Parent = self._folder
+
+    -- pre-build the gem templates off the hot path (CreateMeshPartAsync yields)
+    task.spawn(function()
+        for color in pairs(self._gems.textures or {}) do
+            for form in pairs(self._gems.meshes or {}) do
+                self:_ensureTemplate(color, form)
+            end
+        end
+    end)
 
     self._conn = RunService.Heartbeat:Connect(function()
         self:_step()
     end)
 end
 
--- Is the drops system live? BreakableSpawner checks this before handing coins over.
 function DropService:IsEnabled()
     return self._config and self._config.enabled == true
 end
 
--- Borrow a coin part from the pool (or make one).
-function DropService:_acquirePart()
-    local part = table.remove(self._pool)
-    if not part then
-        part = Instance.new("Part")
-        part.Shape = Enum.PartType.Ball
-        part.Material = Enum.Material.Neon
-        part.Color = color3(self._config.part_color or {})
-        part.Size = Vector3.new(
-            self._config.part_size or 1.3,
-            self._config.part_size or 1.3,
-            self._config.part_size or 1.3
-        )
-        part.Anchored = true
-        part.CanCollide = false
-        part.CanQuery = false
-        part.CanTouch = false
-        part.Massless = true
-        part.Name = "CoinDrop"
-        local light = Instance.new("PointLight")
-        light.Range = 6
-        light.Brightness = 1.5
-        light.Color = color3(self._config.part_color or {})
-        light.Parent = part
+-- ---- gem template construction -----------------------------------------
+
+-- Build (once) and cache the gem MODEL template for a colour+form: a MeshPart (mesh + texture,
+-- scaled, glassy) wrapped in a Model, with a PointLight inside for glow. Yields on first build.
+function DropService:_ensureTemplate(color, form)
+    local key = color .. "|" .. form
+    if self._templates[key] then
+        return self._templates[key]
     end
-    part.Transparency = 0
-    part.Parent = self._folder
-    return part
+    local meshId = self._gems.meshes and self._gems.meshes[form]
+    local texId = self._gems.textures
+        and self._gems.textures[color]
+        and self._gems.textures[color][form]
+    if not (meshId and texId) then
+        return nil
+    end
+    local ok, mesh = pcall(function()
+        -- selene: allow(undefined_variable)
+        local content = Content.fromUri(meshId) -- `Content` is a runtime global selene's std lacks
+        return AssetService:CreateMeshPartAsync(content, {
+            CollisionFidelity = Enum.CollisionFidelity.Box,
+            RenderFidelity = Enum.RenderFidelity.Automatic,
+        })
+    end)
+    if not ok or not mesh then
+        if self._logger and self._logger.Warn then
+            self._logger:Warn("Gem mesh build failed", { key = key, error = tostring(mesh) })
+        end
+        return nil -- caller falls back to a tinted ball
+    end
+    mesh.TextureID = texId
+    mesh.Anchored = true
+    mesh.CanCollide = false
+    mesh.CanQuery = false
+    mesh.CanTouch = false
+    mesh.Massless = true
+    mesh.Material = Enum.Material.Glass
+    mesh.Name = "Gem"
+    -- scale so the widest side ≈ config.size studs
+    local widest = math.max(mesh.Size.X, mesh.Size.Y, mesh.Size.Z)
+    if widest > 0 then
+        local s = (self._gems.size or 1.5) / widest
+        mesh.Size = mesh.Size * s
+    end
+    local light = Instance.new("PointLight")
+    light.Color = color3((self._gems.light_color and self._gems.light_color[color]) or {})
+    light.Range = self._gems.light_range or 9
+    light.Brightness = self._gems.light_brightness or 2.5
+    light.Parent = mesh
+    local model = Instance.new("Model")
+    model.Name = "GemDrop"
+    mesh.Parent = model
+    model.PrimaryPart = mesh
+    model.Parent = self._templateHolder
+    self._templates[key] = model
+    return model
 end
 
-function DropService:_recycle(part)
-    part.Parent = nil
-    if #self._pool < 200 then
-        self._pool[#self._pool + 1] = part
+-- Acquire a gem (or ball) instance for colour+form: pool hit, else clone the template, else a ball.
+-- Returns the Model and its movable PrimaryPart.
+function DropService:_acquireGem(color, form)
+    local key = color .. "|" .. form
+    local pooled = self._pool[key] and table.remove(self._pool[key])
+    if pooled then
+        pooled.Parent = self._folder
+        return pooled, pooled.PrimaryPart
+    end
+    local template = self._templates[key]
+    if template then
+        local clone = template:Clone()
+        clone.Parent = self._folder
+        return clone, clone.PrimaryPart
+    end
+    -- fallback: a tinted ball wrapped in a Model (template not built yet / mesh failed)
+    local ball = Instance.new("Part")
+    ball.Shape = Enum.PartType.Ball
+    ball.Material = Enum.Material.Neon
+    ball.Color = color3((self._gems.light_color and self._gems.light_color[color]) or {})
+    ball.Size = Vector3.new(self._gems.size or 1.4, self._gems.size or 1.4, self._gems.size or 1.4)
+    ball.Anchored = true
+    ball.CanCollide = false
+    ball.CanQuery = false
+    ball.CanTouch = false
+    ball.Massless = true
+    ball.Name = "Gem"
+    local light = Instance.new("PointLight")
+    light.Color = ball.Color
+    light.Range = self._gems.light_range or 9
+    light.Brightness = self._gems.light_brightness or 2.5
+    light.Parent = ball
+    local model = Instance.new("Model")
+    model.Name = "GemDrop"
+    ball.Parent = model
+    model.PrimaryPart = ball
+    model.Parent = self._folder
+    return model, ball
+end
+
+function DropService:_recycle(rec)
+    local model = rec.model
+    if not model then
+        return
+    end
+    model.Parent = nil
+    local key = rec.poolKey or "ball"
+    self._pool[key] = self._pool[key] or {}
+    if #self._pool[key] < 40 then
+        self._pool[key][#self._pool[key] + 1] = model
     else
-        part:Destroy()
+        model:Destroy()
     end
 end
 
--- Floor height under (x, z): raycast down from just above the node, ignoring drops, pets and
--- characters so the drop rests on the actual terrain/map, not on a passing pet. Falls back to
--- `fallbackY` if nothing is hit (e.g. over a gap). Returns the ground Y to rest the coin on.
+-- ---- payout split ------------------------------------------------------
+
+function DropService:_colorFor(currency)
+    local map = self._gems.currency_color or {}
+    return map[tostring(currency)] or self._gems.default_color or "emerald"
+end
+
+function DropService:_formFor(amount)
+    for _, tier in ipairs(self._gems.form_tiers or {}) do
+        if amount >= (tier.min or 0) then
+            return tier.form
+        end
+    end
+    return "single"
+end
+
+-- Split a coin award into gem chunks (payout by COUNT): one extra gem per `split_step`, clamped to
+-- `max_gems`; the award is divided across them (first gem keeps the remainder so the sum is exact).
+function DropService:_split(amount)
+    local step = self._gems.split_step or 250
+    local maxGems = self._gems.max_gems or 6
+    local count = math.clamp(1 + math.floor(amount / math.max(1, step)), 1, maxGems)
+    local per = math.floor(amount / count)
+    local rem = amount - per * count
+    local chunks = {}
+    for i = 1, count do
+        local a = per + (i == 1 and rem or 0)
+        if a > 0 then
+            chunks[#chunks + 1] = a
+        end
+    end
+    if #chunks == 0 then
+        chunks[1] = amount
+    end
+    return chunks
+end
+
+-- ---- spawn -------------------------------------------------------------
+
+-- Floor height under (x, z); ignores drops/pets/characters so gems rest on the terrain.
 function DropService:_groundY(x, z, fromY, fallbackY)
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Exclude
@@ -111,9 +240,8 @@ function DropService:_groundY(x, z, fromY, fallbackY)
     return result and result.Position.Y or fallbackY
 end
 
--- Spawn a coin pickup carrying `amount` of `currencyType` for `player`, popping out of `position`.
--- Returns true if a drop was created (caller must NOT credit), false if the caller should credit
--- instantly (drops disabled, amount too small, or no position). Never throws.
+-- Spawn gem pickups for a coin award. Returns true if drops were created (caller must NOT credit),
+-- false to credit instantly (disabled / too small / no position). Never throws.
 function DropService:SpawnCoinDrop(player, currencyType, amount, position)
     amount = tonumber(amount) or 0
     if not self:IsEnabled() then
@@ -126,58 +254,59 @@ function DropService:SpawnCoinDrop(player, currencyType, amount, position)
         return false
     end
 
-    -- cap: auto-collect the oldest live drop so the world never floods
-    if #self._active >= (self._config.max_active or 90) then
-        self:_collect(self._active[1], true)
-    end
-
-    local part = self:_acquirePart()
-    -- pop arc: hop up+out, then settle ON THE GROUND at the resting spot (raycast for the floor so
-    -- the coin rests on terrain instead of floating at the node's pivot height).
-    local ang = (#self._active % 12) * (math.pi / 6)
+    local color = self:_colorFor(currencyType)
+    local chunks = self:_split(amount)
+    local pop = self._config.pop_up or 7
     local out = self._config.pop_out or 5
-    local radius = (self._config.part_size or 1.3) * 0.5
-    local hx, hz = position.X + math.cos(ang) * out, position.Z + math.sin(ang) * out
-    local groundY = self:_groundY(hx, hz, position.Y, position.Y - 1)
-    local rest = Vector3.new(hx, groundY + radius, hz)
-    local apex = position
-        + Vector3.new(
-            math.cos(ang) * out * 0.5,
-            self._config.pop_up or 7,
-            math.sin(ang) * out * 0.5
-        )
-    part.CFrame = CFrame.new(apex)
 
-    local rec = {
-        part = part,
-        owner = player.UserId,
-        currency = tostring(currencyType or "coins"),
-        amount = math.floor(amount),
-        spawnAt = os.clock(),
-        rest = rest,
-        settling = true,
-    }
-    self._active[#self._active + 1] = rec
+    for i, chunkAmount in ipairs(chunks) do
+        -- cap: auto-collect the oldest live drop so the world never floods
+        if #self._active >= (self._config.max_active or 90) then
+            self:_collect(self._active[1], true)
+        end
+        local form = self:_formFor(chunkAmount)
+        local model, part = self:_acquireGem(color, form)
+        local ang = ((#self._active + i) % 12) * (math.pi / 6)
+        local hx = position.X + math.cos(ang) * out
+        local hz = position.Z + math.sin(ang) * out
+        local groundY = self:_groundY(hx, hz, position.Y, position.Y - 1)
+        local radius = part.Size.Y * 0.5
+        local rest = Vector3.new(hx, groundY + radius, hz)
+        local apex = position
+            + Vector3.new(math.cos(ang) * out * 0.5, pop, math.sin(ang) * out * 0.5)
+        part.CFrame = CFrame.new(apex)
 
-    -- settle tween (cheap: just lerp via a short task; the Heartbeat loop ignores it until settled)
-    local TweenService = game:GetService("TweenService")
-    local tw = TweenService:Create(
-        part,
-        TweenInfo.new(
-            self._config.pop_time or 0.35,
-            Enum.EasingStyle.Quad,
-            Enum.EasingDirection.Out
-        ),
-        { CFrame = CFrame.new(rest) }
-    )
-    tw:Play()
-    task.delay(self._config.pop_time or 0.35, function()
-        rec.settling = false
-    end)
+        local rec = {
+            model = model,
+            part = part,
+            poolKey = color .. "|" .. form,
+            owner = player.UserId,
+            currency = tostring(currencyType or "coins"),
+            amount = math.floor(chunkAmount),
+            spawnAt = os.clock(),
+            settling = true,
+        }
+        self._active[#self._active + 1] = rec
+
+        local TweenService = game:GetService("TweenService")
+        TweenService:Create(
+            part,
+            TweenInfo.new(
+                self._config.pop_time or 0.35,
+                Enum.EasingStyle.Quad,
+                Enum.EasingDirection.Out
+            ),
+            { CFrame = CFrame.new(rest) }
+        ):Play()
+        task.delay(self._config.pop_time or 0.35, function()
+            rec.settling = false
+        end)
+    end
     return true
 end
 
--- Resolve the owner's root position (nil if offline / no character).
+-- ---- collect loop ------------------------------------------------------
+
 local function ownerRoot(userId)
     local plr = Players:GetPlayerByUserId(userId)
     if not plr then
@@ -188,8 +317,6 @@ local function ownerRoot(userId)
     return plr, hrp and hrp.Position
 end
 
--- Credit (or drop) a record and recycle its part. `force` = auto-collect (cap/despawn) — credits
--- to the owner if online, else just removes the part (offline players can't be credited here).
 function DropService:_collect(rec, _force)
     if not rec or rec._done then
         return
@@ -204,14 +331,13 @@ function DropService:_collect(rec, _force)
             end)
         end
     end
-    -- remove from active list
     for i, r in ipairs(self._active) do
         if r == rec then
             table.remove(self._active, i)
             break
         end
     end
-    self:_recycle(rec.part)
+    self:_recycle(rec)
 end
 
 function DropService:_step()
@@ -224,32 +350,31 @@ function DropService:_step()
     local spin = math.rad(cfg.part_spin or 90) * (1 / 60)
     local nowT = os.time()
 
-    -- iterate backwards so collect() removals are safe
     for i = #self._active, 1, -1 do
         local rec = self._active[i]
-        if not rec or rec._done then
-            -- skip
+        if not rec or rec._done or not rec.part or not rec.part.Parent then
+            if rec and not rec._done then
+                self:_collect(rec, true)
+            end
         elseif now - rec.spawnAt >= despawn then
-            self:_collect(rec, true) -- never lose coins
+            self:_collect(rec, true)
         else
             local plr, rootPos = ownerRoot(rec.owner)
             if not plr then
-                -- owner left: drop the part (no offline credit)
                 self:_collect(rec, true)
             elseif rootPos and not rec.settling then
-                -- Magnet bonus: the power's MagnetBuff (studs) added while live
                 local bonus = 0
                 if (plr:GetAttribute("MagnetBuffUntil") or 0) > nowT then
                     bonus = tonumber(plr:GetAttribute("MagnetBuff")) or 0
                 end
                 local dist = (rec.part.Position - rootPos).Magnitude
                 if dist <= pullR then
-                    self:_collect(rec) -- close enough → pocket it
+                    self:_collect(rec)
                 elseif dist <= (baseR + bonus) then
-                    -- fly toward the player (vacuum)
                     local dir = (rootPos - rec.part.Position)
-                    local step = math.min(pullSpeed / 60, dir.Magnitude)
-                    rec.part.CFrame = rec.part.CFrame * CFrame.Angles(0, spin, 0) + dir.Unit * step
+                    local stepLen = math.min(pullSpeed / 60, dir.Magnitude)
+                    rec.part.CFrame = rec.part.CFrame * CFrame.Angles(0, spin, 0)
+                        + dir.Unit * stepLen
                 else
                     rec.part.CFrame = rec.part.CFrame * CFrame.Angles(0, spin, 0)
                 end
