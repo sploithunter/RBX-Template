@@ -31,6 +31,7 @@ local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
 local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
+local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local PetFollowService = {}
@@ -43,6 +44,7 @@ function PetFollowService:Init()
     self._combatConfig = self._configLoader:LoadConfig("combat")
     self._petRoles = self._configLoader:LoadConfig("pet_roles")
     self._levelingConfig = self._configLoader:LoadConfig("leveling")
+    self._buffsConfig = self._configLoader:LoadConfig("buffs") or {}
     self._originConfig = (self._configLoader:LoadConfig("combat_fx") or {}).origin or {}
     self._nextHit = {} -- pet model -> os.clock() of next allowed mining hit
     self._petPos = setmetatable({}, { __mode = "k" }) -- pet model -> { pos, t } (weak: dead pets GC)
@@ -364,15 +366,26 @@ function PetFollowService:_mine(player, pet, breakable)
     -- Support-power modifiers (Feature 14): the player's active damage buff and the
     -- target's vulnerability both scale pet damage (os.time-gated, set by PowerService).
     local nowT = os.time()
-    if (player:GetAttribute("PetDamageBuffUntil") or 0) > nowT then
-        dmg = dmg * (player:GetAttribute("PetDamageBuff") or 1)
-    end
-    -- Lava buffer's team offense aura (emberimp) — a SEPARATE channel from the power buff
-    -- above, so an aura and an activated damage power stack. Boosts mining AND combat (this
-    -- path handles both ore and enemies).
-    if (player:GetAttribute("PetTeamDamageBuffUntil") or 0) > nowT then
-        dmg = dmg * (player:GetAttribute("PetTeamDamageBuff") or 1)
-    end
+    -- pet_damage axis: the activated damage power (PetDamageBuff) and the Lava offense aura
+    -- (PetTeamDamageBuff) are the SAME axis, so they ADD (BuffStack), not compound — 1.5 + 1.25
+    -- => x1.75, never x1.875. Stored as multipliers; fraction = mult - 1. Clamped to the axis cap.
+    local petDmgSources = {
+        {
+            fraction = (player:GetAttribute("PetDamageBuff") or 1) - 1,
+            expiry = player:GetAttribute("PetDamageBuffUntil") or 0,
+        },
+        {
+            fraction = (player:GetAttribute("PetTeamDamageBuff") or 1) - 1,
+            expiry = player:GetAttribute("PetTeamDamageBuffUntil") or 0,
+        },
+    }
+    dmg = dmg
+        * BuffStack.multiplier(
+            petDmgSources,
+            nowT,
+            self._buffsConfig.axes and self._buffsConfig.axes.pet_damage
+        )
+    -- VulnerableMult is a SEPARATE axis (enemy weakness, not pet output) so it multiplies across.
     if (breakable:GetAttribute("VulnerableUntil") or 0) > nowT then
         dmg = dmg * (breakable:GetAttribute("VulnerableMult") or 1)
     end

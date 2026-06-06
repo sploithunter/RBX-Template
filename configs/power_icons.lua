@@ -121,6 +121,36 @@ local M = {
         aoe_blind = { symbol = "eye_hidden", target = "enemy_aoe" }, -- sandstorm
         damage_over_time = { symbol = "contagion", target = "single" }, -- mark_of_flame
         aoe_damage = { symbol = "fist_impact", target = "enemy_aoe" }, -- eruption
+        -- Generic / farming / luck / utility roster (white disc unless the power sets an element):
+        heal = { symbol = "plus", target = "self" }, -- restore endurance
+        coin_yield = { symbol = "coins_up", target = "self" }, -- Prospector
+        mining_boost = { symbol = "capacitor", target = "self" }, -- Mother Lode
+        windfall = { symbol = "gift_up", target = "self" }, -- Windfall
+        magnet = { symbol = "magnet", target = "self" }, -- Magnet (drop pull)
+        luck = { symbol = "clover_lucky", target = "self" }, -- Fortune
+        luck_huge = { symbol = "clover_huge", target = "self" }, -- Huge Fortune
+        move_speed = { symbol = "arrow_right", target = "self" }, -- Swift
+        recharge = { symbol = "history", target = "self" }, -- Hasten
+        revive = { symbol = "revive", target = "self" }, -- Revive (instant re-summon)
+        recall = { symbol = "pet_transfer", target = "self" }, -- Recall (to saved/egg spot)
+        world_travel = { symbol = "portal", target = "self" }, -- World Travel
+        xp_boost = { symbol = "xp_up", target = "self" }, -- XP boost
+        -- Attack fill (origin-coloured):
+        sunder = { symbol = "shield_broken", target = "enemy_aoe" }, -- armor break
+        disarm = { symbol = "fist_broken", target = "single" }, -- weaken enemy attack
+        focus_fire = { symbol = "target", target = "single" }, -- designate priority target
+        expose = { symbol = "eye", target = "single" }, -- reveal + accuracy/crit
+        cripple = { symbol = "target_down", target = "single" }, -- slow + weaken
+        strike = { symbol = "fist", target = "single" }, -- basic single hit
+    },
+
+    -- Support PET aura kind (configs/pet_roles.lua support_auras) -> the white SYMBOL for its badge.
+    -- The disc COLOUR is the pet's biome element; this picks the symbol (heal=plus, yield=coins_up…).
+    support_symbol = {
+        heal = "plus",
+        defense = "armor_chest",
+        offense = "chevrons_up",
+        yield = "coins_up",
     },
     power_glyph_symbol = {
         debuff = "contagion",
