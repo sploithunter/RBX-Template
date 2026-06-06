@@ -92,7 +92,6 @@ local hatchingConfigSuccess, hatchingConfigResult = pcall(function()
 end)
 if hatchingConfigSuccess and hatchingConfigResult then
     hatchingConfig = hatchingConfigResult
-    print("✅ Loaded egg hatching timing config - preset:", hatchingConfig.current_preset)
 else
     -- Fallback configuration
     hatchingConfig = {
@@ -116,7 +115,6 @@ else
             end,
         },
     }
-    print("⚠️ Using fallback egg hatching timing config")
 end
 
 local EggHatchingService = {}
@@ -334,8 +332,6 @@ function EggHatchingService:ClearScreen()
     local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
     local animatedGUIs = {}
 
-    print("🎬 Clearing screen for cinematic egg hatching...")
-
     -- Simple approach: Just fade out entire ScreenGuis (not individual elements)
     for _, gui in pairs(playerGui:GetChildren()) do
         if gui:IsA("ScreenGui") and gui.Name ~= "EggHatchingGui" and gui.Enabled then
@@ -350,19 +346,14 @@ function EggHatchingService:ClearScreen()
         end
     end
 
-    print("🎭 Disabled", #animatedGUIs, "ScreenGuis for cinematic mode")
-
     self._hiddenScreenGuis = animatedGUIs
     return animatedGUIs
 end
 
 function EggHatchingService:RestoreScreen(animatedElements)
     if not animatedElements or #animatedElements == 0 then
-        print("⚠️ No animated elements to restore")
         return
     end
-
-    print("🎬 Restoring screen UI elements...")
 
     -- Simply re-enable the GUIs
     for _, guiData in pairs(animatedElements) do
@@ -373,8 +364,6 @@ function EggHatchingService:RestoreScreen(animatedElements)
             gui.Enabled = guiData.originalEnabled
         end
     end
-
-    print("✨ Screen restoration complete!")
 
     -- Clear the shared hidden-set so the next hatch captures fresh (the HUD is visible again).
     self._hiddenScreenGuis = nil
@@ -454,13 +443,6 @@ function EggHatchingService:CalculateGridLayout(eggCount, containerWidth, contai
     eggSize = math.min(maxEggSize, math.max(1, eggSize))
     local minEggSize = math.min(configuredMinEggSize, eggSize)
 
-    print("🔢 SIZE CALCULATION TRACE:")
-    print("  📊 Container:", containerWidth .. "x" .. containerHeight)
-    print("  📐 Available space:", availableWidth .. "x" .. availableHeight)
-    print("  📏 Cell size:", cellWidth .. "x" .. cellHeight)
-    print("  🥚 Original egg size:", originalEggSize)
-    print("  ✅ Final egg size:", eggSize, "(min:", minEggSize, "max:", maxEggSize .. ")")
-
     -- Calculate starting position to center the grid
     local gridWidth = (eggSize * layout.columns) + (padding * (layout.columns - 1))
     local gridHeight = (eggSize * layout.rows) + (padding * (layout.rows - 1))
@@ -490,12 +472,6 @@ function EggHatchingService:GenerateEggPositions(eggCount, gridInfo)
     local fullRows = math.floor(eggCount / layout.columns)
     local remainingEggs = eggCount % layout.columns
 
-    print("🎯 CENTERING DEBUG:")
-    print("  📊 Total eggs:", eggCount)
-    print("  📊 Grid columns:", layout.columns)
-    print("  📊 Full rows:", fullRows)
-    print("  📊 Remaining eggs:", remainingEggs)
-
     for i = 1, math.min(eggCount, layout.maxItems) do
         -- Convert linear index to grid coordinates (0-based)
         local gridIndex = i - 1
@@ -511,14 +487,6 @@ function EggHatchingService:GenerateEggPositions(eggCount, gridInfo)
             local emptySpaces = layout.columns - remainingEggs
             local offset = emptySpaces / 2
             adjustedCol = col + offset
-            print(
-                "  🎯 Row",
-                row,
-                "is partial - centering",
-                remainingEggs,
-                "eggs with offset",
-                offset
-            )
         end
 
         -- Calculate pixel position using adjusted column
@@ -534,20 +502,6 @@ function EggHatchingService:GenerateEggPositions(eggCount, gridInfo)
             index = i,
             isPartialRow = isPartialRow,
         })
-
-        print(
-            "  📍 Egg",
-            i,
-            "at grid (",
-            adjustedCol,
-            ",",
-            row,
-            ") -> pixel (",
-            math.floor(x),
-            ",",
-            math.floor(y),
-            ")"
-        )
     end
 
     return positions
@@ -591,28 +545,6 @@ function EggHatchingService:CreateEggFrame(position, eggData)
     frame:SetAttribute("SpecialHatch", specialHatch)
     frame:SetAttribute("AutoDeleted", isAutoDeletedEggData(eggData))
 
-    print(
-        "🖼️ Creating egg frame at position:",
-        position.x,
-        position.y,
-        "| Size:",
-        position.size
-    )
-    print(
-        "📏 Frame UDim2 size:",
-        frame.Size.X.Scale,
-        frame.Size.X.Offset,
-        frame.Size.Y.Scale,
-        frame.Size.Y.Offset
-    )
-    print(
-        "📍 Frame UDim2 position:",
-        frame.Position.X.Scale,
-        frame.Position.X.Offset,
-        frame.Position.Y.Scale,
-        frame.Position.Y.Offset
-    )
-
     -- Egg image - use authored world egg visuals first, then generated ViewportFrames.
     local eggImage = nil
 
@@ -620,9 +552,7 @@ function EggHatchingService:CreateEggFrame(position, eggData)
         eggImage = self:GetAuthoredEggViewport(eggData.eggType or "basic_egg")
         if eggImage then
             visualSource = "authored"
-            print("🖼️ Using authored egg ViewportFrame for:", eggData.eggType)
         else
-            print("⚠️ No authored egg ViewportFrame found, using generated/fallback")
         end
     end
 
@@ -631,9 +561,7 @@ function EggHatchingService:CreateEggFrame(position, eggData)
         eggImage = self:GetGeneratedEggViewport(eggData.eggType or "basic_egg")
         if eggImage then
             visualSource = "generated"
-            print("🖼️ Using generated ViewportFrame for:", eggData.eggType)
         else
-            print("⚠️ No generated ViewportFrame found, using fallback")
         end
     end
 
@@ -641,7 +569,6 @@ function EggHatchingService:CreateEggFrame(position, eggData)
     if not eggImage then
         eggImage = Instance.new("ImageLabel")
         eggImage.Image = eggData.imageId or "rbxasset://textures/face.png"
-        print("🖼️ Using fallback ImageLabel:", eggImage.Image)
     end
     frame:SetAttribute("EggVisualSource", visualSource)
 
@@ -650,7 +577,6 @@ function EggHatchingService:CreateEggFrame(position, eggData)
     eggImage.Position = UDim2.new(0, 0, 0, 0)
     eggImage.BackgroundTransparency = 1
     eggImage.BorderSizePixel = 0
-    print("🖼️ Created egg image element:", eggImage.ClassName)
 
     eggImage.Parent = frame
 
@@ -966,41 +892,6 @@ function EggHatchingService:AnimateShake(eggComponents, duration)
     local eggImage = eggComponents.egg
 
     -- DEBUG: Log detailed size information during shake
-    print("🔍 SHAKE DEBUG START:")
-    print(
-        "  📏 EggImage AbsoluteSize:",
-        eggImage.AbsoluteSize.X .. "x" .. eggImage.AbsoluteSize.Y
-    )
-    print(
-        "  📏 EggImage Size UDim2:",
-        eggImage.Size.X.Scale,
-        eggImage.Size.X.Offset,
-        eggImage.Size.Y.Scale,
-        eggImage.Size.Y.Offset
-    )
-    print(
-        "  📍 EggImage AbsolutePosition:",
-        eggImage.AbsolutePosition.X .. "," .. eggImage.AbsolutePosition.Y
-    )
-    print(
-        "  📍 EggImage Position UDim2:",
-        eggImage.Position.X.Scale,
-        eggImage.Position.X.Offset,
-        eggImage.Position.Y.Scale,
-        eggImage.Position.Y.Offset
-    )
-    print(
-        "  🏠 Parent AbsoluteSize:",
-        eggImage.Parent.AbsoluteSize.X .. "x" .. eggImage.Parent.AbsoluteSize.Y
-    )
-    print(
-        "  🏠 Parent Size UDim2:",
-        eggImage.Parent.Size.X.Scale,
-        eggImage.Parent.Size.X.Offset,
-        eggImage.Parent.Size.Y.Scale,
-        eggImage.Parent.Size.Y.Offset
-    )
-    print("  🔍 EggImage ClassName:", eggImage.ClassName)
 
     eggComponents.state = ANIMATION_STATE.SHAKE
 
@@ -1030,16 +921,6 @@ function EggHatchingService:AnimateShake(eggComponents, duration)
         while tick() - startTime < duration do
             task.wait(10)
             local elapsed = tick() - startTime
-            print("🔍 SHAKE SIZE CHECK @", math.floor(elapsed), "s:")
-            print(
-                "  📏 Current AbsoluteSize:",
-                eggImage.AbsoluteSize.X .. "x" .. eggImage.AbsoluteSize.Y
-            )
-            print(
-                "  📍 Current AbsolutePosition:",
-                eggImage.AbsolutePosition.X .. "," .. eggImage.AbsolutePosition.Y
-            )
-            print("  🔄 Current Rotation:", eggImage.Rotation)
         end
     end)
 
@@ -1060,18 +941,11 @@ function EggHatchingService:AnimateFlash(eggComponents, duration)
     reloadFlashEffectsConfig()
     local effectConfig = flashEffectsConfig.effects[flashEffectsConfig.default_effect]
     if not effectConfig then
-        print("⚠️ Flash effect config not found, using fallback")
         effectConfig = flashEffectsConfig.effects.starburst
     end
 
     -- Debug config loading
-    print("🔍 FLASH CONFIG DEBUG:")
-    print("  📊 flashEffectsConfig exists:", flashEffectsConfig ~= nil)
-    print("  📊 default_effect:", flashEffectsConfig.default_effect)
-    print("  📊 effectConfig exists:", effectConfig ~= nil)
     if effectConfig then
-        print("  📊 effectConfig.name:", effectConfig.name)
-        print("  📊 effectConfig.config exists:", effectConfig.config ~= nil)
     end
 
     duration = duration or (effectConfig and effectConfig.config.duration) or 0.8
@@ -1080,33 +954,23 @@ function EggHatchingService:AnimateFlash(eggComponents, duration)
 
     eggComponents.state = ANIMATION_STATE.FLASH
 
-    print("🌟 Creating effect:", effectConfig and effectConfig.name or "FALLBACK")
-
     -- Hide egg during flash (handle both ImageLabel and ViewportFrame)
-    print("🫥 HIDING EGG DEBUG:")
-    print("  📊 eggImage.ClassName:", eggImage.ClassName)
-    print("  📊 eggImage.Name:", eggImage.Name)
-    print("  📊 Current Visible:", eggImage.Visible)
 
     local hideEggProps = {}
     if eggImage.ClassName == "ViewportFrame" then
         -- ViewportFrames need to be hidden by setting Visible to false
         -- BackgroundTransparency doesn't affect the 3D content inside
         hideEggProps.Visible = false
-        print("  🔧 Setting ViewportFrame Visible = false")
     else
         hideEggProps.ImageTransparency = 1
-        print("  🔧 Setting ImageLabel ImageTransparency = 1")
     end
 
     -- For immediate hide, don't use tween for Visible property
     if eggImage.ClassName == "ViewportFrame" then
         eggImage.Visible = false
-        print("  ✅ ViewportFrame immediately hidden")
     else
         local hideEgg = TweenService:Create(eggImage, TweenInfo.new(0.1), hideEggProps)
         hideEgg:Play()
-        print("  ✅ ImageLabel fade-out tween started")
     end
 
     if eggComponents._silentHatch ~= true then
@@ -1200,17 +1064,6 @@ function EggHatchingService:CreateStarburstEffect(container, config)
     for _, child in pairs(container:GetChildren()) do
         child:Destroy()
     end
-
-    print("⭐ Creating", config.star_count, "stars for starburst effect")
-    print("🔍 CONTAINER DEBUG:")
-    print("  📦 Container name:", container.Name)
-    print("  📦 Container size:", container.AbsoluteSize.X, "x", container.AbsoluteSize.Y)
-    print(
-        "  📦 Container position:",
-        container.AbsolutePosition.X,
-        ",",
-        container.AbsolutePosition.Y
-    )
 
     -- Create stars
     for i = 1, config.star_count do
@@ -1444,17 +1297,6 @@ function EggHatchingService:CreateStar(container, config, index)
     starShape.Parent = star
     star.Parent = container
 
-    print(
-        "🌟 Created star",
-        index,
-        "at position:",
-        star.AbsolutePosition.X,
-        ",",
-        star.AbsolutePosition.Y,
-        "size:",
-        star.AbsoluteSize.X
-    )
-
     return star
 end
 
@@ -1462,7 +1304,6 @@ end
 function EggHatchingService:AnimateStar(star, config, index)
     local starShape = star:FindFirstChild("StarShape")
     if not starShape then
-        print("❌ StarShape not found for star", index)
         return
     end
 
@@ -1473,8 +1314,6 @@ function EggHatchingService:AnimateStar(star, config, index)
     -- Calculate end position (relative to container center)
     local endX = math.cos(angleRad) * config.expansion_distance
     local endY = math.sin(angleRad) * config.expansion_distance
-
-    print("🚀 Animating star", index, "angle:", angle, "end position:", endX, endY)
 
     -- Fade in quickly
     local fadeIn = TweenService:Create(starShape, TweenInfo.new(config.fade_in_time), {
@@ -1524,18 +1363,9 @@ end
 function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, duration)
     duration = duration or 1.0
 
-    print("🎭 REVEAL DEBUG START:")
-    print("  📊 petImageId:", petImageId)
-    print("  📊 petData:", petData and "EXISTS" or "NIL")
     if petData then
-        print("  📊 petData.petType:", petData.petType)
-        print("  📊 petData.variant:", petData.variant)
     end
-    print("  📊 duration:", duration)
-    print("  📊 eggComponents.reveal exists:", eggComponents.reveal ~= nil)
     if eggComponents.reveal then
-        print("  📊 eggComponents.reveal.ClassName:", eggComponents.reveal.ClassName)
-        print("  📊 eggComponents.reveal.Name:", eggComponents.reveal.Name)
     end
 
     local petReveal = eggComponents.reveal
@@ -1544,15 +1374,12 @@ function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, du
 
     -- Handle generated images vs regular asset IDs
     if petImageId == "generated_image" and petData then
-        print("  🔄 Using generated image path")
-
         -- The reveal's container is the egg frame. On a fast hatch the previous frame can be
         -- torn down (ClearEggFrames) while this reveal is mid-flight, so petReveal.Parent may be
         -- nil — fall back to the known frame, and only bail if the FRAME ITSELF is gone (truly
         -- superseded). This still displays the reveal whenever its frame is alive.
         local parent = petReveal.Parent or eggComponents.frame
         if not parent or not parent.Parent then
-            print("  ⚠️ Reveal frame gone (superseded by a faster hatch) — skipping reveal")
             if petReveal then
                 petReveal:Destroy()
             end
@@ -1562,7 +1389,6 @@ function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, du
         if not petReveal:IsA("ViewportFrame") then
             -- First reveal on these components: swap the ImageLabel for the generated viewport.
             local generatedImage = self:GetGeneratedPetImage(petData.petType, petData.variant)
-            print("  📊 generatedImage found:", generatedImage ~= nil)
             if generatedImage then
                 petReveal:Destroy()
                 petReveal = generatedImage:Clone()
@@ -1572,7 +1398,6 @@ function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, du
                 petReveal.Parent = parent
                 eggComponents.reveal = petReveal
             else
-                print("  ❌ Failed to get generated pet image!")
             end
         elseif petReveal.Parent ~= parent then
             -- Already swapped by a prior AnimateReveal (fast-hatch double-fire) but orphaned —
@@ -1583,15 +1408,9 @@ function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, du
 
         petReveal.ZIndex = (parent.ZIndex or 1) + 3
     else
-        print("  🔄 Using regular image path")
         -- Set regular image
         petReveal.Image = petImageId or "rbxasset://textures/face.png"
-        print("  📊 Set Image to:", petReveal.Image)
     end
-
-    print("  📊 Final petReveal.ClassName:", petReveal.ClassName)
-    print("  📊 Final petReveal.Name:", petReveal.Name)
-    print("  📊 Final petReveal.Parent:", petReveal.Parent and petReveal.Parent.Name or "NIL")
 
     -- Give ViewportFrame a moment to render before starting animation
     if petReveal.ClassName == "ViewportFrame" then
@@ -1601,32 +1420,24 @@ function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, du
     -- Ensure transparency is set correctly regardless of element type
     petReveal.BackgroundTransparency = 1
     if petReveal.ClassName == "Frame" then
-        print("  📊 Setting Frame BackgroundTransparency to 1")
     elseif petReveal.ClassName == "ViewportFrame" then
-        print("  📊 Setting ViewportFrame BackgroundTransparency to 1")
     else
-        print("  📊 Setting", petReveal.ClassName, "BackgroundTransparency to 1")
     end
 
     -- Scale and fade in effect
     petReveal.Size = UDim2.new(0.3, 0, 0.3, 0)
     petReveal.Position = UDim2.new(0.35, 0, 0.35, 0)
-    print("  📊 Set initial Size:", tostring(petReveal.Size))
-    print("  📊 Set initial Position:", tostring(petReveal.Position))
 
     -- Handle transparency for both ImageLabel and ViewportFrame
     if petReveal.ClassName == "ViewportFrame" then
         petReveal.BackgroundTransparency = 1
-        print("  📊 Using BackgroundTransparency for ViewportFrame")
     else
         petReveal.ImageTransparency = 1
-        print("  📊 Using ImageTransparency for ImageLabel")
     end
 
     -- Ensure the reveal element itself has a clear background
     if petReveal.ClassName == "Frame" then
         petReveal.BackgroundTransparency = 1
-        print("  📊 Set Frame BackgroundTransparency to 1")
     end
 
     local tweenProperties = {
@@ -1636,23 +1447,17 @@ function EggHatchingService:AnimateReveal(eggComponents, petImageId, petData, du
     -- REMOVED: Don't tween transparency - keep it transparent
     -- tweenProperties[transparencyProperty] = 0
 
-    print("  📊 Tween target Size:", tostring(tweenProperties.Size))
-    print("  📊 Tween target Position:", tostring(tweenProperties.Position))
-    print("  📊 Tween target transparency: KEEPING TRANSPARENT (no tween)")
-
     local revealTween = TweenService:Create(
         petReveal,
         TweenInfo.new(duration, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
         tweenProperties
     )
 
-    print("  🎬 Starting reveal tween for", duration, "seconds...")
     revealTween:Play()
     self:ShowRevealBadges(eggComponents)
 
     task.wait(duration)
 
-    print("  ✅ Reveal tween complete")
     eggComponents.state = ANIMATION_STATE.COMPLETE
     return true
 end
@@ -1665,8 +1470,6 @@ function EggHatchingService:InitializePersistentGui()
     if self._persistentGui then
         return -- Already initialized
     end
-
-    print("🏗️ Creating persistent egg hatching GUI...")
 
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "EggHatchingGui"
@@ -1688,8 +1491,6 @@ function EggHatchingService:InitializePersistentGui()
     -- Store references
     self._persistentGui = screenGui
     self._persistentContainer = container
-
-    print("✅ Persistent egg hatching GUI created and ready")
 end
 
 function EggHatchingService:CleanupExistingHatchingGUIs()
@@ -1705,7 +1506,6 @@ function EggHatchingService:CleanupExistingHatchingGUIs()
     end
 
     if cleanedCount > 0 then
-        print("🧹 Cleaned up", cleanedCount, "duplicate hatching GUIs")
     end
 end
 
@@ -1724,7 +1524,6 @@ function EggHatchingService:ClearEggFrames()
     end
 
     if removedCount > 0 then
-        print("🧹 Cleared", removedCount, "egg frames from persistent container")
     end
 end
 
@@ -1779,7 +1578,6 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
     end
 
     -- PHASE 1: Clear the screen cinematically
-    print("🎬 Phase 1: Clearing screen for cinematic experience...")
     local animatedElements = self:ClearScreen()
 
     -- PHASE 2: Clear any existing egg frames and prepare container
@@ -1802,19 +1600,6 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
     self._persistentGui:SetAttribute("GridEggSize", gridInfo.eggSize)
     self._persistentGui:SetAttribute("GridPadding", gridInfo.padding)
     self._persistentGui:SetAttribute("GridCompactMode", gridInfo.compactMode)
-    print(
-        "🥚 Phase 2: Starting hatching animation for",
-        eggCount,
-        "eggs using",
-        gridInfo.layout.name,
-        "grid"
-    )
-    print("📐 Container size:", containerSize.X, "x", containerSize.Y)
-    print("🥚 Calculated egg size:", gridInfo.eggSize, "pixels")
-    print(
-        "📍 First egg position:",
-        positions[1] and (positions[1].x .. ", " .. positions[1].y) or "none"
-    )
 
     -- Create egg frames
     local eggFrames = {}
@@ -1829,20 +1614,6 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
 
         -- Debug after parenting
         task.wait() -- Let positioning take effect
-        print("📐 ACTUAL SIZES (after parenting):")
-        print("  📦 Frame AbsoluteSize:", frame.AbsoluteSize.X .. "x" .. frame.AbsoluteSize.Y)
-        print(
-            "  📦 Frame AbsolutePosition:",
-            frame.AbsolutePosition.X .. ", " .. frame.AbsolutePosition.Y
-        )
-        print(
-            "  🏠 Container AbsoluteSize:",
-            container.AbsoluteSize.X .. "x" .. container.AbsoluteSize.Y
-        )
-        print(
-            "  🏠 Container AbsolutePosition:",
-            container.AbsolutePosition.X .. ", " .. container.AbsolutePosition.Y
-        )
 
         table.insert(eggFrames, frame)
         table.insert(eggComponents, components)
@@ -1886,15 +1657,18 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
     -- never permanently locked out. Both are keyed to hatchGen so a superseding hatch owns its
     -- own lock + watchdog and this one's stale timer no-ops.
     self._hatchLocked = true
-    task.delay(hatchLockWatchdogSeconds(eggCount, eggsData[1] and eggsData[1].hatchOptions), function()
-        if self._hatchGeneration == hatchGen and self._hatchLocked then
-            self._hatchLocked = false
-            warn(
-                "[EggHatchingService] Hatch lock released by watchdog (teardown did not complete) — gen "
-                    .. tostring(hatchGen)
-            )
+    task.delay(
+        hatchLockWatchdogSeconds(eggCount, eggsData[1] and eggsData[1].hatchOptions),
+        function()
+            if self._hatchGeneration == hatchGen and self._hatchLocked then
+                self._hatchLocked = false
+                warn(
+                    "[EggHatchingService] Hatch lock released by watchdog (teardown did not complete) — gen "
+                        .. tostring(hatchGen)
+                )
+            end
         end
-    end)
+    )
 
     task.spawn(function()
         self:ExecuteHatchingSequence(
@@ -1918,7 +1692,6 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
             return
         end
 
-        print("🎬 Phase 4: Restoring screen...")
         self:RestoreScreen(animatedElements)
 
         -- PHASE 5: Auto cleanup after a short delay - just disable the GUI
@@ -1931,10 +1704,8 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
             return
         end
 
-        print("🧹 Auto-cleanup: Disabling hatching GUI...")
         self._persistentGui.Enabled = false
         self:ClearEggFrames() -- Clean up egg frames for next use
-        print("✅ Auto-cleanup complete - GUI ready for reuse")
         cleanupResult.isComplete = true
 
         -- Teardown finished for the current hatch: release the lock so the next hatch may start.
@@ -1966,25 +1737,7 @@ function EggHatchingService:ExecuteHatchingSequence(
     local doStagger = timingDebug.doStagger == true
     local completionWait = timingDebug.completionWait
 
-    print(
-        "⚡ Using",
-        timingDebug.preset,
-        "speed preset (",
-        timingDebug.presetSpeedMultiplier,
-        "x)"
-    )
-    print(
-        "📊 Timings: shake="
-            .. shakeDuration
-            .. "s, flash="
-            .. flashDuration
-            .. "s, reveal="
-            .. revealDuration
-            .. "s"
-    )
-
     -- PHASE 1: All eggs shake simultaneously
-    print("🔄 Phase 1: Shaking", eggCount, "eggs")
 
     for _, components in ipairs(eggComponents) do
         local co = coroutine.create(function()
@@ -1997,7 +1750,6 @@ function EggHatchingService:ExecuteHatchingSequence(
     task.wait(shakeWaitDuration)
 
     -- PHASE 2: Staggered flash and reveal
-    print("💥 Phase 2: Flash and reveal sequence")
 
     for i, components in ipairs(eggComponents) do
         local eggData = eggsData[i]
@@ -2106,8 +1858,6 @@ function EggHatchingService:ExecuteHatchingSequence(
     pcall(function()
         self:AnimateStackedResults(eggFrames, eggComponents, eggsData, gridInfo)
     end)
-
-    print("✅ Hatching animation sequence complete!")
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
@@ -2515,7 +2265,6 @@ function EggHatchingService:CreateEggViewportDebugger()
         end
     end)
 
-    print("🔍 Egg Viewport Debugger created! Check your screen.")
     return debugGui
 end
 
@@ -2527,7 +2276,6 @@ function EggHatchingService:TestCleanup()
         self._persistentGui:SetAttribute("AnimationSkipped", false)
         self:ClearEggFrames()
     end
-    print("🧪 Test cleanup completed")
 end
 
 function EggHatchingService:CheckForLeakedGUIs()
@@ -2547,36 +2295,18 @@ function EggHatchingService:CheckForLeakedGUIs()
     local leakedCount = totalCount - persistentCount
 
     if leakedCount > 0 then
-        print(
-            "⚠️ Found",
-            leakedCount,
-            "leaked EggHatchingGui instances (should only have 1 persistent)"
-        )
     else
-        print("✅ Only persistent GUI found - no leaks detected")
     end
-
-    print(
-        "📊 GUI Status: Total =",
-        totalCount,
-        "| Persistent =",
-        persistentCount,
-        "| Leaks =",
-        leakedCount
-    )
 
     return leakedCount
 end
 
 function EggHatchingService:GetPersistentGuiStatus()
     if not self._persistentGui then
-        print("❌ No persistent GUI created yet")
         return "not_created"
     elseif self._persistentGui.Enabled then
-        print("🟢 Persistent GUI is ENABLED")
         return "enabled"
     else
-        print("🔴 Persistent GUI is DISABLED")
         return "disabled"
     end
 end
@@ -2719,8 +2449,6 @@ function EggHatchingService:TestVisibility()
     -- Test the GUI visibility with a simple test egg
     self:InitializePersistentGui()
 
-    print("🧪 Testing egg visibility...")
-
     -- Enable GUI
     self._persistentGui.Enabled = true
 
@@ -2746,16 +2474,11 @@ function EggHatchingService:TestVisibility()
     testLabel.Font = Enum.Font.GothamBold
     testLabel.Parent = testFrame
 
-    print("✨ Test egg created - should be bright yellow square in center of screen")
-    print("💡 Screen size:", screenSize.X .. "x" .. screenSize.Y)
-    print("🎯 Test frame at:", testFrame.AbsolutePosition.X, testFrame.AbsolutePosition.Y)
-
     -- Auto-cleanup after 5 seconds
     task.spawn(function()
         task.wait(5)
         testFrame:Destroy()
         self._persistentGui.Enabled = false
-        print("🧹 Test visibility cleanup complete")
     end)
 end
 
