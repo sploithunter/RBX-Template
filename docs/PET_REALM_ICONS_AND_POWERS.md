@@ -85,8 +85,8 @@ the original 10 are uploaded.
 | `xp_up` | **XP / level boost** (star + up arrow) | 🎨 art made | XP boost power |
 | `revive` | **revive** (figure rising + up arrow) | 🎨 art made | instant re-summon a downed pet |
 | `knockback` | **knockback / repel** (arrows bursting outward) | 🎨 art made | push/repel control |
-| `portal` | **teleport / recall** (figure → platform) | 🎨 art made | Recall / world travel |
-| `pet_transfer` | **transfer a pet** (figure→figure + egg) | 🎨 art made | trade / gift pet, or teaming |
+| `portal` | **teleport** (figures + platform, NO egg) | 🎨 art made | World Travel — teleport to a world/zone |
+| `pet_transfer` | **Recall** (teleport WITH an egg behind) | 🎨 art made | Recall — return to your egg / saved spot |
 | `user_desk` | **deploy / claim** (arrow up out of a box) | ⬜ art only | *open / unbox / claim — NOT a desk* |
 
 ### A.4 Filenames that mislead (game meaning wins)
@@ -95,8 +95,8 @@ The agent named the art by appearance. These read differently in game context �
 
 | Asset key (filename) | Looks like (agent) | **Game meaning** |
 |---|---|---|
-| `portal` | two figures on platforms | **Teleport / Recall** — move the player between places (see B.5) |
-| `pet_transfer` | figures + an egg | **Transfer/gift a pet** (trade), or a teaming/guest hook |
+| `portal` | two figures on platforms | **World Travel** — plain teleport to a world/zone (no egg) |
+| `pet_transfer` | figures + an egg | **Recall** — teleport WITH an egg = return to your egg/hatch spot (B.5). NOT a pet trade. |
 | `user_desk` | a desk?? | **Deploy / claim / unbox** — arrow up out of a box; nothing to do with a desk |
 | `capacitor` | a battery | **Energy / charge** — fits Overclock (mining) or a focus-regen utility |
 | `revive` | someone exercising | **Revive** — a downed figure rising (instant re-summon) |
@@ -193,7 +193,7 @@ Generic (⚪ white) unless an origin fits better. All use **existing art** unles
 | Swift | `arrow_right` | +move speed (self + pets) |
 | Hasten | `history` | +power recharge rate |
 | **Revive** | `revive` | **instantly re-summon a downed pet, ignoring the recharge clock** (tactical clutch) |
-| **Recall** | `portal` | **teleport the player to their saved spot** (AFK-farm QoL — see B.5) |
+| **Recall** | `pet_transfer` | **teleport the player to their saved/egg spot** (AFK-farm QoL — see B.5) |
 | **World Travel** | `portal` | teleport to a world / zone hub |
 
 > Revive **happens before Summon** in the down→recharge→summon flow: a downed pet normally waits out
@@ -210,11 +210,10 @@ Generic (⚪ white) unless an origin fits better. All use **existing art** unles
 | Cripple | `target_down` | slow + weaken one target |
 | Strike | `fist` | basic single-target hit (low-level filler) |
 
-**Icon shopping list — ✅ all made.** `magnet`, `xp_up`, `revive`, `knockback`, `portal`,
-`pet_transfer`, and `clover_huge` are drawn (full blue set). The art set is now complete for the
-whole roster. Only **open art question**: if Recall and World Travel should read differently, mint a
-second travel icon (one stays `portal`, the other gets e.g. a globe/home) — otherwise they share
-`portal`. No other gaps.
+**Icon shopping list — ✅ all made, no gaps.** `magnet`, `xp_up`, `revive`, `knockback`, `portal`,
+`pet_transfer`, `clover_huge` are all drawn (full set). The two travel powers even have **distinct
+icons**: `pet_transfer` (egg = **Recall** to your spot) and `portal` (plain = **World Travel**). The
+art set is complete for the whole 20-power roster.
 
 ### B.5 Recall & travel mechanic (Jason's idea)
 
@@ -228,7 +227,8 @@ back to a saved location so they can re-seat with one tap. Design:
 - **Reboot-resilient** — the saved place lives in player data; on rejoin after a reboot, Recall (or
   an auto-offer toast) returns them to it. This is the AFK-farmer win.
 - **World Travel** is the *separate* power — teleport to a world/zone hub (cross-area), not a personal
-  spot. Same `portal` art for now; give them distinct icons later if the reads need to differ.
+  spot. **Distinct icons already exist:** `pet_transfer` (teleport **with an egg** behind = Recall to
+  your egg/spot) vs `portal` (plain teleport, no egg = World Travel). The egg is the tell.
 
 Open call for Jason: is **Recall** a **power** (costs a pick + slot + cooldown) or a **free UI
 button** (always available, light cooldown)? Reboot-recovery leans button; a mid-farm "teleport home"
