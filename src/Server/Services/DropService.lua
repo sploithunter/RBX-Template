@@ -90,6 +90,27 @@ function DropService:_recycle(part)
     end
 end
 
+-- Floor height under (x, z): raycast down from just above the node, ignoring drops, pets and
+-- characters so the drop rests on the actual terrain/map, not on a passing pet. Falls back to
+-- `fallbackY` if nothing is hit (e.g. over a gap). Returns the ground Y to rest the coin on.
+function DropService:_groundY(x, z, fromY, fallbackY)
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    local exclude = { self._folder }
+    local pp = Workspace:FindFirstChild("PlayerPets")
+    if pp then
+        exclude[#exclude + 1] = pp
+    end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.Character then
+            exclude[#exclude + 1] = plr.Character
+        end
+    end
+    params.FilterDescendantsInstances = exclude
+    local result = Workspace:Raycast(Vector3.new(x, fromY + 8, z), Vector3.new(0, -200, 0), params)
+    return result and result.Position.Y or fallbackY
+end
+
 -- Spawn a coin pickup carrying `amount` of `currencyType` for `player`, popping out of `position`.
 -- Returns true if a drop was created (caller must NOT credit), false if the caller should credit
 -- instantly (drops disabled, amount too small, or no position). Never throws.
@@ -111,10 +132,14 @@ function DropService:SpawnCoinDrop(player, currencyType, amount, position)
     end
 
     local part = self:_acquirePart()
-    -- pop arc: settle from an up+out hop to a resting spot near the node
+    -- pop arc: hop up+out, then settle ON THE GROUND at the resting spot (raycast for the floor so
+    -- the coin rests on terrain instead of floating at the node's pivot height).
     local ang = (#self._active % 12) * (math.pi / 6)
     local out = self._config.pop_out or 5
-    local rest = position + Vector3.new(math.cos(ang) * out, 1.5, math.sin(ang) * out)
+    local radius = (self._config.part_size or 1.3) * 0.5
+    local hx, hz = position.X + math.cos(ang) * out, position.Z + math.sin(ang) * out
+    local groundY = self:_groundY(hx, hz, position.Y, position.Y - 1)
+    local rest = Vector3.new(hx, groundY + radius, hz)
     local apex = position
         + Vector3.new(
             math.cos(ang) * out * 0.5,
