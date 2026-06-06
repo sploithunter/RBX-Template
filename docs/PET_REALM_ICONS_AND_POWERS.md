@@ -65,6 +65,7 @@ color. **Uploaded** = decal + resolved image id present in `scripts/icon_ids.*.j
 | `plus` | **heal** | ⬜ art only | **(bunny aura, heal powers)** |
 | `plus_down` | regen / heal-over-time | ⬜ art only | *(free — HoT / lifedrain)* |
 | `clover_lucky` | **luck / rare-find** | ⬜ art only | **(egg-hatch luck, fortune powers)** |
+| `clover_huge` | **HUGE luck (tier 2)** | 🎨 art made | **(big egg-hatch luck — the marquee "Huge Fortune" power)** |
 | `gift_up` | reward / drop boost | ⬜ art only | *(free — windfall / loot)* |
 | `capacitor` | energy / charge / focus | ⬜ art only | *(free — overclock / focus regen)* |
 | `history` | recharge / cooldown / time | ⬜ art only | *(free — Hasten)* |
@@ -142,12 +143,19 @@ Generic (⚪ white) unless an origin fits better. All use **existing art** unles
 | Prospector | `coins_up` | +X% coin yield for a duration |
 | Mother Lode | `capacitor` | +X% mining throughput / ore for a duration |
 | Windfall | `gift_up` | next N pickups doubled, or a burst of bonus drops |
-| Magnet | `user_desk` | auto-collect nearby coins/ore (radius pull) |
+| Magnet | `magnet` **[new icon]** | auto-collect nearby coins/ore (radius pull) |
+
+> **Magnet + Windfall depend on a DROPS/PICKUP mechanic that doesn't exist yet** — coins are
+> instant-credited on mine today, so there's nothing to collect. Building physical drops (pooled
+> coin/ore parts → proximity collect → magnet widens the radius) is its own epic and unlocks the
+> whole farming + rare-drop category. Until then, Prospector/Mother Lode (multipliers on the
+> instant-credit path) work standalone.
 
 **Luck / egg (generic, ⚪ — push this lever):**
 | Power | Symbol | Effect (proposed) |
 |---|---|---|
 | Fortune | `clover_lucky` | +luck (better egg odds) for next N hatches |
+| **Huge Fortune** | `clover_huge` | **BIG egg-hatch luck spike — the marquee, most-desirable luck power (tier 2)** |
 | Lucky Streak | `clover_lucky` | temporary rare-find boost while farming |
 | Wishbone | `star_sparkle` | next hatch guaranteed uncommon-or-better |
 
@@ -169,10 +177,18 @@ Generic (⚪ white) unless an origin fits better. All use **existing art** unles
 | Cripple | `target_down` | slow + weaken one target |
 | Strike | `fist` | basic single-target hit (low-level filler) |
 
-> **No icon gaps yet** for these — all 24 symbols cover the proposed roster. If a future power has
-> no good symbol (e.g. a dedicated "knockback", "teleport home", "XP boost", "pet revive"), Jason
-> can mint a new one and we slot it in. Candidates worth pre-making: **xp_up** (level/star arrow),
-> **revive** (plus over a downed glyph), **knockback** (burst-out arrows), **home/portal**.
+**Icon shopping list (Jason to make — art gaps for high-value powers):**
+
+| Priority | Icon | Unlocks / why |
+|---|---|---|
+| ★ high | `magnet` (horseshoe) | Magnet / collect powers — reads far better than `user_desk` |
+| ★ high | `xp_up` (star + up arrow) | XP / level-boost power — a top-tier farming want; no good symbol today (`star_sparkle` taken) |
+| ◐ med | `revive` (plus over a downed glyph) | revive a downed pet — distinct from heal |
+| ◐ med | `knockback` (outward burst arrows) | repel / control — distinct from `hand_stop` (root) |
+| ○ low | `home` / `portal` | recall-to-base / travel |
+
+`clover_huge` is already made (Huge Fortune). Everything else in the roster above maps to existing
+art — no other gaps.
 
 ---
 
