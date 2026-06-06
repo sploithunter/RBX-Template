@@ -766,6 +766,14 @@ function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
         playerData.secretLuckBoost = tonumber(secretLuck) or 0
     end
 
+    -- Fortune / Huge Fortune (luck axis): the player's active luck POWER adds to the hatch luck
+    -- (a fraction, +0.5 = +50%). Stacks additively with event/gamepass luck above. This is what
+    -- makes the marquee luck powers actually change your odds.
+    if (player:GetAttribute("LuckBuffUntil") or 0) > os.time() then
+        playerData.luckBoost = (tonumber(playerData.luckBoost) or 0)
+            + (player:GetAttribute("LuckBuff") or 0)
+    end
+
     hatchOptions = type(hatchOptions) == "table" and hatchOptions or {}
     if hatchOptions.chargedMode == true then
         local hatching = self:GetHatchingConfig()
