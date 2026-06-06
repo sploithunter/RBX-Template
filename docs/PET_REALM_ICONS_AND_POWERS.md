@@ -1,0 +1,224 @@
+# Pet Realm — Icons, Colors & Powers (Definitive Map)
+
+**Status:** living SoT for the icon/badge system + the player power roster. Pairs with
+`configs/power_icons.lua` (icon art ids + symbol/effect maps), `configs/powers.lua` (power defs +
+effect kinds), `configs/pet_roles.lua` (support auras). Where this doc says **PROPOSED**, it's a
+design target not yet in config.
+
+The whole system is **one rule**: every icon in the game is a two-layer badge — a colored **disc**
+(the element/color) behind a white **symbol** (what it does), optionally framed by a **ring** (the
+targeting shape). One renderer (`src/Client/UI/PetBadge.lua`) draws it everywhere: hotbar, squad
+cards, inventory cards, world VFX. So "define a power" = pick a **color + symbol (+ ring)**, and it
+reads identically on every surface.
+
+---
+
+## Part A — The Icon System
+
+### A.1 Color = Origin (the disc color)
+
+The disc color is the power's **origin**. Four are the RPS elements; white is the generic/universal
+tier (no element — shared powers everyone can pick).
+
+| Color | Origin | Combat alias | Bright RGB (disc) | Dark RGB (ring) | Used for |
+|---|---|---|---|---|---|
+| 🟢 green | **earth** | grass | `91,255,81` | `33,92,29` | Geomancer (stone) |
+| 🔴 red | **fire** | lava | `255,82,89` | `92,30,32` | Pyromancer (fire) |
+| 🟡 yellow | **desert** | sand | `255,209,79` | `92,75,28` | Sandwalker (sand) |
+| 🔵 blue | **ice** | ice | `81,136,255` | `29,49,92` | Cryomancer (frost) |
+| ⚪ white | **generic** | — (neutral) | `220,220,225` | `70,70,78` | **Universal powers (Swift, Hasten, Fortune…) — any archetype can pick. Distinct color = "no origin".** |
+
+`element_alias` maps combat tokens → badge keys: grass→earth, lava→fire, desert→desert, ice→ice.
+
+### A.2 Targeting = the ring shape (powers only)
+
+Archetype/identity badges use the plain **aura** ring (no direction). Powers add a directional ring
+so you read *who it hits*:
+
+| Targeting kind | Ring shape | Meaning |
+|---|---|---|
+| `self` / `none` | `aura` | self / squad / no direction |
+| `single` | `target_in` | one enemy |
+| `ally` | `target_out` | one ally |
+| `enemy_aoe` | `aoe` | area on enemies |
+| `team_aoe` | `target_aoe` | area on allies |
+
+### A.3 Icon symbol catalog (24 symbols)
+
+All symbols exist as art in 5 colors (white/blue/green/red/yellow), identical shape, different
+color. **Uploaded** = decal + resolved image id present in `scripts/icon_ids.*.json` and wired in
+`configs/power_icons.lua`. The other 14 have art but aren't uploaded/wired yet.
+
+| Symbol | Reads as | Uploaded? | Currently used by |
+|---|---|---|---|
+| `armor_chest` | armor / defense | ✅ | armor powers, tank role, defense status |
+| `shield` | shield / absorb | ✅ | shield powers, shield status |
+| `fist_impact` | melee strike (impact) | ✅ | melee role, eruption (AoE damage) |
+| `arrow_right` | ranged / speed / dash | ✅ | ranged role *(free for Swift)* |
+| `star_sparkle` | support / burst / special | ✅ | support role, signature burst |
+| `hand_stop` | control / root / stop | ✅ | root, control role |
+| `chevrons_up` | buff / boost up | ✅ | damage buff |
+| `chevrons_down` | debuff / slow down | ✅ | aoe_slow |
+| `eye_hidden` | stealth / blind / evade | ✅ | dodge, aoe_blind |
+| `contagion` | DoT / spread / plague | ✅ | mark_of_flame, wildfire |
+| `coins_up` | **coin yield** | ⬜ art only | **(meerkat aura, farming powers)** |
+| `plus` | **heal** | ⬜ art only | **(bunny aura, heal powers)** |
+| `plus_down` | regen / heal-over-time | ⬜ art only | *(free — HoT / lifedrain)* |
+| `clover_lucky` | **luck / rare-find** | ⬜ art only | **(egg-hatch luck, fortune powers)** |
+| `gift_up` | reward / drop boost | ⬜ art only | *(free — windfall / loot)* |
+| `capacitor` | energy / charge / focus | ⬜ art only | *(free — overclock / focus regen)* |
+| `history` | recharge / cooldown / time | ⬜ art only | *(free — Hasten)* |
+| `fist` | basic attack | ⬜ art only | *(free — strike)* |
+| `fist_broken` | weaken / disarm | ⬜ art only | *(free — disarm)* |
+| `shield_broken` | armor break / sunder | ⬜ art only | *(free — sunder / expose)* |
+| `eye` | reveal / accuracy / perception | ⬜ art only | *(free — expose / focus-fire)* |
+| `target` | designate / focus target | ⬜ art only | *(free — mark / assist)* |
+| `target_down` | weaken target | ⬜ art only | *(free — cripple)* |
+| `user_desk` | deploy / summon / collect | ⬜ art only | *(free — recall / magnet)* |
+
+---
+
+## Part B — Player Powers
+
+### B.1 The model: pick 10 of 20
+
+Each player has a **pool of 20 powers** and selects **10** over their level-up arc. The pool is:
+
+- **Origin powers** (element-colored) — themed to the player's archetype. Attack / defense /
+  control flavor.
+- **Generic powers** (white) — shared, any archetype can pick (Swift, Hasten, Fortune, Prospector…).
+  Distinct color so "this isn't an origin power" reads instantly.
+
+So a player's 20 ≈ *their archetype's origin powers + the shared generic pool.* The same icons are
+reused for **pet powers** (support auras) — see Part C.
+
+### B.2 Powers that EXIST today (`configs/powers.lua`)
+
+Effect families: `absorb` (flat shield pool), `defense_buff` (armor %), `buff` (pet damage ×),
+`vulnerable` (enemy takes more), `root` (lock/slow), plus pyro signature families.
+
+| Power | Display name | Origin | Effect | Symbol | Ring | What it does |
+|---|---|---|---|---|---|---|
+| `aegis` | Aegis | 🟢 earth | shield (single_pet) | `shield` | aura | Absorb shield (40) on **one selected pet**, 12s |
+| `dune_shield` | Dune Shield | 🟡 desert | shield | `shield` | aura | Squad absorb shield (40), 12s |
+| `ember_ward` | Ember Ward | 🔴 fire | shield | `shield` | aura | Squad absorb shield (40), 12s |
+| `ironclad` | Ironclad | 🟢 earth | armor (single_pet) | `armor_chest` | aura | +80 Defense on **one selected pet**, 12s |
+| `stone_skin` | Stone Skin | 🟢 earth | armor | `armor_chest` | aura | Squad +80 Defense %, 12s |
+| `ice_armor` | Ice Armor | 🔵 ice | armor | `armor_chest` | aura | Squad +80 Defense %, 12s |
+| `bulwark` | Bulwark | 🟢 earth | team_shield | `armor_chest` | aura | Squad +120 Defense %, 15s |
+| `mountains_strength` | Mountain's Strength | 🟢 earth | damage_buff | `chevrons_up` | aura | +50% pet damage, 8s |
+| `mirage_step` | Mirage Step | 🟡 desert | dodge | `eye_hidden` | aura | 30 dodge-absorb, 8s |
+| `sandstorm` | Sandstorm | 🟡 desert | aoe_blind | `eye_hidden` | aoe | Blind enemies, ×1.5 vuln, 6s |
+| `frost_bind` | Frost Bind | 🔵 ice | root | `hand_stop` | aoe | Root enemies, 5s |
+| `blizzard` | Blizzard | 🔵 ice | aoe_slow | `chevrons_down` | aoe | Slow/root enemies, 6s |
+| `mark_of_flame` | Mark of Flame | 🔴 fire | damage_over_time | `contagion` | target_in | DoT vuln ×1.5 on target, 6s |
+| `eruption` | Eruption | 🔴 fire | aoe_damage | `fist_impact` | aoe | AoE vuln ×2.0, 5s |
+| `wildfire` | Wildfire ⚡sig | 🔴 fire | burn_spread | `contagion` | target_in | Spreading vulnerability (L15) |
+| `firestorm` | Firestorm ⚡sig | 🔴 fire | team_cleave | `star_sparkle` | target_aoe | Team-AoE cleave splash (L20) |
+| `cataclysm` | Cataclysm ⚡cap | 🔴 fire | amplified_burst | `star_sparkle` | aoe | Meteor burst, squad-scaled (L30) |
+
+**That's 17 powers, and they're almost all attack/defense/control.** The two non-combat levers
+(coin yield, egg luck) currently live only on *pets*, not as player powers.
+
+### B.3 Gap analysis (Jason's read, confirmed)
+
+| Category | Coverage | Notes |
+|---|---|---|
+| **Attack / debuff** | 🟢 Strong | DoT, AoE, blind, root, slow, signatures. A few open symbols (`fist`, `fist_broken`, `shield_broken`, `target_down`). |
+| **Defense / shield / armor** | 🟢 Strong | shields + armor + team armor + single-target. |
+| **Control** | 🟡 OK | root, slow, blind. Could add stun/knockback. |
+| **Farming / economy** | 🔴 **Gap** | No player coin/mining/drop powers. `coins_up`, `gift_up`, `capacitor` art is ready. |
+| **Luck / egg** | 🔴 **Gap** | Only one luck lever (egg hatch). `clover_lucky` ready — big room to push. |
+| **Utility / travel** | 🔴 **Gap** | No Swift/Hasten yet (#158). `arrow_right`, `history` ready. |
+
+### B.4 PROPOSED powers to fill the gaps (toward a 20-pool)
+
+Generic (⚪ white) unless an origin fits better. All use **existing art** unless flagged
+**[new icon?]**.
+
+**Farming / economy (generic, ⚪):**
+| Power | Symbol | Effect (proposed) |
+|---|---|---|
+| Prospector | `coins_up` | +X% coin yield for a duration |
+| Mother Lode | `capacitor` | +X% mining throughput / ore for a duration |
+| Windfall | `gift_up` | next N pickups doubled, or a burst of bonus drops |
+| Magnet | `user_desk` | auto-collect nearby coins/ore (radius pull) |
+
+**Luck / egg (generic, ⚪ — push this lever):**
+| Power | Symbol | Effect (proposed) |
+|---|---|---|
+| Fortune | `clover_lucky` | +luck (better egg odds) for next N hatches |
+| Lucky Streak | `clover_lucky` | temporary rare-find boost while farming |
+| Wishbone | `star_sparkle` | next hatch guaranteed uncommon-or-better |
+
+**Utility / travel (generic, ⚪ — #158):**
+| Power | Symbol | Effect (proposed) |
+|---|---|---|
+| Swift | `arrow_right` | +move speed (self + pets) |
+| Hasten | `history` | +power recharge rate |
+| Blink | `arrow_right` | short dash / reposition |
+| Regroup | `user_desk` | instant squad recall to the player |
+
+**Attack fill (origin-colored):**
+| Power | Symbol | Effect (proposed) |
+|---|---|---|
+| Sunder | `shield_broken` | enemy armor break (takes more damage) |
+| Disarm | `fist_broken` | reduce enemy attack |
+| Focus Fire | `target` | designate priority target (+damage to it) |
+| Expose | `eye` | reveal + accuracy/crit boost vs target |
+| Cripple | `target_down` | slow + weaken one target |
+| Strike | `fist` | basic single-target hit (low-level filler) |
+
+> **No icon gaps yet** for these — all 24 symbols cover the proposed roster. If a future power has
+> no good symbol (e.g. a dedicated "knockback", "teleport home", "XP boost", "pet revive"), Jason
+> can mint a new one and we slot it in. Candidates worth pre-making: **xp_up** (level/star arrow),
+> **revive** (plus over a downed glyph), **knockback** (burst-out arrows), **home/portal**.
+
+---
+
+## Part C — Pet support auras (same icons)
+
+Support pets emit a team aura (`configs/pet_roles.lua` `support_auras`), applied by
+`EnemyService:_supportPass`. **Design intent (Jason):** the buff is a per-pet attribute → every
+affected pet shows the icon, exactly like shields. Today only heal stamps the pets; defense/offense
+/yield need the per-pet display marker added (see the unification task).
+
+| Pet | Role | Origin color | Aura | Symbol | What it does | Per-pet display today |
+|---|---|---|---|---|---|---|
+| bunny | Buffer | 🟢 earth | heal | `plus` | mend most-hurt ally 30% pool /1.5s | ✅ HEAL pulse |
+| penguin | Buffer | 🔵 ice | defense | `armor_chest` | +80 team Defense /2s | ❌ (TeamDefenseBuff, no badge) |
+| emberimp | Buffer | 🔴 fire | offense | `chevrons_up` | ×1.25 pet damage /2s | ❌ (on player, not pets) |
+| meerkat | Buffer | 🟡 desert | yield | `coins_up` | ×1.25 coin yield /2s | ❌ (on player, not pets) |
+
+**Two complementary displays:** inventory card = what a pet *provides* (identity); squad card =
+what a pet *currently has* (live aura). The unification adds per-pet markers + badge entries so all
+four read on the battlefield.
+
+---
+
+## Part D — Status badges (transient, squad cards + world)
+
+`SquadHud.PET_EFFECTS` reads a pet/player attribute and resolves the power's disc via
+`PetBadge.forPower` (so the badge matches the cast power), falling back to a static icon.
+
+| Status | Symbol | Source attribute | Stamped by |
+|---|---|---|---|
+| DEF (armor) | `armor_chest` | `DefenseBuffUntil` / `DefenseBuffPowerId` | armor powers |
+| ARM (shield) | `shield` | `CombatShieldUntil` / `CombatShieldPowerId` | shield powers |
+| DMG | `chevrons_up` | `PetDamageBuffUntil` / `PetDamageBuffPowerId` | damage buff |
+| HEAL | `plus` | `HealFxUntil` | heal aura/power |
+| *(proposed)* YIELD | `coins_up` | `CoinYieldFxUntil` | meerkat aura |
+| *(proposed)* OFF | `chevrons_up` | `OffenseFxUntil` | emberimp aura |
+| *(proposed)* TEAM-DEF | `armor_chest` | `TeamDefenseFxUntil` | penguin aura |
+
+---
+
+## Part E — Build order from here
+
+1. **Upload + wire the 14 pending symbols** (esp. `coins_up`, `plus`, `clover_lucky`, `gift_up`,
+   `capacitor`, `history`, `arrow_right`) across the 5 colors → `power_icons.lua discs`.
+2. **Pet support display unification** — per-pet aura markers + status badges (Part C/D).
+3. **Inventory "provides" icon + label** on pet cards (#165).
+4. **Generic power tier** — white-disc shared powers; add Swift/Hasten (#158) + farming/luck powers.
+5. **Grow each archetype's origin pool toward ~12–14** so pool (origin + generic) ≈ 20, pick 10.
+6. **Power-selection UI** already exists (pick-at-level-up) — point it at the 20-pool.
