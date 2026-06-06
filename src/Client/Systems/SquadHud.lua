@@ -159,8 +159,35 @@ local PET_EFFECTS = {
         untilAttr = "HealFxUntil",
         color = Color3.fromRGB(90, 210, 110),
         label = "HEAL",
-        icon = POWER_ICONS.actions.heal,
+        icon = POWER_ICONS.discFor("earth", "plus"), -- green heal cross (bunny support)
         pulse = true,
+    },
+    -- Support-pet AURAS a pet currently HAS (every affected pet, not just the buffer). Fixed
+    -- element-disc per kind so the badge reads the providing biome: defense=ice, offense=lava,
+    -- yield=desert. The buffer pet itself wears its badge too (it's one of the allies).
+    {
+        key = "teamdef",
+        source = "pet",
+        untilAttr = "TeamDefenseBuffUntil",
+        color = Color3.fromRGB(120, 180, 255),
+        label = "DEF",
+        icon = POWER_ICONS.discFor("ice", "armor_chest"),
+    },
+    {
+        key = "offense",
+        source = "pet",
+        untilAttr = "OffenseFxUntil",
+        color = Color3.fromRGB(235, 120, 90),
+        label = "ATK",
+        icon = POWER_ICONS.discFor("fire", "chevrons_up"),
+    },
+    {
+        key = "yield",
+        source = "pet",
+        untilAttr = "YieldFxUntil",
+        color = Color3.fromRGB(235, 205, 90),
+        label = "COIN",
+        icon = POWER_ICONS.discFor("desert", "coins_up"),
     },
     -- Armor/absorb shield: now time-limited (CombatShieldUntil), so it shows as a countdown badge
     -- on the card (the thin blue bar still shows the remaining pool magnitude).
