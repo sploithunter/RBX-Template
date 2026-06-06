@@ -202,6 +202,11 @@ function PlayerProgressionService:AddExperience(player, amount)
     if not player or amount <= 0 or not self._dataService then
         return self:GetProgress(player)
     end
+    -- XP Surge (xp axis): the player's xp buff boosts EVERY xp source (mining/combat/rewards) by
+    -- its fraction. Single choke point so the multiplier applies everywhere.
+    if (player:GetAttribute("XpBuffUntil") or 0) > os.time() then
+        amount = math.floor(amount * (1 + (player:GetAttribute("XpBuff") or 0)) + 0.5)
+    end
     local newXp = self:GetExperience(player) + amount
     self._dataService:SetStat(player, "Experience", newXp)
     self:_publish(player)
@@ -250,7 +255,11 @@ function PlayerProgressionService:_grantLevelRewards(player, entry)
         rewardService:Grant(player, entry.rewards, "level_up:" .. tostring(entry.level))
     end
     if type(entry.milestoneRewards) == "table" then
-        rewardService:Grant(player, entry.milestoneRewards, "level_milestone:" .. tostring(entry.level))
+        rewardService:Grant(
+            player,
+            entry.milestoneRewards,
+            "level_milestone:" .. tostring(entry.level)
+        )
     end
 end
 

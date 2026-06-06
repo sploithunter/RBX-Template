@@ -505,6 +505,12 @@ function PowerService:Cast(player, powerId)
     end
 
     local cd = tonumber(def.cooldown_seconds) or 0
+    -- Hasten (recharge axis): the player's recharge buff shortens every power's cooldown by its
+    -- fraction (clamped so a cooldown never hits zero).
+    if (player:GetAttribute("RechargeBuffUntil") or 0) > now then
+        local r = math.clamp(player:GetAttribute("RechargeBuff") or 0, 0, 0.9)
+        cd = cd * (1 - r)
+    end
     cds[powerId] = now + cd
     Signals.Power_Cooldown:FireClient(
         player,

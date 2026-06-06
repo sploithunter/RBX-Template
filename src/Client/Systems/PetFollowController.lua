@@ -412,6 +412,11 @@ function PetFollowController.start()
         local speedCfg = config.movement.speed
         local maxTravel = config.movement.max_travel_speed
         local playerSpeed = localPlayer:GetAttribute("PetMoveSpeed")
+        -- Swift (move_speed axis): the player's move-speed buff speeds the pets up too (+fraction).
+        if (localPlayer:GetAttribute("MoveSpeedBuffUntil") or 0) > os.time() then
+            playerSpeed = (playerSpeed or 1)
+                * (1 + (localPlayer:GetAttribute("MoveSpeedBuff") or 0))
+        end
 
         -- Move a pet toward its goal at `baseRate` smoothing, scaled by its move-speed
         -- multiplier. Snap if catastrophically far (the player teleported). Otherwise
