@@ -229,12 +229,96 @@ four read on the battlefield.
 
 ---
 
-## Part E — Build order from here
+## Part E — Buff math: how bonuses stack
+
+The one rule for every percentage buff (luck, coin yield, mining, pet damage, move speed, recharge,
+XP): **additive within an axis, on a base of 1.0.** Multiplicative compounding is banned except for a
+tiny, deliberate set of global multipliers.
+
+### E.1 The rule
+
+```
+multiplier(axis) = 1 + Σ(bonus_i)          -- every active source in that axis, summed
+                   clamped to axis cap
+output = base × multiplier(axis)
+```
+
+So **+25% luck and +25% luck = 1 + 0.25 + 0.25 = ×1.50** — NOT ×1.25 × ×1.25 (×1.5625). One source
+is the easy case (×1.25); the rule just makes two+ behave linearly.
+
+### E.2 Why additive, not multiplicative
+
+Multiplicative stacking compounds: n stacks of +25% = `1.25^n`. Ten → ×9.3, twenty → ×86 — luck
+becomes thousands of times better and the economy breaks. Additive is linear: `n × 25%` → +250% =
+×3.5 for ten. Linear is tunable; compounding is not. **Default: every same-axis bonus adds.**
+
+### E.3 Axes are independent
+
+`luck`, `coin_yield`, `mining`, `pet_damage`, `move_speed`, `recharge`, `xp` are SEPARATE axes —
+each its own additive sum, each applied to its own output. They never fold into each other (a coin
+buff doesn't make luck better). A drop that is both "a coin" and "rare" gets `coin_yield` on the
+payout and `luck` on the rarity roll — different stages, never one compounded number.
+
+### E.4 Global multipliers (the only multiplicative exception)
+
+A small, fixed set of whole-account multipliers multiply the final axis result. These are the ONLY
+multiplicative things and are rare by design:
+
+```
+final = base × (1 + Σ axis bonuses) × Π(global_k)
+```
+
+Globals = e.g. 2× gamepass, a live event ×2, a rebirth/prestige multiplier. **Powers and pet auras
+are NEVER globals** — they always go in the additive sum.
+
+### E.5 Runaway guards (in order of preference)
+
+1. **Concurrency is the natural cap** — you pick 10 of 20, the hotbar holds a few, and cooldowns
+   mean temporary buffs come and go. You can't hold ten +luck powers active at once.
+2. **Per-axis hard cap** — each axis clamps in config (e.g. `luck +300%`, `coin_yield +500%`). That's
+   the clamp in E.1.
+3. **Soft diminishing returns (use sparingly)** — if an axis must allow big stacking without running
+   away: `effective = knee + (sum − knee) × dr_factor` past a knee point.
+
+### E.6 Permanent vs temporary (same bucket)
+
+- **Permanent/passive** (deployed pet aura, gear, level, rebirth) — in the sum while active.
+- **Temporary** (a cast power for Ns) — in the sum only while its timer is live, then drops out.
+
+Both land in the same per-axis sum; temporary sources just come and go.
+
+### E.7 Implementation note (the refactor this implies)
+
+Today buffs **SET a single attribute** (`PetDamageBuff`, `CoinYieldBuff`, …) → last-writer-wins
+(clobber), and the two pet-vs-power damage buffs currently *multiply* (the compounding we're
+banning). The model above wants a **per-axis accumulator**: each source registers `{axis, fraction,
+sourceId, expiry}`; the consumer reads `1 + Σ(live fractions)` clamped to `axis cap`. Build this as
+a shared pure module (`BuffStack`) with a headless spec pinning the math, then route powers + auras
+through it.
+
+### E.8 Worked example — luck
+
+- Base hatch luck = ×1.0; cap `luck = +300%` (×4.0).
+- Active: Fortune (+25%) + lucky pet aura (+15%) + 2× luck gamepass (global).
+- `axis = 1 + 0.25 + 0.15 = 1.40` (under cap).
+- `final = 1.0 × 1.40 × 2.0 = ×2.80 luck`.
+- Add **Huge Fortune** (+50%): `axis = 1 + 0.25 + 0.15 + 0.50 = 1.90` → `final = ×3.80`. Linear and
+  predictable — never ×1000, even with everything on.
+
+> **Luck → odds is a separate mechanic** (the luck multiplier reweights the rarity table; define
+> that in the egg/hatch config). This section governs only how the luck *number* stacks.
+
+---
+
+## Part F — Build order from here
 
 1. **Upload + wire the 14 pending symbols** (esp. `coins_up`, `plus`, `clover_lucky`, `gift_up`,
    `capacitor`, `history`, `arrow_right`) across the 5 colors → `power_icons.lua discs`.
 2. **Pet support display unification** — per-pet aura markers + status badges (Part C/D).
 3. **Inventory "provides" icon + label** on pet cards (#165).
-4. **Generic power tier** — white-disc shared powers; add Swift/Hasten (#158) + farming/luck powers.
-5. **Grow each archetype's origin pool toward ~12–14** so pool (origin + generic) ≈ 20, pick 10.
-6. **Power-selection UI** already exists (pick-at-level-up) — point it at the 20-pool.
+4. **`BuffStack` pure module + headless spec** — the per-axis additive accumulator from Part E
+   (caps per axis, global multipliers, expiry). Prereq for ANY multiplier power to stack correctly;
+   route the existing damage/yield/defense buffs through it (kills the current clobber + compounding).
+5. **Generic power tier** — white-disc shared powers; add Swift/Hasten (#158) + farming/luck powers.
+6. **Grow each archetype's origin pool toward ~12–14** so pool (origin + generic) ≈ 20, pick 10.
+7. **Power-selection UI** already exists (pick-at-level-up) — point it at the 20-pool.
