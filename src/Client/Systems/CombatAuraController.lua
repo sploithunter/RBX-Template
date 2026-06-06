@@ -4,8 +4,8 @@
     PowerService sets combat attributes server-side; this client controller watches them and
     attaches the matching CombatFX so powers READ on the battlefield, not just in the numbers:
 
-      pet  CombatShield > 0      -> element shield bubble + armor reskin (stones out)  [absorb]
-      pet  DefenseBuffUntil      -> defensive buff aura for the remaining duration       [defense_buff]
+      pet  CombatShield > 0      -> element force-field BUBBLE only (no reskin)           [absorb/shield]
+      pet  DefenseBuffUntil      -> element material RESKIN only (no bubble)              [defense_buff/armor]
       pet  HealFxUntil           -> heal aura for the remaining duration                 [heal]
       player PetDamageBuffUntil  -> damage buff aura on every owned pet                   [buff]
       enemy VulnerableUntil      -> debuff aura while vulnerable                          [vulnerable]
@@ -140,22 +140,26 @@ local function remaining(entity, attr)
 end
 
 -- ===== Pets =====
--- A pet is "armored" while EITHER defensive power family is active:
---   absorb (CombatShield > 0, e.g. Stone Skin / Ice Armor / Dune Shield / Ember Ward) — depletes
---     as it soaks hits, so the look persists (duration 0) until it hits zero, OR
---   defense_buff (DefenseBuffUntil in the future, e.g. Bulwark) — a timed team hardening.
--- Either one shows the element shield bubble + armor reskin. The look attaches once on the
--- bare->armored transition and clears on armored->bare (so CombatShield ticking down as it
--- absorbs doesn't re-pop the bubble every hit).
-local function isArmored(pet)
-    return (pet:GetAttribute("CombatShield") or 0) > 0 or (pet:GetAttribute("DefenseBuffUntil") or 0) > os.time()
+-- Two DISTINCT defensive looks, kept SEPARATE so a single power never shows both:
+--   SHIELD = absorb pool (CombatShield > 0; Dune Shield / Ember Ward / dodge) -> the element
+--     force-field BUBBLE only, no reskin. Depletes as it soaks, so the look persists (duration 0)
+--     until it hits zero.
+--   ARMOR  = defense % (DefenseBuffUntil; Stone Skin / Ice Armor / Bulwark) -> the element material
+--     RESKIN only, no bubble. A timed hardening of the pet's own body.
+-- A pet shows both ONLY if it genuinely has a shield AND an armor active (two powers). Each look
+-- attaches once on its own bare->active transition and clears on active->bare.
+local function hasShield(pet)
+    return (pet:GetAttribute("CombatShield") or 0) > 0
+end
+local function hasArmor(pet)
+    return (pet:GetAttribute("DefenseBuffUntil") or 0) > os.time()
 end
 
--- Canonical combat element (grass/lava/ice/desert) of the POWER that applied the shield, so the
--- bubble + reskin match the power (ember_ward=fire, ice_armor=ice, dune_shield=sand) even on a
--- pet of another origin. nil if no power tagged it (-> fall back to the pet's own element).
-local function shieldPowerElement(pet)
-    local pid = pet:GetAttribute("CombatShieldPowerId") or pet:GetAttribute("DefenseBuffPowerId")
+-- Canonical combat element (grass/lava/ice/desert) of the POWER behind a defensive effect, so the
+-- bubble/reskin match the cast power (ember_ward=fire, ice_armor=ice, dune_shield=sand) even on a
+-- pet of another origin. idAttr = which power-id attribute to read; nil if no power tagged it.
+local function defenseElement(pet, idAttr)
+    local pid = pet:GetAttribute(idAttr)
     local def = pid and powersCfg.powers and powersCfg.powers[pid]
     if not def then
         return nil
@@ -165,20 +169,35 @@ local function shieldPowerElement(pet)
 end
 
 local function refreshArmor(pet)
-    local active = handles[pet] and handles[pet].shield
-    if isArmored(pet) then
-        if not active then
-            -- element -> reskin KEY (origin.element_reskin) -> reskin {material,color} (config.reskins).
-            -- Prefer the POWER's element (so a fire shield reskins lava even on a snow pet).
-            local element = shieldPowerElement(pet) or elementForPet(pet)
-            local reskinKey = originCfg.element_reskin and originCfg.element_reskin[element]
-            local reskin = reskinKey and reskinDefs[reskinKey]
-            setSlot(pet, "shield", { category = "shield", element = element, reskin = reskin, duration = 0 })
+    -- SHIELD (absorb) -> BUBBLE only
+    local bubble = handles[pet] and handles[pet].shieldBubble
+    if hasShield(pet) then
+        if not bubble then
+            local element = defenseElement(pet, "CombatShieldPowerId") or elementForPet(pet)
+            setSlot(pet, "shieldBubble", { category = "shield", element = element, duration = 0 })
         end
+    elseif bubble then
+        stopSlot(pet, "shieldBubble")
+    end
+
+    -- ARMOR (defense %) -> RESKIN only (category has no theme entry, so attach skips bubble + aura)
+    local reskin = handles[pet] and handles[pet].armorReskin
+    if hasArmor(pet) then
+        if not reskin then
+            local element = defenseElement(pet, "DefenseBuffPowerId") or elementForPet(pet)
+            local reskinKey = originCfg.element_reskin and originCfg.element_reskin[element]
+            local reskinDef = reskinKey and reskinDefs[reskinKey]
+            if reskinDef then
+                setSlot(pet, "armorReskin", { category = "armor", element = element, reskin = reskinDef, duration = 0 })
+            end
+        end
+    elseif reskin then
+        stopSlot(pet, "armorReskin")
+    end
+
+    -- Floating identity badge (the disc icon) while EITHER defensive effect is active.
+    if hasShield(pet) or hasArmor(pet) then
         showArmorIcon(pet)
-    elseif active then
-        stopSlot(pet, "shield")
-        hideArmorIcon(pet)
     else
         hideArmorIcon(pet)
     end
