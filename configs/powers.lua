@@ -41,9 +41,10 @@ return {
         -- duration > 0 = the shield also EXPIRES after that many seconds even if not fully soaked
         -- (no permanent player power); whichever comes first — depleted or timed out — drops it.
         shield = { family = "absorb", magnitude = 40, duration = 12 },
-        ice_armor = { family = "absorb", magnitude = 40, duration = 12 },
-        dune_shield = { family = "absorb", magnitude = 40, duration = 12 },
-        ember_ward = { family = "absorb", magnitude = 40, duration = 12 },
+        -- Armor / hardening = a temp +Defense % reducer on the armor curve (NOT an absorb pool):
+        -- the pet's own material HARDENS (Stone Skin, Ice Armor). Sustained mitigation vs. shield's
+        -- burst soak. Applies to the squad and expires after `duration`s (no permanent armor).
+        armor = { family = "defense_buff", magnitude = 80, duration = 12 },
         -- Bulwark = squad DAMAGE REDUCTION for `duration`s (temp +Defense armor), per design
         team_shield = { family = "defense_buff", magnitude = 120, duration = 15 },
         dodge = { family = "absorb", magnitude = 30, duration = 8 },
@@ -94,7 +95,7 @@ return {
             archetype = "geomancer",
             focus_cost = 20,
             cooldown_seconds = 30,
-            effect = "shield",
+            effect = "armor", -- hardened stone skin = +Defense %, not an absorb pool
         },
         bulwark = {
             archetype = "geomancer",
@@ -138,7 +139,7 @@ return {
             archetype = "cryomancer",
             focus_cost = 20,
             cooldown_seconds = 30,
-            effect = "shield",
+            effect = "armor", -- ice plating = +Defense %, not an absorb pool
         },
         blizzard = {
             archetype = "cryomancer",

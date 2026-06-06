@@ -66,7 +66,11 @@ local function showArmorIcon(pet)
     -- The FULL badge the hotbar + squad card use (element disc + tinted ring) for the power that
     -- applied the shield, so it matches everywhere. Falls back to a generic gold shield disc (no
     -- ring) when nothing tagged it.
-    local badge = PetBadge.forPower(pet:GetAttribute("CombatShieldPowerId"))
+    -- shield powers stamp CombatShieldPowerId; armor/hardening powers (Stone Skin, Ice Armor) stamp
+    -- DefenseBuffPowerId. Resolve whichever tagged this pet so the floating badge matches the card.
+    local badge = PetBadge.forPower(
+        pet:GetAttribute("CombatShieldPowerId") or pet:GetAttribute("DefenseBuffPowerId")
+    )
     if badge then
         PetBadge.create(bb, { element = badge.element, symbol = badge.symbol, ring = badge.ring })
     else

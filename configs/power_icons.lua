@@ -111,7 +111,8 @@ local M = {
     -- power's `effect` (configs/powers.lua); signatures use `power_glyph_symbol` + the target map.
     -- target values are targeting_ring keys (resolved to a ring shape via M.ringFor).
     power_effect_badge = {
-        shield = { symbol = "shield", target = "self" }, -- absorb shields (stone_skin/ice_armor/...)
+        shield = { symbol = "shield", target = "self" }, -- absorb shields (dune_shield/ember_ward)
+        armor = { symbol = "armor_chest", target = "self" }, -- hardening armor (stone_skin/ice_armor) -> tank armor icon
         team_shield = { symbol = "armor_chest", target = "self" }, -- Bulwark squad defense
         dodge = { symbol = "eye_hidden", target = "self" }, -- evasion (mirage_step)
         damage_buff = { symbol = "chevrons_up", target = "self" }, -- Mountain's Strength
