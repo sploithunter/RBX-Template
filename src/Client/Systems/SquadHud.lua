@@ -147,13 +147,18 @@ local function activeEffectsFor(pet, player, now)
     local out = {}
     for _, e in ipairs(PET_EFFECTS) do
         local src = (e.source == "player") and player or pet
-        -- Resolve the badge icon from the POWER that applied this buff (so it matches the hotbar +
-        -- world shield), falling back to the static effect icon when nothing tagged it.
+        -- Resolve the FULL badge (element disc + tinted ring) from the POWER that applied this buff
+        -- so it matches the hotbar / role badge / world shield; fall back to the static icon (no
+        -- ring) when nothing tagged it.
         local icon = e.icon
+        local ringImg, ringColor
         if e.powerIdAttr then
-            local disc = PetBadge.powerDiscImage(src:GetAttribute(e.powerIdAttr))
+            local badge = PetBadge.forPower(src:GetAttribute(e.powerIdAttr))
+            local disc = badge and POWER_ICONS.discFor(badge.element, badge.symbol)
             if disc then
                 icon = disc
+                ringImg = POWER_ICONS.rings[badge.ring] or POWER_ICONS.rings.aura
+                ringColor = POWER_ICONS.elementColor3(badge.element, "dark")
             end
         end
         if e.untilAttr then
@@ -166,14 +171,23 @@ local function activeEffectsFor(pet, player, now)
                     -- Pulse effects (instant tells) show no countdown; timed buffs do.
                     timer = e.pulse and "" or (math.ceil(until_ - now) .. "s"),
                     icon = icon,
+                    ringImg = ringImg,
+                    ringColor = ringColor,
                     remaining = until_ - now, -- seconds left (drives the expiry blink)
                 }
             end
         elseif e.poolAttr then
             local v = src:GetAttribute(e.poolAttr) or 0
             if v > 0 then
-                out[#out + 1] =
-                    { key = e.key, color = e.color, label = e.label, timer = tostring(math.floor(v)), icon = icon }
+                out[#out + 1] = {
+                    key = e.key,
+                    color = e.color,
+                    label = e.label,
+                    timer = tostring(math.floor(v)),
+                    icon = icon,
+                    ringImg = ringImg,
+                    ringColor = ringColor,
+                }
             end
         end
     end
@@ -200,6 +214,18 @@ local function makeBadge(parent)
     icon.Image = ""
     icon.ZIndex = 3
     icon.Parent = f
+    -- Tinted element ring framing the disc (power-applied buffs only; hidden otherwise).
+    local ring = Instance.new("ImageLabel")
+    ring.Name = "Ring"
+    ring.BackgroundTransparency = 1
+    ring.AnchorPoint = Vector2.new(0.5, 0.5)
+    ring.Position = UDim2.fromScale(0.5, 0.5)
+    ring.Size = UDim2.fromScale(1, 1)
+    ring.ScaleType = Enum.ScaleType.Fit
+    ring.Image = ""
+    ring.Visible = false
+    ring.ZIndex = 4
+    ring.Parent = f
     local label = Instance.new("TextLabel")
     label.Name = "Label"
     label.BackgroundTransparency = 1
@@ -217,7 +243,7 @@ local function makeBadge(parent)
     timer.TextSize = 9
     timer.TextColor3 = Color3.fromRGB(20, 22, 28)
     timer.Parent = f
-    return { frame = f, icon = icon, label = label, timer = timer }
+    return { frame = f, icon = icon, ring = ring, label = label, timer = timer }
 end
 
 -- Reconcile a card's badges against the pet's active effects. Ordered so the SHORTEST
@@ -246,9 +272,19 @@ local function updateBadges(card, effects, blinkLead)
         b.bgBase = hasIcon and 1 or 0 -- base backing transparency; blink loop applies it
         b.label.Text = hasIcon and "" or eff.label
         b.icon.Image = eff.icon or ""
-        if hasIcon then
-            local s = POWER_ICONS.scaleFor(eff.icon) -- zoom past the art's transparent border
-            b.icon.Size = UDim2.fromScale(s, s)
+        if eff.ringImg then
+            -- Full element badge: inset the disc so the tinted ring frames it (matches the role
+            -- badge / hotbar / world shield).
+            b.ring.Image = eff.ringImg
+            b.ring.ImageColor3 = eff.ringColor or Color3.fromRGB(70, 76, 96)
+            b.ring.Visible = true
+            b.icon.Size = UDim2.fromScale(0.72, 0.72)
+        else
+            b.ring.Visible = false
+            if hasIcon then
+                local s = POWER_ICONS.scaleFor(eff.icon) -- zoom past the art's transparent border
+                b.icon.Size = UDim2.fromScale(s, s)
+            end
         end
         b.timer.Text = eff.timer or ""
     end
