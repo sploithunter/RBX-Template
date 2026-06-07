@@ -312,6 +312,16 @@ do
     end
 end
 
+-- Skin the left-side currency boxes with area-colored pills.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.CurrencyStyle).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start CurrencyStyle", { error = tostring(err) })
+    end
+end
+
 -- RealmAtmosphere: retints Lighting to the player's current realm (heaven/hell skin on the
 -- same map, World S3) — driven by the server-published CurrentRealm attribute.
 do
