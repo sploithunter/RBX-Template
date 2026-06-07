@@ -67,6 +67,23 @@ function AdminController.start()
     gui.DisplayOrder = 90
     gui.Parent = pg
 
+    -- A UIGradient on a button tints the button's OWN text too, so put the label in a CHILD TextLabel
+    -- (the gradient doesn't reach it) — that's how the coin pills read pure white over a colored fill.
+    local function whiteLabel(btn, text, size)
+        btn.Text = ""
+        local l = Instance.new("TextLabel")
+        l.Name = "Label"
+        l.Size = UDim2.fromScale(1, 1)
+        l.BackgroundTransparency = 1
+        l.Font = Enum.Font.GothamBold
+        l.TextSize = size or 13
+        l.TextColor3 = Color3.fromRGB(255, 255, 255)
+        l.Text = text
+        l.ZIndex = (btn.ZIndex or 1) + 1
+        l.Parent = btn
+        return l
+    end
+
     local chip = Instance.new("TextButton")
     chip.Name = "AdminToggle"
     chip.Size = UDim2.fromOffset(118, 30)
@@ -92,6 +109,7 @@ function AdminController.start()
     stroke.Transparency = 0
     stroke.Parent = chip
     chip.Parent = gui
+    local chipLabel = whiteLabel(chip, "🛠 ADMIN: OFF", 13)
 
     -- Area-cycle button (shown only when admin mode is ON): rotate CurrentArea/HomeArea for testing
     -- the area theme + play feel.
@@ -119,9 +137,10 @@ function AdminController.start()
     areaStroke.Thickness = 2
     areaStroke.Parent = areaBtn
     areaBtn.Parent = gui
+    local areaLabel = whiteLabel(areaBtn, "AREA: …", 12)
     local function refreshAreaLabel()
         local a = player:GetAttribute("HomeArea") or player:GetAttribute("CurrentArea") or "Spawn"
-        areaBtn.Text = "AREA: " .. tostring(a) .. " ▸"
+        areaLabel.Text = "AREA: " .. tostring(a) .. " ▸"
     end
     refreshAreaLabel()
     player:GetAttributeChangedSignal("CurrentArea"):Connect(refreshAreaLabel)
@@ -165,6 +184,7 @@ function AdminController.start()
     grantStroke.Thickness = 2
     grantStroke.Parent = grantBtn
     grantBtn.Parent = gui
+    whiteLabel(grantBtn, "⚡ GRANT POWERS", 12)
     grantBtn.Activated:Connect(function()
         Signals.Admin_GrantAreaPowers:FireServer()
     end)
@@ -173,8 +193,7 @@ function AdminController.start()
     local function apply()
         setOverlays(pg, on)
         grantBtn.Visible = on
-        chip.Text = on and "🛠 ADMIN: ON" or "🛠 ADMIN: OFF"
-        chip.TextColor3 = Color3.fromRGB(255, 255, 255)
+        chipLabel.Text = on and "🛠 ADMIN: ON" or "🛠 ADMIN: OFF"
         chip.BackgroundColor3 = on and Color3.fromRGB(45, 140, 80) or Color3.fromRGB(90, 55, 160)
         chipGrad.Color = on
                 and ColorSequence.new(Color3.fromRGB(95, 220, 125), Color3.fromRGB(45, 140, 80))
