@@ -124,7 +124,7 @@ function HotbarBar.start()
     local farmBtn = Instance.new("TextButton")
     farmBtn.Name = "Farming"
     farmBtn.AnchorPoint = Vector2.new(0, 1)
-    farmBtn.Position = UDim2.fromOffset(3, SLOT * 2 + PAD)
+    farmBtn.Position = UDim2.fromOffset(3, SLOT * 2 + PAD - 7) -- nudged up so its ring clears the frame's bottom border
     farmBtn.Size = UDim2.fromOffset(SLOT - 6, SLOT - 6) -- square (bottom-left), pairs with the Edit square above
     farmBtn.AutoButtonColor = false
     farmBtn.Font = Enum.Font.GothamBold
