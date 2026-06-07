@@ -482,9 +482,7 @@ function InventoryPanel:_refreshLockoutVisuals()
                 self:_applyAvailabilityRing(frame, lockUntil, now)
             elseif kind == "stack" then
                 -- inventory stack: red the count label when some are recovering (reduced availability)
-                local countLbl = frame:FindFirstChild("CountLabel")
-                    or frame:FindFirstChild("Count")
-                    or frame:FindFirstChild("QuantityLabel")
+                local countLbl = frame:FindFirstChild("QtyLabel")
                 if countLbl and countLbl:IsA("TextLabel") then
                     countLbl.TextColor3 = recovering > 0 and Color3.fromRGB(235, 70, 70)
                         or Color3.fromRGB(255, 255, 255)
