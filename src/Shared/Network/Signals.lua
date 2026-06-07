@@ -35,6 +35,7 @@ local Signals = {
     Squad_Summon = Net:RemoteEvent("Squad_Summon"), -- c->s re-summon a recovered squad slot's pet
     Squad_AdminKill = Net:RemoteEvent("Squad_AdminKill"), -- c->s (admin) force-down a squad slot's pet for testing the lockout, no enemies needed
     Admin_SetArea = Net:RemoteEvent("Admin_SetArea"), -- c->s (admin) set CurrentArea/HomeArea for testing area theming + play feel
+    Admin_GrantAreaPowers = Net:RemoteEvent("Admin_GrantAreaPowers"), -- c->s (admin) grant + bind the current area's full power set to the hotbar for testing
     Combat_SetAssist = Net:RemoteEvent("Combat_SetAssist"), -- c->s direct the squad to focus an enemy (assist target; 0 clears)
     Combat_SelectPetTarget = Net:RemoteEvent("Combat_SelectPetTarget"), -- c->s the selected squad pet (PositionNumber) for single-target buffs; 0 clears
     Combat_PetHit = Net:RemoteEvent("Combat_PetHit"), -- s->c (owner) a pet landed a swing {pet,target,crit} -> client plays the matching FX

@@ -139,9 +139,40 @@ function AdminController.start()
         Signals.Admin_SetArea:FireServer({ area = nextArea })
     end)
 
+    -- Grant-powers button (shown only when admin ON): bind the CURRENT area's full power set to the
+    -- hotbar so every area's powers can be cast for testing. Capsule pill, emerald.
+    local grantBtn = Instance.new("TextButton")
+    grantBtn.Name = "GrantPowers"
+    grantBtn.Size = UDim2.fromOffset(118, 26)
+    grantBtn.Position = UDim2.new(0, 315, 1, -80) -- just above the AREA button
+    grantBtn.AnchorPoint = Vector2.new(0, 1)
+    grantBtn.BackgroundColor3 = Color3.fromRGB(45, 140, 80) -- emerald capsule
+    grantBtn.BackgroundTransparency = 0
+    grantBtn.Font = Enum.Font.GothamBold
+    grantBtn.TextSize = 12
+    grantBtn.TextColor3 = Color3.fromRGB(240, 255, 244)
+    grantBtn.Text = "⚡ GRANT POWERS"
+    grantBtn.Visible = false
+    local gc = Instance.new("UICorner")
+    gc.CornerRadius = UDim.new(1, 0)
+    gc.Parent = grantBtn
+    local grantGrad = Instance.new("UIGradient")
+    grantGrad.Rotation = 90
+    grantGrad.Color = ColorSequence.new(Color3.fromRGB(95, 220, 125), Color3.fromRGB(45, 140, 80))
+    grantGrad.Parent = grantBtn
+    local grantStroke = Instance.new("UIStroke")
+    grantStroke.Color = Color3.fromRGB(95, 220, 125)
+    grantStroke.Thickness = 2
+    grantStroke.Parent = grantBtn
+    grantBtn.Parent = gui
+    grantBtn.Activated:Connect(function()
+        Signals.Admin_GrantAreaPowers:FireServer()
+    end)
+
     local on = false
     local function apply()
         setOverlays(pg, on)
+        grantBtn.Visible = on
         chip.Text = on and "🛠 ADMIN: ON" or "🛠 ADMIN: OFF"
         chip.TextColor3 = Color3.fromRGB(255, 255, 255)
         chip.BackgroundColor3 = on and Color3.fromRGB(45, 140, 80) or Color3.fromRGB(90, 55, 160)

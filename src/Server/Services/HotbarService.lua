@@ -43,6 +43,74 @@ function HotbarService:Init()
             self:_pushState(player) -- echo the authoritative result
         end)
     end)
+    -- Admin testing: grant + bind the CURRENT area's full power set to the hotbar.
+    Signals.Admin_GrantAreaPowers.OnServerEvent:Connect(function(player)
+        pcall(function()
+            self:AdminGrantArea(player)
+        end)
+    end)
+end
+
+-- Area -> archetype (the element pool for that biome). Matches CombatOrigin / ZoneService areas.
+local AREA_ARCHETYPE = {
+    Grass = "geomancer",
+    Earth = "geomancer",
+    Meadow = "geomancer",
+    Spawn = "geomancer",
+    Beach = "sandwalker",
+    Desert = "sandwalker",
+    Ice = "cryomancer",
+    Lava = "pyromancer",
+}
+
+-- Admin/Studio only: set the player's archetype to the current area's element, mark every power in that
+-- pool as owned (bypassing the pick-10), and bind them all onto the hotbar so every area's powers can
+-- be cast for testing. Re-run after switching area to get that area's set.
+function HotbarService:AdminGrantArea(player)
+    local RunService = game:GetService("RunService")
+    if not (player:GetAttribute("IsAdmin") or RunService:IsStudio()) then
+        return { ok = false, reason = "not_admin" }
+    end
+    local data = self._dataService:GetData(player)
+    if not data then
+        return { ok = false, reason = "data_not_loaded" }
+    end
+    local area = player:GetAttribute("CurrentArea") or player:GetAttribute("HomeArea") or "Grass"
+    local archetype = AREA_ARCHETYPE[area] or "geomancer"
+    data.Archetype = archetype
+
+    local available = ArchetypeLogic.availablePowers(archetype, self._archetypesConfig) or {}
+    -- mark all owned (admin bypass of the pick-10 cap) so selection-gated UI/paths pass
+    data.Powers = {}
+    for _, powerId in ipairs(available) do
+        table.insert(data.Powers, powerId)
+    end
+
+    -- clear the bar then bind the powers in order (slot 1..N, capped at the slot count)
+    local slotCount = (self._config and self._config.slot_count) or 20
+    for i = 1, slotCount do
+        self:Rebind(player, i, nil)
+    end
+    local slot = 1
+    for _, powerId in ipairs(available) do
+        if slot > slotCount then
+            break
+        end
+        self:Rebind(player, slot, { type = "power", target = powerId })
+        slot += 1
+    end
+
+    if self._dataService.RequestSave then
+        self._dataService:RequestSave(player, "admin_grant_powers", { critical = true })
+    end
+    self:_pushState(player)
+    if self._logger then
+        self._logger:Info(
+            "Admin granted area powers",
+            { area = area, archetype = archetype, count = #available }
+        )
+    end
+    return { ok = true, archetype = archetype, powers = available }
 end
 
 -- The things a player may bind: their archetype's powers + the tactical commands.
