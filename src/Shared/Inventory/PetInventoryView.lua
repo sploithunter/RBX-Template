@@ -81,6 +81,33 @@ function PetInventoryView.isSpecial(record, capability)
     return special ~= nil and rarity ~= nil and special[rarity] == true
 end
 
+-- The HUGE GUARD: a record that must NEVER be removed by a pet RESET (huges/exclusives/uniques).
+-- Belt-and-suspenders — protected if it's a structural per-uid special (has a uid, not a quantity
+-- stack) OR isSpecial says so (huge flag / special rarity). Only pure COMMON stacks fall through.
+function PetInventoryView.isProtectedFromReset(record, capability)
+    if type(record) ~= "table" then
+        return false
+    end
+    if record.uid ~= nil and record.quantity == nil then
+        return true -- self-describing unique instance (a special / huge)
+    end
+    return PetInventoryView.isSpecial(record, capability)
+end
+
+-- Reset filter: drop COMMON stacks, ALWAYS keep protected (huge/special) records. Pure. Returns
+-- (keptItems, removedCount). Used by Admin reset so a huge can never be wiped.
+function PetInventoryView.keepProtected(items, capability)
+    local kept, removed = {}, 0
+    for k, rec in pairs(items or {}) do
+        if PetInventoryView.isProtectedFromReset(rec, capability) then
+            kept[k] = rec
+        else
+            removed = removed + 1
+        end
+    end
+    return kept, removed
+end
+
 -- Display grouping key. Specials key uniquely by uid; commons by the configured fields.
 function PetInventoryView.stackKey(record, config, capability)
     if capability ~= nil and PetInventoryView.isSpecial(record, capability) then

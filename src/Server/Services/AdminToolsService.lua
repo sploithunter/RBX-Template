@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
 
 local AdminToolsService = {}
 AdminToolsService.__index = AdminToolsService
@@ -110,7 +111,8 @@ function AdminToolsService:_handleSpawnEnemy(adminPlayer, data)
     self:_sendResult(adminPlayer, {
         kind = "spawn_enemy",
         success = ok,
-        message = ok and ("Spawned " .. tostring(result.enemyId) .. " (hp " .. tostring(result.hp) .. ")")
+        message = ok
+                and ("Spawned " .. tostring(result.enemyId) .. " (hp " .. tostring(result.hp) .. ")")
             or ("Spawn failed: " .. tostring(result and result.reason or "no result")),
     })
 end
@@ -463,12 +465,34 @@ function AdminToolsService:_handleResetPets(adminPlayer, data)
         return
     end
 
-    -- Reset OWNERSHIP (the SSOT) and the equip layer to empty.
-    pets.items = {}
-    pets.used_slots = 0
-    if playerData.Equipped then
-        playerData.Equipped.pets = {}
+    -- Reset COMMON ownership — but NEVER huges/exclusives/uniques. THE HUGE GUARD: a reset wipes the
+    -- common stacks only; protected (special) records always survive (PetInventoryView.keepProtected).
+    local capability = self._dataService._petCapabilityFromConfig
+            and self._dataService:_petCapabilityFromConfig()
+        or {}
+    local kept, removedCommons = PetInventoryView.keepProtected(pets.items, capability)
+    pets.items = kept
+    local slots = 0
+    for _ in pairs(kept) do
+        slots = slots + 1 -- one slot per surviving stack/special entry
     end
+    pets.used_slots = slots
+    -- Equip layer: keep only equips that still resolve to a SURVIVING special; drop commons (gone).
+    if playerData.Equipped and type(playerData.Equipped.pets) == "table" then
+        local newEquipped = {}
+        for slot, ref in pairs(playerData.Equipped.pets) do
+            local ok, parsed = pcall(PetInventoryView.parseRef, ref)
+            local uid = ok and parsed and parsed.kind == "special" and parsed.uid or nil
+            if (uid and kept[uid]) or kept[ref] then
+                newEquipped[slot] = ref
+            end
+        end
+        playerData.Equipped.pets = newEquipped
+    end
+    self._logger:Warn("Admin reset pets: common stacks cleared, huges/specials preserved", {
+        removedCommonStacks = removedCommons,
+        keptSpecials = slots,
+    })
 
     -- Re-replicate from the now-empty truth, then despawn any world follow models.
     if self._inventoryService and self._inventoryService.RebuildPetProjections then
@@ -531,9 +555,14 @@ function AdminToolsService:_handleResetToBeginning(adminPlayer, data)
         end
         return s
     end
+    -- THE HUGE GUARD (shared with _handleResetPets): protect huges/exclusives/uniques, not just the
+    -- `huge` flag — so a huge that somehow lacks the flag (special rarity / per-uid) still survives.
+    local capability = self._dataService._petCapabilityFromConfig
+            and self._dataService:_petCapabilityFromConfig()
+        or {}
     local kept, keptKeys, deleteCount = {}, {}, 0
     for key, rec in pairs(pets.items) do
-        if type(rec) == "table" and rec.huge == true then
+        if PetInventoryView.isProtectedFromReset(rec, capability) then
             kept[#kept + 1] = describe(rec)
             keptKeys[key] = rec
         else
