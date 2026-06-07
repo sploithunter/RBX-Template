@@ -49,6 +49,7 @@ end
 -- else a glowing blob. Sanitized so other systems don't treat it as a real squad pet.
 function SummonService:_buildModel(player, gkind, gcfg)
     local model
+    local usingPlaceholder = true -- real asset keeps its own textures; placeholder gets tinted
     local assetId = self._config.model_asset and self._config.model_asset[gkind]
     if assetId then
         local ok, loaded = pcall(function()
@@ -59,6 +60,7 @@ function SummonService:_buildModel(player, gkind, gcfg)
             if model.Parent == loaded then
                 model.Parent = nil
             end
+            usingPlaceholder = false
         end
     end
     if not model then
@@ -95,18 +97,30 @@ function SummonService:_buildModel(player, gkind, gcfg)
     if not model.PrimaryPart then
         model.PrimaryPart = model:FindFirstChildWhichIsA("BasePart")
     end
-    pcall(function()
-        model:ScaleTo(gcfg.scale or 2.5)
-    end)
+    -- scale: placeholder uses a flat multiplier; a real asset is scaled to a target stud height
+    if usingPlaceholder then
+        pcall(function()
+            model:ScaleTo(gcfg.scale or 2.5)
+        end)
+    elseif gcfg.height then
+        pcall(function()
+            local ext = model:GetExtentsSize()
+            if ext and ext.Y > 0.1 then
+                model:ScaleTo(gcfg.height / ext.Y)
+            end
+        end)
+    end
     for _, d in ipairs(model:GetDescendants()) do
         if d:IsA("BasePart") then
-            d.Color = color3(gcfg.tint)
-            d.Material = Enum.Material.SmoothPlastic
             d.Anchored = true
             d.CanCollide = false
             d.CanQuery = false
             d.CanTouch = false
             d.Massless = true
+            if usingPlaceholder then -- real asset keeps its authored textures/colors
+                d.Color = color3(gcfg.tint)
+                d.Material = Enum.Material.SmoothPlastic
+            end
         elseif d:IsA("Humanoid") then
             d.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
         end
@@ -182,6 +196,16 @@ function SummonService:Summon(player, kind, now, powerId)
     local model = self:_buildModel(player, gkind, gcfg)
     model.Parent = self._folder
 
+    -- place it at the player's side immediately (don't slide in from the world origin)
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    local o = gcfg.offset or { x = 6, y = 0, z = 4 }
+    if hrp and model.PrimaryPart then
+        local spot = hrp.Position + Vector3.new(o.x or 6, (o.y or 0) + (gcfg.hover or 0), o.z or 4)
+        pcall(function()
+            model:PivotTo(CFrame.lookAt(spot, Vector3.new(hrp.Position.X, spot.Y, hrp.Position.Z)))
+        end)
+    end
+
     self._active[#self._active + 1] = {
         model = model,
         owner = player.UserId,
@@ -226,7 +250,12 @@ function SummonService:_step()
                 local target = hrp.Position
                     + Vector3.new(o.x or 6, (o.y or 0) + rec.hover, o.z or 4)
                 local cur = pp.Position
-                pp.CFrame = CFrame.new(cur:Lerp(target, lerp), hrp.Position) -- trail + face the player
+                local nextPos = cur:Lerp(target, lerp)
+                -- PivotTo moves the whole (anchored, multi-part) model; face the player but stay level
+                local face = Vector3.new(hrp.Position.X, nextPos.Y, hrp.Position.Z)
+                pcall(function()
+                    rec.model:PivotTo(CFrame.lookAt(nextPos, face))
+                end)
             end
             -- Djinn heal-over-time tick
             if rec.healEvery and now - rec.lastHeal >= rec.healEvery then

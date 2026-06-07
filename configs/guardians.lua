@@ -13,15 +13,16 @@
 ]]
 
 return {
-    -- Jason's real guardian models go here (Open Cloud Model asset ids). nil = use the placeholder.
+    -- Real guardian models (Open Cloud Model asset ids). nil = clone a scaled+tinted squad pet.
     model_asset = {
-        colossus = nil,
-        djinn = nil,
+        colossus = 95238379643484, -- moss-stone titan (tree + waterfall crown)
+        djinn = 88120936939949, -- gold genie
     },
 
     colossus = {
-        scale = 3.2, -- placeholder: how much to enlarge the cloned pet
-        tint = { 120, 132, 110 }, -- stone grey-green
+        scale = 3.2, -- PLACEHOLDER only: enlarge the cloned pet (ignored when a real asset loads)
+        height = 9, -- real asset: scale so the model stands this many studs tall
+        tint = { 120, 132, 110 }, -- placeholder tint only (real model keeps its own textures)
         light = { 110, 200, 90 }, -- earth-green glow
         squad_defense = 220, -- +Defense on the squad while it stands (the WALL)
         squad_damage = 1.6, -- x pet damage while it stands (the FIST, via PetDamageBuff)
@@ -29,7 +30,8 @@ return {
     },
     djinn = {
         scale = 2.6,
-        tint = { 245, 200, 90 }, -- gold
+        height = 5.5, -- real asset target height (studs)
+        tint = { 245, 200, 90 },
         light = { 245, 185, 60 },
         heal_per_tick = 30, -- squad heal each tick while it floats (the HoT)
         tick_seconds = 1.5,
