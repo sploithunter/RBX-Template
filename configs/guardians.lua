@@ -20,24 +20,24 @@ return {
     },
 
     colossus = {
-        scale = 3.2, -- PLACEHOLDER only: enlarge the cloned pet (ignored when a real asset loads)
-        height = 9, -- real asset: scale so the model stands this many studs tall
-        hover = 3, -- lift above standing-on-ground (raises the titan up for presence)
+        scale = 8, -- PLACEHOLDER only: enlarge the cloned pet (ignored when a real asset loads)
+        height = 30, -- real asset: scale so it stands this many studs tall — a true COLOSSUS (~6x player)
+        hover = 2, -- lift above standing-on-ground (a touch off the dirt for presence)
         tint = { 120, 132, 110 }, -- placeholder tint only (real model keeps its own textures)
         light = { 110, 200, 90 }, -- earth-green glow
         squad_defense = 220, -- +Defense on the squad while it stands (the WALL)
         squad_damage = 1.6, -- x pet damage while it stands (the FIST, via PetDamageBuff)
-        offset = { x = 7, y = 0, z = 4 }, -- stands here relative to the player
+        offset = { x = 16, y = 0, z = 9 }, -- stands well out to the side so the giant doesn't clip the camera
     },
     djinn = {
-        scale = 2.6,
-        height = 5.5, -- real asset target height (studs)
+        scale = 6,
+        height = 18, -- a towering TITAN genie (~3.5x player), floating
         tint = { 245, 200, 90 },
         light = { 245, 185, 60 },
         heal_per_tick = 30, -- squad heal each tick while it floats (the HoT)
         tick_seconds = 1.5,
-        hover = 5, -- floats this high off the ground
-        offset = { x = -7, y = 0, z = 4 },
+        hover = 7, -- floats this high off the ground
+        offset = { x = -15, y = 0, z = 9 },
     },
 
     follow_lerp = 0.18, -- 0..1: how snappily the guardian trails the player each frame

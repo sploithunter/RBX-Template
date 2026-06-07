@@ -92,11 +92,13 @@ return {
         -- A downed pet (taken all the way down) is out for this long, then fully
         -- heals — the "fully defeated takes X to heal" consequence. Partially
         -- damaged pets bleed their damage back at regen.partial_per_second once
-        -- they have been out of combat for regen.delay_seconds (the faster heal).
+        -- they have been out of combat for regen.delay_seconds.
+        -- NATURAL regen is deliberately SLOW (a trickle) so heal powers / support pets / potions are
+        -- the FAST way back — that's what makes them worth slotting. Tune the trickle here.
         full_defeat_heal_seconds = 25,
         regen = {
-            partial_per_second = 12,
-            delay_seconds = 3,
+            partial_per_second = 2.5, -- was 12 (too fast — healing felt pointless); ~5x slower trickle
+            delay_seconds = 5, -- was 3 — a longer "must disengage" window before the trickle starts
         },
         -- Instant effects (heals etc.) have no duration to show, so we flash a blinking
         -- badge on the pet's squad card for this long + pop a world puff — a visible

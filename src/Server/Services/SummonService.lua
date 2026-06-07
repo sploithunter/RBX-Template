@@ -142,7 +142,7 @@ function SummonService:_buildModel(player, gkind, gcfg)
     if model.PrimaryPart then
         local light = Instance.new("PointLight")
         light.Color = color3(gcfg.light)
-        light.Range = 13
+        light.Range = math.clamp((gcfg.height or 12) * 0.8, 13, 42) -- scale the glow with the giant's size
         light.Brightness = 1.6 -- soft glow; high brightness washed the textures out
         light.Parent = model.PrimaryPart
     end
