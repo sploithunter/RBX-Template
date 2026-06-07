@@ -127,18 +127,31 @@ return {
         -- Earth / Geomancer (shield/tank)
         bastion = { family = "absorb", magnitude = 90, duration = 14 }, -- anchor: huge squad shield
         seismic_hold = { family = "root_guard", magnitude = 120, duration = 6 }, -- root enemies + squad +Def
-        living_mountain = { family = "fortify", magnitude = 150, duration = 10, heal = 30 }, -- +Def + heal pulse
+        living_mountain = {
+            family = "fortify",
+            magnitude = 150,
+            duration = 10,
+            heal = 30,
+            hot_tick = 2,
+        }, -- +Def + heal-over-time (30/2s)
         gaia_colossus = { family = "summon", guardian = "colossus", magnitude = 0, duration = 20 }, -- summon tank
         -- Fire / Pyromancer (damage) — Wildfire/Firestorm/Cataclysm above; this is the 4th
-        inferno_brand = { family = "vulnerable", magnitude = 1.9, duration = 8 }, -- strong single mark
+        inferno_brand = { family = "vulnerable", magnitude = 1.9, duration = 8, ramp_to = 2.6 }, -- mark that bites harder as it burns (1.9->2.6)
         -- Ice / Cryomancer (control)
         permafrost = { family = "root", magnitude = 0, duration = 8 }, -- anchor: strong AoE lockdown
-        shatter = { family = "vulnerable", magnitude = 2.2, duration = 5 }, -- big vuln (frozen payoff)
+        shatter = { family = "vulnerable", magnitude = 2.2, duration = 5, frozen_bonus = 1.4 }, -- big vuln, x1.4 again on FROZEN targets (2.2->3.08)
         absolute_zero = { family = "root", magnitude = 0, duration = 7 }, -- mass hard freeze
         eternal_winter = { family = "root", magnitude = 0, duration = 12 }, -- capstone: field-wide hold
         -- Desert / Sandwalker (heal/sustain)
-        oasis = { family = "heal", magnitude = 70, duration = 0 }, -- anchor: big squad heal
-        mirage_veil = { family = "absorb", magnitude = 45, duration = 10 }, -- squad evasion/absorb
+        oasis = {
+            family = "heal",
+            magnitude = 70,
+            duration = 0,
+            hot = 20,
+            hot_tick = 2,
+            hot_seconds = 8,
+        }, -- big heal + 20/2s tail for 8s
+        mirage_veil = { family = "absorb", magnitude = 45, duration = 10, evade_heal = 12 }, -- evasion/absorb + heal-on-evade
         simoom = { family = "heal_blind", magnitude = 55, duration = 6, vuln = 1.5 }, -- heal squad + blind
         genie_dunes = {
             family = "summon",

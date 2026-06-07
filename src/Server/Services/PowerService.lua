@@ -286,6 +286,68 @@ function PowerService:_healPet(player, pet, amount, now)
     end
 end
 
+-- Heal-over-time: heal the WHOLE squad `perTick` every `tickSeconds` for `totalSeconds`. Re-resolves
+-- the squad each tick so it heals whoever is alive (Living Mountain's standing aura, Oasis's tail).
+function PowerService:_healOverTime(player, perTick, tickSeconds, totalSeconds)
+    perTick = tonumber(perTick) or 0
+    tickSeconds = tonumber(tickSeconds) or 2
+    totalSeconds = tonumber(totalSeconds) or 0
+    if perTick <= 0 or totalSeconds <= 0 then
+        return
+    end
+    task.spawn(function()
+        local elapsed = 0
+        while elapsed < totalSeconds do
+            task.wait(tickSeconds)
+            elapsed += tickSeconds
+            if not player.Parent then
+                return
+            end
+            local pets = Workspace:FindFirstChild("PlayerPets")
+                and Workspace.PlayerPets:FindFirstChild(player.Name)
+            if pets then
+                local nowT = os.time()
+                for _, pet in ipairs(pets:GetChildren()) do
+                    if pet:IsA("Model") then
+                        self:_healPet(player, pet, perTick, nowT)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Ramp a vulnerability mark UPWARD from `fromMag` to `toMag` over `totalSeconds` (Inferno Brand:
+-- the longer it burns, the deeper it bites). Re-stamps only enemies still carrying THIS brand.
+function PowerService:_rampVulnerable(player, fromMag, toMag, totalSeconds, powerId)
+    fromMag = tonumber(fromMag) or 1
+    toMag = tonumber(toMag) or fromMag
+    totalSeconds = tonumber(totalSeconds) or 0
+    if toMag <= fromMag or totalSeconds <= 0 then
+        return
+    end
+    task.spawn(function()
+        local elapsed = 0
+        while elapsed < totalSeconds do
+            task.wait(1)
+            elapsed += 1
+            if not player.Parent then
+                return
+            end
+            local m = fromMag + (toMag - fromMag) * math.min(1, elapsed / totalSeconds)
+            local nowT = os.time()
+            for _, enemy in ipairs(enemiesAlive()) do
+                if
+                    enemy:GetAttribute("DebuffPowerId") == powerId
+                    and (enemy:GetAttribute("VulnerableUntil") or 0) > nowT
+                then
+                    enemy:SetAttribute("VulnerableMult", m)
+                end
+            end
+        end
+    end)
+end
+
 -- Summon-guardian capstones (Gaia's Colossus / Genie of the Dunes) — delegate to SummonService,
 -- which spawns the guardian model, applies its standing squad buffs / revive+heal, trails the
 -- player and despawns. Resolved at runtime so PowerService doesn't hard-depend on it.
@@ -323,6 +385,10 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                 end
             end
         end
+        -- Oasis: a heal-over-time tail follows the big upfront pulse (`hot`/tick for `hot_seconds`).
+        if tonumber(kind.hot) then
+            self:_healOverTime(player, kind.hot, kind.hot_tick or 2, kind.hot_seconds or dur)
+        end
     elseif family == "buff" then
         player:SetAttribute("PetDamageBuff", mag)
         player:SetAttribute("PetDamageBuffUntil", now + dur)
@@ -332,11 +398,18 @@ function PowerService:_applyEffect(player, kind, now, powerId)
         -- duration it ALSO times out (no permanent armor): stamp CombatShieldUntil + schedule a
         -- clear; a re-cast pushes the stamp later so an older timer won't drop a fresh shield.
         -- Squad-wide unless the power is single_pet (-> the selected pet only).
+        local evadeHeal = tonumber(kind.evade_heal)
         for _, pet in ipairs(self:_targetPets(player, powerId)) do
             pet:SetAttribute("CombatShield", (pet:GetAttribute("CombatShield") or 0) + mag)
             pet:SetAttribute("CombatShieldPowerId", powerId)
             if dur and dur > 0 then
                 pet:SetAttribute("CombatShieldUntil", now + dur)
+                -- Mirage Veil: while the veil is up, each blow it turns aside also heals the pet a
+                -- little (heal-on-evade). EnemyService reads MirageHeal* in its shield-absorb path.
+                if evadeHeal then
+                    pet:SetAttribute("MirageHealAmt", evadeHeal)
+                    pet:SetAttribute("MirageHealUntil", now + dur)
+                end
                 task.delay(dur, function()
                     if pet.Parent and (pet:GetAttribute("CombatShieldUntil") or 0) <= os.time() then
                         pet:SetAttribute("CombatShield", 0)
@@ -412,11 +485,21 @@ function PowerService:_applyEffect(player, kind, now, powerId)
             enemy:SetAttribute("DebuffUntil", now + dur)
         end
     elseif family == "vulnerable" then
+        -- Shatter: x`frozen_bonus` again on FROZEN (rooted) targets — the freeze->shatter payoff.
+        local frozenBonus = tonumber(kind.frozen_bonus)
         for _, enemy in ipairs(enemiesAlive()) do
-            enemy:SetAttribute("VulnerableMult", mag)
+            local m = mag
+            if frozenBonus and (enemy:GetAttribute("RootedUntil") or 0) > now then
+                m = mag * frozenBonus
+            end
+            enemy:SetAttribute("VulnerableMult", m)
             enemy:SetAttribute("VulnerableUntil", now + dur)
             enemy:SetAttribute("DebuffPowerId", powerId)
             enemy:SetAttribute("DebuffUntil", now + dur)
+        end
+        -- Inferno Brand: ramp the mark upward over its lifetime (1.9 -> ramp_to).
+        if tonumber(kind.ramp_to) then
+            self:_rampVulnerable(player, mag, kind.ramp_to, dur, powerId)
         end
         -- #174: a target-strength debuff also applies to FARMING. Mark the crystals the squad is
         -- mining so pets shred them x`mag` faster (PetFollowService:_mine reads VulnerableMult on
@@ -445,14 +528,17 @@ function PowerService:_applyEffect(player, kind, now, powerId)
             pet:SetAttribute("DefenseBuffPowerId", powerId)
         end
     elseif family == "fortify" then
-        -- Living Mountain (geomancer signature): big squad +Defense + a heal pulse (the start of a
-        -- heal-over-time; the per-tick refresh is a later refinement). `magnitude`=+Defense, `heal`=hp.
+        -- Living Mountain (geomancer signature): big squad +Defense + a heal-over-time. `magnitude`=
+        -- +Defense, `heal`=hp per pulse, `hot_tick`=seconds between pulses across the duration.
         local healAmt = tonumber(kind.heal) or 0
         for _, pet in ipairs(self:_targetPets(player, powerId)) do
             pet:SetAttribute("DefenseBuff", mag)
             pet:SetAttribute("DefenseBuffUntil", now + dur)
             pet:SetAttribute("DefenseBuffPowerId", powerId)
-            self:_healPet(player, pet, healAmt, now)
+            self:_healPet(player, pet, healAmt, now) -- upfront pulse
+        end
+        if tonumber(kind.hot_tick) then
+            self:_healOverTime(player, healAmt, kind.hot_tick, dur)
         end
     elseif family == "heal_blind" then
         -- Simoom (sandwalker signature): heal the squad AND blind/soften enemies caught in the storm

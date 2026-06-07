@@ -504,6 +504,16 @@ function EnemyService:_hitPet(pet, def, now, eng, enemyLevel, petLevel)
         local absorbed = math.min(shield, dmg)
         pet:SetAttribute("CombatShield", shield - absorbed)
         dmg = dmg - absorbed
+        -- Mirage Veil (sandwalker signature): the veil heals a little each time it turns a blow
+        -- aside (heal-on-evade) while MirageHealUntil is live — sustain that rewards being shielded.
+        if absorbed > 0 and (pet:GetAttribute("MirageHealUntil") or 0) > nowT then
+            local heal = pet:GetAttribute("MirageHealAmt") or 0
+            local takenNow = pet:GetAttribute("CombatDamageTaken") or 0
+            if heal > 0 and takenNow > 0 then
+                pet:SetAttribute("CombatDamageTaken", math.max(0, takenNow - heal))
+                pet:SetAttribute("HealFxUntil", os.time() + 2)
+            end
+        end
     end
     local taken = PetEndurance.applyHit(pet:GetAttribute("CombatDamageTaken") or 0, dmg)
     pet:SetAttribute("CombatDamageTaken", taken)
