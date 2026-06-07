@@ -58,8 +58,9 @@ local BOXES = {
     ice_coins_pane = "sapphire",
 }
 
-local ICON_SIZE = UDim2.fromOffset(28, 28)
-local ICON_POS = UDim2.new(0, 5, 0.5, 0)
+-- Match the original gems-box icon: 32x32 offset to OVERHANG the left edge of the pill (emblem style).
+local ICON_SIZE = UDim2.fromOffset(32, 32)
+local ICON_POS = UDim2.new(0, -10, 0.5, 0)
 
 local function addGemIcon(pane, col)
     -- find the existing icon (emoji TextLabel or the gems image) and its holder frame
