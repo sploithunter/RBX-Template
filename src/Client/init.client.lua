@@ -302,6 +302,16 @@ do
     end
 end
 
+-- Dock the Current Quest tracker below the player bar, restyled to match.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.QuestTrackerStyle).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start QuestTrackerStyle", { error = tostring(err) })
+    end
+end
+
 -- RealmAtmosphere: retints Lighting to the player's current realm (heaven/hell skin on the
 -- same map, World S3) — driven by the server-published CurrentRealm attribute.
 do

@@ -6,3 +6,11 @@ when building SquadHud / player status UI.
 
 quest_button_reference.jpg — Glossy blue quest menu button mockup: target/bullseye icon,
 "Quest" label, neon border. Use for layout and tone comparison when building quest UI.
+
+player_status_quest_combo_reference.png — Combined HUD mockup: player status bar (avatar,
+name, XP bar, level ring) stacked above a quest progress box ("Daily Grind", 0/100).
+Use for layout and tone comparison when building player status + quest tracker UI.
+
+power_bar_reference.png — Power bar / hotbar mockup: blue glossy frame, Farm Off toggle,
+two rows of 10 circular slots (powers, roster, Scatter/Focus/Regroup). Use for layout and
+tone comparison when building the pet power bar UI.
