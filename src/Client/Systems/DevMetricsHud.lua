@@ -86,8 +86,8 @@ function DevMetricsHud:_build()
     local panel = Instance.new("Frame")
     panel.Name = "Panel"
     panel.Size = UDim2.new(0, 240, 0, 108)
-    panel.Position = UDim2.new(0.34, 0, 0, 6) -- top, ~1/3 across
-    panel.AnchorPoint = Vector2.new(0.5, 0)
+    panel.Position = UDim2.new(0, 8, 0, 64) -- top-left (below the Roblox topbar inset)
+    panel.AnchorPoint = Vector2.new(0, 0)
     panel.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
     panel.BackgroundTransparency = 0.2
     panel.BorderSizePixel = 0

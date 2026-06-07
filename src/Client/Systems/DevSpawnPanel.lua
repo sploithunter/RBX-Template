@@ -16,10 +16,26 @@ local started = false
 -- Each button: a label + the args passed to combat.spawnEnemy. spread = ring radius so they don't
 -- stack; forward = push further out (the "Far Dummy" is an out-of-AoE-range control).
 local SPAWNS = {
-    { label = "🎯 Dummy ×3", args = { enemyId = "training_dummy", count = 3, spread = 7 }, color = { 90, 140, 200 } },
-    { label = "🎯 Far Dummy", args = { enemyId = "training_dummy", count = 1, forward = 40 }, color = { 70, 110, 160 } },
-    { label = "👹 Imp ×3", args = { enemyId = "lava_imp", count = 3, spread = 7 }, color = { 200, 90, 70 } },
-    { label = "🐻 Bear", args = { enemyId = "raging_bear", count = 1 }, color = { 170, 110, 60 } },
+    {
+        label = "🎯 Dummy ×3",
+        args = { enemyId = "training_dummy", count = 3, spread = 7 },
+        color = { 90, 140, 200 },
+    },
+    {
+        label = "🎯 Far Dummy",
+        args = { enemyId = "training_dummy", count = 1, forward = 40 },
+        color = { 70, 110, 160 },
+    },
+    {
+        label = "👹 Imp ×3",
+        args = { enemyId = "lava_imp", count = 3, spread = 7 },
+        color = { 200, 90, 70 },
+    },
+    {
+        label = "🐻 Bear",
+        args = { enemyId = "raging_bear", count = 1 },
+        color = { 170, 110, 60 },
+    },
 }
 
 local function rgb(t)
@@ -44,7 +60,7 @@ function DevSpawnPanel.start()
     frame.AnchorPoint = Vector2.new(0, 0)
     -- Top-left, above the currency column (center-left) so the dev buttons don't cover the
     -- biome-coin HUD during testing. (Studio-only temporary menu.)
-    frame.Position = UDim2.new(0, 8, 0, 96)
+    frame.Position = UDim2.new(0, 258, 0, 64) -- right of the meters/buffs column
     frame.Size = UDim2.fromOffset(120, 10)
     frame.BackgroundTransparency = 1
     frame.Parent = gui
