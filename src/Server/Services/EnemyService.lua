@@ -1102,6 +1102,7 @@ function EnemyService:_auraDefense(folder, aura, count)
         if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
             ally:SetAttribute("TeamDefenseBuff", amount)
             ally:SetAttribute("TeamDefenseBuffUntil", until_)
+            ally:SetAttribute("TeamDefenseBuffStacks", count or 1) -- # contributing buffers (badge pile)
         end
     end
 end
@@ -1124,11 +1125,12 @@ end
 
 -- Stamp a per-pet DISPLAY marker on every ally so the squad cards can show the support buff
 -- icon (offense/yield ride the PLAYER attr, which the cards can't read per-pet). Display-only.
-function EnemyService:_stampAuraFx(folder, fxAttr, aura)
+function EnemyService:_stampAuraFx(folder, fxAttr, aura, count)
     local until_ = os.time() + (tonumber(aura.duration) or 3)
     for _, ally in ipairs(folder:GetChildren()) do
         if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
             ally:SetAttribute(fxAttr, until_)
+            ally:SetAttribute(fxAttr .. "Stacks", count or 1) -- # contributing buffers (badge pile)
         end
     end
 end
@@ -1174,10 +1176,10 @@ function EnemyService:_supportPass(now)
                     self:_auraDefense(folder, aura, count)
                 elseif kind == "offense" then
                     self:_auraPlayerBuff(folder, "PetTeamDamageBuff", aura, count)
-                    self:_stampAuraFx(folder, "OffenseFxUntil", aura)
+                    self:_stampAuraFx(folder, "OffenseFxUntil", aura, count)
                 elseif kind == "yield" then
                     self:_auraPlayerBuff(folder, "CoinYieldBuff", aura, count)
-                    self:_stampAuraFx(folder, "YieldFxUntil", aura)
+                    self:_stampAuraFx(folder, "YieldFxUntil", aura, count)
                 end
             end
         end

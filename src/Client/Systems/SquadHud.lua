@@ -172,6 +172,7 @@ local PET_EFFECTS = {
         key = "teamdef",
         source = "pet",
         untilAttr = "TeamDefenseBuffUntil",
+        stacksAttr = "TeamDefenseBuffStacks", -- # of penguin buffers -> badge pile + xN
         steady = true,
         color = Color3.fromRGB(120, 180, 255),
         label = "DEF",
@@ -181,6 +182,7 @@ local PET_EFFECTS = {
         key = "offense",
         source = "pet",
         untilAttr = "OffenseFxUntil",
+        stacksAttr = "OffenseFxUntilStacks", -- # of lava buffers -> badge pile + xN
         steady = true,
         color = Color3.fromRGB(235, 120, 90),
         label = "ATK",
@@ -190,6 +192,7 @@ local PET_EFFECTS = {
         key = "yield",
         source = "pet",
         untilAttr = "YieldFxUntil",
+        stacksAttr = "YieldFxUntilStacks", -- # of desert buffers -> badge pile + xN
         steady = true,
         color = Color3.fromRGB(235, 205, 90),
         label = "COIN",
@@ -241,6 +244,9 @@ local function activeEffectsFor(pet, player, now)
                     steady = e.steady, -- steady buffs never blink (continuously refreshed = permanent)
                     remaining = until_ - now, -- seconds left (drives the expiry blink)
                     order = idx, -- stable PET_EFFECTS position (steady badges sort by this, not time)
+                    -- # of same-kind sources stacked into this buff (e.g. 3 lava pets -> ATK x3) so the
+                    -- card can pile the badge + show "xN" (same buff stacks; different ones stay separate).
+                    stacks = e.stacksAttr and (src:GetAttribute(e.stacksAttr) or 1) or nil,
                 }
             end
         elseif e.poolAttr then
@@ -262,16 +268,46 @@ local function activeEffectsFor(pet, player, now)
     return out
 end
 
--- A small status badge (icon-ready: an empty ImageLabel sits over the placeholder).
+-- A small status badge. The outer `frame` is a transparent CONTAINER (no clipping) so a stacked
+-- buff can fan "pile" shadows out behind the body + show a "xN" count chip outside the body; the
+-- inner `body` is the coloured chip that clips the zoomed icon border.
 local function makeBadge(parent)
     local f = Instance.new("Frame")
     f.Size = UDim2.fromOffset(30, 30)
+    f.BackgroundTransparency = 1
     f.BorderSizePixel = 0
-    f.ClipsDescendants = true -- crop the icon's zoomed-out transparent border
     f.Parent = parent
+
+    -- Pile shadows: same-kind buffs stacked like overlapping coins. Hidden unless stacks > 1.
+    local shadows = {}
+    for s = 1, 2 do
+        local sh = Instance.new("Frame")
+        sh.Name = "Pile" .. s
+        sh.AnchorPoint = Vector2.new(0.5, 0.5)
+        sh.Size = UDim2.fromScale(1, 1)
+        sh.Position = UDim2.new(0.5, s * 4, 0.5, -s * 4) -- fan up-right
+        sh.BorderSizePixel = 0
+        sh.BackgroundColor3 = Color3.fromRGB(70, 76, 92)
+        sh.BackgroundTransparency = 0.08 + (s - 1) * 0.2
+        sh.ZIndex = 2 - s -- behind the body
+        sh.Visible = false
+        local sc = Instance.new("UICorner")
+        sc.CornerRadius = UDim.new(0, 6)
+        sc.Parent = sh
+        sh.Parent = f
+        shadows[s] = sh
+    end
+
+    local body = Instance.new("Frame")
+    body.Name = "Body"
+    body.Size = UDim2.fromScale(1, 1)
+    body.BorderSizePixel = 0
+    body.ClipsDescendants = true -- crop the icon's zoomed-out transparent border
+    body.ZIndex = 2
+    body.Parent = f
     local c = Instance.new("UICorner")
     c.CornerRadius = UDim.new(0, 6)
-    c.Parent = f
+    c.Parent = body
     local icon = Instance.new("ImageLabel")
     icon.Name = "Icon"
     icon.BackgroundTransparency = 1
@@ -281,7 +317,7 @@ local function makeBadge(parent)
     icon.Size = UDim2.fromScale(1, 1) -- zoom set per-icon in updateBadges
     icon.Image = ""
     icon.ZIndex = 3
-    icon.Parent = f
+    icon.Parent = body
     -- Tinted element ring framing the disc (power-applied buffs only; hidden otherwise).
     local ring = Instance.new("ImageLabel")
     ring.Name = "Ring"
@@ -293,7 +329,7 @@ local function makeBadge(parent)
     ring.Image = ""
     ring.Visible = false
     ring.ZIndex = 4
-    ring.Parent = f
+    ring.Parent = body
     local label = Instance.new("TextLabel")
     label.Name = "Label"
     label.BackgroundTransparency = 1
@@ -301,7 +337,8 @@ local function makeBadge(parent)
     label.Font = Enum.Font.GothamBold
     label.TextSize = 9
     label.TextColor3 = Color3.fromRGB(20, 22, 28)
-    label.Parent = f
+    label.ZIndex = 3
+    label.Parent = body
     local timer = Instance.new("TextLabel")
     timer.Name = "Timer"
     timer.BackgroundTransparency = 1
@@ -310,8 +347,38 @@ local function makeBadge(parent)
     timer.Font = Enum.Font.GothamBold
     timer.TextSize = 9
     timer.TextColor3 = Color3.fromRGB(20, 22, 28)
-    timer.Parent = f
-    return { frame = f, icon = icon, ring = ring, label = label, timer = timer }
+    timer.ZIndex = 3
+    timer.Parent = body
+
+    -- "xN" count chip (top-right, on the container so it isn't clipped). Hidden unless stacks > 1.
+    local count = Instance.new("TextLabel")
+    count.Name = "Count"
+    count.BackgroundColor3 = Color3.fromRGB(28, 31, 40)
+    count.BackgroundTransparency = 0.05
+    count.AnchorPoint = Vector2.new(1, 0)
+    count.Position = UDim2.new(1, 5, 0, -4)
+    count.Size = UDim2.fromOffset(17, 14)
+    count.Font = Enum.Font.GothamBlack
+    count.TextSize = 11
+    count.TextColor3 = Color3.fromRGB(255, 255, 255)
+    count.Text = ""
+    count.Visible = false
+    count.ZIndex = 6
+    local cc = Instance.new("UICorner")
+    cc.CornerRadius = UDim.new(0, 5)
+    cc.Parent = count
+    count.Parent = f
+
+    return {
+        frame = f,
+        body = body,
+        icon = icon,
+        ring = ring,
+        label = label,
+        timer = timer,
+        shadows = shadows,
+        count = count,
+    }
 end
 
 -- Reconcile a card's badges against the pet's active effects. Ordered so the SHORTEST
@@ -348,10 +415,20 @@ local function updateBadges(card, effects, blinkLead)
         b.frame.LayoutOrder = i
         local hasIcon = eff.icon and eff.icon ~= ""
         -- Real icon: clear backing so the art reads cleanly; else keep coloured chip.
-        b.frame.BackgroundColor3 = eff.color
+        b.body.BackgroundColor3 = eff.color
         b.bgBase = hasIcon and 1 or 0 -- base backing transparency; blink loop applies it
         b.label.Text = hasIcon and "" or eff.label
         b.icon.Image = eff.icon or ""
+        -- Stack of same-kind sources: fan pile shadows behind + show a "xN" chip (different kinds
+        -- stay as separate badges; same kind piles up, like coins of one denomination).
+        local stacks = math.floor(eff.stacks or 1)
+        b.shadows[1].Visible = stacks >= 2
+        b.shadows[2].Visible = stacks >= 3
+        local pileColor = eff.ringColor or eff.color
+        b.shadows[1].BackgroundColor3 = pileColor
+        b.shadows[2].BackgroundColor3 = pileColor
+        b.count.Visible = stacks > 1
+        b.count.Text = stacks > 1 and ("x" .. stacks) or ""
         if eff.ringImg then
             -- Full element badge: inset the disc so the tinted ring frames it (matches the role
             -- badge / hotbar / world shield).
@@ -893,7 +970,7 @@ function SquadHud.start()
                 b.icon.ImageTransparency = hidden and 1 or 0
                 b.label.TextTransparency = hidden and 1 or 0
                 b.timer.TextTransparency = hidden and 1 or 0
-                b.frame.BackgroundTransparency = hidden and 1 or (b.bgBase or 0)
+                b.body.BackgroundTransparency = hidden and 1 or (b.bgBase or 0)
             end
         end
     end)
