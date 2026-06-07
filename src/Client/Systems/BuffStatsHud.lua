@@ -28,6 +28,7 @@ local Workspace = game:GetService("Workspace")
 local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
 local BuffsConfig = require(ReplicatedStorage.Configs:WaitForChild("buffs"))
 local CombatConfig = require(ReplicatedStorage.Configs:WaitForChild("combat"))
+local DropsConfig = require(ReplicatedStorage.Configs:WaitForChild("drops"))
 
 local REFRESH = 0.25 -- readout cadence (s)
 local BLINK_LEAD = 5 -- seconds-to-expiry under which the time pip blinks
@@ -174,6 +175,7 @@ function BuffStatsHud:_build()
     makeRow("speed", "🐾 Speed", Color3.fromRGB(95, 180, 235), 6)
     makeRow("recharge", "⚡ Recharge", Color3.fromRGB(160, 130, 240), 7)
     makeRow("xp", "✨ XP", Color3.fromRGB(150, 110, 235), 8)
+    makeRow("magnet", "🧲 Magnet", Color3.fromRGB(120, 200, 235), 9)
 end
 
 -- ---- data ---------------------------------------------------------------
@@ -326,6 +328,14 @@ function BuffStatsHud:_refresh()
         { fraction = p:GetAttribute("XpBuff") or 0, expiry = p:GetAttribute("XpBuffUntil") or 0 },
     }, now, axis("xp"))
     self:_setMult("xp", xp, axis("xp").cap, soonestRemaining(p, { "XpBuffUntil" }, now))
+
+    -- 🧲 Magnet collect radius (base + the Magnet power's bonus, in studs).
+    local magBase = tonumber(DropsConfig.collect_radius) or 11
+    local magBonus = 0
+    if (p:GetAttribute("MagnetBuffUntil") or 0) > now then
+        magBonus = p:GetAttribute("MagnetBuff") or 0
+    end
+    self:_setRange("magnet", magBase, magBonus, soonestRemaining(p, { "MagnetBuffUntil" }, now))
 end
 
 -- ---- row writers --------------------------------------------------------
@@ -380,6 +390,25 @@ function BuffStatsHud:_setRecharge(key, frac, rem)
     row.text.Text = active
             and string.format("%s: −%d%% CD", row.label, math.floor(frac * 100 + 0.5))
         or string.format("%s: −0%% CD", row.label)
+end
+
+-- Magnet collect RADIUS in studs (base + Magnet power bonus) — not a multiplier. Bar scales the
+-- bonus against the base (a +base bonus = full bar).
+function BuffStatsHud:_setRange(key, base, bonus, rem)
+    local row = self.rows[key]
+    if not row then
+        return
+    end
+    local active = bonus > 0.0001
+    self:_style(row, active, bonus / math.max(base, 1), rem)
+    row.text.Text = active
+            and string.format(
+                "%s: %d studs (+%d)",
+                row.label,
+                math.floor(base + bonus + 0.5),
+                math.floor(bonus + 0.5)
+            )
+        or string.format("%s: %d studs", row.label, math.floor(base + 0.5))
 end
 
 return BuffStatsHud
