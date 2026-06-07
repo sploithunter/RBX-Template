@@ -669,6 +669,32 @@ function SquadHud.start()
         status.BackgroundTransparency = 1
         status.Parent = frame
 
+        -- Admin-only ✕ KILL button (top-right): force THIS slot's pet down so the lockout / Spirit
+        -- Form fires with no enemies — fast testing. Shown only while admin mode is ON (the same
+        -- AdminOverlaysOn toggle that reveals the dev overlays).
+        local killBtn = Instance.new("TextButton")
+        killBtn.Name = "AdminKill"
+        killBtn.Size = UDim2.fromOffset(20, 20)
+        killBtn.AnchorPoint = Vector2.new(1, 0)
+        killBtn.Position = UDim2.new(1, -2, 0, 2)
+        killBtn.BackgroundColor3 = Color3.fromRGB(185, 45, 45)
+        killBtn.Text = "✕"
+        killBtn.Font = Enum.Font.GothamBold
+        killBtn.TextSize = 13
+        killBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        killBtn.ZIndex = 10
+        killBtn.Visible = localPlayer:GetAttribute("AdminOverlaysOn") == true
+        local killCorner = Instance.new("UICorner")
+        killCorner.CornerRadius = UDim.new(1, 0)
+        killCorner.Parent = killBtn
+        killBtn.Parent = frame
+        killBtn.Activated:Connect(function()
+            Signals.Squad_AdminKill:FireServer({ slot = slot })
+        end)
+        localPlayer:GetAttributeChangedSignal("AdminOverlaysOn"):Connect(function()
+            killBtn.Visible = localPlayer:GetAttribute("AdminOverlaysOn") == true
+        end)
+
         frame.MouseButton1Click:Connect(function()
             -- A downed pet whose cooldown has elapsed shows "Summon" — clicking the card
             -- re-summons it. Otherwise a click just selects the slot (assist target).

@@ -69,6 +69,12 @@ function EnemyService:Init()
             self:SummonPet(player, payload)
         end)
     end)
+    -- Admin testing: force a slot's pet DOWN (reason "down" => triggers the lockout) with no enemies.
+    Signals.Squad_AdminKill.OnServerEvent:Connect(function(player, payload)
+        pcall(function()
+            self:AdminKillPet(player, payload)
+        end)
+    end)
 
     -- Assist target: the player directs the squad to focus an enemy (its BreakableID),
     -- or 0 to clear. Pets prefer this over their aggro-picked target (player's edge).
@@ -987,6 +993,22 @@ function EnemyService:_findPlayerPetBySlot(player, slotIndex)
         end
     end
     return nil
+end
+
+-- Admin testing: force a slot's pet DOWN with reason "down" so the full lockout (uid 5-min / slot
+-- 1-min / Spirit Form) fires WITHOUT needing enemies on screen. Admin-gated (IsAdmin attribute).
+function EnemyService:AdminKillPet(player, payload)
+    if player:GetAttribute("IsAdmin") ~= true then
+        return
+    end
+    local slot = tonumber(type(payload) == "table" and payload.slot or payload)
+    if not slot then
+        return
+    end
+    local pet = self:_findPlayerPetBySlot(player, slot)
+    if pet and not pet:GetAttribute("CombatDowned") then
+        self:_downPet(pet, os.clock(), self._combatConfig.engagement or {}, "down")
+    end
 end
 
 -- Recall (player action): pull a still-alive pet out of the fight for a SHORT slot
