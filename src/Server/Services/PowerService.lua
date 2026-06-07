@@ -286,30 +286,13 @@ function PowerService:_healPet(player, pet, amount, now)
     end
 end
 
--- Summon-guardian capstones (Gaia's Colossus / Genie of the Dunes). The temporary guardian PET model
--- + taunt/tank behaviour is a follow-up slice; the immediate gameplay payoff lands now: a `revive`
--- guardian (Genie) brings back EVERY downed pet and full-heals the squad (the "never-wipe" button).
-function PowerService:_summonGuardian(player, kind, now, _powerId)
-    local pets = Workspace:FindFirstChild("PlayerPets")
-        and Workspace.PlayerPets:FindFirstChild(player.Name)
-    if not pets then
-        return
-    end
-    if kind.revive then
-        for _, pet in ipairs(pets:GetChildren()) do
-            if pet:IsA("Model") and pet:GetAttribute("CombatDowned") then
-                pet:SetAttribute("CombatDowned", false)
-                pet:SetAttribute("CombatDamageTaken", 0)
-                pet:SetAttribute("CooldownUntil", 0)
-                pet:SetAttribute("DownedReason", "")
-            end
-        end
-    end
-    local healAmt = tonumber(kind.magnitude) or 0
-    if healAmt > 0 then
-        for _, pet in ipairs(pets:GetChildren()) do
-            self:_healPet(player, pet, healAmt, now)
-        end
+-- Summon-guardian capstones (Gaia's Colossus / Genie of the Dunes) — delegate to SummonService,
+-- which spawns the guardian model, applies its standing squad buffs / revive+heal, trails the
+-- player and despawns. Resolved at runtime so PowerService doesn't hard-depend on it.
+function PowerService:_summonGuardian(player, kind, now, powerId)
+    local summon = self._moduleLoader and self._moduleLoader:Get("SummonService")
+    if summon and summon.Summon then
+        summon:Summon(player, kind, now, powerId)
     end
 end
 

@@ -181,6 +181,12 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.TrainingCrystalService,
     { "Logger" }
 )
+-- SummonService (#178): capstone guardian summons (Gaia's Colossus / Genie of the Dunes).
+loader:RegisterModule(
+    "SummonService",
+    ServerScriptService.Server.Services.SummonService,
+    { "Logger", "ConfigLoader" }
+)
 loader:RegisterModule(
     "PlayerEffectsService",
     ServerScriptService.Server.Services.PlayerEffectsService,
@@ -619,6 +625,7 @@ table.insert(requiredModules, "FocusService")
 table.insert(requiredModules, "CombatService")
 table.insert(requiredModules, "PetFollowService")
 table.insert(requiredModules, "DropService")
+table.insert(requiredModules, "SummonService")
 table.insert(requiredModules, "AscensionAltarService")
 table.insert(requiredModules, "RealmPortalService")
 table.insert(requiredModules, "ZoneTrackerService")
