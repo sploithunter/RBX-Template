@@ -2,8 +2,11 @@
     Power descriptions — short blurbs for the hover tooltip (HotbarBar). Keyed by power id.
 
     One line each, "what it does" (from docs/PET_REALM_ICONS_AND_POWERS.md). The tooltip pairs this
-    with the power's display_name (configs/powers.lua) + element. Targeting (single vs AoE) is the ring,
-    so the text says the EFFECT; "squad"/"enemies" hints the target. Keep them short.
+    with the power's display_name (configs/powers.lua) + element + a TYPE line.
+
+    Each entry is EITHER a plain string (just the description; the tooltip derives the type line from
+    the badge: targeting + effect category) OR a table { type = "...", desc = "..." } to override the
+    type line with something nuanced, e.g. "Targeted AoE Hold, DoT (minor)". Keep them short.
 ]]
 
 return {
@@ -39,7 +42,10 @@ return {
     permafrost = "Signature: long-hold freeze on enemies.",
     shatter = "Signature: a shattering ice burst.",
     absolute_zero = "Signature: deep-freeze hold on enemies.",
-    eternal_winter = "Capstone: a field of eternal winter.",
+    eternal_winter = {
+        type = "Targeted AoE Hold, DoT (minor)",
+        desc = "Capstone: a field of eternal winter — holds enemies and chips them down.",
+    },
 
     -- Pyromancer (lava) — damage / DoT
     mark_of_flame = "Burning mark: DoT, target takes +50% damage, 6s.",

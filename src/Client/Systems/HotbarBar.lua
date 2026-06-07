@@ -84,6 +84,58 @@ local function bindLabel(bind)
     return t
 end
 
+-- Tooltip "type" line = <targeting> <category>, derived from the badge: ring -> targeting word,
+-- symbol -> effect category. `aura` (self/squad) shows just the category. A power can override the
+-- whole string in configs/power_descriptions (entry as a table with `type`) for nuance, e.g. a
+-- secondary "DoT (minor)".
+local RING_TARGET = {
+    target_in = "Single Target",
+    target_out = "Single Ally",
+    aoe = "AoE",
+    target_aoe = "Team AoE",
+}
+local SYMBOL_KIND = {
+    armor_chest = "Armor",
+    shield = "Shield",
+    fist = "Damage Buff",
+    fist_impact = "Damage",
+    fist_broken = "Damage Debuff",
+    chevrons_up = "Buff",
+    chevrons_down = "Debuff",
+    eye = "Accuracy Buff",
+    eye_hidden = "Blind",
+    contagion = "DoT",
+    capacitor = "Hold",
+    user_desk = "Root",
+    target = "Accuracy Buff",
+    target_down = "Accuracy Debuff",
+    shield_broken = "Armor Break",
+    plus = "Heal",
+    plus_down = "Heal Debuff",
+    coins_up = "Coin Buff",
+    gift_up = "Drop Buff",
+    clover_lucky = "Luck",
+    clover_huge = "Huge Luck",
+    history = "Recharge",
+    magnet = "Magnet",
+    pet_transfer = "Recall",
+    portal = "Teleport",
+    revive = "Summon",
+    xp_up = "XP Buff",
+    star_sparkle = "Support",
+    arrow_right = "Speed",
+    knockback = "Knockback",
+}
+local function deriveType(powerId)
+    local b = PetBadge.forPower(powerId)
+    if not b then
+        return ""
+    end
+    local cat = SYMBOL_KIND[b.symbol] or "Power"
+    local tgt = RING_TARGET[b.ring]
+    return tgt and (tgt .. " " .. cat) or cat
+end
+
 function HotbarBar.start()
     -- Free the number keys: this game uses a custom inventory, not the Roblox Backpack.
     pcall(function()
@@ -257,8 +309,19 @@ function HotbarBar.start()
     tipName.Text = ""
     tipName.ZIndex = 41
     tipName.Parent = tip
+    local tipType = Instance.new("TextLabel")
+    tipType.LayoutOrder = 2
+    tipType.BackgroundTransparency = 1
+    tipType.Size = UDim2.new(1, 0, 0, 13)
+    tipType.Font = Enum.Font.GothamMedium
+    tipType.TextSize = 11
+    tipType.TextXAlignment = Enum.TextXAlignment.Left
+    tipType.TextColor3 = Color3.fromRGB(150, 156, 175)
+    tipType.Text = ""
+    tipType.ZIndex = 41
+    tipType.Parent = tip
     local tipDesc = Instance.new("TextLabel")
-    tipDesc.LayoutOrder = 2
+    tipDesc.LayoutOrder = 3
     tipDesc.BackgroundTransparency = 1
     tipDesc.Size = UDim2.new(1, 0, 0, 0)
     tipDesc.AutomaticSize = Enum.AutomaticSize.Y
@@ -284,7 +347,17 @@ function HotbarBar.start()
         local badge = PetBadge.forPower(id)
         tipName.TextColor3 = (badge and POWER_ICONS.elementColor3(badge.element, "bright"))
             or Color3.fromRGB(245, 245, 255)
-        tipDesc.Text = POWER_DESC[id] or "(no description)"
+        -- entry is a string (just a description) or a table { type = "...", desc = "..." }
+        local entry = POWER_DESC[id]
+        local descText, typeOverride
+        if type(entry) == "table" then
+            descText, typeOverride = entry.desc, entry.type
+        else
+            descText = entry
+        end
+        tipType.Text = typeOverride or deriveType(id)
+        tipType.Visible = tipType.Text ~= ""
+        tipDesc.Text = descText or "(no description)"
         local ap = card.frame.AbsolutePosition
         tip.Position = UDim2.fromOffset(math.floor(ap.X), math.floor(ap.Y) - 6)
         tip.Visible = true
