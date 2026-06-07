@@ -63,6 +63,17 @@ local STATE_COLOR = {
     Ready = Color3.fromRGB(95, 170, 235),
     Empty = Color3.fromRGB(70, 70, 80),
 }
+local SLOT_BAR_COLOR = Color3.fromRGB(235, 150, 70) -- the SLOT timer (thin bar) when a pet is downed
+local SHIELD_BAR_COLOR = Color3.fromRGB(95, 170, 235) -- the shield-pool thin bar when alive
+
+-- "Ns" under a minute, "M:SS" above (a 5-min pet lockout shouldn't read "284s").
+local function formatTime(sec)
+    sec = math.max(0, math.ceil(sec))
+    if sec >= 60 then
+        return string.format("%d:%02d", math.floor(sec / 60), sec % 60)
+    end
+    return sec .. "s"
+end
 
 -- Continuous health-bar colour: green (full) -> yellow (half) -> red (empty), so the
 -- fill itself reads the pet's condition (no separate state label needed).
@@ -123,6 +134,10 @@ local function readSlot(pet, factor, thresholds)
         downed = downed,
         state = state,
         cdRemaining = cdRemaining,
+        -- #179 down-lockout: the SLOT's own (shorter) timer + whether this pet is a unique special
+        -- (so the recovery bar scales to the 5-min pet lockout, not the 1-min slot).
+        slotRemaining = math.max(0, (pet:GetAttribute("SlotLockUntil") or 0) - os.time()),
+        special = pet:GetAttribute("LockoutSpecial") == true,
     }
 end
 
@@ -420,6 +435,12 @@ end
 
 function SquadHud.start()
     local config = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("combat"))
+    local squadCfg = require(ReplicatedStorage.Configs:WaitForChild("squad"))
+    local lockoutDur = {
+        -- the EXACT special pet's recovery (5 min); a stack pet rides the slot timer
+        petSpecial = (squadCfg.down_lockout and squadCfg.down_lockout.pet_lockout_seconds) or 300,
+        slot = (squadCfg.slot_recovery and squadCfg.slot_recovery.down_cooldown_seconds) or 60,
+    }
     local factor = config.pet_down_threshold_factor or 1
     local thresholds = config.degradation or { strained_at = 0.6, critical_at = 0.3 }
     local badgeCfg = config.status_badges or {}
@@ -875,13 +896,18 @@ function SquadHud.start()
                     card.roleGlyph.Visible = not hasBadge
                     card.roleGlyph.Text = role.glyph
                     if s.downed then
-                        -- Out of the fight: full bar in the recharge colour + a note.
-                        card.fill.Size = UDim2.fromScale(1, 1)
+                        -- TWO BARS (down-lockout). Main = THIS pet's recovery (drains as it heals; a
+                        -- unique special scales to the 5-min lockout, a stack to the 1-min slot). The
+                        -- thin bar below = the SLOT's 1-min timer, so you can see when to re-summon
+                        -- this pet vs. when the slot frees for a different / stack pet.
+                        local petTotal = (s.special and lockoutDur.petSpecial) or lockoutDur.slot
+                        local petFrac = (petTotal > 0 and s.cdRemaining > 0)
+                                and math.clamp(s.cdRemaining / petTotal, 0, 1)
+                            or (s.cdRemaining > 0 and 1 or 0)
+                        card.fill.Size = UDim2.fromScale(s.cdRemaining > 0 and petFrac or 1, 1)
                         card.fill.BackgroundColor3 = s.cdRemaining > 0 and STATE_COLOR.Recharging
                             or STATE_COLOR.Ready
-                        card.note.Text = s.cdRemaining > 0 and (s.cdRemaining .. "s") or "Summon"
-                        -- Ready to re-summon -> a click on the card summons it (set the flag
-                        -- the click handler reads).
+                        card.note.Text = s.cdRemaining > 0 and formatTime(s.cdRemaining) or "Summon"
                         card.summonReady = s.cdRemaining <= 0
                     else
                         -- Health fill drains + recolours green->yellow->red.
@@ -890,10 +916,20 @@ function SquadHud.start()
                         card.note.Text = ""
                         card.summonReady = false
                     end
-                    -- Shield (absorption) thin secondary bar — shown only when present.
-                    local shieldF = s.shieldFraction or 0
-                    card.shieldBg.Visible = shieldF > 0
-                    card.shieldFill.Size = UDim2.fromScale(shieldF, 1)
+                    -- Thin secondary bar: the SLOT timer (orange) when downed, else the shield pool (blue).
+                    if s.downed then
+                        local slotFrac = lockoutDur.slot > 0
+                                and math.clamp(s.slotRemaining / lockoutDur.slot, 0, 1)
+                            or 0
+                        card.shieldBg.Visible = s.slotRemaining > 0
+                        card.shieldFill.Size = UDim2.fromScale(slotFrac, 1)
+                        card.shieldFill.BackgroundColor3 = SLOT_BAR_COLOR
+                    else
+                        local shieldF = s.shieldFraction or 0
+                        card.shieldBg.Visible = shieldF > 0
+                        card.shieldFill.Size = UDim2.fromScale(shieldF, 1)
+                        card.shieldFill.BackgroundColor3 = SHIELD_BAR_COLOR
+                    end
                     -- Selection = an OUTLINE only (the gems-pill look): the dark bar stays dark, just
                     -- the stroke pops to bright blue. No background colour change (that swamped it).
                     local isSel = selectedSlot == s.slot
