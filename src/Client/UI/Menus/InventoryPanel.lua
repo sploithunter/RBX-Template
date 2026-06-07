@@ -20,6 +20,17 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+
+-- #179 down-lockout: pill ring assets (white = available, red = locked) for the equipped view.
+local PILL_UI = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
+local function lockoutFormatTime(sec)
+    sec = math.max(0, math.ceil(sec))
+    if sec >= 60 then
+        return string.format("%d:%02d", math.floor(sec / 60), sec % 60)
+    end
+    return sec .. "s"
+end
 
 -- Silence verbose raw debug prints (right-click / card-size / context-menu chatter that
 -- fired on every interaction). Real logging goes through self.logger (gated by the
@@ -354,7 +365,133 @@ function InventoryPanel:Show(parent)
     self:SetupRealTimeUpdates() -- Listen for inventory changes
 
     self.isVisible = true
+    -- #179: tick the availability rings / red counts while the window is open (timers count down).
+    task.spawn(function()
+        while self.isVisible do
+            pcall(function()
+                self:_refreshLockoutVisuals()
+            end)
+            task.wait(0.5)
+        end
+    end)
     self.logger:info("Professional inventory panel shown")
+end
+
+-- Decode the lockout pool replicated by EnemyService (a JSON player attribute), or nil.
+function InventoryPanel:_decodeLockouts()
+    local raw = self.player and self.player:GetAttribute("PetLockouts")
+    if type(raw) ~= "string" or raw == "" then
+        return nil
+    end
+    local ok, decoded = pcall(function()
+        return HttpService:JSONDecode(raw)
+    end)
+    return ok and type(decoded) == "table" and decoded or nil
+end
+
+-- Paint a pill RING on an equipped card: white = available, red = locked/recovering (+ timer).
+function InventoryPanel:_applyAvailabilityRing(frame, lockUntil, now)
+    local ring = frame:FindFirstChild("AvailRing")
+    local timer = frame:FindFirstChild("AvailTimer")
+    if not ring then
+        ring = Instance.new("ImageLabel")
+        ring.Name = "AvailRing"
+        ring.BackgroundTransparency = 1
+        ring.AnchorPoint = Vector2.new(0.5, 0.5)
+        ring.Position = UDim2.fromScale(0.5, 0.5)
+        ring.Size = UDim2.fromScale(1.14, 1.14) -- frame the card
+        ring.ScaleType = Enum.ScaleType.Fit
+        ring.ZIndex = 120
+        ring.Parent = frame
+        timer = Instance.new("TextLabel")
+        timer.Name = "AvailTimer"
+        timer.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+        timer.BackgroundTransparency = 0.15
+        timer.AnchorPoint = Vector2.new(0.5, 0.5)
+        timer.Position = UDim2.fromScale(0.5, 0.5)
+        timer.Size = UDim2.fromOffset(46, 20)
+        timer.Font = Enum.Font.GothamBlack
+        timer.TextSize = 13
+        timer.TextColor3 = Color3.fromRGB(255, 255, 255)
+        timer.ZIndex = 122
+        local tc = Instance.new("UICorner")
+        tc.CornerRadius = UDim.new(0, 6)
+        tc.Parent = timer
+        timer.Parent = frame
+    end
+    local locked = lockUntil ~= nil
+    ring.Image = locked and PILL_UI.slot_locked or PILL_UI.slot_available
+    timer.Visible = locked
+    timer.Text = locked and lockoutFormatTime(lockUntil - now) or ""
+end
+
+-- Repaint every card's lockout overlay from the decoded pool. Equipped cards get the ring; an
+-- inventory STACK whose available count is reduced shows its count in RED.
+function InventoryPanel:_refreshLockoutVisuals()
+    local frames = self.itemFrames
+    if type(frames) ~= "table" then
+        return
+    end
+    local map = self:_decodeLockouts()
+    local now = os.time()
+    -- active recovering count per stack key (consumed greedily by equipped ghosts of that key)
+    local stackActive = {}
+    if map and type(map.stacks) == "table" then
+        for key, list in pairs(map.stacks) do
+            local active = {}
+            if type(list) == "table" then
+                for _, t in ipairs(list) do
+                    if t > now then
+                        active[#active + 1] = t
+                    end
+                end
+            end
+            table.sort(active, function(a, b)
+                return a > b
+            end)
+            if #active > 0 then
+                stackActive[key] = active
+            end
+        end
+    end
+    local stackUsed = {}
+    for _, frame in ipairs(frames) do
+        if frame and frame.Parent then
+            local kind = frame:GetAttribute("LockKind")
+            local lid = frame:GetAttribute("LockId")
+            local equipped = frame:GetAttribute("LockEquipped") == true
+            local lockUntil
+            local recovering = 0
+            if kind == "special" and lid and map and type(map.pets) == "table" then
+                local u = map.pets[lid]
+                if type(u) == "number" and u > now then
+                    lockUntil = u
+                end
+            elseif kind == "stack" and lid then
+                local active = stackActive[lid]
+                recovering = active and #active or 0
+                if equipped and active then
+                    local used = stackUsed[lid] or 0
+                    if used < #active then
+                        lockUntil = active[used + 1]
+                        stackUsed[lid] = used + 1
+                    end
+                end
+            end
+            if equipped and kind then
+                self:_applyAvailabilityRing(frame, lockUntil, now)
+            elseif kind == "stack" then
+                -- inventory stack: red the count label when some are recovering (reduced availability)
+                local countLbl = frame:FindFirstChild("CountLabel")
+                    or frame:FindFirstChild("Count")
+                    or frame:FindFirstChild("QuantityLabel")
+                if countLbl and countLbl:IsA("TextLabel") then
+                    countLbl.TextColor3 = recovering > 0 and Color3.fromRGB(235, 70, 70)
+                        or Color3.fromRGB(255, 255, 255)
+                end
+            end
+        end
+    end
 end
 
 function InventoryPanel:Hide()
@@ -2879,6 +3016,19 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     local isEquipped = self:_isItemEquipped(item)
     self:_applyEquippedStyling(itemFrame, isEquipped, item.color)
 
+    -- #179 down-lockout identity (read by _refreshLockoutVisuals for the availability ring / red
+    -- count). Equipped = lives in the equipped grid; stacks key off <id:variant>, specials off uid.
+    do
+        local ref = (type(item.uid) == "string" and item.uid) or item.id
+        if type(ref) == "string" and ref:sub(1, 6) == "stack|" then
+            itemFrame:SetAttribute("LockKind", "stack")
+            itemFrame:SetAttribute("LockId", (string.split(ref, "|"))[2] or "")
+        elseif type(item.uid) == "string" and item.uid ~= "" then
+            itemFrame:SetAttribute("LockKind", "special")
+            itemFrame:SetAttribute("LockId", item.uid)
+        end
+        itemFrame:SetAttribute("LockEquipped", itemFrame.Parent == self.equippedGrid)
+    end
     -- Store reference
     table.insert(self.itemFrames, itemFrame)
     -- Index by stack key for live count updates

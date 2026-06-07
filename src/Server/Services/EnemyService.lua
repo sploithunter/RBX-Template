@@ -21,6 +21,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local InsertService = game:GetService("InsertService")
 local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
 local Debris = game:GetService("Debris")
 
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
@@ -563,7 +564,36 @@ function EnemyService:_enforceLockouts(now)
                     end
                 end
             end
+            -- Replicate the pruned lockout pool to the client (the Pets window reads it for the
+            -- ring-slot availability + red stack counts). Throttled to ~1s; cleared when empty.
+            self:_replicateLockouts(player, state, now)
         end
+    end
+end
+
+-- Push the (pruned) lockout pool to the player as a JSON attribute the client decodes. Throttled.
+function EnemyService:_replicateLockouts(player, state, now)
+    if not player then
+        return
+    end
+    self._lockoutStampAt = self._lockoutStampAt or {}
+    if (self._lockoutStampAt[player] or 0) > now then
+        return
+    end
+    self._lockoutStampAt[player] = now + 1
+    local pruned = PetLockout.prune(state, os.time())
+    local hasAny = next(pruned.pets) or next(pruned.stacks) or next(pruned.slots)
+    if not hasAny then
+        if player:GetAttribute("PetLockouts") then
+            player:SetAttribute("PetLockouts", nil)
+        end
+        return
+    end
+    local ok, encoded = pcall(function()
+        return HttpService:JSONEncode(pruned)
+    end)
+    if ok then
+        player:SetAttribute("PetLockouts", encoded)
     end
 end
 
