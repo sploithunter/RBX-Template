@@ -23,6 +23,7 @@ return {
         ruby = id(90032311308057),
         citrine = id(119068520051744),
         neutral = id(85243706065340),
+        amethyst = id(131602200875465),
     },
     -- Solid rounded-square PANEL (filled slot / card background).
     panels = {
@@ -31,6 +32,17 @@ return {
         ruby = id(92148276403953),
         citrine = id(95983900646063),
         neutral = id(89609871330555),
+        amethyst = id(137324436662260),
+    },
+
+    -- Amethyst/purple authored circular RING shapes (Jason's purple set — used directly, not tinted).
+    -- ring_aura is the plain circle; the rest are targeting variants (in/out/aoe).
+    rings = {
+        aoe = id(96291808922382),
+        aura = id(94531377035272),
+        target_aoe = id(111636420673094),
+        target_in = id(71914479063156),
+        target_out = id(89740074626860),
     },
 
     -- Semantic shortcuts for the equipped ring-slot view (down-lockout availability).
