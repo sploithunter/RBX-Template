@@ -1,11 +1,14 @@
 --[[
     CurrencyStyle (client) — skin the left-side currency boxes (gems + per-area coins) as ROUND
-    capsules ("pills") in each currency's area color: gems=amethyst(purple), grass=emerald(green),
-    desert=citrine(yellow), lava=ruby(red), ice=sapphire(blue).
+    capsules ("pills") in each currency's area color, and show the actual GEM icon (tinted per area)
+    instead of an emoji.
 
-    The round-end capsule comes from UICorner(1,0) on the pane itself (a full-circle ring asset just
-    becomes an ellipse when stretched this thin, so we shape it programmatically) + a glossy gradient
-    + a brighter stroke border. The value text is left clean — no heavy outline.
+    Capsule: UICorner(1,0) on the pane + glossy gradient + brighter stroke border (a full-circle ring
+    asset just turns into an ellipse stretched this thin, so the round ends are shaped programmatically).
+
+    Icon: the gem-diamond image (the same asset BaseUI already uses on the gems box) tinted to the area
+    color, with a dark shadow copy behind so it pops on the colored capsule. The box's original emoji/
+    image icon is hidden (kept as a fallback) — currencies with no gem color keep their emoji.
 
     Scoped post-process of ProfessionalBaseUI's *_pane currency frames (BaseUI logic untouched).
     Idempotent per box.
@@ -16,13 +19,35 @@ local Players = game:GetService("Players")
 local CurrencyStyle = {}
 local started = false
 
--- area key -> capsule fill + lighter top/stroke
+local GEM_IMAGE = "rbxassetid://136309678310342" -- gem-diamond shape (tinted per currency)
+
+-- area key -> capsule fill + lighter top/stroke + bright gem tint
 local COLORS = {
-    amethyst = { fill = Color3.fromRGB(120, 60, 200), light = Color3.fromRGB(180, 110, 235) },
-    emerald = { fill = Color3.fromRGB(40, 155, 75), light = Color3.fromRGB(95, 220, 125) },
-    citrine = { fill = Color3.fromRGB(200, 150, 35), light = Color3.fromRGB(240, 200, 70) },
-    ruby = { fill = Color3.fromRGB(185, 45, 45), light = Color3.fromRGB(235, 90, 90) },
-    sapphire = { fill = Color3.fromRGB(40, 110, 210), light = Color3.fromRGB(95, 165, 240) },
+    amethyst = {
+        fill = Color3.fromRGB(120, 60, 200),
+        light = Color3.fromRGB(180, 110, 235),
+        gem = Color3.fromRGB(205, 150, 255),
+    },
+    emerald = {
+        fill = Color3.fromRGB(40, 155, 75),
+        light = Color3.fromRGB(95, 220, 125),
+        gem = Color3.fromRGB(150, 255, 175),
+    },
+    citrine = {
+        fill = Color3.fromRGB(200, 150, 35),
+        light = Color3.fromRGB(240, 200, 70),
+        gem = Color3.fromRGB(255, 230, 130),
+    },
+    ruby = {
+        fill = Color3.fromRGB(185, 45, 45),
+        light = Color3.fromRGB(235, 90, 90),
+        gem = Color3.fromRGB(255, 150, 150),
+    },
+    sapphire = {
+        fill = Color3.fromRGB(40, 110, 210),
+        light = Color3.fromRGB(95, 165, 240),
+        gem = Color3.fromRGB(155, 205, 255),
+    },
 }
 
 local BOXES = {
@@ -32,6 +57,52 @@ local BOXES = {
     lava_coins_pane = "ruby",
     ice_coins_pane = "sapphire",
 }
+
+local ICON_SIZE = UDim2.fromOffset(28, 28)
+local ICON_POS = UDim2.new(0, 5, 0.5, 0)
+
+local function addGemIcon(pane, col)
+    -- find the existing icon (emoji TextLabel or the gems image) and its holder frame
+    local icon
+    for _, d in ipairs(pane:GetDescendants()) do
+        if d.Name == "Icon" then
+            icon = d
+            break
+        end
+    end
+    if not icon then
+        return
+    end
+    local holder = icon.Parent
+    if holder:FindFirstChild("GemIcon") then
+        return
+    end
+    icon.Visible = false -- keep the emoji/original as a fallback
+
+    local shadow = Instance.new("ImageLabel")
+    shadow.Name = "GemShadow"
+    shadow.BackgroundTransparency = 1
+    shadow.Image = GEM_IMAGE
+    shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    shadow.ImageTransparency = 0.5
+    shadow.Size = ICON_SIZE
+    shadow.AnchorPoint = Vector2.new(0, 0.5)
+    shadow.Position =
+        UDim2.new(ICON_POS.X.Scale, ICON_POS.X.Offset + 1, ICON_POS.Y.Scale, ICON_POS.Y.Offset + 1)
+    shadow.ZIndex = icon.ZIndex + 4
+    shadow.Parent = holder
+
+    local gem = Instance.new("ImageLabel")
+    gem.Name = "GemIcon"
+    gem.BackgroundTransparency = 1
+    gem.Image = GEM_IMAGE
+    gem.ImageColor3 = col.gem
+    gem.Size = ICON_SIZE
+    gem.AnchorPoint = Vector2.new(0, 0.5)
+    gem.Position = ICON_POS
+    gem.ZIndex = icon.ZIndex + 5
+    gem.Parent = holder
+end
 
 local function styleBox(pane, key)
     if pane:GetAttribute("Capsuled") then
@@ -72,6 +143,8 @@ local function styleBox(pane, key)
     stroke.Color = col.light
     stroke.Thickness = 2.5
     stroke.Parent = pane
+
+    addGemIcon(pane, col)
 end
 
 function CurrencyStyle.start()
