@@ -148,15 +148,40 @@ function PlayerBar.start()
     stroke(emblem, Color3.fromRGB(20, 24, 40), 3)
     emblem.ZIndex = 5
     emblem.Parent = cap
-    local star = Instance.new("TextLabel")
-    star.Size = UDim2.fromScale(1, 1)
-    star.BackgroundTransparency = 1
-    star.Font = Enum.Font.GothamBlack
-    star.TextSize = 30
-    star.Text = "★"
-    star.TextColor3 = Color3.fromRGB(245, 248, 255)
-    star.ZIndex = 6
-    star.Parent = emblem
+    -- Origin slot (the CoH "origin" badge): shows the player's chosen-origin icon once set, else a
+    -- neutral "person" placeholder (origin is picked at level 5). Driven by the OriginIcon attribute
+    -- (an "rbxassetid://..." string) — set that when the origin is chosen and the emblem fills in.
+    local originIcon = Instance.new("ImageLabel")
+    originIcon.Name = "OriginIcon"
+    originIcon.Size = UDim2.fromScale(0.74, 0.74)
+    originIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+    originIcon.Position = UDim2.fromScale(0.5, 0.5)
+    originIcon.BackgroundTransparency = 1
+    originIcon.ScaleType = Enum.ScaleType.Fit
+    originIcon.Visible = false
+    originIcon.ZIndex = 6
+    originIcon.Parent = emblem
+    local originPlaceholder = Instance.new("TextLabel")
+    originPlaceholder.Name = "OriginPlaceholder"
+    originPlaceholder.Size = UDim2.fromScale(1, 1)
+    originPlaceholder.BackgroundTransparency = 1
+    originPlaceholder.Font = Enum.Font.GothamBlack
+    originPlaceholder.TextSize = 28
+    originPlaceholder.Text = "👤"
+    originPlaceholder.TextColor3 = Color3.fromRGB(225, 230, 240)
+    originPlaceholder.ZIndex = 6
+    originPlaceholder.Parent = emblem
+    local function refreshOrigin()
+        local iconId = player:GetAttribute("OriginIcon")
+        local has = type(iconId) == "string" and iconId ~= ""
+        if has then
+            originIcon.Image = iconId
+        end
+        originIcon.Visible = has
+        originPlaceholder.Visible = not has
+    end
+    refreshOrigin()
+    player:GetAttributeChangedSignal("OriginIcon"):Connect(refreshOrigin)
 
     -- level disc (overhangs right) + 10 glowing segments + inner + number
     local disc = Instance.new("Frame")
