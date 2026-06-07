@@ -68,6 +68,21 @@ function PlayerBar.start()
     gui.DisplayOrder = 80
     gui.Parent = pg
 
+    -- Retire the old top-center name/level card (BaseUI player_info_pane): this bar now owns the
+    -- level + XP readout, so the card just overlapped it. Hide it once it exists.
+    task.spawn(function()
+        local base = pg:WaitForChild("ProfessionalBaseUI", 15)
+        local mc = base and base:WaitForChild("MainContainer", 5)
+        for _ = 1, 20 do
+            local pane = mc and mc:FindFirstChild("player_info_pane")
+            if pane then
+                pane.Visible = false
+                return
+            end
+            task.wait(0.5)
+        end
+    end)
+
     local root = Instance.new("Frame")
     root.Name = "Root"
     root.AnchorPoint = Vector2.new(0.5, 0)
