@@ -156,6 +156,12 @@ local M = {
         debuff = "contagion",
         burst = "star_sparkle",
         buff = "chevrons_up",
+        -- origin-signature glyphs (docs/PET_REALM_SIGNATURE_POWERS.md)
+        shield = "armor_chest", -- Bastion / Living Mountain / Mirage Veil
+        hold = "hand_stop", -- Permafrost / Seismic Hold / Absolute Zero / Eternal Winter
+        heal = "plus", -- Oasis / Simoom
+        summon = "revive", -- Gaia's Colossus / Genie of the Dunes (call a guardian)
+        brand = "contagion", -- Inferno Brand (ramping mark)
     },
     power_signature_ring = {
         single = "single",

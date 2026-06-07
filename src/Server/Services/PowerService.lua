@@ -268,6 +268,51 @@ function PowerService:_teleportPlayer(player, pos)
     end
 end
 
+-- Heal one pet by `amount` endurance (shared by heal / fortify / heal_blind / summon families).
+function PowerService:_healPet(player, pet, amount, now)
+    if not (pet and pet:IsA("Model")) or pet:GetAttribute("CombatDowned") then
+        return
+    end
+    amount = tonumber(amount) or 0
+    local taken = pet:GetAttribute("CombatDamageTaken") or 0
+    if amount <= 0 or taken <= 0 then
+        return
+    end
+    local healed = math.min(taken, amount)
+    pet:SetAttribute("CombatDamageTaken", math.max(0, taken - amount))
+    pet:SetAttribute("HealFxUntil", now + 3)
+    if healed >= 1 then
+        Signals.Combat_Heal:FireClient(player, { target = pet, amount = math.floor(healed + 0.5) })
+    end
+end
+
+-- Summon-guardian capstones (Gaia's Colossus / Genie of the Dunes). The temporary guardian PET model
+-- + taunt/tank behaviour is a follow-up slice; the immediate gameplay payoff lands now: a `revive`
+-- guardian (Genie) brings back EVERY downed pet and full-heals the squad (the "never-wipe" button).
+function PowerService:_summonGuardian(player, kind, now, _powerId)
+    local pets = Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+    if not pets then
+        return
+    end
+    if kind.revive then
+        for _, pet in ipairs(pets:GetChildren()) do
+            if pet:IsA("Model") and pet:GetAttribute("CombatDowned") then
+                pet:SetAttribute("CombatDowned", false)
+                pet:SetAttribute("CombatDamageTaken", 0)
+                pet:SetAttribute("CooldownUntil", 0)
+                pet:SetAttribute("DownedReason", "")
+            end
+        end
+    end
+    local healAmt = tonumber(kind.magnitude) or 0
+    if healAmt > 0 then
+        for _, pet in ipairs(pets:GetChildren()) do
+            self:_healPet(player, pet, healAmt, now)
+        end
+    end
+end
+
 function PowerService:_applyEffect(player, kind, now, powerId)
     local family = kind.family
     local mag = kind.magnitude or 0
@@ -403,6 +448,47 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                 crystal:SetAttribute("DebuffUntil", now + dur)
             end
         end
+    elseif family == "root_guard" then
+        -- Seismic Hold (geomancer signature): ROOT every engaged enemy AND harden the squad. A tank
+        -- lockdown — control that also reinforces the shield identity. `magnitude` = the +Defense.
+        for _, enemy in ipairs(enemiesAlive()) do
+            enemy:SetAttribute("RootedUntil", now + dur)
+            enemy:SetAttribute("DebuffPowerId", powerId)
+            enemy:SetAttribute("DebuffUntil", now + dur)
+        end
+        for _, pet in ipairs(self:_targetPets(player, powerId)) do
+            pet:SetAttribute("DefenseBuff", mag)
+            pet:SetAttribute("DefenseBuffUntil", now + dur)
+            pet:SetAttribute("DefenseBuffPowerId", powerId)
+        end
+    elseif family == "fortify" then
+        -- Living Mountain (geomancer signature): big squad +Defense + a heal pulse (the start of a
+        -- heal-over-time; the per-tick refresh is a later refinement). `magnitude`=+Defense, `heal`=hp.
+        local healAmt = tonumber(kind.heal) or 0
+        for _, pet in ipairs(self:_targetPets(player, powerId)) do
+            pet:SetAttribute("DefenseBuff", mag)
+            pet:SetAttribute("DefenseBuffUntil", now + dur)
+            pet:SetAttribute("DefenseBuffPowerId", powerId)
+            self:_healPet(player, pet, healAmt, now)
+        end
+    elseif family == "heal_blind" then
+        -- Simoom (sandwalker signature): heal the squad AND blind/soften enemies caught in the storm
+        -- (heal identity + a touch of control). `magnitude`=heal, `vuln`=enemy vulnerability mult.
+        for _, pet in ipairs(self:_targetPets(player, powerId)) do
+            self:_healPet(player, pet, mag, now)
+        end
+        local vuln = tonumber(kind.vuln) or 1
+        for _, enemy in ipairs(enemiesAlive()) do
+            enemy:SetAttribute("VulnerableMult", vuln)
+            enemy:SetAttribute("VulnerableUntil", now + dur)
+            enemy:SetAttribute("DebuffPowerId", powerId)
+            enemy:SetAttribute("DebuffUntil", now + dur)
+        end
+    elseif family == "summon" then
+        -- Gaia's Colossus / Genie of the Dunes (capstones): call a temporary guardian pet. Built in
+        -- a follow-up slice (SummonService); for now this is a graceful no-op so the cast still spends
+        -- cooldown + plays the cast VFX without erroring.
+        self:_summonGuardian(player, kind, now, powerId)
     elseif family == "amplified_burst" then
         self:_amplifiedBurst(player, kind, now)
     elseif family == "burn_spread" then

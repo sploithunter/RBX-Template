@@ -23,6 +23,7 @@ return {
     enemy_targeted_families = {
         vulnerable = true,
         root = true,
+        root_guard = true, -- Seismic Hold (roots enemies + hardens the squad)
         amplified_burst = true,
         burn_spread = true,
         team_cleave = true,
@@ -118,6 +119,34 @@ return {
             pit_vulnerable = 1.5,
             pit_duration = 4,
         },
+
+        -- ===== Origin signatures (4 per origin; docs/PET_REALM_SIGNATURE_POWERS.md). Each tracks its
+        -- origin's identity: earth=SHIELD/tank, ice=CONTROL, desert=HEAL, fire=DAMAGE. Capstones vary
+        -- by identity — earth=summon guardian, fire=damage meteor, ice=field hold, desert=summon+revive.
+        -- Most reuse existing families (firewall-safe + badge-ready); a few combos add small branches. =====
+        -- Earth / Geomancer (shield/tank)
+        bastion = { family = "absorb", magnitude = 90, duration = 14 }, -- anchor: huge squad shield
+        seismic_hold = { family = "root_guard", magnitude = 120, duration = 6 }, -- root enemies + squad +Def
+        living_mountain = { family = "fortify", magnitude = 150, duration = 10, heal = 30 }, -- +Def + heal pulse
+        gaia_colossus = { family = "summon", guardian = "colossus", magnitude = 0, duration = 20 }, -- summon tank
+        -- Fire / Pyromancer (damage) — Wildfire/Firestorm/Cataclysm above; this is the 4th
+        inferno_brand = { family = "vulnerable", magnitude = 1.9, duration = 8 }, -- strong single mark
+        -- Ice / Cryomancer (control)
+        permafrost = { family = "root", magnitude = 0, duration = 8 }, -- anchor: strong AoE lockdown
+        shatter = { family = "vulnerable", magnitude = 2.2, duration = 5 }, -- big vuln (frozen payoff)
+        absolute_zero = { family = "root", magnitude = 0, duration = 7 }, -- mass hard freeze
+        eternal_winter = { family = "root", magnitude = 0, duration = 12 }, -- capstone: field-wide hold
+        -- Desert / Sandwalker (heal/sustain)
+        oasis = { family = "heal", magnitude = 70, duration = 0 }, -- anchor: big squad heal
+        mirage_veil = { family = "absorb", magnitude = 45, duration = 10 }, -- squad evasion/absorb
+        simoom = { family = "heal_blind", magnitude = 55, duration = 6, vuln = 1.5 }, -- heal squad + blind
+        genie_dunes = {
+            family = "summon",
+            guardian = "djinn",
+            magnitude = 70,
+            duration = 20,
+            revive = true,
+        }, -- summon + revive + heal
     },
 
     powers = {
@@ -332,6 +361,185 @@ return {
             target = "targeted_aoe",
             glyph = "burst",
             unlock_level = 30,
+        },
+
+        -- ===== Origin signatures (docs/PET_REALM_SIGNATURE_POWERS.md) — 4 per origin, each in its
+        -- identity. element drives the badge disc colour; glyph drives the symbol; target the ring. =====
+        -- Earth / Geomancer — SHIELD/tank
+        bastion = {
+            archetype = "geomancer",
+            focus_cost = 30,
+            cooldown_seconds = 35,
+            effect = "bastion",
+            display_name = "Bastion",
+            signature = true,
+            role = "shield",
+            element = "earth",
+            target = "team_aoe",
+            glyph = "shield",
+            unlock_level = 15,
+        },
+        seismic_hold = {
+            archetype = "geomancer",
+            focus_cost = 30,
+            cooldown_seconds = 40,
+            effect = "seismic_hold",
+            display_name = "Seismic Hold",
+            signature = true,
+            role = "control",
+            element = "earth",
+            target = "targeted_aoe",
+            glyph = "hold",
+            unlock_level = 22,
+        },
+        living_mountain = {
+            archetype = "geomancer",
+            focus_cost = 40,
+            cooldown_seconds = 55,
+            effect = "living_mountain",
+            display_name = "Living Mountain",
+            signature = true,
+            role = "shield",
+            element = "earth",
+            target = "team_aoe",
+            glyph = "shield",
+            unlock_level = 30,
+        },
+        gaia_colossus = {
+            archetype = "geomancer",
+            focus_cost = 70,
+            cooldown_seconds = 120,
+            effect = "gaia_colossus",
+            display_name = "Gaia's Colossus",
+            signature = true,
+            capstone = true,
+            role = "summon",
+            element = "earth",
+            target = "friendly",
+            glyph = "summon",
+            unlock_level = 44,
+        },
+        -- Fire / Pyromancer — DAMAGE (4th)
+        inferno_brand = {
+            archetype = "pyromancer",
+            focus_cost = 20,
+            cooldown_seconds = 22,
+            effect = "inferno_brand",
+            display_name = "Inferno Brand",
+            signature = true,
+            role = "damage",
+            element = "lava",
+            target = "single",
+            glyph = "brand",
+            unlock_level = 28,
+        },
+        -- Ice / Cryomancer — CONTROL
+        permafrost = {
+            archetype = "cryomancer",
+            focus_cost = 25,
+            cooldown_seconds = 30,
+            effect = "permafrost",
+            display_name = "Permafrost",
+            signature = true,
+            role = "control",
+            element = "ice",
+            target = "targeted_aoe",
+            glyph = "hold",
+            unlock_level = 15,
+        },
+        shatter = {
+            archetype = "cryomancer",
+            focus_cost = 25,
+            cooldown_seconds = 28,
+            effect = "shatter",
+            display_name = "Shatter",
+            signature = true,
+            role = "damage",
+            element = "ice",
+            target = "targeted_aoe",
+            glyph = "burst",
+            unlock_level = 22,
+        },
+        absolute_zero = {
+            archetype = "cryomancer",
+            focus_cost = 45,
+            cooldown_seconds = 60,
+            effect = "absolute_zero",
+            display_name = "Absolute Zero",
+            signature = true,
+            role = "control",
+            element = "ice",
+            target = "targeted_aoe",
+            glyph = "hold",
+            unlock_level = 30,
+        },
+        eternal_winter = {
+            archetype = "cryomancer",
+            focus_cost = 70,
+            cooldown_seconds = 120,
+            effect = "eternal_winter",
+            display_name = "Eternal Winter",
+            signature = true,
+            capstone = true,
+            role = "control",
+            element = "ice",
+            target = "targeted_aoe",
+            glyph = "hold",
+            unlock_level = 44,
+        },
+        -- Desert / Sandwalker — HEAL/sustain
+        oasis = {
+            archetype = "sandwalker",
+            focus_cost = 25,
+            cooldown_seconds = 30,
+            effect = "oasis",
+            display_name = "Oasis",
+            signature = true,
+            role = "heal",
+            element = "desert",
+            target = "team_aoe",
+            glyph = "heal",
+            unlock_level = 15,
+        },
+        mirage_veil = {
+            archetype = "sandwalker",
+            focus_cost = 20,
+            cooldown_seconds = 25,
+            effect = "mirage_veil",
+            display_name = "Mirage Veil",
+            signature = true,
+            role = "shield",
+            element = "desert",
+            target = "team_aoe",
+            glyph = "shield",
+            unlock_level = 22,
+        },
+        simoom = {
+            archetype = "sandwalker",
+            focus_cost = 35,
+            cooldown_seconds = 45,
+            effect = "simoom",
+            display_name = "Simoom",
+            signature = true,
+            role = "heal",
+            element = "desert",
+            target = "team_aoe",
+            glyph = "heal",
+            unlock_level = 30,
+        },
+        genie_dunes = {
+            archetype = "sandwalker",
+            focus_cost = 70,
+            cooldown_seconds = 120,
+            effect = "genie_dunes",
+            display_name = "Genie of the Dunes",
+            signature = true,
+            capstone = true,
+            role = "summon",
+            element = "desert",
+            target = "friendly",
+            glyph = "summon",
+            unlock_level = 44,
         },
     },
 }
