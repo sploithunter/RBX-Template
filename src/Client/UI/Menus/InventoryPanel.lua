@@ -2443,7 +2443,10 @@ function InventoryPanel:_updateItemsDisplay()
     local function clearChildren(container)
         if container then
             for _, child in ipairs(container:GetChildren()) do
-                if child:IsA("Frame") then
+                -- item cards are Frames; the empty-slot rings are ImageLabels named EmptySlotRing.
+                -- Clear BOTH each rebuild, else stale empty rings leak in and pile up (the layout
+                -- helpers UIGridLayout/UIPadding are neither, so they survive).
+                if child:IsA("Frame") or child.Name == "EmptySlotRing" then
                     child:Destroy()
                 end
             end
