@@ -53,13 +53,15 @@ function PetLockout.recordDown(state, entry, now, cfg)
     local slotUntil = now + (tonumber(cfg.slot_lock_seconds) or 60)
     local pets, stacks, slots = shallow(state.pets), shallow(state.stacks), shallow(state.slots)
     if entry.kind == "special" and entry.uid then
-        pets[entry.uid] = petUntil
+        pets[entry.uid] = petUntil -- the EXACT huge is out for the long pet lockout (5 min)
     elseif entry.kind == "stack" and entry.stackKey then
+        -- STACK units are fungible: they recover with the SLOT (1 min), not the long pet lockout —
+        -- after the slot frees you just re-summon a sibling from the stack.
         local list = {}
         for _, t in ipairs(state.stacks[entry.stackKey] or {}) do
             list[#list + 1] = t
         end
-        list[#list + 1] = petUntil
+        list[#list + 1] = slotUntil
         stacks[entry.stackKey] = list
     end
     if entry.slot then

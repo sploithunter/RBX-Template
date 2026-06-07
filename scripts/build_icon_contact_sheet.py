@@ -9,6 +9,22 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+ICON_COLOR_ORDER = ["white", "blue", "green", "red", "yellow"]
+
+
+# ChatGPT-download filenames -> canonical asset names (see docs/PET_REALM_ICONS_AND_POWERS.md).
+BATCH_MAPPINGS: dict[str, dict[str, str]] = {
+    "jun6_2026": {
+        "ChatGPT Image Jun 6, 2026, 08_32_15 AM.png": "clover_huge.png",
+        "ChatGPT Image Jun 6, 2026, 08_54_10 AM.png": "clover_lucky.png",
+        "ChatGPT Image Jun 6, 2026, 08_44_26 AM.png": "magnet.png",
+        "ChatGPT Image Jun 6, 2026, 08_44_33 AM.png": "xp_up.png",
+        "ChatGPT Image Jun 6, 2026, 08_44_38 AM.png": "revive.png",
+        "ChatGPT Image Jun 6, 2026, 08_44_44 AM.png": "knockback.png",
+        "ChatGPT Image Jun 6, 2026, 08_46_07 AM.png": "portal.png",
+        "ChatGPT Image Jun 6, 2026, 08_47_57 AM.png": "pet_transfer.png",
+    },
+}
 
 DEFAULT_MAPPING = {
     "blue_icon_001.png": "plus.png",
@@ -54,6 +70,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--rebuild-from",
         help="Rebuild contact sheet from an existing assets directory (skips copy step)",
+    )
+    parser.add_argument(
+        "--batch",
+        choices=sorted(BATCH_MAPPINGS),
+        help="Use a named download-batch filename mapping instead of DEFAULT_MAPPING",
+    )
+    parser.add_argument(
+        "--all-colors",
+        action="store_true",
+        help="Build icon×color matrix from {white,blue,green,red,yellow}_icons",
+    )
+    parser.add_argument(
+        "--base-dir",
+        default="assets/ui",
+        help="UI assets root for --all-colors (default: assets/ui)",
+    )
+    parser.add_argument(
+        "--output",
+        help="Output path for --all-colors (default: <base-dir>/icons_all_colors.png)",
     )
     parser.add_argument("--columns", type=int, default=5, help="Grid columns")
     parser.add_argument("--thumb-size", type=int, default=256, help="Max icon size in sheet")
@@ -139,8 +174,99 @@ def build_contact_sheet(
     sheet.save(output_path, format="PNG", optimize=True, compress_level=9)
 
 
+def icon_names_in(base_dir: Path) -> list[str]:
+    blue_dir = base_dir / "blue_icons"
+    return sorted(
+        p.name
+        for p in blue_dir.glob("*.png")
+        if p.is_file() and p.name not in {"contact_sheet.png"}
+    )
+
+
+def icon_path_for(color: str, icon_name: str, base_dir: Path) -> Path:
+    path = base_dir / f"{color}_icons" / icon_name
+    if not path.is_file():
+        raise FileNotFoundError(f"Missing icon PNG: {path}")
+    return path
+
+
+def build_all_colors_sheet(
+    output_path: Path,
+    base_dir: Path,
+    thumb_size: int,
+    label_height: int,
+    padding: int,
+) -> None:
+    icon_names = icon_names_in(base_dir)
+    if not icon_names:
+        raise ValueError(f"No icons found in {base_dir / 'blue_icons'}")
+
+    row_label_width = 168
+    header_height = 36
+    columns = len(ICON_COLOR_ORDER)
+    rows = len(icon_names)
+    cell_w = thumb_size + padding * 2
+    cell_h = thumb_size + padding * 2
+    sheet = Image.new(
+        "RGBA",
+        (row_label_width + columns * cell_w, header_height + rows * cell_h),
+        (48, 48, 48, 255),
+    )
+    draw = ImageDraw.Draw(sheet)
+    header_font = load_font(20)
+    label_font = load_font(16)
+
+    for col, color in enumerate(ICON_COLOR_ORDER):
+        x = row_label_width + col * cell_w + cell_w / 2
+        draw.text(
+            (x, header_height / 2),
+            color,
+            fill=(235, 235, 235, 255),
+            font=header_font,
+            anchor="mm",
+        )
+
+    for row, icon_name in enumerate(icon_names):
+        y0 = header_height + row * cell_h
+        draw.text(
+            (row_label_width / 2, y0 + thumb_size / 2 + padding / 2),
+            Path(icon_name).stem,
+            fill=(235, 235, 235, 255),
+            font=label_font,
+            anchor="mm",
+        )
+
+        for col, color in enumerate(ICON_COLOR_ORDER):
+            path = icon_path_for(color, icon_name, base_dir)
+            fitted = fit_image(Image.open(path), thumb_size)
+            x0 = row_label_width + col * cell_w + padding
+            paste_x = x0 + (thumb_size - fitted.width) // 2
+            paste_y = y0 + padding + (thumb_size - fitted.height) // 2
+            sheet.paste(fitted, (paste_x, paste_y), fitted)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(output_path, format="PNG", optimize=True, compress_level=9)
+
+
 def main() -> int:
     args = parse_args()
+
+    if args.all_colors:
+        base_dir = Path(args.base_dir).expanduser().resolve()
+        output = Path(
+            args.output or base_dir / "icons_all_colors.png"
+        ).expanduser().resolve()
+        build_all_colors_sheet(
+            output,
+            base_dir,
+            args.thumb_size,
+            args.label_height,
+            args.padding,
+        )
+        icon_count = len(icon_names_in(base_dir))
+        print(f"Built {icon_count}×{len(ICON_COLOR_ORDER)} icon color matrix")
+        print(f"Contact sheet: {output}")
+        return 0
 
     if args.rebuild_from:
         assets_dir = Path(args.rebuild_from).expanduser().resolve()
@@ -184,7 +310,8 @@ def main() -> int:
     output_dir = Path(args.output_dir).expanduser().resolve()
     contact_sheet = Path(args.contact_sheet).expanduser().resolve()
 
-    entries, skipped = unique_entries(input_dir, DEFAULT_MAPPING)
+    mapping = BATCH_MAPPINGS[args.batch] if args.batch else DEFAULT_MAPPING
+    entries, skipped = unique_entries(input_dir, mapping)
     if not entries:
         raise SystemExit(f"No mapped icons found in {input_dir}")
 

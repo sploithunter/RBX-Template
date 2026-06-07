@@ -1,11 +1,12 @@
 assets_dir: /Users/jason/Documents/RBX-Template/assets/ui/blue_icons
-icon_count: 24
+icon_count: 31
 
 armor_chest.png
 arrow_right.png
 capacitor.png
 chevrons_down.png
 chevrons_up.png
+clover_huge.png
 clover_lucky.png
 coins_up.png
 contagion.png
@@ -17,13 +18,19 @@ fist_impact.png
 gift_up.png
 hand_stop.png
 history.png
+knockback.png
+magnet.png
+pet_transfer.png
 plus.png
 plus_down.png
+portal.png
+revive.png
 shield.png
 shield_broken.png
 star_sparkle.png
 target.png
 target_down.png
 user_desk.png
+xp_up.png
 
 contact_sheet: contact_sheet.png

@@ -1,0 +1,7 @@
+# Badge pill UI chrome (gems-pill style). Blue = ice/sapphire source art.
+# pill_frame = hollow rounded-square border (ring-white: edge + center flood → transparent hole).
+# pill_panel = solid disc fill (edge-white background removal only).
+
+asset	kind	blue_dir
+pill_frame	frame	pill_frames_blue
+pill_panel	panel	pill_panels_blue

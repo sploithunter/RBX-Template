@@ -74,17 +74,35 @@ return function()
             expect(r.reason).to.equal("stack_recovering")
         end)
 
-        it("recovered units come back after the lockout", function()
-            local s = PetLockout.recordDown(
-                PetLockout.empty(),
-                { kind = "stack", stackKey = "bear:basic" },
-                NOW,
-                cfg
-            )
-            expect(
-                PetLockout.availableQuantity(s, "bear:basic", 1, NOW + cfg.pet_lockout_seconds + 1)
-            ).to.equal(1)
-        end)
+        it(
+            "recovered units come back after the SLOT timer (stacks ride the slot, not the 5-min lockout)",
+            function()
+                local s = PetLockout.recordDown(
+                    PetLockout.empty(),
+                    { kind = "stack", stackKey = "bear:basic" },
+                    NOW,
+                    cfg
+                )
+                -- still out a tick before the slot frees
+                expect(
+                    PetLockout.availableQuantity(
+                        s,
+                        "bear:basic",
+                        1,
+                        NOW + cfg.slot_lock_seconds - 1
+                    )
+                ).to.equal(0)
+                -- back as soon as the SLOT frees (1 min) — NOT held for the 5-min pet lockout
+                expect(
+                    PetLockout.availableQuantity(
+                        s,
+                        "bear:basic",
+                        1,
+                        NOW + cfg.slot_lock_seconds + 1
+                    )
+                ).to.equal(1)
+            end
+        )
     end)
 
     describe("PetLockout slot lock", function()

@@ -23,7 +23,6 @@ local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 
 -- #179 down-lockout: pill ring assets (white = available, red = locked) for the equipped view.
-local PILL_UI = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
 local function lockoutFormatTime(sec)
     sec = math.max(0, math.ceil(sec))
     if sec >= 60 then
@@ -390,28 +389,39 @@ function InventoryPanel:_decodeLockouts()
 end
 
 -- Paint a pill RING on an equipped card: white = available, red = locked/recovering (+ timer).
+-- The availability ring is a BORDER (transparent center), not a filled overlay — so the PET stays
+-- visible inside it. White stroke = available, red = locked/recovering; a small timer chip sits at
+-- the BOTTOM (never over the pet's face). (Earlier this drew a filled pill on top of the card, which
+-- covered the pet with a solid block — a pure layering bug.)
 function InventoryPanel:_applyAvailabilityRing(frame, lockUntil, now)
     local ring = frame:FindFirstChild("AvailRing")
     local timer = frame:FindFirstChild("AvailTimer")
     if not ring then
-        ring = Instance.new("ImageLabel")
+        ring = Instance.new("Frame")
         ring.Name = "AvailRing"
-        ring.BackgroundTransparency = 1
+        ring.BackgroundTransparency = 1 -- center is clear -> pet shows through
         ring.AnchorPoint = Vector2.new(0.5, 0.5)
         ring.Position = UDim2.fromScale(0.5, 0.5)
-        ring.Size = UDim2.fromScale(1.14, 1.14) -- frame the card
-        ring.ScaleType = Enum.ScaleType.Fit
-        ring.ZIndex = 120
+        ring.Size = UDim2.fromScale(1, 1)
+        ring.ZIndex = 119
+        local rc = Instance.new("UICorner")
+        rc.CornerRadius = UDim.new(0, 10)
+        rc.Parent = ring
+        local stroke = Instance.new("UIStroke")
+        stroke.Name = "RingStroke"
+        stroke.Thickness = 3
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        stroke.Parent = ring
         ring.Parent = frame
         timer = Instance.new("TextLabel")
         timer.Name = "AvailTimer"
         timer.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
         timer.BackgroundTransparency = 0.15
-        timer.AnchorPoint = Vector2.new(0.5, 0.5)
-        timer.Position = UDim2.fromScale(0.5, 0.5)
-        timer.Size = UDim2.fromOffset(46, 20)
+        timer.AnchorPoint = Vector2.new(0.5, 1)
+        timer.Position = UDim2.fromScale(0.5, 0.97) -- bottom edge, clear of the pet
+        timer.Size = UDim2.fromOffset(46, 18)
         timer.Font = Enum.Font.GothamBlack
-        timer.TextSize = 13
+        timer.TextSize = 12
         timer.TextColor3 = Color3.fromRGB(255, 255, 255)
         timer.ZIndex = 122
         local tc = Instance.new("UICorner")
@@ -420,7 +430,10 @@ function InventoryPanel:_applyAvailabilityRing(frame, lockUntil, now)
         timer.Parent = frame
     end
     local locked = lockUntil ~= nil
-    ring.Image = locked and PILL_UI.slot_locked or PILL_UI.slot_available
+    local stroke = ring:FindFirstChild("RingStroke")
+    if stroke then
+        stroke.Color = locked and Color3.fromRGB(235, 70, 70) or Color3.fromRGB(245, 245, 250)
+    end
     timer.Visible = locked
     timer.Text = locked and lockoutFormatTime(lockUntil - now) or ""
 end

@@ -1,0 +1,29 @@
+assets_dir: /Users/jason/Documents/RBX-Template/assets/ui/white_icons
+icon_count: 24
+
+armor_chest.png
+arrow_right.png
+capacitor.png
+chevrons_down.png
+chevrons_up.png
+clover_lucky.png
+coins_up.png
+contagion.png
+eye.png
+eye_hidden.png
+fist.png
+fist_broken.png
+fist_impact.png
+gift_up.png
+hand_stop.png
+history.png
+plus.png
+plus_down.png
+shield.png
+shield_broken.png
+star_sparkle.png
+target.png
+target_down.png
+user_desk.png
+
+contact_sheet: contact_sheet.png
