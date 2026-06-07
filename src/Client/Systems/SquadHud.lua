@@ -268,46 +268,18 @@ local function activeEffectsFor(pet, player, now)
     return out
 end
 
--- A small status badge. The outer `frame` is a transparent CONTAINER (no clipping) so a stacked
--- buff can fan "pile" shadows out behind the body + show a "xN" count chip outside the body; the
--- inner `body` is the coloured chip that clips the zoomed icon border.
+-- A small status badge — one per buff INSTANCE (duplicates included). Positioned manually by
+-- updateBadges so same-kind instances overlap by half (a coin-stack); each blinks on its own timer.
+local BADGE_PX = 30
 local function makeBadge(parent)
     local f = Instance.new("Frame")
-    f.Size = UDim2.fromOffset(30, 30)
-    f.BackgroundTransparency = 1
+    f.Size = UDim2.fromOffset(BADGE_PX, BADGE_PX)
     f.BorderSizePixel = 0
+    f.ClipsDescendants = true -- crop the icon's zoomed-out transparent border
     f.Parent = parent
-
-    -- Pile shadows: same-kind buffs stacked like overlapping coins. Hidden unless stacks > 1.
-    local shadows = {}
-    for s = 1, 2 do
-        local sh = Instance.new("Frame")
-        sh.Name = "Pile" .. s
-        sh.AnchorPoint = Vector2.new(0.5, 0.5)
-        sh.Size = UDim2.fromScale(1, 1)
-        sh.Position = UDim2.new(0.5, s * 4, 0.5, -s * 4) -- fan up-right
-        sh.BorderSizePixel = 0
-        sh.BackgroundColor3 = Color3.fromRGB(70, 76, 92)
-        sh.BackgroundTransparency = 0.08 + (s - 1) * 0.2
-        sh.ZIndex = 2 - s -- behind the body
-        sh.Visible = false
-        local sc = Instance.new("UICorner")
-        sc.CornerRadius = UDim.new(0, 6)
-        sc.Parent = sh
-        sh.Parent = f
-        shadows[s] = sh
-    end
-
-    local body = Instance.new("Frame")
-    body.Name = "Body"
-    body.Size = UDim2.fromScale(1, 1)
-    body.BorderSizePixel = 0
-    body.ClipsDescendants = true -- crop the icon's zoomed-out transparent border
-    body.ZIndex = 2
-    body.Parent = f
     local c = Instance.new("UICorner")
     c.CornerRadius = UDim.new(0, 6)
-    c.Parent = body
+    c.Parent = f
     local icon = Instance.new("ImageLabel")
     icon.Name = "Icon"
     icon.BackgroundTransparency = 1
@@ -316,8 +288,7 @@ local function makeBadge(parent)
     icon.ScaleType = Enum.ScaleType.Fit
     icon.Size = UDim2.fromScale(1, 1) -- zoom set per-icon in updateBadges
     icon.Image = ""
-    icon.ZIndex = 3
-    icon.Parent = body
+    icon.Parent = f
     -- Tinted element ring framing the disc (power-applied buffs only; hidden otherwise).
     local ring = Instance.new("ImageLabel")
     ring.Name = "Ring"
@@ -328,8 +299,7 @@ local function makeBadge(parent)
     ring.ScaleType = Enum.ScaleType.Fit
     ring.Image = ""
     ring.Visible = false
-    ring.ZIndex = 4
-    ring.Parent = body
+    ring.Parent = f
     local label = Instance.new("TextLabel")
     label.Name = "Label"
     label.BackgroundTransparency = 1
@@ -337,8 +307,7 @@ local function makeBadge(parent)
     label.Font = Enum.Font.GothamBold
     label.TextSize = 9
     label.TextColor3 = Color3.fromRGB(20, 22, 28)
-    label.ZIndex = 3
-    label.Parent = body
+    label.Parent = f
     local timer = Instance.new("TextLabel")
     timer.Name = "Timer"
     timer.BackgroundTransparency = 1
@@ -347,91 +316,74 @@ local function makeBadge(parent)
     timer.Font = Enum.Font.GothamBold
     timer.TextSize = 9
     timer.TextColor3 = Color3.fromRGB(20, 22, 28)
-    timer.ZIndex = 3
-    timer.Parent = body
-
-    -- "xN" count chip (top-right, on the container so it isn't clipped). Hidden unless stacks > 1.
-    local count = Instance.new("TextLabel")
-    count.Name = "Count"
-    count.BackgroundColor3 = Color3.fromRGB(28, 31, 40)
-    count.BackgroundTransparency = 0.05
-    count.AnchorPoint = Vector2.new(1, 0)
-    count.Position = UDim2.new(1, 5, 0, -4)
-    count.Size = UDim2.fromOffset(17, 14)
-    count.Font = Enum.Font.GothamBlack
-    count.TextSize = 11
-    count.TextColor3 = Color3.fromRGB(255, 255, 255)
-    count.Text = ""
-    count.Visible = false
-    count.ZIndex = 6
-    local cc = Instance.new("UICorner")
-    cc.CornerRadius = UDim.new(0, 5)
-    cc.Parent = count
-    count.Parent = f
-
-    return {
-        frame = f,
-        body = body,
-        icon = icon,
-        ring = ring,
-        label = label,
-        timer = timer,
-        shadows = shadows,
-        count = count,
-    }
+    timer.Parent = f
+    return { frame = f, icon = icon, ring = ring, label = label, timer = timer }
 end
+
+-- Under the GUI's Sibling ZIndexBehavior, a badge frame's ZIndex governs the whole badge vs its
+-- sibling badges (descendants keep their own intra-badge order). A more-urgent (later) instance
+-- gets a higher ZIndex so it draws OVER the coin it overlaps — its blink stays visible on top.
 
 -- Reconcile a card's badges against the pet's active effects. Ordered so the SHORTEST
 -- remaining sits leftmost (toward screen centre, most urgent): the row grows left under
 -- HorizontalAlignment.Right, so a higher LayoutOrder = further left. The blink loop owns
 -- live transparency (badges are never hidden/destroyed mid-blink, so the row never shifts).
+local BADGE_GAP = 3
 local function updateBadges(card, effects, blinkLead)
-    local ordered = table.clone(effects)
-    -- Order: TIMED buffs by shortest-remaining (most urgent leftmost) as before; STEADY auras hold a
-    -- FIXED slot by their PET_EFFECTS index. Steady auras refresh every ~2s, so sorting them by their
-    -- bouncing `remaining` made two of them swap places each refresh (the "icons shift back and forth"
-    -- jitter). Keying steady badges off `order` pins them in place.
-    table.sort(ordered, function(a, b)
-        local aSteady, bSteady = a.steady or false, b.steady or false
+    -- ONE badge per buff INSTANCE (duplicates included): N lava buffers -> N ATK badges; the renderer
+    -- is per-instance so distinct-expiry sources blink independently — only the coin within blinkLead
+    -- of dropping flashes, not the whole stack.
+    local instances = {}
+    for _, eff in ipairs(effects) do
+        local n = math.max(1, math.floor(eff.stacks or 1))
+        for k = 1, n do
+            instances[#instances + 1] = { eff = eff, k = k }
+        end
+    end
+    -- Order: TIMED by shortest-remaining toward the centre EDGE (most urgent leftmost); STEADY auras
+    -- hold a fixed slot by PET_EFFECTS index (no refresh jitter). Same-kind instances end up adjacent.
+    table.sort(instances, function(a, b)
+        local ae, be = a.eff, b.eff
+        local aSteady, bSteady = ae.steady or false, be.steady or false
         if aSteady ~= bSteady then
-            return bSteady -- timed (non-steady) first -> leftmost; steady group sits to the right
+            return bSteady -- timed first -> leftmost edge
         end
         if aSteady then
-            return (a.order or 0) < (b.order or 0) -- steady: stable, never reorders on refresh
+            if (ae.order or 0) ~= (be.order or 0) then
+                return (ae.order or 0) < (be.order or 0)
+            end
+            return a.k < b.k
         end
-        return (a.remaining or math.huge) > (b.remaining or math.huge) -- timed: shortest -> leftmost
+        if (ae.remaining or math.huge) ~= (be.remaining or math.huge) then
+            return (ae.remaining or math.huge) > (be.remaining or math.huge) -- shortest -> leftmost
+        end
+        return a.k < b.k
     end)
+
     local seen = {}
-    for i, eff in ipairs(ordered) do
-        seen[eff.key] = true
-        local b = card.badges[eff.key]
+    -- Position manually: adjacent DUPLICATES (same kind) overlap by HALF a badge (a coin-stack);
+    -- different kinds get the normal gap. Lay out right(least urgent)->left(most urgent); the row is
+    -- anchored at the card's left edge and grows toward screen centre.
+    local OVERLAP = math.floor(BADGE_PX / 2)
+    local rightX = 0
+    for i, inst in ipairs(instances) do
+        local eff = inst.eff
+        local id = eff.key .. "#" .. inst.k
+        seen[id] = true
+        local b = card.badges[id]
         if not b then
             b = makeBadge(card.status)
-            b.frame.Name = eff.key
-            card.badges[eff.key] = b
+            b.frame.Name = id
+            card.badges[id] = b
         end
-        -- Steady (continuously-refreshed) buffs never blink; timed ones blink near expiry.
+        -- per-INSTANCE blink: only THIS coin flashes when IT is within blinkLead of expiry.
         b.blinking = not eff.steady and eff.remaining ~= nil and eff.remaining <= (blinkLead or 0)
-        b.frame.LayoutOrder = i
         local hasIcon = eff.icon and eff.icon ~= ""
-        -- Real icon: clear backing so the art reads cleanly; else keep coloured chip.
-        b.body.BackgroundColor3 = eff.color
-        b.bgBase = hasIcon and 1 or 0 -- base backing transparency; blink loop applies it
+        b.frame.BackgroundColor3 = eff.color
+        b.bgBase = hasIcon and 1 or 0 -- icon badges: transparent backing (no square chip behind the disc)
         b.label.Text = hasIcon and "" or eff.label
         b.icon.Image = eff.icon or ""
-        -- Stack of same-kind sources: fan pile shadows behind + show a "xN" chip (different kinds
-        -- stay as separate badges; same kind piles up, like coins of one denomination).
-        local stacks = math.floor(eff.stacks or 1)
-        b.shadows[1].Visible = stacks >= 2
-        b.shadows[2].Visible = stacks >= 3
-        local pileColor = eff.ringColor or eff.color
-        b.shadows[1].BackgroundColor3 = pileColor
-        b.shadows[2].BackgroundColor3 = pileColor
-        b.count.Visible = stacks > 1
-        b.count.Text = stacks > 1 and ("x" .. stacks) or ""
         if eff.ringImg then
-            -- Full element badge: inset the disc so the tinted ring frames it (matches the role
-            -- badge / hotbar / world shield).
             b.ring.Image = eff.ringImg
             b.ring.ImageColor3 = eff.ringColor or Color3.fromRGB(70, 76, 96)
             b.ring.Visible = true
@@ -443,8 +395,21 @@ local function updateBadges(card, effects, blinkLead)
                 b.icon.Size = UDim2.fromScale(s, s)
             end
         end
-        b.timer.Text = eff.timer or ""
+        -- Only the FRONT (most-urgent) coin of a same-kind stack prints the countdown, so the pile
+        -- doesn't stamp the same number on every coin underneath.
+        local nextInst = instances[i + 1]
+        local frontOfStack = not (nextInst and nextInst.eff.key == eff.key)
+        b.timer.Text = (frontOfStack and eff.timer) or ""
+        -- advance the right-edge offset: overlap-by-half when this instance duplicates the previous.
+        local prev = instances[i - 1]
+        if prev then
+            rightX = rightX + ((prev.eff.key == eff.key) and OVERLAP or (BADGE_PX + BADGE_GAP))
+        end
+        b.frame.AnchorPoint = Vector2.new(1, 0.5)
+        b.frame.Position = UDim2.new(1, -rightX, 0.5, 0)
+        b.frame.ZIndex = 2 + i -- later = more urgent (leftmost) = on top, so its blink shows
     end
+    card.status.Size = UDim2.fromOffset(rightX + BADGE_PX, BADGE_PX)
     for key, b in pairs(card.badges) do
         if not seen[key] then
             b.frame:Destroy()
@@ -676,17 +641,12 @@ function SquadHud.start()
         -- Start left of the overhanging role badge (which pokes ~15px off the card edge) so the
         -- status badges grow further toward centre without colliding with it.
         status.Position = UDim2.new(0, -20, 0.5, 0)
-        status.Size = UDim2.fromOffset(0, 24)
-        status.AutomaticSize = Enum.AutomaticSize.X
+        -- Width is set by updateBadges (badges are positioned manually so same-kind ones can overlap
+        -- by half — a UIListLayout's uniform spacing can't do the coin-stack).
+        status.Size = UDim2.fromOffset(0, 30)
+        status.AutomaticSize = Enum.AutomaticSize.None
         status.BackgroundTransparency = 1
         status.Parent = frame
-        local sLayout = Instance.new("UIListLayout")
-        sLayout.FillDirection = Enum.FillDirection.Horizontal
-        sLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-        sLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-        sLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        sLayout.Padding = UDim.new(0, 3)
-        sLayout.Parent = status
 
         frame.MouseButton1Click:Connect(function()
             -- A downed pet whose cooldown has elapsed shows "Summon" — clicking the card
@@ -968,9 +928,10 @@ function SquadHud.start()
             for _, b in pairs(card.badges) do
                 local hidden = b.blinking and not on
                 b.icon.ImageTransparency = hidden and 1 or 0
+                b.ring.ImageTransparency = hidden and 1 or 0
                 b.label.TextTransparency = hidden and 1 or 0
                 b.timer.TextTransparency = hidden and 1 or 0
-                b.body.BackgroundTransparency = hidden and 1 or (b.bgBase or 0)
+                b.frame.BackgroundTransparency = hidden and 1 or (b.bgBase or 0)
             end
         end
     end)
