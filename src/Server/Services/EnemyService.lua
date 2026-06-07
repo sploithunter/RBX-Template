@@ -34,6 +34,7 @@ local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local TargetPriority = require(ReplicatedStorage.Shared.Game.TargetPriority)
 local SupportAura = require(ReplicatedStorage.Shared.Game.SupportAura)
+local PetLockout = require(ReplicatedStorage.Shared.Game.PetLockout)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local EnemyService = {}
@@ -444,9 +445,151 @@ function EnemyService:_downPet(pet, _now, _eng, reason)
         tid.Value = 0 -- stop attacking
     end
     self:_clearEnduranceBar(pet) -- hidden pet shows no in-world bar; the HUD shows state
+    -- #179: a forced DOWN matters — record the lockout against the pet's IDENTITY (persisted), so
+    -- re-teaming can't revive it for free. A proactive RECALL is not a death, so it doesn't lock out.
+    if (reason or "down") == "down" then
+        pcall(function()
+            self:_recordDownLockout(pet)
+        end)
+    end
     if self._logger then
         self._logger:Info("Pet left the fight", { pet = pet.Name, reason = reason or "down" })
     end
+end
+
+-- ===== #179 Down-lockout integration (pure logic in Shared/Game/PetLockout) =====
+
+function EnemyService:_dataService()
+    local locator = _G.RBXTemplateServices
+    if not locator then
+        return nil
+    end
+    local ok, svc = pcall(function()
+        return locator:Get("DataService")
+    end)
+    return ok and svc or nil
+end
+
+function EnemyService:_lockoutCfg()
+    local sq = self._squadConfig or {}
+    return {
+        pet_lockout_seconds = (sq.down_lockout and sq.down_lockout.pet_lockout_seconds) or 300,
+        slot_lock_seconds = (sq.slot_recovery and sq.slot_recovery.down_cooldown_seconds) or 60,
+    }
+end
+
+-- Identity for the lockout: SPECIAL pets (huges/exclusives) lock by their UID; STACKED pets lock by
+-- <id:variant> COUNT (no per-unit id). Tagged onto the model at spawn by PetHandler.
+local function petLockEntry(pet)
+    if pet:GetAttribute("LockoutSpecial") and pet:GetAttribute("LockoutUid") then
+        return { kind = "special", uid = tostring(pet:GetAttribute("LockoutUid")) }
+    end
+    local key = pet:GetAttribute("LockoutKey")
+    if not key or key == "" then
+        local t = pet:GetAttribute("PetType")
+        local v = pet:GetAttribute("Variant") or pet:GetAttribute("PetVariant")
+        key = tostring(t) .. ":" .. tostring(v)
+    end
+    return { kind = "stack", stackKey = key }
+end
+
+-- The player who owns this pet folder + their profile data.
+function EnemyService:_petOwnerData(pet)
+    local folder = pet.Parent
+    local player = folder and Players:FindFirstChild(folder.Name)
+    local ds = player and self:_dataService()
+    local data = ds and ds.GetData and ds:GetData(player)
+    return player, data
+end
+
+-- Record a down into the player's persisted lockout state.
+function EnemyService:_recordDownLockout(pet)
+    local _, data = self:_petOwnerData(pet)
+    if not data then
+        return
+    end
+    local entry = petLockEntry(pet)
+    local pn = pet:FindFirstChild("PositionNumber")
+    entry.slot = "slot_" .. tostring((pn and pn.Value) or pet:GetAttribute("PositionNumber") or "?")
+    local now = os.time()
+    local state = PetLockout.prune(data.PetLockouts, now) -- housekeeping on write
+    data.PetLockouts = PetLockout.recordDown(state, entry, now, self:_lockoutCfg())
+end
+
+-- Re-assert lockouts on the live squad each tick: a (re)spawned pet whose identity is still locked is
+-- held DOWN with its REMAINING recovery — so going to Pets and re-teaming can't revive it for free.
+function EnemyService:_enforceLockouts(now)
+    local pp = Workspace:FindFirstChild("PlayerPets")
+    if not pp then
+        return
+    end
+    for _, folder in ipairs(pp:GetChildren()) do
+        local player = Players:FindFirstChild(folder.Name)
+        local ds = player and self:_dataService()
+        local data = ds and ds.GetData and ds:GetData(player)
+        local state = data and data.PetLockouts
+        if state then
+            -- active recovery timestamps per stack key (longest first), to assign to held units
+            local stackTimes, stackUsed = {}, {}
+            for key, list in pairs(state.stacks or {}) do
+                local active = {}
+                for _, t in ipairs(list) do
+                    if t > now then
+                        active[#active + 1] = t
+                    end
+                end
+                if #active > 0 then
+                    table.sort(active, function(a, b)
+                        return a > b
+                    end)
+                    stackTimes[key] = active
+                end
+            end
+            for _, pet in ipairs(folder:GetChildren()) do
+                if pet:IsA("Model") then
+                    local entry = petLockEntry(pet)
+                    local lockUntil
+                    if entry.kind == "special" then
+                        local u = (state.pets or {})[entry.uid] or 0
+                        if u > now then
+                            lockUntil = u
+                        end
+                    else
+                        local times = stackTimes[entry.stackKey]
+                        if times then
+                            local used = stackUsed[entry.stackKey] or 0
+                            if used < #times then
+                                lockUntil = times[used + 1]
+                                stackUsed[entry.stackKey] = used + 1
+                            end
+                        end
+                    end
+                    if lockUntil then
+                        if not pet:GetAttribute("CombatDowned") then
+                            self:_holdDown(pet, lockUntil) -- fresh re-teamed unit -> back down
+                        elseif (pet:GetAttribute("CooldownUntil") or 0) < lockUntil then
+                            -- extend an in-session down (slot CD) to the full identity lockout
+                            pet:SetAttribute("CooldownUntil", lockUntil)
+                            pet:SetAttribute("DownedReason", "recovering")
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Put a pet down WITHOUT resetting its recovery clock — keep the REMAINING recovery as CooldownUntil
+-- so the HUD shows the true time left (not a fresh timer). Used only by the lockout enforcement.
+function EnemyService:_holdDown(pet, untilEpoch)
+    pet:SetAttribute("CombatDowned", true)
+    pet:SetAttribute("DownedReason", "recovering")
+    pet:SetAttribute("CooldownUntil", untilEpoch)
+    local tid = pet:FindFirstChild("TargetID")
+    if tid then
+        tid.Value = 0
+    end
+    self:_clearEnduranceBar(pet)
 end
 
 -- Re-summon a recovered pet back onto the field (clears the downed state + heals it).
@@ -1336,6 +1479,7 @@ function EnemyService:_combatTick(dt)
     self:_regenPass(now, dt, eng)
     self:_supportPass(now)
     self:_enemyHealPass(now)
+    self:_enforceLockouts(nowTime) -- #179: hold re-teamed/locked pets down for their recovery
     for targetId, entry in pairs(self._enemies) do
         local model = entry.model
         if model and model.Parent and (model:GetAttribute("HP") or 0) > 0 then

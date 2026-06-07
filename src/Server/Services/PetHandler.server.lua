@@ -1314,8 +1314,20 @@ function loadEquipped(Player)
                                     effectiveVariantName
                                 )
                                 PetVariantVisuals.ApplyStaticVisuals(PetModel)
-                                if isHugePetFolder(petFolder) then
+                                local isHuge = isHugePetFolder(petFolder)
+                                if isHuge then
                                     applyHugePetScale(PetModel)
+                                end
+                                -- #179 down-lockout identity: SPECIAL pets (huges) lock by their UID
+                                -- (petFolder.Name is the stable uid); STACKED pets lock by id:variant
+                                -- COUNT. EnemyService reads these on a down + to enforce re-teaming.
+                                PetModel:SetAttribute(
+                                    "LockoutKey",
+                                    tostring(petIdName) .. ":" .. tostring(petVariantName)
+                                )
+                                if isHuge then
+                                    PetModel:SetAttribute("LockoutSpecial", true)
+                                    PetModel:SetAttribute("LockoutUid", petFolder.Name)
                                 end
                                 -- Log geometry immediately after clone, before any changes
                                 logModelGeometry("POST_CLONE_PREPARENT", PetModel)
