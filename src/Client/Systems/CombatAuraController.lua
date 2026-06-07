@@ -110,10 +110,12 @@ local function hideDebuffIcon(target)
         end)
     end
 end
-local function showDebuffIcon(target)
+local function showDebuffIcon(target, secs)
+    -- `secs` = the debuff's remaining time (from refreshEnemyDebuff's Vulnerable/Root read), so the
+    -- badge doesn't depend on DebuffUntil having replicated yet. `pid` may lag VulnerableUntil by a
+    -- frame; if it's not here yet we bail and the DebuffPowerId hook re-fires us once it lands.
     local pid = target:GetAttribute("DebuffPowerId")
-    local secs = (target:GetAttribute("DebuffUntil") or 0) - os.time()
-    if secs <= 0 then
+    if not secs or secs <= 0 or not pid then
         hideDebuffIcon(target)
         return
     end
@@ -156,9 +158,16 @@ local function showDebuffIcon(target)
     end
     -- self-expire: hide when the debuff runs out (no attribute event fires on natural expiry). A
     -- re-cast bumps the token so this stale timer noops.
-    task.delay(secs + 0.15, function()
+    task.delay(secs + 0.2, function()
         local r = debuffIcons[target]
-        if r and r.token == myTok and (target:GetAttribute("DebuffUntil") or 0) <= os.time() then
+        if not (r and r.token == myTok) then
+            return
+        end
+        local left = math.max(
+            (target:GetAttribute("VulnerableUntil") or 0) - os.time(),
+            (target:GetAttribute("RootedUntil") or 0) - os.time()
+        )
+        if left <= 0 then
             hideDebuffIcon(target)
         end
     end)
@@ -370,7 +379,7 @@ local function refreshEnemyDebuff(enemy)
             "debuff",
             { category = "debuff", element = casterElement(), duration = secs }
         )
-        showDebuffIcon(enemy) -- aura AND a badge, so the player reads which debuff it is at a glance
+        showDebuffIcon(enemy, secs) -- aura AND a badge: read which debuff it is at a glance
     else
         stopSlot(enemy, "debuff")
         hideDebuffIcon(enemy)
@@ -387,6 +396,10 @@ local function hookEnemy(enemy)
         refreshEnemyDebuff(enemy)
     end)
     list[#list + 1] = enemy:GetAttributeChangedSignal("RootedUntil"):Connect(function()
+        refreshEnemyDebuff(enemy)
+    end)
+    -- DebuffPowerId can replicate a frame AFTER VulnerableUntil; re-run so the badge picks it up.
+    list[#list + 1] = enemy:GetAttributeChangedSignal("DebuffPowerId"):Connect(function()
         refreshEnemyDebuff(enemy)
     end)
     refreshEnemyDebuff(enemy)
