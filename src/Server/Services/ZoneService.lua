@@ -96,11 +96,35 @@ function ZoneService:Start()
     end
 end
 
+-- Areas an admin can cycle through for testing area theming + play feel.
+local ADMIN_AREAS = { "Grass", "Desert", "Ice", "Lava", "Spawn" }
+
 function ZoneService:_setupNetworkSignals()
     Signals.UnlockZoneRequest.OnServerEvent:Connect(function(player, payload)
         payload = type(payload) == "table" and payload or {}
         local result = self:UnlockZone(player, payload.zoneId)
         Signals.ZoneUnlockResult:FireClient(player, result)
+    end)
+    -- Admin testing: set the active area + home area (drives UI theme + spawns). Admin-gated.
+    Signals.Admin_SetArea.OnServerEvent:Connect(function(player, payload)
+        if player:GetAttribute("IsAdmin") ~= true then
+            return
+        end
+        local area = type(payload) == "table" and payload.area or payload
+        if type(area) ~= "string" then
+            return
+        end
+        local valid = false
+        for _, a in ipairs(ADMIN_AREAS) do
+            if a == area then
+                valid = true
+                break
+            end
+        end
+        if valid then
+            player:SetAttribute("CurrentArea", area)
+            player:SetAttribute("HomeArea", area) -- the chosen home area drives the UI theme
+        end
     end)
 end
 

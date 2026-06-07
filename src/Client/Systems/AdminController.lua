@@ -14,9 +14,15 @@
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local AdminController = {}
 local started = false
+
+-- Areas the area-cycle button rotates through (matches ZoneService ADMIN_AREAS).
+local ADMIN_AREAS = { "Grass", "Desert", "Ice", "Lava", "Spawn" }
 
 -- The dev/admin overlay ScreenGuis this chip shows/hides (by Name in PlayerGui).
 local OVERLAYS = { "DevSpawnPanel", "DevMetricsHud", "BuffStatsHud" }
@@ -83,12 +89,51 @@ function AdminController.start()
     stroke.Parent = chip
     chip.Parent = gui
 
+    -- Area-cycle button (shown only when admin mode is ON): rotate CurrentArea/HomeArea for testing
+    -- the area theme + play feel.
+    local areaBtn = Instance.new("TextButton")
+    areaBtn.Name = "AreaCycle"
+    areaBtn.Size = UDim2.fromOffset(118, 26)
+    areaBtn.Position = UDim2.new(0, 315, 1, -46) -- just above the ADMIN chip
+    areaBtn.AnchorPoint = Vector2.new(0, 1)
+    areaBtn.BackgroundColor3 = Color3.fromRGB(26, 40, 54)
+    areaBtn.BackgroundTransparency = 0.1
+    areaBtn.Font = Enum.Font.GothamBold
+    areaBtn.TextSize = 12
+    areaBtn.TextColor3 = Color3.fromRGB(180, 210, 235)
+    areaBtn.Text = "AREA: …"
+    areaBtn.Visible = false
+    local ac = Instance.new("UICorner")
+    ac.CornerRadius = UDim.new(0, 8)
+    ac.Parent = areaBtn
+    areaBtn.Parent = gui
+    local function refreshAreaLabel()
+        local a = player:GetAttribute("HomeArea") or player:GetAttribute("CurrentArea") or "Spawn"
+        areaBtn.Text = "AREA: " .. tostring(a) .. " ▸"
+    end
+    refreshAreaLabel()
+    player:GetAttributeChangedSignal("CurrentArea"):Connect(refreshAreaLabel)
+    player:GetAttributeChangedSignal("HomeArea"):Connect(refreshAreaLabel)
+    areaBtn.Activated:Connect(function()
+        local cur = player:GetAttribute("HomeArea") or player:GetAttribute("CurrentArea") or "Spawn"
+        local idx = 1
+        for i, a in ipairs(ADMIN_AREAS) do
+            if a == cur then
+                idx = i
+                break
+            end
+        end
+        local nextArea = ADMIN_AREAS[(idx % #ADMIN_AREAS) + 1]
+        Signals.Admin_SetArea:FireServer({ area = nextArea })
+    end)
+
     local on = false
     local function apply()
         setOverlays(pg, on)
         chip.Text = on and "🛠 ADMIN: ON" or "🛠 ADMIN: OFF"
         chip.TextColor3 = on and Color3.fromRGB(120, 240, 150) or Color3.fromRGB(200, 180, 235)
         stroke.Color = on and Color3.fromRGB(90, 220, 120) or Color3.fromRGB(150, 110, 230)
+        areaBtn.Visible = on
         player:SetAttribute("AdminOverlaysOn", on)
     end
 
