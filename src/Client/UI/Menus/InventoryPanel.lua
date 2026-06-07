@@ -400,16 +400,17 @@ function InventoryPanel:_applyAvailabilityRing(frame, lockUntil, now)
     local ring = frame:FindFirstChild("AvailRing")
     local timer = frame:FindFirstChild("AvailTimer")
     if not ring then
-        -- Jason's pill_frame art is a hollow ring (transparent center) -> overlay it on top of the
-        -- card and the pet shows through the hole. Slightly oversized so the ring frames the card.
+        -- Jason's pill_frame art is a hollow ring (transparent center). Sit it BEHIND the card (low
+        -- ZIndex) and slightly oversized, so only the ring's border frames the card from behind — the
+        -- pet/card content draws on top and is never clipped or covered by the ring.
         ring = Instance.new("ImageLabel")
         ring.Name = "AvailRing"
         ring.BackgroundTransparency = 1
         ring.AnchorPoint = Vector2.new(0.5, 0.5)
         ring.Position = UDim2.fromScale(0.5, 0.5)
-        ring.Size = UDim2.fromScale(1.06, 1.06)
+        ring.Size = UDim2.fromScale(1.2, 1.2)
         ring.ScaleType = Enum.ScaleType.Stretch
-        ring.ZIndex = 119
+        ring.ZIndex = 0
         ring.Parent = frame
         timer = Instance.new("TextLabel")
         timer.Name = "AvailTimer"
