@@ -1,11 +1,16 @@
 --[[
     MenuTrayStyle (client) — skin the lower-left tray buttons (Trade/Admin/Daily/Quest/Shop/Items/
-    Effects/Settings) with Jason's pill art: a glossy pill_panel background + a neon pill_frame border
-    behind the existing icon + label, matching assets/ui/reference/quest_button_reference.jpg.
+    Effects/Settings) AND the Rewards button with Jason's pill art: a glossy pill_panel background +
+    a neon pill_frame border behind the existing icon + label, matching
+    assets/ui/reference/quest_button_reference.jpg.
 
-    Done as a scoped post-process (only the 8 named buttons in ProfessionalBaseUI's menu_buttons_pane)
-    so BaseUI's button-building logic is untouched. Area-themed via UITheme (defaults to the sapphire
-    pill until a home area is chosen). Idempotent per button.
+    Done as a scoped post-process (named buttons only) so BaseUI's button-building logic is untouched.
+    The tray takes the home-area pill color (via UITheme, sapphire default) and re-tints on area change;
+    Rewards keeps a fixed citrine (gold) pill for its identity and is moved into the lower-left next to
+    the Pets paw. Idempotent per button.
+
+    Icon-ready: the restyle lifts whatever icon child BaseUI made (TextLabel emoji OR ImageLabel asset)
+    above the pills and only outlines TEXT — so swapping in real icon image ids later needs no change.
 ]]
 
 local Players = game:GetService("Players")
@@ -16,7 +21,7 @@ local PILL = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
 local MenuTrayStyle = {}
 local started = false
 
-local BUTTONS = {
+local TRAY_BUTTONS = {
     "TradeButton",
     "AdminButton",
     "DailyButton",
@@ -35,13 +40,14 @@ local function pillKey(theme)
     return key
 end
 
-local function styleButton(btn, theme, styled)
+-- Skin one button with a pill_panel + pill_frame of `key`, lifting its icon/label above. If rebind is
+-- given, the panel/frame are recorded so they can be re-tinted when the area changes.
+local function styleButton(btn, key, rebind)
     if btn:GetAttribute("Pillified") then
         return
     end
     btn:SetAttribute("Pillified", true)
 
-    -- strip the flat background styling
     if btn:IsA("ImageButton") then
         btn.Image = ""
     end
@@ -52,7 +58,6 @@ local function styleButton(btn, theme, styled)
         end
     end
 
-    local key = pillKey(theme)
     local panel = Instance.new("ImageLabel")
     panel.Name = "PillPanel"
     panel.BackgroundTransparency = 1
@@ -74,7 +79,6 @@ local function styleButton(btn, theme, styled)
     frame.ZIndex = 14
     frame.Parent = btn
 
-    -- lift the existing icon / label / notification above the pills + outline the label
     for _, c in ipairs(btn:GetChildren()) do
         if c ~= panel and c ~= frame and c:IsA("GuiObject") then
             c.ZIndex = 16
@@ -90,7 +94,9 @@ local function styleButton(btn, theme, styled)
         end
     end
 
-    table.insert(styled, { panel = panel, frame = frame })
+    if rebind then
+        table.insert(rebind, { panel = panel, frame = frame })
+    end
 end
 
 function MenuTrayStyle.start()
@@ -105,37 +111,53 @@ function MenuTrayStyle.start()
     task.spawn(function()
         local base = pg:WaitForChild("ProfessionalBaseUI", 20)
         local mc = base and base:WaitForChild("MainContainer", 10)
-        local pane
-        for _ = 1, 30 do
-            pane = mc and mc:FindFirstChild("menu_buttons_pane")
-            if pane then
-                break
-            end
-            task.wait(0.5)
-        end
-        if not pane then
+        if not mc then
             return
         end
 
-        local styled = {}
+        local styled = {} -- tray panels/frames that re-tint with the area
         local theme = Theme.palette(player)
-        local function applyAll()
-            for _, name in ipairs(BUTTONS) do
-                local btn = pane:FindFirstChild(name)
-                if btn then
-                    styleButton(btn, theme, styled)
-                end
-            end
-        end
-        -- buttons may stream in; retry a few times
+
+        -- 8 tray buttons (area color)
+        local pane = mc:WaitForChild("menu_buttons_pane", 15)
         task.spawn(function()
             for _ = 1, 10 do
-                applyAll()
+                if pane then
+                    for _, name in ipairs(TRAY_BUTTONS) do
+                        local btn = pane:FindFirstChild(name)
+                        if btn then
+                            styleButton(btn, pillKey(theme), styled)
+                        end
+                    end
+                end
                 task.wait(0.5)
             end
         end)
 
-        -- re-tint on area change
+        -- Rewards: move into the lower-left next to the Pets paw + gold (citrine) pill
+        task.spawn(function()
+            local pets = mc:WaitForChild("pets_button_pane", 15)
+            local rewards = mc:WaitForChild("rewards_button_pane", 15)
+            if pets and rewards then
+                rewards.AnchorPoint = pets.AnchorPoint
+                rewards.Position = UDim2.new(
+                    pets.Position.X.Scale,
+                    pets.Position.X.Offset + 140,
+                    pets.Position.Y.Scale,
+                    pets.Position.Y.Offset
+                )
+                for _ = 1, 10 do
+                    local rb = rewards:FindFirstChild("RewardsButton")
+                    if rb then
+                        styleButton(rb, "citrine", nil) -- fixed gold, not area-tinted
+                        break
+                    end
+                    task.wait(0.5)
+                end
+            end
+        end)
+
+        -- re-tint the tray on area change
         Theme.bind(player, function(p)
             theme = p
             local key = pillKey(p)
