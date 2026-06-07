@@ -76,7 +76,7 @@ return {
     -- cluster, so it needs to be bigger than a single to read at the same gem scale). PointLight
     -- range/brightness for the internal glow.
     size = {
-        single = 1.5,
+        single = 1.25, -- a touch smaller than the pile/bag (Jason: shrink the single, not grow the rest)
         pile = 3.0, -- ~2x a single (Jason: piles looked small at the shared size)
         bag = 4.0, -- the jackpot form — chunkiest
     },
