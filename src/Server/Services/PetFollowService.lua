@@ -412,12 +412,18 @@ function PetFollowService:_mine(player, pet, breakable)
     else
         hitChance = Accuracy.miningHitChance(accCfg)
     end
-    -- Critical Strike (Pyromancer): a player crit buff adds flat crit CHANCE to the squad's hits
-    -- (combat + mining), clamped below 1 so it never guarantees a crit.
+    -- Crit CHANCE buff (combat + mining), source-agnostic: a PLAYER power (Critical Strike, CritBuff)
+    -- and a PET support aura (a crit-buffer pet, CritAura) are SEPARATE channels that ADD — same as
+    -- offense (Mountain's Strength power + emberimp aura). Clamped < 1 so it never guarantees a crit.
     local critChance = (petAtkRoll and petAtkRoll.crit_chance) or 0
+    local critAdd = 0
     if (player:GetAttribute("CritBuffUntil") or 0) > nowT then
-        critChance = math.min(critChance + (player:GetAttribute("CritBuff") or 0), 0.9)
+        critAdd = critAdd + (player:GetAttribute("CritBuff") or 0)
     end
+    if (player:GetAttribute("CritAuraUntil") or 0) > nowT then
+        critAdd = critAdd + (player:GetAttribute("CritAura") or 0)
+    end
+    critChance = math.min(critChance + critAdd, 0.9)
     local roll = CombatRoll.resolve({
         hit_chance = hitChance,
         crit_chance = critChance,
