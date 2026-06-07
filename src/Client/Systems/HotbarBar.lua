@@ -22,6 +22,8 @@ local RunService = game:GetService("RunService")
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local POWER_ICONS = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_icons"))
 local PILL = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
+local POWERS = require(ReplicatedStorage.Configs:WaitForChild("powers"))
+local POWER_DESC = require(ReplicatedStorage.Configs:WaitForChild("power_descriptions"))
 local PetBadge = require(script.Parent.Parent.UI.PetBadge)
 
 local HotbarBar = {}
@@ -209,6 +211,88 @@ function HotbarBar.start()
 
     -- Two rows of 10 slots. Bottom row = slots 1-10, top row = 11-20.
     local cards = {}
+
+    -- Hover tooltip: after a short hover on a power slot, a popup shows the power's NAME + what it
+    -- DOES (configs/power_descriptions). Anchored bottom-left at the slot's top edge, so it pops up
+    -- and to the right of the slot (origin = lower-left, per Jason).
+    local HOVER_DELAY = 0.6 -- seconds hovering before it appears (bump toward 3 if you want it slower)
+    local tip = Instance.new("Frame")
+    tip.Name = "PowerTooltip"
+    tip.AnchorPoint = Vector2.new(0, 1)
+    tip.Size = UDim2.fromOffset(236, 10)
+    tip.AutomaticSize = Enum.AutomaticSize.Y
+    tip.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
+    tip.BackgroundTransparency = 0.05
+    tip.BorderSizePixel = 0
+    tip.Visible = false
+    tip.ZIndex = 40
+    tip.Parent = gui
+    do
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(0, 8)
+        c.Parent = tip
+        local s = Instance.new("UIStroke")
+        s.Color = Color3.fromRGB(70, 75, 95)
+        s.Thickness = 1.5
+        s.Parent = tip
+        local pad = Instance.new("UIPadding")
+        pad.PaddingTop = UDim.new(0, 8)
+        pad.PaddingBottom = UDim.new(0, 8)
+        pad.PaddingLeft = UDim.new(0, 10)
+        pad.PaddingRight = UDim.new(0, 10)
+        pad.Parent = tip
+        local list = Instance.new("UIListLayout")
+        list.SortOrder = Enum.SortOrder.LayoutOrder
+        list.Padding = UDim.new(0, 3)
+        list.Parent = tip
+    end
+    local tipName = Instance.new("TextLabel")
+    tipName.LayoutOrder = 1
+    tipName.BackgroundTransparency = 1
+    tipName.Size = UDim2.new(1, 0, 0, 16)
+    tipName.Font = Enum.Font.GothamBold
+    tipName.TextSize = 14
+    tipName.TextXAlignment = Enum.TextXAlignment.Left
+    tipName.TextColor3 = Color3.fromRGB(245, 245, 255)
+    tipName.Text = ""
+    tipName.ZIndex = 41
+    tipName.Parent = tip
+    local tipDesc = Instance.new("TextLabel")
+    tipDesc.LayoutOrder = 2
+    tipDesc.BackgroundTransparency = 1
+    tipDesc.Size = UDim2.new(1, 0, 0, 0)
+    tipDesc.AutomaticSize = Enum.AutomaticSize.Y
+    tipDesc.Font = Enum.Font.Gotham
+    tipDesc.TextSize = 12
+    tipDesc.TextWrapped = true
+    tipDesc.TextXAlignment = Enum.TextXAlignment.Left
+    tipDesc.TextYAlignment = Enum.TextYAlignment.Top
+    tipDesc.TextColor3 = Color3.fromRGB(205, 210, 225)
+    tipDesc.Text = ""
+    tipDesc.ZIndex = 41
+    tipDesc.Parent = tip
+
+    local hoverToken = 0 -- bumped on enter/leave so a stale delayed show is ignored
+    local function showTip(card)
+        local bind = card and card.bindObj
+        if not (bind and bind.type == "power") then
+            return -- only powers have descriptions; empty/tactical/roster slots show nothing
+        end
+        local id = tostring(bind.target)
+        local def = POWERS.powers and POWERS.powers[id]
+        tipName.Text = (def and def.display_name) or (id:gsub("_", " "))
+        local badge = PetBadge.forPower(id)
+        tipName.TextColor3 = (badge and POWER_ICONS.elementColor3(badge.element, "bright"))
+            or Color3.fromRGB(245, 245, 255)
+        tipDesc.Text = POWER_DESC[id] or "(no description)"
+        local ap = card.frame.AbsolutePosition
+        tip.Position = UDim2.fromOffset(math.floor(ap.X), math.floor(ap.Y) - 6)
+        tip.Visible = true
+    end
+    local function hideTip()
+        tip.Visible = false
+    end
+
     local function makeRow(yOffset, base)
         for i = 1, 10 do
             local slot = base + i
@@ -285,6 +369,20 @@ function HotbarBar.start()
                 else
                     Signals.Hotbar_Activate:FireServer({ slot = slot })
                 end
+            end)
+            -- Delayed hover tooltip: show after HOVER_DELAY of hovering; cancel/hide on leave.
+            b.MouseEnter:Connect(function()
+                hoverToken += 1
+                local mine = hoverToken
+                task.delay(HOVER_DELAY, function()
+                    if hoverToken == mine then
+                        showTip(cards[slot])
+                    end
+                end)
+            end)
+            b.MouseLeave:Connect(function()
+                hoverToken += 1 -- invalidate any pending show
+                hideTip()
             end)
             cards[slot] = {
                 frame = b,
