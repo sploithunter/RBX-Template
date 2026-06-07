@@ -439,6 +439,33 @@ function InventoryPanel:_applyAvailabilityRing(frame, lockUntil, now)
     timer.Text = locked and lockoutFormatTime(lockUntil - now) or ""
 end
 
+-- Draw a blank ring for every UNLOCKED-but-empty equip slot, so the row always shows how many slots
+-- you have (filled cards + blank rings = total slots). Count comes from the replicated PetEquipSlots.
+function InventoryPanel:_renderEmptySlotRings(filledCount)
+    local total = tonumber(self.player and self.player:GetAttribute("PetEquipSlots")) or 0
+    if total <= filledCount then
+        return
+    end
+    for i = filledCount + 1, total do
+        local ring = Instance.new("Frame")
+        ring.Name = "EmptySlotRing"
+        ring.Size = UDim2.new(0, self.cardSize.X, 0, self.cardSize.Y)
+        ring.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+        ring.BackgroundTransparency = 0.5 -- faint dark canvas so the open slot reads as a "hole"
+        ring.BorderSizePixel = 0
+        ring.LayoutOrder = i
+        local rc = Instance.new("UICorner")
+        rc.CornerRadius = UDim.new(0, 10)
+        rc.Parent = ring
+        local stroke = Instance.new("UIStroke")
+        stroke.Thickness = 3
+        stroke.Color = Color3.fromRGB(95, 101, 120) -- dim neutral = an open slot
+        stroke.Transparency = 0.2
+        stroke.Parent = ring
+        ring.Parent = self.equippedGrid
+    end
+end
+
 -- Hide any ring/timer on a card (an inventory pet that's fully available stays clean).
 function InventoryPanel:_clearAvailabilityRing(frame)
     local ring = frame:FindFirstChild("AvailRing")
@@ -2451,6 +2478,9 @@ function InventoryPanel:_updateItemsDisplay()
             end
         end
     end
+
+    -- Pad the equipped row with blank rings for the remaining open slots (eqIndex-1 = # filled).
+    self:_renderEmptySlotRings(eqIndex - 1)
 end
 
 function InventoryPanel:_getCategoryFolders(categoryName)

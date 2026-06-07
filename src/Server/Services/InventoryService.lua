@@ -1406,7 +1406,11 @@ function InventoryService:_getMaxEquippedSlots(player, category, configuredSlots
     extraSlots = math.max(extraSlots, attributeSlots)
 
     local maxSlots = tonumber(petConfig.max_slots) or (baseSlots + extraSlots)
-    return math.clamp(baseSlots + extraSlots, 1, maxSlots)
+    local finalSlots = math.clamp(baseSlots + extraSlots, 1, maxSlots)
+    -- Replicate the UNLOCKED equip-slot count so the Pets-window can draw one ring per slot
+    -- (#179: blank rings show how many slots you have at a glance, even when not all are filled).
+    player:SetAttribute("PetEquipSlots", finalSlots)
+    return finalSlots
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
