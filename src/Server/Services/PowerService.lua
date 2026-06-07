@@ -378,11 +378,17 @@ function PowerService:_applyEffect(player, kind, now, powerId)
     elseif family == "root" then
         for _, enemy in ipairs(enemiesAlive()) do
             enemy:SetAttribute("RootedUntil", now + dur)
+            -- stamp WHICH power debuffed it, so the client can show the matching badge above it
+            -- (alongside the aura) instead of leaving you to decode the particle colour.
+            enemy:SetAttribute("DebuffPowerId", powerId)
+            enemy:SetAttribute("DebuffUntil", now + dur)
         end
     elseif family == "vulnerable" then
         for _, enemy in ipairs(enemiesAlive()) do
             enemy:SetAttribute("VulnerableMult", mag)
             enemy:SetAttribute("VulnerableUntil", now + dur)
+            enemy:SetAttribute("DebuffPowerId", powerId)
+            enemy:SetAttribute("DebuffUntil", now + dur)
         end
         -- #174: a target-strength debuff also applies to FARMING. Mark the crystals the squad is
         -- mining so pets shred them x`mag` faster (PetFollowService:_mine reads VulnerableMult on
@@ -393,6 +399,8 @@ function PowerService:_applyEffect(player, kind, now, powerId)
             for _, crystal in ipairs(self:_engagedBreakables(player)) do
                 crystal:SetAttribute("VulnerableMult", mag)
                 crystal:SetAttribute("VulnerableUntil", now + dur)
+                crystal:SetAttribute("DebuffPowerId", powerId)
+                crystal:SetAttribute("DebuffUntil", now + dur)
             end
         end
     elseif family == "amplified_burst" then

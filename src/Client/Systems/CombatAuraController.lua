@@ -95,12 +95,82 @@ local function hideArmorIcon(pet)
     end
 end
 
+-- A debuff badge floating over a debuffed TARGET (enemy/crystal), so you can READ which debuff is on
+-- it (Sunder/Expose/Cripple…) instead of decoding the particle aura. Keyed off DebuffPowerId, which
+-- PowerService stamps when it applies a vulnerable/root family. Sits ABOVE the target; the aura still
+-- plays underneath. Rebuilt when a different power re-debuffs the same target.
+local debuffIcons = setmetatable({}, { __mode = "k" }) -- target -> { gui, powerId, token }
+local debuffTok = 0
+local function hideDebuffIcon(target)
+    local rec = debuffIcons[target]
+    if rec then
+        debuffIcons[target] = nil
+        pcall(function()
+            rec.gui:Destroy()
+        end)
+    end
+end
+local function showDebuffIcon(target)
+    local pid = target:GetAttribute("DebuffPowerId")
+    local secs = (target:GetAttribute("DebuffUntil") or 0) - os.time()
+    if secs <= 0 then
+        hideDebuffIcon(target)
+        return
+    end
+    debuffTok += 1
+    local myTok = debuffTok
+    local rec = debuffIcons[target]
+    if rec and rec.gui.Parent and rec.powerId == pid then
+        rec.token = myTok -- same debuff, just refreshed: keep the badge, re-arm the expiry
+    else
+        local badge = PetBadge.forPower(pid)
+        if not badge then
+            hideDebuffIcon(target)
+            return -- unknown power -> rely on the aura alone
+        end
+        local pp = target.PrimaryPart or target:FindFirstChildWhichIsA("BasePart")
+        if not pp then
+            return
+        end
+        if rec then
+            pcall(function()
+                rec.gui:Destroy()
+            end)
+        end
+        local up = 4
+        local okE, ext = pcall(function()
+            return target:GetExtentsSize()
+        end)
+        if okE and ext then
+            up = ext.Y * 0.5 + 2
+        end
+        local bb = Instance.new("BillboardGui")
+        bb.Name = "DebuffIcon"
+        bb.AlwaysOnTop = true
+        bb.Size = UDim2.fromOffset(32, 32)
+        bb.StudsOffset = Vector3.new(0, up, 0)
+        bb.Adornee = pp
+        PetBadge.create(bb, { element = badge.element, symbol = badge.symbol, ring = badge.ring })
+        bb.Parent = pp
+        debuffIcons[target] = { gui = bb, powerId = pid, token = myTok }
+    end
+    -- self-expire: hide when the debuff runs out (no attribute event fires on natural expiry). A
+    -- re-cast bumps the token so this stale timer noops.
+    task.delay(secs + 0.15, function()
+        local r = debuffIcons[target]
+        if r and r.token == myTok and (target:GetAttribute("DebuffUntil") or 0) <= os.time() then
+            hideDebuffIcon(target)
+        end
+    end)
+end
+
 local originCfg = {}
 local reskinDefs = {} -- config.reskins: reskin key ("stone"/"lava"/...) -> { material, color }
 local powersCfg = {} -- configs/powers.lua: powerId -> def (for power-driven shield element)
 
 local function elementForPet(pet)
-    local petEl = originCfg.pettype_element and originCfg.pettype_element[pet:GetAttribute("PetType")]
+    local petEl = originCfg.pettype_element
+        and originCfg.pettype_element[pet:GetAttribute("PetType")]
     local archetype = localPlayer and localPlayer:GetAttribute("Archetype")
     return CombatOrigin.resolve(petEl, archetype, originCfg)
 end
@@ -164,8 +234,11 @@ local function defenseElement(pet, idAttr)
     if not def then
         return nil
     end
-    return (def.archetype and originCfg.archetype_element and originCfg.archetype_element[def.archetype])
-        or def.element
+    return (
+        def.archetype
+        and originCfg.archetype_element
+        and originCfg.archetype_element[def.archetype]
+    ) or def.element
 end
 
 local function refreshArmor(pet)
@@ -188,7 +261,11 @@ local function refreshArmor(pet)
             local reskinKey = originCfg.element_reskin and originCfg.element_reskin[element]
             local reskinDef = reskinKey and reskinDefs[reskinKey]
             if reskinDef then
-                setSlot(pet, "armorReskin", { category = "armor", element = element, reskin = reskinDef, duration = 0 })
+                setSlot(
+                    pet,
+                    "armorReskin",
+                    { category = "armor", element = element, reskin = reskinDef, duration = 0 }
+                )
             end
         end
     elseif reskin then
@@ -206,7 +283,11 @@ end
 local function refreshTimedAura(pet, attr, slot, category, element)
     local secs = remaining(pet, attr)
     if secs > 0.05 then
-        setSlot(pet, slot, { category = category, element = element or elementForPet(pet), duration = secs })
+        setSlot(
+            pet,
+            slot,
+            { category = category, element = element or elementForPet(pet), duration = secs }
+        )
     else
         stopSlot(pet, slot)
     end
@@ -267,7 +348,11 @@ local function refreshPlayerDamageBuff(petsFolder)
     for _, pet in ipairs(petsFolder:GetChildren()) do
         if pet:IsA("Model") then
             if secs > 0.05 then
-                setSlot(pet, "dmgbuff", { category = "buff", element = elementForPet(pet), duration = secs })
+                setSlot(
+                    pet,
+                    "dmgbuff",
+                    { category = "buff", element = elementForPet(pet), duration = secs }
+                )
             else
                 stopSlot(pet, "dmgbuff")
             end
@@ -280,9 +365,15 @@ local function refreshEnemyDebuff(enemy)
     -- show a debuff aura while either vulnerable or rooted; duration = the longer remaining.
     local secs = math.max(remaining(enemy, "VulnerableUntil"), remaining(enemy, "RootedUntil"))
     if secs > 0.05 then
-        setSlot(enemy, "debuff", { category = "debuff", element = casterElement(), duration = secs })
+        setSlot(
+            enemy,
+            "debuff",
+            { category = "debuff", element = casterElement(), duration = secs }
+        )
+        showDebuffIcon(enemy) -- aura AND a badge, so the player reads which debuff it is at a glance
     else
         stopSlot(enemy, "debuff")
+        hideDebuffIcon(enemy)
     end
 end
 
