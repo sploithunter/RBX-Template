@@ -24,6 +24,20 @@ local function color3(t)
     return Color3.fromRGB(t[1] or 200, t[2] or 200, t[3] or 200)
 end
 
+-- A character's HumanoidRootPart sits ~2.7 studs above its feet; subtract this so a guardian's
+-- BASE (not its center) lands at the player's foot level before applying the config `hover`.
+local FOOT_DROP = 2.7
+
+-- World CFrame for a guardian: trail toward the player at its offset, auto-grounded by half the
+-- model height (+ config hover), facing the player but kept level (no pitch/roll).
+local function targetCFrame(rec, hrpPos, fromPos, lerp)
+    local o = rec.offset
+    local y = hrpPos.Y + (rec.halfHeight - FOOT_DROP) + rec.hover
+    local target = Vector3.new(hrpPos.X + (o.x or 6), y, hrpPos.Z + (o.z or 4))
+    local nextPos = fromPos and fromPos:Lerp(target, lerp or 1) or target
+    return CFrame.lookAt(nextPos, Vector3.new(hrpPos.X, nextPos.Y, hrpPos.Z))
+end
+
 function SummonService:Init()
     self._logger = self._modules and self._modules.Logger
     self._configLoader = self._modules and self._modules.ConfigLoader
@@ -128,8 +142,8 @@ function SummonService:_buildModel(player, gkind, gcfg)
     if model.PrimaryPart then
         local light = Instance.new("PointLight")
         light.Color = color3(gcfg.light)
-        light.Range = 16
-        light.Brightness = 3
+        light.Range = 13
+        light.Brightness = 1.6 -- soft glow; high brightness washed the textures out
         light.Parent = model.PrimaryPart
     end
     model.Name = "Guardian_" .. gkind
@@ -196,27 +210,36 @@ function SummonService:Summon(player, kind, now, powerId)
     local model = self:_buildModel(player, gkind, gcfg)
     model.Parent = self._folder
 
-    -- place it at the player's side immediately (don't slide in from the world origin)
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    local o = gcfg.offset or { x = 6, y = 0, z = 4 }
-    if hrp and model.PrimaryPart then
-        local spot = hrp.Position + Vector3.new(o.x or 6, (o.y or 0) + (gcfg.hover or 0), o.z or 4)
-        pcall(function()
-            model:PivotTo(CFrame.lookAt(spot, Vector3.new(hrp.Position.X, spot.Y, hrp.Position.Z)))
-        end)
-    end
+    local halfHeight = 2.5
+    pcall(function()
+        local ext = model:GetExtentsSize()
+        if ext and ext.Y > 0 then
+            halfHeight = ext.Y / 2
+        end
+    end)
 
-    self._active[#self._active + 1] = {
+    local rec = {
         model = model,
         owner = player.UserId,
         gkind = gkind,
         offset = gcfg.offset or { x = 6, y = 0, z = 4 },
         hover = gcfg.hover or 0,
+        halfHeight = halfHeight,
         expireAt = os.clock() + dur,
         healEvery = gcfg.tick_seconds,
         healAmt = gcfg.heal_per_tick,
         lastHeal = os.clock(),
     }
+
+    -- place it at the player's side immediately (don't slide in from the world origin)
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and model.PrimaryPart then
+        pcall(function()
+            model:PivotTo(targetCFrame(rec, hrp.Position, nil, 1))
+        end)
+    end
+
+    self._active[#self._active + 1] = rec
     if self._logger and self._logger.Info then
         self._logger:Info(
             "Guardian summoned",
@@ -246,15 +269,9 @@ function SummonService:_step()
             local hrp = plr and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
             local pp = rec.model.PrimaryPart
             if hrp and pp then
-                local o = rec.offset
-                local target = hrp.Position
-                    + Vector3.new(o.x or 6, (o.y or 0) + rec.hover, o.z or 4)
-                local cur = pp.Position
-                local nextPos = cur:Lerp(target, lerp)
-                -- PivotTo moves the whole (anchored, multi-part) model; face the player but stay level
-                local face = Vector3.new(hrp.Position.X, nextPos.Y, hrp.Position.Z)
+                -- PivotTo moves the whole (anchored, multi-part) model; auto-grounded + level
                 pcall(function()
-                    rec.model:PivotTo(CFrame.lookAt(nextPos, face))
+                    rec.model:PivotTo(targetCFrame(rec, hrp.Position, pp.Position, lerp))
                 end)
             end
             -- Djinn heal-over-time tick

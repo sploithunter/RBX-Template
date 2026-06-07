@@ -22,6 +22,7 @@ return {
     colossus = {
         scale = 3.2, -- PLACEHOLDER only: enlarge the cloned pet (ignored when a real asset loads)
         height = 9, -- real asset: scale so the model stands this many studs tall
+        hover = 3, -- lift above standing-on-ground (raises the titan up for presence)
         tint = { 120, 132, 110 }, -- placeholder tint only (real model keeps its own textures)
         light = { 110, 200, 90 }, -- earth-green glow
         squad_defense = 220, -- +Defense on the squad while it stands (the WALL)
