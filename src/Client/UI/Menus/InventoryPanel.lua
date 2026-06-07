@@ -430,12 +430,25 @@ function InventoryPanel:_applyAvailabilityRing(frame, lockUntil, now)
         timer.Parent = frame
     end
     local locked = lockUntil ~= nil
+    ring.Visible = true
     local stroke = ring:FindFirstChild("RingStroke")
     if stroke then
         stroke.Color = locked and Color3.fromRGB(235, 70, 70) or Color3.fromRGB(245, 245, 250)
     end
     timer.Visible = locked
     timer.Text = locked and lockoutFormatTime(lockUntil - now) or ""
+end
+
+-- Hide any ring/timer on a card (an inventory pet that's fully available stays clean).
+function InventoryPanel:_clearAvailabilityRing(frame)
+    local ring = frame:FindFirstChild("AvailRing")
+    local timer = frame:FindFirstChild("AvailTimer")
+    if ring then
+        ring.Visible = false
+    end
+    if timer then
+        timer.Visible = false
+    end
 end
 
 -- Repaint every card's lockout overlay from the decoded pool. Equipped cards get the ring; an
@@ -492,7 +505,17 @@ function InventoryPanel:_refreshLockoutVisuals()
                 end
             end
             if equipped and kind then
+                -- equipped slot: always ring it (white = available, red = recovering + timer)
                 self:_applyAvailabilityRing(frame, lockUntil, now)
+            elseif kind == "special" then
+                -- inventory HUGE: a unique pet on its 5-min uid lockout is NOT deployable even though
+                -- the slot is free — show the red ring + timer so you don't try to re-deploy it; an
+                -- available huge stays clean.
+                if lockUntil then
+                    self:_applyAvailabilityRing(frame, lockUntil, now)
+                else
+                    self:_clearAvailabilityRing(frame)
+                end
             elseif kind == "stack" then
                 -- inventory stack: red the count label when some are recovering (reduced availability)
                 local countLbl = frame:FindFirstChild("QtyLabel")
