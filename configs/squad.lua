@@ -25,6 +25,13 @@ return {
     -- Both are balance knobs (everything is config-driven); tune against enemy DPS.
     slot_recovery = {
         recall_cooldown_seconds = 4,
-        down_cooldown_seconds = 20,
+        down_cooldown_seconds = 60, -- SLOT lock after a down (1 min): refill with ANOTHER pet once clear
+    },
+
+    -- "A down should MATTER." The downed pet is locked at its IDENTITY (uid), persisted so re-teaming
+    -- can't revive it for free. The SLOT it fell in (above) frees sooner, so a STACK (5 huge bears)
+    -- can refill the slot with a different bear — but THAT specific bear stays out for the full lockout.
+    down_lockout = {
+        pet_lockout_seconds = 300, -- the downed pet (uid) is out this long (5 min) — survives re-team
     },
 }
