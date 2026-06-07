@@ -22,6 +22,7 @@ return {
         xp = { cap = 3.0 }, -- xp gain
         move_speed = { cap = 1.0 }, -- +100% move speed max
         recharge = { cap = 0.75 }, -- power recharge rate (+75% faster max)
+        crit = { cap = 0.5 }, -- +crit CHANCE (FLAT add to the roll's crit_chance, not a multiplier); Critical Strike
         -- `defense` is a FLAT additive stat fed to the armor curve (not a fraction); BuffStack.sum
         -- handles it, but it has no fraction cap here (mitigation curve is the natural limiter).
     },

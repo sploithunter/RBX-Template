@@ -95,6 +95,7 @@ return {
                 "ember_ward",
                 "eruption",
                 "strike",
+                "critical_strike",
                 "wildfire",
                 "firestorm",
                 "cataclysm",

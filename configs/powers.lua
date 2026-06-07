@@ -57,6 +57,9 @@ return {
         team_shield = { family = "defense_buff", magnitude = 120, duration = 15 },
         dodge = { family = "absorb", magnitude = 30, duration = 8 },
         damage_buff = { family = "buff", magnitude = 1.5, duration = 8 },
+        -- Critical Strike (Pyromancer): +crit CHANCE (fraction, additive) on the squad's hits for a
+        -- duration — boosts crit on both combat AND mining. Crit damage stays at the roll's crit_mult.
+        crit_up = { family = "crit", magnitude = 0.25, duration = 12 },
         root = { family = "root", magnitude = 0, duration = 5 },
         aoe_slow = { family = "root", magnitude = 0, duration = 5 },
         blizzard = { family = "root", magnitude = 0, duration = 6 },
@@ -323,6 +326,13 @@ return {
             focus_cost = 45,
             cooldown_seconds = 60,
             effect = "aoe_damage",
+        },
+        critical_strike = {
+            archetype = "pyromancer",
+            focus_cost = 30,
+            cooldown_seconds = 40,
+            effect = "crit_up", -- +crit CHANCE on the squad's hits (combat + mining); squad-wide
+            display_name = "Critical Strike",
         },
 
         -- ===== Pyromancer SIGNATURES (§17.8) — exclusive, 2 mid-tier + 1 capstone =====

@@ -116,6 +116,7 @@ local M = {
         team_shield = { symbol = "armor_chest", target = "self" }, -- Bulwark squad defense
         dodge = { symbol = "eye_hidden", target = "self" }, -- evasion (mirage_step)
         damage_buff = { symbol = "fist", target = "self" }, -- Mountain's Strength (fist = damage BUFF)
+        crit_up = { symbol = "chevrons_up", target = "self" }, -- Critical Strike (+crit chance, squad). STOPGAP symbol (generic buff) — a crit icon is TBD.
         root = { symbol = "user_desk", target = "enemy_aoe" }, -- frost_bind (user_desk = ROOT)
         aoe_slow = { symbol = "chevrons_down", target = "enemy_aoe" }, -- blizzard
         aoe_blind = { symbol = "eye_hidden", target = "enemy_aoe" }, -- sandstorm

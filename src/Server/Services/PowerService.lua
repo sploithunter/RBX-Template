@@ -446,6 +446,8 @@ function PowerService:_applyEffect(player, kind, now, powerId)
         end
     elseif family == "coin_yield" then
         self:_setAxisBuff(player, "CoinYieldPower", mag, now, dur, powerId)
+    elseif family == "crit" then
+        self:_setAxisBuff(player, "CritBuff", mag, now, dur, powerId) -- +crit chance on pet hits (Critical Strike)
     elseif family == "luck" then
         self:_setAxisBuff(player, "LuckBuff", mag, now, dur, powerId)
     elseif family == "move_speed" then
