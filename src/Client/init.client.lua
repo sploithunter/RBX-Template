@@ -282,6 +282,16 @@ do
     end
 end
 
+-- CoH-style center player bar: XP pill + 10-tick level ring, area-themed.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.PlayerBar).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start PlayerBar", { error = tostring(err) })
+    end
+end
+
 -- RealmAtmosphere: retints Lighting to the player's current realm (heaven/hell skin on the
 -- same map, World S3) — driven by the server-published CurrentRealm attribute.
 do
