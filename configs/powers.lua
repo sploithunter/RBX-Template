@@ -73,8 +73,8 @@ return {
         mining_boost = { family = "mining", magnitude = 0.5, duration = 30 }, -- Mother Lode
         luck = { family = "luck", magnitude = 0.5, duration = 60 }, -- Fortune
         luck_huge = { family = "luck", magnitude = 2.0, duration = 30 }, -- Huge Fortune (marquee)
-        move_speed = { family = "move_speed", magnitude = 0.4, duration = 20 }, -- Swift
-        recharge = { family = "recharge", magnitude = 0.5, duration = 20 }, -- Hasten
+        move_speed = { family = "move_speed", magnitude = 0.4, toggle = true }, -- Swift / Super Speed: permanent TOGGLE (cast on/off)
+        recharge = { family = "recharge", magnitude = 0.5, toggle = true }, -- Hasten: permanent TOGGLE (cast on/off)
         xp_boost = { family = "xp", magnitude = 0.5, duration = 30 }, -- XP Surge
         revive = { family = "revive", magnitude = 0, duration = 0 }, -- instant re-summon (mechanic)
         recall = { family = "recall", magnitude = 0, duration = 0 }, -- teleport to saved spot

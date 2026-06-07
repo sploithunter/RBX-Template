@@ -40,7 +40,10 @@ local function axis(name)
     return (BuffsConfig.axes and BuffsConfig.axes[name]) or { cap = BuffsConfig.default_cap }
 end
 
--- Soonest future expiry across a list of *Until attrs (0 = none live). Returns secs remaining or nil.
+-- Soonest future expiry across a list of *Until attrs (0 = none live). Returns secs remaining, or nil
+-- for "permanent" — #180: a TOGGLE (Hasten / Super Speed) sets its Until far in the future, so it
+-- reads as on-with-no-countdown rather than a giant timer.
+local PERMANENT_THRESHOLD = 60 * 60 * 24 * 365 -- > 1 year out = permanent (toggle / aura), no timer
 local function soonestRemaining(player, untilAttrs, now)
     local soon
     for _, a in ipairs(untilAttrs) do
@@ -49,7 +52,11 @@ local function soonestRemaining(player, untilAttrs, now)
             soon = u
         end
     end
-    return soon and (soon - now) or nil
+    if not soon then
+        return nil
+    end
+    local remaining = soon - now
+    return remaining < PERMANENT_THRESHOLD and remaining or nil -- nil = permanent (no countdown)
 end
 
 function BuffStatsHud.start()

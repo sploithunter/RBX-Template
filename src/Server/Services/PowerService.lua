@@ -250,6 +250,24 @@ function PowerService:_setAxisBuff(player, attr, frac, now, dur, powerId)
     player:SetAttribute(attr .. "PowerId", powerId)
 end
 
+-- #180: a TOGGLE buff (Hasten / Super Speed) — cast to turn ON (permanent, no countdown), cast again
+-- to turn OFF. The `*Toggle` flag marks it permanent so HUDs show no timer; `*Until` is set far in the
+-- future so the same `Until > now` consumers keep applying it without any other change.
+local TOGGLE_PERMANENT_UNTIL = 4102444800 -- year 2100 — effectively "on until toggled off"
+function PowerService:_toggleAxisBuff(player, attr, frac, powerId)
+    if player:GetAttribute(attr .. "Toggle") == true then
+        player:SetAttribute(attr, nil)
+        player:SetAttribute(attr .. "Until", 0)
+        player:SetAttribute(attr .. "Toggle", nil)
+        player:SetAttribute(attr .. "PowerId", nil)
+    else
+        player:SetAttribute(attr, frac)
+        player:SetAttribute(attr .. "Until", TOGGLE_PERMANENT_UNTIL)
+        player:SetAttribute(attr .. "Toggle", true)
+        player:SetAttribute(attr .. "PowerId", powerId)
+    end
+end
+
 -- Teleport the player's character to `pos` (a Vector3) or, if nil, the world spawn (World Travel /
 -- recall fallback). A small lift keeps them above the floor.
 function PowerService:_teleportPlayer(player, pos)
@@ -433,9 +451,17 @@ function PowerService:_applyEffect(player, kind, now, powerId)
     elseif family == "luck" then
         self:_setAxisBuff(player, "LuckBuff", mag, now, dur, powerId)
     elseif family == "move_speed" then
-        self:_setAxisBuff(player, "MoveSpeedBuff", mag, now, dur, powerId)
+        if kind.toggle then -- Super Speed: permanent toggle
+            self:_toggleAxisBuff(player, "MoveSpeedBuff", mag, powerId)
+        else
+            self:_setAxisBuff(player, "MoveSpeedBuff", mag, now, dur, powerId)
+        end
     elseif family == "recharge" then
-        self:_setAxisBuff(player, "RechargeBuff", mag, now, dur, powerId)
+        if kind.toggle then -- Hasten: permanent toggle
+            self:_toggleAxisBuff(player, "RechargeBuff", mag, powerId)
+        else
+            self:_setAxisBuff(player, "RechargeBuff", mag, now, dur, powerId)
+        end
     elseif family == "xp" then
         self:_setAxisBuff(player, "XpBuff", mag, now, dur, powerId)
     elseif family == "revive" then
