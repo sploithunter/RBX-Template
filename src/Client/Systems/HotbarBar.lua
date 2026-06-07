@@ -21,6 +21,7 @@ local RunService = game:GetService("RunService")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local POWER_ICONS = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_icons"))
+local PILL = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
 local PetBadge = require(script.Parent.Parent.UI.PetBadge)
 
 local HotbarBar = {}
@@ -69,7 +70,8 @@ local function bindLabel(bind)
     end
     local t = tostring(bind.target or "")
     if bind.type == "tactical" then
-        local abbr = { focus_fire = "Focus", scatter = "Scatter", regroup = "Regroup", retreat = "Retreat" }
+        local abbr =
+            { focus_fire = "Focus", scatter = "Scatter", regroup = "Regroup", retreat = "Retreat" }
         return abbr[t] or t
     end
     -- power/roster/pet: trim to something readable
@@ -99,10 +101,24 @@ function HotbarBar.start()
     local root = Instance.new("Frame")
     root.Name = "Bar"
     root.AnchorPoint = Vector2.new(0.5, 1)
-    root.Position = UDim2.new(0.5, 0, 1, -8)
+    root.Position = UDim2.new(0.5, 0, 1, -20)
     root.Size = UDim2.fromOffset(rowWidth + SLOT + PAD, SLOT * 2 + PAD)
     root.BackgroundTransparency = 1
     root.Parent = gui
+
+    -- Blue neon pill_frame wrapping the whole bar (9-slice so the wide bar keeps proper corners;
+    -- transparent inside AND outside, so the game shows through and the slots sit on top).
+    local barFrame = Instance.new("ImageLabel")
+    barFrame.Name = "PillFrame"
+    barFrame.BackgroundTransparency = 1
+    barFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    barFrame.Position = UDim2.fromScale(0.5, 0.5)
+    barFrame.Size = UDim2.new(1, 46, 1, 30)
+    barFrame.Image = PILL.frames.sapphire
+    barFrame.ScaleType = Enum.ScaleType.Slice
+    barFrame.SliceCenter = Rect.new(180, 180, 330, 330)
+    barFrame.ZIndex = 0
+    barFrame.Parent = root
 
     -- Farming cycle button (left of the bar).
     local farmBtn = Instance.new("TextButton")
@@ -270,7 +286,14 @@ function HotbarBar.start()
                     Signals.Hotbar_Activate:FireServer({ slot = slot })
                 end
             end)
-            cards[slot] = { frame = b, bind = lbl, cool = cool, bindObj = nil, icon = iconImg, ring = ringImg }
+            cards[slot] = {
+                frame = b,
+                bind = lbl,
+                cool = cool,
+                bindObj = nil,
+                icon = iconImg,
+                ring = ringImg,
+            }
         end
     end
     makeRow(SLOT, 10) -- TOP row (upper): slots 11-20 = Shift+1-0
@@ -295,7 +318,8 @@ function HotbarBar.start()
                 card.bindObj = bind
                 -- Power slots render the universal badge: element disc + tinted directional ring
                 -- (the ring's SHAPE = targeting). Falls back to the old flat icon, then to text.
-                local badge = bind and bind.type == "power" and PetBadge.forPower(bind.target) or nil
+                local badge = bind and bind.type == "power" and PetBadge.forPower(bind.target)
+                    or nil
                 local discImg = badge and POWER_ICONS.discFor(badge.element, badge.symbol) or nil
                 local hasArt = false
                 if discImg then
@@ -308,7 +332,8 @@ function HotbarBar.start()
                     hasArt = true
                 else
                     -- Fallback: old flat power icon (no ring), else the text label.
-                    local icon = bind and bind.type == "power" and POWER_ICONS.powers[bind.target] or nil
+                    local icon = bind and bind.type == "power" and POWER_ICONS.powers[bind.target]
+                        or nil
                     card.icon.Image = icon or ""
                     if icon then
                         local s = POWER_ICONS.scaleFor(icon) -- zoom past the art's transparent border
@@ -319,7 +344,8 @@ function HotbarBar.start()
                     hasArt = icon ~= nil
                 end
                 card.bind.Text = bindLabel(bind)
-                card.frame.BackgroundColor3 = bind and (TYPE_COLOR[bind.type] or Color3.fromRGB(26, 28, 38))
+                card.frame.BackgroundColor3 = bind
+                        and (TYPE_COLOR[bind.type] or Color3.fromRGB(26, 28, 38))
                     or Color3.fromRGB(26, 28, 38)
                 -- With real art present, let it stand on a clear slot; keep the coloured
                 -- placeholder for text-only / empty slots so they're still legible.
@@ -564,7 +590,11 @@ function HotbarBar.start()
         end
         header("Tactical")
         for _, cmd in ipairs(available.tacticals or {}) do
-            entry((tostring(cmd):gsub("_", " ")), TYPE_COLOR.tactical, { type = "tactical", target = cmd })
+            entry(
+                (tostring(cmd):gsub("_", " ")),
+                TYPE_COLOR.tactical,
+                { type = "tactical", target = cmd }
+            )
         end
         header("")
         entry("✖ Clear slot", Color3.fromRGB(70, 50, 50), nil)
