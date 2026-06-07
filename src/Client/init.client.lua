@@ -271,6 +271,17 @@ do
     end
 end
 
+-- Admin controller (admins / Studio): one "🛠 ADMIN" chip that hides ALL the dev overlays above by
+-- default and toggles them on demand — clean play screen unless an admin opts in.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.AdminController).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start AdminController", { error = tostring(err) })
+    end
+end
+
 -- RealmAtmosphere: retints Lighting to the player's current realm (heaven/hell skin on the
 -- same map, World S3) — driven by the server-published CurrentRealm attribute.
 do
