@@ -125,7 +125,7 @@ function HotbarBar.start()
     farmBtn.Name = "Farming"
     farmBtn.AnchorPoint = Vector2.new(0, 1)
     farmBtn.Position = UDim2.fromOffset(0, SLOT * 2 + PAD)
-    farmBtn.Size = UDim2.fromOffset(SLOT, SLOT * 2 + PAD)
+    farmBtn.Size = UDim2.fromOffset(SLOT, SLOT) -- square (bottom-left), pairs with the Edit square above
     farmBtn.AutoButtonColor = false
     farmBtn.Font = Enum.Font.GothamBold
     farmBtn.TextSize = 12
@@ -454,8 +454,9 @@ function HotbarBar.start()
     local editBtn = Instance.new("TextButton")
     editBtn.Name = "Edit"
     editBtn.AnchorPoint = Vector2.new(0, 1)
-    editBtn.Position = UDim2.fromOffset(0, -2) -- just above the Farm button
-    editBtn.Size = UDim2.fromOffset(SLOT, 20)
+    editBtn.Position = UDim2.fromOffset(0, SLOT) -- square, top-left, directly above the Farm square
+    editBtn.Size = UDim2.fromOffset(SLOT, SLOT)
+    editBtn.TextSize = 13
     editBtn.AutoButtonColor = false
     editBtn.Font = Enum.Font.GothamBold
     editBtn.TextSize = 11

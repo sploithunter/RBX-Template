@@ -28,7 +28,10 @@ After adding icons to assets/ui/blue_icons, recolor all five sets then rebuild s
   python3 scripts/recolor_blue_to_green.py assets/ui/blue_icons assets/ui/green_icons --color green
   python3 scripts/recolor_blue_to_green.py assets/ui/blue_icons assets/ui/red_icons --color red
   python3 scripts/recolor_blue_to_green.py assets/ui/blue_icons assets/ui/yellow_icons --color yellow
+  python3 scripts/recolor_blue_to_green.py assets/ui/blue_icons assets/ui/purple_icons --color purple
   python3 scripts/recolor_blue_to_green.py assets/ui/blue_icons assets/ui/white_icons --mode white
+  python3 scripts/recolor_blue_to_green.py assets/ui/pill_frames_blue assets/ui/pill_frames_purple --color purple --mode channel
+  python3 scripts/recolor_blue_to_green.py assets/ui/ring_frames_blue assets/ui/ring_frames_purple --color purple --mode hue
   python3 scripts/build_icon_contact_sheet.py --rebuild-from assets/ui/blue_icons
   python3 scripts/build_icon_contact_sheet.py --all-colors
 """
@@ -47,6 +50,7 @@ COLOR_DEFAULTS = {
     "red": "_red",
     "amber": "_amber",
     "yellow": "_yellow",
+    "purple": "_purple",
 }
 
 # Target hues on a 0-1 scale (HSV). Blue source art centers around ~0.62 (222°).
@@ -55,6 +59,7 @@ TARGET_HUES = {
     "red": 0.0,      # ~0° dark red
     "amber": 0.11,   # ~40° gold
     "yellow": 0.13,  # ~47° dark yellow
+    "purple": 0.77,  # ~277° violet (matches leveling.lua purple patch)
 }
 
 SOURCE_HUE = 0.62
@@ -70,7 +75,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--color",
-        choices=["green", "red", "amber", "yellow"],
+        choices=["green", "red", "amber", "yellow", "purple"],
         default="green",
         help="Target color (default: green)",
     )
@@ -204,6 +209,10 @@ def recolor_blue_channel(
         red[recolor] = np.clip(red[recolor] + blue_excess[recolor] * 0.88, 0, 255)
         green[recolor] = np.clip(green[recolor] + blue_excess[recolor] * 0.58, 0, 255)
         blue[recolor] = np.clip(blue[recolor] - blue_excess[recolor] * 0.82, 0, 255)
+    elif color == "purple":
+        red[recolor] = np.clip(red[recolor] + blue_excess[recolor] * 0.72, 0, 255)
+        green[recolor] = np.clip(green[recolor] - blue_excess[recolor] * 0.35, 0, 255)
+        blue[recolor] = np.clip(blue[recolor] + blue_excess[recolor] * 0.12, 0, 255)
 
     rgba[:, :, 0] = red
     rgba[:, :, 1] = green

@@ -47,7 +47,7 @@ RING_FRAMES = {
 }
 
 RING_ORDER = list(RING_FRAMES.keys())
-COLOR_ORDER = ["white", "blue", "green", "red", "yellow"]
+COLOR_ORDER = ["white", "blue", "green", "red", "yellow", "purple"]
 
 
 def load_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
