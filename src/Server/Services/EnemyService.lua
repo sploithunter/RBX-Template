@@ -529,47 +529,35 @@ function EnemyService:_enforceLockouts(now)
         local data = ds and ds.GetData and ds:GetData(player)
         local state = data and data.PetLockouts
         if state then
-            -- active recovery timestamps per stack key (longest first), to assign to held units
-            local stackTimes, stackUsed = {}, {}
-            for key, list in pairs(state.stacks or {}) do
-                local active = {}
-                for _, t in ipairs(list) do
-                    if t > now then
-                        active[#active + 1] = t
-                    end
-                end
-                if #active > 0 then
-                    table.sort(active, function(a, b)
-                        return a > b
-                    end)
-                    stackTimes[key] = active
-                end
-            end
             for _, pet in ipairs(folder:GetChildren()) do
                 if pet:IsA("Model") then
                     local entry = petLockEntry(pet)
-                    local lockUntil
+                    -- SLOT lock (1 min): hold whatever pet occupies a slot whose pet just went down,
+                    -- so a DIFFERENT pet (or a fresh stack sibling) can't fill it until the slot frees.
+                    local pn = pet:FindFirstChild("PositionNumber")
+                    local slotName = "slot_"
+                        .. tostring((pn and pn.Value) or pet:GetAttribute("PositionNumber") or "?")
+                    local slotUntil = (state.slots or {})[slotName] or 0
+                    if slotUntil <= now then
+                        slotUntil = 0
+                    end
+                    pet:SetAttribute("SlotLockUntil", slotUntil) -- UI: the SLOT bar (the 1-min timer)
+                    -- IDENTITY lock: only the EXACT special (huge/exclusive) holds for the long pet
+                    -- lockout. Stacks are fungible — they ride the slot timer + the availability pool
+                    -- (deploy a sibling once the slot frees), so there's no per-unit 5-min hold here.
+                    local idUntil = 0
                     if entry.kind == "special" then
                         local u = (state.pets or {})[entry.uid] or 0
                         if u > now then
-                            lockUntil = u
-                        end
-                    else
-                        local times = stackTimes[entry.stackKey]
-                        if times then
-                            local used = stackUsed[entry.stackKey] or 0
-                            if used < #times then
-                                lockUntil = times[used + 1]
-                                stackUsed[entry.stackKey] = used + 1
-                            end
+                            idUntil = u
                         end
                     end
-                    if lockUntil then
+                    local holdUntil = math.max(idUntil, slotUntil)
+                    if holdUntil > now then
                         if not pet:GetAttribute("CombatDowned") then
-                            self:_holdDown(pet, lockUntil) -- fresh re-teamed unit -> back down
-                        elseif (pet:GetAttribute("CooldownUntil") or 0) < lockUntil then
-                            -- extend an in-session down (slot CD) to the full identity lockout
-                            pet:SetAttribute("CooldownUntil", lockUntil)
+                            self:_holdDown(pet, holdUntil) -- a (re)spawned unit that's still locked
+                        elseif (pet:GetAttribute("CooldownUntil") or 0) < holdUntil then
+                            pet:SetAttribute("CooldownUntil", holdUntil) -- extend to the real lockout
                             pet:SetAttribute("DownedReason", "recovering")
                         end
                     end
