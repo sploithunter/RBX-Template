@@ -124,8 +124,8 @@ function HotbarBar.start()
     local farmBtn = Instance.new("TextButton")
     farmBtn.Name = "Farming"
     farmBtn.AnchorPoint = Vector2.new(0, 1)
-    farmBtn.Position = UDim2.fromOffset(0, SLOT * 2 + PAD)
-    farmBtn.Size = UDim2.fromOffset(SLOT, SLOT) -- square (bottom-left), pairs with the Edit square above
+    farmBtn.Position = UDim2.fromOffset(3, SLOT * 2 + PAD)
+    farmBtn.Size = UDim2.fromOffset(SLOT - 6, SLOT - 6) -- square (bottom-left), pairs with the Edit square above
     farmBtn.AutoButtonColor = false
     farmBtn.Font = Enum.Font.GothamBold
     farmBtn.TextSize = 12
@@ -454,9 +454,9 @@ function HotbarBar.start()
     local editBtn = Instance.new("TextButton")
     editBtn.Name = "Edit"
     editBtn.AnchorPoint = Vector2.new(0, 1)
-    editBtn.Position = UDim2.fromOffset(0, SLOT) -- square, top-left, directly above the Farm square
-    editBtn.Size = UDim2.fromOffset(SLOT, SLOT)
-    editBtn.TextSize = 13
+    editBtn.Position = UDim2.fromOffset(3, SLOT) -- square, top-left, directly above the Farm square
+    editBtn.Size = UDim2.fromOffset(SLOT - 6, SLOT - 6)
+    editBtn.TextSize = 12
     editBtn.AutoButtonColor = false
     editBtn.Font = Enum.Font.GothamBold
     editBtn.TextSize = 11
@@ -470,6 +470,23 @@ function HotbarBar.start()
         c.CornerRadius = UDim.new(0, 6)
         c.Parent = editBtn
     end
+
+    -- Blue pill_frame ring around the Edit + Farm squares, so they read as power-bar buttons like the
+    -- ringed slots (transparent center -> the button + label show through).
+    local function ringButton(btn)
+        local r = Instance.new("ImageLabel")
+        r.Name = "Ring"
+        r.BackgroundTransparency = 1
+        r.AnchorPoint = Vector2.new(0.5, 0.5)
+        r.Position = UDim2.fromScale(0.5, 0.5)
+        r.Size = UDim2.fromScale(1.12, 1.12)
+        r.Image = PILL.frames.sapphire
+        r.ScaleType = Enum.ScaleType.Fit
+        r.ZIndex = 9
+        r.Parent = btn
+    end
+    ringButton(editBtn)
+    ringButton(farmBtn)
 
     local pickerFrame
     local function closePicker()
