@@ -21,8 +21,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
+local Workspace = game:GetService("Workspace")
 
 -- #179 down-lockout: pill ring assets (white = available, red = locked) for the equipped view.
+local PILL_UI = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
+
 local function lockoutFormatTime(sec)
     sec = math.max(0, math.ceil(sec))
     if sec >= 60 then
@@ -397,21 +400,16 @@ function InventoryPanel:_applyAvailabilityRing(frame, lockUntil, now)
     local ring = frame:FindFirstChild("AvailRing")
     local timer = frame:FindFirstChild("AvailTimer")
     if not ring then
-        ring = Instance.new("Frame")
+        -- Jason's pill_frame art is a hollow ring (transparent center) -> overlay it on top of the
+        -- card and the pet shows through the hole. Slightly oversized so the ring frames the card.
+        ring = Instance.new("ImageLabel")
         ring.Name = "AvailRing"
-        ring.BackgroundTransparency = 1 -- center is clear -> pet shows through
+        ring.BackgroundTransparency = 1
         ring.AnchorPoint = Vector2.new(0.5, 0.5)
         ring.Position = UDim2.fromScale(0.5, 0.5)
-        ring.Size = UDim2.fromScale(1, 1)
+        ring.Size = UDim2.fromScale(1.06, 1.06)
+        ring.ScaleType = Enum.ScaleType.Stretch
         ring.ZIndex = 119
-        local rc = Instance.new("UICorner")
-        rc.CornerRadius = UDim.new(0, 10)
-        rc.Parent = ring
-        local stroke = Instance.new("UIStroke")
-        stroke.Name = "RingStroke"
-        stroke.Thickness = 3
-        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-        stroke.Parent = ring
         ring.Parent = frame
         timer = Instance.new("TextLabel")
         timer.Name = "AvailTimer"
@@ -431,10 +429,7 @@ function InventoryPanel:_applyAvailabilityRing(frame, lockUntil, now)
     end
     local locked = lockUntil ~= nil
     ring.Visible = true
-    local stroke = ring:FindFirstChild("RingStroke")
-    if stroke then
-        stroke.Color = locked and Color3.fromRGB(235, 70, 70) or Color3.fromRGB(245, 245, 250)
-    end
+    ring.Image = locked and PILL_UI.slot_locked or PILL_UI.slot_available -- ruby ring / neutral ring
     timer.Visible = locked
     timer.Text = locked and lockoutFormatTime(lockUntil - now) or ""
 end
@@ -447,21 +442,21 @@ function InventoryPanel:_renderEmptySlotRings(filledCount)
         return
     end
     for i = filledCount + 1, total do
-        local ring = Instance.new("Frame")
+        -- The open slot IS the neutral pill_frame (hollow ring) over a faint dark canvas, so it
+        -- reads as an empty version of a filled slot.
+        local ring = Instance.new("ImageLabel")
         ring.Name = "EmptySlotRing"
         ring.Size = UDim2.new(0, self.cardSize.X, 0, self.cardSize.Y)
-        ring.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
-        ring.BackgroundTransparency = 0.5 -- faint dark canvas so the open slot reads as a "hole"
+        ring.BackgroundColor3 = Color3.fromRGB(16, 18, 26)
+        ring.BackgroundTransparency = 0.35 -- faint canvas inside the hole
         ring.BorderSizePixel = 0
+        ring.Image = PILL_UI.slot_available -- neutral (white) ring = an open, available slot
+        ring.ImageTransparency = 0.25
+        ring.ScaleType = Enum.ScaleType.Stretch
         ring.LayoutOrder = i
         local rc = Instance.new("UICorner")
         rc.CornerRadius = UDim.new(0, 10)
         rc.Parent = ring
-        local stroke = Instance.new("UIStroke")
-        stroke.Thickness = 3
-        stroke.Color = Color3.fromRGB(95, 101, 120) -- dim neutral = an open slot
-        stroke.Transparency = 0.2
-        stroke.Parent = ring
         ring.Parent = self.equippedGrid
     end
 end
@@ -476,6 +471,45 @@ function InventoryPanel:_clearAvailabilityRing(frame)
     if timer then
         timer.Visible = false
     end
+end
+
+-- Read the LIVE deployed pet models (same source the squad HUD reads) so an EQUIPPED card reflects
+-- whether its pet can actually be SUMMONED right now. _enforceLockouts stamps SlotLockUntil (the
+-- 1-min slot hold) and CooldownUntil (down / 5-min identity) on every live pet — so a re-equipped pet
+-- sitting in a still-recovering slot carries SlotLockUntil > now and its card stays RED until it's
+-- summonable, instead of going white the moment it's re-slotted.
+function InventoryPanel:_deployedLocks(now)
+    local byUid, byKey = {}, {}
+    local pp = Workspace:FindFirstChild("PlayerPets")
+    local folder = pp and self.player and pp:FindFirstChild(self.player.Name)
+    if not folder then
+        return byUid, byKey
+    end
+    for _, m in ipairs(folder:GetChildren()) do
+        if m:IsA("Model") then
+            local until_ = math.max(
+                tonumber(m:GetAttribute("SlotLockUntil")) or 0,
+                tonumber(m:GetAttribute("CooldownUntil")) or 0
+            )
+            if until_ > now then
+                local uid = m:GetAttribute("LockoutUid")
+                local key = m:GetAttribute("LockoutKey")
+                if uid then
+                    byUid[uid] = math.max(byUid[uid] or 0, until_)
+                end
+                if key then
+                    byKey[key] = byKey[key] or {}
+                    table.insert(byKey[key], until_)
+                end
+            end
+        end
+    end
+    for _, list in pairs(byKey) do
+        table.sort(list, function(a, b)
+            return a > b
+        end)
+    end
+    return byUid, byKey
 end
 
 -- Repaint every card's lockout overlay from the decoded pool. Equipped cards get the ring; an
@@ -507,6 +541,8 @@ function InventoryPanel:_refreshLockoutVisuals()
             end
         end
     end
+    local depUid, depKey = self:_deployedLocks(now)
+    local depKeyUsed = {}
     local stackUsed = {}
     for _, frame in ipairs(frames) do
         if frame and frame.Parent then
@@ -532,6 +568,20 @@ function InventoryPanel:_refreshLockoutVisuals()
                 end
             end
             if equipped and kind then
+                -- An equipped pet's REAL state is on its live model (slot + identity holds). Prefer
+                -- that over the replicated pool so a re-equipped pet stays red until summonable; fall
+                -- back to the pool value if the model isn't found.
+                local depUntil
+                if kind == "special" and lid then
+                    depUntil = depUid[lid]
+                elseif kind == "stack" and lid and depKey[lid] then
+                    local used = depKeyUsed[lid] or 0
+                    if used < #depKey[lid] then
+                        depUntil = depKey[lid][used + 1]
+                        depKeyUsed[lid] = used + 1
+                    end
+                end
+                lockUntil = depUntil or lockUntil
                 -- equipped slot: always ring it (white = available, red = recovering + timer)
                 self:_applyAvailabilityRing(frame, lockUntil, now)
             elseif kind == "special" then

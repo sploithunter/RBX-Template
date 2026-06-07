@@ -16,24 +16,24 @@ local function id(n)
 end
 
 return {
-    -- Hollow rounded-square RING (slot outline / availability).
+    -- Hollow rounded-square RING (slot outline / availability) — TRANSPARENT-center re-upload.
     frames = {
-        sapphire = id(70695072756337),
-        emerald = id(76092963987648),
-        ruby = id(81233579833062),
-        citrine = id(74085455334565),
-        neutral = id(97044269701632),
+        sapphire = id(95326067795013),
+        emerald = id(129188138559157),
+        ruby = id(90032311308057),
+        citrine = id(119068520051744),
+        neutral = id(85243706065340),
     },
     -- Solid rounded-square PANEL (filled slot / card background).
     panels = {
-        sapphire = id(130004574852540),
-        emerald = id(107824647721584),
-        ruby = id(101100402725956),
-        citrine = id(131811968137834),
-        neutral = id(121583751476131),
+        sapphire = id(78579315573909),
+        emerald = id(92870488851209),
+        ruby = id(92148276403953),
+        citrine = id(95983900646063),
+        neutral = id(89609871330555),
     },
 
     -- Semantic shortcuts for the equipped ring-slot view (down-lockout availability).
-    slot_available = id(97044269701632), -- neutral_pill_frame (white ring)
-    slot_locked = id(81233579833062), -- ruby_pill_frame (red ring)
+    slot_available = id(85243706065340), -- neutral_pill_frame (white ring)
+    slot_locked = id(90032311308057), -- ruby_pill_frame (red ring)
 }
