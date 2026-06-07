@@ -210,7 +210,7 @@ local PET_EFFECTS = {
 
 local function activeEffectsFor(pet, player, now)
     local out = {}
-    for _, e in ipairs(PET_EFFECTS) do
+    for idx, e in ipairs(PET_EFFECTS) do
         local src = (e.source == "player") and player or pet
         -- Resolve the FULL badge (element disc + tinted ring) from the POWER that applied this buff
         -- so it matches the hotbar / role badge / world shield; fall back to the static icon (no
@@ -240,6 +240,7 @@ local function activeEffectsFor(pet, player, now)
                     ringColor = ringColor,
                     steady = e.steady, -- steady buffs never blink (continuously refreshed = permanent)
                     remaining = until_ - now, -- seconds left (drives the expiry blink)
+                    order = idx, -- stable PET_EFFECTS position (steady badges sort by this, not time)
                 }
             end
         elseif e.poolAttr then
@@ -253,6 +254,7 @@ local function activeEffectsFor(pet, player, now)
                     icon = icon,
                     ringImg = ringImg,
                     ringColor = ringColor,
+                    order = idx,
                 }
             end
         end
@@ -318,8 +320,19 @@ end
 -- live transparency (badges are never hidden/destroyed mid-blink, so the row never shifts).
 local function updateBadges(card, effects, blinkLead)
     local ordered = table.clone(effects)
+    -- Order: TIMED buffs by shortest-remaining (most urgent leftmost) as before; STEADY auras hold a
+    -- FIXED slot by their PET_EFFECTS index. Steady auras refresh every ~2s, so sorting them by their
+    -- bouncing `remaining` made two of them swap places each refresh (the "icons shift back and forth"
+    -- jitter). Keying steady badges off `order` pins them in place.
     table.sort(ordered, function(a, b)
-        return (a.remaining or math.huge) > (b.remaining or math.huge) -- shortest last -> leftmost
+        local aSteady, bSteady = a.steady or false, b.steady or false
+        if aSteady ~= bSteady then
+            return bSteady -- timed (non-steady) first -> leftmost; steady group sits to the right
+        end
+        if aSteady then
+            return (a.order or 0) < (b.order or 0) -- steady: stable, never reorders on refresh
+        end
+        return (a.remaining or math.huge) > (b.remaining or math.huge) -- timed: shortest -> leftmost
     end)
     local seen = {}
     for i, eff in ipairs(ordered) do
