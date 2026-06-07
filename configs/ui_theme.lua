@@ -26,10 +26,10 @@ return {
     -- gem-color key -> palette (primary = stroke/accent, fill = bar fill, text, dim = inactive)
     palettes = {
         neutral = {
-            primary = { 235, 238, 245 },
-            fill = { 120, 128, 150 },
+            primary = { 95, 175, 255 },
+            fill = { 55, 130, 235 },
             text = { 240, 242, 248 },
-            dim = { 95, 101, 120 },
+            dim = { 52, 60, 82 },
         },
         emerald = {
             primary = { 90, 220, 120 },
