@@ -1,0 +1,14 @@
+# Pet model image naming convention.
+#
+# Downloads handoff folders (~/Downloads/PetImages/):
+#   Basic/{pet}_basic.png   — e.g. bear_basic.png, snowfox_basic.png
+#   Gold/{pet}_gold.png     — e.g. dragon_gold.png, penguin_gold.png
+#
+# Exported copies + contact sheets:
+#   assets/exports/pets/basic/{pet}_basic.png
+#   assets/exports/pets/gold/{pet}_gold.png
+#   assets/exports/pets/basic_models_contact_sheet.png
+#   assets/exports/pets/gold_models_contact_sheet.png
+#
+# Rebuild:
+#   python3 scripts/build_pet_contact_sheet.py

@@ -124,6 +124,34 @@ The agent named the art by appearance. These read differently in game context �
 Renaming the asset keys is optional (it'd touch the upload manifests); the doc is the SoT for
 meaning regardless.
 
+### A.5 Symbol meanings — AUTHORITATIVE (Jason-confirmed, supersedes A.3 filename guesses)
+
+Jason read the rendered art directly. **These meanings win over the A.3 table.** Note many are
+buff/debuff *pairs*. Targeting (single vs AoE vs team) is the **ring**, never the symbol.
+
+| Symbol | Means | Symbol | Means |
+|---|---|---|---|
+| `armor_chest` | armor | `shield` | shield |
+| `arrow_right` | **ranged attack** (also reused for Swift / move-speed) | `shield_broken` | shield debuff / strip shields |
+| `fist` | **damage BUFF** | `fist_broken` | damage debuff |
+| `fist_impact` | melee / damage (the generic "deals damage") | `contagion` | contagion / DoT (spreading) |
+| `target` | **accuracy buff** | `target_down` | accuracy debuff |
+| `eye` | perception buff | `eye_hidden` | perception debuff |
+| `chevrons_up` | buff (generic) | `chevrons_down` | debuff (generic) |
+| `plus` | heal / health | `plus_down` | health debuff |
+| `coins_up` | coin buff | `gift_up` | gift buff |
+| `clover_lucky` | pet luck | `clover_huge` | huge luck |
+| `capacitor` | **HOLD** | `user_desk` | **ROOT** |
+| `star_sparkle` | **support-pet icon** (NOT "burst") | `knockback` | knockback |
+| `history` | hasten / recharge | `magnet` | magnet |
+| `pet_transfer` | recall (teleport to current/last egg) | `portal` | teleport (World Travel) |
+| `revive` | revive | `xp_up` | XP buff |
+| `hand_stop` | *unassigned (Jason didn't recall — free for stun/interrupt)* | | |
+
+**Icons still NEEDED (no symbol fits the function):**
+- **mining** (Mother Lode / mining throughput) — `capacitor` was wrong (it's a hold). New icon needed.
+- **Firestorm** — Jason is making a custom icon; uses `fist_impact` (damage) as a placeholder.
+
 ---
 
 ## Part B — Player Powers

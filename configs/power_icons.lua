@@ -115,8 +115,8 @@ local M = {
         armor = { symbol = "armor_chest", target = "self" }, -- hardening armor (stone_skin/ice_armor) -> tank armor icon
         team_shield = { symbol = "armor_chest", target = "self" }, -- Bulwark squad defense
         dodge = { symbol = "eye_hidden", target = "self" }, -- evasion (mirage_step)
-        damage_buff = { symbol = "chevrons_up", target = "self" }, -- Mountain's Strength
-        root = { symbol = "hand_stop", target = "enemy_aoe" }, -- frost_bind
+        damage_buff = { symbol = "fist", target = "self" }, -- Mountain's Strength (fist = damage BUFF)
+        root = { symbol = "user_desk", target = "enemy_aoe" }, -- frost_bind (user_desk = ROOT)
         aoe_slow = { symbol = "chevrons_down", target = "enemy_aoe" }, -- blizzard
         aoe_blind = { symbol = "eye_hidden", target = "enemy_aoe" }, -- sandstorm
         damage_over_time = { symbol = "contagion", target = "single" }, -- mark_of_flame
@@ -141,7 +141,7 @@ local M = {
         focus_fire = { symbol = "target", target = "single" }, -- designate priority target
         expose = { symbol = "eye", target = "single" }, -- reveal + accuracy/crit
         cripple = { symbol = "target_down", target = "single" }, -- slow + weaken
-        strike = { symbol = "fist", target = "single" }, -- basic single hit
+        strike = { symbol = "fist_impact", target = "single" }, -- basic hit (fist_impact = melee damage; fist = damage buff)
     },
 
     -- Support PET aura kind (configs/pet_roles.lua support_auras) -> the white SYMBOL for its badge.
@@ -154,11 +154,11 @@ local M = {
     },
     power_glyph_symbol = {
         debuff = "contagion",
-        burst = "star_sparkle",
+        burst = "fist_impact", -- AoE damage bursts (firestorm/cataclysm/shatter); ring conveys AoE. star_sparkle = support-pet only. (Firestorm custom icon pending.)
         buff = "chevrons_up",
         -- origin-signature glyphs (docs/PET_REALM_SIGNATURE_POWERS.md)
         shield = "armor_chest", -- Bastion / Living Mountain / Mirage Veil
-        hold = "hand_stop", -- Permafrost / Seismic Hold / Absolute Zero / Eternal Winter
+        hold = "capacitor", -- Permafrost / Seismic Hold / Absolute Zero / Eternal Winter (capacitor = HOLD)
         heal = "plus", -- Oasis / Simoom
         summon = "revive", -- Gaia's Colossus / Genie of the Dunes (call a guardian)
         brand = "contagion", -- Inferno Brand (ramping mark)

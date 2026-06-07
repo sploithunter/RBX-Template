@@ -1,0 +1,42 @@
+# Basic pet model images.
+# Master contact sheet: assets/exports/pets/basic_models_contact_sheet.png
+
+pet	source	kind	file
+bear	imported	download	bear_basic.png
+bunny	imported	download	bunny_basic.png
+doggy	missing	-	-
+dragon	imported	download	dragon_basic.png
+kitty	missing	-	-
+colorado	missing	-	-
+emberling	imported	download	emberling_basic.png
+emberfox	imported	download	emberfox_basic.png
+emberimp	missing	-	-
+emberowl	imported	download	emberowl_basic.png
+emberlion	imported	download	emberlion_basic.png
+snowflakeowl	imported	download	snowflakeowl_basic.png
+snowfox	imported	download	snowfox_basic.png
+penguin	imported	download	penguin_basic.png
+snowleopard	imported	download	snowleopard_basic.png
+polarbear	imported	download	polarbear_basic.png
+fennec	imported	download	fennec_basic.png
+camel	imported	download	camel_basic.png
+meerkat	imported	download	meerkat_basic.png
+desertiguana	imported	download	desertiguana_basic.png
+scorpion	imported	download	scorpion_basic.png
+cobra	imported	reference	cobra_basic.png
+elephant	imported	preview	elephant_basic.png
+giraffe	imported	reference	giraffe_basic.png
+hippo	imported	reference	hippo_basic.png
+lion	imported	reference	lion_basic.png
+rhino	imported	reference	rhino_basic.png
+tiger	imported	reference	tiger_basic.png
+water_buffalo	imported	reference	water_buffalo_basic.png
+zebra	imported	preview	zebra_basic.png
+colossus	imported	download	colossus_basic.png
+djinn	imported	download	djinn_basic.png
+
+# Missing basic model images:
+#   doggy
+#   kitty
+#   colorado
+#   emberimp

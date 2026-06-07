@@ -1,0 +1,55 @@
+# Gold pet model images.
+# Master contact sheet: assets/exports/pets/gold_models_contact_sheet.png
+
+pet	source	kind	file
+bear	missing	-	-
+bunny	missing	-	-
+doggy	missing	-	-
+dragon	imported	download	dragon_gold.png
+kitty	missing	-	-
+colorado	missing	-	-
+emberling	imported	download	emberling_gold.png
+emberfox	imported	download	emberfox_gold.png
+emberimp	missing	-	-
+emberowl	imported	download	emberowl_gold.png
+emberlion	imported	download	emberlion_gold.png
+snowflakeowl	imported	download	snowflakeowl_gold.png
+snowfox	imported	download	snowfox_gold.png
+penguin	imported	download	penguin_gold.png
+snowleopard	imported	download	snowleopard_gold.png
+polarbear	imported	download	polarbear_gold.png
+fennec	imported	download	fennec_gold.png
+camel	imported	download	camel_gold.png
+meerkat	imported	download	meerkat_gold.png
+desertiguana	imported	download	desertiguana_gold.png
+scorpion	imported	download	scorpion_gold.png
+cobra	missing	-	-
+elephant	missing	-	-
+giraffe	missing	-	-
+hippo	missing	-	-
+lion	missing	-	-
+rhino	missing	-	-
+tiger	missing	-	-
+water_buffalo	missing	-	-
+zebra	missing	-	-
+colossus	missing	-	-
+djinn	missing	-	-
+
+# Missing gold model images:
+#   bear
+#   bunny
+#   doggy
+#   kitty
+#   colorado
+#   emberimp
+#   cobra
+#   elephant
+#   giraffe
+#   hippo
+#   lion
+#   rhino
+#   tiger
+#   water_buffalo
+#   zebra
+#   colossus
+#   djinn
