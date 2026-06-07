@@ -1,0 +1,5 @@
+# Comparative UI reference art (not production chrome — do not upload to Roblox as-is).
+
+player_status_bar_reference.jpg — CoH-style player HUD bar mockup: left avatar/icon disc,
+player name, stacked HP + energy bars, right level ring. Use for layout and tone comparison
+when building SquadHud / player status UI.
