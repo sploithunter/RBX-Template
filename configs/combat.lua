@@ -97,8 +97,8 @@ return {
         -- the FAST way back — that's what makes them worth slotting. Tune the trickle here.
         full_defeat_heal_seconds = 25,
         regen = {
-            partial_per_second = 2.5, -- was 12 (too fast — healing felt pointless); ~5x slower trickle
-            delay_seconds = 5, -- was 3 — a longer "must disengage" window before the trickle starts
+            partial_per_second = 1.5, -- a slow trickle (~1/sec) — heals/support/potions are the FAST way back
+            delay_seconds = 5, -- the "must disengage" window before the trickle even starts
         },
         -- Instant effects (heals etc.) have no duration to show, so we flash a blinking
         -- badge on the pet's squad card for this long + pop a world puff — a visible
