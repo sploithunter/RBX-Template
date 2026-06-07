@@ -99,3 +99,29 @@ Legend: **family** = the effect_kind family it routes through (✅ exists today,
 All slot into `configs/powers.lua` (`effect_kinds` + `powers` with the `signature`/`unlock_level`
 schema), badges auto-resolve via `configs/power_icons.lua`, and they apply through the existing
 PowerService families. Capstones reuse the Cataclysm VFX path tinted per element.
+
+---
+
+## Build status — SHIPPED ✅ (#178)
+
+All 16 signatures are implemented and live-verified. Built in three stages:
+
+- **Stage 1** (`da27e1d`) — config + families: 13 new effect_kinds + power defs (signature schema,
+  unlock levels), archetype pools, badge glyphs, and PowerService combo branches (`root_guard`,
+  `fortify`, `heal_blind`) + `_healPet`. Friendly casts verified (Bastion shields all 4 pets, etc.);
+  enemy-targeted ones share the existing engagement gate (verified identical to Sunder/Eruption).
+- **Stage 2** (`5389dc2`, `b515564`, `d385675`) — the summon-guardian system: `SummonService` spawns a
+  temporary guardian that joins the squad, trails the player (auto-grounded + raised), buffs/heals,
+  then despawns. **Gaia's Colossus** = squad +Defense ×220 (the wall) + ×1.6 pet damage (the fist);
+  **Genie of the Dunes** = mass-revive + full-heal + heal-over-time. Real models wired
+  (Colossus `95238379643484`, Djinn `88120936939949`); `configs/guardians.lua` `model_asset` swaps
+  them, else a scaled+tinted squad-pet placeholder. Both verified live with screenshots.
+- **Stage 3** (`a7bd88e`) — mid-tier depth (config knobs):
+  - **Living Mountain / Oasis** — heal-over-time (`_healOverTime`): Mountain pulses 30/2s; Oasis adds
+    a 20/2s tail after its big upfront heal.
+  - **Inferno Brand** — ramping vulnerability (`_rampVulnerable`): the mark grows 1.9→2.6 over 8s.
+  - **Shatter** — ×1.4 again on FROZEN (rooted) targets (2.2→3.08): the freeze→shatter payoff.
+  - **Mirage Veil** — heal-on-evade: EnemyService heals the pet each time the veil turns a blow aside.
+
+Config knobs: `hot`/`hot_tick`/`hot_seconds`, `ramp_to`, `frozen_bonus`, `evade_heal` (all in
+`configs/powers.lua` effect_kinds); guardian tuning in `configs/guardians.lua`. CI 576/576.
