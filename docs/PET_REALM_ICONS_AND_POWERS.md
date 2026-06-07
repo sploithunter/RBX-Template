@@ -5,7 +5,7 @@
 > (`src/Shared/Game/BuffStack.lua` + spec). Support-pet auras read on squad cards + inventory, and
 > **stack** (N meerkats = N×, N penguins = N× defense). Player self-power badges under the nameplate.
 > Generic pool (11) + attack-fill (6) wired into the pick-pool; archetype pools ~16–18 (pick 10).
-> Consumers live: coin_yield (Prospector/Windfall + meerkat, additive), mining (Mother Lode),
+> Consumers live: coin_yield (Prospector/Windfall + meerkat, additive),
 > recharge (Hasten), xp (XP Surge), move_speed (Swift), pet_damage additive (de-compounded). Luck
 > (Fortune/Huge Fortune) feeds hatch odds. Mechanics: Revive (instant re-summon), Recall/World Travel
 > (teleport; Recall point = last hatched egg), single-target shield/armor (Aegis/Ironclad).
@@ -149,8 +149,12 @@ buff/debuff *pairs*. Targeting (single vs AoE vs team) is the **ring**, never th
 | `hand_stop` | *unassigned (Jason didn't recall — free for stun/interrupt)* | | |
 
 **Icons still NEEDED (no symbol fits the function):**
-- **mining** (Mother Lode / mining throughput) — `capacitor` was wrong (it's a hold). New icon needed.
 - **Firestorm** — Jason is making a custom icon; uses `fist_impact` (damage) as a placeholder.
+
+**Mother Lode (mining power) — CUT.** "+mining damage" was redundant: damage buffs/debuffs already
+speed up crystal mining (#174) and support pets cover yield, so there was no distinct mechanic. The
+power + `mining_boost` effect + the MiningBuff damage path are removed; the pet's intrinsic ⛏ mining
+stat is unaffected.
 
 ---
 
@@ -216,7 +220,6 @@ Generic (⚪ white) unless an origin fits better. All use **existing art** unles
 | Power | Symbol | Effect (proposed) |
 |---|---|---|
 | Prospector | `coins_up` | +X% coin yield for a duration |
-| Mother Lode | `capacitor` | +X% mining throughput / ore for a duration |
 | Windfall | `gift_up` | next N pickups doubled, or a burst of bonus drops |
 | Magnet | `magnet` **[new icon]** | auto-collect nearby coins/ore (radius pull) |
 

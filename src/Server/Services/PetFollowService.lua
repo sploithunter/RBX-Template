@@ -389,14 +389,6 @@ function PetFollowService:_mine(player, pet, breakable)
     if (breakable:GetAttribute("VulnerableUntil") or 0) > nowT then
         dmg = dmg * (breakable:GetAttribute("VulnerableMult") or 1)
     end
-    -- Mother Lode (mining axis): faster mining of ORE/crystals (not enemies). Crystals have no
-    -- EnemyId; the buff is a fraction (+0.5 => x1.5 mining throughput).
-    if
-        not breakable:GetAttribute("EnemyId")
-        and (player:GetAttribute("MiningBuffUntil") or 0) > nowT
-    then
-        dmg = dmg * (1 + (player:GetAttribute("MiningBuff") or 0))
-    end
     -- Defensive stat: an enemy's Armor mitigates pet damage on the armor curve
     -- (crystals have no Armor -> unchanged). Vulnerability above counteracts it.
     local armor = breakable:GetAttribute("Armor") or 0

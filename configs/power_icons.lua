@@ -124,7 +124,6 @@ local M = {
         -- Generic / farming / luck / utility roster (white disc unless the power sets an element):
         heal = { symbol = "plus", target = "self" }, -- restore endurance
         coin_yield = { symbol = "coins_up", target = "self" }, -- Prospector
-        mining_boost = { symbol = "capacitor", target = "self" }, -- Mother Lode
         windfall = { symbol = "gift_up", target = "self" }, -- Windfall
         magnet = { symbol = "magnet", target = "self" }, -- Magnet (drop pull)
         luck = { symbol = "clover_lucky", target = "self" }, -- Fortune

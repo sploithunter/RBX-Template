@@ -23,7 +23,6 @@ return {
     -- so the player's pickable pool = origin powers + generic ≈ 20 (pick 10).
     generic_pool = {
         "prospector",
-        "mother_lode",
         "windfall",
         "fortune",
         "huge_fortune",

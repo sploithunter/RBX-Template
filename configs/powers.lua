@@ -70,7 +70,6 @@ return {
         -- summed per axis via BuffStack (docs Part E). White disc (no element origin). =====
         coin_yield = { family = "coin_yield", magnitude = 0.5, duration = 30 }, -- Prospector
         windfall = { family = "coin_yield", magnitude = 2.0, duration = 10 }, -- Windfall (big burst)
-        mining_boost = { family = "mining", magnitude = 0.5, duration = 30 }, -- Mother Lode
         luck = { family = "luck", magnitude = 0.5, duration = 60 }, -- Fortune
         luck_huge = { family = "luck", magnitude = 2.0, duration = 30 }, -- Huge Fortune (marquee)
         move_speed = { family = "move_speed", magnitude = 0.4, toggle = true }, -- Swift / Super Speed: permanent TOGGLE (cast on/off)
@@ -172,12 +171,8 @@ return {
             effect = "coin_yield",
         },
         windfall = { generic = true, focus_cost = 30, cooldown_seconds = 60, effect = "windfall" },
-        mother_lode = {
-            generic = true,
-            focus_cost = 25,
-            cooldown_seconds = 45,
-            effect = "mining_boost",
-        },
+        -- (Mother Lode cut: "+mining damage" was redundant — damage buffs/debuffs already speed up
+        --  crystal mining, and support pets cover yield. No distinct mechanic, so no power.)
         fortune = { generic = true, focus_cost = 20, cooldown_seconds = 45, effect = "luck" },
         huge_fortune = {
             generic = true,

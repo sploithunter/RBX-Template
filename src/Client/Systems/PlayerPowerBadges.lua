@@ -25,7 +25,6 @@ local localPlayer = Players.LocalPlayer
 local BUFFS = {
     { attr = "PetDamageBuff", label = "DMG" }, -- Mountain's Strength
     { attr = "CoinYieldPower", label = "COIN" }, -- Prospector / Windfall
-    { attr = "MiningBuff", label = "MINE" }, -- Mother Lode
     { attr = "LuckBuff", label = "LUCK" }, -- Fortune / Huge Fortune
     { attr = "MoveSpeedBuff", label = "SPD" }, -- Swift
     { attr = "RechargeBuff", label = "RCH" }, -- Hasten
