@@ -72,20 +72,24 @@ function AdminController.start()
     chip.Size = UDim2.fromOffset(118, 30)
     chip.Position = UDim2.new(0, 315, 1, -12) -- bottom, in the gap right of the menu tray
     chip.AnchorPoint = Vector2.new(0, 1)
-    chip.BackgroundColor3 = Color3.fromRGB(40, 26, 54)
-    chip.BackgroundTransparency = 0.1
+    chip.BackgroundColor3 = Color3.fromRGB(90, 55, 160) -- amethyst capsule (matches the currency pills)
+    chip.BackgroundTransparency = 0
     chip.AutoButtonColor = true
     chip.Font = Enum.Font.GothamBold
     chip.TextSize = 13
-    chip.TextColor3 = Color3.fromRGB(200, 180, 235)
+    chip.TextColor3 = Color3.fromRGB(245, 240, 255)
     chip.Text = "🛠 ADMIN: OFF"
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
+    corner.CornerRadius = UDim.new(1, 0)
     corner.Parent = chip
+    local chipGrad = Instance.new("UIGradient")
+    chipGrad.Rotation = 90
+    chipGrad.Color = ColorSequence.new(Color3.fromRGB(150, 100, 210), Color3.fromRGB(90, 55, 160))
+    chipGrad.Parent = chip
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(150, 110, 230)
-    stroke.Thickness = 1.5
-    stroke.Transparency = 0.3
+    stroke.Color = Color3.fromRGB(160, 120, 235)
+    stroke.Thickness = 2
+    stroke.Transparency = 0
     stroke.Parent = chip
     chip.Parent = gui
 
@@ -96,16 +100,24 @@ function AdminController.start()
     areaBtn.Size = UDim2.fromOffset(118, 26)
     areaBtn.Position = UDim2.new(0, 315, 1, -46) -- just above the ADMIN chip
     areaBtn.AnchorPoint = Vector2.new(0, 1)
-    areaBtn.BackgroundColor3 = Color3.fromRGB(26, 40, 54)
-    areaBtn.BackgroundTransparency = 0.1
+    areaBtn.BackgroundColor3 = Color3.fromRGB(45, 95, 180) -- sapphire capsule
+    areaBtn.BackgroundTransparency = 0
     areaBtn.Font = Enum.Font.GothamBold
     areaBtn.TextSize = 12
-    areaBtn.TextColor3 = Color3.fromRGB(180, 210, 235)
+    areaBtn.TextColor3 = Color3.fromRGB(240, 246, 255)
     areaBtn.Text = "AREA: …"
     areaBtn.Visible = false
     local ac = Instance.new("UICorner")
-    ac.CornerRadius = UDim.new(0, 8)
+    ac.CornerRadius = UDim.new(1, 0)
     ac.Parent = areaBtn
+    local areaGrad = Instance.new("UIGradient")
+    areaGrad.Rotation = 90
+    areaGrad.Color = ColorSequence.new(Color3.fromRGB(95, 165, 240), Color3.fromRGB(45, 95, 180))
+    areaGrad.Parent = areaBtn
+    local areaStroke = Instance.new("UIStroke")
+    areaStroke.Color = Color3.fromRGB(95, 165, 240)
+    areaStroke.Thickness = 2
+    areaStroke.Parent = areaBtn
     areaBtn.Parent = gui
     local function refreshAreaLabel()
         local a = player:GetAttribute("HomeArea") or player:GetAttribute("CurrentArea") or "Spawn"
@@ -131,8 +143,12 @@ function AdminController.start()
     local function apply()
         setOverlays(pg, on)
         chip.Text = on and "🛠 ADMIN: ON" or "🛠 ADMIN: OFF"
-        chip.TextColor3 = on and Color3.fromRGB(120, 240, 150) or Color3.fromRGB(200, 180, 235)
-        stroke.Color = on and Color3.fromRGB(90, 220, 120) or Color3.fromRGB(150, 110, 230)
+        chip.TextColor3 = Color3.fromRGB(255, 255, 255)
+        chip.BackgroundColor3 = on and Color3.fromRGB(45, 140, 80) or Color3.fromRGB(90, 55, 160)
+        chipGrad.Color = on
+                and ColorSequence.new(Color3.fromRGB(95, 220, 125), Color3.fromRGB(45, 140, 80))
+            or ColorSequence.new(Color3.fromRGB(150, 100, 210), Color3.fromRGB(90, 55, 160))
+        stroke.Color = on and Color3.fromRGB(95, 220, 125) or Color3.fromRGB(160, 120, 235)
         areaBtn.Visible = on
         player:SetAttribute("AdminOverlaysOn", on)
     end
