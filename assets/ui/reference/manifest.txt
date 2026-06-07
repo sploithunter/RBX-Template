@@ -3,3 +3,6 @@
 player_status_bar_reference.jpg — CoH-style player HUD bar mockup: left avatar/icon disc,
 player name, stacked HP + energy bars, right level ring. Use for layout and tone comparison
 when building SquadHud / player status UI.
+
+quest_button_reference.jpg — Glossy blue quest menu button mockup: target/bullseye icon,
+"Quest" label, neon border. Use for layout and tone comparison when building quest UI.
