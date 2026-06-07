@@ -215,8 +215,9 @@ function BuffStatsHud:_defenseFlat(now)
         end
         if (m:GetAttribute("TeamDefenseBuffUntil") or 0) > now then
             flat += m:GetAttribute("TeamDefenseBuff") or 0
-            local tdu = m:GetAttribute("TeamDefenseBuffUntil")
-            soon = (not soon or tdu < soon) and tdu or soon
+            -- TeamDefenseBuff is an AURA (permanent while the buffer pet is deployed): it counts
+            -- toward the +Defense value but must NOT drive a countdown — only the timed DefenseBuff
+            -- power above does. So a defense aura alone reads ∞, not a recast tick.
         end
         if isSelected then
             return flat, soon and (soon - now) or nil -- selected pet wins outright
@@ -243,11 +244,13 @@ function BuffStatsHud:_refresh()
             expiry = p:GetAttribute("PetTeamDamageBuffUntil") or 0,
         },
     }, now, axis("pet_damage"))
+    -- Timer counts down only the TIMED power (PetDamageBuff); the offense AURA
+    -- (PetTeamDamageBuff) is permanent while the pet is deployed -> no countdown (shows ∞).
     self:_setMult(
         "attack",
         atk,
         axis("pet_damage").cap,
-        soonestRemaining(p, { "PetDamageBuffUntil", "PetTeamDamageBuffUntil" }, now)
+        soonestRemaining(p, { "PetDamageBuffUntil" }, now)
     )
 
     -- 🛡 Defense (per-pet flat -> armor-curve mitigation %).
@@ -265,11 +268,13 @@ function BuffStatsHud:_refresh()
             expiry = p:GetAttribute("CoinYieldPowerUntil") or 0,
         },
     }, now, axis("coin_yield"))
+    -- Timer counts down only the TIMED power (CoinYieldPower); the yield AURA (CoinYieldBuff) is
+    -- permanent while the buffer pet is deployed -> no countdown (shows ∞).
     self:_setMult(
         "coin",
         coin,
         axis("coin_yield").cap,
-        soonestRemaining(p, { "CoinYieldBuffUntil", "CoinYieldPowerUntil" }, now)
+        soonestRemaining(p, { "CoinYieldPowerUntil" }, now)
     )
 
     -- ⛏ Mining (single fraction).
