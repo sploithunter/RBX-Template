@@ -69,6 +69,15 @@ function DropService:IsEnabled()
     return self._config and self._config.enabled == true
 end
 
+-- Target widest-side studs for a gem of this form (per-form so piles/bags read bigger than singles).
+function DropService:_sizeFor(form)
+    local s = self._gems.size
+    if type(s) == "table" then
+        return s[form] or self._gems.default_size or 1.5
+    end
+    return s or self._gems.default_size or 1.5
+end
+
 -- ---- gem template construction -----------------------------------------
 
 -- Build (once) and cache the gem MODEL template for a colour+form: a MeshPart (mesh + texture,
@@ -107,11 +116,10 @@ function DropService:_ensureTemplate(color, form)
     mesh.Massless = true
     mesh.Material = Enum.Material.Glass
     mesh.Name = "Gem"
-    -- scale so the widest side ≈ config.size studs
+    -- scale so the widest side ≈ the per-form target studs
     local widest = math.max(mesh.Size.X, mesh.Size.Y, mesh.Size.Z)
     if widest > 0 then
-        local s = (self._gems.size or 1.5) / widest
-        mesh.Size = mesh.Size * s
+        mesh.Size = mesh.Size * (self:_sizeFor(form) / widest)
     end
     local light = Instance.new("PointLight")
     light.Color = color3((self._gems.light_color and self._gems.light_color[color]) or {})
@@ -147,7 +155,8 @@ function DropService:_acquireGem(color, form)
     ball.Shape = Enum.PartType.Ball
     ball.Material = Enum.Material.Neon
     ball.Color = color3((self._gems.light_color and self._gems.light_color[color]) or {})
-    ball.Size = Vector3.new(self._gems.size or 1.4, self._gems.size or 1.4, self._gems.size or 1.4)
+    local bs = self:_sizeFor(form)
+    ball.Size = Vector3.new(bs, bs, bs)
     ball.Anchored = true
     ball.CanCollide = false
     ball.CanQuery = false

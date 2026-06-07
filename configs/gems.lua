@@ -72,8 +72,15 @@ return {
     split_step = 250,
     max_gems = 6,
 
-    -- Visual: scale each gem so its widest side is ~`size` studs; PointLight range/brightness.
-    size = 1.5,
+    -- Visual: scale each gem so its widest side is ~`size[form]` studs (a pile/bag is a whole
+    -- cluster, so it needs to be bigger than a single to read at the same gem scale). PointLight
+    -- range/brightness for the internal glow.
+    size = {
+        single = 1.5,
+        pile = 3.0, -- ~2x a single (Jason: piles looked small at the shared size)
+        bag = 4.0, -- the jackpot form — chunkiest
+    },
+    default_size = 1.5,
     light_range = 9,
     light_brightness = 2.5,
 }
