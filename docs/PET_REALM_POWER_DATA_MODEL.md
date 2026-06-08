@@ -51,10 +51,16 @@ eternal_winter = {
   critBase      = 0,      -- crit chance the cast itself carries (§6)
 
   --— visuals / assets (ALL optional — derived from origin+kind when omitted, §7) —--
-  icon            = nil,  -- bespoke badge art, overrides composed disc+symbol
-  ring            = nil,  -- bespoke targeting ring, overrides kind-derived ring
-  sourceAnimation = nil,  -- caster anim/VFX on cast (overrides CombatFX matrix)
-  targetAnimation = nil,  -- anim/VFX at target/impact (overrides CombatFX matrix)
+  icon = nil,  -- bespoke badge art, overrides composed disc+symbol
+  ring = nil,  -- bespoke targeting ring, overrides kind-derived ring
+  -- fx = composed VFX: ARRAYS of effect refs into the registry (configs/power_fx.lua, §7.1).
+  --      Each ref = { id, <param overrides> }; layered + timed. Omit ⇒ kind-default look.
+  fx = {
+    source = { { id = "ground_ring" }, { id = "rising_motes" } }, -- at the caster
+    target = { { id = "eruption" }, { id = "impact_flash" } },     -- at each target / impact
+    -- travel = { … }                                              -- projectile, optional
+  },
+  animation = nil, -- optional literal rig AnimationId for a bespoke one-off
 }
 ```
 
@@ -129,10 +135,48 @@ Keep that as the default; the four asset fields are **optional overrides** that 
 - `icon` / `ring` → bespoke badge art. **This is how duplicate badges get split** (drop an `icon`
   id on inferno_brand / mark_of_flame / wildfire — no mechanics, no remap) and how Firestorm's
   hand-drawn icon lands. No special path.
-- `sourceAnimation` / `targetAnimation` → override the CombatFX matrix (which infers cast-burst +
-  per-biome impact + heal skins from `element + variant`). Default = matrix; field = bespoke.
+- `fx.source[]` / `fx.target[]` → **composed VFX** from a shared **effect registry** (§7.1) rather
+  than a bespoke animation per power. Default = the kind/element look; the arrays add or replace.
 
 `origin []` picks the disc colour: single origin → that colour; empty/multi → white (generic tier).
+
+### 7.1 Effect registry (the mileage)
+
+The big reuse win: don't author custom animation per power. Instead, a **registry of named,
+parameterised effect primitives** (`configs/power_fx.lua`), each an id the existing `CombatFX`
+facade already knows how to render (it routes `{ pattern, element, category }` to RangedFX / AreaFX
+/ the attached-aura engine; `combat_fx.lua` + `area_fx.lua` already derive colour/material from the
+element). Powers **compose an array of these by id**, overriding only the params they care about:
+
+```lua
+-- configs/power_fx.lua — reusable effect primitives (one entry, every element for free)
+ground_ring  = { pattern="pbaoe",   shape="ring",  color="origin", material="Neon", radius=12, duration=0.6,
+                 light={ brightness=2, range=14, color="origin" } },
+rising_motes = { pattern="pbaoe",   shape="motes", color="origin", count=16, rise=8, duration=0.6 },
+eruption     = { pattern="st_aoe",  shape="burst", color="origin", material="Neon", radius=9, castTime=0.18 },
+cast_beam    = { pattern="st_aoe",  shape="beam",  color="origin", castTime=0.18 },
+aura         = { pattern="attached",category="buff",   color="origin", follow=true },
+bubble       = { pattern="attached",category="shield", color="origin" },
+impact_flash = { pattern="flash",   color="origin", brightness=3, duration=0.2 },
+-- a custom one-off is STILL just an id here (bespoke asset/anim, same compose path):
+firestorm_swirl = { pattern="st_aoe", shape="swirl", color="origin", asset="rbxassetid://…" },
+```
+
+The levers that produce the mileage:
+
+1. **`color` / `light` default to `"origin"`** — they resolve from the power's origin element at play
+   time (ice→blue, lava→orange…), so **one registry entry covers all four elements**. You only set an
+   explicit `Color3` / light when a power wants off-element flair. `light` is first-class here
+   (brightness / range / colour), which the current matrix doesn't expose — that's new reach for free.
+2. **Arrays compose + layer** — `ground_ring` + `rising_motes` + `impact_flash` is three refs, played
+   together with optional per-ref `delay`. New looks come from *recombining* primitives, no new code.
+3. **Custom is not a special case** — a bespoke effect (Firestorm's swirl) is just another registry
+   entry with an `asset`/`animation`; the power references it by id exactly like the shared ones. So
+   "custom for some, shared for most" is one mechanism, not two.
+
+This sits *on top of* CombatFX — the facade stays the renderer; the registry is the named, composable
+vocabulary above it, and a power's `fx` arrays are data, not code. Adding the registry is its own
+slice (P6 below) and pays off immediately: every existing power re-skins by composing primitives.
 
 ## 8. Pet-cast parity
 
@@ -168,10 +212,13 @@ nothing breaks, migrate consumers one at a time, delete the adapter last.
   crystals never miss.*
 - **P5 — Crit.** `critBase` via `CombatRoll` on power hits/ticks; additive with CritBuff/CritAura.
   *Gate: crit ticks observed.*
-- **P6 — Visuals unification.** Badge resolver + tooltip read the record (`kind`→ring/symbol,
-  `origin`→disc) with `icon`/`ring` overrides; CombatFX honours `sourceAnimation`/`targetAnimation`.
-  Retire `power_icons` flat maps + `power_descriptions` into (or sourced from) the record. *Gate:
-  render-sheet; a test `icon` override displays.*
+- **P6 — Visuals unification + FX registry.** (a) Badge resolver + tooltip read the record
+  (`kind`→ring/symbol, `origin`→disc) with `icon`/`ring` overrides; retire `power_icons` flat maps +
+  `power_descriptions` into (or sourced from) the record. (b) Add `configs/power_fx.lua` effect
+  registry (§7.1) + a thin player on top of the `CombatFX` facade that plays a power's `fx.source[]`/
+  `fx.target[]` ref arrays, resolving `color`/`light` from the origin element. *Gate: render-sheet; a
+  test `icon` override displays; a power re-skinned purely by composing registry primitives plays
+  correctly across two elements (colour/light derive).* Can split (a)/(b) into separate slices.
 - **P7 — Pet-cast parity.** Split `Cast` into caster/owner; expose a pet-cast entry (with #156).
   *Gate: DoT/crit/accuracy fire from a pet source, credit the owner.*
 - **P8 — Cleanup.** Delete the legacy adapter + dead tables once all consumers read the record;
@@ -179,7 +226,8 @@ nothing breaks, migrate consumers one at a time, delete the adapter last.
 
 ## 10. Files
 
-- **New:** `src/Shared/Game/PowerStats.lua` (+ spec), `docs/PET_REALM_POWER_DATA_MODEL.md` (this).
+- **New:** `src/Shared/Game/PowerStats.lua` (+ spec), `configs/power_fx.lua` (effect registry),
+  `docs/PET_REALM_POWER_DATA_MODEL.md` (this).
 - **Reshaped:** `configs/powers.lua` (unified records + adapter, then drop adapter).
 - **Edited:** `src/Server/Services/PowerService.lua` (`_applyEffect` reads record; accuracy/crit
   gates; `Cast` caster/owner split), `src/Client/UI/PetBadge.lua` + the 5 client surfaces
@@ -194,7 +242,10 @@ nothing breaks, migrate consumers one at a time, delete the adapter last.
 2. Accuracy = `accuracyBase × Accuracy.toHit(casterEffLevel, targetLevel, cfg)`, **roll once on
    application**, farm/crystals exempt. Specced in design doc; this builds it.
 3. `origin []` is an **array** — pool membership + disc colour (empty/multi ⇒ white/generic).
-4. Visuals **derive by default, override per-power** (`icon`/`ring`/`sourceAnimation`/`targetAnimation`).
+4. Visuals **derive by default, override per-power** — badge via `icon`/`ring`; VFX via `fx.source[]`/
+   `fx.target[]` arrays of refs into a shared **effect registry** (`configs/power_fx.lua`), with
+   `color`/`light` defaulting to `"origin"` so one primitive serves every element. Custom one-offs are
+   just registry entries referenced by id — no separate path.
 5. Caster is **source-agnostic** — player or pet via `ctx.casterLevel`; `Cast` splits caster vs
    owner; `_applyEffect` is unchanged by source.
 6. HP/damage are **floats** (no integer scaling); minor DoT (<1/tick) is intended.
