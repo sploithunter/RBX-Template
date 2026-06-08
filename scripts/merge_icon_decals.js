@@ -15,7 +15,7 @@ const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
 const MANIFEST = path.join(ROOT, "scripts", "asset_manifest.json");
-const COLORS = ["white", "green", "red", "yellow", "blue"];
+const COLORS = ["white", "green", "red", "yellow", "blue", "purple"];
 
 const manifest = JSON.parse(fs.readFileSync(MANIFEST, "utf8"));
 manifest.discs = manifest.discs || {};

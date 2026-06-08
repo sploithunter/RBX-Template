@@ -24,7 +24,7 @@
     }
   },
   "discs": {
-    "_note": "Pre-baked colored archetype disc-icons, keyed [element_color][symbol]. Source: assets/ui/{green,red,yellow,blue,white}_icons/. Element key map: earth=green, fire=red, desert=yellow, ice=blue.",
+    "_note": "Pre-baked colored archetype disc-icons, keyed [element_color][symbol]. Source: assets/ui/{green,red,yellow,blue,white,purple}_icons/. Element key map: earth=green, fire=red, desert=yellow, ice=blue, neutral=PURPLE (innate/generic tier; white still uploaded here but no longer emitted by gen_power_icons.js).",
     "green": {
       "armor_chest": {
         "decal": "127913717830698",
@@ -653,6 +653,132 @@
       "xp_up": {
         "decal": "95523807222802",
         "image": "94963122148958"
+      }
+    },
+    "purple": {
+      "armor_chest": {
+        "decal": "128702653574067",
+        "image": "128681716955210"
+      },
+      "arrow_right": {
+        "decal": "71816698555618",
+        "image": "84279316268540"
+      },
+      "capacitor": {
+        "decal": "72256218060525",
+        "image": "102210522761492"
+      },
+      "chevrons_down": {
+        "decal": "130584515684595",
+        "image": "133264746125200"
+      },
+      "chevrons_up": {
+        "decal": "96572653877118",
+        "image": "80966425333106"
+      },
+      "clover_huge": {
+        "decal": "71641764617530",
+        "image": "102754141346153"
+      },
+      "clover_lucky": {
+        "decal": "103128743662256",
+        "image": "108894673817686"
+      },
+      "coins_up": {
+        "decal": "135196697456208",
+        "image": "134058568372134"
+      },
+      "contagion": {
+        "decal": "71374373984069",
+        "image": "84767830014507"
+      },
+      "eye": {
+        "decal": "74548731443108",
+        "image": "79068594859762"
+      },
+      "eye_hidden": {
+        "decal": "112996928111037",
+        "image": "94744575582121"
+      },
+      "fist": {
+        "decal": "131177040062993",
+        "image": "123218775343720"
+      },
+      "fist_broken": {
+        "decal": "110277322149455",
+        "image": "138694993642405"
+      },
+      "fist_impact": {
+        "decal": "113406516297893",
+        "image": "88153886625802"
+      },
+      "gift_up": {
+        "decal": "114272740913803",
+        "image": "75344416693561"
+      },
+      "hand_stop": {
+        "decal": "126638463666939",
+        "image": "80309278009356"
+      },
+      "history": {
+        "decal": "127948188117026",
+        "image": "135871546310990"
+      },
+      "knockback": {
+        "decal": "114941091349557",
+        "image": "71794619029728"
+      },
+      "magnet": {
+        "decal": "94754623771023",
+        "image": "103204898440175"
+      },
+      "pet_transfer": {
+        "decal": "71626485975560",
+        "image": "94816929313148"
+      },
+      "plus": {
+        "decal": "124135415351315",
+        "image": "117518036882403"
+      },
+      "plus_down": {
+        "decal": "107805521149955",
+        "image": "84647819178360"
+      },
+      "portal": {
+        "decal": "135463027435963",
+        "image": "95386058490387"
+      },
+      "revive": {
+        "decal": "131576168913624",
+        "image": "96242297948304"
+      },
+      "shield": {
+        "decal": "110762945038283",
+        "image": "132410128760309"
+      },
+      "shield_broken": {
+        "decal": "87613324221015",
+        "image": "90437934159102"
+      },
+      "star_sparkle": {
+        "decal": "134326303287836",
+        "image": "109491786375166"
+      },
+      "target": {
+        "decal": "125271724190190",
+        "image": "105594810235199"
+      },
+      "target_down": {
+        "decal": "93231205773492",
+        "image": "109404038159367"
+      },
+      "user_desk": {
+        "decal": "72550663110449",
+        "image": "78410742348972"
+      },
+      "xp_up": {
+        "decal": "128016557052693",
+        "image": "78500070554940"
       }
     }
   },
