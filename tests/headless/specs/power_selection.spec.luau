@@ -82,35 +82,43 @@ return function()
             gamma = { unlock_level = 1 },
         }
 
-        it("preserves the pool's ORDER (order is config, not code)", function()
+        it("orders by unlock_level ascending, independent of pool order", function()
             local rows = PowerSelection.menuRows(pool, powers, 10, {})
-            expect(rows[1].id).to.equal("alpha")
-            expect(rows[2].id).to.equal("beta")
-            expect(rows[3].id).to.equal("gamma")
+            expect(rows[1].id).to.equal("gamma") -- unlock 1
+            expect(rows[2].id).to.equal("alpha") -- unlock 2
+            expect(rows[3].id).to.equal("beta") -- unlock 6
         end)
 
-        it("gates each row by unlock_level vs level", function()
+        it("breaks unlock-level ties alphabetically by id", function()
+            local tied = { zeta = { unlock_level = 5 }, delta = { unlock_level = 5 } }
+            local rows = PowerSelection.menuRows({ "zeta", "delta" }, tied, 10, {})
+            expect(rows[1].id).to.equal("delta")
+            expect(rows[2].id).to.equal("zeta")
+        end)
+
+        it("gates each row by unlock_level vs level (sorted gamma,alpha,beta)", function()
             local rows = PowerSelection.menuRows(pool, powers, 4, {})
-            expect(rows[1].state).to.equal("available") -- alpha unlock 2 <= 4
-            expect(rows[2].state).to.equal("locked") -- beta unlock 6 > 4
-            expect(rows[3].state).to.equal("available") -- gamma unlock 1 <= 4
+            expect(rows[1].state).to.equal("available") -- gamma unlock 1 <= 4
+            expect(rows[2].state).to.equal("available") -- alpha unlock 2 <= 4
+            expect(rows[3].state).to.equal("locked") -- beta unlock 6 > 4
         end)
 
-        it("marks owned powers regardless of level + passes unlockLevel through", function()
+        it("marks owned powers + passes unlockLevel through", function()
             local rows = PowerSelection.menuRows(pool, powers, 1, { alpha = true })
-            expect(rows[1].state).to.equal("owned")
-            expect(rows[1].unlockLevel).to.equal(2)
-        end)
-
-        it("reordering the pool array reorders the rows (config-as-code)", function()
-            local rows = PowerSelection.menuRows({ "gamma", "alpha", "beta" }, powers, 10, {})
-            expect(rows[1].id).to.equal("gamma")
-            expect(rows[3].id).to.equal("beta")
+            local a
+            for _, r in ipairs(rows) do
+                if r.id == "alpha" then
+                    a = r
+                end
+            end
+            expect(a.state).to.equal("owned")
+            expect(a.unlockLevel).to.equal(2)
         end)
 
         it("defaults a missing unlock_level to 1 (always available)", function()
             local rows = PowerSelection.menuRows({ "nogate" }, { nogate = {} }, 1, {})
             expect(rows[1].state).to.equal("available")
+            expect(rows[1].unlockLevel).to.equal(1)
         end)
     end)
 end

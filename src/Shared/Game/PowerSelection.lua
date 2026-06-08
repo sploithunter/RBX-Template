@@ -63,10 +63,11 @@ function PowerSelection.canSelect(powerId, availablePowers, selectedList, level,
     return { ok = true }
 end
 
--- Resolve a powerset POOL (an ordered list of power ids — e.g. configs/archetypes.lua `generic_pool`)
--- into ordered menu rows. The row ORDER is the pool's order, and each row's gating comes from the
--- power's `unlock_level` in `powers` — so a balance pass (reorder, re-gate) is a CONFIG edit only,
--- never a code change. `ownedSet` = { [powerId] = true } for already-picked powers.
+-- Resolve a powerset POOL (a list of power ids — e.g. configs/archetypes.lua `generic_pool`) into
+-- menu rows ORDERED BY unlock_level ascending, then id alphabetically (a stable tiebreak). The pool
+-- array only defines MEMBERSHIP; ordering + gating both come from each power's `unlock_level` in
+-- `powers`, so a balance pass (re-gate, which re-orders) is a CONFIG edit only — never code.
+-- `ownedSet` = { [powerId] = true } for already-picked powers.
 --   state: "owned" (picked) | "available" (unlocked: unlock_level <= level) | "locked" (future level)
 function PowerSelection.menuRows(pool, powers, level, ownedSet)
     local lvl = tonumber(level) or 1
@@ -86,6 +87,12 @@ function PowerSelection.menuRows(pool, powers, level, ownedSet)
         end
         rows[#rows + 1] = { id = id, unlockLevel = unlock, state = state }
     end
+    table.sort(rows, function(a, b)
+        if a.unlockLevel ~= b.unlockLevel then
+            return a.unlockLevel < b.unlockLevel
+        end
+        return a.id < b.id
+    end)
     return rows
 end
 
