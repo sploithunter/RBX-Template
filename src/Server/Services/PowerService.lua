@@ -177,6 +177,56 @@ function PowerService:_hasEngagedEnemy(player)
     return false
 end
 
+-- The single ENEMY the squad is actually fighting — for single-target powers (Wildfire's seed,
+-- single-target DoT/debuff). Position-independent: resolves a targetId to a model via the enemy's
+-- `BreakableID` child (the same id pets store in TargetID and the player stores in CombatAssistTarget).
+-- Priority: the player's assist target (their directed pick) → else the enemy the MOST pets are
+-- attacking. nil if the squad isn't engaged with any enemy.
+function PowerService:_engagedEnemy(player)
+    local function modelForId(id)
+        if not id or id == 0 then
+            return nil
+        end
+        for _, e in ipairs(enemiesAlive()) do
+            local bid = e:FindFirstChild("BreakableID")
+            if bid and bid.Value == id then
+                return e
+            end
+        end
+        return nil
+    end
+
+    -- 1) player-directed assist target always wins (the one they selected)
+    local assisted = modelForId(player:GetAttribute("CombatAssistTarget"))
+    if assisted then
+        return assisted
+    end
+
+    -- 2) else the enemy the most pets are currently attacking
+    local pets = Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+    if not pets then
+        return nil
+    end
+    local counts = {}
+    for _, pet in ipairs(pets:GetChildren()) do
+        if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
+            local tid = pet:FindFirstChild("TargetID")
+            local tt = pet:FindFirstChild("TargetType")
+            if tid and tid.Value ~= 0 and tt and tostring(tt.Value) == "Enemy" then
+                counts[tid.Value] = (counts[tid.Value] or 0) + 1
+            end
+        end
+    end
+    local bestId, bestN
+    for id, n in pairs(counts) do
+        if not bestN or n > bestN then
+            bestId, bestN = id, n
+        end
+    end
+    return modelForId(bestId)
+end
+
 -- Crystals the squad is engaged with (#174). Mirrors _hasEngagedEnemy's primary signal: a pet whose
 -- TargetID is set and TargetType is NOT "Enemy" is mining that exact node. We resolve those ids to
 -- crystal Models by their `BreakableID` child — position-INDEPENDENT, because pets are moved on the
@@ -451,7 +501,9 @@ function PowerService:_damageOverTime(
             if aoe then
                 targets = enemiesAlive()
             else
-                local primary = enemiesAlive()[1]
+                -- single-target DoT burns the ENEMY THE SQUAD IS FIGHTING (assist target / most-
+                -- targeted), not an arbitrary first-in-list. Falls back to any alive enemy.
+                local primary = self:_engagedEnemy(player) or enemiesAlive()[1]
                 targets = primary and { primary } or {}
             end
             local now = os.time()
@@ -827,18 +879,20 @@ function PowerService:_burnSpread(player, kind, now, powerId)
         enemy:SetAttribute("DebuffUntil", untilT)
     end
 
-    -- seed on the nearest engaged enemy to the squad
-    local center = self:_squadCenter(player)
-    if not center then
-        return
-    end
-    local seed, bestD
-    for _, e in ipairs(enemiesAlive()) do
-        local pp = partOfEnemy(e)
-        if pp then
-            local d = (pp.Position - center).Magnitude
-            if not bestD or d < bestD then
-                bestD, seed = d, e
+    -- SEED on the enemy the squad is actually fighting (single-target start), not the enemy nearest
+    -- the squad centroid — Wildfire is a single-target contagion, not an AoE. Falls back to the
+    -- centroid-nearest only if no engaged target can be resolved.
+    local seed = self:_engagedEnemy(player)
+    if not seed then
+        local center = self:_squadCenter(player)
+        local bestD
+        for _, e in ipairs(enemiesAlive()) do
+            local pp = partOfEnemy(e)
+            if pp and center then
+                local d = (pp.Position - center).Magnitude
+                if not bestD or d < bestD then
+                    bestD, seed = d, e
+                end
             end
         end
     end
@@ -1133,7 +1187,17 @@ function PowerService:Cast(player, powerId)
         )
         if not generic and self._powersConfig.enemy_targeted_families[family] then
             local targetPrim = (def.fx and def.fx.target) or (fx and fx.target) or "eruption"
-            for _, foe in ipairs(enemiesAlive()) do
+            -- AoE powers land the impact on EVERY enemy; single-target ones land ONLY on the enemy
+            -- the squad is fighting (so it doesn't read as an AoE). For Wildfire the seed burns there
+            -- and the spread shows via the per-enemy fire as it catches.
+            local impactFoes
+            if isAoe then
+                impactFoes = enemiesAlive()
+            else
+                local foe = self:_engagedEnemy(player)
+                impactFoes = foe and { foe } or {}
+            end
+            for _, foe in ipairs(impactFoes) do
                 if foe.PrimaryPart or foe:FindFirstChildWhichIsA("BasePart") then
                     Signals.Power_AreaFx:FireClient(
                         player,
