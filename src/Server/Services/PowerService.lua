@@ -15,6 +15,8 @@ local Debris = game:GetService("Debris")
 local PowerSelection = require(ReplicatedStorage.Shared.Game.PowerSelection)
 local ArchetypeLogic = require(ReplicatedStorage.Shared.Game.ArchetypeLogic)
 local AmplifiedBurst = require(ReplicatedStorage.Shared.Game.AmplifiedBurst)
+local PowerRegistry = require(ReplicatedStorage.Shared.Game.PowerRegistry)
+local PowerStats = require(ReplicatedStorage.Shared.Game.PowerStats)
 local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
@@ -879,6 +881,28 @@ end
 
 -- Cast a power: enforce its cooldown, apply the support effect, tell the client when
 -- it recharges (for the hotbar edge-clock). `powerId` matches configs/powers.lua.
+-- Build the `kind` table the effect router consumes from the raw effect_kind, with the SCALABLE
+-- axes (magnitude / duration / DoT per-tick + interval) replaced by the resolved EFFECTIVE values.
+-- A shallow clone so the shared config table is never mutated; all exotic fields (ramp_to, radius,
+-- spread_radius, guardian…) carry through untouched. With no scaling configured, effective == base,
+-- so the result is identical to the raw effect_kind (behaviour-neutral until P3 supplies a curve).
+function PowerService:_effectiveKind(rawKind, effective)
+    local out = {}
+    for k, v in pairs(rawKind) do
+        out[k] = v
+    end
+    out.magnitude = effective.magnitude
+    out.duration = effective.duration
+    if rawKind.dot then
+        out.dot = {
+            per_tick = effective.damage,
+            interval = effective.tick,
+            aoe = rawKind.dot.aoe,
+        }
+    end
+    return out
+end
+
 function PowerService:Cast(player, powerId)
     local def = self._powersConfig.powers and self._powersConfig.powers[tostring(powerId)]
     if not def then
@@ -894,8 +918,23 @@ function PowerService:Cast(player, powerId)
         return { ok = false, reason = "on_cooldown", remaining = cds[powerId] - now }
     end
 
-    local kind = (self._powersConfig.effect_kinds and self._powersConfig.effect_kinds[def.effect])
-        or { family = "heal", magnitude = 0, duration = 0 }
+    local rawKind = (
+        self._powersConfig.effect_kinds and self._powersConfig.effect_kinds[def.effect]
+    ) or { family = "heal", magnitude = 0, duration = 0 }
+
+    -- Route the cast through the unified record (PowerRegistry) → resolved effective stats
+    -- (PowerStats). The effect router then consumes RESOLVED values, so P3 scaling / P4 accuracy
+    -- slot in here with no further router changes. Today scaling is absent ⇒ effective == base ⇒
+    -- `kind` is identical to the raw effect_kind.
+    local kind = rawKind
+    local record = PowerRegistry.record(tostring(powerId), self._powersConfig)
+    if record then
+        local effective = PowerStats.resolveEffective(record, {
+            casterLevel = tonumber(player:GetAttribute("Level")) or 1,
+            scaling = self._powersConfig.scaling, -- nil today ⇒ identity; P3 fills it
+        })
+        kind = self:_effectiveKind(rawKind, effective)
+    end
 
     -- Target gate: an offensive power reaches the enemy THROUGH the pets, so it can't fire unless
     -- the squad is engaged with one (the pet is fighting something). Friendly powers (heal/buff/
