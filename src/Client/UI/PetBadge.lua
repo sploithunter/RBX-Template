@@ -79,7 +79,8 @@ function PetBadge.forPower(powerId)
 
     local symbol, targetKind
     if def.signature then
-        symbol = POWER_ICONS.power_glyph_symbol[def.glyph or ""]
+        symbol = (POWER_ICONS.power_signature_symbol and POWER_ICONS.power_signature_symbol[powerId])
+            or POWER_ICONS.power_glyph_symbol[def.glyph or ""]
         targetKind = POWER_ICONS.power_signature_ring[def.target or ""] or "single"
     else
         local spec = POWER_ICONS.power_effect_badge[def.effect or ""]

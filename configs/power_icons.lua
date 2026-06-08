@@ -132,9 +132,9 @@ local M = {
         crit_up = { symbol = "chevrons_up", target = "self" }, -- Critical Strike (+crit chance, squad). STOPGAP symbol (generic buff) — a crit icon is TBD.
         root = { symbol = "user_desk", target = "enemy_aoe" }, -- frost_bind (user_desk = ROOT)
         aoe_slow = { symbol = "chevrons_down", target = "enemy_aoe" }, -- blizzard
-        aoe_blind = { symbol = "eye_hidden", target = "enemy_aoe" }, -- sandstorm
+        aoe_blind = { symbol = "sand_storm", target = "enemy_aoe" }, -- sandstorm (dedicated storm art)
         damage_over_time = { symbol = "contagion", target = "single" }, -- mark_of_flame
-        aoe_damage = { symbol = "fist_impact", target = "enemy_aoe" }, -- eruption
+        aoe_damage = { symbol = "ranged_impact", target = "enemy_aoe" }, -- eruption (ranged AoE)
         -- Generic / farming / luck / utility roster (white disc unless the power sets an element):
         heal = { symbol = "plus", target = "self" }, -- restore endurance
         coin_yield = { symbol = "coins_up", target = "self" }, -- Prospector
@@ -154,7 +154,19 @@ local M = {
         focus_fire = { symbol = "target", target = "single" }, -- designate priority target
         expose = { symbol = "eye", target = "single" }, -- reveal + accuracy/crit
         cripple = { symbol = "target_down", target = "single" }, -- slow + weaken
-        strike = { symbol = "fist_impact", target = "single" }, -- basic hit (fist_impact = melee damage; fist = damage buff)
+        strike = { symbol = "ranged_impact", target = "single" }, -- basic ranged hit (fist_impact stays for true melee)
+        -- New origin powers (2026-06-08 art batch). player_field -> self ring (centred on caster).
+        taunt = { symbol = "taunt", target = "enemy_aoe" }, -- AoE aggro pull
+        rage = { symbol = "rage", target = "ally" }, -- HP-inverse pet damage buff
+        armor_field = { symbol = "armor_chest", target = "self" }, -- player_field team armor
+        restoring_sands = { symbol = "plus", target = "ally" }, -- single-pet instant heal
+        healing_field = { symbol = "plus", target = "self" }, -- player_field heal-over-time
+        fear = { symbol = "fear", target = "single" }, -- flee control
+        ice_shard = { symbol = "ice_shard", target = "single" }, -- targeted frost damage
+        deep_freeze = { symbol = "capacitor", target = "single" }, -- full hold (Capacitor)
+        frost_field = { symbol = "ice_storm", target = "self" }, -- player_field slow/freeze
+        scorch = { symbol = "scorch", target = "single" }, -- -def debuff
+        fire_nova = { symbol = "nuke", target = "self" }, -- player_field burn AoE
     },
 
     -- Support PET aura kind (configs/pet_roles.lua support_auras) -> the white SYMBOL for its badge.
@@ -167,7 +179,7 @@ local M = {
     },
     power_glyph_symbol = {
         debuff = "contagion",
-        burst = "fist_impact", -- AoE damage bursts (firestorm/cataclysm/shatter); ring conveys AoE. star_sparkle = support-pet only. (Firestorm custom icon pending.)
+        burst = "ranged_impact", -- ranged AoE bursts (cataclysm/shatter); not melee -> ranged_impact. firestorm overrides to its own art below.
         buff = "chevrons_up",
         -- origin-signature glyphs (docs/PET_REALM_SIGNATURE_POWERS.md)
         shield = "armor_chest", -- Bastion / Living Mountain / Mirage Veil
@@ -175,6 +187,10 @@ local M = {
         heal = "plus", -- Oasis / Simoom
         summon = "revive", -- Gaia's Colossus / Genie of the Dunes (call a guardian)
         brand = "contagion", -- Inferno Brand (ramping mark)
+    },
+    -- Per-id symbol override for a signature with dedicated art (beats its generic glyph symbol).
+    power_signature_symbol = {
+        firestorm = "fire_storm", -- team-cleave Firestorm gets its own storm art (not the burst glyph)
     },
     power_signature_ring = {
         single = "single",
