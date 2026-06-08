@@ -11,6 +11,7 @@
       isSelected(powerId, selectedList)                         -> boolean
       canSelect(powerId, availablePowers, selectedList, level, selectionLevels)
                                                                 -> { ok, reason? }
+      menuRows(pool, powers, level, ownedSet)                   -> { {id, unlockLevel, state}, ... }
 ]]
 
 local PowerSelection = {}
@@ -60,6 +61,32 @@ function PowerSelection.canSelect(powerId, availablePowers, selectedList, level,
         return { ok = false, reason = "no_pending_selection" }
     end
     return { ok = true }
+end
+
+-- Resolve a powerset POOL (an ordered list of power ids — e.g. configs/archetypes.lua `generic_pool`)
+-- into ordered menu rows. The row ORDER is the pool's order, and each row's gating comes from the
+-- power's `unlock_level` in `powers` — so a balance pass (reorder, re-gate) is a CONFIG edit only,
+-- never a code change. `ownedSet` = { [powerId] = true } for already-picked powers.
+--   state: "owned" (picked) | "available" (unlocked: unlock_level <= level) | "locked" (future level)
+function PowerSelection.menuRows(pool, powers, level, ownedSet)
+    local lvl = tonumber(level) or 1
+    powers = powers or {}
+    ownedSet = ownedSet or {}
+    local rows = {}
+    for _, id in ipairs(pool or {}) do
+        local def = powers[id]
+        local unlock = (def and tonumber(def.unlock_level)) or 1
+        local state
+        if ownedSet[id] then
+            state = "owned"
+        elseif unlock <= lvl then
+            state = "available"
+        else
+            state = "locked"
+        end
+        rows[#rows + 1] = { id = id, unlockLevel = unlock, state = state }
+    end
+    return rows
 end
 
 return PowerSelection
