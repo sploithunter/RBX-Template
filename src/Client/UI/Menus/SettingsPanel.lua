@@ -852,6 +852,17 @@ function SettingsPanel:_createUISettings()
     self:_createToggleSetting("Compact Mode", self.settings.ui.compactMode, 23, function(value)
         self.settings.ui.compactMode = value
     end)
+
+    -- Target Highlight: outline the enemy/crystal the SELECTED pet is fighting (SquadHud reads the
+    -- TargetHighlightOn attribute). On by default at startup; this just lets you turn it off.
+    self:_createToggleSetting(
+        "Target Highlight",
+        Players.LocalPlayer:GetAttribute("TargetHighlightOn") ~= false,
+        24,
+        function(value)
+            Players.LocalPlayer:SetAttribute("TargetHighlightOn", value)
+        end
+    )
 end
 
 function SettingsPanel:_getReplicatedHatchFolder()

@@ -560,7 +560,8 @@ function SquadHud.start()
         while gui.Parent do
             task.wait(0.15)
             local foe
-            if selectedSlot then
+            -- gated by the "Target Highlight" setting (on by default; toggled in SettingsPanel)
+            if selectedSlot and localPlayer:GetAttribute("TargetHighlightOn") ~= false then
                 local folder = petsFolder()
                 if folder then
                     for _, pet in ipairs(folder:GetChildren()) do
