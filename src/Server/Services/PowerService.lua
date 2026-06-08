@@ -393,13 +393,42 @@ end
 --
 -- aoe=true ticks every alive enemy (an AoE burn field); aoe=false ticks the single primary target
 -- (a targeted brand). Re-resolves the target set each tick, so it burns whoever is alive now.
-function PowerService:_damageOverTime(player, perTick, interval, totalSeconds, aoe, powerId)
+-- P5: the per-tick crit chance, source-agnostic — the power's own critBase PLUS the live
+-- player CritBuff (Critical Strike) PLUS pet CritAura (a crit-buffer pet). The same channels the
+-- pet-attack crit sums (PetFollowService), so a DoT crits whenever the squad's crit is up. Read
+-- fresh each tick so a buff that expires mid-burn stops boosting. 0 by default ⇒ no crit ⇒ ×1.
+function PowerService:_dotCritChance(player, critBase, now)
+    local add = tonumber(critBase) or 0
+    if (player:GetAttribute("CritBuffUntil") or 0) > now then
+        add = add + (player:GetAttribute("CritBuff") or 0)
+    end
+    if (player:GetAttribute("CritAuraUntil") or 0) > now then
+        add = add + (player:GetAttribute("CritAura") or 0)
+    end
+    return math.clamp(add, 0, 0.9)
+end
+
+function PowerService:_damageOverTime(
+    player,
+    perTick,
+    interval,
+    totalSeconds,
+    aoe,
+    powerId,
+    critBase
+)
     perTick = tonumber(perTick) or 0
     interval = math.max(0.1, tonumber(interval) or 1)
     totalSeconds = tonumber(totalSeconds) or 0
     if perTick <= 0 or totalSeconds <= 0 then
         return
     end
+    local critMult = (
+        self._combatConfig
+        and self._combatConfig.rolls
+        and self._combatConfig.rolls.pet_attack
+        and self._combatConfig.rolls.pet_attack.crit_mult
+    ) or 2.0
     task.spawn(function()
         local elapsed = 0
         while elapsed < totalSeconds do
@@ -416,13 +445,24 @@ function PowerService:_damageOverTime(player, perTick, interval, totalSeconds, a
                 targets = primary and { primary } or {}
             end
             local now = os.time()
+            local critChance = self:_dotCritChance(player, critBase, now)
             for _, enemy in ipairs(targets) do
                 if enemy and enemy.Parent then
                     local hp = enemy:GetAttribute("HP") or 0
                     if hp > 0 then
-                        local newHp = math.max(0, hp - perTick) -- FLOAT: minor DoT (<1) still chips
+                        -- crit roll per tick per enemy: ×1 normal, ×crit_mult on a crit (0 chance ⇒ ×1)
+                        local roll = CombatRoll.resolve(
+                            { hit_chance = 1, crit_chance = critChance, crit_mult = critMult },
+                            0,
+                            math.random()
+                        )
+                        local tick = perTick * roll.multiplier
+                        local newHp = math.max(0, hp - tick) -- FLOAT: minor DoT (<1) still chips
                         enemy:SetAttribute("HP", newHp) -- EnemyService HP-watcher -> death + loot
                         self:_creditDot(enemy, player, hp - newHp)
+                        if roll.crit then
+                            enemy:SetAttribute("CritFxUntil", now + 1) -- crit tell (client, P6)
+                        end
                         -- keep the burning badge lit above the enemy while it ticks
                         enemy:SetAttribute("DebuffPowerId", powerId)
                         enemy:SetAttribute("DebuffUntil", now + math.ceil(interval) + 1)
@@ -467,7 +507,8 @@ function PowerService:_applyEffect(player, kind, now, powerId)
             kind.dot.interval or 1,
             kind.dot.duration or dur,
             kind.dot.aoe,
-            powerId
+            powerId,
+            kind._critBase -- P5: power's own crit chance (+ live CritBuff/CritAura per tick)
         )
     end
     if family == "heal" then
@@ -964,6 +1005,7 @@ function PowerService:Cast(player, powerId)
         -- carry the accuracy inputs so the per-enemy to-hit roll (P4) can resolve in _applyEffect
         kind._accuracyBase = record.accuracyBase
         kind._casterLevel = casterLevel
+        kind._critBase = record.critBase -- P5: per-power crit chance for DoT ticks
     end
 
     -- Target gate: an offensive power reaches the enemy THROUGH the pets, so it can't fire unless
