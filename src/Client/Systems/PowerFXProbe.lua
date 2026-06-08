@@ -32,12 +32,24 @@ local function hrp()
     return char and char:FindFirstChild("HumanoidRootPart")
 end
 
--- Play one registry primitive. self-anchored ⇒ burst at the player; target-anchored ⇒ strike at `point`.
-local function playPrimitive(prim, element, point)
-    local spec = { pattern = prim.pattern, element = element, origin = prim.origin }
+-- Play one registry primitive through CombatFX.
+--   pbaoe (self burst)  → ctx.caster
+--   st_aoe (strike)     → ctx.point  (a position)
+--   st_attack (bolt)    → ctx.target (a target Instance — the dummy)
+--   attached (aura/bubble) → ctx.caster, with spec.category + spec.duration
+local function playPrimitive(prim, element, point, targetInst)
+    local spec = {
+        pattern = prim.pattern,
+        element = element,
+        origin = prim.origin,
+        category = prim.category,
+        duration = prim.duration,
+    }
     local ctx = { caster = hrp() }
     local soundPos = point
-    if prim.anchor == "target" then
+    if prim.pattern == "st_attack" then
+        ctx.target = targetInst -- bolt needs a target Instance, not a point
+    elseif prim.anchor == "target" then
         ctx.point = point
     else
         local r = hrp()
@@ -119,7 +131,7 @@ function PowerFXProbe.run(mode)
                     end
                     local prim = FX.primitives[id]
                     if prim then
-                        playPrimitive(prim, element, dummy.Position)
+                        playPrimitive(prim, element, dummy.Position, dummy)
                         label(dummy.Position, ("impact: %s · %s"):format(id, element))
                     end
                     task.wait(step)

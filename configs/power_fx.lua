@@ -33,13 +33,38 @@ return {
             color = "origin",
             sound = nil,
         },
+        -- caster-anchored rising BUFF aura (attached, follows the entity ~2s) — for buffs/holds
+        aura = {
+            pattern = "attached",
+            anchor = "self",
+            category = "buff",
+            duration = 2.0,
+            color = "origin",
+            sound = nil,
+        },
+        -- caster-anchored SHIELD bubble (attached ForceField look) — for absorbs/wards
+        shield_bubble = {
+            pattern = "attached",
+            anchor = "self",
+            category = "shield",
+            duration = 2.0,
+            color = "origin",
+            sound = nil,
+        },
+        -- ranged BOLT from caster → target (projectile; element picks fireball/frost/rock/lightning)
+        ranged_bolt = {
+            pattern = "st_attack",
+            anchor = "target",
+            color = "origin",
+            sound = nil,
+        },
     },
 
     -- Admin FX-probe sequence (PowerFXProbe). Steps each primitive across every element.
     probe = {
         elements = { "grass", "lava", "ice", "desert" }, -- canonical CombatFX elements (per-colour)
-        casting = { "cast_burst" }, -- primitives played ON the player (Casting / Real modes)
-        impact = { "eruption" }, -- primitives played at a dummy (Impact / Real modes)
+        casting = { "cast_burst", "aura", "shield_bubble" }, -- played ON the player (Casting / Real)
+        impact = { "eruption", "ranged_bolt" }, -- played at a dummy (Impact / Real modes)
         step_seconds = 1.6, -- pause between effects so each is watchable
         dummy_distance = 16, -- studs in front of the player to place the impact dummy
     },
