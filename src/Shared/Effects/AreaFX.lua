@@ -427,6 +427,17 @@ local EFFECTS = {
             life_max = 1.0,
         })
     end,
+    -- GRASS / ICE / DESERT pit: the same lingering bubbling pool, tinted by the element theme — a
+    -- ground hazard for DoT/brand impacts (scorched/frozen/sodden patch). Reuses the tarPit shape.
+    grass_pit = function(pos, c1, c2, _mat, radius, life)
+        tarPit(pos, c1, c2, radius, life)
+    end,
+    ice_pit = function(pos, c1, c2, _mat, radius, life)
+        tarPit(pos, c1, c2, radius, life)
+    end,
+    desert_pit = function(pos, c1, c2, _mat, radius, life)
+        tarPit(pos, c1, c2, radius, life)
+    end,
     -- LAVA targeted: Meteor — a ball drops from above, then real fire + shockwave erupt.
     lava_targeted = function(pos, c1, c2, mat, radius, life)
         local meteor = newPart(Enum.PartType.Ball, mat, c1, 0)

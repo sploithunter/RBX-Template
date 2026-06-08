@@ -79,13 +79,53 @@ return {
             color = "origin",
             sound = nil,
         },
+
+        -- ===== Palette expansion (cheap unlocks over the existing renderers) =====
+        -- CAST tells -------------------------------------------------------------------------------
+        -- sinking dark motes gathering on the body (debuff aura, rise=false) — an ominous CURSE cast
+        cast_channel = {
+            pattern = "attached",
+            anchor = "self",
+            category = "debuff",
+            duration = 0.8,
+            color = "origin",
+            sound = nil,
+        },
+        -- the ground ERUPTS in a column under the caster (st_aoe at self, no beam) — a heavy/summoning
+        -- cast that reads bigger than cast_emit but is still centred on the player
+        cast_geyser = {
+            pattern = "st_aoe",
+            anchor = "self",
+            origin = "upfront",
+            color = "origin",
+            sound = nil,
+        },
+        -- IMPACTS ----------------------------------------------------------------------------------
+        -- a lingering bubbling POOL at the target (st_aoe pit variant, ~4s) — burning/scorched ground
+        -- for DoT brands (Mark of Flame, Wildfire). Element-tinted.
+        brand_pool = {
+            pattern = "st_aoe",
+            anchor = "target",
+            origin = "upfront",
+            variant = "pit",
+            color = "origin",
+            sound = nil,
+        },
+        -- bare point-bursts from the RangedFX impact library (no projectile), element-coloured:
+        shatter = { pattern = "impact", anchor = "target", impact = "shatter", color = "origin" }, -- ice ring + glass shards
+        dust_burst = { pattern = "impact", anchor = "target", impact = "dust", color = "origin" }, -- desert dust plume
+        heavy_slam = { pattern = "impact", anchor = "target", impact = "big", color = "origin" }, -- heavy concussion
+        -- explicit projectiles (force a specific bolt regardless of element):
+        boulder = { pattern = "st_attack", anchor = "target", projectile = "rock", color = "origin" }, -- thrown rock model + dust
+        frost_shard = { pattern = "st_attack", anchor = "target", projectile = "ice_shard", color = "origin" }, -- icy shard + shatter
+        arc_bolt = { pattern = "st_attack", anchor = "target", projectile = "lightning", color = "origin" }, -- lightning arc
     },
 
     -- Admin FX-probe sequence (PowerFXProbe). Steps each primitive across every element.
     probe = {
         elements = { "grass", "lava", "ice", "desert" }, -- canonical CombatFX elements (per-colour)
-        casting = { "cast_emit", "cast_burst", "aura", "shield_bubble" }, -- played ON the player
-        impact = { "eruption", "ranged_bolt" }, -- played at a dummy (Impact / Real modes)
+        casting = { "cast_emit", "cast_geyser", "cast_channel", "cast_burst", "aura", "shield_bubble" }, -- played ON the player
+        impact = { "eruption", "brand_pool", "shatter", "dust_burst", "heavy_slam", "ranged_bolt", "boulder", "frost_shard", "arc_bolt" }, -- played at a dummy
         step_seconds = 2.8, -- pause between effects so each is watchable (slowed for inspection)
         dummy_distance = 16, -- studs in front of the player to place the impact dummy
     },

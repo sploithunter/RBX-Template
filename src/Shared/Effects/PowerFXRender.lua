@@ -65,6 +65,9 @@ function PowerFXRender.play(opts)
             origin = prim.origin,
             category = prim.category,
             duration = prim.duration,
+            variant = prim.variant, -- st_aoe shape (pit)
+            projectile = prim.projectile, -- st_attack explicit kind
+            impact = prim.impact, -- impact-pattern point-burst name
         }
         local ctx = { caster = opts.caster }
         if prim.pattern == "st_attack" then

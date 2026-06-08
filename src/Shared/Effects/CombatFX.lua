@@ -5,19 +5,23 @@
     intent and don't hand-pick modules:
 
         CombatFX.play({
-            pattern  = "st_attack" | "st_aoe" | "pbaoe" | "attached",
-            origin   = "ranged" | "upfront",                 -- caster delivery (st_* only)
-            category = "damage" | "heal" | "buff" | "debuff" | "shield",
-            element  = "grass" | "lava" | "ice" | "desert",  -- biome origin (its own look)
-            crit     = bool,                                  -- st_attack impact tier
-            duration = number,                                -- attached lifetime
+            pattern    = "st_attack" | "st_aoe" | "pbaoe" | "attached" | "impact",
+            origin     = "ranged" | "upfront",                 -- caster delivery (st_* only)
+            category   = "damage" | "heal" | "buff" | "debuff" | "shield",
+            element    = "grass" | "lava" | "ice" | "desert",  -- biome origin (its own look)
+            crit       = bool,                                  -- st_attack impact tier
+            duration   = number,                                -- attached lifetime
+            variant    = "targeted" | "pit",                    -- st_aoe shape (pit = lingering pool)
+            projectile = "rock" | "frost" | "lightning" | …,    -- st_attack: force a specific bolt
+            impact     = "shatter" | "dust" | "big" | "bloom",  -- impact pattern: which point-burst
         }, { caster = Instance, target = Instance, point = Vector3 })
 
     Routing:
       st_attack -> RangedFX (ranged = element projectile/bolt; upfront = "melee" impact)
-      st_aoe    -> AreaFX targeted (cast at a point)
+      st_aoe    -> AreaFX (variant "targeted" = strike at a point; "pit" = lingering pool)
       pbaoe     -> AreaFX self (burst around the caster)
       attached  -> CombatFX's own follow-an-entity engine below (auras + shield bubble)
+      impact    -> RangedFX.playImpact (a bare point-burst from the impact library, no projectile)
 
     The `attached` pattern is the new capability: a continual effect welded/parented to an
     entity for a duration. Returns a handle { stop() } so callers can end it early.
@@ -307,7 +311,21 @@ function CombatFX.play(spec, ctx)
         if not (ctx.caster and ctx.target) then
             return false
         end
-        return RangedFX.Play(ctx.caster, rangedCfg, ctx.target, rangedKind(spec), spec.crit == true, spec.element)
+        -- spec.projectile forces a specific RangedFX kind (boulder/frost_shard/arc/laser) regardless
+        -- of element; without it the element picks the default projectile.
+        local kind = spec.projectile or rangedKind(spec)
+        return RangedFX.Play(ctx.caster, rangedCfg, ctx.target, kind, spec.crit == true, spec.element)
+    elseif pattern == "impact" then
+        -- A bare point-impact from the RangedFX library (shatter/dust/big/bloom/…), no projectile —
+        -- coloured by the element's area theme. For hit-flashes decoupled from a travelling bolt.
+        local tp = ctx.point or (targetPart and targetPart.Position) or (casterPart and casterPart.Position)
+        if not tp then
+            return false
+        end
+        local theme = areaCfg.themes and areaCfg.themes[areaElement(spec)]
+        local c1 = toColor(theme and theme.color, Color3.fromRGB(255, 255, 255))
+        local c2 = toColor(theme and theme.color2, c1)
+        return RangedFX.playImpact(spec.impact or "small", tp, c1, c2, { crit = spec.crit == true })
     elseif pattern == "st_aoe" then
         local tp = ctx.point or (targetPart and targetPart.Position) or (casterPart and casterPart.Position)
         if not tp then
@@ -316,7 +334,9 @@ function CombatFX.play(spec, ctx)
         -- Upfront = slam at the adjacent target: origin == target suppresses AreaFX's ranged
         -- cast beam. Ranged keeps the beam from the caster.
         local cp = (spec.origin == "upfront") and tp or ((casterPart and casterPart.Position) or tp)
-        return AreaFX.Play(areaCfg, areaElement(spec), "targeted", cp, tp, healOverride(spec))
+        -- spec.variant selects the AreaFX shape: "targeted" (slam/eruption, default) or "pit" (a
+        -- lingering bubbling pool — DoT/brand ground hazard).
+        return AreaFX.Play(areaCfg, areaElement(spec), spec.variant or "targeted", cp, tp, healOverride(spec))
     elseif pattern == "pbaoe" then
         local cp = (casterPart and casterPart.Position) or ctx.point
         if not cp then
