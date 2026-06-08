@@ -160,7 +160,7 @@ function PowerChoiceMenu:Show(parent)
     nHeader.Size = UDim2.fromScale(0.46, 0.05)
     nHeader.Position = UDim2.fromScale(0.02, 0.065)
     nHeader.BackgroundTransparency = 1
-    nHeader.Text = "NEUTRAL"
+    nHeader.Text = "NATURAL"
     nHeader.TextColor3 = NEUTRAL_COLOR
     nHeader.TextScaled = true
     nHeader.Font = Enum.Font.GothamBold
