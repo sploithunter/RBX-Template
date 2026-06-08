@@ -152,6 +152,21 @@ return {
         cripple = { family = "root", magnitude = 0, duration = 4 }, -- slow/lock one target
         strike = { family = "vulnerable", magnitude = 1.5, duration = 4 }, -- basic single hit
 
+        -- ===== NEW origin-core effects — placeholder families so the powers resolve + show in menus;
+        -- the real mechanics (Rage HP-curve, Fear flee, true Disarm/Hold, heals, player_field) are
+        -- separate build slices. Firewall-safe. See docs/PET_REALM_ORIGIN_POWERSETS.md. =====
+        taunt = { family = "taunt", magnitude = 0, duration = 8 }, -- TBD: aggro pull (threat)
+        rage = { family = "rage", magnitude = 0.5, toggle = true }, -- TBD: lower HP -> higher damage
+        armor_field = { family = "armor", magnitude = 0.25, duration = 12 }, -- player_field team armor
+        restoring_sands = { family = "heal", magnitude = 0.3, duration = 0 }, -- single-target instant heal
+        healing_field = { family = "heal", magnitude = 0.15, duration = 8 }, -- player_field HoT
+        fear = { family = "fear", magnitude = 0, duration = 5 }, -- TBD: flee (AI state)
+        ice_shard = { family = "vulnerable", magnitude = 1.4, duration = 4 }, -- targeted damage (via pets)
+        deep_freeze = { family = "root", magnitude = 0, duration = 4 }, -- TBD: full hold (Capacitor)
+        frost_field = { family = "root", magnitude = 0, duration = 6 }, -- player_field slow/freeze
+        scorch = { family = "vulnerable", magnitude = 1.3, duration = 8 }, -- -def debuff
+        fire_nova = { family = "vulnerable", magnitude = 1.8, duration = 4 }, -- player_field burn AoE
+
         -- ===== Pyromancer signatures (Feature: signature powers, §17.8) =====
         -- Firewall-safe (§16.5): none of these deal standalone player damage. "amplified_burst"
         -- is PET-damage amplification — its burst is scaled by the squad's attack total and
@@ -291,144 +306,47 @@ return {
             unlock_level = 4,
         },
 
-        -- Attack-fill (origin-coloured, per archetype). Element from the archetype theme.
-        sunder = {
-            archetype = "geomancer",
-            focus_cost = 18,
-            cooldown_seconds = 25,
-            effect = "sunder",
-        },
-        expose = {
-            archetype = "sandwalker",
-            focus_cost = 15,
-            cooldown_seconds = 20,
-            effect = "expose",
-        },
-        cripple = {
-            archetype = "sandwalker",
-            focus_cost = 20,
-            cooldown_seconds = 30,
-            effect = "cripple",
-        },
-        disarm = {
-            archetype = "cryomancer",
-            focus_cost = 18,
-            cooldown_seconds = 25,
-            effect = "disarm",
-        },
-        focus_fire = {
-            archetype = "cryomancer",
-            focus_cost = 12,
-            cooldown_seconds = 15,
-            effect = "focus_fire",
-        },
-        strike = {
-            archetype = "pyromancer",
-            focus_cost = 10,
-            cooldown_seconds = 12,
-            effect = "strike",
-        },
+        -- ===== ORIGIN CORES — 7 per origin (full schema: display_name/role/element/target/glyph/
+        -- unlock_level). See docs/PET_REALM_ORIGIN_POWERSETS.md. Signatures follow below.
+        -- NOTE: new effects (taunt/rage/armor_field/restoring_sands/healing_field/fear/ice_shard/
+        -- deep_freeze/frost_field/scorch/fire_nova) + target "player_field" have placeholder
+        -- effect_kinds; their mechanics are separate build slices. =====
 
-        -- Single-target defensive powers: target = "single_pet" lands on the SELECTED squad pet
-        -- only (CombatBuffTarget), not the whole squad. aegis = a focused shield (bubble); ironclad
-        -- = a focused armor (reskin). Falls back to the first pet when nothing is selected.
-        aegis = {
-            archetype = "geomancer",
-            focus_cost = 12,
-            cooldown_seconds = 18,
-            effect = "shield", -- absorb pool -> bubble on the one selected pet
-            target = "single_pet",
-        },
-        ironclad = {
-            archetype = "geomancer",
-            focus_cost = 12,
-            cooldown_seconds = 18,
-            effect = "armor", -- +Defense % -> reskin on the one selected pet
-            target = "single_pet",
-        },
-        -- Geomancer
-        stone_skin = {
-            archetype = "geomancer",
-            focus_cost = 20,
-            cooldown_seconds = 30,
-            effect = "armor", -- hardened stone skin = +Defense %, not an absorb pool
-        },
-        bulwark = {
-            archetype = "geomancer",
-            focus_cost = 30,
-            cooldown_seconds = 45,
-            effect = "team_shield",
-        },
-        mountains_strength = {
-            archetype = "geomancer",
-            focus_cost = 25,
-            cooldown_seconds = 40,
-            effect = "damage_buff",
-        },
-        -- Sandwalker
-        mirage_step = {
-            archetype = "sandwalker",
-            focus_cost = 15,
-            cooldown_seconds = 20,
-            effect = "dodge",
-        },
-        sandstorm = {
-            archetype = "sandwalker",
-            focus_cost = 35,
-            cooldown_seconds = 50,
-            effect = "aoe_blind",
-        },
-        dune_shield = {
-            archetype = "sandwalker",
-            focus_cost = 20,
-            cooldown_seconds = 35,
-            effect = "shield",
-        },
-        -- Cryomancer
-        frost_bind = {
-            archetype = "cryomancer",
-            focus_cost = 25,
-            cooldown_seconds = 35,
-            effect = "root",
-        },
-        ice_armor = {
-            archetype = "cryomancer",
-            focus_cost = 20,
-            cooldown_seconds = 30,
-            effect = "armor", -- ice plating = +Defense %, not an absorb pool
-        },
-        blizzard = {
-            archetype = "cryomancer",
-            focus_cost = 40,
-            cooldown_seconds = 60,
-            effect = "aoe_slow",
-        },
-        -- Pyromancer
-        mark_of_flame = {
-            archetype = "pyromancer",
-            focus_cost = 20,
-            cooldown_seconds = 25,
-            effect = "damage_over_time",
-        },
-        ember_ward = {
-            archetype = "pyromancer",
-            focus_cost = 20,
-            cooldown_seconds = 30,
-            effect = "shield",
-        },
-        eruption = {
-            archetype = "pyromancer",
-            focus_cost = 45,
-            cooldown_seconds = 60,
-            effect = "aoe_damage",
-        },
-        critical_strike = {
-            archetype = "pyromancer",
-            focus_cost = 30,
-            cooldown_seconds = 40,
-            effect = "crit_up", -- +crit CHANCE on the squad's hits (combat + mining); squad-wide
-            display_name = "Critical Strike",
-        },
+        -- Geomancer (earth · tank): targeted+team armor, buff, debuff, Taunt, Rage, Armor Field
+        stone_skin = { archetype = "geomancer", focus_cost = 20, cooldown_seconds = 30, effect = "armor", display_name = "Stone Skin", role = "armor", element = "earth", target = "single_pet", glyph = "shield", unlock_level = 6 },
+        ironclad = { archetype = "geomancer", focus_cost = 16, cooldown_seconds = 24, effect = "armor", display_name = "Ironclad", role = "armor", element = "earth", target = "team_aoe", glyph = "shield", unlock_level = 9 },
+        mountains_strength = { archetype = "geomancer", focus_cost = 25, cooldown_seconds = 40, effect = "damage_buff", display_name = "Mountain's Strength", role = "buff", element = "earth", target = "team_aoe", glyph = "buff", unlock_level = 9 },
+        sunder = { archetype = "geomancer", focus_cost = 18, cooldown_seconds = 25, effect = "sunder", display_name = "Sunder", role = "debuff", element = "earth", target = "single", glyph = "debuff", unlock_level = 6 },
+        taunt = { archetype = "geomancer", focus_cost = 12, cooldown_seconds = 16, effect = "taunt", display_name = "Taunt", role = "control", element = "earth", target = "single", glyph = "control", unlock_level = 6 },
+        rage = { archetype = "geomancer", focus_cost = 20, cooldown_seconds = 30, effect = "rage", display_name = "Rage", role = "buff", element = "earth", target = "single_pet", glyph = "buff", unlock_level = 12 },
+        armor_field = { archetype = "geomancer", focus_cost = 35, cooldown_seconds = 45, effect = "armor_field", display_name = "Armor Field", role = "armor", element = "earth", target = "player_field", glyph = "shield", unlock_level = 12 },
+
+        -- Sandwalker (desert · buffer/heal/illusion): heal, shield, dodge, debuffs, Fear, Healing Field
+        mirage_step = { archetype = "sandwalker", focus_cost = 15, cooldown_seconds = 20, effect = "dodge", display_name = "Mirage Step", role = "buff", element = "desert", target = "single_pet", glyph = "buff", unlock_level = 6 },
+        dune_shield = { archetype = "sandwalker", focus_cost = 18, cooldown_seconds = 30, effect = "shield", display_name = "Dune Shield", role = "shield", element = "desert", target = "single_pet", glyph = "shield", unlock_level = 6 },
+        restoring_sands = { archetype = "sandwalker", focus_cost = 20, cooldown_seconds = 25, effect = "restoring_sands", display_name = "Restoring Sands", role = "heal", element = "desert", target = "single_pet", glyph = "heal", unlock_level = 6 },
+        expose = { archetype = "sandwalker", focus_cost = 15, cooldown_seconds = 20, effect = "expose", display_name = "Expose", role = "debuff", element = "desert", target = "single", glyph = "debuff", unlock_level = 9 },
+        sandstorm = { archetype = "sandwalker", focus_cost = 35, cooldown_seconds = 50, effect = "aoe_blind", display_name = "Sandstorm", role = "debuff", element = "desert", target = "targeted_aoe", glyph = "debuff", unlock_level = 9 },
+        fear = { archetype = "sandwalker", focus_cost = 25, cooldown_seconds = 35, effect = "fear", display_name = "Fear", role = "control", element = "desert", target = "single", glyph = "control", unlock_level = 12 },
+        healing_field = { archetype = "sandwalker", focus_cost = 35, cooldown_seconds = 45, effect = "healing_field", display_name = "Healing Field", role = "heal", element = "desert", target = "player_field", glyph = "heal", unlock_level = 12 },
+
+        -- Cryomancer (ice · controller): control trio (root/disarm/hold), armor, vuln, damage, field
+        frost_bind = { archetype = "cryomancer", focus_cost = 25, cooldown_seconds = 35, effect = "root", display_name = "Frost Bind", role = "control", element = "ice", target = "single", glyph = "control", unlock_level = 6 },
+        ice_armor = { archetype = "cryomancer", focus_cost = 20, cooldown_seconds = 30, effect = "armor", display_name = "Ice Armor", role = "armor", element = "ice", target = "single_pet", glyph = "shield", unlock_level = 6 },
+        disarm = { archetype = "cryomancer", focus_cost = 18, cooldown_seconds = 25, effect = "disarm", display_name = "Disarm", role = "control", element = "ice", target = "single", glyph = "control", unlock_level = 6 },
+        focus_fire = { archetype = "cryomancer", focus_cost = 12, cooldown_seconds = 15, effect = "focus_fire", display_name = "Focus Fire", role = "debuff", element = "ice", target = "single", glyph = "debuff", unlock_level = 9 },
+        ice_shard = { archetype = "cryomancer", focus_cost = 14, cooldown_seconds = 12, effect = "ice_shard", display_name = "Ice Shard", role = "damage", element = "ice", target = "single", glyph = "burst", unlock_level = 9 },
+        deep_freeze = { archetype = "cryomancer", focus_cost = 28, cooldown_seconds = 40, effect = "deep_freeze", display_name = "Deep Freeze", role = "control", element = "ice", target = "single", glyph = "control", unlock_level = 12 },
+        frost_field = { archetype = "cryomancer", focus_cost = 35, cooldown_seconds = 45, effect = "frost_field", display_name = "Frost Field", role = "control", element = "ice", target = "player_field", glyph = "control", unlock_level = 12 },
+
+        -- Pyromancer (lava · damage): strike, DoT, shield, AoE, crit buff, Scorch, Fire Nova
+        strike = { archetype = "pyromancer", focus_cost = 10, cooldown_seconds = 12, effect = "strike", display_name = "Strike", role = "damage", element = "lava", target = "single", glyph = "burst", unlock_level = 6 },
+        mark_of_flame = { archetype = "pyromancer", focus_cost = 20, cooldown_seconds = 25, effect = "damage_over_time", display_name = "Mark of Flame", role = "damage", element = "lava", target = "single", glyph = "debuff", unlock_level = 6 },
+        ember_ward = { archetype = "pyromancer", focus_cost = 20, cooldown_seconds = 30, effect = "shield", display_name = "Ember Ward", role = "shield", element = "lava", target = "single_pet", glyph = "shield", unlock_level = 6 },
+        eruption = { archetype = "pyromancer", focus_cost = 45, cooldown_seconds = 60, effect = "aoe_damage", display_name = "Eruption", role = "damage", element = "lava", target = "targeted_aoe", glyph = "burst", unlock_level = 9 },
+        critical_strike = { archetype = "pyromancer", focus_cost = 30, cooldown_seconds = 40, effect = "crit_up", display_name = "Critical Strike", role = "buff", element = "lava", target = "team_aoe", glyph = "buff", unlock_level = 9 },
+        scorch = { archetype = "pyromancer", focus_cost = 16, cooldown_seconds = 18, effect = "scorch", display_name = "Scorch", role = "debuff", element = "lava", target = "single", glyph = "debuff", unlock_level = 12 },
+        fire_nova = { archetype = "pyromancer", focus_cost = 40, cooldown_seconds = 50, effect = "fire_nova", display_name = "Fire Nova", role = "damage", element = "lava", target = "player_field", glyph = "burst", unlock_level = 12 },
 
         -- ===== Pyromancer SIGNATURES (§17.8) — exclusive, 2 mid-tier + 1 capstone =====
         -- Extended schema (display_name/signature/capstone/role/element/target/glyph/unlock_level)
@@ -459,7 +377,7 @@ return {
             element = "lava",
             target = "team_aoe",
             glyph = "burst",
-            unlock_level = 20,
+            unlock_level = 22,
         },
         cataclysm = {
             archetype = "pyromancer",
@@ -473,7 +391,7 @@ return {
             element = "lava",
             target = "targeted_aoe",
             glyph = "burst",
-            unlock_level = 30,
+            unlock_level = 44,
         },
 
         -- ===== Origin signatures (docs/PET_REALM_SIGNATURE_POWERS.md) — 4 per origin, each in its
@@ -497,7 +415,7 @@ return {
             focus_cost = 30,
             cooldown_seconds = 40,
             effect = "seismic_hold",
-            display_name = "Seismic Hold",
+            display_name = "Seismic Event",
             signature = true,
             role = "control",
             element = "earth",
@@ -544,7 +462,7 @@ return {
             element = "lava",
             target = "single",
             glyph = "brand",
-            unlock_level = 28,
+            unlock_level = 30,
         },
         -- Ice / Cryomancer — CONTROL
         permafrost = {

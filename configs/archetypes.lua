@@ -40,13 +40,15 @@ return {
             display_name = "Geomancer",
             theme = "earth",
             power_pool = {
+                -- cores (7)
                 "stone_skin",
-                "bulwark",
-                "mountains_strength",
-                "aegis",
                 "ironclad",
+                "mountains_strength",
                 "sunder",
-                -- signatures (shield/tank identity; gaia_colossus = summon capstone)
+                "taunt",
+                "rage",
+                "armor_field",
+                -- signatures (gaia_colossus = summon capstone)
                 "bastion",
                 "seismic_hold",
                 "living_mountain",
@@ -57,12 +59,15 @@ return {
             display_name = "Sandwalker",
             theme = "desert",
             power_pool = {
+                -- cores (7)
                 "mirage_step",
                 "sandstorm",
                 "dune_shield",
                 "expose",
-                "cripple",
-                -- signatures (heal/sustain identity; genie_dunes = summon+revive capstone)
+                "restoring_sands",
+                "fear",
+                "healing_field",
+                -- signatures (genie_dunes = summon+revive capstone)
                 "oasis",
                 "mirage_veil",
                 "simoom",
@@ -73,12 +78,15 @@ return {
             display_name = "Cryomancer",
             theme = "ice",
             power_pool = {
+                -- cores (7)
                 "frost_bind",
                 "ice_armor",
-                "blizzard",
                 "disarm",
                 "focus_fire",
-                -- signatures (control identity; eternal_winter = field-hold capstone)
+                "ice_shard",
+                "deep_freeze",
+                "frost_field",
+                -- signatures (eternal_winter = field-hold capstone)
                 "permafrost",
                 "shatter",
                 "absolute_zero",
@@ -91,11 +99,15 @@ return {
             -- mark_of_flame/ember_ward/eruption = shared-pool placeholders; wildfire/firestorm/
             -- cataclysm = the exclusive signatures (§17.8), cataclysm the high-level capstone.
             power_pool = {
+                -- cores (7)
                 "mark_of_flame",
                 "ember_ward",
                 "eruption",
                 "strike",
                 "critical_strike",
+                "scorch",
+                "fire_nova",
+                -- signatures (cataclysm = capstone)
                 "wildfire",
                 "firestorm",
                 "cataclysm",

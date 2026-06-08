@@ -66,7 +66,7 @@ return function()
             "rejects a second pick at the same level (1 already selected at the first level)",
             function()
                 local r =
-                    PowerSelection.canSelect("bulwark", geoPowers, { "stone_skin" }, L1, levels)
+                    PowerSelection.canSelect("ironclad", geoPowers, { "stone_skin" }, L1, levels)
                 expect(r.ok).to.equal(false)
                 expect(r.reason).to.equal("no_pending_selection")
             end
