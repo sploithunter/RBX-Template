@@ -200,6 +200,18 @@ local M = {
         team_aoe = "team_aoe",
         friendly = "ally",
     },
+    -- A power's `target` (who it hits) -> targeting-ring KIND, used for EVERY power so the ring is
+    -- honest: single_pet armor reads as one pet (outward), team armor as the squad, player_field as
+    -- aura -- instead of all armor sharing the effect's generic ring. PetBadge.forPower keys off this
+    -- first, falling back to the signature/effect default for powers with no `target`.
+    power_target_ring = {
+        single = "single", -- one enemy -> inward ring
+        single_pet = "ally", -- one of your pets -> outward ring
+        team_aoe = "team_aoe", -- the whole squad
+        targeted_aoe = "enemy_aoe", -- enemies around a target
+        player_field = "self", -- centred on the player -> aura
+        self = "self",
+    },
 
     -- Pre-baked colored disc-icons: discs[element][symbol] = Image id. The element is the disc
     -- COLOR (the pet's origin); the symbol is the archetype/power glyph baked onto it. Jason's

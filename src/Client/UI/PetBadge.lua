@@ -77,22 +77,32 @@ function PetBadge.forPower(powerId)
     end
     local element = POWER_ICONS.elementKey(rawElement)
 
-    local symbol, targetKind
+    -- SYMBOL = what it does (effect / signature glyph). RING = who it hits (the power's target).
+    local spec = (not def.signature) and POWER_ICONS.power_effect_badge[def.effect or ""] or nil
+    local symbol
     if def.signature then
-        symbol = (POWER_ICONS.power_signature_symbol and POWER_ICONS.power_signature_symbol[powerId])
-            or POWER_ICONS.power_glyph_symbol[def.glyph or ""]
-        targetKind = POWER_ICONS.power_signature_ring[def.target or ""] or "single"
-    else
-        local spec = POWER_ICONS.power_effect_badge[def.effect or ""]
-        if spec then
-            symbol = spec.symbol
-            targetKind = spec.target
-        end
+        symbol = (
+            POWER_ICONS.power_signature_symbol and POWER_ICONS.power_signature_symbol[powerId]
+        ) or POWER_ICONS.power_glyph_symbol[def.glyph or ""]
+    elseif spec then
+        symbol = spec.symbol
     end
     if not symbol then
         return nil
     end
-    -- targeting kind -> ring shape key (aura/target_in/aoe/...)
+
+    -- Ring reflects the power's REAL target, so single-pet armor shows the outward pet ring, team
+    -- armor the team-AoE ring, player_field the aura -- instead of every armor power sharing one
+    -- ring. Falls back to the signature/effect default for powers with no `target` (always-on
+    -- neutrals -> self/aura).
+    local targetKind = POWER_ICONS.power_target_ring[def.target or ""]
+    if not targetKind then
+        if def.signature then
+            targetKind = POWER_ICONS.power_signature_ring[def.target or ""] or "single"
+        elseif spec then
+            targetKind = spec.target
+        end
+    end
     local shape = POWER_ICONS.targeting_ring[targetKind or "none"] or "aura"
     return { element = element, symbol = symbol, ring = shape }
 end
