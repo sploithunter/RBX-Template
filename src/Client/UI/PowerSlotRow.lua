@@ -30,8 +30,8 @@ local PowerSlotRow = {}
 
 -- Slots are FIXED "ticks": all MAX_SLOTS exist at fixed left-clustered positions (tick 1..6 line up
 -- across every row), and only the first `slotCount` are visible. Slotting one later flips its Visible
--- + shows an enhancement — positions never re-flow. SLOT_Y hangs them just under the bar.
-local SLOT_Y, SLOT_GAP = 1.0233, 14
+-- + shows an enhancement — positions never re-flow. They sit in a row BELOW the bar.
+local SLOT_GAP = 14
 local MAX_SLOTS = 6
 
 -- Palettes. Swap the whole row's look by passing a different theme (generic→purple later).
@@ -146,18 +146,19 @@ function PowerSlotRow.create(parent, opts)
     local size = opts.size or UDim2.fromOffset(540, 60)
     local height = size.Y.Offset > 0 and size.Y.Offset or 60
     local slotCount = math.clamp(tonumber(opts.slotCount) or 6, 1, MAX_SLOTS)
-    local slotSize = math.floor(height * 1.13 + 0.5)
+    local slotSize = math.floor(height * 0.82) -- ticks sit BELOW the bar, a bit smaller than it
+    local rootH = height + slotSize + 12 -- bar + the tick row beneath it
 
     local root = Instance.new("Frame")
     root.Name = "PowerRow"
-    root.Size = size
+    root.Size = UDim2.new(size.X.Scale, size.X.Offset, 0, rootH)
     root.BackgroundTransparency = 1
     root.Parent = parent
 
     -- bar: round glossy capsule
     local bar = Instance.new("Frame")
     bar.Name = "Bar"
-    bar.Size = UDim2.fromScale(1, 1)
+    bar.Size = UDim2.new(1, 0, 0, height) -- fixed bar height at the top; the tick row hangs below
     bar.BackgroundColor3 = theme.bar
     bar.Parent = root
     corner(bar)
@@ -203,17 +204,18 @@ function PowerSlotRow.create(parent, opts)
     slotsFolder.Name = "Slots"
     slotsFolder.Size = UDim2.fromScale(1, 1)
     slotsFolder.BackgroundTransparency = 1
-    slotsFolder.Parent = bar
+    slotsFolder.Parent = root -- spans the whole row so the ticks sit BELOW the bar
 
-    local startX = math.floor(height * 0.5) -- first tick ~under the disc
+    local startX = math.floor(height * 0.5) -- tick 1 ~under the disc (disc is on the bar above)
     local step = slotSize + SLOT_GAP -- fixed linear spacing
+    local slotY = height + 6 -- tick row starts just below the bar
     local slots = {}
     for i = 1, MAX_SLOTS do
         local s = buildSlot(theme, opts.selected == i)
         s.Name = "Slot" .. i
         s.Size = UDim2.fromOffset(slotSize, slotSize)
-        s.AnchorPoint = Vector2.new(0.5, 0.5)
-        s.Position = UDim2.new(0, startX + (i - 1) * step, SLOT_Y, 0)
+        s.AnchorPoint = Vector2.new(0.5, 0)
+        s.Position = UDim2.new(0, startX + (i - 1) * step, 0, slotY)
         s.Visible = (i <= slotCount) -- all 6 exist; only the granted ones show
         s.Parent = slotsFolder
         slots[i] = s
