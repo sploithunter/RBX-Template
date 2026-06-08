@@ -43,6 +43,13 @@ PowerSlotRow.THEMES = {
         slotGrad = { Color3.fromRGB(140, 187, 244), Color3.fromRGB(46, 132, 236), Color3.fromRGB(29, 85, 153) },
         slotRim = Color3.fromRGB(18, 70, 160),
         slotRimSelected = Color3.fromRGB(120, 205, 255),
+        -- power states: dull = pickable-not-picked (lights to full on hover), locked = not yet available
+        barGradDull = { Color3.fromRGB(96, 120, 150), Color3.fromRGB(64, 84, 112), Color3.fromRGB(46, 62, 88) },
+        barStrokeDull = Color3.fromRGB(38, 52, 78),
+        barGradLocked = { Color3.fromRGB(150, 150, 156), Color3.fromRGB(112, 112, 120), Color3.fromRGB(82, 82, 90) },
+        barStrokeLocked = Color3.fromRGB(70, 70, 80),
+        nameLocked = Color3.fromRGB(196, 196, 202),
+        discLocked = Color3.fromRGB(130, 130, 136),
     },
 }
 
@@ -60,15 +67,20 @@ local function square(o)
     return o
 end
 
-local function vGradient(o, colors)
-    local g = Instance.new("UIGradient")
-    g.Rotation = 90
-    g.Color = ColorSequence.new({
+local function seqOf(colors)
+    return ColorSequence.new({
         ColorSequenceKeypoint.new(0, colors[1]),
         ColorSequenceKeypoint.new(0.5, colors[2]),
         ColorSequenceKeypoint.new(1, colors[3]),
     })
+end
+
+local function vGradient(o, colors)
+    local g = Instance.new("UIGradient")
+    g.Rotation = 90
+    g.Color = seqOf(colors)
     g.Parent = o
+    return g
 end
 
 -- one slot: a gradient Fill circle framed by a Border ring (square via aspect; size/pos set by caller).
@@ -108,16 +120,25 @@ local function buildDisc(bar, powerId)
     discH.Parent = bar
     square(discH)
     local badge = PetBadge.forPower(powerId)
+    local pb
     if badge then
-        PetBadge.create(discH, { element = badge.element, symbol = badge.symbol, ring = badge.ring })
+        pb = PetBadge.create(discH, { element = badge.element, symbol = badge.symbol, ring = badge.ring })
     end
-    return discH
+    return discH, pb
 end
 
 function PowerSlotRow.create(parent, opts)
     opts = opts or {}
     local theme = opts.theme or PowerSlotRow.THEMES.blue
     local slotCount = math.clamp(tonumber(opts.slotCount) or 6, 1, MAX_SLOTS)
+    local state = opts.state or "owned" -- "owned" | "available" | "locked"
+    local effSlots = (state == "owned") and slotCount or 0 -- unpicked powers carry no visible slots
+    local barGrad3 = (state == "locked" and theme.barGradLocked)
+        or (state == "available" and theme.barGradDull)
+        or theme.barGrad
+    local barStrokeC = (state == "locked" and theme.barStrokeLocked)
+        or (state == "available" and theme.barStrokeDull)
+        or theme.barStroke
 
     local root = Instance.new("Frame")
     root.Name = "PowerRow"
@@ -129,16 +150,34 @@ function PowerSlotRow.create(parent, opts)
     local bar = Instance.new("Frame")
     bar.Name = "Bar"
     bar.Size = UDim2.new(1, 0, BAR_H, 0)
-    bar.BackgroundColor3 = theme.bar
+    bar.BackgroundColor3 = barGrad3[2]
     bar.Parent = root
     corner(bar)
-    vGradient(bar, theme.barGrad)
+    local barGradient = vGradient(bar, barGrad3)
     local bs = Instance.new("UIStroke")
-    bs.Color = theme.barStroke
+    bs.Color = barStrokeC
     bs.Thickness = 2
     bs.Parent = bar
 
-    buildDisc(bar, opts.powerId)
+    -- "available" powers light up to full colour on hover (the pick affordance)
+    if state == "available" then
+        bar.MouseEnter:Connect(function()
+            barGradient.Color = seqOf(theme.barGrad)
+            bs.Color = theme.barStroke
+            bar.BackgroundColor3 = theme.barGrad[2]
+        end)
+        bar.MouseLeave:Connect(function()
+            barGradient.Color = seqOf(barGrad3)
+            bs.Color = barStrokeC
+            bar.BackgroundColor3 = barGrad3[2]
+        end)
+    end
+
+    local _, pb = buildDisc(bar, opts.powerId)
+    if state == "locked" and pb then -- gray the badge out too
+        if pb.disc then pb.disc.ImageColor3 = theme.discLocked end
+        if pb.ring then pb.ring.ImageColor3 = theme.discLocked end
+    end
 
     local name = Instance.new("TextLabel")
     name.Name = "PowerName"
@@ -148,7 +187,7 @@ function PowerSlotRow.create(parent, opts)
     name.Text = opts.name or ""
     name.Font = Enum.Font.GothamBold
     name.TextScaled = true
-    name.TextColor3 = Color3.fromRGB(255, 255, 255)
+    name.TextColor3 = (state == "locked") and theme.nameLocked or Color3.fromRGB(255, 255, 255)
     name.TextXAlignment = Enum.TextXAlignment.Left
     name.ZIndex = 2
     name.Parent = bar
@@ -184,7 +223,7 @@ function PowerSlotRow.create(parent, opts)
         s.AnchorPoint = Vector2.new(0.5, 0.5)
         local fx = FIRST_X + (LAST_X - FIRST_X) * ((i - 1) / (MAX_SLOTS - 1))
         s.Position = UDim2.new(fx, 0, SLOT_Y, 0)
-        s.Visible = (i <= slotCount)
+        s.Visible = (i <= effSlots)
         s.Parent = slotsFolder
         slots[i] = s
     end
