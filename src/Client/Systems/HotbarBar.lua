@@ -498,6 +498,11 @@ function HotbarBar.start()
                     card.icon.Size = UDim2.fromScale(0.82, 0.82) -- inset so the ring frames it
                     card.ring.Image = POWER_ICONS.rings[badge.ring] or POWER_ICONS.rings.aura
                     card.ring.ImageColor3 = POWER_ICONS.elementColor3(badge.element, "dark")
+                    -- apply the per-shape ring centering (PNG canvases aren't all centred), same as
+                    -- PetBadge.create — otherwise this hand-rolled ring ignores ring_centering.
+                    local off = POWER_ICONS.ringCentering(badge.ring)
+                    card.ring.Position = UDim2.new(0.5 + (off.x or 0), 0, 0.5 + (off.y or 0), 0)
+                    card.ring.Size = UDim2.fromScale(off.scale or 1, off.scale or 1)
                     card.ring.Visible = true
                     card.bind.Visible = false
                     hasArt = true
