@@ -150,16 +150,18 @@ element). Powers **compose an array of these by id**, overriding only the params
 
 ```lua
 -- configs/power_fx.lua — reusable effect primitives (one entry, every element for free)
+-- `sound` = a SoundId played with the effect (overridable per ref); nil = silent placeholder
+--           until the audio is authored (Jason supplies the ids later, like bespoke icons).
 ground_ring  = { pattern="pbaoe",   shape="ring",  color="origin", material="Neon", radius=12, duration=0.6,
-                 light={ brightness=2, range=14, color="origin" } },
+                 light={ brightness=2, range=14, color="origin" }, sound=nil },
 rising_motes = { pattern="pbaoe",   shape="motes", color="origin", count=16, rise=8, duration=0.6 },
-eruption     = { pattern="st_aoe",  shape="burst", color="origin", material="Neon", radius=9, castTime=0.18 },
-cast_beam    = { pattern="st_aoe",  shape="beam",  color="origin", castTime=0.18 },
+eruption     = { pattern="st_aoe",  shape="burst", color="origin", material="Neon", radius=9, castTime=0.18, sound=nil },
+cast_beam    = { pattern="st_aoe",  shape="beam",  color="origin", castTime=0.18, sound=nil },
 aura         = { pattern="attached",category="buff",   color="origin", follow=true },
-bubble       = { pattern="attached",category="shield", color="origin" },
-impact_flash = { pattern="flash",   color="origin", brightness=3, duration=0.2 },
--- a custom one-off is STILL just an id here (bespoke asset/anim, same compose path):
-firestorm_swirl = { pattern="st_aoe", shape="swirl", color="origin", asset="rbxassetid://…" },
+bubble       = { pattern="attached",category="shield", color="origin", sound=nil },
+impact_flash = { pattern="flash",   color="origin", brightness=3, duration=0.2, sound=nil },
+-- a custom one-off is STILL just an id here (bespoke asset/anim/sound, same compose path):
+firestorm_swirl = { pattern="st_aoe", shape="swirl", color="origin", asset="rbxassetid://…", sound="rbxassetid://…" },
 ```
 
 The levers that produce the mileage:
@@ -173,6 +175,9 @@ The levers that produce the mileage:
 3. **Custom is not a special case** — a bespoke effect (Firestorm's swirl) is just another registry
    entry with an `asset`/`animation`; the power references it by id exactly like the shared ones. So
    "custom for some, shared for most" is one mechanism, not two.
+4. **Sound rides the same rails** — each primitive carries an optional `sound` (SoundId), overridable
+   per ref, played at the effect's anchor. Defaults to nil (silent) so the system runs before audio
+   exists; drop ids in as they're authored — exactly the placeholder→override pattern as art.
 
 This sits *on top of* CombatFX — the facade stays the renderer; the registry is the named, composable
 vocabulary above it, and a power's `fx` arrays are data, not code. Adding the registry is its own
@@ -236,6 +241,31 @@ nothing breaks, migrate consumers one at a time, delete the adapter last.
 - **Reused unchanged:** `Accuracy.lua`, `CombatRoll.lua`, `PowerFormula.lua`, `BuffStack.lua`,
   `PowerSelection.lua`, `configs/archetypes.lua` (pools), `configs/combat.lua` (`accuracy` cfg).
 
+## 11. Testing the FX/sound registry (cheap by construction)
+
+Because effects are data-driven primitives played on a *known anchor*, verification is a fixed
+**probe set**, not per-power QA. An **admin FX-probe toggle** (in the admin overlay, alongside the
+existing power/area toggles) selects what plays:
+
+- **Casting effect** — fire each `source` primitive on the player (cast-on-self).
+- **Impact effect** — spawn the test dummy, play each `target` primitive at it.
+- **Real effect** — a full real cast (source + target + sound), targeting through a pet too (the
+  source-agnostic path), to confirm it plays from the pet anchor.
+- **Off** — back to normal.
+
+Driver split (honest about what each side can verify):
+
+- **MCP / automated** scaffolds deterministically — spawn the dummy, park the camera, fire the probe
+  for primitive `id` on anchor `X`, then grab a `screen_capture` **still**. A single frame already
+  catches the things that break: wrong **colour**, **missing** effect, wrong **element tint**, off
+  **lighting**, a persistent ring/aura/bubble that's there-or-not.
+- **Human** confirms what a frame and a headless run can't: **motion/feel** on fast transients (a
+  flash/eruption gone in 0.2s), and **sound** (neither MCP nor CI can hear).
+
+Implementation = one tiny `play(primitiveId, anchor)` routine behind the admin toggle, fitting the
+existing StudioSmokeTest / AutomationSuite pattern — the whole registry becomes a click-through
+checklist. This is the **P6(b)** verification gate, not an afterthought.
+
 ## Decisions (locked)
 
 1. `kind []` is **descriptive** (badge + tooltip); `effect` stays the mechanics dispatch key.
@@ -257,3 +287,6 @@ nothing breaks, migrate consumers one at a time, delete the adapter last.
   pass, set in `configs/powers.lua` `scaling` with a spec to pin the arithmetic.
 - Whether `power_descriptions` blurbs move *into* the record or stay a thin side-table keyed by id.
 - `targetsBase` semantics for `team`/`aoe` caps (all-in-radius vs N-nearest).
+- **Pending art/audio from Jason:** bespoke `icon`s (Firestorm + the duplicate-badge splits) and the
+  `sound` ids for the effect primitives. All optional/placeholder until supplied — the system runs
+  silent + with derived badges in the meantime.
