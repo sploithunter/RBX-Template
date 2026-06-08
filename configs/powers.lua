@@ -64,15 +64,15 @@ return {
         aoe_slow = { family = "root", magnitude = 0, duration = 5 },
         blizzard = { family = "root", magnitude = 0, duration = 6 },
         aoe_blind = { family = "vulnerable", magnitude = 1.5, duration = 6 },
-        damage_over_time = { family = "vulnerable", magnitude = 1.5, duration = 6 },
-        aoe_damage = { family = "vulnerable", magnitude = 2.0, duration = 5 },
-        -- Targeted DoT: the brand burns its single target ~2 HP/sec on top of the +damage debuff.
-        mark_of_flame = {
+        -- Targeted DoT: Mark of Flame (the only power using this key) burns its single target
+        -- ~2 HP/sec on top of the +50% damage debuff for 6s.
+        damage_over_time = {
             family = "vulnerable",
             magnitude = 1.5,
-            duration = 8,
+            duration = 6,
             dot = { per_tick = 2, interval = 1, aoe = false },
         },
+        aoe_damage = { family = "vulnerable", magnitude = 2.0, duration = 5 },
         eruption = { family = "vulnerable", magnitude = 2.0, duration = 5 },
 
         -- ===== GENERIC pool (farming / luck / utility) — magnitude = FRACTION (+0.5 = +50%),
