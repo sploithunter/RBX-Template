@@ -112,8 +112,10 @@ local function buildSlot(theme, selected)
     return s
 end
 
--- the power disc (authored badge image inset, framed by a ring).
-local function buildDisc(parent, powerId, height, theme)
+-- the power disc — rendered through the canonical PetBadge.create (the SAME disc+ring the hotbar /
+-- squad cards use), so it stays consistent with the game and any badge fix (e.g. ring centring) lands
+-- once. Falls back to a plain disc image if the power has no resolvable badge.
+local function buildDisc(parent, powerId, height)
     local disc = Instance.new("Frame")
     disc.Name = "Disc"
     disc.Size = UDim2.fromOffset(height + 5, height + 5)
@@ -123,24 +125,16 @@ local function buildDisc(parent, powerId, height, theme)
     disc.Parent = parent
 
     local badge = PetBadge.forPower(powerId)
-    local discImg = badge and PowerIcons.discFor(badge.element, badge.symbol) or nil
-
-    local icon = Instance.new("ImageLabel")
-    icon.Name = "Icon"
-    icon.BackgroundTransparency = 1
-    icon.AnchorPoint = Vector2.new(0.5, 0.5)
-    icon.Position = UDim2.fromScale(0.5, 0.5)
-    icon.Size = UDim2.fromScale(0.86, 0.86)
-    icon.Image = discImg or ""
-    icon.Parent = disc
-
-    local border = Instance.new("ImageLabel")
-    border.Name = "Border"
-    border.BackgroundTransparency = 1
-    border.Size = UDim2.fromScale(1, 1)
-    border.Image = RING_IMAGE
-    border.ImageColor3 = theme.discRim
-    border.Parent = disc
+    if badge then
+        PetBadge.create(disc, { element = badge.element, symbol = badge.symbol, ring = badge.ring })
+    else
+        local img = Instance.new("ImageLabel")
+        img.BackgroundTransparency = 1
+        img.Size = UDim2.fromScale(1, 1)
+        img.ScaleType = Enum.ScaleType.Fit
+        img.Image = PowerIcons.discFor("neutral", "clover_lucky") or ""
+        img.Parent = disc
+    end
     return disc
 end
 
@@ -173,7 +167,7 @@ function PowerSlotRow.create(parent, opts)
     bs.Parent = bar
     gloss(bar, UDim2.new(1, -16, 0.4, 0), UDim2.new(0.5, 0, 0, 4 + height * 0.2))
 
-    buildDisc(bar, opts.powerId, height, theme)
+    buildDisc(bar, opts.powerId, height)
 
     -- name (top-left) + subtitle (top-right; the SHORT description tag)
     local name = Instance.new("TextLabel")
