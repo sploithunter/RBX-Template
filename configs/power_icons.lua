@@ -74,7 +74,6 @@ local M = {
         default = { x = -0.014, y = 0.018, scale = 1.08 }, -- bigger + nudged SOUTHWEST
         -- per-shape overrides (only if a specific ring's circle differs from the shared alignment):
         -- aura = { x = ..., y = ..., scale = ... },
-        target_out = { x = -0.022, y = 0.04, scale = 1.08 }, -- outward (single-pet) ring sits high/right -> down + slightly left
     },
 
     -- Map a power's targeting kind onto a ring SHAPE (above). UI: rings[targetingRing[kind]].
