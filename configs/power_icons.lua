@@ -68,11 +68,12 @@ local M = {
     -- circle isn't dead-centre in the canvas — common with AI-generated / batch-exported art. Measured
     -- from the symmetric `aura` ring (its alpha centroid IS the circle centre); the directional rings
     -- share the same canvas alignment, and their centroid is skewed by the arrow, so they reuse the
-    -- default rather than being measured directly. +x nudges RIGHT, +y nudges DOWN.
+    -- default rather than being measured directly. +x nudges RIGHT, +y nudges DOWN; scale = ring Size
+    -- multiplier (>1 = bigger). Tuned by eye so the ring frames / sits centred on the disc.
     ring_centering = {
-        default = { x = 0.0007, y = 0.0062 }, -- aura circle sits ~0.6% high / ~0.07% left in the 1024px PNG
+        default = { x = -0.014, y = 0.018, scale = 1.08 }, -- bigger + nudged SOUTHWEST
         -- per-shape overrides (only if a specific ring's circle differs from the shared alignment):
-        -- aura = { x = ..., y = ... },
+        -- aura = { x = ..., y = ..., scale = ... },
     },
 
     -- Map a power's targeting kind onto a ring SHAPE (above). UI: rings[targetingRing[kind]].
