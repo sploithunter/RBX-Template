@@ -555,6 +555,11 @@ function RangedFX.Play(origin, config, target, kind, isCrit, element)
     if kind == "rock" then
         return playRock(originPart, endPos, config.rock or {}, isCrit, sounds.impact)
     end
+    -- Thrown-boulder variants (asteroid / boulder / ice_boulder): same tumbling-rock animation, own
+    -- mesh + tint + impact, selected by kind.
+    if config.boulders and config.boulders[kind] then
+        return playRock(originPart, endPos, config.boulders[kind], isCrit, sounds.impact)
+    end
     if kind == "melee" then
         -- Melee/mining hit: the pet is already adjacent, so no projectile — just an impact at the
         -- target + the hit sound. Tier scales with crit. Per-biome via melee_by_element[element]

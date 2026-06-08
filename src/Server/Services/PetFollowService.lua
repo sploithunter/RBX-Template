@@ -76,6 +76,14 @@ function PetFollowService:_preloadFxAssets()
             end
         end
     end
+    -- Thrown-boulder variants (asteroid / boulder / ice_boulder) each carry their own mesh.
+    if type(bolt.boulders) == "table" then
+        for _, theme in pairs(bolt.boulders) do
+            if type(theme) == "table" and theme.model_asset then
+                ids[theme.model_asset] = true
+            end
+        end
+    end
     if next(ids) == nil then
         return
     end

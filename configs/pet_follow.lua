@@ -306,10 +306,21 @@ return {
         beam = { colors = { { 255, 70, 70 } }, thickness = 0.5, duration = 0.18, sparks = 5 },
         -- Rock throw (kind = "rock"): hurls a tumbling boulder, landing with a "dust" impact (tan
         -- cloud + rubble). DESERT theme. size = target max studs; colors = { rock tint, rubble/dust }.
-        -- NOTE: model_asset is intentionally UNSET — the old union (122970818698817) rendered as an
-        -- egg proximity-sign, so we use the clean procedural Slate boulder. Drop a real boulder/cactus
-        -- asset id back into model_asset (UsePartColor tints it) once one is uploaded.
-        rock = { colors = { { 130, 115, 95 }, { 175, 150, 115 } }, size = 3.5, travel_time = 0.3, impact = "dust", impact_crit = "big" },
+        -- Uses the `boulder` mesh (UsePartColor tints it); falls back to a procedural Slate block if
+        -- the asset hasn't replicated yet.
+        rock = { model_asset = 111170421641061, colors = { { 150, 130, 105 }, { 200, 175, 135 } }, size = 3.5, travel_time = 0.3, impact = "dust", impact_crit = "big" },
+
+        -- Thrown-boulder VARIANTS (kind = the key). Each routes through the same tumbling-rock
+        -- animation as `rock`, with its own mesh + tint + impact. Selected explicitly via a power-FX
+        -- primitive's `projectile` (configs/power_fx.lua), or map an element to one in RANGED_KIND.
+        boulders = {
+            -- earth/desert rock (same mesh as `rock`, kept here so the `boulder` primitive resolves)
+            boulder = { model_asset = 111170421641061, colors = { { 150, 130, 105 }, { 200, 175, 135 } }, size = 3.5, travel_time = 0.3, impact = "dust", impact_crit = "big" },
+            -- ice boulder: pale blue, shatters on impact (frost ring + shards) instead of dust
+            ice_boulder = { model_asset = 111280557292002, colors = { { 170, 220, 255 }, { 230, 248, 255 } }, size = 3.2, travel_time = 0.22, impact = "shatter", impact_crit = "big" },
+            -- asteroid: dark rocky meteor, heavier + slower, big dusty impact
+            asteroid = { model_asset = 134283982892096, colors = { { 90, 80, 75 }, { 140, 120, 105 } }, size = 4.2, travel_time = 0.34, impact = "big", impact_crit = "big" },
+        },
     },
 
     -- Server tick throttle (seconds): target leash + the mining damage tick only.
