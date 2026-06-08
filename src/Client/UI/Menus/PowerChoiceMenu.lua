@@ -58,7 +58,8 @@ function PowerChoiceMenu:_fillColumn(holder, pool)
     if not pool then
         return
     end
-    local rows = PowerSelection.menuRows(pool, powersCfg.powers, self.level, {})
+    local rows =
+        PowerSelection.menuRows(pool, powersCfg.powers, self.level, {}, powersCfg.selection_levels)
     for i, r in ipairs(rows) do
         local def = powersCfg.powers[r.id] or {}
         local wrap = Instance.new("Frame")
@@ -70,7 +71,7 @@ function PowerChoiceMenu:_fillColumn(holder, pool)
         PowerSlotRow.create(wrap, {
             powerId = r.id,
             name = def.display_name or r.id,
-            subtitle = "L" .. tostring(r.unlockLevel) .. "    " .. (def.subtitle or ""),
+            subtitle = "L" .. tostring(r.pickLevel) .. "    " .. (def.subtitle or ""),
             state = r.state,
             size = UDim2.fromScale(1, 1),
         })

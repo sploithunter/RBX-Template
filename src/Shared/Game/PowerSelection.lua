@@ -69,7 +69,25 @@ end
 -- `powers`, so a balance pass (re-gate, which re-orders) is a CONFIG edit only — never code.
 -- `ownedSet` = { [powerId] = true } for already-picked powers.
 --   state: "owned" (picked) | "available" (unlocked: unlock_level <= level) | "locked" (future level)
-function PowerSelection.menuRows(pool, powers, level, ownedSet)
+-- The level you can actually CHOOSE a power: the first selection level >= its unlock_level.
+-- Falls back to the unlock level when no schedule is given (or none qualifies), so callers
+-- without a schedule behave exactly as before.
+function PowerSelection.pickLevel(unlock, selectionLevels)
+    unlock = tonumber(unlock) or 1
+    if type(selectionLevels) ~= "table" then
+        return unlock
+    end
+    local best
+    for _, s in ipairs(selectionLevels) do
+        local sl = tonumber(s)
+        if sl and sl >= unlock and (not best or sl < best) then
+            best = sl
+        end
+    end
+    return best or unlock
+end
+
+function PowerSelection.menuRows(pool, powers, level, ownedSet, selectionLevels)
     local lvl = tonumber(level) or 1
     powers = powers or {}
     ownedSet = ownedSet or {}
@@ -77,19 +95,21 @@ function PowerSelection.menuRows(pool, powers, level, ownedSet)
     for _, id in ipairs(pool or {}) do
         local def = powers[id]
         local unlock = (def and tonumber(def.unlock_level)) or 1
+        -- pickLevel = when you can truly choose it; the menu shows + gates by THIS, not raw unlock.
+        local pick = PowerSelection.pickLevel(unlock, selectionLevels)
         local state
         if ownedSet[id] then
             state = "owned"
-        elseif unlock <= lvl then
+        elseif pick <= lvl then
             state = "available"
         else
             state = "locked"
         end
-        rows[#rows + 1] = { id = id, unlockLevel = unlock, state = state }
+        rows[#rows + 1] = { id = id, unlockLevel = unlock, pickLevel = pick, state = state }
     end
     table.sort(rows, function(a, b)
-        if a.unlockLevel ~= b.unlockLevel then
-            return a.unlockLevel < b.unlockLevel
+        if a.pickLevel ~= b.pickLevel then
+            return a.pickLevel < b.pickLevel
         end
         return a.id < b.id
     end)

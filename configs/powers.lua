@@ -17,7 +17,10 @@ return {
     -- last at L38 so any power can still earn its 6 enhancement slots before the L50 cap. Fewer picks
     -- than slots exist for (48 slots vs 72 to 6-slot all 12) ⇒ you CHOOSE which powers to god-tier →
     -- build diversity. MUST mirror level_track.lua power_levels.
-    selection_levels = { 2, 4, 6, 8, 10, 14, 18, 22, 26, 30, 34, 38 },
+    -- Levels where the player actually GETS to pick a power. The menu shows each power at the
+    -- first selection level >= its unlock_level (the level you can truly choose it), so it never
+    -- advertises a level you can't pick at. Reaches 44 so the L44 capstones are choosable.
+    selection_levels = { 2, 4, 6, 8, 10, 12, 15, 18, 22, 26, 30, 36, 44 },
 
     -- Families whose effect reaches an ENEMY through the pets (offensive / control / debuff /
     -- pet-amplified damage). These can't be cast unless the squad is actually engaged with an

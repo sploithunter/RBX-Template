@@ -121,4 +121,28 @@ return function()
             expect(rows[1].unlockLevel).to.equal(1)
         end)
     end)
+
+    describe("PowerSelection.pickLevel + honest menuRows schedule", function()
+        local sched = { 2, 6, 10, 15 }
+
+        it("rounds an unlock up to the first selection level >= it", function()
+            expect(PowerSelection.pickLevel(9, sched)).to.equal(10) -- can't pick at 9, next is 10
+            expect(PowerSelection.pickLevel(6, sched)).to.equal(6) -- on-grid stays
+            expect(PowerSelection.pickLevel(3, sched)).to.equal(6)
+        end)
+
+        it("falls back to the raw unlock when no schedule is given", function()
+            expect(PowerSelection.pickLevel(9, nil)).to.equal(9)
+        end)
+
+        it("gates by pickLevel, not raw unlock (L9 power isn't pickable until L10)", function()
+            local pool = { "a" }
+            local powers = { a = { unlock_level = 9 } }
+            local atNine = PowerSelection.menuRows(pool, powers, 9, {}, sched)
+            expect(atNine[1].pickLevel).to.equal(10)
+            expect(atNine[1].state).to.equal("locked")
+            local atTen = PowerSelection.menuRows(pool, powers, 10, {}, sched)
+            expect(atTen[1].state).to.equal("available")
+        end)
+    end)
 end
