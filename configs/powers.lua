@@ -46,6 +46,44 @@ return {
         damage = { per_level = 0.03, base_level = 1, min = 1, max = 2.5 }, -- +3%/level, up to ×2.5
     },
 
+    -- Real-cast FX per effect FAMILY → configs/power_fx.lua primitive ids (PowerService:Cast resolves
+    -- these; the client renders them via PowerFXRender, element from the power's origin). `source`
+    -- plays on the caster, `target` on each engaged enemy (hostile families only). A nil/"tbd" → a
+    -- floating "(effect TBD)" placeholder. Generic/white powers (no archetype element) resolve "tbd"
+    -- for now — they have no element-themed visual yet. Tune freely; this is what stops every power
+    -- of an origin from looking identical (a shield reads as a shield, a buff as a buff, …).
+    --   bespoke families fired inside _applyEffect (NOT here): amplified_burst, team_cleave.
+    family_fx = {
+        -- friendly / self
+        heal = { source = "heal_nova" },
+        buff = { source = "aura" },
+        damage_buff = { source = "aura" },
+        armor = { source = "aura" },
+        fortify = { source = "aura" },
+        defense_buff = { source = "aura" },
+        absorb = { source = "shield_bubble" },
+        team_shield = { source = "shield_bubble" },
+        shield = { source = "shield_bubble" },
+        move_speed = { source = "aura" },
+        recharge = { source = "aura" },
+        xp_boost = { source = "aura" },
+        luck = { source = "aura" },
+        luck_huge = { source = "aura" },
+        -- hostile (source on caster + target on each enemy)
+        vulnerable = { source = "cast_burst", target = "eruption" },
+        burn_spread = { source = "cast_burst", target = "eruption" },
+        root = { source = "cast_burst", target = "eruption" },
+        root_guard = { source = "cast_burst", target = "eruption" },
+        -- no clean visual yet ⇒ floating "(effect TBD)"
+        summon = { source = "tbd" },
+        revive = { source = "tbd" },
+        recall = { source = "tbd" },
+        world_travel = { source = "tbd" },
+        magnet = { source = "tbd" },
+        coin_yield = { source = "tbd" },
+        windfall = { source = "tbd" },
+    },
+
     -- How each `effect` keyword resolves to a concrete SUPPORT action when cast
     -- (§16.5 firewall: player powers never deal direct damage — "damage" effects
     -- become enemy VULNERABILITY so pets hit harder). Families the services apply:

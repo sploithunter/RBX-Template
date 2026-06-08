@@ -60,6 +60,14 @@ return {
             color = "origin",
             sound = nil,
         },
+        -- caster-anchored HEAL nova (green heal pulse via the AreaFX "heal" skin)
+        heal_nova = {
+            pattern = "pbaoe",
+            anchor = "self",
+            category = "heal",
+            color = "origin",
+            sound = nil,
+        },
     },
 
     -- Admin FX-probe sequence (PowerFXProbe). Steps each primitive across every element.

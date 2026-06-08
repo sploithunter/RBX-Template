@@ -1038,30 +1038,34 @@ function PowerService:Cast(player, powerId)
     -- Archetype powers play the element cast-burst on the caster (= registry `cast_burst`) and, if
     -- hostile, a targeted strike on the engaged enemy (= registry `eruption`) — same AreaFX the
     -- FX-probe previews, element-coloured. Generic/white powers keep the neutral placeholder ball.
+    -- Cast VFX. amplified_burst / team_cleave fire their own bespoke area FX inside _applyEffect.
+    -- Everything else resolves per-FAMILY (powers.lua family_fx) → a registry primitive: a `source`
+    -- effect on the caster + a `target` effect on each engaged enemy (hostile families). The client
+    -- renders via PowerFXRender (element-coloured), with floating "(effect TBD)"/"(sound TBD)" where a
+    -- mapping or sound is missing. This is what makes a shield read as a shield, a buff as a buff, etc.
     local family = kind.family
-    local element = def.archetype and ARCHETYPE_ELEMENT[def.archetype]
-    if family == "amplified_burst" or family == "team_cleave" then
-        -- bespoke VFX already fired
-    elseif element then
-        local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            Signals.Power_AreaFx:FireClient(
-                player,
-                { element = element, variant = "self", center = hrp.Position }
-            )
-        end
-        if self._powersConfig.enemy_targeted_families[family] then
-            local foe = enemiesAlive()[1]
-            local fp = foe and (foe.PrimaryPart or foe:FindFirstChildWhichIsA("BasePart"))
-            if fp then
-                Signals.Power_AreaFx:FireClient(
-                    player,
-                    { element = element, variant = "targeted", center = fp.Position }
-                )
+    if family ~= "amplified_burst" and family ~= "team_cleave" then
+        local element = (def.archetype and ARCHETYPE_ELEMENT[def.archetype]) or "neutral"
+        local generic = def.archetype == nil
+        local fx = self._powersConfig.family_fx and self._powersConfig.family_fx[family]
+        -- generic/white powers have no element-themed visual yet ⇒ placeholder; archetype powers use
+        -- their mapped primitive (defaulting to a cast burst if the family isn't mapped).
+        local sourcePrim = (generic and "tbd") or (fx and fx.source) or "cast_burst"
+        Signals.Power_AreaFx:FireClient(
+            player,
+            { primId = sourcePrim, element = element, kind = "source" }
+        )
+        if not generic and self._powersConfig.enemy_targeted_families[family] then
+            local targetPrim = (fx and fx.target) or "eruption"
+            for _, foe in ipairs(enemiesAlive()) do
+                if foe.PrimaryPart or foe:FindFirstChildWhichIsA("BasePart") then
+                    Signals.Power_AreaFx:FireClient(
+                        player,
+                        { primId = targetPrim, element = element, kind = "target", target = foe }
+                    )
+                end
             end
         end
-    else
-        pcall(spawnCastVisual, player, family) -- generic/white powers: neutral placeholder burst
     end
 
     local cd = tonumber(def.cooldown_seconds) or 0

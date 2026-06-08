@@ -28,6 +28,7 @@ local RangedFX = require(ReplicatedStorage.Shared.Effects.RangedFX)
 local AreaFX = require(ReplicatedStorage.Shared.Effects.AreaFX)
 local FloatingText = require(ReplicatedStorage.Shared.Effects.FloatingText)
 local PowerSound = require(ReplicatedStorage.Shared.Effects.PowerSound)
+local PowerFXRender = require(ReplicatedStorage.Shared.Effects.PowerFXRender)
 local PetRoles = require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
@@ -208,6 +209,19 @@ function PetFollowController.start()
     local areaCfg = require(ReplicatedStorage.Configs:WaitForChild("area_fx"))
     Signals.Power_AreaFx.OnClientEvent:Connect(function(data)
         if type(data) ~= "table" then
+            return
+        end
+        -- Family-mapped power FX (PowerService:Cast): a registry primitive rendered on the local
+        -- caster (source) or at an enemy (target), with (effect/sound TBD) placeholders.
+        if data.primId then
+            local opts = { primId = data.primId, element = data.element, kind = data.kind }
+            if data.kind == "target" then
+                opts.target = data.target
+            else
+                local char = Players.LocalPlayer.Character
+                opts.caster = char and char:FindFirstChild("HumanoidRootPart")
+            end
+            pcall(PowerFXRender.play, opts)
             return
         end
         local center = data.center
