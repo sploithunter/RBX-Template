@@ -17,6 +17,8 @@ local ArchetypeLogic = require(ReplicatedStorage.Shared.Game.ArchetypeLogic)
 local AmplifiedBurst = require(ReplicatedStorage.Shared.Game.AmplifiedBurst)
 local PowerRegistry = require(ReplicatedStorage.Shared.Game.PowerRegistry)
 local PowerStats = require(ReplicatedStorage.Shared.Game.PowerStats)
+local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
+local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
@@ -67,6 +69,8 @@ function PowerService:Init()
     self._dataService = self._modules and self._modules.DataService
     self._powersConfig = self._configLoader:LoadConfig("powers")
     self._archetypesConfig = self._configLoader:LoadConfig("archetypes")
+    self._combatConfig = self._configLoader:LoadConfig("combat") -- accuracy curve for P4 to-hit
+
     self._cooldowns = setmetatable({}, { __mode = "k" }) -- player -> { powerId -> expiry (os.time) }
 end
 
@@ -590,24 +594,28 @@ function PowerService:_applyEffect(player, kind, now, powerId)
         player:SetAttribute("MagnetBuffPowerId", powerId)
     elseif family == "root" then
         for _, enemy in ipairs(enemiesAlive()) do
-            enemy:SetAttribute("RootedUntil", now + dur)
-            -- stamp WHICH power debuffed it, so the client can show the matching badge above it
-            -- (alongside the aura) instead of leaving you to decode the particle colour.
-            enemy:SetAttribute("DebuffPowerId", powerId)
-            enemy:SetAttribute("DebuffUntil", now + dur)
+            if self:_accuracyHit(player, enemy, kind) then -- P4: a hold can be resisted (per target)
+                enemy:SetAttribute("RootedUntil", now + dur)
+                -- stamp WHICH power debuffed it, so the client can show the matching badge above it
+                -- (alongside the aura) instead of leaving you to decode the particle colour.
+                enemy:SetAttribute("DebuffPowerId", powerId)
+                enemy:SetAttribute("DebuffUntil", now + dur)
+            end
         end
     elseif family == "vulnerable" then
         -- Shatter: x`frozen_bonus` again on FROZEN (rooted) targets — the freeze->shatter payoff.
         local frozenBonus = tonumber(kind.frozen_bonus)
         for _, enemy in ipairs(enemiesAlive()) do
-            local m = mag
-            if frozenBonus and (enemy:GetAttribute("RootedUntil") or 0) > now then
-                m = mag * frozenBonus
+            if self:_accuracyHit(player, enemy, kind) then -- P4: the mark can miss (per target)
+                local m = mag
+                if frozenBonus and (enemy:GetAttribute("RootedUntil") or 0) > now then
+                    m = mag * frozenBonus
+                end
+                enemy:SetAttribute("VulnerableMult", m)
+                enemy:SetAttribute("VulnerableUntil", now + dur)
+                enemy:SetAttribute("DebuffPowerId", powerId)
+                enemy:SetAttribute("DebuffUntil", now + dur)
             end
-            enemy:SetAttribute("VulnerableMult", m)
-            enemy:SetAttribute("VulnerableUntil", now + dur)
-            enemy:SetAttribute("DebuffPowerId", powerId)
-            enemy:SetAttribute("DebuffUntil", now + dur)
         end
         -- Inferno Brand: ramp the mark upward over its lifetime (1.9 -> ramp_to).
         if tonumber(kind.ramp_to) then
@@ -903,6 +911,24 @@ function PowerService:_effectiveKind(rawKind, effective)
     return out
 end
 
+-- P4 accuracy: does this hostile application LAND on `enemy`? Rolls accuracyBase × the level-diff
+-- to-hit curve (the same Accuracy core pet/enemy attacks use); a boss (Level reads +rank_offset) is
+-- harder to hit. On a miss, stamps a transient MissFxUntil for the client tell and returns false so
+-- the caller skips this enemy. Crystals never call this (no Level → mining exemption preserved).
+function PowerService:_accuracyHit(player, enemy, kind)
+    local accBase = tonumber(kind._accuracyBase) or 1
+    local casterLevel = tonumber(kind._casterLevel) or 1
+    local enemyLevel = tonumber(enemy:GetAttribute("Level")) or casterLevel
+    local accCfg = self._combatConfig and self._combatConfig.accuracy
+    local chance = math.clamp(accBase * Accuracy.toHit(casterLevel, enemyLevel, accCfg), 0, 1)
+    local res = CombatRoll.resolve({ hit_chance = chance }, math.random())
+    if not res.hit then
+        enemy:SetAttribute("MissFxUntil", os.time() + 2) -- client surfaces the "Miss" tell (P6)
+        return false
+    end
+    return true
+end
+
 function PowerService:Cast(player, powerId)
     local def = self._powersConfig.powers and self._powersConfig.powers[tostring(powerId)]
     if not def then
@@ -929,11 +955,15 @@ function PowerService:Cast(player, powerId)
     local kind = rawKind
     local record = PowerRegistry.record(tostring(powerId), self._powersConfig)
     if record then
+        local casterLevel = tonumber(player:GetAttribute("Level")) or 1
         local effective = PowerStats.resolveEffective(record, {
-            casterLevel = tonumber(player:GetAttribute("Level")) or 1,
+            casterLevel = casterLevel,
             scaling = self._powersConfig.scaling, -- nil today ⇒ identity; P3 fills it
         })
         kind = self:_effectiveKind(rawKind, effective)
+        -- carry the accuracy inputs so the per-enemy to-hit roll (P4) can resolve in _applyEffect
+        kind._accuracyBase = record.accuracyBase
+        kind._casterLevel = casterLevel
     end
 
     -- Target gate: an offensive power reaches the enemy THROUGH the pets, so it can't fire unless
