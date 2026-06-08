@@ -37,6 +37,15 @@ return {
     },
     engage_radius = 60,
 
+    -- Per-axis level scaling for PowerStats.resolveEffective (docs/PET_REALM_POWER_DATA_MODEL.md P3).
+    --   effective = base × clamp(1 + per_level × (casterLevel − base_level), min, max)
+    -- CONSERVATIVE starting point — only DAMAGE scales (so DoT ticks grow gently with the caster's
+    -- level); recharge / duration / radius / magnitude stay FLAT (no entry ⇒ identity ×1) until a
+    -- dedicated balance pass tunes them. Tune freely; an absent axis means "don't scale it".
+    scaling = {
+        damage = { per_level = 0.03, base_level = 1, min = 1, max = 2.5 }, -- +3%/level, up to ×2.5
+    },
+
     -- How each `effect` keyword resolves to a concrete SUPPORT action when cast
     -- (§16.5 firewall: player powers never deal direct damage — "damage" effects
     -- become enemy VULNERABILITY so pets hit harder). Families the services apply:

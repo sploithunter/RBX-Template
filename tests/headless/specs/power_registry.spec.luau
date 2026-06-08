@@ -5,7 +5,12 @@
 ]]
 
 local PowerRegistry = loadModule("src/Shared/Game/PowerRegistry.lua")
+local PowerStats = loadModule("src/Shared/Game/PowerStats.lua")
 local cfg = loadModule("configs/powers.lua")
+
+local function approx(a, b)
+    return math.abs(a - b) < 1e-6
+end
 
 local function contains(list, want)
     for _, v in ipairs(list) do
@@ -79,6 +84,24 @@ return function()
         end)
         it("returns nil for an unknown id", function()
             expect(PowerRegistry.record("nope_not_real", cfg)).to.equal(nil)
+        end)
+    end)
+
+    describe("P3 scaling — the real config curve applies to DoT damage", function()
+        local rec = PowerRegistry.record("eternal_winter", cfg)
+        it("is flat at level 1 (×1)", function()
+            local eff = PowerStats.resolveEffective(rec, { casterLevel = 1, scaling = cfg.scaling })
+            expect(approx(eff.damage, 0.5)).to.equal(true)
+        end)
+        it("grows by +3%/level (level 50 ≈ 0.5 × 2.47)", function()
+            local eff =
+                PowerStats.resolveEffective(rec, { casterLevel = 50, scaling = cfg.scaling })
+            expect(approx(eff.damage, 0.5 * (1 + 0.03 * 49))).to.equal(true) -- 1.235
+        end)
+        it("leaves duration FLAT (no scaling entry for it)", function()
+            local eff =
+                PowerStats.resolveEffective(rec, { casterLevel = 50, scaling = cfg.scaling })
+            expect(eff.duration).to.equal(12)
         end)
     end)
 
