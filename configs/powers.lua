@@ -266,7 +266,7 @@ return {
             effect = "coin_yield",
             unlock_level = 2,
         },
-        windfall = { generic = true, focus_cost = 30, cooldown_seconds = 60, effect = "windfall", unlock_level = 4 },
+        windfall = { generic = true, focus_cost = 30, cooldown_seconds = 60, effect = "windfall", unlock_level = 6 },
         -- (Mother Lode cut: "+mining damage" was redundant — damage buffs/debuffs already speed up
         --  crystal mining, and support pets cover yield. No distinct mechanic, so no power.)
         fortune = { generic = true, focus_cost = 20, cooldown_seconds = 45, effect = "luck", unlock_level = 8 },
