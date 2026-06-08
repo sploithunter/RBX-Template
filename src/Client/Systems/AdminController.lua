@@ -17,6 +17,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local PowerFXProbe = require(script.Parent:WaitForChild("PowerFXProbe"))
 
 local AdminController = {}
 local started = false
@@ -189,10 +190,49 @@ function AdminController.start()
         Signals.Admin_GrantAreaPowers:FireServer()
     end)
 
+    -- FX PROBE: cycles Casting → Impact → Real and plays the power_fx registry sequence so the
+    -- effects can be eyeballed on demand (docs/PET_REALM_POWER_DATA_MODEL.md §11). Client-only.
+    local fxBtn = Instance.new("TextButton")
+    fxBtn.Name = "FXProbe"
+    fxBtn.Size = UDim2.fromOffset(118, 26)
+    fxBtn.Position = UDim2.new(0, 315, 1, -114) -- just above GRANT POWERS
+    fxBtn.AnchorPoint = Vector2.new(0, 1)
+    fxBtn.BackgroundColor3 = Color3.fromRGB(120, 70, 180) -- amethyst capsule (admin theme)
+    fxBtn.BackgroundTransparency = 0
+    fxBtn.Font = Enum.Font.GothamBold
+    fxBtn.TextSize = 12
+    fxBtn.TextColor3 = Color3.fromRGB(245, 240, 255)
+    fxBtn.Text = "🎬 FX PROBE"
+    fxBtn.Visible = false
+    local fxc = Instance.new("UICorner")
+    fxc.CornerRadius = UDim.new(1, 0)
+    fxc.Parent = fxBtn
+    local fxGrad = Instance.new("UIGradient")
+    fxGrad.Rotation = 90
+    fxGrad.Color = ColorSequence.new(Color3.fromRGB(175, 130, 235), Color3.fromRGB(120, 70, 180))
+    fxGrad.Parent = fxBtn
+    local fxStroke = Instance.new("UIStroke")
+    fxStroke.Color = Color3.fromRGB(175, 130, 235)
+    fxStroke.Thickness = 2
+    fxStroke.Parent = fxBtn
+    fxBtn.Parent = gui
+    local fxLabel = whiteLabel(fxBtn, "🎬 FX PROBE", 12)
+    local fxModes = { "casting", "impact", "real" }
+    local fxIdx = 0
+    fxBtn.Activated:Connect(function()
+        fxIdx = (fxIdx % #fxModes) + 1
+        local mode = fxModes[fxIdx]
+        if fxLabel then
+            fxLabel.Text = "🎬 FX: " .. string.upper(mode)
+        end
+        PowerFXProbe.run(mode)
+    end)
+
     local on = false
     local function apply()
         setOverlays(pg, on)
         grantBtn.Visible = on
+        fxBtn.Visible = on
         chipLabel.Text = on and "🛠 ADMIN: ON" or "🛠 ADMIN: OFF"
         chip.BackgroundColor3 = on and Color3.fromRGB(45, 140, 80) or Color3.fromRGB(90, 55, 160)
         chipGrad.Color = on
