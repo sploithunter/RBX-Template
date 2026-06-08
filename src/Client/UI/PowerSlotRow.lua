@@ -1,164 +1,134 @@
 --[[
-    PowerSlotRow — a single CoH-style "power with its enhancement slots" widget.
+    PowerSlotRow — a CoH-style "power + enhancement slots" row. RELATIVE-FIRST (resize-safe).
 
-        local row = PowerSlotRow.create(parent, {
-            powerId = "fortune",          -- drives the disc badge (PetBadge.forPower)
-            name = "Luck",                -- display name (defaults to the power's display_name)
-            subtitle = "Targeted DoT",    -- SHORT description tag (full description won't fit the bar)
-            slotCount = 6,                -- enhancement slots on the bar (1..6)
-            selected = 6,                 -- highlighted slot index (optional)
-            size = UDim2.fromOffset(540, 60),
-            theme = PowerSlotRow.THEMES.blue,  -- palette (generic→purple is just a different theme)
+        PowerSlotRow.create(parent, {
+            powerId   = "fortune",          -- disc badge via PetBadge.forPower
+            name      = "Luck",             -- power name (TextScaled)
+            subtitle  = "Targeted DoT",     -- optional short tag (hidden if nil)
+            slotCount = 3,                  -- enhancement slots GRANTED (1..6); the rest stay hidden
+            selected  = nil,                -- optional highlighted slot index
+            size      = UDim2.fromScale(0.96, 0.17),  -- the row's size (caller's call; scale or offset)
+            theme     = PowerSlotRow.THEMES.blue,
         })
-        row.setSelected(3); row.setSubtitle("Targeted DoT"); row.destroy()
 
-    A glossy ROUND capsule (UICorner pill) holds the power's disc inset at the left, its name +
-    short subtitle, and a row of enhancement-slot circles. Each slot is a Fill (gradient circle, inset)
-    framed by a Border ring (the round ring art on top) — so the ring reads as the rim, not inside the
-    fill. Built against assets/ui/reference/power_slotting_reference.png. Visuals match the values
-    tuned live in Studio (StarterGui.ZZ_SlotOverlay).
+    Every internal size/position is a SCALE fraction of the row, the circular disc + slots use
+    UIAspectRatioConstraint (square, sized by the row's HEIGHT — full-width box so height binds), the
+    name is TextScaled, and corners are full pills — so the row keeps its proportions at any
+    resolution. Built and tuned live over assets/ui/reference/power_slotting_menu_reference.png.
+
+    The bar is the top BAR_H of the row; the disc overlaps its left; the six slots are a FIXED grid
+    (FIRST_X..LAST_X) hanging below the bar — tick i lines up row-to-row, only the first `slotCount`
+    are visible (slotting one later just flips Visible; positions never re-flow).
 ]]
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local PowerIcons = require(ReplicatedStorage.Configs:WaitForChild("power_icons"))
 local PetBadge = require(script.Parent.PetBadge)
 
-local RING_IMAGE = "rbxassetid://121697559002218" -- round ring frame (rim for slots + disc)
-
+local RING_IMAGE = "rbxassetid://121697559002218" -- round ring frame (slot rim)
 local PowerSlotRow = {}
 
--- Slots are FIXED "ticks": all MAX_SLOTS exist at fixed left-clustered positions (tick 1..6 line up
--- across every row), and only the first `slotCount` are visible. Slotting one later flips its Visible
--- + shows an enhancement — positions never re-flow. They sit in a row BELOW the bar.
-local SLOT_GAP = 14
+-- fixed 6-slot grid (scale X across the bar) + relative layout fractions (of the row)
+local FIRST_X, LAST_X = 0.16, 0.93
 local MAX_SLOTS = 6
+local BAR_H = 0.6 -- bar height (of row)
+local DISC_H = 1.12 -- disc height (× bar height, via aspect); sticks out top/bottom a touch
+local DISC_X = -0.005 -- disc horizontal nudge (tuned live)
+local SLOT_H = 0.68 -- slot diameter (× row height, via aspect)
+local SLOT_Y = 0.66 -- slot-row centre (of row); hangs below the bar
 
--- Palettes. Swap the whole row's look by passing a different theme (generic→purple later).
 PowerSlotRow.THEMES = {
     blue = {
         bar = Color3.fromRGB(40, 120, 230),
         barGrad = { Color3.fromRGB(95, 175, 255), Color3.fromRGB(40, 120, 230), Color3.fromRGB(20, 80, 190) },
         barStroke = Color3.fromRGB(15, 55, 130),
-        slotFillGrad = { Color3.fromRGB(140, 187, 244), Color3.fromRGB(46, 132, 236), Color3.fromRGB(29, 85, 153) },
+        slotGrad = { Color3.fromRGB(140, 187, 244), Color3.fromRGB(46, 132, 236), Color3.fromRGB(29, 85, 153) },
         slotRim = Color3.fromRGB(18, 70, 160),
         slotRimSelected = Color3.fromRGB(120, 205, 255),
-        discRim = Color3.fromRGB(120, 120, 128),
     },
 }
 
-local function corner(o, scale)
+local function corner(o)
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(scale or 1, 0)
+    c.CornerRadius = UDim.new(1, 0)
     c.Parent = o
-    return c
 end
 
-local function vGradient(o, colors, rotation)
+-- make o a square sized by HEIGHT: pair with a full-width Size box so the height is the binding axis.
+local function square(o)
+    local a = Instance.new("UIAspectRatioConstraint")
+    a.AspectRatio = 1
+    a.Parent = o
+    return o
+end
+
+local function vGradient(o, colors)
     local g = Instance.new("UIGradient")
-    g.Rotation = rotation or 90
+    g.Rotation = 90
     g.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, colors[1]),
         ColorSequenceKeypoint.new(0.5, colors[2]),
         ColorSequenceKeypoint.new(1, colors[3]),
     })
     g.Parent = o
-    return g
 end
 
--- a top sheen (white, fading down) used on the bar and inside each slot
-local function gloss(parent, size, pos)
-    local gl = Instance.new("Frame")
-    gl.Name = "Gloss"
-    gl.Size = size
-    gl.Position = pos
-    gl.AnchorPoint = Vector2.new(0.5, 0.5)
-    gl.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    gl.BackgroundTransparency = 0.5
-    gl.Parent = parent
-    corner(gl)
-    local g = Instance.new("UIGradient")
-    g.Rotation = 90
-    g.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.4),
-        NumberSequenceKeypoint.new(1, 1),
-    })
-    g.Parent = gl
-    return gl
-end
-
--- one enhancement slot: Fill (gradient circle, inset) + Border (ring rim on top).
+-- one slot: a gradient Fill circle framed by a Border ring (square via aspect; size/pos set by caller).
 local function buildSlot(theme, selected)
     local s = Instance.new("Frame")
     s.BackgroundTransparency = 1
-
+    square(s)
     local fill = Instance.new("Frame")
     fill.Name = "Fill"
-    fill.AnchorPoint = Vector2.new(0.5, 0.5)
-    fill.Position = UDim2.fromScale(0.5, 0.5)
     fill.Size = UDim2.fromScale(0.82, 0.82)
-    fill.BackgroundColor3 = theme.slotFillGrad[2]
+    fill.Position = UDim2.fromScale(0.5, 0.5)
+    fill.AnchorPoint = Vector2.new(0.5, 0.5)
+    fill.BackgroundColor3 = theme.slotGrad[2]
     fill.Parent = s
     corner(fill)
-    vGradient(fill, theme.slotFillGrad)
-    gloss(fill, UDim2.fromScale(0.6, 0.34), UDim2.new(0.5, 0, 0.26, 0))
-
+    vGradient(fill, theme.slotGrad)
     local border = Instance.new("ImageLabel")
     border.Name = "Border"
     border.BackgroundTransparency = 1
     border.Size = UDim2.fromScale(1, 1)
     border.Image = RING_IMAGE
     border.ImageColor3 = selected and theme.slotRimSelected or theme.slotRim
+    border.ZIndex = 2
     border.Parent = s
     return s
 end
 
--- the power disc — rendered through the canonical PetBadge.create (the SAME disc+ring the hotbar /
--- squad cards use), so it stays consistent with the game and any badge fix (e.g. ring centring) lands
--- once. Falls back to a plain disc image if the power has no resolvable badge.
-local function buildDisc(parent, powerId, height)
-    local disc = Instance.new("Frame")
-    disc.Name = "Disc"
-    disc.Size = UDim2.fromOffset(height + 5, height + 5)
-    disc.Position = UDim2.new(0, -2, 0.5, 0)
-    disc.AnchorPoint = Vector2.new(0, 0.5)
-    disc.BackgroundTransparency = 1
-    disc.Parent = parent
-
+-- the power disc — canonical PetBadge.create inside a square holder so it stays round + consistent.
+local function buildDisc(bar, powerId)
+    local discH = Instance.new("Frame")
+    discH.Name = "Disc"
+    discH.Size = UDim2.new(1, 0, DISC_H, 0)
+    discH.AnchorPoint = Vector2.new(0, 0.5)
+    discH.Position = UDim2.new(DISC_X, 0, 0.5, 0)
+    discH.BackgroundTransparency = 1
+    discH.ZIndex = 3
+    discH.Parent = bar
+    square(discH)
     local badge = PetBadge.forPower(powerId)
     if badge then
-        PetBadge.create(disc, { element = badge.element, symbol = badge.symbol, ring = badge.ring })
-    else
-        local img = Instance.new("ImageLabel")
-        img.BackgroundTransparency = 1
-        img.Size = UDim2.fromScale(1, 1)
-        img.ScaleType = Enum.ScaleType.Fit
-        img.Image = PowerIcons.discFor("neutral", "clover_lucky") or ""
-        img.Parent = disc
+        PetBadge.create(discH, { element = badge.element, symbol = badge.symbol, ring = badge.ring })
     end
-    return disc
+    return discH
 end
 
--- create(parent, opts) -> { root, setSelected, setSubtitle, setName, destroy }
 function PowerSlotRow.create(parent, opts)
     opts = opts or {}
     local theme = opts.theme or PowerSlotRow.THEMES.blue
-    local size = opts.size or UDim2.fromOffset(540, 60)
-    local height = size.Y.Offset > 0 and size.Y.Offset or 60
     local slotCount = math.clamp(tonumber(opts.slotCount) or 6, 1, MAX_SLOTS)
-    local slotSize = math.floor(height * 0.82) -- ticks sit BELOW the bar, a bit smaller than it
-    local rootH = height + slotSize + 12 -- bar + the tick row beneath it
 
     local root = Instance.new("Frame")
     root.Name = "PowerRow"
-    root.Size = UDim2.new(size.X.Scale, size.X.Offset, 0, rootH)
+    root.Size = opts.size or UDim2.fromOffset(540, 96)
     root.BackgroundTransparency = 1
     root.Parent = parent
 
-    -- bar: round glossy capsule
+    -- bar: round glossy capsule across the top of the row
     local bar = Instance.new("Frame")
     bar.Name = "Bar"
-    bar.Size = UDim2.new(1, 0, 0, height) -- fixed bar height at the top; the tick row hangs below
+    bar.Size = UDim2.new(1, 0, BAR_H, 0)
     bar.BackgroundColor3 = theme.bar
     bar.Parent = root
     corner(bar)
@@ -167,56 +137,54 @@ function PowerSlotRow.create(parent, opts)
     bs.Color = theme.barStroke
     bs.Thickness = 2
     bs.Parent = bar
-    gloss(bar, UDim2.new(1, -16, 0.4, 0), UDim2.new(0.5, 0, 0, 4 + height * 0.2))
 
-    buildDisc(bar, opts.powerId, height)
+    buildDisc(bar, opts.powerId)
 
-    -- name (top-left) + subtitle (top-right; the SHORT description tag)
     local name = Instance.new("TextLabel")
     name.Name = "PowerName"
     name.BackgroundTransparency = 1
-    name.Position = UDim2.new(0, height + 12, 0, 6)
-    name.Size = UDim2.new(0, 220, 0, 22)
+    name.Size = UDim2.new(0.5, 0, 0.42, 0)
+    name.Position = UDim2.new(0.1, 0, 0.16, 0)
+    name.Text = opts.name or ""
     name.Font = Enum.Font.GothamBold
-    name.TextSize = 19
+    name.TextScaled = true
     name.TextColor3 = Color3.fromRGB(255, 255, 255)
     name.TextXAlignment = Enum.TextXAlignment.Left
-    name.Text = opts.name or ""
+    name.ZIndex = 2
     name.Parent = bar
 
     local subtitle = Instance.new("TextLabel")
     subtitle.Name = "Subtitle"
     subtitle.BackgroundTransparency = 1
     subtitle.AnchorPoint = Vector2.new(1, 0)
-    subtitle.Position = UDim2.new(1, -16, 0, 9)
-    subtitle.Size = UDim2.new(0, 240, 0, 16)
+    subtitle.Size = UDim2.new(0.4, 0, 0.3, 0)
+    subtitle.Position = UDim2.new(0.97, 0, 0.18, 0)
+    subtitle.Text = opts.subtitle or ""
     subtitle.Font = Enum.Font.GothamMedium
-    subtitle.TextSize = 12
+    subtitle.TextScaled = true
     subtitle.TextColor3 = Color3.fromRGB(214, 226, 245)
     subtitle.TextTransparency = 0.08
     subtitle.TextXAlignment = Enum.TextXAlignment.Right
-    subtitle.Text = opts.subtitle or ""
     subtitle.Visible = (opts.subtitle ~= nil and opts.subtitle ~= "")
+    subtitle.ZIndex = 2
     subtitle.Parent = bar
 
-    -- slots
+    -- slots: fixed 6-grid hanging below the bar; first `slotCount` visible
     local slotsFolder = Instance.new("Frame")
     slotsFolder.Name = "Slots"
     slotsFolder.Size = UDim2.fromScale(1, 1)
     slotsFolder.BackgroundTransparency = 1
-    slotsFolder.Parent = root -- spans the whole row so the ticks sit BELOW the bar
+    slotsFolder.Parent = root
 
-    local startX = math.floor(height * 0.5) -- tick 1 ~under the disc (disc is on the bar above)
-    local step = slotSize + SLOT_GAP -- fixed linear spacing
-    local slotY = height + 6 -- tick row starts just below the bar
     local slots = {}
     for i = 1, MAX_SLOTS do
         local s = buildSlot(theme, opts.selected == i)
         s.Name = "Slot" .. i
-        s.Size = UDim2.fromOffset(slotSize, slotSize)
-        s.AnchorPoint = Vector2.new(0.5, 0)
-        s.Position = UDim2.new(0, startX + (i - 1) * step, 0, slotY)
-        s.Visible = (i <= slotCount) -- all 6 exist; only the granted ones show
+        s.Size = UDim2.new(1, 0, SLOT_H, 0) -- full-width box → height binds the square
+        s.AnchorPoint = Vector2.new(0.5, 0.5)
+        local fx = FIRST_X + (LAST_X - FIRST_X) * ((i - 1) / (MAX_SLOTS - 1))
+        s.Position = UDim2.new(fx, 0, SLOT_Y, 0)
+        s.Visible = (i <= slotCount)
         s.Parent = slotsFolder
         slots[i] = s
     end
