@@ -341,9 +341,21 @@ local function tarPit(pos, c1, c2, radius, life)
     end)
 end
 
+-- SCATTER (cast tell): chunks fly OUTWARD from the caster + a faint dome. One shape, skinned by the
+-- element theme (colour + material) → lava embers / ice shards / sand grains / grass chunks. The
+-- "stuff flying away from the player" cast — reusable across every origin by colour/material alone.
+local function scatterEffect(pos, c1, c2, mat, radius, life)
+    debris(pos, c1, c2, mat, 18, radius, life)
+    dome(pos, c1, mat, radius * 0.35, life, 0.82)
+end
+
 -- ===== The eight effects =====
 
 local EFFECTS = {
+    grass_scatter = scatterEffect,
+    lava_scatter = scatterEffect,
+    ice_scatter = scatterEffect,
+    desert_scatter = scatterEffect,
     -- GRASS self: Bloom — green blades sprout up in a ring + a soft growth dome.
     grass_self = function(pos, c1, c2, mat, radius, life, opts)
         if not (opts and opts.no_ring) then

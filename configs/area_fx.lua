@@ -32,6 +32,12 @@ return {
         radius = 8,
         duration = 4, -- the pool bubbles this long, then fades
     },
+    -- Scatter cast (chunks fly outward from the caster, themed by element). radius = how far the
+    -- debris flings; duration = its flight time.
+    scatter = {
+        radius = 9,
+        duration = 0.7,
+    },
 
     themes = {
         -- Grassy nature burst — green growth + leafy motes.

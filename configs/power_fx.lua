@@ -103,6 +103,17 @@ return {
             color = "origin",
             sound = nil,
         },
+        -- chunks fly OUTWARD from the player (st_aoe self, "scatter" variant), skinned by element:
+        -- lava embers / ice shards / sand grains / grass chunks — one motion, four looks. High-reuse
+        -- cast tell across every origin (the "stuff flying away from the player" burst).
+        cast_scatter = {
+            pattern = "st_aoe",
+            anchor = "self",
+            origin = "upfront",
+            variant = "scatter",
+            color = "origin",
+            sound = nil,
+        },
         -- IMPACTS ----------------------------------------------------------------------------------
         -- a lingering bubbling POOL at the target (st_aoe pit variant, ~4s) — burning/scorched ground
         -- for DoT brands (Mark of Flame, Wildfire). Element-tinted.
@@ -127,7 +138,7 @@ return {
     -- Admin FX-probe sequence (PowerFXProbe). Steps each primitive across every element.
     probe = {
         elements = { "grass", "lava", "ice", "desert" }, -- canonical CombatFX elements (per-colour)
-        casting = { "cast_emit", "cast_geyser", "cast_channel", "cast_burst", "aura", "shield_bubble" }, -- played ON the player
+        casting = { "cast_emit", "cast_scatter", "cast_geyser", "cast_channel", "cast_burst", "aura", "shield_bubble" }, -- played ON the player
         impact = { "eruption", "brand_pool", "shatter", "dust_burst", "heavy_slam", "ranged_bolt", "boulder", "frost_shard", "arc_bolt" }, -- played at a dummy
         step_seconds = 2.8, -- pause between effects so each is watchable (slowed for inspection)
         dummy_distance = 16, -- studs in front of the player to place the impact dummy
