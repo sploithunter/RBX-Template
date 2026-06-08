@@ -125,6 +125,16 @@ return {
             color = "origin",
             sound = nil,
         },
+        -- chunks HIT the target, bounce off, roll away, and fade (st_aoe "rubble" variant) — a
+        -- physical hit-and-tumble. Skinned per element: earth chunks / sand rubble / ice shards.
+        rubble = {
+            pattern = "st_aoe",
+            anchor = "target",
+            origin = "upfront",
+            variant = "rubble",
+            color = "origin",
+            sound = nil,
+        },
         -- bare point-bursts from the RangedFX impact library (no projectile), element-coloured:
         shatter = { pattern = "impact", anchor = "target", impact = "shatter", color = "origin" }, -- ice ring + glass shards
         dust_burst = { pattern = "impact", anchor = "target", impact = "dust", color = "origin" }, -- desert dust plume
@@ -139,7 +149,7 @@ return {
     probe = {
         elements = { "grass", "lava", "ice", "desert" }, -- canonical CombatFX elements (per-colour)
         casting = { "cast_emit", "cast_scatter", "cast_geyser", "cast_channel", "cast_burst", "aura", "shield_bubble" }, -- played ON the player
-        impact = { "eruption", "brand_pool", "shatter", "dust_burst", "heavy_slam", "ranged_bolt", "boulder", "frost_shard", "arc_bolt" }, -- played at a dummy
+        impact = { "eruption", "rubble", "brand_pool", "shatter", "dust_burst", "heavy_slam", "ranged_bolt", "boulder", "frost_shard", "arc_bolt" }, -- played at a dummy
         step_seconds = 2.8, -- pause between effects so each is watchable (slowed for inspection)
         dummy_distance = 16, -- studs in front of the player to place the impact dummy
     },

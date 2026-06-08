@@ -219,6 +219,50 @@ local function fallingBits(pos, color, mat, count, fromHeight, spread, life, elo
     end
 end
 
+-- RICOCHET (impact): chunks fly IN, hit the target, bounce up+out, roll/tumble outward, then fade.
+-- Pure animation — anchored, non-collidable parts (CanCollide=false), so they never touch anything.
+-- Themed by the element (colour + material): earth chunks / sand rubble / ice shards. The phase
+-- timings are fixed so the bounce reads physically regardless of `life`.
+local function ricochet(pos, c1, c2, mat, count, spread)
+    for i = 1, count do
+        local ang = (i / count) * math.pi * 2 + (math.random() - 0.5) * 0.9
+        local dir = Vector3.new(math.cos(ang), 0, math.sin(ang)).Unit
+        local sz = spread * (0.07 + math.random() * 0.06)
+        local chunk = newPart(Enum.PartType.Block, mat, (i % 2 == 0) and c1 or c2, 0.05)
+        chunk.Size = Vector3.new(sz, sz * 0.8, sz * 1.1)
+        local startPos = pos + dir * (spread * 0.2) + Vector3.new(0, spread * 0.55 + math.random() * 2, 0)
+        local spin0 = CFrame.Angles(math.random() * 6.28, math.random() * 6.28, math.random() * 6.28)
+        chunk.CFrame = CFrame.new(startPos) * spin0
+        local tumble = (math.random() < 0.5 and 1 or -1) * (8 + math.random() * 6)
+
+        task.spawn(function()
+            -- A) HIT — accelerate down into the contact point next to the target
+            local hitPos = pos + dir * (spread * 0.12) + Vector3.new(0, 0.5, 0)
+            TweenService:Create(chunk, TweenInfo.new(0.08, OUT, DIR_IN), { CFrame = CFrame.new(hitPos) * spin0 }):Play()
+            task.wait(0.08)
+            -- B) BOUNCE — kick up and out, decelerating to an apex
+            local apex = pos + dir * (spread * 0.5) + Vector3.new(0, spread * 0.3, 0)
+            TweenService:Create(chunk, TweenInfo.new(0.15, OUT, DIR_OUT), {
+                CFrame = CFrame.new(apex) * spin0 * CFrame.Angles(0, 0, tumble * 0.4),
+            }):Play()
+            task.wait(0.15)
+            -- C) ROLL — fall to the ground and tumble further outward
+            local rest = pos + dir * (spread * (0.95 + math.random() * 0.4)) + Vector3.new(0, 0.3, 0)
+            TweenService:Create(chunk, TweenInfo.new(0.45, OUT, DIR_OUT), {
+                CFrame = CFrame.new(rest) * spin0 * CFrame.Angles(0, 0, tumble),
+            }):Play()
+            task.wait(0.42)
+            -- D) FADE — shrink + vanish where it settled
+            TweenService:Create(chunk, TweenInfo.new(0.28, OUT, DIR_OUT), {
+                Transparency = 1,
+                Size = Vector3.new(0.05, 0.05, 0.05),
+            }):Play()
+            task.wait(0.3)
+            chunk:Destroy()
+        end)
+    end
+end
+
 -- A ring of REAL Roblox Fire (not procedural) around the point — the lava look.
 local function fireRing(pos, count, radius, life, color, color2)
     for i = 1, count do
@@ -349,6 +393,11 @@ local function scatterEffect(pos, c1, c2, mat, radius, life)
     dome(pos, c1, mat, radius * 0.35, life, 0.82)
 end
 
+-- RUBBLE (impact): chunks hit the target, bounce, roll away, fade (ricochet). Skinned by element.
+local function rubbleEffect(pos, c1, c2, mat, radius)
+    ricochet(pos, c1, c2, mat, 11, radius)
+end
+
 -- ===== The eight effects =====
 
 local EFFECTS = {
@@ -356,6 +405,10 @@ local EFFECTS = {
     lava_scatter = scatterEffect,
     ice_scatter = scatterEffect,
     desert_scatter = scatterEffect,
+    grass_rubble = rubbleEffect,
+    lava_rubble = rubbleEffect,
+    ice_rubble = rubbleEffect,
+    desert_rubble = rubbleEffect,
     -- GRASS self: Bloom — green blades sprout up in a ring + a soft growth dome.
     grass_self = function(pos, c1, c2, mat, radius, life, opts)
         if not (opts and opts.no_ring) then

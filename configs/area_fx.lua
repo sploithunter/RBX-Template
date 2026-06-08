@@ -38,6 +38,12 @@ return {
         radius = 9,
         duration = 0.7,
     },
+    -- Rubble impact (chunks hit the target, bounce, roll away, fade — ricochet). radius = how far
+    -- they roll out; the bounce phase timings are fixed in AreaFX so the physics reads right.
+    rubble = {
+        radius = 7,
+        duration = 1.0,
+    },
 
     themes = {
         -- Grassy nature burst — green growth + leafy motes.
