@@ -28,9 +28,10 @@ local RING_IMAGE = "rbxassetid://121697559002218" -- round ring frame (rim for s
 
 local PowerSlotRow = {}
 
--- Slot X centres (scale of the bar width) + Y; reproduces the tuned layout. The row spreads N slots
--- evenly from FIRST_X to LAST_X regardless of count, so 1..6 all look right.
-local FIRST_X, LAST_X, SLOT_Y = 0.177, 0.930, 1.0233
+-- Slots are FIXED "ticks": all MAX_SLOTS exist at fixed left-clustered positions (tick 1..6 line up
+-- across every row), and only the first `slotCount` are visible. Slotting one later flips its Visible
+-- + shows an enhancement — positions never re-flow. SLOT_Y hangs them just under the bar.
+local SLOT_Y, SLOT_GAP = 1.0233, 14
 local MAX_SLOTS = 6
 
 -- Palettes. Swap the whole row's look by passing a different theme (generic→purple later).
@@ -204,15 +205,16 @@ function PowerSlotRow.create(parent, opts)
     slotsFolder.BackgroundTransparency = 1
     slotsFolder.Parent = bar
 
+    local startX = math.floor(height * 0.5) -- first tick ~under the disc
+    local step = slotSize + SLOT_GAP -- fixed linear spacing
     local slots = {}
-    for i = 1, slotCount do
+    for i = 1, MAX_SLOTS do
         local s = buildSlot(theme, opts.selected == i)
         s.Name = "Slot" .. i
         s.Size = UDim2.fromOffset(slotSize, slotSize)
         s.AnchorPoint = Vector2.new(0.5, 0.5)
-        local fx = slotCount == 1 and (FIRST_X + LAST_X) / 2
-            or (FIRST_X + (LAST_X - FIRST_X) * ((i - 1) / (slotCount - 1)))
-        s.Position = UDim2.new(fx, 0, SLOT_Y, 0)
+        s.Position = UDim2.new(0, startX + (i - 1) * step, SLOT_Y, 0)
+        s.Visible = (i <= slotCount) -- all 6 exist; only the granted ones show
         s.Parent = slotsFolder
         slots[i] = s
     end
