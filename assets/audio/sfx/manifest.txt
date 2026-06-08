@@ -1,0 +1,20 @@
+# Combat / power SFX — local source before Roblox Sound upload.
+# Upload as Audio (Sound) assets; wire ids into configs/power_fx.lua primitives later.
+# element: grass | lava | ice | desert | neutral (matches CombatFX biomes)
+# phase: cast | impact
+# seconds: measured clip length (ffprobe) — VISUAL-TIMING BASELINE. Some clips have a long tail /
+#          after-effect (the 14s ones "peter out"); trim the effective length when syncing visuals.
+
+key	file	element	phase	seconds	bytes	source_download	notes
+fireball_launch	fireball_launch.mp3	lava	cast	3.0	73197	A_fireball_being_launched.mp3	Fireball projectile launch
+fireball_impact_targeted	fireball_impact_targeted.mp3	lava	impact	14.0	337581	The_impact_of_a_fireball_targered.mp3	Single-target fireball impact (long tail)
+fireball_impact_aoe	fireball_impact_aoe.mp3	lava	impact	14.0	337581	The_impact_of_a_fireballAOE.mp3	AoE fireball impact (long tail)
+fire_impact_targeted_1	fire_impact_targeted_1.mp3	lava	impact	1.0	25389	FireImapct1Targeted1.mp3	Targeted fire impact variant 1
+fire_impact_targeted_2	fire_impact_targeted_2.mp3	lava	impact	1.0	25389	FireImpactTargeted2.mp3	Targeted fire impact variant 2
+fire_impact_targeted_3	fire_impact_targeted_3.mp3	lava	impact	1.0	25389	FireImpactTargeted3.mp3	Targeted fire impact variant 3
+earth_magic_casting	earth_magic_casting.mp3	grass	cast	2.0	49581	EarthMagicCasting.mp3	Earth/grass magic casting
+rippling_rock_magic	rippling_rock_magic.mp3	grass	cast	14.0	337581	RipplingRockMagic.mp3	Rippling rock magic (long tail)
+icy_wind_casting	icy_wind_casting.mp3	ice	cast	2.0	49581	IcyWindCasting.mp3	Icy wind casting
+desert_magic_cast_long	desert_magic_cast_long.mp3	desert	cast	14.0	337581	DesertMagicCastLong.mp3	Desert magic cast (long tail)
+desert_magic_long	desert_magic_long.mp3	desert	cast	14.0	337581	DesertMagicLong.mp3	Desert magic (long tail)
+single_target_punch	single_target_punch.mp3	neutral	impact	0.48	12717	SingleTargetPunch.mp3	Melee single-target punch

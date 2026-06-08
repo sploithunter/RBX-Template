@@ -20,6 +20,7 @@ local CombatFX = require(
     ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Effects"):WaitForChild("CombatFX")
 )
 local FloatingText = require(ReplicatedStorage.Shared.Effects.FloatingText)
+local PowerSound = require(ReplicatedStorage.Shared.Effects.PowerSound)
 local FX = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_fx"))
 
 local PowerFXProbe = {}
@@ -35,11 +36,20 @@ end
 local function playPrimitive(prim, element, point)
     local spec = { pattern = prim.pattern, element = element, origin = prim.origin }
     local ctx = { caster = hrp() }
+    local soundPos = point
     if prim.anchor == "target" then
         ctx.point = point
+    else
+        local r = hrp()
+        soundPos = r and r.Position
     end
     pcall(function()
         CombatFX.play(spec, ctx)
+    end)
+    -- sound rides the primitive: self ⇒ cast clip, target ⇒ impact clip (silent if none authored)
+    local phase = (prim.anchor == "target") and "impact" or "cast"
+    pcall(function()
+        PowerSound.play(phase, element, soundPos)
     end)
 end
 

@@ -27,6 +27,7 @@ local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local RangedFX = require(ReplicatedStorage.Shared.Effects.RangedFX)
 local AreaFX = require(ReplicatedStorage.Shared.Effects.AreaFX)
 local FloatingText = require(ReplicatedStorage.Shared.Effects.FloatingText)
+local PowerSound = require(ReplicatedStorage.Shared.Effects.PowerSound)
 local PetRoles = require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
@@ -216,6 +217,10 @@ function PetFollowController.start()
             if data.pit then
                 pcall(AreaFX.Play, areaCfg, element, "pit", center)
             end
+            -- element SFX from the power_fx registry: self burst ⇒ cast clip, else ⇒ impact clip
+            -- (silent if none authored for this element/phase).
+            local phase = (data.variant == "self") and "cast" or "impact"
+            pcall(PowerSound.play, phase, element, center)
         end
         for _, h in ipairs(data.hits or {}) do
             if type(h) == "table" and typeof(h.pos) == "Vector3" and h.amount then
