@@ -13,7 +13,11 @@ return {
     -- (archetypes.lua power_pool) are smaller than 10 today, so late picks gracefully show
     -- "no powers available" until the pools are authored out. Keep in sync with
     -- level_track.lua power_levels.
-    selection_levels = { 3, 7, 11, 15, 19, 24, 29, 34, 40, 46 },
+    -- Power picks (CoH-paced): dense even levels early, widening to ~every-4 in the 30s. 12 picks,
+    -- last at L38 so any power can still earn its 6 enhancement slots before the L50 cap. Fewer picks
+    -- than slots exist for (48 slots vs 72 to 6-slot all 12) ⇒ you CHOOSE which powers to god-tier →
+    -- build diversity. MUST mirror level_track.lua power_levels.
+    selection_levels = { 2, 4, 6, 8, 10, 14, 18, 22, 26, 30, 34, 38 },
 
     -- Families whose effect reaches an ENEMY through the pets (offensive / control / debuff /
     -- pet-amplified damage). These can't be cast unless the squad is actually engaged with an

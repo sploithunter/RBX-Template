@@ -9,7 +9,9 @@
 
 return {
     -- Keep in sync with level_track.lua slot_levels (the level-up grants the slots here).
-    slot_grant_levels = { 8, 14, 21, 27, 33, 38, 44 },
+    -- Every ODD level 3–49 = 24 grants × 2 = 48 enhancement slots (CoH-paced; scarce vs the 72 it
+    -- would take to 6-slot all 12 powers → you choose which powers to god-tier).
+    slot_grant_levels = { 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49 },
     max_slots_per_power = 6,
     slot_types = { "recharge", "strength", "range", "duration", "efficiency", "reliability" },
 

@@ -26,16 +26,21 @@ return {
     },
 
     -- Levels where the claim opens the POWER PICKER (PowerSelection / PowerService:Select).
-    -- Mirror of powers.lua selection_levels (10 picks toward a 10-power build).
-    power_levels = { 3, 7, 11, 15, 19, 24, 29, 34, 40, 46 },
+    -- Mirror of powers.lua selection_levels. CoH-paced: 12 picks, even-early → ~every-4 late, last L38.
+    power_levels = { 2, 4, 6, 8, 10, 14, 18, 22, 26, 30, 34, 38 },
 
     -- Levels where the claim GRANTS enhancement slots to place on owned powers (Augmentation).
     -- Mirror of augmentation.lua slot_grant_levels. `slots_per_grant` enhancement slots each.
-    slot_levels = { 8, 14, 21, 27, 33, 38, 44 },
+    -- Every ODD level 3–49 = 24 grants × 2 = 48 slots (scarce vs 72 to 6-slot all 12 → you choose).
+    slot_levels = { 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49 },
     slots_per_grant = 2,
 
     -- Big moments. Headline flair + a bundle from milestone_rewards below.
     milestones = { 10, 20, 30, 40, 50 },
+
+    -- Level the player CHOOSES their origin (archetype). ArchetypeService gates the actual pick;
+    -- surfacing it as an auto-prompt at this level is a follow-up (config recorded here now).
+    origin_choice_level = 5,
 
     -- HYBRID gate (City-of-Heroes "train at a trainer"): which level KINDS must be claimed at
     -- the Ascension Altar vs auto-claimed in the field. Filler reward levels auto-apply with a

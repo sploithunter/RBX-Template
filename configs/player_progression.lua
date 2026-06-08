@@ -36,8 +36,8 @@ return {
         equip_slots = {
             pets = {
                 enabled = true,
-                start_level = 5,
-                every_levels = 6, -- grants at 5,11,17,23,29,35,41 -> +7
+                start_level = 8,
+                every_levels = 7, -- grants at 8,15,22,29,36,43,50 -> +7 (3 base -> 10 deployed by L50)
                 slots_per_milestone = 1,
                 max_bonus_slots = 7,
             },

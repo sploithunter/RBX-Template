@@ -19,14 +19,14 @@ end
 
 return function()
     describe("Augmentation slot grants", function()
-        it("grants no slots below the first grant level (level 7)", function()
-            expect(Augmentation.slotsGranted(7, grants)).to.equal(0)
-            expect(Augmentation.unallocatedSlots(7, 0, grants)).to.equal(0)
+        it("grants no slots below the first grant level", function()
+            expect(Augmentation.slotsGranted(grants[1] - 1, grants)).to.equal(0)
+            expect(Augmentation.unallocatedSlots(grants[1] - 1, 0, grants)).to.equal(0)
         end)
 
-        it("grants 1 slot on reaching level 8", function()
-            expect(Augmentation.slotsGranted(8, grants)).to.equal(1)
-            expect(Augmentation.unallocatedSlots(8, 0, grants)).to.equal(1)
+        it("grants 1 slot on reaching the first grant level", function()
+            expect(Augmentation.slotsGranted(grants[1], grants)).to.equal(1)
+            expect(Augmentation.unallocatedSlots(grants[1], 0, grants)).to.equal(1)
         end)
 
         it("unallocated = granted minus allocated", function()
