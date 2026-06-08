@@ -32,6 +32,16 @@ local FAMILY_COLOR = {
     vulnerable = Color3.fromRGB(235, 90, 90),
 }
 
+-- Archetype → CombatFX element (the per-element colour/look). Mirrors combat_fx.lua archetype_element.
+-- Drives the cast/impact VFX so a power reads as its origin (pyro=lava, cryo=ice, …). Generic/white
+-- powers have no archetype → they keep the neutral placeholder burst.
+local ARCHETYPE_ELEMENT = {
+    geomancer = "grass",
+    pyromancer = "lava",
+    cryomancer = "ice",
+    sandwalker = "desert",
+}
+
 -- Temporary burst around the caster so AoE powers are visible (expands + fades, ~0.7s).
 local function spawnCastVisual(player, family)
     local char = player.Character
@@ -1024,8 +1034,34 @@ function PowerService:Cast(player, powerId)
     end
 
     self:_applyEffect(player, kind, now, tostring(powerId))
-    if kind.family ~= "amplified_burst" then
-        pcall(spawnCastVisual, player, kind.family) -- placeholder caster burst (area powers show at the target)
+    -- Cast VFX. amplified_burst / team_cleave fire their own bespoke area FX inside _applyEffect.
+    -- Archetype powers play the element cast-burst on the caster (= registry `cast_burst`) and, if
+    -- hostile, a targeted strike on the engaged enemy (= registry `eruption`) — same AreaFX the
+    -- FX-probe previews, element-coloured. Generic/white powers keep the neutral placeholder ball.
+    local family = kind.family
+    local element = def.archetype and ARCHETYPE_ELEMENT[def.archetype]
+    if family == "amplified_burst" or family == "team_cleave" then
+        -- bespoke VFX already fired
+    elseif element then
+        local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            Signals.Power_AreaFx:FireClient(
+                player,
+                { element = element, variant = "self", center = hrp.Position }
+            )
+        end
+        if self._powersConfig.enemy_targeted_families[family] then
+            local foe = enemiesAlive()[1]
+            local fp = foe and (foe.PrimaryPart or foe:FindFirstChildWhichIsA("BasePart"))
+            if fp then
+                Signals.Power_AreaFx:FireClient(
+                    player,
+                    { element = element, variant = "targeted", center = fp.Position }
+                )
+            end
+        end
+    else
+        pcall(spawnCastVisual, player, family) -- generic/white powers: neutral placeholder burst
     end
 
     local cd = tonumber(def.cooldown_seconds) or 0
