@@ -63,6 +63,18 @@ local M = {
     -- Decal.Texture each wraps). The Decal ids themselves do NOT render in ImageLabel.Image.
     rings = Assets.rings, -- GENERATED (target_in/target_out/aoe/target_aoe/aura)
 
+    -- Per-ring CENTERING nudge — a fraction of the badge SIZE added to the ring's Position (which
+    -- stays anchored .5,.5 like all our circular UI). Compensates source ring PNGs whose visible
+    -- circle isn't dead-centre in the canvas — common with AI-generated / batch-exported art. Measured
+    -- from the symmetric `aura` ring (its alpha centroid IS the circle centre); the directional rings
+    -- share the same canvas alignment, and their centroid is skewed by the arrow, so they reuse the
+    -- default rather than being measured directly. +x nudges RIGHT, +y nudges DOWN.
+    ring_centering = {
+        default = { x = 0.0007, y = 0.0062 }, -- aura circle sits ~0.6% high / ~0.07% left in the 1024px PNG
+        -- per-shape overrides (only if a specific ring's circle differs from the shared alignment):
+        -- aura = { x = ..., y = ... },
+    },
+
     -- Map a power's targeting kind onto a ring SHAPE (above). UI: rings[targetingRing[kind]].
     targeting_ring = {
         single = "target_in",
@@ -213,6 +225,14 @@ end
 function M.ringFor(targetingKind)
     local shape = M.targeting_ring[targetingKind or "none"] or "aura"
     return M.rings[shape] or M.rings.aura
+end
+
+-- Centering nudge { x, y } (scale fractions of the badge) for a ring SHAPE, so an off-centre source
+-- PNG visually centres while the ImageLabel stays anchored/positioned at .5,.5. Per-shape override →
+-- `default` → {0,0}.
+function M.ringCentering(shape)
+    local c = M.ring_centering or {}
+    return c[shape] or c.default or { x = 0, y = 0 }
 end
 
 -- Normalize any element token (canonical grass/lava or badge earth/fire) to a badge key.

@@ -152,7 +152,9 @@ function PetBadge.create(parent, opts)
     ring.Name = "Ring"
     ring.BackgroundTransparency = 1
     ring.AnchorPoint = Vector2.new(0.5, 0.5)
-    ring.Position = UDim2.fromScale(0.5, 0.5)
+    -- centred at .5,.5, plus a per-ring nudge to compensate off-centre source PNGs (config-driven).
+    local off = POWER_ICONS.ringCentering(opts.ring)
+    ring.Position = UDim2.new(0.5 + (off.x or 0), 0, 0.5 + (off.y or 0), 0)
     ring.Size = UDim2.fromScale(1, 1)
     ring.ScaleType = Enum.ScaleType.Fit
     ring.ZIndex = z + 1
