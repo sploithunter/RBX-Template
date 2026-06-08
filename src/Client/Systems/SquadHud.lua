@@ -108,6 +108,47 @@ local function petSlot(pet)
     return pn and pn.Value or 0
 end
 
+-- The model a pet is currently attacking/mining: its TargetID resolves to an enemy (or crystal) by
+-- matching that id to the target's BreakableID child — the same id space the server assigns. Scans
+-- only the relevant folder (Enemies vs Breakables) via TargetType. nil when the pet has no target.
+local function resolveTargetModel(pet)
+    local tid = pet:FindFirstChild("TargetID")
+    if not tid or tid.Value == 0 then
+        return nil
+    end
+    local id = tid.Value
+    local game = Workspace:FindFirstChild("Game")
+    if not game then
+        return nil
+    end
+    local tt = pet:FindFirstChild("TargetType")
+    local isEnemy = tt and tostring(tt.Value) == "Enemy"
+    if isEnemy then
+        local enemies = game:FindFirstChild("Enemies")
+        if enemies then
+            for _, m in ipairs(enemies:GetChildren()) do
+                local bid = m:FindFirstChild("BreakableID")
+                if bid and bid.Value == id then
+                    return m
+                end
+            end
+        end
+    else
+        local breakables = game:FindFirstChild("Breakables")
+        if breakables then
+            for _, m in ipairs(breakables:GetDescendants()) do
+                if m:IsA("Model") then
+                    local bid = m:FindFirstChild("BreakableID")
+                    if bid and bid.Value == id then
+                        return m
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
 -- Resolve the live state the HUD renders for one pet.
 local function readSlot(pet, factor, thresholds)
     local power = petPower(pet)
@@ -480,6 +521,17 @@ function SquadHud.start()
     worldHighlight.Enabled = false
     worldHighlight.Parent = gui
 
+    -- The selected pet's TARGET (what it's attacking/mining) — a warmer amber outline, distinct from
+    -- the blue pet selection, so "this pet → that enemy" reads at a glance. Follows the live target.
+    local targetHighlight = Instance.new("Highlight")
+    targetHighlight.Name = "SquadTargetHighlight"
+    targetHighlight.FillTransparency = 0.75
+    targetHighlight.FillColor = Color3.fromRGB(255, 180, 70)
+    targetHighlight.OutlineColor = Color3.fromRGB(255, 160, 40)
+    targetHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    targetHighlight.Enabled = false
+    targetHighlight.Parent = gui
+
     local function setSelected(slot)
         selectedSlot = slot
         -- Tell the server which pet is selected, so single-target buffs (aegis / ironclad) land on
@@ -500,6 +552,36 @@ function SquadHud.start()
             end
         end
     end
+
+    -- Keep the target highlight on whatever the SELECTED pet is currently attacking/mining. Polled
+    -- (~6 Hz) rather than per-frame — the pet's target only changes occasionally, and resolving it
+    -- scans a folder. Clears when nothing is selected or the selected pet has no target.
+    task.spawn(function()
+        while gui.Parent do
+            task.wait(0.15)
+            local foe
+            if selectedSlot then
+                local folder = petsFolder()
+                if folder then
+                    for _, pet in ipairs(folder:GetChildren()) do
+                        if pet:IsA("Model") and petSlot(pet) == selectedSlot then
+                            if not pet:GetAttribute("CombatDowned") then
+                                foe = resolveTargetModel(pet)
+                            end
+                            break
+                        end
+                    end
+                end
+            end
+            if foe and foe.Parent then
+                targetHighlight.Adornee = foe
+                targetHighlight.Enabled = true
+            else
+                targetHighlight.Adornee = nil
+                targetHighlight.Enabled = false
+            end
+        end
+    end)
 
     -- Build one card (returns refs for live updates).
     local function makeCard(slot)
