@@ -228,11 +228,49 @@ function AdminController.start()
         PowerFXProbe.run(mode)
     end)
 
+    -- Manual FX stepping: NEXT advances one effect, REPEAT replays it — for studying timing.
+    local function probeButton(name, text, yOffset, onClick)
+        local b = Instance.new("TextButton")
+        b.Name = name
+        b.Size = UDim2.fromOffset(118, 26)
+        b.Position = UDim2.new(0, 315, 1, yOffset)
+        b.AnchorPoint = Vector2.new(0, 1)
+        b.BackgroundColor3 = Color3.fromRGB(120, 70, 180)
+        b.Font = Enum.Font.GothamBold
+        b.TextSize = 12
+        b.TextColor3 = Color3.fromRGB(245, 240, 255)
+        b.Text = text
+        b.Visible = false
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(1, 0)
+        c.Parent = b
+        local g = Instance.new("UIGradient")
+        g.Rotation = 90
+        g.Color = ColorSequence.new(Color3.fromRGB(175, 130, 235), Color3.fromRGB(120, 70, 180))
+        g.Parent = b
+        local s = Instance.new("UIStroke")
+        s.Color = Color3.fromRGB(175, 130, 235)
+        s.Thickness = 2
+        s.Parent = b
+        b.Parent = gui
+        whiteLabel(b, text, 12)
+        b.Activated:Connect(onClick)
+        return b
+    end
+    local nextBtn = probeButton("FXNext", "▶ NEXT", -148, function()
+        PowerFXProbe.next()
+    end)
+    local repeatBtn = probeButton("FXRepeat", "↻ REPEAT", -182, function()
+        PowerFXProbe.repeatStep()
+    end)
+
     local on = false
     local function apply()
         setOverlays(pg, on)
         grantBtn.Visible = on
         fxBtn.Visible = on
+        nextBtn.Visible = on
+        repeatBtn.Visible = on
         chipLabel.Text = on and "🛠 ADMIN: ON" or "🛠 ADMIN: OFF"
         chip.BackgroundColor3 = on and Color3.fromRGB(45, 140, 80) or Color3.fromRGB(90, 55, 160)
         chipGrad.Color = on

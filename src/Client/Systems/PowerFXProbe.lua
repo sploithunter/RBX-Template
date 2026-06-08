@@ -26,6 +26,7 @@ local FX = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power
 local PowerFXProbe = {}
 
 local running = 0 -- token: a new run cancels any in-flight one
+local manualSeq, manualCursor, manualMode = nil, 0, "real" -- Next/Repeat stepping state
 
 local function hrp()
     local char = Players.LocalPlayer.Character
@@ -147,86 +148,133 @@ local function hideSideLabel()
     end
 end
 
+-- ===== sequence model (shared by the auto sweep + manual Next/Repeat) =====
+-- Each step = { kind = "cast"|"impact", id, element }. casting = on the player, impact = at a dummy.
+local function buildSequence(mode)
+    local seq = {}
+    local probe = FX.probe
+    local function add(kind, list)
+        for _, element in ipairs(probe.elements) do
+            for _, id in ipairs(list or {}) do
+                seq[#seq + 1] = { kind = kind, id = id, element = element }
+            end
+        end
+    end
+    if mode == "casting" or mode == "real" then
+        add("cast", probe.casting)
+    end
+    if mode == "impact" or mode == "real" then
+        add("impact", probe.impact)
+    end
+    return seq
+end
+
+-- the impact dummy persists across manual steps (spawned for impact steps, cleared on cast steps)
+local probeDummy
+local function clearDummy()
+    if probeDummy then
+        pcall(function()
+            probeDummy:Destroy()
+        end)
+        probeDummy = nil
+    end
+end
+local function ensureDummy()
+    if probeDummy and probeDummy.Parent then
+        return probeDummy
+    end
+    local r = hrp()
+    if not r then
+        return nil
+    end
+    local d = Instance.new("Part")
+    d.Name = "FXProbeDummy"
+    d.Anchored = true
+    d.CanCollide = false
+    d.CanQuery = false
+    d.Size = Vector3.new(4, 6, 4)
+    d.Color = Color3.fromRGB(60, 60, 70)
+    d.Material = Enum.Material.SmoothPlastic
+    d.Transparency = 0.4
+    d.CFrame = r.CFrame * CFrame.new(0, 0, -(FX.probe.dummy_distance or 16))
+    d.Parent = Workspace
+    probeDummy = d
+    return d
+end
+
+-- play one step: cast on the player, impact at the dummy, with label + sound
+local function playStep(step)
+    if not step then
+        return
+    end
+    local prim = FX.primitives[step.id]
+    if not prim then
+        return
+    end
+    if step.kind == "impact" then
+        local d = ensureDummy()
+        setSideLabel("IMPACT", step.id, step.element)
+        playPrimitive(prim, step.element, d and d.Position, d)
+        if d then
+            label(d.Position, ("impact: %s · %s"):format(step.id, step.element))
+        end
+    else
+        clearDummy()
+        setSideLabel("CASTING", step.id, step.element)
+        playPrimitive(prim, step.element)
+        local r = hrp()
+        if r then
+            label(r.Position, ("cast: %s · %s"):format(step.id, step.element))
+        end
+    end
+end
+
+-- ===== auto sweep (the cycling FX PROBE button) =====
 function PowerFXProbe.run(mode)
     running += 1
     local token = running
+    manualMode = mode -- Next/Repeat continue in the same mode
+    manualSeq = nil
     task.spawn(function()
-        local root = hrp()
-        if not root then
+        if not hrp() then
             return
         end
-        local probe = FX.probe
-        local step = probe.step_seconds or 1.6
-
-        local function doCasting()
-            for _, element in ipairs(probe.elements) do
-                for _, id in ipairs(probe.casting) do
-                    if token ~= running then
-                        return
-                    end
-                    local prim = FX.primitives[id]
-                    if prim then
-                        setSideLabel("CASTING", id, element)
-                        playPrimitive(prim, element)
-                        local r = hrp()
-                        if r then
-                            label(r.Position, ("cast: %s · %s"):format(id, element))
-                        end
-                    end
-                    task.wait(step)
-                end
-            end
-        end
-
-        local function doImpact()
-            local dist = probe.dummy_distance or 16
-            local r = hrp()
-            if not r then
+        local wait = FX.probe.step_seconds or 2.0
+        for i, s in ipairs(buildSequence(mode)) do
+            if token ~= running then
                 return
             end
-            local dummy = Instance.new("Part")
-            dummy.Name = "FXProbeDummy"
-            dummy.Anchored = true
-            dummy.CanCollide = false
-            dummy.CanQuery = false
-            dummy.Size = Vector3.new(4, 6, 4)
-            dummy.Color = Color3.fromRGB(60, 60, 70)
-            dummy.Material = Enum.Material.SmoothPlastic
-            dummy.Transparency = 0.4
-            dummy.CFrame = r.CFrame * CFrame.new(0, 0, -dist)
-            dummy.Parent = Workspace
-            for _, element in ipairs(probe.elements) do
-                for _, id in ipairs(probe.impact) do
-                    if token ~= running then
-                        dummy:Destroy()
-                        return
-                    end
-                    local prim = FX.primitives[id]
-                    if prim then
-                        setSideLabel("IMPACT", id, element)
-                        playPrimitive(prim, element, dummy.Position, dummy)
-                        label(dummy.Position, ("impact: %s · %s"):format(id, element))
-                    end
-                    task.wait(step)
-                end
-            end
-            dummy:Destroy()
-        end
-
-        if mode == "casting" then
-            doCasting()
-        elseif mode == "impact" then
-            doImpact()
-        elseif mode == "real" then
-            doCasting()
-            if token == running then
-                doImpact()
-            end
+            manualCursor = i -- keep the manual cursor in sync so Next/Repeat pick up where it stopped
+            playStep(s)
+            task.wait(wait)
         end
         if token == running then
-            hideSideLabel() -- run done (a newer run would have bumped the token)
+            clearDummy()
+            hideSideLabel()
         end
     end)
+end
+
+-- ===== manual stepping (Next / Repeat buttons) =====
+-- Next advances one step (wraps at the end); Repeat replays the current one. Both cancel any running
+-- auto sweep (bump the token) so a sweep and a manual press don't fight.
+function PowerFXProbe.next()
+    running += 1
+    if not manualSeq or #manualSeq == 0 then
+        manualSeq = buildSequence(manualMode)
+        manualCursor = 1
+    else
+        manualCursor = (manualCursor % #manualSeq) + 1
+    end
+    playStep(manualSeq[manualCursor])
+end
+
+function PowerFXProbe.repeatStep()
+    running += 1
+    if not manualSeq or #manualSeq == 0 then
+        return PowerFXProbe.next()
+    end
+    playStep(manualSeq[manualCursor])
 end
 
 return PowerFXProbe
