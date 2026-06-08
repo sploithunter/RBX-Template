@@ -3,10 +3,16 @@
 
         PowerSound.play(phase, element, position) -> the entry played (or nil if none/gap)
 
-    Resolves `sounds[phase][element]` (phase = "cast" | "impact"), picks a random variant, and plays
-    it as a 3D positional Sound at `position` (auto-cleaned after the clip + a small tail). GAPS ARE
-    SILENT: an element/phase with no entry simply plays nothing (returns nil) — so missing sounds are
-    a no-op, not an error. Shared by the FX-probe and the real cast-FX path so there's one sound path.
+    Resolves `sounds[phase][element]` (phase = "cast" | "impact" | "buff" | "shield"), picks a random
+    variant, and plays it as a 3D positional Sound at `position` (auto-cleaned after the clip + a
+    small tail). GAPS ARE SILENT: an element/phase with no entry simply plays nothing (returns nil) —
+    so missing sounds are a no-op, not an error. Shared by the FX-probe and the real cast-FX path so
+    there's one sound path.
+
+    FIRE-AND-FORGET — sounds are NEVER queued, debounced, or serialized. Every call spins up its own
+    anchor + Sound and plays immediately, so a cast and an impact (or rapid repeats) simply OVERLAP.
+    Sound plays on cast and on impact, nothing else. (A future `castTime` on the power record can
+    space the cast→impact pair; this module just fires when asked.)
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -19,7 +25,15 @@ local PowerSound = {}
 
 function PowerSound.entryFor(phase, element)
     local byPhase = FX.sounds and FX.sounds[phase]
-    local list = byPhase and byPhase[element]
+    if not byPhase then
+        return nil
+    end
+    local list = byPhase[element]
+    -- Non-elemental phases (buff/shield) and any element with no clip fall back to `neutral` — so a
+    -- force-field-raise or power-up plays under any origin. Still silent if neither exists.
+    if (not list or #list == 0) and element ~= "neutral" then
+        list = byPhase.neutral
+    end
     if not list or #list == 0 then
         return nil
     end

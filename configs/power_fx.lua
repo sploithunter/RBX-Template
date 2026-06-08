@@ -40,6 +40,7 @@ return {
             category = "buff",
             duration = 2.0,
             color = "origin",
+            soundPhase = "buff", -- plays the power-up clip (neutral) rather than the elemental cast
             sound = nil,
         },
         -- caster-anchored SHIELD bubble (attached ForceField look) — for absorbs/wards
@@ -49,6 +50,7 @@ return {
             category = "shield",
             duration = 2.0,
             color = "origin",
+            soundPhase = "shield", -- plays the force-field-raise clip (neutral)
             sound = nil,
         },
         -- ranged BOLT from caster → target (projectile; element picks fireball/frost/rock/lightning)
@@ -72,9 +74,11 @@ return {
     -- Sound registry — resolves by [phase][element] (like colour resolves by element). A primitive's
     -- anchor picks the phase (self ⇒ cast, target ⇒ impact); the play element picks the clip. A
     -- random variant is chosen. `seconds` = measured clip length (assets/audio/sfx/manifest.txt) —
-    -- the VISUAL-TIMING BASELINE; the renderer can match an effect's length to it. GAPS ARE SILENT:
-    -- only lava has impact sounds so far (+ a neutral punch); ice/grass/desert impacts play nothing
-    -- until more are authored. Uploaded via scripts/upload_audio.js (ids in scripts/audio_ids.json).
+    -- the VISUAL-TIMING BASELINE; the renderer can match an effect's length to it. PowerSound falls
+    -- back to `neutral` when an element has no clip for a phase, so non-elemental clips (force-field,
+    -- power-up, generic cast) play under any origin. GAPS ARE STILL SILENT where neither exists.
+    -- buff/shield phases ride the aura/shield primitives. ambient = LOOPS (zone/sustained), not wired
+    -- to the one-shot probe. Uploaded via scripts/upload_audio.js (ids in scripts/audio_ids.json).
     sounds = {
         cast = {
             grass = {
@@ -91,10 +95,12 @@ return {
                 { id = "rbxassetid://108940406293408", seconds = 14.0 }, -- desert_magic_cast_long (long tail)
                 { id = "rbxassetid://135624983070582", seconds = 14.0 }, -- desert_magic_long (long tail)
             },
+            neutral = {
+                { id = "rbxassetid://128240762228140", seconds = 2.0 }, -- cartoony_spell_cast (generic)
+            },
         },
         impact = {
-            -- short, varied per-hit fire impacts (clean for repeated casts). The two long-tail
-            -- fireball impacts are uploaded + parked for AoE-specific sounds:
+            -- the two long-tail fireball impacts are uploaded + parked for AoE-specific sounds:
             --   fireball_impact_targeted rbxassetid://87632216595220 (14s)
             --   fireball_impact_aoe      rbxassetid://93387065123336 (14s)
             lava = {
@@ -102,8 +108,40 @@ return {
                 { id = "rbxassetid://125017003780089", seconds = 1.0 }, -- fire_impact_targeted_2
                 { id = "rbxassetid://117318156254750", seconds = 1.0 }, -- fire_impact_targeted_3
             },
+            grass = {
+                { id = "rbxassetid://99084444950159", seconds = 8.0 }, -- earthen_impact (long-ish tail)
+                { id = "rbxassetid://98891214914756", seconds = 8.0 }, -- deep_earthen_impact (long-ish)
+            },
+            ice = {
+                { id = "rbxassetid://96567599651432", seconds = 3.0 }, -- freezing_crack_single_target
+            },
+            desert = {
+                { id = "rbxassetid://121215976414474", seconds = 2.0 }, -- arrow_impact_desert
+            },
             neutral = {
                 { id = "rbxassetid://130629017706281", seconds = 0.48 }, -- single_target_punch
+            },
+        },
+        -- buff activation (rides the `aura` primitive; neutral ⇒ plays under any origin)
+        buff = {
+            neutral = {
+                { id = "rbxassetid://131694228494794", seconds = 1.0 }, -- power_up_stronger
+            },
+        },
+        -- shield raise (rides the `shield_bubble` primitive)
+        shield = {
+            neutral = {
+                { id = "rbxassetid://125923588431694", seconds = 1.0 }, -- force_field_raise
+            },
+        },
+        -- ambient LOOPS — registered for zone ambience / sustained holds; NOT one-shot. A looping
+        -- player (zone or persistent-effect driven) would use these; the FX-probe doesn't.
+        ambient = {
+            neutral = {
+                { id = "rbxassetid://81826046653344", seconds = 3.0 }, -- machine_hum
+            },
+            ice = {
+                { id = "rbxassetid://96154251218473", seconds = 3.0 }, -- deep_winter_wind
             },
         },
     },

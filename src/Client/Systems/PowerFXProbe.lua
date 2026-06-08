@@ -58,8 +58,9 @@ local function playPrimitive(prim, element, point, targetInst)
     pcall(function()
         CombatFX.play(spec, ctx)
     end)
-    -- sound rides the primitive: self ⇒ cast clip, target ⇒ impact clip (silent if none authored)
-    local phase = (prim.anchor == "target") and "impact" or "cast"
+    -- sound rides the primitive: an explicit soundPhase wins (buff/shield), else self ⇒ cast clip,
+    -- target ⇒ impact clip (silent if none authored).
+    local phase = prim.soundPhase or ((prim.anchor == "target") and "impact" or "cast")
     pcall(function()
         PowerSound.play(phase, element, soundPos)
     end)
