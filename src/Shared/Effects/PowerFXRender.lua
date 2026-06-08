@@ -42,11 +42,15 @@ end
 
 local function tbd(pos, text)
     pcall(function()
-        FloatingText.show(pos + Vector3.new(0, 6, 0), text, {
+        -- Start near the caster (not high above) and drift up SLOWLY over a long duration so the
+        -- placeholder is actually readable — the old +6 start / +5 fast rise shot it off the top of
+        -- the close third-person camera in a split second.
+        FloatingText.show(pos + Vector3.new(0, 2.5, 0), text, {
             color = Color3.fromRGB(255, 220, 120),
-            size = 18,
-            duration = 1.6,
-            rise = 5,
+            size = 20,
+            duration = 3.0,
+            rise = 1.5,
+            jitter = 0.6,
         })
     end)
 end
