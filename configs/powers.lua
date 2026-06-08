@@ -116,6 +116,8 @@ return {
             duration = 8,
             spread_radius = 14,
             spread_interval = 1.5,
+            -- the fire actually burns as it spreads: AoE DoT, 1 HP/sec across every enemy
+            dot = { per_tick = 1, interval = 1, aoe = true },
         },
         firestorm = { family = "team_cleave", magnitude = 0.5, duration = 6, cleave_radius = 8 },
         cataclysm = {
@@ -144,11 +146,31 @@ return {
         }, -- +Def + heal-over-time (30/2s)
         gaia_colossus = { family = "summon", guardian = "colossus", magnitude = 0, duration = 20 }, -- summon tank
         -- Fire / Pyromancer (damage) — Wildfire/Firestorm/Cataclysm above; this is the 4th
-        inferno_brand = { family = "vulnerable", magnitude = 1.9, duration = 8, ramp_to = 2.6 }, -- mark that bites harder as it burns (1.9->2.6)
+        -- mark that bites harder as it burns (1.9->2.6 vuln) + a targeted DoT (2.5 HP/sec on its mark,
+        -- a touch hotter than the basic Mark of Flame's 2)
+        inferno_brand = {
+            family = "vulnerable",
+            magnitude = 1.9,
+            duration = 8,
+            ramp_to = 2.6,
+            dot = { per_tick = 2.5, interval = 1, aoe = false },
+        },
         -- Ice / Cryomancer (control)
-        permafrost = { family = "root", magnitude = 0, duration = 8 }, -- anchor: strong AoE lockdown
+        -- anchor: strong AoE lockdown + light frostbite (0.3 HP/sec AoE; lowest of the cryomancer line)
+        permafrost = {
+            family = "root",
+            magnitude = 0,
+            duration = 8,
+            dot = { per_tick = 0.3, interval = 1, aoe = true },
+        },
         shatter = { family = "vulnerable", magnitude = 2.2, duration = 5, frozen_bonus = 1.4 }, -- big vuln, x1.4 again on FROZEN targets (2.2->3.08)
-        absolute_zero = { family = "root", magnitude = 0, duration = 7 }, -- mass hard freeze
+        -- mass hard freeze + deeper frostbite (0.4 HP/sec AoE; between Permafrost and Eternal Winter)
+        absolute_zero = {
+            family = "root",
+            magnitude = 0,
+            duration = 7,
+            dot = { per_tick = 0.4, interval = 1, aoe = true },
+        },
         -- Capstone: field-wide hold + a MINOR AoE DoT — 0.5 HP/sec (a float; deliberately < 1 so the
         -- frostbite chips slowly rather than bursting). Holds every enemy and grinds them down.
         eternal_winter = {
