@@ -81,7 +81,7 @@ function PowerChoiceMenu:_refreshOrigin()
     local origin = ORIGINS[self.originIndex]
     local def = archetypesCfg.archetypes and archetypesCfg.archetypes[origin]
     if self.originHeader then
-        self.originHeader.Text = (def and def.display_name or origin):upper() .. "   ⟳"
+        self.originHeader.Text = "‹ " .. (def and def.display_name or origin):upper() .. " ›"
         self.originHeader.TextColor3 = ORIGIN_COLOR[origin] or Color3.new(1, 1, 1)
     end
     if self.originColumn then
@@ -110,7 +110,7 @@ function PowerChoiceMenu:Show(parent)
 
     local root = Instance.new("Frame")
     root.Name = "PowerChoiceMenu"
-    root.Size = UDim2.fromScale(0.94, 0.92)
+    root.Size = UDim2.fromScale(0.5, 0.9)
     root.AnchorPoint = Vector2.new(0.5, 0.5)
     root.Position = UDim2.fromScale(0.5, 0.5)
     root.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
@@ -167,13 +167,21 @@ function PowerChoiceMenu:Show(parent)
 
     local oHeader = Instance.new("TextButton")
     oHeader.Size = UDim2.fromScale(0.46, 0.05)
-    oHeader.Position = UDim2.fromScale(0.52, 0.065)
-    oHeader.BackgroundTransparency = 1
-    oHeader.AutoButtonColor = false
+    oHeader.Position = UDim2.fromScale(0.52, 0.062)
+    oHeader.BackgroundColor3 = Color3.fromRGB(46, 43, 60)
+    oHeader.BackgroundTransparency = 0.35
+    oHeader.AutoButtonColor = true -- pill + hover highlight = reads as a button
     oHeader.Text = ""
     oHeader.TextScaled = true
     oHeader.Font = Enum.Font.GothamBold
     oHeader.Parent = root
+    local ohc = Instance.new("UICorner")
+    ohc.CornerRadius = UDim.new(0.35, 0)
+    ohc.Parent = oHeader
+    local ohs = Instance.new("UIStroke")
+    ohs.Color = Color3.fromRGB(120, 110, 150)
+    ohs.Thickness = 1.5
+    ohs.Parent = oHeader
     self.originHeader = oHeader
     oHeader.Activated:Connect(function()
         self.originIndex = (self.originIndex % #ORIGINS) + 1
