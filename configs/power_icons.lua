@@ -129,7 +129,7 @@ local M = {
         team_shield = { symbol = "armor_chest", target = "self" }, -- Bulwark squad defense
         dodge = { symbol = "eye_hidden", target = "self" }, -- evasion (mirage_step)
         damage_buff = { symbol = "fist", target = "self" }, -- Mountain's Strength (fist = damage BUFF)
-        crit_up = { symbol = "chevrons_up", target = "self" }, -- Critical Strike (+crit chance, squad). STOPGAP symbol (generic buff) — a crit icon is TBD.
+        crit_up = { symbol = "critical_hit", target = "self" }, -- Critical Strike (+crit chance, squad) -> crit reticle
         root = { symbol = "user_desk", target = "enemy_aoe" }, -- frost_bind (user_desk = ROOT)
         aoe_slow = { symbol = "chevrons_down", target = "enemy_aoe" }, -- blizzard
         aoe_blind = { symbol = "sand_storm", target = "enemy_aoe" }, -- sandstorm (dedicated storm art)
@@ -185,13 +185,18 @@ local M = {
         shield = "armor_chest", -- Bastion / Living Mountain / Mirage Veil
         hold = "capacitor", -- Permafrost / Seismic Hold / Absolute Zero / Eternal Winter (capacitor = HOLD)
         heal = "plus", -- Oasis / Simoom
-        summon = "revive", -- Gaia's Colossus / Genie of the Dunes (call a guardian)
+        summon = "pet", -- Gaia's Colossus / Genie of the Dunes (call a guardian) -> paw glyph
         brand = "contagion", -- Inferno Brand (ramping mark)
     },
     -- Per-id symbol override for a signature with dedicated art (beats its generic glyph symbol).
     power_signature_symbol = {
         firestorm = "fire_storm", -- team-cleave Firestorm gets its own storm art (not the burst glyph)
         seismic_hold = "knockback", -- "Seismic Event" is now a knockback-DoT, not a hold
+        cataclysm = "nuke", -- the meteor capstone (≠ Eruption's ranged_impact)
+        -- The three AoE holds were all `capacitor` -> give two of them dedicated ice art so the
+        -- trio reads distinct (Permafrost keeps the plain capacitor hold).
+        absolute_zero = "ice_hold",
+        eternal_winter = "winter_hold",
     },
     power_signature_ring = {
         single = "single",

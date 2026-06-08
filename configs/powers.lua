@@ -902,7 +902,7 @@ return {
             cooldown_seconds = 28,
             effect = "shatter",
             display_name = "Shatter",
-            subtitle = "Single-Target Damage",
+            subtitle = "AoE Damage",
             signature = true,
             role = "damage",
             element = "ice",
