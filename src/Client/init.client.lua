@@ -1041,6 +1041,11 @@ if game:GetService("RunService"):IsStudio() then
         local adminPanel = AdminPanel.new()
         menuManager:RegisterPanel("Admin", adminPanel)
 
+        -- Power Choice menu (dual-column NEUTRAL + origin roster). Opened by the admin
+        -- "POWER CHOICE" button as a live inspector; basis for the real level-up pick.
+        local PowerChoiceMenu = require(script.UI.Menus.PowerChoiceMenu)
+        menuManager:RegisterPanel("PowerChoice", PowerChoiceMenu.new())
+
         settingsPanel:SetAdminPanelCallback(function()
             menuManager:OpenAdminPanel("bounce_in")
         end)

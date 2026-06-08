@@ -191,6 +191,7 @@ local M = {
     -- Per-id symbol override for a signature with dedicated art (beats its generic glyph symbol).
     power_signature_symbol = {
         firestorm = "fire_storm", -- team-cleave Firestorm gets its own storm art (not the burst glyph)
+        seismic_hold = "knockback", -- "Seismic Event" is now a knockback-DoT, not a hold
     },
     power_signature_ring = {
         single = "single",

@@ -316,13 +316,13 @@ return {
         -- effect_kinds; their mechanics are separate build slices. =====
 
         -- Geomancer (earth · tank): targeted+team armor, buff, debuff, Taunt, Rage, Armor Field
-        stone_skin = { archetype = "geomancer", focus_cost = 20, cooldown_seconds = 30, effect = "armor", display_name = "Stone Skin", role = "armor", element = "earth", target = "single_pet", glyph = "shield", unlock_level = 6 },
-        ironclad = { archetype = "geomancer", focus_cost = 16, cooldown_seconds = 24, effect = "armor", display_name = "Ironclad", role = "armor", element = "earth", target = "team_aoe", glyph = "shield", unlock_level = 9 },
-        mountains_strength = { archetype = "geomancer", focus_cost = 25, cooldown_seconds = 40, effect = "damage_buff", display_name = "Mountain's Strength", role = "buff", element = "earth", target = "team_aoe", glyph = "buff", unlock_level = 9 },
-        sunder = { archetype = "geomancer", focus_cost = 18, cooldown_seconds = 25, effect = "sunder", display_name = "Sunder", role = "debuff", element = "earth", target = "single", glyph = "debuff", unlock_level = 6 },
-        taunt = { archetype = "geomancer", focus_cost = 12, cooldown_seconds = 16, effect = "taunt", display_name = "Taunt", role = "control", element = "earth", target = "targeted_aoe", glyph = "control", unlock_level = 6 },
-        rage = { archetype = "geomancer", focus_cost = 20, cooldown_seconds = 30, effect = "rage", display_name = "Rage", role = "buff", element = "earth", target = "single_pet", glyph = "buff", unlock_level = 12 },
-        armor_field = { archetype = "geomancer", focus_cost = 35, cooldown_seconds = 45, effect = "armor_field", display_name = "Armor Field", role = "armor", element = "earth", target = "player_field", glyph = "shield", unlock_level = 12 },
+        stone_skin = { archetype = "geomancer", focus_cost = 20, cooldown_seconds = 30, effect = "armor", display_name = "Stone Skin", subtitle = "Single-Pet Armor", role = "armor", element = "earth", target = "single_pet", glyph = "shield", unlock_level = 6 },
+        ironclad = { archetype = "geomancer", focus_cost = 16, cooldown_seconds = 24, effect = "armor", display_name = "Ironclad", subtitle = "Team Armor", role = "armor", element = "earth", target = "team_aoe", glyph = "shield", unlock_level = 9 },
+        mountains_strength = { archetype = "geomancer", focus_cost = 25, cooldown_seconds = 40, effect = "damage_buff", display_name = "Mountain's Strength", subtitle = "Team Damage Buff", role = "buff", element = "earth", target = "team_aoe", glyph = "buff", unlock_level = 9 },
+        sunder = { archetype = "geomancer", focus_cost = 18, cooldown_seconds = 25, effect = "sunder", display_name = "Sunder", subtitle = "Single-Target Debuff", role = "debuff", element = "earth", target = "single", glyph = "debuff", unlock_level = 6 },
+        taunt = { archetype = "geomancer", focus_cost = 12, cooldown_seconds = 16, effect = "taunt", display_name = "Taunt", subtitle = "AoE Aggro+", role = "control", element = "earth", target = "targeted_aoe", glyph = "control", unlock_level = 6 },
+        rage = { archetype = "geomancer", focus_cost = 20, cooldown_seconds = 30, effect = "rage", display_name = "Rage", subtitle = "Self Low-HP Damage", role = "buff", element = "earth", target = "single_pet", glyph = "buff", unlock_level = 12 },
+        armor_field = { archetype = "geomancer", focus_cost = 35, cooldown_seconds = 45, effect = "armor_field", display_name = "Armor Field", subtitle = "Self-AoE Armor", role = "armor", element = "earth", target = "player_field", glyph = "shield", unlock_level = 12 },
 
         -- Sandwalker (desert · buffer/heal/illusion): heal, shield, dodge, debuffs, Fear, Healing Field
         mirage_step = { archetype = "sandwalker", focus_cost = 15, cooldown_seconds = 20, effect = "dodge", display_name = "Mirage Step", role = "buff", element = "desert", target = "single_pet", glyph = "buff", unlock_level = 6 },
@@ -406,6 +406,7 @@ return {
             cooldown_seconds = 35,
             effect = "bastion",
             display_name = "Bastion",
+            subtitle = "Team Shield",
             signature = true,
             role = "shield",
             element = "earth",
@@ -419,6 +420,7 @@ return {
             cooldown_seconds = 40,
             effect = "seismic_hold",
             display_name = "Seismic Event",
+            subtitle = "AoE Knockback + DoT",
             signature = true,
             role = "control",
             element = "earth",
@@ -432,6 +434,7 @@ return {
             cooldown_seconds = 55,
             effect = "living_mountain",
             display_name = "Living Mountain",
+            subtitle = "Team Defense + Heal",
             signature = true,
             role = "shield",
             element = "earth",
@@ -445,6 +448,7 @@ return {
             cooldown_seconds = 120,
             effect = "gaia_colossus",
             display_name = "Gaia's Colossus",
+            subtitle = "Summon Guardian",
             signature = true,
             capstone = true,
             role = "summon",
