@@ -68,6 +68,7 @@ function PowerFXRender.play(opts)
             variant = prim.variant, -- st_aoe shape (pit)
             projectile = prim.projectile, -- st_attack explicit kind
             impact = prim.impact, -- impact-pattern point-burst name
+            no_ring = prim.no_ring, -- pbaoe: drop the encircling ring, keep on-caster core
         }
         local ctx = { caster = opts.caster }
         if prim.pattern == "st_attack" then

@@ -17,10 +17,13 @@
 
 return {
     primitives = {
-        -- caster-anchored point-blank burst (ground RING + dome + rising motes) — reads as AoE
+        -- caster-anchored burst CENTRED on the player: dome + rising motes / ember poof, but NO
+        -- encircling ground/fire ring (no_ring) — the on-player part of the self burst reads as a
+        -- punchy cast without the AoE ring that felt inappropriate as a cast tell.
         cast_burst = {
             pattern = "pbaoe",
             anchor = "self",
+            no_ring = true,
             color = "origin",
             light = nil,
             sound = nil,

@@ -345,9 +345,11 @@ end
 
 local EFFECTS = {
     -- GRASS self: Bloom — green blades sprout up in a ring + a soft growth dome.
-    grass_self = function(pos, c1, c2, mat, radius, life)
-        groundRing(pos, c1, mat, radius * 2, life)
-        pillarsRing(pos, c1, mat, 12, radius * 0.85, radius * 0.5, 0.5, life)
+    grass_self = function(pos, c1, c2, mat, radius, life, opts)
+        if not (opts and opts.no_ring) then
+            groundRing(pos, c1, mat, radius * 2, life)
+            pillarsRing(pos, c1, mat, 12, radius * 0.85, radius * 0.5, 0.5, life)
+        end
         dome(pos, c1, mat, radius * 0.6, life, 0.7)
         swirlMotes(pos, c2, mat, 8, radius, radius * 0.6, life + 0.1)
     end,
@@ -358,8 +360,10 @@ local EFFECTS = {
         debris(pos, c1, c2, mat, 10, radius, life)
     end,
     -- DESERT self: Sandstorm — a rising swirl of sand + a faint dust ring.
-    desert_self = function(pos, c1, c2, mat, radius, life)
-        groundRing(pos, c1, mat, radius * 2, life, 0.55)
+    desert_self = function(pos, c1, c2, mat, radius, life, opts)
+        if not (opts and opts.no_ring) then
+            groundRing(pos, c1, mat, radius * 2, life, 0.55)
+        end
         swirlMotes(pos, c1, mat, 24, radius, radius * 0.8, life + 0.2)
         swirlMotes(pos, c2, mat, 12, radius * 0.7, radius * 0.6, life + 0.1)
     end,
@@ -371,9 +375,11 @@ local EFFECTS = {
         groundRing(pos, c1, mat, radius * 1.6, life, 0.5)
     end,
     -- ICE self: Frost nova — radial ice crystals form in a ring + a pale flat nova.
-    ice_self = function(pos, c1, c2, mat, radius, life)
-        groundRing(pos, c2, mat, radius * 2.2, life)
-        radialSpikes(pos, c1, mat, 12, radius * 0.7, radius * 0.35, life, 22)
+    ice_self = function(pos, c1, c2, mat, radius, life, opts)
+        if not (opts and opts.no_ring) then
+            groundRing(pos, c2, mat, radius * 2.2, life)
+            radialSpikes(pos, c1, mat, 12, radius * 0.7, radius * 0.35, life, 22)
+        end
         dome(pos, c2, mat, radius * 0.55, life, 0.7)
     end,
     -- ICE targeted: Icefall — icicles rain down onto the point + an ice column.
@@ -384,8 +390,10 @@ local EFFECTS = {
         debris(pos, c1, c2, mat, 10, radius, life)
     end,
     -- HEAL self: a gentle nova — soft dome + ring + rising sparkles (restorative, not explosive).
-    heal_self = function(pos, c1, c2, mat, radius, life)
-        groundRing(pos, c2, mat, radius * 1.9, life)
+    heal_self = function(pos, c1, c2, mat, radius, life, opts)
+        if not (opts and opts.no_ring) then
+            groundRing(pos, c2, mat, radius * 1.9, life)
+        end
         dome(pos, c1, mat, radius * 0.65, life, 0.72)
         swirlMotes(pos, c1, mat, 18, radius, radius * 0.9, life + 0.1)
     end,
@@ -396,9 +404,11 @@ local EFFECTS = {
         swirlMotes(pos, c1, mat, 14, radius, radius * 0.9, life)
     end,
     -- LAVA self: Fire ring — a circle of REAL fire around the caster + an ember particle poof.
-    lava_self = function(pos, c1, c2, mat, radius, life)
-        groundRing(pos, c1, mat, radius * 1.7, life)
-        fireRing(pos, 10, radius * 0.85, life + 0.4, c1, c2)
+    lava_self = function(pos, c1, c2, mat, radius, life, opts)
+        if not (opts and opts.no_ring) then
+            groundRing(pos, c1, mat, radius * 1.7, life)
+            fireRing(pos, 10, radius * 0.85, life + 0.4, c1, c2)
+        end
         particleBurst(pos + Vector3.new(0, 1, 0), {
             color1 = c1,
             color2 = c2,
@@ -466,7 +476,7 @@ end
 -- Play an area effect. element keys config.themes; variant is "self" or "targeted".
 -- themeOverride (optional { color, color2, material }) reuses an effect's SHAPE with different
 -- colours — e.g. the heal nova/splash shapes tinted per biome without new EFFECTS entries.
-function AreaFX.Play(config, element, variant, originPos, targetPos, themeOverride)
+function AreaFX.Play(config, element, variant, originPos, targetPos, themeOverride, opts)
     config = type(config) == "table" and config or {}
     local theme = themeOverride or (config.themes and config.themes[element])
     if not theme then
@@ -485,15 +495,17 @@ function AreaFX.Play(config, element, variant, originPos, targetPos, themeOverri
     local radius = tonumber(params.radius) or 10
     local life = tonumber(params.duration) or 0.6
 
+    -- opts.no_ring strips the encircling ground/radial ring from a "self" burst, keeping the
+    -- on-caster core (dome / rising motes / ember poof) — a contained cast tell, not an AoE ring.
     if variant == "targeted" then
         local target = targetPos or originPos
         local castTime = math.max(0.05, tonumber(params.cast_time) or 0.18)
         castTell(c2, mat, originPos, target, radius, castTime)
         task.delay(castTime, function()
-            fn(target, c1, c2, mat, radius, life)
+            fn(target, c1, c2, mat, radius, life, opts)
         end)
     else
-        fn(originPos, c1, c2, mat, radius, life)
+        fn(originPos, c1, c2, mat, radius, life, opts)
     end
     return true
 end

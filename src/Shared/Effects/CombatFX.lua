@@ -342,7 +342,10 @@ function CombatFX.play(spec, ctx)
         if not cp then
             return false
         end
-        return AreaFX.Play(areaCfg, areaElement(spec), "self", cp, nil, healOverride(spec))
+        -- spec.no_ring strips the encircling ground/radial ring, keeping the on-caster core.
+        return AreaFX.Play(areaCfg, areaElement(spec), "self", cp, nil, healOverride(spec), {
+            no_ring = spec.no_ring,
+        })
     end
 
     return false
