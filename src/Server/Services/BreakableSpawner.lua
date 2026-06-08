@@ -33,6 +33,7 @@ local CollectionService = game:GetService("CollectionService")
 local XpReward = require(ReplicatedStorage.Shared.Game.XpReward)
 local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
 local buffsConfig = require(ReplicatedStorage.Configs:WaitForChild("buffs"))
+local SpawnSlots = require(ReplicatedStorage.Shared.Game.SpawnSlots)
 
 -- Injected services
 local logger
@@ -952,7 +953,15 @@ function BreakableSpawner:_setupWorld(worldFolder)
     self._removalWired = self._removalWired or {}
     if not self._removalWired[worldFolder] then
         self._removalWired[worldFolder] = true
-        items.ChildRemoved:Connect(function()
+        items.ChildRemoved:Connect(function(child)
+            -- Free the slot this crystal held (read the id NOW; the child may be destroyed by defer).
+            local sid = child and child:GetAttribute("SlotId")
+            if sid ~= nil then
+                local reg = self._worldSlots and self._worldSlots[worldFolder]
+                if reg then
+                    reg:release(sid)
+                end
+            end
             task.defer(function()
                 local c = current.Value
                 if c > 0 then
@@ -1217,6 +1226,81 @@ function BreakableSpawner:_findSpawnPoint(worldFolder)
     return nil, nil
 end
 
+-- Generate the world's spawn-slot registry ONCE (the expensive raycast + clearance pass moves here,
+-- off the per-spawn / per-5s hot path). Common slots = a jitter-light grid over each spawner's area,
+-- surface-raycast + clearance-validated a single time; spacing = min_distance so neighbours never
+-- overlap (no runtime distance check needed). Fixed anchors = child BaseParts tagged with a
+-- `SlotKind` attribute (giant crystal / chest spots), added as typed slots at their exact position.
+-- Amortised with task.wait so even this one-time scan doesn't hitch. Cached per world.
+function BreakableSpawner:_ensureSlots(worldFolder)
+    self._worldSlots = self._worldSlots or {}
+    if self._worldSlots[worldFolder] then
+        return self._worldSlots[worldFolder]
+    end
+
+    local spawners = self:_getSpawnerParts(worldFolder)
+    if #spawners == 0 then
+        return nil
+    end
+
+    local placeCfg = getSpawnSettings(worldFolder.Name)
+    local spacing = math.max(4, tonumber(placeCfg.min_distance or 12))
+    local margin = tonumber(placeCfg.spawn_area_margin or 0)
+    local surfaceY = tonumber(placeCfg.surface_y)
+    local jitter = math.clamp(tonumber(placeCfg.slot_jitter or 0.15), 0, 0.45)
+    local slots = {}
+    local processed = 0
+
+    for _, spawner in ipairs(spawners) do
+        local sampleSurface = shouldSampleSpawnerSurface(spawner, placeCfg)
+        local width = math.max(spacing, spawner.Size.X - margin * 2)
+        local depth = math.max(spacing, spawner.Size.Z - margin * 2)
+        local offsets = SpawnSlots.layoutGrid({
+            width = width,
+            depth = depth,
+            spacing = spacing,
+            jitter = jitter,
+            rng = math.random,
+        })
+        for _, off in ipairs(offsets) do
+            local candidate =
+                Vector3.new(spawner.Position.X + off.x, spawner.Position.Y, spawner.Position.Z + off.z)
+            if sampleSurface then
+                candidate = raycastSpawnerSurface(spawner, candidate, placeCfg)
+            elseif surfaceY then
+                candidate = Vector3.new(candidate.X, surfaceY, candidate.Z)
+            end
+            if candidate and hasSpawnClearance(spawner, candidate, placeCfg) then
+                slots[#slots + 1] = { kind = nil, pos = candidate }
+            end
+            processed += 1
+            if processed % 24 == 0 then
+                task.wait() -- spread the one-time scan across frames
+            end
+        end
+    end
+
+    -- Fixed/special anchors authored in the map.
+    for _, child in ipairs(worldFolder:GetChildren()) do
+        if child:IsA("BasePart") and child:GetAttribute("SlotKind") then
+            slots[#slots + 1] = { kind = tostring(child:GetAttribute("SlotKind")), pos = child.Position }
+        end
+    end
+
+    local registry = SpawnSlots.new(slots)
+    self._worldSlots[worldFolder] = registry
+    logger:Info("BreakableSpawner: generated spawn slots", {
+        world = worldFolder.Name,
+        slots = registry:total(),
+    })
+    return registry
+end
+
+-- The slot path is on unless explicitly disabled in config (escape hatch).
+function BreakableSpawner:_useSlots()
+    return breakablesConfig and breakablesConfig.use_spawn_slots ~= false
+end
+
 function BreakableSpawner:_trySpawnOne(
     worldFolder,
     forcedCrystalName,
@@ -1299,14 +1383,36 @@ function BreakableSpawner:_trySpawnOne(
         end
     end
 
-    local spawner, spawnPosition = self:_findSpawnPoint(worldFolder)
-    if not spawner then
-        -- Try to self-heal a SpawnArea from config, then retry the lookup once.
+    -- Placement. SLOT PATH (default): claim a precomputed free slot — O(free), no raycasts. A
+    -- forced spawn may target a fixed-anchor kind (forcedSpawnOverrides.slot_kind). LEGACY PATH
+    -- (flag off / no slots): the original per-spawn raycast + clearance search.
+    local spawner, spawnPosition, claimedSlot
+    if self:_useSlots() then
         self:_ensureSpawnArea(worldFolder)
+        local registry = self:_ensureSlots(worldFolder)
+        -- total()==0 ⇒ generation found no valid points for this world; fall through to the legacy
+        -- raycast search rather than leaving the world permanently empty.
+        if registry and registry:total() > 0 then
+            local slotKind = type(forcedSpawnOverrides) == "table" and forcedSpawnOverrides.slot_kind
+                or nil
+            claimedSlot = registry:claim(slotKind, math.random)
+            if not claimedSlot then
+                return -- no free slot of this kind ⇒ world is full by geometry
+            end
+            spawnPosition = claimedSlot.pos
+            spawner = self:_getSpawnerParts(worldFolder)[1]
+        end
+    end
+    if not spawnPosition then
         spawner, spawnPosition = self:_findSpawnPoint(worldFolder)
         if not spawner then
-            self:_warnNoSpawnerOnce(worldFolder.Name) -- rate-limited (no per-call spam)
-            return
+            -- Try to self-heal a SpawnArea from config, then retry the lookup once.
+            self:_ensureSpawnArea(worldFolder)
+            spawner, spawnPosition = self:_findSpawnPoint(worldFolder)
+            if not spawner then
+                self:_warnNoSpawnerOnce(worldFolder.Name) -- rate-limited (no per-call spam)
+                return
+            end
         end
     end
 
@@ -1449,6 +1555,10 @@ function BreakableSpawner:_trySpawnOne(
     model:SetAttribute("BreakableType", "Crystal")
     model:SetAttribute("CrystalName", crystalName)
     model:SetAttribute("World", worldFolder.Name)
+    -- Slot path: tag which slot this crystal occupies, so ChildRemoved frees exactly that slot.
+    if claimedSlot then
+        model:SetAttribute("SlotId", claimedSlot.id)
+    end
 
     -- Set gameplay attributes if present in config
     if type(crystalCfg) == "table" then

@@ -491,6 +491,12 @@ local M = {
     },
 
     -- Fallbacks if a world has no explicit settings
+    -- Spawn-slot mode (perf): precompute a per-world pool of well-spaced, raycast-validated spawn
+    -- points ONCE on world activation, then spawn = claim a free slot (O(free), no raycasts). Kills
+    -- the periodic ~0.8s BreakableSpawner hitch. Set false to fall back to the legacy per-spawn
+    -- raycast search. `slot_jitter` (per spawn_settings) lightly randomises grid points (0..0.45).
+    use_spawn_slots = true,
+
     defaults = {
         max_per_world = 0,
         spawn_settings = {
