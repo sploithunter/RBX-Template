@@ -320,7 +320,7 @@ return {
         ironclad = { archetype = "geomancer", focus_cost = 16, cooldown_seconds = 24, effect = "armor", display_name = "Ironclad", role = "armor", element = "earth", target = "team_aoe", glyph = "shield", unlock_level = 9 },
         mountains_strength = { archetype = "geomancer", focus_cost = 25, cooldown_seconds = 40, effect = "damage_buff", display_name = "Mountain's Strength", role = "buff", element = "earth", target = "team_aoe", glyph = "buff", unlock_level = 9 },
         sunder = { archetype = "geomancer", focus_cost = 18, cooldown_seconds = 25, effect = "sunder", display_name = "Sunder", role = "debuff", element = "earth", target = "single", glyph = "debuff", unlock_level = 6 },
-        taunt = { archetype = "geomancer", focus_cost = 12, cooldown_seconds = 16, effect = "taunt", display_name = "Taunt", role = "control", element = "earth", target = "single", glyph = "control", unlock_level = 6 },
+        taunt = { archetype = "geomancer", focus_cost = 12, cooldown_seconds = 16, effect = "taunt", display_name = "Taunt", role = "control", element = "earth", target = "targeted_aoe", glyph = "control", unlock_level = 6 },
         rage = { archetype = "geomancer", focus_cost = 20, cooldown_seconds = 30, effect = "rage", display_name = "Rage", role = "buff", element = "earth", target = "single_pet", glyph = "buff", unlock_level = 12 },
         armor_field = { archetype = "geomancer", focus_cost = 35, cooldown_seconds = 45, effect = "armor_field", display_name = "Armor Field", role = "armor", element = "earth", target = "player_field", glyph = "shield", unlock_level = 12 },
 
