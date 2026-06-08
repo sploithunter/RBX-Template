@@ -77,6 +77,76 @@ local function label(pos, text)
     end)
 end
 
+-- A persistent screen-space readout pinned to the LEFT side, so you always know which primitive ×
+-- element is on screen (the floating text marks the spot; this names it).
+local labelGui
+local function ensureSideLabel()
+    if labelGui and labelGui.Parent then
+        return labelGui
+    end
+    local pg = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+    if not pg then
+        return nil
+    end
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "FXProbeReadout"
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    gui.DisplayOrder = 60
+    local box = Instance.new("Frame")
+    box.Name = "Box"
+    -- top-RIGHT, in the clear band above the squad strip: the left column (admin spawn + active-buffs)
+    -- is packed while the probe runs, so this is the clear "off to the side" readout spot.
+    box.AnchorPoint = Vector2.new(1, 0)
+    box.Position = UDim2.new(1, -16, 0, 110)
+    box.Size = UDim2.fromOffset(320, 60)
+    box.BackgroundColor3 = Color3.fromRGB(18, 16, 26)
+    box.BackgroundTransparency = 0.2
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = box
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(155, 120, 235)
+    stroke.Thickness = 2
+    stroke.Parent = box
+    local txt = Instance.new("TextLabel")
+    txt.Name = "Txt"
+    txt.BackgroundTransparency = 1
+    txt.Position = UDim2.fromOffset(14, 8)
+    txt.Size = UDim2.new(1, -28, 1, -16)
+    txt.Font = Enum.Font.GothamBold
+    txt.TextColor3 = Color3.fromRGB(245, 240, 255)
+    txt.TextSize = 19
+    txt.TextXAlignment = Enum.TextXAlignment.Left
+    txt.TextYAlignment = Enum.TextYAlignment.Center
+    txt.TextWrapped = true
+    txt.RichText = true
+    txt.Text = ""
+    txt.Parent = box
+    box.Parent = gui
+    gui.Parent = pg
+    labelGui = gui
+    return gui
+end
+local function setSideLabel(modeWord, id, element)
+    local gui = ensureSideLabel()
+    if not gui then
+        return
+    end
+    gui.Enabled = true
+    gui.Box.Txt.Text = string.format(
+        '<font color="#b88cff"><b>%s</b></font>\n%s  ·  <b>%s</b>',
+        modeWord,
+        id,
+        element
+    )
+end
+local function hideSideLabel()
+    if labelGui then
+        labelGui.Enabled = false
+    end
+end
+
 function PowerFXProbe.run(mode)
     running += 1
     local token = running
@@ -96,6 +166,7 @@ function PowerFXProbe.run(mode)
                     end
                     local prim = FX.primitives[id]
                     if prim then
+                        setSideLabel("CASTING", id, element)
                         playPrimitive(prim, element)
                         local r = hrp()
                         if r then
@@ -132,6 +203,7 @@ function PowerFXProbe.run(mode)
                     end
                     local prim = FX.primitives[id]
                     if prim then
+                        setSideLabel("IMPACT", id, element)
                         playPrimitive(prim, element, dummy.Position, dummy)
                         label(dummy.Position, ("impact: %s · %s"):format(id, element))
                     end
@@ -150,6 +222,9 @@ function PowerFXProbe.run(mode)
             if token == running then
                 doImpact()
             end
+        end
+        if token == running then
+            hideSideLabel() -- run done (a newer run would have bumped the token)
         end
     end)
 end

@@ -67,7 +67,7 @@ return {
         elements = { "grass", "lava", "ice", "desert" }, -- canonical CombatFX elements (per-colour)
         casting = { "cast_burst", "aura", "shield_bubble" }, -- played ON the player (Casting / Real)
         impact = { "eruption", "ranged_bolt" }, -- played at a dummy (Impact / Real modes)
-        step_seconds = 1.6, -- pause between effects so each is watchable
+        step_seconds = 2.8, -- pause between effects so each is watchable (slowed for inspection)
         dummy_distance = 16, -- studs in front of the player to place the impact dummy
     },
 
