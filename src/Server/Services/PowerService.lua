@@ -1035,9 +1035,10 @@ function PowerService:Cast(player, powerId)
 
     self:_applyEffect(player, kind, now, tostring(powerId))
     -- Cast VFX. amplified_burst / team_cleave fire their own bespoke area FX inside _applyEffect.
-    -- Archetype powers play the element cast-burst on the caster (= registry `cast_burst`) and, if
-    -- hostile, a targeted strike on the engaged enemy (= registry `eruption`) — same AreaFX the
-    -- FX-probe previews, element-coloured. Generic/white powers keep the neutral placeholder ball.
+    -- Archetype powers play a caster cast-tell (small `cast_emit` body emission for single-target,
+    -- the `cast_burst` ring for AoE powers) and, if hostile, a targeted strike on each engaged enemy
+    -- (= registry `eruption`) — same AreaFX the FX-probe previews, element-coloured. Generic/white
+    -- powers keep the neutral placeholder ball.
     -- Cast VFX. amplified_burst / team_cleave fire their own bespoke area FX inside _applyEffect.
     -- Everything else resolves per-FAMILY (powers.lua family_fx) → a registry primitive: a `source`
     -- effect on the caster + a `target` effect on each engaged enemy (hostile families). The client
@@ -1048,15 +1049,24 @@ function PowerService:Cast(player, powerId)
         local element = (def.archetype and ARCHETYPE_ELEMENT[def.archetype]) or "neutral"
         local generic = def.archetype == nil
         local fx = self._powersConfig.family_fx and self._powersConfig.family_fx[family]
-        -- generic/white powers have no element-themed visual yet ⇒ placeholder; archetype powers use
-        -- their mapped primitive (defaulting to a cast burst if the family isn't mapped).
-        local sourcePrim = (generic and "tbd") or (fx and fx.source) or "cast_burst"
+        -- Caster cast-tell resolution (priority order):
+        --   1. per-power override (def.fx.source) — hand-authored look for a specific power
+        --   2. generic/white powers ⇒ "tbd" placeholder (no element-themed visual yet)
+        --   3. friendly family source (heal_nova / aura / shield_bubble) — those read by family, not AoE
+        --   4. hostile default by AoE-ness: AoE powers get the `cast_burst` RING (reads as AoE);
+        --      single-target ones get the small `cast_emit` body emission ("emits from the player").
+        local isAoe = def.target == "targeted_aoe" or def.target == "team_aoe"
+        local sourcePrim = (def.fx and def.fx.source)
+            or (generic and "tbd")
+            or (fx and fx.source)
+            or (isAoe and "cast_burst")
+            or "cast_emit"
         Signals.Power_AreaFx:FireClient(
             player,
             { primId = sourcePrim, element = element, kind = "source" }
         )
         if not generic and self._powersConfig.enemy_targeted_families[family] then
-            local targetPrim = (fx and fx.target) or "eruption"
+            local targetPrim = (def.fx and def.fx.target) or (fx and fx.target) or "eruption"
             for _, foe in ipairs(enemiesAlive()) do
                 if foe.PrimaryPart or foe:FindFirstChildWhichIsA("BasePart") then
                     Signals.Power_AreaFx:FireClient(

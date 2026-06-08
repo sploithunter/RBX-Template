@@ -17,12 +17,23 @@
 
 return {
     primitives = {
-        -- caster-anchored point-blank burst (ground ring + dome + rising motes)
+        -- caster-anchored point-blank burst (ground RING + dome + rising motes) — reads as AoE
         cast_burst = {
             pattern = "pbaoe",
             anchor = "self",
             color = "origin",
             light = nil,
+            sound = nil,
+        },
+        -- caster-anchored EMISSION off the player's body (attached element motes streaming up, brief) —
+        -- the default single-target cast tell: small, "emits from the player", NOT a ground AoE. Uses
+        -- the per-element `damage` aura theme (embers / leaves / frost / sand), short-lived.
+        cast_emit = {
+            pattern = "attached",
+            anchor = "self",
+            category = "damage",
+            duration = 0.7,
+            color = "origin",
             sound = nil,
         },
         -- target-anchored strike/eruption at a point (origin="upfront" = slam, no cast beam)
@@ -73,7 +84,7 @@ return {
     -- Admin FX-probe sequence (PowerFXProbe). Steps each primitive across every element.
     probe = {
         elements = { "grass", "lava", "ice", "desert" }, -- canonical CombatFX elements (per-colour)
-        casting = { "cast_burst", "aura", "shield_bubble" }, -- played ON the player (Casting / Real)
+        casting = { "cast_emit", "cast_burst", "aura", "shield_bubble" }, -- played ON the player
         impact = { "eruption", "ranged_bolt" }, -- played at a dummy (Impact / Real modes)
         step_seconds = 2.8, -- pause between effects so each is watchable (slowed for inspection)
         dummy_distance = 16, -- studs in front of the player to place the impact dummy

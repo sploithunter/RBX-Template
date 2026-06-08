@@ -69,11 +69,14 @@ return {
         xp_boost = { source = "aura" },
         luck = { source = "aura" },
         luck_huge = { source = "aura" },
-        -- hostile (source on caster + target on each enemy)
-        vulnerable = { source = "cast_burst", target = "eruption" },
-        burn_spread = { source = "cast_burst", target = "eruption" },
-        root = { source = "cast_burst", target = "eruption" },
-        root_guard = { source = "cast_burst", target = "eruption" },
+        -- hostile (source on caster + target on each enemy). `source` is intentionally OMITTED: the
+        -- caster tell is chosen by AoE-ness in PowerService:Cast — AoE powers (target=targeted_aoe/
+        -- team_aoe) get the `cast_burst` ring (reads as AoE), single-target ones get the small
+        -- `cast_emit` body emission. A per-power `fx.source` still overrides. `target` = the enemy hit.
+        vulnerable = { target = "eruption" },
+        burn_spread = { target = "eruption" },
+        root = { target = "eruption" },
+        root_guard = { target = "eruption" },
         -- no clean visual yet ⇒ floating "(effect TBD)"
         summon = { source = "tbd" },
         revive = { source = "tbd" },
