@@ -66,7 +66,13 @@ return {
         aoe_blind = { family = "vulnerable", magnitude = 1.5, duration = 6 },
         damage_over_time = { family = "vulnerable", magnitude = 1.5, duration = 6 },
         aoe_damage = { family = "vulnerable", magnitude = 2.0, duration = 5 },
-        mark_of_flame = { family = "vulnerable", magnitude = 1.5, duration = 8 },
+        -- Targeted DoT: the brand burns its single target ~2 HP/sec on top of the +damage debuff.
+        mark_of_flame = {
+            family = "vulnerable",
+            magnitude = 1.5,
+            duration = 8,
+            dot = { per_tick = 2, interval = 1, aoe = false },
+        },
         eruption = { family = "vulnerable", magnitude = 2.0, duration = 5 },
 
         -- ===== GENERIC pool (farming / luck / utility) — magnitude = FRACTION (+0.5 = +50%),
@@ -143,7 +149,14 @@ return {
         permafrost = { family = "root", magnitude = 0, duration = 8 }, -- anchor: strong AoE lockdown
         shatter = { family = "vulnerable", magnitude = 2.2, duration = 5, frozen_bonus = 1.4 }, -- big vuln, x1.4 again on FROZEN targets (2.2->3.08)
         absolute_zero = { family = "root", magnitude = 0, duration = 7 }, -- mass hard freeze
-        eternal_winter = { family = "root", magnitude = 0, duration = 12 }, -- capstone: field-wide hold
+        -- Capstone: field-wide hold + a MINOR AoE DoT — 0.5 HP/sec (a float; deliberately < 1 so the
+        -- frostbite chips slowly rather than bursting). Holds every enemy and grinds them down.
+        eternal_winter = {
+            family = "root",
+            magnitude = 0,
+            duration = 12,
+            dot = { per_tick = 0.5, interval = 1, aoe = true },
+        },
         -- Desert / Sandwalker (heal/sustain)
         oasis = {
             family = "heal",

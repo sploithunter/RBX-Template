@@ -376,10 +376,94 @@ function PowerService:_summonGuardian(player, kind, now, powerId)
     end
 end
 
+-- Damage-over-time: the power itself chips `perTick` HP off enemies every `interval` for
+-- `totalSeconds` — independent of pet damage. Reduces the enemy's HP directly; EnemyService's
+-- HP-changed watcher handles death + loot when it crosses 0, and we credit this player's Contrib
+-- ledger so a DoT kill still pays out (same ledger PetFollowService:_mine writes).
+--
+-- Damage is a FLOAT and is deliberately NOT floored: a "minor" DoT (per_tick < 1) chips enemies
+-- down a fraction of an HP per tick instead of rounding to zero. HP is a Roblox number attribute
+-- (a double), so fractional HP is fine and the watcher still fires at <= 0.
+--
+-- aoe=true ticks every alive enemy (an AoE burn field); aoe=false ticks the single primary target
+-- (a targeted brand). Re-resolves the target set each tick, so it burns whoever is alive now.
+function PowerService:_damageOverTime(player, perTick, interval, totalSeconds, aoe, powerId)
+    perTick = tonumber(perTick) or 0
+    interval = math.max(0.1, tonumber(interval) or 1)
+    totalSeconds = tonumber(totalSeconds) or 0
+    if perTick <= 0 or totalSeconds <= 0 then
+        return
+    end
+    task.spawn(function()
+        local elapsed = 0
+        while elapsed < totalSeconds do
+            task.wait(interval)
+            elapsed += interval
+            if not player.Parent then
+                return
+            end
+            local targets
+            if aoe then
+                targets = enemiesAlive()
+            else
+                local primary = enemiesAlive()[1]
+                targets = primary and { primary } or {}
+            end
+            local now = os.time()
+            for _, enemy in ipairs(targets) do
+                if enemy and enemy.Parent then
+                    local hp = enemy:GetAttribute("HP") or 0
+                    if hp > 0 then
+                        local newHp = math.max(0, hp - perTick) -- FLOAT: minor DoT (<1) still chips
+                        enemy:SetAttribute("HP", newHp) -- EnemyService HP-watcher -> death + loot
+                        self:_creditDot(enemy, player, hp - newHp)
+                        -- keep the burning badge lit above the enemy while it ticks
+                        enemy:SetAttribute("DebuffPowerId", powerId)
+                        enemy:SetAttribute("DebuffUntil", now + math.ceil(interval) + 1)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Record DoT damage in the enemy's Contrib ledger (a NumberValue per UserId under the model) so the
+-- kill credits this player for loot — the same ledger pet damage writes to in PetFollowService:_mine.
+function PowerService:_creditDot(enemy, player, amount)
+    if amount <= 0 then
+        return
+    end
+    local contrib = enemy:FindFirstChild("Contrib")
+    if not contrib then
+        return
+    end
+    local key = tostring(player.UserId)
+    local nv = contrib:FindFirstChild(key)
+    if not nv then
+        nv = Instance.new("NumberValue")
+        nv.Name = key
+        nv.Parent = contrib
+    end
+    nv.Value = nv.Value + amount
+end
+
 function PowerService:_applyEffect(player, kind, now, powerId)
     local family = kind.family
     local mag = kind.magnitude or 0
     local dur = kind.duration or 0
+    -- A `dot` block layers damage-over-time on top of whatever the family does (a vulnerable MARK
+    -- that also burns, an ice HOLD that chips). Generic — any power opts in via config. aoe=true
+    -- hits every alive enemy; aoe=false the single primary target. Fires alongside the family below.
+    if kind.dot then
+        self:_damageOverTime(
+            player,
+            kind.dot.per_tick,
+            kind.dot.interval or 1,
+            kind.dot.duration or dur,
+            kind.dot.aoe,
+            powerId
+        )
+    end
     if family == "heal" then
         local pets = Workspace:FindFirstChild("PlayerPets")
             and Workspace.PlayerPets:FindFirstChild(player.Name)
