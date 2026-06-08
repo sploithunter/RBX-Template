@@ -386,6 +386,49 @@ local function refreshEnemyDebuff(enemy)
     end
 end
 
+-- Wildfire: real Roblox Fire on an enemy while it's BURNING (BurnUntil), so the contagion is visible
+-- as it spreads — persistent like the shield, cleared when the burn expires. Display-only; the
+-- vulnerability/damage live on the server. Re-ignition (attribute change) refreshes the clear timer.
+local burnFx = setmetatable({}, { __mode = "k" }) -- enemy -> Fire instance
+local function refreshEnemyBurn(enemy)
+    local secs = remaining(enemy, "BurnUntil")
+    if secs > 0.05 then
+        local fire = burnFx[enemy]
+        if not fire or not fire.Parent then
+            local pp = enemy.PrimaryPart or enemy:FindFirstChildWhichIsA("BasePart")
+            if not pp then
+                return
+            end
+            fire = Instance.new("Fire")
+            local okE, ext = pcall(function()
+                return enemy:GetExtentsSize()
+            end)
+            fire.Size = (okE and ext) and math.clamp(math.max(ext.X, ext.Y, ext.Z) * 1.4, 4, 16)
+                or 6
+            fire.Heat = 12
+            fire.Color = Color3.fromRGB(255, 140, 50)
+            fire.SecondaryColor = Color3.fromRGB(255, 210, 120)
+            fire.Parent = pp
+            burnFx[enemy] = fire
+        end
+        task.delay(secs + 0.25, function()
+            if remaining(enemy, "BurnUntil") <= 0.05 then
+                local f = burnFx[enemy]
+                if f then
+                    f:Destroy()
+                    burnFx[enemy] = nil
+                end
+            end
+        end)
+    else
+        local f = burnFx[enemy]
+        if f then
+            f:Destroy()
+            burnFx[enemy] = nil
+        end
+    end
+end
+
 local function hookEnemy(enemy)
     if conns[enemy] or not enemy:IsA("Model") then
         return
@@ -395,6 +438,9 @@ local function hookEnemy(enemy)
     list[#list + 1] = enemy:GetAttributeChangedSignal("VulnerableUntil"):Connect(function()
         refreshEnemyDebuff(enemy)
     end)
+    list[#list + 1] = enemy:GetAttributeChangedSignal("BurnUntil"):Connect(function()
+        refreshEnemyBurn(enemy)
+    end)
     list[#list + 1] = enemy:GetAttributeChangedSignal("RootedUntil"):Connect(function()
         refreshEnemyDebuff(enemy)
     end)
@@ -403,6 +449,7 @@ local function hookEnemy(enemy)
         refreshEnemyDebuff(enemy)
     end)
     refreshEnemyDebuff(enemy)
+    refreshEnemyBurn(enemy)
 end
 
 -- Watch a folder's children (current + future), hooking each and unhooking on removal.

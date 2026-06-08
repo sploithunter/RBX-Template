@@ -457,30 +457,46 @@ function PowerService:_damageOverTime(
             local now = os.time()
             local critChance = self:_dotCritChance(player, critBase, now)
             for _, enemy in ipairs(targets) do
-                if enemy and enemy.Parent then
-                    local hp = enemy:GetAttribute("HP") or 0
-                    if hp > 0 then
-                        -- crit roll per tick per enemy: ×1 normal, ×crit_mult on a crit (0 chance ⇒ ×1)
-                        local roll = CombatRoll.resolve(
-                            { hit_chance = 1, crit_chance = critChance, crit_mult = critMult },
-                            0,
-                            math.random()
-                        )
-                        local tick = perTick * roll.multiplier
-                        local newHp = math.max(0, hp - tick) -- FLOAT: minor DoT (<1) still chips
-                        enemy:SetAttribute("HP", newHp) -- EnemyService HP-watcher -> death + loot
-                        self:_creditDot(enemy, player, hp - newHp)
-                        if roll.crit then
-                            enemy:SetAttribute("CritFxUntil", now + 1) -- crit tell (client, P6)
-                        end
-                        -- keep the burning badge lit above the enemy while it ticks
-                        enemy:SetAttribute("DebuffPowerId", powerId)
-                        enemy:SetAttribute("DebuffUntil", now + math.ceil(interval) + 1)
-                    end
-                end
+                self:_dotHit(
+                    player,
+                    enemy,
+                    perTick,
+                    critChance,
+                    critMult,
+                    now,
+                    powerId,
+                    math.ceil(interval) + 1
+                )
             end
         end
     end)
+end
+
+-- Apply ONE DoT tick to a single enemy: per-tick crit roll (×1 / ×crit_mult), FLOAT damage (minor
+-- DoT <1 still chips), Contrib credit, crit tell, and keep the debuff badge lit. Shared by the
+-- generic DoT loop and the wildfire burn so damage application stays identical.
+function PowerService:_dotHit(player, enemy, perTick, critChance, critMult, now, powerId, badgeSecs)
+    if not (enemy and enemy.Parent) then
+        return
+    end
+    local hp = enemy:GetAttribute("HP") or 0
+    if hp <= 0 then
+        return
+    end
+    local roll = CombatRoll.resolve(
+        { hit_chance = 1, crit_chance = critChance, crit_mult = critMult },
+        0,
+        math.random()
+    )
+    local tick = perTick * roll.multiplier
+    local newHp = math.max(0, hp - tick) -- EnemyService HP-watcher -> death + loot
+    enemy:SetAttribute("HP", newHp)
+    self:_creditDot(enemy, player, hp - newHp)
+    if roll.crit then
+        enemy:SetAttribute("CritFxUntil", now + 1) -- crit tell (client, P6)
+    end
+    enemy:SetAttribute("DebuffPowerId", powerId)
+    enemy:SetAttribute("DebuffUntil", now + (badgeSecs or 2))
 end
 
 -- Record DoT damage in the enemy's Contrib ledger (a NumberValue per UserId under the model) so the
@@ -510,7 +526,9 @@ function PowerService:_applyEffect(player, kind, now, powerId)
     -- A `dot` block layers damage-over-time on top of whatever the family does (a vulnerable MARK
     -- that also burns, an ice HOLD that chips). Generic — any power opts in via config. aoe=true
     -- hits every alive enemy; aoe=false the single primary target. Fires alongside the family below.
-    if kind.dot then
+    -- EXCEPTION: burn_spread (Wildfire) owns its own burn INSIDE _burnSpread, gated to the enemies
+    -- actually on fire (contagion) rather than every enemy — so the damage follows the visible spread.
+    if kind.dot and family ~= "burn_spread" then
         self:_damageOverTime(
             player,
             kind.dot.per_tick,
@@ -732,7 +750,7 @@ function PowerService:_applyEffect(player, kind, now, powerId)
     elseif family == "amplified_burst" then
         self:_amplifiedBurst(player, kind, now)
     elseif family == "burn_spread" then
-        self:_burnSpread(player, kind, now)
+        self:_burnSpread(player, kind, now, powerId)
     elseif family == "team_cleave" then
         -- Firestorm: for `duration`s every pet swing also splashes x`magnitude` to other enemies
         -- within `cleave_radius` (applied in PetFollowService:_mine). Fire a nova so it reads as on.
@@ -772,18 +790,41 @@ end
 -- Wildfire: mark the squad's engaged enemy with a burn (vulnerability), which then CONTAGIONS to
 -- nearby enemies every `spread_interval`s for `duration`s. The debuff aura is shown by the client's
 -- CombatAuraController (it reacts to VulnerableUntil), so this only needs to set the attributes.
-function PowerService:_burnSpread(player, kind, now)
+function PowerService:_burnSpread(player, kind, now, powerId)
     local mag = tonumber(kind.magnitude) or 1.5
     local dur = tonumber(kind.duration) or 8
     local spreadR = tonumber(kind.spread_radius) or 14
-    local interval = math.max(0.5, tonumber(kind.spread_interval) or 1.5)
+    local perTick = (kind.dot and tonumber(kind.dot.per_tick)) or 0
+    local critBase = kind._critBase
+    local critMult = (
+        self._combatConfig
+        and self._combatConfig.rolls
+        and self._combatConfig.rolls.pet_attack
+        and self._combatConfig.rolls.pet_attack.crit_mult
+    ) or 2.0
+    -- tick cadence: the burn damage interval (falls back to spread_interval). Spread happens on the
+    -- same beat — an enemy on fire ignites its unlit neighbours each tick.
+    local interval = math.max(
+        0.5,
+        (kind.dot and tonumber(kind.dot.interval)) or tonumber(kind.spread_interval) or 1
+    )
+    local element = "lava" -- Wildfire = pyromancer; the only burn_spread power today
 
-    local function mark(enemy, untilT)
-        enemy:SetAttribute("VulnerableMult", mag)
-        enemy:SetAttribute("VulnerableUntil", untilT)
-    end
     local function partOfEnemy(e)
         return e.PrimaryPart or e:FindFirstChildWhichIsA("BasePart")
+    end
+    local function isBurning(e, t)
+        return (e:GetAttribute("BurnUntil") or 0) > t
+    end
+    -- Catch an enemy on fire: vulnerability mark (pets hit harder) + the burn flag (BurnUntil) that
+    -- gates damage AND drives the client fire visual + the debuff badge. Lasts `dur` from ignition.
+    local function ignite(enemy, untilT)
+        enemy:SetAttribute("VulnerableMult", mag)
+        enemy:SetAttribute("VulnerableUntil", untilT)
+        enemy:SetAttribute("BurnUntil", untilT)
+        enemy:SetAttribute("BurnElement", element)
+        enemy:SetAttribute("DebuffPowerId", powerId)
+        enemy:SetAttribute("DebuffUntil", untilT)
     end
 
     -- seed on the nearest engaged enemy to the squad
@@ -791,9 +832,8 @@ function PowerService:_burnSpread(player, kind, now)
     if not center then
         return
     end
-    local enemies = enemiesAlive()
     local seed, bestD
-    for _, e in ipairs(enemies) do
+    for _, e in ipairs(enemiesAlive()) do
         local pp = partOfEnemy(e)
         if pp then
             local d = (pp.Position - center).Magnitude
@@ -805,28 +845,54 @@ function PowerService:_burnSpread(player, kind, now)
     if not seed then
         return
     end
-    mark(seed, now + dur)
+    ignite(seed, now + dur)
 
-    -- contagion ticks: each marked enemy spreads the burn to unmarked neighbours within spreadR.
-    local ticks = math.floor(dur / interval)
+    -- One loop drives BOTH damage and contagion. Each tick: burn every enemy currently on fire, then
+    -- spread to unlit neighbours within spreadR. Spreading only happens during the first `dur` window;
+    -- damage keeps going until each enemy's own burn expires (a late-caught enemy still burns its full
+    -- time). No re-ignition of a still-burning enemy ⇒ the wave passes through the pack and dies out.
+    local total = dur * 2 -- covers an enemy lit right at the end of the spread window
+    local ticks = math.ceil(total / interval)
     for i = 1, ticks do
         task.delay(i * interval, function()
+            if not player.Parent then
+                return
+            end
+            local t = os.time()
             local live = enemiesAlive()
-            local nowT = os.time()
-            local marked = {}
+            local burning = {}
             for _, e in ipairs(live) do
-                if (e:GetAttribute("VulnerableUntil") or 0) > nowT then
-                    marked[#marked + 1] = e
+                if isBurning(e, t) then
+                    burning[#burning + 1] = e
                 end
             end
-            for _, m in ipairs(marked) do
-                local mp = partOfEnemy(m)
-                if mp then
-                    for _, u in ipairs(live) do
-                        if (u:GetAttribute("VulnerableUntil") or 0) <= nowT then
-                            local up = partOfEnemy(u)
-                            if up and (up.Position - mp.Position).Magnitude <= spreadR then
-                                mark(u, nowT + dur)
+            -- damage everything on fire
+            if perTick > 0 then
+                local critChance = self:_dotCritChance(player, critBase, t)
+                for _, e in ipairs(burning) do
+                    self:_dotHit(
+                        player,
+                        e,
+                        perTick,
+                        critChance,
+                        critMult,
+                        t,
+                        powerId,
+                        math.ceil(interval) + 1
+                    )
+                end
+            end
+            -- spread the fire (only while still within the ignition window)
+            if (i * interval) <= dur then
+                for _, m in ipairs(burning) do
+                    local mp = partOfEnemy(m)
+                    if mp then
+                        for _, u in ipairs(live) do
+                            if not isBurning(u, t) then
+                                local up = partOfEnemy(u)
+                                if up and (up.Position - mp.Position).Magnitude <= spreadR then
+                                    ignite(u, t + dur)
+                                end
                             end
                         end
                     end
