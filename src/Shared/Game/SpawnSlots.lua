@@ -76,7 +76,9 @@ function SpawnSlots.new(slots)
     local self = setmetatable({ _slots = {}, _byId = {} }, Registry)
     for i, s in ipairs(slots or {}) do
         local id = s.id == nil and i or s.id
-        local slot = { id = id, kind = s.kind, pos = s.pos, ref = nil }
+        -- `neighbors` = ids within the overlap radius; used by avoidNeighbors claims so a dense
+        -- (oversampled) layout never fills two slots close enough to visually overlap.
+        local slot = { id = id, kind = s.kind, pos = s.pos, neighbors = s.neighbors, ref = nil }
         self._slots[#self._slots + 1] = slot
         self._byId[id] = slot
     end
@@ -85,6 +87,18 @@ end
 
 function Registry:total()
     return #self._slots
+end
+
+-- Count of slots of a kind regardless of occupancy (nil = common). Used to size a world's max so it
+-- never asks for more than exist, and to verify the oversample headroom.
+function Registry:capacity(kind)
+    local n = 0
+    for _, s in ipairs(self._slots) do
+        if matches(s, kind) then
+            n += 1
+        end
+    end
+    return n
 end
 
 function Registry:freeCount(kind)
@@ -116,25 +130,44 @@ function Registry:isOccupied(id)
     return s ~= nil and s.ref ~= nil
 end
 
+-- True if any of this slot's precomputed neighbours is currently occupied.
+function Registry:_hasOccupiedNeighbor(slot)
+    if type(slot.neighbors) ~= "table" then
+        return false
+    end
+    for _, nid in ipairs(slot.neighbors) do
+        local n = self._byId[nid]
+        if n and n.ref ~= nil then
+            return true
+        end
+    end
+    return false
+end
+
 -- Claim a random free slot of `kind` (nil = common). rng() → [0,1). `ref` is an opaque token (the
--- spawned model) stored so release-by-ref works. Returns the slot { id, kind, pos } or nil if none
--- free. The returned table is the registry's own slot record — treat pos/id as read-only.
-function Registry:claim(kind, rng, ref)
+-- spawned model) stored so release-by-ref works. When `avoidNeighbors` is true, prefer free slots
+-- with NO occupied neighbour (keeps an oversampled/dense layout from placing two crystals on top of
+-- each other); falls back to any free slot only if every free one is blocked. Returns the slot
+-- { id, kind, pos } or nil if none free. The returned table is the registry's own record — read-only.
+function Registry:claim(kind, rng, ref, avoidNeighbors)
     rng = rng or function()
         return 0
     end
-    local free = {}
+    local free, clear = {}, {}
     for _, s in ipairs(self._slots) do
         if s.ref == nil and matches(s, kind) then
             free[#free + 1] = s
+            if not (avoidNeighbors and self:_hasOccupiedNeighbor(s)) then
+                clear[#clear + 1] = s
+            end
         end
     end
-    if #free == 0 then
+    local pool = (avoidNeighbors and #clear > 0) and clear or free
+    if #pool == 0 then
         return nil
     end
-    local idx = math.floor(rng() * #free) + 1
-    idx = clamp(idx, 1, #free)
-    local slot = free[idx]
+    local idx = clamp(math.floor(rng() * #pool) + 1, 1, #pool)
+    local slot = pool[idx]
     slot.ref = ref ~= nil and ref or true
     return slot
 end

@@ -154,5 +154,40 @@ return function()
             expect(r:freeCount("special")).to.equal(0)
             expect(r:freeCount()).to.equal(2) -- common pool intact
         end)
+
+        it("capacity counts all slots of a kind regardless of occupancy", function()
+            local r = makeMixed()
+            r:claim(nil, constRng(0))
+            expect(r:capacity()).to.equal(2) -- still 2 common (one now occupied)
+            expect(r:capacity("special")).to.equal(1)
+        end)
+    end)
+
+    describe("SpawnSlots registry — avoidNeighbors (oversampled, no-overlap)", function()
+        -- 1—2—3 line: slot 2 neighbours both 1 and 3 (i.e. close enough to overlap).
+        local function makeLine()
+            return SpawnSlots.new({
+                { id = 1, neighbors = { 2 } },
+                { id = 2, neighbors = { 1, 3 } },
+                { id = 3, neighbors = { 2 } },
+            })
+        end
+
+        it("a neighbour-avoiding claim skips slots adjacent to an occupied one", function()
+            local r = makeLine()
+            r:claim(nil, constRng(0), nil, true) -- claims slot 1
+            -- free = {2,3}; slot 2 touches occupied 1 ⇒ blocked; only slot 3 is clear
+            local slot = r:claim(nil, constRng(0), nil, true)
+            expect(slot.id).to.equal(3)
+        end)
+
+        it("falls back to a blocked slot only when nothing else is free", function()
+            local r = makeLine()
+            r:claim(nil, constRng(0), nil, true) -- slot 1
+            r:claim(nil, constRng(0), nil, true) -- slot 3
+            -- only slot 2 left, and it touches both occupied ⇒ fallback still places it
+            local slot = r:claim(nil, constRng(0), nil, true)
+            expect(slot.id).to.equal(2)
+        end)
     end)
 end

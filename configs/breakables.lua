@@ -496,6 +496,14 @@ local M = {
     -- the periodic ~0.8s BreakableSpawner hitch. Set false to fall back to the legacy per-spawn
     -- raycast search. `slot_jitter` (per spawn_settings) lightly randomises grid points (0..0.45).
     use_spawn_slots = true,
+    -- Oversample: generate ~this many × the crystals a world holds, so only ~1/oversample of slots
+    -- are filled at once. A mined crystal respawns in a RANDOM free slot → the field drifts and you
+    -- can't idle-farm one spot. 1 = fill every slot (no drift). 3 = ~one-third filled.
+    slot_oversample = 3,
+    -- Top-up reconciler cadence (s). Respawns are EVENT-DRIVEN (per-crystal random delay on mine);
+    -- this slow sweep is only a safety net for missed removals / initial fill, so it no longer
+    -- masks the random respawn gap the way the old 5s sweep did.
+    topup_interval_seconds = 30,
 
     defaults = {
         max_per_world = 0,

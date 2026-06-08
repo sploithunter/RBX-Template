@@ -702,10 +702,15 @@ function BreakableSpawner:Start()
         self:_spawnLoop()
     end)
 
-    -- Periodic top-up attempts in case assets arrive later or removals aren't caught
+    -- SAFETY-NET reconciler (not the primary fill — respawns are event-driven per-crystal with a
+    -- random delay). Runs slowly (topup_interval_seconds, default 30) so it catches missed removals /
+    -- late assets without masking the random respawn gap. The old 5s cadence is what made respawns
+    -- feel instant + uniform; the slot path also makes each sweep cheap (claim-or-skip, no raycasts).
     task.spawn(function()
         while true do
-            task.wait(5)
+            local interval = tonumber(breakablesConfig and breakablesConfig.topup_interval_seconds)
+                or 30
+            task.wait(math.max(5, interval))
             local crystalsAssets = self._crystalsAssets
             if crystalsAssets then
                 self:_fillAllWorlds(crystalsAssets)
@@ -940,10 +945,23 @@ function BreakableSpawner:_setupWorld(worldFolder)
         max.Name = "Max"
         max.Parent = worldFolder
     end
-    max.Value = configuredMax
 
     -- Ensure this world has a spawner part (synthesize from config.spawn_area if missing).
     self:_ensureSpawnArea(worldFolder, worldConfig)
+
+    -- Slot mode: build the pool now (at activation, off the spawn hot path). Floor-guard the max so a
+    -- world never asks for more crystals than it has slots (with oversample the pool is ~3× max, so
+    -- this normally leaves max untouched and ~2/3 of slots free for scattered respawns).
+    if self:_useSlots() then
+        local reg = self:_ensureSlots(worldFolder)
+        if reg then
+            local cap = reg:capacity(nil)
+            if cap > 0 and cap < configuredMax then
+                configuredMax = cap
+            end
+        end
+    end
+    max.Value = configuredMax
 
     -- Maintain count when items removed. CRITICAL: connect this listener exactly ONCE per world.
     -- _setupWorld is called repeatedly (initial pass, ChildAdded, and every 5s by _fillAllWorlds),
@@ -1244,11 +1262,17 @@ function BreakableSpawner:_ensureSlots(worldFolder)
     end
 
     local placeCfg = getSpawnSettings(worldFolder.Name)
-    local spacing = math.max(4, tonumber(placeCfg.min_distance or 12))
+    local minDist = math.max(4, tonumber(placeCfg.min_distance or 12))
     local margin = tonumber(placeCfg.spawn_area_margin or 0)
     local surfaceY = tonumber(placeCfg.surface_y)
     local jitter = math.clamp(tonumber(placeCfg.slot_jitter or 0.15), 0, 0.45)
-    local slots = {}
+    -- OVERSAMPLE: generate ~`oversample`× as many candidate points as min_distance alone would fit
+    -- (denser grid), so at steady state only ~1/oversample are filled. A mined crystal then respawns
+    -- in a RANDOM free slot somewhere else — the field drifts, so you can't idle-farm one spot. The
+    -- avoidNeighbors claim keeps two crystals from landing within min_distance (no overlap).
+    local oversample = math.max(1, tonumber(breakablesConfig.slot_oversample) or 3)
+    local spacing = math.max(2, minDist / math.sqrt(oversample))
+    local commonPos = {}
     local processed = 0
 
     for _, spawner in ipairs(spawners) do
@@ -1271,7 +1295,7 @@ function BreakableSpawner:_ensureSlots(worldFolder)
                 candidate = Vector3.new(candidate.X, surfaceY, candidate.Z)
             end
             if candidate and hasSpawnClearance(spawner, candidate, placeCfg) then
-                slots[#slots + 1] = { kind = nil, pos = candidate }
+                commonPos[#commonPos + 1] = candidate
             end
             processed += 1
             if processed % 24 == 0 then
@@ -1280,10 +1304,32 @@ function BreakableSpawner:_ensureSlots(worldFolder)
         end
     end
 
-    -- Fixed/special anchors authored in the map.
+    -- Precompute each common slot's neighbours (other commons within min_distance) so the claim can
+    -- avoid placing two crystals close enough to overlap. One-time O(n²), amortised with task.wait.
+    local slots = {}
+    local minDistSq = minDist * minDist
+    for i, p in ipairs(commonPos) do
+        local neighbors = {}
+        for j, q in ipairs(commonPos) do
+            if i ~= j then
+                local dx, dz = p.X - q.X, p.Z - q.Z
+                if dx * dx + dz * dz < minDistSq then
+                    neighbors[#neighbors + 1] = j -- ids are the array index (auto-numbered in .new)
+                end
+            end
+        end
+        slots[#slots + 1] = { id = i, kind = nil, pos = p, neighbors = neighbors }
+        if i % 32 == 0 then
+            task.wait()
+        end
+    end
+
+    -- Fixed/special anchors authored in the map (no neighbours: typed slots aren't claimed by
+    -- common spawns, and authored placement is the designer's responsibility).
     for _, child in ipairs(worldFolder:GetChildren()) do
         if child:IsA("BasePart") and child:GetAttribute("SlotKind") then
-            slots[#slots + 1] = { kind = tostring(child:GetAttribute("SlotKind")), pos = child.Position }
+            slots[#slots + 1] =
+                { kind = tostring(child:GetAttribute("SlotKind")), pos = child.Position }
         end
     end
 
@@ -1291,7 +1337,8 @@ function BreakableSpawner:_ensureSlots(worldFolder)
     self._worldSlots[worldFolder] = registry
     logger:Info("BreakableSpawner: generated spawn slots", {
         world = worldFolder.Name,
-        slots = registry:total(),
+        common = registry:capacity(nil),
+        special = registry:capacity("special"),
     })
     return registry
 end
@@ -1395,7 +1442,7 @@ function BreakableSpawner:_trySpawnOne(
         if registry and registry:total() > 0 then
             local slotKind = type(forcedSpawnOverrides) == "table" and forcedSpawnOverrides.slot_kind
                 or nil
-            claimedSlot = registry:claim(slotKind, math.random)
+            claimedSlot = registry:claim(slotKind, math.random, nil, true) -- avoidNeighbors
             if not claimedSlot then
                 return -- no free slot of this kind ⇒ world is full by geometry
             end
