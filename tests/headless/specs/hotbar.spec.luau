@@ -32,8 +32,14 @@ return function()
     end)
 
     describe("HotbarLogic.defaultBindings (default_binds override)", function()
-        -- when config.default_binds is set, it wins regardless of archetype
-        local b = HotbarLogic.defaultBindings(geoPowers, config)
+        -- when default_binds is set, it wins regardless of archetype (config-agnostic: use a local
+        -- override so this survives the live config nulling default_binds for the level-up flow)
+        local override = table.clone(config)
+        override.default_binds = {
+            { slot = 1, type = "power", target = "cataclysm" },
+            { slot = 8, type = "tactical", target = "scatter" },
+        }
+        local b = HotbarLogic.defaultBindings(geoPowers, override)
 
         it("uses the explicit layout, ignoring the archetype pool", function()
             expect(b[1].type).to.equal("power")

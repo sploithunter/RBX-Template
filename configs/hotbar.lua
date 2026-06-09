@@ -21,19 +21,17 @@ return {
     },
 
     -- [PROTOTYPE] Explicit default bar OVERRIDE. When set, a fresh hotbar uses exactly this layout
-    -- (archetype-independent) instead of the archetype-pool fill above — handy for testing a
-    -- specific kit so a restart reliably comes up with it. Set to nil to fall back to per-archetype
-    -- defaults. Each entry is { slot, type, target }. Seeds the Pyromancer signature kit + tacticals.
-    default_binds = {
-        { slot = 1, type = "power", target = "cataclysm" },
-        { slot = 2, type = "power", target = "wildfire" },
-        { slot = 3, type = "power", target = "firestorm" },
-        { slot = 4, type = "power", target = "mark_of_flame" },
-        { slot = 5, type = "power", target = "ember_ward" },
-        { slot = 6, type = "power", target = "eruption" },
-        { slot = 7, type = "roster", target = "Roster 1" },
-        { slot = 8, type = "tactical", target = "scatter" },
-        { slot = 9, type = "tactical", target = "focus_fire" },
-        { slot = 10, type = "tactical", target = "regroup" },
-    },
+    -- (archetype-independent) instead of the per-archetype fill above — handy for testing a specific
+    -- kit so a restart reliably comes up with it. Set to nil to fall back to the `defaults` above
+    -- (power slots fill from OWNED powers, so a fresh character's power slots stay empty until they
+    -- pick — the real level-up flow). Each entry is { slot, type, target }.
+    --
+    -- NIL while we test the level-up system (powers come only from picks). To re-seed a fixed kit
+    -- for VFX/signature testing, restore a table here, e.g. the old Pyromancer kit:
+    --   { {slot=1,type="power",target="cataclysm"}, {slot=2,type="power",target="wildfire"},
+    --     {slot=3,type="power",target="firestorm"}, {slot=4,type="power",target="mark_of_flame"},
+    --     {slot=5,type="power",target="ember_ward"}, {slot=6,type="power",target="eruption"},
+    --     {slot=7,type="roster",target="Roster 1"}, {slot=8,type="tactical",target="scatter"},
+    --     {slot=9,type="tactical",target="focus_fire"}, {slot=10,type="tactical",target="regroup"} }
+    default_binds = nil,
 }
