@@ -718,6 +718,25 @@ end
 
 UserInputService.InputBegan:Connect(onInputBegan)
 
+-- Player move-speed buff (Swift / Super Speed): WalkSpeed = base * (1 + MoveSpeedBuff) while the
+-- buff is live. Pets already read MoveSpeedBuff (PetFollowController); this applies it to the PLAYER
+-- too, so Swift speeds self AND squad.
+local function activeMoveBuff()
+    local untilT = localPlayer:GetAttribute("MoveSpeedBuffUntil") or 0
+    if untilT > os.time() then
+        return localPlayer:GetAttribute("MoveSpeedBuff") or 0
+    end
+    return 0
+end
+
+local function applyWalkSpeed()
+    local char = localPlayer.Character
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.WalkSpeed = gameConfig.WorldSettings.WalkSpeed * (1 + activeMoveBuff())
+    end
+end
+
 -- Wait for character spawn
 local function onCharacterAdded(character)
     Logger:Info("Character spawned", {
@@ -729,8 +748,8 @@ local function onCharacterAdded(character)
     local humanoid = character:WaitForChild("Humanoid")
     local rootPart = character:WaitForChild("HumanoidRootPart")
 
-    -- Apply game configuration to character
-    humanoid.WalkSpeed = gameConfig.WorldSettings.WalkSpeed
+    -- Apply game configuration to character (WalkSpeed includes any live move-speed buff)
+    humanoid.WalkSpeed = gameConfig.WorldSettings.WalkSpeed * (1 + activeMoveBuff())
     humanoid.JumpPower = gameConfig.WorldSettings.JumpPower
 
     -- Set up character-specific systems
@@ -745,6 +764,11 @@ if localPlayer.Character then
     onCharacterAdded(localPlayer.Character)
 end
 localPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+-- Re-apply WalkSpeed whenever the move-speed buff changes (Swift toggled/granted, or a timed cast
+-- expires) so player speed tracks the buff live, not just on spawn.
+localPlayer:GetAttributeChangedSignal("MoveSpeedBuff"):Connect(applyWalkSpeed)
+localPlayer:GetAttributeChangedSignal("MoveSpeedBuffUntil"):Connect(applyWalkSpeed)
 
 -- Wait for data to load
 local function waitForDataLoaded()
