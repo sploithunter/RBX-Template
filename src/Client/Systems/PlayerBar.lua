@@ -273,6 +273,11 @@ function PlayerBar.start()
         if ready then
             fill.BackgroundColor3 = GOLD
             fillGrad.Color = ColorSequence.new(lighten(GOLD, 40), GOLD)
+        else
+            -- caught up: restore the themed (area-colour) fill — the gold was set with no reset, so
+            -- the bar stayed gold after ascending even once PendingLevels hit 0.
+            fill.BackgroundColor3 = palette.fill
+            fillGrad.Color = ColorSequence.new(lighten(palette.fill, 80), palette.fill)
         end
         xpText.Text = need > 0 and string.format("%d / %d XP", math.floor(xp), need) or ""
         levelText.Text = (ready and not blinkOn) and "▲" or tostring(level)
