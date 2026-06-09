@@ -175,7 +175,7 @@
         "image": "101173030129120"
       },
       "ranged_impact": {
-        "decal": "126075319206268",
+        "decal": "134174129146744",
         "image": "120746825352560"
       },
       "sand_storm": {
@@ -205,6 +205,22 @@
       "winter_hold": {
         "decal": "71035669719387",
         "image": "123936250594866"
+      },
+      "heart": {
+        "decal": "101962748027479",
+        "image": null
+      },
+      "hourglass": {
+        "decal": "82334455714735",
+        "image": null
+      },
+      "impact_burst": {
+        "decal": "72768992437483",
+        "image": null
+      },
+      "range": {
+        "decal": "103767304901691",
+        "image": null
       }
     },
     "red": {
@@ -357,7 +373,7 @@
         "image": "127156279787232"
       },
       "ranged_impact": {
-        "decal": "123268344943977",
+        "decal": "74696562806778",
         "image": "112522766278309"
       },
       "sand_storm": {
@@ -387,6 +403,22 @@
       "winter_hold": {
         "decal": "116881035973880",
         "image": "116905463251278"
+      },
+      "heart": {
+        "decal": "118376271093530",
+        "image": null
+      },
+      "hourglass": {
+        "decal": "74189550531817",
+        "image": null
+      },
+      "impact_burst": {
+        "decal": "138461745206760",
+        "image": null
+      },
+      "range": {
+        "decal": "128850070887177",
+        "image": null
       }
     },
     "yellow": {
@@ -539,7 +571,7 @@
         "image": "135777921980083"
       },
       "ranged_impact": {
-        "decal": "109401372333524",
+        "decal": "92989868444958",
         "image": "125059616149464"
       },
       "sand_storm": {
@@ -569,6 +601,22 @@
       "winter_hold": {
         "decal": "106683855702134",
         "image": "123367842104970"
+      },
+      "heart": {
+        "decal": "130247807088450",
+        "image": null
+      },
+      "hourglass": {
+        "decal": "135872940233456",
+        "image": null
+      },
+      "impact_burst": {
+        "decal": "133035311500891",
+        "image": null
+      },
+      "range": {
+        "decal": "117978793160323",
+        "image": null
       }
     },
     "blue": {
@@ -721,7 +769,7 @@
         "image": "70457806163775"
       },
       "ranged_impact": {
-        "decal": "132345677647979",
+        "decal": "100487751278366",
         "image": "115335131165731"
       },
       "sand_storm": {
@@ -751,6 +799,22 @@
       "winter_hold": {
         "decal": "70704532729043",
         "image": "123370913321992"
+      },
+      "heart": {
+        "decal": "139925339484183",
+        "image": null
+      },
+      "hourglass": {
+        "decal": "89975703725297",
+        "image": null
+      },
+      "impact_burst": {
+        "decal": "136532736265401",
+        "image": null
+      },
+      "range": {
+        "decal": "84198547544576",
+        "image": null
       }
     },
     "white": {
@@ -1085,7 +1149,7 @@
         "image": "74760341461596"
       },
       "ranged_impact": {
-        "decal": "76512694138210",
+        "decal": "125420473162561",
         "image": "83017441648268"
       },
       "sand_storm": {
@@ -1115,6 +1179,22 @@
       "winter_hold": {
         "decal": "118488533816459",
         "image": "95073901146868"
+      },
+      "heart": {
+        "decal": "94704339359792",
+        "image": null
+      },
+      "hourglass": {
+        "decal": "98745615970667",
+        "image": null
+      },
+      "impact_burst": {
+        "decal": "137479157900304",
+        "image": null
+      },
+      "range": {
+        "decal": "92145712126089",
+        "image": null
       }
     }
   },
