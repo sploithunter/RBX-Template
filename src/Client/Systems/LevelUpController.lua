@@ -155,15 +155,11 @@ function LevelUpController:_build()
     pad.Parent = btn
     btn.Parent = gui
     self.button = btn
-    -- Nudge: a player levels up AT THE ALTAR (Ascend -> claim -> the menu opens via LevelUp_Claimed
-    -- to make the pick). So for players the nudge just points there; devs (admin overlay on) get the
-    -- menu directly for testing.
+    -- Nudge: leveling up happens AT THE ALTAR (one consistent entry — Ascend opens the menu via
+    -- LevelUp_OpenChoice). The nudge just points you there; it never opens the menu itself (devs use
+    -- the admin POWER CHOICE button for a direct open). Keeps the flow consistent regardless of admin.
     btn.Activated:Connect(function()
-        if self.player:GetAttribute("AdminOverlaysOn") == true then
-            self:_openChoiceMenu()
-        else
-            self:_toast({ title = "Ascend at the Ascension Altar", auto = true })
-        end
+        self:_toast({ title = "Ascend at the Ascension Altar", auto = true })
     end)
 
     -- gentle pulse so it draws the eye
