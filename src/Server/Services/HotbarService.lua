@@ -162,12 +162,14 @@ local function isEmptyMap(t)
     return true
 end
 
--- Initialize archetype defaults into a string-keyed hotbar (once, when empty).
+-- Apply archetype defaults into a string-keyed hotbar exactly ONCE (a brand-new player). After that
+-- we respect the player's bar verbatim — INCLUDING a fully-cleared bar — so clearing slots in Edit
+-- mode sticks instead of repopulating on the next state read.
 function HotbarService:_ensureDefaults(data)
     if type(data.Hotbar) ~= "table" then
         data.Hotbar = {}
     end
-    if isEmptyMap(data.Hotbar) and data.Archetype then
+    if not data.HotbarInitialized and isEmptyMap(data.Hotbar) and data.Archetype then
         -- Bind only the powers the player actually OWNS (picked via level-up) — a clean character
         -- owns none, so the power slots stay EMPTY until they pick. No auto-granted default powers.
         -- (Roster/tactical command defaults still populate from defaultBindings.)
@@ -176,6 +178,7 @@ function HotbarService:_ensureDefaults(data)
             data.Hotbar[tostring(index)] = bind
         end
     end
+    data.HotbarInitialized = true -- defaults are a one-time seed; never auto-repopulate again
     return data.Hotbar
 end
 
