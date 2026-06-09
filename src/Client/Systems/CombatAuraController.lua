@@ -287,8 +287,9 @@ local function refreshArmor(pet)
         stopSlot(pet, "armorReskin")
     end
 
-    -- Floating identity badge (the disc icon) while EITHER defensive effect is active.
-    if hasShield(pet) or hasArmor(pet) then
+    -- Floating identity badge (the disc icon) while ANY defensive effect is active — shield, armor,
+    -- OR evasion. Evasion shows its badge (so you can tell the dodge buff is up) but NO shield bubble.
+    if hasShield(pet) or hasArmor(pet) or isEvading(pet) then
         showArmorIcon(pet)
     else
         hideArmorIcon(pet)
