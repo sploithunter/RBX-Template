@@ -11,6 +11,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DailyStreak = require(ReplicatedStorage.Shared.Game.DailyStreak)
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 
 local DailyService = {}
 DailyService.__index = DailyService
@@ -90,6 +91,7 @@ function DailyService:Claim(player, today)
     s.lastDay = today
     s.streak = r.newStreak
     self._dataService:RequestSave(player, "daily_claim", { critical = true })
+    fireGameEvent(player, "daily_claim", { day = r.claimDay, streak = r.newStreak }) -- fanfare
     return {
         ok = true,
         day = r.claimDay,

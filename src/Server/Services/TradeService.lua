@@ -21,6 +21,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local TradeLogic = require(ReplicatedStorage.Shared.Game.TradeLogic)
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 
 local TradeService = {}
 TradeService.__index = TradeService
@@ -407,6 +408,13 @@ function TradeService:_deliver(session)
     )
     self:_appendAudit(rec)
     self:_push(session, "completed")
+    -- config-driven celebration for BOTH sides of a completed trade (game_events)
+    if pa then
+        fireGameEvent(pa, "trade_complete", { with = session.b })
+    end
+    if pb then
+        fireGameEvent(pb, "trade_complete", { with = session.a })
+    end
     self:_close(session.id)
     if pa then
         self._dataService:RequestSave(pa, "trade_complete", { critical = true })

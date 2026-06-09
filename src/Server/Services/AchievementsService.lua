@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Signal = require(ReplicatedStorage.Shared.Libraries.Signal)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 
 local AchievementsService = {}
 AchievementsService.__index = AchievementsService
@@ -188,6 +189,7 @@ function AchievementsService:_grantTier(player, achievement, tier, value)
 
     self.Completed:Fire(player, payload)
     Signals.AchievementCompleted:FireClient(player, payload)
+    fireGameEvent(player, "achievement_completed", payload) -- config-driven fanfare (game_events)
     self._dataService:RequestSave(player, "achievement_completed", { critical = true })
     return true
 end

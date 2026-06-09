@@ -13,6 +13,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local FusionLogic = require(ReplicatedStorage.Shared.Game.FusionLogic)
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 
 local FusionService = {}
 FusionService.__index = FusionService
@@ -82,6 +83,7 @@ function FusionService:Fuse(player, uidA, uidB)
 
     local rec = FusionLogic.fusionRecord(player.UserId, uidA, uidB, outUid, os.time())
     self:_appendLog(rec)
+    fireGameEvent(player, "pet_fusion", { output = outputData.id, element = outputData.element })
     return { ok = true, output = outputData, outputUid = outUid, audit = rec }
 end
 

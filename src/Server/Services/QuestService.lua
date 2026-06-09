@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Condition = require(ReplicatedStorage.Shared.Game.Condition)
 local ClaimLogic = require(ReplicatedStorage.Shared.Game.ClaimLogic)
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 
 local QuestService = {}
 QuestService.__index = QuestService
@@ -99,6 +100,7 @@ function QuestService:Claim(player, questId)
     end
     ledger[questId] = (ledger[questId] or 0) + 1
     self._dataService:RequestSave(player, "quest_claim", { critical = true })
+    fireGameEvent(player, "quest_complete", { quest = questId }) -- config-driven fanfare
     return { ok = true, quest = questId, reward = granted and granted.granted }
 end
 

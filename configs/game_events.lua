@@ -28,4 +28,44 @@ return {
         sound = "celebratory_jingle",
         vfx = { kind = "burst", color = { 120, 230, 150 } }, -- green "new ground" burst
     },
+
+    -- ===== Batch 1: server-fired celebrations (FireGameEvent at each success spot). All reuse the
+    -- celebratory jingle for now (swap per-event sounds here later, config-only); burst colors
+    -- differentiate them visually. =====
+
+    -- An achievement tier completed (server: AchievementsService alongside AchievementCompleted).
+    achievement_completed = {
+        sound = "celebratory_jingle",
+        vfx = { kind = "burst", color = { 255, 120, 220 } }, -- magenta
+    },
+
+    -- A quest was claimed (server: QuestService:Claim success).
+    quest_complete = {
+        sound = "celebratory_jingle",
+        vfx = { kind = "burst", color = { 90, 180, 255 } }, -- sky blue
+    },
+
+    -- The daily streak reward was claimed (server: DailyService:Claim success).
+    daily_claim = {
+        sound = "celebratory_jingle",
+        vfx = { kind = "burst", color = { 80, 220, 210 } }, -- teal
+    },
+
+    -- An escrow trade completed — fired to BOTH players (server: TradeService:_deliver).
+    trade_complete = {
+        sound = "celebratory_jingle",
+        vfx = { kind = "burst", color = { 240, 240, 255 } }, -- white sparkle
+    },
+
+    -- Chaotic Fusion produced a new pet (server: FusionService:Fuse success).
+    pet_fusion = {
+        sound = "celebratory_jingle",
+        vfx = { kind = "burst", color = { 185, 120, 255 } }, -- chaotic purple
+    },
+
+    -- First-ever Robux purchase bonus granted (server: MonetizationService).
+    first_purchase_bonus = {
+        sound = "celebratory_jingle",
+        vfx = { kind = "burst", color = { 255, 160, 60 }, count = 24 }, -- big warm gold-orange
+    },
 }
