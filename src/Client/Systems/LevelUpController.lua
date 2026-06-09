@@ -96,10 +96,25 @@ function LevelUpController.start()
         if data and data.auto then
             self:_toast(data) -- field auto-claim (filler) -> small toast
         else
-            self:_showSequence(data) -- altar claim (training) -> reveal modal
+            -- altar/training claim -> open the new PowerChoiceMenu (the real level-up UI), not the
+            -- legacy grid modal. Falls back to the old sequence if MenuManager isn't up.
+            self:_openChoiceMenu(data)
         end
     end)
     return self
+end
+
+-- Open the new PowerChoiceMenu (server-backed pick/slot flow). Falls back to the legacy reveal
+-- modal only if the MenuManager / panel isn't available.
+function LevelUpController:_openChoiceMenu(data)
+    if _G.PowerChoiceMenuOpen then
+        return -- already open; it refreshes itself after each in-menu claim (no rebuild/flicker)
+    end
+    if _G.MenuManager and _G.MenuManager.OpenPanel then
+        _G.MenuManager:OpenPanel("PowerChoice", "scale_in")
+    else
+        self:_showSequence(data)
+    end
 end
 
 function LevelUpController:_build()
@@ -136,10 +151,10 @@ function LevelUpController:_build()
     pad.Parent = btn
     btn.Parent = gui
     self.button = btn
-    -- The button is a NUDGE, not a claim — training is claimed at the Ascension Altar. Tapping
-    -- it just reminds you where to go.
+    -- The nudge opens the PowerChoiceMenu (the real level-up UI) directly, so you can resolve owed
+    -- levels without hunting for the altar. (The altar prompt also opens it via LevelUp_Claimed.)
     btn.Activated:Connect(function()
-        self:_toast({ title = "Ascend at the Ascension Altar", auto = true })
+        self:_openChoiceMenu()
     end)
 
     -- gentle pulse so it draws the eye
