@@ -1,5 +1,5 @@
 assets_dir: /Users/jason/Documents/RBX-Template/assets/ui/white_icons
-icon_count: 45
+icon_count: 49
 
 armor_chest.png
 arrow_right.png
@@ -20,10 +20,14 @@ fist_broken.png
 fist_impact.png
 gift_up.png
 hand_stop.png
+haste.png
+heart.png
 history.png
+hourglass.png
 ice_hold.png
 ice_shard.png
 ice_storm.png
+impact_burst.png
 knockback.png
 magnet.png
 nuke.png
