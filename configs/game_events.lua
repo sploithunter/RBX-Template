@@ -95,4 +95,34 @@ return {
         sound = "celebratory_jingle",
         vfx = { kind = "burst", color = { 255, 120, 255 }, count = 24 }, -- big rainbow-pink
     },
+
+    -- ===== Batch 3: economy / enchant / pet-down (existing toasts stay; the bus adds the juice) =====
+
+    -- A shop item was bought (server: EconomyService — the PurchaseSuccess toast still shows).
+    purchase_success = {
+        vfx = { kind = "burst", color = { 255, 215, 120 }, count = 8 }, -- small gold, no stinger
+    },
+
+    -- Items sold for coins (server: EconomyService — SellSuccess toast still shows).
+    sell_success = {
+        vfx = { kind = "burst", color = { 150, 230, 150 }, count = 8 }, -- small green, no stinger
+    },
+
+    -- An enchant reroll SUCCEEDED (server: EnchantService — fired at the same reveal moment as
+    -- EnchantPetResult so the juice syncs with the reveal).
+    enchant_success = {
+        sound = "cartoony_spell_cast",
+        vfx = { kind = "burst", color = { 200, 120, 255 }, count = 14 }, -- arcane purple
+    },
+
+    -- One of YOUR pets went down (server: EnemyService:_downPet). Somber low thud, no burst.
+    pet_down = {
+        sound = "deep_earthen_impact",
+    },
+
+    -- SOURCES WIRED, NO DEFAULT REACTIONS (add a row to react — the fire is already in place):
+    --   egg_hatch     — every successful hatch batch {count} (the reveal pop is animation-synced
+    --                   choreography in EggHatchingService and stays there)
+    --   economy_error — purchase/sell failures {message} (the error notice already informs;
+    --                   add an error blip here if/when one is uploaded)
 }

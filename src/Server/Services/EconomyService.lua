@@ -16,6 +16,8 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local MarketplaceService = game:GetService("MarketplaceService")
 
 local Libraries = ReplicatedStorage.Shared.Libraries
@@ -643,6 +645,7 @@ function EconomyService:PurchaseItem(player, data)
             price = price,
         })
     end)
+    fireGameEvent(player, "purchase_success", { item = itemId }) -- config-driven juice (toast stays)
 
     if not purchaseSuccessResult then
         self._logger:Error(
@@ -766,6 +769,7 @@ function EconomyService:SellItem(player, data)
             totalPrice = totalSellPrice,
         })
     end)
+    fireGameEvent(player, "sell_success", { item = itemId, total = totalSellPrice })
 
     if not sellSuccessResult then
         self._logger:Error(
@@ -1026,6 +1030,7 @@ function EconomyService:_sendError(player, message)
     end
 
     local success, error = pcall(function()
+        fireGameEvent(player, "economy_error", { message = message }) -- reactions config-optional
         self._signals.EconomyError:FireClient(player, {
             message = message,
             timestamp = tick(),

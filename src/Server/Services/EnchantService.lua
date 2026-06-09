@@ -78,6 +78,7 @@ end
 
 function EnchantService:Start()
     self._signals = require(game:GetService("ReplicatedStorage").Shared.Network.Signals)
+    local fireGameEvent = require(game:GetService("ReplicatedStorage").Shared.Network.FireGameEvent)
     self._signals.EnchantPetRequest.OnServerEvent:Connect(function(player, payload)
         local result = self:RerollPetEnchant(player, payload)
         local revealDelay = result
@@ -88,10 +89,16 @@ function EnchantService:Start()
             task.delay(revealDelay, function()
                 if player and player.Parent then
                     self._signals.EnchantPetResult:FireClient(player, result)
+                    if result.ok == true then
+                        fireGameEvent(player, "enchant_success", { enchant = result.enchant })
+                    end
                 end
             end)
         else
             self._signals.EnchantPetResult:FireClient(player, result)
+            if result and result.ok == true then
+                fireGameEvent(player, "enchant_success", { enchant = result.enchant })
+            end
         end
     end)
 

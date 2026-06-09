@@ -266,6 +266,7 @@ end
 
 function EggService:RecordHatchSuccess(player, request, response)
     local results, autoDeletedCount, specialCount = self:SummarizeHatchResults(response.results)
+    fireGameEvent(player, "egg_hatch", { count = response.hatchCount }) -- reactions config-optional
     if specialCount > 0 then
         -- ONE rare-hatch celebration per batch (not per pet) — golden/rainbow/special reveals.
         fireGameEvent(player, "egg_hatch_rare", { count = specialCount })

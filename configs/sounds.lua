@@ -39,6 +39,22 @@ return {
         bus = "effects",
     },
 
+    -- Sparkly cartoon spell cast (uploaded SFX) — enchant success reveal.
+    cartoony_spell_cast = {
+        id = "rbxassetid://128240762228140",
+        volume = 0.6,
+        playback_speed = 1.0,
+        bus = "effects",
+    },
+
+    -- Low heavy thud (uploaded SFX) — a pet going DOWN (somber, quiet).
+    deep_earthen_impact = {
+        id = "rbxassetid://98891214914756",
+        volume = 0.35,
+        playback_speed = 0.9,
+        bus = "effects",
+    },
+
     -- LOOPING AREA MUSIC. AreaMusicController plays the track for the player's CURRENT area, looped,
     -- on the "music" SoundGroup bus (so the Music volume slider controls it), crossfading on area
     -- change. New uploads play once Roblox moderation approves them.

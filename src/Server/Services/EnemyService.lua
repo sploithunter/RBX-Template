@@ -449,6 +449,11 @@ end
 function EnemyService:_downPet(pet, _now, _eng, reason)
     pet:SetAttribute("CombatDowned", true)
     pet:SetAttribute("DownedReason", reason or "down")
+    -- pet folders are named after the owner (Workspace.PlayerPets.<name>)
+    local owner = pet.Parent and Players:FindFirstChild(pet.Parent.Name)
+    if owner then
+        fireGameEvent(owner, "pet_down", { pet = pet.Name, reason = reason or "down" })
+    end
     local cd = ActiveSquad.slotCooldownSeconds(reason or "down", self._squadConfig)
     pet:SetAttribute("CooldownUntil", os.time() + cd)
     local tid = pet:FindFirstChild("TargetID")
