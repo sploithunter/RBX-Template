@@ -20,7 +20,9 @@ local PlayerBar = {}
 local started = false
 
 local SEGMENTS = 10
-local GOLD = Color3.fromRGB(255, 205, 75)
+-- "Ready to level up" accent. PURPLE (matches the ASCEND nudge) so it contrasts with EVERY area
+-- theme — gold would vanish into the Desert/citrine (yellow) palette.
+local READY = Color3.fromRGB(150, 85, 225)
 local SEG_DIM = Color3.fromRGB(35, 37, 45)
 
 local function corner(p, r)
@@ -258,7 +260,7 @@ function PlayerBar.start()
         local ready = pending > 0 or progress >= 1
         local lit = ready and SEGMENTS or math.floor(progress * SEGMENTS)
         local within = ready and 1 or (progress * SEGMENTS - lit)
-        local segColor = ready and GOLD or lighten(palette.primary, 25)
+        local segColor = ready and READY or lighten(palette.primary, 25)
 
         for i = 1, SEGMENTS do
             local on = i <= lit
@@ -271,8 +273,8 @@ function PlayerBar.start()
         end
         fill.Size = UDim2.new(math.clamp(within, ready and 1 or 0.02, 1), 0, 1, 0)
         if ready then
-            fill.BackgroundColor3 = GOLD
-            fillGrad.Color = ColorSequence.new(lighten(GOLD, 40), GOLD)
+            fill.BackgroundColor3 = READY
+            fillGrad.Color = ColorSequence.new(lighten(READY, 40), READY)
         else
             -- caught up: restore the themed (area-colour) fill — the gold was set with no reset, so
             -- the bar stayed gold after ascending even once PendingLevels hit 0.
@@ -281,7 +283,7 @@ function PlayerBar.start()
         end
         xpText.Text = need > 0 and string.format("%d / %d XP", math.floor(xp), need) or ""
         levelText.Text = (ready and not blinkOn) and "▲" or tostring(level)
-        levelText.TextColor3 = ready and GOLD or Color3.fromRGB(245, 248, 255)
+        levelText.TextColor3 = ready and READY or Color3.fromRGB(245, 248, 255)
     end
 
     applyTheme(palette)
