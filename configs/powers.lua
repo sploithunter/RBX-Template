@@ -316,7 +316,7 @@ return {
             generic = true,
             display_name = "Luck",
             focus_cost = 20,
-            cooldown_seconds = 45,
+            cooldown_seconds = 300, -- balance: 5 min recharge for a 1 min luck window
             effect = "luck",
             unlock_level = 8,
             subtitle = "Player-Targeted Special",
