@@ -8,10 +8,19 @@
       • otherwise -> place 2 enhancement slots onto powers you already own (click an "owned"
         row to add a slot, up to 6 — the slots PowerSlotRow already draws).
 
+    STAGE → COMMIT. Clicking a row STAGES the choice; nothing is final until you press COMMIT.
+      • pick beat: clicking is a radio — a second power replaces the first; clicking the staged
+        one clears it.
+      • slot beat: each click stages a slot; ↶ UNDO pops the last staged action.
+      • COMMIT writes the staged beat into `owned` + the log; then LEVEL UP unlocks the next beat.
+        You cannot level past an un-committed beat, and must spend the grant before committing.
+      • committed picks are permanent (RESET is the dev full-run wipe; real respec comes later).
+
     SELF-CONTAINED for now: it keeps its OWN model (level / owned[powerId]=slotCount / pending
-    picks + slots) and appends every action to `self.log` ({ action="pick"|"slot", id, level }).
-    Nothing hits the server yet — once the flow feels right, each logged action maps 1:1 to a bus
-    call (pick -> power.select, slot -> augment.place) + the real endgame effects.
+    grant + staged buffer) and appends every COMMITTED action to `self.log`
+    ({ action="pick"|"slot", id, level }). Nothing hits the server yet — once the flow feels right,
+    each logged action maps 1:1 to a bus call (pick -> power.select, slot -> augment.place) + the
+    real endgame effects.
 
     Opened by the admin "POWER CHOICE" button (later: a level-up nudge). Switching origin via the
     header button RESETS the run so each origin can be walked from L1.
@@ -38,6 +47,13 @@ local NATURAL_COLOR = Color3.fromRGB(196, 156, 255)
 local MAX_LEVEL = 50
 local MAX_SLOTS = 6
 local SLOTS_PER_ROUND = 2
+
+-- chip palette (base colours; dimmed when a chip is disabled)
+local COMMIT_COLOR = Color3.fromRGB(235, 200, 90)
+local UNDO_COLOR = Color3.fromRGB(150, 150, 165)
+local LEVEL_COLOR = Color3.fromRGB(120, 205, 130)
+local RESET_COLOR = Color3.fromRGB(150, 120, 200)
+local STAGED_GLOW = Color3.fromRGB(235, 200, 90)
 
 -- selection levels -> set, for O(1) "is this a power level?"
 local SEL = {}
@@ -67,17 +83,103 @@ function PowerChoiceMenu.new()
     self.frame = nil
     self.originIndex = 1
     self.level = 1
-    self.owned = {} -- [powerId] = slotCount (1..6)
-    self.pendingPower = 0
-    self.pendingSlots = 0
-    self.log = {} -- { { action = "pick"|"slot", id = powerId, level = n }, ... }
+    self.owned = {} -- [powerId] = slotCount (1..6) — COMMITTED only
+    self.pendingPower = 0 -- power picks granted this beat (not yet committed)
+    self.pendingSlots = 0 -- slots granted this beat (not yet committed)
+    self.staged = {} -- { { action = "pick"|"slot", id = powerId }, ... } — reversible, pre-commit
+    self.log = {} -- COMMITTED actions: { { action, id, level }, ... }
     -- ui refs
     self.naturalCol = nil
     self.originCol = nil
     self.originHeader = nil
     self.statusLabel = nil
     self.levelBtn = nil
+    self.commitBtn = nil
+    self.undoBtn = nil
     return self
+end
+
+-- ---- staged-buffer helpers ----------------------------------------------
+
+function PowerChoiceMenu:_stagedPickCount()
+    local n = 0
+    for _, s in ipairs(self.staged) do
+        if s.action == "pick" then
+            n += 1
+        end
+    end
+    return n
+end
+
+function PowerChoiceMenu:_stagedSlotCount()
+    local n = 0
+    for _, s in ipairs(self.staged) do
+        if s.action == "slot" then
+            n += 1
+        end
+    end
+    return n
+end
+
+function PowerChoiceMenu:_stagedSlotsOn(id)
+    local n = 0
+    for _, s in ipairs(self.staged) do
+        if s.action == "slot" and s.id == id then
+            n += 1
+        end
+    end
+    return n
+end
+
+function PowerChoiceMenu:_isStagedPick(id)
+    for _, s in ipairs(self.staged) do
+        if s.action == "pick" and s.id == id then
+            return true
+        end
+    end
+    return false
+end
+
+-- slots that would show on a row: committed base + staged slots (staged pick = its inherent 1)
+function PowerChoiceMenu:_effectiveSlots(id)
+    if self.owned[id] then
+        return self.owned[id] + self:_stagedSlotsOn(id)
+    elseif self:_isStagedPick(id) then
+        return 1
+    end
+    return 1
+end
+
+function PowerChoiceMenu:_remainingPicks()
+    return self.pendingPower - self:_stagedPickCount()
+end
+
+function PowerChoiceMenu:_remainingSlots()
+    return self.pendingSlots - self:_stagedSlotCount()
+end
+
+-- is there ANY committed power that could still take a slot? (avoids a late-game commit soft-lock)
+function PowerChoiceMenu:_canPlaceSlot()
+    for id, count in pairs(self.owned) do
+        if count + self:_stagedSlotsOn(id) < MAX_SLOTS then
+            return true
+        end
+    end
+    return false
+end
+
+-- COMMIT is allowed once the beat's grant is fully allocated (picks always; slots unless none fit)
+function PowerChoiceMenu:_canCommit()
+    if self.pendingPower == 0 and self.pendingSlots == 0 then
+        return false -- nothing granted this beat
+    end
+    if self:_remainingPicks() > 0 then
+        return false
+    end
+    if self:_remainingSlots() > 0 and self:_canPlaceSlot() then
+        return false
+    end
+    return true
 end
 
 -- ---- model ---------------------------------------------------------------
@@ -96,6 +198,7 @@ function PowerChoiceMenu:_reset()
     self.owned = {}
     self.pendingPower = 0
     self.pendingSlots = 0
+    self.staged = {}
     self.log = {}
     -- L1 grants nothing; the first LEVEL UP (to L2) hands the first power pick.
 end
@@ -104,40 +207,97 @@ function PowerChoiceMenu:_levelUp()
     if self.level >= MAX_LEVEL then
         return
     end
+    -- must commit (clear) the current beat before advancing
+    if self.pendingPower > 0 or self.pendingSlots > 0 then
+        return
+    end
     self.level += 1
     self:_grant(self.level)
     self:_render()
 end
 
--- click a row: place a slot on it (owned + slots pending) OR pick it (available + pick pending).
+-- click a row: stage a slot (committed power) OR stage/clear a pick (radio on a pick beat).
 function PowerChoiceMenu:_onRow(id)
     if self.owned[id] then
-        if self.pendingSlots > 0 and self.owned[id] < MAX_SLOTS then
-            self.owned[id] += 1
-            self.pendingSlots -= 1
-            self.log[#self.log + 1] = { action = "slot", id = id, level = self.level }
+        -- committed power: stage a slot if the beat grants slots and it isn't maxed
+        if self:_remainingSlots() > 0 and self:_effectiveSlots(id) < MAX_SLOTS then
+            self.staged[#self.staged + 1] = { action = "slot", id = id }
             self:_render()
         end
+    elseif self:_isStagedPick(id) then
+        -- clicking the staged pick clears it (undo)
+        for i = #self.staged, 1, -1 do
+            if self.staged[i].action == "pick" and self.staged[i].id == id then
+                table.remove(self.staged, i)
+            end
+        end
+        self:_render()
     else
+        -- attempt to stage this as the pick
         if self.pendingPower > 0 and pickLevelOf(id) <= self.level then
-            self.owned[id] = 1 -- a freshly-picked power comes with its inherent first slot
-            self.pendingPower -= 1
-            self.log[#self.log + 1] = { action = "pick", id = id, level = self.level }
+            if self:_remainingPicks() > 0 then
+                self.staged[#self.staged + 1] = { action = "pick", id = id }
+            elseif self.pendingPower == 1 then
+                -- radio: a second choice replaces the first
+                for i = #self.staged, 1, -1 do
+                    if self.staged[i].action == "pick" then
+                        table.remove(self.staged, i)
+                    end
+                end
+                self.staged[#self.staged + 1] = { action = "pick", id = id }
+            else
+                return
+            end
             self:_render()
         end
     end
+end
+
+function PowerChoiceMenu:_undo()
+    if #self.staged == 0 then
+        return
+    end
+    table.remove(self.staged)
+    self:_render()
+end
+
+function PowerChoiceMenu:_commit()
+    if not self:_canCommit() then
+        return
+    end
+    for _, s in ipairs(self.staged) do
+        if s.action == "pick" then
+            self.owned[s.id] = 1 -- a freshly-picked power comes with its inherent first slot
+        else
+            self.owned[s.id] = (self.owned[s.id] or 1) + 1
+        end
+        self.log[#self.log + 1] = { action = s.action, id = s.id, level = self.level }
+    end
+    self.staged = {}
+    self.pendingPower = 0
+    self.pendingSlots = 0
+    self:_render()
 end
 
 -- ---- render --------------------------------------------------------------
 
 function PowerChoiceMenu:_statusText()
     if self.pendingPower > 0 then
-        return ("PICK A POWER  (%d left)"):format(self.pendingPower), Color3.fromRGB(150, 230, 150)
+        if self:_remainingPicks() > 0 then
+            return "PICK A POWER  —  choose 1", Color3.fromRGB(150, 230, 150)
+        end
+        return "READY — press COMMIT  (or click another to change)", COMMIT_COLOR
     elseif self.pendingSlots > 0 then
-        return ("PLACE A SLOT  (%d left) — click an owned power"):format(self.pendingSlots),
-            Color3.fromRGB(140, 200, 255)
+        local rs = self:_remainingSlots()
+        if rs > 0 and self:_canPlaceSlot() then
+            return ("PLACE A SLOT  (%d of %d left) — click an owned power"):format(
+                rs,
+                self.pendingSlots
+            ), Color3.fromRGB(140, 200, 255)
+        end
+        return "READY — press COMMIT", COMMIT_COLOR
     end
-    return "All set — Level Up", Color3.fromRGB(200, 200, 210)
+    return "Level Up for your next choice", Color3.fromRGB(200, 200, 210)
 end
 
 function PowerChoiceMenu:_fillColumn(holder, pool)
@@ -162,12 +322,21 @@ function PowerChoiceMenu:_fillColumn(holder, pool)
     )
     for i, r in ipairs(rows) do
         local def = powersCfg.powers[r.id] or {}
+        local stagedPick = self:_isStagedPick(r.id)
+        local stagedSlots = self:_stagedSlotsOn(r.id)
+        local hasStaged = stagedPick or stagedSlots > 0
         -- a row is ACTIONABLE this beat if you can act on it now (pick it / slot it)
         local actionable = (
             r.state == "owned"
-            and self.pendingSlots > 0
-            and (self.owned[r.id] or 0) < MAX_SLOTS
-        ) or (r.state == "available" and self.pendingPower > 0)
+            and self:_remainingSlots() > 0
+            and self:_effectiveSlots(r.id) < MAX_SLOTS
+        )
+            or (
+                r.state == "available"
+                and not stagedPick
+                and self.pendingPower > 0
+                and (self:_remainingPicks() > 0 or self.pendingPower == 1)
+            )
         local wrap = Instance.new("TextButton")
         wrap.Name = "Row_" .. r.id
         wrap.LayoutOrder = i
@@ -184,16 +353,23 @@ function PowerChoiceMenu:_fillColumn(holder, pool)
             name = def.display_name or r.id,
             subtitle = "L" .. tostring(r.pickLevel) .. "    " .. (def.subtitle or ""),
             state = r.state,
-            slotCount = self.owned[r.id] or 1,
+            slotCount = self:_effectiveSlots(r.id),
+            selected = stagedPick,
             size = UDim2.fromScale(1, 1),
         })
-        -- subtle "you can act here" glow
-        if actionable then
-            local glow = Instance.new("UIStroke")
-            glow.Color = (r.state == "owned") and Color3.fromRGB(140, 200, 255)
+        -- glow: gold = staged (unsaved); green/blue = actionable this beat
+        local glowColor
+        if hasStaged then
+            glowColor = STAGED_GLOW
+        elseif actionable then
+            glowColor = (r.state == "owned") and Color3.fromRGB(140, 200, 255)
                 or Color3.fromRGB(150, 230, 150)
-            glow.Thickness = 2
-            glow.Transparency = 0.15
+        end
+        if glowColor then
+            local glow = Instance.new("UIStroke")
+            glow.Color = glowColor
+            glow.Thickness = hasStaged and 2.5 or 2
+            glow.Transparency = hasStaged and 0 or 0.15
             local bar = wrap:FindFirstChild("PowerRow") and wrap.PowerRow:FindFirstChild("Bar")
             if bar then
                 glow.Parent = bar
@@ -214,6 +390,16 @@ function PowerChoiceMenu:_refreshOrigin()
     end
 end
 
+local function setChipEnabled(btn, on)
+    if not btn then
+        return
+    end
+    btn.Active = on
+    btn.AutoButtonColor = on
+    btn.BackgroundTransparency = on and 0 or 0.6
+    btn.TextTransparency = on and 0 or 0.45
+end
+
 function PowerChoiceMenu:_render()
     if self.naturalCol then
         self:_fillColumn(self.naturalCol, archetypesCfg.generic_pool)
@@ -224,11 +410,14 @@ function PowerChoiceMenu:_render()
         self.statusLabel.Text = txt
         self.statusLabel.TextColor3 = col
     end
+    local outstanding = self.pendingPower > 0 or self.pendingSlots > 0
     if self.levelBtn then
         self.levelBtn.Text = (self.level >= MAX_LEVEL) and ("MAX (L" .. MAX_LEVEL .. ")")
             or ("LEVEL UP  ▶   (L" .. self.level .. ")")
-        self.levelBtn.AutoButtonColor = self.level < MAX_LEVEL
+        setChipEnabled(self.levelBtn, self.level < MAX_LEVEL and not outstanding)
     end
+    setChipEnabled(self.commitBtn, self:_canCommit())
+    setChipEnabled(self.undoBtn, #self.staged > 0)
 end
 
 -- ---- build ---------------------------------------------------------------
@@ -370,25 +559,50 @@ function PowerChoiceMenu:Show(parent)
     div.BorderSizePixel = 0
     div.Parent = root
 
-    -- bottom controls: LEVEL UP (advance + grant) + RESET
+    -- bottom controls: ↶ UNDO · ✓ COMMIT · LEVEL UP ▶ · ↺ RESET
+    self.undoBtn = chip(
+        root,
+        "↶ UNDO",
+        UDim2.fromScale(0.17, 0.05),
+        UDim2.fromScale(0.12, 0.965),
+        UNDO_COLOR,
+        1
+    )
+    self.undoBtn.Activated:Connect(function()
+        self:_undo()
+    end)
+
+    self.commitBtn = chip(
+        root,
+        "✓ COMMIT",
+        UDim2.fromScale(0.24, 0.055),
+        UDim2.fromScale(0.36, 0.965),
+        COMMIT_COLOR,
+        2
+    )
+    self.commitBtn.Activated:Connect(function()
+        self:_commit()
+    end)
+
     self.levelBtn = chip(
         root,
         "LEVEL UP  ▶",
-        UDim2.fromScale(0.3, 0.05),
-        UDim2.fromScale(0.42, 0.965),
-        Color3.fromRGB(120, 205, 130),
-        1
+        UDim2.fromScale(0.24, 0.055),
+        UDim2.fromScale(0.64, 0.965),
+        LEVEL_COLOR,
+        3
     )
     self.levelBtn.Activated:Connect(function()
         self:_levelUp()
     end)
+
     local resetBtn = chip(
         root,
         "↺ RESET",
-        UDim2.fromScale(0.16, 0.05),
-        UDim2.fromScale(0.74, 0.965),
-        Color3.fromRGB(150, 120, 200),
-        2
+        UDim2.fromScale(0.15, 0.05),
+        UDim2.fromScale(0.88, 0.965),
+        RESET_COLOR,
+        4
     )
     resetBtn.Activated:Connect(function()
         self:_reset()
@@ -410,6 +624,8 @@ function PowerChoiceMenu:Hide()
     self.originHeader = nil
     self.statusLabel = nil
     self.levelBtn = nil
+    self.commitBtn = nil
+    self.undoBtn = nil
 end
 
 function PowerChoiceMenu:GetFrame()
