@@ -1012,7 +1012,6 @@ if game:GetService("RunService"):IsStudio() then
 
         -- Load proper game UI system
         task.wait(1) -- Wait a moment for other UIs to load
-        prewarmPetThumbnailViewports()
 
         -- Initialize MenuManager
         local MenuManager = require(script.UI.MenuManager)
@@ -1082,6 +1081,14 @@ if game:GetService("RunService"):IsStudio() then
         baseUI:SetMenuManager(menuManager)
 
         baseUI:Show()
+
+        -- Tell the boot loader the client UI is ready (gates the ReplicatedFirst loading screen so
+        -- the player can't act — e.g. trigger the altar — before MenuManager/panels exist).
+        localPlayer:SetAttribute("ClientUIReady", true)
+
+        -- Pet-thumbnail prewarm is cosmetic; run it in the BACKGROUND so it never delays the UI/boot.
+        -- (It can block ~12s on a timeout, which used to leave MenuManager unavailable early.)
+        task.spawn(prewarmPetThumbnailViewports)
     end) -- Close the task.spawn(function() from line 325
 end
 
