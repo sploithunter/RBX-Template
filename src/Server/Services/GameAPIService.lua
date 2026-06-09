@@ -873,23 +873,24 @@ function GameAPIService:_registerCommands()
                 return { ok = false, reason = "service_unavailable" }
             end
             local state = s:GrantAlmostLevel(context.player)
-            -- Also grant the NEXT gate's coins (right type + amount). Unlike XP we overshoot freely:
-            -- just add the gate cost so the player can buy the next area without grinding it.
-            local gate
-            local zone = self:_service("ZoneService")
+            -- Also drop 100k of EVERY area coin so any gate is affordable without grinding it
+            -- (overshoot is fine for coins — dev QoL). Premium/tokens (gems, light/shadow) excluded.
             local dataSvc = self:_service("DataService")
-            if zone and zone.GetNextGate and dataSvc and dataSvc.AddCurrency then
-                gate = zone:GetNextGate(context.player)
-                if gate then
-                    dataSvc:AddCurrency(
-                        context.player,
-                        gate.currency,
-                        gate.cost,
-                        "admin_fast_forward"
-                    )
+            local AREA_COINS = {
+                "coins",
+                "crystals",
+                "grass_coins",
+                "ice_coins",
+                "lava_coins",
+                "desert_coins",
+                "beach_coins",
+            }
+            if dataSvc and dataSvc.AddCurrency then
+                for _, c in ipairs(AREA_COINS) do
+                    dataSvc:AddCurrency(context.player, c, 100000, "admin_fast_forward")
                 end
             end
-            return { ok = true, state = state, gate = gate }
+            return { ok = true, state = state }
         end,
     })
 
