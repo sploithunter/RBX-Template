@@ -61,50 +61,51 @@ Current kinds:
   deliberately (with eyes on the result), not as a blind sweep.
 - ⏳ Reaction kinds to add: `toast`, `callback`, and a richer `vfx` (CombatFX-backed).
 
-## Migration worklist (hit one by one)
+## Migration worklist — COMPLETE (every migratable moment is on the bus)
 
-Legend: ✅ on the bus · 🔁 has an ad-hoc reaction today → migrate/consolidate (careful not to
-double-play) · ✨ no reaction today → new opportunity · ⚠️ high-frequency → be tasteful (maybe a
-float/number, not a stinger).
+Legend: ✅ on the bus · 🔌 source wired, reactions config-optional (add a row to react) ·
+⚠️ intentionally OFF the bus (high-frequency; use coin-floats #172/#173, not stingers).
 
 ### Progression
-- ✅ `level_up` — ClaimedLevel↑ (`LevelUpController`) — sound + gold burst
+- ✅ `level_up` — ClaimedLevel↑ (`LevelUpController`) — jingle + gold burst
 - ✅ `area_unlocked` — ZoneUnlockResult ok (`init.client`) — jingle + green burst
-- ✨ `rank_up` — Soul rank segment fills ("Seasoned Soul" 2/10) — find the rank source, add fanfare
-- ⚠️ `ascend_prompt` — stepping on the altar (LevelUp_OpenChoice) — optional whoosh; low priority
+- ⚠️ `ascend_prompt` — stepping on the altar; skipped (low value)
+- ~~rank_up~~ — turned out to be the QUEST tracker banner ("Seasoned Soul" is a quest name);
+  covered by `quest_complete`. No separate rank system exists.
 
 ### Economy
-- 🔁 `purchase_success` — `PurchaseSuccess` (s→c, has toast) — add sound/vfx via bus
-- 🔁 `sell_success` — `SellSuccess` (s→c)
-- 🔁 `economy_error` — `EconomyError` / insufficient-currency notices — error blip
-- ✨ `first_purchase_bonus` — `FirstPurchaseBonus` (s→c)
-- ⚠️ `currency_gain` — drop pickups — per-coin is too frequent; use coin-float (#172), not a stinger
+- ✅ `purchase_success` (EconomyService) — small gold burst (toast stays)
+- ✅ `sell_success` (EconomyService) — small green burst (toast stays)
+- 🔌 `economy_error` (EconomyService:_sendError) — wired; add an error blip when uploaded
+- ✅ `first_purchase_bonus` (MonetizationService) — jingle + big warm burst
+- ⚠️ `currency_gain` — per-pickup; belongs to coin-float #172, not the bus
 
 ### Eggs & Pets
-- 🔁 `egg_hatch` — `EggHatchingService` (pop sound + reveal) — consolidate; don't double the pop
-- ✨ `egg_hatch_rare` — rarity gate at hatch — special fanfare for rare/legendary pulls
-- ✨ `new_species` — `PetIndexUpdated` (first time discovering a pet) — celebratory
-- ✨ `pet_fusion` — `FusionService` success — currently no reaction
-- ⚠️ `pet_equip` / `pet_unequip` — `InventoryUpdate` — minor UI blip at most
+- 🔌 `egg_hatch` (EggService, per successful batch) — wired; reveal pop stays animation-synced
+- ✅ `egg_hatch_rare` (EggService, ONCE per batch when specials > 0) — jingle + rainbow burst
+- ✅ `new_species` (PetIndexService first discovery) — jingle + star-gold burst
+- ✅ `pet_fusion` (FusionService) — jingle + chaotic purple burst
+- ⚠️ `pet_equip` — minor UI moment; skipped
 
 ### Combat
-- ⚠️ `pet_hit` — `Combat_PetHit` (s→c) — already has FX; leave (per-hit)
-- ⚠️ `heal` — `Combat_Heal` (s→c) — already floats a number; leave
-- ⚠️ `power_cast` — `Power_Cooldown`/`Power_AreaFx` (+ PowerSound) — already FX+sound; leave
-- 🔁 `pet_down` — `CombatService:DownPetInCombat` (→ Spirit Form visual) — add a "down" sound
-- ✨ `pet_revive` — Revive power / re-summon — no reaction today
-- ✨ `enemy_defeated` — `EnemyService:_onDefeated` — kill confirm (watch frequency)
-- ⚠️ `crystal_broken` — `BreakableSpawner` — very frequent; coin-float (#172), not a stinger
+- ⚠️ `pet_hit` / `heal` / `power_cast` — already FX'd per-action; stay as-is by design
+- ✅ `pet_down` (EnemyService:_downPet, owner-resolved) — somber low thud
+- ✅ `pet_revive` (PowerService revive family) — power-up sting + green burst
+- ✅ `enemy_defeated` (EnemyService:_onDefeated, per contributor) — small SILENT burst (frequent)
+- ⚠️ `crystal_broken` — very frequent; belongs to coin-float #172
 
 ### Social
-- ✅(ish) `trade_request` — TradeRequest popup — already handled
-- ✨ `trade_complete` — `TradeService` "completed" — celebratory for both players
-- 🔁 `enchant_result` — `EnchantPetResult` (s→c) — success/fail blip
+- ✅ `trade_complete` (TradeService — fired to BOTH players) — jingle + white sparkle
+- ✅ `enchant_success` (EnchantService, at the reveal moment) — spell-cast sting + arcane burst
+- trade_request — already handled by the dedicated popup; not a bus moment
 
 ### Meta / UI
-- ✨ `achievement_completed` — `AchievementCompleted` (s→c) — fanfare + banner
-- ✨ `quest_complete` — quest claim (RewardService/QuestPanel) — fanfare
-- ✨ `daily_claim` — `DailyService` claim / streak milestone — chime
+- ✅ `achievement_completed` (AchievementsService) — jingle + magenta burst
+- ✅ `quest_complete` (QuestService:Claim) — jingle + sky-blue burst
+- ✅ `daily_claim` (DailyService:Claim) — jingle + teal burst
 
 ### Ambient
-- ✅(ish) `area_change` — CurrentArea↑ → music swap (`AreaMusicController`) — optional whoosh on top
+- `area_change` — the area-music crossfade (AreaMusicController) IS the reaction; no extra event
+
+All celebrations currently share `celebratory_jingle` (differentiated by burst colour); giving any
+event its own sound is a one-line config swap once more stingers are uploaded.
