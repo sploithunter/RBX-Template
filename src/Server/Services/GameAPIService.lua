@@ -809,6 +809,10 @@ function GameAPIService:_registerCommands()
             -- true new-player reset: clear Powers/Slots/Hotbar AND the origin (re-chosen at L5).
             arche:Respec(context.player, nil)
             prog:SetLevel(context.player, 1)
+            local pwr = self:_service("PowerService")
+            if pwr and pwr.ReapplyPassives then
+                pwr:ReapplyPassives(context.player) -- clear always-on buffs from the wiped powers
+            end
             return { ok = true, archetype = nil, state = prog:GetClaimState(context.player) }
         end,
     })

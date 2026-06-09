@@ -140,13 +140,17 @@ return {
         windfall = { family = "coin_yield", magnitude = 2.0, duration = 10 }, -- Windfall (big burst)
         luck = { family = "luck", magnitude = 0.5, duration = 60 }, -- Fortune
         luck_huge = { family = "luck", magnitude = 2.0, duration = 30 }, -- Huge Fortune (marquee)
-        move_speed = { family = "move_speed", magnitude = 0.4, toggle = true }, -- Swift / Super Speed: permanent TOGGLE (cast on/off)
-        recharge = { family = "recharge", magnitude = 0.5, toggle = true }, -- Hasten: permanent TOGGLE (cast on/off)
-        xp_boost = { family = "xp", magnitude = 0.5, duration = 30 }, -- XP Surge
+        -- PASSIVE (always-on by ownership): owning the power applies the buff permanently — no cast,
+        -- no timer. Re-applied on pick + spawn/join (PowerService:_applyOwnedPassives). Only families
+        -- with a SOLE-OCCUPANT axis are passive today; coin_yield (Prospector) + luck (Fortune) share
+        -- their axis with Windfall / Huge Fortune bursts and need additive BuffStack (#169) first.
+        move_speed = { family = "move_speed", magnitude = 0.4, passive = true }, -- Swift: always-on speed
+        recharge = { family = "recharge", magnitude = 0.5, passive = true }, -- Hasten: always-on recharge
+        xp_boost = { family = "xp", magnitude = 0.5, passive = true }, -- XP Surge: always-on XP
         revive = { family = "revive", magnitude = 0, duration = 0 }, -- instant re-summon (mechanic)
         recall = { family = "recall", magnitude = 0, duration = 0 }, -- teleport to saved spot
         world_travel = { family = "world_travel", magnitude = 0, duration = 0 }, -- teleport to a hub
-        magnet = { family = "magnet", magnitude = 30, duration = 20 }, -- +30 studs collect radius (#167)
+        magnet = { family = "magnet", magnitude = 30, passive = true }, -- always-on +30 studs collect radius (#167)
 
         -- ===== Attack-fill (origin-coloured) — reuse the enemy-debuff families (firewall-safe:
         -- player powers don't deal direct damage; they make pets hit harder / lock enemies). =====

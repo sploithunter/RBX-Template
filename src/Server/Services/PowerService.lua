@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
 
 local PowerSelection = require(ReplicatedStorage.Shared.Game.PowerSelection)
 local ArchetypeLogic = require(ReplicatedStorage.Shared.Game.ArchetypeLogic)
@@ -82,6 +83,81 @@ function PowerService:Init()
     self._combatConfig = self._configLoader:LoadConfig("combat") -- accuracy curve for P4 to-hit
 
     self._cooldowns = setmetatable({}, { __mode = "k" }) -- player -> { powerId -> expiry (os.time) }
+
+    -- Re-stamp PASSIVE (always-on) buffs whenever a player joins / respawns, since their buff
+    -- attributes don't survive a rejoin. (In-session picks re-stamp via Select.)
+    Players.PlayerAdded:Connect(function(plr)
+        self:_watchPlayer(plr)
+    end)
+    for _, plr in ipairs(Players:GetPlayers()) do
+        self:_watchPlayer(plr)
+    end
+end
+
+-- Families whose `passive = true` powers apply permanently by OWNERSHIP. Each maps to its single
+-- axis attribute (sole-occupant — no overwrite). Shared-axis families (coin_yield/luck) wait for
+-- additive BuffStack (#169).
+local PASSIVE_ATTR = {
+    magnet = "MagnetBuff",
+    move_speed = "MoveSpeedBuff",
+    recharge = "RechargeBuff",
+    xp = "XpBuff",
+}
+local PASSIVE_UNTIL = 4102444800 -- year 2100 — "always on" (same sentinel as the toggle buffs)
+
+function PowerService:_watchPlayer(plr)
+    plr.CharacterAdded:Connect(function()
+        self:_reapplyPassivesSoon(plr)
+    end)
+    self:_reapplyPassivesSoon(plr)
+end
+
+-- Wait (briefly) for the profile to load, then re-stamp the player's owned passive buffs.
+function PowerService:_reapplyPassivesSoon(plr)
+    task.spawn(function()
+        local deadline = os.clock() + 8
+        while os.clock() < deadline do
+            if self._dataService and self._dataService:GetData(plr) then
+                break
+            end
+            task.wait(0.25)
+        end
+        if plr.Parent then
+            self:_applyOwnedPassives(plr)
+        end
+    end)
+end
+
+-- Clear every managed passive axis, then re-apply the ones the player currently OWNS (permanent,
+-- no timer). Idempotent: call after pick / respec / grant / spawn. Respec (owned empty) clears all.
+function PowerService:_applyOwnedPassives(player)
+    for _, attr in pairs(PASSIVE_ATTR) do
+        player:SetAttribute(attr, nil)
+        player:SetAttribute(attr .. "Until", 0)
+        player:SetAttribute(attr .. "Toggle", nil)
+        player:SetAttribute(attr .. "PowerId", nil)
+    end
+    local data = self._dataService and self._dataService:GetData(player)
+    if not data or type(data.Powers) ~= "table" then
+        return
+    end
+    local kinds = self._powersConfig.effect_kinds or {}
+    for _, powerId in ipairs(data.Powers) do
+        local def = self._powersConfig.powers[powerId]
+        local kind = def and def.effect and kinds[def.effect]
+        local attr = kind and kind.passive and PASSIVE_ATTR[kind.family]
+        if attr then
+            player:SetAttribute(attr, kind.magnitude)
+            player:SetAttribute(attr .. "Until", PASSIVE_UNTIL)
+            player:SetAttribute(attr .. "Toggle", true) -- permanent: HUDs show no countdown
+            player:SetAttribute(attr .. "PowerId", powerId)
+        end
+    end
+end
+
+-- Public re-stamp (called after respec / admin grant from other services).
+function PowerService:ReapplyPassives(player)
+    self:_applyOwnedPassives(player)
 end
 
 local function enemiesAlive()
@@ -1298,6 +1374,7 @@ function PowerService:Select(player, powerId, levelOverride)
         data.Slots[powerId] = { { inherent = true } }
     end
     self._dataService:RequestSave(player, "power_select", { critical = true })
+    self:_applyOwnedPassives(player) -- a passive pick (Magnet/Swift/Hasten/XP) turns on immediately
     return { ok = true, powers = selected }
 end
 
