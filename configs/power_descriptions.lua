@@ -23,7 +23,9 @@ return {
     gaia_colossus = "Capstone: summons a stone colossus guardian.",
 
     -- Sandwalker (desert) — heal / evasion / debuff
-    mirage_step = "Evasion: 30 dodge-absorb for 8s.",
+    -- BUFF on a single ally (not a blind). `type` overrides the badge-derived tooltip label, which
+    -- otherwise reads "Single Ally Blind" because evasion borrows the eye_hidden icon.
+    mirage_step = { desc = "Evasion: 30 dodge-absorb for 8s.", type = "Single-Ally Evasion" },
     sandstorm = "Blinds enemies and makes them take +50% damage, 6s.",
     dune_shield = "Squad absorb shield (soaks 40) for 12s.",
     expose = "Exposes a target: reveal + accuracy/crit boost vs it.",

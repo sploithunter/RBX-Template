@@ -491,7 +491,7 @@ return {
             cooldown_seconds = 20,
             effect = "dodge",
             display_name = "Mirage Step",
-            subtitle = "Self Dodge Buff",
+            subtitle = "Single-Ally Evasion",
             role = "buff",
             element = "desert",
             target = "single_pet",
