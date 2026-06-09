@@ -377,6 +377,12 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.AugmentationService,
     { "Logger", "ConfigLoader", "DataService" }
 )
+-- EnhancementService: CoH-style enhancements (inventory + slotting into power slots).
+loader:RegisterModule(
+    "EnhancementService",
+    ServerScriptService.Server.Services.EnhancementService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- HotbarService: Halo & Horns hotbar / command bar (Feature 16).
 loader:RegisterModule(
     "HotbarService",
@@ -606,6 +612,7 @@ table.insert(requiredModules, "StackPoolService")
 table.insert(requiredModules, "ArchetypeService")
 table.insert(requiredModules, "PowerService")
 table.insert(requiredModules, "AugmentationService")
+table.insert(requiredModules, "EnhancementService")
 table.insert(requiredModules, "HotbarService")
 table.insert(requiredModules, "RosterService")
 table.insert(requiredModules, "PartyService")

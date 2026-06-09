@@ -722,6 +722,63 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("enh.get", {
+        description = "Enhancement inventory + per-power slotted view for the calling player.",
+        handler = function(context)
+            local svc = self:_service("EnhancementService")
+            if not svc then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return svc:GetState(context.player)
+        end,
+    })
+
+    bus:register("enh.slot", {
+        description = "Slot an inventory enhancement into slot #slotIndex of an owned power.",
+        validate = function(args)
+            return Validators.fields(args, {
+                powerId = "string",
+                slotIndex = { type = "int", min = 1 },
+                uid = "string",
+            })
+        end,
+        handler = function(context, args)
+            local svc = self:_service("EnhancementService")
+            if not svc then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return svc:Slot(context.player, args.powerId, args.slotIndex, args.uid)
+        end,
+    })
+
+    bus:register("enh.grant", {
+        description = "[admin] Grant an enhancement (random roll, or explicit type+origins).",
+        validate = function(args)
+            return Validators.fields(args, {
+                type = { type = "string", optional = true },
+                origins = { type = "table", optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local isAdmin = context.isTest
+                or (context.player and context.player:GetAttribute("IsAdmin") == true)
+            if not isAdmin then
+                return { ok = false, reason = "not_admin" }
+            end
+            local svc = self:_service("EnhancementService")
+            if not svc then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            local record
+            if args.type and args.origins then
+                record = { type = args.type, origins = args.origins }
+            else
+                record = svc:RollDrop()
+            end
+            return svc:Grant(context.player, record)
+        end,
+    })
+
     bus:register("augment.place", {
         description = "Place one empty enhancement slot onto an unlocked power.",
         validate = function(args)
