@@ -168,8 +168,11 @@ function HotbarService:_ensureDefaults(data)
         data.Hotbar = {}
     end
     if isEmptyMap(data.Hotbar) and data.Archetype then
-        local available = ArchetypeLogic.availablePowers(data.Archetype, self._archetypesConfig)
-        for index, bind in pairs(HotbarLogic.defaultBindings(available, self._config)) do
+        -- Bind only the powers the player actually OWNS (picked via level-up) — a clean character
+        -- owns none, so the power slots stay EMPTY until they pick. No auto-granted default powers.
+        -- (Roster/tactical command defaults still populate from defaultBindings.)
+        local owned = (type(data.Powers) == "table") and data.Powers or {}
+        for index, bind in pairs(HotbarLogic.defaultBindings(owned, self._config)) do
             data.Hotbar[tostring(index)] = bind
         end
     end
