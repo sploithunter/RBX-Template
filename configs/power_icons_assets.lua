@@ -271,6 +271,7 @@ return {
     rings = {
         aoe = id(128177741420839),
         aura = id(121697559002218),
+        enhancement = id(134951242987225),
         target_aoe = id(130533151036887),
         target_in = id(73447619254562),
         target_out = id(96971740848796),
