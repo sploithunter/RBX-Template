@@ -250,6 +250,16 @@ do
     end
 end
 
+-- Looping background music that follows the player's current area (configs/sounds.lua area_music).
+do
+    local ok, err = pcall(function()
+        require(script.Systems.AreaMusicController).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start AreaMusicController", { error = tostring(err) })
+    end
+end
+
 -- Dev metrics overlay (Studio-only): rolling 1-min DPS / Coins-per-sec / Pet-speed bars for balancing.
 do
     local ok, err = pcall(function()
