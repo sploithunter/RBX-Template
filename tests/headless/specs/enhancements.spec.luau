@@ -4,6 +4,7 @@
 ]]
 
 local Enhancements = loadModule("src/Shared/Game/Enhancements.lua")
+local PowerStats = loadModule("src/Shared/Game/PowerStats.lua")
 local cfg = loadModule("configs/enhancements.lua")
 local powersCfg = loadModule("configs/powers.lua")
 
@@ -130,6 +131,39 @@ return function()
             expect(d.discOrigin).to.equal("geomancer")
             expect(d.ringOrigin).to.equal("cryomancer")
             expect(d.single).to.equal(false)
+        end)
+    end)
+
+    describe("Effects at cast (PowerStats ctx.enhancements)", function()
+        it("damage multiplies, recharge divides; unboosted axes untouched", function()
+            local power = { rechargeBase = 300, damageBase = 100, durationBase = 60 }
+            local eff = PowerStats.resolveEffective(power, {
+                enhancements = { damage = 0.33, recharge = 0.33 },
+            })
+            expect(math.abs(eff.damage - 133) < 1e-9).to.equal(true)
+            expect(math.abs(eff.recharge - 300 / 1.33) < 1e-6).to.equal(true)
+            expect(eff.duration).to.equal(60) -- no duration enhancement slotted
+        end)
+
+        it("two singles on one axis stack additively (x1.66)", function()
+            local eff = PowerStats.resolveEffective(
+                { damageBase = 100 },
+                { enhancements = { damage = 0.66 } }
+            )
+            expect(math.abs(eff.damage - 166) < 1e-9).to.equal(true)
+        end)
+
+        it("accuracy boost applies but stays clamped to 1", function()
+            local eff = PowerStats.resolveEffective(
+                { accuracyBase = 0.9 },
+                { enhancements = { accuracy = 0.33 } }
+            )
+            expect(eff.accuracy).to.equal(1) -- 0.9 * 1.33 clamped
+            local eff2 = PowerStats.resolveEffective(
+                { accuracyBase = 0.6 },
+                { enhancements = { accuracy = 0.33 } }
+            )
+            expect(math.abs(eff2.accuracy - 0.6 * 1.33) < 1e-9).to.equal(true)
         end)
     end)
 

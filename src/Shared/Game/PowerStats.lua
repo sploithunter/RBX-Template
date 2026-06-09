@@ -69,22 +69,42 @@ function PowerStats.resolveEffective(power, ctx)
     local s = ctx.scaling or {}
     local casterLevel = num(ctx.casterLevel, 1)
 
+    -- Slotted ENHANCEMENTS (Enhancements.aggregate over the power's slots): per-axis bonus
+    -- fractions, e.g. { damage = 0.33, recharge = 0.20 }. Boost axes MULTIPLY by (1 + v);
+    -- recharge DIVIDES by (1 + v) — a recharge enhancement SHORTENS the cooldown.
+    local enh = ctx.enhancements or {}
+    local function boost(axis)
+        return 1 + (num(enh[axis], 0))
+    end
+
     local eff = {
         cost = num(power.costBase, 0), -- focus cost (unscaled by default)
-        recharge = num(power.rechargeBase, 0) * PowerStats.levelScale(casterLevel, s.recharge),
-        duration = num(power.durationBase, 0) * PowerStats.levelScale(casterLevel, s.duration),
-        damage = num(power.damageBase, 0) * PowerStats.levelScale(casterLevel, s.damage),
+        recharge = num(power.rechargeBase, 0)
+            * PowerStats.levelScale(casterLevel, s.recharge)
+            / boost("recharge"),
+        duration = num(power.durationBase, 0)
+            * PowerStats.levelScale(casterLevel, s.duration)
+            * boost("duration"),
+        damage = num(power.damageBase, 0) * PowerStats.levelScale(casterLevel, s.damage) * boost(
+            "damage"
+        ),
         tick = num(power.tickBase, 0), -- cadence is not level-scaled
-        radius = num(power.radiusBase, 0) * PowerStats.levelScale(casterLevel, s.radius),
-        magnitude = num(power.magnitudeBase, 0) * PowerStats.levelScale(casterLevel, s.magnitude),
-        heal = num(power.healBase, 0) * PowerStats.levelScale(casterLevel, s.heal),
-        shield = num(power.shieldBase, 0) * PowerStats.levelScale(casterLevel, s.shield),
+        radius = num(power.radiusBase, 0) * PowerStats.levelScale(casterLevel, s.radius) * boost(
+            "radius"
+        ),
+        magnitude = num(power.magnitudeBase, 0)
+            * PowerStats.levelScale(casterLevel, s.magnitude)
+            * boost("magnitude"),
+        heal = num(power.healBase, 0) * PowerStats.levelScale(casterLevel, s.heal) * boost("heal"),
+        shield = num(power.shieldBase, 0) * PowerStats.levelScale(casterLevel, s.shield) * boost(
+            "shield"
+        ),
         targets = power.targetsBase, -- nil = all-in-radius / single by kind
     }
 
     -- Accuracy: accuracyBase × to-hit, but only for hostile-targeting powers WITH a target level.
     -- Anything else (self/ally/team buffs, crystals) auto-lands at accuracyBase.
-    local acc = num(power.accuracyBase, 1)
+    local acc = num(power.accuracyBase, 1) * boost("accuracy")
     if ctx.targetLevel and ctx.toHit and PowerStats.targetsEnemies(power.kind) then
         acc = acc * (tonumber(ctx.toHit(casterLevel, ctx.targetLevel, ctx.accuracy)) or 1)
     end

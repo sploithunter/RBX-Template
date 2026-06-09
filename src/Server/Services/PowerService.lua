@@ -14,6 +14,7 @@ local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 
 local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
+local Enhancements = require(ReplicatedStorage.Shared.Game.Enhancements)
 local PowerSelection = require(ReplicatedStorage.Shared.Game.PowerSelection)
 local ArchetypeLogic = require(ReplicatedStorage.Shared.Game.ArchetypeLogic)
 local AmplifiedBurst = require(ReplicatedStorage.Shared.Game.AmplifiedBurst)
@@ -82,6 +83,7 @@ function PowerService:Init()
     self._powersConfig = self._configLoader:LoadConfig("powers")
     self._archetypesConfig = self._configLoader:LoadConfig("archetypes")
     self._combatConfig = self._configLoader:LoadConfig("combat") -- accuracy curve for P4 to-hit
+    self._enhConfig = self._configLoader:LoadConfig("enhancements") -- slotted-enhancement boosts
 
     self._cooldowns = setmetatable({}, { __mode = "k" }) -- player -> { powerId -> expiry (os.time) }
 
@@ -1207,11 +1209,19 @@ function PowerService:Cast(player, powerId)
     -- `kind` is identical to the raw effect_kind.
     local kind = rawKind
     local record = PowerRegistry.record(tostring(powerId), self._powersConfig)
+    -- Slotted ENHANCEMENTS on the cast power -> per-axis bonus fractions (additive within an
+    -- axis; single > dual). Feeds resolveEffective + the cooldown stamp below.
+    local data = self._dataService and self._dataService:GetData(player)
+    local enhAxes = Enhancements.aggregate(
+        self._enhConfig,
+        (data and type(data.Slots) == "table" and data.Slots[tostring(powerId)]) or {}
+    )
     if record then
         local casterLevel = tonumber(player:GetAttribute("Level")) or 1
         local effective = PowerStats.resolveEffective(record, {
             casterLevel = casterLevel,
             scaling = self._powersConfig.scaling, -- nil today ⇒ identity; P3 fills it
+            enhancements = enhAxes,
         })
         kind = self:_effectiveKind(rawKind, effective)
         -- carry the accuracy inputs so the per-enemy to-hit roll (P4) can resolve in _applyEffect
@@ -1291,6 +1301,10 @@ function PowerService:Cast(player, powerId)
     end
 
     local cd = tonumber(def.cooldown_seconds) or 0
+    -- Slotted RECHARGE enhancements shorten THIS power's cooldown: cd / (1 + Σ values).
+    if (enhAxes.recharge or 0) > 0 then
+        cd = cd / (1 + enhAxes.recharge)
+    end
     -- Hasten (recharge axis): the player's recharge buff shortens every power's cooldown by its
     -- fraction (clamped so a cooldown never hits zero).
     if (player:GetAttribute("RechargeBuffUntil") or 0) > now then
