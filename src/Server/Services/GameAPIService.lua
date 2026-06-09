@@ -806,11 +806,10 @@ function GameAPIService:_registerCommands()
             if not (arche and prog and dataSvc) then
                 return { ok = false, reason = "service_unavailable" }
             end
-            local data = dataSvc:GetData(context.player)
-            local origin = data and data.Archetype
-            arche:Respec(context.player, origin) -- clears Powers/Slots/Hotbar, keeps the origin
+            -- true new-player reset: clear Powers/Slots/Hotbar AND the origin (re-chosen at L5).
+            arche:Respec(context.player, nil)
             prog:SetLevel(context.player, 1)
-            return { ok = true, archetype = origin, state = prog:GetClaimState(context.player) }
+            return { ok = true, archetype = nil, state = prog:GetClaimState(context.player) }
         end,
     })
 

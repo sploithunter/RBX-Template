@@ -36,9 +36,13 @@ return function()
             expect(ArchetypeLogic.hasPower("geomancer", "mark_of_flame", config)).to.equal(false)
         end)
 
-        it("is empty for an invalid/nil archetype", function()
-            expect(#ArchetypeLogic.availablePowers(nil, config)).to.equal(0)
-            expect(#ArchetypeLogic.availablePowers("wizard", config)).to.equal(0)
+        it("falls back to JUST the generic pool for a nil/invalid archetype", function()
+            -- NATURAL powers are pickable before the L5 origin choice, so no origin = generic only
+            local genericCount = #(config.generic_pool or {})
+            expect(#ArchetypeLogic.availablePowers(nil, config)).to.equal(genericCount)
+            expect(#ArchetypeLogic.availablePowers("wizard", config)).to.equal(genericCount)
+            expect(ArchetypeLogic.hasPower(nil, "fortune", config)).to.equal(true) -- generic, no origin
+            expect(ArchetypeLogic.hasPower(nil, "stone_skin", config)).to.equal(false) -- origin power
         end)
     end)
 

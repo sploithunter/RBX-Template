@@ -36,8 +36,12 @@ local Players = game:GetService("Players")
 local Configs = ReplicatedStorage:WaitForChild("Configs")
 local powersCfg = require(Configs:WaitForChild("powers"))
 local archetypesCfg = require(Configs:WaitForChild("archetypes"))
+local levelTrackCfg = require(Configs:WaitForChild("level_track"))
 local PowerSelection = require(ReplicatedStorage.Shared.Game.PowerSelection)
 local PowerSlotRow = require(script.Parent.Parent.PowerSlotRow)
+
+-- The level a new player chooses their origin (NATURAL picks come before this; ORIGIN powers after).
+local ORIGIN_CHOICE_LEVEL = levelTrackCfg.origin_choice_level or 5
 
 -- Bus call (mirrors LevelUpController): returns the handler's domain result, or nil if the bus
 -- isn't up. Synchronous (RemoteFunction). Used only in LIVE mode.
@@ -520,24 +524,89 @@ function PowerChoiceMenu:_fillColumn(holder, pool)
     end
 end
 
-function PowerChoiceMenu:_refreshOrigin()
-    local origin, def
-    if self.live then
-        origin = self.archetype -- locked to the player's real origin (no cycling)
-        def = origin and archetypesCfg.archetypes and archetypesCfg.archetypes[origin]
-    else
-        origin = ORIGINS[self.originIndex]
-        def = archetypesCfg.archetypes and archetypesCfg.archetypes[origin]
+-- Choose an origin (live mode, no origin yet). One-time server pick; unlocks the origin powers.
+function PowerChoiceMenu:_chooseOrigin(origin)
+    if not self.live then
+        return
     end
-    if self.originHeader then
-        if self.live and not origin then
-            self.originHeader.Text = "NO ORIGIN YET"
-            self.originHeader.TextColor3 = Color3.fromRGB(200, 200, 210)
-        else
-            local name = (def and def.display_name or tostring(origin)):upper()
-            self.originHeader.Text = self.live and name or ("‹ " .. name .. " ›")
-            self.originHeader.TextColor3 = ORIGIN_COLOR[origin] or Color3.new(1, 1, 1)
+    local res = callBus("archetype.select", { archetype = origin })
+    self.notice = (res and res.ok == false) and ("Origin pick failed: " .. tostring(res.reason))
+        or nil
+    self:_loadLive()
+    self:_render()
+end
+
+-- Render the ORIGIN column as a CHOOSER (4 origin cards) — or a locked note before L5.
+function PowerChoiceMenu:_fillOriginChooser(holder)
+    for _, child in ipairs(holder:GetChildren()) do
+        if child:IsA("GuiObject") then
+            child:Destroy()
         end
+    end
+    if self.level < ORIGIN_CHOICE_LEVEL then
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.fromScale(0.95, 0.12)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = "Choose your Origin at Level " .. ORIGIN_CHOICE_LEVEL
+        lbl.TextColor3 = Color3.fromRGB(170, 170, 185)
+        lbl.TextWrapped = true
+        lbl.TextScaled = true
+        lbl.Font = Enum.Font.GothamMedium
+        lbl.Parent = holder
+        return
+    end
+    for i, origin in ipairs(ORIGINS) do
+        local def = archetypesCfg.archetypes and archetypesCfg.archetypes[origin]
+        local card = Instance.new("TextButton")
+        card.Name = "Origin_" .. origin
+        card.LayoutOrder = i
+        card.Size = UDim2.fromScale(0.95, 0.14)
+        card.BackgroundColor3 = Color3.fromRGB(40, 38, 52)
+        card.AutoButtonColor = true
+        card.Text = (def and def.display_name or origin):upper()
+        card.TextColor3 = ORIGIN_COLOR[origin] or Color3.new(1, 1, 1)
+        card.TextScaled = true
+        card.Font = Enum.Font.GothamBold
+        card.Parent = holder
+        local pad = Instance.new("UIPadding")
+        pad.PaddingTop = UDim.new(0.03, 0)
+        pad.PaddingBottom = UDim.new(0.03, 0)
+        pad.Parent = card
+        local cc = Instance.new("UICorner")
+        cc.CornerRadius = UDim.new(0.25, 0)
+        cc.Parent = card
+        local cs = Instance.new("UIStroke")
+        cs.Color = ORIGIN_COLOR[origin] or Color3.new(1, 1, 1)
+        cs.Thickness = 2
+        cs.Transparency = 0.25
+        cs.Parent = card
+        card.Activated:Connect(function()
+            self:_chooseOrigin(origin)
+        end)
+    end
+end
+
+function PowerChoiceMenu:_refreshOrigin()
+    if self.live and not self.archetype then
+        -- no origin yet: the ORIGIN column is a chooser (at L5+) or a locked note (before L5)
+        if self.originHeader then
+            local ready = self.level >= ORIGIN_CHOICE_LEVEL
+            self.originHeader.Text = ready and "CHOOSE ORIGIN"
+                or ("ORIGIN — L" .. ORIGIN_CHOICE_LEVEL)
+            self.originHeader.TextColor3 = ready and Color3.fromRGB(235, 230, 250)
+                or Color3.fromRGB(170, 170, 185)
+        end
+        if self.originCol then
+            self:_fillOriginChooser(self.originCol)
+        end
+        return
+    end
+    local origin = self.live and self.archetype or ORIGINS[self.originIndex]
+    local def = archetypesCfg.archetypes and archetypesCfg.archetypes[origin]
+    if self.originHeader then
+        local name = (def and def.display_name or tostring(origin)):upper()
+        self.originHeader.Text = self.live and name or ("‹ " .. name .. " ›")
+        self.originHeader.TextColor3 = ORIGIN_COLOR[origin] or Color3.new(1, 1, 1)
     end
     if self.originCol then
         self:_fillColumn(self.originCol, def and def.power_pool)

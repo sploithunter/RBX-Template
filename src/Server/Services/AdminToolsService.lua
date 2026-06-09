@@ -637,13 +637,12 @@ function AdminToolsService:_handleResetToBeginning(adminPlayer, data)
     playerData.Perks.extra_pet_slots = nil
     targetPlayer:SetAttribute("ExtraPetSlots", 0)
 
-    -- 5b) Powers + enhancement slots: clear the picked powers + slots (keeps origin) via the same
-    --     respec the level-up RESET uses, so the hotbar re-binds from OWNED (now none) and the bar
-    --     starts empty — a true beginning.
+    -- 5b) Powers + enhancement slots + ORIGIN: full respec to a true new-player state (origin is
+    --     re-chosen at L5). Clears Powers/Slots/Hotbar/Archetype so the bar starts empty.
     local arche = _G.RBXTemplateServices and _G.RBXTemplateServices:Get("ArchetypeService")
     if arche and arche.Respec then
         pcall(function()
-            arche:Respec(targetPlayer, playerData.Archetype)
+            arche:Respec(targetPlayer, nil)
         end)
     end
 
@@ -674,7 +673,7 @@ function AdminToolsService:_handleResetToBeginning(adminPlayer, data)
         kind = "reset_to_beginning",
         success = true,
         message = string.format(
-            "Reset %s — kept %d huge [%s], deleted %d; currencies/zones/level/XP/slots/powers reset",
+            "Reset %s — kept %d huge [%s], deleted %d; currencies/zones/level/XP/slots/powers/origin reset",
             targetPlayer.Name,
             #kept,
             table.concat(kept, ", "),
