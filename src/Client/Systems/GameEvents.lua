@@ -15,6 +15,8 @@
 local Players = game:GetService("Players")
 local SoundService = game:GetService("SoundService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
@@ -47,6 +49,51 @@ REACTIONS.sound = function(soundKey)
             s:Destroy()
         end
     end)
+end
+
+-- vfx: spec = { kind = "burst", color = {r,g,b}?, count = n? }. A self-contained celebratory burst
+-- (neon shards flying outward + fading) at the local player — no asset/CombatFX dependency, so it
+-- always renders. More `kind`s can be added here (or routed to CombatFX) without config changes.
+REACTIONS.vfx = function(spec)
+    spec = type(spec) == "table" and spec or {}
+    if spec.kind ~= "burst" then
+        return
+    end
+    local char = Players.LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        return
+    end
+    local c = spec.color
+    local color = (type(c) == "table") and Color3.fromRGB(c[1] or 255, c[2] or 255, c[3] or 255)
+        or Color3.fromRGB(255, 205, 70)
+    local count = tonumber(spec.count) or 16
+    local origin = hrp.Position + Vector3.new(0, 2, 0)
+    for i = 1, count do
+        local part = Instance.new("Part")
+        part.Size = Vector3.new(0.35, 0.35, 0.35)
+        part.Anchored = true
+        part.CanCollide = false
+        part.CanQuery = false
+        part.CastShadow = false
+        part.Material = Enum.Material.Neon
+        part.Color = color
+        part.CFrame = CFrame.new(origin)
+        part.Parent = Workspace
+        local ang = (i / count) * math.pi * 2
+        local dist = 3.5 + (i % 3)
+        local target = origin + Vector3.new(math.cos(ang) * dist, 2 + (i % 4), math.sin(ang) * dist)
+        TweenService:Create(part, TweenInfo.new(0.8, Enum.EasingStyle.Quad), {
+            CFrame = CFrame.new(target),
+            Transparency = 1,
+            Size = Vector3.new(0.05, 0.05, 0.05),
+        }):Play()
+        task.delay(0.9, function()
+            if part.Parent then
+                part:Destroy()
+            end
+        end)
+    end
 end
 
 -- Fire a named event: apply every configured reaction. `ctx` is forwarded to handlers (future use).

@@ -19,6 +19,6 @@
 return {
     level_up = {
         sound = "celebratory_jingle",
-        -- vfx = "level_up_burst",  -- e.g. add a visual reaction later, config-only
+        vfx = { kind = "burst", color = { 255, 205, 70 } }, -- gold celebratory burst at the player
     },
 }
