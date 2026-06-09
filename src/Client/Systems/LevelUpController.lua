@@ -15,6 +15,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
@@ -104,6 +105,17 @@ function LevelUpController.start()
     -- Altar engaged: open the level-up menu WITHOUT claiming (the level claims atomically on COMMIT).
     Signals.LevelUp_OpenChoice.OnClientEvent:Connect(function()
         self:_openChoiceMenu()
+    end)
+    -- Hide the nudge while the PowerChoiceMenu is open (the nudge gui sits at a higher DisplayOrder,
+    -- so it would otherwise render ON TOP of the menu and cover the instruction text). Cheap: only
+    -- re-evaluates when the menu's open-state actually flips.
+    local lastMenuOpen
+    RunService.Heartbeat:Connect(function()
+        local open = _G.PowerChoiceMenuOpen == true
+        if open ~= lastMenuOpen then
+            lastMenuOpen = open
+            self:_refreshButton()
+        end
     end)
     return self
 end
@@ -320,7 +332,8 @@ end
 -- visit the Ascension Altar (the claim itself happens at the altar's prompt).
 function LevelUpController:_refreshButton()
     local training = tonumber(self.player:GetAttribute("PendingTraining")) or 0
-    self.button.Visible = training > 0
+    -- Suppressed while the level-up menu is open so the nudge never covers it.
+    self.button.Visible = training > 0 and not (_G.PowerChoiceMenuOpen == true)
     if training > 1 then
         self.button.Text = string.format("✦  ASCEND  (%d)", training)
     else
