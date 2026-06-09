@@ -113,13 +113,13 @@ function HotbarService:AdminGrantArea(player)
     return { ok = true, archetype = archetype, powers = available }
 end
 
--- The things a player may bind: their archetype's powers + the tactical commands.
--- Pet-summons are added client-side from the equipped squad (the client owns that).
+-- The things a player may bind: the powers they actually OWN (not the whole archetype pool) + the
+-- tactical commands. Pet-summons are added client-side from the equipped squad (the client owns that).
 function HotbarService:_assignablePalette(player)
     local data = self._dataService:GetData(player)
     local powers = {}
-    if data and data.Archetype then
-        powers = ArchetypeLogic.availablePowers(data.Archetype, self._archetypesConfig) or {}
+    for _, id in ipairs((data and data.Powers) or {}) do
+        powers[#powers + 1] = id -- owned powers only — you can't bind what you haven't picked
     end
     return {
         powers = powers,
