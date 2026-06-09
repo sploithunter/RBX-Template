@@ -372,6 +372,11 @@ local function hookPet(pet)
     list[#list + 1] = pet:GetAttributeChangedSignal("HealFxUntil"):Connect(function()
         refreshTimedAura(pet, "HealFxUntil", "heal", "heal")
     end)
+    -- Evasion flag flips shield<->dodge: re-evaluate the defensive look when it changes (it may
+    -- replicate a frame after CombatShield, so the CombatShield handler alone can miss it).
+    list[#list + 1] = pet:GetAttributeChangedSignal("EvasionUntil"):Connect(function()
+        refreshArmor(pet)
+    end)
     -- Evasion: each turned-aside blow bumps DodgeTick -> pop a floating "Dodge!".
     list[#list + 1] = pet:GetAttributeChangedSignal("DodgeTick"):Connect(function()
         popDodge(pet)

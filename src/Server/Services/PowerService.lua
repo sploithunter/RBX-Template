@@ -706,11 +706,14 @@ function PowerService:_applyEffect(player, kind, now, powerId)
         local evadeHeal = tonumber(kind.evade_heal)
         local isEvade = kind.evade == true -- dodge buff: reads as evasion, not a shield bubble
         for _, pet in ipairs(self:_targetPets(player, powerId)) do
-            pet:SetAttribute("CombatShield", (pet:GetAttribute("CombatShield") or 0) + mag)
-            pet:SetAttribute("CombatShieldPowerId", powerId)
+            -- Set the evasion flag BEFORE CombatShield: the client's CombatShield handler reads
+            -- EvasionUntil to decide shield-vs-dodge, so the flag must already be present (else a
+            -- shield bubble flashes on for evasion).
             if isEvade then
                 pet:SetAttribute("EvasionUntil", now + (dur or 8)) -- marks the pool as DODGE for VFX
             end
+            pet:SetAttribute("CombatShield", (pet:GetAttribute("CombatShield") or 0) + mag)
+            pet:SetAttribute("CombatShieldPowerId", powerId)
             if dur and dur > 0 then
                 pet:SetAttribute("CombatShieldUntil", now + dur)
                 -- Mirage Veil: while the veil is up, each blow it turns aside also heals the pet a
