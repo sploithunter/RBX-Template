@@ -150,8 +150,32 @@ return {
             healing = 1,
         },
         despawn_seconds = 45,
-        -- placeholder model until the authored one lands: a small spinning neon gear-ish part.
-        -- Set `model_name` to a Model under ReplicatedStorage.Assets.Models to use authored art.
+        -- Authored COGWHEEL drop model (Jason, 2026-06-09): ONE shared 3500-tri mesh + 6 color
+        -- textures (scripts/cogwheel_model_ids.json). Color hints the ORIGIN on the ground
+        -- (the TYPE stays hidden until pickup): singles use their origin's color, duals use
+        -- purple (mixed), silver is the fallback/unknown.
+        cog = {
+            mesh = "rbxassetid://76065631196112",
+            size = 1.6, -- widest-side studs (gem-drop scale)
+            textures = {
+                silver = "rbxassetid://123560213437578",
+                green = "rbxassetid://99887919204355",
+                blue = "rbxassetid://102909461111791",
+                purple = "rbxassetid://88946068227454",
+                red = "rbxassetid://108675846735651",
+                yellow = "rbxassetid://119007782066562",
+            },
+            origin_colors = {
+                geomancer = "green",
+                pyromancer = "red",
+                cryomancer = "blue",
+                sandwalker = "yellow",
+            },
+            dual_color = "purple",
+            fallback_color = "silver",
+        },
+        -- Optional override: a Model under ReplicatedStorage.Assets.Models takes precedence
+        -- over the cog mesh when set.
         model_name = nil,
         pickup_radius = 8,
     },

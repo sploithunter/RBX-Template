@@ -318,6 +318,63 @@ function DropService:SpawnCoinDrop(player, currencyType, amount, position)
     return true
 end
 
+-- Build (once) and cache the COGWHEEL MeshPart template for a color (the enhancement drop
+-- model: one shared mesh, per-color texture — configs/enhancements.lua drops.cog). Yields on
+-- first build; nil when the mesh fails (caller falls back to the placeholder orb).
+function DropService:_ensureCogTemplate(cog, color)
+    self._cogTemplates = self._cogTemplates or {}
+    if self._cogTemplates[color] then
+        return self._cogTemplates[color]
+    end
+    local texId = cog.textures and cog.textures[color]
+    if not (cog.mesh and texId) then
+        return nil
+    end
+    local ok, mesh = pcall(function()
+        -- selene: allow(undefined_variable)
+        local content = Content.fromUri(cog.mesh) -- runtime global (same as gem templates)
+        return AssetService:CreateMeshPartAsync(content, {
+            CollisionFidelity = Enum.CollisionFidelity.Box,
+            RenderFidelity = Enum.RenderFidelity.Automatic,
+        })
+    end)
+    if not ok or not mesh then
+        return nil
+    end
+    mesh.TextureID = texId
+    local target = tonumber(cog.size) or 1.6
+    local widest = math.max(mesh.Size.X, mesh.Size.Y, mesh.Size.Z)
+    if widest > 0 then
+        mesh.Size = mesh.Size * (target / widest)
+    end
+    mesh.Anchored = true
+    mesh.CanCollide = false
+    mesh.CanQuery = false
+    mesh.Material = Enum.Material.Metal
+    local light = Instance.new("PointLight")
+    light.Range = 7
+    light.Brightness = 0.8
+    light.Parent = mesh
+    local model = Instance.new("Model")
+    model.Name = "EnhancementDrop"
+    mesh.Parent = model
+    model.PrimaryPart = mesh
+    self._cogTemplates[color] = model
+    return model
+end
+
+-- The cog COLOR for a rolled enhancement record: singles hint their origin's color on the
+-- ground (type stays hidden); duals read purple (mixed); silver = fallback/unknown.
+local function cogColorFor(cog, record)
+    local origins = record and record.origins or {}
+    if #origins == 1 then
+        return (cog.origin_colors and cog.origin_colors[origins[1]]) or cog.fallback_color
+    elseif #origins == 2 then
+        return cog.dual_color or cog.fallback_color
+    end
+    return cog.fallback_color
+end
+
 -- Try to spawn an ENHANCEMENT drop (Jason's design: identity hidden until pickup).
 -- source = "breakable" | "enemy" (chance per configs/enhancements.lua drops). The model is
 -- semi-generic: authored Model (drops.model_name under ReplicatedStorage.Assets.Models) when
@@ -349,12 +406,18 @@ function DropService:TrySpawnEnhancementDrop(player, source, position)
     end
     local record = enh:RollDrop()
 
-    -- model: authored when configured, else the placeholder mystery orb
+    -- model: authored Assets model (override) > the cogwheel mesh (per-color) > mystery orb
     local model
     if drops.model_name then
         local assets = ReplicatedStorage:FindFirstChild("Assets")
         local models = assets and assets:FindFirstChild("Models")
         local tpl = models and models:FindFirstChild(drops.model_name)
+        if tpl then
+            model = tpl:Clone()
+        end
+    end
+    if not model and drops.cog then
+        local tpl = self:_ensureCogTemplate(drops.cog, cogColorFor(drops.cog, record))
         if tpl then
             model = tpl:Clone()
         end
