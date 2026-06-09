@@ -21,4 +21,11 @@ return {
         sound = "celebratory_jingle",
         vfx = { kind = "burst", color = { 255, 205, 70 } }, -- gold celebratory burst at the player
     },
+
+    -- A new area/gate was unlocked (client: init.client ZoneUnlockResult ok). Celebratory, and no
+    -- prior fanfare, so no conflict with existing reactions.
+    area_unlocked = {
+        sound = "celebratory_jingle",
+        vfx = { kind = "burst", color = { 120, 230, 150 } }, -- green "new ground" burst
+    },
 }

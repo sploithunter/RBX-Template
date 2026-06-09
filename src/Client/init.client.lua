@@ -587,6 +587,10 @@ Signals.ZoneUnlockResult.OnClientEvent:Connect(function(data)
             updateAllZoneTravelPrompts()
         end
         showNotice("Unlocked " .. tostring(displayName), false)
+        -- Fire the config-driven celebration (sound + burst) for unlocking new ground.
+        pcall(function()
+            require(script.Systems.GameEvents).fire("area_unlocked", { area = data.areaId })
+        end)
     elseif data and data.reason then
         local unlock = data.unlock or {}
         local displayName = unlock.displayName or data.zoneId or "that area"
