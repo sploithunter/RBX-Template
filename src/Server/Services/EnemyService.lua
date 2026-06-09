@@ -51,6 +51,7 @@ function EnemyService:Init()
     self._petRoles = self._configLoader:LoadConfig("pet_roles")
     self._levelingConfig = self._configLoader:LoadConfig("leveling")
     self._originConfig = (self._configLoader:LoadConfig("combat_fx") or {}).origin or {}
+    self._powersConfig = self._configLoader:LoadConfig("powers") -- combat_vfx.on_hit (e.g. dodge pops)
     self._nextId = 0
     self._enemies = {} -- targetId -> { model, enemyId, nextAttack }
     -- pet model -> { lastHit } (weak so dead pets GC). Accumulated damage, the downed
@@ -671,10 +672,16 @@ function EnemyService:_hitPet(pet, def, now, eng, enemyLevel, petLevel)
         local absorbed = math.min(shield, dmg)
         pet:SetAttribute("CombatShield", shield - absorbed)
         dmg = dmg - absorbed
-        -- Evasion (Mirage Step): a dodge pool turning a blow aside reads as a DODGE, not a shield —
-        -- bump a tick so the client pops a floating "Dodge!" over the pet (CombatAuraController).
-        if absorbed > 0 and (pet:GetAttribute("EvasionUntil") or 0) > nowT then
-            pet:SetAttribute("DodgeTick", (pet:GetAttribute("DodgeTick") or 0) + 1)
+        -- On-hit VFX is config-driven: if the absorbing power declares combat_vfx.on_hit = "dodge_pop"
+        -- (e.g. Mirage Step), bump a tick so the client pops a floating "Dodge!" over the pet. A real
+        -- shield has no on_hit, so it just soaks silently.
+        if absorbed > 0 then
+            local pid = pet:GetAttribute("CombatShieldPowerId")
+            local def = pid and self._powersConfig.powers and self._powersConfig.powers[pid]
+            local vfx = def and def.combat_vfx
+            if vfx and vfx.on_hit == "dodge_pop" then
+                pet:SetAttribute("DodgeTick", (pet:GetAttribute("DodgeTick") or 0) + 1)
+            end
         end
         -- Mirage Veil (sandwalker signature): the veil heals a little each time it turns a blow
         -- aside (heal-on-evade) while MirageHealUntil is live — sustain that rewards being shielded.

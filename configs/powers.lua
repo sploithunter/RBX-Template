@@ -103,6 +103,13 @@ return {
     --   buff      — x`magnitude` pet damage for `duration`s (player PetDamageBuff)
     --   root      — engaged enemies can't chase for `duration`s
     --   vulnerable— engaged enemies take x`magnitude` pet damage for `duration`s
+    --
+    -- COMBAT VFX (how a power READS on the pet) is config, not code. A power may declare:
+    --   combat_vfx = { look = "bubble"|"dodge"|"reskin"|"aura"|"none", badge = true|false, on_hit = "dodge_pop" }
+    -- If omitted, CombatAuraController defaults the look by effect family (absorb -> bubble, but an
+    -- absorb effect_kind with evade=true -> dodge; defense_buff -> reskin; heal -> aura). So a NEW
+    -- power just declares its family (or an explicit combat_vfx.look) and the renderer obeys — no
+    -- per-power branches in the controller.
     effect_kinds = {
         -- shields = ABSORPTION pools (soak `magnitude` damage before endurance), not heals.
         -- duration > 0 = the shield also EXPIRES after that many seconds even if not fully soaked
@@ -498,6 +505,7 @@ return {
             element = "desert",
             target = "single_pet",
             glyph = "buff",
+            combat_vfx = { look = "dodge", on_hit = "dodge_pop" }, -- dodge, NOT a shield bubble
             unlock_level = 6,
         },
         dune_shield = {
@@ -511,6 +519,7 @@ return {
             element = "desert",
             target = "single_pet",
             glyph = "shield",
+            combat_vfx = { look = "bubble" }, -- real absorb shield -> element force-field bubble
             unlock_level = 6,
         },
         restoring_sands = {

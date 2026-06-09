@@ -228,14 +228,28 @@ end
 --     RESKIN only, no bubble. A timed hardening of the pet's own body.
 -- A pet shows both ONLY if it genuinely has a shield AND an armor active (two powers). Each look
 -- attaches once on its own bare->active transition and clears on active->bare.
-local function isEvading(pet)
-    return (pet:GetAttribute("EvasionUntil") or 0) > os.time()
+-- A power's combat LOOK is READ FROM CONFIG, never inferred in code. `combat_vfx.look` wins; else it
+-- defaults by the effect's family (absorb -> bubble, but absorb+evade -> dodge; defense_buff -> reskin;
+-- heal -> aura). So a new power just declares its family/evade (or an explicit combat_vfx.look) and the
+-- renderer obeys — no per-power branches here. Returns (vfx table | nil, look string | nil).
+local DEFAULT_LOOK = { defense_buff = "reskin", heal = "aura" }
+local function vfxForPower(powerId)
+    local def = powerId and powersCfg.powers and powersCfg.powers[powerId]
+    if not def then
+        return nil, nil
+    end
+    local vfx = def.combat_vfx
+    if vfx and vfx.look then
+        return vfx, vfx.look
+    end
+    local kind = def.effect and powersCfg.effect_kinds and powersCfg.effect_kinds[def.effect]
+    local family = kind and kind.family
+    if family == "absorb" then
+        return vfx, (kind.evade and "dodge" or "bubble")
+    end
+    return vfx, (family and DEFAULT_LOOK[family]) or nil
 end
--- Evasion (Mirage Step) borrows the absorb pool but is a DODGE — it must NOT show the shield bubble
--- or the shield badge. Treat an evasion pool as "no shield" for the defensive look.
-local function hasShield(pet)
-    return (pet:GetAttribute("CombatShield") or 0) > 0 and not isEvading(pet)
-end
+
 local function hasArmor(pet)
     return (pet:GetAttribute("DefenseBuffUntil") or 0) > os.time()
 end
@@ -257,9 +271,16 @@ local function defenseElement(pet, idAttr)
 end
 
 local function refreshArmor(pet)
-    -- SHIELD (absorb) -> BUBBLE only
+    -- SHIELD / DODGE: the absorb pool. Its LOOK comes from the cast power's config (vfxForPower) — a
+    -- real shield bubbles, a dodge does not. No per-power code; new absorb powers obey their config.
+    local shieldOn = (pet:GetAttribute("CombatShield") or 0) > 0
+    local shieldVfx, shieldLook
+    if shieldOn then
+        shieldVfx, shieldLook = vfxForPower(pet:GetAttribute("CombatShieldPowerId"))
+        shieldLook = shieldLook or "bubble" -- absorb pool with no tagged power -> default bubble
+    end
     local bubble = handles[pet] and handles[pet].shieldBubble
-    if hasShield(pet) then
+    if shieldOn and shieldLook == "bubble" then
         if not bubble then
             local element = defenseElement(pet, "CombatShieldPowerId") or elementForPet(pet)
             setSlot(pet, "shieldBubble", { category = "shield", element = element, duration = 0 })
@@ -287,9 +308,10 @@ local function refreshArmor(pet)
         stopSlot(pet, "armorReskin")
     end
 
-    -- Floating identity badge (the disc icon) while ANY defensive effect is active — shield, armor,
-    -- OR evasion. Evasion shows its badge (so you can tell the dodge buff is up) but NO shield bubble.
-    if hasShield(pet) or hasArmor(pet) or isEvading(pet) then
+    -- Floating identity badge while ANY defensive effect is active (shield, dodge, OR armor) so you
+    -- can tell the buff is up — unless the power opts out via combat_vfx.badge = false.
+    local showBadge = (shieldOn and not (shieldVfx and shieldVfx.badge == false)) or hasArmor(pet)
+    if showBadge then
         showArmorIcon(pet)
     else
         hideArmorIcon(pet)
@@ -373,9 +395,9 @@ local function hookPet(pet)
     list[#list + 1] = pet:GetAttributeChangedSignal("HealFxUntil"):Connect(function()
         refreshTimedAura(pet, "HealFxUntil", "heal", "heal")
     end)
-    -- Evasion flag flips shield<->dodge: re-evaluate the defensive look when it changes (it may
-    -- replicate a frame after CombatShield, so the CombatShield handler alone can miss it).
-    list[#list + 1] = pet:GetAttributeChangedSignal("EvasionUntil"):Connect(function()
+    -- The tagging power decides the look (bubble vs dodge vs ...): re-resolve if it changes or lands
+    -- a frame after CombatShield.
+    list[#list + 1] = pet:GetAttributeChangedSignal("CombatShieldPowerId"):Connect(function()
         refreshArmor(pet)
     end)
     -- Evasion: each turned-aside blow bumps DodgeTick -> pop a floating "Dodge!".
