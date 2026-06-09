@@ -17,7 +17,6 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
 
 local Enhancements = require(ReplicatedStorage.Shared.Game.Enhancements)
 
@@ -32,19 +31,39 @@ function EnhancementService:Init()
     self._powersConfig = self._configLoader:LoadConfig("powers")
 end
 
-local function inv(data)
-    if type(data.EnhancementInv) ~= "table" then
-        data.EnhancementInv = {}
-    end
-    return data.EnhancementInv
+local BUCKET = "enhancements" -- InventoryService bucket: visible in the Inventory UI, trade-ready
+
+function EnhancementService:_inventoryService()
+    local locator = _G.RBXTemplateServices
+    local ok, svc = pcall(function()
+        return locator and locator:Get("InventoryService")
+    end)
+    return ok and svc or nil
 end
 
-local function invCount(map)
-    local n = 0
-    for _ in pairs(map) do
-        n += 1
+-- One-time migration: records granted into the old private store (data.EnhancementInv) move
+-- into the InventoryService bucket so they show in the Inventory UI and can trade later.
+function EnhancementService:_migrateLegacy(player, data)
+    if type(data.EnhancementInv) ~= "table" or next(data.EnhancementInv) == nil then
+        data.EnhancementInv = nil
+        return
     end
-    return n
+    local invSvc = self:_inventoryService()
+    if not invSvc then
+        return -- bucket not reachable yet; retry on the next call
+    end
+    for _, rec in pairs(data.EnhancementInv) do
+        pcall(function()
+            invSvc:AddItem(player, BUCKET, {
+                id = "enhancement",
+                type = rec.type,
+                origins = rec.origins,
+                name = Enhancements.displayName(self._config, rec),
+            })
+        end)
+    end
+    data.EnhancementInv = nil
+    self._dataService:RequestSave(player, "enhancement_migrate", { critical = true })
 end
 
 local function ownsPower(data, powerId)
@@ -62,16 +81,21 @@ function EnhancementService:GetState(player)
     if not data then
         return { ok = false, reason = "data_not_loaded" }
     end
+    self:_migrateLegacy(player, data)
     local items = {}
-    for uid, rec in pairs(inv(data)) do
-        items[#items + 1] = {
-            uid = uid,
-            type = rec.type,
-            origins = rec.origins,
-            name = Enhancements.displayName(self._config, rec),
-            usable = Enhancements.usableBy(rec, data.Archetype),
-            single = Enhancements.isSingle(rec),
-        }
+    local invSvc = self:_inventoryService()
+    local bucket = invSvc and invSvc:GetInventory(player, BUCKET)
+    for uid, rec in pairs((bucket and bucket.items) or {}) do
+        if rec.type and rec.origins then
+            items[#items + 1] = {
+                uid = uid,
+                type = rec.type,
+                origins = rec.origins,
+                name = rec.name or Enhancements.displayName(self._config, rec),
+                usable = Enhancements.usableBy(rec, data.Archetype),
+                single = Enhancements.isSingle(rec),
+            }
+        end
     end
     table.sort(items, function(a, b)
         return a.name < b.name
@@ -93,19 +117,22 @@ function EnhancementService:Grant(player, record)
     if not Enhancements.isValid(self._config, record) then
         return { ok = false, reason = "invalid_record" }
     end
-    local map = inv(data)
-    local cap = tonumber(self._config.inventory_cap) or 60
-    if invCount(map) >= cap then
-        return { ok = false, reason = "inventory_full" }
+    self:_migrateLegacy(player, data)
+    local invSvc = self:_inventoryService()
+    if not invSvc then
+        return { ok = false, reason = "service_unavailable" }
     end
-    local uid = HttpService:GenerateGUID(false)
-    map[uid] = { type = record.type, origins = record.origins }
-    self._dataService:RequestSave(player, "enhancement_grant", { critical = false })
-    return {
-        ok = true,
-        uid = uid,
-        name = Enhancements.displayName(self._config, map[uid]),
-    }
+    local name = Enhancements.displayName(self._config, record)
+    local uid, err = invSvc:AddItem(player, BUCKET, {
+        id = "enhancement",
+        type = record.type,
+        origins = record.origins,
+        name = name,
+    })
+    if not uid then
+        return { ok = false, reason = err or "inventory_full" }
+    end
+    return { ok = true, uid = uid, name = name }
 end
 
 -- Slot an inventory enhancement into slot #slotIndex of an owned power.
@@ -114,8 +141,9 @@ function EnhancementService:Slot(player, powerId, slotIndex, uid)
     if not data then
         return { ok = false, reason = "data_not_loaded" }
     end
-    local map = inv(data)
-    local rec = map[uid]
+    self:_migrateLegacy(player, data)
+    local invSvc = self:_inventoryService()
+    local rec = invSvc and invSvc:GetItem(player, BUCKET, uid)
     if not rec then
         return { ok = false, reason = "not_in_inventory" }
     end
@@ -144,9 +172,9 @@ function EnhancementService:Slot(player, powerId, slotIndex, uid)
     if slot.enh ~= nil and self._config.replace_destroys ~= true then
         return { ok = false, reason = "slot_occupied" }
     end
-    -- Commit: fill the slot (replace destroys the old record) + consume from inventory.
+    -- Commit: fill the slot (replace destroys the old record) + consume from the bucket.
     slot.enh = { type = rec.type, origins = rec.origins }
-    map[uid] = nil
+    invSvc:RemoveItem(player, BUCKET, uid, 1)
     self._dataService:RequestSave(player, "enhancement_slot", { critical = true })
     return {
         ok = true,

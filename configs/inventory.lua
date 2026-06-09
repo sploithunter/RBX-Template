@@ -8,6 +8,7 @@ return {
     -- Which inventory buckets this game uses
     enabled_buckets = {
         pets = true,
+        enhancements = true, -- CoH-style power enhancements (drops; slot via Power Choice)
         weapons = false, -- Disabled for pet simulator
         tools = true, -- Enabled for pickaxes and mining tools
         consumables = true,
@@ -301,6 +302,14 @@ return {
             },
         },
 
+        enhancements = {
+            display_name = "Enhancements",
+            icon = "⚙️",
+            base_limit = 60, -- mirrors enhancements.lua inventory_cap
+            allow_duplicates = true, -- many copies of the same type/origin roll is normal
+            storage_type = "unique", -- each drop is its own uid record { type, origins }
+            limit_extensions = {},
+        },
         consumables = {
             display_name = "Consumables",
             icon = "🧪",
@@ -478,7 +487,7 @@ return {
             name = "All",
             icon = "📦",
             description = "All items across all categories",
-            folders = { "pets", "consumables", "tools", "eggs", "resources" }, -- All enabled buckets
+            folders = { "pets", "consumables", "tools", "eggs", "resources", "enhancements" }, -- All enabled buckets
             display_order = 1,
             always_visible = true, -- Show even if no items
         },
@@ -489,6 +498,14 @@ return {
             folders = { "pets" },
             display_order = 2,
             always_visible = true,
+        },
+        {
+            name = "Enhancements",
+            icon = "⚙️",
+            description = "Power enhancements — slot them via Power Choice",
+            folders = { "enhancements" },
+            display_order = 3,
+            always_visible = false,
         },
         {
             name = "Items",
