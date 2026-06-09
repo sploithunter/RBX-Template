@@ -17,8 +17,11 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
+local sounds = require(ReplicatedStorage.Configs:WaitForChild("sounds"))
 
 local LevelUpController = {}
 LevelUpController.__index = LevelUpController
@@ -110,6 +113,17 @@ function LevelUpController.start()
     Signals.LevelUp_OpenChoice.OnClientEvent:Connect(function()
         self:_openChoiceMenu()
     end)
+    -- Celebratory jingle whenever the CLAIMED level actually goes UP (catches every path: altar
+    -- COMMIT, admin, etc. — commits are silent so we key off the attribute, not LevelUp_Claimed).
+    -- Seed from the current value so the initial join replication doesn't fire it.
+    local lastClaimed = tonumber(self.player:GetAttribute("ClaimedLevel"))
+    self.player:GetAttributeChangedSignal("ClaimedLevel"):Connect(function()
+        local lvl = tonumber(self.player:GetAttribute("ClaimedLevel"))
+        if lvl and lastClaimed and lvl > lastClaimed then
+            self:_playLevelUpJingle()
+        end
+        lastClaimed = lvl or lastClaimed
+    end)
     -- Hide the nudge while the PowerChoiceMenu is open (the nudge gui sits at a higher DisplayOrder,
     -- so it would otherwise render ON TOP of the menu and cover the instruction text). Cheap: only
     -- re-evaluates when the menu's open-state actually flips.
@@ -122,6 +136,30 @@ function LevelUpController.start()
         end
     end)
     return self
+end
+
+-- One-shot celebratory level-up fanfare (configs/sounds.lua celebratory_jingle), on the "ui" bus
+-- so the UI volume slider controls it. Self-destructs when it finishes.
+function LevelUpController:_playLevelUpJingle()
+    local def = sounds.celebratory_jingle
+    if not (def and def.id) then
+        return
+    end
+    local s = Instance.new("Sound")
+    s.SoundId = def.id
+    s.Volume = def.volume or 0.7
+    s.PlaybackSpeed = def.playback_speed or 1
+    SoundGroups.assign(s, "ui")
+    s.Parent = SoundService
+    s:Play()
+    s.Ended:Once(function()
+        s:Destroy()
+    end)
+    task.delay(8, function() -- safety cleanup if Ended never fires (unapproved/failed asset)
+        if s.Parent then
+            s:Destroy()
+        end
+    end)
 end
 
 -- Open the new PowerChoiceMenu (server-backed pick/slot flow). Falls back to the legacy reveal
