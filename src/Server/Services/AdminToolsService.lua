@@ -645,6 +645,15 @@ function AdminToolsService:_handleResetToBeginning(adminPlayer, data)
             arche:Respec(targetPlayer, nil)
         end)
     end
+    -- 5c) Clear the always-on PASSIVE buff attributes (Magnet/Swift/Hasten/XP) — respec wipes the
+    --     owned powers but those buffs live on player ATTRIBUTES; ReapplyPassives clears + re-stamps
+    --     from the now-empty owned set, so a reset player truly has none.
+    local pwr = _G.RBXTemplateServices and _G.RBXTemplateServices:Get("PowerService")
+    if pwr and pwr.ReapplyPassives then
+        pcall(function()
+            pwr:ReapplyPassives(targetPlayer)
+        end)
+    end
 
     -- 6) Re-replicate pet projections (drops stale equips + despawns removed follow models) + save.
     if self._inventoryService and self._inventoryService.RebuildPetProjections then
