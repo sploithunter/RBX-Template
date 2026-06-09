@@ -12,12 +12,15 @@ return {
     bind_types = { "power", "roster", "pet", "tactical" },
     tactical_commands = { "scatter", "focus_fire", "regroup", "retreat" },
 
-    -- Default layout for a new player: which slots get powers / rosters / tacticals. Power slots
-    -- are filled from the player's archetype pool in order (each archetype's bar shows its powers).
+    -- Default layout for a new player. Power slots fill from the player's OWNED powers (picked via
+    -- level-up) in order — a fresh character owns none, so the bar comes up EMPTY and fills as you
+    -- pick. Roster + tactical (focus_fire/scatter/regroup/retreat) commands are REAL and fully
+    -- functional, but no longer auto-clutter a fresh bar — bind them yourself via Edit. (Restore the
+    -- auto-defaults by repopulating roster_slots/tactical_slots, e.g. {7,8,9} / {10,11,12,13}.)
     defaults = {
         power_slots = { 1, 2, 3, 4, 5, 6 },
-        roster_slots = { 7, 8, 9 },
-        tactical_slots = { 10, 11, 12, 13 },
+        roster_slots = {},
+        tactical_slots = {},
     },
 
     -- [PROTOTYPE] Explicit default bar OVERRIDE. When set, a fresh hotbar uses exactly this layout

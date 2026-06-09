@@ -12,10 +12,16 @@ local geoPowers = ArchetypeLogic.availablePowers("geomancer", archetypes)
 
 return function()
     describe("HotbarLogic.defaultBindings (archetype fill)", function()
-        -- without the prototype override, the bar fills from the archetype pool
-        local noOverride = table.clone(config)
-        noOverride.default_binds = nil
-        local b = HotbarLogic.defaultBindings(geoPowers, noOverride)
+        -- config-agnostic: define the slot layout locally so this tests the LOGIC and survives the
+        -- live config emptying roster/tactical defaults (powers come from picks; commands via Edit).
+        local cfg = table.clone(config)
+        cfg.default_binds = nil
+        cfg.defaults = {
+            power_slots = { 1, 2, 3, 4, 5, 6 },
+            roster_slots = { 7, 8, 9 },
+            tactical_slots = { 10, 11 },
+        }
+        local b = HotbarLogic.defaultBindings(geoPowers, cfg)
 
         it("binds the leading power slots to the archetype's powers", function()
             expect(b[1].type).to.equal("power")
@@ -24,8 +30,8 @@ return function()
         end)
 
         it("binds roster + tactical slots from config", function()
-            expect(b[noOverride.defaults.roster_slots[1]].type).to.equal("roster")
-            local tSlot = noOverride.defaults.tactical_slots[1]
+            expect(b[cfg.defaults.roster_slots[1]].type).to.equal("roster")
+            local tSlot = cfg.defaults.tactical_slots[1]
             expect(b[tSlot].type).to.equal("tactical")
             expect(b[tSlot].target).to.equal(config.tactical_commands[1])
         end)
