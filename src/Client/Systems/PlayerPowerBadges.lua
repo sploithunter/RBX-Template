@@ -35,6 +35,7 @@ local BUFFS = {
 
 local BLINK_LEAD = 5 -- seconds: blink in the final stretch
 local BLINK_PERIOD = 0.5
+local PERMANENT_THRESHOLD = 86400 * 30 -- >30 days remaining = always-on (passive/toggle) -> "ON"
 
 local function makeBadge(parent, order)
     local holder = Instance.new("Frame")
@@ -109,13 +110,23 @@ function PlayerPowerBadges.start()
                 local disc = badge and POWER_ICONS.discFor(badge.element, badge.symbol)
                 b.disc.Image = disc or ""
                 local remaining = untilT - now
-                b.timer.Text = math.ceil(remaining) .. "s"
-                -- near-expiry blink (timed powers)
-                local blink = remaining <= BLINK_LEAD
-                local hidden = blink and (os.clock() % BLINK_PERIOD) >= (BLINK_PERIOD * 0.5)
-                b.disc.ImageTransparency = hidden and 0.6 or 0
-                b.timer.TextColor3 = blink and Color3.fromRGB(255, 180, 120)
-                    or Color3.fromRGB(255, 255, 255)
+                -- PASSIVE / TOGGLE buffs (Magnet/Swift/Hasten/XP) are always-on: their `Until` is a
+                -- far-future sentinel. Show "ON", not a ~73-year countdown.
+                local permanent = (localPlayer:GetAttribute(def.attr .. "Toggle") == true)
+                    or remaining > PERMANENT_THRESHOLD
+                if permanent then
+                    b.timer.Text = "ON"
+                    b.timer.TextColor3 = Color3.fromRGB(150, 230, 150)
+                    b.disc.ImageTransparency = 0
+                else
+                    b.timer.Text = math.ceil(remaining) .. "s"
+                    -- near-expiry blink (timed powers)
+                    local blink = remaining <= BLINK_LEAD
+                    local hidden = blink and (os.clock() % BLINK_PERIOD) >= (BLINK_PERIOD * 0.5)
+                    b.disc.ImageTransparency = hidden and 0.6 or 0
+                    b.timer.TextColor3 = blink and Color3.fromRGB(255, 180, 120)
+                        or Color3.fromRGB(255, 255, 255)
+                end
             elseif b then
                 b.holder:Destroy()
                 badges[def.attr] = nil
