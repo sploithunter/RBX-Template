@@ -9,6 +9,7 @@ chevrons_up.png
 clover_huge.png
 clover_lucky.png
 coins_up.png
+contact_sheet: contact_sheet.png
 contagion.png
 critical_hit.png
 eye.png
@@ -20,7 +21,6 @@ fist_broken.png
 fist_impact.png
 gift_up.png
 hand_stop.png
-haste.png
 heart.png
 history.png
 hourglass.png
@@ -37,6 +37,7 @@ plus.png
 plus_down.png
 portal.png
 rage.png
+range.png
 ranged_impact.png
 revive.png
 sand_storm.png
@@ -50,5 +51,3 @@ taunt.png
 user_desk.png
 winter_hold.png
 xp_up.png
-
-contact_sheet: contact_sheet.png

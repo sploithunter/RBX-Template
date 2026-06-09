@@ -1,5 +1,5 @@
 {
-  "_README": "SINGLE SOURCE OF TRUTH for every icon uploaded to Roblox via scripts/upload_icons.js (Open Cloud, creator userId 3200870803 / coloradoplays). Each asset has BOTH ids: 'decal' (what Open Cloud returns; does NOT render in ImageLabel.Image) and 'image' (the wrapped Texture id resolved via InsertService:LoadAsset in Studio EDIT mode — this is what configs use). The 'image' ids are wired into configs/power_icons.lua. Element colors: earth=green, fire=red, desert=yellow, ice=blue. Last updated 2026-06-05.",
+  "_README": "SINGLE SOURCE OF TRUTH for every icon uploaded to Roblox via scripts/upload_icons.js (Open Cloud, creator userId 3200870803 / coloradoplays). Each asset has BOTH ids: 'decal' (what Open Cloud returns; does NOT render in ImageLabel.Image) and 'image' (the wrapped Texture id resolved via InsertService:LoadAsset in Studio EDIT mode \u2014 this is what configs use). The 'image' ids are wired into configs/power_icons.lua. Element colors: earth=green, fire=red, desert=yellow, ice=blue. Last updated 2026-06-05.",
   "rings": {
     "_note": "5 grayscale targeting rings (tinted per element via ImageColor3). Source: assets/ui/ring_frames_white/.",
     "ring_target_in": {
@@ -176,7 +176,7 @@
       },
       "ranged_impact": {
         "decal": "134174129146744",
-        "image": "120746825352560"
+        "image": "95590192140209"
       },
       "sand_storm": {
         "decal": "128727246192716",
@@ -208,19 +208,19 @@
       },
       "heart": {
         "decal": "101962748027479",
-        "image": null
+        "image": "107606044297378"
       },
       "hourglass": {
         "decal": "82334455714735",
-        "image": null
+        "image": "121803504685994"
       },
       "impact_burst": {
         "decal": "72768992437483",
-        "image": null
+        "image": "92901353927868"
       },
       "range": {
         "decal": "103767304901691",
-        "image": null
+        "image": "85568641261092"
       }
     },
     "red": {
@@ -374,7 +374,7 @@
       },
       "ranged_impact": {
         "decal": "74696562806778",
-        "image": "112522766278309"
+        "image": "110354216014134"
       },
       "sand_storm": {
         "decal": "130469035531688",
@@ -406,19 +406,19 @@
       },
       "heart": {
         "decal": "118376271093530",
-        "image": null
+        "image": "100786807939374"
       },
       "hourglass": {
         "decal": "74189550531817",
-        "image": null
+        "image": "94236427844868"
       },
       "impact_burst": {
         "decal": "138461745206760",
-        "image": null
+        "image": "127253446607753"
       },
       "range": {
         "decal": "128850070887177",
-        "image": null
+        "image": "117215691895001"
       }
     },
     "yellow": {
@@ -572,7 +572,7 @@
       },
       "ranged_impact": {
         "decal": "92989868444958",
-        "image": "125059616149464"
+        "image": "99566223640862"
       },
       "sand_storm": {
         "decal": "98013722236495",
@@ -604,19 +604,19 @@
       },
       "heart": {
         "decal": "130247807088450",
-        "image": null
+        "image": "87922941184241"
       },
       "hourglass": {
         "decal": "135872940233456",
-        "image": null
+        "image": "104397793017682"
       },
       "impact_burst": {
         "decal": "133035311500891",
-        "image": null
+        "image": "71187797958287"
       },
       "range": {
         "decal": "117978793160323",
-        "image": null
+        "image": "80747623209973"
       }
     },
     "blue": {
@@ -770,7 +770,7 @@
       },
       "ranged_impact": {
         "decal": "100487751278366",
-        "image": "115335131165731"
+        "image": "98215425163985"
       },
       "sand_storm": {
         "decal": "80742223003168",
@@ -802,19 +802,19 @@
       },
       "heart": {
         "decal": "139925339484183",
-        "image": null
+        "image": "98659962818924"
       },
       "hourglass": {
         "decal": "89975703725297",
-        "image": null
+        "image": "121983183880085"
       },
       "impact_burst": {
         "decal": "136532736265401",
-        "image": null
+        "image": "104603773112957"
       },
       "range": {
         "decal": "84198547544576",
-        "image": null
+        "image": "114627219516355"
       }
     },
     "white": {
@@ -1150,7 +1150,7 @@
       },
       "ranged_impact": {
         "decal": "125420473162561",
-        "image": "83017441648268"
+        "image": "111395713187585"
       },
       "sand_storm": {
         "decal": "103052422611701",
@@ -1182,19 +1182,19 @@
       },
       "heart": {
         "decal": "94704339359792",
-        "image": null
+        "image": "110098540359790"
       },
       "hourglass": {
         "decal": "98745615970667",
-        "image": null
+        "image": "123682415551848"
       },
       "impact_burst": {
         "decal": "137479157900304",
-        "image": null
+        "image": "133236489925446"
       },
       "range": {
         "decal": "92145712126089",
-        "image": null
+        "image": "127761820191050"
       }
     }
   },
