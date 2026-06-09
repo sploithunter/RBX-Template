@@ -335,6 +335,20 @@ local function getPersistedSelectedHatchCount()
     return nil
 end
 
+-- RAW persisted selection (no clamp). Used when the entitlement ceiling RISES — MaxEggHatchCount
+-- replicates a beat after join, and a selection clamped against the early config default could
+-- never climb back (clamping only lowers). Re-applying the raw choice lets it recover.
+local function getPersistedRawSelectedHatchCount()
+    local settingsFolder = player:FindFirstChild("Settings")
+    local autoFolder = settingsFolder and settingsFolder:FindFirstChild("AutoSystems")
+    local hatchFolder = autoFolder and autoFolder:FindFirstChild("Hatch")
+    local selectedValue = hatchFolder and hatchFolder:FindFirstChild("SelectedCount")
+    if selectedValue and selectedValue:IsA("IntValue") then
+        return selectedValue.Value
+    end
+    return nil
+end
+
 local function persistSelectedHatchCount(count)
     count = clampSelectedCount(count)
     if lastPersistedHatchCount == count then
@@ -1479,6 +1493,11 @@ function EggInteractionService:SetHatchActionMode(actionMode, options)
     if options.persist ~= false then
         persistHatchActionMode(hatchActionMode)
     end
+    -- Max/Auto means "hatch everything I'm entitled to": snap the selected count to the CURRENT
+    -- effective max (#176 — previously Auto kept a stale lower selection until one manual Max hatch).
+    if hatchActionMode == "max" or hatchActionMode == "auto" then
+        self:SetSelectedHatchCount(getEffectiveMaxHatchCount(), { persist = options.persist })
+    end
     self:UpdateHatchPanel()
     return hatchActionMode
 end
@@ -2184,7 +2203,17 @@ function EggInteractionService:Initialize()
         table.insert(
             entitlementConnections,
             player:GetAttributeChangedSignal(attributeName):Connect(function()
-                self:SetSelectedHatchCount(selectedHatchCount, { persist = false })
+                -- The ceiling moved (MaxEggHatchCount replicates after join / level-up bumps it).
+                -- Re-clamping the in-memory value can only LOWER it — the "stuck at 3" bug — so:
+                -- max/auto intent tracks the new max; otherwise re-apply the RAW persisted choice.
+                if hatchActionMode == "max" or hatchActionMode == "auto" then
+                    self:SetSelectedHatchCount(getEffectiveMaxHatchCount(), { persist = false })
+                else
+                    self:SetSelectedHatchCount(
+                        getPersistedRawSelectedHatchCount() or selectedHatchCount,
+                        { persist = false }
+                    )
+                end
                 self:RefreshModeButtons()
                 self:UpdateHatchPanel()
             end)
