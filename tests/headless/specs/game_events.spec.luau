@@ -15,6 +15,7 @@ local sounds = loadModule("configs/sounds.lua")
 local KNOWN_KINDS = {
     sound = true,
     vfx = true,
+    float = true,
 }
 
 return function()

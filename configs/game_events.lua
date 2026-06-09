@@ -120,6 +120,13 @@ return {
         sound = "deep_earthen_impact",
     },
 
+    -- An enhancement pickup revealed its identity (server: DropService _collect). The float TEXT
+    -- comes from the event ctx (the rolled name, e.g. "Pyro Damage"); config only styles it.
+    enhancement_pickup = {
+        float = { color = { 255, 235, 170 } },
+        sound = "power_up_stronger",
+    },
+
     -- SOURCES WIRED, NO DEFAULT REACTIONS (add a row to react — the fire is already in place):
     --   egg_hatch     — every successful hatch batch {count} (the reveal pop is animation-synced
     --                   choreography in EggHatchingService and stays there)

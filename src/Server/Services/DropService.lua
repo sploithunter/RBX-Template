@@ -181,6 +181,10 @@ function DropService:_recycle(rec)
     if not model then
         return
     end
+    if rec.noPool then
+        model:Destroy()
+        return
+    end
     model.Parent = nil
     local key = rec.poolKey or "ball"
     self._pool[key] = self._pool[key] or {}
@@ -314,6 +318,97 @@ function DropService:SpawnCoinDrop(player, currencyType, amount, position)
     return true
 end
 
+-- Try to spawn an ENHANCEMENT drop (Jason's design: identity hidden until pickup).
+-- source = "breakable" | "enemy" (chance per configs/enhancements.lua drops). The model is
+-- semi-generic: authored Model (drops.model_name under ReplicatedStorage.Assets.Models) when
+-- set, else a placeholder gold neon orb with a "?" tag. Returns true when a drop spawned.
+function DropService:TrySpawnEnhancementDrop(player, source, position)
+    if not (player and typeof(position) == "Vector3") then
+        return false
+    end
+    local enhCfg = self._enhConfig
+    if not enhCfg then
+        local ok, cfg = pcall(function()
+            return (self._configLoader and self._configLoader:LoadConfig("enhancements"))
+                or require(ReplicatedStorage.Configs:WaitForChild("enhancements"))
+        end)
+        enhCfg = ok and cfg or nil
+        self._enhConfig = enhCfg
+    end
+    local drops = enhCfg and enhCfg.drops
+    if not (drops and drops.enabled) then
+        return false
+    end
+    local chance = (source == "enemy" and drops.enemy_chance) or drops.breakable_chance or 0
+    if math.random() >= chance then
+        return false
+    end
+    local enh = self._moduleLoader and self._moduleLoader:Get("EnhancementService")
+    if not (enh and enh.RollDrop) then
+        return false
+    end
+    local record = enh:RollDrop()
+
+    -- model: authored when configured, else the placeholder mystery orb
+    local model
+    if drops.model_name then
+        local assets = ReplicatedStorage:FindFirstChild("Assets")
+        local models = assets and assets:FindFirstChild("Models")
+        local tpl = models and models:FindFirstChild(drops.model_name)
+        if tpl then
+            model = tpl:Clone()
+        end
+    end
+    local part
+    if model then
+        part = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+    end
+    if not part then
+        model = Instance.new("Model")
+        model.Name = "EnhancementDrop"
+        part = Instance.new("Part")
+        part.Shape = Enum.PartType.Ball
+        part.Size = Vector3.new(1.6, 1.6, 1.6)
+        part.Material = Enum.Material.Neon
+        part.Color = Color3.fromRGB(255, 200, 90)
+        part.CanCollide = false
+        part.CanQuery = false
+        part.Anchored = true
+        part.Parent = model
+        model.PrimaryPart = part
+        local bb = Instance.new("BillboardGui")
+        bb.Size = UDim2.fromOffset(26, 26)
+        bb.StudsOffset = Vector3.new(0, 1.6, 0)
+        bb.AlwaysOnTop = true
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.fromScale(1, 1)
+        lbl.BackgroundTransparency = 1
+        lbl.Font = Enum.Font.GothamBlack
+        lbl.TextScaled = true
+        lbl.TextColor3 = Color3.fromRGB(255, 235, 170)
+        lbl.Text = "?"
+        lbl.Parent = bb
+        bb.Parent = part
+    end
+    part.Anchored = true
+    local groundY = self:_groundY(position.X, position.Z, position.Y, position.Y - 1)
+    part.CFrame = CFrame.new(position.X, groundY + part.Size.Y * 0.5 + 0.2, position.Z)
+    model.Parent = Workspace
+
+    self._active[#self._active + 1] = {
+        kind = "enhancement",
+        record = record,
+        model = model,
+        part = part,
+        noPool = true,
+        owner = player.UserId,
+        spawnAt = os.clock(),
+        despawnSeconds = drops.despawn_seconds or 45,
+        settling = false,
+    }
+    return true
+end
+
 -- ---- collect loop ------------------------------------------------------
 
 local function ownerRoot(userId)
@@ -332,7 +427,25 @@ function DropService:_collect(rec, _force)
     end
     rec._done = true
     local plr = Players:GetPlayerByUserId(rec.owner)
-    if plr and rec.amount > 0 then
+    if plr and rec.kind == "enhancement" then
+        -- IDENTITY REVEALED AT PICKUP: grant to the inventory + float the name (GameEvents).
+        local enh = self._moduleLoader and self._moduleLoader:Get("EnhancementService")
+        if enh and enh.Grant then
+            local res
+            pcall(function()
+                res = enh:Grant(plr, rec.record)
+            end)
+            if res and res.ok then
+                pcall(function()
+                    local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+                    Signals.GameEvent:FireClient(plr, "enhancement_pickup", {
+                        name = res.name,
+                        origins = rec.record.origins,
+                    })
+                end)
+            end
+        end
+    elseif plr and rec.amount and rec.amount > 0 then
         local economy = self._moduleLoader and self._moduleLoader:Get("EconomyService")
         if economy and economy.AddCurrency then
             pcall(function()
@@ -365,7 +478,7 @@ function DropService:_step()
             if rec and not rec._done then
                 self:_collect(rec, true)
             end
-        elseif now - rec.spawnAt >= despawn then
+        elseif now - rec.spawnAt >= (rec.despawnSeconds or despawn) then
             self:_collect(rec, true)
         else
             local plr, rootPos = ownerRoot(rec.owner)

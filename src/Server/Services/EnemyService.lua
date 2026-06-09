@@ -339,6 +339,19 @@ function EnemyService:_onDefeated(targetId)
                     combat:AwardLoot(player, entry.enemyId)
                 end)
                 fireGameEvent(player, "enemy_defeated", { enemy = entry.enemyId })
+                -- rare ENHANCEMENT drop at the kill site (identity revealed at pickup)
+                local pp = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+                if pp then
+                    local locator = _G.RBXTemplateServices
+                    local okSvc, drops = pcall(function()
+                        return locator and locator:Get("DropService")
+                    end)
+                    if okSvc and drops and drops.TrySpawnEnhancementDrop then
+                        pcall(function()
+                            drops:TrySpawnEnhancementDrop(player, "enemy", pp.Position)
+                        end)
+                    end
+                end
             end
         end
     end

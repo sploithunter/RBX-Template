@@ -1287,8 +1287,11 @@ function BreakableSpawner:_ensureSlots(worldFolder)
             rng = math.random,
         })
         for _, off in ipairs(offsets) do
-            local candidate =
-                Vector3.new(spawner.Position.X + off.x, spawner.Position.Y, spawner.Position.Z + off.z)
+            local candidate = Vector3.new(
+                spawner.Position.X + off.x,
+                spawner.Position.Y,
+                spawner.Position.Z + off.z
+            )
             if sampleSurface then
                 candidate = raycastSpawnerSurface(spawner, candidate, placeCfg)
             elseif surfaceY then
@@ -1440,7 +1443,8 @@ function BreakableSpawner:_trySpawnOne(
         -- total()==0 ⇒ generation found no valid points for this world; fall through to the legacy
         -- raycast search rather than leaving the world permanently empty.
         if registry and registry:total() > 0 then
-            local slotKind = type(forcedSpawnOverrides) == "table" and forcedSpawnOverrides.slot_kind
+            local slotKind = type(forcedSpawnOverrides) == "table"
+                    and forcedSpawnOverrides.slot_kind
                 or nil
             claimedSlot = registry:claim(slotKind, math.random, nil, true) -- avoidNeighbors
             if not claimedSlot then
@@ -1962,6 +1966,19 @@ function BreakableSpawner:_trySpawnOne(
         do
             local bp = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
             dropPos = bp and bp.Position
+        end
+        -- Rare ENHANCEMENT drop alongside the coins (identity revealed at pickup). Goes to the
+        -- first contributor (same Contrib folder the coin split reads).
+        if dropService and dropService.TrySpawnEnhancementDrop and dropPos then
+            local contribFolder = model:FindFirstChild("Contrib")
+            local first = contribFolder and contribFolder:GetChildren()[1]
+            local plr = first
+                and game:GetService("Players"):GetPlayerByUserId(tonumber(first.Name) or 0)
+            if plr then
+                pcall(function()
+                    dropService:TrySpawnEnhancementDrop(plr, "breakable", dropPos)
+                end)
+            end
         end
         -- Credit `amount` of the node currency to `plr`, as a drop when possible, else instantly.
         local function creditCoins(plr, amount, reason)

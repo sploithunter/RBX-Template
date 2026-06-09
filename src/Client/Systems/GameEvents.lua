@@ -96,6 +96,52 @@ REACTIONS.vfx = function(spec)
     end
 end
 
+-- float: rising announcement text at the local player. spec = { color = {r,g,b}?, prefix = ""? };
+-- the TEXT comes from ctx.name (e.g. the enhancement revealed at pickup) so config stays generic.
+REACTIONS.float = function(spec, ctx)
+    spec = type(spec) == "table" and spec or {}
+    local text = (ctx and ctx.name) and tostring(ctx.name) or nil
+    if not text then
+        return
+    end
+    if spec.prefix then
+        text = tostring(spec.prefix) .. text
+    end
+    local char = Players.LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        return
+    end
+    local c = spec.color
+    local color = (type(c) == "table") and Color3.fromRGB(c[1] or 255, c[2] or 255, c[3] or 255)
+        or Color3.fromRGB(255, 235, 170)
+    local bb = Instance.new("BillboardGui")
+    bb.Size = UDim2.fromOffset(360, 44)
+    bb.StudsOffset = Vector3.new(0, 3, 0)
+    bb.AlwaysOnTop = true
+    bb.Adornee = hrp
+    bb.Parent = hrp
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.fromScale(1, 1)
+    lbl.BackgroundTransparency = 1
+    lbl.Font = Enum.Font.GothamBlack
+    lbl.TextScaled = true
+    lbl.Text = text
+    lbl.TextColor3 = color
+    lbl.TextStrokeTransparency = 0.3
+    lbl.Parent = bb
+    TweenService:Create(bb, TweenInfo.new(1.6, Enum.EasingStyle.Quad), {
+        StudsOffset = Vector3.new(0, 7, 0),
+    }):Play()
+    TweenService:Create(lbl, TweenInfo.new(1.6), {
+        TextTransparency = 1,
+        TextStrokeTransparency = 1,
+    }):Play()
+    task.delay(1.7, function()
+        bb:Destroy()
+    end)
+end
+
 -- Fire a named event: apply every configured reaction. `ctx` is forwarded to handlers (future use).
 function GameEvents.fire(name, ctx)
     local entry = eventConfig[name]
