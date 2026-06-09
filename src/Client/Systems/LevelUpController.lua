@@ -120,7 +120,7 @@ function LevelUpController.start()
     self.player:GetAttributeChangedSignal("ClaimedLevel"):Connect(function()
         local lvl = tonumber(self.player:GetAttribute("ClaimedLevel"))
         if lvl and lastClaimed and lvl > lastClaimed then
-            self:_playLevelUpJingle()
+            self:_playEventSound("level_up")
         end
         lastClaimed = lvl or lastClaimed
     end)
@@ -138,18 +138,20 @@ function LevelUpController.start()
     return self
 end
 
--- One-shot celebratory level-up fanfare (configs/sounds.lua celebratory_jingle), on the "ui" bus
--- so the UI volume slider controls it. Self-destructs when it finishes.
-function LevelUpController:_playLevelUpJingle()
-    local def = sounds.celebratory_jingle
+-- Play the config-bound stinger for an event (configs/sounds.lua event_sounds[event] -> sound key;
+-- the sound's `bus` field picks the SoundGroup). One-shot; self-destructs. Adding/changing/removing
+-- an event's sound is pure config — no code change here.
+function LevelUpController:_playEventSound(event)
+    local key = sounds.event_sounds and sounds.event_sounds[event]
+    local def = key and sounds[key]
     if not (def and def.id) then
-        return
+        return -- no sound bound to this event (or unset) -> silent
     end
     local s = Instance.new("Sound")
     s.SoundId = def.id
     s.Volume = def.volume or 0.7
     s.PlaybackSpeed = def.playback_speed or 1
-    SoundGroups.assign(s, "ui")
+    SoundGroups.assign(s, def.bus or "ui")
     s.Parent = SoundService
     s:Play()
     s.Ended:Once(function()
