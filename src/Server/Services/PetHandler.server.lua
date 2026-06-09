@@ -1505,23 +1505,10 @@ function loadEquipped(Player)
                 PetModel:SetAttribute("TeamCapacity", teamPowerContext.teamCapacity)
             end
 
-            -- Replace the placeholder Follow script with the real one
-            local placeholderFollow = PetModel:FindFirstChild("Follow")
-            if placeholderFollow then
-                placeholderFollow:Destroy()
-            end
-
-            local followScript = game.ServerScriptService.Server.Services.PetScripts.Follow:Clone()
-            followScript.Parent = PetModel
-            -- Match legacy: enable Follow prior to parenting
-            followScript.Disabled = false
-
-            -- Add FollowBox script to control box
-            local followBoxScript =
-                game.ServerScriptService.Server.Services.PetScripts.FollowBox:Clone()
-            followBoxScript.Parent = box
-
-            -- Do not add alignment here; the Follow script manages AlignPosition/AlignOrientation
+            -- Movement + mining are SERVICE-OWNED (PetFollowService: anchored server pos + client
+            -- RenderStepped, pet_follow.service_owned). The legacy per-pet Follow/FollowBox clones
+            -- (issue #4) are removed — under the flag they only ever returned early, so cloning a
+            -- 43 KB script onto every pet was pure dead weight.
 
             -- Set pet properties (ensure compatibility values exist)
             PetModel.PositionNumber.Value = i
