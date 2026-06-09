@@ -1272,9 +1272,9 @@ function PowerService:Select(player, powerId, levelOverride)
     if not data then
         return { ok = false, reason = "data_not_loaded" }
     end
-    if not data.Archetype then
-        return { ok = false, reason = "no_archetype" }
-    end
+    -- NOTE: no early no_archetype gate — NATURAL/generic powers are pickable BEFORE the L5 origin
+    -- choice. availablePowers(nil) returns just the generic pool, so canSelect accepts generic and
+    -- still rejects origin powers (not_in_archetype_pool) until an origin is chosen.
     local selected = powersList(data)
     local level = self:_level(player, levelOverride)
     local available = ArchetypeLogic.availablePowers(data.Archetype, self._archetypesConfig)
