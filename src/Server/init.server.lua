@@ -175,12 +175,6 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.DropService,
     { "Logger", "ConfigLoader" }
 )
--- TrainingCrystalService (Studio-only): a permanent practice node near spawn for power testing.
-loader:RegisterModule(
-    "TrainingCrystalService",
-    ServerScriptService.Server.Services.TrainingCrystalService,
-    { "Logger" }
-)
 -- SummonService (#178): capstone guardian summons (Gaia's Colossus / Genie of the Dunes).
 loader:RegisterModule(
     "SummonService",
@@ -631,7 +625,6 @@ table.insert(requiredModules, "RealmPortalService")
 table.insert(requiredModules, "ZoneTrackerService")
 table.insert(requiredModules, "GameAPIService")
 if RunService:IsStudio() then
-    table.insert(requiredModules, "TrainingCrystalService")
     table.insert(requiredModules, "StudioSmokeTestService")
     table.insert(requiredModules, "AutomationService")
 end
