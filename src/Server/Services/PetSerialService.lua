@@ -39,11 +39,25 @@ function PetSerialService:Init()
         self._storeName = petsConfig.serials.store_name
     end
 
-    self._store = DataStoreService:GetDataStore(self._storeName)
-    self._logger:Info("PetSerialService initialized", {
-        context = "PetSerialService",
-        storeName = self._storeName,
-    })
+    -- GetDataStore THROWS when API access is unavailable (unpublished place / AutoRecovery copy /
+    -- Studio API access off). That must never kill the boot loader — DataService already degrades to
+    -- mock data in this state, and NextSerial pcalls + falls back to in-memory counters in Studio.
+    local storeOk, storeOrErr = pcall(function()
+        return DataStoreService:GetDataStore(self._storeName)
+    end)
+    self._store = storeOk and storeOrErr or nil
+    if storeOk then
+        self._logger:Info("PetSerialService initialized", {
+            context = "PetSerialService",
+            storeName = self._storeName,
+        })
+    else
+        self._logger:Warn("PetSerialService: DataStore unavailable; serials use Studio fallback", {
+            context = "PetSerialService",
+            storeName = self._storeName,
+            error = tostring(storeOrErr),
+        })
+    end
 end
 
 function PetSerialService:_serialKey(serialType, petType, variant)
