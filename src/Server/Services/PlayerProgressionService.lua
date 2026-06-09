@@ -340,7 +340,7 @@ end
 -- Apply ONE level: advance ClaimedLevel, pay its rewards, republish, and fire LevelUp_Claimed.
 -- `auto` distinguishes a field auto-claim (filler -> client toast) from an altar claim (training
 -- -> client reveal modal). Shared by _advanceAuto and ClaimLevel.
-function PlayerProgressionService:_applyLevel(player, newLevel, auto)
+function PlayerProgressionService:_applyLevel(player, newLevel, auto, silent)
     self._dataService:SetStat(player, "ClaimedLevel", newLevel)
     local entry = LevelTrack.entryForLevel(newLevel, self._levelTrack)
     self:_grantLevelRewards(player, entry)
@@ -357,9 +357,11 @@ function PlayerProgressionService:_applyLevel(player, newLevel, auto)
         pendingLevels = self:GetPendingLevels(player),
         pendingTraining = self:GetPendingTraining(player),
     }
-    pcall(function()
-        Signals.LevelUp_Claimed:FireClient(player, payload)
-    end)
+    if not silent then
+        pcall(function()
+            Signals.LevelUp_Claimed:FireClient(player, payload)
+        end)
+    end
     return entry, payload
 end
 
@@ -395,7 +397,9 @@ end
 -- level, since field filler auto-claims). Synchronous compare-and-increment: a mismatched
 -- `expectedLevel` rejects, so a double-claim race is a harmless no-op. After claiming, roll any
 -- subsequent filler via _advanceAuto. Fires the reveal modal (auto=false).
-function PlayerProgressionService:ClaimLevel(player, expectedLevel)
+-- `silent` skips the LevelUp_Claimed reveal signal — used by the atomic levelup.commit (the menu is
+-- already open and drives the reveal itself, so re-firing would re-open it).
+function PlayerProgressionService:ClaimLevel(player, expectedLevel, silent)
     if not player or not self._dataService then
         return { ok = false, reason = "no_data" }
     end
@@ -414,7 +418,7 @@ function PlayerProgressionService:ClaimLevel(player, expectedLevel)
     end
 
     local newLevel = claimed + 1
-    local entry = self:_applyLevel(player, newLevel, false)
+    local entry = self:_applyLevel(player, newLevel, false, silent)
     self:_advanceAuto(player) -- auto-claim any filler that follows the trained level
 
     return {

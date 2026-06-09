@@ -772,6 +772,74 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("levelup.commit", {
+        description = "Atomically CLAIM the next level + apply the chosen power/slots (all-or-nothing).",
+        validate = function(args)
+            return Validators.fields(args, {
+                expectedLevel = { type = "int", min = 1, optional = true },
+                powerId = { type = "string", optional = true },
+                picks = { type = "table", optional = true },
+                slots = { type = "table", optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local prog = self:_service("PlayerProgressionService")
+            local powerSvc = self:_service("PowerService")
+            local augSvc = self:_service("AugmentationService")
+            local dataSvc = self:_service("DataService")
+            if not (prog and powerSvc and augSvc and dataSvc) then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            local state = prog:GetClaimState(context.player)
+            if state.atMax or not state.canClaim then
+                return { ok = false, reason = "nothing_to_claim", state = state }
+            end
+            local newLevel = state.nextLevel
+            if args.expectedLevel and args.expectedLevel ~= newLevel then
+                return { ok = false, reason = "stale_level", state = state }
+            end
+            local entry = state.nextEntry or {}
+
+            if entry.powerPick then
+                local powerId = args.powerId or (args.picks and args.picks[1])
+                if not powerId then
+                    return { ok = false, reason = "pick_required" }
+                end
+                -- PRE-validate at the post-claim level so claim+select can't half-apply.
+                local ok, reason = powerSvc:CanSelectAtLevel(context.player, powerId, newLevel)
+                if not ok then
+                    return { ok = false, reason = reason or "invalid_pick" }
+                end
+                prog:ClaimLevel(context.player, state.claimedLevel, true) -- silent: menu owns reveal
+                powerSvc:Select(context.player, powerId)
+            elseif (tonumber(entry.slots) or 0) > 0 then
+                local slots = args.slots or {}
+                if #slots < entry.slots then
+                    return { ok = false, reason = "slots_required" }
+                end
+                -- PRE-validate: every slot target is an OWNED power (placement capacity is client-gated
+                -- + AugmentationService.Place is the backstop).
+                local data = dataSvc:GetData(context.player)
+                local owned = {}
+                for _, id in ipairs((data and data.Powers) or {}) do
+                    owned[id] = true
+                end
+                for i = 1, entry.slots do
+                    if not owned[slots[i]] then
+                        return { ok = false, reason = "slot_target_not_owned" }
+                    end
+                end
+                prog:ClaimLevel(context.player, state.claimedLevel, true)
+                for i = 1, entry.slots do
+                    augSvc:Place(context.player, slots[i])
+                end
+            else
+                prog:ClaimLevel(context.player, state.claimedLevel, true) -- no-choice level (rare)
+            end
+            return { ok = true, state = prog:GetClaimState(context.player) }
+        end,
+    })
+
     bus:register("levelup.bank", {
         description = "[admin] Bank earned levels WITHOUT claiming (test the claim flow). Admin/Studio only.",
         validate = function(args)

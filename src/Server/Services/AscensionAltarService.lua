@@ -14,6 +14,9 @@
 
 local Workspace = game:GetService("Workspace")
 local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local ALTAR_TAG = "AscensionAltar"
 local PROMPT_NAME = "AscendPrompt"
@@ -195,9 +198,11 @@ function AscensionAltarService:_onTriggered(player)
     if (state.pendingTraining or 0) <= 0 then
         return -- nothing owed at the altar (filler auto-claims in the field)
     end
-    -- Compare-and-increment guards the claim; ClaimLevel fires the reveal modal + rolls any
-    -- following filler via _advanceAuto.
-    prog:ClaimLevel(player, state.claimedLevel)
+    -- Do NOT claim here. Open the level-up menu; the level is claimed ATOMICALLY on COMMIT (together
+    -- with the power/slot choice) so a disconnect mid-menu can't leave you leveled with no pick.
+    pcall(function()
+        Signals.LevelUp_OpenChoice:FireClient(player)
+    end)
 end
 
 function AscensionAltarService:Start()

@@ -1343,6 +1343,25 @@ function PowerService:GetState(player, levelOverride)
     }
 end
 
+-- Pure pre-check: COULD this power be selected AT `level` right now (no mutation)? Used by the
+-- atomic levelup.commit to validate the pick BEFORE claiming the level, so claim+select are
+-- all-or-nothing. Returns (ok, reason).
+function PowerService:CanSelectAtLevel(player, powerId, level)
+    local data = self._dataService:GetData(player)
+    if not data then
+        return false, "data_not_loaded"
+    end
+    local available = ArchetypeLogic.availablePowers(data.Archetype, self._archetypesConfig)
+    local decision = PowerSelection.canSelect(
+        powerId,
+        available,
+        powersList(data),
+        math.max(1, math.floor(tonumber(level) or 1)),
+        self._powersConfig.selection_levels
+    )
+    return decision.ok == true, decision.reason
+end
+
 function PowerService:Select(player, powerId, levelOverride)
     local data = self._dataService:GetData(player)
     if not data then

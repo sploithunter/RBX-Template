@@ -239,17 +239,27 @@ function PowerChoiceMenu:_loadLive()
     end
     local st = lvl.state
     self.archetype = arche.archetype
-    self.level = st.claimedLevel or 1
+    self.claimedLevel = st.claimedLevel or 1
     self.pendingLevels = math.max(0, st.pendingLevels or 0)
-    self.atMax = st.atMax == true or self.level >= MAX_LEVEL
+    self.atMax = st.atMax == true or self.claimedLevel >= MAX_LEVEL
     self.owned = {}
     local slots = aug.slots or {}
     for _, id in ipairs(pw.powers or {}) do
         local list = slots[id]
         self.owned[id] = (type(list) == "table" and #list) or 1
     end
-    self.pendingPower = math.max(0, pw.pending or 0)
-    self.pendingSlots = math.max(0, aug.unallocated or 0)
+    -- PREVIEW the next claimable level — it is NOT claimed yet. The beat shown is THAT level's grant;
+    -- COMMIT claims the level AND applies the pick/slots atomically (levelup.commit). Until COMMIT,
+    -- nothing is granted, so a disconnect mid-menu never leaves you leveled without a choice.
+    if st.canClaim and st.nextEntry and not self.atMax then
+        self.level = st.nextLevel or (self.claimedLevel + 1)
+        self.pendingPower = st.nextEntry.powerPick and 1 or 0
+        self.pendingSlots = math.max(0, tonumber(st.nextEntry.slots) or 0)
+    else
+        self.level = self.claimedLevel
+        self.pendingPower = 0
+        self.pendingSlots = 0
+    end
     self.staged = {}
     return true
 end
@@ -300,22 +310,13 @@ function PowerChoiceMenu:_levelUp()
         return
     end
     if self.live then
-        -- claim the next real level. Admins can BANK a level first to walk the track without
-        -- grinding XP; real players claim only what they've earned.
-        if self.pendingLevels <= 0 then
-            if isAdmin() then
-                callBus("levelup.bank", { count = 1 })
-            else
-                self.notice = "Earn more XP to level up"
-                self:_render()
-                return
-            end
+        -- DEV self-pacer only (players never see this button): BANK an earned level so the next
+        -- level becomes claimable to PREVIEW. The real claim happens on COMMIT (levelup.commit).
+        if isAdmin() then
+            callBus("levelup.bank", { count = 1 })
+            self:_loadLive()
+            self:_render()
         end
-        local res = callBus("levelup.claim", { expectedLevel = self.level })
-        self.notice = (res and res.ok == false) and ("Claim failed: " .. tostring(res.reason))
-            or nil
-        self:_loadLive()
-        self:_render()
         return
     end
     self.level += 1
@@ -390,31 +391,29 @@ function PowerChoiceMenu:_commit()
         return
     end
     if self.live then
-        -- send the beat to the server. Picks FIRST (so a freshly-picked power exists before any
-        -- slot lands on it — and it auto-gets its inherent slot), then the empty slots.
-        local failed
+        -- ATOMIC: one call CLAIMS the previewed level AND applies the staged pick/slots. Nothing is
+        -- granted unless this succeeds — so quitting before COMMIT never leaves you leveled with no
+        -- choice. (Server pre-validates the pick at the post-claim level.)
+        local picks, slots = {}, {}
         for _, s in ipairs(self.staged) do
             if s.action == "pick" then
-                local res = callBus("power.select", { powerId = s.id })
-                if not (res and res.ok ~= false) then
-                    failed = (res and res.reason) or "select_failed"
-                end
+                picks[#picks + 1] = s.id
+            else
+                slots[#slots + 1] = s.id
             end
         end
-        for _, s in ipairs(self.staged) do
-            if s.action == "slot" then
-                local res = callBus("augment.place", { powerId = s.id })
-                if not (res and res.ok ~= false) then
-                    failed = (res and res.reason) or "place_failed"
-                end
-            end
-        end
+        local res = callBus("levelup.commit", {
+            expectedLevel = self.level,
+            picks = picks,
+            slots = slots,
+        })
         self.staged = {}
-        self.notice = failed and ("Commit issue: " .. failed) or nil
-        self:_loadLive() -- the server is authoritative; re-read owned/pending/slots
+        self.notice = (res and res.ok == false) and ("Commit failed: " .. tostring(res.reason))
+            or nil
+        self:_loadLive() -- the server is authoritative; re-read claimed/owned/preview
         self:_render()
-        -- Player flow: they came to resolve ONE beat (the altar claimed it). With nothing left and
-        -- no LEVEL UP button, close so they're not left on a dead menu. Devs keep it open to test.
+        -- Player flow: they came to resolve ONE level. With nothing left and no LEVEL UP button,
+        -- close so they're not on a dead menu. Devs keep it open to keep testing.
         if not devMode() and self.pendingPower == 0 and self.pendingSlots == 0 then
             if _G.MenuManager and _G.MenuManager.CloseCurrentPanel then
                 _G.MenuManager:CloseCurrentPanel()
@@ -648,17 +647,12 @@ function PowerChoiceMenu:_render()
         self.statusLabel.Text = txt
         self.statusLabel.TextColor3 = col
     end
-    local outstanding = self.pendingPower > 0 or self.pendingSlots > 0
     if self.levelBtn then
-        local atMax = self.atMax or self.level >= MAX_LEVEL
-        self.levelBtn.Text = atMax and ("MAX (L" .. MAX_LEVEL .. ")")
-            or ("LEVEL UP  ▶   (L" .. self.level .. ")")
-        local canLevel = not atMax and not outstanding
-        -- live + non-admin: can only level up what XP has actually earned
-        if self.live and not isAdmin() then
-            canLevel = canLevel and self.pendingLevels > 0
-        end
-        setChipEnabled(self.levelBtn, canLevel)
+        -- DEV-only button (hidden for players below). In live mode it BANKS a level (so the next
+        -- one previews); in local-preview mode it advances the fake level. Enabled unless at max.
+        local atMax = self.atMax or (self.claimedLevel or self.level) >= MAX_LEVEL
+        self.levelBtn.Text = atMax and ("MAX (L" .. MAX_LEVEL .. ")") or "LEVEL UP  ▶  (BANK)"
+        setChipEnabled(self.levelBtn, not atMax)
     end
     setChipEnabled(self.commitBtn, self:_canCommit())
     setChipEnabled(self.undoBtn, #self.staged > 0)

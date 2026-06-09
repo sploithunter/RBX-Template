@@ -101,6 +101,10 @@ function LevelUpController.start()
             self:_openChoiceMenu(data)
         end
     end)
+    -- Altar engaged: open the level-up menu WITHOUT claiming (the level claims atomically on COMMIT).
+    Signals.LevelUp_OpenChoice.OnClientEvent:Connect(function()
+        self:_openChoiceMenu()
+    end)
     return self
 end
 
