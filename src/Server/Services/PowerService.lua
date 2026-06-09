@@ -13,6 +13,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local PowerSelection = require(ReplicatedStorage.Shared.Game.PowerSelection)
 local ArchetypeLogic = require(ReplicatedStorage.Shared.Game.ArchetypeLogic)
 local AmplifiedBurst = require(ReplicatedStorage.Shared.Game.AmplifiedBurst)
@@ -779,6 +780,7 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                 target:SetAttribute("CombatDamageTaken", 0)
                 target:SetAttribute("CooldownUntil", 0)
                 target:SetAttribute("DownedReason", "")
+                fireGameEvent(player, "pet_revive", { pet = target.Name })
             end
         end
     elseif family == "recall" then

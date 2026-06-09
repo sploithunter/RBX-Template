@@ -68,4 +68,31 @@ return {
         sound = "celebratory_jingle",
         vfx = { kind = "burst", color = { 255, 160, 60 }, count = 24 }, -- big warm gold-orange
     },
+
+    -- ===== Batch 2: combat / discovery moments =====
+
+    -- An enemy your pets contributed to went down (server: EnemyService:_onDefeated, per
+    -- contributor). FREQUENT during farming — small silent burst only; no stinger by design.
+    enemy_defeated = {
+        vfx = { kind = "burst", color = { 235, 90, 90 }, count = 6 },
+    },
+
+    -- A downed pet was revived by the Revive power (server: PowerService revive family).
+    pet_revive = {
+        sound = "power_up_stronger",
+        vfx = { kind = "burst", color = { 140, 235, 140 }, count = 12 }, -- soft green comeback
+    },
+
+    -- First-ever discovery of a species/variant (server: PetIndexService — the Pet Index grew).
+    new_species = {
+        sound = "celebratory_jingle",
+        vfx = { kind = "burst", color = { 255, 235, 120 }, count = 18 }, -- star gold
+    },
+
+    -- A hatch batch contained golden/rainbow/special reveals (server: EggService — fired ONCE per
+    -- batch with the special count, not per pet).
+    egg_hatch_rare = {
+        sound = "celebratory_jingle",
+        vfx = { kind = "burst", color = { 255, 120, 255 }, count = 24 }, -- big rainbow-pink
+    },
 }

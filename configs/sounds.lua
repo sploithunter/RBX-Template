@@ -31,6 +31,14 @@ return {
         bus = "ui", -- SoundGroup bus (effects | music | ui); the volume slider controlling it
     },
 
+    -- Rising "power up" sting (uploaded SFX) — pet revive and similar comeback moments.
+    power_up_stronger = {
+        id = "rbxassetid://131694228494794",
+        volume = 0.6,
+        playback_speed = 1.0,
+        bus = "effects",
+    },
+
     -- LOOPING AREA MUSIC. AreaMusicController plays the track for the player's CURRENT area, looped,
     -- on the "music" SoundGroup bus (so the Music volume slider controls it), crossfading on area
     -- change. New uploads play once Roblox moderation approves them.

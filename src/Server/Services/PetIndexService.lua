@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Signal = require(ReplicatedStorage.Shared.Libraries.Signal)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 
 local PetIndexService = {}
 PetIndexService.__index = PetIndexService
@@ -151,6 +152,7 @@ function PetIndexService:RecordPetObtained(player, petData)
     if isNew then
         self.IndexChanged:Fire(player, snapshot)
         Signals.PetIndexUpdated:FireClient(player, snapshot)
+        fireGameEvent(player, "new_species", { key = key, count = count }) -- first discovery
     end
 
     return {

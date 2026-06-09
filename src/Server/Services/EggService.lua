@@ -15,6 +15,7 @@ local Locations = require(ReplicatedStorage.Shared.Locations)
 local petConfig = Locations.getConfig("pets")
 local eggSystemConfig = Locations.getConfig("egg_system")
 local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
 local HatchTiming = require(ReplicatedStorage.Shared.Game.HatchTiming)
 
@@ -265,6 +266,10 @@ end
 
 function EggService:RecordHatchSuccess(player, request, response)
     local results, autoDeletedCount, specialCount = self:SummarizeHatchResults(response.results)
+    if specialCount > 0 then
+        -- ONE rare-hatch celebration per batch (not per pet) — golden/rainbow/special reveals.
+        fireGameEvent(player, "egg_hatch_rare", { count = specialCount })
+    end
     return self:RecordHatchHistory(player, {
         ok = true,
         success = true,

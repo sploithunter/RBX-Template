@@ -18,6 +18,8 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local ServerStorage = game:GetService("ServerStorage")
 local InsertService = game:GetService("InsertService")
 local TweenService = game:GetService("TweenService")
@@ -336,6 +338,7 @@ function EnemyService:_onDefeated(targetId)
                 pcall(function()
                     combat:AwardLoot(player, entry.enemyId)
                 end)
+                fireGameEvent(player, "enemy_defeated", { enemy = entry.enemyId })
             end
         end
     end
