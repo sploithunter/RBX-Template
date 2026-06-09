@@ -671,6 +671,11 @@ function EnemyService:_hitPet(pet, def, now, eng, enemyLevel, petLevel)
         local absorbed = math.min(shield, dmg)
         pet:SetAttribute("CombatShield", shield - absorbed)
         dmg = dmg - absorbed
+        -- Evasion (Mirage Step): a dodge pool turning a blow aside reads as a DODGE, not a shield —
+        -- bump a tick so the client pops a floating "Dodge!" over the pet (CombatAuraController).
+        if absorbed > 0 and (pet:GetAttribute("EvasionUntil") or 0) > nowT then
+            pet:SetAttribute("DodgeTick", (pet:GetAttribute("DodgeTick") or 0) + 1)
+        end
         -- Mirage Veil (sandwalker signature): the veil heals a little each time it turns a blow
         -- aside (heal-on-evade) while MirageHealUntil is live — sustain that rewards being shielded.
         if absorbed > 0 and (pet:GetAttribute("MirageHealUntil") or 0) > nowT then

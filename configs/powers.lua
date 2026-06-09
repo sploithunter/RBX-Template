@@ -114,7 +114,9 @@ return {
         armor = { family = "defense_buff", magnitude = 80, duration = 12 },
         -- Bulwark = squad DAMAGE REDUCTION for `duration`s (temp +Defense armor), per design
         team_shield = { family = "defense_buff", magnitude = 120, duration = 15 },
-        dodge = { family = "absorb", magnitude = 30, duration = 8 },
+        -- `evade=true`: an absorb pool that reads as DODGE (no shield bubble; pops "Dodge!" per hit
+        -- it turns aside) rather than a shield. See PowerService EvasionUntil + CombatAuraController.
+        dodge = { family = "absorb", magnitude = 30, duration = 8, evade = true },
         damage_buff = { family = "buff", magnitude = 1.5, duration = 8 },
         -- Critical Strike (Pyromancer): +crit CHANCE (fraction, additive) on the squad's hits for a
         -- duration — boosts crit on both combat AND mining. Crit damage stays at the roll's crit_mult.

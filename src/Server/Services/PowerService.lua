@@ -704,9 +704,13 @@ function PowerService:_applyEffect(player, kind, now, powerId)
         -- clear; a re-cast pushes the stamp later so an older timer won't drop a fresh shield.
         -- Squad-wide unless the power is single_pet (-> the selected pet only).
         local evadeHeal = tonumber(kind.evade_heal)
+        local isEvade = kind.evade == true -- dodge buff: reads as evasion, not a shield bubble
         for _, pet in ipairs(self:_targetPets(player, powerId)) do
             pet:SetAttribute("CombatShield", (pet:GetAttribute("CombatShield") or 0) + mag)
             pet:SetAttribute("CombatShieldPowerId", powerId)
+            if isEvade then
+                pet:SetAttribute("EvasionUntil", now + (dur or 8)) -- marks the pool as DODGE for VFX
+            end
             if dur and dur > 0 then
                 pet:SetAttribute("CombatShieldUntil", now + dur)
                 -- Mirage Veil: while the veil is up, each blow it turns aside also heals the pet a
@@ -719,6 +723,7 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                     if pet.Parent and (pet:GetAttribute("CombatShieldUntil") or 0) <= os.time() then
                         pet:SetAttribute("CombatShield", 0)
                         pet:SetAttribute("CombatShieldUntil", 0)
+                        pet:SetAttribute("EvasionUntil", 0)
                     end
                 end)
             end

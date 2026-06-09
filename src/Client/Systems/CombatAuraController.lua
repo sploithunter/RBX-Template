@@ -25,6 +25,7 @@
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local CombatFX = require(ReplicatedStorage.Shared.Effects.CombatFX)
 local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
@@ -227,8 +228,13 @@ end
 --     RESKIN only, no bubble. A timed hardening of the pet's own body.
 -- A pet shows both ONLY if it genuinely has a shield AND an armor active (two powers). Each look
 -- attaches once on its own bare->active transition and clears on active->bare.
+local function isEvading(pet)
+    return (pet:GetAttribute("EvasionUntil") or 0) > os.time()
+end
+-- Evasion (Mirage Step) borrows the absorb pool but is a DODGE — it must NOT show the shield bubble
+-- or the shield badge. Treat an evasion pool as "no shield" for the defensive look.
 local function hasShield(pet)
-    return (pet:GetAttribute("CombatShield") or 0) > 0
+    return (pet:GetAttribute("CombatShield") or 0) > 0 and not isEvading(pet)
 end
 local function hasArmor(pet)
     return (pet:GetAttribute("DefenseBuffUntil") or 0) > os.time()
@@ -302,6 +308,47 @@ local function refreshTimedAura(pet, attr, slot, category, element)
     end
 end
 
+-- Floating "Dodge!" that rises + fades over a pet that just evaded a hit (Mirage Step). Server
+-- bumps DodgeTick per turned-aside blow; we pop one of these per bump.
+local function popDodge(pet)
+    local root = pet.PrimaryPart
+        or pet:FindFirstChild("HumanoidRootPart")
+        or pet:FindFirstChildWhichIsA("BasePart")
+    if not root then
+        return
+    end
+    local bb = Instance.new("BillboardGui")
+    bb.Name = "DodgePop"
+    bb.Size = UDim2.fromOffset(90, 30)
+    bb.StudsOffset = Vector3.new(0, 2.6, 0)
+    bb.AlwaysOnTop = true
+    bb.Adornee = root
+    bb.Parent = root
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.fromScale(1, 1)
+    lbl.BackgroundTransparency = 1
+    lbl.Font = Enum.Font.GothamBlack
+    lbl.TextScaled = true
+    lbl.Text = "Dodge!"
+    lbl.TextColor3 = Color3.fromRGB(150, 230, 255)
+    lbl.TextStrokeTransparency = 0.3
+    lbl.Parent = bb
+    TweenService
+        :Create(
+            bb,
+            TweenInfo.new(0.7, Enum.EasingStyle.Quad),
+            { StudsOffset = Vector3.new(0, 5.2, 0) }
+        )
+        :Play()
+    TweenService:Create(lbl, TweenInfo.new(0.7), {
+        TextTransparency = 1,
+        TextStrokeTransparency = 1,
+    }):Play()
+    task.delay(0.75, function()
+        bb:Destroy()
+    end)
+end
+
 local function hookPet(pet)
     if conns[pet] or not pet:IsA("Model") then
         return
@@ -324,6 +371,10 @@ local function hookPet(pet)
     end)
     list[#list + 1] = pet:GetAttributeChangedSignal("HealFxUntil"):Connect(function()
         refreshTimedAura(pet, "HealFxUntil", "heal", "heal")
+    end)
+    -- Evasion: each turned-aside blow bumps DodgeTick -> pop a floating "Dodge!".
+    list[#list + 1] = pet:GetAttributeChangedSignal("DodgeTick"):Connect(function()
+        popDodge(pet)
     end)
     -- catch any already-active state at hook time
     refreshArmor(pet)
