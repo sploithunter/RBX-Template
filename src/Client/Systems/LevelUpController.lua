@@ -26,6 +26,10 @@ LevelUpController.__index = LevelUpController
 -- ---- palette -------------------------------------------------------------
 local GOLD = Color3.fromRGB(255, 205, 70)
 local GOLD_DEEP = Color3.fromRGB(190, 140, 30)
+-- ASCEND nudge colour: purple, so it pops against any area theme (esp. Desert/yellow, which would
+-- otherwise blend with a gold button).
+local PURPLE = Color3.fromRGB(150, 85, 225)
+local PURPLE_DEEP = Color3.fromRGB(95, 45, 155)
 local PANEL = Color3.fromRGB(28, 30, 40)
 local PANEL_LIGHT = Color3.fromRGB(44, 47, 62)
 local TEXT = Color3.fromRGB(245, 245, 250)
@@ -149,16 +153,16 @@ function LevelUpController:_build()
     btn.Size = UDim2.new(0, 230, 0, 52)
     btn.Position = UDim2.new(0.5, 0, 0.17, 0)
     btn.AnchorPoint = Vector2.new(0.5, 0.5)
-    btn.BackgroundColor3 = GOLD
+    btn.BackgroundColor3 = PURPLE
     btn.Text = "⬆  LEVEL UP!"
-    btn.TextColor3 = Color3.fromRGB(60, 40, 0)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.TextScaled = true
     btn.Font = Enum.Font.GothamBlack
     btn.AutoButtonColor = true
     btn.Visible = false
     btn.ZIndex = 5
     corner(btn, 12)
-    stroke(btn, GOLD_DEEP, 2)
+    stroke(btn, PURPLE_DEEP, 2)
     local pad = Instance.new("UIPadding")
     pad.PaddingTop = UDim.new(0, 8)
     pad.PaddingBottom = UDim.new(0, 8)
