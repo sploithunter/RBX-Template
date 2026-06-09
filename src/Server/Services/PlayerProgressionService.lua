@@ -247,6 +247,26 @@ function PlayerProgressionService:BankLevels(player, count)
     return self:GetClaimState(player)
 end
 
+-- Fast-forward XP to ~98% of the way to the NEXT earned level (testing/admin), so one mine/kill tips
+-- you over — skip the farming grind without auto-claiming. No-op at max level.
+function PlayerProgressionService:GrantAlmostLevel(player)
+    if not player or not self._dataService then
+        return self:GetClaimState(player)
+    end
+    local maxLevel = (self._levelTrack and self._levelTrack.max_level) or 50
+    local earned = self:GetEarnedLevel(player)
+    if earned >= maxLevel then
+        return self:GetClaimState(player)
+    end
+    local thisXp = LevelCurve.xpForLevel(earned, self._xpConfig)
+    local nextXp = LevelCurve.xpForLevel(earned + 1, self._xpConfig)
+    local span = math.max(1, nextXp - thisXp)
+    local target = math.max(thisXp, nextXp - math.max(1, math.floor(span * 0.02))) -- ~98% in
+    self._dataService:SetStat(player, "Experience", target)
+    self:_publish(player)
+    return self:GetClaimState(player)
+end
+
 -- Runtime-resolve a peer service via the global locator (avoids an Init dependency cycle —
 -- RewardService already depends on this service for AddExperience).
 function PlayerProgressionService:_service(name)

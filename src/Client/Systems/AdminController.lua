@@ -272,6 +272,16 @@ function AdminController.start()
         end
     end)
 
+    -- Fast-forward XP to ~98% of the next level (skip farming while testing the level-up flow).
+    local xpBtn = probeButton("GrantXp", "➕ XP (almost lvl)", -250, function()
+        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("GameAPICommand")
+        if remote then
+            pcall(function()
+                remote:InvokeServer("levelup.grantXp", {})
+            end)
+        end
+    end)
+
     local on = false
     local function apply()
         setOverlays(pg, on)
@@ -280,6 +290,7 @@ function AdminController.start()
         nextBtn.Visible = on
         repeatBtn.Visible = on
         powerChoiceBtn.Visible = on
+        xpBtn.Visible = on
         chipLabel.Text = on and "🛠 ADMIN: ON" or "🛠 ADMIN: OFF"
         chip.BackgroundColor3 = on and Color3.fromRGB(45, 140, 80) or Color3.fromRGB(90, 55, 160)
         chipGrad.Color = on

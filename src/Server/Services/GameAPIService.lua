@@ -792,6 +792,22 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("levelup.grantXp", {
+        description = "[admin] Fast-forward XP to ~98% of the next level (skip farming). Admin/Studio only.",
+        handler = function(context)
+            local isAdmin = context.isTest
+                or (context.player and context.player:GetAttribute("IsAdmin") == true)
+            if not isAdmin then
+                return { ok = false, reason = "not_admin" }
+            end
+            local s = self:_service("PlayerProgressionService")
+            if not s or not s.GrantAlmostLevel then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, state = s:GrantAlmostLevel(context.player) }
+        end,
+    })
+
     bus:register("levelup.resetRun", {
         description = "[admin] Wipe powers/slots + drop to L1 (keeps origin) to retest the climb. Admin/Studio only.",
         handler = function(context)
