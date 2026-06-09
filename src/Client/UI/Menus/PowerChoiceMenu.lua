@@ -39,6 +39,18 @@ local archetypesCfg = require(Configs:WaitForChild("archetypes"))
 local levelTrackCfg = require(Configs:WaitForChild("level_track"))
 local PowerSelection = require(ReplicatedStorage.Shared.Game.PowerSelection)
 local PowerSlotRow = require(script.Parent.Parent.PowerSlotRow)
+local Enhancements = require(ReplicatedStorage.Shared.Game.Enhancements)
+local enhCfg = require(Configs:WaitForChild("enhancements"))
+local POWER_ICONS = require(Configs:WaitForChild("power_icons"))
+local combatFxCfg = require(Configs:WaitForChild("combat_fx"))
+
+-- origin (archetype id) -> badge element key for enhancement disc/ring tints
+local function originElement(archetype)
+    local el = combatFxCfg.origin
+        and combatFxCfg.origin.archetype_element
+        and combatFxCfg.origin.archetype_element[archetype]
+    return POWER_ICONS.elementKey(el or "neutral")
+end
 
 -- The level a new player chooses their origin (NATURAL picks come before this; ORIGIN powers after).
 local ORIGIN_CHOICE_LEVEL = levelTrackCfg.origin_choice_level or 5
@@ -332,6 +344,10 @@ function PowerChoiceMenu:_onRow(id)
         if self:_remainingSlots() > 0 and self:_effectiveSlots(id) < MAX_SLOTS then
             self.staged[#self.staged + 1] = { action = "slot", id = id }
             self:_render()
+        elseif self.live and self.pendingPower == 0 and self:_remainingSlots() == 0 then
+            -- no beat to resolve: clicking an owned power opens its ENHANCE strip (slot
+            -- enhancements from the inventory into its empty slots)
+            self:_toggleEnhance(id)
         end
     elseif self:_isStagedPick(id) then
         -- clicking the staged pick clears it (undo)
@@ -436,6 +452,216 @@ function PowerChoiceMenu:_commit()
 end
 
 -- ---- render --------------------------------------------------------------
+
+-- ===== ENHANCE strip ======================================================================
+-- Outside a level-up beat, clicking an OWNED power opens this strip: the power's slots
+-- (filled = the enhancement's disc+ring; single = same colour group, dual = mixed) plus a
+-- clickable row of inventory enhancements COMPATIBLE with the power and USABLE by the
+-- player's origin. Clicking one slots it into the first empty slot (server-validated).
+
+local function enhBadge(parent, size, pos, rec)
+    local holder = Instance.new("Frame")
+    holder.Size = size
+    holder.Position = pos
+    holder.BackgroundTransparency = 1
+    holder.Parent = parent
+    local spec = Enhancements.badgeSpec(enhCfg, rec)
+    if not spec then
+        return holder
+    end
+    local disc = Instance.new("ImageLabel")
+    disc.BackgroundTransparency = 1
+    disc.AnchorPoint = Vector2.new(0.5, 0.5)
+    disc.Position = UDim2.fromScale(0.5, 0.5)
+    disc.Size = UDim2.fromScale(0.8, 0.8)
+    disc.ScaleType = Enum.ScaleType.Fit
+    disc.Image = POWER_ICONS.discFor(originElement(spec.discOrigin), spec.symbol) or ""
+    disc.Parent = holder
+    local ring = Instance.new("ImageLabel")
+    ring.BackgroundTransparency = 1
+    ring.AnchorPoint = Vector2.new(0.5, 0.5)
+    ring.Position = UDim2.fromScale(0.5, 0.5)
+    ring.Size = UDim2.fromScale(1, 1)
+    ring.ScaleType = Enum.ScaleType.Fit
+    ring.Image = POWER_ICONS.rings.enhancement or POWER_ICONS.rings.aura or ""
+    ring.ImageColor3 = POWER_ICONS.elementColor3(originElement(spec.ringOrigin), "bright")
+    ring.ZIndex = (disc.ZIndex or 1) + 1
+    ring.Parent = holder
+    return holder
+end
+
+function PowerChoiceMenu:_toggleEnhance(powerId)
+    if self.enhanceFor == powerId then
+        self.enhanceFor = nil
+    else
+        self.enhanceFor = powerId
+    end
+    self:_renderEnhanceStrip()
+end
+
+function PowerChoiceMenu:_renderEnhanceStrip()
+    if self.enhStrip then
+        self.enhStrip:Destroy()
+        self.enhStrip = nil
+    end
+    local powerId = self.enhanceFor
+    if not (powerId and self.frame and self.live) then
+        return
+    end
+    local state = callBus("enh.get", {})
+    if not (state and state.ok) then
+        self.enhanceFor = nil
+        return
+    end
+    local slots = (state.slots or {})[powerId] or {}
+    local def = powersCfg.powers[powerId] or {}
+
+    local strip = Instance.new("Frame")
+    strip.Name = "EnhanceStrip"
+    strip.AnchorPoint = Vector2.new(0.5, 1)
+    strip.Position = UDim2.fromScale(0.5, 0.918)
+    strip.Size = UDim2.fromScale(0.96, 0.16)
+    strip.BackgroundColor3 = Color3.fromRGB(26, 26, 36)
+    strip.BorderSizePixel = 0
+    strip.ZIndex = 6
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.08, 0)
+    c.Parent = strip
+    local st = Instance.new("UIStroke")
+    st.Color = Color3.fromRGB(180, 160, 90)
+    st.Thickness = 1.5
+    st.Parent = strip
+    strip.Parent = self.frame
+    self.enhStrip = strip
+
+    -- header: power name + slot fill
+    local filled, total, firstEmpty = 0, 0, nil
+    for i, slot in ipairs(slots) do
+        if type(slot) == "table" then
+            total += 1
+            if slot.enh then
+                filled += 1
+            elseif not firstEmpty then
+                firstEmpty = i
+            end
+        end
+    end
+    local header = Instance.new("TextLabel")
+    header.Size = UDim2.fromScale(0.6, 0.26)
+    header.Position = UDim2.fromScale(0.02, 0.02)
+    header.BackgroundTransparency = 1
+    header.TextXAlignment = Enum.TextXAlignment.Left
+    header.Font = Enum.Font.GothamBold
+    header.TextScaled = true
+    header.TextColor3 = Color3.fromRGB(235, 220, 170)
+    header.Text = "ENHANCE — "
+        .. (def.display_name or powerId)
+        .. ("   (%d/%d slots)"):format(filled, total)
+    header.ZIndex = 7
+    header.Parent = strip
+
+    -- close strip
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.fromScale(0.04, 0.26)
+    closeBtn.AnchorPoint = Vector2.new(1, 0)
+    closeBtn.Position = UDim2.fromScale(0.99, 0.02)
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Text = "✕"
+    closeBtn.TextScaled = true
+    closeBtn.TextColor3 = Color3.fromRGB(220, 160, 160)
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.ZIndex = 7
+    closeBtn.Parent = strip
+    closeBtn.Activated:Connect(function()
+        self.enhanceFor = nil
+        self:_renderEnhanceStrip()
+    end)
+
+    -- row 1: the power's slots (filled badges / empty circles)
+    local slotX = 0.02
+    for i, slot in ipairs(slots) do
+        if type(slot) == "table" then
+            if slot.enh then
+                local b = enhBadge(
+                    strip,
+                    UDim2.fromScale(0.055, 0.34),
+                    UDim2.fromScale(slotX, 0.3),
+                    slot.enh
+                )
+                b.ZIndex = 7
+            else
+                local empty = Instance.new("Frame")
+                empty.Size = UDim2.fromScale(0.055, 0.34)
+                empty.Position = UDim2.fromScale(slotX, 0.3)
+                empty.BackgroundColor3 = Color3.fromRGB(45, 45, 58)
+                empty.BackgroundTransparency = 0.2
+                empty.ZIndex = 7
+                local ec = Instance.new("UICorner")
+                ec.CornerRadius = UDim.new(1, 0)
+                ec.Parent = empty
+                empty.Parent = strip
+            end
+            slotX += 0.062
+        end
+    end
+
+    -- row 2: available (compatible + usable) inventory enhancements — click to slot
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.fromScale(0.2, 0.2)
+    label.Position = UDim2.fromScale(0.02, 0.68)
+    label.BackgroundTransparency = 1
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.GothamMedium
+    label.TextScaled = true
+    label.TextColor3 = Color3.fromRGB(170, 170, 190)
+    label.ZIndex = 7
+    label.Parent = strip
+
+    local shown, hidden = 0, 0
+    local x = 0.2
+    for _, item in ipairs(state.inventory or {}) do
+        local rec = { type = item.type, origins = item.origins }
+        local okType = Enhancements.compatibleWith(enhCfg, item.type, def, powersCfg.effect_kinds)
+        if okType and item.usable then
+            if x < 0.93 then
+                shown += 1
+                local btn = Instance.new("TextButton")
+                btn.Size = UDim2.fromScale(0.055, 0.34)
+                btn.Position = UDim2.fromScale(x, 0.62)
+                btn.BackgroundTransparency = 1
+                btn.Text = ""
+                btn.ZIndex = 7
+                btn.Parent = strip
+                enhBadge(btn, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), rec).ZIndex = 7
+                btn.Activated:Connect(function()
+                    if not firstEmpty then
+                        self.notice = "No empty slot on this power"
+                        self:_render()
+                        return
+                    end
+                    local res = callBus("enh.slot", {
+                        powerId = powerId,
+                        slotIndex = firstEmpty,
+                        uid = item.uid,
+                    })
+                    if res and res.ok then
+                        self:_loadLive()
+                        self:_render()
+                        self:_renderEnhanceStrip()
+                    else
+                        self.notice = "Slot failed: " .. tostring(res and res.reason)
+                        self:_render()
+                    end
+                end)
+                x += 0.062
+            end
+        else
+            hidden += 1
+        end
+    end
+    label.Text = shown > 0 and "AVAILABLE:"
+        or (hidden > 0 and "No compatible enhancements" or "No enhancements — find drops!")
+end
 
 function PowerChoiceMenu:_statusText()
     if self.notice then
@@ -876,6 +1102,11 @@ function PowerChoiceMenu:Show(parent)
 end
 
 function PowerChoiceMenu:Hide()
+    self.enhanceFor = nil
+    if self.enhStrip then
+        self.enhStrip:Destroy()
+        self.enhStrip = nil
+    end
     _G.PowerChoiceMenuOpen = false
     if self.frame then
         self.frame:Destroy()
