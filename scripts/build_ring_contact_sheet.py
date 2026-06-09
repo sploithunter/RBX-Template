@@ -44,6 +44,7 @@ RING_FRAMES = {
     "ring_aoe": "aoe",
     "ring_target_aoe": "target aoe",
     "ring_aura": "aura",
+    "ring_enhancement": "enhancement",
 }
 
 RING_ORDER = list(RING_FRAMES.keys())

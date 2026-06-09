@@ -9,7 +9,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-ICON_COLOR_ORDER = ["white", "blue", "green", "red", "yellow"]
+ICON_COLOR_ORDER = ["white", "blue", "green", "red", "yellow", "purple"]
 
 
 # ChatGPT-download filenames -> canonical asset names (see docs/PET_REALM_ICONS_AND_POWERS.md).

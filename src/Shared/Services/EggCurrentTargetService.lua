@@ -38,6 +38,7 @@ local counter = 0
 local currentTargetUI = nil
 local currentTarget = "None"
 local heartbeatConnection = nil
+local serviceInitialized = false
 
 -- Logger setup using singleton pattern
 local Logger
@@ -177,20 +178,24 @@ local function getHatchDisplayCount()
     return 1, actionMode
 end
 
-function EggCurrentTargetService:DetermineClosest(eggsAvailable)
-    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if not root then
-        return nil
+function EggCurrentTargetService:DetermineClosest(inRangeEggs)
+    local closest = inRangeEggs[1]
+    for index = 2, #inRangeEggs do
+        if inRangeEggs[index].distance < closest.distance then
+            closest = inRangeEggs[index]
+        end
     end
 
-    local closest = EggWorldQuery.FindClosestEgg(root.Position, eggsAvailable, MAX_MAGNITUDE)
-    return closest and closest.instance or nil
+    return closest
 end
 
 function EggCurrentTargetService:CreateEggUI()
-    if currentTargetUI then
-        currentTargetUI:Destroy()
+    for _, child in ipairs(player.PlayerGui:GetChildren()) do
+        if child.Name == "EggCurrentTarget" then
+            child:Destroy()
+        end
     end
+    currentTargetUI = nil
 
     -- Create UI similar to working game's EggPreview
     local screenGui = Instance.new("ScreenGui")
@@ -438,51 +443,54 @@ function EggCurrentTargetService:UpdateTargeting(step)
             return
         end
 
-        local eggsAvailable = {}
-        local seenEggTypes = {}
+        local inRangeByType = {}
         local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then
+            return
+        end
 
         for _, egg in ipairs(EggWorldQuery.GetEggs()) do
-            if egg.anchor and egg.eggType and not seenEggTypes[egg.eggType] then
-                local mag = (egg.anchor.Position - rootPart.Position).Magnitude
-                if mag <= MAX_MAGNITUDE then
-                    seenEggTypes[egg.eggType] = true
-                    eggsAvailable[#eggsAvailable + 1] = egg.eggType
+            if egg.anchor and egg.eggType then
+                local distance = (egg.anchor.Position - rootPart.Position).Magnitude
+                if distance <= MAX_MAGNITUDE then
+                    local current = inRangeByType[egg.eggType]
+                    if not current or distance < current.distance then
+                        inRangeByType[egg.eggType] = {
+                            instance = egg.instance,
+                            eggType = egg.eggType,
+                            distance = distance,
+                        }
+                    end
                 end
             end
         end
 
+        local inRangeEggs = {}
+        for _, entry in pairs(inRangeByType) do
+            inRangeEggs[#inRangeEggs + 1] = entry
+        end
+
         counter = counter + 1
 
-        if #eggsAvailable == 1 then
-            -- Single egg in range
-            local eggType = eggsAvailable[1]
-            local egg = self:FindEggByType(eggType)
-            self:UpdateEggUI(egg, eggType)
+        if #inRangeEggs == 1 then
+            local target = inRangeEggs[1]
+            self:UpdateEggUI(target.instance, target.eggType)
 
-            -- Call setLastEgg periodically (like working game)
             if counter > SERVER_UPDATE_THRESHOLD then
                 counter = 0
-                self:CallSetLastEgg(eggType)
+                self:CallSetLastEgg(target.eggType)
             end
-        elseif #eggsAvailable > 1 then
-            -- Multiple eggs - find closest
-            local egg = self:DetermineClosest(eggsAvailable)
-            if egg then
-                local eggType = egg:GetAttribute("EggType")
-                local eggInfo = egg:FindFirstChild("EggType")
-                if eggInfo then
-                    eggType = eggInfo.Value
-                end
-
-                self:UpdateEggUI(egg, eggType)
+        elseif #inRangeEggs > 1 then
+            local target = self:DetermineClosest(inRangeEggs)
+            if target then
+                self:UpdateEggUI(target.instance, target.eggType)
 
                 if counter > SERVER_UPDATE_THRESHOLD then
                     counter = 0
-                    self:CallSetLastEgg(eggType)
+                    self:CallSetLastEgg(target.eggType)
                 end
             end
-        elseif #eggsAvailable == 0 then
+        elseif #inRangeEggs == 0 then
             -- No eggs in range
             self:UpdateEggUI(nil, nil)
 
@@ -510,6 +518,11 @@ end
 -- === INITIALIZATION ===
 
 function EggCurrentTargetService:Initialize()
+    if serviceInitialized then
+        return
+    end
+    serviceInitialized = true
+
     Logger:Info("EggCurrentTargetService initializing...", { context = "EggCurrentTargetService" })
 
     -- Load pet preview service
@@ -531,6 +544,11 @@ function EggCurrentTargetService:Initialize()
         )
     end
 
+    if heartbeatConnection then
+        heartbeatConnection:Disconnect()
+        heartbeatConnection = nil
+    end
+
     -- Start the targeting update loop (like working game's VisibleHandler)
     heartbeatConnection = RunService.Heartbeat:Connect(function(step)
         self:UpdateTargeting(step)
@@ -543,6 +561,8 @@ function EggCurrentTargetService:Initialize()
 end
 
 function EggCurrentTargetService:Destroy()
+    serviceInitialized = false
+
     if heartbeatConnection then
         heartbeatConnection:Disconnect()
         heartbeatConnection = nil

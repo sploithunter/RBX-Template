@@ -2,6 +2,13 @@ local CollectionService = game:GetService("CollectionService")
 
 local EggWorldQuery = {}
 
+local EGGS_TAG = "EggStand"
+
+local eggs = {}
+local eggsByInstance = {}
+local eggsByType = {}
+local initialized = false
+
 local function isUsable(instance)
     return instance and instance:IsDescendantOf(workspace)
 end
@@ -10,6 +17,18 @@ local function readStringValue(instance, name)
     local child = instance:FindFirstChild(name)
     if child and child:IsA("StringValue") then
         return child.Value
+    end
+    return nil
+end
+
+local function findStandUiAnchor(instance)
+    local current = instance
+    while current and current ~= workspace do
+        local uiAnchor = current:FindFirstChild("UIanchor")
+        if uiAnchor and uiAnchor:IsA("BasePart") and isUsable(uiAnchor) then
+            return uiAnchor
+        end
+        current = current.Parent
     end
     return nil
 end
@@ -41,11 +60,20 @@ function EggWorldQuery.GetAnchor(instance)
         return spawnPointRef.Value
     end
 
+    local standUiAnchor = findStandUiAnchor(instance)
+    if standUiAnchor then
+        return standUiAnchor
+    end
+
     if instance:IsA("BasePart") then
         return instance
     end
 
     if instance:IsA("Model") then
+        local uiAnchor = instance:FindFirstChild("UIanchor")
+        if uiAnchor and uiAnchor:IsA("BasePart") then
+            return uiAnchor
+        end
         if instance.PrimaryPart then
             return instance.PrimaryPart
         end
@@ -55,55 +83,144 @@ function EggWorldQuery.GetAnchor(instance)
     return instance:FindFirstChildWhichIsA("BasePart", true)
 end
 
-local function appendCandidate(results, seen, instance)
-    if not isUsable(instance) or seen[instance] then
+local function removeFromList(list, record)
+    for index, entry in ipairs(list) do
+        if entry == record then
+            local lastIndex = #list
+            list[index] = list[lastIndex]
+            list[lastIndex] = nil
+            return
+        end
+    end
+end
+
+local function unregister(instance)
+    local record = eggsByInstance[instance]
+    if not record then
+        return
+    end
+
+    eggsByInstance[instance] = nil
+    removeFromList(eggs, record)
+
+    local typed = eggsByType[record.eggType]
+    if typed then
+        removeFromList(typed, record)
+        if #typed == 0 then
+            eggsByType[record.eggType] = nil
+        end
+    end
+end
+
+local function register(instance)
+    if not isUsable(instance) then
+        unregister(instance)
         return
     end
 
     local eggType = EggWorldQuery.GetEggType(instance)
     local anchor = eggType and EggWorldQuery.GetAnchor(instance)
     if not (eggType and anchor) then
+        unregister(instance)
         return
     end
 
-    seen[instance] = true
-    table.insert(results, {
+    local existing = eggsByInstance[instance]
+    if existing then
+        if existing.eggType ~= eggType then
+            unregister(instance)
+        else
+            existing.anchor = anchor
+            return
+        end
+    end
+
+    local record = {
         instance = instance,
         eggType = eggType,
         anchor = anchor,
-    })
+    }
+
+    eggsByInstance[instance] = record
+    eggs[#eggs + 1] = record
+
+    local typed = eggsByType[eggType]
+    if not typed then
+        typed = {}
+        eggsByType[eggType] = typed
+    end
+    typed[#typed + 1] = record
+end
+
+local function isEggCandidate(instance)
+    return instance:IsA("Model") or instance:IsA("BasePart")
+end
+
+local function maybeRegisterCandidate(instance)
+    if not isEggCandidate(instance) then
+        return
+    end
+
+    if CollectionService:HasTag(instance, EGGS_TAG) or EggWorldQuery.GetEggType(instance) then
+        register(instance)
+    end
+end
+
+local function resyncAll()
+    for _, instance in ipairs(CollectionService:GetTagged(EGGS_TAG)) do
+        register(instance)
+    end
+
+    for instance in pairs(eggsByInstance) do
+        if not isUsable(instance) then
+            unregister(instance)
+        else
+            register(instance)
+        end
+    end
+end
+
+local function ensureInitialized()
+    if initialized then
+        return
+    end
+    initialized = true
+
+    resyncAll()
+
+    CollectionService:GetInstanceAddedSignal(EGGS_TAG):Connect(register)
+    CollectionService:GetInstanceRemovedSignal(EGGS_TAG):Connect(unregister)
+
+    workspace.DescendantAdded:Connect(maybeRegisterCandidate)
+    workspace.DescendantRemoving:Connect(function(instance)
+        unregister(instance)
+    end)
+
+    -- EggStandPlacement tags eggs shortly after play starts; resync catches that race.
+    task.defer(resyncAll)
+    task.delay(2, resyncAll)
+    task.delay(5, resyncAll)
 end
 
 function EggWorldQuery.GetEggs()
-    local results = {}
-    local seen = {}
-
-    for _, instance in ipairs(CollectionService:GetTagged("EggStand")) do
-        appendCandidate(results, seen, instance)
+    ensureInitialized()
+    if #eggs == 0 then
+        resyncAll()
     end
-
-    for _, instance in ipairs(workspace:GetDescendants()) do
-        if instance:IsA("Model") or instance:IsA("BasePart") then
-            appendCandidate(results, seen, instance)
-        end
-    end
-
-    return results
+    return eggs
 end
 
 function EggWorldQuery.GetEggsByType(eggType)
-    local results = {}
-    for _, egg in ipairs(EggWorldQuery.GetEggs()) do
-        if egg.eggType == eggType then
-            table.insert(results, egg)
-        end
+    ensureInitialized()
+    if #eggs == 0 then
+        resyncAll()
     end
-    return results
+    return eggsByType[eggType] or {}
 end
 
 function EggWorldQuery.FindEggByType(eggType)
-    local eggs = EggWorldQuery.GetEggsByType(eggType)
-    return eggs[1] and eggs[1].instance or nil
+    local typed = EggWorldQuery.GetEggsByType(eggType)
+    return typed[1] and typed[1].instance or nil
 end
 
 function EggWorldQuery.FindClosestEgg(playerPosition, eggTypes, maxDistance)

@@ -8,6 +8,7 @@
     just name the stand + egg in config. Purely visual placement (hatch wiring is separate).
 ]]
 
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -107,17 +108,15 @@ for standName, value in pairs(placements) do
         local stand = findByName(standName)
         if template and stand then
             local egg = placeEgg(stand, template, scale, offsetY)
-            -- Make the placed egg a real, hatchable target. EggWorldQuery.GetEggs() accepts any
-            -- workspace instance carrying an EggId attribute (the "EggStand" tag is optional), so
-            -- this lights up the existing proximity UI + E-to-hatch flow without spawning a
-            -- duplicate visual egg (EggSpawner only auto-spawns for TAGGED stands). The attribute
-            -- couldn't be set from edit-mode MCP because it didn't persist into Play; setting it
-            -- here at runtime does. ember_egg is a valid egg_sources entry, so hatching rolls the
-            -- ember pets. NOTE: stamp the EGG model (not the stand) so the proximity preview anchors
-            -- on the egg and the hatch animation clones just the egg — stamping the stand would make
-            -- the whole hatch stand appear in the hatch viewport.
+            -- Make the placed egg a real, hatchable target. Tag + EggId register it in
+            -- EggWorldQuery without scanning workspace. EggSpawner only auto-spawns for tagged
+            -- stands, so this does not duplicate visuals. NOTE: stamp the EGG model (not the
+            -- stand) so proximity preview and hatch animation anchor on the egg itself.
             if egg then
                 egg:SetAttribute("EggId", tostring(eggId))
+                if not CollectionService:HasTag(egg, "EggStand") then
+                    CollectionService:AddTag(egg, "EggStand")
+                end
             end
         end
     end)
