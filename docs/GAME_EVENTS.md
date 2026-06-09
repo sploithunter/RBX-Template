@@ -60,3 +60,51 @@ Current kinds:
   reactions; migrating them onto the bus means refactoring working systems + re-tuning feel, so do it
   deliberately (with eyes on the result), not as a blind sweep.
 - ⏳ Reaction kinds to add: `toast`, `callback`, and a richer `vfx` (CombatFX-backed).
+
+## Migration worklist (hit one by one)
+
+Legend: ✅ on the bus · 🔁 has an ad-hoc reaction today → migrate/consolidate (careful not to
+double-play) · ✨ no reaction today → new opportunity · ⚠️ high-frequency → be tasteful (maybe a
+float/number, not a stinger).
+
+### Progression
+- ✅ `level_up` — ClaimedLevel↑ (`LevelUpController`) — sound + gold burst
+- ✅ `area_unlocked` — ZoneUnlockResult ok (`init.client`) — jingle + green burst
+- ✨ `rank_up` — Soul rank segment fills ("Seasoned Soul" 2/10) — find the rank source, add fanfare
+- ⚠️ `ascend_prompt` — stepping on the altar (LevelUp_OpenChoice) — optional whoosh; low priority
+
+### Economy
+- 🔁 `purchase_success` — `PurchaseSuccess` (s→c, has toast) — add sound/vfx via bus
+- 🔁 `sell_success` — `SellSuccess` (s→c)
+- 🔁 `economy_error` — `EconomyError` / insufficient-currency notices — error blip
+- ✨ `first_purchase_bonus` — `FirstPurchaseBonus` (s→c)
+- ⚠️ `currency_gain` — drop pickups — per-coin is too frequent; use coin-float (#172), not a stinger
+
+### Eggs & Pets
+- 🔁 `egg_hatch` — `EggHatchingService` (pop sound + reveal) — consolidate; don't double the pop
+- ✨ `egg_hatch_rare` — rarity gate at hatch — special fanfare for rare/legendary pulls
+- ✨ `new_species` — `PetIndexUpdated` (first time discovering a pet) — celebratory
+- ✨ `pet_fusion` — `FusionService` success — currently no reaction
+- ⚠️ `pet_equip` / `pet_unequip` — `InventoryUpdate` — minor UI blip at most
+
+### Combat
+- ⚠️ `pet_hit` — `Combat_PetHit` (s→c) — already has FX; leave (per-hit)
+- ⚠️ `heal` — `Combat_Heal` (s→c) — already floats a number; leave
+- ⚠️ `power_cast` — `Power_Cooldown`/`Power_AreaFx` (+ PowerSound) — already FX+sound; leave
+- 🔁 `pet_down` — `CombatService:DownPetInCombat` (→ Spirit Form visual) — add a "down" sound
+- ✨ `pet_revive` — Revive power / re-summon — no reaction today
+- ✨ `enemy_defeated` — `EnemyService:_onDefeated` — kill confirm (watch frequency)
+- ⚠️ `crystal_broken` — `BreakableSpawner` — very frequent; coin-float (#172), not a stinger
+
+### Social
+- ✅(ish) `trade_request` — TradeRequest popup — already handled
+- ✨ `trade_complete` — `TradeService` "completed" — celebratory for both players
+- 🔁 `enchant_result` — `EnchantPetResult` (s→c) — success/fail blip
+
+### Meta / UI
+- ✨ `achievement_completed` — `AchievementCompleted` (s→c) — fanfare + banner
+- ✨ `quest_complete` — quest claim (RewardService/QuestPanel) — fanfare
+- ✨ `daily_claim` — `DailyService` claim / streak milestone — chime
+
+### Ambient
+- ✅(ish) `area_change` — CurrentArea↑ → music swap (`AreaMusicController`) — optional whoosh on top
