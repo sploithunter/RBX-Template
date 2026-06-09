@@ -260,6 +260,17 @@ do
     end
 end
 
+-- GameEvents dispatcher: named gameplay events -> config-defined reactions (configs/game_events).
+-- start() connects the server->client bridge; client code fires via require(...GameEvents).fire(...).
+do
+    local ok, err = pcall(function()
+        require(script.Systems.GameEvents).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start GameEvents", { error = tostring(err) })
+    end
+end
+
 -- Dev metrics overlay (Studio-only): rolling 1-min DPS / Coins-per-sec / Pet-speed bars for balancing.
 do
     local ok, err = pcall(function()

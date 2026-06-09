@@ -31,13 +31,6 @@ return {
         bus = "ui", -- SoundGroup bus (effects | music | ui); the volume slider controlling it
     },
 
-    -- EVENT -> sound key. Code detects the event (the only inherently-code part); WHICH sound plays
-    -- (and on which bus, from the sound's `bus` field) is config. Add a row to give a new event a
-    -- stinger without touching code; remove a row to silence it.
-    event_sounds = {
-        level_up = "celebratory_jingle",
-    },
-
     -- LOOPING AREA MUSIC. AreaMusicController plays the track for the player's CURRENT area, looped,
     -- on the "music" SoundGroup bus (so the Music volume slider controls it), crossfading on area
     -- change. New uploads play once Roblox moderation approves them.

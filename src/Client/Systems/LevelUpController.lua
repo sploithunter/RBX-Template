@@ -17,11 +17,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local SoundService = game:GetService("SoundService")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
-local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
-local sounds = require(ReplicatedStorage.Configs:WaitForChild("sounds"))
+local GameEvents = require(script.Parent.GameEvents)
 
 local LevelUpController = {}
 LevelUpController.__index = LevelUpController
@@ -120,7 +118,7 @@ function LevelUpController.start()
     self.player:GetAttributeChangedSignal("ClaimedLevel"):Connect(function()
         local lvl = tonumber(self.player:GetAttribute("ClaimedLevel"))
         if lvl and lastClaimed and lvl > lastClaimed then
-            self:_playEventSound("level_up")
+            GameEvents.fire("level_up", { level = lvl }) -- config decides the reactions (sound/vfx/…)
         end
         lastClaimed = lvl or lastClaimed
     end)
@@ -136,32 +134,6 @@ function LevelUpController.start()
         end
     end)
     return self
-end
-
--- Play the config-bound stinger for an event (configs/sounds.lua event_sounds[event] -> sound key;
--- the sound's `bus` field picks the SoundGroup). One-shot; self-destructs. Adding/changing/removing
--- an event's sound is pure config — no code change here.
-function LevelUpController:_playEventSound(event)
-    local key = sounds.event_sounds and sounds.event_sounds[event]
-    local def = key and sounds[key]
-    if not (def and def.id) then
-        return -- no sound bound to this event (or unset) -> silent
-    end
-    local s = Instance.new("Sound")
-    s.SoundId = def.id
-    s.Volume = def.volume or 0.7
-    s.PlaybackSpeed = def.playback_speed or 1
-    SoundGroups.assign(s, def.bus or "ui")
-    s.Parent = SoundService
-    s:Play()
-    s.Ended:Once(function()
-        s:Destroy()
-    end)
-    task.delay(8, function() -- safety cleanup if Ended never fires (unapproved/failed asset)
-        if s.Parent then
-            s:Destroy()
-        end
-    end)
 end
 
 -- Open the new PowerChoiceMenu (server-backed pick/slot flow). Falls back to the legacy reveal
