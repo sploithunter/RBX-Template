@@ -357,6 +357,22 @@ function PowerChoiceMenu:_undo()
     self:_render()
 end
 
+-- RESET button. Admin + live: a FULL wipe (powers/slots cleared, back to L1, origin kept) so you
+-- can retest the climb. Otherwise: just discard staged / local-preview wipe (see _reset).
+function PowerChoiceMenu:_resetRun()
+    if self.live and isAdmin() then
+        local res = callBus("levelup.resetRun", {})
+        self.staged = {}
+        self.notice = (res and res.ok == false) and ("Reset failed: " .. tostring(res.reason))
+            or nil
+        self:_loadLive()
+        self:_render()
+        return
+    end
+    self:_reset()
+    self:_render()
+end
+
 function PowerChoiceMenu:_commit()
     if not self:_canCommit() then
         return
@@ -752,8 +768,7 @@ function PowerChoiceMenu:Show(parent)
         4
     )
     resetBtn.Activated:Connect(function()
-        self:_reset()
-        self:_render()
+        self:_resetRun()
     end)
 
     -- The menu owns the level-up claim UX while open — suppress the old LevelUpController reveal

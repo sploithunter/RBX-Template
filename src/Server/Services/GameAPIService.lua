@@ -792,6 +792,28 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("levelup.resetRun", {
+        description = "[admin] Wipe powers/slots + drop to L1 (keeps origin) to retest the climb. Admin/Studio only.",
+        handler = function(context)
+            local isAdmin = context.isTest
+                or (context.player and context.player:GetAttribute("IsAdmin") == true)
+            if not isAdmin then
+                return { ok = false, reason = "not_admin" }
+            end
+            local arche = self:_service("ArchetypeService")
+            local prog = self:_service("PlayerProgressionService")
+            local dataSvc = self:_service("DataService")
+            if not (arche and prog and dataSvc) then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            local data = dataSvc:GetData(context.player)
+            local origin = data and data.Archetype
+            arche:Respec(context.player, origin) -- clears Powers/Slots/Hotbar, keeps the origin
+            prog:SetLevel(context.player, 1)
+            return { ok = true, archetype = origin, state = prog:GetClaimState(context.player) }
+        end,
+    })
+
     bus:register("hotbar.get", {
         description = "The player's hotbar bindings (archetype defaults if unset).",
         handler = function(context)
