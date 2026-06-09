@@ -306,8 +306,20 @@ return {
             display_name = "Enhancements",
             icon = "⚙️",
             base_limit = 60, -- mirrors enhancements.lua inventory_cap
+            stack_size = 1, -- each drop is its own uid record (no stacking)
             allow_duplicates = true, -- many copies of the same type/origin roll is normal
             storage_type = "unique", -- each drop is its own uid record { type, origins }
+            item_schema = {
+                required = {
+                    "id", -- always "enhancement"
+                    "obtained_at", -- when picked up (validator skips it on add)
+                },
+                optional = {
+                    "type", -- damage / accuracy / recharge / ...
+                    "origins", -- { archetype } single or { a, b } dual
+                    "name", -- resolved display name ("Pyro Damage")
+                },
+            },
             limit_extensions = {},
         },
         consumables = {
