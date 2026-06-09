@@ -64,6 +64,13 @@ local function isAdmin()
     return RunService:IsStudio() or (lp and lp:GetAttribute("IsAdmin") == true)
 end
 
+-- DEV affordances (LEVEL UP self-pacer + RESET) only show when the admin overlay toggle is ON.
+-- A real player sees just UNDO + COMMIT — they level up at the altar, not via a button here.
+local function devMode()
+    local lp = Players.LocalPlayer
+    return lp and lp:GetAttribute("AdminOverlaysOn") == true
+end
+
 local ORIGINS = { "geomancer", "sandwalker", "cryomancer", "pyromancer" }
 local ORIGIN_COLOR = {
     geomancer = Color3.fromRGB(150, 230, 150),
@@ -130,6 +137,7 @@ function PowerChoiceMenu.new()
     self.levelBtn = nil
     self.commitBtn = nil
     self.undoBtn = nil
+    self.resetBtn = nil
     return self
 end
 
@@ -405,6 +413,13 @@ function PowerChoiceMenu:_commit()
         self.notice = failed and ("Commit issue: " .. failed) or nil
         self:_loadLive() -- the server is authoritative; re-read owned/pending/slots
         self:_render()
+        -- Player flow: they came to resolve ONE beat (the altar claimed it). With nothing left and
+        -- no LEVEL UP button, close so they're not left on a dead menu. Devs keep it open to test.
+        if not devMode() and self.pendingPower == 0 and self.pendingSlots == 0 then
+            if _G.MenuManager and _G.MenuManager.CloseCurrentPanel then
+                _G.MenuManager:CloseCurrentPanel()
+            end
+        end
         return
     end
     for _, s in ipairs(self.staged) do
@@ -647,6 +662,24 @@ function PowerChoiceMenu:_render()
     end
     setChipEnabled(self.commitBtn, self:_canCommit())
     setChipEnabled(self.undoBtn, #self.staged > 0)
+
+    -- DEV-only controls: LEVEL UP (self-pacer) + RESET. A player resolves the pick they came for
+    -- (UNDO + COMMIT) and levels up at the altar — so for them, hide those two and re-center the
+    -- pair. Tracks the live ADMIN toggle.
+    local dev = devMode()
+    if self.levelBtn then
+        self.levelBtn.Visible = dev
+    end
+    if self.resetBtn then
+        self.resetBtn.Visible = dev
+    end
+    if self.undoBtn then
+        self.undoBtn.Position = dev and UDim2.fromScale(0.12, 0.965) or UDim2.fromScale(0.34, 0.965)
+    end
+    if self.commitBtn then
+        self.commitBtn.Position = dev and UDim2.fromScale(0.36, 0.965)
+            or UDim2.fromScale(0.62, 0.965)
+    end
 end
 
 -- ---- build ---------------------------------------------------------------
@@ -828,7 +861,7 @@ function PowerChoiceMenu:Show(parent)
         self:_levelUp()
     end)
 
-    local resetBtn = chip(
+    self.resetBtn = chip(
         root,
         "↺ RESET",
         UDim2.fromScale(0.15, 0.05),
@@ -836,7 +869,7 @@ function PowerChoiceMenu:Show(parent)
         RESET_COLOR,
         4
     )
-    resetBtn.Activated:Connect(function()
+    self.resetBtn.Activated:Connect(function()
         self:_resetRun()
     end)
 
@@ -861,6 +894,7 @@ function PowerChoiceMenu:Hide()
     self.levelBtn = nil
     self.commitBtn = nil
     self.undoBtn = nil
+    self.resetBtn = nil
 end
 
 function PowerChoiceMenu:GetFrame()

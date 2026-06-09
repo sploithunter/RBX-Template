@@ -151,10 +151,15 @@ function LevelUpController:_build()
     pad.Parent = btn
     btn.Parent = gui
     self.button = btn
-    -- The nudge opens the PowerChoiceMenu (the real level-up UI) directly, so you can resolve owed
-    -- levels without hunting for the altar. (The altar prompt also opens it via LevelUp_Claimed.)
+    -- Nudge: a player levels up AT THE ALTAR (Ascend -> claim -> the menu opens via LevelUp_Claimed
+    -- to make the pick). So for players the nudge just points there; devs (admin overlay on) get the
+    -- menu directly for testing.
     btn.Activated:Connect(function()
-        self:_openChoiceMenu()
+        if self.player:GetAttribute("AdminOverlaysOn") == true then
+            self:_openChoiceMenu()
+        else
+            self:_toast({ title = "Ascend at the Ascension Altar", auto = true })
+        end
     end)
 
     -- gentle pulse so it draws the eye
