@@ -11,7 +11,8 @@
     IMPORTANT (sync): `power_levels` MUST match configs/powers.lua `selection_levels` and
     `slot_levels` MUST match configs/augmentation.lua `slot_grant_levels` — those configs gate
     the actual PowerService/Augmentation eligibility; this track only decides the level-up
-    presentation + the bundled rewards. Keep them aligned (S3 will widen both toward 50).
+    presentation + the bundled rewards. Together they cover EVERY level 2–50 (15 power picks +
+    34 slot grants), so every claim hands you a real choice.
 ]]
 
 return {
@@ -26,13 +27,50 @@ return {
     },
 
     -- Levels where the claim opens the POWER PICKER (PowerSelection / PowerService:Select).
-    -- Mirror of powers.lua selection_levels. CoH-paced: 12 picks, even-early → ~every-4 late, last L38.
-    power_levels = { 2, 4, 6, 8, 10, 14, 18, 22, 26, 30, 34, 38 },
+    -- MUST mirror powers.lua selection_levels (15 picks, reaches the L44 capstones + L40/L46 tail).
+    power_levels = { 2, 4, 6, 8, 10, 12, 15, 18, 22, 26, 30, 36, 40, 44, 46 },
 
-    -- Levels where the claim GRANTS enhancement slots to place on owned powers (Augmentation).
-    -- Mirror of augmentation.lua slot_grant_levels. `slots_per_grant` enhancement slots each.
-    -- Every ODD level 3–49 = 24 grants × 2 = 48 slots (scarce vs 72 to 6-slot all 12 → you choose).
-    slot_levels = { 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49 },
+    -- Levels where the claim GRANTS empty enhancement slots to place on owned powers (Augmentation).
+    -- MUST mirror augmentation.lua slot_grant_levels: EVERY level 2–50 that isn't a power level (34
+    -- levels). `slots_per_grant` (2) slots each = 68 granted. With each picked power's 1 free inherent
+    -- slot (15) and a 6-slot cap, that's 83 placeable of 90 capacity → slots stay scarce, every one a
+    -- real build choice.
+    slot_levels = {
+        3,
+        5,
+        7,
+        9,
+        11,
+        13,
+        14,
+        16,
+        17,
+        19,
+        20,
+        21,
+        23,
+        24,
+        25,
+        27,
+        28,
+        29,
+        31,
+        32,
+        33,
+        34,
+        35,
+        37,
+        38,
+        39,
+        41,
+        42,
+        43,
+        45,
+        47,
+        48,
+        49,
+        50,
+    },
     slots_per_grant = 2,
 
     -- Big moments. Headline flair + a bundle from milestone_rewards below.

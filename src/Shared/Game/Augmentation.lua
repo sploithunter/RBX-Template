@@ -4,18 +4,19 @@
     No Roblox APIs. The service supplies the player's level, total allocated slot
     count, the slot list already on a power, and whether the power is unlocked.
 
-      slotsGranted(level, slotGrantLevels)                  -> integer
-      unallocatedSlots(level, allocatedCount, slotGrantLevels) -> integer (>= 0)
+      slotsGranted(level, slotGrantLevels, slotsPerGrant)   -> integer
+      unallocatedSlots(level, allocatedCount, slotGrantLevels, slotsPerGrant) -> integer (>= 0)
+      canPlace(isPowerUnlocked, slotsOnPower, unallocated, config) -> { ok, reason? }
+      -- (future enhancements layer; not consumed by empty slots yet:)
       isSlotType(slotType, config)                          -> boolean
-      canPlace(slotType, isPowerUnlocked, slotsOnPower, unallocated, config)
-                                                            -> { ok, reason? }
       matchingCounts(slotsOnPower)                          -> { [slotType] = count }
       activeSetBonuses(slotsOnPower, config)                -> { {type, tier, amount}, ... }
 ]]
 
 local Augmentation = {}
 
-function Augmentation.slotsGranted(level, slotGrantLevels)
+-- Total slots earned from level grants: (# grant levels reached) * slotsPerGrant (default 1).
+function Augmentation.slotsGranted(level, slotGrantLevels, slotsPerGrant)
     local lvl = tonumber(level) or 1
     local count = 0
     for _, threshold in ipairs(slotGrantLevels or {}) do
@@ -23,14 +24,32 @@ function Augmentation.slotsGranted(level, slotGrantLevels)
             count += 1
         end
     end
-    return count
+    return count * (tonumber(slotsPerGrant) or 1)
 end
 
-function Augmentation.unallocatedSlots(level, allocatedCount, slotGrantLevels)
+-- Free granted slots not yet placed. `allocatedCount` must EXCLUDE inherent slots (those are free
+-- with the pick and don't draw from the granted pool) — the service computes it that way.
+function Augmentation.unallocatedSlots(level, allocatedCount, slotGrantLevels, slotsPerGrant)
     return math.max(
         0,
-        Augmentation.slotsGranted(level, slotGrantLevels) - (tonumber(allocatedCount) or 0)
+        Augmentation.slotsGranted(level, slotGrantLevels, slotsPerGrant)
+            - (tonumber(allocatedCount) or 0)
     )
+end
+
+-- Validate placing an EMPTY slot on a power that already has `slotsOnPower` slots, given
+-- `unallocated` free granted slots. Slots are untyped capacity now; typed enhancements come later.
+function Augmentation.canPlace(isPowerUnlocked, slotsOnPower, unallocated, config)
+    if not isPowerUnlocked then
+        return { ok = false, reason = "power_locked" }
+    end
+    if (tonumber(unallocated) or 0) <= 0 then
+        return { ok = false, reason = "no_unallocated_slots" }
+    end
+    if #(slotsOnPower or {}) >= ((config and config.max_slots_per_power) or math.huge) then
+        return { ok = false, reason = "max_slots_reached" }
+    end
+    return { ok = true }
 end
 
 function Augmentation.isSlotType(slotType, config)
@@ -40,24 +59,6 @@ function Augmentation.isSlotType(slotType, config)
         end
     end
     return false
-end
-
--- Validate placing a slot of `slotType` on a power that already has `slotsOnPower`
--- slots, given `unallocated` free slots.
-function Augmentation.canPlace(slotType, isPowerUnlocked, slotsOnPower, unallocated, config)
-    if not Augmentation.isSlotType(slotType, config) then
-        return { ok = false, reason = "invalid_slot_type" }
-    end
-    if not isPowerUnlocked then
-        return { ok = false, reason = "power_locked" }
-    end
-    if (tonumber(unallocated) or 0) <= 0 then
-        return { ok = false, reason = "no_unallocated_slots" }
-    end
-    if #(slotsOnPower or {}) >= (config.max_slots_per_power or math.huge) then
-        return { ok = false, reason = "max_slots_reached" }
-    end
-    return { ok = true }
 end
 
 -- Count slots by type on a single power.

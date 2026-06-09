@@ -1289,6 +1289,14 @@ function PowerService:Select(player, powerId, levelOverride)
         return { ok = false, reason = decision.reason }
     end
     table.insert(selected, powerId)
+    -- Every picked power comes with one FREE inherent slot (flagged so it doesn't draw from the
+    -- granted pool — see AugmentationService.allocatedCount). Level grants add the rest, up to 6.
+    if type(data.Slots) ~= "table" then
+        data.Slots = {}
+    end
+    if data.Slots[powerId] == nil then
+        data.Slots[powerId] = { { inherent = true } }
+    end
     self._dataService:RequestSave(player, "power_select", { critical = true })
     return { ok = true, powers = selected }
 end

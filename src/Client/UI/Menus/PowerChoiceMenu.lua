@@ -16,25 +16,49 @@
         You cannot level past an un-committed beat, and must spend the grant before committing.
       • committed picks are permanent (RESET is the dev full-run wipe; real respec comes later).
 
-    SELF-CONTAINED for now: it keeps its OWN model (level / owned[powerId]=slotCount / pending
-    grant + staged buffer) and appends every COMMITTED action to `self.log`
-    ({ action="pick"|"slot", id, level }). Nothing hits the server yet — once the flow feels right,
-    each logged action maps 1:1 to a bus call (pick -> power.select, slot -> augment.place) + the
-    real endgame effects.
-
-    Opened by the admin "POWER CHOICE" button (later: a level-up nudge). Switching origin via the
-    header button RESETS the run so each origin can be walked from L1.
+    TWO MODES (same UX, different data source):
+      • LIVE (default when the GameAPICommand bus is up): the SERVER is authoritative. On open we
+        load archetype.get / power.get / augment.get / levelup.getState; the origin is LOCKED to the
+        player's real archetype. COMMIT sends the staged beat to the bus (pick -> power.select,
+        slot -> augment.place), LEVEL UP -> levelup.claim (one real level per click); admins can
+        bank a level first (levelup.bank) to walk the track without grinding XP. After each call we
+        re-read the server and re-render. RESET = discard staged + resync (no destructive wipe).
+      • PREVIEW (fallback if the bus isn't reachable): a purely local model (level / owned / pending
+        / staged + self.log), origin cycles via the header, RESET wipes the local run from L1.
 
     MenuManager panel interface: new() -> { Show(parent), Hide(), GetFrame() }.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
 local Configs = ReplicatedStorage:WaitForChild("Configs")
 local powersCfg = require(Configs:WaitForChild("powers"))
 local archetypesCfg = require(Configs:WaitForChild("archetypes"))
 local PowerSelection = require(ReplicatedStorage.Shared.Game.PowerSelection)
 local PowerSlotRow = require(script.Parent.Parent.PowerSlotRow)
+
+-- Bus call (mirrors LevelUpController): returns the handler's domain result, or nil if the bus
+-- isn't up. Synchronous (RemoteFunction). Used only in LIVE mode.
+local function callBus(name, args)
+    local remote = ReplicatedStorage:FindFirstChild("GameAPICommand")
+    if not remote then
+        return nil
+    end
+    local ok, envelope = pcall(function()
+        return remote:InvokeServer(name, args or {})
+    end)
+    if not ok or type(envelope) ~= "table" then
+        return nil
+    end
+    return envelope.result
+end
+
+local function isAdmin()
+    local lp = Players.LocalPlayer
+    return RunService:IsStudio() or (lp and lp:GetAttribute("IsAdmin") == true)
+end
 
 local ORIGINS = { "geomancer", "sandwalker", "cryomancer", "pyromancer" }
 local ORIGIN_COLOR = {
@@ -87,7 +111,13 @@ function PowerChoiceMenu.new()
     self.pendingPower = 0 -- power picks granted this beat (not yet committed)
     self.pendingSlots = 0 -- slots granted this beat (not yet committed)
     self.staged = {} -- { { action = "pick"|"slot", id = powerId }, ... } — reversible, pre-commit
-    self.log = {} -- COMMITTED actions: { { action, id, level }, ... }
+    self.log = {} -- COMMITTED actions (preview mode only): { { action, id, level }, ... }
+    -- live (server-backed) state
+    self.live = false -- true once the bus loads real state; false = local preview fallback
+    self.archetype = nil -- the player's real origin (live mode locks the ORIGIN column to it)
+    self.pendingLevels = 0 -- earned - claimed (claimable level-ups waiting), from the server
+    self.atMax = false
+    self.notice = nil -- transient error/notice text (e.g. a rejected bus call)
     -- ui refs
     self.naturalCol = nil
     self.originCol = nil
@@ -182,6 +212,45 @@ function PowerChoiceMenu:_canCommit()
     return true
 end
 
+-- ---- live (server-backed) state -----------------------------------------
+
+-- Pull the player's REAL state off the bus into the menu's cache. Returns false if the bus isn't
+-- up (caller falls back to local preview). Slot count per power = #data.Slots[id] (incl. the free
+-- inherent slot). pendingPower/pendingSlots come straight from the server's owed amounts.
+function PowerChoiceMenu:_loadLive()
+    local arche = callBus("archetype.get", {})
+    local lvl = callBus("levelup.getState", {})
+    local pw = callBus("power.get", {})
+    local aug = callBus("augment.get", {})
+    if not (arche and lvl and lvl.state and pw and aug) then
+        return false
+    end
+    local st = lvl.state
+    self.archetype = arche.archetype
+    self.level = st.claimedLevel or 1
+    self.pendingLevels = math.max(0, st.pendingLevels or 0)
+    self.atMax = st.atMax == true or self.level >= MAX_LEVEL
+    self.owned = {}
+    local slots = aug.slots or {}
+    for _, id in ipairs(pw.powers or {}) do
+        local list = slots[id]
+        self.owned[id] = (type(list) == "table" and #list) or 1
+    end
+    self.pendingPower = math.max(0, pw.pending or 0)
+    self.pendingSlots = math.max(0, aug.unallocated or 0)
+    self.staged = {}
+    return true
+end
+
+-- Decide the mode on open: LIVE if the bus loads real state, else local PREVIEW.
+function PowerChoiceMenu:_initState()
+    self.notice = nil
+    self.live = self:_loadLive()
+    if not self.live then
+        self:_reset()
+    end
+end
+
 -- ---- model ---------------------------------------------------------------
 
 function PowerChoiceMenu:_grant(level)
@@ -194,6 +263,13 @@ function PowerChoiceMenu:_grant(level)
 end
 
 function PowerChoiceMenu:_reset()
+    if self.live then
+        -- live: RESET = discard staged + resync from the server (NOT a destructive wipe).
+        self.staged = {}
+        self.notice = nil
+        self:_loadLive()
+        return
+    end
     self.level = 1
     self.owned = {}
     self.pendingPower = 0
@@ -204,11 +280,30 @@ function PowerChoiceMenu:_reset()
 end
 
 function PowerChoiceMenu:_levelUp()
-    if self.level >= MAX_LEVEL then
+    if self.atMax or self.level >= MAX_LEVEL then
         return
     end
     -- must commit (clear) the current beat before advancing
     if self.pendingPower > 0 or self.pendingSlots > 0 then
+        return
+    end
+    if self.live then
+        -- claim the next real level. Admins can BANK a level first to walk the track without
+        -- grinding XP; real players claim only what they've earned.
+        if self.pendingLevels <= 0 then
+            if isAdmin() then
+                callBus("levelup.bank", { count = 1 })
+            else
+                self.notice = "Earn more XP to level up"
+                self:_render()
+                return
+            end
+        end
+        local res = callBus("levelup.claim", { expectedLevel = self.level })
+        self.notice = (res and res.ok == false) and ("Claim failed: " .. tostring(res.reason))
+            or nil
+        self:_loadLive()
+        self:_render()
         return
     end
     self.level += 1
@@ -218,6 +313,7 @@ end
 
 -- click a row: stage a slot (committed power) OR stage/clear a pick (radio on a pick beat).
 function PowerChoiceMenu:_onRow(id)
+    self.notice = nil
     if self.owned[id] then
         -- committed power: stage a slot if the beat grants slots and it isn't maxed
         if self:_remainingSlots() > 0 and self:_effectiveSlots(id) < MAX_SLOTS then
@@ -265,6 +361,32 @@ function PowerChoiceMenu:_commit()
     if not self:_canCommit() then
         return
     end
+    if self.live then
+        -- send the beat to the server. Picks FIRST (so a freshly-picked power exists before any
+        -- slot lands on it — and it auto-gets its inherent slot), then the empty slots.
+        local failed
+        for _, s in ipairs(self.staged) do
+            if s.action == "pick" then
+                local res = callBus("power.select", { powerId = s.id })
+                if not (res and res.ok ~= false) then
+                    failed = (res and res.reason) or "select_failed"
+                end
+            end
+        end
+        for _, s in ipairs(self.staged) do
+            if s.action == "slot" then
+                local res = callBus("augment.place", { powerId = s.id })
+                if not (res and res.ok ~= false) then
+                    failed = (res and res.reason) or "place_failed"
+                end
+            end
+        end
+        self.staged = {}
+        self.notice = failed and ("Commit issue: " .. failed) or nil
+        self:_loadLive() -- the server is authoritative; re-read owned/pending/slots
+        self:_render()
+        return
+    end
     for _, s in ipairs(self.staged) do
         if s.action == "pick" then
             self.owned[s.id] = 1 -- a freshly-picked power comes with its inherent first slot
@@ -282,6 +404,9 @@ end
 -- ---- render --------------------------------------------------------------
 
 function PowerChoiceMenu:_statusText()
+    if self.notice then
+        return self.notice, Color3.fromRGB(255, 180, 120)
+    end
     if self.pendingPower > 0 then
         if self:_remainingPicks() > 0 then
             return "PICK A POWER  —  choose 1", Color3.fromRGB(150, 230, 150)
@@ -293,7 +418,8 @@ function PowerChoiceMenu:_statusText()
             return ("PLACE A SLOT  (%d of %d left) — click an owned power"):format(
                 rs,
                 self.pendingSlots
-            ), Color3.fromRGB(140, 200, 255)
+            ),
+                Color3.fromRGB(140, 200, 255)
         end
         return "READY — press COMMIT", COMMIT_COLOR
     end
@@ -379,11 +505,23 @@ function PowerChoiceMenu:_fillColumn(holder, pool)
 end
 
 function PowerChoiceMenu:_refreshOrigin()
-    local origin = ORIGINS[self.originIndex]
-    local def = archetypesCfg.archetypes and archetypesCfg.archetypes[origin]
+    local origin, def
+    if self.live then
+        origin = self.archetype -- locked to the player's real origin (no cycling)
+        def = origin and archetypesCfg.archetypes and archetypesCfg.archetypes[origin]
+    else
+        origin = ORIGINS[self.originIndex]
+        def = archetypesCfg.archetypes and archetypesCfg.archetypes[origin]
+    end
     if self.originHeader then
-        self.originHeader.Text = "‹ " .. (def and def.display_name or origin):upper() .. " ›"
-        self.originHeader.TextColor3 = ORIGIN_COLOR[origin] or Color3.new(1, 1, 1)
+        if self.live and not origin then
+            self.originHeader.Text = "NO ORIGIN YET"
+            self.originHeader.TextColor3 = Color3.fromRGB(200, 200, 210)
+        else
+            local name = (def and def.display_name or tostring(origin)):upper()
+            self.originHeader.Text = self.live and name or ("‹ " .. name .. " ›")
+            self.originHeader.TextColor3 = ORIGIN_COLOR[origin] or Color3.new(1, 1, 1)
+        end
     end
     if self.originCol then
         self:_fillColumn(self.originCol, def and def.power_pool)
@@ -412,9 +550,15 @@ function PowerChoiceMenu:_render()
     end
     local outstanding = self.pendingPower > 0 or self.pendingSlots > 0
     if self.levelBtn then
-        self.levelBtn.Text = (self.level >= MAX_LEVEL) and ("MAX (L" .. MAX_LEVEL .. ")")
+        local atMax = self.atMax or self.level >= MAX_LEVEL
+        self.levelBtn.Text = atMax and ("MAX (L" .. MAX_LEVEL .. ")")
             or ("LEVEL UP  ▶   (L" .. self.level .. ")")
-        setChipEnabled(self.levelBtn, self.level < MAX_LEVEL and not outstanding)
+        local canLevel = not atMax and not outstanding
+        -- live + non-admin: can only level up what XP has actually earned
+        if self.live and not isAdmin() then
+            canLevel = canLevel and self.pendingLevels > 0
+        end
+        setChipEnabled(self.levelBtn, canLevel)
     end
     setChipEnabled(self.commitBtn, self:_canCommit())
     setChipEnabled(self.undoBtn, #self.staged > 0)
@@ -543,6 +687,9 @@ function PowerChoiceMenu:Show(parent)
     ohs.Parent = oHeader
     self.originHeader = oHeader
     oHeader.Activated:Connect(function()
+        if self.live then
+            return -- origin is locked to your real archetype in live mode
+        end
         self.originIndex = (self.originIndex % #ORIGINS) + 1
         self:_reset() -- a new origin = a fresh run from L1
         self:_render()
@@ -609,12 +756,16 @@ function PowerChoiceMenu:Show(parent)
         self:_render()
     end)
 
-    self:_reset()
+    -- The menu owns the level-up claim UX while open — suppress the old LevelUpController reveal
+    -- modal so they don't fight over LevelUp_Claimed.
+    _G.PowerChoiceMenuOpen = true
+    self:_initState()
     self:_render()
     root.Parent = parent
 end
 
 function PowerChoiceMenu:Hide()
+    _G.PowerChoiceMenuOpen = false
     if self.frame then
         self.frame:Destroy()
         self.frame = nil

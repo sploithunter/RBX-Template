@@ -6,7 +6,8 @@
 local Augmentation = loadModule("src/Shared/Game/Augmentation.lua")
 local config = loadModule("configs/augmentation.lua")
 
-local grants = config.slot_grant_levels -- {8,12,18,25,35,45}
+local grants = config.slot_grant_levels
+local spg = config.slots_per_grant -- 2
 
 local function countActive(active, slotType, tier)
     for _, b in ipairs(active) do
@@ -18,49 +19,51 @@ local function countActive(active, slotType, tier)
 end
 
 return function()
-    describe("Augmentation slot grants", function()
+    describe("Augmentation slot grants (slots_per_grant multiplier)", function()
         it("grants no slots below the first grant level", function()
-            expect(Augmentation.slotsGranted(grants[1] - 1, grants)).to.equal(0)
-            expect(Augmentation.unallocatedSlots(grants[1] - 1, 0, grants)).to.equal(0)
+            expect(Augmentation.slotsGranted(grants[1] - 1, grants, spg)).to.equal(0)
+            expect(Augmentation.unallocatedSlots(grants[1] - 1, 0, grants, spg)).to.equal(0)
         end)
 
-        it("grants 1 slot on reaching the first grant level", function()
-            expect(Augmentation.slotsGranted(grants[1], grants)).to.equal(1)
-            expect(Augmentation.unallocatedSlots(grants[1], 0, grants)).to.equal(1)
+        it("grants slots_per_grant slots on reaching the first grant level", function()
+            expect(Augmentation.slotsGranted(grants[1], grants, spg)).to.equal(spg)
+            expect(Augmentation.unallocatedSlots(grants[1], 0, grants, spg)).to.equal(spg)
         end)
 
-        it("unallocated = granted minus allocated", function()
-            -- at the 3rd grant level -> 3 granted; 2 allocated -> 1 free
-            expect(Augmentation.unallocatedSlots(grants[3], 2, grants)).to.equal(1)
+        it("scales with grant levels reached: 3 levels * spg", function()
+            expect(Augmentation.slotsGranted(grants[3], grants, spg)).to.equal(3 * spg)
+        end)
+
+        it("unallocated = granted minus allocated (allocated excludes inherent)", function()
+            -- 3rd grant level -> 3*spg granted; 2 allocated -> the rest free
+            expect(Augmentation.unallocatedSlots(grants[3], 2, grants, spg)).to.equal(3 * spg - 2)
+        end)
+
+        it("defaults slots_per_grant to 1 when omitted", function()
+            expect(Augmentation.slotsGranted(grants[2], grants)).to.equal(2) -- 2 levels reached * 1
         end)
     end)
 
-    describe("Augmentation.canPlace", function()
+    describe("Augmentation.canPlace (empty, untyped slots)", function()
         it("allows placing on an unlocked power with a free slot", function()
-            expect(Augmentation.canPlace("recharge", true, {}, 1, config).ok).to.equal(true)
+            expect(Augmentation.canPlace(true, {}, 1, config).ok).to.equal(true)
         end)
 
         it("rejects placing on a locked (unselected) power", function()
-            local r = Augmentation.canPlace("recharge", false, {}, 1, config)
+            local r = Augmentation.canPlace(false, {}, 1, config)
             expect(r.ok).to.equal(false)
             expect(r.reason).to.equal("power_locked")
         end)
 
-        it("rejects an unknown slot type", function()
-            expect(Augmentation.canPlace("haste", true, {}, 1, config).reason).to.equal(
-                "invalid_slot_type"
-            )
-        end)
-
         it("rejects when no unallocated slots remain", function()
-            expect(Augmentation.canPlace("recharge", true, {}, 0, config).reason).to.equal(
+            expect(Augmentation.canPlace(true, {}, 0, config).reason).to.equal(
                 "no_unallocated_slots"
             )
         end)
 
         it("rejects exceeding the per-power max (6)", function()
-            local full = { "recharge", "recharge", "recharge", "strength", "range", "duration" }
-            expect(Augmentation.canPlace("recharge", true, full, 1, config).reason).to.equal(
+            local full = { {}, {}, {}, {}, {}, {} } -- 6 empty slot records
+            expect(Augmentation.canPlace(true, full, 1, config).reason).to.equal(
                 "max_slots_reached"
             )
         end)

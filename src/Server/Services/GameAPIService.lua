@@ -723,11 +723,11 @@ function GameAPIService:_registerCommands()
     })
 
     bus:register("augment.place", {
-        description = "Place an augmentation slot of a type onto an unlocked power.",
+        description = "Place one empty enhancement slot onto an unlocked power.",
         validate = function(args)
             return Validators.fields(args, {
                 powerId = "string",
-                slotType = "string",
+                slotType = { type = "string", optional = true }, -- accepted-but-ignored (slots are empty)
                 level = { type = "int", min = 1, optional = true },
             })
         end,
@@ -769,6 +769,26 @@ function GameAPIService:_registerCommands()
                 return { ok = false, reason = "service_unavailable" }
             end
             return s:ClaimLevel(context.player, args.expectedLevel)
+        end,
+    })
+
+    bus:register("levelup.bank", {
+        description = "[admin] Bank earned levels WITHOUT claiming (test the claim flow). Admin/Studio only.",
+        validate = function(args)
+            return Validators.fields(args, { count = { type = "int", min = 1, optional = true } })
+        end,
+        handler = function(context, args)
+            -- Client-callable but admin-gated: trusted in test context, else require the IsAdmin attr.
+            local isAdmin = context.isTest
+                or (context.player and context.player:GetAttribute("IsAdmin") == true)
+            if not isAdmin then
+                return { ok = false, reason = "not_admin" }
+            end
+            local s = self:_service("PlayerProgressionService")
+            if not s or not s.BankLevels then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return { ok = true, state = s:BankLevels(context.player, args.count or 1) }
         end,
     })
 

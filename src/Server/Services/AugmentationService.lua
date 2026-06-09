@@ -42,10 +42,20 @@ local function slotsMap(data)
     return data.Slots
 end
 
+-- A slot is "inherent" (free with the power pick) if it's a record flagged so. Inherent slots do
+-- NOT draw from the granted pool, so the allocated count (vs grants) excludes them.
+local function isInherent(slot)
+    return type(slot) == "table" and slot.inherent == true
+end
+
 local function allocatedCount(slots)
     local total = 0
     for _, list in pairs(slots) do
-        total += #list
+        for _, slot in ipairs(list) do
+            if not isInherent(slot) then
+                total += 1
+            end
+        end
     end
     return total
 end
@@ -69,16 +79,23 @@ function AugmentationService:GetState(player, levelOverride)
     return {
         ok = true,
         slots = slots,
-        granted = Augmentation.slotsGranted(level, self._config.slot_grant_levels),
+        granted = Augmentation.slotsGranted(
+            level,
+            self._config.slot_grant_levels,
+            self._config.slots_per_grant
+        ),
         unallocated = Augmentation.unallocatedSlots(
             level,
             allocatedCount(slots),
-            self._config.slot_grant_levels
+            self._config.slot_grant_levels,
+            self._config.slots_per_grant
         ),
     }
 end
 
-function AugmentationService:Place(player, powerId, slotType, levelOverride)
+-- Place one EMPTY slot on an unlocked power. Slots are untyped capacity now; typed enhancements
+-- (a later layer) drop into them. `slotType` is accepted-but-ignored for forward compatibility.
+function AugmentationService:Place(player, powerId, _slotType, levelOverride)
     local data = self._dataService:GetData(player)
     if not data then
         return { ok = false, reason = "data_not_loaded" }
@@ -86,28 +103,23 @@ function AugmentationService:Place(player, powerId, slotType, levelOverride)
     local slots = slotsMap(data)
     local onPower = slots[powerId] or {}
     local level = self:_level(player, levelOverride)
-    local unallocated =
-        Augmentation.unallocatedSlots(level, allocatedCount(slots), self._config.slot_grant_levels)
-
-    local decision = Augmentation.canPlace(
-        slotType,
-        isPowerUnlocked(data, powerId),
-        onPower,
-        unallocated,
-        self._config
+    local unallocated = Augmentation.unallocatedSlots(
+        level,
+        allocatedCount(slots),
+        self._config.slot_grant_levels,
+        self._config.slots_per_grant
     )
+
+    local decision =
+        Augmentation.canPlace(isPowerUnlocked(data, powerId), onPower, unallocated, self._config)
     if not decision.ok then
         return { ok = false, reason = decision.reason }
     end
 
-    table.insert(onPower, slotType)
+    table.insert(onPower, {}) -- an empty slot record (future: { enhancement = ..., type = ... })
     slots[powerId] = onPower
     self._dataService:RequestSave(player, "augment_place", { critical = true })
-    return {
-        ok = true,
-        slots = onPower,
-        setBonuses = Augmentation.activeSetBonuses(onPower, self._config),
-    }
+    return { ok = true, slots = onPower, count = #onPower }
 end
 
 return AugmentationService

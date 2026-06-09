@@ -333,7 +333,8 @@ function LevelUpController:_toast(data)
     corner(toast, 10)
     stroke(toast, GOLD_DEEP, 1)
     toast.Parent = self.gui
-    TweenService:Create(toast, TweenInfo.new(0.25), { Position = UDim2.new(0.5, 0, 0.24, 0) }):Play()
+    TweenService:Create(toast, TweenInfo.new(0.25), { Position = UDim2.new(0.5, 0, 0.24, 0) })
+        :Play()
     task.delay(2.2, function()
         local fade = TweenService:Create(toast, TweenInfo.new(0.4), {
             TextTransparency = 1,
@@ -348,6 +349,11 @@ end
 -- ---- the sequence modal --------------------------------------------------
 
 function LevelUpController:_showSequence(data)
+    -- The new PowerChoiceMenu owns the level-up claim UX while it's open; don't double up with the
+    -- legacy reveal modal (it already drives power.select / augment.place / levelup.claim itself).
+    if _G.PowerChoiceMenuOpen then
+        return
+    end
     data = data or {}
     self.title.Text = "LEVEL " .. tostring(data.level or "?") .. "!"
     self.subtitle.Text = self:_kindBlurb(data)
@@ -373,9 +379,11 @@ function LevelUpController:_showSequence(data)
     self.dim.Visible = true
     -- pop-in
     self.panel.Size = UDim2.new(0, 480, 0, 400)
-    TweenService:Create(self.panel, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 560, 0, 460),
-    }):Play()
+    TweenService
+        :Create(self.panel, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 560, 0, 460),
+        })
+        :Play()
 end
 
 function LevelUpController:_kindBlurb(data)

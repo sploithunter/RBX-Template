@@ -231,6 +231,22 @@ function PlayerProgressionService:SetLevel(player, level)
     return self:GetProgress(player)
 end
 
+-- Bank `count` EARNED levels WITHOUT claiming them — raises Experience to the new earned threshold
+-- but leaves ClaimedLevel, so the player now OWES that many level-ups (pending). This is the
+-- testing/admin counterpart to SetLevel (which fully claims): it lets you walk the real claim flow.
+function PlayerProgressionService:BankLevels(player, count)
+    if not player or not self._dataService then
+        return self:GetClaimState(player)
+    end
+    local maxLevel = (self._levelTrack and self._levelTrack.max_level) or 50
+    local earned = self:GetEarnedLevel(player)
+    local target = math.clamp(earned + math.max(1, math.floor(tonumber(count) or 1)), 1, maxLevel)
+    self._dataService:SetStat(player, "Experience", LevelCurve.xpForLevel(target, self._xpConfig))
+    -- ClaimedLevel intentionally untouched -> pending = target - claimed.
+    self:_publish(player)
+    return self:GetClaimState(player)
+end
+
 -- Runtime-resolve a peer service via the global locator (avoids an Init dependency cycle —
 -- RewardService already depends on this service for AddExperience).
 function PlayerProgressionService:_service(name)
