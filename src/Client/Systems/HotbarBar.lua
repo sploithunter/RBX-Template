@@ -25,6 +25,16 @@ local PILL = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
 local POWERS = require(ReplicatedStorage.Configs:WaitForChild("powers"))
 local POWER_DESC = require(ReplicatedStorage.Configs:WaitForChild("power_descriptions"))
 local PetBadge = require(script.Parent.Parent.UI.PetBadge)
+local UITheme = require(script.Parent.Parent.UI.UITheme)
+
+-- Tint a pill ImageLabel to the player's area palette (frames are keyed by colour name —
+-- sapphire/citrine/ruby/emerald/neutral — same keys UITheme returns), re-applying when the area
+-- (HomeArea / origin) changes. Falls back to sapphire if a colour has no frame.
+local function bindPillFrame(img)
+    UITheme.bind(nil, function(palette)
+        img.Image = PILL.frames[palette.color] or PILL.frames.sapphire
+    end)
+end
 
 local HotbarBar = {}
 
@@ -168,7 +178,7 @@ function HotbarBar.start()
     barFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     barFrame.Position = UDim2.fromScale(0.5, 0.5)
     barFrame.Size = UDim2.new(1, 46, 1, 30)
-    barFrame.Image = PILL.frames.sapphire
+    bindPillFrame(barFrame) -- themed to the player's origin/area (was hardcoded sapphire/blue)
     barFrame.ScaleType = Enum.ScaleType.Slice
     barFrame.SliceCenter = Rect.new(180, 180, 330, 330)
     barFrame.ZIndex = 0
@@ -656,7 +666,7 @@ function HotbarBar.start()
         r.AnchorPoint = Vector2.new(0.5, 0.5)
         r.Position = UDim2.fromScale(0.5, 0.5)
         r.Size = UDim2.fromScale(1.12, 1.12)
-        r.Image = PILL.frames.sapphire
+        bindPillFrame(r) -- Edit/Farm button rings: match the bar's area theme
         r.ScaleType = Enum.ScaleType.Fit
         r.ZIndex = 9
         r.Parent = btn
