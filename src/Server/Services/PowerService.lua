@@ -1400,6 +1400,16 @@ function PowerService:Select(player, powerId, levelOverride)
     end
     self._dataService:RequestSave(player, "power_select", { critical = true })
     self:_applyOwnedPassives(player) -- a passive pick (Magnet/Swift/Hasten/XP) turns on immediately
+    -- The hotbar's assign palette is owned-powers; re-push it so the fresh pick shows up in the
+    -- Edit picker immediately (it was only pushed on join/rebind, so new picks were missing
+    -- until rejoin).
+    pcall(function()
+        local locator = _G.RBXTemplateServices
+        local hotbar = locator and locator:Get("HotbarService")
+        if hotbar and hotbar._pushState then
+            hotbar:_pushState(player)
+        end
+    end)
     return { ok = true, powers = selected }
 end
 
