@@ -861,7 +861,7 @@ function GameAPIService:_registerCommands()
     })
 
     bus:register("levelup.grantXp", {
-        description = "[admin] Fast-forward XP to ~98% of the next level (skip farming). Admin/Studio only.",
+        description = "[admin] Fast-forward: XP to ~98% of next level + the next gate's coins. Admin/Studio only.",
         handler = function(context)
             local isAdmin = context.isTest
                 or (context.player and context.player:GetAttribute("IsAdmin") == true)
@@ -872,7 +872,24 @@ function GameAPIService:_registerCommands()
             if not s or not s.GrantAlmostLevel then
                 return { ok = false, reason = "service_unavailable" }
             end
-            return { ok = true, state = s:GrantAlmostLevel(context.player) }
+            local state = s:GrantAlmostLevel(context.player)
+            -- Also grant the NEXT gate's coins (right type + amount). Unlike XP we overshoot freely:
+            -- just add the gate cost so the player can buy the next area without grinding it.
+            local gate
+            local zone = self:_service("ZoneService")
+            local dataSvc = self:_service("DataService")
+            if zone and zone.GetNextGate and dataSvc and dataSvc.AddCurrency then
+                gate = zone:GetNextGate(context.player)
+                if gate then
+                    dataSvc:AddCurrency(
+                        context.player,
+                        gate.currency,
+                        gate.cost,
+                        "admin_fast_forward"
+                    )
+                end
+            end
+            return { ok = true, state = state, gate = gate }
         end,
     })
 

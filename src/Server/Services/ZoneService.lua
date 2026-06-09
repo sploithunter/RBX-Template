@@ -209,6 +209,33 @@ function ZoneService:GetUnlockedZones(player)
     return setToSortedArray(unlockSet)
 end
 
+-- The NEXT gate the player can buy: the lowest-order LOCKED area whose required_zone is already
+-- unlocked and that has a coin cost. Returns { zoneId, currency, cost } or nil (nothing to buy).
+function ZoneService:GetNextGate(player)
+    local unlockSet = self:_getUnlockSet(player)
+    if not unlockSet then
+        return nil
+    end
+    local best
+    for zoneId, zone in pairs(self._areasConfig.zones or {}) do
+        local unlock = zone.kind == "area" and zone.unlock
+        local cost = unlock and tonumber(unlock.cost)
+        if unlock and cost and unlock.currency and not unlock.unlocked_by_default then
+            local locked = not self:IsZoneUnlocked(player, zoneId, unlockSet)
+            local req = unlock.required_zone
+            local reqOk = (not req) or self:IsZoneUnlocked(player, req, unlockSet)
+            if locked and reqOk then
+                local order = tonumber(zone.order) or 999
+                if not best or order < best.order then
+                    best =
+                        { zoneId = zoneId, currency = unlock.currency, cost = cost, order = order }
+                end
+            end
+        end
+    end
+    return best
+end
+
 function ZoneService:SetZoneLocked(player, zoneId, locked, options)
     options = options or {}
 
