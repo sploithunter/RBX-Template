@@ -126,15 +126,27 @@ end
 
 -- Open the new PowerChoiceMenu (server-backed pick/slot flow). Falls back to the legacy reveal
 -- modal only if the MenuManager / panel isn't available.
-function LevelUpController:_openChoiceMenu(data)
+function LevelUpController:_openChoiceMenu()
     if _G.PowerChoiceMenuOpen then
         return -- already open; it refreshes itself after each in-menu claim (no rebuild/flicker)
     end
-    if _G.MenuManager and _G.MenuManager.OpenPanel then
-        _G.MenuManager:OpenPanel("PowerChoice", "scale_in")
-    else
-        self:_showSequence(data)
-    end
+    -- Open the PowerChoiceMenu via MenuManager. MenuManager initialises a beat after join (it sits
+    -- behind a pet-thumbnail prewarm that can take ~12s), so if the altar is triggered very early —
+    -- e.g. resuming right next to it after a reboot — we RETRY for a while instead of dropping to the
+    -- obsolete legacy reveal modal (which can't do the atomic claim-on-commit and shows "LEVEL ?!").
+    task.spawn(function()
+        for _ = 1, 300 do -- ~30s, covers the prewarm window
+            if _G.PowerChoiceMenuOpen then
+                return
+            end
+            local mm = _G.MenuManager
+            if mm and mm.OpenPanel then
+                mm:OpenPanel("PowerChoice", "scale_in")
+                return
+            end
+            task.wait(0.1)
+        end
+    end)
 end
 
 function LevelUpController:_build()
