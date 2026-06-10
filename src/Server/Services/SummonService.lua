@@ -159,8 +159,13 @@ local function healPet(pet, amount)
     if amount <= 0 or taken <= 0 then
         return
     end
+    local healed = math.min(taken, amount)
     pet:SetAttribute("CombatDamageTaken", math.max(0, taken - amount))
     pet:SetAttribute("HealFxUntil", os.time() + 3)
+    -- green "+N" float, like every other heal path (this was the one heal with no number)
+    pcall(function()
+        Signals.Combat_Heal:FireAllClients({ target = pet, amount = math.floor(healed + 0.5) })
+    end)
 end
 
 -- Summon a guardian for `kind` (the effect_kind: guardian/duration/revive/magnitude). Called by
