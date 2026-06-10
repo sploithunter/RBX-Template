@@ -1919,6 +1919,7 @@ function InventoryPanel:_loadEnhancementsFromFolder(enhFolder)
         sandwalker = Color3.fromRGB(240, 215, 130),
     }
     local DUAL_COLOR = Color3.fromRGB(196, 156, 255)
+    local NATURAL_COLOR = Color3.fromRGB(205, 205, 215) -- generic tier: neutral, junk-grade
     for _, itemFolder in pairs(enhFolder:GetChildren()) do
         if itemFolder:IsA("Folder") and itemFolder.Name ~= "Info" then
             local nameV = itemFolder:FindFirstChild("name")
@@ -1948,8 +1949,10 @@ function InventoryPanel:_loadEnhancementsFromFolder(enhFolder)
                 name = typeName and (typeName:sub(1, 1):upper() .. typeName:sub(2))
                     or ((nameV and nameV:IsA("StringValue") and nameV.Value) or "Enhancement"),
                 icon = "⚙️", -- fallback only; cards render the PetBadge enhancement badge
-                rarity = single and "Single" or "Dual",
-                color = (single and ORIGIN_COLOR[origins[1]]) or DUAL_COLOR,
+                rarity = (#origins == 0 and "Natural") or (single and "Single") or "Dual",
+                color = (#origins == 0 and NATURAL_COLOR)
+                    or (single and ORIGIN_COLOR[origins[1]])
+                    or DUAL_COLOR,
                 category = "Enhancements",
                 count = 1,
                 uid = itemFolder.Name,
@@ -3745,7 +3748,8 @@ function InventoryPanel:_showItemTooltip(item)
         end)
         local values = (okCfg and enhCfg and enhCfg.values) or {}
         local single = item.rarity == "Single"
-        local value = single and values.single or values.dual
+        local natural = item.rarity == "Natural"
+        local value = (natural and values.natural) or (single and values.single) or values.dual
         local originNames = {}
         for _, o in ipairs(item.origins or {}) do
             originNames[#originNames + 1] = o:sub(1, 1):upper() .. o:sub(2)
@@ -3763,11 +3767,13 @@ function InventoryPanel:_showItemTooltip(item)
             },
             {
                 label = single and "Origin" or "Origins",
-                value = #originNames > 0 and table.concat(originNames, " + ") or "Unknown",
+                value = #originNames > 0 and table.concat(originNames, " + ")
+                    or (natural and "None — generic" or "Unknown"),
             },
             {
                 label = "Usable by",
-                value = #originNames > 0 and table.concat(originNames, " or ") or "—",
+                value = #originNames > 0 and table.concat(originNames, " or ")
+                    or (natural and "Anyone" or "—"),
             },
             { label = "Slot via", value = "Level-up menu → ENHANCE" },
         }
