@@ -2079,6 +2079,7 @@ function BreakableSpawner:_trySpawnOne(
                                     fireGameEvent(plr, "coin_payout", {
                                         name = label,
                                         position = dropPos,
+                                        amount = resolvedShare, -- tutorial coin-gate sums this
                                     })
                                 end
                                 if stats then

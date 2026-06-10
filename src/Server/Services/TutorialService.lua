@@ -27,8 +27,8 @@ function TutorialService:Init()
     self._dataService = self._modules and self._modules.DataService
     self._config = self._configLoader:LoadConfig("tutorial")
 
-    fireGameEvent.tap(function(player, name)
-        self:_onEvent(player, name)
+    fireGameEvent.tap(function(player, name, ctx)
+        self:_onEvent(player, name, ctx)
     end)
 end
 
@@ -86,7 +86,7 @@ function TutorialService:_ensureProgress(player)
     return data
 end
 
-function TutorialService:_onEvent(player, name)
+function TutorialService:_onEvent(player, name, ctx)
     if not (player and player.Parent) or not self._dataService:IsDataLoaded(player) then
         return
     end
@@ -94,7 +94,7 @@ function TutorialService:_onEvent(player, name)
     if not data or data.Tutorial.done then
         return
     end
-    local progress, changed = TutorialFlow.advance(self._config, data.Tutorial, name)
+    local progress, changed = TutorialFlow.advance(self._config, data.Tutorial, name, ctx)
     if not changed then
         return
     end

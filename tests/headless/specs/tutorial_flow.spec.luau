@@ -6,10 +6,14 @@
 local TutorialFlow = loadModule("src/Shared/Game/TutorialFlow.lua")
 local cfg = loadModule("configs/tutorial.lua")
 
--- walk helper: feed events, return final progress
+-- walk helper: feed events (string name, or {name, ctx} for sum_ctx steps)
 local function feed(progress, events)
     for _, e in ipairs(events) do
-        progress = TutorialFlow.advance(cfg, progress, e)
+        if type(e) == "table" then
+            progress = TutorialFlow.advance(cfg, progress, e[1], e[2])
+        else
+            progress = TutorialFlow.advance(cfg, progress, e)
+        end
     end
     return progress
 end
@@ -40,14 +44,16 @@ return function()
             expect(p.step).to.equal(1)
         end)
 
-        it("counts partial credit on multi-count steps (3 coin payouts)", function()
-            local p = feed(nil, { "egg_hatch", "pet_equipped" }) -- now on farm_crystals (count 3)
+        it("accumulates COINS on the farm step (sum_ctx) — Jason's 100-coin gate", function()
+            local p = feed(nil, { "egg_hatch", "pet_equipped" }) -- now on farm_crystals
             local step = TutorialFlow.current(cfg, p)
             expect(step.id).to.equal("farm_crystals")
-            p = TutorialFlow.advance(cfg, p, "coin_payout")
-            expect(p.count).to.equal(1)
-            expect(p.step).to.equal(3) -- still there (farm_crystals is step 3 now)
-            p = feed(p, { "coin_payout", "coin_payout" })
+            p = TutorialFlow.advance(cfg, p, "coin_payout", { amount = 40 })
+            expect(p.count).to.equal(40) -- coins earned, not payout count
+            expect(p.step).to.equal(3) -- still there
+            p = TutorialFlow.advance(cfg, p, "coin_payout") -- amount-less payout: no credit
+            expect(p.count).to.equal(40)
+            p = feed(p, { { "coin_payout", { amount = 60 } } }) -- 100 total
             expect(TutorialFlow.current(cfg, p).id).to.equal("hatch_another")
             expect(p.count).to.equal(0) -- reset for the next step
         end)
@@ -56,9 +62,8 @@ return function()
             local p = feed(nil, {
                 "egg_hatch",
                 "pet_equipped",
-                "coin_payout",
-                "coin_payout",
-                "coin_payout",
+                { "coin_payout", { amount = 60 } },
+                { "coin_payout", { amount = 60 } },
                 "egg_hatch",
                 "level_claimed",
                 "power_selected",
@@ -106,14 +111,14 @@ return function()
 
     describe("stateFor (the wire view)", function()
         it("active step view carries index/total/target/count", function()
-            local p = feed(nil, { "egg_hatch", "pet_equipped", "coin_payout" })
+            local p = feed(nil, { "egg_hatch", "pet_equipped", { "coin_payout", { amount = 40 } } })
             local s = TutorialFlow.stateFor(cfg, p)
             expect(s.done).to.equal(false)
             expect(s.id).to.equal("farm_crystals")
             expect(s.index).to.equal(3)
             expect(s.total).to.equal(#cfg.steps)
-            expect(s.count).to.equal(1)
-            expect(s.need).to.equal(3)
+            expect(s.count).to.equal(40)
+            expect(s.need).to.equal(100)
             expect(s.target.kind).to.equal("crystal") -- farm step trails to a small crystal
         end)
 

@@ -53,7 +53,7 @@ function TutorialFlow.current(config, progress)
 end
 
 -- Feed one bus event. Returns (newProgress, changed).
-function TutorialFlow.advance(config, progress, eventName)
+function TutorialFlow.advance(config, progress, eventName, ctx)
     progress = TutorialFlow.normalizeProgress(progress)
     if progress.done then
         return progress, false
@@ -67,7 +67,17 @@ function TutorialFlow.advance(config, progress, eventName)
     if eventName ~= cond.event then
         return progress, false
     end
-    progress.count += 1
+    -- sum_ctx: accumulate a NUMBER from the event ctx instead of counting events —
+    -- the farm step sums coin_payout amounts so "count" reads as COINS EARNED and the
+    -- player keeps mining until they can afford the next egg (Jason's coin gate).
+    local increment = 1
+    if cond.sum_ctx then
+        increment = (type(ctx) == "table" and tonumber(ctx[cond.sum_ctx])) or 0
+        if increment <= 0 then
+            return progress, false -- payout event without a usable amount: no credit
+        end
+    end
+    progress.count += increment
     if progress.count < (tonumber(cond.count) or 1) then
         return progress, true -- partial credit (the capsule can show 1/3)
     end

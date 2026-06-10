@@ -40,11 +40,14 @@ return {
         {
             id = "farm_crystals",
             title = "Mine some crystals",
-            body = "Pets mine nearby crystals when Farm Near is ON — if the glowing button says Off, click it! Click a crystal to BOOST it, scoop up the coins. Small crystals = fast but cheap; big = slow but rich!",
+            body = "Pets mine nearby crystals when Farm Near is ON — click a crystal to BOOST it, scoop up the coins. Earn 100 coins so you can afford your next egg!",
             -- trail + MINE beacon to the nearest SMALL crystal (fast first break), and
             -- the Farm button still pulses as the secondary cue
             target = { kind = "crystal", ui = "Farming" },
-            complete_on = { event = "coin_payout", count = 3 },
+            -- COIN gate (Jason): 3 payouts didn't guarantee the 100 coins the next egg
+            -- costs — sum payout amounts so the counter reads "coins earned / 100" and
+            -- the step holds until the second hatch is affordable
+            complete_on = { event = "coin_payout", sum_ctx = "amount", count = 100 },
         },
         {
             id = "hatch_another",
