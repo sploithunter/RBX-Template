@@ -156,6 +156,9 @@ end
 local function nearestEgg(prefer)
     local char = Players.LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        return nil -- distance-0-for-everything would let ITERATION ORDER pick (sand bug)
+    end
     local best, bestDist, bestPref, bestPrefDist
     local function matches(model)
         if not prefer then
@@ -172,7 +175,7 @@ local function nearestEgg(prefer)
     end
     local function consider(model)
         local pivot = model:GetPivot().Position
-        local d = hrp and (pivot - hrp.Position).Magnitude or 0
+        local d = (pivot - hrp.Position).Magnitude
         if not best or d < bestDist then
             best, bestDist = model, d
         end
@@ -296,7 +299,7 @@ local function showEggPath(token, finder)
     end
 
     task.spawn(function()
-        local lastPlanFrom
+        local lastPlanFrom, lastTarget
         while token == stepToken and pathFolder do
             local char = Players.LocalPlayer.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -304,14 +307,19 @@ local function showEggPath(token, finder)
             if hrp and egg then
                 local target = egg:GetPivot().Position
                 local dist = (target - hrp.Position).Magnitude
+                local targetChanged = not lastTarget
+                    or (target - lastTarget).Magnitude > REPLAN_STUDS
                 if dist <= PROMPT_RANGE then
                     -- close enough: the prompt is the guidance now
                     pathFolder:ClearAllChildren()
                     lastPlanFrom = nil
                 elseif
-                    not lastPlanFrom or (hrp.Position - lastPlanFrom).Magnitude > REPLAN_STUDS
+                    targetChanged
+                    or not lastPlanFrom
+                    or (hrp.Position - lastPlanFrom).Magnitude > REPLAN_STUDS
                 then
                     lastPlanFrom = hrp.Position
+                    lastTarget = target
                     local path = PathfindingService:CreatePath({
                         AgentRadius = 2,
                         AgentCanJump = true,
