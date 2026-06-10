@@ -1440,8 +1440,8 @@ local petConfig = {
                 bear = 24990,
                 bunny = 24990,
                 doggy = 24990,
-                kitty = 10,
-                dragon = 1,
+                kitty = 500, -- ~0.66% — matched to basic_egg (was a 10/1 test placeholder)
+                dragon = 38, -- ~0.05% secret "??" chase
             },
             -- Stage 2: variant rarity (basic mostly; small golden/rainbow chance).
             rarity_rates = {
