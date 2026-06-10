@@ -17,9 +17,13 @@ local Players = game:GetService("Players")
 local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local TweenService = game:GetService("TweenService")
 
+local Workspace = game:GetService("Workspace")
+
 local localPlayer = Players.LocalPlayer
 local ACCENT = Color3.fromRGB(150, 85, 225) -- purple, matches the level-up / ascend accent
 local HARD_TIMEOUT = 25 -- seconds: reveal regardless, so a missing signal never hangs the boot
+local MIN_DISPLAY = 2 -- seconds: never blink past the screen even on instant loads
+local SETTLE = 0.75 -- seconds after the last gate: restyle passes (tray/currency/quest) land
 
 ReplicatedFirst:RemoveDefaultLoadingScreen()
 
@@ -94,11 +98,22 @@ local function setControls(enabled)
 end
 
 -- ---- gates -------------------------------------------------------------
+-- Ordered: each label shows while its check is pending. "Completely loaded" means the
+-- replicated WORLD CONTENT and the player's own state, not just the engine IsLoaded bit.
 local gates = {
     {
         label = "Loading world…",
         check = function()
             return game:IsLoaded()
+        end,
+    },
+    {
+        label = "Building the realm…",
+        check = function()
+            -- authored map content replicated: the Game tree exists and the farmables are in
+            local gameFolder = Workspace:FindFirstChild("Game")
+            local breakables = gameFolder and gameFolder:FindFirstChild("Breakables")
+            return breakables ~= nil and #breakables:GetDescendants() > 0
         end,
     },
     {
@@ -108,9 +123,30 @@ local gates = {
         end,
     },
     {
+        label = "Waking your pets…",
+        check = function()
+            -- character spawned + the per-player pet folder exists (PetFollowService)
+            if not localPlayer.Character then
+                return false
+            end
+            local pets = Workspace:FindFirstChild("PlayerPets")
+            return pets ~= nil and pets:FindFirstChild(localPlayer.Name) ~= nil
+        end,
+    },
+    {
         label = "Preparing UI…",
         check = function()
             return localPlayer:GetAttribute("ClientUIReady") == true
+        end,
+    },
+    {
+        label = "Polishing…",
+        check = function()
+            -- the HUD actually exists on screen (BaseUI + hotbar guis parented)
+            local pg = localPlayer:FindFirstChild("PlayerGui")
+            return pg ~= nil
+                and pg:FindFirstChild("ProfessionalBaseUI") ~= nil
+                and pg:FindFirstChild("PlayerBar") ~= nil
         end,
     },
 }
@@ -138,8 +174,11 @@ task.spawn(function()
             :Play()
     end
 
+    -- restyle passes (tray pills, currency stack, quest capsule) run just after the HUD guis
+    -- appear — give them a beat so the reveal shows the FINISHED hud, and never blink the
+    -- screen past MIN_DISPLAY even on instant local loads.
     status.Text = "Ready!"
-    task.wait(0.2)
+    task.wait(math.max(SETTLE, MIN_DISPLAY - (os.clock() - start)))
     setControls(true)
 
     local t = TweenInfo.new(0.4)
