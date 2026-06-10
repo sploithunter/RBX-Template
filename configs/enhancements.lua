@@ -178,6 +178,10 @@ return {
         -- chance per breakable broken / enemy defeated that an enhancement drops
         breakable_chance = 0.02,
         enemy_chance = 0.08,
+        -- of those drops, this fraction are NATURAL (origin-less junk tier) — Jason:
+        -- "allow generics to drop everywhere; that makes an actual junk economy."
+        -- The rest are zone-branded origin drops (~25/75 single/dual structurally).
+        natural_chance = 0.5,
         -- grade split for a drop: single is the rarer, better find
         single_chance = 0.35,
         -- DROP LEVEL by area (Jason): an enhancement rolls its level from the band of the

@@ -294,7 +294,9 @@ function EnhancementService:RollDrop(rng, areaId, opts)
     local origins = self._config.origins or {}
     local level = Enhancements.rollLevel(self._config, areaId, rng)
 
-    if opts and opts.natural then
+    -- NATURAL drops: forced for pre-origin players (opts.natural), and otherwise a
+    -- coin-flip share of ALL drops (drops.natural_chance) — the junk economy tier.
+    if (opts and opts.natural) or rng:NextNumber() < (tonumber(drops.natural_chance) or 0) then
         return { type = pick, origins = {}, level = level }
     end
 
