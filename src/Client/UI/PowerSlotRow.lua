@@ -38,15 +38,31 @@ local SLOT_Y = 0.66 -- slot-row centre (of row); hangs below the bar
 PowerSlotRow.THEMES = {
     blue = {
         bar = Color3.fromRGB(40, 120, 230),
-        barGrad = { Color3.fromRGB(95, 175, 255), Color3.fromRGB(40, 120, 230), Color3.fromRGB(20, 80, 190) },
+        barGrad = {
+            Color3.fromRGB(95, 175, 255),
+            Color3.fromRGB(40, 120, 230),
+            Color3.fromRGB(20, 80, 190),
+        },
         barStroke = Color3.fromRGB(15, 55, 130),
-        slotGrad = { Color3.fromRGB(140, 187, 244), Color3.fromRGB(46, 132, 236), Color3.fromRGB(29, 85, 153) },
+        slotGrad = {
+            Color3.fromRGB(140, 187, 244),
+            Color3.fromRGB(46, 132, 236),
+            Color3.fromRGB(29, 85, 153),
+        },
         slotRim = Color3.fromRGB(18, 70, 160),
         slotRimSelected = Color3.fromRGB(120, 205, 255),
         -- power states: dull = pickable-not-picked (lights to full on hover), locked = not yet available
-        barGradDull = { Color3.fromRGB(96, 120, 150), Color3.fromRGB(64, 84, 112), Color3.fromRGB(46, 62, 88) },
+        barGradDull = {
+            Color3.fromRGB(96, 120, 150),
+            Color3.fromRGB(64, 84, 112),
+            Color3.fromRGB(46, 62, 88),
+        },
         barStrokeDull = Color3.fromRGB(38, 52, 78),
-        barGradLocked = { Color3.fromRGB(150, 150, 156), Color3.fromRGB(112, 112, 120), Color3.fromRGB(82, 82, 90) },
+        barGradLocked = {
+            Color3.fromRGB(150, 150, 156),
+            Color3.fromRGB(112, 112, 120),
+            Color3.fromRGB(82, 82, 90),
+        },
         barStrokeLocked = Color3.fromRGB(70, 70, 80),
         nameLocked = Color3.fromRGB(196, 196, 202),
         discLocked = Color3.fromRGB(130, 130, 136),
@@ -122,7 +138,10 @@ local function buildDisc(bar, powerId)
     local badge = PetBadge.forPower(powerId)
     local pb
     if badge then
-        pb = PetBadge.create(discH, { element = badge.element, symbol = badge.symbol, ring = badge.ring })
+        pb = PetBadge.create(
+            discH,
+            { element = badge.element, symbol = badge.symbol, ring = badge.ring }
+        )
     end
     return discH, pb
 end
@@ -175,8 +194,12 @@ function PowerSlotRow.create(parent, opts)
 
     local _, pb = buildDisc(bar, opts.powerId)
     if state == "locked" and pb then -- gray the badge out too
-        if pb.disc then pb.disc.ImageColor3 = theme.discLocked end
-        if pb.ring then pb.ring.ImageColor3 = theme.discLocked end
+        if pb.disc then
+            pb.disc.ImageColor3 = theme.discLocked
+        end
+        if pb.ring then
+            pb.ring.ImageColor3 = theme.discLocked
+        end
     end
 
     local name = Instance.new("TextLabel")
@@ -226,6 +249,20 @@ function PowerSlotRow.create(parent, opts)
         s.Visible = (i <= effSlots)
         s.Parent = slotsFolder
         slots[i] = s
+        -- SLOT CONTENTS (Jason: "there's nothing in the actual power slots"): caller
+        -- may pass opts.slotContents[i] = { record, dead } — render the slotted
+        -- enhancement badge inside the rim (dead = greyed, the out-of-window state)
+        local content = opts.slotContents and opts.slotContents[i]
+        if content and content.record then
+            PetBadge.createEnhancementBadge(s, {
+                record = content.record,
+                size = UDim2.fromScale(0.84, 0.84),
+                position = UDim2.fromScale(0.5, 0.5),
+                anchor = Vector2.new(0.5, 0.5),
+                zindex = (s.ZIndex or 1) + 2,
+                dead = content.dead == true,
+            })
+        end
     end
 
     local handle = { root = root }

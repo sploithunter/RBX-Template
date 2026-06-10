@@ -242,6 +242,10 @@ function PowerChoiceMenu:_loadLive()
     if not (arche and lvl and lvl.state and pw and aug) then
         return false
     end
+    -- slotted enhancements per power: the ROWS render their slot contents too (Jason:
+    -- the row circles looked empty after slotting — only the strip knew)
+    local enhState = callBus("enh.get", {})
+    self.enhSlots = (enhState and enhState.slots) or {}
     local st = lvl.state
     self.archetype = arche.archetype
     self.claimedLevel = st.claimedLevel or 1
@@ -846,12 +850,23 @@ function PowerChoiceMenu:_fillColumn(holder, pool)
         wrap.MouseLeave:Connect(function()
             self:_hideTooltip()
         end)
+        local contents
+        for i, slot in ipairs((self.enhSlots or {})[r.id] or {}) do
+            if type(slot) == "table" and slot.enh then
+                contents = contents or {}
+                contents[i] = {
+                    record = slot.enh,
+                    dead = Enhancements.levelFactor(enhCfg, slot.enh.level, self.level) == 0,
+                }
+            end
+        end
         PowerSlotRow.create(wrap, {
             powerId = r.id,
             name = def.display_name or r.id,
             subtitle = "L" .. tostring(r.pickLevel) .. "    " .. (def.subtitle or ""),
             state = r.state,
             slotCount = self:_effectiveSlots(r.id),
+            slotContents = contents,
             selected = stagedPick,
             size = UDim2.fromScale(1, 1),
         })
