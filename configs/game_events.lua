@@ -37,6 +37,9 @@ return {
     achievement_completed = {
         sound = "celebratory_jingle",
         vfx = { kind = "burst", color = { 255, 120, 220 } }, -- magenta
+        -- the WHAT: "🏆 Egg Hatchery 10" floats up (text = ctx.name) — without this the
+        -- jingle played with nothing visible (Jason: "why would I have gotten that sound?")
+        float = { color = { 255, 200, 120 }, size = 150 },
     },
 
     -- A quest was claimed (server: QuestService:Claim success).

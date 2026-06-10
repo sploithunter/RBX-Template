@@ -185,6 +185,11 @@ function AchievementsService:_grantTier(player, achievement, tier, value)
         goal = tier.goal,
         value = value,
         reward = tier.reward,
+        -- display text for the game_events float (Jason heard the jingle with NOTHING
+        -- on screen — "what's going on?"): "🏆 Egg Hatchery 10"
+        name = "🏆 " .. tostring(achievement.display_name or achievement.id) .. " " .. tostring(
+            tier.goal
+        ),
     }
 
     self.Completed:Fire(player, payload)
