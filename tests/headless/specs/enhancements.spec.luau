@@ -196,6 +196,45 @@ return function()
         end)
     end)
 
+    describe("CoH level scaling (Jason's rules)", function()
+        local sc = cfg.drops.levels.scaling
+
+        it("within the window: above = stronger, below = weaker, even = base", function()
+            expect(Enhancements.levelFactor(cfg, 12, 12)).to.equal(1)
+            expect(Enhancements.levelFactor(cfg, 14, 12)).to.equal(1 + sc.per_level * 2)
+            expect(Enhancements.levelFactor(cfg, 10, 12)).to.equal(1 - sc.per_level * 2)
+        end)
+
+        it("more than window BELOW the player: slotted but DEAD (factor 0)", function()
+            expect(Enhancements.levelFactor(cfg, 9, 12)).to.equal(0)
+            expect(Enhancements.levelFactor(cfg, 1, 50)).to.equal(0)
+        end)
+
+        it("placement gate: max player+window; legacy no-level records pass", function()
+            expect(Enhancements.canSlotAtLevel(cfg, 52, 50)).to.equal(true) -- the L50 chase
+            expect(Enhancements.canSlotAtLevel(cfg, 53, 50)).to.equal(false)
+            expect(Enhancements.canSlotAtLevel(cfg, nil, 50)).to.equal(true)
+        end)
+
+        it("aggregate scales by level and drops dead boosts", function()
+            local slots = {
+                { enh = { type = "damage", origins = { "pyromancer" }, level = 14 } }, -- +2
+                { enh = { type = "damage", origins = { "pyromancer" }, level = 5 } }, -- dead
+                { enh = { type = "recharge", origins = { "geomancer", "cryomancer" } } }, -- legacy: x1
+            }
+            local axes = Enhancements.aggregate(cfg, slots, 12)
+            local want = cfg.values.single * (1 + sc.per_level * 2)
+            expect(math.abs(axes.damage - want) < 1e-9).to.equal(true)
+            expect(math.abs(axes.recharge - cfg.values.dual) < 1e-9).to.equal(true)
+        end)
+
+        it("aggregate without a player level stays unscaled (back-compat)", function()
+            local slots = { { enh = { type = "damage", origins = { "pyromancer" }, level = 99 } } }
+            local axes = Enhancements.aggregate(cfg, slots)
+            expect(math.abs(axes.damage - cfg.values.single) < 1e-9).to.equal(true)
+        end)
+    end)
+
     describe("Config integrity", function()
         it("every type's symbol + axis are present and axis is a PowerStats axis", function()
             local axes = {

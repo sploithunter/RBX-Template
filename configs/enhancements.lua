@@ -142,6 +142,13 @@ return {
         -- realms add their own band keyed by the player's CurrentArea attribute value.
         levels = {
             jitter = 2,
+            -- CoH-style level scaling (Jason): an enhancement works within +/- `window`
+            -- levels of the PLAYER. Above you (up to +2) = stronger; below = weaker;
+            -- can't SLOT one more than `window` above you; one slotted that falls more
+            -- than `window` BELOW you contributes NOTHING (stays slotted, boost dead).
+            -- value multiplier = 1 + per_level * (enhLevel - playerLevel), so a single
+            -- at +2 = 33% * 1.2 ~= 40%, at -2 = 33% * 0.8 ~= 26%. L50 players hunt L52s.
+            scaling = { window = 2, per_level = 0.10 },
             bands = {
                 default = { 1, 5 }, -- home world (Grass/Desert/Lava/Ice all use this today)
                 -- ["SomeRealmArea"] = { 10, 18 },

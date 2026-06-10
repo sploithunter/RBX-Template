@@ -225,11 +225,17 @@ function EnhancementService:Slot(player, powerId, slotIndex, uid)
     if not okType then
         return { ok = false, reason = why or "incompatible" }
     end
+    -- CoH placement gate: nothing more than `window` levels above the player
+    local playerLevel = tonumber(player:GetAttribute("Level")) or 1
+    if not Enhancements.canSlotAtLevel(self._config, rec.level, playerLevel) then
+        return { ok = false, reason = "level_too_high" }
+    end
     if slot.enh ~= nil and self._config.replace_destroys ~= true then
         return { ok = false, reason = "slot_occupied" }
     end
     -- Commit: fill the slot (replace destroys the old record) + consume from the bucket.
-    slot.enh = { type = rec.type, origins = rec.origins }
+    -- Level rides along — aggregate() scales (or kills) the boost vs the player's level.
+    slot.enh = { type = rec.type, origins = rec.origins, level = rec.level }
     invSvc:RemoveItem(player, BUCKET, uid, 1)
     self._dataService:RequestSave(player, "enhancement_slot", { critical = true })
     return {

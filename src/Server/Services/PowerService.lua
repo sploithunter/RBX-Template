@@ -1214,7 +1214,8 @@ function PowerService:Cast(player, powerId)
     local data = self._dataService and self._dataService:GetData(player)
     local enhAxes = Enhancements.aggregate(
         self._enhConfig,
-        (data and type(data.Slots) == "table" and data.Slots[tostring(powerId)]) or {}
+        (data and type(data.Slots) == "table" and data.Slots[tostring(powerId)]) or {},
+        tonumber(player:GetAttribute("Level")) or 1 -- CoH scaling: +2 stronger, -3 dead
     )
     if record then
         local casterLevel = tonumber(player:GetAttribute("Level")) or 1

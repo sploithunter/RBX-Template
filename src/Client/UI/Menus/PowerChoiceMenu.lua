@@ -587,7 +587,8 @@ function PowerChoiceMenu:_renderEnhanceStrip()
     for _, item in ipairs(state.inventory or {}) do
         local rec = { type = item.type, origins = item.origins }
         local okType = Enhancements.compatibleWith(enhCfg, item.type, def, powersCfg.effect_kinds)
-        if okType and item.usable then
+        local okLevel = Enhancements.canSlotAtLevel(enhCfg, item.level, self.level)
+        if okType and item.usable and okLevel then
             if x < 0.93 then
                 shown += 1
                 local btn = Instance.new("TextButton")

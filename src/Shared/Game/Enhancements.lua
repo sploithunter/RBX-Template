@@ -100,14 +100,54 @@ end
 -- Aggregate a power's slot list into per-axis bonus fractions: { damage = 0.66, recharge = 0.33 }.
 -- Additive within an axis (two singles on one axis = 2 × values.single). Empty/inherent slots and
 -- malformed records contribute nothing.
-function Enhancements.aggregate(cfg, slots)
+local function scalingCfg(cfg)
+    local levels = ((cfg.drops or {}).levels or {})
+    return levels.scaling or {}
+end
+
+-- CoH-style level factor for a slotted enhancement vs the PLAYER's level:
+--   within +/- window: 1 + per_level * (enhLevel - playerLevel)  (above you = stronger)
+--   more than window BELOW you: 0 — slotted but DEAD (lost the boost entirely)
+--   more than window ABOVE you: 0 (can't normally be slotted; dies if it happens)
+-- Records or callers without levels scale at 1 (legacy grace).
+function Enhancements.levelFactor(cfg, enhLevel, playerLevel)
+    enhLevel = tonumber(enhLevel)
+    playerLevel = tonumber(playerLevel)
+    if not enhLevel or not playerLevel then
+        return 1
+    end
+    local sc = scalingCfg(cfg)
+    local window = tonumber(sc.window) or 2
+    local diff = enhLevel - playerLevel
+    if diff > window or diff < -window then
+        return 0
+    end
+    return 1 + (tonumber(sc.per_level) or 0) * diff
+end
+
+-- Placement gate: you can slot up to `window` levels above yourself, never higher.
+function Enhancements.canSlotAtLevel(cfg, enhLevel, playerLevel)
+    enhLevel = tonumber(enhLevel)
+    playerLevel = tonumber(playerLevel)
+    if not enhLevel or not playerLevel then
+        return true -- legacy records without levels stay slottable
+    end
+    local window = tonumber(scalingCfg(cfg).window) or 2
+    return enhLevel <= playerLevel + window
+end
+
+function Enhancements.aggregate(cfg, slots, playerLevel)
     local axes = {}
     for _, slot in ipairs(type(slots) == "table" and slots or {}) do
         local rec = type(slot) == "table" and slot.enh
         if rec and Enhancements.isValid(cfg, rec) then
             local def = typeDef(cfg, rec.type)
             if def and def.axis then
-                axes[def.axis] = (axes[def.axis] or 0) + Enhancements.value(cfg, rec)
+                local v = Enhancements.value(cfg, rec)
+                    * Enhancements.levelFactor(cfg, rec.level, playerLevel)
+                if v ~= 0 then
+                    axes[def.axis] = (axes[def.axis] or 0) + v
+                end
             end
         end
     end
