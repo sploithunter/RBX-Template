@@ -806,10 +806,63 @@ function HotbarBar.start()
         entry("✖ Clear slot", Color3.fromRGB(70, 50, 50), nil)
     end
 
+    -- EDIT MODE must SCREAM (Jason fell in the trap himself: forgot to press Done,
+    -- "couldn't click a power" — the only tell was the tiny button text). While
+    -- editing, the whole bar pill pulses orange and a banner floats above it.
+    local editPulseThread
+    local editBanner
+    local function setEditAttention(on)
+        if on then
+            if not editBanner then
+                editBanner = Instance.new("TextLabel")
+                editBanner.Name = "EditBanner"
+                editBanner.AnchorPoint = Vector2.new(0.5, 1)
+                editBanner.Position = UDim2.new(0.5, 0, 0, -8)
+                editBanner.Size = UDim2.fromOffset(380, 26)
+                editBanner.BackgroundColor3 = Color3.fromRGB(235, 170, 60)
+                editBanner.TextColor3 = Color3.fromRGB(30, 24, 10)
+                editBanner.Font = Enum.Font.GothamBlack
+                editBanner.TextScaled = true
+                editBanner.Text = "✎ EDITING HOTBAR — press Done to play"
+                editBanner.ZIndex = 12
+                local bc = Instance.new("UICorner")
+                bc.CornerRadius = UDim.new(0, 8)
+                bc.Parent = editBanner
+                editBanner.Parent = barFrame
+            end
+            editBanner.Visible = true
+            editPulseThread = task.spawn(function()
+                local stroke = barFrame:FindFirstChildOfClass("UIStroke")
+                local t = 0
+                while editMode do
+                    t += 0.05
+                    local a = (math.sin(t * 4) + 1) / 2 -- 0..1 pulse
+                    local pulseColor = Color3.fromRGB(235, 170, 60)
+                        :Lerp(Color3.fromRGB(255, 90, 60), a)
+                    if stroke then
+                        stroke.Color = pulseColor
+                        stroke.Thickness = 2 + a * 2
+                    end
+                    editBanner.BackgroundColor3 = pulseColor
+                    task.wait(0.05)
+                end
+                if stroke then
+                    bindPillFrame(barFrame) -- restore the themed pill
+                end
+            end)
+        else
+            if editBanner then
+                editBanner.Visible = false
+            end
+            -- the pulse loop exits on editMode=false and restores the theme
+        end
+    end
+
     local function paintEdit()
         editBtn.Text = editMode and "Done" or "Edit"
         editBtn.BackgroundColor3 = editMode and Color3.fromRGB(235, 170, 60)
             or Color3.fromRGB(60, 63, 76)
+        setEditAttention(editMode)
     end
     editBtn.MouseButton1Click:Connect(function()
         editMode = not editMode
