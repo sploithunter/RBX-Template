@@ -497,6 +497,10 @@ function PowerChoiceMenu:_renderEnhanceStrip()
     strip.Size = UDim2.fromScale(0.96, 0.16)
     strip.BackgroundColor3 = Color3.fromRGB(26, 26, 36)
     strip.BorderSizePixel = 0
+    -- the strip floats OVER the power list: Active sinks clicks so they can't fall
+    -- through to the row buttons underneath (Jason: "there's a button underneath that
+    -- ... it's overriding the top button")
+    strip.Active = true
     strip.ZIndex = 6
     local c = Instance.new("UICorner")
     c.CornerRadius = UDim.new(0.08, 0)
