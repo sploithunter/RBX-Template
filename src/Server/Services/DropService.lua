@@ -404,7 +404,7 @@ function DropService:TrySpawnEnhancementDrop(player, source, position)
     if not (enh and enh.RollDrop) then
         return false
     end
-    local record = enh:RollDrop()
+    local record = enh:RollDrop(nil, player:GetAttribute("CurrentArea"))
 
     -- model: authored Assets model (override) > the cogwheel mesh (per-color) > mystery orb
     local model

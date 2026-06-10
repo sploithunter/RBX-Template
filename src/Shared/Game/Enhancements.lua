@@ -146,4 +146,21 @@ function Enhancements.badgeSpec(cfg, record)
     }
 end
 
+-- Roll a drop LEVEL for an area: uniform in the area's band, +/- jitter, floor 1.
+-- rng = Random instance (injectable for tests).
+function Enhancements.rollLevel(cfg, areaId, rng)
+    rng = rng or Random.new()
+    local levels = (cfg.drops or {}).levels or {}
+    local bands = levels.bands or {}
+    local band = bands[tostring(areaId)] or bands.default or { 1, 1 }
+    local lo = math.floor(tonumber(band[1]) or 1)
+    local hi = math.max(lo, math.floor(tonumber(band[2]) or lo))
+    local jitter = math.floor(tonumber(levels.jitter) or 0)
+    local lvl = rng:NextInteger(lo, hi)
+    if jitter > 0 then
+        lvl += rng:NextInteger(-jitter, jitter)
+    end
+    return math.max(1, lvl)
+end
+
 return Enhancements

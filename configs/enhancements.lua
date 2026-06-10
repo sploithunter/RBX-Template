@@ -137,6 +137,16 @@ return {
         enemy_chance = 0.08,
         -- grade split for a drop: single is the rarer, better find
         single_chance = 0.35,
+        -- DROP LEVEL by area (Jason): an enhancement rolls its level from the band of the
+        -- area it drops in, +/- jitter (clamped to 1). The whole home world is 1-5; future
+        -- realms add their own band keyed by the player's CurrentArea attribute value.
+        levels = {
+            jitter = 2,
+            bands = {
+                default = { 1, 5 }, -- home world (Grass/Desert/Lava/Ice all use this today)
+                -- ["SomeRealmArea"] = { 10, 18 },
+            },
+        },
         -- relative weight per type (uniform start; tune freely)
         type_weights = {
             damage = 1,

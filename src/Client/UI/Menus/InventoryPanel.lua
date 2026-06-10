@@ -1931,6 +1931,10 @@ function InventoryPanel:_loadEnhancementsFromFolder(enhFolder)
             end
             local single = #origins == 1
             local typeName = (typeV and typeV:IsA("StringValue") and typeV.Value) or nil
+            local levelV = itemFolder:FindFirstChild("level")
+            local level = (levelV and (levelV:IsA("NumberValue") or levelV:IsA("IntValue")))
+                    and math.floor(levelV.Value)
+                or nil
             -- short labels read BIG on the card (TextScaled): name = the TYPE ("Health"),
             -- second line = the origin pair ("Geo/Cryo") in the rarity color; the badge
             -- (colored disc + symbol + ring) carries the identity
@@ -1949,6 +1953,7 @@ function InventoryPanel:_loadEnhancementsFromFolder(enhFolder)
                 count = 1,
                 uid = itemFolder.Name,
                 enhancement_type = typeName,
+                level = level,
                 origins = origins,
                 origins_label = table.concat(shorts, "/"),
                 folder_source = "enhancements",
@@ -2948,6 +2953,27 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
             record = { type = item.enhancement_type, origins = item.origins },
             zindex = 104,
         })
+        if item.level then
+            -- level chip, top-left (pets use that spot for the equipped check — free here)
+            local lvl = Instance.new("TextLabel")
+            lvl.Name = "EnhLevel"
+            local lW = math.max(16, math.floor(self.cardSize.X * 0.3))
+            local lH = math.max(12, math.floor(self.cardSize.Y * 0.2))
+            local lM = math.max(2, math.floor(self.cardSize.X * 0.05))
+            lvl.Size = UDim2.fromOffset(lW, lH)
+            lvl.Position = UDim2.fromOffset(lM, lM)
+            lvl.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+            lvl.BackgroundTransparency = 0.25
+            lvl.Text = "L" .. tostring(item.level)
+            lvl.TextColor3 = item.color or Color3.fromRGB(255, 255, 255)
+            lvl.TextScaled = true
+            lvl.Font = Enum.Font.GothamBold
+            lvl.ZIndex = 105
+            lvl.Parent = itemFrame
+            local lc = Instance.new("UICorner")
+            lc.CornerRadius = UDim.new(0, 5)
+            lc.Parent = lvl
+        end
     else
         -- Use emoji fallback
         self.logger:info("🎭 USING EMOJI FALLBACK", { itemId = item.id, icon = item.icon })
@@ -3714,6 +3740,7 @@ function InventoryPanel:_showItemTooltip(item)
                 label = "Boosts",
                 value = tostring(item.enhancement_type or "?"):gsub("^%l", string.upper),
             },
+            { label = "Level", value = tostring(item.level or "?") },
             {
                 label = "Grade",
                 value = (item.rarity or "?")

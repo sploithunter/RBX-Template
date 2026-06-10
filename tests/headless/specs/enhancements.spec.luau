@@ -167,6 +167,35 @@ return function()
         end)
     end)
 
+    describe("Drop levels (area band + jitter)", function()
+        it("stays within band +/- jitter, floored at 1 (home-world default 1-5 j2)", function()
+            local rng = {
+                NextInteger = function(_, lo, hi)
+                    return lo -- deterministic: lowest of every roll
+                end,
+            }
+            -- lowest possible: band lo (1) + jitter low (-2) -> clamped to 1
+            expect(Enhancements.rollLevel(cfg, nil, rng)).to.equal(1)
+            local rngHi = {
+                NextInteger = function(_, lo, hi)
+                    return hi -- highest of every roll
+                end,
+            }
+            local band = cfg.drops.levels.bands.default
+            local maxLvl = band[2] + cfg.drops.levels.jitter
+            expect(Enhancements.rollLevel(cfg, nil, rngHi)).to.equal(maxLvl)
+        end)
+
+        it("unknown area falls back to the default band", function()
+            local rng = {
+                NextInteger = function(_, lo)
+                    return lo
+                end,
+            }
+            expect(Enhancements.rollLevel(cfg, "NoSuchArea", rng)).to.equal(1)
+        end)
+    end)
+
     describe("Config integrity", function()
         it("every type's symbol + axis are present and axis is a PowerStats axis", function()
             local axes = {

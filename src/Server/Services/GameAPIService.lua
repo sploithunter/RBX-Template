@@ -989,6 +989,11 @@ function GameAPIService:_registerCommands()
             if tut and tut.Reset then
                 tut:Reset(context.player)
             end
+            -- Jason: the L1 reset should clear enhancements too (pets/huges stay)
+            local enhSvc = self:_service("EnhancementService")
+            if enhSvc and enhSvc.WipeAll then
+                enhSvc:WipeAll(context.player)
+            end
             return { ok = true, archetype = nil, state = prog:GetClaimState(context.player) }
         end,
     })

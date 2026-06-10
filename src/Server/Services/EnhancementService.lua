@@ -60,6 +60,11 @@ function EnhancementService:Start()
                 rec.origins_csv = table.concat(rec.origins, ",")
                 changed = true
             end
+            if rec.type and not rec.level then
+                -- legacy pre-level records: all dropped on the home world (default band)
+                rec.level = Enhancements.rollLevel(self._config, nil, nil)
+                changed = true
+            end
         end
         if changed then
             self._dataService:RequestSave(player, "enhancement_csv_backfill")
@@ -139,6 +144,7 @@ function EnhancementService:GetState(player)
                 uid = uid,
                 type = rec.type,
                 origins = rec.origins,
+                level = rec.level or 1,
                 name = rec.name or Enhancements.displayName(self._config, rec),
                 usable = Enhancements.usableBy(rec, data.Archetype),
                 single = Enhancements.isSingle(rec),
@@ -176,6 +182,7 @@ function EnhancementService:Grant(player, record)
         type = record.type,
         origins = record.origins,
         origins_csv = table.concat(record.origins, ","), -- folder-mirror friendly
+        level = math.max(1, math.floor(tonumber(record.level) or 1)),
         name = name,
     })
     if not uid then
@@ -235,7 +242,7 @@ end
 
 -- Roll a random drop record (type by weight; grade by single_chance; origins uniform).
 -- `rng` = Random instance (injectable for tests/determinism).
-function EnhancementService:RollDrop(rng)
+function EnhancementService:RollDrop(rng, areaId)
     rng = rng or Random.new()
     local drops = self._config.drops or {}
     local weights = drops.type_weights or {}
@@ -253,14 +260,32 @@ function EnhancementService:RollDrop(rng)
     end
     local origins = self._config.origins or {}
     local a = origins[rng:NextInteger(1, #origins)]
+    local level = Enhancements.rollLevel(self._config, areaId, rng)
     if rng:NextNumber() < (tonumber(drops.single_chance) or 0.35) then
-        return { type = pick, origins = { a } }
+        return { type = pick, origins = { a }, level = level }
     end
     local b = a
     while b == a do
         b = origins[rng:NextInteger(1, #origins)]
     end
-    return { type = pick, origins = { a, b } }
+    return { type = pick, origins = { a, b }, level = level }
+end
+
+-- [admin] Empty the enhancements bucket (levelup.resetRun: a fresh L1 run starts with none).
+function EnhancementService:WipeAll(player)
+    local invSvc = self:_inventoryService()
+    local bucket = invSvc and invSvc:GetInventory(player, BUCKET)
+    if not bucket then
+        return { ok = false, reason = "service_unavailable" }
+    end
+    local uids = {}
+    for uid in pairs(bucket.items or {}) do
+        uids[#uids + 1] = uid
+    end
+    for _, uid in ipairs(uids) do
+        invSvc:RemoveItem(player, BUCKET, uid, 1)
+    end
+    return { ok = true, removed = #uids }
 end
 
 return EnhancementService
