@@ -30,13 +30,21 @@ local REACTIONS = {}
 
 -- sound: spec is a key into configs/sounds.lua; play it one-shot on its configured bus.
 REACTIONS.sound = function(soundKey)
+    -- string key, or { key = "...", volume = 0.5 } for a per-EVENT volume scale
+    -- (Jason: the achievement jingle "needs to be about half" — other users of the
+    -- same sound keep their loudness)
+    local volumeScale = 1
+    if type(soundKey) == "table" then
+        volumeScale = tonumber(soundKey.volume) or 1
+        soundKey = soundKey.key
+    end
     local def = soundKey and sounds[soundKey]
     if not (def and def.id) then
         return
     end
     local s = Instance.new("Sound")
     s.SoundId = def.id
-    s.Volume = def.volume or 0.7
+    s.Volume = (def.volume or 0.7) * volumeScale
     s.PlaybackSpeed = def.playback_speed or 1
     SoundGroups.assign(s, def.bus or "ui")
     s.Parent = SoundService

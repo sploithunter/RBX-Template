@@ -6,6 +6,7 @@
     knows how to apply:
 
         sound = "<key in configs/sounds.lua>"   -- play that sound on its configured bus
+        --   (or { key = "...", volume = 0.5 } to scale loudness for THIS event only)
         banner = { seconds, color }             -- lingering screen-center card (text = ctx.name)
         -- RULE (Jason): never a sound without a visual — every row with `sound` must
         -- also have vfx/float/banner (CI-enforced; world_visual=true marks diegetic
@@ -39,7 +40,9 @@ return {
 
     -- An achievement tier completed (server: AchievementsService alongside AchievementCompleted).
     achievement_completed = {
-        sound = "celebratory_jingle",
+        -- half volume (Jason: "really loud right now") — the same jingle's other users
+        -- (quests/level-up) are unchanged
+        sound = { key = "celebratory_jingle", volume = 0.5 },
         vfx = { kind = "burst", color = { 255, 120, 220 } }, -- magenta
         -- the WHAT, lingering (Jason: "a floating something... that lingers for five
         -- seconds or so" — and NEVER a sound without a visual): "🏆 Egg Hatchery 10"
