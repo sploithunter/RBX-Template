@@ -145,8 +145,32 @@ function PlayerPowerBadges.start()
                     or (localPlayer:GetAttribute(def.attr .. "Toggle") == true)
                     or remaining > PERMANENT_THRESHOLD
                 if permanent then
-                    local stacks = tonumber(localPlayer:GetAttribute(def.attr .. "Stacks")) or 1
-                    b.timer.Text = stacks > 1 and ("×" .. stacks) or "ON"
+                    -- stacked sources render as a coin-stack PILE of discs (Jason: "the
+                    -- stacking makes it more powerful... rather than just having numbers"),
+                    -- matching the squad-card pile. Half-overlap; capped so it can't sprawl.
+                    local stacks =
+                        math.min(tonumber(localPlayer:GetAttribute(def.attr .. "Stacks")) or 1, 5)
+                    b.extra = b.extra or {}
+                    for n = 1, stacks - 1 do
+                        if not b.extra[n] then
+                            local d = b.disc:Clone()
+                            d.Name = "Stack" .. n
+                            d.ZIndex = b.disc.ZIndex - n -- behind the front disc
+                            d.Parent = b.holder
+                            b.extra[n] = d
+                        end
+                        b.extra[n].Image = b.disc.Image
+                        b.extra[n].Position = UDim2.new(0.5, n * 18, 0, 0) -- fan right, half-overlap
+                        b.extra[n].ImageTransparency = 0
+                    end
+                    for n = stacks, #b.extra do -- prune dropped stacks
+                        if b.extra[n] then
+                            b.extra[n]:Destroy()
+                            b.extra[n] = nil
+                        end
+                    end
+                    b.holder.Size = UDim2.fromOffset(38 + (stacks - 1) * 18, 50)
+                    b.timer.Text = "ON"
                     b.timer.TextColor3 = Color3.fromRGB(150, 230, 150)
                     b.disc.ImageTransparency = 0
                 else
@@ -160,7 +184,7 @@ function PlayerPowerBadges.start()
                 end
             elseif b then
                 b.holder:Destroy()
-                badges[def.attr] = nil
+                badges[def.attr] = nil -- pile discs die with the holder
             end
         end
     end)
