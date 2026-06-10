@@ -17,7 +17,11 @@ local HotbarFlank = {}
 local started = false
 
 local SIDE = { PetsButton = "left", PowersButton = "right" }
-local GAP = 14 -- px between the bar pill and each flank button
+-- tray-pill size + a gap that clears the bar's PillFrame OVERHANG (it extends ~23px
+-- beyond the root each side — 14px overlapped; Jason: "their pill boxes are kind of
+-- overlapping"). 62/34 live-tuned with him.
+local SIZE = 62
+local GAP = 34
 
 function HotbarFlank.start()
     if started then
@@ -50,12 +54,10 @@ function HotbarFlank.start()
                 btn.AnchorPoint = side == "left" and Vector2.new(1, 0.5) or Vector2.new(0, 0.5)
                 btn.Position = side == "left" and UDim2.new(0, -GAP, 0.5, 0)
                     or UDim2.new(1, GAP, 0.5, 0)
-                -- square = the bar's UNSCALED height in offsets (the bar's ViewportScale
-                -- then scales both together). NOT an aspect constraint: its default
-                -- FitWithinMaxSize treats a 0 width as a MAX and collapses to 0x0 —
-                -- live-debugged with Jason ("little tiny dots in the power bar").
-                local h = bar.Size.Y.Offset
-                btn.Size = UDim2.fromOffset(h, h)
+                -- offset square (the bar's ViewportScale scales it with the bar). NOT an
+                -- aspect constraint: its default FitWithinMaxSize treats a 0 width as a
+                -- MAX and collapses to 0x0 — live-debugged ("little tiny dots").
+                btn.Size = UDim2.fromOffset(SIZE, SIZE)
                 local aspect = btn:FindFirstChildOfClass("UIAspectRatioConstraint")
                 if aspect then
                     aspect:Destroy()
