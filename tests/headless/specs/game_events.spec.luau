@@ -64,6 +64,9 @@ return function()
         it("every `sound` reaction points at a real sounds.lua entry with an id", function()
             for name, entry in pairs(gameEvents) do
                 local key = entry.sound
+                if type(key) == "table" then
+                    key = key.key -- { key, volume } per-event volume form
+                end
                 if key ~= nil then
                     expect(type(key)).to.equal("string")
                     local def = sounds[key]
