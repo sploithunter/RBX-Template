@@ -40,12 +40,12 @@ return function()
         end)
 
         it("counts partial credit on multi-count steps (3 coin payouts)", function()
-            local p = feed(nil, { "egg_hatch" }) -- now on farm_crystals (count 3)
+            local p = feed(nil, { "egg_hatch", "pet_equipped" }) -- now on farm_crystals (count 3)
             local step = TutorialFlow.current(cfg, p)
             expect(step.id).to.equal("farm_crystals")
             p = TutorialFlow.advance(cfg, p, "coin_payout")
             expect(p.count).to.equal(1)
-            expect(p.step).to.equal(2) -- still there
+            expect(p.step).to.equal(3) -- still there (farm_crystals is step 3 now)
             p = feed(p, { "coin_payout", "coin_payout" })
             expect(TutorialFlow.current(cfg, p).id).to.equal("hatch_another")
             expect(p.count).to.equal(0) -- reset for the next step
@@ -54,6 +54,7 @@ return function()
         it("runs the full path to done", function()
             local p = feed(nil, {
                 "egg_hatch",
+                "pet_equipped",
                 "coin_payout",
                 "coin_payout",
                 "coin_payout",
@@ -72,8 +73,8 @@ return function()
 
         it("egg_hatch does NOT skip two egg steps at once (different positions)", function()
             local p = feed(nil, { "egg_hatch", "egg_hatch", "egg_hatch" })
-            -- only step 1 consumed the first; the others hit farm_crystals and were ignored
-            expect(TutorialFlow.current(cfg, p).id).to.equal("farm_crystals")
+            -- only step 1 consumed the first; the others hit equip_pet and were ignored
+            expect(TutorialFlow.current(cfg, p).id).to.equal("equip_pet")
         end)
     end)
 
@@ -104,11 +105,11 @@ return function()
 
     describe("stateFor (the wire view)", function()
         it("active step view carries index/total/target/count", function()
-            local p = feed(nil, { "egg_hatch", "coin_payout" })
+            local p = feed(nil, { "egg_hatch", "pet_equipped", "coin_payout" })
             local s = TutorialFlow.stateFor(cfg, p)
             expect(s.done).to.equal(false)
             expect(s.id).to.equal("farm_crystals")
-            expect(s.index).to.equal(2)
+            expect(s.index).to.equal(3)
             expect(s.total).to.equal(#cfg.steps)
             expect(s.count).to.equal(1)
             expect(s.need).to.equal(3)

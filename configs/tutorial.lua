@@ -31,6 +31,13 @@ return {
             complete_on = { event = "egg_hatch" },
         },
         {
+            id = "equip_pet",
+            title = "Equip your pet",
+            body = "Open the Pets menu, tap your new pet, and press Equip — only equipped pets follow you and mine.",
+            target = { kind = "ui", name = "PetsButton" },
+            complete_on = { event = "pet_equipped" },
+        },
+        {
             id = "farm_crystals",
             title = "Mine some crystals",
             body = "Your pet mines nearby crystals on its own. Walk up to a crystal and watch the coins roll in.",

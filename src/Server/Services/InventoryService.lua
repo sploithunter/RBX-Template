@@ -16,6 +16,8 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
@@ -1833,6 +1835,9 @@ function InventoryService:_handleTogglePetEquipped(player, data)
     if success then
         -- equip state changed → rebuild every projection from the records.
         self:RebuildPetProjections(player)
+        -- bus source (no default reactions): the tutorial's "equip your pet" step listens.
+        -- Fired on BOTH directions so full-slot players (kept huges) can still complete it.
+        fireGameEvent(player, "pet_equipped", { action = result.action })
         self._logger:Info("✅ Pet equip toggled", {
             player = player.Name,
             itemUid = data.itemUid,
