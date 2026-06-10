@@ -254,6 +254,15 @@ function AutoTargetService:_ensureSettings(player)
     if type(targetSettings.enabled) ~= "boolean" then
         targetSettings.enabled = defaults.auto_target.enabled
     end
+    -- ONE-TIME migration (2026-06-10, Farm-Near-on-by-default): profiles created under the
+    -- old default have enabled=false STAMPED in (indistinguishable from a player choice),
+    -- so the config flip alone never reaches them — Jason followed the farm tutorial step
+    -- exactly and nothing mined. Flip every profile to the new default once; toggles made
+    -- after this migration persist as the player's real choice.
+    if not targetSettings.farm_default_v2 then
+        targetSettings.farm_default_v2 = true
+        targetSettings.enabled = defaults.auto_target.enabled
+    end
     if
         type(targetSettings.selected_currency) ~= "string"
         or targetSettings.selected_currency == ""
@@ -577,8 +586,7 @@ function AutoTargetService:_collectCandidates(player, mode)
                             then
                                 local pivot = model:GetPivot()
                                 local pos = pivot.Position
-                                local dist = playerPosition
-                                        and (pos - playerPosition).Magnitude
+                                local dist = playerPosition and (pos - playerPosition).Magnitude
                                     or 0
                                 if
                                     maxTargetDistance <= 0

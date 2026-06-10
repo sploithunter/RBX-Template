@@ -40,8 +40,8 @@ return {
         {
             id = "farm_crystals",
             title = "Mine some crystals",
-            body = "Walk up to a crystal — your pet mines it on its own (click it to BOOST!). When it breaks, walk over the coins to scoop them up.",
-            target = { kind = "none" },
+            body = "Pets mine nearby crystals while Farm Near is ON (left of the hotbar) — click a crystal to BOOST it, and scoop up the coins. Small crystals break fast for less; big ones pay more!",
+            target = { kind = "ui", name = "Farming" }, -- pulse the Farm button
             complete_on = { event = "coin_payout", count = 3 },
         },
         {

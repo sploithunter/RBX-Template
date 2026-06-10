@@ -113,7 +113,7 @@ return function()
             expect(s.total).to.equal(#cfg.steps)
             expect(s.count).to.equal(1)
             expect(s.need).to.equal(3)
-            expect(s.target.kind).to.equal("none")
+            expect(s.target.kind).to.equal("ui") -- farm step pulses the Farm button
         end)
 
         it("done view is minimal", function()
