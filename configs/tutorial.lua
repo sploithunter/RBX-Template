@@ -40,7 +40,7 @@ return {
         {
             id = "farm_crystals",
             title = "Mine some crystals",
-            body = "Pets mine nearby crystals while Farm Near is ON (left of the hotbar) — click a crystal to BOOST it, and scoop up the coins. Small crystals break fast for less; big ones pay more!",
+            body = "Pets mine nearby crystals when Farm Near is ON — if the glowing button says Off, click it! Click a crystal to BOOST it, scoop up the coins. Small crystals = fast but cheap; big = slow but rich!",
             target = { kind = "ui", name = "Farming" }, -- pulse the Farm button
             complete_on = { event = "coin_payout", count = 3 },
         },
