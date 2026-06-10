@@ -1020,7 +1020,7 @@ local petConfig = {
             display_name = "Kitty",
             category = "domestic",
             rarity = "legendary", -- was mislabeled common (10/75k odds); luck must boost it,
-            base_power = 9,
+            base_power = 14, -- blaster: hits HARDER than melee (doggy 12) — it pays in fragility + shoot/kite pauses (Jason)
             base_health = 110,
 
             -- Camera configuration for image generation
