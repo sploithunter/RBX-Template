@@ -490,20 +490,20 @@ function PowerChoiceMenu:_renderEnhanceStrip()
     local slots = (state.slots or {})[powerId] or {}
     local def = powersCfg.powers[powerId] or {}
 
+    -- FULL-SIZE enhance view (Jason: "bring up an entirely new full-size menu — then
+    -- we've got all sorts of space"). Covers the menu's content area; ✕ returns to the
+    -- power lists. Active sinks clicks so nothing underneath can steal them.
     local strip = Instance.new("Frame")
     strip.Name = "EnhanceStrip"
-    strip.AnchorPoint = Vector2.new(0.5, 1)
-    strip.Position = UDim2.fromScale(0.5, 0.918)
-    strip.Size = UDim2.fromScale(0.96, 0.16)
+    strip.AnchorPoint = Vector2.new(0.5, 0)
+    strip.Position = UDim2.fromScale(0.5, 0.115)
+    strip.Size = UDim2.fromScale(0.96, 0.77)
     strip.BackgroundColor3 = Color3.fromRGB(26, 26, 36)
     strip.BorderSizePixel = 0
-    -- the strip floats OVER the power list: Active sinks clicks so they can't fall
-    -- through to the row buttons underneath (Jason: "there's a button underneath that
-    -- ... it's overriding the top button")
     strip.Active = true
     strip.ZIndex = 6
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0.08, 0)
+    c.CornerRadius = UDim.new(0.02, 0)
     c.Parent = strip
     local st = Instance.new("UIStroke")
     st.Color = Color3.fromRGB(180, 160, 90)
@@ -512,7 +512,6 @@ function PowerChoiceMenu:_renderEnhanceStrip()
     strip.Parent = self.frame
     self.enhStrip = strip
 
-    -- header: power name + slot fill
     local filled, total, firstEmpty = 0, 0, nil
     for i, slot in ipairs(slots) do
         if type(slot) == "table" then
@@ -525,8 +524,8 @@ function PowerChoiceMenu:_renderEnhanceStrip()
         end
     end
     local header = Instance.new("TextLabel")
-    header.Size = UDim2.fromScale(0.6, 0.26)
-    header.Position = UDim2.fromScale(0.02, 0.02)
+    header.Size = UDim2.fromScale(0.7, 0.07)
+    header.Position = UDim2.fromScale(0.03, 0.02)
     header.BackgroundTransparency = 1
     header.TextXAlignment = Enum.TextXAlignment.Left
     header.Font = Enum.Font.GothamBold
@@ -538,9 +537,8 @@ function PowerChoiceMenu:_renderEnhanceStrip()
     header.ZIndex = 7
     header.Parent = strip
 
-    -- close strip
     local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.fromScale(0.04, 0.26)
+    closeBtn.Size = UDim2.fromScale(0.05, 0.07)
     closeBtn.AnchorPoint = Vector2.new(1, 0)
     closeBtn.Position = UDim2.fromScale(0.99, 0.02)
     closeBtn.BackgroundTransparency = 1
@@ -555,39 +553,30 @@ function PowerChoiceMenu:_renderEnhanceStrip()
         self:_renderEnhanceStrip()
     end)
 
-    -- row 1: the power's slots — CLICK A SLOT to target it, then click an available
-    -- enhancement (Jason: "choose the slot first, then the new enhancement"). Targeting
-    -- an occupied slot REPLACES on the next pick (the old enhancement is destroyed).
-    -- Slotting is INSTANT server-side; there is no separate commit.
+    -- ===== SLOTS row: big badges, click to target (gold halo), staged ghost =====
     if self._enhTargetPower ~= powerId then
         self._enhTargetPower, self._enhTargetSlot, self._enhStaged = powerId, nil, nil
     end
-    local slotX = 0.02
+    local SLOT_W, SLOT_H, SLOT_GAP = 0.085, 0.16, 0.02
+    local rowW = total * SLOT_W + math.max(0, total - 1) * SLOT_GAP
+    local slotX = 0.5 - rowW / 2
     for i, slot in ipairs(slots) do
         if type(slot) == "table" then
-            -- the slot IS a button; the badge/empty-circle renders INSIDE it (same
-            -- structure as the AVAILABLE row) — no invisible-overlay z-order games
-            -- (Jason: "there's no button, so how do you click it?")
             local hit = Instance.new("TextButton")
-            hit.Size = UDim2.fromScale(0.055, 0.34)
-            hit.Position = UDim2.fromScale(slotX, 0.3)
+            hit.Size = UDim2.fromScale(SLOT_W, SLOT_H)
+            hit.Position = UDim2.fromScale(slotX, 0.12)
             hit.BackgroundTransparency = 1
             hit.Text = ""
             hit.ZIndex = 8
-            -- round the button so the gold TARGETING ring strokes a CIRCLE hugging the
-            -- badge disc (Jason: stroke with no corner = square box around round art)
             local hc = Instance.new("UICorner")
             hc.CornerRadius = UDim.new(1, 0)
             hc.Parent = hit
             hit.Parent = strip
             if self._enhTargetSlot == i then
-                -- selection ring as a HALO around the badge: the badge art (ZIndex 9)
-                -- painted over a stroke on the button itself (8) — clicks worked but
-                -- the ring was invisible (proven via live click-probe + Jason's eyes)
                 local halo = Instance.new("Frame")
                 halo.AnchorPoint = Vector2.new(0.5, 0.5)
                 halo.Position = UDim2.fromScale(0.5, 0.5)
-                halo.Size = UDim2.fromScale(1.22, 1.22)
+                halo.Size = UDim2.fromScale(1.18, 1.18)
                 halo.BackgroundTransparency = 1
                 halo.ZIndex = 10
                 local hcorner = Instance.new("UICorner")
@@ -595,7 +584,7 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                 hcorner.Parent = halo
                 local ring = Instance.new("UIStroke")
                 ring.Color = Color3.fromRGB(235, 200, 90)
-                ring.Thickness = 2.5
+                ring.Thickness = 3
                 ring.Parent = halo
                 halo.Parent = hit
             end
@@ -609,7 +598,7 @@ function PowerChoiceMenu:_renderEnhanceStrip()
             end
             hit.Activated:Connect(function()
                 self._enhTargetSlot = (self._enhTargetSlot ~= i) and i or nil -- toggle
-                self._enhStaged = nil -- changing target clears any staged pick
+                self._enhStaged = nil
                 if self._enhTargetSlot and slots[i].enh then
                     self.notice = ("Slot %d targeted — pick an enhancement, then APPLY (replaces the old one)"):format(
                         i
@@ -625,11 +614,24 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                 self:_renderEnhanceStrip()
             end)
             if slot.enh then
-                -- outleveled = levelFactor 0 (slotted but contributing nothing) -> greyed
                 local dead = Enhancements.levelFactor(enhCfg, slot.enh.level, self.level) == 0
                 local b =
                     enhBadge(hit, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), slot.enh, dead)
                 b.ZIndex = 9
+                -- level label under the slotted badge (Jason: levels clearly labeled)
+                if slot.enh.level then
+                    local lv = Instance.new("TextLabel")
+                    lv.Size = UDim2.fromScale(1, 0.3)
+                    lv.Position = UDim2.fromScale(0, 1)
+                    lv.BackgroundTransparency = 1
+                    lv.Font = Enum.Font.GothamBold
+                    lv.TextScaled = true
+                    lv.TextColor3 = dead and Color3.fromRGB(150, 150, 150)
+                        or Color3.fromRGB(220, 220, 230)
+                    lv.Text = tostring(slot.enh.level)
+                    lv.ZIndex = 9
+                    lv.Parent = hit
+                end
             else
                 local empty = Instance.new("Frame")
                 empty.Size = UDim2.fromScale(1, 1)
@@ -641,14 +643,14 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                 ec.Parent = empty
                 empty.Parent = hit
             end
-            slotX += 0.062
+            slotX += SLOT_W + SLOT_GAP
         end
     end
 
-    -- row 2: available (compatible + usable) inventory enhancements — click to slot
+    -- ===== AVAILABLE grid: grouped stacks (type+origins+level), dead-filtered =====
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.fromScale(0.2, 0.2)
-    label.Position = UDim2.fromScale(0.02, 0.68)
+    label.Size = UDim2.fromScale(0.5, 0.05)
+    label.Position = UDim2.fromScale(0.03, 0.36)
     label.BackgroundTransparency = 1
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Font = Enum.Font.GothamMedium
@@ -657,87 +659,160 @@ function PowerChoiceMenu:_renderEnhanceStrip()
     label.ZIndex = 7
     label.Parent = strip
 
-    local shown, hidden = 0, 0
-    local x = 0.2
+    -- group: identical (type, origins, level) stack into one badge with ×N
+    local groups, order = {}, {}
+    local hidden = 0
     for _, item in ipairs(state.inventory or {}) do
-        local rec = { type = item.type, origins = item.origins }
         local okType = Enhancements.compatibleWith(enhCfg, item.type, def, powersCfg.effect_kinds)
-        local okLevel = Enhancements.canSlotAtLevel(enhCfg, item.level, self.level)
-        if okType and item.usable and okLevel then
-            if x < 0.93 then
-                shown += 1
-                local btn = Instance.new("TextButton")
-                btn.Size = UDim2.fromScale(0.055, 0.34)
-                btn.Position = UDim2.fromScale(x, 0.62)
-                btn.BackgroundTransparency = 1
-                btn.Text = ""
-                btn.ZIndex = 7
-                btn.Parent = strip
-                enhBadge(btn, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), rec).ZIndex = 7
-                btn.MouseEnter:Connect(function()
-                    self:_showEnhTooltip(btn, {
-                        type = item.type,
-                        origins = item.origins,
-                        level = item.level,
-                    })
-                end)
-                btn.MouseLeave:Connect(function()
-                    self:_hideTooltip()
-                end)
-                btn.Activated:Connect(function()
-                    -- STAGE the pick (Jason lost an enhancement to instant-replace:
-                    -- "pick the slot, pick the enhancement, and then commit"). The
-                    -- server is only called by the APPLY button.
-                    local target = self._enhTargetSlot or firstEmpty
-                    if not target then
-                        self.notice = "No empty slot — click a filled slot to replace it"
-                        self:_render()
-                        return
-                    end
-                    local replacing = slots[target] and slots[target].enh ~= nil
-                    self._enhStaged = { slotIndex = target, uid = item.uid, item = item }
-                    self.notice = replacing
-                            and ("STAGED for slot %d — APPLY will DESTROY the enhancement currently there"):format(
-                                target
-                            )
-                        or ("STAGED for slot %d — press APPLY to slot"):format(target)
-                    self:_render()
-                    self:_renderEnhanceStrip()
-                end)
-                x += 0.062
+        local okSlot = Enhancements.canSlotAtLevel(enhCfg, item.level, self.level)
+        -- dead-filter (Jason: "showing ones that are out of range makes no sense")
+        local alive = Enhancements.levelFactor(enhCfg, item.level, self.level) > 0
+        if okType and item.usable and okSlot and alive then
+            local key = tostring(item.type)
+                .. "|"
+                .. table.concat(item.origins or {}, "+")
+                .. "|"
+                .. tostring(item.level)
+            if not groups[key] then
+                groups[key] = { item = item, count = 0, uids = {} }
+                order[#order + 1] = key
             end
-        else
+            groups[key].count += 1
+            groups[key].uids[#groups[key].uids + 1] = item.uid
+        elseif okType and item.usable then
             hidden += 1
         end
     end
-    label.Text = shown > 0 and "AVAILABLE:"
-        or (hidden > 0 and "No compatible enhancements" or "No enhancements — find drops!")
+    -- highest level first within the grid read order
+    table.sort(order, function(a, b)
+        local ga, gb = groups[a], groups[b]
+        if ga.item.type ~= gb.item.type then
+            return tostring(ga.item.type) < tostring(gb.item.type)
+        end
+        return (ga.item.level or 0) > (gb.item.level or 0)
+    end)
 
-    -- STAGED pick: ghost badge over the destination slot + APPLY / CANCEL (the only
-    -- path that calls the server — Jason: explicit commit, no more clobbered gear)
+    local G_W, G_H, G_GAPX, G_GAPY = 0.075, 0.14, 0.012, 0.05
+    local perRow = 10
+    local gx0, gy0 = 0.03, 0.43
+    local shown = 0
+    for gi, key in ipairs(order) do
+        local g = groups[key]
+        local row = math.floor((gi - 1) / perRow)
+        local col = (gi - 1) % perRow
+        local gx = gx0 + col * (G_W + G_GAPX)
+        local gy = gy0 + row * (G_H + G_GAPY)
+        if gy + G_H > 0.98 then
+            hidden += g.count -- honest overflow (no silent caps)
+        else
+            shown += 1
+            local item = g.item
+            local rec = { type = item.type, origins = item.origins }
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.fromScale(G_W, G_H)
+            btn.Position = UDim2.fromScale(gx, gy)
+            btn.BackgroundTransparency = 1
+            btn.Text = ""
+            btn.ZIndex = 7
+            btn.Parent = strip
+            enhBadge(btn, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), rec).ZIndex = 7
+            -- level label under the badge (Jason: "Level 7 — just say 7 underneath")
+            local lv = Instance.new("TextLabel")
+            lv.Size = UDim2.fromScale(1, 0.28)
+            lv.Position = UDim2.fromScale(0, 1)
+            lv.BackgroundTransparency = 1
+            lv.Font = Enum.Font.GothamBold
+            lv.TextScaled = true
+            lv.TextColor3 = Color3.fromRGB(220, 220, 230)
+            lv.Text = tostring(item.level or "—")
+            lv.ZIndex = 7
+            lv.Parent = btn
+            -- stack count chip, top-right (Jason: "3x if they're stacked")
+            if g.count > 1 then
+                local chip = Instance.new("TextLabel")
+                chip.AnchorPoint = Vector2.new(1, 0)
+                chip.Size = UDim2.fromScale(0.55, 0.34)
+                chip.Position = UDim2.fromScale(1.12, -0.12)
+                chip.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+                chip.TextColor3 = Color3.fromRGB(235, 220, 170)
+                chip.Font = Enum.Font.GothamBold
+                chip.TextScaled = true
+                chip.Text = "×" .. g.count
+                chip.ZIndex = 10
+                local cc = Instance.new("UICorner")
+                cc.CornerRadius = UDim.new(0.4, 0)
+                cc.Parent = chip
+                chip.Parent = btn
+            end
+            btn.MouseEnter:Connect(function()
+                self:_showEnhTooltip(
+                    btn,
+                    { type = item.type, origins = item.origins, level = item.level }
+                )
+            end)
+            btn.MouseLeave:Connect(function()
+                self:_hideTooltip()
+            end)
+            btn.Activated:Connect(function()
+                local target = self._enhTargetSlot or firstEmpty
+                if not target then
+                    self.notice = "No empty slot — click a filled slot to replace it"
+                    self:_render()
+                    return
+                end
+                local replacing = slots[target] and slots[target].enh ~= nil
+                self._enhStaged = { slotIndex = target, uid = g.uids[1], item = item }
+                self.notice = replacing
+                        and ("STAGED for slot %d — APPLY will DESTROY the enhancement currently there"):format(
+                            target
+                        )
+                    or ("STAGED for slot %d — press APPLY to slot"):format(target)
+                self:_render()
+                self:_renderEnhanceStrip()
+            end)
+        end
+    end
+    label.Text = shown > 0 and "AVAILABLE:"
+        or (
+            hidden > 0 and "No usable enhancements at your level"
+            or "No enhancements — find drops!"
+        )
+    if hidden > 0 and shown > 0 then
+        local more = Instance.new("TextLabel")
+        more.Size = UDim2.fromScale(0.4, 0.045)
+        more.AnchorPoint = Vector2.new(0, 1)
+        more.Position = UDim2.fromScale(0.03, 0.99)
+        more.BackgroundTransparency = 1
+        more.TextXAlignment = Enum.TextXAlignment.Left
+        more.Font = Enum.Font.Gotham
+        more.TextScaled = true
+        more.TextColor3 = Color3.fromRGB(140, 140, 160)
+        more.Text = ("+%d more (out of level range or overflow)"):format(hidden)
+        more.ZIndex = 7
+        more.Parent = strip
+    end
+
+    -- ===== STAGED: ghost over the destination slot + APPLY / CANCEL =====
     local staged = self._enhStaged
     if staged and staged.item then
-        local gx = 0.02 + (staged.slotIndex - 1) * 0.062
+        local gxs = (0.5 - rowW / 2) + (staged.slotIndex - 1) * (SLOT_W + SLOT_GAP)
         local ghost = enhBadge(
             strip,
-            UDim2.fromScale(0.055, 0.34),
-            UDim2.fromScale(gx, 0.3),
+            UDim2.fromScale(SLOT_W, SLOT_H),
+            UDim2.fromScale(gxs, 0.12),
             { type = staged.item.type, origins = staged.item.origins }
         )
-        ghost.ZIndex = 10
-        -- ghost: staged, not applied. The badge is a FRAME of image layers — fade the
-        -- layers (Frame has no ImageTransparency; this line erroring killed the whole
-        -- staged render, so APPLY/CANCEL never appeared — caught by the solo probe)
+        ghost.ZIndex = 11
         for _, layer in ipairs(ghost:GetDescendants()) do
             if layer:IsA("ImageLabel") then
                 layer.ImageTransparency = 0.45
-                layer.ZIndex = 10
+                layer.ZIndex = 11
             end
         end
         local applyBtn = Instance.new("TextButton")
-        applyBtn.Size = UDim2.fromScale(0.1, 0.3)
+        applyBtn.Size = UDim2.fromScale(0.12, 0.08)
         applyBtn.AnchorPoint = Vector2.new(1, 1)
-        applyBtn.Position = UDim2.fromScale(0.86, 0.98)
+        applyBtn.Position = UDim2.fromScale(0.84, 0.98)
         applyBtn.BackgroundColor3 = Color3.fromRGB(90, 170, 90)
         applyBtn.Text = "✓ APPLY"
         applyBtn.TextScaled = true
