@@ -176,7 +176,7 @@ return {
             mode = "clean",
             clean_text = "%s Hatch",
             clean_max_text = "%s Max Hatch",
-            clean_auto_text = "%s Auto Hatch",
+            clean_auto_text = "Hatch (%s)", -- the card IS the button; key in parens (Jason)
             advertised_text = "%s Hatch | %s Max | %s Auto",
         },
 

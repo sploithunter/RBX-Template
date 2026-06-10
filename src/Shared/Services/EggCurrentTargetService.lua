@@ -205,6 +205,7 @@ function EggCurrentTargetService:CreateEggUI()
 
     local frame = Instance.new("Frame")
     frame.Name = "PreviewFrame"
+    frame.Active = true -- the whole card is tappable (see CardButton below)
     frame.Size = UDim2.new(
         0,
         eggSystemConfig.ui.preview_size.width,
@@ -224,6 +225,22 @@ function EggCurrentTargetService:CreateEggUI()
     stroke.Thickness = eggSystemConfig.ui.border_thickness
     stroke.Color = eggSystemConfig.ui.colors.border
     stroke.Parent = frame
+
+    -- the ENTIRE card is the hatch button (Jason: "you just click the entire
+    -- [card]" — biggest possible touch target, right where the player is looking).
+    -- EggInteractionService registers the actual handler via SetCardActivatedHandler.
+    local cardBtn = Instance.new("TextButton")
+    cardBtn.Name = "CardButton"
+    cardBtn.Size = UDim2.fromScale(1, 1)
+    cardBtn.BackgroundTransparency = 1
+    cardBtn.Text = ""
+    cardBtn.ZIndex = 5
+    cardBtn.Parent = frame
+    cardBtn.Activated:Connect(function()
+        if self._cardActivatedHandler then
+            self._cardActivatedHandler()
+        end
+    end)
 
     local eggNameLabel = Instance.new("TextLabel")
     eggNameLabel.Name = "EggName"
@@ -605,6 +622,12 @@ function EggCurrentTargetService:FormatNumber(number)
     else
         return tostring(number)
     end
+end
+
+-- The proximity card's tap handler (the whole card is a button). Registered by
+-- EggInteractionService so a tap == pressing E.
+function EggCurrentTargetService:SetCardActivatedHandler(fn)
+    self._cardActivatedHandler = fn
 end
 
 return EggCurrentTargetService

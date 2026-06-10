@@ -2251,6 +2251,12 @@ function EggInteractionService:Initialize()
     if success then
         currentTargetService = currentTargetServiceOrError
         Logger:Info("Got CurrentTargetService reference", { context = "EggInteractionService" })
+        -- tapping the proximity card == pressing E (buttons primary — Jason)
+        if currentTargetService.SetCardActivatedHandler then
+            currentTargetService:SetCardActivatedHandler(function()
+                self:OnEKeyPressed()
+            end)
+        end
     else
         Logger:Error(
             "Failed to get CurrentTargetService",
