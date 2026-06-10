@@ -56,17 +56,19 @@ local function makeBadge(parent, order)
     local disc = Instance.new("ImageLabel")
     disc.Name = "Disc"
     disc.Size = UDim2.fromOffset(36, 36)
-    disc.Position = UDim2.fromScale(0.5, 0)
-    disc.AnchorPoint = Vector2.new(0.5, 0)
+    -- pinned to the holder's RIGHT edge; stack discs fan LEFT from here (Jason: anchor
+    -- at 1 on X, grow left — the pile must never crowd the avatar on its right)
+    disc.Position = UDim2.fromScale(1, 0)
+    disc.AnchorPoint = Vector2.new(1, 0)
     disc.BackgroundTransparency = 1
     disc.ScaleType = Enum.ScaleType.Fit
     disc.Parent = holder
 
     local timer = Instance.new("TextLabel")
     timer.Name = "Timer"
-    timer.Size = UDim2.new(1, 0, 0, 12)
-    timer.Position = UDim2.fromScale(0, 1)
-    timer.AnchorPoint = Vector2.new(0, 1)
+    timer.Size = UDim2.fromOffset(38, 12)
+    timer.Position = UDim2.fromScale(1, 1)
+    timer.AnchorPoint = Vector2.new(1, 1) -- under the front (right-pinned) disc
     timer.BackgroundTransparency = 1
     timer.Font = Enum.Font.GothamBold
     timer.TextScaled = true
@@ -160,7 +162,7 @@ function PlayerPowerBadges.start()
                             b.extra[n] = d
                         end
                         b.extra[n].Image = b.disc.Image
-                        b.extra[n].Position = UDim2.new(0.5, n * 18, 0, 0) -- fan right, half-overlap
+                        b.extra[n].Position = UDim2.new(1, -n * 18, 0, 0) -- fan LEFT, half-overlap
                         b.extra[n].ImageTransparency = 0
                     end
                     for n = stacks, #b.extra do -- prune dropped stacks
