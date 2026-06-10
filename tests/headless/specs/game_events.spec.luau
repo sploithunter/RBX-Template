@@ -16,6 +16,8 @@ local KNOWN_KINDS = {
     sound = true,
     vfx = true,
     float = true,
+    banner = true, -- lingering screen-center card (achievements etc.)
+    world_visual = true, -- ANNOTATION, not a reaction: the world itself is the visual
 }
 
 return function()
@@ -25,6 +27,22 @@ return function()
             for name, entry in pairs(gameEvents) do
                 expect(type(name)).to.equal("string")
                 expect(type(entry)).to.equal("table")
+            end
+        end)
+
+        it("NEVER plays a sound without a visual (Jason's rule)", function()
+            for name, entry in pairs(gameEvents) do
+                if entry.sound then
+                    local visual = entry.vfx or entry.float or entry.banner or entry.world_visual
+                    if not visual then
+                        error(
+                            (
+                                "event '%s' has a sound but NO visual — add vfx/float/banner "
+                                .. "(or world_visual=true if the world itself shows it)"
+                            ):format(name)
+                        )
+                    end
+                end
             end
         end)
 

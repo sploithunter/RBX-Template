@@ -6,6 +6,10 @@
     knows how to apply:
 
         sound = "<key in configs/sounds.lua>"   -- play that sound on its configured bus
+        banner = { seconds, color }             -- lingering screen-center card (text = ctx.name)
+        -- RULE (Jason): never a sound without a visual — every row with `sound` must
+        -- also have vfx/float/banner (CI-enforced; world_visual=true marks diegetic
+        -- exceptions like pet_down where the world itself is the visual)
         -- (planned) vfx = "<CombatFX/effect spec>", toast = "<text>", ...
 
     Add or extend a row to react to an event WITHOUT touching the firing code; remove a row to
@@ -37,9 +41,9 @@ return {
     achievement_completed = {
         sound = "celebratory_jingle",
         vfx = { kind = "burst", color = { 255, 120, 220 } }, -- magenta
-        -- the WHAT: "🏆 Egg Hatchery 10" floats up (text = ctx.name) — without this the
-        -- jingle played with nothing visible (Jason: "why would I have gotten that sound?")
-        float = { color = { 255, 200, 120 }, size = 150 },
+        -- the WHAT, lingering (Jason: "a floating something... that lingers for five
+        -- seconds or so" — and NEVER a sound without a visual): "🏆 Egg Hatchery 10"
+        banner = { seconds = 5, color = { 255, 200, 90 } },
     },
 
     -- A quest was claimed (server: QuestService:Claim success).
@@ -121,6 +125,7 @@ return {
     -- One of YOUR pets went down (server: EnemyService:_downPet). Somber low thud, no burst.
     pet_down = {
         sound = "deep_earthen_impact",
+        world_visual = true, -- the pet visibly collapses — the world IS the visual
     },
 
     -- An enhancement pickup revealed its identity (server: DropService _collect). The float TEXT
