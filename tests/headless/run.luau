@@ -144,6 +144,66 @@ local function makeEnv(extra: { [string]: any }?): { [string]: any }
         bit32 = bit32,
         buffer = buffer,
         _VERSION = _VERSION,
+        -- Roblox DATATYPE shims (data-only stand-ins) so CONFIGS that bake UI values
+        -- (Color3/UDim2/...) can be loaded + structurally validated headless. These are NOT
+        -- functional re-implementations — just enough for a config table to construct.
+        Color3 = {
+            new = function(r: number?, g: number?, b: number?)
+                return { __kind = "Color3", r = r or 0, g = g or 0, b = b or 0 }
+            end,
+            fromRGB = function(r: number?, g: number?, b: number?)
+                return {
+                    __kind = "Color3",
+                    r = (r or 0) / 255,
+                    g = (g or 0) / 255,
+                    b = (b or 0) / 255,
+                }
+            end,
+            fromHSV = function(h: number?, s2: number?, v: number?)
+                return { __kind = "Color3", h = h or 0, s = s2 or 0, v = v or 0 }
+            end,
+        },
+        UDim = {
+            new = function(scale: number?, offset: number?)
+                return { __kind = "UDim", scale = scale or 0, offset = offset or 0 }
+            end,
+        },
+        UDim2 = {
+            new = function(...)
+                return { __kind = "UDim2", ... }
+            end,
+            fromScale = function(x: number?, y: number?)
+                return { __kind = "UDim2", x = x or 0, y = y or 0 }
+            end,
+            fromOffset = function(x: number?, y: number?)
+                return { __kind = "UDim2", x = x or 0, y = y or 0 }
+            end,
+        },
+        Vector2 = {
+            new = function(x: number?, y: number?)
+                return { __kind = "Vector2", x = x or 0, y = y or 0 }
+            end,
+        },
+        Vector3 = {
+            new = function(x: number?, y: number?, z: number?)
+                return { __kind = "Vector3", x = x or 0, y = y or 0, z = z or 0 }
+            end,
+        },
+        NumberRange = {
+            new = function(min: number?, max: number?)
+                return { __kind = "NumberRange", Min = min or 0, Max = max or min or 0 }
+            end,
+        },
+        -- permissive Enum: Enum.Anything.Member -> a named token table
+        Enum = setmetatable({}, {
+            __index = function(_, enumName)
+                return setmetatable({}, {
+                    __index = function(_, member)
+                        return { __kind = "EnumItem", EnumType = enumName, Name = member }
+                    end,
+                })
+            end,
+        }),
     }
     if extra then
         for key, value in extra do
@@ -170,8 +230,26 @@ function loadModule(path: string): any
     -- Pure modules may require() sibling pure modules; route that through
     -- loadModule so the same env + cache applies. Roblox-API requires are not
     -- supported here (they error with a clear message).
+    local dir = path:match("^(.*)/[^/]+$") or "."
     local env = makeEnv({
         loadModule = loadModule,
+        -- `script.Parent:WaitForChild("x")` / `.x` resolve to sibling module PATHS, so configs
+        -- that require sibling configs (power_icons -> power_icons_assets) load headless too.
+        script = {
+            Parent = setmetatable({
+                WaitForChild = function(_self: any, name: string)
+                    return `{dir}/{name}.lua`
+                end,
+                FindFirstChild = function(_self: any, name: string)
+                    local sibling = `{dir}/{name}.lua`
+                    return fs.isFile(sibling) and sibling or nil
+                end,
+            }, {
+                __index = function(_self, name: string)
+                    return `{dir}/{name}.lua`
+                end,
+            }),
+        },
         require = function(target: any): any
             if type(target) == "string" then
                 return loadModule(target)
@@ -197,6 +275,15 @@ local env = makeEnv({
     it = it,
     expect = expect,
     beforeEach = beforeEach,
+    -- list files in a repo dir (for config-integrity sweeps)
+    listFiles = function(dir: string): { string }
+        local out = {}
+        for _, name in fs.readDir(dir) do
+            table.insert(out, name)
+        end
+        table.sort(out)
+        return out
+    end,
     afterEach = function(_: () -> ()) end, -- no-op subset for now
     loadModule = loadModule,
 })
