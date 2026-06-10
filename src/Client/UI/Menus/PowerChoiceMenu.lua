@@ -556,7 +556,7 @@ function PowerChoiceMenu:_renderEnhanceStrip()
     -- an occupied slot REPLACES on the next pick (the old enhancement is destroyed).
     -- Slotting is INSTANT server-side; there is no separate commit.
     if self._enhTargetPower ~= powerId then
-        self._enhTargetPower, self._enhTargetSlot = powerId, nil
+        self._enhTargetPower, self._enhTargetSlot, self._enhStaged = powerId, nil, nil
     end
     local slotX = 0.02
     for i, slot in ipairs(slots) do
@@ -584,12 +584,15 @@ function PowerChoiceMenu:_renderEnhanceStrip()
             end
             hit.Activated:Connect(function()
                 self._enhTargetSlot = (self._enhTargetSlot ~= i) and i or nil -- toggle
+                self._enhStaged = nil -- changing target clears any staged pick
                 if self._enhTargetSlot and slots[i].enh then
-                    self.notice = ("Slot %d targeted — picking a new enhancement REPLACES (destroys) the old one"):format(
+                    self.notice = ("Slot %d targeted — pick an enhancement, then APPLY (replaces the old one)"):format(
                         i
                     )
                 elseif self._enhTargetSlot then
-                    self.notice = ("Slot %d targeted — pick an enhancement below"):format(i)
+                    self.notice = ("Slot %d targeted — pick an enhancement below, then APPLY"):format(
+                        i
+                    )
                 else
                     self.notice = nil
                 end
@@ -663,29 +666,24 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                     self:_hideTooltip()
                 end)
                 btn.Activated:Connect(function()
-                    -- targeted slot wins (REPLACE allowed there — server destroys the
-                    -- old one); otherwise fall back to the first empty slot
+                    -- STAGE the pick (Jason lost an enhancement to instant-replace:
+                    -- "pick the slot, pick the enhancement, and then commit"). The
+                    -- server is only called by the APPLY button.
                     local target = self._enhTargetSlot or firstEmpty
                     if not target then
                         self.notice = "No empty slot — click a filled slot to replace it"
                         self:_render()
                         return
                     end
-                    local res = callBus("enh.slot", {
-                        powerId = powerId,
-                        slotIndex = target,
-                        uid = item.uid,
-                    })
-                    if res and res.ok then
-                        self._enhTargetSlot = nil
-                        self.notice = "Slotted ✓ (instant — no commit needed)"
-                        self:_loadLive()
-                        self:_render()
-                        self:_renderEnhanceStrip()
-                    else
-                        self.notice = "Slot failed: " .. tostring(res and res.reason)
-                        self:_render()
-                    end
+                    local replacing = slots[target] and slots[target].enh ~= nil
+                    self._enhStaged = { slotIndex = target, uid = item.uid, item = item }
+                    self.notice = replacing
+                            and ("STAGED for slot %d — APPLY will DESTROY the enhancement currently there"):format(
+                                target
+                            )
+                        or ("STAGED for slot %d — press APPLY to slot"):format(target)
+                    self:_render()
+                    self:_renderEnhanceStrip()
                 end)
                 x += 0.062
             end
@@ -695,6 +693,63 @@ function PowerChoiceMenu:_renderEnhanceStrip()
     end
     label.Text = shown > 0 and "AVAILABLE:"
         or (hidden > 0 and "No compatible enhancements" or "No enhancements — find drops!")
+
+    -- STAGED pick: ghost badge over the destination slot + APPLY / CANCEL (the only
+    -- path that calls the server — Jason: explicit commit, no more clobbered gear)
+    local staged = self._enhStaged
+    if staged and staged.item then
+        local gx = 0.02 + (staged.slotIndex - 1) * 0.062
+        local ghost = enhBadge(
+            strip,
+            UDim2.fromScale(0.055, 0.34),
+            UDim2.fromScale(gx, 0.3),
+            { type = staged.item.type, origins = staged.item.origins }
+        )
+        ghost.ZIndex = 10
+        ghost.ImageTransparency = 0.45 -- ghost: staged, not applied
+        local applyBtn = Instance.new("TextButton")
+        applyBtn.Size = UDim2.fromScale(0.1, 0.3)
+        applyBtn.AnchorPoint = Vector2.new(1, 1)
+        applyBtn.Position = UDim2.fromScale(0.86, 0.98)
+        applyBtn.BackgroundColor3 = Color3.fromRGB(90, 170, 90)
+        applyBtn.Text = "✓ APPLY"
+        applyBtn.TextScaled = true
+        applyBtn.Font = Enum.Font.GothamBold
+        applyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        applyBtn.ZIndex = 10
+        applyBtn.Parent = strip
+        local ac = Instance.new("UICorner")
+        ac.CornerRadius = UDim.new(0, 6)
+        ac.Parent = applyBtn
+        local cancelBtn = applyBtn:Clone()
+        cancelBtn.BackgroundColor3 = Color3.fromRGB(120, 70, 70)
+        cancelBtn.Text = "✕ CANCEL"
+        cancelBtn.Position = UDim2.fromScale(0.97, 0.98)
+        cancelBtn.Parent = strip
+        applyBtn.Activated:Connect(function()
+            local res = callBus("enh.slot", {
+                powerId = powerId,
+                slotIndex = staged.slotIndex,
+                uid = staged.uid,
+            })
+            self._enhStaged = nil
+            if res and res.ok then
+                self._enhTargetSlot = nil
+                self.notice = "Applied ✓"
+                self:_loadLive()
+            else
+                self.notice = "Apply failed: " .. tostring(res and res.reason)
+            end
+            self:_render()
+            self:_renderEnhanceStrip()
+        end)
+        cancelBtn.Activated:Connect(function()
+            self._enhStaged = nil
+            self.notice = nil
+            self:_render()
+            self:_renderEnhanceStrip()
+        end)
+    end
 end
 
 function PowerChoiceMenu:_statusText()
