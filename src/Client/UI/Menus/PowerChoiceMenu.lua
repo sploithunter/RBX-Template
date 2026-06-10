@@ -574,6 +574,11 @@ function PowerChoiceMenu:_renderEnhanceStrip()
             hit.BackgroundTransparency = 1
             hit.Text = ""
             hit.ZIndex = 8
+            -- round the button so the gold TARGETING ring strokes a CIRCLE hugging the
+            -- badge disc (Jason: stroke with no corner = square box around round art)
+            local hc = Instance.new("UICorner")
+            hc.CornerRadius = UDim.new(1, 0)
+            hc.Parent = hit
             hit.Parent = strip
             if self._enhTargetSlot == i then
                 local ring = Instance.new("UIStroke")
