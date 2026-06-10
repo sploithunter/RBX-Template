@@ -165,7 +165,37 @@ local function nearestEgg()
     return best
 end
 
-local function showEggBeacon(token)
+-- Nearest SMALL crystal (Jason: "lead them to a small crystal first" — small = fast
+-- break = fast first payout). Smallest MaxHP band in the area, nearest within the band.
+local function nearestSmallCrystal()
+    local char = Players.LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        return nil
+    end
+    local game_ = Workspace:FindFirstChild("Game")
+    local root = game_ and game_:FindFirstChild("Breakables")
+    if not root then
+        return nil
+    end
+    local best, bestHp, bestDist
+    for _, m in ipairs(root:GetDescendants()) do
+        if m:IsA("Model") and m:GetAttribute("MaxHP") and m:GetAttribute("Dead") ~= true then
+            local hp = tonumber(m:GetAttribute("MaxHP")) or math.huge
+            local d = (m:GetPivot().Position - hrp.Position).Magnitude
+            if d < 400 then
+                -- smaller wins; same size class (within 25%) -> nearer wins
+                if not best or hp < bestHp * 0.75 or (hp <= bestHp * 1.25 and d < bestDist) then
+                    best, bestHp, bestDist = m, hp, d
+                end
+            end
+        end
+    end
+    return best
+end
+
+local function showEggBeacon(token, finder, label)
+    finder = finder or nearestEgg
     beacon = Instance.new("BillboardGui")
     beacon.Name = "TutorialBeacon"
     beacon.Size = UDim2.fromOffset(120, 56)
@@ -179,14 +209,14 @@ local function showEggBeacon(token)
     arrow.TextSize = 22
     arrow.TextColor3 = GOLD
     arrow.TextStrokeTransparency = 0.4
-    arrow.Text = "⬇ HATCH"
+    arrow.Text = label or "⬇ HATCH"
     arrow.Parent = beacon
 
-    -- keep it on the NEAREST egg + bob it (cheap: re-aim every 2s, bob via sine each frame)
+    -- keep it on the NEAREST target + bob it (cheap: re-aim every 2s, bob via sine each frame)
     task.spawn(function()
         local t0 = os.clock()
         while token == stepToken and beacon do
-            local egg = nearestEgg()
+            local egg = finder()
             if egg then
                 beacon.Parent = egg
             end
@@ -207,7 +237,8 @@ end
 local PROMPT_RANGE = 12 -- studs: hide the trail once the hatch prompt is reachable
 local REPLAN_STUDS = 6 -- replan when the player strays this far from the trail head
 
-local function showEggPath(token)
+local function showEggPath(token, finder)
+    finder = finder or nearestEgg
     pathFolder = Instance.new("Folder")
     pathFolder.Name = "TutorialPath"
     pathFolder.Parent = Workspace
@@ -236,7 +267,7 @@ local function showEggPath(token)
         while token == stepToken and pathFolder do
             local char = Players.LocalPlayer.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local egg = nearestEgg()
+            local egg = finder()
             if hrp and egg then
                 local target = egg:GetPivot().Position
                 local dist = (target - hrp.Position).Magnitude
@@ -365,8 +396,14 @@ local function apply(state)
     if target.kind == "egg" then
         showEggBeacon(stepToken)
         showEggPath(stepToken)
+    elseif target.kind == "crystal" then
+        showEggBeacon(stepToken, nearestSmallCrystal, "⬇ MINE")
+        showEggPath(stepToken, nearestSmallCrystal)
     elseif target.kind == "ui" and type(target.name) == "string" then
         showUiPulse(stepToken, target.name)
+    end
+    if target.ui and type(target.ui) == "string" then
+        showUiPulse(stepToken, target.ui) -- secondary UI pulse alongside a world target
     end
 end
 

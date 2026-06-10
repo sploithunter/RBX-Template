@@ -41,7 +41,9 @@ return {
             id = "farm_crystals",
             title = "Mine some crystals",
             body = "Pets mine nearby crystals when Farm Near is ON — if the glowing button says Off, click it! Click a crystal to BOOST it, scoop up the coins. Small crystals = fast but cheap; big = slow but rich!",
-            target = { kind = "ui", name = "Farming" }, -- pulse the Farm button
+            -- trail + MINE beacon to the nearest SMALL crystal (fast first break), and
+            -- the Farm button still pulses as the secondary cue
+            target = { kind = "crystal", ui = "Farming" },
             complete_on = { event = "coin_payout", count = 3 },
         },
         {
