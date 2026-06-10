@@ -132,6 +132,8 @@ local function buildCapsule(pg)
     end)
 end
 
+local pathFolder -- ground breadcrumb trail (egg steps)
+
 local function clearGuidance()
     if beacon then
         beacon:Destroy()
@@ -140,6 +142,10 @@ local function clearGuidance()
     if pulseStroke then
         pulseStroke:Destroy()
         pulseStroke = nil
+    end
+    if pathFolder then
+        pathFolder:Destroy()
+        pathFolder = nil
     end
 end
 
@@ -189,6 +195,101 @@ local function showEggBeacon(token)
                 beacon.StudsOffsetWorldSpace =
                     Vector3.new(0, 6 + math.sin((os.clock() - t0) * 3) * 0.8, 0)
                 RunService.RenderStepped:Wait()
+            end
+        end
+    end)
+end
+
+-- Breadcrumb trail on the GROUND from the player to the nearest egg (Jason: "a path on
+-- the ground that the player follows... until the proximity menu appears"). Pathfinding
+-- waypoints render as flat gold discs that ripple toward the egg; the trail recomputes as
+-- the player moves and disappears inside prompt range (the ProximityPrompt takes over).
+local PROMPT_RANGE = 12 -- studs: hide the trail once the hatch prompt is reachable
+local REPLAN_STUDS = 6 -- replan when the player strays this far from the trail head
+
+local function showEggPath(token)
+    pathFolder = Instance.new("Folder")
+    pathFolder.Name = "TutorialPath"
+    pathFolder.Parent = Workspace
+
+    local PathfindingService = game:GetService("PathfindingService")
+
+    local function dot(pos, index)
+        local d = Instance.new("Part")
+        d.Shape = Enum.PartType.Cylinder
+        d.Size = Vector3.new(0.2, 2.2, 2.2)
+        d.CFrame = CFrame.new(pos + Vector3.new(0, 0.15, 0)) * CFrame.Angles(0, 0, math.rad(90))
+        d.Anchored = true
+        d.CanCollide = false
+        d.CanQuery = false
+        d.CastShadow = false
+        d.Material = Enum.Material.Neon
+        d.Color = GOLD
+        d.Transparency = 0.35
+        d:SetAttribute("TrailIndex", index)
+        d.Parent = pathFolder
+        return d
+    end
+
+    task.spawn(function()
+        local lastPlanFrom
+        while token == stepToken and pathFolder do
+            local char = Players.LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local egg = nearestEgg()
+            if hrp and egg then
+                local target = egg:GetPivot().Position
+                local dist = (target - hrp.Position).Magnitude
+                if dist <= PROMPT_RANGE then
+                    -- close enough: the prompt is the guidance now
+                    pathFolder:ClearAllChildren()
+                    lastPlanFrom = nil
+                elseif
+                    not lastPlanFrom or (hrp.Position - lastPlanFrom).Magnitude > REPLAN_STUDS
+                then
+                    lastPlanFrom = hrp.Position
+                    local path = PathfindingService:CreatePath({
+                        AgentRadius = 2,
+                        AgentCanJump = true,
+                    })
+                    local ok = pcall(function()
+                        path:ComputeAsync(hrp.Position, target)
+                    end)
+                    if ok and path.Status == Enum.PathStatus.Success then
+                        pathFolder:ClearAllChildren()
+                        local n = 0
+                        for _, wp in ipairs(path:GetWaypoints()) do
+                            -- skip the first couple (under the player's feet) and stop
+                            -- short of the egg so the trail reads "walk this way"
+                            n += 1
+                            if n > 2 and (wp.Position - target).Magnitude > PROMPT_RANGE * 0.6 then
+                                dot(wp.Position, n)
+                            end
+                        end
+                    end
+                    -- straight-line fallback when pathfinding fails (no navmesh etc.)
+                    if #pathFolder:GetChildren() == 0 and dist > PROMPT_RANGE then
+                        local dir = (target - hrp.Position) * Vector3.new(1, 0, 1)
+                        local flat = dir.Magnitude
+                        if flat > 1 then
+                            dir = dir.Unit
+                            local steps = math.min(12, math.floor(flat / 6))
+                            for i = 2, steps do
+                                dot(hrp.Position + dir * (i * 6) - Vector3.new(0, 2.5, 0), i)
+                            end
+                        end
+                    end
+                end
+            end
+            -- ripple: pulse dots in sequence so the trail FLOWS toward the egg
+            local nextPlan = os.clock() + 0.6
+            while token == stepToken and pathFolder and os.clock() < nextPlan do
+                local t = os.clock() * 4
+                for _, d in ipairs(pathFolder:GetChildren()) do
+                    local i = d:GetAttribute("TrailIndex") or 0
+                    d.Transparency = 0.25 + 0.45 * (0.5 + 0.5 * math.sin(t - i * 0.7))
+                end
+                task.wait(0.05)
             end
         end
     end)
@@ -263,6 +364,7 @@ local function apply(state)
     local target = state.target or {}
     if target.kind == "egg" then
         showEggBeacon(stepToken)
+        showEggPath(stepToken)
     elseif target.kind == "ui" and type(target.name) == "string" then
         showUiPulse(stepToken, target.name)
     end
