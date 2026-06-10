@@ -1028,8 +1028,10 @@ local function prewarmPetThumbnailViewports()
     })
 end
 
--- Load test GUI for economy testing (remove in production)
-if game:GetService("RunService"):IsStudio() then
+-- The REAL game UI boot: MenuManager + every panel + BaseUI + the ClientUIReady gate.
+-- (Historically wrapped in RunService:IsStudio() from its "test GUI" days — which meant a
+-- PUBLISHED build had NO menus and the boot screen only released via timeout. Always run.)
+do
     task.spawn(function()
         -- OLD: require(script.UI.TestEconomyGUI) -- REMOVED: Replaced by AdminPanel
         -- OLD: require(script.UI.SimpleEffectsGUI) -- REMOVED: Replaced by EffectsPanel in MenuManager
@@ -1114,7 +1116,7 @@ if game:GetService("RunService"):IsStudio() then
         -- Pet-thumbnail prewarm is cosmetic; run it in the BACKGROUND so it never delays the UI/boot.
         -- (It can block ~12s on a timeout, which used to leave MenuManager unavailable early.)
         task.spawn(prewarmPetThumbnailViewports)
-    end) -- Close the task.spawn(function() from line 325
+    end)
 end
 
 -- Initialize EggCurrentTargetService (proximity detection and UI positioning)
