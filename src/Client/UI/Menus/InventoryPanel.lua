@@ -1912,6 +1912,7 @@ end
 -- the ORIGIN color (single = its origin's color, dual = chaotic purple) with Single/Dual as
 -- the rarity line — same grammar as the ENHANCE strip in PowerChoiceMenu.
 function InventoryPanel:_loadEnhancementsFromFolder(enhFolder)
+    self._enhStacks = {} -- fresh grouping per load (stale keys would double-count)
     local ORIGIN_COLOR = {
         geomancer = Color3.fromRGB(150, 230, 150),
         pyromancer = Color3.fromRGB(255, 150, 120),
@@ -1944,25 +1945,41 @@ function InventoryPanel:_loadEnhancementsFromFolder(enhFolder)
             for _, o in ipairs(origins) do
                 shorts[#shorts + 1] = o:sub(1, 1):upper() .. o:sub(2, 3)
             end
-            local displayData = {
-                id = itemFolder.Name,
-                name = typeName and (typeName:sub(1, 1):upper() .. typeName:sub(2))
-                    or ((nameV and nameV:IsA("StringValue") and nameV.Value) or "Enhancement"),
-                icon = "⚙️", -- fallback only; cards render the PetBadge enhancement badge
-                rarity = (#origins == 0 and "Natural") or (single and "Single") or "Dual",
-                color = (#origins == 0 and NATURAL_COLOR)
-                    or (single and ORIGIN_COLOR[origins[1]])
-                    or DUAL_COLOR,
-                category = "Enhancements",
-                count = 1,
-                uid = itemFolder.Name,
-                enhancement_type = typeName,
-                level = level,
-                origins = origins,
-                origins_label = table.concat(shorts, "/"),
-                folder_source = "enhancements",
-            }
-            table.insert(self.inventoryData, displayData)
+            -- STACK identical enhancements for display (Jason: "two L3 accuracies...
+            -- not stacking"): records are uid-keyed server-side, but identical
+            -- (type, origins, level) read as one card with a count, like pets.
+            local stackKey = "enh:"
+                .. tostring(typeName)
+                .. "|"
+                .. table.concat(origins, "+")
+                .. "|"
+                .. tostring(level)
+            self._enhStacks = self._enhStacks or {}
+            local existing = self._enhStacks[stackKey]
+            if existing then
+                existing.count += 1
+            else
+                local displayData = {
+                    id = itemFolder.Name,
+                    name = typeName and (typeName:sub(1, 1):upper() .. typeName:sub(2))
+                        or ((nameV and nameV:IsA("StringValue") and nameV.Value) or "Enhancement"),
+                    icon = "⚙️", -- fallback only; cards render the PetBadge enhancement badge
+                    rarity = (#origins == 0 and "Natural") or (single and "Single") or "Dual",
+                    color = (#origins == 0 and NATURAL_COLOR)
+                        or (single and ORIGIN_COLOR[origins[1]])
+                        or DUAL_COLOR,
+                    category = "Enhancements",
+                    count = 1,
+                    uid = itemFolder.Name,
+                    enhancement_type = typeName,
+                    level = level,
+                    origins = origins,
+                    origins_label = table.concat(shorts, "/"),
+                    folder_source = "enhancements",
+                }
+                self._enhStacks[stackKey] = displayData
+                table.insert(self.inventoryData, displayData)
+            end
         end
     end
 end
