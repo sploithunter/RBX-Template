@@ -58,9 +58,11 @@ return function()
                     for _, field in ipairs({ "display_name", "icon", "base_limit", "storage_type" }) do
                         if not bucket[field] then
                             error(
-                                ("bucket '%s' missing required field '%s' — ConfigLoader will "
+                                (
+                                    "bucket '%s' missing required field '%s' — ConfigLoader will "
                                     .. "KILL BOOT on this (keep this spec in sync with "
-                                    .. "_validateInventoryConfig)"):format(bucketName, field)
+                                    .. "_validateInventoryConfig)"
+                                ):format(bucketName, field)
                             )
                         end
                     end
@@ -78,10 +80,14 @@ return function()
                             error("bucket '" .. bucketName .. "' item_schema must be a table")
                         end
                         if type(bucket.item_schema.required) ~= "table" then
-                            error("bucket '" .. bucketName .. "' item_schema needs 'required' array")
+                            error(
+                                "bucket '" .. bucketName .. "' item_schema needs 'required' array"
+                            )
                         end
                         if type(bucket.item_schema.optional) ~= "table" then
-                            error("bucket '" .. bucketName .. "' item_schema needs 'optional' array")
+                            error(
+                                "bucket '" .. bucketName .. "' item_schema needs 'optional' array"
+                            )
                         end
                     elseif st == "mixed" then
                         if type(bucket.schema) ~= "table" then
