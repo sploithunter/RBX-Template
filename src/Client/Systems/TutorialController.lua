@@ -271,7 +271,9 @@ end
 -- waypoints render as flat gold discs that ripple toward the egg; the trail recomputes as
 -- the player moves and disappears inside prompt range (the ProximityPrompt takes over).
 local PROMPT_RANGE = 12 -- studs: hide the trail once the hatch prompt is reachable
-local REPLAN_STUDS = 6 -- replan when the player strays this far from the trail head
+local REPLAN_SECONDS = 0.5 -- LIVE trail: full replan every cycle (Jason: "no matter where
+-- the player moves... the trail's always correct"). No thresholds, no locked targets —
+-- early-replication races, streaming, respawns all self-heal within one cycle.
 
 local function showEggPath(token, finder)
     finder = finder or nearestEgg
@@ -299,7 +301,6 @@ local function showEggPath(token, finder)
     end
 
     task.spawn(function()
-        local lastPlanFrom, lastTarget
         while token == stepToken and pathFolder do
             local char = Players.LocalPlayer.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -307,19 +308,10 @@ local function showEggPath(token, finder)
             if hrp and egg then
                 local target = egg:GetPivot().Position
                 local dist = (target - hrp.Position).Magnitude
-                local targetChanged = not lastTarget
-                    or (target - lastTarget).Magnitude > REPLAN_STUDS
                 if dist <= PROMPT_RANGE then
                     -- close enough: the prompt is the guidance now
                     pathFolder:ClearAllChildren()
-                    lastPlanFrom = nil
-                elseif
-                    targetChanged
-                    or not lastPlanFrom
-                    or (hrp.Position - lastPlanFrom).Magnitude > REPLAN_STUDS
-                then
-                    lastPlanFrom = hrp.Position
-                    lastTarget = target
+                else
                     local path = PathfindingService:CreatePath({
                         AgentRadius = 2,
                         AgentCanJump = true,
@@ -367,7 +359,7 @@ local function showEggPath(token, finder)
                 end
             end
             -- ripple: pulse dots in sequence so the trail FLOWS toward the egg
-            local nextPlan = os.clock() + 0.6
+            local nextPlan = os.clock() + REPLAN_SECONDS
             while token == stepToken and pathFolder and os.clock() < nextPlan do
                 local t = os.clock() * 4
                 for _, d in ipairs(pathFolder:GetChildren()) do
