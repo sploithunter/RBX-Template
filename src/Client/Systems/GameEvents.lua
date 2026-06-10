@@ -125,7 +125,7 @@ REACTIONS.banner = function(spec, ctx)
     gui.DisplayOrder = 60
     local card = Instance.new("Frame")
     card.AnchorPoint = Vector2.new(0.5, 0)
-    card.Position = UDim2.new(0.5, 0, 0.22, 0)
+    card.Position = UDim2.new(0.5, 0, 0.28, 0)
     card.Size = UDim2.fromOffset(380, 56)
     card.BackgroundColor3 = Color3.fromRGB(24, 22, 32)
     card.BackgroundTransparency = 0.08
@@ -153,22 +153,29 @@ REACTIONS.banner = function(spec, ctx)
         require(script.Parent.Parent.UI.UIViewportScale).attach(card)
     end)
     activeBanner = gui
+    -- Jason: not a parked center banner ("annoying") — the card FLOATS UP slowly the
+    -- whole time and dissolves near the end. Slow enough to read (spec.seconds, def 5).
     local seconds = tonumber(spec.seconds) or 5
+    local TweenService = game:GetService("TweenService")
+    TweenService:Create(
+        card,
+        TweenInfo.new(seconds, Enum.EasingStyle.Linear),
+        { Position = UDim2.new(0.5, 0, 0.10, 0) } -- gentle rise from 0.28 screen height
+    ):Play()
+    local fade = TweenInfo.new(seconds * 0.35) -- dissolve over the last third
+    task.delay(seconds * 0.65, function()
+        if activeBanner ~= gui then
+            return
+        end
+        TweenService:Create(card, fade, { BackgroundTransparency = 1 }):Play()
+        TweenService:Create(label, fade, { TextTransparency = 1 }):Play()
+        TweenService:Create(stroke, fade, { Transparency = 1 }):Play()
+    end)
     task.delay(seconds, function()
         if activeBanner == gui then
-            -- quick fade then gone
-            local TweenService = game:GetService("TweenService")
-            local info = TweenInfo.new(0.4)
-            TweenService:Create(card, info, { BackgroundTransparency = 1 }):Play()
-            TweenService:Create(label, info, { TextTransparency = 1 }):Play()
-            TweenService:Create(stroke, info, { Transparency = 1 }):Play()
-            task.delay(0.45, function()
-                if activeBanner == gui then
-                    activeBanner = nil
-                end
-                gui:Destroy()
-            end)
+            activeBanner = nil
         end
+        gui:Destroy()
     end)
 end
 
