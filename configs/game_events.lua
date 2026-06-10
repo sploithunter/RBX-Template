@@ -150,4 +150,6 @@ return {
     --   power_selected — a power pick committed {power} (PowerService:Select)
     --   power_cast    — a power cast succeeded {power} (PowerService:Cast; frequent — keep silent)
     --   pet_equipped  — a pet equip TOGGLED {action} (InventoryService; tutorial equip step)
+    --   new_enhancement — first-ever discovery of an enhancement identity {key,name}
+    --                     (EnhancementService Grant; the Enhancement Index grew)
 }

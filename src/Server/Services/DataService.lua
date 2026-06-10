@@ -1144,8 +1144,32 @@ function DataService:SetCurrency(player, currencyType, amount, source)
     return true
 end
 
+-- currency id -> lifetime-earned counter (Jason: track totals EVEN IF SPENT — quests
+-- and achievements key off them, e.g. "hatch a million eggs" needs the true total).
+-- Every biome coin rolls up into coins_earned_lifetime.
+local LIFETIME_COUNTER = setmetatable({
+    gems = "gems_earned_lifetime",
+    crystals = "crystals_earned_lifetime",
+}, {
+    __index = function(_, currencyType)
+        if tostring(currencyType) == "coins" or tostring(currencyType):match("_coins$") then
+            return "coins_earned_lifetime"
+        end
+        return nil
+    end,
+})
+
 function DataService:AddCurrency(player, currencyType, amount, source)
     local currentAmount = self:GetCurrency(player, currencyType)
+    -- lifetime EARNED tally: positive, non-admin grants only (admin testing must not
+    -- inflate achievement progress); spending later never subtracts
+    local counter = amount and amount > 0 and LIFETIME_COUNTER[currencyType]
+    if counter and not tostring(source or ""):lower():find("admin") then
+        local data = self:GetData(player)
+        if data and data.Stats and data.Stats.Counters then
+            data.Stats.Counters[counter] = (data.Stats.Counters[counter] or 0) + amount
+        end
+    end
     return self:SetCurrency(player, currencyType, currentAmount + amount, source or "currency_add")
 end
 

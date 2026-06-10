@@ -191,6 +191,26 @@ function EnhancementService:Grant(player, record)
     pcall(function() -- mission counter (quest chain "Find an enhancement")
         _G.RBXTemplateServices:Get("StatsService"):Increment(player, "enhancements_found", 1)
     end)
+    -- ENHANCEMENT INDEX (Jason, PetIndex pattern): every enhancement identity ever
+    -- obtained gets a permanent discovery record — count + first-obtained timestamp.
+    -- Future "very special" enhancements are valuable precisely because this exists.
+    do
+        local sorted = table.clone(record.origins)
+        table.sort(sorted)
+        local key = record.type .. ":" .. table.concat(sorted, "+")
+        data.EnhancementIndex = data.EnhancementIndex or { Discovered = {} }
+        data.EnhancementIndex.Discovered = data.EnhancementIndex.Discovered or {}
+        local entry = data.EnhancementIndex.Discovered[key]
+        if entry then
+            entry.count = (entry.count or 0) + 1
+        else
+            data.EnhancementIndex.Discovered[key] = { count = 1, first_at = os.time() }
+            -- bus source (no default reactions yet): first-ever discovery of this identity
+            local fireGameEvent =
+                require(game:GetService("ReplicatedStorage").Shared.Network.FireGameEvent)
+            fireGameEvent(player, "new_enhancement", { key = key, name = name })
+        end
+    end
     return { ok = true, uid = uid, name = name }
 end
 
