@@ -48,10 +48,12 @@ return {
     --              (EggService folds it into luckBoost — boosts rare species AND variants).
     support_auras = {
         -- Grass: LUCK (Jason: heal was off-theme — lucky rabbit's foot + clover fields).
-        bunny = { kind = "luck", interval = 2.0, mult = 1.25, duration = 3 },
-        penguin = { kind = "defense", interval = 2.0, amount = 80, duration = 3 }, -- Ice
-        emberimp = { kind = "offense", interval = 2.0, mult = 1.25, duration = 3 }, -- Lava
-        meerkat = { kind = "yield", interval = 2.0, mult = 1.25, duration = 3 }, -- Desert
+        -- durations sit WELL above intervals so the continuously-refreshed buffs never
+        -- gap between stamps (a 3s window on a 2s tick flickered at the boundary)
+        bunny = { kind = "luck", interval = 2.0, mult = 1.25, duration = 6 },
+        penguin = { kind = "defense", interval = 2.0, amount = 80, duration = 6 }, -- Ice
+        emberimp = { kind = "offense", interval = 2.0, mult = 1.25, duration = 6 }, -- Lava
+        meerkat = { kind = "yield", interval = 2.0, mult = 1.25, duration = 6 }, -- Desert
     },
 
     -- Role definitions. glyph = placeholder letter (until art exists via `icon`).

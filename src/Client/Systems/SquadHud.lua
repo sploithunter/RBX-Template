@@ -222,10 +222,11 @@ local PET_EFFECTS = {
         key = "luck",
         source = "pet",
         untilAttr = "LuckFxUntil",
+        stacksAttr = "LuckFxUntilStacks", -- # of bunny buffers
+        steady = true, -- constant aura = SOLID badge (Jason: "constant should be constant")
         color = Color3.fromRGB(120, 230, 120),
         label = "LCK",
         icon = POWER_ICONS.discFor("earth", "clover_lucky"), -- lucky-rabbit aura (bunny)
-        pulse = true,
     },
     -- Support-pet AURAS a pet currently HAS (every affected pet, not just the buffer). Fixed
     -- element-disc per kind so the badge reads the providing biome: defense=ice, offense=lava,
