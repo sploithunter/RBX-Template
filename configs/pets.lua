@@ -1843,9 +1843,15 @@ function petConfig.simulateHatch(eggType, playerData)
         rainbowChance = rainbowChance * gamepassMods.vip_rainbow_bonus
     end
 
-    -- Apply luck to chances
-    goldenChance = goldenChance * luckMultiplier
-    rainbowChance = rainbowChance * luckMultiplier
+    -- Apply luck to chances — STAGED CHANNELS (Jason): every stage has its own luck
+    -- on top of the general multiplier, so events/powers/gamepasses can target ONE
+    -- outcome ("2x rainbow weekend") without touching the others:
+    --   species : luckMultiplier (+ secretLuckBoost for secrets)   [stage 1]
+    --   golden  : luckMultiplier * goldenLuckBoost                 [stage 2]
+    --   rainbow : luckMultiplier * rainbowLuckBoost                [stage 2]
+    --   huge    : hugeLuckBoost (fractional attempts)              [stage 2.5]
+    goldenChance = goldenChance * luckMultiplier * (tonumber(playerData.goldenLuckBoost) or 1)
+    rainbowChance = rainbowChance * luckMultiplier * (tonumber(playerData.rainbowLuckBoost) or 1)
 
     -- Stage 2.5: HUGE roll (Jason's design): huges are SEPARATE unique pets, never a
     -- variant. The normal pet above is the QUEUED outcome; the player then gets

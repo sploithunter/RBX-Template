@@ -780,6 +780,21 @@ function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
         })
         playerData.luckBoost = tonumber(hatchLuck) or baseLuckBoost
         playerData.secretLuckBoost = tonumber(secretLuck) or 0
+        -- per-VARIANT luck channels (Jason: staged + dynamic — a "2x rainbow event"
+        -- registers a modifier on ONE kind and nothing else moves). Base 1 = neutral.
+        for kind, field in pairs({
+            golden_hatch_luck = "goldenLuckBoost",
+            rainbow_hatch_luck = "rainbowLuckBoost",
+        }) do
+            local v = self._modifierService:Resolve(1, {
+                player = player,
+                kind = kind,
+                eggType = eggType,
+                currency = eggData.currency,
+                source = "EggService",
+            })
+            playerData[field] = tonumber(v) or 1
+        end
         -- huge luck: a MULTIPLE (1 = one jackpot attempt, 3 = three — Jason's reroll
         -- model). Sources hook in via the modifier kind below (gamepass/power later).
         local hugeLuck = self._modifierService:Resolve(1, {
