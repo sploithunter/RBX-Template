@@ -722,6 +722,48 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("settings.get", {
+        description = "The player's persisted client prefs (audio sliders etc.).",
+        handler = function(context)
+            local dataSvc = self:_service("DataService")
+            local data = dataSvc and dataSvc:GetData(context.player)
+            if not data then
+                return { ok = false, reason = "data_not_loaded" }
+            end
+            local prefs = type(data.Settings) == "table" and data.Settings.ClientPrefs or nil
+            return { ok = true, audio = prefs and prefs.audio or nil }
+        end,
+    })
+
+    bus:register("settings.set", {
+        description = "Persist client prefs (audio sliders) into the profile.",
+        validate = function(args)
+            return Validators.fields(args, { audio = { type = "table", optional = true } })
+        end,
+        handler = function(context, args)
+            local dataSvc = self:_service("DataService")
+            local data = dataSvc and dataSvc:GetData(context.player)
+            if not data then
+                return { ok = false, reason = "data_not_loaded" }
+            end
+            data.Settings = type(data.Settings) == "table" and data.Settings or {}
+            data.Settings.ClientPrefs = type(data.Settings.ClientPrefs) == "table"
+                    and data.Settings.ClientPrefs
+                or {}
+            if type(args.audio) == "table" then
+                -- whitelist the known numeric/boolean fields (no arbitrary blobs in the profile)
+                data.Settings.ClientPrefs.audio = {
+                    masterVolume = math.clamp(tonumber(args.audio.masterVolume) or 1, 0, 1),
+                    effectsVolume = math.clamp(tonumber(args.audio.effectsVolume) or 1, 0, 1),
+                    musicVolume = math.clamp(tonumber(args.audio.musicVolume) or 1, 0, 1),
+                    uiSoundsEnabled = args.audio.uiSoundsEnabled ~= false,
+                }
+            end
+            dataSvc:RequestSave(context.player, "client_prefs")
+            return { ok = true }
+        end,
+    })
+
     bus:register("tutorial.reset", {
         description = "[admin/test] Restart the tutorial for the calling player.",
         handler = function(context)

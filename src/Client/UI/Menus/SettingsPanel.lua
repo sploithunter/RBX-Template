@@ -21,6 +21,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
+local AudioPrefs = require(script.Parent.Parent.Parent.Systems.AudioPrefs)
 
 -- Load Logger with wrapper (following the established pattern)
 local LoggerWrapper
@@ -672,6 +673,15 @@ end
 function SettingsPanel:_createAudioSettings()
     self:_createSectionHeader("🔊 Audio Settings", 1)
 
+    -- seed the sliders from the PERSISTED prefs (AudioPrefs loads + applies them at boot;
+    -- without this the controls re-default to 1.0 every session)
+    local saved = AudioPrefs.loaded()
+    if type(saved) == "table" then
+        for k, v in pairs(saved) do
+            self.settings.audio[k] = v
+        end
+    end
+
     -- Each control updates its setting then re-applies all buses. (SoundService has NO
     -- MasterVolume property, so Master is folded into the per-bus volumes below.)
     self:_createSliderSetting(
@@ -725,10 +735,8 @@ end
 -- through these three buses, so master scales effects + music + UI together.
 function SettingsPanel:_applyAudioSettings()
     local audio = self.settings.audio
-    local master = tonumber(audio.masterVolume) or 1
-    SoundGroups.setVolume("effects", (tonumber(audio.effectsVolume) or 1) * master)
-    SoundGroups.setVolume("music", (tonumber(audio.musicVolume) or 1) * master)
-    SoundGroups.setVolume("ui", (audio.uiSoundsEnabled and 1 or 0) * master)
+    AudioPrefs.apply(audio)
+    AudioPrefs.save(audio) -- debounced persist — sliders survive rejoin (Jason)
 end
 
 function SettingsPanel:_createGraphicsSettings()
