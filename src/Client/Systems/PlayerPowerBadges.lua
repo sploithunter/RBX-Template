@@ -26,7 +26,14 @@ local BUFFS = {
     { attr = "PetDamageBuff", label = "DMG" }, -- Mountain's Strength
     { attr = "CritBuff", label = "CRIT" }, -- Critical Strike
     { attr = "CoinYieldPower", label = "COIN" }, -- Prospector / Windfall
-    { attr = "LuckBuff", label = "LUCK" }, -- Fortune / Huge Fortune
+    { attr = "LuckBuff", label = "LUCK" }, -- Fortune / Huge Fortune (purple clover)
+    -- bunny support aura: GREEN clover (earth disc + clover_lucky — composed from
+    -- existing assets, Jason's spec). Fixed badge: no PowerId to resolve.
+    {
+        attr = "HatchLuckBuff",
+        label = "LUCK",
+        fixed = { element = "earth", symbol = "clover_lucky" },
+    },
     { attr = "MoveSpeedBuff", label = "SPD" }, -- Swift
     { attr = "RechargeBuff", label = "RCH" }, -- Hasten
     { attr = "XpBuff", label = "XP" }, -- XP Surge
@@ -121,9 +128,14 @@ function PlayerPowerBadges.start()
                     b = makeBadge(row, i)
                     badges[def.attr] = b
                 end
-                local powerId = localPlayer:GetAttribute(def.attr .. "PowerId")
-                local badge = powerId and PetBadge.forPower(powerId)
-                local disc = badge and POWER_ICONS.discFor(badge.element, badge.symbol)
+                local disc
+                if def.fixed then
+                    disc = POWER_ICONS.discFor(def.fixed.element, def.fixed.symbol)
+                else
+                    local powerId = localPlayer:GetAttribute(def.attr .. "PowerId")
+                    local badge = powerId and PetBadge.forPower(powerId)
+                    disc = badge and POWER_ICONS.discFor(badge.element, badge.symbol)
+                end
                 b.disc.Image = disc or ""
                 local remaining = untilT - now
                 -- PASSIVE / TOGGLE buffs (Magnet/Swift/Hasten/XP) are always-on: their `Until` is a

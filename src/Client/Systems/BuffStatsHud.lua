@@ -293,14 +293,24 @@ function BuffStatsHud:_refresh()
         soonestRemaining(p, { "MiningBuffUntil" }, now)
     )
 
-    -- 🍀 Luck.
+    -- 🍀 Luck: the Fortune POWER + the bunny support AURA (HatchLuckBuff is a
+    -- multiplier attribute; contribute its fraction) stack additively like everything.
     local luck = BuffStack.multiplier({
         {
             fraction = p:GetAttribute("LuckBuff") or 0,
             expiry = p:GetAttribute("LuckBuffUntil") or 0,
         },
+        {
+            fraction = math.max(0, (p:GetAttribute("HatchLuckBuff") or 1) - 1),
+            expiry = p:GetAttribute("HatchLuckBuffUntil") or 0,
+        },
     }, now, axis("luck"))
-    self:_setMult("luck", luck, axis("luck").cap, soonestRemaining(p, { "LuckBuffUntil" }, now))
+    self:_setMult(
+        "luck",
+        luck,
+        axis("luck").cap,
+        soonestRemaining(p, { "LuckBuffUntil", "HatchLuckBuffUntil" }, now)
+    )
 
     -- 🐾 Speed.
     local speed = BuffStack.multiplier({
