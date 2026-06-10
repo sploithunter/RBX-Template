@@ -305,10 +305,14 @@ return {
         enhancements = {
             display_name = "Enhancements",
             icon = "⚙️",
-            base_limit = 60, -- mirrors enhancements.lua inventory_cap
-            stack_size = 1, -- each drop is its own uid record (no stacking)
-            allow_duplicates = true, -- many copies of the same type/origin roll is normal
-            storage_type = "unique", -- each drop is its own uid record { type, origins }
+            base_limit = 60, -- 60 distinct IDENTITIES (stacks share a slot)
+            stack_size = 999, -- identical (type+origins+level) pile into one record
+            allow_duplicates = true,
+            -- STACKABLE (Jason: uid-per-drop = "save explosion... that's why we have
+            -- stacks"). The stack id IS the identity: type|origins(ordered)|level —
+            -- ring + interior colors preserved exactly (order matters: geo+pyro and
+            -- pyro+geo are different art, different stacks).
+            storage_type = "stackable",
             item_schema = {
                 required = {
                     "id", -- always "enhancement"

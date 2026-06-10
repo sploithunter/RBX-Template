@@ -66,6 +66,44 @@ function EnhancementService:Start()
                 changed = true
             end
         end
+        -- STACK MIGRATION (Jason: uid-per-drop = save explosion): fold legacy
+        -- uid-keyed records into identity stacks. One-time per profile.
+        if bucket and bucket.items then
+            local folds = {}
+            for key, rec in pairs(bucket.items) do
+                if rec.type and not key:find("^enh_") then
+                    folds[#folds + 1] = key
+                end
+            end
+            for _, key in ipairs(folds) do
+                local rec = bucket.items[key]
+                bucket.items[key] = nil
+                local stackId = ("enh_%s_%s_L%d"):format(
+                    rec.type,
+                    (type(rec.origins) == "table" and #rec.origins > 0)
+                            and table.concat(rec.origins, "+")
+                        or "natural",
+                    math.max(1, math.floor(tonumber(rec.level) or 1))
+                )
+                local stack = bucket.items[stackId]
+                if stack then
+                    stack.quantity = (tonumber(stack.quantity) or 1) + (tonumber(rec.quantity) or 1)
+                else
+                    rec.id = stackId
+                    rec.quantity = tonumber(rec.quantity) or 1
+                    bucket.items[stackId] = rec
+                end
+                changed = true
+            end
+            if #folds > 0 then
+                -- recount used slots: stacks share one slot per identity
+                local used = 0
+                for _ in pairs(bucket.items) do
+                    used += 1
+                end
+                bucket.used_slots = used
+            end
+        end
         if changed then
             self._dataService:RequestSave(player, "enhancement_csv_backfill")
             pcall(function()
@@ -145,6 +183,7 @@ function EnhancementService:GetState(player)
                 type = rec.type,
                 origins = rec.origins,
                 level = rec.level or 1,
+                count = math.max(1, math.floor(tonumber(rec.quantity) or 1)),
                 name = rec.name or Enhancements.displayName(self._config, rec),
                 usable = Enhancements.usableBy(rec, data.Archetype),
                 single = Enhancements.isSingle(rec),
@@ -177,8 +216,15 @@ function EnhancementService:Grant(player, record)
         return { ok = false, reason = "service_unavailable" }
     end
     local name = Enhancements.displayName(self._config, record)
+    -- the stack id IS the identity (Jason: stacks, not uids — DataStore size). Ordered
+    -- origins: ring/interior arrangement is part of the identity (art preserved).
+    local stackId = ("enh_%s_%s_L%d"):format(
+        record.type,
+        #record.origins > 0 and table.concat(record.origins, "+") or "natural",
+        math.max(1, math.floor(tonumber(record.level) or 1))
+    )
     local uid, err = invSvc:AddItem(player, BUCKET, {
-        id = "enhancement",
+        id = stackId,
         type = record.type,
         origins = record.origins,
         origins_csv = table.concat(record.origins, ","), -- folder-mirror friendly

@@ -1938,6 +1938,10 @@ function InventoryPanel:_loadEnhancementsFromFolder(enhFolder)
             local level = (levelV and (levelV:IsA("NumberValue") or levelV:IsA("IntValue")))
                     and math.floor(levelV.Value)
                 or nil
+            local qtyV = itemFolder:FindFirstChild("quantity")
+            local quantity = (qtyV and (qtyV:IsA("NumberValue") or qtyV:IsA("IntValue")))
+                    and math.max(1, math.floor(qtyV.Value))
+                or 1
             -- short labels read BIG on the card (TextScaled): name = the TYPE ("Health"),
             -- second line = the origin pair ("Geo/Cryo") in the rarity color; the badge
             -- (colored disc + symbol + ring) carries the identity
@@ -1957,7 +1961,7 @@ function InventoryPanel:_loadEnhancementsFromFolder(enhFolder)
             self._enhStacks = self._enhStacks or {}
             local existing = self._enhStacks[stackKey]
             if existing then
-                existing.count += 1
+                existing.count += quantity
             else
                 local displayData = {
                     id = itemFolder.Name,
@@ -1969,7 +1973,7 @@ function InventoryPanel:_loadEnhancementsFromFolder(enhFolder)
                         or (single and ORIGIN_COLOR[origins[1]])
                         or DUAL_COLOR,
                     category = "Enhancements",
-                    count = 1,
+                    count = quantity,
                     uid = itemFolder.Name,
                     enhancement_type = typeName,
                     level = level,

@@ -702,7 +702,8 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                 groups[key] = { item = item, count = 0, uids = {} }
                 order[#order + 1] = key
             end
-            groups[key].count += 1
+            -- server stacks now carry a count (quantity); legacy items count as 1
+            groups[key].count += (item.count or 1)
             groups[key].uids[#groups[key].uids + 1] = item.uid
         elseif okType and item.usable then
             hidden += 1
