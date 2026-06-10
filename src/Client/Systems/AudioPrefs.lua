@@ -15,6 +15,7 @@ local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
 
 local AudioPrefs = {}
 local loadedAudio = nil -- last known persisted table (nil until the bus answers)
+local loadResolved = false -- the initial settings.get completed (success or no prefs)
 local saveQueued = false
 
 local function callBus(name, args)
@@ -48,9 +49,12 @@ function AudioPrefs.loaded()
 end
 
 -- Debounced persist (1s): the LAST values win; slider drags collapse to one save.
+-- HARD GUARD: never persist before the initial load resolves — the Settings panel
+-- syncs-and-saves on build, and doing that pre-load CLOBBERED the stored prefs with
+-- defaults (Jason's "sometimes it's at 100%" race).
 function AudioPrefs.save(audio)
     loadedAudio = audio
-    if saveQueued then
+    if not loadResolved or saveQueued then
         return
     end
     saveQueued = true
@@ -62,12 +66,22 @@ end
 
 function AudioPrefs.start()
     task.spawn(function()
-        local res = callBus("settings.get")
-        local audio = type(res) == "table" and type(res.audio) == "table" and res.audio
-        if audio then
-            loadedAudio = audio
-            AudioPrefs.apply(audio)
+        -- RETRY until the profile answers: client boot often beats DataService, and the
+        -- single-shot get returned data_not_loaded -> defaults stuck at 100% (Jason).
+        for attempt = 1, 30 do
+            local res = callBus("settings.get")
+            if type(res) == "table" and res.ok ~= false then
+                local audio = type(res.audio) == "table" and res.audio or nil
+                if audio then
+                    loadedAudio = audio
+                    AudioPrefs.apply(audio)
+                end
+                loadResolved = true -- success (with or without stored prefs): saves may flow
+                return
+            end
+            task.wait(attempt <= 5 and 0.5 or 2)
         end
+        loadResolved = true -- give up gracefully; allow saves so the session still works
     end)
 end
 
