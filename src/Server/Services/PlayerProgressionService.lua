@@ -6,6 +6,8 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local Players = game:GetService("Players")
 
 local LevelCurve = require(ReplicatedStorage.Shared.Game.LevelCurve)
@@ -420,6 +422,9 @@ function PlayerProgressionService:ClaimLevel(player, expectedLevel, silent)
     local newLevel = claimed + 1
     local entry = self:_applyLevel(player, newLevel, false, silent)
     self:_advanceAuto(player) -- auto-claim any filler that follows the trained level
+    -- bus source (no default reactions — the client LevelUpController owns the level_up juice;
+    -- this is the SERVER-truth signal consumers like the tutorial need)
+    fireGameEvent(player, "level_claimed", { level = self:GetClaimedLevel(player) })
 
     return {
         ok = true,

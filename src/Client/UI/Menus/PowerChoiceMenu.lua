@@ -38,6 +38,7 @@ local powersCfg = require(Configs:WaitForChild("powers"))
 local archetypesCfg = require(Configs:WaitForChild("archetypes"))
 local levelTrackCfg = require(Configs:WaitForChild("level_track"))
 local PowerSelection = require(ReplicatedStorage.Shared.Game.PowerSelection)
+local PowerDescribe = require(ReplicatedStorage.Shared.Game.PowerDescribe)
 local PowerSlotRow = require(script.Parent.Parent.PowerSlotRow)
 local Enhancements = require(ReplicatedStorage.Shared.Game.Enhancements)
 local enhCfg = require(Configs:WaitForChild("enhancements"))
@@ -686,6 +687,88 @@ function PowerChoiceMenu:_statusText()
     return "Level Up for your next choice", Color3.fromRGB(200, 200, 210)
 end
 
+-- Hover tooltip: derived power description (PowerDescribe — summary from the LIVE numbers).
+-- One shared frame per menu; rows show/hide it. Touch taps fire MouseEnter too, so mobile
+-- gets the description on the same tap that stages a pick.
+function PowerChoiceMenu:_ensureTooltip()
+    if self._tooltip and self._tooltip.Parent then
+        return self._tooltip
+    end
+    local tip = Instance.new("Frame")
+    tip.Name = "PowerTooltip"
+    tip.Size = UDim2.fromOffset(240, 0)
+    tip.AutomaticSize = Enum.AutomaticSize.Y
+    tip.BackgroundColor3 = Color3.fromRGB(16, 14, 26)
+    tip.BackgroundTransparency = 0.05
+    tip.Visible = false
+    tip.ZIndex = 60
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = tip
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 205, 70)
+    stroke.Thickness = 1.5
+    stroke.Parent = tip
+    local pad = Instance.new("UIPadding")
+    pad.PaddingTop = UDim.new(0, 8)
+    pad.PaddingBottom = UDim.new(0, 8)
+    pad.PaddingLeft = UDim.new(0, 10)
+    pad.PaddingRight = UDim.new(0, 10)
+    pad.Parent = tip
+    local list = Instance.new("UIListLayout")
+    list.FillDirection = Enum.FillDirection.Vertical
+    list.Padding = UDim.new(0, 4)
+    list.Parent = tip
+
+    local function label(name, size, color, font)
+        local l = Instance.new("TextLabel")
+        l.Name = name
+        l.BackgroundTransparency = 1
+        l.Size = UDim2.new(1, 0, 0, 0)
+        l.AutomaticSize = Enum.AutomaticSize.Y
+        l.Font = font or Enum.Font.Gotham
+        l.TextSize = size
+        l.TextColor3 = color
+        l.TextWrapped = true
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.ZIndex = 61
+        l.Parent = tip
+        return l
+    end
+    label("Title", 14, Color3.fromRGB(255, 205, 70), Enum.Font.GothamBold).LayoutOrder = 1
+    label("Summary", 12, Color3.fromRGB(235, 235, 245)).LayoutOrder = 2
+    label("Stats", 11, Color3.fromRGB(160, 160, 185)).LayoutOrder = 3
+    tip.Parent = self.frame
+    self._tooltip = tip
+    return tip
+end
+
+function PowerChoiceMenu:_showTooltip(row, powerId)
+    local d = PowerDescribe.describe(powersCfg, powerId)
+    if not d or not self.frame then
+        return
+    end
+    local def = powersCfg.powers[powerId] or {}
+    local tip = self:_ensureTooltip()
+    tip.Title.Text = def.display_name or powerId
+    tip.Summary.Text = d.summary
+    tip.Stats.Text = table.concat(d.lines, "   ·   ")
+    tip.Stats.Visible = #d.lines > 0
+    -- beside the row, flipped left when the row sits in the menu's right half
+    local fa, fs = self.frame.AbsolutePosition, self.frame.AbsoluteSize
+    local ra, rs = row.AbsolutePosition, row.AbsoluteSize
+    local rightOfRow = ra.X + rs.X - fa.X + 8
+    local x = (rightOfRow + 240 <= fs.X) and rightOfRow or (ra.X - fa.X - 248)
+    tip.Position = UDim2.fromOffset(x, math.clamp(ra.Y - fa.Y, 0, math.max(0, fs.Y - 120)))
+    tip.Visible = true
+end
+
+function PowerChoiceMenu:_hideTooltip()
+    if self._tooltip then
+        self._tooltip.Visible = false
+    end
+end
+
 function PowerChoiceMenu:_fillColumn(holder, pool)
     for _, child in ipairs(holder:GetChildren()) do
         if child:IsA("GuiObject") then
@@ -736,6 +819,12 @@ function PowerChoiceMenu:_fillColumn(holder, pool)
         wrap.Parent = holder
         wrap.Activated:Connect(function()
             self:_onRow(r.id)
+        end)
+        wrap.MouseEnter:Connect(function()
+            self:_showTooltip(wrap, r.id)
+        end)
+        wrap.MouseLeave:Connect(function()
+            self:_hideTooltip()
         end)
         PowerSlotRow.create(wrap, {
             powerId = r.id,
@@ -867,6 +956,7 @@ local function setChipEnabled(btn, on)
 end
 
 function PowerChoiceMenu:_render()
+    self:_hideTooltip()
     if self.naturalCol then
         self:_fillColumn(self.naturalCol, archetypesCfg.generic_pool)
     end

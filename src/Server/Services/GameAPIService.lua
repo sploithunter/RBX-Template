@@ -722,6 +722,17 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("tutorial.reset", {
+        description = "[admin/test] Restart the tutorial for the calling player.",
+        handler = function(context)
+            local svc = self:_service("TutorialService")
+            if not svc then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return svc:Reset(context.player)
+        end,
+    })
+
     bus:register("enh.get", {
         description = "Enhancement inventory + per-power slotted view for the calling player.",
         handler = function(context)

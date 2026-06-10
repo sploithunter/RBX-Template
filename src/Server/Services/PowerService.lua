@@ -1322,6 +1322,7 @@ function PowerService:Cast(player, powerId)
             { power = powerId, effect = def.effect, family = kind.family }
         )
     end
+    fireGameEvent(player, "power_cast", { power = powerId }) -- bus source (tutorial etc.)
     return { ok = true, power = powerId, cooldown = cd }
 end
 
@@ -1424,6 +1425,7 @@ function PowerService:Select(player, powerId, levelOverride)
             hotbar:_pushState(player)
         end
     end)
+    fireGameEvent(player, "power_selected", { power = powerId }) -- bus source (tutorial etc.)
     return { ok = true, powers = selected }
 end
 

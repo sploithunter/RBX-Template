@@ -138,4 +138,8 @@ return {
     --                   choreography in EggHatchingService and stays there)
     --   economy_error — purchase/sell failures {message} (the error notice already informs;
     --                   add an error blip here if/when one is uploaded)
+    --   level_claimed — a level was CLAIMED, server truth {level} (client level_up owns the juice;
+    --                   this one exists for server consumers — the tutorial taps it)
+    --   power_selected — a power pick committed {power} (PowerService:Select)
+    --   power_cast    — a power cast succeeded {power} (PowerService:Cast; frequent — keep silent)
 }

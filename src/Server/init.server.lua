@@ -383,6 +383,12 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.EnhancementService,
     { "Logger", "ConfigLoader", "DataService" }
 )
+-- TutorialService: event-driven new-player tutorial (taps the GameEvents bus; configs/tutorial).
+loader:RegisterModule(
+    "TutorialService",
+    ServerScriptService.Server.Services.TutorialService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- HotbarService: Halo & Horns hotbar / command bar (Feature 16).
 loader:RegisterModule(
     "HotbarService",
@@ -613,6 +619,7 @@ table.insert(requiredModules, "ArchetypeService")
 table.insert(requiredModules, "PowerService")
 table.insert(requiredModules, "AugmentationService")
 table.insert(requiredModules, "EnhancementService")
+table.insert(requiredModules, "TutorialService")
 table.insert(requiredModules, "HotbarService")
 table.insert(requiredModules, "RosterService")
 table.insert(requiredModules, "PartyService")

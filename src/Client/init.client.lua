@@ -339,6 +339,7 @@ do
         require(script.Systems.CurrencyStyle).start()
         require(script.Systems.CurrencyStack).start()
         require(script.Systems.TopHudStack).start()
+        require(script.Systems.TutorialController).start()
     end)
     if not ok then
         Logger:Warn("Failed to start CurrencyStyle", { error = tostring(err) })
