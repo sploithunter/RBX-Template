@@ -2257,29 +2257,11 @@ function EggInteractionService:Initialize()
     if success then
         currentTargetService = currentTargetServiceOrError
         Logger:Info("Got CurrentTargetService reference", { context = "EggInteractionService" })
-        -- tapping the proximity card == pressing E (buttons primary — Jason); the
-        -- card also hosts MAX/AUTO (the floating bar is gone)
+        -- tapping the proximity card == pressing E — the ONLY hatch button (Jason:
+        -- max/auto are SETTINGS, not buttons; "we could only click E, leave it that way")
         if currentTargetService.SetCardActivatedHandler then
             currentTargetService:SetCardActivatedHandler(function()
                 self:OnEKeyPressed()
-            end)
-        end
-        if currentTargetService.SetCardActionHandlers then
-            currentTargetService:SetCardActionHandlers({
-                max = function()
-                    self:OnMaxHatchKeyPressed()
-                end,
-                auto = function()
-                    self:ToggleAutoHatch()
-                end,
-            })
-            task.spawn(function()
-                while true do
-                    if currentTargetService.SetCardAutoActive then
-                        currentTargetService:SetCardAutoActive(autoHatchEnabled)
-                    end
-                    task.wait(0.5)
-                end
             end)
         end
     else

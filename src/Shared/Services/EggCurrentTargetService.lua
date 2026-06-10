@@ -242,42 +242,6 @@ function EggCurrentTargetService:CreateEggUI()
         end
     end)
 
-    -- MAX / AUTO ride the card (Jason: the floating bar was redundant once the card
-    -- became the hatch button) — a small row hanging just under the card.
-    local function smallBtn(text, x, color)
-        local b = Instance.new("TextButton")
-        b.Name = "Card" .. text
-        b.AnchorPoint = Vector2.new(0, 0)
-        b.Position = UDim2.new(x, 4, 1, 6)
-        b.Size = UDim2.new(0.5, -8, 0, 30)
-        b.BackgroundColor3 = color
-        b.Text = text
-        b.TextScaled = true
-        b.Font = Enum.Font.GothamBold
-        b.TextColor3 = Color3.fromRGB(255, 255, 255)
-        b.ZIndex = 5
-        local c = Instance.new("UICorner")
-        c.CornerRadius = UDim.new(0, 8)
-        c.Parent = b
-        b.Parent = frame
-        return b
-    end
-    local maxBtn = smallBtn("MAX", 0, Color3.fromRGB(80, 130, 200))
-    local autoBtn = smallBtn("AUTO", 0.5, Color3.fromRGB(150, 110, 200))
-    self._cardAutoBtn = autoBtn
-    maxBtn.Activated:Connect(function()
-        local h = self._cardActionHandlers
-        if h and h.max then
-            h.max()
-        end
-    end)
-    autoBtn.Activated:Connect(function()
-        local h = self._cardActionHandlers
-        if h and h.auto then
-            h.auto()
-        end
-    end)
-
     local eggNameLabel = Instance.new("TextLabel")
     eggNameLabel.Name = "EggName"
     eggNameLabel.Size = UDim2.new(1, -10, 0.32, 0)
@@ -664,19 +628,6 @@ end
 -- EggInteractionService so a tap == pressing E.
 function EggCurrentTargetService:SetCardActivatedHandler(fn)
     self._cardActivatedHandler = fn
-end
-
--- MAX / AUTO taps on the card (registered by EggInteractionService).
-function EggCurrentTargetService:SetCardActionHandlers(handlers)
-    self._cardActionHandlers = handlers
-end
-
--- AUTO button reflects the running state (red while auto-hatching).
-function EggCurrentTargetService:SetCardAutoActive(on)
-    local b = self._cardAutoBtn
-    if b then
-        b.BackgroundColor3 = on and Color3.fromRGB(220, 82, 95) or Color3.fromRGB(150, 110, 200)
-    end
 end
 
 return EggCurrentTargetService
