@@ -581,10 +581,23 @@ function PowerChoiceMenu:_renderEnhanceStrip()
             hc.Parent = hit
             hit.Parent = strip
             if self._enhTargetSlot == i then
+                -- selection ring as a HALO around the badge: the badge art (ZIndex 9)
+                -- painted over a stroke on the button itself (8) — clicks worked but
+                -- the ring was invisible (proven via live click-probe + Jason's eyes)
+                local halo = Instance.new("Frame")
+                halo.AnchorPoint = Vector2.new(0.5, 0.5)
+                halo.Position = UDim2.fromScale(0.5, 0.5)
+                halo.Size = UDim2.fromScale(1.22, 1.22)
+                halo.BackgroundTransparency = 1
+                halo.ZIndex = 10
+                local hcorner = Instance.new("UICorner")
+                hcorner.CornerRadius = UDim.new(1, 0)
+                hcorner.Parent = halo
                 local ring = Instance.new("UIStroke")
                 ring.Color = Color3.fromRGB(235, 200, 90)
                 ring.Thickness = 2.5
-                ring.Parent = hit
+                ring.Parent = halo
+                halo.Parent = hit
             end
             if slot.enh then
                 hit.MouseEnter:Connect(function()
