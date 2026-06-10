@@ -718,14 +718,14 @@ local uiConfig = {
 
         -- Custom Script Actions
         pets_action = {
-            type = "script_execute",
-            script = "PetsHandler",
-            method = "TogglePetsUI",
-            parameters = {
-                animation = "slide_up",
-            },
-            sound = "success",
-            description = "Opens pets interface with custom logic",
+            -- Consolidated (Jason): Pets/Items were two buttons for the SAME inventory. One
+            -- Pets button opens the Inventory panel (all categories: pets, items, enhancements);
+            -- Trade lives inside that panel now (header button), not on the tray.
+            type = "menu_panel",
+            panel = "Inventory",
+            transition = "scale_in_small",
+            sound = "button_click",
+            description = "Opens the unified inventory (pets/items/enhancements)",
         },
 
         rewards_action = {
@@ -1034,7 +1034,7 @@ local uiConfig = {
             layout = {
                 type = "grid",
                 auto_size = true, -- Enable automatic sizing based on content
-                button_count = 9, -- Exact number of buttons for calculation
+                button_count = 7, -- Exact number of buttons for calculation
                 padding = { top = 5, bottom = 5, left = 5, right = 5 }, -- Padding for calculations
             },
             contents = {
@@ -1078,19 +1078,6 @@ local uiConfig = {
                     },
                 },
 
-                -- 🟢 MINIMAL CONFIG: Uses 95% global defaults (teal background, default styling)
-                {
-                    type = "menu_button",
-                    config = {
-                        name = "Inventory",
-                        icon = "85179217604910", -- 🎨 NEW: Custom inventory bag icon
-                        icon_fallback = "🎒", -- 🔄 FALLBACK: Backpack emoji if asset fails
-                        text = "Items",
-                        action = "inventory_action",
-                        -- 🎨 Automatically gets: teal background, default icon size/position, default text styling!
-                    },
-                },
-
                 -- 🟡 SELECTIVE OVERRIDES: Uses global teal background + custom styling
                 {
                     type = "menu_button",
@@ -1124,16 +1111,6 @@ local uiConfig = {
                         text = "Settings",
                         action = "settings_action",
                         -- 🎨 Automatically gets: teal background, default colors, default layout!
-                    },
-                },
-
-                {
-                    type = "menu_button",
-                    config = {
-                        name = "Trade",
-                        icon = "🤝",
-                        text = "Trade",
-                        action = "trade_action",
                     },
                 },
 

@@ -671,6 +671,32 @@ function InventoryPanel:_createUI(parent)
             self.logger:warn("Close button config not found, using fallback")
         end
 
+        -- Trade lives INSIDE the inventory now (tray consolidation): header button, left of close.
+        do
+            local tradeBtn = Instance.new("TextButton")
+            tradeBtn.Name = "TradeButton"
+            tradeBtn.Size = UDim2.new(0, 86, 0, config.size.height)
+            tradeBtn.Position =
+                UDim2.new(1, (config.offset.x or 10) - 96, 0, config.offset.y or -10)
+            tradeBtn.BackgroundColor3 = Color3.fromRGB(70, 140, 90)
+            tradeBtn.Text = "🤝 Trade"
+            tradeBtn.TextColor3 = Color3.fromRGB(240, 255, 245)
+            tradeBtn.TextScaled = true
+            tradeBtn.Font = Enum.Font.GothamBold
+            tradeBtn.ZIndex = 250
+            local tc = Instance.new("UICorner")
+            tc.CornerRadius = UDim.new(0, config.corner_radius or 8)
+            tc.Parent = tradeBtn
+            tradeBtn.Parent = self.header
+            tradeBtn.Activated:Connect(function()
+                local mm = _G.MenuManager
+                if mm and mm.OpenPanel then
+                    self:Hide()
+                    mm:OpenPanel("Trade", "slide_in_right")
+                end
+            end)
+        end
+
         local closeButton = Instance.new("ImageButton")
         closeButton.Name = "CloseButton"
         closeButton.Size = UDim2.new(0, config.size.width, 0, config.size.height)

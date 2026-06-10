@@ -23,12 +23,10 @@ local started = false
 
 local TRAY_BUTTONS = {
     "PetsButton",
-    "TradeButton",
     "AdminButton",
     "DailyButton",
     "QuestButton",
     "ShopButton",
-    "InventoryButton",
     "EffectsButton",
     "SettingsButton",
 }
