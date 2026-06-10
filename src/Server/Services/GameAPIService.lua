@@ -983,6 +983,12 @@ function GameAPIService:_registerCommands()
             if pwr and pwr.ReapplyPassives then
                 pwr:ReapplyPassives(context.player) -- clear always-on buffs from the wiped powers
             end
+            -- true new-player reset includes the TUTORIAL (Jason: kept pets/huges must not
+            -- block it — the restart is explicit here, not inferred from pets/level)
+            local tut = self:_service("TutorialService")
+            if tut and tut.Reset then
+                tut:Reset(context.player)
+            end
             return { ok = true, archetype = nil, state = prog:GetClaimState(context.player) }
         end,
     })

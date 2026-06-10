@@ -2744,6 +2744,14 @@ function BaseUI:_onMenuButtonClicked(menuName)
         end
     end
 
+    -- menu_panel: the button opens a DIFFERENT panel than its own name (Pets -> "Inventory",
+    -- consolidated tray). Without this branch the click fell through to TogglePanel("Pets"),
+    -- which doesn't exist -> "Panel not found".
+    if actionConfig and actionConfig.type == "menu_panel" and actionConfig.panel then
+        self.menuManager:TogglePanel(actionConfig.panel, transitionEffect)
+        return
+    end
+
     if
         actionConfig
         and actionConfig.type == "network_call"
