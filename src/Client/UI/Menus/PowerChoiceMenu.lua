@@ -457,6 +457,22 @@ end
 -- player's origin. Clicking one slots it into the first empty slot (server-validated).
 
 -- shared composer (PetBadge owns the one assembly path; inventory cards use the same call)
+-- level label color vs the PLAYER's level (Jason): red = below the window (dead),
+-- yellow = below you (reduced), blue = on target, green = above you (boosted)
+local function levelColor(lvl, playerLvl)
+    local window = ((enhCfg.drops or {}).levels or {}).scaling
+    window = (window and window.window) or 2
+    local d = (tonumber(lvl) or playerLvl) - playerLvl
+    if d < -window then
+        return Color3.fromRGB(220, 90, 90) -- dead: contributes nothing
+    elseif d < 0 then
+        return Color3.fromRGB(235, 205, 90) -- low: reduced effect
+    elseif d == 0 then
+        return Color3.fromRGB(120, 180, 255) -- on target
+    end
+    return Color3.fromRGB(120, 220, 120) -- above: boosted
+end
+
 local function enhBadge(parent, size, pos, rec, dead)
     return PetBadge.createEnhancementBadge(
         parent,
@@ -622,12 +638,11 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                 if slot.enh.level then
                     local lv = Instance.new("TextLabel")
                     lv.Size = UDim2.fromScale(1, 0.3)
-                    lv.Position = UDim2.fromScale(0, 1)
+                    lv.Position = UDim2.fromScale(0, 0.88) -- tucked to the icon (Jason)
                     lv.BackgroundTransparency = 1
                     lv.Font = Enum.Font.GothamBold
                     lv.TextScaled = true
-                    lv.TextColor3 = dead and Color3.fromRGB(150, 150, 150)
-                        or Color3.fromRGB(220, 220, 230)
+                    lv.TextColor3 = levelColor(slot.enh.level, self.level)
                     lv.Text = tostring(slot.enh.level)
                     lv.ZIndex = 9
                     lv.Parent = hit
@@ -719,11 +734,11 @@ function PowerChoiceMenu:_renderEnhanceStrip()
             -- level label under the badge (Jason: "Level 7 — just say 7 underneath")
             local lv = Instance.new("TextLabel")
             lv.Size = UDim2.fromScale(1, 0.28)
-            lv.Position = UDim2.fromScale(0, 1)
+            lv.Position = UDim2.fromScale(0, 0.9) -- tucked to the icon (Jason)
             lv.BackgroundTransparency = 1
             lv.Font = Enum.Font.GothamBold
             lv.TextScaled = true
-            lv.TextColor3 = Color3.fromRGB(220, 220, 230)
+            lv.TextColor3 = levelColor(item.level, self.level)
             lv.Text = tostring(item.level or "—")
             lv.ZIndex = 7
             lv.Parent = btn
