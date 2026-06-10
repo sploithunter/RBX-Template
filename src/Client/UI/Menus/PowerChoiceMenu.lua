@@ -495,6 +495,16 @@ function PowerChoiceMenu:_renderEnhanceStrip()
         self.enhStrip = nil
     end
     local powerId = self.enhanceFor
+    -- the power-list columns hide while the enhance view is open (Jason: "dismiss that
+    -- menu until apply/cancel/exit") — hidden GUIs fire no MouseEnter, so the rows'
+    -- tooltips can't bleed through the overlay
+    local listsVisible = not powerId
+    if self.naturalCol then
+        self.naturalCol.Visible = listsVisible
+    end
+    if self.originCol then
+        self.originCol.Visible = listsVisible
+    end
     if not (powerId and self.frame and self.live) then
         return
     end
