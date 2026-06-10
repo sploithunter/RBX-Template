@@ -61,6 +61,81 @@ local function archetypesCfg()
     return _archetypes
 end
 
+-- Lazy enhancement deps (config + pure core + origin->element map for tints).
+local _enhCfg, _enhCore, _archElement
+local function enhancementCfg()
+    if _enhCfg == nil then
+        local ok, c = pcall(function()
+            return require(Configs:WaitForChild("enhancements"))
+        end)
+        _enhCfg = (ok and c) or {}
+    end
+    return _enhCfg
+end
+local function enhancementCore()
+    if _enhCore == nil then
+        local ok, m = pcall(function()
+            return require(ReplicatedStorage.Shared.Game.Enhancements)
+        end)
+        _enhCore = (ok and m) or false
+    end
+    return _enhCore or nil
+end
+local function originElement(archetype)
+    if _archElement == nil then
+        local ok, cfx = pcall(function()
+            return require(Configs:WaitForChild("combat_fx"))
+        end)
+        _archElement = (ok and cfx and cfx.origin and cfx.origin.archetype_element) or {}
+    end
+    return POWER_ICONS.elementKey(_archElement[archetype] or "neutral")
+end
+
+-- Enhancement badge: disc = FIRST origin's element color + the type's symbol; enhancement ring
+-- tinted the SECOND origin's color (single = both layers one color group — Jason's grammar).
+-- The one assembly path: PowerChoiceMenu's ENHANCE strip AND inventory cards both call this.
+function PetBadge.createEnhancementBadge(parent, opts)
+    opts = opts or {}
+    local holder = Instance.new("Frame")
+    holder.Name = "EnhBadge"
+    holder.Size = opts.size or UDim2.fromScale(1, 1)
+    holder.Position = opts.position or UDim2.fromScale(0, 0)
+    if opts.anchor then
+        holder.AnchorPoint = opts.anchor
+    end
+    holder.BackgroundTransparency = 1
+    if opts.zindex then
+        holder.ZIndex = opts.zindex
+    end
+    holder.Parent = parent
+    local core = enhancementCore()
+    local spec = core and core.badgeSpec(enhancementCfg(), opts.record)
+    if not spec then
+        return holder
+    end
+    local z = opts.zindex or 1
+    local disc = Instance.new("ImageLabel")
+    disc.BackgroundTransparency = 1
+    disc.AnchorPoint = Vector2.new(0.5, 0.5)
+    disc.Position = UDim2.fromScale(0.5, 0.5)
+    disc.Size = UDim2.fromScale(0.8, 0.8)
+    disc.ScaleType = Enum.ScaleType.Fit
+    disc.Image = POWER_ICONS.discFor(originElement(spec.discOrigin), spec.symbol) or ""
+    disc.ZIndex = z
+    disc.Parent = holder
+    local ring = Instance.new("ImageLabel")
+    ring.BackgroundTransparency = 1
+    ring.AnchorPoint = Vector2.new(0.5, 0.5)
+    ring.Position = UDim2.fromScale(0.5, 0.5)
+    ring.Size = UDim2.fromScale(1, 1)
+    ring.ScaleType = Enum.ScaleType.Fit
+    ring.Image = POWER_ICONS.rings.enhancement or POWER_ICONS.rings.aura or ""
+    ring.ImageColor3 = POWER_ICONS.elementColor3(originElement(spec.ringOrigin), "bright")
+    ring.ZIndex = z + 1
+    ring.Parent = holder
+    return holder
+end
+
 -- Resolve a power id -> { element, symbol, ring } (ring = a ring SHAPE key), or nil if the power
 -- or its effect/glyph has no mapped symbol. Element = the power's element, else its archetype
 -- theme. Symbol + targeting come from power_icons.power_effect_badge / glyph / signature maps.

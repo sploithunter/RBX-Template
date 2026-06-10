@@ -52,6 +52,7 @@ local ConfigLoader = require(ReplicatedStorage.Shared.ConfigLoader)
 -- Single source of truth for configured base power (huge-aware), shared with the
 -- server so the displayed power matches the power that mines/fights.
 local PetPower = require(ReplicatedStorage.Shared.Game.PetPower)
+local PetBadge = require(script.Parent.Parent.PetBadge)
 -- Two-number card display (⛏ mining / ⚔ combat) — assembles the PetPower profile from config.
 local petPowerViewOk, PetPowerView = pcall(function()
     return require(ReplicatedStorage.Shared.Game.PetPowerView)
@@ -1925,16 +1926,27 @@ function InventoryPanel:_loadEnhancementsFromFolder(enhFolder)
                 end
             end
             local single = #origins == 1
+            local typeName = (typeV and typeV:IsA("StringValue") and typeV.Value) or nil
+            -- short labels read BIG on the card (TextScaled): name = the TYPE ("Health"),
+            -- second line = the origin pair ("Geo/Cryo") in the rarity color; the badge
+            -- (colored disc + symbol + ring) carries the identity
+            local shorts = {}
+            for _, o in ipairs(origins) do
+                shorts[#shorts + 1] = o:sub(1, 1):upper() .. o:sub(2, 3)
+            end
             local displayData = {
                 id = itemFolder.Name,
-                name = (nameV and nameV:IsA("StringValue") and nameV.Value) or "Enhancement",
-                icon = "⚙️",
+                name = typeName and (typeName:sub(1, 1):upper() .. typeName:sub(2))
+                    or ((nameV and nameV:IsA("StringValue") and nameV.Value) or "Enhancement"),
+                icon = "⚙️", -- fallback only; cards render the PetBadge enhancement badge
                 rarity = single and "Single" or "Dual",
                 color = (single and ORIGIN_COLOR[origins[1]]) or DUAL_COLOR,
                 category = "Enhancements",
                 count = 1,
                 uid = itemFolder.Name,
-                enhancement_type = typeV and typeV:IsA("StringValue") and typeV.Value or nil,
+                enhancement_type = typeName,
+                origins = origins,
+                origins_label = table.concat(shorts, "/"),
                 folder_source = "enhancements",
             }
             table.insert(self.inventoryData, displayData)
@@ -2922,6 +2934,16 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
             })
             local imageIcon = self:_createPetImageIcon(iconBG, item)
         end
+    elseif item.folder_source == "enhancements" and item.enhancement_type and item.origins then
+        -- the SAME two-layer badge as the PowerChoiceMenu ENHANCE strip (one assembly path):
+        -- disc = first origin's color + type symbol, ring tinted the second origin's color
+        PetBadge.createEnhancementBadge(iconBG, {
+            size = UDim2.fromScale(0.92, 0.92),
+            position = UDim2.fromScale(0.5, 0.5),
+            anchor = Vector2.new(0.5, 0.5),
+            record = { type = item.enhancement_type, origins = item.origins },
+            zindex = 104,
+        })
     else
         -- Use emoji fallback
         self.logger:info("🎭 USING EMOJI FALLBACK", { itemId = item.id, icon = item.icon })
@@ -3068,6 +3090,9 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     -- (huge/level-aware); context multipliers (player level, boosts) are intentionally excluded so
     -- the number is the same for everyone (fair trade comparison). Non-pets keep the single power.
     local powerText = (item.power and (powerPrefix .. tostring(item.power))) or ""
+    if item.folder_source == "enhancements" and item.origins_label then
+        powerText = item.origins_label -- "Geo/Cryo" under the type name, in the rarity color
+    end
     if PetPowerView and item.category == "Pets" and item.petType and item.power then
         local okProfile, profile = pcall(function()
             return PetPowerView.profile({

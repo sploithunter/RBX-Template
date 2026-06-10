@@ -38,21 +38,11 @@ local powersCfg = require(Configs:WaitForChild("powers"))
 local archetypesCfg = require(Configs:WaitForChild("archetypes"))
 local levelTrackCfg = require(Configs:WaitForChild("level_track"))
 local PowerSelection = require(ReplicatedStorage.Shared.Game.PowerSelection)
+local PetBadge = require(script.Parent.Parent.PetBadge)
 local PowerDescribe = require(ReplicatedStorage.Shared.Game.PowerDescribe)
 local PowerSlotRow = require(script.Parent.Parent.PowerSlotRow)
 local Enhancements = require(ReplicatedStorage.Shared.Game.Enhancements)
 local enhCfg = require(Configs:WaitForChild("enhancements"))
-local POWER_ICONS = require(Configs:WaitForChild("power_icons"))
-local combatFxCfg = require(Configs:WaitForChild("combat_fx"))
-
--- origin (archetype id) -> badge element key for enhancement disc/ring tints
-local function originElement(archetype)
-    local el = combatFxCfg.origin
-        and combatFxCfg.origin.archetype_element
-        and combatFxCfg.origin.archetype_element[archetype]
-    return POWER_ICONS.elementKey(el or "neutral")
-end
-
 -- The level a new player chooses their origin (NATURAL picks come before this; ORIGIN powers after).
 local ORIGIN_CHOICE_LEVEL = levelTrackCfg.origin_choice_level or 5
 
@@ -460,35 +450,9 @@ end
 -- clickable row of inventory enhancements COMPATIBLE with the power and USABLE by the
 -- player's origin. Clicking one slots it into the first empty slot (server-validated).
 
+-- shared composer (PetBadge owns the one assembly path; inventory cards use the same call)
 local function enhBadge(parent, size, pos, rec)
-    local holder = Instance.new("Frame")
-    holder.Size = size
-    holder.Position = pos
-    holder.BackgroundTransparency = 1
-    holder.Parent = parent
-    local spec = Enhancements.badgeSpec(enhCfg, rec)
-    if not spec then
-        return holder
-    end
-    local disc = Instance.new("ImageLabel")
-    disc.BackgroundTransparency = 1
-    disc.AnchorPoint = Vector2.new(0.5, 0.5)
-    disc.Position = UDim2.fromScale(0.5, 0.5)
-    disc.Size = UDim2.fromScale(0.8, 0.8)
-    disc.ScaleType = Enum.ScaleType.Fit
-    disc.Image = POWER_ICONS.discFor(originElement(spec.discOrigin), spec.symbol) or ""
-    disc.Parent = holder
-    local ring = Instance.new("ImageLabel")
-    ring.BackgroundTransparency = 1
-    ring.AnchorPoint = Vector2.new(0.5, 0.5)
-    ring.Position = UDim2.fromScale(0.5, 0.5)
-    ring.Size = UDim2.fromScale(1, 1)
-    ring.ScaleType = Enum.ScaleType.Fit
-    ring.Image = POWER_ICONS.rings.enhancement or POWER_ICONS.rings.aura or ""
-    ring.ImageColor3 = POWER_ICONS.elementColor3(originElement(spec.ringOrigin), "bright")
-    ring.ZIndex = (disc.ZIndex or 1) + 1
-    ring.Parent = holder
-    return holder
+    return PetBadge.createEnhancementBadge(parent, { size = size, position = pos, record = rec })
 end
 
 function PowerChoiceMenu:_toggleEnhance(powerId)
