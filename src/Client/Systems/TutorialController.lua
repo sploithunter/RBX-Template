@@ -456,11 +456,17 @@ local function apply(state)
     end
 end
 
+-- bumped per behavior change: printed at start so a LIVE session's running BYTECODE is
+-- identifiable (rojo syncs Source into running sessions but required modules never
+-- re-execute — we chased "stale build vs real bug" three times today)
+local BUILD = "trail-live-replan v3 (2026-06-10)"
+
 function TutorialController.start()
     if started then
         return
     end
     started = true
+    print("[TutorialController] build:", BUILD)
     local pg = Players.LocalPlayer:WaitForChild("PlayerGui")
     buildCapsule(pg)
     Signals.TutorialState.OnClientEvent:Connect(apply)
