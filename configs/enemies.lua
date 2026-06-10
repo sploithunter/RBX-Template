@@ -24,7 +24,14 @@ return {
     spawners = {
         part_prefix = "BaddieSpawner",
         radius = 50, -- studs: trigger distance from the part
-        cooldown = 60, -- seconds per spawner after a trigger
+        -- RANDOM cooldown (Jason: "sometimes you'll get more than one") — each trigger
+        -- rolls a value in [min,max]; a short roll can land a second wave while the
+        -- first is still up.
+        cooldown = { min = 30, max = 120 },
+        -- hard cap on LIVING baddies tied to one spawner (Jason: don't bury the
+        -- player, and no stockpiling a crap ton for the next guy) — at the cap the
+        -- spawner stays quiet until some die.
+        max_alive = 6,
         scatter = 8, -- studs: random spread around the part so the wave isn't a stack
         waves = {
             { weight = 10, units = { { enemy = "lava_imp", count = 3 } } },

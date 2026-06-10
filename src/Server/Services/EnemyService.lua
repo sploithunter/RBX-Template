@@ -1741,7 +1741,10 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
     if self._logger then
         self._logger:Info("Enemy spawned", { enemyId = enemyId, targetId = targetId, hp = def.hp })
     end
-    return { ok = true, targetId = targetId, enemyId = enemyId, hp = def.hp }
+    if opts and typeof(opts.home) == "Vector3" then
+        model:SetAttribute("SpawnHome", opts.home) -- loiter anchor (map spawners)
+    end
+    return { ok = true, targetId = targetId, enemyId = enemyId, hp = def.hp, model = model }
 end
 
 return EnemyService

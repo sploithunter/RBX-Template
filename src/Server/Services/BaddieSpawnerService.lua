@@ -46,7 +46,7 @@ function BaddieSpawnerService:_scan()
     for _, inst in ipairs(Workspace:GetDescendants()) do
         if inst:IsA("BasePart") and inst.Name:sub(1, #prefix) == prefix then
             if not self._spawners[inst] then
-                self._spawners[inst] = { cooldownUntil = 0 }
+                self._spawners[inst] = { cooldownUntil = 0, alive = {} }
                 self._logger:Info("Baddie spawner armed", { part = inst.Name })
             end
         end
@@ -82,15 +82,26 @@ function BaddieSpawnerService:_trigger(part, player, rng)
         return
     end
     local scatter = tonumber(self._config.scatter) or 8
+    local state = self._spawners[part]
+    local cap = tonumber(self._config.max_alive) or 6
     for _, unit in ipairs(wave.units or {}) do
         for _ = 1, (tonumber(unit.count) or 1) do
+            if #state.alive >= cap then
+                break -- never bury the player / stockpile for the next one
+            end
             local offset = Vector3.new(
                 (rng:NextNumber() * 2 - 1) * scatter,
                 3,
                 (rng:NextNumber() * 2 - 1) * scatter
             )
             pcall(function()
-                enemySvc:SpawnEnemy(player, unit.enemy, { position = part.Position + offset })
+                local r = enemySvc:SpawnEnemy(player, unit.enemy, {
+                    position = part.Position + offset,
+                    home = part.Position, -- loiter anchor
+                })
+                if r and r.ok and r.model then
+                    table.insert(state.alive, r.model)
+                end
             end)
         end
     end
@@ -107,7 +118,10 @@ function BaddieSpawnerService:Start()
         return
     end
     local radius = tonumber(self._config.radius) or 50
-    local cooldown = tonumber(self._config.cooldown) or 60
+    local cd = self._config.cooldown
+    local cdMin = (type(cd) == "table" and tonumber(cd.min)) or tonumber(cd) or 60
+    local cdMax = (type(cd) == "table" and tonumber(cd.max)) or cdMin
+    local cap = tonumber(self._config.max_alive) or 6
     local rng = Random.new()
     task.spawn(function()
         local rescanAt = 0
@@ -118,14 +132,21 @@ function BaddieSpawnerService:Start()
                 rescanAt = now + 15 -- pick up newly synced map parts
             end
             for part, state in pairs(self._spawners) do
+                -- prune dead/cleaned baddies from the spawner's alive list
+                for i = #state.alive, 1, -1 do
+                    local m = state.alive[i]
+                    if not m.Parent then
+                        table.remove(state.alive, i)
+                    end
+                end
                 if not part.Parent then
                     self._spawners[part] = nil
-                elseif now >= state.cooldownUntil then
+                elseif now >= state.cooldownUntil and #state.alive < cap then
                     for _, player in ipairs(Players:GetPlayers()) do
                         local hrp = player.Character
                             and player.Character:FindFirstChild("HumanoidRootPart")
                         if hrp and (hrp.Position - part.Position).Magnitude <= radius then
-                            state.cooldownUntil = now + cooldown
+                            state.cooldownUntil = now + rng:NextNumber(cdMin, cdMax)
                             self:_trigger(part, player, rng)
                             break
                         end
