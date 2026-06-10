@@ -172,6 +172,11 @@ function BuffStatsHud:_build()
     makeRow("coin", "💰 Coin", Color3.fromRGB(240, 200, 70), 3)
     makeRow("mining", "⛏ Mining", Color3.fromRGB(180, 150, 110), 4)
     makeRow("luck", "🍀 Luck", Color3.fromRGB(110, 210, 130), 5)
+    -- targeted hatch-luck CHANNELS: rows exist but stay HIDDEN unless non-neutral
+    -- (Jason: split them out, but "we're getting pretty cluttered" — conditional rows)
+    makeRow("golden_luck", "🟡 Gold Luck", Color3.fromRGB(240, 200, 70), 51)
+    makeRow("rainbow_luck", "🌈 Rainbow Luck", Color3.fromRGB(220, 120, 235), 52)
+    makeRow("huge_luck", "🐘 Huge Luck", Color3.fromRGB(255, 140, 220), 53)
     makeRow("speed", "🐾 Speed", Color3.fromRGB(95, 180, 235), 6)
     makeRow("recharge", "⚡ Recharge", Color3.fromRGB(160, 130, 240), 7)
     makeRow("xp", "✨ XP", Color3.fromRGB(150, 110, 235), 8)
@@ -311,6 +316,24 @@ function BuffStatsHud:_refresh()
         axis("luck").cap,
         soonestRemaining(p, { "LuckBuffUntil", "HatchLuckBuffUntil" }, now)
     )
+
+    -- targeted channels (events/powers set <X>LuckBuff multiplier attrs + Until):
+    -- visible ONLY while non-neutral, so the panel stays compact day-to-day
+    for key, attr in pairs({
+        golden_luck = "GoldenLuckBuff",
+        rainbow_luck = "RainbowLuckBuff",
+        huge_luck = "HugeLuckBuff",
+    }) do
+        local untilT = p:GetAttribute(attr .. "Until") or 0
+        local mult = (untilT > now) and (tonumber(p:GetAttribute(attr)) or 1) or 1
+        local row = self.rows[key]
+        if row then
+            row.row.Visible = mult > 1.0001
+            if mult > 1.0001 then
+                self:_setMult(key, mult, 4, math.max(0, untilT - now))
+            end
+        end
+    end
 
     -- 🐾 Speed.
     local speed = BuffStack.multiplier({

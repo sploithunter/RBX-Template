@@ -782,9 +782,9 @@ function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
         playerData.secretLuckBoost = tonumber(secretLuck) or 0
         -- per-VARIANT luck channels (Jason: staged + dynamic — a "2x rainbow event"
         -- registers a modifier on ONE kind and nothing else moves). Base 1 = neutral.
-        for kind, field in pairs({
-            golden_hatch_luck = "goldenLuckBoost",
-            rainbow_hatch_luck = "rainbowLuckBoost",
+        for kind, meta in pairs({
+            golden_hatch_luck = { field = "goldenLuckBoost", attr = "GoldenLuckBuff" },
+            rainbow_hatch_luck = { field = "rainbowLuckBoost", attr = "RainbowLuckBuff" },
         }) do
             local v = self._modifierService:Resolve(1, {
                 player = player,
@@ -793,7 +793,13 @@ function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
                 currency = eggData.currency,
                 source = "EggService",
             })
-            playerData[field] = tonumber(v) or 1
+            local mult = tonumber(v) or 1
+            -- attribute form (powers/events/admin can set <X>LuckBuff + Until directly,
+            -- and the Active Buffs panel reads the same attributes)
+            if (player:GetAttribute(meta.attr .. "Until") or 0) > os.time() then
+                mult = mult * (tonumber(player:GetAttribute(meta.attr)) or 1)
+            end
+            playerData[meta.field] = mult
         end
         -- huge luck: a MULTIPLE (1 = one jackpot attempt, 3 = three — Jason's reroll
         -- model). Sources hook in via the modifier kind below (gamepass/power later).
@@ -804,7 +810,11 @@ function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
             currency = eggData.currency,
             source = "EggService",
         })
-        playerData.hugeLuckBoost = tonumber(hugeLuck) or 1
+        local hugeMult = tonumber(hugeLuck) or 1
+        if (player:GetAttribute("HugeLuckBuffUntil") or 0) > os.time() then
+            hugeMult = hugeMult * (tonumber(player:GetAttribute("HugeLuckBuff")) or 1)
+        end
+        playerData.hugeLuckBoost = hugeMult
     end
 
     -- Fortune / Huge Fortune (luck axis): the player's active luck POWER adds to the hatch luck
