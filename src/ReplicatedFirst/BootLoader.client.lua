@@ -49,7 +49,7 @@ title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBlack
 title.TextScaled = true
 title.TextColor3 = Color3.fromRGB(235, 238, 245)
-title.Text = "HALO & HORNS"
+title.Text = "HALO AND HORNS"
 title.Parent = bg
 
 local status = Instance.new("TextLabel")
