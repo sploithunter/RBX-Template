@@ -18,6 +18,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Debris = game:GetService("Debris")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
 
 local FX = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_fx"))
 
@@ -57,8 +60,12 @@ function PowerSound.play(phase, element, position)
 
     local sound = Instance.new("Sound")
     sound.SoundId = entry.id
+    sound.Volume = tonumber(entry.volume) or 0.5 -- per-sound base level (registry knob)
     sound.RollOffMaxDistance = 140
     sound.RollOffMinDistance = 8
+    -- the SFX slider governs power casts too (Jason: "Mirage Step... was loud" —
+    -- power sounds bypassed the bus entirely)
+    SoundGroups.assign(sound, "effects")
     sound.Parent = part
     sound:Play()
 
