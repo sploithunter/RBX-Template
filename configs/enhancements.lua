@@ -70,7 +70,9 @@ return {
         recharge = {
             symbol = "history",
             axis = "recharge",
-            families = "*", -- almost everything benefits from a shorter cooldown
+            families = "*", -- anything WITH a cooldown benefits from shortening it
+            excludes_passive = true, -- Jason: "Magnet doesn't need recharge" — always-on
+            -- powers (passive/toggle kinds) have nothing to recharge
         },
         armor = {
             symbol = "armor_chest",
@@ -126,6 +128,12 @@ return {
         player_field = true,
         eruption = true,
         single_spread = true,
+    },
+
+    -- Effect FAMILIES whose magnitude IS a radius — `range` applies to these even
+    -- without an AoE target (Jason: Magnet's only sensible enhancement is range).
+    radius_families = {
+        magnet = true,
     },
 
     -- DROPS: rolled when a breakable/enemy dies (DropService). The MODEL is semi-generic — the

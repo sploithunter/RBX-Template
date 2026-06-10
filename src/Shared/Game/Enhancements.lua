@@ -88,9 +88,15 @@ function Enhancements.compatibleWith(cfg, enhType, powerDef, effectKinds)
             return false, "wrong_family"
         end
     end
+    -- always-on powers have nothing to recharge (a vestigial cooldown_seconds in the
+    -- power def doesn't change that — the KIND being passive/toggle is the truth)
+    if def.excludes_passive and kind and (kind.passive == true or kind.toggle == true) then
+        return false, "always_on"
+    end
     if def.requires_aoe then
         local aoe = cfg.aoe_targets or {}
-        if not (powerDef.target and aoe[powerDef.target]) then
+        local radiusFamily = family and (cfg.radius_families or {})[family]
+        if not (radiusFamily or (powerDef.target and aoe[powerDef.target])) then
             return false, "not_aoe"
         end
     end
