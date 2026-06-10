@@ -33,6 +33,14 @@ function TutorialService:Init()
 end
 
 function TutorialService:Start()
+    -- client PULL: TutorialController fires this when it's ready to render — closes the
+    -- join race where the one-shot push lands before the client connected the signal
+    Signals.TutorialState.OnServerEvent:Connect(function(player)
+        if self._dataService:IsDataLoaded(player) then
+            self:_ensureProgress(player)
+            self:_push(player)
+        end
+    end)
     Players.PlayerAdded:Connect(function(player)
         task.spawn(function()
             self:_waitForDataAndPush(player)

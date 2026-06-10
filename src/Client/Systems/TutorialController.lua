@@ -211,6 +211,8 @@ function TutorialController.start()
     local pg = Players.LocalPlayer:WaitForChild("PlayerGui")
     buildCapsule(pg)
     Signals.TutorialState.OnClientEvent:Connect(apply)
+    -- pull current state — the server's join-time push may predate this connection
+    Signals.TutorialState:FireServer()
 end
 
 return TutorialController
