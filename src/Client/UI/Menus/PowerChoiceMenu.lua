@@ -574,6 +574,14 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                 ring.Thickness = 2.5
                 ring.Parent = hit
             end
+            if slot.enh then
+                hit.MouseEnter:Connect(function()
+                    self:_showEnhTooltip(hit, slot.enh)
+                end)
+                hit.MouseLeave:Connect(function()
+                    self:_hideTooltip()
+                end)
+            end
             hit.Activated:Connect(function()
                 self._enhTargetSlot = (self._enhTargetSlot ~= i) and i or nil -- toggle
                 if self._enhTargetSlot and slots[i].enh then
@@ -644,6 +652,16 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                 btn.ZIndex = 7
                 btn.Parent = strip
                 enhBadge(btn, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), rec).ZIndex = 7
+                btn.MouseEnter:Connect(function()
+                    self:_showEnhTooltip(btn, {
+                        type = item.type,
+                        origins = item.origins,
+                        level = item.level,
+                    })
+                end)
+                btn.MouseLeave:Connect(function()
+                    self:_hideTooltip()
+                end)
                 btn.Activated:Connect(function()
                     -- targeted slot wins (REPLACE allowed there — server destroys the
                     -- old one); otherwise fall back to the first empty slot
@@ -756,6 +774,45 @@ function PowerChoiceMenu:_ensureTooltip()
     tip.Parent = self.frame
     self._tooltip = tip
     return tip
+end
+
+-- Hover tooltip for an ENHANCEMENT badge in the enhance strip (slotted or available):
+-- what it boosts, grade/value, level + window state — intelligent decisions before
+-- slotting (Jason). Reuses the row tooltip frame.
+function PowerChoiceMenu:_showEnhTooltip(anchor, rec)
+    if not (rec and self.frame) then
+        return
+    end
+    local tip = self:_ensureTooltip()
+    local natural = Enhancements.isNatural(rec)
+    local single = Enhancements.isSingle(rec)
+    local grade = natural and "Natural" or (single and "Single origin" or "Dual origin")
+    local value = Enhancements.value(enhCfg, rec)
+    tip.Title.Text = Enhancements.displayName(enhCfg, rec)
+    tip.Summary.Text = ("Boosts %s by %d%%  ·  %s"):format(
+        tostring(rec.type or "?"):gsub("^%l", string.upper),
+        math.floor(value * 100 + 0.5),
+        grade
+    )
+    local lines = {}
+    if rec.level then
+        local factor = Enhancements.levelFactor(enhCfg, rec.level, self.level)
+        lines[#lines + 1] = ("L%d%s"):format(
+            rec.level,
+            factor == 0 and "  (OUT OF RANGE — no effect at your level)"
+                or (factor ~= 1 and ("  (×%.1f at your level)"):format(factor) or "")
+        )
+    end
+    lines[#lines + 1] = natural and "Usable by anyone" or "Usable by matching origins"
+    tip.Stats.Text = table.concat(lines, "   ·   ")
+    tip.Stats.Visible = true
+    local fa = self.frame.AbsolutePosition
+    local aa, asz = anchor.AbsolutePosition, anchor.AbsoluteSize
+    tip.Position = UDim2.fromOffset(
+        math.clamp(aa.X - fa.X, 0, math.max(0, self.frame.AbsoluteSize.X - 250)),
+        math.max(0, aa.Y - fa.Y - 110)
+    )
+    tip.Visible = true
 end
 
 function PowerChoiceMenu:_showTooltip(row, powerId)

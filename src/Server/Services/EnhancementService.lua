@@ -261,6 +261,15 @@ function EnhancementService:Slot(player, powerId, slotIndex, uid)
     slot.enh = { type = rec.type, origins = rec.origins, level = rec.level }
     invSvc:RemoveItem(player, BUCKET, uid, 1)
     self._dataService:RequestSave(player, "enhancement_slot", { critical = true })
+    -- PASSIVES apply their magnitude at the ownership re-stamp — without this, a
+    -- potency slotted into Swift/Magnet/XP Surge stays dormant until respawn (Jason:
+    -- "it did not change my speed").
+    pcall(function()
+        local power = _G.RBXTemplateServices and _G.RBXTemplateServices:Get("PowerService")
+        if power and power.ReapplyPassives then
+            power:ReapplyPassives(player)
+        end
+    end)
     return {
         ok = true,
         powerId = powerId,

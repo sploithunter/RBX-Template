@@ -30,7 +30,9 @@ return {
         -- field IS the per-sound base level; events can still scale it per-use
         -- via sound = { key, volume } in configs/game_events.lua
         playback_speed = 1.0,
-        bus = "ui", -- SoundGroup bus (effects | music | ui); the volume slider controlling it
+        bus = "effects", -- was "ui": the UI bus is a binary toggle, so level-up/area-
+        -- unlock/achievement jingles IGNORED the SFX slider (Jason: "really loud...
+        -- not on the sound bus"). effects = rides the slider like everything else.
     },
 
     -- Rising "power up" sting (uploaded SFX) — pet revive and similar comeback moments.
