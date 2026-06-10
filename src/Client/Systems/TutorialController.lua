@@ -149,15 +149,35 @@ local function clearGuidance()
     end
 end
 
-local function nearestEgg()
+-- prefer: optional hatcher-name match (e.g. "BasicEarth") — the tutorial steers new
+-- players to the STARTER egg, not just whatever egg is geometrically nearest (Jason:
+-- "pointing over to the lava egg and not the actual earth egg"). Falls back to
+-- any egg when no candidate matches.
+local function nearestEgg(prefer)
     local char = Players.LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local best, bestDist
+    local best, bestDist, bestPref, bestPrefDist
+    local function matches(model)
+        if not prefer then
+            return false
+        end
+        local node = model
+        for _ = 1, 4 do -- the hatcher folder is a near ancestor (BasicEarth/PlacedEgg)
+            if node and node.Name:find(prefer) then
+                return true
+            end
+            node = node and node.Parent
+        end
+        return false
+    end
     local function consider(model)
         local pivot = model:GetPivot().Position
         local d = hrp and (pivot - hrp.Position).Magnitude or 0
         if not best or d < bestDist then
             best, bestDist = model, d
+        end
+        if matches(model) and (not bestPref or d < bestPrefDist) then
+            bestPref, bestPrefDist = model, d
         end
     end
     -- authored egg stands (EggStandPlacement): Maps/**/PlacedEgg — the live map's eggs
@@ -175,7 +195,7 @@ local function nearestEgg()
             consider(child)
         end
     end
-    return best
+    return bestPref or best
 end
 
 -- Nearest SMALL crystal (Jason: "lead them to a small crystal first" — small = fast
@@ -420,8 +440,11 @@ local function apply(state)
 
     local target = state.target or {}
     if target.kind == "egg" then
-        showEggBeacon(stepToken)
-        showEggPath(stepToken)
+        local finder = function()
+            return nearestEgg(target.prefer)
+        end
+        showEggBeacon(stepToken, finder)
+        showEggPath(stepToken, finder)
     elseif target.kind == "crystal" then
         showEggBeacon(stepToken, nearestSmallCrystal, "⬇ MINE")
         showEggPath(stepToken, nearestSmallCrystal)

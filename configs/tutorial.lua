@@ -27,7 +27,7 @@ return {
             id = "hatch_first_egg",
             title = "Hatch your first pet",
             body = "Walk to the glowing egg and hatch it — pets do everything for you here.",
-            target = { kind = "egg" },
+            target = { kind = "egg", prefer = "BasicEarth" },
             complete_on = { event = "egg_hatch" },
         },
         {
@@ -50,7 +50,7 @@ return {
             id = "hatch_another",
             title = "Grow your team",
             body = "Spend those coins on another egg — more pets means faster mining.",
-            target = { kind = "egg" },
+            target = { kind = "egg", prefer = "BasicEarth" },
             complete_on = { event = "egg_hatch" },
         },
     },
