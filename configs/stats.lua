@@ -25,6 +25,18 @@ return {
             scope = "lifetime",
             default = 0,
         },
+        enhancements_slotted = {
+            display_name = "Enhancements Slotted",
+            description = "Enhancements committed into power slots",
+        },
+        levels_gained = {
+            display_name = "Levels Gained",
+            description = "Level-ups claimed",
+        },
+        enemies_defeated = {
+            display_name = "Enemies Defeated",
+            description = "Enemies your squad has brought down",
+        },
         enhancements_found = {
             display_name = "Enhancements Found",
             scope = "lifetime",

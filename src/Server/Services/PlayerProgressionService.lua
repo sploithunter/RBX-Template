@@ -425,6 +425,9 @@ function PlayerProgressionService:ClaimLevel(player, expectedLevel, silent)
     -- bus source (no default reactions — the client LevelUpController owns the level_up juice;
     -- this is the SERVER-truth signal consumers like the tutorial need)
     fireGameEvent(player, "level_claimed", { level = self:GetClaimedLevel(player) })
+    pcall(function() -- mission counter (Origin Story "Reach Level N")
+        _G.RBXTemplateServices:Get("StatsService"):Increment(player, "levels_gained", 1)
+    end)
 
     return {
         ok = true,

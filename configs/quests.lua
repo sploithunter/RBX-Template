@@ -14,6 +14,12 @@
 ]]
 
 return {
+    -- THE CHAIN (Jason): everyone runs this one ordered line first — "Origin Story."
+    -- Hierarchical branches hang off it later (per-origin chapters after the L5
+    -- choice); QuestService today runs one chain, so this metadata names it for the
+    -- panel/tracker and future branching keys off chain ids.
+    chain = { id = "origin_story", title = "Origin Story" },
+
     defs = {
         -- Jason 2026-06-10: the tutorial already walks hatch-1/equip/first-coins, so the
         -- chain STARTS where the tutorial hands off. "Mine 8,000 Coins" lines up with the
@@ -63,6 +69,55 @@ return {
             description = "Keep the mining train rolling.",
             condition = { type = "counter_at_least", counter = "breakables_broken", value = 50 },
             reward = { currencies = { gems = 8 } },
+        },
+        -- ===== Origin Story, extended (Jason: "it should go a little bit longer") —
+        -- walks every system: slotting, the L5 origin choice, combat, and the long
+        -- hatching/mining ramps that carry the player into the midgame. =====
+        gear_smith = {
+            order = 7,
+            name = "Slot an Enhancement",
+            description = "Open a power in the Powers menu and slot a cog into it.",
+            condition = { type = "counter_at_least", counter = "enhancements_slotted", value = 1 },
+            reward = { currencies = { gems = 8 } },
+        },
+        chosen_one = {
+            order = 8,
+            name = "Reach Level 5 — Choose Your Origin",
+            description = "Claim levels at the Ascend altar. Level 5 unlocks your Origin!",
+            condition = { type = "counter_at_least", counter = "levels_gained", value = 4 },
+            reward = { currencies = { gems = 20 } },
+        },
+        first_blood = {
+            order = 9,
+            name = "Defeat 10 Enemies",
+            description = "Your squad fights back — let your tank pull and pile on.",
+            condition = { type = "counter_at_least", counter = "enemies_defeated", value = 10 },
+            reward = { currencies = { gems = 10 } },
+        },
+        egg_baron = {
+            order = 10,
+            name = "Hatch 500 Eggs",
+            description = "The collection grows. Luck powers make every egg count.",
+            condition = { type = "counter_at_least", counter = "eggs_hatched", value = 500 },
+            reward = { currencies = { gems = 25 } },
+        },
+        deep_miner = {
+            order = 11,
+            name = "Mine 50,000 Coins",
+            description = "Big crystals pay big. Yield buffs stack with everything.",
+            condition = {
+                type = "counter_at_least",
+                counter = "coins_earned_lifetime",
+                value = 50000,
+            },
+            reward = { currencies = { gems = 30 } },
+        },
+        gear_collector = {
+            order = 12,
+            name = "Find 10 Enhancements",
+            description = "Singles only drop in their home world. Duals are everywhere.",
+            condition = { type = "counter_at_least", counter = "enhancements_found", value = 10 },
+            reward = { currencies = { gems = 25 } },
         },
     },
 }

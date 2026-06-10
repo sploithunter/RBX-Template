@@ -339,6 +339,11 @@ function EnemyService:_onDefeated(targetId)
                     combat:AwardLoot(player, entry.enemyId)
                 end)
                 fireGameEvent(player, "enemy_defeated", { enemy = entry.enemyId })
+                pcall(function() -- mission counter (Origin Story combat beats)
+                    _G.RBXTemplateServices
+                        :Get("StatsService")
+                        :Increment(player, "enemies_defeated", 1)
+                end)
                 -- rare ENHANCEMENT drop at the kill site (identity revealed at pickup)
                 local pp = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
                 if pp then

@@ -307,6 +307,9 @@ function EnhancementService:Slot(player, powerId, slotIndex, uid)
     slot.enh = { type = rec.type, origins = rec.origins, level = rec.level }
     invSvc:RemoveItem(player, BUCKET, uid, 1)
     self._dataService:RequestSave(player, "enhancement_slot", { critical = true })
+    pcall(function() -- mission counter (Origin Story "Slot an Enhancement")
+        _G.RBXTemplateServices:Get("StatsService"):Increment(player, "enhancements_slotted", 1)
+    end)
     -- config-reactive event (sounds/VFX are a configs/game_events.lua row away — Jason)
     pcall(function()
         local fireGameEvent =
