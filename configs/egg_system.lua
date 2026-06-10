@@ -6,6 +6,12 @@ return {
     -- (hatch 9 = 9 XP) at RecordHatchSuccess; 0 disables
     xp_per_hatch = 1,
 
+    -- The player's VERY FIRST egg ever (lifetime eggs_hatched == 0) rolls with this
+    -- luck multiplier, applied AFTER the luck cap and consumed by exactly ONE roll —
+    -- a great first impression (Jason: "extremely lucky, like 10x, but only the very
+    -- first egg"). 1 disables.
+    first_hatch_luck_multiplier = 10,
+
     version = "1.0.0",
 
     -- === PROXIMITY & INTERACTION SETTINGS ===

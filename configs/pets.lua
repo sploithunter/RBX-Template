@@ -1819,6 +1819,14 @@ function petConfig.simulateHatch(eggType, playerData)
     local maxLuck = eggData.modifier_support.max_luck_multiplier or gamepassMods.max_luck
     luckMultiplier = math.min(luckMultiplier, maxLuck)
 
+    -- FIRST EGG EVER: a one-roll mega-luck multiplier (EggService sets this when the
+    -- lifetime eggs_hatched counter is 0; consumed here so a first BATCH only blesses
+    -- its first roll). Applied after the cap — it's a true 10x.
+    if playerData.firstHatchLuck then
+        luckMultiplier = luckMultiplier * (tonumber(playerData.firstHatchLuck) or 1)
+        playerData.firstHatchLuck = nil
+    end
+
     -- Apply luck to chances
     goldenChance = goldenChance * luckMultiplier
     rainbowChance = rainbowChance * luckMultiplier

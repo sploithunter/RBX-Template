@@ -790,6 +790,19 @@ function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
             + (player:GetAttribute("LuckBuff") or 0)
     end
 
+    -- FIRST EGG EVER: arm the one-roll mega-luck (configs/egg_system.lua
+    -- first_hatch_luck_multiplier; simulateHatch consumes it on the batch's first roll)
+    local firstLuck = tonumber(eggSystemConfig and eggSystemConfig.first_hatch_luck_multiplier) or 1
+    if firstLuck > 1 then
+        local hatchedEver = 0
+        pcall(function()
+            hatchedEver = self._dataService:GetCounter(player, "eggs_hatched") or 0
+        end)
+        if hatchedEver == 0 then
+            playerData.firstHatchLuck = firstLuck
+        end
+    end
+
     -- Recall power: stamp where the player is hatching, so Recall (default target = last hatched
     -- egg) brings an AFK farmer back here after a server reboot.
     local recallChar = player.Character
