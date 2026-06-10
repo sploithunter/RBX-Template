@@ -189,6 +189,12 @@ return {
         -- realms add their own band keyed by the player's CurrentArea attribute value.
         levels = {
             jitter = 2,
+            -- DELIBERATELY ONE BAND for the whole homeworld — do NOT texture per zone
+            -- (Jason): everyone starts in Grass/earth, so per-zone bands would
+            -- disadvantage earth-origin players (their homeworld singles would roll
+            -- low). Future realms ROTATE/SPIRAL the starting zone so every origin
+            -- takes fair turns at "go back to your homeworld for the right stuff."
+
             -- CoH-style level scaling (Jason): an enhancement works within +/- `window`
             -- levels of the PLAYER. Above you (up to +2) = stronger; below = weaker;
             -- can't SLOT one more than `window` above you; one slotted that falls more
