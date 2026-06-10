@@ -843,7 +843,10 @@ function HotbarBar.start()
                     editBanner.BackgroundColor3 = pulseColor
                     task.wait(0.05)
                 end
-                bindPillFrame(barFrame) -- restore the themed pill tint
+                -- the pill frames are PRE-COLORED images; restoring = clearing the
+                -- tint (bindPillFrame only swaps Image — calling it left the last
+                -- pulse color baked in, getting "more and more red" per session)
+                barFrame.ImageColor3 = Color3.new(1, 1, 1)
             end)
         else
             if editBanner then
