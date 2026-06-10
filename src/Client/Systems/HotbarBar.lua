@@ -832,23 +832,18 @@ function HotbarBar.start()
             end
             editBanner.Visible = true
             editPulseThread = task.spawn(function()
-                local stroke = barFrame:FindFirstChildOfClass("UIStroke")
+                -- the pill is a 9-slice ImageLabel: pulse its TINT (ImageColor3)
                 local t = 0
                 while editMode do
                     t += 0.05
                     local a = (math.sin(t * 4) + 1) / 2 -- 0..1 pulse
                     local pulseColor = Color3.fromRGB(235, 170, 60)
                         :Lerp(Color3.fromRGB(255, 90, 60), a)
-                    if stroke then
-                        stroke.Color = pulseColor
-                        stroke.Thickness = 2 + a * 2
-                    end
+                    barFrame.ImageColor3 = pulseColor
                     editBanner.BackgroundColor3 = pulseColor
                     task.wait(0.05)
                 end
-                if stroke then
-                    bindPillFrame(barFrame) -- restore the themed pill
-                end
+                bindPillFrame(barFrame) -- restore the themed pill tint
             end)
         else
             if editBanner then
