@@ -35,6 +35,9 @@ cooldown (300s with one single = ~225s) and stacks with Hasten.
 | Drops | `DropService:TrySpawnEnhancementDrop` — breakables (first Contrib) + enemy defeats; placeholder gold "?" orb until `drops.model_name` points at the authored model |
 | Pickup reveal | `_collect` → Grant + `enhancement_pickup` GameEvent → `float` reaction (name) + sting |
 | Slotting UI | PowerChoiceMenu: outside a level-up beat, click an OWNED power → ENHANCE strip (slots row + compatible/usable inventory row; click to slot into first empty) |
+| Storage (E6) | InventoryService bucket `enhancements` (`data.Inventory.enhancements`, unique uid records, 60 slots) — shows in the Inventory UI, positioned for trade |
+| Inventory cards (E7) | InventoryPanel ⚙️ Enhancements category: name + Single/Dual + origin-colored cards (`origins_csv` mirrors origins into the replication folder) |
+| Trading (E8) | PENDING — TradeService is pets-bucket-only today; extending escrow to enhancement records needs a two-player live session (task #206) |
 
 ## Slot data shape
 `data.Slots[powerId]` (earned at slot levels): `{}` empty · `{ inherent = true }` free first slot ·

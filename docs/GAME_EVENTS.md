@@ -50,6 +50,9 @@ Current kinds:
 - `sound = "<key in configs/sounds.lua>"` — one-shot on the sound's configured `bus`.
 - `vfx = { kind = "burst", color = {r,g,b}?, count = n? }` — self-contained celebratory burst at the
   local player (no asset dependency). Extend with more `kind`s or route to `CombatFX`.
+- `float = { color = {r,g,b}?, prefix = ""?, size = px? }` — rising text whose CONTENT comes from
+  the event ctx (`ctx.name`), anchored at `ctx.position` (a Vector3 — e.g. the broken crystal)
+  when given, else at the local player. Used by `enhancement_pickup` and `coin_payout` (#172).
 
 ## Status
 
@@ -78,7 +81,8 @@ Legend: ✅ on the bus · 🔌 source wired, reactions config-optional (add a ro
 - ✅ `sell_success` (EconomyService) — small green burst (toast stays)
 - 🔌 `economy_error` (EconomyService:_sendError) — wired; add an error blip when uploaded
 - ✅ `first_purchase_bonus` (MonetizationService) — jingle + big warm burst
-- ⚠️ `currency_gain` — per-pickup; belongs to coin-float #172, not the bus
+- ✅ `coin_payout` (BreakableSpawner, per contributor at the NODE position) — silent gold float (#172)
+- ⚠️ `currency_gain` — per-pickup; superseded by `coin_payout` above
 
 ### Eggs & Pets
 - 🔌 `egg_hatch` (EggService, per successful batch) — wired; reveal pop stays animation-synced
