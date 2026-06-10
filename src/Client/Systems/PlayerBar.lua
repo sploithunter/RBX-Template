@@ -169,16 +169,30 @@ function PlayerBar.start()
     originIcon.Visible = false
     originIcon.ZIndex = 6
     originIcon.Parent = emblem
-    local originPlaceholder = Instance.new("TextLabel")
+    -- pre-origin: the player's OWN avatar headshot (Jason: "weird player emoji... use
+    -- the player's character head"), circle-cropped to the emblem
+    local originPlaceholder = Instance.new("ImageLabel")
     originPlaceholder.Name = "OriginPlaceholder"
     originPlaceholder.Size = UDim2.fromScale(1, 1)
     originPlaceholder.BackgroundTransparency = 1
-    originPlaceholder.Font = Enum.Font.GothamBlack
-    originPlaceholder.TextSize = 28
-    originPlaceholder.Text = "👤"
-    originPlaceholder.TextColor3 = Color3.fromRGB(225, 230, 240)
+    originPlaceholder.ScaleType = Enum.ScaleType.Fit
     originPlaceholder.ZIndex = 6
+    local phCorner = Instance.new("UICorner")
+    phCorner.CornerRadius = UDim.new(0.5, 0)
+    phCorner.Parent = originPlaceholder
     originPlaceholder.Parent = emblem
+    task.spawn(function()
+        local ok, img = pcall(function()
+            return Players:GetUserThumbnailAsync(
+                player.UserId,
+                Enum.ThumbnailType.HeadShot,
+                Enum.ThumbnailSize.Size100x100
+            )
+        end)
+        if ok and originPlaceholder.Parent then
+            originPlaceholder.Image = img
+        end
+    end)
     local function refreshOrigin()
         local iconId = player:GetAttribute("OriginIcon")
         local has = type(iconId) == "string" and iconId ~= ""
