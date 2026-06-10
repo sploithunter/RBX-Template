@@ -261,6 +261,16 @@ function EnhancementService:Slot(player, powerId, slotIndex, uid)
     slot.enh = { type = rec.type, origins = rec.origins, level = rec.level }
     invSvc:RemoveItem(player, BUCKET, uid, 1)
     self._dataService:RequestSave(player, "enhancement_slot", { critical = true })
+    -- config-reactive event (sounds/VFX are a configs/game_events.lua row away — Jason)
+    pcall(function()
+        local fireGameEvent =
+            require(game:GetService("ReplicatedStorage").Shared.Network.FireGameEvent)
+        fireGameEvent(player, "enhancement_slotted", {
+            type = rec.type,
+            level = rec.level,
+            powerId = powerId,
+        })
+    end)
     -- PASSIVES apply their magnitude at the ownership re-stamp — without this, a
     -- potency slotted into Swift/Magnet/XP Surge stays dormant until respawn (Jason:
     -- "it did not change my speed").

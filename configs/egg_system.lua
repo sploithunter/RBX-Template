@@ -190,7 +190,9 @@ return {
             count_large_step = 10,
             default_selected_count = 1,
             default_action_mode = "single",
-            show_inline_controls = false,
+            -- BUTTONS are primary input (Jason, after mobile playtest: "no way to
+            -- click it... couldn't hatch an egg"); keyboard E/M/T remain as shortcuts
+            show_inline_controls = true,
             status_display_time = 3,
             action_modes = {
                 single = {

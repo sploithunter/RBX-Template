@@ -39,6 +39,10 @@ return {
     -- differentiate them visually. =====
 
     -- An achievement tier completed (server: AchievementsService alongside AchievementCompleted).
+    -- an enhancement was slotted into a power (EnhancementService:Slot). No reactions
+    -- yet — the UI gives its own feedback; add sound+visual here together when sourced.
+    enhancement_slotted = {},
+
     achievement_completed = {
         sound = "celebratory_jingle", -- (loudness fixed at the SOURCE: sounds.lua base volume)
         vfx = { kind = "burst", color = { 255, 120, 220 } }, -- magenta
