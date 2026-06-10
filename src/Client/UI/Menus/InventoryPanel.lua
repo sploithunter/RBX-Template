@@ -3695,6 +3695,46 @@ function InventoryPanel:_showItemTooltip(item)
     self:_hideItemTooltip()
     item = self:_refreshPetTooltipFromReplicatedState(item)
 
+    -- Enhancements get their OWN tooltip — the pet fields (Type/Variant/Power/Enchants)
+    -- are meaningless for them (Jason: "it's not distinguishing... we need to give
+    -- different information").
+    if item.folder_source == "enhancements" then
+        local okCfg, enhCfg = pcall(function()
+            return require(ReplicatedStorage.Configs:WaitForChild("enhancements"))
+        end)
+        local values = (okCfg and enhCfg and enhCfg.values) or {}
+        local single = item.rarity == "Single"
+        local value = single and values.single or values.dual
+        local originNames = {}
+        for _, o in ipairs(item.origins or {}) do
+            originNames[#originNames + 1] = o:sub(1, 1):upper() .. o:sub(2)
+        end
+        local lines = {
+            {
+                label = "Boosts",
+                value = tostring(item.enhancement_type or "?"):gsub("^%l", string.upper),
+            },
+            {
+                label = "Grade",
+                value = (item.rarity or "?")
+                    .. (value and (" (+" .. math.floor(value * 100 + 0.5) .. "%)") or ""),
+            },
+            {
+                label = single and "Origin" or "Origins",
+                value = #originNames > 0 and table.concat(originNames, " + ") or "Unknown",
+            },
+            {
+                label = "Usable by",
+                value = #originNames > 0 and table.concat(originNames, " or ") or "—",
+            },
+            { label = "Slot via", value = "Level-up menu → ENHANCE" },
+        }
+        item.tooltip_title = (#originNames > 0 and (item.origins_label .. " ") or "")
+            .. tostring(item.name or "Enhancement")
+        self:_renderItemTooltip(item, lines)
+        return
+    end
+
     local lines = {
         { label = "Rarity", value = item.rarity or "-" },
         { label = "Type", value = item.petType or "-" },
@@ -3778,6 +3818,11 @@ function InventoryPanel:_showItemTooltip(item)
         table.insert(lines, { label = "Owned", value = tostring(item.count) })
     end
 
+    self:_renderItemTooltip(item, lines)
+end
+
+-- Shared tooltip frame renderer (pet + enhancement paths both feed it their lines).
+function InventoryPanel:_renderItemTooltip(item, lines)
     local tooltip = Instance.new("Frame")
     tooltip.Name = "ItemTooltip"
     tooltip.Size = UDim2.new(0, 250, 0, 52 + (#lines * 22))
@@ -3803,7 +3848,7 @@ function InventoryPanel:_showItemTooltip(item)
     title.Size = UDim2.new(1, -20, 0, 28)
     title.Position = UDim2.new(0, 10, 0, 8)
     title.BackgroundTransparency = 1
-    title.Text = item.name or "Pet"
+    title.Text = item.tooltip_title or item.name or "Pet"
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.TextScaled = true

@@ -31,7 +31,50 @@ function EnhancementService:Init()
     self._powersConfig = self._configLoader:LoadConfig("powers")
 end
 
+local Players = game:GetService("Players")
+
 local BUCKET = "enhancements" -- InventoryService bucket: visible in the Inventory UI, trade-ready
+
+-- Records granted before the folder-mirror field existed have no origins_csv, so the
+-- inventory FOLDER carries no origins and the client renders the neutral purple badge
+-- (Jason: a wall of identical purple gears). Backfill on join: stamp the csv on the data
+-- record, then rebuild the bucket folder so the mirror picks it up.
+function EnhancementService:Start()
+    local function backfill(player)
+        local deadline = os.clock() + 20
+        while
+            player.Parent
+            and not self._dataService:IsDataLoaded(player)
+            and os.clock() < deadline
+        do
+            task.wait(0.2)
+        end
+        if not (player.Parent and self._dataService:IsDataLoaded(player)) then
+            return
+        end
+        local invSvc = self:_inventoryService()
+        local bucket = invSvc and invSvc:GetInventory(player, BUCKET)
+        local changed = false
+        for _, rec in pairs((bucket and bucket.items) or {}) do
+            if rec.type and type(rec.origins) == "table" and not rec.origins_csv then
+                rec.origins_csv = table.concat(rec.origins, ",")
+                changed = true
+            end
+        end
+        if changed then
+            self._dataService:RequestSave(player, "enhancement_csv_backfill")
+            pcall(function()
+                invSvc:_updateBucketFolders(player, BUCKET)
+            end)
+        end
+    end
+    Players.PlayerAdded:Connect(function(player)
+        task.spawn(backfill, player)
+    end)
+    for _, player in ipairs(Players:GetPlayers()) do
+        task.spawn(backfill, player)
+    end
+end
 
 function EnhancementService:_inventoryService()
     local locator = _G.RBXTemplateServices
