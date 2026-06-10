@@ -1399,6 +1399,43 @@ function EnemyService:_supportPass(now)
                 elseif kind == "yield" then
                     self:_auraPlayerBuff(folder, "CoinYieldBuff", aura, count)
                     self:_stampAuraFx(folder, "YieldFxUntil", aura, count)
+                elseif kind == "buff" then
+                    -- GENERIC aura (Jason: "keep it configurable and flexible") — the
+                    -- config declares the attribute and WHO it targets:
+                    --   { kind = "buff", attr = "MoveSpeedBuff", mult = 1.2,
+                    --     target = "player" | "pets" | "both", interval, duration }
+                    -- player: multiplier+Stacks on the owner (bar badge shows xN);
+                    -- pets:   multiplier stamped per ally (squad badge per pet).
+                    -- NOTE: an attr is inert until something CONSUMES it (BuffStack
+                    -- axis, EggService, movement...) — wiring the consumer is the only
+                    -- per-buff code.
+                    local target = aura.target or "player"
+                    local until_ = os.time() + (tonumber(aura.duration) or 3)
+                    if aura.attr and (target == "player" or target == "both") then
+                        self:_auraPlayerBuff(folder, aura.attr, aura, count)
+                    end
+                    if aura.attr and (target == "pets" or target == "both") then
+                        for _, ally in ipairs(folder:GetChildren()) do
+                            if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
+                                ally:SetAttribute(aura.attr, tonumber(aura.mult) or 1)
+                                ally:SetAttribute(aura.attr .. "Until", until_)
+                            end
+                        end
+                    end
+                    -- providers always wear their single caster marker
+                    for _, ally in ipairs(folder:GetChildren()) do
+                        if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
+                            local allyAura = self:_petAura(ally)
+                            if
+                                allyAura
+                                and allyAura.kind == "buff"
+                                and allyAura.attr == aura.attr
+                            then
+                                ally:SetAttribute((aura.fx or aura.attr) .. "FxUntil", until_)
+                                ally:SetAttribute((aura.fx or aura.attr) .. "FxUntilStacks", 1)
+                            end
+                        end
+                    end
                 elseif kind == "luck" then
                     -- lucky-rabbit aura: hatch luck for the PLAYER (the buff already
                     -- targets the player). Display: stamp ONLY the providing bunnies —

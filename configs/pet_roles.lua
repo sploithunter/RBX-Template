@@ -46,6 +46,10 @@ return {
     --   yield    — CoinYieldBuff on the owner; ×`mult` to mined-coin payout (BreakableSpawner).
     --   luck     — HatchLuckBuff on the owner; adds (mult-1) to hatch luck while deployed
     --              (EggService folds it into luckBoost — boosts rare species AND variants).
+    --   buff     — GENERIC (Jason): { kind="buff", attr="<Attr>", mult, target="player"|
+    --              "pets"|"both", interval, duration }. Player target stacks on the bar
+    --              (xN); pets target badges each ally. The attr needs a CONSUMER (BuffStack
+    --              axis / EggService / movement) — that's the only per-buff code.
     support_auras = {
         -- Grass: LUCK (Jason: heal was off-theme — lucky rabbit's foot + clover fields).
         -- durations sit WELL above intervals so the continuously-refreshed buffs never
