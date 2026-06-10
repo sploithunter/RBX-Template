@@ -2,8 +2,10 @@
     TutorialController (client) — renders the server-pushed tutorial state (Signals.TutorialState,
     TutorialFlow.stateFor shape). Three guidance surfaces, all torn down between steps:
 
-      capsule  — bottom-center objective pill just above the hotbar ("TUTORIAL 2/6 · title · body",
-                 with an n/need counter on multi-count steps)
+      capsule  — the objective card. Docks INTO the TopHudStack (under the player bar, where
+                 the quest tracker lives — Jason: the tutorial IS the new player's quest) and
+                 HIDES the quest_tracker_pane while active; quests reappear there when done.
+                 Falls back to a bottom-center ScreenGui if the stack never shows up.
       beacon   — target.kind == "egg": pulsing BillboardGui over the NEAREST world egg (egg models
                  carry an EggInfo child — same detection as the BootLoader gate), re-aimed every 2s
       pulse    — target.kind == "ui": breathing gold UIStroke around the named GuiObject, found
@@ -30,6 +32,17 @@ local beacon -- BillboardGui (parented to the current nearest egg)
 local pulseStroke -- UIStroke on the current ui target
 local stepToken = 0 -- bumps every state push; loops check it to die
 
+local questPane -- quest_tracker_pane (hidden while the tutorial runs)
+local docked = false
+local tutorialActive = false
+
+-- one rule: while the tutorial runs (and we're docked in the stack), quests yield the spot
+local function syncQuestPane()
+    if docked and questPane then
+        questPane.Visible = not tutorialActive
+    end
+end
+
 local function buildCapsule(pg)
     gui = Instance.new("ScreenGui")
     gui.Name = "TutorialGui"
@@ -40,7 +53,7 @@ local function buildCapsule(pg)
     capsule = Instance.new("Frame")
     capsule.Name = "Objective"
     capsule.AnchorPoint = Vector2.new(0.5, 1)
-    capsule.Position = UDim2.new(0.5, 0, 1, -140) -- just above the hotbar
+    capsule.Position = UDim2.new(0.5, 0, 1, -140) -- fallback spot (above the hotbar)
     capsule.Size = UDim2.fromOffset(360, 88) -- room for 3-line bodies (farm step)
     capsule.BackgroundColor3 = Color3.fromRGB(24, 22, 34)
     capsule.BackgroundTransparency = 0.12
@@ -88,6 +101,31 @@ local function buildCapsule(pg)
     capsule.Parent = gui
     gui.Parent = pg
     require(script.Parent.Parent.UI.UIViewportScale).attach(capsule)
+
+    -- Dock into the TopHudStack (above the quest tracker, same screen home as quests).
+    -- The stack's capsule already carries a ViewportScale, so ours goes when we move in.
+    task.spawn(function()
+        local barGui = pg:WaitForChild("PlayerBar", 20)
+        local cap = barGui and barGui:WaitForChild("Capsule", 10)
+        local stack = cap and cap:WaitForChild("TopHudStack", 10)
+        if not (stack and capsule) then
+            return -- fallback: stays bottom-center in its own gui
+        end
+        local own = capsule:FindFirstChild("ViewportScale")
+        if own then
+            own:Destroy()
+        end
+        capsule.LayoutOrder = 0 -- above the quest tracker slot
+        capsule.Parent = stack
+        docked = true
+        questPane = stack:FindFirstChild("quest_tracker_pane")
+            or stack:WaitForChild("quest_tracker_pane", 15)
+        if gui then
+            gui:Destroy()
+            gui = nil
+        end
+        syncQuestPane()
+    end)
 end
 
 local function clearGuidance()
@@ -182,11 +220,15 @@ local function apply(state)
     stepToken += 1
     clearGuidance()
     if type(state) ~= "table" or state.done then
+        tutorialActive = false
         if capsule then
             capsule.Visible = false
         end
+        syncQuestPane() -- hand the spot back to quests
         return
     end
+    tutorialActive = true
+    syncQuestPane()
     stepLabel.Text = ("TUTORIAL  %d / %d"):format(state.index or 1, state.total or 1)
         .. (
             (state.need or 1) > 1 and ("   ·   %d / %d"):format(state.count or 0, state.need) or ""
