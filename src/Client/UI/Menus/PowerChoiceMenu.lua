@@ -731,6 +731,24 @@ function PowerChoiceMenu:_renderEnhanceStrip()
             btn.ZIndex = 7
             btn.Parent = strip
             enhBadge(btn, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), rec).ZIndex = 7
+            -- the STAGED pick wears the same gold halo as the targeted slot (Jason:
+            -- "when I click what I want to fill it with I should also have a circle")
+            if self._enhStaged and self._enhStaged.groupKey == key then
+                local halo = Instance.new("Frame")
+                halo.AnchorPoint = Vector2.new(0.5, 0.5)
+                halo.Position = UDim2.fromScale(0.5, 0.5)
+                halo.Size = UDim2.fromScale(1.18, 1.18)
+                halo.BackgroundTransparency = 1
+                halo.ZIndex = 10
+                local hcorner = Instance.new("UICorner")
+                hcorner.CornerRadius = UDim.new(1, 0)
+                hcorner.Parent = halo
+                local ring = Instance.new("UIStroke")
+                ring.Color = Color3.fromRGB(235, 200, 90)
+                ring.Thickness = 3
+                ring.Parent = halo
+                halo.Parent = btn
+            end
             -- level label under the badge (Jason: "Level 7 — just say 7 underneath")
             local lv = Instance.new("TextLabel")
             lv.Size = UDim2.fromScale(1, 0.28)
@@ -776,7 +794,8 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                     return
                 end
                 local replacing = slots[target] and slots[target].enh ~= nil
-                self._enhStaged = { slotIndex = target, uid = g.uids[1], item = item }
+                self._enhStaged =
+                    { slotIndex = target, uid = g.uids[1], item = item, groupKey = key }
                 self.notice = replacing
                         and ("STAGED for slot %d — APPLY will DESTROY the enhancement currently there"):format(
                             target
