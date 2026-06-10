@@ -147,6 +147,9 @@ function MenuTrayStyle.start()
             adminBtn.Parent = mcParent
             adminBtn.AnchorPoint = Vector2.new(0, 1)
             adminBtn.Size = UDim2.fromOffset(62, 62)
+            -- leaving the pane also left its UIViewportScale (Jason: "admin is not
+            -- scaling") — own scale, anchored bottom-left so it shrinks in place
+            require(script.Parent.Parent.UI.UIViewportScale).attach(adminBtn)
             -- dock to the TOP of the VISIBLE button block (the pane's 200px box is
             -- taller than its content — position math off the pane floated too high;
             -- live-tuned against the top-row button's absolute edge)
