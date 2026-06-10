@@ -780,6 +780,16 @@ function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
         })
         playerData.luckBoost = tonumber(hatchLuck) or baseLuckBoost
         playerData.secretLuckBoost = tonumber(secretLuck) or 0
+        -- huge luck: a MULTIPLE (1 = one jackpot attempt, 3 = three — Jason's reroll
+        -- model). Sources hook in via the modifier kind below (gamepass/power later).
+        local hugeLuck = self._modifierService:Resolve(1, {
+            player = player,
+            kind = "huge_hatch_luck",
+            eggType = eggType,
+            currency = eggData.currency,
+            source = "EggService",
+        })
+        playerData.hugeLuckBoost = tonumber(hugeLuck) or 1
     end
 
     -- Fortune / Huge Fortune (luck axis): the player's active luck POWER adds to the hatch luck
@@ -897,6 +907,7 @@ function EggService:GetForcedHatchOutcome(player, eggType)
     return {
         pet = pet,
         variant = variant,
+        huge = player:GetAttribute("ForceHuge") == true, -- test hook for the huge path
         finalGoldenChance = 0,
         finalRainbowChance = 0,
         luckMultiplier = 1,
@@ -1223,6 +1234,7 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
             grantResult = self._petGrantService:GrantPet(player, {
                 petType = hatchResult.pet,
                 variant = hatchResult.variant,
+                huge = hatchResult.huge == true, -- BuildPetData serials it (NextHugeSerial)
                 source = "egg_hatch",
             })
             if grantResult.ok then

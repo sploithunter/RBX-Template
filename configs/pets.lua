@@ -1213,6 +1213,9 @@ local petConfig = {
             description = "Contains all your favorite pets in Basic, Golden, and Rainbow variants!",
             cost = 100,
             currency = "coins",
+            -- HUGE hatching (mechanism live, content gated): set chance > 0 to enable.
+            -- "Extremely extremely extremely rare" — think 0.00002 (1 in 50,000).
+            huge = { chance = 0, pets = { bear = 1 } },
             asset_id = "rbxassetid://77451518796778", -- 3D BasicEgg model for import
             image_id = "rbxassetid://0", -- Generated from 3D model
             unlock_requirement = nil, -- Always available
@@ -1830,6 +1833,48 @@ function petConfig.simulateHatch(eggType, playerData)
     -- Apply luck to chances
     goldenChance = goldenChance * luckMultiplier
     rainbowChance = rainbowChance * luckMultiplier
+
+    -- Stage 2.5: HUGE roll (Jason's design): huges are SEPARATE unique pets, never a
+    -- variant. The normal pet above is the QUEUED outcome; the player then gets
+    -- `attempts` shots at the huge jackpot (attempts = their huge luck multiple — a 3x
+    -- huge luck = 3 rolls, Jason's hold-in-queue-and-reroll model). Any hit replaces
+    -- the queued pet with a huge. Per-egg config:
+    --   egg_sources.<egg>.huge = { chance = 0.00002, pets = { bear = 1 } }
+    -- chance = 0 / no table = huges not hatchable from this egg (current default).
+    local hugeCfg = eggData.huge
+    local hugeChance = hugeCfg and tonumber(hugeCfg.chance) or 0
+    if hugeChance > 0 and hugeCfg.pets and next(hugeCfg.pets) then
+        local attempts = math.max(1, math.floor((tonumber(playerData.hugeLuckBoost) or 1) + 0.5))
+        for _ = 1, attempts do
+            if math.random() <= hugeChance then
+                -- jackpot: weighted pick among this egg's huge-capable species
+                local hugeTotal = 0
+                for _, w in pairs(hugeCfg.pets) do
+                    hugeTotal = hugeTotal + w
+                end
+                local r, acc = math.random() * hugeTotal, 0
+                local hugePet
+                for petType, w in pairs(hugeCfg.pets) do
+                    acc = acc + w
+                    if r <= acc then
+                        hugePet = petType
+                        break
+                    end
+                end
+                if hugePet then
+                    return {
+                        pet = hugePet,
+                        variant = "basic",
+                        huge = true,
+                        finalGoldenChance = 0,
+                        finalRainbowChance = 0,
+                        luckMultiplier = luckMultiplier,
+                        petData = petConfig.getPet(hugePet, "basic"),
+                    }
+                end
+            end
+        end
+    end
 
     -- Determine rarity
     local rarityRoll = math.random()
