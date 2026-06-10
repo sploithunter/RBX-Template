@@ -20,6 +20,13 @@
 local SupportAura = {}
 
 function SupportAura.forPet(petType, rolesConfig)
+    local list = SupportAura.aurasFor(petType, rolesConfig)
+    return list and list[1] or nil
+end
+
+-- A pet's auras as a LIST. Config value may be a single aura table { kind = ... } or an
+-- ARRAY of them (creator pets carry every buffer — Jason). Single wraps to a one-list.
+function SupportAura.aurasFor(petType, rolesConfig)
     if type(rolesConfig) ~= "table" or petType == nil then
         return nil
     end
@@ -27,11 +34,17 @@ function SupportAura.forPet(petType, rolesConfig)
     if type(auras) ~= "table" then
         return nil
     end
-    local aura = auras[petType]
-    if type(aura) ~= "table" or aura.kind == nil then
+    local entry = auras[petType]
+    if type(entry) ~= "table" then
         return nil
     end
-    return aura
+    if entry.kind ~= nil then
+        return { entry }
+    end
+    if type(entry[1]) == "table" and entry[1].kind ~= nil then
+        return entry
+    end
+    return nil
 end
 
 function SupportAura.isBuffer(petType, rolesConfig)

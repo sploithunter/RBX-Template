@@ -1227,14 +1227,20 @@ end
 -- `SupportAura` model attribute can override later), or nil. The returned table carries
 -- `.kind` (heal | defense | offense | yield) + that flavour's tuning knobs.
 function EnemyService:_petAura(pet)
+    local list = self:_petAuras(pet)
+    return list and list[1] or nil
+end
+
+-- ALL of a pet's auras (creator pets carry the full buffer set — config may be a list).
+function EnemyService:_petAuras(pet)
     local override = pet:GetAttribute("SupportAura")
     if type(override) == "string" and self._petRoles and self._petRoles.support_auras then
         local a = self._petRoles.support_auras[override]
         if a then
-            return a
+            return a.kind and { a } or a
         end
     end
-    return SupportAura.forPet(pet:GetAttribute("PetType"), self._petRoles)
+    return SupportAura.aurasFor(pet:GetAttribute("PetType"), self._petRoles)
 end
 
 -- A green heal puff above a pet (world-side "tell" that it was just healed). Expands +
@@ -1371,10 +1377,11 @@ function EnemyService:_supportPass(now)
         local counts, rep = {}, {}
         for _, pet in ipairs(folder:GetChildren()) do
             if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
-                local aura = self:_petAura(pet)
-                if aura and aura.kind then
-                    counts[aura.kind] = (counts[aura.kind] or 0) + 1
-                    rep[aura.kind] = rep[aura.kind] or aura
+                for _, aura in ipairs(self:_petAuras(pet) or {}) do
+                    if aura.kind then
+                        counts[aura.kind] = (counts[aura.kind] or 0) + 1
+                        rep[aura.kind] = rep[aura.kind] or aura
+                    end
                 end
             end
         end
@@ -1425,12 +1432,13 @@ function EnemyService:_supportPass(now)
                     -- providers always wear their single caster marker
                     for _, ally in ipairs(folder:GetChildren()) do
                         if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
-                            local allyAura = self:_petAura(ally)
-                            if
-                                allyAura
-                                and allyAura.kind == "buff"
-                                and allyAura.attr == aura.attr
-                            then
+                            local provides = false
+                            for _, a in ipairs(self:_petAuras(ally) or {}) do
+                                if a.kind == "buff" and a.attr == aura.attr then
+                                    provides = true
+                                end
+                            end
+                            if provides then
                                 ally:SetAttribute((aura.fx or aura.attr) .. "FxUntil", until_)
                                 ally:SetAttribute((aura.fx or aura.attr) .. "FxUntilStacks", 1)
                             end
@@ -1446,8 +1454,13 @@ function EnemyService:_supportPass(now)
                     local until_ = os.time() + (tonumber(aura.duration) or 3)
                     for _, ally in ipairs(folder:GetChildren()) do
                         if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
-                            local allyAura = self:_petAura(ally)
-                            if allyAura and allyAura.kind == "luck" then
+                            local allyHasLuck = false
+                            for _, a in ipairs(self:_petAuras(ally) or {}) do
+                                if a.kind == "luck" then
+                                    allyHasLuck = true
+                                end
+                            end
+                            if allyHasLuck then
                                 ally:SetAttribute("LuckFxUntil", until_)
                                 -- each bunny is ONE caster: a single clover marker, not
                                 -- a pile (the STACK belongs on the buffed PLAYER)

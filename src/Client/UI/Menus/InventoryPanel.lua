@@ -3213,37 +3213,51 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     -- penguin=Defense, emberimp=Offense, meerkat=Coin Yield) emit a team aura — surface it so
     -- "what does a meerkat do?" reads at a glance. Element-disc (biome colour) + short label.
     if POWER_ICONS and PET_ROLES and item.category == "Pets" and item.petType then
-        local aura = PET_ROLES.support_auras and PET_ROLES.support_auras[item.petType]
-        local meta = aura and SUPPORT_META[aura.kind]
-        local symbol = aura and POWER_ICONS.support_symbol and POWER_ICONS.support_symbol[aura.kind]
-        local disc = meta and symbol and POWER_ICONS.discFor(meta.element, symbol)
-        if disc then
-            local holder = Instance.new("Frame")
-            holder.Name = "SupportBadge"
-            holder.Size = UDim2.new(0.4, 0, 0.4, 0) -- square (aspect), ~40% of card
-            holder.Position = UDim2.fromScale(0.66, 0.5) -- lower-right corner, slight overhang
-            holder.BackgroundTransparency = 1
-            holder.ZIndex = 107
-            holder.Parent = itemFrame
-            local aspect = Instance.new("UIAspectRatioConstraint")
-            aspect.AspectRatio = 1
-            aspect.AspectType = Enum.AspectType.FitWithinMaxSize
-            aspect.Parent = holder
-            local img = Instance.new("ImageLabel")
-            img.Name = "Icon"
-            img.Size = UDim2.fromScale(1, 1)
-            img.BackgroundTransparency = 1
-            img.Image = disc
-            img.ScaleType = Enum.ScaleType.Fit
-            img.ZIndex = 107
-            img.Parent = holder
-            -- short label hugging the bottom of the card
+        -- entry may be a single aura or a LIST (creator pets carry every buffer); fan the
+        -- badges across the corner and label "ALL" when there are several.
+        local entry = PET_ROLES.support_auras and PET_ROLES.support_auras[item.petType]
+        local auras = nil
+        if type(entry) == "table" then
+            auras = entry.kind and { entry } or entry
+        end
+        local shown = 0
+        for _, aura in ipairs(auras or {}) do
+            local meta = SUPPORT_META[aura.kind]
+            local symbol = POWER_ICONS.support_symbol and POWER_ICONS.support_symbol[aura.kind]
+            local disc = meta and symbol and POWER_ICONS.discFor(meta.element, symbol)
+            if disc then
+                local holder = Instance.new("Frame")
+                holder.Name = "SupportBadge" .. (shown > 0 and tostring(shown + 1) or "")
+                holder.Size = UDim2.new(0.4, 0, 0.4, 0) -- square (aspect), ~40% of card
+                -- first badge in the lower-right corner; extras fan LEFT at half-overlap
+                holder.Position =
+                    UDim2.new(0.66, -shown * math.floor(self.cardSize.X * 0.14), 0.5, 0)
+                holder.BackgroundTransparency = 1
+                holder.ZIndex = 107 + (#auras - shown) -- earlier badges sit in front
+                holder.Parent = itemFrame
+                local aspect = Instance.new("UIAspectRatioConstraint")
+                aspect.AspectRatio = 1
+                aspect.AspectType = Enum.AspectType.FitWithinMaxSize
+                aspect.Parent = holder
+                local img = Instance.new("ImageLabel")
+                img.Name = "Icon"
+                img.Size = UDim2.fromScale(1, 1)
+                img.BackgroundTransparency = 1
+                img.Image = disc
+                img.ScaleType = Enum.ScaleType.Fit
+                img.ZIndex = holder.ZIndex
+                img.Parent = holder
+                shown += 1
+            end
+        end
+        if shown > 0 then
+            local first = SUPPORT_META[auras[1].kind]
             local lbl = Instance.new("TextLabel")
             lbl.Name = "SupportLabel"
             lbl.Size = UDim2.new(1, -4, 0, math.max(8, math.floor(self.cardSize.Y * 0.15)))
             lbl.Position = UDim2.new(0, 2, 1, -math.max(8, math.floor(self.cardSize.Y * 0.15)))
             lbl.BackgroundTransparency = 1
-            lbl.Text = meta.label
+            lbl.Text = shown > 1 and "ALL" or (first and first.label or "")
             lbl.TextColor3 = Color3.fromRGB(255, 230, 140)
             lbl.TextStrokeTransparency = 0.3
             lbl.TextScaled = true
