@@ -35,7 +35,7 @@ function TopHudStack.start()
         local stack = Instance.new("Frame")
         stack.Name = "TopHudStack"
         stack.AnchorPoint = Vector2.new(0.5, 0)
-        stack.Position = UDim2.new(0.5, 0, 1, 6) -- just under the capsule
+        stack.Position = UDim2.new(0.5, 0, 1, 30) -- below the badges straddling the bar's edge
         stack.Size = UDim2.fromOffset(0, 0)
         stack.AutomaticSize = Enum.AutomaticSize.XY
         stack.BackgroundTransparency = 1
@@ -75,14 +75,11 @@ function TopHudStack.start()
             return mc and mc:WaitForChild("quest_tracker_pane", 15)
         end)
 
-        -- 2. buff-toggle row (speed/magnet ON badges)
-        adopt(2, function()
-            local gui = pg:WaitForChild("PlayerPowerBadges", 20)
-            return gui and gui:WaitForChild("Row", 10)
-        end)
+        -- (the buff-toggle row straddles the player bar's lower edge — PlayerPowerBadges
+        -- docks it onto the capsule itself, enhancement-slot style; not part of this stack)
 
-        -- 3. ASCEND / LEVEL UP nudge (transient — visible only with pending levels)
-        adopt(3, function()
+        -- 2. ASCEND / LEVEL UP nudge (transient — visible only with pending levels)
+        adopt(2, function()
             local gui = pg:WaitForChild("LevelUpGui", 20)
             return gui and gui:WaitForChild("LevelUpButton", 10)
         end)

@@ -79,14 +79,26 @@ function PlayerPowerBadges.start()
 
     local row = Instance.new("Frame")
     row.Name = "Row"
-    row.AnchorPoint = Vector2.new(0.5, 0)
-    row.Position = UDim2.new(0.5, 0, 0, 132) -- top-centre, under the player nameplate
+    -- STRADDLE the player bar's lower edge (Jason: like the enhancement slot dots on power
+    -- rows): centered on the capsule's bottom boundary. Parented INTO the capsule, so it
+    -- inherits the bar's viewport scale and moves/scales with it.
+    row.AnchorPoint = Vector2.new(0.5, 0.5)
+    row.Position = UDim2.new(0.5, 0, 1, 0)
     row.Size = UDim2.fromOffset(0, 50)
     row.AutomaticSize = Enum.AutomaticSize.X
-    -- pixel-designed badges: shrink on small viewports (anchored top-center, stays docked)
-    require(script.Parent.Parent.UI.UIViewportScale).attach(row)
     row.BackgroundTransparency = 1
-    row.Parent = gui
+    row.ZIndex = 8
+    task.spawn(function()
+        local pg = localPlayer:WaitForChild("PlayerGui")
+        local bar = pg:WaitForChild("PlayerBar", 20)
+        local cap = bar and bar:WaitForChild("Capsule", 10)
+        if cap then
+            row.Parent = cap
+            gui:Destroy() -- the standalone gui is no longer needed
+        else
+            row.Parent = gui -- fallback: original floating placement
+        end
+    end)
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Horizontal
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
