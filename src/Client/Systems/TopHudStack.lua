@@ -35,7 +35,7 @@ function TopHudStack.start()
         local stack = Instance.new("Frame")
         stack.Name = "TopHudStack"
         stack.AnchorPoint = Vector2.new(0.5, 0)
-        stack.Position = UDim2.new(0.5, 0, 1, 30) -- below the badges straddling the bar's edge
+        stack.Position = UDim2.new(0.5, 0, 1, 6) -- just under the capsule
         stack.Size = UDim2.fromOffset(0, 0)
         stack.AutomaticSize = Enum.AutomaticSize.XY
         stack.BackgroundTransparency = 1

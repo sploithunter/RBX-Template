@@ -79,13 +79,13 @@ function PlayerPowerBadges.start()
 
     local row = Instance.new("Frame")
     row.Name = "Row"
-    -- STRADDLE the player bar's lower edge (Jason: like the enhancement slot dots on power
-    -- rows): centered on the capsule's bottom boundary. Parented INTO the capsule, so it
-    -- inherits the bar's viewport scale and moves/scales with it.
-    row.AnchorPoint = Vector2.new(0.5, 0.5)
-    row.Position = UDim2.new(0.5, 0, 1, 0)
-    row.Size = UDim2.fromOffset(0, 50)
-    row.AutomaticSize = Enum.AutomaticSize.X
+    -- VERTICAL strip hanging off the player bar's LEFT side (Jason: like the pet hud, which
+    -- columns down the right screen edge) — top-aligned with the capsule, growing downward.
+    -- Parented INTO the capsule, so it inherits the bar's viewport scale and moves with it.
+    row.AnchorPoint = Vector2.new(1, 0)
+    row.Position = UDim2.new(0, -10, 0, 0)
+    row.Size = UDim2.fromOffset(40, 0)
+    row.AutomaticSize = Enum.AutomaticSize.Y
     row.BackgroundTransparency = 1
     row.ZIndex = 8
     task.spawn(function()
@@ -100,10 +100,10 @@ function PlayerPowerBadges.start()
         end
     end)
     local layout = Instance.new("UIListLayout")
-    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.FillDirection = Enum.FillDirection.Vertical
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 6)
+    layout.Padding = UDim.new(0, 4)
     layout.Parent = row
 
     local badges = {} -- attr -> badge
