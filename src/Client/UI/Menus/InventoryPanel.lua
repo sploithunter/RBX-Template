@@ -1304,6 +1304,12 @@ function InventoryPanel:_loadRealInventoryData()
         self.logger:warn("🚫 PETS DEBUG - No pets folder found")
     end
 
+    -- Load enhancements from the enhancements bucket (E7)
+    local enhFolder = inventoryFolder:FindFirstChild("enhancements")
+    if enhFolder then
+        self:_loadEnhancementsFromFolder(enhFolder)
+    end
+
     -- Load consumables from consumables folder
     local consumablesFolder = inventoryFolder:FindFirstChild("consumables")
     if consumablesFolder then
@@ -1891,6 +1897,47 @@ function InventoryPanel:_loadConsumablesFromFolder(consumablesFolder)
                     count = displayData.count,
                 })
             end
+        end
+    end
+end
+
+-- Enhancements bucket (E7): each uid folder mirrors { id="enhancement", type, origins_csv,
+-- name } via InventoryService value objects. Cards show the display name, a gear icon, and
+-- the ORIGIN color (single = its origin's color, dual = chaotic purple) with Single/Dual as
+-- the rarity line — same grammar as the ENHANCE strip in PowerChoiceMenu.
+function InventoryPanel:_loadEnhancementsFromFolder(enhFolder)
+    local ORIGIN_COLOR = {
+        geomancer = Color3.fromRGB(150, 230, 150),
+        pyromancer = Color3.fromRGB(255, 150, 120),
+        cryomancer = Color3.fromRGB(140, 200, 255),
+        sandwalker = Color3.fromRGB(240, 215, 130),
+    }
+    local DUAL_COLOR = Color3.fromRGB(196, 156, 255)
+    for _, itemFolder in pairs(enhFolder:GetChildren()) do
+        if itemFolder:IsA("Folder") and itemFolder.Name ~= "Info" then
+            local nameV = itemFolder:FindFirstChild("name")
+            local csvV = itemFolder:FindFirstChild("origins_csv")
+            local typeV = itemFolder:FindFirstChild("type")
+            local origins = {}
+            if csvV and csvV:IsA("StringValue") then
+                for o in string.gmatch(csvV.Value, "[^,]+") do
+                    origins[#origins + 1] = o
+                end
+            end
+            local single = #origins == 1
+            local displayData = {
+                id = itemFolder.Name,
+                name = (nameV and nameV:IsA("StringValue") and nameV.Value) or "Enhancement",
+                icon = "⚙️",
+                rarity = single and "Single" or "Dual",
+                color = (single and ORIGIN_COLOR[origins[1]]) or DUAL_COLOR,
+                category = "Enhancements",
+                count = 1,
+                uid = itemFolder.Name,
+                enhancement_type = typeV and typeV:IsA("StringValue") and typeV.Value or nil,
+                folder_source = "enhancements",
+            }
+            table.insert(self.inventoryData, displayData)
         end
     end
 end

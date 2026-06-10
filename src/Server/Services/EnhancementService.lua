@@ -58,6 +58,7 @@ function EnhancementService:_migrateLegacy(player, data)
                 id = "enhancement",
                 type = rec.type,
                 origins = rec.origins,
+                origins_csv = table.concat(rec.origins, ","), -- folder-mirror friendly
                 name = Enhancements.displayName(self._config, rec),
             })
         end)
@@ -87,6 +88,10 @@ function EnhancementService:GetState(player)
     local bucket = invSvc and invSvc:GetInventory(player, BUCKET)
     for uid, rec in pairs((bucket and bucket.items) or {}) do
         if rec.type and rec.origins then
+            -- backfill for records granted before the folder-mirror field existed
+            if not rec.origins_csv then
+                rec.origins_csv = table.concat(rec.origins, ",")
+            end
             items[#items + 1] = {
                 uid = uid,
                 type = rec.type,
@@ -127,6 +132,7 @@ function EnhancementService:Grant(player, record)
         id = "enhancement",
         type = record.type,
         origins = record.origins,
+        origins_csv = table.concat(record.origins, ","), -- folder-mirror friendly
         name = name,
     })
     if not uid then
