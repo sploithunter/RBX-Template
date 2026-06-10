@@ -33,6 +33,7 @@ local BUFFS = {
         attr = "HatchLuckBuff",
         label = "LUCK",
         fixed = { element = "earth", symbol = "clover_lucky" },
+        steady = true, -- continuously refreshed aura: solid badge, no countdown/blink
     },
     { attr = "MoveSpeedBuff", label = "SPD" }, -- Swift
     { attr = "RechargeBuff", label = "RCH" }, -- Hasten
@@ -140,7 +141,8 @@ function PlayerPowerBadges.start()
                 local remaining = untilT - now
                 -- PASSIVE / TOGGLE buffs (Magnet/Swift/Hasten/XP) are always-on: their `Until` is a
                 -- far-future sentinel. Show "ON", not a ~73-year countdown.
-                local permanent = (localPlayer:GetAttribute(def.attr .. "Toggle") == true)
+                local permanent = def.steady == true
+                    or (localPlayer:GetAttribute(def.attr .. "Toggle") == true)
                     or remaining > PERMANENT_THRESHOLD
                 if permanent then
                     b.timer.Text = "ON"
