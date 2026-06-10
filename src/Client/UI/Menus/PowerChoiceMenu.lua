@@ -711,7 +711,10 @@ function PowerChoiceMenu:_fillColumn(holder, pool)
         local stagedPick = self:_isStagedPick(r.id)
         local stagedSlots = self:_stagedSlotsOn(r.id)
         local hasStaged = stagedPick or stagedSlots > 0
-        -- a row is ACTIONABLE this beat if you can act on it now (pick it / slot it)
+        -- a row GLOWS as actionable only while a grant is UNSPENT. (#195: the old
+        -- `or pendingPower == 1` radio-swap term kept the green glow on EVERY other available
+        -- row after staging a pick — "random rows light up". Swapping stays clickable in
+        -- _onRow; we just stop painting the alternatives once the pick is staged.)
         local actionable = (
             r.state == "owned"
             and self:_remainingSlots() > 0
@@ -721,7 +724,7 @@ function PowerChoiceMenu:_fillColumn(holder, pool)
                 r.state == "available"
                 and not stagedPick
                 and self.pendingPower > 0
-                and (self:_remainingPicks() > 0 or self.pendingPower == 1)
+                and self:_remainingPicks() > 0
             )
         local wrap = Instance.new("TextButton")
         wrap.Name = "Row_" .. r.id
