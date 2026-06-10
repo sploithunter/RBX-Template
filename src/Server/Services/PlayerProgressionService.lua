@@ -78,6 +78,17 @@ function PlayerProgressionService:Start()
                 -- Catch up any banked FILLER levels on join (e.g. earned offline); training
                 -- levels still stall for the altar.
                 self:_advanceAuto(player)
+                -- RECONCILE the levels_gained mission counter with the actual claimed
+                -- level (Jason hit this: at L6 the "Reach Level 5" mission read 0/4 —
+                -- the counter only counted claims made AFTER it shipped, walling every
+                -- pre-existing profile). claimed-1 = levels gained beyond L1.
+                pcall(function()
+                    local stats = _G.RBXTemplateServices:Get("StatsService")
+                    local floor = math.max(0, self:GetClaimedLevel(player) - 1)
+                    if (tonumber(stats:Get(player, "levels_gained")) or 0) < floor then
+                        stats:Set(player, "levels_gained", floor)
+                    end
+                end)
             end
         end)
     end
