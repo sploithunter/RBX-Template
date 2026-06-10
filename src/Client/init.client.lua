@@ -339,6 +339,7 @@ do
         require(script.Systems.CurrencyStyle).start()
         require(script.Systems.CurrencyStack).start()
         require(script.Systems.TopHudStack).start()
+        require(script.Systems.HotbarFlank).start()
         require(script.Systems.TutorialController).start()
         require(script.Systems.AudioPrefs).start()
     end)
