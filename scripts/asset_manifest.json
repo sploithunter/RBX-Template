@@ -1,5 +1,5 @@
 {
-  "_README": "SINGLE SOURCE OF TRUTH for every icon uploaded to Roblox via scripts/upload_icons.js (Open Cloud, creator userId 3200870803 / coloradoplays). Each asset has BOTH ids: 'decal' (what Open Cloud returns; does NOT render in ImageLabel.Image) and 'image' (the wrapped Texture id resolved via InsertService:LoadAsset in Studio EDIT mode \u2014 this is what configs use). The 'image' ids are wired into configs/power_icons.lua. Element colors: earth=green, fire=red, desert=yellow, ice=blue. Last updated 2026-06-05.",
+  "_README": "SINGLE SOURCE OF TRUTH for every icon uploaded to Roblox via scripts/upload_icons.js (Open Cloud, creator userId 3200870803 / coloradoplays). Each asset has BOTH ids: 'decal' (what Open Cloud returns; does NOT render in ImageLabel.Image) and 'image' (the wrapped Texture id resolved via InsertService:LoadAsset in Studio EDIT mode — this is what configs use). The 'image' ids are wired into configs/power_icons.lua. Element colors: earth=green, fire=red, desert=yellow, ice=blue. Last updated 2026-06-05.",
   "rings": {
     "_note": "5 grayscale targeting rings (tinted per element via ImageColor3). Source: assets/ui/ring_frames_white/.",
     "ring_target_in": {
@@ -225,6 +225,18 @@
       "range": {
         "decal": "103767304901691",
         "image": "85568641261092"
+      },
+      "focus": {
+        "decal": "105954717066528",
+        "image": null
+      },
+      "potency": {
+        "decal": "90149096686176",
+        "image": null
+      },
+      "proc": {
+        "decal": "107856700982742",
+        "image": null
       }
     },
     "red": {
@@ -423,6 +435,18 @@
       "range": {
         "decal": "128850070887177",
         "image": "117215691895001"
+      },
+      "focus": {
+        "decal": "91695762456261",
+        "image": null
+      },
+      "potency": {
+        "decal": "71829277121864",
+        "image": null
+      },
+      "proc": {
+        "decal": "118428732189098",
+        "image": null
       }
     },
     "yellow": {
@@ -621,6 +645,18 @@
       "range": {
         "decal": "117978793160323",
         "image": "80747623209973"
+      },
+      "focus": {
+        "decal": "82310234603370",
+        "image": null
+      },
+      "potency": {
+        "decal": "85352709148036",
+        "image": null
+      },
+      "proc": {
+        "decal": "136403081200051",
+        "image": null
       }
     },
     "blue": {
@@ -819,6 +855,18 @@
       "range": {
         "decal": "84198547544576",
         "image": "114627219516355"
+      },
+      "focus": {
+        "decal": "112890398708089",
+        "image": null
+      },
+      "potency": {
+        "decal": "88986084315913",
+        "image": null
+      },
+      "proc": {
+        "decal": "112000216533369",
+        "image": null
       }
     },
     "white": {
@@ -1001,6 +1049,34 @@
       "winter_hold": {
         "decal": "121252684848395",
         "image": "136908057991461"
+      },
+      "focus": {
+        "decal": "140390465602495",
+        "image": null
+      },
+      "heart": {
+        "decal": "72822516705395",
+        "image": null
+      },
+      "hourglass": {
+        "decal": "120263931366050",
+        "image": null
+      },
+      "impact_burst": {
+        "decal": "114755146745372",
+        "image": null
+      },
+      "potency": {
+        "decal": "92697063911730",
+        "image": null
+      },
+      "proc": {
+        "decal": "139333086580879",
+        "image": null
+      },
+      "range": {
+        "decal": "79599924145443",
+        "image": null
       }
     },
     "purple": {
@@ -1199,6 +1275,18 @@
       "range": {
         "decal": "92145712126089",
         "image": "127761820191050"
+      },
+      "focus": {
+        "decal": "102057343366728",
+        "image": null
+      },
+      "potency": {
+        "decal": "80138881291179",
+        "image": null
+      },
+      "proc": {
+        "decal": "92704729219382",
+        "image": null
       }
     }
   },
