@@ -655,6 +655,22 @@ function AdminToolsService:_handleResetToBeginning(adminPlayer, data)
         end)
     end
 
+    -- 5d) Tutorial restarts + enhancements wiped — "reset to beginning" means the NEW-PLAYER
+    --     experience (Jason hit this: his tutorial stayed done=true through this reset because
+    --     only levelup.resetRun knew about it).
+    local tut = _G.RBXTemplateServices and _G.RBXTemplateServices:Get("TutorialService")
+    if tut and tut.Reset then
+        pcall(function()
+            tut:Reset(targetPlayer)
+        end)
+    end
+    local enh = _G.RBXTemplateServices and _G.RBXTemplateServices:Get("EnhancementService")
+    if enh and enh.WipeAll then
+        pcall(function()
+            enh:WipeAll(targetPlayer)
+        end)
+    end
+
     -- 6) Re-replicate pet projections (drops stale equips + despawns removed follow models) + save.
     if self._inventoryService and self._inventoryService.RebuildPetProjections then
         self._inventoryService:RebuildPetProjections(targetPlayer)
