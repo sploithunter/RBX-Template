@@ -96,8 +96,9 @@ REACTIONS.vfx = function(spec)
     end
 end
 
--- float: rising announcement text at the local player. spec = { color = {r,g,b}?, prefix = ""? };
--- the TEXT comes from ctx.name (e.g. the enhancement revealed at pickup) so config stays generic.
+-- float: rising announcement text. spec = { color = {r,g,b}?, prefix = ""?, size = px? };
+-- the TEXT comes from ctx.name (config stays generic). Anchors at ctx.position (a Vector3 —
+-- e.g. the broken crystal) when given, else at the local player.
 REACTIONS.float = function(spec, ctx)
     spec = type(spec) == "table" and spec or {}
     local text = (ctx and ctx.name) and tostring(ctx.name) or nil
@@ -107,20 +108,37 @@ REACTIONS.float = function(spec, ctx)
     if spec.prefix then
         text = tostring(spec.prefix) .. text
     end
-    local char = Players.LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then
+    local adornee
+    if ctx and typeof(ctx.position) == "Vector3" then
+        -- world-anchored: a throwaway anchor part at the event position
+        local anchor = Instance.new("Part")
+        anchor.Anchored = true
+        anchor.CanCollide = false
+        anchor.CanQuery = false
+        anchor.Transparency = 1
+        anchor.Size = Vector3.new(0.1, 0.1, 0.1)
+        anchor.CFrame = CFrame.new(ctx.position)
+        anchor.Parent = Workspace
+        task.delay(2, function()
+            anchor:Destroy()
+        end)
+        adornee = anchor
+    else
+        local char = Players.LocalPlayer.Character
+        adornee = char and char:FindFirstChild("HumanoidRootPart")
+    end
+    if not adornee then
         return
     end
     local c = spec.color
     local color = (type(c) == "table") and Color3.fromRGB(c[1] or 255, c[2] or 255, c[3] or 255)
         or Color3.fromRGB(255, 235, 170)
     local bb = Instance.new("BillboardGui")
-    bb.Size = UDim2.fromOffset(360, 44)
+    bb.Size = UDim2.fromOffset(spec.size or 360, 44)
     bb.StudsOffset = Vector3.new(0, 3, 0)
     bb.AlwaysOnTop = true
-    bb.Adornee = hrp
-    bb.Parent = hrp
+    bb.Adornee = adornee
+    bb.Parent = adornee
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.fromScale(1, 1)
     lbl.BackgroundTransparency = 1

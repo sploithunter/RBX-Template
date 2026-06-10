@@ -32,6 +32,7 @@ local CollectionService = game:GetService("CollectionService")
 
 local XpReward = require(ReplicatedStorage.Shared.Game.XpReward)
 local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local buffsConfig = require(ReplicatedStorage.Configs:WaitForChild("buffs"))
 local SpawnSlots = require(ReplicatedStorage.Shared.Game.SpawnSlots)
 
@@ -2069,6 +2070,17 @@ function BreakableSpawner:_trySpawnOne(
                             local resolvedShare = resolvePlayerAward(plr, share)
                             pcall(function()
                                 creditCoins(plr, resolvedShare, "crystal_break_split")
+                                -- #172: payout float above the broken crystal (config-driven
+                                -- via the GameEvents bus; float kind anchors at ctx.position)
+                                if dropPos and resolvedShare > 0 then
+                                    local label = resolvedShare >= 1000
+                                            and string.format("+%.1fK", resolvedShare / 1000)
+                                        or ("+" .. tostring(resolvedShare))
+                                    fireGameEvent(plr, "coin_payout", {
+                                        name = label,
+                                        position = dropPos,
+                                    })
+                                end
                                 if stats then
                                     stats:Increment(plr, "breakables_broken", 1)
                                 end

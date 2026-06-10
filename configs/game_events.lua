@@ -127,6 +127,12 @@ return {
         sound = "power_up_stronger",
     },
 
+    -- A mined crystal paid out (server: BreakableSpawner, per contributor, at the NODE's
+    -- position — #172). FREQUENT during farming: small silent gold float, no sound.
+    coin_payout = {
+        float = { color = { 255, 215, 90 }, size = 160 },
+    },
+
     -- SOURCES WIRED, NO DEFAULT REACTIONS (add a row to react — the fire is already in place):
     --   egg_hatch     — every successful hatch batch {count} (the reveal pop is animation-synced
     --                   choreography in EggHatchingService and stays there)
