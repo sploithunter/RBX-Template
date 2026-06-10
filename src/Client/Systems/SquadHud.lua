@@ -207,6 +207,20 @@ local PET_EFFECTS = {
         label = "DMG",
         icon = POWER_ICONS.status.damage,
     },
+    -- Swift buffs PET speed too (self+pets by design) — pets consume the player's
+    -- MoveSpeedBuff in the follow loop, so every card wears the badge (Jason: "there's
+    -- an icon for speed for me but none for the pets"). steady: Swift is a permanent
+    -- passive, so no countdown/blink.
+    {
+        key = "speed",
+        source = "player",
+        untilAttr = "MoveSpeedBuffUntil",
+        powerIdAttr = "MoveSpeedBuffPowerId",
+        steady = true,
+        color = Color3.fromRGB(95, 180, 235),
+        label = "SPD",
+        icon = POWER_ICONS.discFor("neutral", "arrow_right"),
+    },
     -- Instant effects flash a blinking pulse badge (no countdown) for their FX window so
     -- you can see what just happened. heal = the support/heal-power tell (HealFxUntil).
     {
