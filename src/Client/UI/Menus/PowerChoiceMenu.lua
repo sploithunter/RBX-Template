@@ -710,7 +710,15 @@ function PowerChoiceMenu:_renderEnhanceStrip()
             { type = staged.item.type, origins = staged.item.origins }
         )
         ghost.ZIndex = 10
-        ghost.ImageTransparency = 0.45 -- ghost: staged, not applied
+        -- ghost: staged, not applied. The badge is a FRAME of image layers — fade the
+        -- layers (Frame has no ImageTransparency; this line erroring killed the whole
+        -- staged render, so APPLY/CANCEL never appeared — caught by the solo probe)
+        for _, layer in ipairs(ghost:GetDescendants()) do
+            if layer:IsA("ImageLabel") then
+                layer.ImageTransparency = 0.45
+                layer.ZIndex = 10
+            end
+        end
         local applyBtn = Instance.new("TextButton")
         applyBtn.Size = UDim2.fromScale(0.1, 0.3)
         applyBtn.AnchorPoint = Vector2.new(1, 1)
