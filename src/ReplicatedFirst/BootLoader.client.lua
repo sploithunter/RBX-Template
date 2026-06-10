@@ -123,14 +123,42 @@ local gates = {
         end,
     },
     {
+        label = "Placing eggs…",
+        check = function()
+            -- the egg spawner has placed world eggs (each egg Model carries an EggInfo child)
+            for _, child in ipairs(Workspace:GetChildren()) do
+                if child:IsA("Model") and child:FindFirstChild("EggInfo") then
+                    return true
+                end
+            end
+            return false
+        end,
+    },
+    {
         label = "Waking your pets…",
         check = function()
-            -- character spawned + the per-player pet folder exists (PetFollowService)
+            -- character spawned + EVERY equipped pet actually spawned into the world.
+            -- Equipped count comes from the replicated Equipped.pets slot values; a player
+            -- with nothing equipped passes immediately.
             if not localPlayer.Character then
                 return false
             end
-            local pets = Workspace:FindFirstChild("PlayerPets")
-            return pets ~= nil and pets:FindFirstChild(localPlayer.Name) ~= nil
+            local petsRoot = Workspace:FindFirstChild("PlayerPets")
+            local mine = petsRoot and petsRoot:FindFirstChild(localPlayer.Name)
+            if not mine then
+                return false
+            end
+            local expected = 0
+            local equipped = localPlayer:FindFirstChild("Equipped")
+            local petSlots = equipped and equipped:FindFirstChild("pets")
+            if petSlots then
+                for _, slot in ipairs(petSlots:GetChildren()) do
+                    if slot:IsA("StringValue") and slot.Value ~= "" then
+                        expected += 1
+                    end
+                end
+            end
+            return #mine:GetChildren() >= expected
         end,
     },
     {
@@ -154,11 +182,13 @@ local gates = {
 task.spawn(function()
     local start = os.clock()
     setControls(false)
-    -- keep re-asserting the control lock for the first moment (PlayerModule loads slightly after us)
+    -- keep re-asserting the control lock until the reveal (PlayerModule loads after us, and
+    -- a respawn mid-load would re-enable default controls)
+    local revealed = false
     task.spawn(function()
-        for _ = 1, 20 do
+        while not revealed do
             setControls(false)
-            task.wait(0.1)
+            task.wait(0.2)
         end
     end)
 
@@ -179,6 +209,8 @@ task.spawn(function()
     -- screen past MIN_DISPLAY even on instant local loads.
     status.Text = "Ready!"
     task.wait(math.max(SETTLE, MIN_DISPLAY - (os.clock() - start)))
+    revealed = true
+    task.wait(0.25) -- let the lock loop observe `revealed` before re-enabling
     setControls(true)
 
     local t = TweenInfo.new(0.4)
