@@ -125,7 +125,16 @@ local gates = {
     {
         label = "Placing eggs…",
         check = function()
-            -- the egg spawner has placed world eggs (each egg Model carries an EggInfo child)
+            -- world eggs exist: authored stands (Maps/**/PlacedEgg, EggStandPlacement)
+            -- or legacy spawner eggs (workspace children carrying EggInfo)
+            local maps = Workspace:FindFirstChild("Maps")
+            if maps then
+                for _, d in ipairs(maps:GetDescendants()) do
+                    if d:IsA("Model") and d.Name == "PlacedEgg" then
+                        return true
+                    end
+                end
+            end
             for _, child in ipairs(Workspace:GetChildren()) do
                 if child:IsA("Model") and child:FindFirstChild("EggInfo") then
                     return true

@@ -50,12 +50,16 @@ function HotbarFlank.start()
                 btn.AnchorPoint = side == "left" and Vector2.new(1, 0.5) or Vector2.new(0, 0.5)
                 btn.Position = side == "left" and UDim2.new(0, -GAP, 0.5, 0)
                     or UDim2.new(1, GAP, 0.5, 0)
-                btn.Size = UDim2.new(0, 0, 1, 0) -- height = the bar; width via aspect
+                -- square = the bar's UNSCALED height in offsets (the bar's ViewportScale
+                -- then scales both together). NOT an aspect constraint: its default
+                -- FitWithinMaxSize treats a 0 width as a MAX and collapses to 0x0 —
+                -- live-debugged with Jason ("little tiny dots in the power bar").
+                local h = bar.Size.Y.Offset
+                btn.Size = UDim2.fromOffset(h, h)
                 local aspect = btn:FindFirstChildOfClass("UIAspectRatioConstraint")
-                    or Instance.new("UIAspectRatioConstraint")
-                aspect.AspectRatio = 1
-                aspect.DominantAxis = Enum.DominantAxis.Height
-                aspect.Parent = btn
+                if aspect then
+                    aspect:Destroy()
+                end
                 btn.Parent = bar -- inherits the bar's ViewportScale
             end)
         end

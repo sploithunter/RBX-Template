@@ -153,13 +153,26 @@ local function nearestEgg()
     local char = Players.LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local best, bestDist
+    local function consider(model)
+        local pivot = model:GetPivot().Position
+        local d = hrp and (pivot - hrp.Position).Magnitude or 0
+        if not best or d < bestDist then
+            best, bestDist = model, d
+        end
+    end
+    -- authored egg stands (EggStandPlacement): Maps/**/PlacedEgg — the live map's eggs
+    local maps = Workspace:FindFirstChild("Maps")
+    if maps then
+        for _, d in ipairs(maps:GetDescendants()) do
+            if d:IsA("Model") and d.Name == "PlacedEgg" then
+                consider(d)
+            end
+        end
+    end
+    -- legacy spawner eggs (EggSpawner): workspace children carrying EggInfo
     for _, child in ipairs(Workspace:GetChildren()) do
         if child:IsA("Model") and child:FindFirstChild("EggInfo") then
-            local pivot = child:GetPivot().Position
-            local d = hrp and (pivot - hrp.Position).Magnitude or 0
-            if not best or d < bestDist then
-                best, bestDist = child, d
-            end
+            consider(child)
         end
     end
     return best
@@ -298,15 +311,28 @@ local function showEggPath(token, finder)
                             end
                         end
                     end
-                    -- straight-line fallback when pathfinding fails (no navmesh etc.)
+                    -- straight-line fallback when pathfinding fails (this map's navmesh
+                    -- reports NoPath to the egg stands) — each dot raycast-snapped to the
+                    -- ground so the trail hugs terrain (live-verified look)
                     if #pathFolder:GetChildren() == 0 and dist > PROMPT_RANGE then
+                        local params = RaycastParams.new()
+                        params.FilterType = Enum.RaycastFilterType.Exclude
+                        params.FilterDescendantsInstances = { char, pathFolder }
                         local dir = (target - hrp.Position) * Vector3.new(1, 0, 1)
                         local flat = dir.Magnitude
                         if flat > 1 then
                             dir = dir.Unit
-                            local steps = math.min(12, math.floor(flat / 6))
+                            local steps = math.min(14, math.floor(flat / 6))
                             for i = 2, steps do
-                                dot(hrp.Position + dir * (i * 6) - Vector3.new(0, 2.5, 0), i)
+                                local pos = hrp.Position + dir * (i * 6)
+                                local hit = Workspace:Raycast(
+                                    pos + Vector3.new(0, 10, 0),
+                                    Vector3.new(0, -40, 0),
+                                    params
+                                )
+                                if hit and (target - pos).Magnitude > PROMPT_RANGE * 0.6 then
+                                    dot(hit.Position, i)
+                                end
                             end
                         end
                     end
