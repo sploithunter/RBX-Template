@@ -1141,7 +1141,11 @@ local uiConfig = {
                         notification = {
                             enabled = true,
                             text = "!",
-                            -- 🎨 Inherits: default red background, white text, default position
+                            -- corner placement to MATCH the Effects count badge (the default
+                            -- "top-right" insets 5px INSIDE the button, which floats over the
+                            -- icon once the tray pill-restyle shrinks the visual to ~84%)
+                            position = "top-right-corner",
+                            -- 🎨 Inherits: default red background, white text
                         },
                         -- 🎨 Automatically gets: teal background, default icon/text styling!
                     },
