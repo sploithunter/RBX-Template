@@ -164,7 +164,7 @@ function CurrencyStyle.start()
         end
         for _ = 1, 12 do
             for name, key in pairs(BOXES) do
-                local pane = mc:FindFirstChild(name)
+                local pane = mc:FindFirstChild(name, true) -- recursive: panes live in CurrencyStack
                 if pane then
                     styleBox(pane, key)
                 end

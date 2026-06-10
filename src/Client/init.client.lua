@@ -337,6 +337,7 @@ end
 do
     local ok, err = pcall(function()
         require(script.Systems.CurrencyStyle).start()
+        require(script.Systems.CurrencyStack).start()
     end)
     if not ok then
         Logger:Warn("Failed to start CurrencyStyle", { error = tostring(err) })
