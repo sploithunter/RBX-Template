@@ -1034,7 +1034,7 @@ local uiConfig = {
             layout = {
                 type = "grid",
                 auto_size = true, -- Enable automatic sizing based on content
-                button_count = 7, -- Exact number of buttons for calculation
+                button_count = 8, -- 7 menu buttons + the adopted Rewards (MenuTrayStyle)
                 padding = { top = 5, bottom = 5, left = 5, right = 5 }, -- Padding for calculations
             },
             contents = {

@@ -136,8 +136,8 @@ function MenuTrayStyle.start()
         -- Rewards: move into the lower-left next to the Pets paw, reshape from the wide horizontal
         -- button into a SQUARE icon-top/label-bottom button (so the square pill fits), gold pill.
         task.spawn(function()
-            -- (Pets now lives INSIDE the menu tray grid; rewards stays at its own bottom-right
-            -- pane position and just gets the square icon-top/label-bottom gold restyle.)
+            -- Rewards joins the menu tray GRID (Jason): square gold restyle, then the button is
+            -- adopted as the last grid cell — the UIGridLayout owns its size/position from there.
             local rewards = mc:WaitForChild("rewards_button_pane", 15)
             if rewards then
                 rewards.Size = UDim2.fromOffset(66, 64)
@@ -161,6 +161,12 @@ function MenuTrayStyle.start()
                             end
                         end
                         styleButton(rb, "citrine", nil) -- fixed gold, not area-tinted
+                        -- adopt into the tray grid: last cell, grid layout sizes it
+                        if pane then
+                            rb.LayoutOrder = 99
+                            rb.Parent = pane
+                            rewards:Destroy() -- empty bottom-right pane (and its ViewportScale)
+                        end
                         break
                     end
                     task.wait(0.5)
