@@ -35,6 +35,59 @@ return function()
         end
     end)
 
+    describe("quest MISSION CHAIN integrity (ordered, counters exist)", function()
+        local quests = loadModule("configs/quests.lua")
+        local stats = loadModule("configs/stats.lua")
+
+        it("every def has a UNIQUE order (the chain is total)", function()
+            local seen = {}
+            for id, def in pairs(quests.defs) do
+                if type(def.order) ~= "number" then
+                    error("quest '" .. id .. "' has no numeric order — the chain needs one")
+                end
+                if seen[def.order] then
+                    error(
+                        "quests '"
+                            .. id
+                            .. "' and '"
+                            .. seen[def.order]
+                            .. "' share order "
+                            .. def.order
+                    )
+                end
+                seen[def.order] = id
+            end
+        end)
+
+        it("every counter condition references a DECLARED stats counter", function()
+            for id, def in pairs(quests.defs) do
+                local c = def.condition
+                if c and c.type == "counter_at_least" then
+                    if not stats.counters[c.counter] then
+                        error(
+                            "quest '"
+                                .. id
+                                .. "' uses counter '"
+                                .. tostring(c.counter)
+                                .. "' that configs/stats.lua does not declare"
+                        )
+                    end
+                end
+            end
+        end)
+
+        it("every def has a reward and a description", function()
+            for id, def in pairs(quests.defs) do
+                if type(def.reward) ~= "table" then
+                    error("quest '" .. id .. "' has no reward")
+                end
+                if type(def.description) ~= "string" then
+                    error("quest '" .. id .. "' has no description")
+                end
+            end
+        end)
+    end)
+
     describe("inventory buckets satisfy ConfigLoader's boot rules", function()
         local cfg = loadModule("configs/inventory.lua")
 

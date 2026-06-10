@@ -15,6 +15,21 @@ return {
             scope = "lifetime",
             default = 0,
         },
+        pets_equipped = {
+            display_name = "Pets Equipped",
+            scope = "lifetime",
+            default = 0,
+        },
+        powers_cast = {
+            display_name = "Powers Cast",
+            scope = "lifetime",
+            default = 0,
+        },
+        enhancements_found = {
+            display_name = "Enhancements Found",
+            scope = "lifetime",
+            default = 0,
+        },
         secrets_found = {
             display_name = "Secrets Found",
             scope = "lifetime",

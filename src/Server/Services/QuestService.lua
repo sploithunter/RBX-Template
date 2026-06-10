@@ -68,6 +68,7 @@ function QuestService:List(player)
         local claimable = ClaimLogic.canClaim(progress.met, count, def).ok
         table.insert(out, {
             id = id,
+            order = tonumber(def.order) or math.huge,
             name = def.name,
             description = def.description,
             progress = progress,
@@ -76,7 +77,34 @@ function QuestService:List(player)
             repeatable = def.repeatable == true,
         })
     end
+    -- MISSION CHAIN (Jason): quests are an ordered chain — sort by `order`, and LOCK a
+    -- mission until every lower-order non-repeatable one has been claimed. Locked
+    -- missions stay listed (the panel shows what's coming) but can't be claimed and
+    -- the tracker skips them.
+    table.sort(out, function(a, b)
+        return a.order < b.order
+    end)
+    local blocked = false
+    for _, q in ipairs(out) do
+        q.locked = blocked
+        if blocked then
+            q.claimable = false
+        end
+        if not q.repeatable and q.claimedCount == 0 then
+            blocked = true
+        end
+    end
     return { ok = true, quests = out }
+end
+
+function QuestService:_isLocked(player, questId)
+    local res = self:List(player)
+    for _, q in ipairs((res and res.quests) or {}) do
+        if q.id == questId then
+            return q.locked == true
+        end
+    end
+    return false
 end
 
 function QuestService:Claim(player, questId)
@@ -91,6 +119,9 @@ function QuestService:Claim(player, questId)
     local verdict = ClaimLogic.canClaim(met, ledger[questId] or 0, def)
     if not verdict.ok then
         return verdict
+    end
+    if self:_isLocked(player, questId) then
+        return { ok = false, reason = "locked" } -- chain order is server-authoritative
     end
 
     local rewards = self:_service("RewardService")

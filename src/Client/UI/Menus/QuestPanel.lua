@@ -322,8 +322,8 @@ function QuestPanel:_createQuestRow(quest, order)
     name.Size = UDim2.new(1, -150, 0, 26)
     name.Position = UDim2.new(0, 16, 0, 10)
     name.BackgroundTransparency = 1
-    name.Text = quest.name or quest.id
-    name.TextColor3 = COLORS.text
+    name.Text = (quest.locked and "🔒 " or "") .. (quest.name or quest.id)
+    name.TextColor3 = quest.locked and COLORS.subtext or COLORS.text
     name.TextScaled = true
     name.Font = Enum.Font.GothamBold
     name.TextXAlignment = Enum.TextXAlignment.Left

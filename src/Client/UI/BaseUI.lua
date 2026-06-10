@@ -2207,21 +2207,19 @@ function BaseUI:_bindQuestTracker()
     self._questTrackerBound = true
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+    -- The list arrives CHAIN-ORDERED with locked flags (QuestService). Track the first
+    -- claimable, else the ACTIVE mission (first unlocked unmet) — never a locked one.
     local function pick(quests)
-        local claimable, best
+        local claimable, active
         for _, q in ipairs(quests) do
             if q.claimable and not claimable then
                 claimable = q
             end
-            local met = q.progress and q.progress.met
-            if not met then
-                local f = (q.progress and q.progress.fraction) or 0
-                if not best or f > ((best.progress and best.progress.fraction) or 0) then
-                    best = q
-                end
+            if not active and not q.locked and not (q.progress and q.progress.met) then
+                active = q
             end
         end
-        return claimable or best or quests[1]
+        return claimable or active or quests[1]
     end
 
     local function refresh()

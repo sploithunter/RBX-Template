@@ -188,6 +188,9 @@ function EnhancementService:Grant(player, record)
     if not uid then
         return { ok = false, reason = err or "inventory_full" }
     end
+    pcall(function() -- mission counter (quest chain "Find an enhancement")
+        _G.RBXTemplateServices:Get("StatsService"):Increment(player, "enhancements_found", 1)
+    end)
     return { ok = true, uid = uid, name = name }
 end
 

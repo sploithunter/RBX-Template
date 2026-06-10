@@ -1324,6 +1324,9 @@ function PowerService:Cast(player, powerId)
         )
     end
     fireGameEvent(player, "power_cast", { power = powerId }) -- bus source (tutorial etc.)
+    pcall(function() -- mission counter (quest chain "Cast 5 powers")
+        _G.RBXTemplateServices:Get("StatsService"):Increment(player, "powers_cast", 1)
+    end)
     return { ok = true, power = powerId, cooldown = cd }
 end
 

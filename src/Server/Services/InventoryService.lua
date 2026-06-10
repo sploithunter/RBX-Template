@@ -1838,6 +1838,12 @@ function InventoryService:_handleTogglePetEquipped(player, data)
         -- bus source (no default reactions): the tutorial's "equip your pet" step listens.
         -- Fired on BOTH directions so full-slot players (kept huges) can still complete it.
         fireGameEvent(player, "pet_equipped", { action = result.action })
+        if result.action == "equipped" then
+            -- mission counter (quest chain "Equip a pet"); equips only, not unequips
+            pcall(function()
+                _G.RBXTemplateServices:Get("StatsService"):Increment(player, "pets_equipped", 1)
+            end)
+        end
         self._logger:Info("✅ Pet equip toggled", {
             player = player.Name,
             itemUid = data.itemUid,
