@@ -269,7 +269,9 @@ function EnhancementService:Slot(player, powerId, slotIndex, uid)
     }
 end
 
--- Roll a random drop record (type by weight; grade by single_chance; origins uniform).
+-- Roll a random drop record (type by weight). Origins: primary = the area's own origin
+-- (drops.area_origins — the disc color matches the land), ring = uniform random (ring ==
+-- primary -> single-origin). Unmapped areas use the legacy uniform + single_chance roll.
 -- `rng` = Random instance (injectable for tests/determinism).
 function EnhancementService:RollDrop(rng, areaId)
     rng = rng or Random.new()
@@ -288,8 +290,22 @@ function EnhancementService:RollDrop(rng, areaId)
         end
     end
     local origins = self._config.origins or {}
-    local a = origins[rng:NextInteger(1, #origins)]
     local level = Enhancements.rollLevel(self._config, areaId, rng)
+
+    -- PRIMARY origin = the zone's own (the disc color brands the land — Jason); the
+    -- RING is uniform random. Ring == primary -> a SINGLE-origin drop, so pure singles
+    -- only exist in their home world (~1/#origins of drops).
+    local zoneOrigin = (drops.area_origins or {})[areaId]
+    if zoneOrigin then
+        local ring = origins[rng:NextInteger(1, #origins)]
+        if ring == zoneOrigin then
+            return { type = pick, origins = { zoneOrigin }, level = level }
+        end
+        return { type = pick, origins = { zoneOrigin, ring }, level = level }
+    end
+
+    -- legacy roll for unmapped areas (events/realms until they get a mapping)
+    local a = origins[rng:NextInteger(1, #origins)]
     if rng:NextNumber() < (tonumber(drops.single_chance) or 0.35) then
         return { type = pick, origins = { a }, level = level }
     end

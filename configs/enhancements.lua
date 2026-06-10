@@ -154,6 +154,17 @@ return {
                 -- ["SomeRealmArea"] = { 10, 18 },
             },
         },
+        -- THE LAND SPEAKS (Jason): a drop's PRIMARY origin (the disc color) is always
+        -- the zone's own — earth zone drops are always green. The RING (second origin)
+        -- is random; when it rolls the zone's origin the drop is SINGLE-origin, so pure
+        -- singles can only be found in their home world. Unmapped areas roll legacy.
+        area_origins = {
+            Grass = "geomancer",
+            Lava = "pyromancer",
+            Ice = "cryomancer",
+            Desert = "sandwalker",
+        },
+
         -- relative weight per type (uniform start; tune freely)
         type_weights = {
             damage = 1,
