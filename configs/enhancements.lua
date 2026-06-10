@@ -117,9 +117,8 @@ return {
         -- POTENCY (Jason): +% to the power's own magnitude — the universal "makes the
         -- power more" type, and what makes always-on passives slottable (Swift runs
         -- faster, XP Surge pays more, Magnet pulls wider). Magnitude-driven families.
-        -- ICON TODO: starburst + up-chevron (placeholder symbol until drawn).
         potency = {
-            symbol = "chevrons_up",
+            symbol = "potency", -- Jason's batch-4 art (was chevrons_up placeholder)
             axis = "magnitude",
             families = {
                 buff = true,
@@ -137,9 +136,8 @@ return {
         -- SPARK (the FIRST proc — Jason: ship one now to prove the mechanics; rare
         -- multi-effect specialties come later and build on this shape). On a damaging
         -- power hit: `chance` to surge the hit for +`bonus` of its damage.
-        -- ICON TODO: die-with-sparks / lightning-in-brackets.
         spark = {
-            symbol = "capacitor",
+            symbol = "proc", -- Jason's batch-4 art (was capacitor placeholder)
             proc = { trigger = "hit", chance = 0.15, bonus = 1.0 },
             families = {
                 vulnerable = true,

@@ -228,15 +228,15 @@
       },
       "focus": {
         "decal": "105954717066528",
-        "image": null
+        "image": "84174824819946"
       },
       "potency": {
         "decal": "90149096686176",
-        "image": null
+        "image": "133531953754472"
       },
       "proc": {
         "decal": "107856700982742",
-        "image": null
+        "image": "75978978355943"
       }
     },
     "red": {
@@ -438,15 +438,15 @@
       },
       "focus": {
         "decal": "91695762456261",
-        "image": null
+        "image": "118940940336458"
       },
       "potency": {
         "decal": "71829277121864",
-        "image": null
+        "image": "128414951307947"
       },
       "proc": {
         "decal": "118428732189098",
-        "image": null
+        "image": "125409435333801"
       }
     },
     "yellow": {
@@ -648,15 +648,15 @@
       },
       "focus": {
         "decal": "82310234603370",
-        "image": null
+        "image": "110197677578954"
       },
       "potency": {
         "decal": "85352709148036",
-        "image": null
+        "image": "128647282313029"
       },
       "proc": {
         "decal": "136403081200051",
-        "image": null
+        "image": "95458107537510"
       }
     },
     "blue": {
@@ -858,15 +858,15 @@
       },
       "focus": {
         "decal": "112890398708089",
-        "image": null
+        "image": "83745746546016"
       },
       "potency": {
         "decal": "88986084315913",
-        "image": null
+        "image": "135638676386265"
       },
       "proc": {
         "decal": "112000216533369",
-        "image": null
+        "image": "70376963169210"
       }
     },
     "white": {
@@ -1052,31 +1052,31 @@
       },
       "focus": {
         "decal": "140390465602495",
-        "image": null
+        "image": "132403584523747"
       },
       "heart": {
         "decal": "72822516705395",
-        "image": null
+        "image": "135505399519393"
       },
       "hourglass": {
         "decal": "120263931366050",
-        "image": null
+        "image": "72198742625641"
       },
       "impact_burst": {
         "decal": "114755146745372",
-        "image": null
+        "image": "70424064400909"
       },
       "potency": {
         "decal": "92697063911730",
-        "image": null
+        "image": "87527582167571"
       },
       "proc": {
         "decal": "139333086580879",
-        "image": null
+        "image": "110252851777499"
       },
       "range": {
         "decal": "79599924145443",
-        "image": null
+        "image": "127352221685349"
       }
     },
     "purple": {
@@ -1278,15 +1278,15 @@
       },
       "focus": {
         "decal": "102057343366728",
-        "image": null
+        "image": "119851238158731"
       },
       "potency": {
         "decal": "80138881291179",
-        "image": null
+        "image": "95399666807739"
       },
       "proc": {
         "decal": "92704729219382",
-        "image": null
+        "image": "123892282489099"
       }
     }
   },
