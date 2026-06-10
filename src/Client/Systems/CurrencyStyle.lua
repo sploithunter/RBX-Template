@@ -21,19 +21,20 @@ local started = false
 
 local GEM_IMAGE = "rbxassetid://136309678310342" -- generic diamond (tint fallback)
 
--- REAL gem renders (Jason: "why aren't we using our actual assets?") — the #177 single-gem
--- decals via rbxthumb (renders a Decal's image with no Edit-mode Decal->Image resolution).
--- No amethyst in that upload set, so the purple Gems pill keeps the tinted fallback until
--- Jason delivers a purple gem image.
+-- REAL gem renders (Jason: "why aren't we using our actual assets?") — purpose-made flat
+-- UI gem singles (assets/ui/gems_*/gem_single.png, uploaded 2026-06-10; ids in
+-- scripts/gem_ui_ids.*.json) via rbxthumb, which renders a Decal's image with no
+-- Edit-mode Decal->Image resolution. All five colors, including the purple the 3D-gem
+-- set lacked.
 local function thumb(decalId)
     return "rbxthumb://type=Asset&id=" .. decalId .. "&w=150&h=150"
 end
 local REAL_GEMS = {
-    emerald = thumb("85564420306355"),
-    citrine = thumb("84406620426562"),
-    ruby = thumb("92188117297805"),
-    sapphire = thumb("104866758670050"),
-    -- amethyst = (pending purple gem asset)
+    amethyst = thumb("102357151476128"), -- gems_purple/gem_single
+    emerald = thumb("137697638458544"), -- gems_green/gem_single
+    citrine = thumb("104177688657054"), -- gems_yellow/gem_single
+    ruby = thumb("106127747169545"), -- gems_red/gem_single
+    sapphire = thumb("119450165143759"), -- gems_blue/gem_single
 }
 
 -- area key -> capsule fill + lighter top/stroke + bright gem tint
