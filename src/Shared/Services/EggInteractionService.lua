@@ -947,27 +947,41 @@ function EggInteractionService:CreateHatchPanel()
         stroke.Parent = b
         return b
     end
-    local hatchBtn = makeBtn("HATCH", 0, Color3.fromRGB(90, 170, 90))
-    local maxBtn = makeBtn("MAX", 136, Color3.fromRGB(80, 130, 200))
-    local autoBtn = makeBtn("AUTO", 272, Color3.fromRGB(150, 110, 200))
-    hatchBtn.Activated:Connect(function()
-        self:OnEKeyPressed()
-    end)
-    maxBtn.Activated:Connect(function()
-        self:OnMaxHatchKeyPressed()
-    end)
-    autoBtn.Activated:Connect(function()
-        self:ToggleAutoHatch()
-    end)
+    -- buttons per config (Jason: no STOP button — walking away ends auto; the AUTO
+    -- button itself is the toggle, tinted while running)
+    local barCfg = getHatchPanelConfig().action_bar or {}
+    local x = 0
+    local autoBtn
+    if barCfg.hatch ~= false then
+        local b = makeBtn("HATCH", x, Color3.fromRGB(90, 170, 90))
+        b.Activated:Connect(function()
+            self:OnEKeyPressed()
+        end)
+        x += 136
+    end
+    if barCfg.max ~= false then
+        local b = makeBtn("MAX", x, Color3.fromRGB(80, 130, 200))
+        b.Activated:Connect(function()
+            self:OnMaxHatchKeyPressed()
+        end)
+        x += 136
+    end
+    if barCfg.auto ~= false then
+        autoBtn = makeBtn("AUTO", x, Color3.fromRGB(150, 110, 200))
+        autoBtn.Activated:Connect(function()
+            self:ToggleAutoHatch()
+        end)
+    end
 
     -- visibility + auto-state tint follow the current target (cheap poll)
     task.spawn(function()
         while gui.Parent do
             local target = currentTargetService and currentTargetService:GetCurrentTarget()
             bar.Visible = target ~= nil and target ~= "None"
-            autoBtn.Text = autoHatchEnabled and "STOP" or "AUTO"
-            autoBtn.BackgroundColor3 = autoHatchEnabled and Color3.fromRGB(220, 82, 95)
-                or Color3.fromRGB(150, 110, 200)
+            if autoBtn then
+                autoBtn.BackgroundColor3 = autoHatchEnabled and Color3.fromRGB(220, 82, 95)
+                    or Color3.fromRGB(150, 110, 200)
+            end
             task.wait(0.25)
         end
     end)

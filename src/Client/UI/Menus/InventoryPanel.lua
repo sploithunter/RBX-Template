@@ -1938,7 +1938,8 @@ function InventoryPanel:_loadEnhancementsFromFolder(enhFolder)
             local level = (levelV and (levelV:IsA("NumberValue") or levelV:IsA("IntValue")))
                     and math.floor(levelV.Value)
                 or nil
-            local qtyV = itemFolder:FindFirstChild("quantity")
+            local qtyV = itemFolder:FindFirstChild("Quantity")
+                or itemFolder:FindFirstChild("quantity")
             local quantity = (qtyV and (qtyV:IsA("NumberValue") or qtyV:IsA("IntValue")))
                     and math.max(1, math.floor(qtyV.Value))
                 or 1

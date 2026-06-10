@@ -953,6 +953,17 @@ function InventoryService:_createItemFolder(parentFolder, uid, itemData, bucketC
         quantity.Name = "Quantity"
         quantity.Value = itemData.quantity or 1
         quantity.Parent = itemFolder
+        -- stacks carry their item PROPERTIES too (type/origins/level/name…) — without
+        -- these the client renders faceless cards (Jason: "42 enhancements with no
+        -- description whatsoever")
+        for key, value in pairs(itemData) do
+            if key ~= "id" and key ~= "obtained_at" and key ~= "quantity" then
+                local valueObj = self:_createValueObject(key, value)
+                if valueObj then
+                    valueObj.Parent = itemFolder
+                end
+            end
+        end
     else
         -- Unique item properties
         for key, value in pairs(itemData) do

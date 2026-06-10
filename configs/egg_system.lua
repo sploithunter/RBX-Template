@@ -193,6 +193,9 @@ return {
             -- BUTTONS are primary input (Jason, after mobile playtest: "no way to
             -- click it... couldn't hatch an egg"); keyboard E/M/T remain as shortcuts
             show_inline_controls = true,
+            -- which buttons the egg action bar shows (Jason: no STOP — auto ends when
+            -- you walk away; the AUTO button itself toggles)
+            action_bar = { hatch = true, max = true, auto = true },
             status_display_time = 3,
             action_modes = {
                 single = {
