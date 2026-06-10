@@ -312,6 +312,12 @@ local function showEggPath(token, finder)
                     -- close enough: the prompt is the guidance now
                     pathFolder:ClearAllChildren()
                 else
+                    -- CLEAR FIRST, every cycle. The old structure cleared only inside the
+                    -- pathfind-SUCCESS branch and the fallback drew only into an EMPTY
+                    -- folder — with NoPath (this map, always) the first boot-time plan
+                    -- (drawn before the eggs even replicated) could never be redrawn.
+                    -- THE frozen-wrong-trail bug, all builds, all day.
+                    pathFolder:ClearAllChildren()
                     local path = PathfindingService:CreatePath({
                         AgentRadius = 2,
                         AgentCanJump = true,
@@ -320,7 +326,6 @@ local function showEggPath(token, finder)
                         path:ComputeAsync(hrp.Position, target)
                     end)
                     if ok and path.Status == Enum.PathStatus.Success then
-                        pathFolder:ClearAllChildren()
                         local n = 0
                         for _, wp in ipairs(path:GetWaypoints()) do
                             -- skip the first couple (under the player's feet) and stop
@@ -331,9 +336,8 @@ local function showEggPath(token, finder)
                             end
                         end
                     end
-                    -- straight-line fallback when pathfinding fails (this map's navmesh
-                    -- reports NoPath to the egg stands) — each dot raycast-snapped to the
-                    -- ground so the trail hugs terrain (live-verified look)
+                    -- straight-line fallback when pathfinding drew nothing (NoPath) —
+                    -- each dot raycast-snapped to the ground
                     if #pathFolder:GetChildren() == 0 and dist > PROMPT_RANGE then
                         local params = RaycastParams.new()
                         params.FilterType = Enum.RaycastFilterType.Exclude
@@ -459,7 +463,7 @@ end
 -- bumped per behavior change: printed at start so a LIVE session's running BYTECODE is
 -- identifiable (rojo syncs Source into running sessions but required modules never
 -- re-execute — we chased "stale build vs real bug" three times today)
-local BUILD = "trail-live-replan v3 (2026-06-10)"
+local BUILD = "trail-live-replan v4 clear-first (2026-06-10)"
 
 function TutorialController.start()
     if started then
