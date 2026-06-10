@@ -1029,7 +1029,7 @@ local uiConfig = {
         menu_buttons_pane = {
             position = "bottom-left",
             offset = { x = 10, y = -10 }, -- restore original placement
-            size = { width = 280, height = 210 }, -- Container size - buttons will auto-fit (3 rows)
+            size = { width = 200, height = 200 }, -- snug 3x3: cells hug the ~60px buttons (no gaps)
             background = { enabled = false }, -- Debug backgrounds will handle visualization
             layout = {
                 type = "grid",
