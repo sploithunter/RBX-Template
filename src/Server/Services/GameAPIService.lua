@@ -805,12 +805,13 @@ function GameAPIService:_registerCommands()
     })
 
     bus:register("enh.grant", {
-        description = "[admin] Grant an enhancement (random roll, or explicit type+origins+level).",
+        description = "[admin] Grant an enhancement (random roll, explicit type+origins+level, or count random AREA rolls).",
         validate = function(args)
             return Validators.fields(args, {
                 type = { type = "string", optional = true },
                 origins = { type = "table", optional = true },
                 level = { type = "number", optional = true },
+                count = { type = "number", optional = true },
             })
         end,
         handler = function(context, args)
@@ -823,11 +824,25 @@ function GameAPIService:_registerCommands()
             if not svc then
                 return { ok = false, reason = "service_unavailable" }
             end
+            -- bulk: N random AREA-level rolls (Jason: "grant me a hundred area-level
+            -- enhancements at random... test slotting without re-mining for hours")
+            local count = math.clamp(math.floor(tonumber(args.count) or 1), 1, 200)
+            if count > 1 then
+                local area = context.player:GetAttribute("CurrentArea")
+                local granted = 0
+                for _ = 1, count do
+                    local r = svc:Grant(context.player, svc:RollDrop(nil, area))
+                    if r and r.ok then
+                        granted += 1
+                    end
+                end
+                return { ok = true, granted = granted }
+            end
             local record
             if args.type and args.origins then
                 record = { type = args.type, origins = args.origins, level = args.level }
             else
-                record = svc:RollDrop()
+                record = svc:RollDrop(nil, context.player:GetAttribute("CurrentArea"))
             end
             return svc:Grant(context.player, record)
         end,

@@ -193,7 +193,10 @@ local TEST_CATEGORIES = {
             { name = "💾 Force Save Target Player", action = "admin_force_save" },
             { name = "🗑️ Reset Pets (Target)", action = "admin_reset_pets" },
             { name = "🔄 Reset to Beginning (keep HUGE)", action = "admin_reset_to_beginning" },
-            { name = "🔎 Reset to Beginning — PREVIEW", action = "admin_reset_to_beginning_preview" },
+            {
+                name = "🔎 Reset to Beginning — PREVIEW",
+                action = "admin_reset_to_beginning_preview",
+            },
             { name = "🐻 Grant Bear Basic", action = "grant_bear_basic" },
             { name = "🐉 Grant Dragon Basic", action = "grant_dragon_basic" },
             { name = "🐻 Grant Golden Bear", action = "grant_bear_golden" },
@@ -205,6 +208,7 @@ local TEST_CATEGORIES = {
             { name = "🗺️ Lock Meadow", action = "lock_zone_meadow" },
             { name = "🗺️ Unlock Meadow", action = "unlock_zone_meadow" },
             { name = "🗺️ Bypass Unlock Meadow", action = "unlock_zone_meadow_bypass" },
+            { name = "🎲 +100 Area Enhancements", action = "grant_enhancements_100" },
             { name = "🥚 Hatch Unlock Status", action = "hatch_entitlement_status" },
             { name = "🥚 Unlock All Hatch Modes", action = "hatch_entitlement_unlock_all" },
             { name = "🥚 Lock All Hatch Modes", action = "hatch_entitlement_lock_all" },
@@ -797,6 +801,20 @@ function AdminPanel:_executeTestAction(action, _testName)
         self:_requestResetToBeginning(false)
     elseif action == "admin_reset_to_beginning_preview" then
         self:_requestResetToBeginning(true)
+    elseif action == "grant_enhancements_100" then
+        task.spawn(function()
+            local remote = game:GetService("ReplicatedStorage"):WaitForChild("GameAPICommand", 5)
+            if not remote then
+                self:_showAdminResult("GameAPICommand remote missing", false)
+                return
+            end
+            local res = remote:InvokeServer("enh.grant", { count = 100 })
+            local r = type(res) == "table" and (res.result or res.data or res) or res
+            self:_showAdminResult(
+                ("Granted %s random area enhancements"):format(tostring(r and r.granted or "?")),
+                r and r.ok == true
+            )
+        end)
     elseif action:find("^spawn_enemy_") then
         self:_executeSpawnEnemyAction(action)
     elseif action:find("^grant_") then
