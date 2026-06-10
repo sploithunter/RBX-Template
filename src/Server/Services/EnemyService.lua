@@ -1397,9 +1397,22 @@ function EnemyService:_supportPass(now)
                     self:_auraPlayerBuff(folder, "CoinYieldBuff", aura, count)
                     self:_stampAuraFx(folder, "YieldFxUntil", aura, count)
                 elseif kind == "luck" then
-                    -- lucky-rabbit aura: hatch luck while the buffer is deployed
+                    -- lucky-rabbit aura: hatch luck for the PLAYER (the buff already
+                    -- targets the player). Display: stamp ONLY the providing bunnies —
+                    -- stamping the whole squad implied the PETS were lucky (Jason:
+                    -- "luck should be given to the player"). The player-side tells are
+                    -- the green clover bar badge + the Active Buffs Luck row.
                     self:_auraPlayerBuff(folder, "HatchLuckBuff", aura, count)
-                    self:_stampAuraFx(folder, "LuckFxUntil", aura, count)
+                    local until_ = os.time() + (tonumber(aura.duration) or 3)
+                    for _, ally in ipairs(folder:GetChildren()) do
+                        if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
+                            local allyAura = self:_petAura(ally)
+                            if allyAura and allyAura.kind == "luck" then
+                                ally:SetAttribute("LuckFxUntil", until_)
+                                ally:SetAttribute("LuckFxUntilStacks", count)
+                            end
+                        end
+                    end
                 end
             end
         end
