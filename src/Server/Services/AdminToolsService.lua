@@ -655,6 +655,25 @@ function AdminToolsService:_handleResetToBeginning(adminPlayer, data)
         end)
     end
 
+    -- 5c2) PROGRESS COUNTERS + claim ledgers back to zero (Jason: reset left eggs_hatched/
+    --      coins_earned_lifetime intact, so the post-tutorial missions were instantly
+    --      claimable). Counters re-seed from configs/stats.lua defaults; quest +
+    --      achievement claim ledgers clear. PetIndex is deliberately KEPT — the kept
+    --      huges remain legitimately discovered; EnhancementIndex clears with the
+    --      wiped enhancement inventory.
+    playerData.Stats = playerData.Stats or {}
+    playerData.Stats.Counters = {}
+    pcall(function()
+        local statsCfg = self._configLoader and self._configLoader:LoadConfig("stats")
+        for counterId, counterConfig in pairs((statsCfg and statsCfg.counters) or {}) do
+            playerData.Stats.Counters[counterId] = counterConfig.default or 0
+        end
+    end)
+    playerData.QuestClaims = {}
+    playerData.Achievements = nil
+    playerData.Ledger = nil
+    playerData.EnhancementIndex = nil
+
     -- 5d) Tutorial restarts + enhancements wiped — "reset to beginning" means the NEW-PLAYER
     --     experience (Jason hit this: his tutorial stayed done=true through this reset because
     --     only levelup.resetRun knew about it).
