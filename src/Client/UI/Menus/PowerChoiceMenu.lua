@@ -565,12 +565,15 @@ function PowerChoiceMenu:_renderEnhanceStrip()
     local slotX = 0.02
     for i, slot in ipairs(slots) do
         if type(slot) == "table" then
+            -- the slot IS a button; the badge/empty-circle renders INSIDE it (same
+            -- structure as the AVAILABLE row) — no invisible-overlay z-order games
+            -- (Jason: "there's no button, so how do you click it?")
             local hit = Instance.new("TextButton")
             hit.Size = UDim2.fromScale(0.055, 0.34)
             hit.Position = UDim2.fromScale(slotX, 0.3)
             hit.BackgroundTransparency = 1
             hit.Text = ""
-            hit.ZIndex = 9
+            hit.ZIndex = 8
             hit.Parent = strip
             if self._enhTargetSlot == i then
                 local ring = Instance.new("UIStroke")
@@ -606,25 +609,19 @@ function PowerChoiceMenu:_renderEnhanceStrip()
             if slot.enh then
                 -- outleveled = levelFactor 0 (slotted but contributing nothing) -> greyed
                 local dead = Enhancements.levelFactor(enhCfg, slot.enh.level, self.level) == 0
-                local b = enhBadge(
-                    strip,
-                    UDim2.fromScale(0.055, 0.34),
-                    UDim2.fromScale(slotX, 0.3),
-                    slot.enh,
-                    dead
-                )
-                b.ZIndex = 7
+                local b =
+                    enhBadge(hit, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), slot.enh, dead)
+                b.ZIndex = 9
             else
                 local empty = Instance.new("Frame")
-                empty.Size = UDim2.fromScale(0.055, 0.34)
-                empty.Position = UDim2.fromScale(slotX, 0.3)
+                empty.Size = UDim2.fromScale(1, 1)
                 empty.BackgroundColor3 = Color3.fromRGB(45, 45, 58)
                 empty.BackgroundTransparency = 0.2
-                empty.ZIndex = 7
+                empty.ZIndex = 9
                 local ec = Instance.new("UICorner")
                 ec.CornerRadius = UDim.new(1, 0)
                 ec.Parent = empty
-                empty.Parent = strip
+                empty.Parent = hit
             end
             slotX += 0.062
         end
