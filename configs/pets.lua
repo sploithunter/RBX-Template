@@ -1019,7 +1019,7 @@ local petConfig = {
         kitty = {
             display_name = "Kitty",
             category = "domestic",
-            rarity = "common",
+            rarity = "legendary", -- was mislabeled common (10/75k odds); luck must boost it,
             base_power = 9,
             base_health = 110,
 
@@ -1234,11 +1234,12 @@ local petConfig = {
 
             -- Stage 1: Pet Selection (which animal) - TESTING RARE PERCENTAGES
             pet_weights = {
-                bear = 24990, -- ~25% chance to get a bear
-                bunny = 24990, -- ~25% chance to get a bunny
-                doggy = 24990, -- ~25% chance to get a doggy
-                kitty = 10, -- 0.01% chance to get a kitty (10/100000)
-                dragon = 1, -- 0.001% chance to get a dragon (1/100000) - should show "??"
+                -- relative weights (share = weight/sum, NOT /100000): commons ~33.3% each
+                bear = 24990,
+                bunny = 24990,
+                doggy = 24990,
+                kitty = 10, -- ~0.013% (legendary; luck multiplies this weight)
+                dragon = 1, -- ~0.0013% (secret; luck AND secret-luck multiply) - shows "??"
             },
 
             -- Stage 2: Rarity Calculation (basic/golden/rainbow)
@@ -1738,6 +1739,48 @@ function petConfig.simulateHatch(eggType, playerData)
         end
     end
 
+    -- LUCK (Jason: "luck should affect everything" — it multiplies the probability of
+    -- every rare outcome). Computed up front; reweights RARE SPECIES below and scales
+    -- golden/rainbow in stage 2. Replaces the old best-of-N reroll model (which needed
+    -- an ambiguous "best" ranking and leaked plain commons).
+    local gamepassMods = petConfig.gamepass_modifiers
+    local luckMultiplier = gamepassMods.base_luck
+    if playerData.level then
+        luckMultiplier = luckMultiplier + (playerData.level * gamepassMods.luck_per_level)
+    end
+    if playerData.petsHatched then
+        luckMultiplier = luckMultiplier
+            + (playerData.petsHatched * gamepassMods.luck_from_pets_hatched)
+    end
+    if playerData.luckBoost then
+        luckMultiplier = luckMultiplier + playerData.luckBoost
+    end
+    if
+        playerData.hasLuckGamepass
+        or (petConfig.test_mode and petConfig.test_mode.enabled and petConfig.test_mode.super_luck)
+    then
+        luckMultiplier = luckMultiplier * gamepassMods.luck_gamepass_multiplier
+    end
+    local maxLuck = eggData.modifier_support.max_luck_multiplier or gamepassMods.max_luck
+    luckMultiplier = math.min(luckMultiplier, maxLuck)
+    -- FIRST EGG EVER: one-roll mega-luck (consumed here; post-cap so it's a true 50x)
+    if playerData.firstHatchLuck then
+        luckMultiplier = luckMultiplier * (tonumber(playerData.firstHatchLuck) or 1)
+        playerData.firstHatchLuck = nil
+    end
+
+    -- species reweight: everything rarer than COMMON gets its weight multiplied by luck
+    if luckMultiplier > 1 then
+        local adjusted = table.clone(petWeights)
+        for petType, weight in pairs(petWeights) do
+            local family = petConfig.pets[petType]
+            if family and family.rarity and family.rarity ~= "common" then
+                adjusted[petType] = weight * luckMultiplier
+            end
+        end
+        petWeights = adjusted
+    end
+
     local secretLuckBoost = tonumber(playerData.secretLuckBoost) or 0
     if secretLuckBoost > 0 then
         local adjustedWeights = table.clone(petWeights)
@@ -1787,7 +1830,6 @@ function petConfig.simulateHatch(eggType, playerData)
     end
 
     -- Apply gamepass modifiers
-    local gamepassMods = petConfig.gamepass_modifiers
     if playerData.hasGoldenGamepass then
         goldenChance = goldenChance * gamepassMods.golden_gamepass_multiplier
     end
@@ -1795,39 +1837,10 @@ function petConfig.simulateHatch(eggType, playerData)
         rainbowChance = rainbowChance * gamepassMods.rainbow_gamepass_multiplier
     end
 
-    -- Apply luck system
-    local luckMultiplier = gamepassMods.base_luck
-    if playerData.level then
-        luckMultiplier = luckMultiplier + (playerData.level * gamepassMods.luck_per_level)
-    end
-    if playerData.petsHatched then
-        luckMultiplier = luckMultiplier
-            + (playerData.petsHatched * gamepassMods.luck_from_pets_hatched)
-    end
-    if playerData.luckBoost then
-        luckMultiplier = luckMultiplier + playerData.luckBoost
-    end
-    if
-        playerData.hasLuckGamepass
-        or (petConfig.test_mode and petConfig.test_mode.enabled and petConfig.test_mode.super_luck)
-    then
-        luckMultiplier = luckMultiplier * gamepassMods.luck_gamepass_multiplier
-    end
+    -- (luck was computed BEFORE stage 1 — it reweights the species roll too)
     if playerData.isVIP then
         goldenChance = goldenChance * gamepassMods.vip_golden_bonus
         rainbowChance = rainbowChance * gamepassMods.vip_rainbow_bonus
-    end
-
-    -- Cap luck at maximum
-    local maxLuck = eggData.modifier_support.max_luck_multiplier or gamepassMods.max_luck
-    luckMultiplier = math.min(luckMultiplier, maxLuck)
-
-    -- FIRST EGG EVER: a one-roll mega-luck multiplier (EggService sets this when the
-    -- lifetime eggs_hatched counter is 0; consumed here so a first BATCH only blesses
-    -- its first roll). Applied after the cap — it's a true 10x.
-    if playerData.firstHatchLuck then
-        luckMultiplier = luckMultiplier * (tonumber(playerData.firstHatchLuck) or 1)
-        playerData.firstHatchLuck = nil
     end
 
     -- Apply luck to chances
