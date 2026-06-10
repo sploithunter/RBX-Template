@@ -79,13 +79,14 @@ function PlayerPowerBadges.start()
 
     local row = Instance.new("Frame")
     row.Name = "Row"
-    -- VERTICAL strip hanging off the player bar's LEFT side (Jason: like the pet hud, which
-    -- columns down the right screen edge) — top-aligned with the capsule, growing downward.
+    -- SINGLE ROW growing LEFTWARD from the player bar's left edge (Jason: players can carry
+    -- a lot of buffs even at high levels, so one row stacking left scales best). Right edge
+    -- pinned beside the capsule, vertically centred on it; new badges extend left.
     -- Parented INTO the capsule, so it inherits the bar's viewport scale and moves with it.
-    row.AnchorPoint = Vector2.new(1, 0)
-    row.Position = UDim2.new(0, -10, 0, 0)
-    row.Size = UDim2.fromOffset(40, 0)
-    row.AutomaticSize = Enum.AutomaticSize.Y
+    row.AnchorPoint = Vector2.new(1, 0.5)
+    row.Position = UDim2.new(0, -10, 0.5, 0)
+    row.Size = UDim2.fromOffset(0, 50)
+    row.AutomaticSize = Enum.AutomaticSize.X
     row.BackgroundTransparency = 1
     row.ZIndex = 8
     task.spawn(function()
@@ -100,8 +101,9 @@ function PlayerPowerBadges.start()
         end
     end)
     local layout = Instance.new("UIListLayout")
-    layout.FillDirection = Enum.FillDirection.Vertical
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Right -- stack from the bar outward (leftward)
+    layout.VerticalAlignment = Enum.VerticalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, 4)
     layout.Parent = row
