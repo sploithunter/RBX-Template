@@ -1857,7 +1857,14 @@ function petConfig.simulateHatch(eggType, playerData)
     local hugeCfg = eggData.huge
     local hugeChance = hugeCfg and tonumber(hugeCfg.chance) or 0
     if hugeChance > 0 and hugeCfg.pets and next(hugeCfg.pets) then
-        local attempts = math.max(1, math.floor((tonumber(playerData.hugeLuckBoost) or 1) + 0.5))
+        -- fractional attempts (Jason): 2.75x luck = 2 rolls + a 75% chance of a third —
+        -- expected attempts exactly equals the multiplier, and at jackpot-tier chances
+        -- attempts and pure odds-multiplication are mathematically equivalent
+        local hugeLuck = math.max(1, tonumber(playerData.hugeLuckBoost) or 1)
+        local attempts = math.floor(hugeLuck)
+        if math.random() < (hugeLuck - attempts) then
+            attempts += 1
+        end
         for _ = 1, attempts do
             if math.random() <= hugeChance then
                 -- jackpot: weighted pick among this egg's huge-capable species
