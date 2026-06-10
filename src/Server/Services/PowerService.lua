@@ -1451,6 +1451,36 @@ function PowerService:Select(player, powerId, levelOverride)
     end
     self._dataService:RequestSave(player, "power_select", { critical = true })
     self:_applyOwnedPassives(player) -- a passive pick (Magnet/Swift/Hasten/XP) turns on immediately
+    -- AUTO-BIND castable picks: a new ACTIVE power lands in the first empty hotbar
+    -- slot (Jason: "I would have expected it to go into 1") — passives stay off the
+    -- bar (they're always-on; the 10 slots are for casts). Players can still rebind.
+    pcall(function()
+        local kind = self._powersConfig.effect_kinds[self._powersConfig.powers[powerId].effect]
+        local isPassive = kind and (kind.passive == true or kind.toggle == true)
+        if not isPassive then
+            local locator = _G.RBXTemplateServices
+            local hotbar = locator and locator:Get("HotbarService")
+            if hotbar and hotbar.GetState and hotbar.Rebind then
+                local state = hotbar:GetState(player)
+                local binds = (state and state.hotbar) or {}
+                local slotCount = (state and state.slot_count) or 10
+                local alreadyBound = false
+                for _, bind in pairs(binds) do
+                    if type(bind) == "table" and bind.target == powerId then
+                        alreadyBound = true
+                    end
+                end
+                if not alreadyBound then
+                    for i = 1, slotCount do
+                        if binds[tostring(i)] == nil then
+                            hotbar:Rebind(player, i, { type = "power", target = powerId })
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end)
     -- The hotbar's assign palette is owned-powers; re-push it so the fresh pick shows up in the
     -- Edit picker immediately (it was only pushed on join/rebind, so new picks were missing
     -- until rejoin).
