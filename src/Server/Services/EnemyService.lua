@@ -1337,6 +1337,9 @@ function EnemyService:_auraPlayerBuff(folder, attr, aura, count)
     local frac = ((tonumber(aura.mult) or 1) - 1) * (count or 1)
     owner:SetAttribute(attr, 1 + frac)
     owner:SetAttribute(attr .. "Until", os.time() + (tonumber(aura.duration) or 3))
+    -- the PLAYER is the buffed entity — surface how many buffers contribute (Jason:
+    -- "I have buffed three times... the player should 100% be stacked")
+    owner:SetAttribute(attr .. "Stacks", count or 1)
 end
 
 -- Stamp a per-pet DISPLAY marker on every ally so the squad cards can show the support buff
@@ -1409,7 +1412,9 @@ function EnemyService:_supportPass(now)
                             local allyAura = self:_petAura(ally)
                             if allyAura and allyAura.kind == "luck" then
                                 ally:SetAttribute("LuckFxUntil", until_)
-                                ally:SetAttribute("LuckFxUntilStacks", count)
+                                -- each bunny is ONE caster: a single clover marker, not
+                                -- a pile (the STACK belongs on the buffed PLAYER)
+                                ally:SetAttribute("LuckFxUntilStacks", 1)
                             end
                         end
                     end

@@ -145,7 +145,8 @@ function PlayerPowerBadges.start()
                     or (localPlayer:GetAttribute(def.attr .. "Toggle") == true)
                     or remaining > PERMANENT_THRESHOLD
                 if permanent then
-                    b.timer.Text = "ON"
+                    local stacks = tonumber(localPlayer:GetAttribute(def.attr .. "Stacks")) or 1
+                    b.timer.Text = stacks > 1 and ("×" .. stacks) or "ON"
                     b.timer.TextColor3 = Color3.fromRGB(150, 230, 150)
                     b.disc.ImageTransparency = 0
                 else
