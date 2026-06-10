@@ -64,6 +64,10 @@ function PlayerBar.start()
 
     local gui = Instance.new("ScreenGui")
     gui.Name = "PlayerBar"
+    -- Sibling (modern) z-ordering: children render above their parents. TopHudStack adopts
+    -- BaseUI panes into this gui, and under the legacy Global behavior an adopted pane's
+    -- BACKGROUND (high ZIndex) painted over its own TEXT (low ZIndex).
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     gui.ResetOnSpawn = false
     gui.IgnoreGuiInset = true
     gui.DisplayOrder = 80

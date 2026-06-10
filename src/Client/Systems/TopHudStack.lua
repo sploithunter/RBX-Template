@@ -65,23 +65,26 @@ function TopHudStack.start()
             end)
         end
 
-        -- 1. ASCEND / LEVEL UP nudge
-        adopt(1, function()
-            local gui = pg:WaitForChild("LevelUpGui", 20)
-            return gui and gui:WaitForChild("LevelUpButton", 10)
-        end)
+        -- PERSISTENT elements first; the TRANSIENT ascend nudge goes LAST so it pops in
+        -- BELOW them — the quest bar and toggles never shift when it appears/disappears.
 
-        -- 2. quest tracker capsule (BaseUI pane, restyled by QuestTrackerStyle)
-        adopt(2, function()
+        -- 1. quest tracker capsule (BaseUI pane, restyled by QuestTrackerStyle)
+        adopt(1, function()
             local base = pg:WaitForChild("ProfessionalBaseUI", 20)
             local mc = base and base:WaitForChild("MainContainer", 10)
             return mc and mc:WaitForChild("quest_tracker_pane", 15)
         end)
 
-        -- 3. buff-toggle row (speed/magnet ON badges)
-        adopt(3, function()
+        -- 2. buff-toggle row (speed/magnet ON badges)
+        adopt(2, function()
             local gui = pg:WaitForChild("PlayerPowerBadges", 20)
             return gui and gui:WaitForChild("Row", 10)
+        end)
+
+        -- 3. ASCEND / LEVEL UP nudge (transient — visible only with pending levels)
+        adopt(3, function()
+            local gui = pg:WaitForChild("LevelUpGui", 20)
+            return gui and gui:WaitForChild("LevelUpButton", 10)
         end)
     end)
 end

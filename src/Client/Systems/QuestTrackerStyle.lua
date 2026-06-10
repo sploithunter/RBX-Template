@@ -62,7 +62,10 @@ function QuestTrackerStyle.start()
         local mc = base and base:WaitForChild("MainContainer", 10)
         local pane
         for _ = 1, 30 do
-            pane = mc and mc:FindFirstChild("quest_tracker_pane")
+            -- pg-wide recursive: TopHudStack may have adopted the pane into the PlayerBar
+            -- capsule's stack before we got here (it is no longer under MainContainer)
+            pane = (mc and mc:FindFirstChild("quest_tracker_pane"))
+                or pg:FindFirstChild("quest_tracker_pane", true)
             if pane then
                 break
             end
