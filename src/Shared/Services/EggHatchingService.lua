@@ -1634,6 +1634,9 @@ function EggHatchingService:StartHatchingAnimation(eggsData)
                     rollSound = template:Clone()
                     rollSound.Volume = adv.egg_roll_volume or template.Volume
                     rollSound.Looped = true
+                    -- the ONE hatch sound that skipped the bus — it ignored the SFX
+                    -- slider while the pop obeyed it (found via live sound-watch)
+                    SoundGroups.assign(rollSound, "effects")
                     rollSound.Parent = SoundService
                     rollSound:Play()
                 end
