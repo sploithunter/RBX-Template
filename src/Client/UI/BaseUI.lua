@@ -2830,6 +2830,14 @@ end
 -- on first use so it works whether or not the pane config seeded one.
 function BaseUI:_setRewardsBadge(count)
     local button = self._rewardsButton
+    if not (button and button.Parent) then
+        -- Rewards is a normal tray menu_button now (the standalone pane is gone) —
+        -- resolve it from the grid lazily and cache
+        local mc = self.mainFrame
+            or (self.screenGui and self.screenGui:FindFirstChild("MainContainer"))
+        button = mc and mc:FindFirstChild("RewardsButton", true)
+        self._rewardsButton = button
+    end
     if not button or not button.Parent then
         return
     end

@@ -1,12 +1,13 @@
 --[[
     MenuTrayStyle (client) — skin the lower-left tray buttons (Trade/Admin/Daily/Quest/Shop/Items/
-    Effects/Settings) AND the Rewards button with Jason's pill art: a glossy pill_panel background +
+    Effects/Settings/Rewards) with Jason's pill art: a glossy pill_panel background +
     a neon pill_frame border behind the existing icon + label, matching
     assets/ui/reference/quest_button_reference.jpg.
 
     Done as a scoped post-process (named buttons only) so BaseUI's button-building logic is untouched.
     The tray takes the home-area pill color (via UITheme, sapphire default) and re-tints on area change;
-    Rewards keeps a fixed citrine (gold) pill for its identity and is moved into the lower-left next to
+    Rewards is a NORMAL menu_button since 2026-06-10 (the standalone pane + transplant were
+    artifacts); Admin is adopted OUT of the grid to float just above the tray. (was: moved next to
     the Pets paw. Idempotent per button.
 
     Icon-ready: the restyle lifts whatever icon child BaseUI made (TextLabel emoji OR ImageLabel asset)
@@ -25,6 +26,7 @@ local TRAY_BUTTONS = {
     "PetsButton",
     "PowersButton",
     "AdminButton",
+    "RewardsButton",
     "DailyButton",
     "QuestButton",
     "ShopButton",
@@ -131,49 +133,6 @@ function MenuTrayStyle.start()
                     end
                 end
                 task.wait(0.5)
-            end
-        end)
-
-        -- Rewards: move into the lower-left next to the Pets paw, reshape from the wide horizontal
-        -- button into a SQUARE icon-top/label-bottom button (so the square pill fits), gold pill.
-        task.spawn(function()
-            -- Rewards joins the menu tray GRID (Jason): square gold restyle, then the button is
-            -- adopted as the last grid cell — the UIGridLayout owns its size/position from there.
-            local rewards = mc:WaitForChild("rewards_button_pane", 15)
-            if rewards then
-                rewards.Size = UDim2.fromOffset(66, 64)
-                for _ = 1, 10 do
-                    local rb = rewards:FindFirstChild("RewardsButton")
-                    if rb then
-                        -- re-stack the icon (top-centre) + label (bottom) like a tray button
-                        for _, c in ipairs(rb:GetChildren()) do
-                            if c:IsA("TextLabel") then
-                                if c.Text == "Rewards" then
-                                    c.AnchorPoint = Vector2.new(0.5, 0)
-                                    c.Position = UDim2.new(0.5, 0, 1, -19)
-                                    c.Size = UDim2.new(1, -8, 0, 15)
-                                    c.TextScaled = true
-                                    c.TextXAlignment = Enum.TextXAlignment.Center
-                                else
-                                    c.AnchorPoint = Vector2.new(0.5, 0.5)
-                                    c.Position = UDim2.new(0.5, 0, 0.4, 0)
-                                    c.Size = UDim2.fromOffset(26, 26)
-                                end
-                            end
-                        end
-                        -- SAME pill as the rest (Jason: the gold was an artifact of its
-                        -- standalone days) + the LAST visual cell (grid fills from the
-                        -- bottom corner, so high order = top-right — live-tuned)
-                        styleButton(rb, pillKey(theme), styled)
-                        if pane then
-                            rb.LayoutOrder = 9
-                            rb.Parent = pane
-                            rewards:Destroy() -- empty bottom-right pane (and its ViewportScale)
-                        end
-                        break
-                    end
-                    task.wait(0.5)
-                end
             end
         end)
 

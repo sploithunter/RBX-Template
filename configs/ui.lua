@@ -739,15 +739,14 @@ local uiConfig = {
         },
 
         rewards_action = {
-            type = "script_execute",
-            script = "RewardsHandler",
-            method = "ClaimAllRewards",
-            parameters = {
-                auto_claim = true,
-                show_notification = true,
-            },
-            sound = "success",
-            description = "Claims all available rewards",
+            -- Rewards = the Quest panel (where met missions are claimed). Was a dead
+            -- script_execute; the standalone rewards button used a hardcoded click
+            -- handler for the same thing.
+            type = "menu_panel",
+            panel = "Quest",
+            transition = "scale_in_small",
+            sound = "button_click",
+            description = "Open quests / claim rewards",
         },
 
         -- Multi-step Action Sequences
@@ -1041,7 +1040,7 @@ local uiConfig = {
             -- zero offset: the semantic bottom-left base is (15, -15), so the tray's left edge
             -- aligns with the coin stack (x=15) and the bottom gap equals the left gap.
             offset = { x = 0, y = 0 },
-            size = { width = 200, height = 200 }, -- snug 3x3: cells hug the ~60px buttons (no gaps)
+            size = { width = 200, height = 135 }, -- snug 2x3: cells hug the ~60px buttons (no gaps)
             background = { enabled = false }, -- Debug backgrounds will handle visualization
             layout = {
                 type = "grid",
@@ -1185,6 +1184,18 @@ local uiConfig = {
                         -- 🎨 100% global defaults = instant professional styling!
                     },
                 },
+
+                -- Rewards: a NORMAL tray button (Jason: the old standalone one was an
+                -- artifact — "coded individually"; one builder for the whole grid now)
+                {
+                    type = "menu_button",
+                    config = {
+                        name = "Rewards",
+                        icon_fallback = "🎁",
+                        text = "Rewards",
+                        action = "rewards_action",
+                    },
+                },
             },
         },
 
@@ -1192,26 +1203,6 @@ local uiConfig = {
 
         -- (auto_low/auto_high panes removed — farming Off/Low/High is now the cycle
         -- button on the left of the lower-center power hotbar; see HotbarBar.lua.)
-
-        rewards_button_pane = {
-            position = "bottom-right",
-            offset = { x = -10, y = -10 }, -- Standardized bottom alignment + small right padding
-            size = { width = 120, height = 60 },
-            background = { enabled = false },
-            layout = { type = "single" },
-            contents = {
-                {
-                    type = "rewards_button",
-                    config = {
-                        icon = "🎁",
-                        text = "Rewards",
-                        color = Color3.fromRGB(255, 215, 0),
-                        badge_count = 3,
-                        action = "rewards_action",
-                    },
-                },
-            },
-        },
 
         -- Available positions: "top-left", "top-center", "top-right",
         --                     "center-left", "center", "center-right",
