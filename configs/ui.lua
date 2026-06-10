@@ -1028,14 +1028,17 @@ local uiConfig = {
         -- Menu Buttons Pane (bottom-left) - Auto-sizing grid that adapts to content
         menu_buttons_pane = {
             position = "bottom-left",
-            offset = { x = 10, y = -10 }, -- restore original placement
+            -- zero offset: the semantic bottom-left base is (15, -15), so the tray's left edge
+            -- aligns with the coin stack (x=15) and the bottom gap equals the left gap.
+            offset = { x = 0, y = 0 },
             size = { width = 200, height = 200 }, -- snug 3x3: cells hug the ~60px buttons (no gaps)
             background = { enabled = false }, -- Debug backgrounds will handle visualization
             layout = {
                 type = "grid",
                 auto_size = true, -- Enable automatic sizing based on content
                 button_count = 8, -- 7 menu buttons + the adopted Rewards (MenuTrayStyle)
-                padding = { top = 5, bottom = 5, left = 5, right = 5 }, -- Padding for calculations
+                -- left/bottom zero so the buttons sit flush on the pane's anchored corner
+                padding = { top = 5, bottom = 0, left = 0, right = 5 },
             },
             contents = {
                 -- 🌟 UNIVERSAL CONSISTENCY SYSTEM! 🌟
