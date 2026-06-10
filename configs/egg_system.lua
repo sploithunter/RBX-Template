@@ -10,7 +10,8 @@ return {
     -- luck multiplier, applied AFTER the luck cap and consumed by exactly ONE roll —
     -- a great first impression (Jason: "extremely lucky, like 10x, but only the very
     -- first egg"). 1 disables.
-    first_hatch_luck_multiplier = 50, -- 10 missed in playtest (normal bunny first) — Jason: 50x
+    first_hatch_luck_multiplier = 10, -- back from 50: luck now reweights SPECIES too,
+    -- so 10x = ~40% golden / 5% rainbow first egg AND 10x kitty/dragon odds — plenty
 
     version = "1.0.0",
 
