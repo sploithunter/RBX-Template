@@ -157,7 +157,11 @@ function PowerService:_applyOwnedPassives(player)
                 type(data.Slots) == "table" and data.Slots[tostring(powerId)] or {},
                 tonumber(player:GetAttribute("Level")) or 1
             )
-            player:SetAttribute(attr, kind.magnitude * (1 + (enhAxes.magnitude or 0)))
+            -- a passive's magnitude takes BOTH axes: potency (magnitude) and — for
+            -- radius-magnitude passives like Magnet — range (radius). Additive, per
+            -- the stacking model. (Range on Magnet did nothing before this.)
+            local boost = (enhAxes.magnitude or 0) + (enhAxes.radius or 0)
+            player:SetAttribute(attr, kind.magnitude * (1 + boost))
             player:SetAttribute(attr .. "Until", PASSIVE_UNTIL)
             player:SetAttribute(attr .. "Toggle", true) -- permanent: HUDs show no countdown
             player:SetAttribute(attr .. "PowerId", powerId)
