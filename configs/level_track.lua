@@ -110,7 +110,7 @@ return {
         hold_duration = 0,
         key = "E",
         -- Floating label above the station ("" to hide).
-        label_text = "Level Up",
+        label_text = "Ascend", -- matches the ASCEND button language (building is placeholder)
         label_color = { 255, 230, 140 },
         label_max_distance = 250,
     },
