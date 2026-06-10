@@ -267,6 +267,16 @@ end
 function EggService:RecordHatchSuccess(player, request, response)
     local results, autoDeletedCount, specialCount = self:SummarizeHatchResults(response.results)
     fireGameEvent(player, "egg_hatch", { count = response.hatchCount }) -- reactions config-optional
+    -- XP per egg (configs/egg_system.lua xp_per_hatch; Jason: 1/egg) — per batch
+    local xpPer = tonumber(eggSystemConfig and eggSystemConfig.xp_per_hatch) or 0
+    local count = tonumber(response.hatchCount) or 0
+    if xpPer > 0 and count > 0 then
+        pcall(function()
+            _G.RBXTemplateServices
+                :Get("PlayerProgressionService")
+                :AddExperience(player, xpPer * count)
+        end)
+    end
     if specialCount > 0 then
         -- ONE rare-hatch celebration per batch (not per pet) — golden/rainbow/special reveals.
         fireGameEvent(player, "egg_hatch_rare", { count = specialCount })

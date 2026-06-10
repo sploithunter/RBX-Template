@@ -2,6 +2,10 @@
 -- Centralized settings for egg interaction, UI, and performance
 
 return {
+    -- XP per egg hatched (Jason: "one XP point per egg") — granted per batch
+    -- (hatch 9 = 9 XP) at RecordHatchSuccess; 0 disables
+    xp_per_hatch = 1,
+
     version = "1.0.0",
 
     -- === PROXIMITY & INTERACTION SETTINGS ===
