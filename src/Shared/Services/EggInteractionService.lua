@@ -906,9 +906,71 @@ function EggInteractionService:CreateHatchPanel()
     hatchPanel = nil
     hatchPanelFields = {}
 
-    -- The proximity UI is intentionally owned by EggCurrentTargetService.
-    -- Keep this method as a stale-GUI cleanup hook so older synced panels
-    -- disappear after Rojo refreshes, but do not create a second screen.
+    -- The proximity UI (billboard) is owned by EggCurrentTargetService. This builds
+    -- the tappable ACTION BAR — buttons are primary input (Jason, mobile playtest:
+    -- "no way to click it... couldn't hatch an egg"); E/M/T keys remain as shortcuts.
+    if getHatchPanelConfig().show_inline_controls ~= true then
+        return
+    end
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "EggActionBar"
+    gui.ResetOnSpawn = false
+    gui.DisplayOrder = 20
+    gui.Parent = player:WaitForChild("PlayerGui")
+    hatchPanelGui = gui
+
+    local bar = Instance.new("Frame")
+    bar.Name = "Bar"
+    bar.AnchorPoint = Vector2.new(0.5, 1)
+    bar.Position = UDim2.new(0.5, 0, 0.86, 0)
+    bar.Size = UDim2.fromOffset(396, 52)
+    bar.BackgroundTransparency = 1
+    bar.Visible = false
+    bar.Parent = gui
+
+    local function makeBtn(text, x, color)
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.fromOffset(124, 48) -- touch-friendly (>44px)
+        b.Position = UDim2.fromOffset(x, 0)
+        b.BackgroundColor3 = color
+        b.Text = text
+        b.TextScaled = true
+        b.Font = Enum.Font.GothamBold
+        b.TextColor3 = Color3.fromRGB(255, 255, 255)
+        b.Parent = bar
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(0, 10)
+        c.Parent = b
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromRGB(20, 20, 28)
+        stroke.Thickness = 1.5
+        stroke.Parent = b
+        return b
+    end
+    local hatchBtn = makeBtn("HATCH", 0, Color3.fromRGB(90, 170, 90))
+    local maxBtn = makeBtn("MAX", 136, Color3.fromRGB(80, 130, 200))
+    local autoBtn = makeBtn("AUTO", 272, Color3.fromRGB(150, 110, 200))
+    hatchBtn.Activated:Connect(function()
+        self:OnEKeyPressed()
+    end)
+    maxBtn.Activated:Connect(function()
+        self:OnMaxHatchKeyPressed()
+    end)
+    autoBtn.Activated:Connect(function()
+        self:ToggleAutoHatch()
+    end)
+
+    -- visibility + auto-state tint follow the current target (cheap poll)
+    task.spawn(function()
+        while gui.Parent do
+            local target = currentTargetService and currentTargetService:GetCurrentTarget()
+            bar.Visible = target ~= nil and target ~= "None"
+            autoBtn.Text = autoHatchEnabled and "STOP" or "AUTO"
+            autoBtn.BackgroundColor3 = autoHatchEnabled and Color3.fromRGB(220, 82, 95)
+                or Color3.fromRGB(150, 110, 200)
+            task.wait(0.25)
+        end
+    end)
 end
 
 function EggInteractionService:CreateAutoDeleteSettings(parent)
