@@ -328,10 +328,14 @@ local function showEggPath(token, finder)
                     if ok and path.Status == Enum.PathStatus.Success then
                         local n = 0
                         for _, wp in ipairs(path:GetWaypoints()) do
-                            -- skip the first couple (under the player's feet) and stop
-                            -- short of the egg so the trail reads "walk this way"
+                            -- skip dots under the player's FEET (by distance, not waypoint
+                            -- count — count-skipping ate most of a short route: Jason saw
+                            -- "two dots in front of the hatch") and stop short of the egg
                             n += 1
-                            if n > 2 and (wp.Position - target).Magnitude > PROMPT_RANGE * 0.6 then
+                            if
+                                (wp.Position - hrp.Position).Magnitude > 4
+                                and (wp.Position - target).Magnitude > PROMPT_RANGE * 0.6
+                            then
                                 dot(wp.Position, n)
                             end
                         end
@@ -463,7 +467,7 @@ end
 -- bumped per behavior change: printed at start so a LIVE session's running BYTECODE is
 -- identifiable (rojo syncs Source into running sessions but required modules never
 -- re-execute — we chased "stale build vs real bug" three times today)
-local BUILD = "trail-live-replan v4 clear-first (2026-06-10)"
+local BUILD = "trail-live-replan v5 short-range (2026-06-10)"
 
 function TutorialController.start()
     if started then
