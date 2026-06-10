@@ -10,6 +10,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 
 local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
 
@@ -64,7 +65,36 @@ function AudioPrefs.save(audio)
     end)
 end
 
+-- Route CHARACTER sounds (Roblox's RbxCharacterSounds: footsteps, jump, land, swim)
+-- onto the effects bus — they spawn ungrouped, so they ignored the SFX slider (Jason:
+-- "the stepping is not being controlled by effects volume"). Covers every player's
+-- character, including respawns and late joiners.
+local function busCharacterSounds()
+    local function tag(inst)
+        if inst:IsA("Sound") then
+            SoundGroups.assign(inst, "effects")
+        end
+    end
+    local function busCharacter(char)
+        for _, d in ipairs(char:GetDescendants()) do
+            tag(d)
+        end
+        char.DescendantAdded:Connect(tag)
+    end
+    local function busPlayer(p)
+        if p.Character then
+            busCharacter(p.Character)
+        end
+        p.CharacterAdded:Connect(busCharacter)
+    end
+    for _, p in ipairs(Players:GetPlayers()) do
+        busPlayer(p)
+    end
+    Players.PlayerAdded:Connect(busPlayer)
+end
+
 function AudioPrefs.start()
+    busCharacterSounds()
     task.spawn(function()
         -- RETRY until the profile answers: client boot often beats DataService, and the
         -- single-shot get returned data_not_loaded -> defaults stuck at 100% (Jason).
