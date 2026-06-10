@@ -41,7 +41,7 @@ local function buildCapsule(pg)
     capsule.Name = "Objective"
     capsule.AnchorPoint = Vector2.new(0.5, 1)
     capsule.Position = UDim2.new(0.5, 0, 1, -140) -- just above the hotbar
-    capsule.Size = UDim2.fromOffset(360, 74)
+    capsule.Size = UDim2.fromOffset(360, 88) -- room for 3-line bodies (farm step)
     capsule.BackgroundColor3 = Color3.fromRGB(24, 22, 34)
     capsule.BackgroundTransparency = 0.12
     capsule.Visible = false
@@ -75,7 +75,7 @@ local function buildCapsule(pg)
 
     bodyLabel = Instance.new("TextLabel")
     bodyLabel.BackgroundTransparency = 1
-    bodyLabel.Size = UDim2.new(1, -20, 0, 28)
+    bodyLabel.Size = UDim2.new(1, -20, 0, 42)
     bodyLabel.Position = UDim2.fromOffset(10, 41)
     bodyLabel.Font = Enum.Font.Gotham
     bodyLabel.TextSize = 12

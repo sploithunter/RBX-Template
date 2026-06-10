@@ -40,7 +40,7 @@ return {
         {
             id = "farm_crystals",
             title = "Mine some crystals",
-            body = "Walk up to a crystal — your pet mines it on its own. Click the crystal yourself to BOOST it and break it faster!",
+            body = "Walk up to a crystal — your pet mines it on its own (click it to BOOST!). When it breaks, walk over the coins to scoop them up.",
             target = { kind = "none" },
             complete_on = { event = "coin_payout", count = 3 },
         },
