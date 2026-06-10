@@ -912,6 +912,12 @@ function EggInteractionService:CreateHatchPanel()
     if getHatchPanelConfig().show_inline_controls ~= true then
         return
     end
+    do -- all buttons config-disabled -> no bar at all (card carries the controls)
+        local bc = getHatchPanelConfig().action_bar or {}
+        if bc.hatch == false and bc.max == false and bc.auto == false then
+            return
+        end
+    end
     local gui = Instance.new("ScreenGui")
     gui.Name = "EggActionBar"
     gui.ResetOnSpawn = false
@@ -2251,10 +2257,29 @@ function EggInteractionService:Initialize()
     if success then
         currentTargetService = currentTargetServiceOrError
         Logger:Info("Got CurrentTargetService reference", { context = "EggInteractionService" })
-        -- tapping the proximity card == pressing E (buttons primary — Jason)
+        -- tapping the proximity card == pressing E (buttons primary — Jason); the
+        -- card also hosts MAX/AUTO (the floating bar is gone)
         if currentTargetService.SetCardActivatedHandler then
             currentTargetService:SetCardActivatedHandler(function()
                 self:OnEKeyPressed()
+            end)
+        end
+        if currentTargetService.SetCardActionHandlers then
+            currentTargetService:SetCardActionHandlers({
+                max = function()
+                    self:OnMaxHatchKeyPressed()
+                end,
+                auto = function()
+                    self:ToggleAutoHatch()
+                end,
+            })
+            task.spawn(function()
+                while true do
+                    if currentTargetService.SetCardAutoActive then
+                        currentTargetService:SetCardAutoActive(autoHatchEnabled)
+                    end
+                    task.wait(0.5)
+                end
             end)
         end
     else
