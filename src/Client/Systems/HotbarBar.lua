@@ -167,6 +167,8 @@ function HotbarBar.start()
     root.AnchorPoint = Vector2.new(0.5, 1)
     root.Position = UDim2.new(0.5, 0, 1, -20)
     root.Size = UDim2.fromOffset(rowWidth + SLOT + PAD, SLOT * 2 + PAD)
+    -- pixel-designed bar: shrink on small viewports (anchored bottom-center, stays docked)
+    require(script.Parent.Parent.UI.UIViewportScale).attach(root)
     root.BackgroundTransparency = 1
     root.Parent = gui
 

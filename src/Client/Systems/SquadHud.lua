@@ -504,6 +504,8 @@ function SquadHud.start()
     root.AutomaticSize = Enum.AutomaticSize.Y
     root.BackgroundTransparency = 1
     root.Parent = gui
+    -- pixel-designed strip: shrink on small viewports (anchored right-center, stays docked)
+    require(script.Parent.Parent.UI.UIViewportScale).attach(root)
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.SortOrder = Enum.SortOrder.LayoutOrder

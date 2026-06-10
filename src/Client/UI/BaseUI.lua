@@ -801,6 +801,8 @@ function BaseUI:_createPane(paneName, config)
 
     paneContainer.ZIndex = 12
     paneContainer.Parent = self.mainFrame
+    -- Pixel-designed pane on a small viewport: shrink around its corner anchor (mobile fix).
+    require(script.Parent.UIViewportScale).attach(paneContainer)
 
     -- Create background if enabled OR if debug backgrounds are on
     if
@@ -2658,18 +2660,14 @@ end
 function BaseUI:_animateButtonPress(button)
     local originalSize = button.Size
 
-    local shrink = TweenService:Create(
-        button,
-        TweenInfo.new(0.1, Enum.EasingStyle.Quad),
-        {
-            Size = UDim2.new(
-                originalSize.X.Scale,
-                originalSize.X.Offset - 5,
-                originalSize.Y.Scale,
-                originalSize.Y.Offset - 5
-            ),
-        }
-    )
+    local shrink = TweenService:Create(button, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {
+        Size = UDim2.new(
+            originalSize.X.Scale,
+            originalSize.X.Offset - 5,
+            originalSize.Y.Scale,
+            originalSize.Y.Offset - 5
+        ),
+    })
 
     shrink:Play()
     shrink.Completed:Connect(function()

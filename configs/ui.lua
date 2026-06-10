@@ -833,7 +833,7 @@ local uiConfig = {
         -- back-compat; full economy retirement is a later phase (design §32).
         gems_pane = {
             position = "center-left",
-            offset = { x = 15, y = 0 },
+            offset = { x = 15, y = -72 },
             size = { width = 120, height = 35 },
             background = {
                 enabled = true,
@@ -872,66 +872,114 @@ local uiConfig = {
         -- become prominent (larger/brighter/front) while the other three shrink + dim.
         grass_coins_pane = {
             position = "center-left",
-            offset = { x = 15, y = 40 },
+            offset = { x = 15, y = -36 },
             size = { width = 120, height = 32 },
             background = {
                 enabled = true,
                 color = Color3.fromRGB(0, 0, 0),
                 transparency = 0.15,
                 corner_radius = 18,
-                border = { enabled = true, color = Color3.fromRGB(90, 210, 80), thickness = 2, transparency = 0.3 },
+                border = {
+                    enabled = true,
+                    color = Color3.fromRGB(90, 210, 80),
+                    thickness = 2,
+                    transparency = 0.3,
+                },
             },
             layout = { type = "single" },
             contents = {
-                { type = "currency_display", config = { currency = "grass_coins", icon = "🌿", color = Color3.fromRGB(90, 210, 80) } },
+                {
+                    type = "currency_display",
+                    config = {
+                        currency = "grass_coins",
+                        icon = "🌿",
+                        color = Color3.fromRGB(90, 210, 80),
+                    },
+                },
             },
         },
         desert_coins_pane = {
             position = "center-left",
-            offset = { x = 15, y = 76 },
+            offset = { x = 15, y = 0 },
             size = { width = 120, height = 32 },
             background = {
                 enabled = true,
                 color = Color3.fromRGB(0, 0, 0),
                 transparency = 0.15,
                 corner_radius = 18,
-                border = { enabled = true, color = Color3.fromRGB(214, 184, 130), thickness = 2, transparency = 0.3 },
+                border = {
+                    enabled = true,
+                    color = Color3.fromRGB(214, 184, 130),
+                    thickness = 2,
+                    transparency = 0.3,
+                },
             },
             layout = { type = "single" },
             contents = {
-                { type = "currency_display", config = { currency = "desert_coins", icon = "🏜️", color = Color3.fromRGB(214, 184, 130) } },
+                {
+                    type = "currency_display",
+                    config = {
+                        currency = "desert_coins",
+                        icon = "🏜️",
+                        color = Color3.fromRGB(214, 184, 130),
+                    },
+                },
             },
         },
         lava_coins_pane = {
             position = "center-left",
-            offset = { x = 15, y = 112 },
+            offset = { x = 15, y = 36 },
             size = { width = 120, height = 32 },
             background = {
                 enabled = true,
                 color = Color3.fromRGB(0, 0, 0),
                 transparency = 0.15,
                 corner_radius = 18,
-                border = { enabled = true, color = Color3.fromRGB(255, 110, 30), thickness = 2, transparency = 0.3 },
+                border = {
+                    enabled = true,
+                    color = Color3.fromRGB(255, 110, 30),
+                    thickness = 2,
+                    transparency = 0.3,
+                },
             },
             layout = { type = "single" },
             contents = {
-                { type = "currency_display", config = { currency = "lava_coins", icon = "🌋", color = Color3.fromRGB(255, 110, 30) } },
+                {
+                    type = "currency_display",
+                    config = {
+                        currency = "lava_coins",
+                        icon = "🌋",
+                        color = Color3.fromRGB(255, 110, 30),
+                    },
+                },
             },
         },
         ice_coins_pane = {
             position = "center-left",
-            offset = { x = 15, y = 148 },
+            offset = { x = 15, y = 72 },
             size = { width = 120, height = 32 },
             background = {
                 enabled = true,
                 color = Color3.fromRGB(0, 0, 0),
                 transparency = 0.15,
                 corner_radius = 18,
-                border = { enabled = true, color = Color3.fromRGB(150, 220, 255), thickness = 2, transparency = 0.3 },
+                border = {
+                    enabled = true,
+                    color = Color3.fromRGB(150, 220, 255),
+                    thickness = 2,
+                    transparency = 0.3,
+                },
             },
             layout = { type = "single" },
             contents = {
-                { type = "currency_display", config = { currency = "ice_coins", icon = "🧊", color = Color3.fromRGB(150, 220, 255) } },
+                {
+                    type = "currency_display",
+                    config = {
+                        currency = "ice_coins",
+                        icon = "🧊",
+                        color = Color3.fromRGB(150, 220, 255),
+                    },
+                },
             },
         },
 
