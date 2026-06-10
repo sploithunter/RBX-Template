@@ -40,9 +40,7 @@ return {
 
     -- An achievement tier completed (server: AchievementsService alongside AchievementCompleted).
     achievement_completed = {
-        -- half volume (Jason: "really loud right now") — the same jingle's other users
-        -- (quests/level-up) are unchanged
-        sound = { key = "celebratory_jingle", volume = 0.5 },
+        sound = "celebratory_jingle", -- (loudness fixed at the SOURCE: sounds.lua base volume)
         vfx = { kind = "burst", color = { 255, 120, 220 } }, -- magenta
         -- the WHAT, lingering (Jason: "a floating something... that lingers for five
         -- seconds or so" — and NEVER a sound without a visual): "🏆 Egg Hatchery 10"

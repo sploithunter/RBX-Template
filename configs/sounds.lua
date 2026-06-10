@@ -26,7 +26,9 @@ return {
     -- Short celebratory stinger (non-looping) — level-up / ascend. Uploaded via scripts/upload_audio.js.
     celebratory_jingle = {
         id = "rbxassetid://129756458235378",
-        volume = 0.7,
+        volume = 0.35, -- halved (Jason: "that particular sound... really loud") — this
+        -- field IS the per-sound base level; events can still scale it per-use
+        -- via sound = { key, volume } in configs/game_events.lua
         playback_speed = 1.0,
         bus = "ui", -- SoundGroup bus (effects | music | ui); the volume slider controlling it
     },
