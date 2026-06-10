@@ -1,5 +1,5 @@
 assets_dir: /Users/jason/Documents/RBX-Template/assets/ui/green_icons
-icon_count: 49
+icon_count: 52
 
 armor_chest.png
 arrow_right.png
@@ -9,7 +9,6 @@ chevrons_up.png
 clover_huge.png
 clover_lucky.png
 coins_up.png
-contact_sheet: contact_sheet.png
 contagion.png
 critical_hit.png
 eye.png
@@ -19,6 +18,7 @@ fire_storm.png
 fist.png
 fist_broken.png
 fist_impact.png
+focus.png
 gift_up.png
 hand_stop.png
 heart.png
@@ -36,6 +36,8 @@ pet_transfer.png
 plus.png
 plus_down.png
 portal.png
+potency.png
+proc.png
 rage.png
 range.png
 ranged_impact.png
@@ -51,3 +53,5 @@ taunt.png
 user_desk.png
 winter_hold.png
 xp_up.png
+
+contact_sheet: contact_sheet.png
