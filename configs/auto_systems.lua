@@ -8,7 +8,10 @@ return {
 
     auto_target = {
         enabled = true,
-        default_enabled = false,
+        -- ON by default (Jason): pets auto-mine the moment a new player walks up to a
+        -- crystal — the tutorial's farm step depends on it. Players who toggle Farm off
+        -- keep their choice (persisted per player in data.Settings.AutoSystems).
+        default_enabled = true,
         default_mode = "nearest",
         default_selected_currency = "crystals",
         current_world_only = true,
