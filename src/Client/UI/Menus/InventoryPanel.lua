@@ -677,8 +677,12 @@ function InventoryPanel:_createUI(parent)
             local tradeBtn = Instance.new("TextButton")
             tradeBtn.Name = "TradeButton"
             tradeBtn.Size = UDim2.new(0, 86, 0, config.size.height)
+            -- dock INSIDE the header, 8px left of the close X (which anchors top-right and
+            -- hangs outside by config.offset). Without the (1,0) anchor this pill drifted
+            -- OVER the close button — Jason: "what is this weird trade button".
+            tradeBtn.AnchorPoint = Vector2.new(1, 0)
             tradeBtn.Position =
-                UDim2.new(1, (config.offset.x or 10) - 96, 0, config.offset.y or -10)
+                UDim2.new(1, (config.offset.x or 10) - (config.size.width or 36) - 8, 0, 6)
             tradeBtn.BackgroundColor3 = Color3.fromRGB(70, 140, 90)
             tradeBtn.Text = "🤝 Trade"
             tradeBtn.TextColor3 = Color3.fromRGB(240, 255, 245)
