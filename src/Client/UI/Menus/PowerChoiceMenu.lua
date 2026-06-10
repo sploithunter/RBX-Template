@@ -451,8 +451,11 @@ end
 -- player's origin. Clicking one slots it into the first empty slot (server-validated).
 
 -- shared composer (PetBadge owns the one assembly path; inventory cards use the same call)
-local function enhBadge(parent, size, pos, rec)
-    return PetBadge.createEnhancementBadge(parent, { size = size, position = pos, record = rec })
+local function enhBadge(parent, size, pos, rec, dead)
+    return PetBadge.createEnhancementBadge(
+        parent,
+        { size = size, position = pos, record = rec, dead = dead }
+    )
 end
 
 function PowerChoiceMenu:_toggleEnhance(powerId)
@@ -547,11 +550,14 @@ function PowerChoiceMenu:_renderEnhanceStrip()
     for i, slot in ipairs(slots) do
         if type(slot) == "table" then
             if slot.enh then
+                -- outleveled = levelFactor 0 (slotted but contributing nothing) -> greyed
+                local dead = Enhancements.levelFactor(enhCfg, slot.enh.level, self.level) == 0
                 local b = enhBadge(
                     strip,
                     UDim2.fromScale(0.055, 0.34),
                     UDim2.fromScale(slotX, 0.3),
-                    slot.enh
+                    slot.enh,
+                    dead
                 )
                 b.ZIndex = 7
             else

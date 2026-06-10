@@ -133,6 +133,14 @@ function PetBadge.createEnhancementBadge(parent, opts)
     ring.ImageColor3 = POWER_ICONS.elementColor3(originElement(spec.ringOrigin), "bright")
     ring.ZIndex = z + 1
     ring.Parent = holder
+    if opts.dead then
+        -- outleveled (CoH dead zone): grey + dim both layers so it reads "needs replacing"
+        local GREY = Color3.fromRGB(120, 120, 128)
+        disc.ImageColor3 = GREY
+        disc.ImageTransparency = 0.45
+        ring.ImageColor3 = GREY
+        ring.ImageTransparency = 0.45
+    end
     return holder
 end
 
