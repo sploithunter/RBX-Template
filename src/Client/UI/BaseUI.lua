@@ -2842,7 +2842,11 @@ function BaseUI:_setRewardsBadge(count)
         return
     end
     count = tonumber(count) or 0
-    local badge = button:FindFirstChild("NotificationBadge")
+    -- ONE badge builder for the whole tray: the same _createButtonNotification the
+    -- menu_button config path uses (Daily "!", Effects "3"), top-right-corner placement.
+    -- (The old private 20px inset badge here was the LAST standalone-pane leftover —
+    -- Jason: "the 1 in rewards doesn't match the others... no unified builder again?")
+    local badge = button:FindFirstChild("Notification")
     if count <= 0 then
         if badge then
             badge.Visible = false
@@ -2850,29 +2854,19 @@ function BaseUI:_setRewardsBadge(count)
         return
     end
     if not badge then
-        badge = Instance.new("Frame")
-        badge.Name = "NotificationBadge"
-        badge.Size = UDim2.new(0, 20, 0, 20)
-        badge.Position = UDim2.new(1, -5, 0, -5)
-        badge.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
-        badge.BorderSizePixel = 0
-        badge.ZIndex = 15
-        badge.Parent = button
-        local c = Instance.new("UICorner")
-        c.CornerRadius = UDim.new(0.5, 0)
-        c.Parent = badge
-        local t = Instance.new("TextLabel")
-        t.Name = "Count"
-        t.Size = UDim2.new(1, 0, 1, 0)
-        t.BackgroundTransparency = 1
-        t.TextColor3 = Color3.fromRGB(255, 255, 255)
-        t.TextScaled = true
-        t.Font = Enum.Font.GothamBold
-        t.ZIndex = 16
-        t.Parent = badge
+        badge = self:_createButtonNotification({
+            notification = {
+                enabled = true,
+                text = tostring(count),
+                position = "top-right-corner",
+            },
+        }, button)
+    end
+    if not badge then
+        return
     end
     badge.Visible = true
-    local txt = badge:FindFirstChild("Count") or badge:FindFirstChildWhichIsA("TextLabel")
+    local txt = badge:FindFirstChild("NotificationText")
     if txt then
         txt.Text = tostring(count)
     end
