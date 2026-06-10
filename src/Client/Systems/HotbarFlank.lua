@@ -21,7 +21,7 @@ local SIDE = { PetsButton = "left", PowersButton = "right" }
 -- beyond the root each side — 14px overlapped; Jason: "their pill boxes are kind of
 -- overlapping"). 62/34 live-tuned with him.
 local SIZE = 62
-local GAP = 34
+local GAP = 26 -- just clear of the bar pill's ~23px overhang (Jason: closer)
 
 function HotbarFlank.start()
     if started then

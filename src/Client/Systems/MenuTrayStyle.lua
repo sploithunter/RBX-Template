@@ -161,10 +161,12 @@ function MenuTrayStyle.start()
                                 end
                             end
                         end
-                        styleButton(rb, "citrine", nil) -- fixed gold, not area-tinted
-                        -- adopt into the tray grid: last cell, grid layout sizes it
+                        -- SAME pill as the rest (Jason: the gold was an artifact of its
+                        -- standalone days) + the LAST visual cell (grid fills from the
+                        -- bottom corner, so high order = top-right — live-tuned)
+                        styleButton(rb, pillKey(theme), styled)
                         if pane then
-                            rb.LayoutOrder = 99
+                            rb.LayoutOrder = 9
                             rb.Parent = pane
                             rewards:Destroy() -- empty bottom-right pane (and its ViewportScale)
                         end
@@ -173,6 +175,36 @@ function MenuTrayStyle.start()
                     task.wait(0.5)
                 end
             end
+        end)
+
+        -- ADMIN floats just above the tray (Jason: "sort of special... only shows up
+        -- for admins, so maybe it should be out a little bit") — same pill, its own spot
+        task.spawn(function()
+            local adminBtn = pane and pane:WaitForChild("AdminButton", 15)
+            if not (adminBtn and pane) then
+                return
+            end
+            local mcParent = pane.Parent
+            adminBtn.Parent = mcParent
+            adminBtn.AnchorPoint = Vector2.new(0, 1)
+            adminBtn.Size = UDim2.fromOffset(62, 62)
+            -- dock to the TOP of the VISIBLE button block (the pane's 200px box is
+            -- taller than its content — position math off the pane floated too high;
+            -- live-tuned against the top-row button's absolute edge)
+            local function dock()
+                local topBtn = pane:FindFirstChild("DailyButton")
+                    or pane:FindFirstChildWhichIsA("GuiButton")
+                if not topBtn then
+                    return
+                end
+                adminBtn.Position = UDim2.fromOffset(
+                    pane.AbsolutePosition.X - mcParent.AbsolutePosition.X + 2,
+                    topBtn.AbsolutePosition.Y - mcParent.AbsolutePosition.Y - 8
+                )
+            end
+            task.defer(dock)
+            pane:GetPropertyChangedSignal("AbsoluteSize"):Connect(dock)
+            pane:GetPropertyChangedSignal("AbsolutePosition"):Connect(dock)
         end)
 
         -- re-tint the tray on area change

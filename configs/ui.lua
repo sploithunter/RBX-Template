@@ -1046,7 +1046,8 @@ local uiConfig = {
             layout = {
                 type = "grid",
                 auto_size = true, -- Enable automatic sizing based on content
-                button_count = 7, -- 6 in the tray + adopted Rewards (Pets/Powers flank the hotbar)
+                button_count = 6, -- Daily/Quest/Shop/Effects/Settings + adopted Rewards (2x3);
+                -- Admin floats above the tray (admin-only), Pets/Powers flank the hotbar
                 -- left/bottom zero so the buttons sit flush on the pane's anchored corner
                 padding = { top = 5, bottom = 0, left = 0, right = 5 },
             },
