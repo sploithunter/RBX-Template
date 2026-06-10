@@ -17,6 +17,29 @@
 ]]
 
 return {
+    -- Proximity baddie spawners (Jason): map parts named BaddieSpawner* (he placed
+    -- BaddieSpawnerLava + BaddieSpawnerDesert) spawn a wave when a player comes near —
+    -- "a taste of combat before they decide to go up or down the Heaven/Hell tree."
+    -- No bosses here (no real models yet).
+    spawners = {
+        part_prefix = "BaddieSpawner",
+        radius = 50, -- studs: trigger distance from the part
+        cooldown = 60, -- seconds per spawner after a trigger
+        scatter = 8, -- studs: random spread around the part so the wave isn't a stack
+        waves = {
+            { weight = 10, units = { { enemy = "lava_imp", count = 3 } } },
+            { weight = 10, units = { { enemy = "raging_bear", count = 1 } } },
+            -- the rare one: the full welcoming committee
+            {
+                weight = 2,
+                units = {
+                    { enemy = "lava_imp", count = 3 },
+                    { enemy = "raging_bear", count = 1 },
+                },
+            },
+        },
+    },
+
     enemies = {
         lava_imp = {
             hp = 120,

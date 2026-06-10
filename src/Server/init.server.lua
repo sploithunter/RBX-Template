@@ -471,6 +471,13 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.AscensionAltarService,
     { "Logger", "ConfigLoader" }
 )
+-- BaddieSpawnerService: proximity enemy waves at map-authored BaddieSpawner* parts
+-- (combat taste before the Heaven/Hell choice — Jason). Resolves EnemyService at runtime.
+loader:RegisterModule(
+    "BaddieSpawnerService",
+    ServerScriptService.Server.Services.BaddieSpawnerService,
+    { "Logger", "ConfigLoader" }
+)
 -- RealmPortalService: binds named workspace portals (Portal_Halo1/Portal_Horn1) to a
 -- ProximityPrompt that toggles the player into a heaven/hell realm via LayerService (World S3
 -- test entry; resolves LayerService at runtime via the locator).

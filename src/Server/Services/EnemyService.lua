@@ -1690,6 +1690,9 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
     local fwd = (opts and tonumber(opts.forward)) or 0
     local rt = (opts and tonumber(opts.right)) or 0
     local position = hrp.Position + flat * (dist + fwd) + right * rt + Vector3.new(0, 3, 0)
+    if opts and typeof(opts.position) == "Vector3" then
+        position = opts.position -- absolute placement (map spawners), not player-relative
+    end
 
     self._nextId += 1
     local targetId = self._nextId
