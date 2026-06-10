@@ -119,5 +119,12 @@ return {
             condition = { type = "counter_at_least", counter = "enhancements_found", value = 10 },
             reward = { currencies = { gems = 25 } },
         },
+        egg_legend = {
+            order = 13,
+            name = "Hatch 1,000 Eggs",
+            description = "The Origin Story capstone. Legends are hatched, not born.",
+            condition = { type = "counter_at_least", counter = "eggs_hatched", value = 1000 },
+            reward = { currencies = { gems = 100 } },
+        },
     },
 }

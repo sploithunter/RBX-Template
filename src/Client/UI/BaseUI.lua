@@ -2212,6 +2212,9 @@ function BaseUI:_bindQuestTracker()
     local function pick(quests)
         local claimable, active
         for _, q in ipairs(quests) do
+            -- (claimed missions fall through both branches; an exhausted chain
+            -- returns nil -> the "stay tuned" state, NOT quests[1] — that fallback
+            -- made the tracker loop back to "Hatch 10 Eggs" forever, Jason)
             if q.claimable and not claimable then
                 claimable = q
             end
@@ -2219,7 +2222,7 @@ function BaseUI:_bindQuestTracker()
                 active = q
             end
         end
-        return claimable or active or quests[1]
+        return claimable or active
     end
 
     local function refresh()
@@ -2245,6 +2248,20 @@ function BaseUI:_bindQuestTracker()
 
         local q = pick(res.quests)
         if not q then
+            -- chain exhausted (Jason: "after we've exhausted the list — stay tuned")
+            self._trackedQuestId = nil
+            if self._questClaimBtn then
+                self._questClaimBtn.Visible = false
+            end
+            if self._questDesc then
+                self._questDesc.Text = "Stay tuned for new adventures!"
+            end
+            if self._questText then
+                self._questText.Text = "★ Origin Story complete ★"
+            end
+            if self._questFill then
+                self._questFill.Size = UDim2.new(1, 0, 1, 0)
+            end
             return
         end
         self._trackedQuestId = q.id
