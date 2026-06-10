@@ -1234,12 +1234,13 @@ local petConfig = {
 
             -- Stage 1: Pet Selection (which animal) - TESTING RARE PERCENTAGES
             pet_weights = {
-                -- relative weights (share = weight/sum, NOT /100000): commons ~33.3% each
+                -- relative weights (share = weight/sum): commons ~33% each. kitty/dragon
+                -- were 10/1 test placeholders for the "??" display — real odds now:
                 bear = 24990,
                 bunny = 24990,
                 doggy = 24990,
-                kitty = 10, -- ~0.013% (legendary; luck multiplies this weight)
-                dragon = 1, -- ~0.0013% (secret; luck AND secret-luck multiply) - shows "??"
+                kitty = 500, -- ~0.66% (~1 in 150): the learnable "rare exists" moment
+                dragon = 38, -- ~0.05% (~1 in 2,000): the "??" chase — farmable with luck
             },
 
             -- Stage 2: Rarity Calculation (basic/golden/rainbow)

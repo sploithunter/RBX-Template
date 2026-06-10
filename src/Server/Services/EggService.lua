@@ -815,6 +815,13 @@ function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
             + (player:GetAttribute("LuckBuff") or 0)
     end
 
+    -- Bunny support aura (lucky rabbit): HatchLuckBuff is a multiplier attribute
+    -- (1.25 = +0.25); contributes its fraction while the buffer is deployed.
+    if (player:GetAttribute("HatchLuckBuffUntil") or 0) > os.time() then
+        local auraMult = tonumber(player:GetAttribute("HatchLuckBuff")) or 1
+        playerData.luckBoost = (tonumber(playerData.luckBoost) or 0) + math.max(0, auraMult - 1)
+    end
+
     -- FIRST EGG EVER: arm the one-roll mega-luck (configs/egg_system.lua
     -- first_hatch_luck_multiplier; simulateHatch consumes it on the batch's first roll)
     local firstLuck = tonumber(eggSystemConfig and eggSystemConfig.first_hatch_luck_multiplier) or 1

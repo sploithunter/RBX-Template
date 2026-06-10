@@ -1396,6 +1396,10 @@ function EnemyService:_supportPass(now)
                 elseif kind == "yield" then
                     self:_auraPlayerBuff(folder, "CoinYieldBuff", aura, count)
                     self:_stampAuraFx(folder, "YieldFxUntil", aura, count)
+                elseif kind == "luck" then
+                    -- lucky-rabbit aura: hatch luck while the buffer is deployed
+                    self:_auraPlayerBuff(folder, "HatchLuckBuff", aura, count)
+                    self:_stampAuraFx(folder, "LuckFxUntil", aura, count)
                 end
             end
         end
