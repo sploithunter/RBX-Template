@@ -2247,6 +2247,10 @@ function BaseUI:_bindQuestTracker()
         if not q then
             return
         end
+        self._trackedQuestId = q.id
+        if self._questClaimBtn then
+            self._questClaimBtn.Visible = q.claimable == true
+        end
         local cur = math.floor((q.progress and q.progress.current) or 0)
         local tgt = math.floor((q.progress and q.progress.target) or 1)
         local frac = math.clamp((q.progress and q.progress.fraction) or 0, 0, 1)
@@ -2260,6 +2264,51 @@ function BaseUI:_bindQuestTracker()
             self._questFill.Size = UDim2.new(frac, 0, 1, 0)
         end
     end
+
+    -- tiny CLAIM chip riding the tracker's top-right corner; visible only when the
+    -- tracked mission is claimable. Claiming refreshes immediately -> the tracker
+    -- cycles to the next mission in the chain.
+    task.spawn(function()
+        local pane = self._questDesc and self._questDesc.Parent
+        if not pane or self._questClaimBtn then
+            return
+        end
+        local btn = Instance.new("TextButton")
+        btn.Name = "QuestClaimButton"
+        btn.AnchorPoint = Vector2.new(1, 0)
+        btn.Position = UDim2.new(1, 6, 0, -6)
+        btn.Size = UDim2.fromOffset(58, 20)
+        btn.BackgroundColor3 = Color3.fromRGB(60, 160, 90)
+        btn.Text = "CLAIM"
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextSize = 12
+        btn.Font = Enum.Font.GothamBlack
+        btn.ZIndex = 30
+        btn.Visible = false
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(1, 0)
+        c.Parent = btn
+        local st = Instance.new("UIStroke")
+        st.Color = Color3.fromRGB(140, 235, 160)
+        st.Thickness = 1.5
+        st.Parent = btn
+        btn.Parent = pane
+        self._questClaimBtn = btn
+        btn.Activated:Connect(function()
+            local id = self._trackedQuestId
+            if not id then
+                return
+            end
+            local remote = game:GetService("ReplicatedStorage"):FindFirstChild("GameAPICommand")
+            if not remote then
+                return
+            end
+            pcall(function()
+                remote:InvokeServer("quest.claim", { questId = id })
+            end)
+            refresh() -- cycle straight to the next mission
+        end)
+    end)
 
     task.spawn(function()
         while self._questTrackerBound do

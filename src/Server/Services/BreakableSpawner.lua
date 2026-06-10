@@ -2084,6 +2084,9 @@ function BreakableSpawner:_trySpawnOne(
                                 end
                                 if stats then
                                     stats:Increment(plr, "breakables_broken", 1)
+                                    -- mission counter ("Mine 8,000 Coins") — was declared
+                                    -- in configs/stats.lua but never incremented
+                                    stats:Increment(plr, "coins_earned_lifetime", resolvedShare)
                                 end
                                 -- Mining grants XP (split by contribution share, same as the
                                 -- currency above). AddExperience publishes the XP attribute -> the
