@@ -17,7 +17,8 @@ end
 return function()
     describe("config shape", function()
         it("has ordered steps with events", function()
-            expect(#cfg.steps >= 5).to.equal(true)
+            expect(#cfg.steps >= 3).to.equal(true) -- 4 since the quest-chain handoff (Jason)
+            expect(type(cfg.completion)).to.equal("table") -- the QUESTS UNLOCKED card
             for _, step in ipairs(cfg.steps) do
                 expect(type(step.id)).to.equal("string")
                 expect(type(step.title)).to.equal("string")

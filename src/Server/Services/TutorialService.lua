@@ -101,6 +101,10 @@ function TutorialService:_onEvent(player, name)
     data.Tutorial = progress
     self._dataService:RequestSave(player, "tutorial_step")
     self:_push(player)
+    if progress.done then
+        -- finishing the LAST step is its own moment: stinger + burst (configs/game_events)
+        fireGameEvent(player, "tutorial_complete", {})
+    end
     if self._logger then
         self._logger:Info("Tutorial advanced", {
             player = player.Name,

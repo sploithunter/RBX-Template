@@ -20,6 +20,10 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local TUTORIAL_CFG
+pcall(function()
+    TUTORIAL_CFG = require(ReplicatedStorage.Configs:WaitForChild("tutorial"))
+end)
 
 local GOLD = Color3.fromRGB(255, 205, 70)
 
@@ -220,7 +224,26 @@ local function apply(state)
     stepToken += 1
     clearGuidance()
     if type(state) ~= "table" or state.done then
+        local wasActive = tutorialActive
         tutorialActive = false
+        if wasActive and capsule then
+            -- LIVE completion (not a veteran/rejoin done-state): hold the spot for the
+            -- handoff card — "quests unlocked, climb to Level 2" — then yield to quests.
+            -- The celebration stinger/burst rides the tutorial_complete game event.
+            local doneCfg = (TUTORIAL_CFG and TUTORIAL_CFG.completion) or {}
+            local token = stepToken
+            stepLabel.Text = "TUTORIAL COMPLETE"
+            titleLabel.Text = doneCfg.title or "🎉 QUESTS UNLOCKED!"
+            bodyLabel.Text = doneCfg.body or "Your missions are in the tracker up top!"
+            capsule.Visible = true
+            task.delay(tonumber(doneCfg.show_seconds) or 8, function()
+                if stepToken == token and capsule then
+                    capsule.Visible = false
+                    syncQuestPane()
+                end
+            end)
+            return
+        end
         if capsule then
             capsule.Visible = false
         end

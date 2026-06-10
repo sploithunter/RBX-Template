@@ -133,6 +133,13 @@ return {
         float = { color = { 255, 215, 90 }, size = 160 },
     },
 
+    -- The tutorial's final step completed (server: TutorialService). Big moment — the
+    -- handoff card ("QUESTS UNLOCKED") shows at the same time (TutorialController).
+    tutorial_complete = {
+        sound = "celebratory_jingle",
+        vfx = { kind = "burst", color = { 255, 215, 90 }, count = 24 }, -- big gold
+    },
+
     -- SOURCES WIRED, NO DEFAULT REACTIONS (add a row to react — the fire is already in place):
     --   egg_hatch     — every successful hatch batch {count} (the reveal pop is animation-synced
     --                   choreography in EggHatchingService and stays there)

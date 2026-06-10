@@ -51,26 +51,14 @@ return {
             target = { kind = "egg" },
             complete_on = { event = "egg_hatch" },
         },
-        {
-            id = "claim_level",
-            title = "Level up",
-            body = "Mining earns XP. When the ASCEND button appears below your name, press it to claim your level.",
-            target = { kind = "ui", name = "LevelUpButton" },
-            complete_on = { event = "level_claimed" },
-        },
-        {
-            id = "pick_power",
-            title = "Choose a power",
-            body = "Leveling offers you powers. Hover one to read what it does, then pick and commit.",
-            target = { kind = "none" },
-            complete_on = { event = "power_selected" },
-        },
-        {
-            id = "cast_power",
-            title = "Use your power",
-            body = "Your new power is on the hotbar at the bottom — press its number key (or tap it) to cast.",
-            target = { kind = "none" },
-            complete_on = { event = "power_cast" },
-        },
+    },
+
+    -- Shown by the client for a few seconds when the LAST step completes (Jason: the
+    -- tutorial ends here — leveling is a grind away, and that's the QUEST chain's job).
+    -- After this card, the quest tracker takes the HUD spot and carries the player on.
+    completion = {
+        title = "🎉 QUESTS UNLOCKED!",
+        body = "Your missions are in the tracker up top — claim your first rewards and climb to Level 2!",
+        show_seconds = 8,
     },
 }
