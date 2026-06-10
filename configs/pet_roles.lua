@@ -22,6 +22,8 @@ return {
         dog = "melee",
         bunny = "support", -- Grass buffer (LUCK — lucky rabbit/clover) — see support_auras
         cat = "ranged",
+        kitty = "ranged", -- the actual pet id ("cat" above was the intended mapping)
+        dragon = "ranged", -- Jason: it flies and breathes fire — the rare early ranged chase
         bird = "ranged",
         colorado = "ranged",
         -- One BUFFER (support archetype) per zone — trades attack for a team aura. Their
