@@ -805,11 +805,12 @@ function GameAPIService:_registerCommands()
     })
 
     bus:register("enh.grant", {
-        description = "[admin] Grant an enhancement (random roll, or explicit type+origins).",
+        description = "[admin] Grant an enhancement (random roll, or explicit type+origins+level).",
         validate = function(args)
             return Validators.fields(args, {
                 type = { type = "string", optional = true },
                 origins = { type = "table", optional = true },
+                level = { type = "number", optional = true },
             })
         end,
         handler = function(context, args)
@@ -824,7 +825,7 @@ function GameAPIService:_registerCommands()
             end
             local record
             if args.type and args.origins then
-                record = { type = args.type, origins = args.origins }
+                record = { type = args.type, origins = args.origins, level = args.level }
             else
                 record = svc:RollDrop()
             end
