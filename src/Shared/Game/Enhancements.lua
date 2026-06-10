@@ -27,12 +27,25 @@ function Enhancements.isDual(record)
         and record.origins[1] ~= record.origins[2]
 end
 
--- A record is well-formed: known type + 1 or 2 distinct known origins.
+-- NATURAL: origin-less generic (the CoH Training tier). Usable by ANYONE — including
+-- players who haven't chosen an origin yet (Jason: "how do you enhance a power at
+-- level 4 before choosing an origin"). Weakest grade (values.natural).
+function Enhancements.isNatural(record)
+    return type(record) == "table" and type(record.origins) == "table" and #record.origins == 0
+end
+
+-- A record is well-formed: known type + 0 (natural), 1, or 2 distinct known origins.
 function Enhancements.isValid(cfg, record)
     if type(record) ~= "table" or not Enhancements.isValidType(cfg, record.type) then
         return false
     end
-    if not (Enhancements.isSingle(record) or Enhancements.isDual(record)) then
+    if
+        not (
+            Enhancements.isSingle(record)
+            or Enhancements.isDual(record)
+            or Enhancements.isNatural(record)
+        )
+    then
         return false
     end
     local known = {}
@@ -54,6 +67,8 @@ function Enhancements.value(cfg, record)
         return tonumber(values.single) or 0
     elseif Enhancements.isDual(record) then
         return tonumber(values.dual) or 0
+    elseif Enhancements.isNatural(record) then
+        return tonumber(values.natural) or 0
     end
     return 0
 end
@@ -62,6 +77,9 @@ end
 function Enhancements.usableBy(record, playerArchetype)
     if type(record) ~= "table" or type(record.origins) ~= "table" then
         return false
+    end
+    if Enhancements.isNatural(record) then
+        return true -- generic: anyone, including pre-origin players
     end
     for _, o in ipairs(record.origins) do
         if o == playerArchetype then
@@ -191,6 +209,9 @@ function Enhancements.displayName(cfg, record)
     local parts = {}
     for _, o in ipairs(record.origins or {}) do
         parts[#parts + 1] = names[o] or o
+    end
+    if #parts == 0 then
+        parts[1] = "Natural" -- generic tier
     end
     local typeName = tostring(record.type or ""):gsub("^%l", string.upper)
     if #parts == 0 then

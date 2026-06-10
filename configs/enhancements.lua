@@ -36,6 +36,7 @@ return {
     values = {
         single = 0.33,
         dual = 0.20,
+        natural = 0.15, -- origin-less generic (pre-origin players' tier; usable by all)
     },
 
     -- type -> { symbol (disc icon key), axis (PowerStats axis), families ("*" or set),

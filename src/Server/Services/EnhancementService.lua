@@ -273,8 +273,10 @@ end
 -- (drops.area_origins — the disc color matches the land), ring = uniform random (ring ==
 -- primary -> single-origin). Unmapped areas use the legacy uniform + single_chance roll.
 -- `rng` = Random instance (injectable for tests/determinism).
-function EnhancementService:RollDrop(rng, areaId)
+function EnhancementService:RollDrop(rng, areaId, opts)
     rng = rng or Random.new()
+    -- opts.natural: origin-less generic drop (rolled for PRE-ORIGIN players — they
+    -- can't slot origined gear yet, so the land drops them trainer-tier scrap)
     local drops = self._config.drops or {}
     local weights = drops.type_weights or {}
     local total = 0
@@ -291,6 +293,10 @@ function EnhancementService:RollDrop(rng, areaId)
     end
     local origins = self._config.origins or {}
     local level = Enhancements.rollLevel(self._config, areaId, rng)
+
+    if opts and opts.natural then
+        return { type = pick, origins = {}, level = level }
+    end
 
     -- PRIMARY origin = the zone's own (the disc color brands the land — Jason); the
     -- RING is uniform random. Ring == primary -> a SINGLE-origin drop, so pure singles

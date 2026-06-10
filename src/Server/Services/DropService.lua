@@ -404,7 +404,12 @@ function DropService:TrySpawnEnhancementDrop(player, source, position)
     if not (enh and enh.RollDrop) then
         return false
     end
-    local record = enh:RollDrop(nil, player:GetAttribute("CurrentArea"))
+    -- pre-origin players (no Archetype chosen yet) get NATURAL drops — origin gear
+    -- would be unslottable dead weight for them (Jason)
+    local data = self._dataService and self._dataService:GetData(player)
+    local hasOrigin = data and data.Archetype ~= nil
+    local record =
+        enh:RollDrop(nil, player:GetAttribute("CurrentArea"), { natural = not hasOrigin })
 
     -- model: authored Assets model (override) > the cogwheel mesh (per-color) > mystery orb
     local model

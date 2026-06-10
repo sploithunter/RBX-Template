@@ -19,8 +19,26 @@ return function()
             expect(Enhancements.isDual(GEO_CRYO_RCH)).to.equal(true)
         end)
 
+        it(
+            "natural grade: origin-less, usable by anyone (incl. pre-origin), weakest value",
+            function()
+                local nat = { type = "damage", origins = {}, level = 1 }
+                expect(Enhancements.isNatural(nat)).to.equal(true)
+                expect(Enhancements.usableBy(nat, nil)).to.equal(true) -- level 4, no origin chosen
+                expect(Enhancements.usableBy(nat, "pyromancer")).to.equal(true)
+                expect(Enhancements.value(cfg, nat)).to.equal(0.15)
+                expect(Enhancements.displayName(cfg, nat)).to.equal("Natural Damage")
+                -- origined gear still gated: nil archetype can't use it
+                expect(Enhancements.usableBy({ type = "damage", origins = { "pyromancer" } }, nil)).to.equal(
+                    false
+                )
+            end
+        )
+
         it("rejects malformed records", function()
-            expect(Enhancements.isValid(cfg, { type = "damage", origins = {} })).to.equal(false)
+            -- origins = {} is the NATURAL grade now (origin-less generic), not malformed
+            expect(Enhancements.isValid(cfg, { type = "damage", origins = {} })).to.equal(true)
+            expect(Enhancements.isValid(cfg, { type = "damage" })).to.equal(false) -- no origins table
             expect(Enhancements.isValid(cfg, { type = "nope", origins = { "pyromancer" } })).to.equal(
                 false
             )
