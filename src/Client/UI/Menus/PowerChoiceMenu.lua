@@ -40,6 +40,8 @@ local levelTrackCfg = require(Configs:WaitForChild("level_track"))
 local PowerSelection = require(ReplicatedStorage.Shared.Game.PowerSelection)
 local PetBadge = require(script.Parent.Parent.PetBadge)
 local PowerDescribe = require(ReplicatedStorage.Shared.Game.PowerDescribe)
+local Enhancements = require(ReplicatedStorage.Shared.Game.Enhancements)
+local enhancementsCfg = require(ReplicatedStorage.Configs:WaitForChild("enhancements"))
 local PowerSlotRow = require(script.Parent.Parent.PowerSlotRow)
 local Enhancements = require(ReplicatedStorage.Shared.Game.Enhancements)
 local enhCfg = require(Configs:WaitForChild("enhancements"))
@@ -723,8 +725,17 @@ function PowerChoiceMenu:_showTooltip(row, powerId)
     local tip = self:_ensureTooltip()
     tip.Title.Text = def.display_name or powerId
     tip.Summary.Text = d.summary
-    tip.Stats.Text = table.concat(d.lines, "   ·   ")
-    tip.Stats.Visible = #d.lines > 0
+    local statLines = table.clone(d.lines)
+    -- which enhancement types this power accepts (same gate the server enforces)
+    local enhNames =
+        PowerDescribe.compatibleEnhancements(powersCfg, powerId, enhancementsCfg, Enhancements)
+    if #enhNames > 0 then
+        statLines[#statLines + 1] = "Enhances: " .. table.concat(enhNames, ", ")
+    else
+        statLines[#statLines + 1] = "Enhances: —"
+    end
+    tip.Stats.Text = table.concat(statLines, "   ·   ")
+    tip.Stats.Visible = #statLines > 0
     -- beside the row, flipped left when the row sits in the menu's right half
     local fa, fs = self.frame.AbsolutePosition, self.frame.AbsoluteSize
     local ra, rs = row.AbsolutePosition, row.AbsoluteSize

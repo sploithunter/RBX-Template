@@ -182,4 +182,23 @@ function PowerDescribe.describe(powersCfg, powerId)
     return { summary = summary, lines = lines }
 end
 
+-- Which enhancement TYPES validly slot into this power (Jason: the tooltip should say
+-- what Magnet can take — range yes, recharge no). Pure: reuses the same compatibleWith
+-- gate the server enforces at slot time, so the tooltip can never lie.
+-- Returns a list of display names, e.g. { "Range" } for Magnet.
+function PowerDescribe.compatibleEnhancements(powersCfg, powerId, enhCfg, Enhancements)
+    local def = (powersCfg.powers or {})[powerId]
+    if not (def and type(enhCfg) == "table" and Enhancements) then
+        return {}
+    end
+    local names = {}
+    for enhType in pairs(enhCfg.types or {}) do
+        if Enhancements.compatibleWith(enhCfg, enhType, def, powersCfg.effect_kinds) then
+            names[#names + 1] = enhType:sub(1, 1):upper() .. enhType:sub(2)
+        end
+    end
+    table.sort(names)
+    return names
+end
+
 return PowerDescribe
