@@ -19,7 +19,22 @@ local Players = game:GetService("Players")
 local CurrencyStyle = {}
 local started = false
 
-local GEM_IMAGE = "rbxassetid://136309678310342" -- gem-diamond shape (tinted per currency)
+local GEM_IMAGE = "rbxassetid://136309678310342" -- generic diamond (tint fallback)
+
+-- REAL gem renders (Jason: "why aren't we using our actual assets?") — the #177 single-gem
+-- decals via rbxthumb (renders a Decal's image with no Edit-mode Decal->Image resolution).
+-- No amethyst in that upload set, so the purple Gems pill keeps the tinted fallback until
+-- Jason delivers a purple gem image.
+local function thumb(decalId)
+    return "rbxthumb://type=Asset&id=" .. decalId .. "&w=150&h=150"
+end
+local REAL_GEMS = {
+    emerald = thumb("85564420306355"),
+    citrine = thumb("84406620426562"),
+    ruby = thumb("92188117297805"),
+    sapphire = thumb("104866758670050"),
+    -- amethyst = (pending purple gem asset)
+}
 
 -- area key -> capsule fill + lighter top/stroke + bright gem tint
 local COLORS = {
@@ -62,7 +77,7 @@ local BOXES = {
 local ICON_SIZE = UDim2.fromOffset(32, 32)
 local ICON_POS = UDim2.new(0, -10, 0.5, 0)
 
-local function addGemIcon(pane, col)
+local function addGemIcon(pane, col, key)
     -- find the existing icon (emoji TextLabel or the gems image) and its holder frame
     local icon
     for _, d in ipairs(pane:GetDescendants()) do
@@ -93,16 +108,20 @@ local function addGemIcon(pane, col)
     shadow.ZIndex = icon.ZIndex + 4
     shadow.Parent = holder
 
+    local real = REAL_GEMS[key]
     local gem = Instance.new("ImageLabel")
     gem.Name = "GemIcon"
     gem.BackgroundTransparency = 1
-    gem.Image = GEM_IMAGE
-    gem.ImageColor3 = col.gem
+    gem.Image = real or GEM_IMAGE
+    gem.ImageColor3 = real and Color3.new(1, 1, 1) or col.gem -- real renders carry their color
     gem.Size = ICON_SIZE
     gem.AnchorPoint = Vector2.new(0, 0.5)
     gem.Position = ICON_POS
     gem.ZIndex = icon.ZIndex + 5
     gem.Parent = holder
+    if real then
+        shadow.Image = real
+    end
 end
 
 local function styleBox(pane, key)
@@ -145,7 +164,7 @@ local function styleBox(pane, key)
     stroke.Thickness = 2.5
     stroke.Parent = pane
 
-    addGemIcon(pane, col)
+    addGemIcon(pane, col, key)
 end
 
 function CurrencyStyle.start()
