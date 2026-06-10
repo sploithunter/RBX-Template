@@ -83,6 +83,8 @@ function PlayerPowerBadges.start()
     row.Position = UDim2.new(0.5, 0, 0, 132) -- top-centre, under the player nameplate
     row.Size = UDim2.fromOffset(0, 50)
     row.AutomaticSize = Enum.AutomaticSize.X
+    -- pixel-designed badges: shrink on small viewports (anchored top-center, stays docked)
+    require(script.Parent.Parent.UI.UIViewportScale).attach(row)
     row.BackgroundTransparency = 1
     row.Parent = gui
     local layout = Instance.new("UIListLayout")

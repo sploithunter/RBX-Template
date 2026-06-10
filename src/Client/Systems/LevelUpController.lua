@@ -194,6 +194,8 @@ function LevelUpController:_build()
     pad.PaddingRight = UDim.new(0, 12)
     pad.Parent = btn
     btn.Parent = gui
+    -- pixel-designed nudge: shrink on small viewports (center-anchored, scales in place)
+    require(script.Parent.Parent.UI.UIViewportScale).attach(btn)
     self.button = btn
     -- Nudge: leveling up happens AT THE ALTAR (one consistent entry — Ascend opens the menu via
     -- LevelUp_OpenChoice). The nudge just points you there; it never opens the menu itself (devs use

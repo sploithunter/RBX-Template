@@ -88,8 +88,10 @@ function AdminController.start()
     local chip = Instance.new("TextButton")
     chip.Name = "AdminToggle"
     chip.Size = UDim2.fromOffset(118, 30)
-    chip.Position = UDim2.new(0, 315, 1, -12) -- bottom, in the gap right of the menu tray
-    chip.AnchorPoint = Vector2.new(0, 1)
+    -- bottom-right, stacked above the Rewards button (the old "gap right of the tray" spot
+    -- lands inside the hotbar once the tray shrinks on small viewports)
+    chip.Position = UDim2.new(1, -12, 1, -85)
+    chip.AnchorPoint = Vector2.new(1, 1)
     chip.BackgroundColor3 = Color3.fromRGB(90, 55, 160) -- amethyst capsule (matches the currency pills)
     chip.BackgroundTransparency = 0
     chip.AutoButtonColor = true
@@ -97,6 +99,8 @@ function AdminController.start()
     chip.TextSize = 13
     chip.TextColor3 = Color3.fromRGB(245, 240, 255)
     chip.Text = "🛠 ADMIN: OFF"
+    -- pixel-designed chip: shrink on small viewports (UIViewportScale)
+    require(script.Parent.Parent.UI.UIViewportScale).attach(chip)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(1, 0)
     corner.Parent = chip

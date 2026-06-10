@@ -22,6 +22,7 @@ local MenuTrayStyle = {}
 local started = false
 
 local TRAY_BUTTONS = {
+    "PetsButton",
     "TradeButton",
     "AdminButton",
     "DailyButton",
@@ -137,17 +138,11 @@ function MenuTrayStyle.start()
         -- Rewards: move into the lower-left next to the Pets paw, reshape from the wide horizontal
         -- button into a SQUARE icon-top/label-bottom button (so the square pill fits), gold pill.
         task.spawn(function()
-            local pets = mc:WaitForChild("pets_button_pane", 15)
+            -- (Pets now lives INSIDE the menu tray grid; rewards stays at its own bottom-right
+            -- pane position and just gets the square icon-top/label-bottom gold restyle.)
             local rewards = mc:WaitForChild("rewards_button_pane", 15)
-            if pets and rewards then
-                rewards.AnchorPoint = pets.AnchorPoint
+            if rewards then
                 rewards.Size = UDim2.fromOffset(66, 64)
-                rewards.Position = UDim2.new(
-                    pets.Position.X.Scale,
-                    pets.Position.X.Offset + 130,
-                    pets.Position.Y.Scale,
-                    pets.Position.Y.Offset
-                )
                 for _ = 1, 10 do
                     local rb = rewards:FindFirstChild("RewardsButton")
                     if rb then

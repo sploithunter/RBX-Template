@@ -833,7 +833,7 @@ local uiConfig = {
         -- back-compat; full economy retirement is a later phase (design §32).
         gems_pane = {
             position = "center-left",
-            offset = { x = 15, y = -72 },
+            offset = { x = 15, y = -110 },
             size = { width = 120, height = 35 },
             background = {
                 enabled = true,
@@ -872,7 +872,7 @@ local uiConfig = {
         -- become prominent (larger/brighter/front) while the other three shrink + dim.
         grass_coins_pane = {
             position = "center-left",
-            offset = { x = 15, y = -36 },
+            offset = { x = 15, y = -74 },
             size = { width = 120, height = 32 },
             background = {
                 enabled = true,
@@ -900,7 +900,7 @@ local uiConfig = {
         },
         desert_coins_pane = {
             position = "center-left",
-            offset = { x = 15, y = 0 },
+            offset = { x = 15, y = -38 },
             size = { width = 120, height = 32 },
             background = {
                 enabled = true,
@@ -928,7 +928,7 @@ local uiConfig = {
         },
         lava_coins_pane = {
             position = "center-left",
-            offset = { x = 15, y = 36 },
+            offset = { x = 15, y = -2 },
             size = { width = 120, height = 32 },
             background = {
                 enabled = true,
@@ -956,7 +956,7 @@ local uiConfig = {
         },
         ice_coins_pane = {
             position = "center-left",
-            offset = { x = 15, y = 72 },
+            offset = { x = 15, y = 34 },
             size = { width = 120, height = 32 },
             background = {
                 enabled = true,
@@ -1029,12 +1029,12 @@ local uiConfig = {
         menu_buttons_pane = {
             position = "bottom-left",
             offset = { x = 10, y = -10 }, -- restore original placement
-            size = { width = 280, height = 140 }, -- Container size - buttons will auto-fit
+            size = { width = 280, height = 210 }, -- Container size - buttons will auto-fit (3 rows)
             background = { enabled = false }, -- Debug backgrounds will handle visualization
             layout = {
                 type = "grid",
                 auto_size = true, -- Enable automatic sizing based on content
-                button_count = 8, -- Exact number of buttons for calculation
+                button_count = 9, -- Exact number of buttons for calculation
                 padding = { top = 5, bottom = 5, left = 5, right = 5 }, -- Padding for calculations
             },
             contents = {
@@ -1045,6 +1045,18 @@ local uiConfig = {
                 -- 🎯 SELECTIVE OVERRIDES: Still allows custom styling when needed (shop, admin, special buttons)
                 --
                 -- RESULT: 90% consistency with 10% customization effort! Perfect for importing professional GUIs.
+
+                -- 🐾 PETS: the player's main button — first in the tray. Routes to
+                -- "pets_action" by name (the same action the old standalone pane used).
+                {
+                    type = "menu_button",
+                    config = {
+                        name = "Pets",
+                        icon_fallback = "🐾", -- (old 13262136255 was a full-button image, not an icon)
+                        text = "Pets",
+                        action = "pets_action",
+                    },
+                },
 
                 -- 🔥 SPECIAL SHOP: Override global default for unique shop styling
                 {
@@ -1170,24 +1182,6 @@ local uiConfig = {
         },
 
         -- Single Button Panes - All aligned to same bottom edge
-        pets_button_pane = {
-            position = "bottom-left",
-            offset = { x = 10, y = -155 }, -- lower-left, stacked just above the menu tray
-            size = { width = 120, height = 60 },
-            background = { enabled = false },
-            layout = { type = "single" },
-            contents = {
-                {
-                    type = "pets_button",
-                    config = {
-                        icon = "13262136255",
-                        text = "Pets",
-                        color = Color3.fromRGB(52, 152, 219),
-                        action = "pets_action",
-                    },
-                },
-            },
-        },
 
         -- (auto_low/auto_high panes removed — farming Off/Low/High is now the cycle
         -- button on the left of the lower-center power hotbar; see HotbarBar.lua.)
