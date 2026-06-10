@@ -547,10 +547,43 @@ function PowerChoiceMenu:_renderEnhanceStrip()
         self:_renderEnhanceStrip()
     end)
 
-    -- row 1: the power's slots (filled badges / empty circles)
+    -- row 1: the power's slots — CLICK A SLOT to target it, then click an available
+    -- enhancement (Jason: "choose the slot first, then the new enhancement"). Targeting
+    -- an occupied slot REPLACES on the next pick (the old enhancement is destroyed).
+    -- Slotting is INSTANT server-side; there is no separate commit.
+    if self._enhTargetPower ~= powerId then
+        self._enhTargetPower, self._enhTargetSlot = powerId, nil
+    end
     local slotX = 0.02
     for i, slot in ipairs(slots) do
         if type(slot) == "table" then
+            local hit = Instance.new("TextButton")
+            hit.Size = UDim2.fromScale(0.055, 0.34)
+            hit.Position = UDim2.fromScale(slotX, 0.3)
+            hit.BackgroundTransparency = 1
+            hit.Text = ""
+            hit.ZIndex = 9
+            hit.Parent = strip
+            if self._enhTargetSlot == i then
+                local ring = Instance.new("UIStroke")
+                ring.Color = Color3.fromRGB(235, 200, 90)
+                ring.Thickness = 2.5
+                ring.Parent = hit
+            end
+            hit.Activated:Connect(function()
+                self._enhTargetSlot = (self._enhTargetSlot ~= i) and i or nil -- toggle
+                if self._enhTargetSlot and slots[i].enh then
+                    self.notice = ("Slot %d targeted — picking a new enhancement REPLACES (destroys) the old one"):format(
+                        i
+                    )
+                elseif self._enhTargetSlot then
+                    self.notice = ("Slot %d targeted — pick an enhancement below"):format(i)
+                else
+                    self.notice = nil
+                end
+                self:_render()
+                self:_renderEnhanceStrip()
+            end)
             if slot.enh then
                 -- outleveled = levelFactor 0 (slotted but contributing nothing) -> greyed
                 local dead = Enhancements.levelFactor(enhCfg, slot.enh.level, self.level) == 0
@@ -608,17 +641,22 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                 btn.Parent = strip
                 enhBadge(btn, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), rec).ZIndex = 7
                 btn.Activated:Connect(function()
-                    if not firstEmpty then
-                        self.notice = "No empty slot on this power"
+                    -- targeted slot wins (REPLACE allowed there — server destroys the
+                    -- old one); otherwise fall back to the first empty slot
+                    local target = self._enhTargetSlot or firstEmpty
+                    if not target then
+                        self.notice = "No empty slot — click a filled slot to replace it"
                         self:_render()
                         return
                     end
                     local res = callBus("enh.slot", {
                         powerId = powerId,
-                        slotIndex = firstEmpty,
+                        slotIndex = target,
                         uid = item.uid,
                     })
                     if res and res.ok then
+                        self._enhTargetSlot = nil
+                        self.notice = "Slotted ✓ (instant — no commit needed)"
                         self:_loadLive()
                         self:_render()
                         self:_renderEnhanceStrip()
