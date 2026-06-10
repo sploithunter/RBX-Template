@@ -33,7 +33,7 @@ return {
         {
             id = "equip_pet",
             title = "Equip your pet",
-            body = "Open the Pets menu, tap your new pet, and press Equip — only equipped pets follow you and mine.",
+            body = "Open the Pets menu and click your new pet to equip it — equipped pets follow you and mine. New players can equip 3!",
             target = { kind = "ui", name = "PetsButton" },
             complete_on = { event = "pet_equipped" },
         },
