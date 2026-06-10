@@ -728,6 +728,16 @@ local uiConfig = {
             description = "Opens the unified inventory (pets/items/enhancements)",
         },
 
+        powers_action = {
+            -- The character sheet: PowerChoiceMenu in live mode (with no pending claims it
+            -- shows owned powers + the ENHANCE slotting strip; picks only appear when earned).
+            type = "menu_panel",
+            panel = "PowerChoice",
+            transition = "scale_in_small",
+            sound = "button_click",
+            description = "Manage your powers and slot enhancements",
+        },
+
         rewards_action = {
             type = "script_execute",
             script = "RewardsHandler",
@@ -1036,7 +1046,7 @@ local uiConfig = {
             layout = {
                 type = "grid",
                 auto_size = true, -- Enable automatic sizing based on content
-                button_count = 8, -- 7 menu buttons + the adopted Rewards (MenuTrayStyle)
+                button_count = 9, -- 8 menu buttons + the adopted Rewards (MenuTrayStyle)
                 -- left/bottom zero so the buttons sit flush on the pane's anchored corner
                 padding = { top = 5, bottom = 0, left = 0, right = 5 },
             },
@@ -1058,6 +1068,18 @@ local uiConfig = {
                         icon_fallback = "🐾", -- (old 13262136255 was a full-button image, not an icon)
                         text = "Pets",
                         action = "pets_action",
+                    },
+                },
+
+                -- Character/powers menu (Jason): the SAME PowerChoice panel the level-up
+                -- flow uses, but openable anywhere — manage owned powers + slot enhancements.
+                {
+                    type = "menu_button",
+                    config = {
+                        name = "Powers",
+                        icon_fallback = "💥",
+                        text = "Powers",
+                        action = "powers_action",
                     },
                 },
 
