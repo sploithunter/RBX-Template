@@ -150,7 +150,14 @@ function PowerService:_applyOwnedPassives(player)
         local kind = def and def.effect and kinds[def.effect]
         local attr = kind and kind.passive and PASSIVE_ATTR[kind.family]
         if attr then
-            player:SetAttribute(attr, kind.magnitude)
+            -- POTENCY enhancements scale a passive's magnitude (this stamp IS the
+            -- passive's "cast", so the slot fold happens here — Swift runs faster)
+            local enhAxes = Enhancements.aggregate(
+                self._enhConfig,
+                type(data.Slots) == "table" and data.Slots[tostring(powerId)] or {},
+                tonumber(player:GetAttribute("Level")) or 1
+            )
+            player:SetAttribute(attr, kind.magnitude * (1 + (enhAxes.magnitude or 0)))
             player:SetAttribute(attr .. "Until", PASSIVE_UNTIL)
             player:SetAttribute(attr .. "Toggle", true) -- permanent: HUDs show no countdown
             player:SetAttribute(attr .. "PowerId", powerId)
@@ -620,6 +627,27 @@ function PowerService:_dotHit(player, enemy, perTick, critChance, critMult, now,
         math.random()
     )
     local tick = perTick * roll.multiplier
+    -- SPARK procs (slotted on this power): chance per hit to surge it for +bonus of its
+    -- damage. The first proc enhancement — establishes the mechanics (Jason); rare
+    -- specialty drops later ride the same Enhancements.procs path.
+    local data = self._dataService and self._dataService:GetData(player)
+    local slots = data and type(data.Slots) == "table" and data.Slots[tostring(powerId)]
+    if slots then
+        for _, proc in
+            ipairs(
+                Enhancements.procs(
+                    self._enhConfig,
+                    slots,
+                    tonumber(player:GetAttribute("Level")) or 1
+                )
+            )
+        do
+            if proc.trigger == "hit" and math.random() < proc.chance then
+                tick = tick * (1 + proc.bonus)
+                enemy:SetAttribute("CritFxUntil", now + 1) -- surge tell (own VFX later)
+            end
+        end
+    end
     local newHp = math.max(0, hp - tick) -- EnemyService HP-watcher -> death + loot
     enemy:SetAttribute("HP", newHp)
     self:_creditDot(enemy, player, hp - newHp)

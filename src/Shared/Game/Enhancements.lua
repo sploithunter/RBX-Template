@@ -142,6 +142,28 @@ function Enhancements.canSlotAtLevel(cfg, enhLevel, playerLevel)
     return enhLevel <= playerLevel + window
 end
 
+-- Proc entries slotted on a power: { { type, chance, bonus, trigger }, ... }. Same
+-- level-window rule as aggregate — a dead (out-of-window) proc contributes nothing.
+function Enhancements.procs(cfg, slots, playerLevel)
+    local out = {}
+    for _, slot in ipairs(type(slots) == "table" and slots or {}) do
+        local rec = type(slot) == "table" and slot.enh
+        if rec and Enhancements.isValid(cfg, rec) then
+            local def = typeDef(cfg, rec.type)
+            local proc = def and def.proc
+            if proc and Enhancements.levelFactor(cfg, rec.level, playerLevel) > 0 then
+                out[#out + 1] = {
+                    type = rec.type,
+                    trigger = proc.trigger or "hit",
+                    chance = tonumber(proc.chance) or 0,
+                    bonus = tonumber(proc.bonus) or 0,
+                }
+            end
+        end
+    end
+    return out
+end
+
 function Enhancements.aggregate(cfg, slots, playerLevel)
     local axes = {}
     for _, slot in ipairs(type(slots) == "table" and slots or {}) do

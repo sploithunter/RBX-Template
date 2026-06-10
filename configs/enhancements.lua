@@ -114,6 +114,42 @@ return {
                 rage = true,
             },
         },
+        -- POTENCY (Jason): +% to the power's own magnitude — the universal "makes the
+        -- power more" type, and what makes always-on passives slottable (Swift runs
+        -- faster, XP Surge pays more, Magnet pulls wider). Magnitude-driven families.
+        -- ICON TODO: starburst + up-chevron (placeholder symbol until drawn).
+        potency = {
+            symbol = "chevrons_up",
+            axis = "magnitude",
+            families = {
+                buff = true,
+                coin_yield = true,
+                crit = true,
+                luck = true,
+                magnet = true,
+                move_speed = true,
+                recharge = true, -- Hasten's recharge-BUFF magnitude
+                xp = true,
+                rage = true,
+                vulnerable = true,
+            },
+        },
+        -- SPARK (the FIRST proc — Jason: ship one now to prove the mechanics; rare
+        -- multi-effect specialties come later and build on this shape). On a damaging
+        -- power hit: `chance` to surge the hit for +`bonus` of its damage.
+        -- ICON TODO: die-with-sparks / lightning-in-brackets.
+        spark = {
+            symbol = "capacitor",
+            proc = { trigger = "hit", chance = 0.15, bonus = 1.0 },
+            families = {
+                vulnerable = true,
+                buff = true,
+                rage = true,
+                amplified_burst = true,
+                burn_spread = true,
+                team_cleave = true,
+            },
+        },
         healing = {
             symbol = "plus",
             axis = "heal",
@@ -175,6 +211,7 @@ return {
 
         -- relative weight per type (uniform start; tune freely)
         type_weights = {
+            spark = 0.25, -- procs are the rare tier (specialty drops later build on this)
             damage = 1,
             accuracy = 1,
             recharge = 1,

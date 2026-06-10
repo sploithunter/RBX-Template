@@ -249,7 +249,10 @@ return function()
             }
             for name, def in pairs(cfg.types) do
                 expect(type(def.symbol)).to.equal("string")
-                if not axes[def.axis] then
+                -- a type contributes EITHER an axis (multiplier) OR a proc (chance-on-
+                -- trigger, e.g. spark) — both is allowed, neither is a config error
+                local hasProc = type(def.proc) == "table" and (tonumber(def.proc.chance) or 0) > 0
+                if not (axes[def.axis] or hasProc) then
                     error(("type '%s' has unknown axis '%s'"):format(name, tostring(def.axis)))
                 end
             end
