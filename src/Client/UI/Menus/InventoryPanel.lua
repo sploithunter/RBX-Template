@@ -86,6 +86,7 @@ local SUPPORT_META = {
     defense = { element = "ice", label = "Defense" },
     offense = { element = "fire", label = "Offense" },
     yield = { element = "desert", label = "Coin Yield" },
+    luck = { element = "earth", label = "Luck" }, -- bunny's lucky-rabbit aura (Grass)
 }
 local petVisualsOk, PetVariantVisuals = pcall(function()
     return require(ReplicatedStorage.Shared.Services.PetVariantVisuals)

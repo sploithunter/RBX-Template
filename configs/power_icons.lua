@@ -176,6 +176,7 @@ local M = {
         defense = "armor_chest",
         offense = "chevrons_up",
         yield = "coins_up",
+        luck = "clover_lucky", -- bunny (Grass) — lucky-rabbit hatch-luck aura
     },
     power_glyph_symbol = {
         debuff = "contagion",
