@@ -192,7 +192,13 @@ local TEST_CATEGORIES = {
             { name = "📋 Snapshot Target Player", action = "admin_snapshot" },
             { name = "💾 Force Save Target Player", action = "admin_force_save" },
             { name = "🗑️ Reset Pets (Target)", action = "admin_reset_pets" },
-            { name = "🔄 Reset to Beginning (keep HUGE)", action = "admin_reset_to_beginning" },
+            -- label says what the guard actually protects: ALL unique pets (per-uid
+            -- records — huges, secrets/dragons, exclusives), not just huges (Jason
+            -- almost didn't click it: "am I gonna lose my dragon?")
+            {
+                name = "🔄 Reset to Beginning (keeps ALL unique pets)",
+                action = "admin_reset_to_beginning",
+            },
             {
                 name = "🔎 Reset to Beginning — PREVIEW",
                 action = "admin_reset_to_beginning_preview",
