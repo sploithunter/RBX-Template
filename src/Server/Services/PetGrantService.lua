@@ -137,9 +137,10 @@ function PetGrantService:BuildPetData(request, player)
         level = 1,
         exp = 0,
         nickname = grant.nickname or "",
-        -- creator pets are ALWAYS locked (untradeable apex — Jason)
-        locked = grant.creator
-            or (grant.locked ~= nil and grant.locked == true or grant.huge == true),
+        -- creator-CLASS pets are ALWAYS locked (untradeable apex — Jason); huges and
+        -- regular exclusives are tradeable ("I just tried to trade a huge bear and I
+        -- couldn't") — only an explicit lock applies otherwise
+        locked = grant.creator or grant.locked == true,
         grant_source = grant.source,
     }
 

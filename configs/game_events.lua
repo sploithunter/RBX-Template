@@ -8,6 +8,10 @@
         sound = "<key in configs/sounds.lua>"   -- play that sound on its configured bus
         --   (or { key = "...", volume = 0.5 } to scale loudness for THIS event only)
         banner = { seconds, color }             -- lingering screen-center card (text = ctx.name)
+        -- RULE (Jason): if another player can SEE it, they should HEAR it — world
+        -- moments (level-ups, meets, the future epic level-up animation) use
+        -- world_sound + world-visible visuals together; UI-only moments (achievement
+        -- toasts) stay personal `sound`.
         -- RULE (Jason): never a sound without a visual — every row with `sound` must
         -- also have vfx/float/banner (CI-enforced; world_visual=true marks diegetic
         -- exceptions like pet_down where the world itself is the visual)

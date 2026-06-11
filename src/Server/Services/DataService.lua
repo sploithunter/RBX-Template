@@ -36,7 +36,7 @@ local DEFAULT_SAVE_DEBOUNCE_SECONDS = 15
 local CRITICAL_SAVE_DEBOUNCE_SECONDS = 1
 local PERIODIC_SAVE_SECONDS = 60
 local SAVE_CONFIRM_TIMEOUT_SECONDS = 10
-local CURRENT_SCHEMA_VERSION = 9
+local CURRENT_SCHEMA_VERSION = 10
 
 local function countInventoryItems(inventory)
     local counts = {}
@@ -461,6 +461,22 @@ end
 SchemaMigrations[8] = function(self, data)
     local migrations = self:_backfillClaimedLevel(data)
     data.SchemaVersion = 9
+    return migrations + 1
+end
+
+-- v9 -> v10: unlock huge pets. Grants were locking huge==true records (a creator-class
+-- rule applied too broadly); only CREATOR-class pets are untradeable (Jason: "regular
+-- exclusives, huges — they're all tradable"). One-time flip for records already minted.
+SchemaMigrations[9] = function(self, data)
+    local migrations = 0
+    local pets = data.Inventory and data.Inventory.pets
+    for _, rec in pairs((pets and pets.items) or {}) do
+        if rec.locked == true and rec.huge == true and rec.creator ~= true then
+            rec.locked = false
+            migrations += 1
+        end
+    end
+    data.SchemaVersion = 10
     return migrations + 1
 end
 

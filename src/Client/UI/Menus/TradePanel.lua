@@ -295,9 +295,14 @@ function TradePanel:_playerRow(p, order)
     row.Parent = self.playerList
     corner(row, 10)
 
+    -- "Lv N  name" — the Level attribute is server-published and replicates to every
+    -- client, so other players' levels read directly (Jason: "can we put the players
+    -- level?")
+    local other = Players:GetPlayerByUserId(p.userId)
+    local lvl = other and other:GetAttribute("Level")
     local name = label(
         row,
-        p.name,
+        (lvl and ("Lv %d   "):format(lvl) or "") .. p.name,
         UDim2.new(1, -140, 1, 0),
         UDim2.new(0, 14, 0, 0),
         COLORS.text,
