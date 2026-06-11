@@ -695,18 +695,19 @@ end
 -- Inventory-style card: generated pet image (emoji fallback), name plate, variant
 -- stroke, HUGE chip, lock overlay, hover tooltip + highlight.
 function TradePanel:_petCard(parent, pet, order, opts)
-    -- stacks: REMAINING = quantity - copies already escrowed (Jason thought he'd
-    -- offered all his bunnies — he couldn't see the remainder)
+    -- ESCROW ALREADY REMOVED offered copies from the inventory record, so the
+    -- server's quantity IS the remaining count — subtracting offeredN again
+    -- double-decremented (Jason: "when I offer one it decrements by two"). The
+    -- offered chip is informational only; fully-escrowed stacks/specials simply
+    -- vanish from this column (they're in the offer column).
     local quantity = tonumber(pet.quantity) or 1
+    local remaining = quantity
     local offeredN = 0
-    if opts.offeredCount and opts.kindKey and quantity > 1 then
+    if opts.offeredCount and opts.kindKey then
         offeredN = opts.offeredCount[opts.kindKey(pet)] or 0
-    elseif opts.offered and opts.offered[pet.uid] then
-        offeredN = 1
     end
-    local remaining = math.max(0, quantity - offeredN)
-    local inOffer = offeredN >= quantity -- fully offered
-    local clickable = opts.onClick ~= nil and not pet.locked and not inOffer
+    local inOffer = false
+    local clickable = opts.onClick ~= nil and not pet.locked
 
     local card = Instance.new("TextButton")
     card.Text = ""
@@ -755,7 +756,7 @@ function TradePanel:_petCard(parent, pet, order, opts)
     -- xN badge: offer cards show the aggregated count; inventory stacks show what
     -- REMAINS offerable (the number that answers "do I have more of these?")
     local badgeN = pet.count or (quantity > 1 and remaining) or nil
-    if badgeN and badgeN > 1 or (quantity > 1 and offeredN > 0) then
+    if badgeN and badgeN > 1 then
         local qty = Instance.new("TextLabel")
         qty.Size = UDim2.new(0, 30, 0, 18)
         qty.Position = UDim2.new(1, -32, 0, 2)
@@ -772,8 +773,8 @@ function TradePanel:_petCard(parent, pet, order, opts)
         qc.MaxTextSize = 13
         qc.Parent = qty
     end
-    -- partially-offered stack: gold chip so the split is visible at a glance
-    if quantity > 1 and offeredN > 0 and not inOffer then
+    -- some of this kind escrowed: gold chip so the split is visible at a glance
+    if offeredN > 0 and not inOffer then
         local chip = Instance.new("TextLabel")
         chip.Size = UDim2.new(0, 64, 0, 16)
         chip.Position = UDim2.new(0, 3, 0, 2)
