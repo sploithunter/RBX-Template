@@ -25,6 +25,7 @@ return {
         Spawn = {
             id = "Spawn",
             kind = "area",
+            mining_currency = "grass_coins", -- what the zone's ore PAYS (area_coins rewards resolve here)
             parent = "spawn_island",
             display_name = "Spawn Area",
             order = 1,
@@ -49,6 +50,7 @@ return {
         Meadow = {
             id = "Meadow",
             kind = "area",
+            mining_currency = "grass_coins", -- what the zone's ore PAYS (area_coins rewards resolve here)
             parent = "meadow_island",
             display_name = "Meadow",
             order = 2,
@@ -82,6 +84,7 @@ return {
         Lava = {
             id = "Lava",
             kind = "area",
+            mining_currency = "lava_coins", -- what the zone's ore PAYS (area_coins rewards resolve here)
             parent = "lava_island",
             display_name = "Lava Fields",
             order = 3,
@@ -112,6 +115,7 @@ return {
         Ice = {
             id = "Ice",
             kind = "area",
+            mining_currency = "ice_coins", -- what the zone's ore PAYS (area_coins rewards resolve here)
             parent = "ice_island",
             display_name = "Ice Fields",
             order = 4,
@@ -148,6 +152,7 @@ return {
         Desert = {
             id = "Desert",
             kind = "area",
+            mining_currency = "desert_coins", -- what the zone's ore PAYS (area_coins rewards resolve here)
             parent = "desert_island",
             display_name = "Desert Fields",
             order = 5,

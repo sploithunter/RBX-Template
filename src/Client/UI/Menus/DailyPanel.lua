@@ -235,10 +235,18 @@ function DailyPanel:_createHeader()
     end)
 end
 
+local CURRENCY_LABELS = {
+    area_coins = "Area Coins", -- resolves to the zone-you're-in coin at claim
+    grass_coins = "Grass Coins",
+    ice_coins = "Ice Coins",
+    lava_coins = "Lava Coins",
+    desert_coins = "Desert Coins",
+}
+
 local function rewardLabel(bundle)
     local parts = {}
     for currency, amount in pairs((bundle and bundle.currencies) or {}) do
-        table.insert(parts, amount .. " " .. currency)
+        table.insert(parts, amount .. " " .. (CURRENCY_LABELS[currency] or currency))
     end
     for _, pet in ipairs((bundle and bundle.pets) or {}) do
         table.insert(parts, (pet.variant and (pet.variant .. " ") or "") .. tostring(pet.id))

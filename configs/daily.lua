@@ -10,18 +10,18 @@
 return {
     max_gap_days = 1,
     cycle_length = 7,
-    -- Denominated in the LIVE economy (Jason: legacy 100-coins / 5-crystals predated
-    -- the per-zone coin system and read as noise). Yardsticks: one small ore break
-    -- pays ~20, Meadow unlock = 2000 crystals (~3 min of mining). Each day gifts a
-    -- few minutes of progress; day 4 = exactly one Meadow unlock; day 7 stays the
-    -- golden-bear streak payoff. Gems keep their shop sinks.
+    -- AREA COINS at real income scale (Jason round 2: flat "crystals" were noise —
+    -- a developed squad mines ~1k/min, and the coin should be the ZONE'S, not
+    -- Spawn's). "area_coins" resolves at claim time to the mining coin of the area
+    -- the player is standing in (RewardService). Yardsticks: fresh squad ~600/min,
+    -- Ice gate = 8000 (~13 fresh minutes). Day 6 pays a full zone gate.
     calendar = {
-        [1] = { currencies = { crystals = 500 } },
-        [2] = { currencies = { crystals = 1000 } },
+        [1] = { currencies = { area_coins = 3000 } },
+        [2] = { currencies = { area_coins = 6000 } },
         [3] = { currencies = { gems = 2 } },
-        [4] = { currencies = { crystals = 2000 } },
+        [4] = { currencies = { area_coins = 12000 } },
         [5] = { currencies = { gems = 5 } },
-        [6] = { currencies = { crystals = 4000 } },
+        [6] = { currencies = { area_coins = 25000 } },
         [7] = { pets = { { id = "bear", variant = "golden" } } },
     },
 }

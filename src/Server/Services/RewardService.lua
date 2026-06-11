@@ -38,18 +38,36 @@ function RewardService:_service(name)
     return ok and service or nil
 end
 
+-- The mining coin of the player's current area (configs/areas.lua mining_currency).
+-- Fallback: grass_coins (the starter zone's coin) when the area is unknown.
+function RewardService:_resolveAreaCoin(player)
+    local areaId = player and player:GetAttribute("CurrentArea")
+    local ok, areasConfig = pcall(function()
+        return self._configLoader and self._configLoader:LoadConfig("areas")
+    end)
+    local zones = ok and type(areasConfig) == "table" and areasConfig.zones
+    local area = zones and areaId and zones[areaId]
+    return (area and area.mining_currency) or "grass_coins"
+end
+
 -- Apply a reward bundle to a live player. `source` is a traceable tag
 -- ("quest:crystal_crusher", "daily:3", "shop:starter_pack").
 function RewardService:Grant(player, bundle, source)
     local b = RewardBundle.normalize(bundle)
     local granted = { currencies = {}, items = {}, pets = {}, effects = {}, slots = {} }
 
-    -- Currencies
+    -- Currencies. "area_coins" is a TOKEN, not a currency: it resolves to the mining
+    -- coin of the player's CURRENT area (Jason: rewards should pay the coin of the
+    -- zone you're in — flat crystal grants were noise in a per-zone economy).
     for currency, amount in pairs(b.currencies) do
-        if self._dataService then
-            self._dataService:AddCurrency(player, currency, amount, source or "reward_grant")
+        local resolved = currency
+        if currency == "area_coins" then
+            resolved = self:_resolveAreaCoin(player)
         end
-        granted.currencies[currency] = amount
+        if self._dataService then
+            self._dataService:AddCurrency(player, resolved, amount, source or "reward_grant")
+        end
+        granted.currencies[resolved] = (granted.currencies[resolved] or 0) + amount
     end
 
     -- Items (consumables/resources/tools)
