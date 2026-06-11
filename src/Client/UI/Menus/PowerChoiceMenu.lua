@@ -1131,12 +1131,13 @@ function PowerChoiceMenu:_fillColumn(holder, pool)
         PowerSlotRow.create(wrap, {
             powerId = r.id,
             name = def.display_name or r.id,
-            subtitle = "L" .. tostring(r.pickLevel) .. "    " .. (def.subtitle or ""),
+            subtitle = "L" .. tostring(r.pickLevel) .. " · " .. (def.subtitle or ""),
             state = r.state,
             slotCount = self:_effectiveSlots(r.id),
             slotContents = contents,
             selected = stagedPick,
             size = UDim2.fromScale(1, 1),
+            rowPx = rowPixelHeight(),
         })
         -- glow: gold = staged (unsaved); green/blue = actionable this beat
         local glowColor

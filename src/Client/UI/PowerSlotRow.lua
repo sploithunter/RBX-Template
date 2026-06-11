@@ -202,11 +202,21 @@ function PowerSlotRow.create(parent, opts)
         end
     end
 
+    -- TWO-LINE text block, PIXEL-anchored just right of the disc (Jason, phone
+    -- playtest: names clipped behind the disc and the right-aligned type chip
+    -- crushed into them — "we need to be able to read the name of the power and
+    -- what it does"). Line 1 = name, line 2 = level + type, both left-anchored at
+    -- discRight (the disc is a square of the bar height, so its width in px is
+    -- known from rowPx). opts.rowPx = the row's pixel height (callers that size
+    -- rows in pixels pass it; default matches the legacy 96px row).
+    local rowPx = tonumber(opts.rowPx) or 96
+    local discRight = math.floor(rowPx * BAR_H * DISC_H) + 6
+
     local name = Instance.new("TextLabel")
     name.Name = "PowerName"
     name.BackgroundTransparency = 1
-    name.Size = UDim2.new(0.5, 0, 0.42, 0)
-    name.Position = UDim2.new(0.1, 0, 0.16, 0)
+    name.Size = UDim2.new(1, -(discRight + 10), 0.52, 0)
+    name.Position = UDim2.new(0, discRight, 0.04, 0)
     name.Text = opts.name or ""
     name.Font = Enum.Font.GothamBold
     name.TextScaled = true
@@ -218,15 +228,14 @@ function PowerSlotRow.create(parent, opts)
     local subtitle = Instance.new("TextLabel")
     subtitle.Name = "Subtitle"
     subtitle.BackgroundTransparency = 1
-    subtitle.AnchorPoint = Vector2.new(1, 0)
-    subtitle.Size = UDim2.new(0.4, 0, 0.3, 0)
-    subtitle.Position = UDim2.new(0.97, 0, 0.18, 0)
+    subtitle.Size = UDim2.new(1, -(discRight + 10), 0.38, 0)
+    subtitle.Position = UDim2.new(0, discRight, 0.56, 0)
     subtitle.Text = opts.subtitle or ""
     subtitle.Font = Enum.Font.GothamMedium
     subtitle.TextScaled = true
     subtitle.TextColor3 = Color3.fromRGB(214, 226, 245)
     subtitle.TextTransparency = 0.08
-    subtitle.TextXAlignment = Enum.TextXAlignment.Right
+    subtitle.TextXAlignment = Enum.TextXAlignment.Left
     subtitle.Visible = (opts.subtitle ~= nil and opts.subtitle ~= "")
     subtitle.ZIndex = 2
     subtitle.Parent = bar
