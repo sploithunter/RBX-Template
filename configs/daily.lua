@@ -13,8 +13,11 @@ return {
     -- AREA COINS at real income scale (Jason round 2: flat "crystals" were noise —
     -- a developed squad mines ~1k/min, and the coin should be the ZONE'S, not
     -- Spawn's). "area_coins" resolves at claim time to the mining coin of the area
-    -- the player is standing in (RewardService). Yardsticks: fresh squad ~600/min,
-    -- Ice gate = 8000 (~13 fresh minutes). Day 6 pays a full zone gate.
+    -- the player is standing in (RewardService). Yardsticks (Jason, measured live):
+    -- fresh-in-a-new-zone squad ~1000/min (14-20/sec in Desert with a Lava team);
+    -- true-fresh squad ~600/min; Ice gate = 8000. Day 6 pays a full zone gate.
+    -- Day 7 escalates over time: golden bear -> rainbow bear (now) -> maybe a
+    -- rainbow cat someday ("which would be pretty rare") as the cycle extends.
     calendar = {
         [1] = { currencies = { area_coins = 3000 } },
         [2] = { currencies = { area_coins = 6000 } },
@@ -22,6 +25,6 @@ return {
         [4] = { currencies = { area_coins = 12000 } },
         [5] = { currencies = { gems = 5 } },
         [6] = { currencies = { area_coins = 25000 } },
-        [7] = { pets = { { id = "bear", variant = "golden" } } },
+        [7] = { pets = { { id = "bear", variant = "rainbow" } } },
     },
 }
