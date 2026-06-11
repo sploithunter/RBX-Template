@@ -766,29 +766,28 @@ function InventoryPanel:_createUI(parent)
                 local countMode = "one" -- one | half | max (display follows the service truth)
                 local function refresh()
                     local st = EggSvc:GetHatchUiState()
-                    autoBtn.Text = st.auto and "AUTO ⏵" or "Manual"
-                    autoBtn.BackgroundColor3 = st.auto and Color3.fromRGB(220, 82, 95)
+                    -- the pill reflects the persisted ACTION MODE (a setting, not the
+                    -- running loop — Jason: "it should just turn ON auto hatch so when
+                    -- I'm near an egg and hatch, it auto hatches")
+                    local isAuto = st.mode == "auto"
+                    autoBtn.Text = isAuto and "AUTO" or "Manual"
+                    autoBtn.BackgroundColor3 = isAuto and Color3.fromRGB(220, 82, 95)
                         or Color3.fromRGB(90, 90, 110)
                     countBtn.Text = ("Eggs: %d"):format(st.count)
                 end
-                -- ToggleAutoHatch REFUSES without ownership or a nearby egg, and its
-                -- status messages render on the egg-stand panel (invisible from here) —
-                -- Jason: "it's not cycling the name". Flash the reason on the pill.
                 local function flash(text)
                     autoBtn.Text = text
                     task.delay(1.4, refresh)
                 end
                 autoBtn.Activated:Connect(function()
                     local st = EggSvc:GetHatchUiState()
-                    if not st.auto and not st.autoOwned then
+                    if st.mode ~= "auto" and not st.autoOwned then
                         flash("🔒 Locked")
                         return
                     end
-                    if not st.auto and not st.hasTarget then
-                        flash("Go near an egg")
-                        return
-                    end
-                    EggSvc:ToggleAutoHatch()
+                    -- SetHatchActionMode persists (the E-key behavior at any egg) and
+                    -- never starts anything from here
+                    EggSvc:SetHatchActionMode(st.mode == "auto" and "single" or "auto")
                     refresh()
                 end)
                 countBtn.Activated:Connect(function()

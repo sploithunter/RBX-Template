@@ -1589,7 +1589,8 @@ end
 function EggInteractionService:GetHatchUiState()
     local target = currentTargetService and currentTargetService:GetCurrentTarget()
     return {
-        auto = autoHatchEnabled,
+        auto = autoHatchEnabled, -- the RUNNING loop (an action state)
+        mode = hatchActionMode, -- the persisted SETTING ("single"/"max"/"auto")
         autoOwned = isAutoHatchOwned(),
         count = selectedHatchCount,
         max = getEffectiveMaxHatchCount(),
