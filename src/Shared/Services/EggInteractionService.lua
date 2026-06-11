@@ -1584,6 +1584,17 @@ function EggInteractionService:SetHatchActionMode(actionMode, options)
     return hatchActionMode
 end
 
+-- Read-only snapshot for EXTERNAL hatch controls (the inventory header strip):
+-- auto state, selected count, and the live effective max.
+function EggInteractionService:GetHatchUiState()
+    return {
+        auto = autoHatchEnabled,
+        autoOwned = isAutoHatchOwned(),
+        count = selectedHatchCount,
+        max = getEffectiveMaxHatchCount(),
+    }
+end
+
 function EggInteractionService:HatchSelectedCount(purchaseType)
     if not currentTargetService then
         return false

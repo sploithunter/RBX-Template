@@ -723,6 +723,81 @@ function InventoryPanel:_createUI(parent)
             end)
         end
 
+        -- HATCH CONTROLS (Jason: "our inventory and pets menu are the same thing") —
+        -- three header pills left of Trade driving the REAL egg system
+        -- (EggInteractionService): Auto/Manual, count cycle 1/Half/Max, and HATCH
+        -- (fires at the current-target egg; the service nags "move near an egg").
+        do
+            local okEgg, EggSvc = pcall(function()
+                return require(ReplicatedStorage.Shared.Services.EggInteractionService)
+            end)
+            if okEgg and EggSvc then
+                local function pill(text, width, offset, color)
+                    local b = Instance.new("TextButton")
+                    b.Size = UDim2.new(0, width, 0, config.size.height)
+                    b.AnchorPoint = Vector2.new(1, 0)
+                    b.Position = UDim2.new(
+                        1,
+                        (config.offset.x or 10) - (config.size.width or 36) - offset,
+                        0,
+                        6
+                    )
+                    b.BackgroundColor3 = color
+                    b.TextColor3 = Color3.fromRGB(240, 248, 255)
+                    b.Text = text
+                    b.TextScaled = true
+                    b.Font = Enum.Font.GothamBold
+                    b.ZIndex = 250
+                    local c = Instance.new("UICorner")
+                    c.CornerRadius = UDim.new(0, config.corner_radius or 8)
+                    c.Parent = b
+                    b.Parent = self.header
+                    local tc2 = Instance.new("UITextSizeConstraint")
+                    tc2.MaxTextSize = 14
+                    tc2.Parent = b
+                    return b
+                end
+                -- right-to-left after Trade (Trade ends at offset 8 + 86)
+                local hatchBtn = pill("🥚 Hatch", 86, 8 + 86 + 8, Color3.fromRGB(200, 140, 40))
+                local countBtn =
+                    pill("Eggs: 1", 86, 8 + 86 + 8 + 86 + 8, Color3.fromRGB(70, 100, 160))
+                local autoBtn =
+                    pill("Manual", 80, 8 + 86 + 8 + 86 + 8 + 86 + 8, Color3.fromRGB(90, 90, 110))
+
+                local countMode = "one" -- one | half | max (display follows the service truth)
+                local function refresh()
+                    local st = EggSvc:GetHatchUiState()
+                    autoBtn.Text = st.auto and "AUTO ⏵" or "Manual"
+                    autoBtn.BackgroundColor3 = st.auto and Color3.fromRGB(220, 82, 95)
+                        or Color3.fromRGB(90, 90, 110)
+                    countBtn.Text = ("Eggs: %d"):format(st.count)
+                end
+                autoBtn.Activated:Connect(function()
+                    EggSvc:ToggleAutoHatch()
+                    refresh()
+                end)
+                countBtn.Activated:Connect(function()
+                    local st = EggSvc:GetHatchUiState()
+                    if countMode == "one" then
+                        countMode = "half"
+                        EggSvc:SetSelectedHatchCount(math.max(1, math.floor(st.max / 2)))
+                    elseif countMode == "half" then
+                        countMode = "max"
+                        EggSvc:SetSelectedHatchCount(st.max)
+                    else
+                        countMode = "one"
+                        EggSvc:SetSelectedHatchCount(1)
+                    end
+                    refresh()
+                end)
+                hatchBtn.Activated:Connect(function()
+                    EggSvc:HatchSelectedCount("Selected")
+                    refresh()
+                end)
+                refresh()
+            end
+        end
+
         local closeButton = Instance.new("ImageButton")
         closeButton.Name = "CloseButton"
         closeButton.Size = UDim2.new(0, config.size.width, 0, config.size.height)
