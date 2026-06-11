@@ -2025,26 +2025,65 @@ function InventoryPanel:_loadToolsFromFolder(toolsFolder)
 end
 
 function InventoryPanel:_loadEggsFromFolder(eggsFolder)
-    -- Iterate through all egg items
+    -- INVENTORY eggs (Meet-The-Creator etc.). The egg id keys a REAL egg definition
+    -- in configs/pets.lua (image, name, STATED odds — fixed_odds eggs hatch at
+    -- exactly these numbers, so the tooltip is honest by construction).
+    local okPets, petsConfig = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Configs:WaitForChild("pets"))
+    end)
     for _, itemFolder in pairs(eggsFolder:GetChildren()) do
         if itemFolder:IsA("Folder") and itemFolder.Name ~= "Info" then
             local itemData = self:_extractEggDataFromFolder(itemFolder)
             if itemData then
+                local eggDef = okPets
+                    and petsConfig.egg_sources
+                    and petsConfig.egg_sources[itemData.id]
                 local displayData = {
                     id = itemFolder.Name,
-                    name = itemData.id:gsub("_", " "):gsub("^%l", string.upper),
+                    name = (eggDef and eggDef.name)
+                        or itemData.id:gsub("_", " "):gsub("^%l", string.upper),
                     icon = "🥚",
-                    rarity = "Common",
-                    color = Color3.fromRGB(150, 150, 150),
+                    image = eggDef and eggDef.image_id, -- real egg art (group-owned)
+                    rarity = "Exclusive",
+                    color = Color3.fromRGB(255, 215, 0),
                     category = "Eggs",
                     count = itemData.quantity or 1,
                     uid = itemFolder.Name,
-                    folder_source = "eggs", -- Track which folder this came from
+                    egg_def = eggDef, -- odds tooltip + hatch button read this
+                    folder_source = "eggs",
                 }
                 table.insert(self.inventoryData, displayData)
             end
         end
     end
+end
+
+-- STATED odds lines for an egg's hover tooltip. The huge row is the hidden chase:
+-- shown as "???" (Jason: "the huge would be a triple question mark").
+function InventoryPanel:_eggOddsLines(eggDef)
+    if not eggDef then
+        return { "Odds unknown" }
+    end
+    local hugeChance = (eggDef.huge and tonumber(eggDef.huge.chance)) or 0
+    local lines = {}
+    local total = 0
+    for _, w in pairs(eggDef.pet_weights or {}) do
+        total = total + w
+    end
+    for petName, w in pairs(eggDef.pet_weights or {}) do
+        local pct = (w / math.max(total, 1)) * (1 - hugeChance) * 100
+        lines[#lines + 1] = ("%s — %.2f%%"):format(
+            petName:gsub("_", " "):gsub("^%l", string.upper),
+            pct
+        )
+    end
+    if hugeChance > 0 then
+        lines[#lines + 1] = ("??? — %.2f%%"):format(hugeChance * 100)
+    end
+    if eggDef.fixed_odds then
+        lines[#lines + 1] = "Stated odds are exact (no luck applies)"
+    end
+    return lines
 end
 
 function InventoryPanel:_extractConsumableDataFromFolder(itemFolder)
@@ -3001,6 +3040,17 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
             lc.CornerRadius = UDim.new(0, 5)
             lc.Parent = lvl
         end
+    elseif item.image then
+        -- flat image icon (egg items: real uploaded art instead of the emoji)
+        local img = Instance.new("ImageLabel")
+        img.Size = UDim2.fromScale(0.92, 0.92)
+        img.AnchorPoint = Vector2.new(0.5, 0.5)
+        img.Position = UDim2.fromScale(0.5, 0.5)
+        img.BackgroundTransparency = 1
+        img.ScaleType = Enum.ScaleType.Fit
+        img.Image = item.image
+        img.ZIndex = 104
+        img.Parent = iconBG
     else
         -- Use emoji fallback
         self.logger:info("🎭 USING EMOJI FALLBACK", { itemId = item.id, icon = item.icon })
@@ -3766,6 +3816,17 @@ function InventoryPanel:_showItemTooltip(item)
     -- Enhancements get their OWN tooltip — the pet fields (Type/Variant/Power/Enchants)
     -- are meaningless for them (Jason: "it's not distinguishing... we need to give
     -- different information").
+    if item.folder_source == "eggs" then
+        local lines = {}
+        for i, line in ipairs(self:_eggOddsLines(item.egg_def)) do
+            lines[#lines + 1] = { label = i == 1 and "Hatches" or "", value = line }
+        end
+        lines[#lines + 1] = { label = "Action", value = "Click to hatch · tradeable" }
+        item.tooltip_title = tostring(item.name or "Egg")
+        self:_renderItemTooltip(item, lines)
+        return
+    end
+
     if item.folder_source == "enhancements" then
         local okCfg, enhCfg = pcall(function()
             return require(ReplicatedStorage.Configs:WaitForChild("enhancements"))
@@ -4236,6 +4297,21 @@ function InventoryPanel:_handlePrimaryAction(item)
         folder_source = item.folder_source,
         count = item.count,
     })
+
+    if item.folder_source == "eggs" then
+        -- explicit hatch (NEVER automatic — Jason: hold it, trade it, or hatch it).
+        -- The same bus command automation uses; server consumes the item on success.
+        task.spawn(function()
+            local remote = ReplicatedStorage:WaitForChild("GameAPICommand", 5)
+            if not remote then
+                return
+            end
+            local res = remote:InvokeServer("egg_item.hatch", { egg = item.id })
+            local r = type(res) == "table" and (res.result or res) or {}
+            self.logger:info("🥚 HATCH", { egg = item.id, ok = r.ok, pet = r.pet, huge = r.huge })
+        end)
+        return
+    end
 
     if item.folder_source == "consumables" then
         -- Consume the item

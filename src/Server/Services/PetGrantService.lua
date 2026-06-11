@@ -157,7 +157,11 @@ function PetGrantService:BuildPetData(request, player)
         petData.rarity_id = petConfig.rarity_id
     end
 
-    if type(petConfig.eternal) == "table" and petConfig.eternal.enabled == true then
+    if
+        type(petConfig.eternal) == "table"
+        and petConfig.eternal.enabled == true
+        and (petConfig.eternal.creator_only ~= true or grant.creator == true)
+    then
         petData.eternal = true
         petData.eternal_percent = tonumber(petConfig.eternal.power_percent) or 0
     end

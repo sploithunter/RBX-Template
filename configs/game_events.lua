@@ -48,7 +48,10 @@ return {
     met_creator = {
         sound = "celebratory_jingle",
         vfx = { kind = "burst", color = { 255, 215, 0 } }, -- creator gold
-        banner = { seconds = 6, color = { 255, 215, 0 } },
+        banner = { seconds = 10, color = { 255, 215, 0 } },
+        -- Jason: "it wasn't very obvious that the creator's on this server" — a big
+        -- gold crown float over the player on top of the banner
+        float = { color = { 255, 215, 0 }, prefix = "👑 ", size = 200 },
     },
 
     achievement_completed = {

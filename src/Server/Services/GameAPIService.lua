@@ -804,6 +804,25 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("meet.reset", {
+        description = "ADMIN: clear the caller's met-creator stamps so the once-ever meet re-fires on next join.",
+        validate = function(args)
+            return Validators.fields(args, {})
+        end,
+        handler = function(context, _args)
+            local isAdmin = context.isTest
+                or (context.player and context.player:GetAttribute("IsAdmin") == true)
+            if not isAdmin then
+                return { ok = false, reason = "not_admin" }
+            end
+            local svc = self:_service("MeetCreatorService")
+            if not svc then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return svc:ResetMeets(context.player)
+        end,
+    })
+
     bus:register("egg_item.hatch", {
         description = "Hatch one held egg ITEM from the eggs inventory bucket (e.g. a Meet-The-Creator egg).",
         validate = function(args)

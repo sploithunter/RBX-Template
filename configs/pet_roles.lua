@@ -58,9 +58,16 @@ return {
         penguin = { kind = "defense", interval = 2.0, amount = 80, duration = 6 }, -- Ice
         emberimp = { kind = "offense", interval = 2.0, mult = 1.25, duration = 6 }, -- Lava
         meerkat = { kind = "yield", interval = 2.0, mult = 1.25, duration = 6 }, -- Desert
-        -- CREATOR PET (huge Colorado): carries EVERY current buffer at once (Jason) —
-        -- an ARRAY of auras (SupportAura.aurasFor). Speed etc. join here when they exist.
+        -- Colorado (meet-egg / wild): TWO buffs, not all — "all" was really meant for
+        -- creator testing (Jason). Heal + luck: the creator's gift is lucky and kind,
+        -- and neither duplicates a zone buffer's whole identity.
         colorado = {
+            { kind = "heal", interval = 1.5, fraction = 0.3 },
+            { kind = "luck", interval = 2.0, mult = 1.25, duration = 6 },
+        },
+        -- CREATOR-CLASS colorado only (record.creator → CreatorPet attribute): every
+        -- buffer at once — the creator's testing/scaling tool.
+        colorado_creator = {
             { kind = "heal", interval = 1.5, fraction = 0.3 },
             { kind = "defense", interval = 2.0, amount = 80, duration = 6 },
             { kind = "offense", interval = 2.0, mult = 1.25, duration = 6 },

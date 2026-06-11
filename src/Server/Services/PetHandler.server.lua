@@ -430,6 +430,17 @@ local function getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
     local petData = getPetConfigData(petIdName, petVariantName)
     local eternalConfig = petData and petData.eternal
     if type(eternalConfig) == "table" and eternalConfig.enabled == true then
+        -- creator_only: the species block was authored for the CREATOR pet (colorado);
+        -- regular records of the species don't inherit eternal
+        if eternalConfig.creator_only == true then
+            local creatorValue = petFolder
+                and (petFolder:FindFirstChild("creator") or petFolder:FindFirstChild("Creator"))
+            if
+                not (creatorValue and creatorValue:IsA("BoolValue") and creatorValue.Value == true)
+            then
+                return 0
+            end
+        end
         return tonumber(eternalConfig.power_percent) or 0
     end
 
@@ -1497,6 +1508,17 @@ function loadEquipped(Player)
                 PetModel:SetAttribute("EffectivePower", effectivePower)
                 PetModel:SetAttribute("PetType", petIdName)
                 PetModel:SetAttribute("PetVariant", petVariantName)
+                do -- creator-CLASS record (not species): aura set + apex affordances key off this
+                    local creatorValue = petFolder:FindFirstChild("creator")
+                        or petFolder:FindFirstChild("Creator")
+                    if
+                        creatorValue
+                        and creatorValue:IsA("BoolValue")
+                        and creatorValue.Value == true
+                    then
+                        PetModel:SetAttribute("CreatorPet", true)
+                    end
+                end
                 PetModel:SetAttribute("EternalPercent", eternalPercent)
                 PetModel:SetAttribute(
                     "EternalBaselinePower",

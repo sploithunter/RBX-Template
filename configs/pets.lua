@@ -1066,6 +1066,7 @@ local petConfig = {
             base_health = 500,
             eternal = {
                 enabled = true,
+                creator_only = true, -- authored for the APEX pet; meet/wild colorados aren't eternal
                 power_percent = 80,
                 baseline = "top_team_average",
             },

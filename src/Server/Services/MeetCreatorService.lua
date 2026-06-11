@@ -73,6 +73,11 @@ function MeetCreatorService:_tryMeet(player, creatorUserId, creatorDef)
         creator = creatorDef.name,
         egg = creatorDef.egg_name or creatorDef.egg_id,
         granted = granted ~= nil,
+        -- the float reaction renders ctx.name (config styles it)
+        name = ("You met %s! %s received!"):format(
+            creatorDef.name or "the creator",
+            creatorDef.egg_name or "an egg"
+        ),
     })
     self._logger:Info("Meet-The-Creator: first meeting", {
         player = player.Name,
@@ -123,6 +128,28 @@ end
 
 -- Hatch one held egg item: consume it, roll the variant, grant the SPECIES pet
 -- (plain grant — never huge, never creator class).
+-- Admin/test: forget every met-creator stamp so the once-ever meet can fire again
+-- (the egg is a one-of-one — this is how you re-run the flow after testing spends it).
+function MeetCreatorService:ResetMeets(player)
+    local dataService = self:_svc("DataService")
+    local data = dataService and dataService:GetData(player)
+    if not data then
+        return { ok = false, reason = "no_data" }
+    end
+    local count = 0
+    for _ in pairs(data.MetCreators or {}) do
+        count += 1
+    end
+    data.MetCreators = {}
+    dataService:RequestSave(player, "meet_reset", { critical = true })
+    self._logger:Warn("MetCreators reset (admin)", { player = player.Name, cleared = count })
+    -- re-scan NOW (the join-scan already ran) so the meet re-fires without a rejoin
+    task.defer(function()
+        self:_scanFor(player)
+    end)
+    return { ok = true, cleared = count }
+end
+
 function MeetCreatorService:HatchEggItem(player, eggItemId)
     -- find which creator this egg belongs to
     local def
