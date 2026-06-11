@@ -8,6 +8,7 @@ return {
     -- Which inventory buckets this game uses
     enabled_buckets = {
         pets = true,
+        eggs = true, -- held egg ITEMS (Meet-The-Creator etc.) — hatched on demand
         enhancements = true, -- CoH-style power enhancements (drops; slot via Power Choice)
         weapons = false, -- Disabled for pet simulator
         tools = true, -- Enabled for pickaxes and mining tools
