@@ -29,6 +29,9 @@
       },
       "Configs": {
         "$path": "configs"
+      },
+      "PlaceAssets": {
+        "$path": "assets/place/PlaceAssets"
       }
     },
     "StarterPlayer": {
@@ -42,4 +45,4 @@
       "$path": "src/ReplicatedFirst"
     }
   }
-} 
+}
