@@ -4154,6 +4154,160 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
     end)
 end
 
+-- Click egg -> the inventory CLOSES and a standalone confirm menu appears (Jason:
+-- "you click the egg, it closes the window, brings up the separate hatch menu; yes ->
+-- menu goes away, run the animation and hatch"). Own ScreenGui because the panel is gone.
+function InventoryPanel:_showHatchConfirmation(item)
+    self:Hide()
+
+    local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+    local old = playerGui:FindFirstChild("HatchConfirm")
+    if old then
+        old:Destroy()
+    end
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "HatchConfirm"
+    gui.DisplayOrder = 150
+    gui.IgnoreGuiInset = true
+    gui.Parent = playerGui
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 340, 0, 230)
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 215, 0) -- creator gold (it's an exclusive egg)
+    stroke.Thickness = 2
+    stroke.Parent = frame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -20, 0, 32)
+    title.Position = UDim2.new(0, 10, 0, 10)
+    title.BackgroundTransparency = 1
+    title.Text = "Hatch " .. tostring(item.name or "this egg") .. "?"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 19
+    title.Font = Enum.Font.GothamBold
+    title.ZIndex = 2
+    title.Parent = frame
+
+    -- the egg art, so it reads as THIS egg
+    if item.image then
+        local img = Instance.new("ImageLabel")
+        img.Size = UDim2.new(0, 64, 0, 64)
+        img.Position = UDim2.new(0, 14, 0, 50)
+        img.BackgroundTransparency = 1
+        img.ScaleType = Enum.ScaleType.Fit
+        img.Image = item.image
+        img.ZIndex = 2
+        img.Parent = frame
+    end
+
+    local message = Instance.new("TextLabel")
+    message.Size = UDim2.new(1, -98, 0, 110)
+    message.Position = UDim2.new(0, 88, 0, 46)
+    message.BackgroundTransparency = 1
+    message.Text = table.concat(self:_eggOddsLines(item.egg_def), "\n")
+    message.TextColor3 = Color3.fromRGB(200, 200, 200)
+    message.TextSize = 14
+    message.Font = Enum.Font.Gotham
+    message.TextWrapped = true
+    message.TextXAlignment = Enum.TextXAlignment.Left
+    message.TextYAlignment = Enum.TextYAlignment.Top
+    message.ZIndex = 2
+    message.Parent = frame
+
+    local buttons = Instance.new("Frame")
+    buttons.Size = UDim2.new(1, -20, 0, 38)
+    buttons.Position = UDim2.new(0, 10, 1, -48)
+    buttons.BackgroundTransparency = 1
+    buttons.ZIndex = 2
+    buttons.Parent = frame
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    layout.Padding = UDim.new(0, 10)
+    layout.Parent = buttons
+
+    local function mkButton(text, color, order)
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.new(0, 110, 1, 0)
+        b.BackgroundColor3 = color
+        b.BorderSizePixel = 0
+        b.Text = text
+        b.TextColor3 = Color3.fromRGB(255, 255, 255)
+        b.TextSize = 16
+        b.Font = Enum.Font.GothamBold
+        b.LayoutOrder = order
+        b.ZIndex = 3
+        b.Parent = buttons
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(0, 8)
+        c.Parent = b
+        return b
+    end
+    local noBtn = mkButton("No", Color3.fromRGB(70, 70, 80), 1)
+    local yesBtn = mkButton("HATCH", Color3.fromRGB(46, 160, 67), 2)
+
+    noBtn.Activated:Connect(function()
+        gui:Destroy()
+    end)
+    yesBtn.Activated:Connect(function()
+        gui:Destroy()
+        self:_hatchEggItem(item)
+    end)
+end
+
+-- Bus hatch + the SAME reveal animation world eggs use (one presentation path).
+function InventoryPanel:_hatchEggItem(item)
+    task.spawn(function()
+        local remote = ReplicatedStorage:WaitForChild("GameAPICommand", 5)
+        if not remote then
+            return
+        end
+        local okInvoke, res = pcall(function()
+            return remote:InvokeServer("egg_item.hatch", { egg = item.id })
+        end)
+        local r = okInvoke and type(res) == "table" and (res.result or res) or {}
+        self.logger:info("🥚 HATCH", { egg = item.id, ok = r.ok, pet = r.pet, huge = r.huge })
+        if r.ok ~= true then
+            return
+        end
+        local okAnim, hatchingService = pcall(function()
+            return require(ReplicatedStorage.Shared.Services.EggHatchingService)
+        end)
+        if not (okAnim and hatchingService) then
+            return
+        end
+        -- generated viewport image when one exists for this pet/variant, else the flag
+        -- falls through to the animation's own fallbacks
+        local petImageId = "generated_image"
+        local petsConfig = nil
+        pcall(function()
+            petsConfig = require(ReplicatedStorage.Configs:WaitForChild("pets"))
+        end)
+        local pdata = petsConfig and petsConfig.getPet and petsConfig.getPet(r.pet, r.variant)
+        hatchingService:StartHatchingAnimation({
+            {
+                petType = r.pet,
+                variant = r.variant,
+                power = pdata and pdata.power,
+                eggType = item.id,
+                imageId = item.image, -- the real uploaded egg art
+                petImageId = petImageId,
+                rarityId = r.huge and "huge" or (pdata and pdata.rarity_id),
+                specialHatch = r.huge == true,
+            },
+        })
+    end)
+end
+
 function InventoryPanel:_showDeleteConfirmation(item)
     self.logger:info("🗑️ ITEM DELETE REQUESTED", { itemId = item.id, itemName = item.name })
 
@@ -4302,17 +4456,9 @@ function InventoryPanel:_handlePrimaryAction(item)
     })
 
     if item.folder_source == "eggs" then
-        -- explicit hatch (NEVER automatic — Jason: hold it, trade it, or hatch it).
-        -- The same bus command automation uses; server consumes the item on success.
-        task.spawn(function()
-            local remote = ReplicatedStorage:WaitForChild("GameAPICommand", 5)
-            if not remote then
-                return
-            end
-            local res = remote:InvokeServer("egg_item.hatch", { egg = item.id })
-            local r = type(res) == "table" and (res.result or res) or {}
-            self.logger:info("🥚 HATCH", { egg = item.id, ok = r.ok, pet = r.pet, huge = r.huge })
-        end)
+        -- explicit hatch (NEVER automatic — Jason): close the inventory, ask, and only
+        -- then hatch — with the real reveal animation. Misclicks cost nothing.
+        self:_showHatchConfirmation(item)
         return
     end
 
