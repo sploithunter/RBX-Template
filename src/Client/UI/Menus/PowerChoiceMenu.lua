@@ -1131,7 +1131,12 @@ function PowerChoiceMenu:_fillColumn(holder, pool)
         PowerSlotRow.create(wrap, {
             powerId = r.id,
             name = def.display_name or r.id,
-            subtitle = "L" .. tostring(r.pickLevel) .. " · " .. (def.subtitle or ""),
+            -- the type line is DECISION-time info (Jason: "they don't need to know
+            -- what it is after they've already selected it") — owned rows drop it
+            -- and give the space to the slotted-enhancement discs
+            subtitle = r.state ~= "owned"
+                    and ("L" .. tostring(r.pickLevel) .. " · " .. (def.subtitle or ""))
+                or nil,
             state = r.state,
             slotCount = self:_effectiveSlots(r.id),
             slotContents = contents,
