@@ -137,6 +137,24 @@ function PlayerPowerBadges.start()
     layout.Padding = UDim.new(0, 4)
     layout.Parent = row
 
+    -- the WHOLE pile is one tap/click target -> toggles the Active Buffs panel
+    -- (Jason: per-badge hover fails on touch; one affordance works everywhere)
+    local hit = Instance.new("TextButton")
+    hit.Name = "BuffPanelToggle"
+    hit.BackgroundTransparency = 1
+    hit.Text = ""
+    hit.Size = UDim2.fromScale(1, 1)
+    hit.ZIndex = 9
+    hit.Parent = row
+    hit.Activated:Connect(function()
+        local ok, BuffStatsHud = pcall(function()
+            return require(script.Parent.BuffStatsHud)
+        end)
+        if ok and BuffStatsHud and BuffStatsHud.toggle then
+            BuffStatsHud.toggle()
+        end
+    end)
+
     local badges = {} -- attr -> badge
 
     RunService.RenderStepped:Connect(function()

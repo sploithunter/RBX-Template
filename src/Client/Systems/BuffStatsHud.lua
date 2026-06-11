@@ -60,10 +60,9 @@ local function soonestRemaining(player, untilAttrs, now)
     return remaining < PERMANENT_THRESHOLD and remaining or nil -- nil = permanent (no countdown)
 end
 
+local _instance -- singleton (the badge-pile button toggles it from another module)
+
 function BuffStatsHud.start()
-    if not RunService:IsStudio() then
-        return -- dev-only overlay
-    end
     local self = setmetatable({}, BuffStatsHud)
     self.player = Players.LocalPlayer
     self.rows = {}
@@ -71,7 +70,19 @@ function BuffStatsHud.start()
     self._blinkAccum = 0
     self:_build()
     self:_connect()
+    -- PROMOTED from Studio-only dev overlay to a player panel (Jason: tap the badge
+    -- pile -> "that opens up the whole buff panel"): hidden by default in production,
+    -- visible at boot in Studio (the original dev-readout behavior).
+    self.gui.Enabled = RunService:IsStudio()
+    _instance = self
     return self
+end
+
+-- Toggle the panel (the badge pile is the opener; works on touch and mouse).
+function BuffStatsHud.toggle()
+    if _instance and _instance.gui then
+        _instance.gui.Enabled = not _instance.gui.Enabled
+    end
 end
 
 -- ---- UI -----------------------------------------------------------------
@@ -220,7 +231,9 @@ function BuffStatsHud:_connect()
             return
         end
         self._accum = 0
-        self:_refresh()
+        if self.gui and self.gui.Enabled then
+            self:_refresh()
+        end
     end)
 end
 
