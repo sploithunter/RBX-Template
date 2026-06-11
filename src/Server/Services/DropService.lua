@@ -412,8 +412,10 @@ function DropService:TrySpawnEnhancementDrop(player, source, position)
     -- would be unslottable dead weight for them (Jason)
     local data = self._dataService and self._dataService:GetData(player)
     local hasOrigin = data and data.Archetype ~= nil
-    local record =
-        enh:RollDrop(nil, player:GetAttribute("CurrentArea"), { natural = not hasOrigin })
+    local record = enh:RollDrop(nil, player:GetAttribute("CurrentArea"), {
+        natural = not hasOrigin,
+        playerLevel = player:GetAttribute("Level"), -- band follows the player past the area top
+    })
 
     -- model: authored Assets model (override) > the cogwheel mesh (per-color) > mystery orb
     local model

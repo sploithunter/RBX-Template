@@ -379,7 +379,7 @@ function EnhancementService:RollDrop(rng, areaId, opts)
         end
     end
     local origins = self._config.origins or {}
-    local level = Enhancements.rollLevel(self._config, areaId, rng)
+    local level = Enhancements.rollLevel(self._config, areaId, rng, opts and opts.playerLevel)
 
     -- NATURAL drops: forced for pre-origin players (opts.natural), and otherwise a
     -- coin-flip share of ALL drops (drops.natural_chance) — the junk economy tier.

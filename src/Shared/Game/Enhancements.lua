@@ -237,13 +237,28 @@ end
 
 -- Roll a drop LEVEL for an area: uniform in the area's band, +/- jitter, floor 1.
 -- rng = Random instance (injectable for tests).
-function Enhancements.rollLevel(cfg, areaId, rng)
+--
+-- FOLLOW-PLAYER (Jason: "I'm level 8 and there is no new world to get higher
+-- ones"): once the player outgrows an area's band, the band slides up with them —
+-- effective band = { max(lo, playerLevel - span), max(hi, playerLevel) }. At L8 on
+-- the 1-5 homeworld that's 4-8 (+/- jitter -> finds up to 10); at L50 it's 46-50
+-- (hunting the +2s, per the scaling comment). Below the band top nothing changes,
+-- and future realm bands with high floors still dominate the slid homeworld band.
+function Enhancements.rollLevel(cfg, areaId, rng, playerLevel)
     rng = rng or Random.new()
     local levels = (cfg.drops or {}).levels or {}
     local bands = levels.bands or {}
     local band = bands[tostring(areaId)] or bands.default or { 1, 1 }
     local lo = math.floor(tonumber(band[1]) or 1)
     local hi = math.max(lo, math.floor(tonumber(band[2]) or lo))
+    local follow = levels.follow_player
+    local pl = math.floor(tonumber(playerLevel) or 0)
+    if follow and follow.enabled ~= false and pl > 0 then
+        local span = math.floor(tonumber(follow.span) or 4)
+        lo = math.max(lo, pl - span)
+        hi = math.max(hi, pl)
+        lo = math.min(lo, hi)
+    end
     local jitter = math.floor(tonumber(levels.jitter) or 0)
     local lvl = rng:NextInteger(lo, hi)
     if jitter > 0 then

@@ -202,6 +202,14 @@ return {
             -- value multiplier = 1 + per_level * (enhLevel - playerLevel), so a single
             -- at +2 = 33% * 1.2 ~= 40%, at -2 = 33% * 0.8 ~= 26%. L50 players hunt L52s.
             scaling = { window = 2, per_level = 0.10 },
+            -- FOLLOW-PLAYER (Jason, 2026-06-11: "I'm level 8 and there is no new
+            -- world to get higher ones"): once the player outgrows an area's band,
+            -- it slides up with them — effective band = { max(lo, player - span),
+            -- max(hi, player) }, jitter on top. L8 on the 1-5 homeworld rolls 4-8
+            -- (finds up to 10); L50 rolls 46-50 (hunts 52s). Below the band top
+            -- nothing changes. Realm bands with high floors (e.g. {10,18}) still
+            -- beat the slid homeworld band, so realm hunting stays worth it.
+            follow_player = { enabled = true, span = 4 },
             bands = {
                 default = { 1, 5 }, -- home world (Grass/Desert/Lava/Ice all use this today)
                 -- ["SomeRealmArea"] = { 10, 18 },

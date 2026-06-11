@@ -212,6 +212,40 @@ return function()
             }
             expect(Enhancements.rollLevel(cfg, "NoSuchArea", rng)).to.equal(1)
         end)
+
+        -- FOLLOW-PLAYER (Jason: "level 8 and no new world to get higher ones"): past
+        -- the band top the band slides with the player — { player-span .. player }.
+        it("band follows a player past the area top", function()
+            local rngLo = {
+                NextInteger = function(_, lo)
+                    return lo
+                end,
+            }
+            local rngHi = {
+                NextInteger = function(_, _, hi)
+                    return hi
+                end,
+            }
+            local span = cfg.drops.levels.follow_player.span
+            local jitter = cfg.drops.levels.jitter
+            -- L8 on the 1-5 homeworld: low roll = (8-span) - jitter, high = 8 + jitter
+            expect(Enhancements.rollLevel(cfg, nil, rngLo, 8)).to.equal(8 - span - jitter)
+            expect(Enhancements.rollLevel(cfg, nil, rngHi, 8)).to.equal(8 + jitter)
+            -- L50 endgame: hunts band-top + jitter (the +2s)
+            expect(Enhancements.rollLevel(cfg, nil, rngHi, 50)).to.equal(50 + jitter)
+        end)
+
+        it("below the band top the player level changes nothing", function()
+            local rngHi = {
+                NextInteger = function(_, _, hi)
+                    return hi
+                end,
+            }
+            local band = cfg.drops.levels.bands.default
+            local maxLvl = band[2] + cfg.drops.levels.jitter
+            expect(Enhancements.rollLevel(cfg, nil, rngHi, 3)).to.equal(maxLvl)
+            expect(Enhancements.rollLevel(cfg, nil, rngHi, nil)).to.equal(maxLvl)
+        end)
     end)
 
     describe("CoH level scaling (Jason's rules)", function()
