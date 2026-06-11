@@ -1777,7 +1777,10 @@ function EggInteractionService:OnEKeyPressed()
     elseif hatchActionMode == "auto" then
         self:ToggleAutoHatch()
     else
-        self:HandleEggPurchase(currentTarget, 1, "Single")
+        -- MANUAL = one hatch SESSION per press, of the SELECTED count (Jason: "not
+        -- one egg, one hatch session — it is manual"). The server clamps the count
+        -- to entitlement + affordability either way.
+        self:HandleEggPurchase(currentTarget, selectedHatchCount, "Selected")
     end
 end
 
