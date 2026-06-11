@@ -488,6 +488,11 @@ function TradeService:ListMyPets(player)
             element = rec.element,
             huge = rec.huge,
             locked = rec.locked,
+            -- display payload (Jason: "we have all the code for the UI — why isn't
+            -- it all there"): stack size + the special-record identity fields
+            quantity = tonumber(rec.quantity) or 1,
+            serial = rec.serial,
+            level = rec.level,
         })
     end
     return { ok = true, pets = out }

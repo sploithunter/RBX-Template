@@ -505,10 +505,40 @@ function TradePanel:_renderWindow(state)
         self:_callBus("trade.cancel", {})
     end)
 
-    -- uids already in my offer (left column marks them instead of double-adding)
-    local offered = {}
+    -- what's already in my offer: specials by uid; stack COPIES counted by kind
+    -- (each escrowed copy has its own offer-uid — the count is the display truth)
+    local offered = {} -- [uid] = true (specials)
+    local offeredCount = {} -- [id|variant|huge] = n (stack copies)
+    local function kindKey(it)
+        return tostring(it.id)
+            .. "|"
+            .. tostring(it.variant or "basic")
+            .. "|"
+            .. tostring(it.huge == true)
+    end
     for _, item in ipairs(state.you.items or {}) do
         offered[item.uid] = true
+        local k = kindKey(item)
+        offeredCount[k] = (offeredCount[k] or 0) + 1
+    end
+
+    -- aggregate same-kind offer items into ONE card xN (click removes one copy)
+    local function aggregate(items)
+        local groups, order = {}, {}
+        for _, item in ipairs(items or {}) do
+            local k = kindKey(item)
+            local g = groups[k]
+            if not g then
+                g = table.clone(item)
+                g.count = 0
+                g.uids = {}
+                groups[k] = g
+                order[#order + 1] = g
+            end
+            g.count += 1
+            g.uids[#g.uids + 1] = item.uid
+        end
+        return order
     end
 
     local result = self:_callBus("trade.myPets", {})
@@ -523,26 +553,33 @@ function TradePanel:_renderWindow(state)
         size = UDim2.new(colW, -20, 1, -156),
         tint = COLORS.row,
         offered = offered,
+        offeredCount = offeredCount,
+        kindKey = kindKey,
         onClick = function(pet)
-            if not pet.locked and not offered[pet.uid] then
-                self:_callBus("trade.add", { uid = pet.uid })
-            end
-        end,
-    })
-    self:_petColumn(win, ("Your Offer (%d)"):format(#(state.you.items or {})), state.you.items, {
-        pos = UDim2.new(colW, 8, 0, 84),
-        size = UDim2.new(colW, -16, 1, -156),
-        tint = COLORS.you,
-        confirmed = state.you.confirmed,
-        emptyText = "Click your pets to offer them",
-        onClick = function(pet)
-            self:_callBus("trade.remove", { uid = pet.uid })
+            self:_callBus("trade.add", { uid = pet.uid })
         end,
     })
     self:_petColumn(
         win,
+        ("Your Offer (%d)"):format(#(state.you.items or {})),
+        aggregate(state.you.items),
+        {
+            pos = UDim2.new(colW, 8, 0, 84),
+            size = UDim2.new(colW, -16, 1, -156),
+            tint = COLORS.you,
+            confirmed = state.you.confirmed,
+            emptyText = "Click your pets to offer them",
+            onClick = function(pet)
+                -- aggregated card: pull ONE copy back (last escrowed uid in the group)
+                local uid = pet.uids and pet.uids[#pet.uids] or pet.uid
+                self:_callBus("trade.remove", { uid = uid })
+            end,
+        }
+    )
+    self:_petColumn(
+        win,
         (state.them.name or "Them") .. ("'s Offer (%d)"):format(#(state.them.items or {})),
-        state.them.items,
+        aggregate(state.them.items),
         {
             pos = UDim2.new(2 * colW, 2, 0, 84),
             size = UDim2.new(colW, -16, 1, -156),
@@ -658,7 +695,17 @@ end
 -- Inventory-style card: generated pet image (emoji fallback), name plate, variant
 -- stroke, HUGE chip, lock overlay, hover tooltip + highlight.
 function TradePanel:_petCard(parent, pet, order, opts)
-    local inOffer = opts.offered and opts.offered[pet.uid]
+    -- stacks: REMAINING = quantity - copies already escrowed (Jason thought he'd
+    -- offered all his bunnies — he couldn't see the remainder)
+    local quantity = tonumber(pet.quantity) or 1
+    local offeredN = 0
+    if opts.offeredCount and opts.kindKey and quantity > 1 then
+        offeredN = opts.offeredCount[opts.kindKey(pet)] or 0
+    elseif opts.offered and opts.offered[pet.uid] then
+        offeredN = 1
+    end
+    local remaining = math.max(0, quantity - offeredN)
+    local inOffer = offeredN >= quantity -- fully offered
     local clickable = opts.onClick ~= nil and not pet.locked and not inOffer
 
     local card = Instance.new("TextButton")
@@ -705,11 +752,50 @@ function TradePanel:_petCard(parent, pet, order, opts)
         fallback.Parent = card
     end
 
+    -- xN badge: offer cards show the aggregated count; inventory stacks show what
+    -- REMAINS offerable (the number that answers "do I have more of these?")
+    local badgeN = pet.count or (quantity > 1 and remaining) or nil
+    if badgeN and badgeN > 1 or (quantity > 1 and offeredN > 0) then
+        local qty = Instance.new("TextLabel")
+        qty.Size = UDim2.new(0, 30, 0, 18)
+        qty.Position = UDim2.new(1, -32, 0, 2)
+        qty.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+        qty.BackgroundTransparency = 0.25
+        qty.Text = "×" .. tostring(badgeN or remaining)
+        qty.TextColor3 = COLORS.text
+        qty.TextScaled = true
+        qty.Font = Enum.Font.GothamBold
+        qty.ZIndex = 106
+        qty.Parent = card
+        corner(qty, 6)
+        local qc = Instance.new("UITextSizeConstraint")
+        qc.MaxTextSize = 13
+        qc.Parent = qty
+    end
+    -- partially-offered stack: gold chip so the split is visible at a glance
+    if quantity > 1 and offeredN > 0 and not inOffer then
+        local chip = Instance.new("TextLabel")
+        chip.Size = UDim2.new(0, 64, 0, 16)
+        chip.Position = UDim2.new(0, 3, 0, 2)
+        chip.BackgroundColor3 = Color3.fromRGB(120, 95, 20)
+        chip.BackgroundTransparency = 0.2
+        chip.Text = offeredN .. " offered"
+        chip.TextColor3 = Color3.fromRGB(255, 225, 140)
+        chip.TextScaled = true
+        chip.Font = Enum.Font.GothamBold
+        chip.ZIndex = 106
+        chip.Parent = card
+        corner(chip, 6)
+        local cc2 = Instance.new("UITextSizeConstraint")
+        cc2.MaxTextSize = 11
+        cc2.Parent = chip
+    end
+
     local name = Instance.new("TextLabel")
     name.Size = UDim2.new(1, -6, 0, 22)
     name.Position = UDim2.new(0, 3, 1, -24)
     name.BackgroundTransparency = 1
-    name.Text = petText(pet)
+    name.Text = petText(pet) .. (pet.serial and (" #" .. tostring(pet.serial)) or "")
     name.TextColor3 = COLORS.text
     name.TextScaled = true
     name.Font = Enum.Font.GothamBold
@@ -783,9 +869,19 @@ function TradePanel:_showCardTooltip(card, pet)
     list.Parent = tip
 
     local lines = {
-        petText(pet),
+        petText(pet) .. (pet.serial and (" #" .. tostring(pet.serial)) or ""),
         "Variant: " .. tostring(pet.variant or "basic"),
     }
+    local qty = tonumber(pet.quantity) or 1
+    if qty > 1 then
+        lines[#lines + 1] = "Owned: ×" .. qty
+    end
+    if pet.count and pet.count > 1 then
+        lines[#lines + 1] = "In offer: ×" .. pet.count
+    end
+    if pet.level then
+        lines[#lines + 1] = "Level: " .. tostring(pet.level)
+    end
     if pet.element and pet.element ~= "neutral" then
         lines[#lines + 1] = "Element: " .. tostring(pet.element)
     end
