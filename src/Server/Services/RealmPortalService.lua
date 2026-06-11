@@ -107,46 +107,59 @@ function RealmPortalService:_ensurePrompt(part, def)
     return prompt
 end
 
--- A big 🔒 billboard on a locked portal (programmatic — no 3D asset needed). Sized in
--- STUDS so it reads on the huge arches; removed when the config unlocks.
+-- A big lock ON THE PORTAL FACE of a locked gate (programmatic — no 3D asset).
+-- SurfaceGuis (front + back), not a billboard: the gates stand back-to-back in
+-- Halo/Horn pairs 3 studs apart, and an AlwaysOnTop billboard showed the FAR
+-- gate's lock bleeding through the near one (Jason: "two sides to the gate so you
+-- get to see both locks"). Surface rendering occludes naturally — one lock per
+-- viewing side. Removed when the config unlocks.
 function RealmPortalService:_ensureLockBadge(part)
-    local existing = part:FindFirstChild("RealmLockBadge")
+    local names = { "RealmLockBadgeFront", "RealmLockBadgeBack", "RealmLockBadge" }
     if self._portalsConfig.locked ~= true then
-        if existing then
-            existing:Destroy()
+        for _, n in ipairs(names) do
+            local g = part:FindFirstChild(n)
+            if g then
+                g:Destroy()
+            end
         end
         return
     end
-    if existing then
-        return
+    local function makeFace(face, name)
+        if part:FindFirstChild(name) then
+            return
+        end
+        local gui = Instance.new("SurfaceGui")
+        gui.Name = name
+        gui.Face = face
+        gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+        gui.PixelsPerStud = 24
+        gui.LightInfluence = 0
+        gui.Parent = part
+        local lock = Instance.new("TextLabel")
+        lock.Size = UDim2.fromScale(0.62, 0.62)
+        lock.AnchorPoint = Vector2.new(0.5, 0.5)
+        lock.Position = UDim2.fromScale(0.5, 0.45)
+        lock.BackgroundTransparency = 1
+        lock.Text = "🔒"
+        lock.TextScaled = true
+        lock.Font = Enum.Font.GothamBlack
+        lock.TextColor3 = Color3.fromRGB(255, 255, 255)
+        lock.TextStrokeTransparency = 0.2
+        lock.Parent = gui
+        local caption = Instance.new("TextLabel")
+        caption.Size = UDim2.fromScale(0.9, 0.12)
+        caption.AnchorPoint = Vector2.new(0.5, 0)
+        caption.Position = UDim2.fromScale(0.5, 0.78)
+        caption.BackgroundTransparency = 1
+        caption.Text = "COMING SOON"
+        caption.TextScaled = true
+        caption.Font = Enum.Font.GothamBlack
+        caption.TextColor3 = Color3.fromRGB(255, 215, 0)
+        caption.TextStrokeTransparency = 0.1
+        caption.Parent = gui
     end
-    local studs = tonumber(self._portalsConfig.lock_badge_studs) or 10
-    local gui = Instance.new("BillboardGui")
-    gui.Name = "RealmLockBadge"
-    gui.Size = UDim2.new(studs, 0, studs, 0)
-    gui.AlwaysOnTop = true
-    gui.MaxDistance = 250
-    gui.StudsOffsetWorldSpace = Vector3.new(0, 2, 0)
-    gui.Parent = part
-    local lock = Instance.new("TextLabel")
-    lock.Size = UDim2.fromScale(1, 1)
-    lock.BackgroundTransparency = 1
-    lock.Text = "🔒"
-    lock.TextScaled = true
-    lock.Font = Enum.Font.GothamBlack
-    lock.TextColor3 = Color3.fromRGB(255, 255, 255)
-    lock.TextStrokeTransparency = 0.2
-    lock.Parent = gui
-    local caption = Instance.new("TextLabel")
-    caption.Size = UDim2.fromScale(1, 0.18)
-    caption.Position = UDim2.fromScale(0, 1)
-    caption.BackgroundTransparency = 1
-    caption.Text = "COMING SOON"
-    caption.TextScaled = true
-    caption.Font = Enum.Font.GothamBlack
-    caption.TextColor3 = Color3.fromRGB(255, 215, 0)
-    caption.TextStrokeTransparency = 0.1
-    caption.Parent = gui
+    makeFace(Enum.NormalId.Front, "RealmLockBadgeFront")
+    makeFace(Enum.NormalId.Back, "RealmLockBadgeBack")
 end
 
 -- World S3: LoadAsset the Hell-face model once into ReplicatedStorage.RealmModels so the client
