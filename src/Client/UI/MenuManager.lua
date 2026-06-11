@@ -293,6 +293,17 @@ end
 -- Toggle a panel (open if closed, close if open)
 function MenuManager:TogglePanel(panelName, transitionEffect)
     if self.currentPanelName == panelName then
+        -- SELF-HEAL stale open-state (Jason: "you have to click the pets button
+        -- twice to get it to open again"): panels' own X buttons call panel:Hide()
+        -- directly without informing the manager, so currentPanelName still says
+        -- open. If the tracked panel reports itself hidden, clear the stale state
+        -- and OPEN instead of no-op "closing" a destroyed frame.
+        local panel = self.currentPanel
+        if panel and panel.isVisible == false then
+            self.currentPanel = nil
+            self.currentPanelName = nil
+            return self:OpenPanel(panelName, transitionEffect)
+        end
         self:CloseCurrentPanel(transitionEffect)
         return false
     else
