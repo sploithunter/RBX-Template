@@ -1587,11 +1587,13 @@ end
 -- Read-only snapshot for EXTERNAL hatch controls (the inventory header strip):
 -- auto state, selected count, and the live effective max.
 function EggInteractionService:GetHatchUiState()
+    local target = currentTargetService and currentTargetService:GetCurrentTarget()
     return {
         auto = autoHatchEnabled,
         autoOwned = isAutoHatchOwned(),
         count = selectedHatchCount,
         max = getEffectiveMaxHatchCount(),
+        hasTarget = target ~= nil and target ~= "None",
     }
 end
 

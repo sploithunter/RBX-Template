@@ -771,7 +771,23 @@ function InventoryPanel:_createUI(parent)
                         or Color3.fromRGB(90, 90, 110)
                     countBtn.Text = ("Eggs: %d"):format(st.count)
                 end
+                -- ToggleAutoHatch REFUSES without ownership or a nearby egg, and its
+                -- status messages render on the egg-stand panel (invisible from here) —
+                -- Jason: "it's not cycling the name". Flash the reason on the pill.
+                local function flash(text)
+                    autoBtn.Text = text
+                    task.delay(1.4, refresh)
+                end
                 autoBtn.Activated:Connect(function()
+                    local st = EggSvc:GetHatchUiState()
+                    if not st.auto and not st.autoOwned then
+                        flash("🔒 Locked")
+                        return
+                    end
+                    if not st.auto and not st.hasTarget then
+                        flash("Go near an egg")
+                        return
+                    end
                     EggSvc:ToggleAutoHatch()
                     refresh()
                 end)
