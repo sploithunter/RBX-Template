@@ -60,7 +60,8 @@ function PetCardStyle.styleFor(rarityId, variant)
     }
 end
 
-local function colorSequence(colors, fallback)
+-- public: shared by every gradient site (rings, backgrounds, icon backdrops)
+function PetCardStyle.colorSequence(colors, fallback)
     local usable = {}
     if type(colors) == "table" then
         for _, c in ipairs(colors) do
@@ -82,7 +83,7 @@ local function colorSequence(colors, fallback)
     return ColorSequence.new(keys)
 end
 
-local function spin(gradient, seconds)
+function PetCardStyle.spin(gradient, seconds)
     TweenService:Create(
         gradient,
         TweenInfo.new(seconds or 3, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
@@ -92,9 +93,10 @@ end
 
 -- Dress `frame` as a real pet card: rarity stroke (gradient ring), inner variant
 -- ring for golden/rainbow, variant background gradient — animation per config.
-function PetCardStyle.applyChrome(frame, rarityId, variant, petId)
+function PetCardStyle.applyChrome(frame, rarityId, variant, petId, colorOverride)
     local style = PetCardStyle.styleFor(rarityId, variant)
-    local color = PetCardStyle.rarityColor(rarityId, petId)
+    local color = (typeof(colorOverride) == "Color3" and colorOverride)
+        or PetCardStyle.rarityColor(rarityId, petId)
 
     frame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
 
@@ -103,12 +105,13 @@ function PetCardStyle.applyChrome(frame, rarityId, variant, petId)
     stroke.Color = color
     stroke.Thickness = tonumber(style.ring.thickness) or 2
     stroke.Parent = frame
+    stroke:SetAttribute("BaseThickness", stroke.Thickness) -- hover anim scales from this
     local ringGradient = Instance.new("UIGradient")
-    ringGradient.Color = colorSequence(style.ring.colors, color)
+    ringGradient.Color = PetCardStyle.colorSequence(style.ring.colors, color)
     ringGradient.Rotation = tonumber(style.ring.rotation) or 0
     ringGradient.Parent = stroke
     if style.ring.animated == true then
-        spin(ringGradient, tonumber(style.ring.rotation_seconds) or 3)
+        PetCardStyle.spin(ringGradient, tonumber(style.ring.rotation_seconds) or 3)
     end
 
     if style.variantRing then
@@ -127,21 +130,21 @@ function PetCardStyle.applyChrome(frame, rarityId, variant, petId)
         vs.Thickness = tonumber(style.variantRing.thickness) or 2
         vs.Parent = vf
         local vg = Instance.new("UIGradient")
-        vg.Color = colorSequence(style.variantRing.colors, color)
+        vg.Color = PetCardStyle.colorSequence(style.variantRing.colors, color)
         vg.Rotation = tonumber(style.variantRing.rotation) or 0
         vg.Parent = vs
         if style.variantRing.animated == true then
-            spin(vg, tonumber(style.variantRing.rotation_seconds) or 3)
+            PetCardStyle.spin(vg, tonumber(style.variantRing.rotation_seconds) or 3)
         end
     end
 
     local bg = Instance.new("UIGradient")
     bg.Name = "VariantBackgroundGradient"
-    bg.Color = colorSequence(style.background.colors, Color3.fromRGB(45, 45, 55))
+    bg.Color = PetCardStyle.colorSequence(style.background.colors, Color3.fromRGB(45, 45, 55))
     bg.Rotation = tonumber(style.background.rotation) or 45
     bg.Parent = frame
     if style.background.animated == true then
-        spin(bg, tonumber(style.background.rotation_seconds) or 5)
+        PetCardStyle.spin(bg, tonumber(style.background.rotation_seconds) or 5)
     end
 
     return color

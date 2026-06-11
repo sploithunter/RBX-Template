@@ -82,6 +82,8 @@ if not petRolesOk then
     PET_ROLES = nil
 end
 -- Support-aura kind -> { biome element for the disc colour, human label }.
+local PetCardStyle = require(script.Parent.Parent.PetCardStyle)
+
 local SUPPORT_META = {
     heal = { element = "earth", label = "Heal" },
     defense = { element = "ice", label = "Defense" },
@@ -2778,82 +2780,11 @@ function InventoryPanel:_itemMatchesCategory(item, categoryName, categoryFolders
     return legacyMatch
 end
 
-function InventoryPanel:_colorSequenceFromList(colors, fallbackColor)
-    local usableColors = {}
-    if type(colors) == "table" then
-        for _, color in ipairs(colors) do
-            if typeof(color) == "Color3" then
-                table.insert(usableColors, color)
-            end
-        end
-    end
-
-    if #usableColors == 0 then
-        usableColors = { fallbackColor or Color3.fromRGB(45, 45, 55) }
-    end
-    if #usableColors == 1 then
-        return ColorSequence.new(usableColors[1])
-    end
-
-    local keypoints = {}
-    for index, color in ipairs(usableColors) do
-        local t = (index - 1) / (#usableColors - 1)
-        table.insert(keypoints, ColorSequenceKeypoint.new(t, color))
-    end
-    return ColorSequence.new(keypoints)
-end
-
-function InventoryPanel:_getPetCardVisualConfig()
-    return (
-        self.inventoryConfig
-        and self.inventoryConfig.buckets
-        and self.inventoryConfig.buckets.pets
-        and self.inventoryConfig.buckets.pets.card_visuals
-    ) or {}
-end
-
-function InventoryPanel:_getPetCardVisualStyle(item)
-    local config = self:_getPetCardVisualConfig()
-    local rarityId = tostring(item.rarityId or item.rarity or "common"):lower()
-    local variantId = tostring(item.variant or "basic"):lower()
-
-    local ringConfig = (config.rarity_rings and config.rarity_rings[rarityId])
-        or config.ring_default
-        or {}
-    local variantRingConfig = variantId ~= "basic"
-            and config.variant_rings
-            and config.variant_rings[variantId]
-        or nil
-    local backgroundConfig = (config.variant_backgrounds and config.variant_backgrounds[variantId])
-        or (config.variant_backgrounds and config.variant_backgrounds.basic)
-        or {}
-
-    return {
-        ring = ringConfig,
-        rarityRing = ringConfig,
-        variantRing = variantRingConfig,
-        background = backgroundConfig,
-    }
-end
-
-function InventoryPanel:_animateGradientRotation(gradient, seconds)
-    if not gradient then
-        return
-    end
-
-    local tween = TweenService:Create(
-        gradient,
-        TweenInfo.new(seconds or 3, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
-        { Rotation = 360 }
-    )
-    tween:Play()
-end
-
 function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     -- Item frame
     local itemFrame = Instance.new("Frame")
     itemFrame.Name = item.id
-    local cardStyle = self:_getPetCardVisualStyle(item)
+    local cardStyle = PetCardStyle.styleFor(item.rarityId, item.variant)
     itemFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     itemFrame.BorderSizePixel = 0
     itemFrame.LayoutOrder = layoutOrder
@@ -2866,72 +2797,10 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     corner.CornerRadius = UDim.new(0, 12)
     corner.Parent = itemFrame
 
-    -- Pet border: rarity owns the outer frame; variant treatments layer inside it.
-    local stroke = Instance.new("UIStroke")
-    stroke.Name = "RarityStroke"
-    stroke.Color = item.color
-    stroke.Thickness = tonumber(cardStyle.ring.thickness) or 2
-    stroke.Transparency = 0
-    stroke.Parent = itemFrame
-    stroke:SetAttribute("BaseThickness", stroke.Thickness)
-
-    local ringGradient = Instance.new("UIGradient")
-    ringGradient.Name = "RarityRingGradient"
-    ringGradient.Color = self:_colorSequenceFromList(cardStyle.ring.colors, item.color)
-    ringGradient.Rotation = tonumber(cardStyle.ring.rotation) or 0
-    ringGradient.Parent = stroke
-    if cardStyle.ring.animated == true then
-        self:_animateGradientRotation(ringGradient, tonumber(cardStyle.ring.rotation_seconds) or 3)
-    end
-
-    if cardStyle.variantRing then
-        local variantFrame = Instance.new("Frame")
-        variantFrame.Name = "VariantStrokeFrame"
-        variantFrame.BackgroundTransparency = 1
-        variantFrame.BorderSizePixel = 0
-        variantFrame.Position = UDim2.new(0, 4, 0, 4)
-        variantFrame.Size = UDim2.new(1, -8, 1, -8)
-        variantFrame.ZIndex = 104
-        variantFrame.Parent = itemFrame
-
-        local variantCorner = Instance.new("UICorner")
-        variantCorner.CornerRadius = UDim.new(0, 9)
-        variantCorner.Parent = variantFrame
-
-        local variantStroke = Instance.new("UIStroke")
-        variantStroke.Name = "VariantStroke"
-        variantStroke.Color = item.color
-        variantStroke.Thickness = tonumber(cardStyle.variantRing.thickness) or 2
-        variantStroke.Transparency = 0
-        variantStroke.Parent = variantFrame
-
-        local variantGradient = Instance.new("UIGradient")
-        variantGradient.Name = "VariantRingGradient"
-        variantGradient.Color =
-            self:_colorSequenceFromList(cardStyle.variantRing.colors, item.color)
-        variantGradient.Rotation = tonumber(cardStyle.variantRing.rotation) or 0
-        variantGradient.Parent = variantStroke
-        if cardStyle.variantRing.animated == true then
-            self:_animateGradientRotation(
-                variantGradient,
-                tonumber(cardStyle.variantRing.rotation_seconds) or 3
-            )
-        end
-    end
-
-    -- Background gradient
-    local gradient = Instance.new("UIGradient")
-    gradient.Name = "VariantBackgroundGradient"
-    gradient.Color =
-        self:_colorSequenceFromList(cardStyle.background.colors, Color3.fromRGB(45, 45, 55))
-    gradient.Rotation = tonumber(cardStyle.background.rotation) or 45
-    gradient.Parent = itemFrame
-    if cardStyle.background.animated == true then
-        self:_animateGradientRotation(
-            gradient,
-            tonumber(cardStyle.background.rotation_seconds) or 5
-        )
-    end
+    -- card chrome (rarity ring + variant ring + background gradients) via the
+    -- SHARED PetCardStyle — the same renderer the trade window uses (Jason: "the
+    -- whole point of this game is to make reusable components")
+    PetCardStyle.applyChrome(itemFrame, item.rarityId, item.variant, item.petType, item.color)
 
     -- Item icon background
     local iconBG = Instance.new("Frame")
@@ -2980,14 +2849,11 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
         iconBG.BackgroundTransparency = 0.35
         local iconGradient = Instance.new("UIGradient")
         iconGradient.Name = "VariantIconGradient"
-        iconGradient.Color = self:_colorSequenceFromList(cardStyle.variantRing.colors, item.color)
+        iconGradient.Color = PetCardStyle.colorSequence(cardStyle.variantRing.colors, item.color)
         iconGradient.Rotation = tonumber(cardStyle.variantRing.rotation) or 0
         iconGradient.Parent = iconBG
         if cardStyle.variantRing.animated == true then
-            self:_animateGradientRotation(
-                iconGradient,
-                tonumber(cardStyle.variantRing.rotation_seconds) or 3
-            )
+            PetCardStyle.spin(iconGradient, tonumber(cardStyle.variantRing.rotation_seconds) or 3)
         end
     end
 
