@@ -1087,6 +1087,8 @@ function GameAPIService:_registerCommands()
             if enhSvc and enhSvc.WipeAll then
                 enhSvc:WipeAll(context.player)
             end
+            -- MetCreators deliberately KEPT (Jason): the once-ever meet must not re-fire
+            -- per reset — meet.reset is the explicit re-arm when you WANT another egg.
             return { ok = true, archetype = nil, state = prog:GetClaimState(context.player) }
         end,
     })

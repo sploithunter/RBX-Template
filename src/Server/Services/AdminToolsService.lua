@@ -673,6 +673,10 @@ function AdminToolsService:_handleResetToBeginning(adminPlayer, data)
         end
     end)
     playerData.QuestClaims = {}
+    -- MetCreators is deliberately KEPT (like PetIndex): the once-ever Meet-The-Creator
+    -- must NOT re-fire on every playtest reset (Jason: "don't reset the flag when I
+    -- reset — that way I don't have a whole inventory full of them"). The exclusives
+    -- the guard keeps were legitimately met/hatched; meet.reset is the explicit re-arm.
     playerData.Achievements = nil
     playerData.Ledger = nil
     playerData.EnhancementIndex = nil
