@@ -168,6 +168,10 @@ function QuestService:Claim(player, questId)
     ledger[questId] = (ledger[questId] or 0) + 1
     self._dataService:RequestSave(player, "quest_claim", { critical = true })
     fireGameEvent(player, "quest_complete", { quest = questId }) -- config-driven fanfare
+    -- Stamp the NEXT mission's since_start baseline NOW (List does the stamping). Lazily
+    -- waiting for the next UI poll left a gap where kills/hatches between this claim and
+    -- the next quest.list got absorbed into the baseline and never counted.
+    self:List(player)
     return { ok = true, quest = questId, reward = granted and granted.granted }
 end
 
