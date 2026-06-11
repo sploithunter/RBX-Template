@@ -1219,7 +1219,10 @@ local petConfig = {
             cost = 0,
             currency = "coins",
             purchasable = false,
-            huge = { chance = 0.01, pets = { colorado = 1 } }, -- 1 in 100: the jackpot
+            -- STATED odds are REAL odds (fixed_odds): no luck of any kind applies to
+            -- inventory-item eggs — Roblox paid-egg policy + one clean rule
+            fixed_odds = true,
+            huge = { chance = 0.01, pets = { colorado = 1 } }, -- 1 in 100: the jackpot, stated
             asset_id = "rbxassetid://94487781424433", -- 3D egg (PlaceAssets-cached)
             image_id = "rbxassetid://120328710003120",
             unlock_requirement = nil,
@@ -1238,6 +1241,15 @@ local petConfig = {
                 allow_rainbow = true,
                 cost_multiplier = 20,
             },
+            modifier_support = {
+                supports_luck_gamepass = true,
+                supports_golden_gamepass = true,
+                supports_rainbow_gamepass = true,
+                max_luck_multiplier = 10.0,
+            },
+            hatching_time = 3,
+            guaranteed_shiny_chance = 0,
+            bonus_xp = 0,
         },
 
         basic_egg = {
@@ -1777,6 +1789,67 @@ function petConfig.simulateHatch(eggType, playerData)
     -- golden/rainbow in stage 2. Replaces the old best-of-N reroll model (which needed
     -- an ambiguous "best" ranking and leaked plain commons).
     local gamepassMods = petConfig.gamepass_modifiers
+    -- FIXED ODDS (Jason / Roblox policy): inventory-item eggs (Meet-The-Creator,
+    -- exclusives, anything purchasable) hatch at exactly their STATED odds — no
+    -- luck, no gamepass multipliers, no boosts, and firstHatchLuck is NOT consumed
+    -- (it stays armed for the player's first WORLD egg). One flag on the egg def.
+    if eggData.fixed_odds == true then
+        local fixedWeights = petWeights
+        local totalW = 0
+        for _, w in pairs(fixedWeights) do
+            totalW = totalW + w
+        end
+        local roll = math.random() * totalW
+        local selectedPet
+        for petName, w in pairs(fixedWeights) do
+            roll = roll - w
+            if roll <= 0 then
+                selectedPet = petName
+                break
+            end
+        end
+        selectedPet = selectedPet or next(fixedWeights)
+        -- huge stage at the flat stated chance
+        local hugeData = eggData.huge
+        if
+            hugeData
+            and (tonumber(hugeData.chance) or 0) > 0
+            and math.random() < hugeData.chance
+        then
+            local hp = next(hugeData.pets or {})
+            if hp then
+                return {
+                    pet = hp,
+                    variant = "basic",
+                    huge = true,
+                    finalGoldenChance = 0,
+                    finalRainbowChance = 0,
+                    luckMultiplier = 1,
+                    petData = petConfig.getPet(hp, "basic"),
+                }
+            end
+        end
+        -- variant at the flat stated channel rates
+        local rates = eggData.rarity_rates or {}
+        local g = tonumber(rates.golden_chance) or 0
+        local r = tonumber(rates.rainbow_chance) or 0
+        local vroll = math.random()
+        local variant = "basic"
+        if vroll < r then
+            variant = "rainbow"
+        elseif vroll < r + g then
+            variant = "golden"
+        end
+        return {
+            pet = selectedPet,
+            variant = variant,
+            finalGoldenChance = g,
+            finalRainbowChance = r,
+            luckMultiplier = 1,
+            petData = petConfig.getPet(selectedPet, variant),
+        }
+    end
+
     local luckMultiplier = gamepassMods.base_luck
     if playerData.level then
         luckMultiplier = luckMultiplier + (playerData.level * gamepassMods.luck_per_level)
