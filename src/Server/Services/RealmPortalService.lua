@@ -176,9 +176,11 @@ function RealmPortalService:_ensureLockBadge(part)
         lock.TextStrokeTransparency = 0.2
         lock.Parent = gui
         local caption = Instance.new("TextLabel")
-        caption.Size = UDim2.fromScale(0.9, 0.12)
+        -- narrow + high enough to fit INSIDE the visible oval (the glow plane runs
+        -- behind the dark frame, which cropped a 0.9-wide caption to "OMING SOO")
+        caption.Size = UDim2.fromScale(0.52, 0.1)
         caption.AnchorPoint = Vector2.new(0.5, 0)
-        caption.Position = UDim2.fromScale(0.5, 0.7) -- 0.78 sank into the terrain at the gate's foot
+        caption.Position = UDim2.fromScale(0.5, 0.66)
         caption.BackgroundTransparency = 1
         caption.Text = "COMING SOON"
         caption.TextScaled = true
