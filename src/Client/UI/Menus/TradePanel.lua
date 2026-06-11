@@ -473,7 +473,8 @@ end
 -- THREE PANELS (Jason: "borrow from the inventory menu... full icon, hover info"):
 -- left = YOUR tradeable pets (inventory-style cards, click to offer), middle = your
 -- offer (click to pull back), right = their offer (read-only). Mirrored per client.
-local VARIANT_COLORS = {
+local PetCardStyle = require(script.Parent.Parent.PetCardStyle)
+local VARIANT_COLORS = { -- tooltip stroke accents only; cards use PetCardStyle chrome
     basic = Color3.fromRGB(120, 125, 140),
     golden = Color3.fromRGB(255, 200, 60),
     rainbow = Color3.fromRGB(255, 90, 210),
@@ -712,17 +713,14 @@ function TradePanel:_petCard(parent, pet, order, opts)
     local card = Instance.new("TextButton")
     card.Text = ""
     card.LayoutOrder = order
-    card.BackgroundColor3 = COLORS.panel
-    card.BackgroundTransparency = 0.15
     card.AutoButtonColor = clickable
     card.Active = clickable
     card.ZIndex = 103
     card.Parent = parent
-    corner(card, 10)
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = VARIANT_COLORS[pet.variant] or VARIANT_COLORS.basic
-    stroke.Thickness = pet.huge and 3 or 2
-    stroke.Parent = card
+    corner(card, 12)
+    -- the REAL pet-card chrome (rarity ring + variant ring/background, animated per
+    -- config) — same config the inventory cards render from (PetCardStyle)
+    PetCardStyle.applyChrome(card, pet.rarity_id, pet.variant, pet.id)
 
     -- icon: pre-generated pet image viewport (same source the inventory uses)
     local icon
@@ -827,12 +825,12 @@ function TradePanel:_petCard(parent, pet, order, opts)
     card.MouseEnter:Connect(function()
         self:_showCardTooltip(card, pet)
         if clickable then
-            card.BackgroundTransparency = 0
+            card.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
         end
     end)
     card.MouseLeave:Connect(function()
         self:_hideCardTooltip()
-        card.BackgroundTransparency = 0.15
+        card.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     end)
 
     if clickable then

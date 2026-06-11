@@ -493,6 +493,7 @@ function TradeService:ListMyPets(player)
             quantity = tonumber(rec.quantity) or 1,
             serial = rec.serial,
             level = rec.level,
+            rarity_id = rec.rarity_id,
         })
     end
     return { ok = true, pets = out }
