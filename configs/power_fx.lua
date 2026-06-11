@@ -167,56 +167,56 @@ return {
     sounds = {
         cast = {
             grass = {
-                { id = "rbxassetid://128882337386374", seconds = 2.0 }, -- earth_magic_casting
-                { id = "rbxassetid://71912785258456", seconds = 14.0 }, -- rippling_rock_magic (long tail)
+                { id = "rbxassetid://132509816311774", seconds = 2.0 }, -- earth_magic_casting
+                { id = "rbxassetid://126442843540204", seconds = 14.0 }, -- rippling_rock_magic (long tail)
             },
             lava = {
-                { id = "rbxassetid://72910842757132", seconds = 3.0 }, -- fireball_launch
+                { id = "rbxassetid://87704208327077", seconds = 3.0 }, -- fireball_launch
             },
             ice = {
-                { id = "rbxassetid://127988865093771", seconds = 2.0 }, -- icy_wind_casting
+                { id = "rbxassetid://125126568964512", seconds = 2.0 }, -- icy_wind_casting
             },
             desert = {
-                { id = "rbxassetid://108940406293408", seconds = 14.0 }, -- desert_magic_cast_long (long tail)
-                { id = "rbxassetid://135624983070582", seconds = 14.0 }, -- desert_magic_long (long tail)
+                { id = "rbxassetid://104317755911761", seconds = 14.0 }, -- desert_magic_cast_long (long tail)
+                { id = "rbxassetid://126096328746681", seconds = 14.0 }, -- desert_magic_long (long tail)
             },
             neutral = {
-                { id = "rbxassetid://128240762228140", seconds = 2.0 }, -- cartoony_spell_cast (generic)
+                { id = "rbxassetid://140394538590179", seconds = 2.0 }, -- cartoony_spell_cast (generic)
             },
         },
         impact = {
             -- the two long-tail fireball impacts are uploaded + parked for AoE-specific sounds:
-            --   fireball_impact_targeted rbxassetid://87632216595220 (14s)
-            --   fireball_impact_aoe      rbxassetid://93387065123336 (14s)
+            --   fireball_impact_targeted rbxassetid://137088339818106 (14s)
+            --   fireball_impact_aoe      rbxassetid://101676922943791 (14s)
             lava = {
-                { id = "rbxassetid://76239838028664", seconds = 1.0 }, -- fire_impact_targeted_1
-                { id = "rbxassetid://125017003780089", seconds = 1.0 }, -- fire_impact_targeted_2
-                { id = "rbxassetid://117318156254750", seconds = 1.0 }, -- fire_impact_targeted_3
+                { id = "rbxassetid://80359931572884", seconds = 1.0 }, -- fire_impact_targeted_1
+                { id = "rbxassetid://126370526115474", seconds = 1.0 }, -- fire_impact_targeted_2
+                { id = "rbxassetid://77080228500140", seconds = 1.0 }, -- fire_impact_targeted_3
             },
             grass = {
-                { id = "rbxassetid://99084444950159", seconds = 8.0 }, -- earthen_impact (long-ish tail)
-                { id = "rbxassetid://98891214914756", seconds = 8.0 }, -- deep_earthen_impact (long-ish)
+                { id = "rbxassetid://115890628962398", seconds = 8.0 }, -- earthen_impact (long-ish tail)
+                { id = "rbxassetid://90412394528626", seconds = 8.0 }, -- deep_earthen_impact (long-ish)
             },
             ice = {
-                { id = "rbxassetid://96567599651432", seconds = 3.0 }, -- freezing_crack_single_target
+                { id = "rbxassetid://76218561522804", seconds = 3.0 }, -- freezing_crack_single_target
             },
             desert = {
-                { id = "rbxassetid://121215976414474", seconds = 2.0 }, -- arrow_impact_desert
+                { id = "rbxassetid://74442492755990", seconds = 2.0 }, -- arrow_impact_desert
             },
             neutral = {
-                { id = "rbxassetid://130629017706281", seconds = 0.48 }, -- single_target_punch
+                { id = "rbxassetid://70478220013693", seconds = 0.48 }, -- single_target_punch
             },
         },
         -- buff activation (rides the `aura` primitive; neutral ⇒ plays under any origin)
         buff = {
             neutral = {
-                { id = "rbxassetid://131694228494794", seconds = 1.0 }, -- power_up_stronger
+                { id = "rbxassetid://105379088796995", seconds = 1.0 }, -- power_up_stronger
             },
         },
         -- shield raise (rides the `shield_bubble` primitive)
         shield = {
             neutral = {
-                { id = "rbxassetid://125923588431694", seconds = 1.0 }, -- force_field_raise
+                { id = "rbxassetid://124911631879452", seconds = 1.0 }, -- force_field_raise
             },
         },
         -- ambient LOOPS — registered for zone ambience / sustained holds; NOT one-shot. A looping
@@ -226,7 +226,7 @@ return {
                 { id = "rbxassetid://81826046653344", seconds = 3.0 }, -- machine_hum
             },
             ice = {
-                { id = "rbxassetid://96154251218473", seconds = 3.0 }, -- deep_winter_wind
+                { id = "rbxassetid://85365931736854", seconds = 3.0 }, -- deep_winter_wind
             },
         },
     },

@@ -25,7 +25,7 @@ return {
 
     -- Short celebratory stinger (non-looping) — level-up / ascend. Uploaded via scripts/upload_audio.js.
     celebratory_jingle = {
-        id = "rbxassetid://129756458235378",
+        id = "rbxassetid://118066342271463",
         volume = 0.18, -- halved twice (Jason: 0.7 -> 0.35 "still too loud" -> 0.18) — this
         -- field IS the per-sound base level; events can still scale it per-use
         -- via sound = { key, volume } in configs/game_events.lua
@@ -37,7 +37,7 @@ return {
 
     -- Rising "power up" sting (uploaded SFX) — pet revive and similar comeback moments.
     power_up_stronger = {
-        id = "rbxassetid://131694228494794",
+        id = "rbxassetid://105379088796995",
         volume = 0.6,
         playback_speed = 1.0,
         bus = "effects",
@@ -45,7 +45,7 @@ return {
 
     -- Sparkly cartoon spell cast (uploaded SFX) — enchant success reveal.
     cartoony_spell_cast = {
-        id = "rbxassetid://128240762228140",
+        id = "rbxassetid://140394538590179",
         volume = 0.6,
         playback_speed = 1.0,
         bus = "effects",
@@ -53,7 +53,7 @@ return {
 
     -- Low heavy thud (uploaded SFX) — a pet going DOWN (somber, quiet).
     deep_earthen_impact = {
-        id = "rbxassetid://98891214914756",
+        id = "rbxassetid://90412394528626",
         volume = 0.35,
         playback_speed = 0.9,
         bus = "effects",
@@ -63,9 +63,9 @@ return {
     -- on the "music" SoundGroup bus (so the Music volume slider controls it), crossfading on area
     -- change. New uploads play once Roblox moderation approves them.
     music = {
-        awe = { id = "rbxassetid://122469397847650", volume = 0.45 }, -- LoopingAweMusic
-        viking_drum = { id = "rbxassetid://133214678271304", volume = 0.45 }, -- VikingDrumLooping
-        epic_drum = { id = "rbxassetid://75441224405966", volume = 0.45 }, -- DrumEpicLooping
+        awe = { id = "rbxassetid://137816344186500", volume = 0.45 }, -- LoopingAweMusic
+        viking_drum = { id = "rbxassetid://92543861599965", volume = 0.45 }, -- VikingDrumLooping
+        epic_drum = { id = "rbxassetid://131000740431597", volume = 0.45 }, -- DrumEpicLooping
     },
 
     -- Which looping track plays in each AREA (edit freely — falls back to `default`). Only 3 tracks
