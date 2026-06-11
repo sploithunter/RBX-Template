@@ -2938,7 +2938,10 @@ function BaseUI:_setRewardsBadge(count)
         -- resolve it from the grid lazily and cache
         local mc = self.mainFrame
             or (self.screenGui and self.screenGui:FindFirstChild("MainContainer"))
-        button = mc and mc:FindFirstChild("RewardsButton", true)
+        -- the Rewards tray button is gone (it duplicated Quest) — the claim badge
+        -- lives on the Quest button
+        button = mc
+            and (mc:FindFirstChild("QuestButton", true) or mc:FindFirstChild("RewardsButton", true))
         self._rewardsButton = button
     end
     if not button or not button.Parent then

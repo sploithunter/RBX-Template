@@ -787,22 +787,13 @@ local uiConfig = {
 
         -- Conditional Actions
         quest_claim_action = {
-            type = "conditional_action",
-            conditions = {
-                quest_completed = true,
-                not_claimed = true,
-            },
-            success_action = {
-                type = "script_execute",
-                script = "QuestManager",
-                method = "ClaimReward",
-            },
-            failure_action = {
-                type = "notification",
-                message = "Quest not completed yet!",
-                notification_type = "warning",
-            },
-            description = "Claims quest reward if eligible",
+            -- straight panel open (was a dead conditional referencing a QuestManager
+            -- script_execute that doesn't exist — the button only worked by fallthrough)
+            type = "menu_panel",
+            panel = "Quest",
+            transition = "scale_in_small",
+            sound = "button_click",
+            description = "Open quests / claim rewards",
         },
 
         -- Notification Actions
@@ -1083,49 +1074,13 @@ local uiConfig = {
                     },
                 },
 
-                -- 🔥 SPECIAL SHOP: Override global default for unique shop styling
-                {
-                    type = "menu_button",
-                    config = {
-                        name = "Shop",
-                        background_image = "18852000893", -- 🎨 OVERRIDE: Special shop background
-                        icon = "6031075938",
-                        text = "Shop",
-                        action = "shop_action",
-                        notification = {
-                            enabled = true,
-                            text = "-25%",
-                            background_color = Color3.fromRGB(255, 200, 0),
-                            text_color = Color3.fromRGB(0, 0, 0),
-                            position = "top-left-corner",
-                        },
-                        -- Everything else (icon size, text style, etc.) comes from GLOBAL defaults! 🎉
-                    },
-                },
+                -- (Shop button pulled — Jason, playtest audit: the catalog is Phase-7
+                -- placeholder priced in dead legacy coins. Panel stays registered;
+                -- re-add this entry when a real catalog lands.)
 
-                -- 🟡 SELECTIVE OVERRIDES: Uses global teal background + custom styling
-                {
-                    type = "menu_button",
-                    config = {
-                        name = "Effects",
-                        icon = "⚡",
-                        icon_config = {
-                            size = { scale_x = 0.6, scale_y = 0.6 }, -- 🎨 OVERRIDE: Larger icon
-                        },
-                        text = "Effects",
-                        text_config = {
-                            color = Color3.fromRGB(255, 255, 0), -- 🎨 OVERRIDE: Yellow text
-                        },
-                        action = "effects_action",
-                        notification = {
-                            enabled = true,
-                            text = "3",
-                            background_color = Color3.fromRGB(255, 0, 0),
-                            position = "top-right-corner",
-                        },
-                        -- 🎨 Still gets: global teal background, default text font/size, default icon anchor!
-                    },
-                },
+                -- (Effects button pulled — Jason: its only live content source was the
+                -- placeholder shop's timed boost, and the buff-readout HUD shows active
+                -- multipliers. Panel stays registered for when timed effects are real.)
 
                 -- 🔵 ULTRA-MINIMAL: Just icon, text, action - everything else from global defaults
                 {
@@ -1185,17 +1140,9 @@ local uiConfig = {
                     },
                 },
 
-                -- Rewards: a NORMAL tray button (Jason: the old standalone one was an
-                -- artifact — "coded individually"; one builder for the whole grid now)
-                {
-                    type = "menu_button",
-                    config = {
-                        name = "Rewards",
-                        icon_fallback = "🎁",
-                        text = "Rewards",
-                        action = "rewards_action",
-                    },
-                },
+                -- (Rewards button removed — it opened the SAME Quest panel; the claim
+                -- badge lives on the Quest button now. rewards_action stays defined for
+                -- anything else that routes through it.)
             },
         },
 
