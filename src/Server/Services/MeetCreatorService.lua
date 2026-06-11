@@ -149,7 +149,21 @@ end
 -- wears ServerLuckBuff (folded into hatch luck by EggService, same convention as
 -- the bunny aura). Creators stay baseline so their playtesting reads true balance.
 function MeetCreatorService:_isCreator(player)
-    return (self._config.creators or {})[tostring(player.UserId)] ~= nil
+    if (self._config.creators or {})[tostring(player.UserId)] ~= nil then
+        return true
+    end
+    -- Studio multi-client test players have fake negative UserIds — the config can
+    -- bless them as stand-in creators so the lucky-server mechanic is testable
+    if game:GetService("RunService"):IsStudio() then
+        local testIds = self._config.server_luck
+            and self._config.server_luck.studio_test_creator_ids
+        for _, id in ipairs(testIds or {}) do
+            if tostring(player.UserId) == tostring(id) then
+                return true
+            end
+        end
+    end
+    return false
 end
 
 function MeetCreatorService:_refreshServerLuck()

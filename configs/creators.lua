@@ -38,6 +38,10 @@ return {
     server_luck = {
         enabled = true,
         mult = 2.0, -- Jason: "2x to start with for balance"
+        -- STUDIO multi-client test: Player1/Player2 have NEGATIVE fake UserIds, so no
+        -- real creator can be present — these ids count as creators IN STUDIO ONLY,
+        -- making the mechanic testable (Player1 = creator/excluded, Player2 = buffed).
+        studio_test_creator_ids = { "-1" },
         -- DISPLAY (Active Buffs row): each presence buff styles ITSELF — purple, not
         -- the clover green (Jason: "creator luck auras should not be the green look").
         -- Future presence mechanics follow this same shape (attr/label/color).
