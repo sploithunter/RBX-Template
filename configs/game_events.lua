@@ -43,6 +43,14 @@ return {
     -- yet — the UI gives its own feedback; add sound+visual here together when sourced.
     enhancement_slotted = {},
 
+    -- A player met a registered CREATOR for the first time (MeetCreatorService) —
+    -- once ever per creator; the reward egg rides the event payload.
+    met_creator = {
+        sound = "celebratory_jingle",
+        vfx = { kind = "burst", color = { 255, 215, 0 } }, -- creator gold
+        banner = { seconds = 6, color = { 255, 215, 0 } },
+    },
+
     achievement_completed = {
         sound = "celebratory_jingle", -- (loudness fixed at the SOURCE: sounds.lua base volume)
         vfx = { kind = "burst", color = { 255, 120, 220 } }, -- magenta

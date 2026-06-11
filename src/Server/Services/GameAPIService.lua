@@ -804,6 +804,22 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("egg_item.hatch", {
+        description = "Hatch one held egg ITEM from the eggs inventory bucket (e.g. a Meet-The-Creator egg).",
+        validate = function(args)
+            return Validators.fields(args, {
+                egg = { type = "string" },
+            })
+        end,
+        handler = function(context, args)
+            local svc = self:_service("MeetCreatorService")
+            if not svc then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return svc:HatchEggItem(context.player, args.egg)
+        end,
+    })
+
     bus:register("enh.grant", {
         description = "[admin] Grant an enhancement (random roll, explicit type+origins+level, or count random AREA rolls).",
         validate = function(args)

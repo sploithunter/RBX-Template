@@ -478,6 +478,13 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.BaddieSpawnerService,
     { "Logger", "ConfigLoader" }
 )
+-- MeetCreatorService: first-time-in-a-server-with-a-creator -> their egg, once ever
+-- (configs/creators.lua). Resolves Data/Inventory/PetGrant services at runtime.
+loader:RegisterModule(
+    "MeetCreatorService",
+    ServerScriptService.Server.Services.MeetCreatorService,
+    { "Logger", "ConfigLoader" }
+)
 -- RealmPortalService: binds named workspace portals (Portal_Halo1/Portal_Horn1) to a
 -- ProximityPrompt that toggles the player into a heaven/hell realm via LayerService (World S3
 -- test entry; resolves LayerService at runtime via the locator).

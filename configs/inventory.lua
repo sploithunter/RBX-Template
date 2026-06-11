@@ -302,6 +302,21 @@ return {
             },
         },
 
+        eggs = {
+            display_name = "Eggs",
+            icon = "🥚",
+            base_limit = 20, -- distinct egg identities
+            stack_size = 99,
+            allow_duplicates = true,
+            -- INVENTORY eggs (Meet-The-Creator etc.) — held items hatched on demand,
+            -- unlike the world egg stations. Stackable by egg id.
+            storage_type = "stackable",
+            item_schema = {
+                required = { "id", "obtained_at" },
+                optional = { "name", "source" },
+            },
+            limit_extensions = {},
+        },
         enhancements = {
             display_name = "Enhancements",
             icon = "⚙️",
