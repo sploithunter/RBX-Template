@@ -116,3 +116,7 @@ run = "stylua src/"
 [tasks.dev]
 description = "Start development environment"
 depends = ["install", "serve"] 
+
+[tasks.assets-audit]
+description = "Every consumed rbxassetid must be manifest-traceable or allowlisted (template hygiene)"
+run = "python3 scripts/audit_assets.py --strict"
