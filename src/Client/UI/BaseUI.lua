@@ -1265,10 +1265,18 @@ function BaseUI:_createMenuButtonElement(config, parent, layoutOrder)
     local label = self:_createButtonLabel(config, button)
 
     -- Interactive effects
-    button.Activated:Connect(function()
+    local function onClick()
         self:_onMenuButtonClicked(config.name)
         self:_animateButtonPress(button)
-    end)
+    end
+    button.Activated:Connect(onClick)
+    if game:GetService("RunService"):IsStudio() then
+        -- dev probe seam (Activated can't be fired from scripts)
+        local hook = Instance.new("BindableEvent")
+        hook.Name = "DevSimulateClick"
+        hook.Parent = button
+        hook.Event:Connect(onClick)
+    end
 
     -- Hover effects (different for image vs text buttons)
     if hasBackgroundImage then
@@ -1671,22 +1679,46 @@ end
 -- Add hover effect for ImageButtons
 function BaseUI:_addImageButtonHoverEffect(button)
     local tweenService = game:GetService("TweenService")
+    local uis = game:GetService("UserInputService")
     local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
+    -- BASE-ANCHORED, not relative (Jason's mobile bug: "gets slightly bigger every
+    -- time you hit the pets menu"). The old version tweened to Size+4 on MouseEnter
+    -- and Size-4 on MouseLeave — but TOUCH taps fire MouseEnter with NO MouseLeave,
+    -- so every tap grew the button +4px permanently (and fast hover in/out drifted
+    -- on desktop too, since mid-tween reads compound). Now: capture the resting size
+    -- while idle, tween to base+4 on hover, back to exactly base on leave.
+    local hovering = false
     button.MouseEnter:Connect(function()
-        local hoverTween = tweenService:Create(button, tweenInfo, {
-            ImageColor3 = Color3.fromRGB(200, 200, 200),
-            Size = button.Size + UDim2.new(0, 4, 0, 4),
-        })
-        hoverTween:Play()
+        if uis:GetLastInputType() == Enum.UserInputType.Touch then
+            return -- taps never get a MouseLeave; the grow would stick
+        end
+        if not hovering then
+            hovering = true
+            -- recapture while idle: HotbarFlank re-sizes tray buttons post-build
+            button:SetAttribute("BaseSize", button.Size)
+        end
+        local base = button:GetAttribute("BaseSize")
+        tweenService
+            :Create(button, tweenInfo, {
+                ImageColor3 = Color3.fromRGB(200, 200, 200),
+                Size = base + UDim2.new(0, 4, 0, 4),
+            })
+            :Play()
     end)
 
     button.MouseLeave:Connect(function()
-        local leaveTween = tweenService:Create(button, tweenInfo, {
-            ImageColor3 = Color3.fromRGB(255, 255, 255),
-            Size = button.Size - UDim2.new(0, 4, 0, 4),
-        })
-        leaveTween:Play()
+        hovering = false
+        local base = button:GetAttribute("BaseSize")
+        if typeof(base) ~= "UDim2" then
+            return -- never hovered (touch path) — nothing to restore
+        end
+        tweenService
+            :Create(button, tweenInfo, {
+                ImageColor3 = Color3.fromRGB(255, 255, 255),
+                Size = base,
+            })
+            :Play()
     end)
 end
 
@@ -2416,10 +2448,20 @@ function BaseUI:_createPetsButtonElement(config, parent)
     label.Parent = petsButton
 
     -- Click handling
-    petsButton.Activated:Connect(function()
+    local function onPetsClick()
         self:_onMenuButtonClicked("Inventory")
         self:_animateButtonPress(petsButton)
-    end)
+    end
+    petsButton.Activated:Connect(onPetsClick)
+    -- dev probe seam: lets Studio automation fire the REAL click path (Activated
+    -- can't be fired from scripts) — used to reproduce Jason's "button grows every
+    -- open/close" mobile bug
+    if game:GetService("RunService"):IsStudio() then
+        local hook = Instance.new("BindableEvent")
+        hook.Name = "DevSimulateClick"
+        hook.Parent = petsButton
+        hook.Event:Connect(onPetsClick)
+    end
 
     -- Hover effects
     self:_addButtonHoverEffect(petsButton, config.color)
@@ -2722,7 +2764,13 @@ function BaseUI:_addButtonHoverEffect(button, originalColor)
 end
 
 function BaseUI:_animateButtonPress(button)
-    local originalSize = button.Size
+    -- anchor to the resting size when known — capturing button.Size mid-tween
+    -- (rapid taps) permanently drifted the button (probe: 62px -> 58px in 6 presses)
+    local originalSize = button:GetAttribute("BaseSize")
+    if typeof(originalSize) ~= "UDim2" then
+        originalSize = button.Size
+        button:SetAttribute("BaseSize", originalSize)
+    end
 
     local shrink = TweenService:Create(button, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {
         Size = UDim2.new(
