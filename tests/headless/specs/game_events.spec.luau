@@ -18,6 +18,8 @@ local KNOWN_KINDS = {
     float = true,
     banner = true, -- lingering screen-center card (achievements etc.)
     world_visual = true, -- ANNOTATION, not a reaction: the world itself is the visual
+    world_sound = true, -- SERVER-side positional sound at the player (everyone nearby hears)
+    world_sound_range = true, -- optional RollOffMaxDistance for world_sound (studs)
 }
 
 return function()
@@ -82,9 +84,13 @@ return function()
             end
         end)
 
-        it("level_up is wired (the migrated example stays intact)", function()
+        it("level_up keeps the visual; the jingle is a WORLD sound on level_claimed", function()
+            -- Jason: "everybody should hear those sounds" — the level-up jingle plays
+            -- positionally at the player (server-fired level_claimed), audible nearby;
+            -- the client-fired level_up row keeps the burst visual.
             expect(type(gameEvents.level_up)).to.equal("table")
-            expect(gameEvents.level_up.sound).to.equal("celebratory_jingle")
+            expect(type(gameEvents.level_up.vfx)).to.equal("table")
+            expect(gameEvents.level_claimed.world_sound).to.equal("celebratory_jingle")
         end)
     end)
 end

@@ -22,9 +22,18 @@
 ]]
 
 return {
+    -- level_up (client-fired) keeps the VISUAL juice; the SOUND moved to the
+    -- server-fired level_claimed row as a world_sound, so EVERYONE nearby hears a
+    -- level-up, not just the leveler (Jason: "it should be server-wide... everybody
+    -- should hear those sounds").
     level_up = {
-        sound = "celebratory_jingle",
         vfx = { kind = "burst", color = { 255, 205, 70 } }, -- gold celebratory burst at the player
+    },
+
+    -- server truth: a level was CLAIMED (PlayerProgressionService). The jingle plays
+    -- AT the player's character, audible to everyone nearby (3D falloff, ~120 studs).
+    level_claimed = {
+        world_sound = "celebratory_jingle",
     },
 
     -- A new area/gate was unlocked (client: init.client ZoneUnlockResult ok). Celebratory, and no
@@ -46,7 +55,7 @@ return {
     -- A player met a registered CREATOR for the first time (MeetCreatorService) —
     -- once ever per creator; the reward egg rides the event payload.
     met_creator = {
-        sound = "celebratory_jingle",
+        world_sound = "celebratory_jingle", -- audible around the meeting, not just to the met player
         vfx = { kind = "burst", color = { 255, 215, 0 } }, -- creator gold
         banner = { seconds = 10, color = { 255, 215, 0 } },
         -- Jason: "it wasn't very obvious that the creator's on this server" — a big
