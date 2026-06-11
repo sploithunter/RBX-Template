@@ -1,0 +1,18 @@
+# Egg export art (upload / Studio reference)
+
+# 2D icons
+asset_key	file	description
+colorado_egg	colorado_egg.png	Colorado flag faceted egg (front) — inventory/UI icon; pairs with configs/creators.lua egg_id colorado_egg
+colorado_egg_back	colorado_egg_back.png	Colorado egg back view
+colorado_egg_left	colorado_egg_left.png	Colorado egg left view
+colorado_egg_right	colorado_egg_right.png	Colorado egg right view
+
+# 3D mesh (import OBJ + texture; no decimation — 1461 tris)
+colorado_egg_mesh	colorado_egg/colorado_egg.obj	1461 tris
+colorado_egg_mesh	colorado_egg/colorado_egg.png	diffuse texture
+colorado_egg_mesh	colorado_egg/colorado_egg.mtl	material
+
+source_2d: assets/source/eggs/
+source_mesh: assets/source/eggs/colorado_egg/
+download_2d: ~/Downloads/ColoradoGreenScreenFront.png (+ Back/Left/Right)
+download_mesh: ~/Downloads/38d24117-8933-4786-84e0-5ea8b7344869.zip

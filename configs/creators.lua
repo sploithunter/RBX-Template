@@ -22,6 +22,9 @@ return {
             pet = "colorado", -- the species their egg hatches
             egg_id = "colorado_egg", -- eggs-bucket item id
             egg_name = "Colorado Egg",
+            -- group-owned assets (scripts/egg_assets.json is the manifest)
+            egg_icon = "rbxassetid://120328710003120", -- inventory card image
+            egg_model_asset = 94487781424433, -- 3D egg (PlaceAssets-cached; AssetFetch id)
             -- variant odds on hatch (weights)
             variants = { basic = 85, golden = 12, rainbow = 3 },
         },

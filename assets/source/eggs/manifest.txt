@@ -1,0 +1,18 @@
+# Egg source art
+
+# 2D inventory / UI icons (green-screen keyed PNGs)
+colorado_egg.png	<- ColoradoGreenScreenFront.png
+colorado_egg_back.png	<- ColoradoGreenScreenBack.png
+colorado_egg_left.png	<- ColoradoGreenScreenLeft.png
+colorado_egg_right.png	<- ColoradoGreenScreenRight.png
+pipeline_2d: scripts/normalize_icons.py (edge-connected green-screen key)
+
+# 3D mesh (~1461 tris — no decimation needed)
+colorado_egg/colorado_egg.obj	<- 38d24117-8933-4786-84e0-5ea8b7344869.zip (base.obj)
+colorado_egg/colorado_egg.png	<- texture_diffuse.png
+colorado_egg/colorado_egg.mtl	<- generated (map_Kd colorado_egg.png)
+colorado_egg/colorado_egg_{metallic,normal,roughness,pbr,shaded_preview}.png	<- optional PBR maps from zip
+
+description: Low-poly faceted egg with Colorado state flag pattern (blue/white/red/gold)
+egg_id: colorado_egg
+download_mesh: ~/Downloads/38d24117-8933-4786-84e0-5ea8b7344869.zip

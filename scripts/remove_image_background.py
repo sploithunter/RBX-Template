@@ -15,13 +15,26 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--softness", type=int, default=20, help="Feather range below the threshold")
     parser.add_argument(
         "--mode",
-        choices=["edge-white", "ring-white", "all-white"],
+        choices=["edge-white", "ring-white", "all-white", "edge-green"],
         default="edge-white",
         help=(
             "edge-white: background connected to image edges; "
             "ring-white: edge background plus center hole (for ring/frame UI art); "
-            "all-white: every near-white pixel."
+            "all-white: every near-white pixel; "
+            "edge-green: green-screen background connected to image edges."
         ),
+    )
+    parser.add_argument(
+        "--green-min",
+        type=int,
+        default=120,
+        help="Minimum green channel for green-screen key (edge-green mode)",
+    )
+    parser.add_argument(
+        "--green-dominance",
+        type=int,
+        default=40,
+        help="Required green excess over max(red, blue) for green-screen key",
     )
     return parser.parse_args()
 
@@ -40,22 +53,74 @@ def is_background_candidate(red: int, green: int, blue: int, threshold: int, sof
     return min(red, green, blue) >= threshold - softness
 
 
+def is_green_screen_candidate(
+    red: int,
+    green: int,
+    blue: int,
+    min_green: int,
+    dominance: int,
+    softness: int,
+) -> bool:
+    return green >= min_green - softness and (green - max(red, blue)) >= dominance - softness
+
+
+def green_screen_alpha(
+    red: int,
+    green: int,
+    blue: int,
+    min_green: int,
+    dominance: int,
+    softness: int,
+) -> int:
+    excess = green - max(red, blue)
+    if green < min_green - softness or excess <= 0:
+        return 255
+    if excess >= dominance and green >= min_green:
+        return 0
+    if softness <= 0:
+        return 255
+
+    green_headroom = green - (min_green - softness)
+    excess_headroom = excess - (dominance - softness)
+    score = min(green_headroom, excess_headroom)
+    if score <= 0:
+        return 255
+    if score >= softness:
+        return 0
+    return int(255 * (softness - score) / softness)
+
+
+def despill_green(red: int, green: int, blue: int, alpha: int) -> tuple[int, int, int]:
+    spill = max(0, green - max(red, blue))
+    if spill <= 0 or alpha <= 0:
+        return red, green, blue
+    reduction = spill * alpha // 255
+    return red, max(red, blue, green - reduction), blue
+
+
 def flood_connected_background(
     image: Image.Image,
     threshold: int,
     softness: int,
     seeds: list[tuple[int, int]],
+    *,
+    candidate=None,
 ) -> set[tuple[int, int]]:
     width, height = image.size
     pixels = image.load()
     queue: deque[tuple[int, int]] = deque()
     seen: set[tuple[int, int]] = set()
 
+    def is_candidate(red: int, green: int, blue: int) -> bool:
+        if candidate is not None:
+            return candidate(red, green, blue)
+        return is_background_candidate(red, green, blue, threshold, softness)
+
     def enqueue(x: int, y: int) -> None:
         if (x, y) in seen:
             return
         red, green, blue, _alpha = pixels[x, y]
-        if not is_background_candidate(red, green, blue, threshold, softness):
+        if not is_candidate(red, green, blue):
             return
         seen.add((x, y))
         queue.append((x, y))
@@ -81,6 +146,25 @@ def edge_connected_background(image: Image.Image, threshold: int, softness: int)
     for y in range(height):
         seeds.extend([(0, y), (width - 1, y)])
     return flood_connected_background(image, threshold, softness, seeds)
+
+
+def edge_connected_green_screen(
+    image: Image.Image,
+    min_green: int,
+    dominance: int,
+    softness: int,
+) -> set[tuple[int, int]]:
+    width, height = image.size
+    seeds: list[tuple[int, int]] = []
+    for x in range(width):
+        seeds.extend([(x, 0), (x, height - 1)])
+    for y in range(height):
+        seeds.extend([(0, y), (width - 1, y)])
+
+    def candidate(red: int, green: int, blue: int) -> bool:
+        return is_green_screen_candidate(red, green, blue, min_green, dominance, softness)
+
+    return flood_connected_background(image, 0, 0, seeds, candidate=candidate)
 
 
 def ring_connected_background(image: Image.Image, threshold: int, softness: int) -> set[tuple[int, int]]:
@@ -112,6 +196,13 @@ def main() -> None:
         background_mask = edge_connected_background(image, args.threshold, args.softness)
     elif args.mode == "ring-white":
         background_mask = ring_connected_background(image, args.threshold, args.softness)
+    elif args.mode == "edge-green":
+        background_mask = edge_connected_green_screen(
+            image,
+            args.green_min,
+            args.green_dominance,
+            args.softness,
+        )
 
     for index, (red, green, blue, alpha) in enumerate(image.getdata()):
         if background_mask is not None:
@@ -119,6 +210,22 @@ def main() -> None:
             y = index // image.width
             if (x, y) not in background_mask:
                 pixels.append((red, green, blue, alpha))
+                continue
+
+            if args.mode == "edge-green":
+                next_alpha = min(
+                    alpha,
+                    green_screen_alpha(
+                        red,
+                        green,
+                        blue,
+                        args.green_min,
+                        args.green_dominance,
+                        args.softness,
+                    ),
+                )
+                red, green, blue = despill_green(red, green, blue, next_alpha)
+                pixels.append((red, green, blue, next_alpha))
                 continue
 
         next_alpha = min(alpha, background_alpha(red, green, blue, args.threshold, args.softness))

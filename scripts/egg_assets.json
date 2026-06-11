@@ -1,0 +1,14 @@
+{
+ "colorado_egg": {
+  "icon_decal": "92887613619129",
+  "icon_image": "120328710003120",
+  "model_asset": "94487781424433",
+  "creator": "Open Simulator Group (15872767)",
+  "sources": {
+   "icon": "assets/exports/eggs/colorado_egg.png",
+   "mesh": "assets/source/eggs/colorado_egg/colorado_egg.obj",
+   "fbx": "assets/exports/eggs/colorado_egg/colorado_egg.fbx",
+   "texture": "assets/source/eggs/colorado_egg/colorado_egg.png"
+  }
+ }
+}
