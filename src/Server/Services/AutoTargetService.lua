@@ -138,6 +138,37 @@ local function getWorldShort(world)
     return world
 end
 
+-- ZONE GATE (Jason's alt-account find: "unlocking from a single player perspective
+-- apparently unlocks it for everybody"): ore SPAWNS are server-global (any present
+-- unlocked player lights a biome), so per-MINER enforcement happens here. Reads the
+-- published UnlockedAreasJson attribute with a per-player decode cache (hot path).
+local HttpService = game:GetService("HttpService")
+local _unlockCache = setmetatable({}, { __mode = "k" })
+local function zoneUnlockedFor(player, zoneId)
+    if not player or type(zoneId) ~= "string" or zoneId == "" then
+        return true
+    end
+    local json = player:GetAttribute("UnlockedAreasJson")
+    if json == nil then
+        return true -- not published yet (boot grace) — never brick Spawn mining
+    end
+    local cache = _unlockCache[player]
+    if not cache or cache.json ~= json then
+        local set = {}
+        local ok, arr = pcall(function()
+            return HttpService:JSONDecode(json)
+        end)
+        if ok and type(arr) == "table" then
+            for _, id in ipairs(arr) do
+                set[tostring(id)] = true
+            end
+        end
+        cache = { json = json, set = set }
+        _unlockCache[player] = cache
+    end
+    return cache.set[zoneId] == true
+end
+
 function AutoTargetService:Init()
     logger = self._modules.Logger
     configLoader = self._modules.ConfigLoader
@@ -570,7 +601,12 @@ function AutoTargetService:_collectCandidates(player, mode)
 
     for _, typeFolder in ipairs(breakables:GetChildren()) do
         for _, worldFolder in ipairs(typeFolder:GetChildren()) do
-            if not currentWorldOnly or getWorldShort(worldFolder.Name) == currentArea then
+            if
+                (not currentWorldOnly or getWorldShort(worldFolder.Name) == currentArea)
+                -- locked-zone nodes are never candidates: _mine refuses them anyway
+                -- (the server gate), so assigning them just strands pets
+                and zoneUnlockedFor(player, getWorldShort(worldFolder.Name))
+            then
                 local items = worldFolder:FindFirstChild("Items")
                 if items then
                     for _, model in ipairs(items:GetChildren()) do

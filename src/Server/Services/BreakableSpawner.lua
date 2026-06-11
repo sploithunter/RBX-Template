@@ -741,7 +741,9 @@ function BreakableSpawner:_isWorldActive(worldName)
     -- A biome spawns ore only if at least one CURRENTLY-PRESENT player has it unlocked. This is
     -- the authoritative lockout / anti-cheat layer: a player who C-frame-teleports into a locked
     -- biome finds nothing to mine because the server never spawned ore there. (Per-player MINING
-    -- gating — so an un-unlocked player can't mine a node another player lit up — is a follow-up.)
+    -- gating — so an un-unlocked player can't mine a node another player lit up — lives in
+    -- PetFollowService:_mine + AutoTargetService:_collectCandidates (zoneUnlockedFor), added after
+    -- Jason's alt walked into another player's lit Ice Fields and mined it.)
     local zone = self:_zoneService()
     if zone and zone.IsZoneUnlocked then
         for _, player in ipairs(Players:GetPlayers()) do

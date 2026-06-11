@@ -312,9 +312,47 @@ function PetFollowService:_attackRange(pet)
 end
 
 -- One mining hit on the pet's current target (server-authoritative damage).
+
+-- ZONE GATE (Jason's alt-account find: "unlocking from a single player perspective
+-- apparently unlocks it for everybody"): ore SPAWNS are server-global (any present
+-- unlocked player lights a biome), so per-MINER enforcement happens here. Reads the
+-- published UnlockedAreasJson attribute with a per-player decode cache (hot path).
+local HttpService = game:GetService("HttpService")
+local _unlockCache = setmetatable({}, { __mode = "k" })
+local function zoneUnlockedFor(player, zoneId)
+    if not player or type(zoneId) ~= "string" or zoneId == "" then
+        return true
+    end
+    local json = player:GetAttribute("UnlockedAreasJson")
+    if json == nil then
+        return true -- not published yet (boot grace) — never brick Spawn mining
+    end
+    local cache = _unlockCache[player]
+    if not cache or cache.json ~= json then
+        local set = {}
+        local ok, arr = pcall(function()
+            return HttpService:JSONDecode(json)
+        end)
+        if ok and type(arr) == "table" then
+            for _, id in ipairs(arr) do
+                set[tostring(id)] = true
+            end
+        end
+        cache = { json = json, set = set }
+        _unlockCache[player] = cache
+    end
+    return cache.set[zoneId] == true
+end
+
 function PetFollowService:_mine(player, pet, breakable)
     if pet:GetAttribute("CombatDowned") then
         return -- downed pets are out healing; they neither mine nor fight
+    end
+    -- the SERVER enforcement: pets of a player who hasn't unlocked this node's
+    -- zone do no damage and earn nothing (walking in is allowed; profiting isn't)
+    local nodeWorld = breakable:GetAttribute("World")
+    if nodeWorld and not zoneUnlockedFor(player, nodeWorld) then
+        return
     end
     local now = os.clock()
     if self._nextHit[pet] and now < self._nextHit[pet] then
