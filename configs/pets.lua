@@ -1244,8 +1244,13 @@ local petConfig = {
         -- Luck system configuration
         base_luck = 1.0, -- Default luck multiplier
         max_luck = 100.0, -- Maximum luck value achievable
-        luck_per_level = 0.1, -- Luck gained per player level
-        luck_from_pets_hatched = 0.01, -- Luck gained per pet hatched
+        -- Luck progression CURVES (Jason: no hard caps — "get a good curve to start").
+        -- Each term adds `per_doubling` every time the count doubles past
+        -- `first_bonus_at`: the first +per_doubling lands AT first_bonus_at, the next
+        -- at 2x, then 4x... Early progress is felt, late progress never runs away
+        -- (the old linear 0.01/hatch hit +5 at the Egg Baron quest's 500 alone).
+        level_luck = { per_doubling = 0.5, first_bonus_at = 3 },
+        hatched_luck = { per_doubling = 0.35, first_bonus_at = 25 },
 
         -- VIP benefits
         vip_luck_bonus = 1.5, -- 1.5x luck for VIP players
@@ -1897,14 +1902,19 @@ function petConfig.simulateHatch(eggType, playerData)
         }
     end
 
+    -- Diminishing-returns progression bonus: +per_doubling each doubling past
+    -- first_bonus_at (log2 curve, no hard cap — late growth just slows).
+    local function curveBonus(count, curve)
+        count = tonumber(count) or 0
+        if not curve or count <= 0 then
+            return 0
+        end
+        return (curve.per_doubling or 0) * math.log(1 + count / (curve.first_bonus_at or 1), 2)
+    end
+
     local luckMultiplier = gamepassMods.base_luck
-    if playerData.level then
-        luckMultiplier = luckMultiplier + (playerData.level * gamepassMods.luck_per_level)
-    end
-    if playerData.petsHatched then
-        luckMultiplier = luckMultiplier
-            + (playerData.petsHatched * gamepassMods.luck_from_pets_hatched)
-    end
+    luckMultiplier = luckMultiplier + curveBonus(playerData.level, gamepassMods.level_luck)
+    luckMultiplier = luckMultiplier + curveBonus(playerData.petsHatched, gamepassMods.hatched_luck)
     if playerData.luckBoost then
         luckMultiplier = luckMultiplier + playerData.luckBoost
     end
