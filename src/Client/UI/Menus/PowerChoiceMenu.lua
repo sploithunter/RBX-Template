@@ -473,6 +473,15 @@ local function levelColor(lvl, playerLvl)
     return Color3.fromRGB(120, 220, 120) -- above: boosted
 end
 
+-- readable row height in PIXELS: desktop ~7.5% of the column (same as the old
+-- scale sizing), clamped to a 34px floor so phone text stays legible
+local function rowPixelHeight()
+    local cam = workspace.CurrentCamera
+    local vpY = (cam and cam.ViewportSize.Y) or 720
+    local colH = vpY * 0.92 * 0.82
+    return math.clamp(math.floor(colH * 0.075), 34, 64)
+end
+
 local function enhBadge(parent, size, pos, rec, dead)
     return PetBadge.createEnhancementBadge(
         parent,
@@ -1095,7 +1104,7 @@ function PowerChoiceMenu:_fillColumn(holder, pool)
         local wrap = Instance.new("TextButton")
         wrap.Name = "Row_" .. r.id
         wrap.LayoutOrder = i
-        wrap.Size = UDim2.fromScale(0.99, 0.075)
+        wrap.Size = UDim2.new(0.99, 0, 0, rowPixelHeight())
         wrap.BackgroundTransparency = 1
         wrap.AutoButtonColor = false
         wrap.Text = ""
@@ -1291,14 +1300,24 @@ end
 
 -- ---- build ---------------------------------------------------------------
 
+-- SCROLLING columns with PIXEL-height rows (Jason, iPhone playtest: "what was not
+-- readable was the power selection"). Rows were 7.5%-of-column tall — ~20px on a
+-- phone, ant-sized text. Now rows get a readable pixel floor and the column scrolls
+-- when they don't fit; desktop computes above the floor, so it looks unchanged.
 local function makeColumnHolder(parent, xScale)
-    local f = Instance.new("Frame")
+    local f = Instance.new("ScrollingFrame")
     f.Size = UDim2.fromScale(0.46, 0.82)
     f.Position = UDim2.fromScale(xScale, 0.14)
     f.BackgroundTransparency = 1
+    f.BorderSizePixel = 0
+    f.ScrollBarThickness = 6
+    f.ScrollBarImageColor3 = Color3.fromRGB(180, 160, 90)
+    f.CanvasSize = UDim2.new()
+    f.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    f.ScrollingDirection = Enum.ScrollingDirection.Y
     f.Parent = parent
     local list = Instance.new("UIListLayout")
-    list.Padding = UDim.new(0.004, 0)
+    list.Padding = UDim.new(0, 3)
     list.HorizontalAlignment = Enum.HorizontalAlignment.Center
     list.SortOrder = Enum.SortOrder.LayoutOrder
     list.Parent = f
