@@ -323,6 +323,16 @@ do
     end
 end
 
+-- Hide other players' gem drops (owner-only pickups = owner-only visible).
+do
+    local ok, err = pcall(function()
+        require(script.Systems.DropVisibility).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start DropVisibility", { error = tostring(err) })
+    end
+end
+
 -- Dock the Current Quest tracker below the player bar, restyled to match.
 do
     local ok, err = pcall(function()

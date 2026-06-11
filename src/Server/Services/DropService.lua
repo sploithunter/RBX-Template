@@ -289,6 +289,10 @@ function DropService:SpawnCoinDrop(player, currencyType, amount, position)
             + Vector3.new(math.cos(ang) * out * 0.5, pop, math.sin(ang) * out * 0.5)
         part.CFrame = CFrame.new(apex)
 
+        -- visibility filter: gems are owner-only pickups, so they're owner-only
+        -- VISIBLE too (DropVisibility hides foreign gems client-side — Jason: "it
+        -- makes it really confusing if gems are everywhere and they're not yours")
+        model:SetAttribute("DropOwner", player.UserId)
         local rec = {
             model = model,
             part = part,
@@ -463,6 +467,7 @@ function DropService:TrySpawnEnhancementDrop(player, source, position)
     part.CFrame = CFrame.new(position.X, groundY + part.Size.Y * 0.5 + 0.2, position.Z)
     model.Parent = Workspace
 
+    model:SetAttribute("DropOwner", player.UserId)
     self._active[#self._active + 1] = {
         kind = "enhancement",
         record = record,
