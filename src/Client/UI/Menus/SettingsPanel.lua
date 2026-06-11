@@ -925,23 +925,10 @@ end
 function SettingsPanel:_createHatchSettings()
     self:_createSectionHeader("🥚 Egg Settings", 25)
 
-    local actionOptions = {
-        { value = "single", display = "Single Hatch" },
-        { value = "max", display = "Max Hatch" },
-        { value = "auto", display = "Auto Hatch" },
-    }
-
-    self:_createDropdownSetting(
-        "E Key Hatch Action",
-        self:_getHatchActionMode(),
-        actionOptions,
-        26,
-        function(value)
-            Signals.HatchSettings_SetActionMode:FireServer({
-                actionMode = value,
-            })
-        end
-    )
+    -- (the E-Key Hatch Action dropdown moved OUT: hatch mode/count/auto now live as
+    -- the inventory-header pills, which drive the same EggInteractionService state —
+    -- Jason: "once it's working you can clear it out of settings". Animation/audio
+    -- toggles stay: they're display preferences the pills don't cover.)
 
     self:_createToggleSetting(
         "Show Hatch Animation",
