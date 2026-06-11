@@ -20,6 +20,11 @@ return {
     -- panel/tracker and future branching keys off chain ids.
     chain = { id = "origin_story", title = "Origin Story" },
 
+    -- since_start = true (Jason): the mission measures FORWARD progress — "hatch 100
+    -- MORE eggs", counted from the moment the mission becomes active (QuestService
+    -- stamps a per-mission baseline). Totals are achievement semantics; missions are
+    -- deltas. The level mission stays ABSOLUTE (reach L5, not "+5 levels").
+
     defs = {
         -- Jason 2026-06-10: the tutorial already walks hatch-1/equip/first-coins, so the
         -- chain STARTS where the tutorial hands off. "Mine 8,000 Coins" lines up with the
@@ -28,24 +33,35 @@ return {
             order = 1,
             name = "Hatch 10 Eggs",
             description = "Spend your coins on eggs and grow the collection.",
-            condition = { type = "counter_at_least", counter = "eggs_hatched", value = 10 },
+            condition = {
+                type = "counter_at_least",
+                counter = "eggs_hatched",
+                value = 10,
+                since_start = true,
+            },
             reward = { currencies = { gems = 3 } },
         },
         egg_hoarder = {
-            order = 2,
+            order = 3,
             name = "Hatch 100 Eggs",
             description = "Keep hatching — duplicates make your team stronger.",
-            condition = { type = "counter_at_least", counter = "eggs_hatched", value = 100 },
+            condition = {
+                type = "counter_at_least",
+                counter = "eggs_hatched",
+                value = 100,
+                since_start = true,
+            },
             reward = { currencies = { gems = 10 } },
         },
         coin_miner = {
-            order = 3,
+            order = 2,
             name = "Mine 8,000 Coins",
             description = "Mining earns XP too — this pace lands you at Level 2.",
             condition = {
                 type = "counter_at_least",
                 counter = "coins_earned_lifetime",
                 value = 8000,
+                since_start = true,
             },
             reward = { currencies = { gems = 15 } },
         },
@@ -53,21 +69,36 @@ return {
             order = 4,
             name = "Cast 5 Powers",
             description = "Use your hotbar powers — number keys or tap.",
-            condition = { type = "counter_at_least", counter = "powers_cast", value = 5 },
+            condition = {
+                type = "counter_at_least",
+                counter = "powers_cast",
+                value = 5,
+                since_start = true,
+            },
             reward = { currencies = { gems = 5 } },
         },
         gear_hunter = {
             order = 5,
             name = "Find an Enhancement",
             description = "Crystals and enemies sometimes drop glowing cogs — grab one!",
-            condition = { type = "counter_at_least", counter = "enhancements_found", value = 1 },
+            condition = {
+                type = "counter_at_least",
+                counter = "enhancements_found",
+                value = 1,
+                since_start = true,
+            },
             reward = { currencies = { gems = 5 } },
         },
         crystal_crusher = {
             order = 6,
             name = "Break 50 Crystals",
             description = "Keep the mining train rolling.",
-            condition = { type = "counter_at_least", counter = "breakables_broken", value = 50 },
+            condition = {
+                type = "counter_at_least",
+                counter = "breakables_broken",
+                value = 50,
+                since_start = true,
+            },
             reward = { currencies = { gems = 8 } },
         },
         -- ===== Origin Story, extended (Jason: "it should go a little bit longer") —
@@ -77,7 +108,12 @@ return {
             order = 7,
             name = "Slot an Enhancement",
             description = "Open a power in the Powers menu and slot a cog into it.",
-            condition = { type = "counter_at_least", counter = "enhancements_slotted", value = 1 },
+            condition = {
+                type = "counter_at_least",
+                counter = "enhancements_slotted",
+                value = 1,
+                since_start = true,
+            },
             reward = { currencies = { gems = 8 } },
         },
         chosen_one = {
@@ -91,14 +127,24 @@ return {
             order = 9,
             name = "Defeat 10 Enemies",
             description = "Your squad fights back — let your tank pull and pile on.",
-            condition = { type = "counter_at_least", counter = "enemies_defeated", value = 10 },
+            condition = {
+                type = "counter_at_least",
+                counter = "enemies_defeated",
+                value = 10,
+                since_start = true,
+            },
             reward = { currencies = { gems = 10 } },
         },
         egg_baron = {
             order = 10,
             name = "Hatch 500 Eggs",
             description = "The collection grows. Luck powers make every egg count.",
-            condition = { type = "counter_at_least", counter = "eggs_hatched", value = 500 },
+            condition = {
+                type = "counter_at_least",
+                counter = "eggs_hatched",
+                value = 500,
+                since_start = true,
+            },
             reward = { currencies = { gems = 25 } },
         },
         deep_miner = {
@@ -109,6 +155,7 @@ return {
                 type = "counter_at_least",
                 counter = "coins_earned_lifetime",
                 value = 50000,
+                since_start = true,
             },
             reward = { currencies = { gems = 30 } },
         },
@@ -116,14 +163,24 @@ return {
             order = 12,
             name = "Find 10 Enhancements",
             description = "Singles only drop in their home world. Duals are everywhere.",
-            condition = { type = "counter_at_least", counter = "enhancements_found", value = 10 },
+            condition = {
+                type = "counter_at_least",
+                counter = "enhancements_found",
+                value = 10,
+                since_start = true,
+            },
             reward = { currencies = { gems = 25 } },
         },
         egg_legend = {
             order = 13,
             name = "Hatch 1,000 Eggs",
             description = "The Origin Story capstone. Legends are hatched, not born.",
-            condition = { type = "counter_at_least", counter = "eggs_hatched", value = 1000 },
+            condition = {
+                type = "counter_at_least",
+                counter = "eggs_hatched",
+                value = 1000,
+                since_start = true,
+            },
             reward = { currencies = { gems = 100 } },
         },
     },

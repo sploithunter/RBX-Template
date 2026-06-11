@@ -57,23 +57,42 @@ local function claims(data)
     return data.QuestClaims
 end
 
+local function baselines(data)
+    if type(data.QuestBaselines) ~= "table" then
+        data.QuestBaselines = {}
+    end
+    return data.QuestBaselines
+end
+
+-- since_start missions measure FORWARD progress (Jason: "hatch 100 MORE eggs, not
+-- your current total"): evaluate against counter MINUS the baseline stamped when the
+-- mission became active. Unstamped (locked / not yet reached) shows zero progress.
+local function adjustedSnapshot(def, snapshot, base)
+    local cond = def.condition
+    if not (cond and cond.since_start and cond.counter) then
+        return snapshot
+    end
+    local cur = (snapshot.counters and snapshot.counters[cond.counter]) or 0
+    local counters = table.clone(snapshot.counters or {})
+    counters[cond.counter] = math.max(0, cur - (base or cur))
+    return { counters = counters, level = snapshot.level, currencies = snapshot.currencies }
+end
+
 function QuestService:List(player)
     local snapshot = self:_snapshot(player)
     local data = self._dataService:GetData(player)
     local ledger = claims(data)
+    local bases = baselines(data)
     local out = {}
     for id, def in pairs(self._config.defs or {}) do
-        local progress = Condition.progress(def.condition, snapshot)
         local count = ledger[id] or 0
-        local claimable = ClaimLogic.canClaim(progress.met, count, def).ok
         table.insert(out, {
             id = id,
+            def = def,
             order = tonumber(def.order) or math.huge,
             name = def.name,
             description = def.description,
-            progress = progress,
             claimedCount = count,
-            claimable = claimable,
             repeatable = def.repeatable == true,
         })
     end
@@ -87,12 +106,28 @@ function QuestService:List(player)
     local blocked = false
     for _, q in ipairs(out) do
         q.locked = blocked
-        if blocked then
-            q.claimable = false
-        end
         if not q.repeatable and q.claimedCount == 0 then
             blocked = true
         end
+    end
+    -- stamp the ACTIVE mission's baseline the first time it surfaces (since_start
+    -- progress counts from here)
+    for _, q in ipairs(out) do
+        if not q.locked and q.claimedCount == 0 then
+            local cond = q.def.condition
+            if cond and cond.since_start and cond.counter and bases[q.id] == nil then
+                bases[q.id] = (snapshot.counters and snapshot.counters[cond.counter]) or 0
+                self._dataService:RequestSave(player, "quest_baseline")
+            end
+            break -- only the first unclaimed unlocked mission is active
+        end
+    end
+    for _, q in ipairs(out) do
+        local progress =
+            Condition.progress(q.def.condition, adjustedSnapshot(q.def, snapshot, bases[q.id]))
+        q.progress = progress
+        q.claimable = not q.locked and ClaimLogic.canClaim(progress.met, q.claimedCount, q.def).ok
+        q.def = nil -- not for the wire
     end
     return { ok = true, quests = out }
 end
@@ -115,7 +150,8 @@ function QuestService:Claim(player, questId)
     local snapshot = self:_snapshot(player)
     local data = self._dataService:GetData(player)
     local ledger = claims(data)
-    local met = Condition.isMet(def.condition, snapshot)
+    local met =
+        Condition.isMet(def.condition, adjustedSnapshot(def, snapshot, baselines(data)[questId]))
     local verdict = ClaimLogic.canClaim(met, ledger[questId] or 0, def)
     if not verdict.ok then
         return verdict

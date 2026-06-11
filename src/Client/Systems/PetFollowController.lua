@@ -569,7 +569,13 @@ function PetFollowController.start()
             if breakable and roleKites(pet) then
                 local c = breakable:GetPivot().Position
                 local d = Vector3.new(cf.Position.X - c.X, 0, cf.Position.Z - c.Z)
-                kiteSnipe = d.Magnitude <= attackRangeOf(pet)
+                -- MARGIN (Jason's gold dragon "stays at my shoulder, not close enough
+                -- to fire"): this decision measures PLAYER->target, but the server
+                -- mining gate measures PET->target — and the formation slot sits
+                -- studs behind the player. Without the margin, a target near the
+                -- range boundary passes here and fails the gate: the pet holds
+                -- formation and never fires. Beyond the margin it advances instead.
+                kiteSnipe = d.Magnitude <= (attackRangeOf(pet) - 8)
             end
             if kiteSnipe then
                 -- Ranged in range: hold the player formation and fire, facing the target.
