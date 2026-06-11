@@ -84,13 +84,13 @@ return function()
             end
         end)
 
-        it("level_up keeps the visual; the jingle is a WORLD sound on level_claimed", function()
-            -- Jason: "everybody should hear those sounds" — the level-up jingle plays
-            -- positionally at the player (server-fired level_claimed), audible nearby;
-            -- the client-fired level_up row keeps the burst visual.
+        it("level_up keeps the visual; the world jingle is on level_EARNED", function()
+            -- Jason: the public moment is the bar filling ("when the bar changes to
+            -- the blinking arrow"), NOT the claim — the epic animation + sound land
+            -- on level_earned; the client-fired level_up row keeps the burst visual.
             expect(type(gameEvents.level_up)).to.equal("table")
             expect(type(gameEvents.level_up.vfx)).to.equal("table")
-            expect(gameEvents.level_claimed.world_sound).to.equal("celebratory_jingle")
+            expect(gameEvents.level_earned.world_sound).to.equal("celebratory_jingle")
         end)
     end)
 end

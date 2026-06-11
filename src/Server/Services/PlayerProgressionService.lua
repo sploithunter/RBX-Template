@@ -184,6 +184,15 @@ function PlayerProgressionService:_publish(player)
         return
     end
     local earned = self:GetEarnedLevel(player)
+    -- LEVEL EARNED (Jason: the world moment is "when the bar changes to the blinking
+    -- arrow" — not the claim): fire once per earned-level increase. The epic level-up
+    -- animation + sound hang off THIS event (world_sound row in game_events).
+    self._lastEarned = self._lastEarned or {}
+    local prevEarned = self._lastEarned[player]
+    self._lastEarned[player] = earned
+    if prevEarned ~= nil and earned > prevEarned then
+        fireGameEvent(player, "level_earned", { level = earned })
+    end
     local claimed = self:GetClaimedLevel(player)
     local maxLevel = math.floor(tonumber(self._xpConfig.max_level) or 0)
     local remaining = maxLevel > 0 and math.max(0, maxLevel - claimed) or math.huge

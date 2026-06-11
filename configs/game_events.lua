@@ -34,9 +34,11 @@ return {
         vfx = { kind = "burst", color = { 255, 205, 70 } }, -- gold celebratory burst at the player
     },
 
-    -- server truth: a level was CLAIMED (PlayerProgressionService). The jingle plays
-    -- AT the player's character, audible to everyone nearby (3D falloff, ~120 studs).
-    level_claimed = {
+    -- LEVEL EARNED: the bar just filled and the arrow starts blinking (server truth,
+    -- once per earned level). THIS is the public moment — the epic level-up animation
+    -- + sound land here (Jason). Placeholder jingle until the epic sound is sourced;
+    -- plays AT the player's character, audible nearby (3D falloff, ~120 studs).
+    level_earned = {
         world_sound = "celebratory_jingle",
     },
 
