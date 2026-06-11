@@ -31,10 +31,10 @@ local function thumb(decalId)
 end
 local REAL_GEMS = {
     amethyst = thumb("102357151476128"), -- gems_purple/gem_single
-    emerald = thumb("137697638458544"), -- gems_green/gem_single
-    citrine = thumb("104177688657054"), -- gems_yellow/gem_single
-    ruby = thumb("106127747169545"), -- gems_red/gem_single
-    sapphire = thumb("119450165143759"), -- gems_blue/gem_single
+    emerald = thumb("80734166119788"), -- gems_green/gem_single
+    citrine = thumb("134037429410412"), -- gems_yellow/gem_single
+    ruby = thumb("121052659627160"), -- gems_red/gem_single
+    sapphire = thumb("88757009582701"), -- gems_blue/gem_single
 }
 
 -- area key -> capsule fill + lighter top/stroke + bright gem tint

@@ -23,7 +23,7 @@
 
 local PetBadge = require(script.Parent.PetBadge)
 
-local RING_IMAGE = "rbxassetid://121697559002218" -- round ring frame (slot rim)
+local RING_IMAGE = "rbxassetid://132051312589044" -- round ring frame (slot rim)
 local PowerSlotRow = {}
 
 -- fixed 6-slot grid (scale X across the bar) + relative layout fractions (of the row)

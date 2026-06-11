@@ -1,6 +1,7 @@
 {
  "102909461111791": {
   "file": "assets/source/drops/cogwheel/blue/cogwheel_blue.png",
+  "image_id": "131082834586557",
   "moderation": "Approved",
   "name": "cogwheel_blue",
   "new_id": "95497285071915",
@@ -22,6 +23,7 @@
  },
  "106984872505048": {
   "file": "assets/ui/gems_clear/ruby_gem_single.png",
+  "image_id": "138551458441135",
   "moderation": "Approved",
   "name": "ruby_gem_single",
   "new_id": "133422349036846",
@@ -29,6 +31,7 @@
  },
  "108675846735651": {
   "file": "assets/source/drops/cogwheel/red/cogwheel_red.png",
+  "image_id": "88662935252644",
   "moderation": "Approved",
   "name": "cogwheel_red",
   "new_id": "77916253978784",
@@ -43,6 +46,7 @@
  },
  "110721051431892": {
   "file": "assets/ui/gems_clear/emerald_gem_pile.png",
+  "image_id": "110028734760296",
   "moderation": "Approved",
   "name": "emerald_gem_pile",
   "new_id": "138663115944067",
@@ -50,6 +54,7 @@
  },
  "111577083207352": {
   "file": "assets/ui/gems_clear/sapphire_gem_bag.png",
+  "image_id": "103860519092179",
   "moderation": "Approved",
   "name": "sapphire_gem_bag",
   "new_id": "78789508732647",
@@ -57,6 +62,7 @@
  },
  "115145476379087": {
   "file": "assets/ui/gems_clear/citrine_gem_bag.png",
+  "image_id": "96892408129617",
   "moderation": "Approved",
   "name": "citrine_gem_bag",
   "new_id": "72134949097249",
@@ -71,6 +77,7 @@
  },
  "119007782066562": {
   "file": "assets/source/drops/cogwheel/yellow/cogwheel_yellow.png",
+  "image_id": "79723645423878",
   "moderation": "Approved",
   "name": "cogwheel_yellow",
   "new_id": "86309474366377",
@@ -92,6 +99,7 @@
  },
  "121697559002218": {
   "file": "assets/ui/ring_frames_white/ring_aura.png",
+  "image_id": "132051312589044",
   "moderation": "Approved",
   "name": "ring_white_ring_aura",
   "new_id": "127196786591127",
@@ -106,6 +114,7 @@
  },
  "123560213437578": {
   "file": "assets/source/drops/cogwheel/silver/cogwheel_silver.png",
+  "image_id": "70588294918015",
   "moderation": "Approved",
   "name": "cogwheel_silver",
   "new_id": "118323389241379",
@@ -155,6 +164,7 @@
  },
  "130117829099103": {
   "file": "assets/ui/gems_clear/citrine_gem_pile.png",
+  "image_id": "106846660303472",
   "moderation": "Approved",
   "name": "citrine_gem_pile",
   "new_id": "89902262899457",
@@ -197,6 +207,7 @@
  },
  "140074573067134": {
   "file": "assets/ui/gems_clear/sapphire_gem_pile.png",
+  "image_id": "106895217994427",
   "moderation": "Approved",
   "name": "sapphire_gem_pile",
   "new_id": "114760741112126",
@@ -232,6 +243,7 @@
  },
  "80309644035251": {
   "file": "assets/ui/gems_clear/ruby_gem_bag.png",
+  "image_id": "83118221453427",
   "moderation": "Approved",
   "name": "ruby_gem_bag",
   "new_id": "78137007412009",
@@ -246,6 +258,7 @@
  },
  "88555005076540": {
   "file": "assets/ui/gems_clear/citrine_gem_single.png",
+  "image_id": "134350323528645",
   "moderation": "Approved",
   "name": "citrine_gem_single",
   "new_id": "120801798255392",
@@ -253,6 +266,7 @@
  },
  "88946068227454": {
   "file": "assets/source/drops/cogwheel/purple/cogwheel_purple.png",
+  "image_id": "97999269673992",
   "moderation": "Approved",
   "name": "cogwheel_purple",
   "new_id": "103969254149522",
@@ -260,6 +274,7 @@
  },
  "89319434061596": {
   "file": "assets/ui/gems_clear/ruby_gem_pile.png",
+  "image_id": "74868057637890",
   "moderation": "Approved",
   "name": "ruby_gem_pile",
   "new_id": "126363411255168",
@@ -267,6 +282,7 @@
  },
  "89849279170806": {
   "file": "assets/ui/gems_clear/emerald_gem_single.png",
+  "image_id": "95635117262920",
   "moderation": "Approved",
   "name": "emerald_gem_single",
   "new_id": "117103605868668",
@@ -274,6 +290,7 @@
  },
  "91612068059535": {
   "file": "assets/ui/gems_clear/emerald_gem_bag.png",
+  "image_id": "123355196999439",
   "moderation": "Approved",
   "name": "emerald_gem_bag",
   "new_id": "140029546915697",
@@ -281,6 +298,7 @@
  },
  "92087344212010": {
   "file": "assets/ui/gems_clear/sapphire_gem_single.png",
+  "image_id": "85476193238451",
   "moderation": "Approved",
   "name": "sapphire_gem_single",
   "new_id": "116631469507017",
@@ -323,6 +341,7 @@
  },
  "99887919204355": {
   "file": "assets/source/drops/cogwheel/green/cogwheel_green.png",
+  "image_id": "129292347025511",
   "moderation": "Approved",
   "name": "cogwheel_green",
   "new_id": "107948677817959",

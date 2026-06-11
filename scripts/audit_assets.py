@@ -30,7 +30,7 @@ def consumed_ids():
 
 def manifest_ids():
     known = set()
-    for f in ROOT.glob("scripts/*.json"):
+    for f in list(ROOT.glob("scripts/*.json")) + list(ROOT.glob("scripts/migration/*.json")):
         try:
             data = json.loads(f.read_text())
         except Exception:

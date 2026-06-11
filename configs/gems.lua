@@ -19,24 +19,24 @@ return {
     -- 12 textures keyed [color][form].
     textures = {
         sapphire = {
-            single = "rbxassetid://92087344212010",
-            pile = "rbxassetid://140074573067134",
-            bag = "rbxassetid://111577083207352",
+            single = "rbxassetid://85476193238451",
+            pile = "rbxassetid://106895217994427",
+            bag = "rbxassetid://103860519092179",
         },
         emerald = {
-            single = "rbxassetid://89849279170806",
-            pile = "rbxassetid://110721051431892",
-            bag = "rbxassetid://91612068059535",
+            single = "rbxassetid://95635117262920",
+            pile = "rbxassetid://110028734760296",
+            bag = "rbxassetid://123355196999439",
         },
         ruby = {
-            single = "rbxassetid://106984872505048",
-            pile = "rbxassetid://89319434061596",
-            bag = "rbxassetid://80309644035251",
+            single = "rbxassetid://138551458441135",
+            pile = "rbxassetid://74868057637890",
+            bag = "rbxassetid://83118221453427",
         },
         citrine = {
-            single = "rbxassetid://88555005076540",
-            pile = "rbxassetid://130117829099103",
-            bag = "rbxassetid://115145476379087",
+            single = "rbxassetid://134350323528645",
+            pile = "rbxassetid://106846660303472",
+            bag = "rbxassetid://96892408129617",
         },
     },
 

@@ -240,12 +240,12 @@ return {
             mesh = "rbxassetid://76065631196112",
             size = 1.6, -- widest-side studs (gem-drop scale)
             textures = {
-                silver = "rbxassetid://123560213437578",
-                green = "rbxassetid://99887919204355",
-                blue = "rbxassetid://102909461111791",
-                purple = "rbxassetid://88946068227454",
-                red = "rbxassetid://108675846735651",
-                yellow = "rbxassetid://119007782066562",
+                silver = "rbxassetid://70588294918015",
+                green = "rbxassetid://129292347025511",
+                blue = "rbxassetid://131082834586557",
+                purple = "rbxassetid://97999269673992",
+                red = "rbxassetid://88662935252644",
+                yellow = "rbxassetid://79723645423878",
             },
             origin_colors = {
                 geomancer = "green",
