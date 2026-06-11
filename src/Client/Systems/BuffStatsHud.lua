@@ -177,6 +177,28 @@ function BuffStatsHud:_build()
     makeRow("golden_luck", "🟡 Gold Luck", Color3.fromRGB(240, 200, 70), 51)
     makeRow("rainbow_luck", "🌈 Rainbow Luck", Color3.fromRGB(220, 120, 235), 52)
     makeRow("huge_luck", "🐘 Huge Luck", Color3.fromRGB(255, 140, 220), 53)
+    -- PRESENCE buffs (config-styled, one row per source; visible only while active).
+    -- Today: creator lucky-server (configs/creators.lua server_luck.display, purple —
+    -- Jason: "should not be the green look... individually configurable; we might add
+    -- this mechanic to other things").
+    self._presenceBuffs = {}
+    do
+        local ok, creators = pcall(function()
+            return require(game:GetService("ReplicatedStorage").Configs:WaitForChild("creators"))
+        end)
+        local d = ok and creators and creators.server_luck and creators.server_luck.display
+        if d and d.attr then
+            local c = d.color or { 170, 90, 255 }
+            makeRow(
+                "presence_creator",
+                d.label or "👑 Creator Luck",
+                Color3.fromRGB(c[1], c[2], c[3]),
+                54
+            )
+            self._presenceBuffs[#self._presenceBuffs + 1] =
+                { key = "presence_creator", attr = d.attr }
+        end
+    end
     makeRow("speed", "🐾 Speed", Color3.fromRGB(95, 180, 235), 6)
     makeRow("recharge", "⚡ Recharge", Color3.fromRGB(160, 130, 240), 7)
     makeRow("xp", "✨ XP", Color3.fromRGB(150, 110, 235), 8)
@@ -319,11 +341,15 @@ function BuffStatsHud:_refresh()
 
     -- targeted channels (events/powers set <X>LuckBuff multiplier attrs + Until):
     -- visible ONLY while non-neutral, so the panel stays compact day-to-day
-    for key, attr in pairs({
+    local channels = {
         golden_luck = "GoldenLuckBuff",
         rainbow_luck = "RainbowLuckBuff",
         huge_luck = "HugeLuckBuff",
-    }) do
+    }
+    for _, pb in ipairs(self._presenceBuffs or {}) do
+        channels[pb.key] = pb.attr
+    end
+    for key, attr in pairs(channels) do
         local untilT = p:GetAttribute(attr .. "Until") or 0
         local mult = (untilT > now) and (tonumber(p:GetAttribute(attr)) or 1) or 1
         local row = self.rows[key]
