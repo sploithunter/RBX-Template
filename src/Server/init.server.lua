@@ -97,6 +97,12 @@ registerFeatureModule(
     { "Logger", "ConfigLoader", "DataService" }
 )
 registerFeatureModule(
+    "stats",
+    "StatEventCounters",
+    ServerScriptService.Server.Services.StatEventCounters,
+    { "Logger", "ConfigLoader", "StatsService" }
+)
+registerFeatureModule(
     "modifiers",
     "ModifierService",
     ServerScriptService.Server.Services.ModifierService,

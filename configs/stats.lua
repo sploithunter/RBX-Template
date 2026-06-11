@@ -75,5 +75,31 @@ return {
             scope = "lifetime",
             default = 0,
         },
+        creators_met = {
+            display_name = "Creators Met",
+            scope = "lifetime",
+            default = 0,
+        },
+        levels_earned = {
+            display_name = "Levels Earned",
+            scope = "lifetime",
+            default = 0,
+        },
+        areas_unlocked = {
+            display_name = "Areas Unlocked",
+            scope = "lifetime",
+            default = 0,
+        },
+    },
+
+    -- EVENT-FED COUNTERS (Jason: "it's free data — if there's an event, we can just
+    -- subscribe to it, keep a counter, stored in their profile"). StatEventCounters
+    -- taps the GameEvents bus and increments these on every matching fire — a new
+    -- achievement/alignment stat is ONE LINE here, no service edits. Lifetime
+    -- counters stay the substrate; quests window them via QuestBaselines.
+    event_counters = {
+        met_creator = "creators_met",
+        level_earned = "levels_earned",
+        area_unlocked = "areas_unlocked",
     },
 }
