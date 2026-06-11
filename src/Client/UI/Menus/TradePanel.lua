@@ -465,17 +465,26 @@ function TradePanel:_closeWindow()
         self.window:Destroy()
         self.window = nil
     end
-    self:_closePetPicker()
+    self:_hideCardTooltip()
     self.state = nil
 end
 
 -- Build (or rebuild) the two-player trade window from a state view.
+-- THREE PANELS (Jason: "borrow from the inventory menu... full icon, hover info"):
+-- left = YOUR tradeable pets (inventory-style cards, click to offer), middle = your
+-- offer (click to pull back), right = their offer (read-only). Mirrored per client.
+local VARIANT_COLORS = {
+    basic = Color3.fromRGB(120, 125, 140),
+    golden = Color3.fromRGB(255, 200, 60),
+    rainbow = Color3.fromRGB(255, 90, 210),
+}
+
 function TradePanel:_renderWindow(state)
     self:_closeWindow()
     local gui = self:_ensureLiveGui()
     local win = Instance.new("Frame")
     win.Name = "TradeWindow"
-    win.Size = UDim2.new(0, 640, 0, 420)
+    win.Size = UDim2.new(0, 960, 0, 540)
     win.Position = UDim2.new(0.5, 0, 0.5, 0)
     win.AnchorPoint = Vector2.new(0.5, 0.5)
     win.BackgroundColor3 = COLORS.panel
@@ -486,15 +495,62 @@ function TradePanel:_renderWindow(state)
     s.Color = COLORS.header
     s.Thickness = 3
     s.Parent = win
+    -- pixel-designed window: shrink on small viewports (same fix as the HUD)
+    pcall(function()
+        require(script.Parent.Parent.UIViewportScale).attach(win, { min = 0.55 })
+    end)
     self.window = win
 
     self:_buildHeader(win, "🤝 Trading with " .. (state.them.name or "Player"), function()
         self:_callBus("trade.cancel", {})
     end)
 
-    -- Two offer columns.
-    self:_offerColumn(win, "You", state.you, true, UDim2.new(0, 16, 0, 84))
-    self:_offerColumn(win, state.them.name or "Them", state.them, false, UDim2.new(0.5, 8, 0, 84))
+    -- uids already in my offer (left column marks them instead of double-adding)
+    local offered = {}
+    for _, item in ipairs(state.you.items or {}) do
+        offered[item.uid] = true
+    end
+
+    local result = self:_callBus("trade.myPets", {})
+    local myPets = (result and result.pets) or {}
+    table.sort(myPets, function(a, b)
+        return tostring(a.id) .. tostring(a.variant) < tostring(b.id) .. tostring(b.variant)
+    end)
+
+    local colW = 1 / 3
+    self:_petColumn(win, "Your Pets", myPets, {
+        pos = UDim2.new(0, 14, 0, 84),
+        size = UDim2.new(colW, -20, 1, -156),
+        tint = COLORS.row,
+        offered = offered,
+        onClick = function(pet)
+            if not pet.locked and not offered[pet.uid] then
+                self:_callBus("trade.add", { uid = pet.uid })
+            end
+        end,
+    })
+    self:_petColumn(win, ("Your Offer (%d)"):format(#(state.you.items or {})), state.you.items, {
+        pos = UDim2.new(colW, 8, 0, 84),
+        size = UDim2.new(colW, -16, 1, -156),
+        tint = COLORS.you,
+        confirmed = state.you.confirmed,
+        emptyText = "Click your pets to offer them",
+        onClick = function(pet)
+            self:_callBus("trade.remove", { uid = pet.uid })
+        end,
+    })
+    self:_petColumn(
+        win,
+        (state.them.name or "Them") .. ("'s Offer (%d)"):format(#(state.them.items or {})),
+        state.them.items,
+        {
+            pos = UDim2.new(2 * colW, 2, 0, 84),
+            size = UDim2.new(colW, -16, 1, -156),
+            tint = COLORS.them,
+            confirmed = state.them.confirmed,
+            emptyText = "Nothing offered yet",
+        }
+    )
 
     -- Confirm + Cancel.
     local confirm = Instance.new("TextButton")
@@ -537,180 +593,237 @@ function TradePanel:_renderWindow(state)
     end)
 end
 
-function TradePanel:_offerColumn(parent, titleText, side, mine, pos)
+-- One titled column holding a GRID of pet cards. opts: pos, size, tint, confirmed,
+-- offered (uid set -> "in offer" badge), onClick(pet) (nil = read-only), emptyText.
+function TradePanel:_petColumn(parent, titleText, items, opts)
     local col = Instance.new("Frame")
-    col.Size = UDim2.new(0.5, -24, 1, -156)
-    col.Position = pos
-    col.BackgroundColor3 = mine and COLORS.you or COLORS.them
-    col.BackgroundTransparency = 0.7
+    col.Size = opts.size
+    col.Position = opts.pos
+    col.BackgroundColor3 = opts.tint or COLORS.row
+    col.BackgroundTransparency = 0.72
     col.ZIndex = 101
     col.Parent = parent
     corner(col, 12)
 
     local head = label(
         col,
-        titleText .. (side.confirmed and "  ✓" or ""),
+        titleText .. (opts.confirmed and "  ✓" or ""),
         UDim2.new(1, -12, 0, 24),
         UDim2.new(0, 8, 0, 6),
-        side.confirmed and COLORS.confirmed or COLORS.text,
+        opts.confirmed and COLORS.confirmed or COLORS.text,
         Enum.Font.GothamBold
     )
     head.TextXAlignment = Enum.TextXAlignment.Left
     local hc = Instance.new("UITextSizeConstraint")
-    hc.MaxTextSize = 18
+    hc.MaxTextSize = 17
     hc.Parent = head
 
-    local items = Instance.new("ScrollingFrame")
-    items.Size = UDim2.new(1, -12, 1, mine and -78 or -40)
-    items.Position = UDim2.new(0, 6, 0, 34)
-    items.BackgroundTransparency = 1
-    items.BorderSizePixel = 0
-    items.ScrollBarThickness = 4
-    items.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    items.CanvasSize = UDim2.new(0, 0, 0, 0)
-    items.ZIndex = 102
-    items.Parent = col
-    local lay = Instance.new("UIListLayout")
-    lay.Padding = UDim.new(0, 4)
-    lay.Parent = items
+    local grid = Instance.new("ScrollingFrame")
+    grid.Size = UDim2.new(1, -12, 1, -40)
+    grid.Position = UDim2.new(0, 6, 0, 34)
+    grid.BackgroundTransparency = 1
+    grid.BorderSizePixel = 0
+    grid.ScrollBarThickness = 4
+    grid.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    grid.CanvasSize = UDim2.new(0, 0, 0, 0)
+    grid.ZIndex = 102
+    grid.Parent = col
+    local lay = Instance.new("UIGridLayout")
+    lay.CellSize = UDim2.new(0, 88, 0, 96)
+    lay.CellPadding = UDim2.new(0, 6, 0, 6)
+    lay.SortOrder = Enum.SortOrder.LayoutOrder
+    lay.Parent = grid
 
-    for i, item in ipairs(side.items or {}) do
-        local r = Instance.new("TextButton")
-        r.Size = UDim2.new(1, -6, 0, 30)
-        r.BackgroundColor3 = COLORS.row
-        r.Text = petText(item) .. (mine and "   ✕" or "")
-        r.TextColor3 = COLORS.text
-        r.TextScaled = true
-        r.Font = Enum.Font.Gotham
-        r.TextXAlignment = Enum.TextXAlignment.Left
-        r.LayoutOrder = i
-        r.AutoButtonColor = mine
-        r.Active = mine
-        r.ZIndex = 103
-        r.Parent = items
-        corner(r, 6)
-        local pad = Instance.new("UIPadding")
-        pad.PaddingLeft = UDim.new(0, 8)
-        pad.Parent = r
-        local rcst = Instance.new("UITextSizeConstraint")
-        rcst.MaxTextSize = 14
-        rcst.Parent = r
-        if mine then
-            r.Activated:Connect(function()
-                self:_callBus("trade.remove", { uid = item.uid })
-            end)
-        end
+    if #(items or {}) == 0 and opts.emptyText then
+        local empty = label(
+            col,
+            opts.emptyText,
+            UDim2.new(1, -20, 0, 36),
+            UDim2.new(0, 10, 0.45, 0),
+            COLORS.subtext,
+            Enum.Font.Gotham
+        )
+        empty.TextWrapped = true
+        empty.ZIndex = 103
+        local ec = Instance.new("UITextSizeConstraint")
+        ec.MaxTextSize = 14
+        ec.Parent = empty
     end
 
-    if mine then
-        local add = Instance.new("TextButton")
-        add.Size = UDim2.new(1, -12, 0, 34)
-        add.Position = UDim2.new(0, 6, 1, -38)
-        add.BackgroundColor3 = COLORS.accept
-        add.Text = "+ Add Pet"
-        add.TextColor3 = COLORS.text
-        add.TextScaled = true
-        add.Font = Enum.Font.GothamBold
-        add.ZIndex = 103
-        add.Parent = col
-        corner(add, 8)
-        local ac = Instance.new("UITextSizeConstraint")
-        ac.MaxTextSize = 15
-        ac.Parent = add
-        add.Activated:Connect(function()
-            self:_openPetPicker()
+    for i, pet in ipairs(items or {}) do
+        self:_petCard(grid, pet, i, opts)
+    end
+end
+
+-- Inventory-style card: generated pet image (emoji fallback), name plate, variant
+-- stroke, HUGE chip, lock overlay, hover tooltip + highlight.
+function TradePanel:_petCard(parent, pet, order, opts)
+    local inOffer = opts.offered and opts.offered[pet.uid]
+    local clickable = opts.onClick ~= nil and not pet.locked and not inOffer
+
+    local card = Instance.new("TextButton")
+    card.Text = ""
+    card.LayoutOrder = order
+    card.BackgroundColor3 = COLORS.panel
+    card.BackgroundTransparency = 0.15
+    card.AutoButtonColor = clickable
+    card.Active = clickable
+    card.ZIndex = 103
+    card.Parent = parent
+    corner(card, 10)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = VARIANT_COLORS[pet.variant] or VARIANT_COLORS.basic
+    stroke.Thickness = pet.huge and 3 or 2
+    stroke.Parent = card
+
+    -- icon: pre-generated pet image viewport (same source the inventory uses)
+    local icon
+    pcall(function()
+        local img = ReplicatedStorage:FindFirstChild("Assets")
+        img = img and img:FindFirstChild("Images")
+        img = img and img:FindFirstChild("Pets")
+        img = img and img:FindFirstChild(tostring(pet.id))
+        img = img and img:FindFirstChild(tostring(pet.variant or "basic"))
+        if img then
+            icon = img:Clone()
+        end
+    end)
+    if icon then
+        icon.Name = "PetImage"
+        icon.Size = UDim2.new(1, -10, 1, -30)
+        icon.Position = UDim2.new(0, 5, 0, 4)
+        icon.BackgroundTransparency = 1
+        icon.ZIndex = 104
+        icon.Parent = card
+    else
+        local fallback = Instance.new("TextLabel")
+        fallback.Size = UDim2.new(1, 0, 1, -26)
+        fallback.BackgroundTransparency = 1
+        fallback.Text = "🐾"
+        fallback.TextScaled = true
+        fallback.ZIndex = 104
+        fallback.Parent = card
+    end
+
+    local name = Instance.new("TextLabel")
+    name.Size = UDim2.new(1, -6, 0, 22)
+    name.Position = UDim2.new(0, 3, 1, -24)
+    name.BackgroundTransparency = 1
+    name.Text = petText(pet)
+    name.TextColor3 = COLORS.text
+    name.TextScaled = true
+    name.Font = Enum.Font.GothamBold
+    name.ZIndex = 105
+    name.Parent = card
+    local nc = Instance.new("UITextSizeConstraint")
+    nc.MaxTextSize = 12
+    nc.Parent = name
+
+    if pet.locked or inOffer then
+        local overlay = Instance.new("TextLabel")
+        overlay.Size = UDim2.new(1, 0, 1, 0)
+        overlay.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+        overlay.BackgroundTransparency = 0.45
+        overlay.Text = pet.locked and "🔒" or "✓ offered"
+        overlay.TextColor3 = COLORS.text
+        overlay.TextScaled = true
+        overlay.Font = Enum.Font.GothamBold
+        overlay.ZIndex = 106
+        overlay.Parent = card
+        corner(overlay, 10)
+        local oc = Instance.new("UITextSizeConstraint")
+        oc.MaxTextSize = pet.locked and 26 or 14
+        oc.Parent = overlay
+    end
+
+    -- hover: tooltip (name / variant / element / huge / lock reason) + lift
+    card.MouseEnter:Connect(function()
+        self:_showCardTooltip(card, pet)
+        if clickable then
+            card.BackgroundTransparency = 0
+        end
+    end)
+    card.MouseLeave:Connect(function()
+        self:_hideCardTooltip()
+        card.BackgroundTransparency = 0.15
+    end)
+
+    if clickable then
+        card.Activated:Connect(function()
+            self:_hideCardTooltip()
+            opts.onClick(pet)
         end)
     end
 end
 
-----------------------------------------------------------------------
--- Pet picker (offer one of your pets)
-----------------------------------------------------------------------
-
-function TradePanel:_openPetPicker()
-    self:_closePetPicker()
+function TradePanel:_showCardTooltip(card, pet)
+    self:_hideCardTooltip()
     local gui = self:_ensureLiveGui()
-    local picker = Instance.new("Frame")
-    picker.Name = "PetPicker"
-    picker.Size = UDim2.new(0, 320, 0, 380)
-    picker.Position = UDim2.new(0.5, 0, 0.5, 0)
-    picker.AnchorPoint = Vector2.new(0.5, 0.5)
-    picker.BackgroundColor3 = COLORS.panel
-    picker.ZIndex = 300
-    picker.Parent = gui
-    corner(picker, 14)
-    local s = Instance.new("UIStroke")
-    s.Color = COLORS.header
-    s.Thickness = 2
-    s.Parent = picker
-    self.petPicker = picker
+    local tip = Instance.new("Frame")
+    tip.Name = "TradeCardTooltip"
+    tip.Size = UDim2.new(0, 180, 0, 0)
+    tip.AutomaticSize = Enum.AutomaticSize.Y
+    tip.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
+    tip.BackgroundTransparency = 0.06
+    tip.ZIndex = 400
+    tip.Parent = gui
+    corner(tip, 8)
+    local st = Instance.new("UIStroke")
+    st.Color = VARIANT_COLORS[pet.variant] or VARIANT_COLORS.basic
+    st.Thickness = 2
+    st.Parent = tip
+    local pad = Instance.new("UIPadding")
+    pad.PaddingTop = UDim.new(0, 6)
+    pad.PaddingBottom = UDim.new(0, 6)
+    pad.PaddingLeft = UDim.new(0, 8)
+    pad.PaddingRight = UDim.new(0, 8)
+    pad.Parent = tip
+    local list = Instance.new("UIListLayout")
+    list.Padding = UDim.new(0, 2)
+    list.Parent = tip
 
-    self:_buildHeader(picker, "Choose a pet", function()
-        self:_closePetPicker()
-    end, 301)
-
-    local list = Instance.new("ScrollingFrame")
-    list.Size = UDim2.new(1, -16, 1, -84)
-    list.Position = UDim2.new(0, 8, 0, 78)
-    list.BackgroundTransparency = 1
-    list.BorderSizePixel = 0
-    list.ScrollBarThickness = 5
-    list.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    list.CanvasSize = UDim2.new(0, 0, 0, 0)
-    list.ZIndex = 301
-    list.Parent = picker
-    local lay = Instance.new("UIListLayout")
-    lay.Padding = UDim.new(0, 5)
-    lay.Parent = list
-
-    local result = self:_callBus("trade.myPets", {})
-    local pets = result and result.pets or {}
-    if #pets == 0 then
-        local empty = label(
-            list,
-            "No tradeable pets.",
-            UDim2.new(1, 0, 0, 40),
-            UDim2.new(0, 0, 0, 0),
-            COLORS.subtext,
-            Enum.Font.Gotham
-        )
-        empty.ZIndex = 302
-        return
+    local lines = {
+        petText(pet),
+        "Variant: " .. tostring(pet.variant or "basic"),
+    }
+    if pet.element and pet.element ~= "neutral" then
+        lines[#lines + 1] = "Element: " .. tostring(pet.element)
     end
-    for i, pet in ipairs(pets) do
-        local r = Instance.new("TextButton")
-        r.Size = UDim2.new(1, -6, 0, 34)
-        r.BackgroundColor3 = pet.locked and COLORS.pending or COLORS.row
-        r.Text = petText(pet) .. (pet.locked and "  🔒" or "")
-        r.TextColor3 = COLORS.text
-        r.TextScaled = true
-        r.Font = Enum.Font.Gotham
-        r.TextXAlignment = Enum.TextXAlignment.Left
-        r.LayoutOrder = i
-        r.Active = not pet.locked
-        r.AutoButtonColor = not pet.locked
-        r.ZIndex = 302
-        r.Parent = list
-        corner(r, 6)
-        local pad = Instance.new("UIPadding")
-        pad.PaddingLeft = UDim.new(0, 8)
-        pad.Parent = r
-        local rcst = Instance.new("UITextSizeConstraint")
-        rcst.MaxTextSize = 14
-        rcst.Parent = r
-        if not pet.locked then
-            r.Activated:Connect(function()
-                self:_callBus("trade.add", { uid = pet.uid })
-                self:_closePetPicker()
-            end)
-        end
+    if pet.huge then
+        lines[#lines + 1] = "HUGE"
     end
+    if pet.locked then
+        lines[#lines + 1] = "🔒 Locked — can't be traded"
+    end
+    for i, text in ipairs(lines) do
+        local l = Instance.new("TextLabel")
+        l.Size = UDim2.new(1, 0, 0, 16)
+        l.BackgroundTransparency = 1
+        l.Text = text
+        l.TextColor3 = i == 1 and COLORS.text or COLORS.subtext
+        l.TextSize = i == 1 and 14 or 12
+        l.Font = i == 1 and Enum.Font.GothamBold or Enum.Font.Gotham
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.LayoutOrder = i
+        l.ZIndex = 401
+        l.Parent = tip
+    end
+
+    -- pin beside the card (right side, flips left near the screen edge)
+    local cam = workspace.CurrentCamera
+    local vpX = cam and cam.ViewportSize.X or 1280
+    local x = card.AbsolutePosition.X + card.AbsoluteSize.X + 8
+    if x + 190 > vpX then
+        x = card.AbsolutePosition.X - 188
+    end
+    tip.Position = UDim2.fromOffset(x, card.AbsolutePosition.Y)
+    self.cardTooltip = tip
 end
 
-function TradePanel:_closePetPicker()
-    if self.petPicker then
-        self.petPicker:Destroy()
-        self.petPicker = nil
+function TradePanel:_hideCardTooltip()
+    if self.cardTooltip then
+        self.cardTooltip:Destroy()
+        self.cardTooltip = nil
     end
 end
 
