@@ -64,6 +64,15 @@ local BLINK_LEAD = 5 -- seconds: blink in the final stretch
 local BLINK_PERIOD = 0.5
 local PERMANENT_THRESHOLD = 86400 * 30 -- >30 days remaining = always-on (passive/toggle) -> "ON"
 
+local function toggleBuffPanel()
+    local ok, BuffStatsHud = pcall(function()
+        return require(script.Parent.BuffStatsHud)
+    end)
+    if ok and BuffStatsHud and BuffStatsHud.toggle then
+        BuffStatsHud.toggle()
+    end
+end
+
 local function makeBadge(parent, order)
     local holder = Instance.new("Frame")
     holder.Name = "PBadge"
@@ -71,6 +80,18 @@ local function makeBadge(parent, order)
     holder.BackgroundTransparency = 1
     holder.LayoutOrder = order
     holder.Parent = parent
+
+    -- tap target INSIDE the holder (a row-level button joined the UIListLayout and
+    -- shoved the pile left — Jason: "clickable off to the left... scooted the icons").
+    -- Every badge toggles the Active Buffs panel; the pile is one affordance.
+    local hit = Instance.new("TextButton")
+    hit.Name = "BuffPanelToggle"
+    hit.BackgroundTransparency = 1
+    hit.Text = ""
+    hit.Size = UDim2.fromScale(1, 1)
+    hit.ZIndex = 20
+    hit.Parent = holder
+    hit.Activated:Connect(toggleBuffPanel)
 
     local disc = Instance.new("ImageLabel")
     disc.Name = "Disc"
@@ -136,24 +157,6 @@ function PlayerPowerBadges.start()
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, 4)
     layout.Parent = row
-
-    -- the WHOLE pile is one tap/click target -> toggles the Active Buffs panel
-    -- (Jason: per-badge hover fails on touch; one affordance works everywhere)
-    local hit = Instance.new("TextButton")
-    hit.Name = "BuffPanelToggle"
-    hit.BackgroundTransparency = 1
-    hit.Text = ""
-    hit.Size = UDim2.fromScale(1, 1)
-    hit.ZIndex = 9
-    hit.Parent = row
-    hit.Activated:Connect(function()
-        local ok, BuffStatsHud = pcall(function()
-            return require(script.Parent.BuffStatsHud)
-        end)
-        if ok and BuffStatsHud and BuffStatsHud.toggle then
-            BuffStatsHud.toggle()
-        end
-    end)
 
     local badges = {} -- attr -> badge
 
