@@ -1324,6 +1324,19 @@ local function chip(parent, text, size, pos, color, order)
 end
 
 function PowerChoiceMenu:Show(parent)
+    -- the menu (and its tooltips) must paint ABOVE the HUD — the quest tracker was
+    -- covering the enhance hover (Jason: "this menu should be top level"). Raise the
+    -- hosting ScreenGui while we're shown; restore on Hide.
+    do
+        local gui = parent
+        while gui and not gui:IsA("ScreenGui") do
+            gui = gui.Parent
+        end
+        if gui and gui:IsA("ScreenGui") then
+            self._hostGui, self._hostOrder = gui, gui.DisplayOrder
+            gui.DisplayOrder = 50
+        end
+    end
     local root = Instance.new("Frame")
     root.Name = "PowerChoiceMenu"
     root.Size = UDim2.fromScale(0.5, 0.92)
@@ -1489,6 +1502,10 @@ function PowerChoiceMenu:Show(parent)
 end
 
 function PowerChoiceMenu:Hide()
+    if self._hostGui then
+        self._hostGui.DisplayOrder = self._hostOrder or 0
+        self._hostGui = nil
+    end
     self.enhanceFor = nil
     if self.enhStrip then
         self.enhStrip:Destroy()

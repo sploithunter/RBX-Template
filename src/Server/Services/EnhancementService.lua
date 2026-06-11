@@ -66,6 +66,25 @@ function EnhancementService:Start()
                 changed = true
             end
         end
+        -- SLOTTED legacy pieces predating the level system (survived the profile
+        -- reset, which keeps Slots) get a default-band level — Jason: "we lost the
+        -- numbers underneath" (label + aggregate both key off slot.enh.level)
+        local data = self._dataService:GetData(player)
+        for _, slots in pairs((data and data.Slots) or {}) do
+            if type(slots) == "table" then
+                for _, slot in ipairs(slots) do
+                    if
+                        type(slot) == "table"
+                        and slot.enh
+                        and slot.enh.type
+                        and not slot.enh.level
+                    then
+                        slot.enh.level = Enhancements.rollLevel(self._config, nil, nil)
+                        changed = true
+                    end
+                end
+            end
+        end
         -- STACK MIGRATION (Jason: uid-per-drop = save explosion): fold legacy
         -- uid-keyed records into identity stacks. One-time per profile.
         if bucket and bucket.items then
