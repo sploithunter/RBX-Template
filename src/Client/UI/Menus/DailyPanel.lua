@@ -368,6 +368,15 @@ function DailyPanel:_claim()
     -- Refresh regardless: success advances the streak, failure (already claimed)
     -- just re-renders the disabled state.
     self:_refresh()
+    -- clear the tray "!" immediately (BaseUI's poll would also catch it within a
+    -- minute) — direct instance hide, no BaseUI handle needed from a panel
+    local pg = game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
+    local base = pg and pg:FindFirstChild("ProfessionalBaseUI")
+    local btn = base and base:FindFirstChild("DailyButton", true)
+    local badge = btn and btn:FindFirstChild("Notification")
+    if badge then
+        badge.Visible = false
+    end
 end
 
 function DailyPanel:_animateEntrance()

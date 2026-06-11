@@ -1115,15 +1115,9 @@ local uiConfig = {
                         icon = "📅",
                         text = "Daily",
                         action = "daily_login_action",
-                        notification = {
-                            enabled = true,
-                            text = "!",
-                            -- corner placement to MATCH the Effects count badge (the default
-                            -- "top-right" insets 5px INSIDE the button, which floats over the
-                            -- icon once the tray pill-restyle shrinks the visual to ~84%)
-                            position = "top-right-corner",
-                            -- 🎨 Inherits: default red background, white text
-                        },
+                        -- the "!" badge is DYNAMIC now (BaseUI polls daily.status): it only
+                        -- shows when a claim is actually waiting (Jason: a permanent ! trains
+                        -- players to ignore it)
                         -- 🎨 Automatically gets: teal background, default icon/text styling!
                     },
                 },

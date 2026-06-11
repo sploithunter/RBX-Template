@@ -2348,12 +2348,69 @@ function BaseUI:_bindQuestTracker()
         end)
     end)
 
+    -- DAILY badge: "!" only while a claim is waiting (daily.status.claimable) —
+    -- the old config badge was static and always on. Checked on boot and every
+    -- ~60s here (it changes once a day + on claim; DailyPanel clears it instantly
+    -- after a successful claim).
+    local function refreshDailyBadge()
+        local remote = ReplicatedStorage:FindFirstChild("GameAPICommand")
+        if not remote then
+            return
+        end
+        local ok, envelope = pcall(function()
+            return remote:InvokeServer("daily.status", {})
+        end)
+        local res = (ok and type(envelope) == "table") and (envelope.result or envelope) or nil
+        if type(res) ~= "table" then
+            return
+        end
+        self:SetDailyBadge(res.claimable == true)
+    end
+
     task.spawn(function()
+        local tick = 0
         while self._questTrackerBound do
             refresh()
+            if tick % 15 == 0 then
+                refreshDailyBadge()
+            end
+            tick += 1
             task.wait(4)
         end
     end)
+end
+
+-- Show/hide the Daily tray button's "!" badge (claim waiting; DailyPanel hides the
+-- badge instance directly on claim, this poll is the source of truth).
+function BaseUI:SetDailyBadge(show)
+    local button = self._dailyButton
+    if not (button and button.Parent) then
+        local mc = self.mainFrame
+        button = mc and mc:FindFirstChild("DailyButton", true)
+        self._dailyButton = button
+    end
+    if not button then
+        return
+    end
+    local badge = button:FindFirstChild("Notification")
+    if not show then
+        if badge then
+            badge.Visible = false
+        end
+        return
+    end
+    if not badge then
+        badge = self:_createButtonNotification({
+            notification = {
+                enabled = true,
+                text = "!",
+                position = "top-right-corner",
+            },
+        }, button)
+    end
+    if badge then
+        badge.Visible = true
+    end
 end
 
 -- Create pets button element for panes
