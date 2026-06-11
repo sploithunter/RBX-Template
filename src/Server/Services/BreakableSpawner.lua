@@ -1983,6 +1983,28 @@ function BreakableSpawner:_trySpawnOne(
                 end)
             end
         end
+        -- PREMIUM GEM bonus (configs/drops.lua gem_bonus): rare extra roll per
+        -- contributor per break — a gems pickup pops from the node via the same
+        -- drop pipeline (owner-only visible, magnet, auto-collect on timeout).
+        local function rollGemBonus(plr)
+            local cfg = dropService and dropService._config and dropService._config.gem_bonus
+            if not (cfg and cfg.enabled == true and plr) then
+                return
+            end
+            if math.random() >= (tonumber(cfg.chance) or 0) then
+                return
+            end
+            local amount = math.random(tonumber(cfg.min) or 1, tonumber(cfg.max) or 1)
+            if
+                not (
+                    dropService.SpawnCoinDrop
+                    and dropService:SpawnCoinDrop(plr, "gems", amount, dropPos)
+                )
+            then
+                economy:AddCurrency(plr, "gems", amount, "breakable_gem_bonus")
+            end
+        end
+
         -- Credit `amount` of the node currency to `plr`, as a drop when possible, else instantly.
         local function creditCoins(plr, amount, reason)
             if
@@ -2072,6 +2094,7 @@ function BreakableSpawner:_trySpawnOne(
                             local resolvedShare = resolvePlayerAward(plr, share)
                             pcall(function()
                                 creditCoins(plr, resolvedShare, "crystal_break_split")
+                                rollGemBonus(plr) -- premium gem bonus per contributor
                                 -- #172: payout float above the broken crystal (config-driven
                                 -- via the GameEvents bus; float kind anchors at ctx.position)
                                 if dropPos and resolvedShare > 0 then

@@ -13,6 +13,17 @@
 return {
     enabled = true, -- drops ON by default (Jason): mining spawns pickups, not instant coins
 
+    -- PREMIUM GEM bonus roll (Jason: "a chance for a gem drop on crystal break"):
+    -- each break rolls once per contributor; on a hit, a `gems` pickup pops from the
+    -- node (same pipeline: owner-only visible, magnet, never lost). gems_earned_lifetime
+    -- counts it (earned in the environment). chance 0.01 = ~1 gem per 100 breaks.
+    gem_bonus = {
+        enabled = true,
+        chance = 0.01,
+        min = 1,
+        max = 2,
+    },
+
     collect_radius = 11, -- base auto-collect distance (studs) from the owner's character
     magnet_pull_radius = 6, -- once within this, a drop flies to the player (visual "vacuum")
     magnet_pull_speed = 60, -- studs/s a drop travels while being pulled in
