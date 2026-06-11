@@ -297,15 +297,11 @@ else
                     padding = { top = 5, bottom = 5, left = 5, right = 5 },
                 },
                 contents = {
-                    {
-                        type = "menu_button",
-                        config = {
-                            name = "Shop",
-                            icon = "🛒",
-                            text = "Shop",
-                            color = Color3.fromRGB(46, 204, 113),
-                        },
-                    },
+                    -- Shop + Effects pulled from the tray (Jason, playtest audit): the
+                    -- shop catalog is Phase-7 placeholder priced in dead legacy coins,
+                    -- and the Effects panel's only content source WAS that shop's speed
+                    -- boost (the buff-readout HUD covers live multipliers). Panels stay
+                    -- registered — re-add the buttons when real content lands.
                     {
                         type = "menu_button",
                         config = {
@@ -313,15 +309,6 @@ else
                             icon = "🎒",
                             text = "Items",
                             color = Color3.fromRGB(52, 152, 219),
-                        },
-                    },
-                    {
-                        type = "menu_button",
-                        config = {
-                            name = "Effects",
-                            icon = "⚡",
-                            text = "Effects",
-                            color = Color3.fromRGB(155, 89, 182),
                         },
                     },
                     {
@@ -372,8 +359,10 @@ else
                     {
                         type = "rewards_button",
                         config = {
+                            -- labeled "Quests": this button OPENS the Quest panel (claims
+                            -- included) — calling it Rewards made one menu look like two
                             icon = "🎁",
-                            text = "Rewards",
+                            text = "Quests",
                             color = Color3.fromRGB(255, 215, 0),
                             badge_count = 3,
                         },
