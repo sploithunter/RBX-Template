@@ -757,12 +757,11 @@ function InventoryPanel:_createUI(parent)
                     tc2.Parent = b
                     return b
                 end
-                -- right-to-left after Trade (Trade ends at offset 8 + 86)
-                local hatchBtn = pill("🥚 Hatch", 86, 8 + 86 + 8, Color3.fromRGB(200, 140, 40))
-                local countBtn =
-                    pill("Eggs: 1", 86, 8 + 86 + 8 + 86 + 8, Color3.fromRGB(70, 100, 160))
-                local autoBtn =
-                    pill("Manual", 80, 8 + 86 + 8 + 86 + 8 + 86 + 8, Color3.fromRGB(90, 90, 110))
+                -- right-to-left after Trade: TWO settings pills only (Jason: "not sure
+                -- why we have a hatch button" — hatching happens AT the egg; these
+                -- configure how the E-key/auto hatch behaves)
+                local countBtn = pill("Eggs: 1", 86, 8 + 86 + 8, Color3.fromRGB(70, 100, 160))
+                local autoBtn = pill("Manual", 80, 8 + 86 + 8 + 86 + 8, Color3.fromRGB(90, 90, 110))
 
                 local countMode = "one" -- one | half | max (display follows the service truth)
                 local function refresh()
@@ -788,10 +787,6 @@ function InventoryPanel:_createUI(parent)
                         countMode = "one"
                         EggSvc:SetSelectedHatchCount(1)
                     end
-                    refresh()
-                end)
-                hatchBtn.Activated:Connect(function()
-                    EggSvc:HatchSelectedCount("Selected")
                     refresh()
                 end)
                 refresh()
