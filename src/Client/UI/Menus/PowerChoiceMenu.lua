@@ -1334,7 +1334,9 @@ function PowerChoiceMenu:Show(parent)
         end
         if gui and gui:IsA("ScreenGui") then
             self._hostGui, self._hostOrder = gui, gui.DisplayOrder
-            gui.DisplayOrder = 50
+            -- above the PlayerBar gui (DisplayOrder 80), which hosts the quest
+            -- tracker capsule that was covering the enhance tooltips
+            gui.DisplayOrder = 100
         end
     end
     local root = Instance.new("Frame")
