@@ -114,18 +114,47 @@ end
 -- get to see both locks"). Surface rendering occludes naturally — one lock per
 -- viewing side. Removed when the config unlocks.
 function RealmPortalService:_ensureLockBadge(part)
+    -- the prompt part is often a FOOT or frame chunk of the portal Model — the lock
+    -- belongs on the big glowing face. Pick the model's largest part, and the two
+    -- faces perpendicular to its thinnest axis (the flat plane of the oval).
+    local host = part
+    local model = part:FindFirstAncestorOfClass("Model")
+    if model then
+        local bestArea = 0
+        for _, d in ipairs(model:GetDescendants()) do
+            if d:IsA("BasePart") then
+                local sz = d.Size
+                local area = math.max(sz.X * sz.Y, sz.X * sz.Z, sz.Y * sz.Z)
+                if area > bestArea then
+                    bestArea = area
+                    host = d
+                end
+            end
+        end
+    end
+    local sz = host.Size
+    local faceA, faceB
+    if sz.Z <= sz.X and sz.Z <= sz.Y then
+        faceA, faceB = Enum.NormalId.Front, Enum.NormalId.Back
+    elseif sz.X <= sz.Y and sz.X <= sz.Z then
+        faceA, faceB = Enum.NormalId.Left, Enum.NormalId.Right
+    else
+        faceA, faceB = Enum.NormalId.Top, Enum.NormalId.Bottom
+    end
     local names = { "RealmLockBadgeFront", "RealmLockBadgeBack", "RealmLockBadge" }
     if self._portalsConfig.locked ~= true then
-        for _, n in ipairs(names) do
-            local g = part:FindFirstChild(n)
-            if g then
-                g:Destroy()
+        for _, holder in ipairs({ part, host }) do
+            for _, n in ipairs(names) do
+                local g = holder:FindFirstChild(n)
+                if g then
+                    g:Destroy()
+                end
             end
         end
         return
     end
     local function makeFace(face, name)
-        if part:FindFirstChild(name) then
+        if host:FindFirstChild(name) then
             return
         end
         local gui = Instance.new("SurfaceGui")
@@ -134,7 +163,7 @@ function RealmPortalService:_ensureLockBadge(part)
         gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
         gui.PixelsPerStud = 24
         gui.LightInfluence = 0
-        gui.Parent = part
+        gui.Parent = host
         local lock = Instance.new("TextLabel")
         lock.Size = UDim2.fromScale(0.62, 0.62)
         lock.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -149,7 +178,7 @@ function RealmPortalService:_ensureLockBadge(part)
         local caption = Instance.new("TextLabel")
         caption.Size = UDim2.fromScale(0.9, 0.12)
         caption.AnchorPoint = Vector2.new(0.5, 0)
-        caption.Position = UDim2.fromScale(0.5, 0.78)
+        caption.Position = UDim2.fromScale(0.5, 0.7) -- 0.78 sank into the terrain at the gate's foot
         caption.BackgroundTransparency = 1
         caption.Text = "COMING SOON"
         caption.TextScaled = true
@@ -158,8 +187,8 @@ function RealmPortalService:_ensureLockBadge(part)
         caption.TextStrokeTransparency = 0.1
         caption.Parent = gui
     end
-    makeFace(Enum.NormalId.Front, "RealmLockBadgeFront")
-    makeFace(Enum.NormalId.Back, "RealmLockBadgeBack")
+    makeFace(faceA, "RealmLockBadgeFront")
+    makeFace(faceB, "RealmLockBadgeBack")
 end
 
 -- World S3: LoadAsset the Hell-face model once into ReplicatedStorage.RealmModels so the client
