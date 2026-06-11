@@ -124,10 +124,58 @@ function MeetCreatorService:Start()
     for _, p in ipairs(Players:GetPlayers()) do
         onJoin(p)
     end
+
+    -- lucky-server presence tracking (joins stamp immediately — no meet delay needed;
+    -- leaves re-evaluate so the buff drops when the last creator goes)
+    Players.PlayerAdded:Connect(function()
+        self:_refreshServerLuck()
+    end)
+    Players.PlayerRemoving:Connect(function(leaving)
+        task.defer(function()
+            self:_refreshServerLuck()
+            -- defer runs before the player is gone from GetPlayers in some orders;
+            -- a second pass next heartbeat keeps the state honest
+        end)
+        task.delay(0.1, function()
+            self:_refreshServerLuck()
+        end)
+    end)
+    self:_refreshServerLuck()
 end
 
 -- Hatch one held egg item: consume it, roll the variant, grant the SPECIES pet
 -- (plain grant — never huge, never creator class).
+-- LUCKY SERVER: while any registered creator is present, every NON-creator player
+-- wears ServerLuckBuff (folded into hatch luck by EggService, same convention as
+-- the bunny aura). Creators stay baseline so their playtesting reads true balance.
+function MeetCreatorService:_isCreator(player)
+    return (self._config.creators or {})[tostring(player.UserId)] ~= nil
+end
+
+function MeetCreatorService:_refreshServerLuck()
+    local cfg = self._config.server_luck
+    local enabled = cfg and cfg.enabled == true
+    local creatorPresent = false
+    if enabled then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if self:_isCreator(p) then
+                creatorPresent = true
+                break
+            end
+        end
+    end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if creatorPresent and not self:_isCreator(p) then
+            p:SetAttribute("ServerLuckBuff", tonumber(cfg.mult) or 1.25)
+            -- refreshed on every join/leave; horizon just needs to outlive sessions
+            p:SetAttribute("ServerLuckBuffUntil", os.time() + 86400)
+        else
+            p:SetAttribute("ServerLuckBuff", nil)
+            p:SetAttribute("ServerLuckBuffUntil", nil)
+        end
+    end
+end
+
 -- Admin/test: forget every met-creator stamp so the once-ever meet can fire again
 -- (the egg is a one-of-one — this is how you re-run the flow after testing spends it).
 function MeetCreatorService:ResetMeets(player)

@@ -31,6 +31,15 @@ return {
         },
     },
 
+    -- LUCKY SERVER (Jason): while a registered creator is in the server, EVERYONE
+    -- EXCEPT creators gets bonus hatch luck. Creators are excluded on purpose —
+    -- "it makes it difficult to do playtesting for balance if they're not like a
+    -- regular player." mult is the HatchLuckBuff-style multiplier (1.25 = +25%).
+    server_luck = {
+        enabled = true,
+        mult = 1.25,
+    },
+
     meet = {
         enabled = true,
         -- once per (player, creator) pair, forever. Creators DO meet themselves
