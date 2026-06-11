@@ -29,23 +29,39 @@ if loggerSuccess and loggerResult then
     LoggerWrapper = {
         new = function(name)
             return {
-                info = function(self, ...) loggerResult:Info("[" .. name .. "] " .. tostring((...)), {context = name}) end,
-                warn = function(self, ...) loggerResult:Warn("[" .. name .. "] " .. tostring((...)), {context = name}) end,
-                error = function(self, ...) loggerResult:Error("[" .. name .. "] " .. tostring((...)), {context = name}) end,
-                debug = function(self, ...) loggerResult:Debug("[" .. name .. "] " .. tostring((...)), {context = name}) end,
+                info = function(self, ...)
+                    loggerResult:Info("[" .. name .. "] " .. tostring((...)), { context = name })
+                end,
+                warn = function(self, ...)
+                    loggerResult:Warn("[" .. name .. "] " .. tostring((...)), { context = name })
+                end,
+                error = function(self, ...)
+                    loggerResult:Error("[" .. name .. "] " .. tostring((...)), { context = name })
+                end,
+                debug = function(self, ...)
+                    loggerResult:Debug("[" .. name .. "] " .. tostring((...)), { context = name })
+                end,
             }
-        end
+        end,
     }
 else
     LoggerWrapper = {
         new = function(name)
             return {
-                info = function(self, ...) print("[" .. name .. "] INFO:", ...) end,
-                warn = function(self, ...) warn("[" .. name .. "] WARN:", ...) end,
-                error = function(self, ...) warn("[" .. name .. "] ERROR:", ...) end,
-                debug = function(self, ...) print("[" .. name .. "] DEBUG:", ...) end,
+                info = function(self, ...)
+                    print("[" .. name .. "] INFO:", ...)
+                end,
+                warn = function(self, ...)
+                    warn("[" .. name .. "] WARN:", ...)
+                end,
+                error = function(self, ...)
+                    warn("[" .. name .. "] ERROR:", ...)
+                end,
+                debug = function(self, ...)
+                    print("[" .. name .. "] DEBUG:", ...)
+                end,
             }
-        end
+        end,
     }
 end
 
@@ -59,12 +75,16 @@ if templateSuccess and templateResult then
 else
     -- Fallback TemplateManager
     TemplateManager = {
-        new = function() 
+        new = function()
             return {
-                CreatePanel = function() return nil end,
-                CreateFromTemplate = function() return nil end
-            } 
-        end 
+                CreatePanel = function()
+                    return nil
+                end,
+                CreateFromTemplate = function()
+                    return nil
+                end,
+            }
+        end,
     }
 end
 
@@ -77,9 +97,18 @@ if configSuccess and configResult then
     uiConfig = configResult
 else
     uiConfig = {
-        themes = { dark = { primary = { surface = Color3.fromRGB(40, 40, 45) }, text = { primary = Color3.fromRGB(255, 255, 255) } } },
+        themes = {
+            dark = {
+                primary = { surface = Color3.fromRGB(40, 40, 45) },
+                text = { primary = Color3.fromRGB(255, 255, 255) },
+            },
+        },
         active_theme = "dark",
-        helpers = { get_theme = function(config) return config.themes.dark end }
+        helpers = {
+            get_theme = function(config)
+                return config.themes.dark
+            end,
+        },
     }
 end
 
@@ -88,56 +117,60 @@ EffectsPanel.__index = EffectsPanel
 
 function EffectsPanel.new()
     local self = setmetatable({}, EffectsPanel)
-    
+
     self.logger = LoggerWrapper.new("EffectsPanel")
     self.templateManager = TemplateManager.new()
-    
+
     -- Panel state
     self.isVisible = false
     self.frame = nil
     self.effectsData = {
         playerEffects = {},
-        globalEffects = {}
+        globalEffects = {},
     }
-    
+
     self.effectDisplays = {}
-    
+
     return self
 end
 
 function EffectsPanel:Show(parent)
-    if self.isVisible then return end
-    
+    if self.isVisible then
+        return
+    end
+
     self:_createUI(parent)
     self:_loadEffectsData()
-    
+
     self.isVisible = true
     self.logger:info("Effects panel shown")
 end
 
 function EffectsPanel:Hide()
-    if not self.isVisible then return end
-    
+    if not self.isVisible then
+        return
+    end
+
     if self.frame then
         self.frame:Destroy()
         self.frame = nil
     end
-    
+
     self.isVisible = false
     self.logger:info("Effects panel hidden")
 end
 
 function EffectsPanel:_createUI(parent)
     local theme = uiConfig.helpers.get_theme(uiConfig)
-    
+
     -- Create main panel using template
     self.frame = self.templateManager:CreatePanel("panel_scroll", {
         size = UDim2.new(0.6, 0, 0.8, 0),
         position = UDim2.new(0.5, 0, 0.5, 0),
         anchor_point = Vector2.new(0.5, 0.5),
-        parent = parent
+        parent = parent,
     })
-    
+
     if not self.frame then
         -- Fallback frame creation
         self.frame = Instance.new("Frame")
@@ -147,14 +180,14 @@ function EffectsPanel:_createUI(parent)
         self.frame.BackgroundColor3 = theme.primary.surface
         self.frame.BorderSizePixel = 0
         self.frame.Parent = parent
-        
+
         local corner = Instance.new("UICorner")
         corner.CornerRadius = UDim.new(0, 16)
         corner.Parent = self.frame
     end
-    
+
     self.frame.Name = "EffectsPanel"
-    
+
     -- Title
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "Title"
@@ -167,7 +200,7 @@ function EffectsPanel:_createUI(parent)
     titleLabel.Font = uiConfig.fonts and uiConfig.fonts.primary or Enum.Font.Gotham
     titleLabel.TextXAlignment = Enum.TextXAlignment.Center
     titleLabel.Parent = self.frame
-    
+
     -- Close button
     local closeButton = Instance.new("TextButton")
     closeButton.Name = "CloseButton"
@@ -180,15 +213,15 @@ function EffectsPanel:_createUI(parent)
     closeButton.TextSize = 20
     closeButton.Font = Enum.Font.GothamBold
     closeButton.Parent = self.frame
-    
+
     local closeCorner = Instance.new("UICorner")
     closeCorner.CornerRadius = UDim.new(0, 8)
     closeCorner.Parent = closeButton
-    
+
     closeButton.Activated:Connect(function()
         self:Hide()
     end)
-    
+
     -- Scroll frame for effects
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Name = "EffectsScroll"
@@ -199,30 +232,30 @@ function EffectsPanel:_createUI(parent)
     scrollFrame.ScrollBarThickness = 8
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     scrollFrame.Parent = self.frame
-    
+
     -- Layout for effects
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, 10)
     layout.Parent = scrollFrame
-    
+
     -- Update canvas size when layout changes
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         scrollFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
     end)
-    
+
     self.scrollFrame = scrollFrame
 end
 
 function EffectsPanel:_loadEffectsData()
     self.effectsData = {
         playerEffects = {},
-        globalEffects = {}
+        globalEffects = {},
     }
 
     local signals = require(ReplicatedStorage.Shared.Network.Signals)
-    signals.ActiveEffects:FireServer({request = true})
+    signals.ActiveEffects:FireServer({ request = true })
     self:_updateEffectsDisplay()
 end
 
@@ -232,22 +265,22 @@ function EffectsPanel:_updateEffectsDisplay()
         display:Destroy()
     end
     self.effectDisplays = {}
-    
+
     local layoutOrder = 1
-    
+
     -- Player Effects Section
     self:_createSectionHeader("Player Effects", layoutOrder)
     layoutOrder = layoutOrder + 1
-    
+
     for _, effect in ipairs(self.effectsData.playerEffects) do
         self:_createEffectDisplay(effect, "player", layoutOrder)
         layoutOrder = layoutOrder + 1
     end
-    
+
     -- Global Effects Section
     self:_createSectionHeader("Global Effects", layoutOrder)
     layoutOrder = layoutOrder + 1
-    
+
     for _, effect in ipairs(self.effectsData.globalEffects) do
         self:_createEffectDisplay(effect, "global", layoutOrder)
         layoutOrder = layoutOrder + 1
@@ -256,7 +289,7 @@ end
 
 function EffectsPanel:_createSectionHeader(title, layoutOrder)
     local theme = uiConfig.helpers.get_theme(uiConfig)
-    
+
     local header = Instance.new("Frame")
     header.Name = title .. "Header"
     header.Size = UDim2.new(1, 0, 0, 40)
@@ -264,11 +297,11 @@ function EffectsPanel:_createSectionHeader(title, layoutOrder)
     header.BorderSizePixel = 0
     header.LayoutOrder = layoutOrder
     header.Parent = self.scrollFrame
-    
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = header
-    
+
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, -20, 1, 0)
     label.Position = UDim2.new(0, 10, 0, 0)
@@ -283,7 +316,7 @@ end
 
 function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     local theme = uiConfig.helpers.get_theme(uiConfig)
-    
+
     local effectFrame = Instance.new("Frame")
     effectFrame.Name = tostring(effect.id or effect.name or "effect") .. "Display"
     effectFrame.Size = UDim2.new(1, 0, 0, 60)
@@ -291,11 +324,11 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     effectFrame.BorderSizePixel = 0
     effectFrame.LayoutOrder = layoutOrder
     effectFrame.Parent = self.scrollFrame
-    
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = effectFrame
-    
+
     -- Icon
     local iconLabel = Instance.new("TextLabel")
     iconLabel.Size = UDim2.new(0, 40, 0, 40)
@@ -304,7 +337,7 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     iconLabel.Text = tostring(effect.icon or "EVENT")
     iconLabel.TextSize = 24
     iconLabel.Parent = effectFrame
-    
+
     -- Effect name
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Size = UDim2.new(0, 200, 0, 20)
@@ -316,7 +349,7 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     nameLabel.Font = Enum.Font.GothamMedium
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
     nameLabel.Parent = effectFrame
-    
+
     -- Duration/Timer
     local timeLabel = Instance.new("TextLabel")
     timeLabel.Size = UDim2.new(0, 200, 0, 16)
@@ -327,7 +360,7 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     timeLabel.Font = Enum.Font.Gotham
     timeLabel.TextXAlignment = Enum.TextXAlignment.Left
     timeLabel.Parent = effectFrame
-    
+
     local remaining = tonumber(effect.remaining or effect.timeRemaining or 0) or 0
     local duration = tonumber(effect.duration or remaining) or remaining
 
@@ -338,7 +371,7 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
         local seconds = remaining % 60
         timeLabel.Text = string.format("%02d:%02d remaining", minutes, seconds)
     end
-    
+
     -- Progress bar (for timed effects)
     if remaining ~= -1 then
         local progressBG = Instance.new("Frame")
@@ -347,7 +380,7 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
         progressBG.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
         progressBG.BorderSizePixel = 0
         progressBG.Parent = effectFrame
-        
+
         local progressFill = Instance.new("Frame")
         local progress = duration > 0 and math.clamp(remaining / duration, 0, 1) or 0
         progressFill.Size = UDim2.new(progress, 0, 1, 0)
@@ -355,16 +388,16 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
         progressFill.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
         progressFill.BorderSizePixel = 0
         progressFill.Parent = progressBG
-        
+
         local progressCorner1 = Instance.new("UICorner")
         progressCorner1.CornerRadius = UDim.new(0, 2)
         progressCorner1.Parent = progressBG
-        
+
         local progressCorner2 = Instance.new("UICorner")
         progressCorner2.CornerRadius = UDim.new(0, 2)
         progressCorner2.Parent = progressFill
     end
-    
+
     table.insert(self.effectDisplays, effectFrame)
 end
 
@@ -373,18 +406,26 @@ function EffectsPanel:UpdateEffects(newEffectsData)
     if newEffectsData then
         if newEffectsData.effects and newEffectsData.effects.globalEffects then
             self.effectsData = {
-                playerEffects = newEffectsData.effects.playerEffects or self.effectsData.playerEffects or {},
-                globalEffects = newEffectsData.effects.globalEffects or self.effectsData.globalEffects or {}
+                playerEffects = newEffectsData.effects.playerEffects
+                    or self.effectsData.playerEffects
+                    or {},
+                globalEffects = newEffectsData.effects.globalEffects
+                    or self.effectsData.globalEffects
+                    or {},
             }
         elseif newEffectsData.globalEvents then
             self.effectsData = {
                 playerEffects = self.effectsData.playerEffects or {},
-                globalEffects = newEffectsData.globalEvents
+                globalEffects = newEffectsData.globalEvents,
             }
         elseif newEffectsData.playerEffects or newEffectsData.globalEffects then
             self.effectsData = {
-                playerEffects = newEffectsData.playerEffects or self.effectsData.playerEffects or {},
-                globalEffects = newEffectsData.globalEffects or self.effectsData.globalEffects or {}
+                playerEffects = newEffectsData.playerEffects
+                    or self.effectsData.playerEffects
+                    or {},
+                globalEffects = newEffectsData.globalEffects
+                    or self.effectsData.globalEffects
+                    or {},
             }
         else
             local playerEffects = {}
@@ -398,11 +439,11 @@ function EffectsPanel:UpdateEffects(newEffectsData)
             end
             self.effectsData = {
                 playerEffects = playerEffects,
-                globalEffects = self.effectsData.globalEffects or {}
+                globalEffects = self.effectsData.globalEffects or {},
             }
         end
     end
-    
+
     if self.isVisible then
         self:_updateEffectsDisplay()
     end
@@ -422,4 +463,4 @@ function EffectsPanel:Destroy()
     self.logger:info("Effects panel destroyed")
 end
 
-return EffectsPanel 
+return EffectsPanel

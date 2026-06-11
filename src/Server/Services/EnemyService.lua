@@ -1247,11 +1247,7 @@ function EnemyService:_petAuras(pet)
             return a.kind and { a } or a
         end
     end
-    return SupportAura.aurasFor(
-        pet:GetAttribute("PetType"),
-        self._petRoles,
-        pet:GetAttribute("CreatorPet") == true
-    )
+    return SupportAura.aurasFor(pet:GetAttribute("PetType"), self._petRoles)
 end
 
 -- A green heal puff above a pet (world-side "tell" that it was just healed). Expands +

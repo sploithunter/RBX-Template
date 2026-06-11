@@ -9,7 +9,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 -- Wait for Signals to initialize
-task.wait(1) 
+task.wait(1)
 
 if not Signals.PurchaseItem or not Signals.SellItem then
     warn("Economy signals not found! Check Signals configuration")
@@ -22,7 +22,7 @@ screenGui.Name = "EconomyTestGUI"
 screenGui.Parent = playerGui
 
 local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 350, 0, 700)
+frame.Size = UDim2.new(0, 350, 0, 700)
 frame.Position = UDim2.new(0, 10, 0, 10)
 frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 frame.BorderSizePixel = 0
@@ -76,23 +76,23 @@ listLayout.Parent = scrollFrame
 -- Shop items data
 local shopItems = {
     -- Basic items
-    {id = "test_item", name = "Test Item", price = 50, currency = "coins"},
-    {id = "health_potion", name = "Health Potion", price = 25, currency = "coins"},
-    {id = "wooden_sword", name = "Wooden Sword", price = 100, currency = "coins"},
-    {id = "iron_sword", name = "Iron Sword", price = 500, currency = "coins"},
-    {id = "basic_pickaxe", name = "Basic Pickaxe", price = 200, currency = "coins"},
-    
+    { id = "test_item", name = "Test Item", price = 50, currency = "coins" },
+    { id = "health_potion", name = "Health Potion", price = 25, currency = "coins" },
+    { id = "wooden_sword", name = "Wooden Sword", price = 100, currency = "coins" },
+    { id = "iron_sword", name = "Iron Sword", price = 500, currency = "coins" },
+    { id = "basic_pickaxe", name = "Basic Pickaxe", price = 200, currency = "coins" },
+
     -- Premium items
-    {id = "premium_boost", name = "Premium XP Boost", price = 10, currency = "gems"},
-    {id = "diamond_sword", name = "Diamond Sword", price = 25, currency = "gems"},
-    
+    { id = "premium_boost", name = "Premium XP Boost", price = 10, currency = "gems" },
+    { id = "diamond_sword", name = "Diamond Sword", price = 25, currency = "gems" },
+
     -- Rate limiting effect items ⚡
-    {id = "speed_potion", name = "⚡ Speed Potion", price = 5, currency = "gems"},
-    {id = "trader_scroll", name = "📜 Trader Scroll", price = 150, currency = "coins"},
-    {id = "vip_pass", name = "💎 VIP Pass", price = 100, currency = "gems"},
-    
+    { id = "speed_potion", name = "⚡ Speed Potion", price = 5, currency = "gems" },
+    { id = "trader_scroll", name = "📜 Trader Scroll", price = 150, currency = "coins" },
+    { id = "vip_pass", name = "💎 VIP Pass", price = 100, currency = "gems" },
+
     -- Testing utilities 🧪
-    {id = "alamantic_aluminum", name = "🧪 Alamantic Aluminum", price = 1, currency = "coins"}
+    { id = "alamantic_aluminum", name = "🧪 Alamantic Aluminum", price = 1, currency = "coins" },
 }
 
 -- Function to create purchase button
@@ -106,21 +106,23 @@ local function createPurchaseButton(item, index)
     button.TextScaled = true
     button.LayoutOrder = index
     button.Parent = scrollFrame
-    
+
     local buttonCorner = Instance.new("UICorner")
     buttonCorner.CornerRadius = UDim.new(0, 4)
     buttonCorner.Parent = button
-    
+
     button.Activated:Connect(function()
-        print(string.format("🛒 Purchasing %s for %d %s...", item.name, item.price, item.currency))
+        print(
+            string.format("🛒 Purchasing %s for %d %s...", item.name, item.price, item.currency)
+        )
         print("📊 Current coins before purchase:", player:GetAttribute("Coins") or "unknown")
-        Signals.PurchaseItem:FireServer( {
+        Signals.PurchaseItem:FireServer({
             itemId = item.id,
             cost = item.price,
-            currency = item.currency
+            currency = item.currency,
         })
     end)
-    
+
     return button
 end
 
@@ -138,9 +140,9 @@ listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvasS
 updateCanvasSize()
 
 -- Control buttons section
-    local controlsFrame = Instance.new("Frame")
-    controlsFrame.Size = UDim2.new(0.9, 0, 0, 155)
-    controlsFrame.Position = UDim2.new(0.05, 0, 0, 480)
+local controlsFrame = Instance.new("Frame")
+controlsFrame.Size = UDim2.new(0.9, 0, 0, 155)
+controlsFrame.Position = UDim2.new(0.05, 0, 0, 480)
 controlsFrame.BackgroundTransparency = 1
 controlsFrame.Parent = frame
 
@@ -181,94 +183,102 @@ monetizationCorner.Parent = monetizationTestButton
 
 comprehensiveTestButton.Activated:Connect(function()
     print("🚀 ===== COMPREHENSIVE ECONOMY TEST STARTING =====")
-    
+
     -- Test sequence with delays to see each step
     local function runTestSequence()
         -- Step 1: Get initial state
         print("📊 Step 1: Getting initial state...")
         -- economyBridge:Fire("server", "GetPlayerDebugInfo", {}) -- TODO: Replace with appropriate Signal
         task.wait(1)
-        
+
         -- Step 2: Purchase with coins
         print("💰 Step 2: Purchasing test_item with coins...")
-        Signals.PurchaseItem:FireServer( {
+        Signals.PurchaseItem:FireServer({
             itemId = "test_item",
             cost = 50,
-            currency = "coins"
+            currency = "coins",
         })
         task.wait(1)
-        
+
         -- Step 3: Purchase with gems
         print("💎 Step 3: Purchasing premium_boost with gems...")
-        Signals.PurchaseItem:FireServer( {
+        Signals.PurchaseItem:FireServer({
             itemId = "premium_boost",
             cost = 10,
-            currency = "gems"
+            currency = "gems",
         })
         task.wait(1)
-        
+
         -- Step 4: Sell an item
         print("💸 Step 4: Selling test_item...")
         Signals.SellItem:FireServer({
             itemId = "test_item",
-            quantity = 1
+            quantity = 1,
         })
         task.wait(1)
-        
+
         -- Step 5: Try purchasing with insufficient funds
         print("❌ Step 5: Testing insufficient funds (diamond_sword = 25 gems)...")
-        Signals.PurchaseItem:FireServer( {
+        Signals.PurchaseItem:FireServer({
             itemId = "diamond_sword",
             cost = 25,
-            currency = "gems"
+            currency = "gems",
         })
         task.wait(1)
-        
+
         -- Step 5.5: Try purchasing with insufficient level (crystal_staff requires level 10)
-        print("❌ Step 5.5: Testing insufficient level (crystal_staff requires level 10, player is level 1)...")
-        Signals.PurchaseItem:FireServer( {
+        print(
+            "❌ Step 5.5: Testing insufficient level (crystal_staff requires level 10, player is level 1)..."
+        )
+        Signals.PurchaseItem:FireServer({
             itemId = "crystal_staff",
             cost = 5,
-            currency = "crystals"
+            currency = "crystals",
         })
         task.wait(1)
-        
+
         -- Step 6: Get final state and summary
         print("📊 Step 6: Getting final state...")
         -- economyBridge:Fire("server", "GetPlayerDebugInfo", {}) -- TODO: Replace with appropriate Signal
         task.wait(1)
-        
+
         -- Step 7: Test monetization system
         print("💎 Step 7: Testing monetization system...")
         local Locations = require(ReplicatedStorage.Shared.Locations)
         local monetizationBridge = Locations.getBridge("Monetization")
         if monetizationBridge then
             print("   - Testing product info retrieval...")
-            monetizationBridge:Fire("server", "GetProductInfo", {productId = "small_gems"})
+            monetizationBridge:Fire("server", "GetProductInfo", { productId = "small_gems" })
             task.wait(0.5)
-            
+
             print("   - Testing game pass ownership...")
             monetizationBridge:Fire("server", "GetOwnedPasses", {})
             task.wait(0.5)
-            
+
             print("   - Testing test purchase (free in Studio)...")
             monetizationBridge:Fire("server", "InitiatePurchase", {
                 productType = "product",
-                configId = "small_gems"
+                configId = "small_gems",
             })
             task.wait(1)
         else
             print("   ⚠️ Monetization bridge not available")
         end
-        
+
         -- Step 8: Test configuration validation
         print("⚙️ Step 8: Testing configuration validation...")
         local monetizationStatus = Locations.getConfigLoader():GetMonetizationStatus()
-        print("   - Monetization status:", monetizationStatus.hasFirstPurchaseBonus and "✅" or "❌")
-        print("   - Test mode:", monetizationStatus.testModeEnabled and "✅ Enabled" or "❌ Disabled")
+        print(
+            "   - Monetization status:",
+            monetizationStatus.hasFirstPurchaseBonus and "✅" or "❌"
+        )
+        print(
+            "   - Test mode:",
+            monetizationStatus.testModeEnabled and "✅ Enabled" or "❌ Disabled"
+        )
         print("   - Products configured:", monetizationStatus.productCount)
         print("   - Game passes configured:", monetizationStatus.passCount)
-        
+
         print("🏁 ===== COMPREHENSIVE TEST COMPLETED =====")
         print("✅ Check the logs above to verify all systems worked correctly!")
         print("📋 EXPECTED RESULTS:")
@@ -278,13 +288,13 @@ comprehensiveTestButton.Activated:Connect(function()
         print("   ✅ Step 7: Monetization system should respond to requests")
         print("   ✅ Step 8: Configuration should show valid monetization setup")
     end
-    
+
     task.spawn(runTestSequence)
 end)
 
 monetizationTestButton.Activated:Connect(function()
     print("💎 ===== MONETIZATION SYSTEM TEST STARTING =====")
-    
+
     local function runMonetizationTest()
         -- Test 1: Configuration validation
         print("⚙️ Test 1: Configuration validation...")
@@ -293,54 +303,69 @@ monetizationTestButton.Activated:Connect(function()
         print("   ✅ Products configured:", monetizationStatus.productCount)
         print("   ✅ Game passes configured:", monetizationStatus.passCount)
         print("   ✅ Test mode:", monetizationStatus.testModeEnabled and "Enabled" or "Disabled")
-        print("   ✅ Premium benefits:", monetizationStatus.hasPremiumBenefits and "Available" or "Not configured")
+        print(
+            "   ✅ Premium benefits:",
+            monetizationStatus.hasPremiumBenefits and "Available" or "Not configured"
+        )
         task.wait(1)
-        
+
         -- Test 2: ProductIdMapper functionality
         print("🔧 Test 2: ProductIdMapper functionality...")
         local success, productIdMapper = pcall(function()
             return require(Locations.ProductIdMapper)
         end)
-        
+
         if success and productIdMapper then
             print("   ✅ ProductIdMapper loaded")
             print("   ✅ Test mode:", productIdMapper:IsTestMode() and "Enabled" or "Disabled")
-            
+
             -- Test product config
             local productConfig = productIdMapper:GetProductConfig("small_gems")
             if productConfig then
-                print("   ✅ Product config available:", productConfig.name, "-", productConfig.price_robux, "R$")
+                print(
+                    "   ✅ Product config available:",
+                    productConfig.name,
+                    "-",
+                    productConfig.price_robux,
+                    "R$"
+                )
             end
-            
+
             -- Test game pass config
             local passConfig = productIdMapper:GetPassConfig("vip_pass")
             if passConfig then
-                print("   ✅ Game pass config available:", passConfig.name, "-", passConfig.price_robux, "R$")
+                print(
+                    "   ✅ Game pass config available:",
+                    passConfig.name,
+                    "-",
+                    passConfig.price_robux,
+                    "R$"
+                )
             end
         else
             print("   ❌ ProductIdMapper not available")
         end
         task.wait(1)
-        
+
         -- Test 3: Network bridge functionality
         print("🌐 Test 3: Network bridge functionality...")
         local monetizationBridge = Locations.getBridge("Monetization")
         if monetizationBridge then
             print("   ✅ Monetization bridge available")
-            
+
             print("   📡 Testing product info request...")
-            monetizationBridge:Fire("server", "GetProductInfo", {productId = "small_gems"})
+            monetizationBridge:Fire("server", "GetProductInfo", { productId = "small_gems" })
             task.wait(0.5)
-            
+
             print("   📡 Testing game pass ownership request...")
             monetizationBridge:Fire("server", "GetOwnedPasses", {})
             task.wait(0.5)
-            
+
             if productIdMapper and productIdMapper:IsTestMode() then
                 print("   💰 Testing purchase in test mode (should be free)...")
                 monetizationBridge:Fire("server", "InitiatePurchase", {
-                    productType = "product", 
-                    configId = "small_gems"
+                    productType = "product",
+                    configId = "small_gems",
                 })
                 task.wait(1)
             else
@@ -350,21 +375,21 @@ monetizationTestButton.Activated:Connect(function()
             print("   ❌ Monetization bridge not available")
         end
         task.wait(1)
-        
+
         -- Test 4: Check for monetization services (if main server loaded)
         print("🔧 Test 4: Server services check...")
         local moduleLoaderSuccess, moduleLoader = pcall(function()
             local ml = require(Locations.ModuleLoader)
             return ml:Get("Logger") and ml -- Only return if Logger is available (indicating services are loaded)
         end)
-        
+
         if moduleLoaderSuccess and moduleLoader then
             print("   ✅ Server services are loaded")
-            
+
             local monetizationServiceSuccess = pcall(function()
                 return moduleLoader:Get("MonetizationService")
             end)
-            
+
             if monetizationServiceSuccess then
                 print("   ✅ MonetizationService accessible")
             else
@@ -373,13 +398,13 @@ monetizationTestButton.Activated:Connect(function()
         else
             print("   ⚠️ Server services not fully loaded yet")
         end
-        
+
         print("💎 ===== MONETIZATION TEST COMPLETED =====")
         print("✅ All available monetization features tested!")
         print("📋 Check above for any ❌ failures or ⚠️ warnings")
         print("💡 In test mode, purchases should be free in Studio")
     end
-    
+
     task.spawn(runMonetizationTest)
 end)
 
@@ -423,7 +448,7 @@ sellButton.Activated:Connect(function()
     print("📊 Current coins before sell:", player:GetAttribute("Coins") or "unknown")
     Signals.SellItem:FireServer({
         itemId = "test_item",
-        quantity = 1
+        quantity = 1,
     })
 end)
 
@@ -449,7 +474,7 @@ debugButton.Activated:Connect(function()
     print("   Level:", player:GetAttribute("Level") or "not set")
     print("   Data Loaded:", player:GetAttribute("DataLoaded") or "not set")
     print("   Signals Available:", Signals.PurchaseItem ~= nil)
-    
+
     -- Request inventory info from server
     -- economyBridge:Fire("server", "GetPlayerDebugInfo", {}) -- TODO: Replace with appropriate Signal
 end)
@@ -472,50 +497,50 @@ rateLimitCorner.Parent = rateLimitButton
 rateLimitButton.Activated:Connect(function()
     task.spawn(function()
         print("🚨 ===== RATE LIMITING TEST START =====")
-        
+
         -- Test 1: Rapid fire purchases (should trigger rate limiting)
         print("⚡ Test 1: Rapid fire purchases (should hit rate limits)...")
         for i = 1, 10 do
             print(string.format("  🔥 Rapid purchase #%d", i))
-            Signals.PurchaseItem:FireServer( {
+            Signals.PurchaseItem:FireServer({
                 itemId = "test_item",
                 cost = 50,
-                currency = "coins"
+                currency = "coins",
             })
             task.wait(0.05) -- Very fast - 20 requests per second
         end
         task.wait(2)
-        
+
         -- Test 2: Purchase and use a speed potion
         print("🧪 Test 2: Buying and using speed potion...")
-        Signals.PurchaseItem:FireServer( {
+        Signals.PurchaseItem:FireServer({
             itemId = "speed_potion",
             cost = 5,
-            currency = "gems"
+            currency = "gems",
         })
         task.wait(1)
-        
+
         print("  💊 Using speed potion (should apply rate boost)...")
         -- economyBridge:Fire("server", "UseItem", -- TODO: Replace with appropriate Signal {itemId = "speed_potion"})
         task.wait(2)
-        
+
         -- Test 3: Rapid purchases WITH speed boost active
         print("⚡ Test 3: Rapid purchases WITH speed boost...")
         for i = 1, 10 do
             print(string.format("  ⚡ Boosted purchase #%d", i))
-            Signals.PurchaseItem:FireServer( {
+            Signals.PurchaseItem:FireServer({
                 itemId = "test_item",
                 cost = 50,
-                currency = "coins"
+                currency = "coins",
             })
             task.wait(0.05)
         end
         task.wait(2)
-        
+
         -- Test 4: Check final state
         print("📊 Test 4: Getting final state...")
         -- economyBridge:Fire("server", "GetPlayerDebugInfo", {}) -- TODO: Replace with appropriate Signal
-        
+
         print("🏁 ===== RATE LIMITING TEST COMPLETE =====")
         print("📋 EXPECTED RESULTS:")
         print("   ❌ Test 1: Some purchases should be blocked (rate limited)")
@@ -542,79 +567,79 @@ effectCorner.Parent = effectButton
 effectButton.Activated:Connect(function()
     task.spawn(function()
         print("🔗 ===== EFFECT STACKING TEST START =====")
-        
+
         -- Test 1: Buy multiple DIFFERENT effect items
         print("🛒 Test 1: Buying different effect items...")
-        
+
         print("  💊 Buying speed potion...")
-        Signals.PurchaseItem:FireServer( {
+        Signals.PurchaseItem:FireServer({
             itemId = "speed_potion",
             cost = 5,
-            currency = "gems"
+            currency = "gems",
         })
         task.wait(1)
-        
+
         print("  📜 Buying trader scroll...")
-        Signals.PurchaseItem:FireServer( {
+        Signals.PurchaseItem:FireServer({
             itemId = "trader_scroll",
             cost = 150,
-            currency = "coins"
+            currency = "coins",
         })
         task.wait(1)
-        
+
         print("  💎 Buying VIP pass...")
-        Signals.PurchaseItem:FireServer( {
+        Signals.PurchaseItem:FireServer({
             itemId = "vip_pass",
             cost = 100,
-            currency = "gems"
+            currency = "gems",
         })
         task.wait(1)
-        
+
         print("  💊 Buying extra speed potion...")
-        Signals.PurchaseItem:FireServer( {
+        Signals.PurchaseItem:FireServer({
             itemId = "speed_potion",
             cost = 5,
-            currency = "gems"
+            currency = "gems",
         })
         task.wait(2)
-        
+
         -- Test 2: Use different effects (should test stacking limits)
         print("⚡ Test 2: Using different effects (testing stacking)...")
-        
+
         print("  🧪 Using speed potion (effect #1)...")
         -- economyBridge:Fire("server", "UseItem", -- TODO: Replace with appropriate Signal {itemId = "speed_potion"})
         task.wait(1)
-        
+
         print("  📜 Using trader scroll (effect #2)...")
         -- economyBridge:Fire("server", "UseItem", -- TODO: Replace with appropriate Signal {itemId = "trader_scroll"})
         task.wait(1)
-        
+
         print("  💎 Using VIP pass (effect #3)...")
         -- economyBridge:Fire("server", "UseItem", -- TODO: Replace with appropriate Signal {itemId = "vip_pass"})
         task.wait(1)
-        
+
         print("  💊 Using 4th speed potion (should be rejected - stacking limit)...")
         -- economyBridge:Fire("server", "UseItem", -- TODO: Replace with appropriate Signal {itemId = "speed_potion"})
         task.wait(2)
-        
+
         -- Test 3: Try to add 5th effect (should be rejected)
         print("📜 Test 3: Attempting 5th effect (should fail)...")
         print("  🧪 Trying to use another speed potion...")
         -- economyBridge:Fire("server", "UseItem", -- TODO: Replace with appropriate Signal {itemId = "speed_potion"})
         task.wait(2)
-        
+
         -- Test 4: Rapid purchases with mixed effects
         print("🚀 Test 4: Rapid purchases with mixed effects active...")
         for i = 1, 8 do
             print(string.format("  🎯 Multi-effect purchase #%d", i))
-            Signals.PurchaseItem:FireServer( {
+            Signals.PurchaseItem:FireServer({
                 itemId = "test_item",
                 cost = 50,
-                currency = "coins"
+                currency = "coins",
             })
             task.wait(0.1)
         end
-        
+
         print("🏁 ===== EFFECT STACKING TEST COMPLETE =====")
         print("📋 EXPECTED RESULTS:")
         print("   ✅ First 3 different effects should stack (speed, trader, VIP)")
@@ -629,7 +654,8 @@ local function updateCurrencyDisplay()
     local coins = player:GetAttribute("Coins") or 0
     local gems = player:GetAttribute("Gems") or 0
     local crystals = player:GetAttribute("Crystals") or 0
-    currencyLabel.Text = string.format("💰 Coins: %d | 💎 Gems: %d | 🔮 Crystals: %d", coins, gems, crystals)
+    currencyLabel.Text =
+        string.format("💰 Coins: %d | 💎 Gems: %d | 🔮 Crystals: %d", coins, gems, crystals)
 end
 
 -- Update currency display when attributes change
@@ -684,7 +710,7 @@ local speedCorner = Instance.new("UICorner")
 speedCorner.CornerRadius = UDim.new(0, 4)
 speedCorner.Parent = speedHourButton
 
--- Luck Boost Button  
+-- Luck Boost Button
 local luckBoostButton = Instance.new("TextButton")
 luckBoostButton.Size = UDim2.new(1, 0, 0, 25)
 luckBoostButton.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
@@ -717,21 +743,21 @@ clearCorner.Parent = clearGlobalButton
 -- Global effect button handlers (purchase and use admin items)
 xpWeekendButton.Activated:Connect(function()
     print("🎉 Purchasing and using XP Weekend Activator...")
-    Signals.PurchaseItem:FireServer( {
+    Signals.PurchaseItem:FireServer({
         itemId = "admin_xp_weekend",
         cost = 1,
-        currency = "gems"
+        currency = "gems",
     })
     task.wait(0.5)
     -- economyBridge:Fire("server", "UseItem", -- TODO: Replace with appropriate Signal {itemId = "admin_xp_weekend"})
 end)
 
-speedHourButton.Activated:Connect(function() 
+speedHourButton.Activated:Connect(function()
     print("⚡ Purchasing and using Speed Hour Activator...")
-    Signals.PurchaseItem:FireServer( {
+    Signals.PurchaseItem:FireServer({
         itemId = "admin_speed_hour",
         cost = 1,
-        currency = "gems"
+        currency = "gems",
     })
     task.wait(0.5)
     -- economyBridge:Fire("server", "UseItem", -- TODO: Replace with appropriate Signal {itemId = "admin_speed_hour"})
@@ -739,10 +765,10 @@ end)
 
 luckBoostButton.Activated:Connect(function()
     print("🍀 Purchasing and using Luck Boost Activator...")
-    Signals.PurchaseItem:FireServer( {
+    Signals.PurchaseItem:FireServer({
         itemId = "admin_luck_boost",
         cost = 1,
-        currency = "gems"
+        currency = "gems",
     })
     task.wait(0.5)
     -- economyBridge:Fire("server", "UseItem", -- TODO: Replace with appropriate Signal {itemId = "admin_luck_boost"})
@@ -750,10 +776,10 @@ end)
 
 clearGlobalButton.Activated:Connect(function()
     print("🧹 Purchasing and using Global Effects Clearer...")
-    Signals.PurchaseItem:FireServer( {
+    Signals.PurchaseItem:FireServer({
         itemId = "admin_clear_global",
         cost = 1,
-        currency = "coins"
+        currency = "coins",
     })
     task.wait(0.5)
     -- economyBridge:Fire("server", "UseItem", -- TODO: Replace with appropriate Signal {itemId = "admin_clear_global"})
@@ -776,10 +802,10 @@ aluminumCorner.Parent = aluminumButton
 
 aluminumButton.Activated:Connect(function()
     print("🧪 Purchasing and using Alamantic Aluminum...")
-    Signals.PurchaseItem:FireServer( {
+    Signals.PurchaseItem:FireServer({
         itemId = "alamantic_aluminum",
         cost = 1,
-        currency = "coins"
+        currency = "coins",
     })
     task.wait(0.5)
     -- economyBridge:Fire("server", "UseItem", -- TODO: Replace with appropriate Signal {itemId = "alamantic_aluminum"})
@@ -791,5 +817,5 @@ return {
     UpdateStatus = function(text)
         -- Could add a status label if needed
         print("Status:", text)
-    end
-} 
+    end,
+}

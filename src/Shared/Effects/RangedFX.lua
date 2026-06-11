@@ -118,10 +118,12 @@ local function spawnFlash(pos, color, lightColor, size, life)
     light.Brightness = 7
     light.Range = size * 2.5
     light.Parent = flash
-    TweenService:Create(flash, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = Vector3.new(size, size, size),
-        Transparency = 1,
-    }):Play()
+    TweenService
+        :Create(flash, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = Vector3.new(size, size, size),
+            Transparency = 1,
+        })
+        :Play()
     TweenService:Create(light, TweenInfo.new(life * 0.9), { Brightness = 0 }):Play()
     Debris:AddItem(flash, life + 0.1)
 end
@@ -146,11 +148,13 @@ local function spawnSparks(pos, c1, c2, count, bitSize, spread, life)
         bit.Parent = fxFolder()
         local dist = spread * (0.7 + math.random() * 0.9)
         local dest = pos + dir * dist - Vector3.new(0, spread * 0.25, 0)
-        TweenService:Create(bit, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            CFrame = CFrame.new(dest),
-            Size = Vector3.new(0.05, 0.05, 0.05),
-            Transparency = 1,
-        }):Play()
+        TweenService
+            :Create(bit, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                CFrame = CFrame.new(dest),
+                Size = Vector3.new(0.05, 0.05, 0.05),
+                Transparency = 1,
+            })
+            :Play()
         Debris:AddItem(bit, life + 0.1)
     end
 end
@@ -169,10 +173,12 @@ local function spawnShockwave(pos, color, diameter, life)
     ring.Size = Vector3.new(0.4, 1, 1) -- X = thin height; Y/Z = diameter
     ring.CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, math.rad(90)) -- lay flat (X -> up)
     ring.Parent = fxFolder()
-    TweenService:Create(ring, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = Vector3.new(0.2, diameter, diameter),
-        Transparency = 1,
-    }):Play()
+    TweenService
+        :Create(ring, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = Vector3.new(0.2, diameter, diameter),
+            Transparency = 1,
+        })
+        :Play()
     Debris:AddItem(ring, life + 0.1)
 end
 
@@ -213,11 +219,14 @@ local function spawnColumn(pos, color, height, life)
     col.Size = Vector3.new(1, diam, diam) -- X = length (vertical once rotated); Y/Z = diameter
     col.CFrame = CFrame.new(pos + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
     col.Parent = fxFolder()
-    TweenService:Create(col, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = Vector3.new(height, diam * 0.3, diam * 0.3),
-        Transparency = 1,
-        CFrame = CFrame.new(pos + Vector3.new(0, height * 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-    }):Play()
+    TweenService
+        :Create(col, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = Vector3.new(height, diam * 0.3, diam * 0.3),
+            Transparency = 1,
+            CFrame = CFrame.new(pos + Vector3.new(0, height * 0.5, 0))
+                * CFrame.Angles(0, 0, math.rad(90)),
+        })
+        :Play()
     Debris:AddItem(col, life + 0.1)
 end
 
@@ -242,11 +251,13 @@ local function spawnShards(pos, c1, c2, count, len, spread, life)
         shard.Parent = fxFolder()
         local dist = spread * (0.7 + math.random() * 0.9)
         local dest = pos + dir * dist - Vector3.new(0, spread * 0.2, 0)
-        TweenService:Create(shard, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            CFrame = CFrame.new(dest) * CFrame.Angles(math.random() * 3, math.random() * 3, 0),
-            Size = Vector3.new(0.05, 0.05, 0.05),
-            Transparency = 1,
-        }):Play()
+        TweenService
+            :Create(shard, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                CFrame = CFrame.new(dest) * CFrame.Angles(math.random() * 3, math.random() * 3, 0),
+                Size = Vector3.new(0.05, 0.05, 0.05),
+                Transparency = 1,
+            })
+            :Play()
         Debris:AddItem(shard, life + 0.1)
     end
 end
@@ -406,13 +417,16 @@ local function playBeam(originPart, endPos, theme, isCrit, impactSound)
     beam.CanQuery = false
     beam.CastShadow = false
     beam.Size = Vector3.new(dist, thickness, thickness)
-    beam.CFrame = CFrame.lookAt(startPos:Lerp(endPos, 0.5), endPos) * CFrame.Angles(0, math.rad(90), 0)
+    beam.CFrame = CFrame.lookAt(startPos:Lerp(endPos, 0.5), endPos)
+        * CFrame.Angles(0, math.rad(90), 0)
     beam.Parent = fxFolder()
 
-    TweenService:Create(beam, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Transparency = 1,
-        Size = Vector3.new(dist, 0.05, 0.05),
-    }):Play()
+    TweenService
+        :Create(beam, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Transparency = 1,
+            Size = Vector3.new(dist, 0.05, 0.05),
+        })
+        :Play()
     Debris:AddItem(beam, duration + 0.1)
     if isCrit then
         RangedFX.playImpact(theme.impact_crit or "big", endPos, c1, c1, {
@@ -569,7 +583,13 @@ function RangedFX.Play(origin, config, target, kind, isCrit, element)
             or {}
         local cols = m.colors or {}
         local impactName = isCrit and (m.impact_crit or "medium") or (m.impact or "small")
-        RangedFX.playImpact(impactName, endPos, cols[1] or { 255, 235, 190 }, cols[2] or { 255, 210, 140 }, {})
+        RangedFX.playImpact(
+            impactName,
+            endPos,
+            cols[1] or { 255, 235, 190 },
+            cols[2] or { 255, 210, 140 },
+            {}
+        )
         playSoundAt(endPos, sounds.impact)
         return true
     end

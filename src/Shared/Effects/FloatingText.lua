@@ -60,12 +60,16 @@ function FloatingText.show(position, text, opts)
     -- Quick "pop" scale-in (TextSize), then float up + fade out.
     local fullSize = opts.size or 22
     lbl.TextSize = math.floor(fullSize * 0.6)
-    TweenService:Create(lbl, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        TextSize = fullSize,
-    }):Play()
-    TweenService:Create(holder, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        CFrame = holder.CFrame + Vector3.new(0, rise, 0),
-    }):Play()
+    TweenService
+        :Create(lbl, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            TextSize = fullSize,
+        })
+        :Play()
+    TweenService
+        :Create(holder, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            CFrame = holder.CFrame + Vector3.new(0, rise, 0),
+        })
+        :Play()
     TweenService:Create(lbl, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
         TextTransparency = 1,
         TextStrokeTransparency = 1,

@@ -111,7 +111,11 @@ function EnemyMotion.start()
 
                     -- 1) Smoothed base position (no gait — kept clean for next lerp).
                     local base = st.base:Lerp(goal, alpha)
-                    local stepDist = (Vector3.new(base.X, 0, base.Z) - Vector3.new(st.base.X, 0, st.base.Z)).Magnitude
+                    local stepDist = (Vector3.new(base.X, 0, base.Z) - Vector3.new(
+                        st.base.X,
+                        0,
+                        st.base.Z
+                    )).Magnitude
                     st.base = base
 
                     -- 2) Layer the procedural gait (shared with pets) on the clean base.

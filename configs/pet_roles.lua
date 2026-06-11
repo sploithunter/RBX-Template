@@ -65,7 +65,7 @@ return {
             { kind = "heal", interval = 1.5, fraction = 0.3 },
             { kind = "luck", interval = 2.0, mult = 1.25, duration = 6 },
         },
-        -- CREATOR-CLASS colorado only (record.creator → CreatorPet attribute): every
+        -- The colorado_creator SPECIES (the apex — different pet, same model): every
         -- buffer at once — the creator's testing/scaling tool.
         colorado_creator = {
             { kind = "heal", interval = 1.5, fraction = 0.3 },

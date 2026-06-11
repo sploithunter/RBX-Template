@@ -53,8 +53,9 @@ end
 -- Client-specific folders (UI and Controllers)
 if Locations.RunService:IsClient() then
     local starterPlayer = game:GetService("StarterPlayer")
-    local clientFolder = starterPlayer:WaitForChild("StarterPlayerScripts"):WaitForChild("Client", 5)
-    
+    local clientFolder =
+        starterPlayer:WaitForChild("StarterPlayerScripts"):WaitForChild("Client", 5)
+
     if clientFolder then
         Locations.ClientUI = clientFolder:WaitForChild("UI")
         if Locations.ClientUI then
@@ -72,7 +73,7 @@ end
 Locations.Configs = game:GetService("ReplicatedStorage"):WaitForChild("Configs", 5)
 Locations.ConfigFiles = {
     Game = "game",
-    Currencies = "currencies", 
+    Currencies = "currencies",
     Items = "items",
     Monetization = "monetization",
     Network = "network",
@@ -81,7 +82,7 @@ Locations.ConfigFiles = {
     pets = "pets",
     egg_system = "egg_system",
     auto_systems = "auto_systems",
-    logging = "logging"
+    logging = "logging",
 }
 
 -- === CORE MODULES ===
@@ -111,23 +112,23 @@ if Locations.SharedLibraries then
         Maid = Locations.SharedLibraries:WaitForChild("Maid"),
         Signal = Locations.SharedLibraries:WaitForChild("Signal"),
         Sift = Locations.SharedLibraries:WaitForChild("Sift"),
-        Matter = Locations.SharedLibraries:WaitForChild("Matter")  -- Manual copy due to Wally/Rojo issues
+        Matter = Locations.SharedLibraries:WaitForChild("Matter"), -- Manual copy due to Wally/Rojo issues
     }
 end
 
 -- === PACKAGES (Wally-managed) ===
 Locations.PackageFiles = {
     TestEZ = "TestEZ",
-    Promise = "Promise", 
+    Promise = "Promise",
     Matter = "Matter",
     Reflex = "Reflex",
-    ProfileStore = "ProfileStore"
+    ProfileStore = "ProfileStore",
 }
 
 -- === SERVICES (Server-side) ===
 Locations.Services = {
     DataService = "DataService",
-    EconomyService = "EconomyService", 
+    EconomyService = "EconomyService",
     MonetizationService = "MonetizationService",
     PlayerEffectsService = "PlayerEffectsService",
     GlobalEffectsService = "GlobalEffectsService",
@@ -135,7 +136,7 @@ Locations.Services = {
     ServerClockService = "ServerClockService",
     InventoryService = "InventoryService",
     EggService = "EggService",
-    EggSpawner = "EggSpawner"
+    EggSpawner = "EggSpawner",
 }
 
 -- === NETWORK BRIDGES ===
@@ -143,7 +144,7 @@ Locations.Bridges = {
     Economy = "Economy",
     Monetization = "Monetization",
     Combat = "Combat",
-    PlayerData = "PlayerData"
+    PlayerData = "PlayerData",
 }
 
 -- === HELPER FUNCTIONS ===
@@ -154,16 +155,16 @@ function Locations.getService(serviceName)
         warn("Unknown service:", serviceName)
         return nil
     end
-    
+
     if not Locations.ModuleLoader then
         warn("ModuleLoader not available")
         return nil
     end
-    
+
     local success, moduleLoader = pcall(function()
         return require(Locations.ModuleLoader)
     end)
-    
+
     if success then
         return moduleLoader:Get(serviceName)
     else
@@ -288,10 +289,10 @@ Locations.WorkspaceFolders = {
 function Locations.validateCriticalPaths()
     local critical = {
         "ReplicatedStorage",
-        "ServerScriptService", 
+        "ServerScriptService",
         "Shared",
         "ModuleLoader",
-        "ConfigLoader"
+        "ConfigLoader",
         -- "NetworkBridge" removed - using Signals instead
     }
 

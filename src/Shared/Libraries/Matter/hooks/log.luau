@@ -13,29 +13,29 @@ local format = require(script.Parent.Parent.debugger.formatTable)
 	Logs some text. Readable in the Matter debugger.
 ]=]
 local function log(...)
-	local state = topoRuntime.useFrameState()
+    local state = topoRuntime.useFrameState()
 
-	if state.logs == nil then
-		return
-	end
+    if state.logs == nil then
+        return
+    end
 
-	local segments = {}
+    local segments = {}
 
-	for i = 1, select("#", ...) do
-		local value = select(i, ...)
+    for i = 1, select("#", ...) do
+        local value = select(i, ...)
 
-		if type(value) == "table" then
-			segments[i] = format.formatTable(value)
-		else
-			segments[i] = tostring(value)
-		end
-	end
+        if type(value) == "table" then
+            segments[i] = format.formatTable(value)
+        else
+            segments[i] = tostring(value)
+        end
+    end
 
-	table.insert(state.logs, table.concat(segments, " "))
+    table.insert(state.logs, table.concat(segments, " "))
 
-	if #state.logs > 100 then
-		table.remove(state.logs, 1)
-	end
+    if #state.logs > 100 then
+        table.remove(state.logs, 1)
+    end
 end
 
 return log

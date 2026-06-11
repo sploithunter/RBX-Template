@@ -10,9 +10,9 @@ local topoRuntime = require(script.Parent.Parent.topoRuntime)
 	Returns the `os.clock()` time delta between the start of this and last frame.
 ]=]
 local function useDeltaTime(): number
-	local state = topoRuntime.useFrameState()
+    local state = topoRuntime.useFrameState()
 
-	return state.deltaTime
+    return state.deltaTime
 end
 
 return useDeltaTime

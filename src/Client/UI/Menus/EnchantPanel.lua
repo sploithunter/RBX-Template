@@ -391,8 +391,10 @@ function EnchantPanel:_readPet(folder)
     if maxEnchantments <= 0 then
         maxEnchantments = storedMax or 0
     end
-    local unlockedSlots = readNumberValue(folder, { "unlocked_enchant_slots", "UnlockedEnchantSlots" })
-        or math.min(1, maxEnchantments)
+    local unlockedSlots = readNumberValue(
+        folder,
+        { "unlocked_enchant_slots", "UnlockedEnchantSlots" }
+    ) or math.min(1, maxEnchantments)
     unlockedSlots = math.clamp(math.floor(unlockedSlots), 0, maxEnchantments)
     if maxEnchantments <= 0 then
         return nil
@@ -435,7 +437,8 @@ end
 
 function EnchantPanel:_readEnchantments(folder)
     local results = {}
-    local enchantFolder = folder:FindFirstChild("enchantments") or folder:FindFirstChild("Enchantments")
+    local enchantFolder = folder:FindFirstChild("enchantments")
+        or folder:FindFirstChild("Enchantments")
     if not enchantFolder or not enchantFolder:IsA("Folder") then
         return results
     end
@@ -453,7 +456,8 @@ function EnchantPanel:_readEnchantments(folder)
                 displayName = readStringValue(child, { "display_name", "DisplayName" })
                     or (config and config.display_name)
                     or id,
-                strength = readNumberValue(child, { "strength", "Strength", "value", "Value" }) or 0,
+                strength = readNumberValue(child, { "strength", "Strength", "value", "Value" })
+                    or 0,
                 description = config and config.description or nil,
             })
         end
@@ -802,11 +806,8 @@ function EnchantPanel:_createSlotButton(parent, pet, slot)
     button.TextColor3 = locked and Color3.fromRGB(120, 124, 136) or TEXT
     button.TextSize = 15
     button.TextXAlignment = Enum.TextXAlignment.Left
-    button.Text = string.format(
-        "  Slot %d  %s",
-        slot,
-        locked and "Locked" or self:_formatEnchant(enchant)
-    )
+    button.Text =
+        string.format("  Slot %d  %s", slot, locked and "Locked" or self:_formatEnchant(enchant))
     button.AutoButtonColor = not locked
     button.ZIndex = 103
     button.LayoutOrder = slot

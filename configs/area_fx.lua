@@ -49,7 +49,11 @@ return {
         -- Grassy nature burst — green growth + leafy motes.
         grass = { color = { 90, 200, 80 }, color2 = { 170, 240, 130 }, material = "Neon" },
         -- Desert sandstorm — tan dust + rubble (earthy, non-glowing).
-        desert = { color = { 205, 180, 130 }, color2 = { 150, 125, 90 }, material = "SmoothPlastic" },
+        desert = {
+            color = { 205, 180, 130 },
+            color2 = { 150, 125, 90 },
+            material = "SmoothPlastic",
+        },
         -- Ice nova — pale blue + white, glassy.
         ice = { color = { 150, 220, 255 }, color2 = { 235, 250, 255 }, material = "Glass" },
         -- Lava eruption — orange/red molten glow.

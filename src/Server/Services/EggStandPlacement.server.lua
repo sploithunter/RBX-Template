@@ -90,7 +90,8 @@ local function placeEgg(stand, eggTemplate, scale, offsetY)
     return egg
 end
 
-local eggsFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Models"):WaitForChild("Eggs", 30)
+local eggsFolder =
+    ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Models"):WaitForChild("Eggs", 30)
 if not eggsFolder then
     return
 end

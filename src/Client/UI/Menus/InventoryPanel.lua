@@ -3334,7 +3334,10 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
             lbl.Size = UDim2.new(1, -4, 0, math.max(8, math.floor(self.cardSize.Y * 0.15)))
             lbl.Position = UDim2.new(0, 2, 1, -math.max(8, math.floor(self.cardSize.Y * 0.15)))
             lbl.BackgroundTransparency = 1
-            lbl.Text = shown > 1 and "ALL" or (first and first.label or "")
+            local second = shown == 2 and SUPPORT_META[auras[2].kind]
+            lbl.Text = (shown > 2 and "ALL")
+                or (shown == 2 and ((first and first.label or "?") .. "+" .. (second and second.label or "?")))
+                or (first and first.label or "")
             lbl.TextColor3 = Color3.fromRGB(255, 230, 140)
             lbl.TextStrokeTransparency = 0.3
             lbl.TextScaled = true

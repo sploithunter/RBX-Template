@@ -1,47 +1,47 @@
 local None = {}
 
 local function merge(one, two)
-	local new = table.clone(one)
+    local new = table.clone(one)
 
-	for key, value in two do
-		if value == None then
-			new[key] = nil
-		else
-			new[key] = value
-		end
-	end
+    for key, value in two do
+        if value == None then
+            new[key] = nil
+        else
+            new[key] = value
+        end
+    end
 
-	return new
+    return new
 end
 
 -- https://github.com/freddylist/llama/blob/master/src/List/toSet.luau
 local function toSet(list)
-	local set = {}
+    local set = {}
 
-	for _, v in ipairs(list) do
-		set[v] = true
-	end
+    for _, v in ipairs(list) do
+        set[v] = true
+    end
 
-	return set
+    return set
 end
 
 -- https://github.com/freddylist/llama/blob/master/src/Dictionary/values.luau
 local function values(dictionary)
-	local valuesList = {}
+    local valuesList = {}
 
-	local index = 1
+    local index = 1
 
-	for _, value in pairs(dictionary) do
-		valuesList[index] = value
-		index = index + 1
-	end
+    for _, value in pairs(dictionary) do
+        valuesList[index] = value
+        index = index + 1
+    end
 
-	return valuesList
+    return valuesList
 end
 
 return {
-	None = None,
-	merge = merge,
-	toSet = toSet,
-	values = values,
+    None = None,
+    merge = merge,
+    toSet = toSet,
+    values = values,
 }

@@ -1508,17 +1508,6 @@ function loadEquipped(Player)
                 PetModel:SetAttribute("EffectivePower", effectivePower)
                 PetModel:SetAttribute("PetType", petIdName)
                 PetModel:SetAttribute("PetVariant", petVariantName)
-                do -- creator-CLASS record (not species): aura set + apex affordances key off this
-                    local creatorValue = petFolder:FindFirstChild("creator")
-                        or petFolder:FindFirstChild("Creator")
-                    if
-                        creatorValue
-                        and creatorValue:IsA("BoolValue")
-                        and creatorValue.Value == true
-                    then
-                        PetModel:SetAttribute("CreatorPet", true)
-                    end
-                end
                 PetModel:SetAttribute("EternalPercent", eternalPercent)
                 PetModel:SetAttribute(
                     "EternalBaselinePower",

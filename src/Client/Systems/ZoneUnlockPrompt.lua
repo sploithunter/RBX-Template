@@ -154,7 +154,13 @@ function ZoneUnlockPrompt.start()
     local function refresh()
         local areaId = player:GetAttribute("CurrentArea")
         local req = areaId and unlockReq(areaId)
-        if not areaId or not req or req.unlocked_by_default == true or not req.cost or isUnlocked(areaId) then
+        if
+            not areaId
+            or not req
+            or req.unlocked_by_default == true
+            or not req.cost
+            or isUnlocked(areaId)
+        then
             gui.Enabled = false
             activeAreaId = nil
             return

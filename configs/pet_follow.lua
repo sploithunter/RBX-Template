@@ -234,14 +234,34 @@ return {
         -- Melee/mining hit feedback (kind = "melee", fired by Combat_PetHit for non-ranged pets):
         -- an impact at the target + the hit sound, no projectile (the pet is adjacent). Tier
         -- scales with crit. colors = { core, accent }.
-        melee = { impact = "small", impact_crit = "medium", colors = { { 255, 235, 190 }, { 255, 210, 140 } } },
+        melee = {
+            impact = "small",
+            impact_crit = "medium",
+            colors = { { 255, 235, 190 }, { 255, 210, 140 } },
+        },
         -- Per-biome upfront/melee impacts (CombatFX passes the element) so an upfront grass pet
         -- looks different from upfront lava — ice shatters, desert kicks up dust, etc.
         melee_by_element = {
-            grass = { impact = "small", impact_crit = "medium", colors = { { 120, 220, 90 }, { 200, 255, 150 } } },
-            lava = { impact = "small", impact_crit = "medium", colors = { { 255, 150, 40 }, { 255, 210, 120 } } },
-            ice = { impact = "shatter", impact_crit = "big", colors = { { 150, 220, 255 }, { 235, 250, 255 } } },
-            desert = { impact = "dust", impact_crit = "big", colors = { { 200, 170, 115 }, { 150, 125, 90 } } },
+            grass = {
+                impact = "small",
+                impact_crit = "medium",
+                colors = { { 120, 220, 90 }, { 200, 255, 150 } },
+            },
+            lava = {
+                impact = "small",
+                impact_crit = "medium",
+                colors = { { 255, 150, 40 }, { 255, 210, 120 } },
+            },
+            ice = {
+                impact = "shatter",
+                impact_crit = "big",
+                colors = { { 150, 220, 255 }, { 235, 250, 255 } },
+            },
+            desert = {
+                impact = "dust",
+                impact_crit = "big",
+                colors = { { 200, 170, 115 }, { 150, 125, 90 } },
+            },
         },
 
         -- Sounds played by RangedFX: `delivery` at launch (the firing pet), `impact` at the hit.
@@ -286,21 +306,97 @@ return {
         -- theme also supports impact / impact_crit (RangedFX.IMPACTS tier names) — default normal
         -- "small", crit "big" — so crits (server LastHitCrit) auto-land a bigger blast.
         projectile = {
-            fireball = { colors = { { 255, 150, 40 }, { 255, 90, 20 } }, size = 1.6, travel_time = 0.18, burst = 3.5, sparks = 9, impact = "small", impact_crit = "big" },
-            plasma = { colors = { { 150, 90, 255 }, { 210, 170, 255 } }, size = 1.3, travel_time = 0.13, burst = 3, sparks = 7 },
+            fireball = {
+                colors = { { 255, 150, 40 }, { 255, 90, 20 } },
+                size = 1.6,
+                travel_time = 0.18,
+                burst = 3.5,
+                sparks = 9,
+                impact = "small",
+                impact_crit = "big",
+            },
+            plasma = {
+                colors = { { 150, 90, 255 }, { 210, 170, 255 } },
+                size = 1.3,
+                travel_time = 0.13,
+                burst = 3,
+                sparks = 7,
+            },
             -- ICE themes use the "shatter" impact (frost ring + glass shards) instead of embers.
-            frost = { colors = { { 150, 220, 255 }, { 225, 245, 255 } }, size = 1.4, travel_time = 0.2, burst = 3, sparks = 8, impact = "shatter", impact_crit = "big" },
-            ice_shard = { colors = { { 170, 225, 255 }, { 235, 250, 255 } }, size = 1.1, travel_time = 0.13, burst = 3, sparks = 6, impact = "shatter", impact_crit = "big" },
-            poison = { colors = { { 120, 230, 90 }, { 175, 255, 120 } }, size = 1.5, travel_time = 0.22, burst = 3.5, sparks = 8 },
+            frost = {
+                colors = { { 150, 220, 255 }, { 225, 245, 255 } },
+                size = 1.4,
+                travel_time = 0.2,
+                burst = 3,
+                sparks = 8,
+                impact = "shatter",
+                impact_crit = "big",
+            },
+            ice_shard = {
+                colors = { { 170, 225, 255 }, { 235, 250, 255 } },
+                size = 1.1,
+                travel_time = 0.13,
+                burst = 3,
+                sparks = 6,
+                impact = "shatter",
+                impact_crit = "big",
+            },
+            poison = {
+                colors = { { 120, 230, 90 }, { 175, 255, 120 } },
+                size = 1.5,
+                travel_time = 0.22,
+                burst = 3.5,
+                sparks = 8,
+            },
             -- HEAL bolt: a soft green/gold orb that blooms (not explodes) on the ally. Used by
             -- the CombatFX heal category for single-target heals (ranged support + touch-heal).
-            heal = { colors = { { 120, 230, 120 }, { 220, 255, 200 } }, size = 1.2, travel_time = 0.16, burst = 3, sparks = 10, impact = "bloom", impact_crit = "bloom" },
+            heal = {
+                colors = { { 120, 230, 120 }, { 220, 255, 200 } },
+                size = 1.2,
+                travel_time = 0.16,
+                burst = 3,
+                sparks = 10,
+                impact = "bloom",
+                impact_crit = "bloom",
+            },
             -- Per-biome heal-bolt tints (CombatFX picks heal_<element>): green / warm-gold / mint /
             -- amber — distinct per origin but still reads as a restorative bloom.
-            heal_grass = { colors = { { 130, 240, 130 }, { 220, 255, 200 } }, size = 1.2, travel_time = 0.16, burst = 3, sparks = 10, impact = "bloom", impact_crit = "bloom" },
-            heal_lava = { colors = { { 255, 215, 120 }, { 255, 245, 200 } }, size = 1.2, travel_time = 0.16, burst = 3, sparks = 10, impact = "bloom", impact_crit = "bloom" },
-            heal_ice = { colors = { { 170, 245, 215 }, { 230, 255, 240 } }, size = 1.2, travel_time = 0.16, burst = 3, sparks = 10, impact = "bloom", impact_crit = "bloom" },
-            heal_desert = { colors = { { 240, 220, 140 }, { 215, 255, 185 } }, size = 1.2, travel_time = 0.16, burst = 3, sparks = 10, impact = "bloom", impact_crit = "bloom" },
+            heal_grass = {
+                colors = { { 130, 240, 130 }, { 220, 255, 200 } },
+                size = 1.2,
+                travel_time = 0.16,
+                burst = 3,
+                sparks = 10,
+                impact = "bloom",
+                impact_crit = "bloom",
+            },
+            heal_lava = {
+                colors = { { 255, 215, 120 }, { 255, 245, 200 } },
+                size = 1.2,
+                travel_time = 0.16,
+                burst = 3,
+                sparks = 10,
+                impact = "bloom",
+                impact_crit = "bloom",
+            },
+            heal_ice = {
+                colors = { { 170, 245, 215 }, { 230, 255, 240 } },
+                size = 1.2,
+                travel_time = 0.16,
+                burst = 3,
+                sparks = 10,
+                impact = "bloom",
+                impact_crit = "bloom",
+            },
+            heal_desert = {
+                colors = { { 240, 220, 140 }, { 215, 255, 185 } },
+                size = 1.2,
+                travel_time = 0.16,
+                burst = 3,
+                sparks = 10,
+                impact = "bloom",
+                impact_crit = "bloom",
+            },
         },
         -- Beam theme (kind = "beam"): instant laser that flashes + fades.
         beam = { colors = { { 255, 70, 70 } }, thickness = 0.5, duration = 0.18, sparks = 5 },
@@ -308,18 +404,46 @@ return {
         -- cloud + rubble). DESERT theme. size = target max studs; colors = { rock tint, rubble/dust }.
         -- Uses the `boulder` mesh (UsePartColor tints it); falls back to a procedural Slate block if
         -- the asset hasn't replicated yet.
-        rock = { model_asset = 111170421641061, colors = { { 150, 130, 105 }, { 200, 175, 135 } }, size = 3.5, travel_time = 0.3, impact = "dust", impact_crit = "big" },
+        rock = {
+            model_asset = 111170421641061,
+            colors = { { 150, 130, 105 }, { 200, 175, 135 } },
+            size = 3.5,
+            travel_time = 0.3,
+            impact = "dust",
+            impact_crit = "big",
+        },
 
         -- Thrown-boulder VARIANTS (kind = the key). Each routes through the same tumbling-rock
         -- animation as `rock`, with its own mesh + tint + impact. Selected explicitly via a power-FX
         -- primitive's `projectile` (configs/power_fx.lua), or map an element to one in RANGED_KIND.
         boulders = {
             -- earth/desert rock (same mesh as `rock`, kept here so the `boulder` primitive resolves)
-            boulder = { model_asset = 111170421641061, colors = { { 150, 130, 105 }, { 200, 175, 135 } }, size = 3.5, travel_time = 0.3, impact = "dust", impact_crit = "big" },
+            boulder = {
+                model_asset = 111170421641061,
+                colors = { { 150, 130, 105 }, { 200, 175, 135 } },
+                size = 3.5,
+                travel_time = 0.3,
+                impact = "dust",
+                impact_crit = "big",
+            },
             -- ice boulder: pale blue, shatters on impact (frost ring + shards) instead of dust
-            ice_boulder = { model_asset = 111280557292002, colors = { { 170, 220, 255 }, { 230, 248, 255 } }, size = 3.2, travel_time = 0.22, impact = "shatter", impact_crit = "big" },
+            ice_boulder = {
+                model_asset = 111280557292002,
+                colors = { { 170, 220, 255 }, { 230, 248, 255 } },
+                size = 3.2,
+                travel_time = 0.22,
+                impact = "shatter",
+                impact_crit = "big",
+            },
             -- asteroid: dark rocky meteor, heavier + slower, big dusty impact
-            asteroid = { model_asset = 134283982892096, colors = { { 90, 80, 75 }, { 140, 120, 105 } }, size = 4.2, travel_time = 0.34, impact = "big", impact_crit = "big" },
+            asteroid = {
+                model_asset = 134283982892096,
+                colors = { { 90, 80, 75 }, { 140, 120, 105 } },
+                size = 4.2,
+                travel_time = 0.34,
+                impact = "big",
+                impact_crit = "big",
+            },
         },
     },
 

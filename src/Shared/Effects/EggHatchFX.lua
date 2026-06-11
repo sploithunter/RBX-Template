@@ -95,16 +95,18 @@ local function buildSwirl(centerAttachment, radius, count, rpm)
         end
 
         local helixR = radius * 0.6
-        helixA.WorldPosition = centerAttachment.WorldPosition + Vector3.new(
-            math.cos(angle) * helixR,
-            0.5 * math.sin(angle * 2),
-            math.sin(angle) * helixR
-        )
-        helixB.WorldPosition = centerAttachment.WorldPosition + Vector3.new(
-            math.cos(angle + math.pi) * helixR,
-            0.5 * math.cos(angle * 2),
-            math.sin(angle + math.pi) * helixR
-        )
+        helixA.WorldPosition = centerAttachment.WorldPosition
+            + Vector3.new(
+                math.cos(angle) * helixR,
+                0.5 * math.sin(angle * 2),
+                math.sin(angle) * helixR
+            )
+        helixB.WorldPosition = centerAttachment.WorldPosition
+            + Vector3.new(
+                math.cos(angle + math.pi) * helixR,
+                0.5 * math.cos(angle * 2),
+                math.sin(angle + math.pi) * helixR
+            )
     end)
 
     return rigRoot, attachments
@@ -135,13 +137,21 @@ function EggHatchFX.Play(eggPart, durationSeconds)
     light.Range = 14
     light.Color = Color3.fromRGB(255, 255, 255)
     light.Parent = eggPart
-    TweenService:Create(light, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Brightness = 5 }):Play()
+    TweenService:Create(
+        light,
+        TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { Brightness = 5 }
+    ):Play()
 
     local radius, count, rpm = 3.2, 14, 60
     local rig, points = buildSwirl(center, radius, count, rpm)
 
     local bloom = getBloom()
-    TweenService:Create(bloom, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Intensity = 1.6 }):Play()
+    TweenService:Create(
+        bloom,
+        TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { Intensity = 1.6 }
+    ):Play()
 
     task.spawn(function()
         local t0 = tick()
@@ -159,12 +169,12 @@ function EggHatchFX.Play(eggPart, durationSeconds)
 
         task.wait(0.45)
         sparkles.Enabled = false
-        if rig then rig:Destroy() end
+        if rig then
+            rig:Destroy()
+        end
         sparkles:Destroy()
         light:Destroy()
     end)
 end
 
 return EggHatchFX
-
-

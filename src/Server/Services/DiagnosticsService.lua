@@ -12,19 +12,19 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players           = game:GetService("Players")
+local Players = game:GetService("Players")
 
-local Signals      = require(ReplicatedStorage.Shared.Network.Signals)
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local DiagnosticsService = {}
 DiagnosticsService.__index = DiagnosticsService
 
 function DiagnosticsService:Init()
-    self._logger          = self._modules.Logger
-    self._inventory       = self._modules.InventoryService
-    self._economy         = self._modules.EconomyService
-    self._rateLimit       = self._modules.RateLimitService
-    self._dataService     = self._modules.DataService
+    self._logger = self._modules.Logger
+    self._inventory = self._modules.InventoryService
+    self._economy = self._modules.EconomyService
+    self._rateLimit = self._modules.RateLimitService
+    self._dataService = self._modules.DataService
 
     -- Bind Net handler once services are ready
     Signals.RunDiagnostics.OnServerEvent:Connect(function(player)
@@ -50,8 +50,11 @@ function DiagnosticsService:_runDiagnostics(player)
         TestEZ = require(Packages._Index["roblox_testez@0.4.1"].testez)
     end)
     if not ok or not TestEZ then
-        self._logger:Error("Diagnostics: Unable to load TestEZ", {error = err})
-        Signals.RunDiagnostics:FireClient(player, {passed = 0, failed = 1, failures = {"TestEZ load failure: " .. tostring(err)}})
+        self._logger:Error("Diagnostics: Unable to load TestEZ", { error = err })
+        Signals.RunDiagnostics:FireClient(
+            player,
+            { passed = 0, failed = 1, failures = { "TestEZ load failure: " .. tostring(err) } }
+        )
         return
     end
 
@@ -60,11 +63,11 @@ function DiagnosticsService:_runDiagnostics(player)
         self._logger:Warn("Diagnostics: Tests folder not replicated – returning quick-check only")
     end
 
-    local results = TestEZ.TestBootstrap:run({testsContainer})
+    local results = TestEZ.TestBootstrap:run({ testsContainer })
     local summary = {
         passed = results.passedCount or 0,
         failed = results.failureCount or 0,
-        total  = (results.passedCount or 0) + (results.failureCount or 0),
+        total = (results.passedCount or 0) + (results.failureCount or 0),
         duration = results.duration,
         failures = results.failureMessages or {},
         timestamp = os.time(),
@@ -72,7 +75,15 @@ function DiagnosticsService:_runDiagnostics(player)
 
     Signals.RunDiagnostics:FireClient(player, summary)
 
-    self._logger:Info("Diagnostics (TestEZ) completed", {player = player.Name, passed = summary.passed, failed = summary.failed, duration = summary.duration})
+    self._logger:Info(
+        "Diagnostics (TestEZ) completed",
+        {
+            player = player.Name,
+            passed = summary.passed,
+            failed = summary.failed,
+            duration = summary.duration,
+        }
+    )
 end
 
 return DiagnosticsService

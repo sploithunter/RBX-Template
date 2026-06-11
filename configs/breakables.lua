@@ -102,9 +102,30 @@ local ORE_FAMILIES = {
 -- Raised the ratio 0.1 -> 0.2 (was 5/25/100, then 10/50/200, now 20/100/400) so dogs ~9 coins/sec
 -- (100-coin grass egg in ~11s), bears ~5. DPS felt right; this lifts INCOME only. Pure dev knob.
 local ORE_TIERS = {
-    { suffix = "Small", scale = 1, size_scale = 0.6, health = 100, value = 20, placement = { height_offset = 1, sink_depth = 0.75 } },
-    { suffix = "Medium", scale = 1, size_scale = 1.0, health = 500, value = 100, placement = { height_offset = 2, sink_depth = 1.05 } },
-    { suffix = "Large", scale = 1, size_scale = 1.8, health = 2000, value = 400, placement = { height_offset = 7, sink_depth = 1.45 } },
+    {
+        suffix = "Small",
+        scale = 1,
+        size_scale = 0.6,
+        health = 100,
+        value = 20,
+        placement = { height_offset = 1, sink_depth = 0.75 },
+    },
+    {
+        suffix = "Medium",
+        scale = 1,
+        size_scale = 1.0,
+        health = 500,
+        value = 100,
+        placement = { height_offset = 2, sink_depth = 1.05 },
+    },
+    {
+        suffix = "Large",
+        scale = 1,
+        size_scale = 1.8,
+        health = 2000,
+        value = 400,
+        placement = { height_offset = 7, sink_depth = 1.45 },
+    },
 }
 
 local M = {

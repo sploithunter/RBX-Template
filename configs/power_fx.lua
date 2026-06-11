@@ -140,18 +140,64 @@ return {
         dust_burst = { pattern = "impact", anchor = "target", impact = "dust", color = "origin" }, -- desert dust plume
         heavy_slam = { pattern = "impact", anchor = "target", impact = "big", color = "origin" }, -- heavy concussion
         -- explicit projectiles (force a specific bolt regardless of element):
-        boulder = { pattern = "st_attack", anchor = "target", projectile = "rock", color = "origin" }, -- thrown boulder mesh + dust
-        ice_boulder = { pattern = "st_attack", anchor = "target", projectile = "ice_boulder", color = "origin" }, -- thrown ice boulder + shatter
-        asteroid = { pattern = "st_attack", anchor = "target", projectile = "asteroid", color = "origin" }, -- heavy meteor rock + big impact
-        frost_shard = { pattern = "st_attack", anchor = "target", projectile = "ice_shard", color = "origin" }, -- icy shard + shatter
-        arc_bolt = { pattern = "st_attack", anchor = "target", projectile = "lightning", color = "origin" }, -- lightning arc
+        boulder = {
+            pattern = "st_attack",
+            anchor = "target",
+            projectile = "rock",
+            color = "origin",
+        }, -- thrown boulder mesh + dust
+        ice_boulder = {
+            pattern = "st_attack",
+            anchor = "target",
+            projectile = "ice_boulder",
+            color = "origin",
+        }, -- thrown ice boulder + shatter
+        asteroid = {
+            pattern = "st_attack",
+            anchor = "target",
+            projectile = "asteroid",
+            color = "origin",
+        }, -- heavy meteor rock + big impact
+        frost_shard = {
+            pattern = "st_attack",
+            anchor = "target",
+            projectile = "ice_shard",
+            color = "origin",
+        }, -- icy shard + shatter
+        arc_bolt = {
+            pattern = "st_attack",
+            anchor = "target",
+            projectile = "lightning",
+            color = "origin",
+        }, -- lightning arc
     },
 
     -- Admin FX-probe sequence (PowerFXProbe). Steps each primitive across every element.
     probe = {
         elements = { "grass", "lava", "ice", "desert" }, -- canonical CombatFX elements (per-colour)
-        casting = { "cast_emit", "cast_scatter", "cast_geyser", "cast_channel", "cast_burst", "aura", "shield_bubble" }, -- played ON the player
-        impact = { "eruption", "rubble", "brand_pool", "shatter", "dust_burst", "heavy_slam", "ranged_bolt", "boulder", "ice_boulder", "asteroid", "frost_shard", "arc_bolt" }, -- played at a dummy
+        casting = {
+            "cast_emit",
+            "cast_scatter",
+            "cast_geyser",
+            "cast_channel",
+            "cast_burst",
+            "aura",
+            "shield_bubble",
+        }, -- played ON the player
+        impact = {
+            "eruption",
+            "rubble",
+            "brand_pool",
+            "shatter",
+            "dust_burst",
+            "heavy_slam",
+            "ranged_bolt",
+            "boulder",
+            "ice_boulder",
+            "asteroid",
+            "frost_shard",
+            "arc_bolt",
+        }, -- played at a dummy
         step_seconds = 2.8, -- pause between effects so each is watchable (slowed for inspection)
         dummy_distance = 16, -- studs in front of the player to place the impact dummy
     },

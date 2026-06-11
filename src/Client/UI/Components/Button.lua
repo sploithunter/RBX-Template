@@ -51,7 +51,7 @@ local function createSound(soundId, volume)
     if soundCache[soundId] then
         return soundCache[soundId]:Clone()
     end
-    
+
     local sound = Instance.new("Sound")
     sound.SoundId = soundId
     sound.Volume = volume or 0.5
@@ -65,7 +65,7 @@ end
 local function getThemeColor(variant, state)
     local theme = uiConfig.helpers.get_theme(uiConfig)
     state = state or "normal"
-    
+
     if variant == "primary" then
         return theme.button.primary
     elseif variant == "secondary" then
@@ -92,7 +92,7 @@ end
 -- === BUTTON CLASS ===
 function Button.new(config)
     local self = setmetatable({}, Button)
-    
+
     -- Configuration with defaults
     config = config or {}
     self.config = {
@@ -106,16 +106,16 @@ function Button.new(config)
         onClick = config.onClick,
         onHover = config.onHover,
         onUnhover = config.onUnhover,
-        
+
         -- Styling overrides
         cornerRadius = config.cornerRadius or uiConfig.defaults.button.corner_radius,
         font = config.font or uiConfig.fonts.primary,
         fontSize = config.fontSize or uiConfig.fonts.sizes.md,
-        
+
         -- Responsive
         autoScale = config.autoScale ~= false, -- Default true
     }
-    
+
     -- State management
     self.state = {
         hover = false,
@@ -123,18 +123,18 @@ function Button.new(config)
         disabled = self.config.disabled,
         loading = self.config.loading,
     }
-    
+
     -- Create UI elements
     self:_createUI()
     self:_setupInteractions()
     self:_updateAppearance()
-    
+
     return self
 end
 
 function Button:_createUI()
     local theme = uiConfig.helpers.get_theme(uiConfig)
-    
+
     -- Main button frame
     self.frame = Instance.new("TextButton")
     self.frame.Name = "Button"
@@ -145,17 +145,17 @@ function Button:_createUI()
     self.frame.Text = ""
     self.frame.ClipsDescendants = true
     self.frame.AutoButtonColor = false -- We handle our own color changes
-    
+
     -- Corner radius
     self.corner = Instance.new("UICorner")
-            self.corner.CornerRadius = uiConfig.helpers.get_radius(uiConfig, self.config.cornerRadius)
+    self.corner.CornerRadius = uiConfig.helpers.get_radius(uiConfig, self.config.cornerRadius)
     self.corner.Parent = self.frame
-    
+
     -- Scale object for animations
     self.uiScale = Instance.new("UIScale")
     self.uiScale.Scale = 1
     self.uiScale.Parent = self.frame
-    
+
     -- Text label
     self.textLabel = Instance.new("TextLabel")
     self.textLabel.Name = "TextLabel"
@@ -168,7 +168,7 @@ function Button:_createUI()
     self.textLabel.TextScaled = true
     self.textLabel.TextWrapped = true
     self.textLabel.Parent = self.frame
-    
+
     -- Loading spinner (hidden by default)
     self.loadingFrame = Instance.new("Frame")
     self.loadingFrame.Name = "LoadingFrame"
@@ -177,7 +177,7 @@ function Button:_createUI()
     self.loadingFrame.BackgroundTransparency = 1
     self.loadingFrame.Visible = false
     self.loadingFrame.Parent = self.frame
-    
+
     -- Loading spinner icon
     self.loadingSpinner = Instance.new("TextLabel")
     self.loadingSpinner.Name = "LoadingSpinner"
@@ -189,7 +189,7 @@ function Button:_createUI()
     self.loadingSpinner.Font = Enum.Font.GothamBold
     self.loadingSpinner.TextScaled = true
     self.loadingSpinner.Parent = self.loadingFrame
-    
+
     -- Drop shadow (if enabled)
     if uiConfig.defaults.panel.shadow_enabled then
         self.shadow = Instance.new("Frame")
@@ -200,14 +200,14 @@ function Button:_createUI()
         self.shadow.BackgroundTransparency = uiConfig.defaults.panel.shadow_transparency
         self.shadow.BorderSizePixel = 0
         self.shadow.ZIndex = self.frame.ZIndex - 1
-        
+
         local shadowCorner = Instance.new("UICorner")
         shadowCorner.CornerRadius = self.corner.CornerRadius
         shadowCorner.Parent = self.shadow
-        
+
         -- Parent shadow to the same parent as the button when set
     end
-    
+
     -- Auto-scaling for responsive design
     if self.config.autoScale then
         self:_setupAutoScaling()
@@ -224,7 +224,7 @@ function Button:_setupAutoScaling()
             if screenGui then
                 connection:Disconnect()
                 self:_updateScale()
-                
+
                 -- Listen for viewport changes
                 screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
                     self:_updateScale()
@@ -233,7 +233,7 @@ function Button:_setupAutoScaling()
         end)
     else
         self:_updateScale()
-        
+
         -- Listen for viewport changes
         screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
             self:_updateScale()
@@ -243,11 +243,13 @@ end
 
 function Button:_updateScale()
     local screenGui = self.frame:FindFirstAncestorOfClass("ScreenGui")
-    if not screenGui then return end
-    
+    if not screenGui then
+        return
+    end
+
     local screenSize = screenGui.AbsoluteSize
     local scaleFactor = uiConfig.helpers.get_scale_factor(uiConfig, screenSize)
-    
+
     -- Create or update UIScale
     local uiScale = self.frame:FindFirstChild("UIScale") or Instance.new("UIScale")
     uiScale.Scale = scaleFactor
@@ -261,31 +263,31 @@ function Button:_setupInteractions()
             self:_onHoverStart()
         end
     end)
-    
+
     self.frame.MouseLeave:Connect(function()
         if not self.state.disabled and not self.state.loading then
             self:_onHoverEnd()
         end
     end)
-    
+
     self.frame.MouseButton1Down:Connect(function()
         if not self.state.disabled and not self.state.loading then
             self:_onPressStart()
         end
     end)
-    
+
     self.frame.MouseButton1Up:Connect(function()
         if not self.state.disabled and not self.state.loading then
             self:_onPressEnd()
         end
     end)
-    
+
     self.frame.Activated:Connect(function()
         if not self.state.disabled and not self.state.loading then
             self:_onClick()
         end
     end)
-    
+
     -- Touch-specific handling for mobile
     if UserInputService.TouchEnabled then
         self:_setupTouchHandling()
@@ -295,7 +297,7 @@ end
 function Button:_setupTouchHandling()
     -- Enhanced touch handling for mobile devices
     local touchConnection
-    
+
     self.frame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch then
             if not self.state.disabled and not self.state.loading then
@@ -304,7 +306,7 @@ function Button:_setupTouchHandling()
             end
         end
     end)
-    
+
     self.frame.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch then
             if not self.state.disabled and not self.state.loading then
@@ -320,7 +322,7 @@ function Button:_onHoverStart()
     self.state.hover = true
     self:_updateAppearance()
     self:_playSound("hover")
-    
+
     if self.config.onHover then
         self.config.onHover()
     end
@@ -329,7 +331,7 @@ end
 function Button:_onHoverEnd()
     self.state.hover = false
     self:_updateAppearance()
-    
+
     if self.config.onUnhover then
         self.config.onUnhover()
     end
@@ -347,7 +349,7 @@ end
 
 function Button:_onClick()
     self:_playSound("click")
-    
+
     if self.config.onClick then
         self.config.onClick()
     end
@@ -357,7 +359,7 @@ function Button:_updateAppearance()
     local theme = uiConfig.helpers.get_theme(uiConfig)
     local targetColor = getThemeColor(self.config.variant)
     local targetScale = 1
-    
+
     -- Determine color and scale based on state
     if self.state.disabled then
         targetColor = theme.button.disabled
@@ -368,7 +370,7 @@ function Button:_updateAppearance()
         targetColor = targetColor:lerp(Color3.new(1, 1, 1), 0.1) -- Lighten
         targetScale = HOVER_SCALE
     end
-    
+
     -- Animate color change
     local colorTween = TweenService:Create(
         self.frame,
@@ -377,10 +379,10 @@ function Button:_updateAppearance()
             uiConfig.animations.easing.ease_out,
             uiConfig.animations.direction.out_dir
         ),
-        {BackgroundColor3 = targetColor}
+        { BackgroundColor3 = targetColor }
     )
     colorTween:Play()
-    
+
     -- Animate scale change
     local scaleTween = TweenService:Create(
         self.uiScale,
@@ -389,12 +391,13 @@ function Button:_updateAppearance()
             uiConfig.animations.easing.ease_out,
             uiConfig.animations.direction.out_dir
         ),
-        {Scale = targetScale}
+        { Scale = targetScale }
     )
     scaleTween:Play()
-    
+
     -- Update text color for disabled state
-    local textColor = self.state.disabled and theme.text.disabled or getTextColor(self.config.variant, theme)
+    local textColor = self.state.disabled and theme.text.disabled
+        or getTextColor(self.config.variant, theme)
     self.textLabel.TextColor3 = textColor
     if self.loadingSpinner then
         self.loadingSpinner.TextColor3 = textColor
@@ -405,7 +408,7 @@ function Button:_playSound(soundType)
     if not self.config.soundEnabled or not uiConfig.sounds.enabled then
         return
     end
-    
+
     local soundId
     if soundType == "hover" then
         soundId = uiConfig.sounds.button_hover
@@ -414,10 +417,10 @@ function Button:_playSound(soundType)
     else
         return
     end
-    
+
     local sound = createSound(soundId, uiConfig.sounds.volume)
     sound:Play()
-    
+
     -- Clean up sound after playing
     sound.Ended:Connect(function()
         sound:Destroy()
@@ -425,8 +428,10 @@ function Button:_playSound(soundType)
 end
 
 function Button:_startLoadingAnimation()
-    if not self.loadingSpinner then return end
-    
+    if not self.loadingSpinner then
+        return
+    end
+
     -- Create infinite rotation tween
     local rotationTween = TweenService:Create(
         self.loadingSpinner,
@@ -436,9 +441,9 @@ function Button:_startLoadingAnimation()
             Enum.EasingDirection.InOut,
             -1 -- Infinite repeats
         ),
-        {Rotation = 360}
+        { Rotation = 360 }
     )
-    
+
     self.loadingTween = rotationTween
     rotationTween:Play()
 end
@@ -448,7 +453,7 @@ function Button:_stopLoadingAnimation()
         self.loadingTween:Cancel()
         self.loadingTween = nil
     end
-    
+
     if self.loadingSpinner then
         self.loadingSpinner.Rotation = 0
     end
@@ -468,7 +473,7 @@ end
 
 function Button:SetLoading(loading)
     self.state.loading = loading
-    
+
     if loading then
         self.textLabel.Visible = false
         self.loadingFrame.Visible = true
@@ -478,7 +483,7 @@ function Button:SetLoading(loading)
         self.loadingFrame.Visible = false
         self:_stopLoadingAnimation()
     end
-    
+
     self:_updateAppearance()
 end
 
@@ -492,9 +497,9 @@ function Button:SetParent(parent)
     if self.shadow then
         self.shadow.Parent = parent
     end
-    
+
     self.frame.Parent = parent
-    
+
     -- Setup auto-scaling if needed
     if self.config.autoScale then
         self:_setupAutoScaling()
@@ -516,7 +521,7 @@ end
 function Button:SetPosition(position)
     self.config.position = position
     self.frame.Position = position
-    
+
     if self.shadow then
         self.shadow.Position = position + UDim2.new(0, 2, 0, 2)
     end
@@ -528,12 +533,12 @@ end
 
 function Button:Destroy()
     self:_stopLoadingAnimation()
-    
+
     if self.shadow then
         self.shadow:Destroy()
     end
-    
+
     self.frame:Destroy()
 end
 
-return Button 
+return Button

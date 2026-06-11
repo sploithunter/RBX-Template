@@ -6,16 +6,16 @@ local recentErrors = {}
 local recentErrorLastTime = 0
 
 local function systemFn(system: System)
-	if type(system) == "table" then
-		return system.system
-	end
+    if type(system) == "table" then
+        return system.system
+    end
 
-	return system
+    return system
 end
 
 local function systemName(system: System)
-	local fn = systemFn(system)
-	return debug.info(fn, "s") .. "->" .. debug.info(fn, "n")
+    local fn = systemFn(system)
+    return debug.info(fn, "s") .. "->" .. debug.info(fn, "n")
 end
 
 --[=[
@@ -47,20 +47,20 @@ Loop.__index = Loop
 	@return Loop
 ]=]
 function Loop.new(...)
-	return setmetatable({
-		_systems = {},
-		_skipSystems = {},
-		_orderedSystemsByEvent = {},
-		_state = { ... },
-		_stateLength = select("#", ...),
-		_systemState = {},
-		_middlewares = {},
-		_systemErrors = {},
-		_systemLogs = {},
-		_debugger = nil,
-		profiling = nil,
-		trackErrors = false,
-	}, Loop)
+    return setmetatable({
+        _systems = {},
+        _skipSystems = {},
+        _orderedSystemsByEvent = {},
+        _state = { ... },
+        _stateLength = select("#", ...),
+        _systemState = {},
+        _middlewares = {},
+        _systemErrors = {},
+        _systemLogs = {},
+        _debugger = nil,
+        profiling = nil,
+        trackErrors = false,
+    }, Loop)
 end
 
 --[=[
@@ -84,7 +84,9 @@ end
 	The default priority is `0`.
 ]=]
 
-type System = (...any) -> () | { system: (...any) -> (), event: string?, priority: number?, after: nil | {} }
+type System = (
+    ...any
+) -> () | { system: (...any) -> (), event: string?, priority: number?, after: nil | {} }
 
 --[=[
 	Schedules a set of systems based on the constraints they define.
@@ -124,19 +126,19 @@ type System = (...any) -> () | { system: (...any) -> (), event: string?, priorit
 	@param systems { System } -- Array of systems to schedule.
 ]=]
 function Loop:scheduleSystems(systems: { System })
-	for _, system in ipairs(systems) do
-		if table.find(self._systems, system) == nil then
-			table.insert(self._systems, system)
-		end
-		self._systemState[system] = {}
+    for _, system in ipairs(systems) do
+        if table.find(self._systems, system) == nil then
+            table.insert(self._systems, system)
+        end
+        self._systemState[system] = {}
 
-		if RunService:IsStudio() then
-			-- In Studio, we start logging immediately.
-			self._systemLogs[system] = {}
-		end
-	end
+        if RunService:IsStudio() then
+            -- In Studio, we start logging immediately.
+            self._systemLogs[system] = {}
+        end
+    end
 
-	self:_sortSystems()
+    self:_sortSystems()
 end
 --[=[
 	Schedules a single system. This is an expensive function to call multiple times. Instead, try batch scheduling
@@ -145,7 +147,7 @@ end
 	@param system System
 ]=]
 function Loop:scheduleSystem(system: System)
-	return self:scheduleSystems({ system })
+    return self:scheduleSystems({ system })
 end
 
 --[=[
@@ -156,24 +158,24 @@ end
 	@param system System
 ]=]
 function Loop:evictSystem(system: System)
-	local systemIndex = table.find(self._systems, system)
+    local systemIndex = table.find(self._systems, system)
 
-	if systemIndex == nil then
-		error("Can't evict system because it doesn't exist")
-	end
+    if systemIndex == nil then
+        error("Can't evict system because it doesn't exist")
+    end
 
-	table.remove(self._systems, systemIndex)
+    table.remove(self._systems, systemIndex)
 
-	self._systemErrors[system] = nil
+    self._systemErrors[system] = nil
 
-	topoRuntime.start({
-		system = self._systemState[system],
-	}, function() end)
+    topoRuntime.start({
+        system = self._systemState[system],
+    }, function() end)
 
-	self._systemState[system] = nil
-	self._systemLogs[system] = nil
+    self._systemState[system] = nil
+    self._systemLogs[system] = nil
 
-	self:_sortSystems()
+    self:_sortSystems()
 end
 
 --[=[
@@ -184,142 +186,144 @@ end
 	@param new System
 ]=]
 function Loop:replaceSystem(old: System, new: System)
-	local systemIndex = table.find(self._systems, old)
+    local systemIndex = table.find(self._systems, old)
 
-	if not systemIndex then
-		error("Before system does not exist!")
-	end
+    if not systemIndex then
+        error("Before system does not exist!")
+    end
 
-	table.remove(self._systems, systemIndex)
-	table.insert(self._systems, new)
+    table.remove(self._systems, systemIndex)
+    table.insert(self._systems, new)
 
-	self._systemState[new] = self._systemState[old] or {}
-	self._systemState[old] = nil
+    self._systemState[new] = self._systemState[old] or {}
+    self._systemState[old] = nil
 
-	if self._skipSystems[old] then
-		self._skipSystems[old] = nil
-		self._skipSystems[new] = true
-	end
+    if self._skipSystems[old] then
+        self._skipSystems[old] = nil
+        self._skipSystems[new] = true
+    end
 
-	for _, system in self._systems do
-		if type(system) == "table" and system.after then
-			local index = table.find(system.after, old)
+    for _, system in self._systems do
+        if type(system) == "table" and system.after then
+            local index = table.find(system.after, old)
 
-			if index then
-				system.after[index] = new
-			end
-		end
-	end
+            if index then
+                system.after[index] = new
+            end
+        end
+    end
 
-	self:_sortSystems()
+    self:_sortSystems()
 end
 
 local function orderSystemsByDependencies(unscheduledSystems: { System })
-	local systemPriorityMap = {}
-	local visiting = "v"
+    local systemPriorityMap = {}
+    local visiting = "v"
 
-	local function systemPriority(system: System)
-		local priority = systemPriorityMap[system]
+    local function systemPriority(system: System)
+        local priority = systemPriorityMap[system]
 
-		if not priority then
-			priority = 0
+        if not priority then
+            priority = 0
 
-			systemPriorityMap[system] = visiting
+            systemPriorityMap[system] = visiting
 
-			if type(system) == "table" then
-				if system.after then
-					for _, dependency in system.after do
-						if systemPriorityMap[dependency] ~= visiting then
-							priority = math.max(priority, systemPriority(dependency) + 1)
-						else
-							local errorStatement = {
-								`Cyclic dependency detected: System '{systemName(system)}' is set to execute after System '{systemName(
-									dependency
-								)}', and vice versa. This creates a loop that prevents the systems from being able to execute in a valid order.`,
-								"To resolve this issue, reconsider the dependencies between these systems. One possible solution is to update the 'after' field from one of the systems.",
-							}
-							error(table.concat(errorStatement, "\n"))
-						end
-					end
-				elseif system.priority then
-					priority = system.priority
-				end
-			end
+            if type(system) == "table" then
+                if system.after then
+                    for _, dependency in system.after do
+                        if systemPriorityMap[dependency] ~= visiting then
+                            priority = math.max(priority, systemPriority(dependency) + 1)
+                        else
+                            local errorStatement = {
+                                `Cyclic dependency detected: System '{systemName(system)}' is set to execute after System '{systemName(
+                                    dependency
+                                )}', and vice versa. This creates a loop that prevents the systems from being able to execute in a valid order.`,
+                                "To resolve this issue, reconsider the dependencies between these systems. One possible solution is to update the 'after' field from one of the systems.",
+                            }
+                            error(table.concat(errorStatement, "\n"))
+                        end
+                    end
+                elseif system.priority then
+                    priority = system.priority
+                end
+            end
 
-			systemPriorityMap[system] = priority
-		end
+            systemPriorityMap[system] = priority
+        end
 
-		return priority
-	end
+        return priority
+    end
 
-	local scheduledSystems = table.clone(unscheduledSystems)
+    local scheduledSystems = table.clone(unscheduledSystems)
 
-	table.sort(scheduledSystems, function(a, b)
-		local priorityA = systemPriority(a)
-		local priorityB = systemPriority(b)
+    table.sort(scheduledSystems, function(a, b)
+        local priorityA = systemPriority(a)
+        local priorityB = systemPriority(b)
 
-		if priorityA == priorityB then
-			local nameA = systemName(a)
-			local nameB = systemName(b)
+        if priorityA == priorityB then
+            local nameA = systemName(a)
+            local nameB = systemName(b)
 
-			if nameA == nameB then
-				return table.find(unscheduledSystems, a) < table.find(unscheduledSystems, b)
-			end
+            if nameA == nameB then
+                return table.find(unscheduledSystems, a) < table.find(unscheduledSystems, b)
+            end
 
-			return nameA < nameB
-		end
+            return nameA < nameB
+        end
 
-		return priorityA < priorityB
-	end)
+        return priorityA < priorityB
+    end)
 
-	return scheduledSystems
+    return scheduledSystems
 end
 
 function Loop:_sortSystems()
-	local systemsByEvent = {}
+    local systemsByEvent = {}
 
-	for _, system in pairs(self._systems) do
-		local eventName = "default"
+    for _, system in pairs(self._systems) do
+        local eventName = "default"
 
-		if type(system) == "table" then
-			if system.event then
-				eventName = system.event
-			end
-			if system.after then
-				if system.priority then
-					error(`{systemName(system)} shouldn't have both priority and after defined`)
-				end
+        if type(system) == "table" then
+            if system.event then
+                eventName = system.event
+            end
+            if system.after then
+                if system.priority then
+                    error(`{systemName(system)} shouldn't have both priority and after defined`)
+                end
 
-				if #system.after == 0 then
-					error(
-						`System "{systemName(system)}" "after" table was provided but is empty; did you accidentally use a nil value or make a typo?`
-					)
-				end
+                if #system.after == 0 then
+                    error(
+                        `System "{systemName(system)}" "after" table was provided but is empty; did you accidentally use a nil value or make a typo?`
+                    )
+                end
 
-				for _, dependency in system.after do
-					if not table.find(self._systems, dependency) then
-						error(
-							`Unable to schedule "{systemName(system)}" because the system "{systemName(dependency)}" is not scheduled.\n\nEither schedule "{systemName(
-								dependency
-							)}" before "{systemName(system)}" or consider scheduling these systems together with Loop:scheduleSystems`
-						)
-					end
-				end
-			end
-		end
+                for _, dependency in system.after do
+                    if not table.find(self._systems, dependency) then
+                        error(
+                            `Unable to schedule "{systemName(system)}" because the system "{systemName(dependency)}" is not scheduled.\n\nEither schedule "{systemName(
+                                dependency
+                            )}" before "{systemName(
+                                system
+                            )}" or consider scheduling these systems together with Loop:scheduleSystems`
+                        )
+                    end
+                end
+            end
+        end
 
-		if not systemsByEvent[eventName] then
-			systemsByEvent[eventName] = {}
-		end
+        if not systemsByEvent[eventName] then
+            systemsByEvent[eventName] = {}
+        end
 
-		table.insert(systemsByEvent[eventName], system)
-	end
+        table.insert(systemsByEvent[eventName], system)
+    end
 
-	self._orderedSystemsByEvent = {}
+    self._orderedSystemsByEvent = {}
 
-	for eventName, systems in pairs(systemsByEvent) do
-		self._orderedSystemsByEvent[eventName] = orderSystemsByDependencies(systems)
-	end
+    for eventName, systems in pairs(systemsByEvent) do
+        self._orderedSystemsByEvent[eventName] = orderSystemsByDependencies(systems)
+    end
 end
 
 --[=[
@@ -347,159 +351,162 @@ end
 	@return {[string]: RBXScriptConnection} -- A map from your event names to connection objects.
 ]=]
 function Loop:begin(events)
-	local connections = {}
+    local connections = {}
 
-	for eventName, event in pairs(events) do
-		local lastTime = os.clock()
-		local generation = false
+    for eventName, event in pairs(events) do
+        local lastTime = os.clock()
+        local generation = false
 
-		local function stepSystems()
-			if not self._orderedSystemsByEvent[eventName] then
-				-- Skip events that have no systems
-				return
-			end
+        local function stepSystems()
+            if not self._orderedSystemsByEvent[eventName] then
+                -- Skip events that have no systems
+                return
+            end
 
-			local currentTime = os.clock()
-			local deltaTime = currentTime - lastTime
-			lastTime = currentTime
+            local currentTime = os.clock()
+            local deltaTime = currentTime - lastTime
+            lastTime = currentTime
 
-			generation = not generation
+            generation = not generation
 
-			local dirtyWorlds: { [any]: true } = {}
-			local profiling = self.profiling
+            local dirtyWorlds: { [any]: true } = {}
+            local profiling = self.profiling
 
-			for _, system in ipairs(self._orderedSystemsByEvent[eventName]) do
-				topoRuntime.start({
-					system = self._systemState[system],
-					frame = {
-						generation = generation,
-						deltaTime = deltaTime,
-						dirtyWorlds = dirtyWorlds,
-						logs = self._systemLogs[system],
-					},
-					currentSystem = system,
-				}, function()
-					if self._skipSystems[system] then
-						if profiling then
-							profiling[system] = nil
-						end
-						return
-					end
+            for _, system in ipairs(self._orderedSystemsByEvent[eventName]) do
+                topoRuntime.start({
+                    system = self._systemState[system],
+                    frame = {
+                        generation = generation,
+                        deltaTime = deltaTime,
+                        dirtyWorlds = dirtyWorlds,
+                        logs = self._systemLogs[system],
+                    },
+                    currentSystem = system,
+                }, function()
+                    if self._skipSystems[system] then
+                        if profiling then
+                            profiling[system] = nil
+                        end
+                        return
+                    end
 
-					local fn = systemFn(system)
-					debug.profilebegin("system: " .. systemName(system))
+                    local fn = systemFn(system)
+                    debug.profilebegin("system: " .. systemName(system))
 
-					local thread = coroutine.create(fn)
+                    local thread = coroutine.create(fn)
 
-					local startTime = os.clock()
-					local success, errorValue = coroutine.resume(thread, unpack(self._state, 1, self._stateLength))
+                    local startTime = os.clock()
+                    local success, errorValue =
+                        coroutine.resume(thread, unpack(self._state, 1, self._stateLength))
 
-					if profiling ~= nil then
-						local duration = os.clock() - startTime
+                    if profiling ~= nil then
+                        local duration = os.clock() - startTime
 
-						if profiling[system] == nil then
-							profiling[system] = {}
-						end
+                        if profiling[system] == nil then
+                            profiling[system] = {}
+                        end
 
-						local debugger = self._debugger
+                        local debugger = self._debugger
 
-						if debugger and debugger.debugSystem == system and debugger._queries then
-							local totalQueryTime = 0
+                        if debugger and debugger.debugSystem == system and debugger._queries then
+                            local totalQueryTime = 0
 
-							for _, query in debugger._queries do
-								totalQueryTime += query.averageDuration
-							end
+                            for _, query in debugger._queries do
+                                totalQueryTime += query.averageDuration
+                            end
 
-							rollingAverage.addSample(
-								profiling[system],
-								if debugger.debugSystem then duration - totalQueryTime else duration
-							)
-						else
-							rollingAverage.addSample(profiling[system], duration)
-						end
-					end
+                            rollingAverage.addSample(
+                                profiling[system],
+                                if debugger.debugSystem then duration - totalQueryTime else duration
+                            )
+                        else
+                            rollingAverage.addSample(profiling[system], duration)
+                        end
+                    end
 
-					if coroutine.status(thread) ~= "dead" then
-						coroutine.close(thread)
+                    if coroutine.status(thread) ~= "dead" then
+                        coroutine.close(thread)
 
-						task.spawn(
-							error,
-							(
-								"Matter: System %s yielded! Its thread has been closed. "
-								.. "Yielding in systems is not allowed."
-							):format(systemName(system))
-						)
-					end
+                        task.spawn(
+                            error,
+                            (
+                                "Matter: System %s yielded! Its thread has been closed. "
+                                .. "Yielding in systems is not allowed."
+                            ):format(systemName(system))
+                        )
+                    end
 
-					for world in dirtyWorlds do
-						world:optimizeQueries()
-					end
-					table.clear(dirtyWorlds)
+                    for world in dirtyWorlds do
+                        world:optimizeQueries()
+                    end
+                    table.clear(dirtyWorlds)
 
-					if not success then
-						if os.clock() - recentErrorLastTime > 10 then
-							recentErrorLastTime = os.clock()
-							recentErrors = {}
-						end
+                    if not success then
+                        if os.clock() - recentErrorLastTime > 10 then
+                            recentErrorLastTime = os.clock()
+                            recentErrors = {}
+                        end
 
-						local errorString = systemName(system)
-							.. ": "
-							.. tostring(errorValue)
-							.. "\n"
-							.. debug.traceback(thread)
+                        local errorString = systemName(system)
+                            .. ": "
+                            .. tostring(errorValue)
+                            .. "\n"
+                            .. debug.traceback(thread)
 
-						if not recentErrors[errorString] then
-							task.spawn(error, errorString)
-							warn("Matter: The above error will be suppressed for the next 10 seconds")
-							recentErrors[errorString] = true
-						end
+                        if not recentErrors[errorString] then
+                            task.spawn(error, errorString)
+                            warn(
+                                "Matter: The above error will be suppressed for the next 10 seconds"
+                            )
+                            recentErrors[errorString] = true
+                        end
 
-						if self.trackErrors then
-							if self._systemErrors[system] == nil then
-								self._systemErrors[system] = {}
-							end
+                        if self.trackErrors then
+                            if self._systemErrors[system] == nil then
+                                self._systemErrors[system] = {}
+                            end
 
-							local errorStorage = self._systemErrors[system]
-							local lastError = errorStorage[#errorStorage]
+                            local errorStorage = self._systemErrors[system]
+                            local lastError = errorStorage[#errorStorage]
 
-							if lastError and lastError.error == errorString then
-								lastError.when = os.time()
-							else
-								table.insert(errorStorage, {
-									error = errorString,
-									when = os.time(),
-								})
+                            if lastError and lastError.error == errorString then
+                                lastError.when = os.time()
+                            else
+                                table.insert(errorStorage, {
+                                    error = errorString,
+                                    when = os.time(),
+                                })
 
-								if #errorStorage > 100 then
-									table.remove(errorStorage, 1)
-								end
-							end
-						end
-					end
+                                if #errorStorage > 100 then
+                                    table.remove(errorStorage, 1)
+                                end
+                            end
+                        end
+                    end
 
-					debug.profileend()
-				end)
-			end
-		end
+                    debug.profileend()
+                end)
+            end
+        end
 
-		for _, middleware in ipairs(self._middlewares) do
-			stepSystems = middleware(stepSystems, eventName)
+        for _, middleware in ipairs(self._middlewares) do
+            stepSystems = middleware(stepSystems, eventName)
 
-			if type(stepSystems) ~= "function" then
-				error(
-					("Middleware function %s:%s returned %s instead of a function"):format(
-						debug.info(middleware, "s"),
-						debug.info(middleware, "l"),
-						typeof(stepSystems)
-					)
-				)
-			end
-		end
+            if type(stepSystems) ~= "function" then
+                error(
+                    ("Middleware function %s:%s returned %s instead of a function"):format(
+                        debug.info(middleware, "s"),
+                        debug.info(middleware, "l"),
+                        typeof(stepSystems)
+                    )
+                )
+            end
+        end
 
-		connections[eventName] = event:Connect(stepSystems)
-	end
+        connections[eventName] = event:Connect(stepSystems)
+    end
 
-	return connections
+    return connections
 end
 
 --[=[
@@ -526,7 +533,7 @@ end
 	@param middleware (nextFn: () -> (), eventName: string) -> () -> ()
 ]=]
 function Loop:addMiddleware(middleware: (nextFn: () -> ()) -> () -> ())
-	table.insert(self._middlewares, middleware)
+    table.insert(self._middlewares, middleware)
 end
 
 return Loop

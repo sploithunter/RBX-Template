@@ -1,55 +1,58 @@
 local stack = {}
 
 local function newStackFrame(node)
-	return {
-		node = node,
-		accessedKeys = {},
-	}
+    return {
+        node = node,
+        accessedKeys = {},
+    }
 end
 
 local function cleanup()
-	local currentFrame = stack[#stack]
+    local currentFrame = stack[#stack]
 
-	for baseKey, state in pairs(currentFrame.node.system) do
-		for key, value in pairs(state.storage) do
-			if not currentFrame.accessedKeys[baseKey] or not currentFrame.accessedKeys[baseKey][key] then
-				local cleanupCallback = state.cleanupCallback
+    for baseKey, state in pairs(currentFrame.node.system) do
+        for key, value in pairs(state.storage) do
+            if
+                not currentFrame.accessedKeys[baseKey]
+                or not currentFrame.accessedKeys[baseKey][key]
+            then
+                local cleanupCallback = state.cleanupCallback
 
-				if cleanupCallback then
-					local shouldAbortCleanup = cleanupCallback(value)
+                if cleanupCallback then
+                    local shouldAbortCleanup = cleanupCallback(value)
 
-					if shouldAbortCleanup then
-						continue
-					end
-				end
+                    if shouldAbortCleanup then
+                        continue
+                    end
+                end
 
-				state.storage[key] = nil
-			end
-		end
-	end
+                state.storage[key] = nil
+            end
+        end
+    end
 end
 
 local function start(node, fn)
-	table.insert(stack, newStackFrame(node))
-	fn()
-	cleanup()
-	table.remove(stack, #stack)
+    table.insert(stack, newStackFrame(node))
+    fn()
+    cleanup()
+    table.remove(stack, #stack)
 end
 
 local function withinTopoContext()
-	return #stack ~= 0
+    return #stack ~= 0
 end
 
 local function useFrameState()
-	return stack[#stack].node.frame
+    return stack[#stack].node.frame
 end
 
 local function useCurrentSystem()
-	if #stack == 0 then
-		return
-	end
+    if #stack == 0 then
+        return
+    end
 
-	return stack[#stack].node.currentSystem
+    return stack[#stack].node.currentSystem
 end
 
 --[=[
@@ -120,55 +123,55 @@ end
 	@param cleanupCallback (storage: {}) -> boolean? -- A function to run when the storage for this hook is cleaned up
 ]=]
 local function useHookState(discriminator, cleanupCallback): {}
-	local file, line = debug.info(3, "sl")
-	local fn = debug.info(2, "f")
+    local file, line = debug.info(3, "sl")
+    local fn = debug.info(2, "f")
 
-	local baseKey = string.format("%s:%s:%d", tostring(fn), file, line)
+    local baseKey = string.format("%s:%s:%d", tostring(fn), file, line)
 
-	local currentFrame = stack[#stack]
+    local currentFrame = stack[#stack]
 
-	if currentFrame == nil then
-		error("Attempt to access topologically-aware storage outside of a Loop-system context.", 3)
-	end
+    if currentFrame == nil then
+        error("Attempt to access topologically-aware storage outside of a Loop-system context.", 3)
+    end
 
-	if not currentFrame.accessedKeys[baseKey] then
-		currentFrame.accessedKeys[baseKey] = {}
-	end
+    if not currentFrame.accessedKeys[baseKey] then
+        currentFrame.accessedKeys[baseKey] = {}
+    end
 
-	local accessedKeys = currentFrame.accessedKeys[baseKey]
+    local accessedKeys = currentFrame.accessedKeys[baseKey]
 
-	local key = #accessedKeys
+    local key = #accessedKeys
 
-	if discriminator ~= nil then
-		if type(discriminator) == "number" then
-			discriminator = tostring(discriminator)
-		end
+    if discriminator ~= nil then
+        if type(discriminator) == "number" then
+            discriminator = tostring(discriminator)
+        end
 
-		key = discriminator
-	end
+        key = discriminator
+    end
 
-	accessedKeys[key] = true
+    accessedKeys[key] = true
 
-	if not currentFrame.node.system[baseKey] then
-		currentFrame.node.system[baseKey] = {
-			storage = {},
-			cleanupCallback = cleanupCallback,
-		}
-	end
+    if not currentFrame.node.system[baseKey] then
+        currentFrame.node.system[baseKey] = {
+            storage = {},
+            cleanupCallback = cleanupCallback,
+        }
+    end
 
-	local storage = currentFrame.node.system[baseKey].storage
+    local storage = currentFrame.node.system[baseKey].storage
 
-	if not storage[key] then
-		storage[key] = {}
-	end
+    if not storage[key] then
+        storage[key] = {}
+    end
 
-	return storage[key]
+    return storage[key]
 end
 
 return {
-	start = start,
-	useHookState = useHookState,
-	useFrameState = useFrameState,
-	useCurrentSystem = useCurrentSystem,
-	withinTopoContext = withinTopoContext,
+    start = start,
+    useHookState = useHookState,
+    useFrameState = useFrameState,
+    useCurrentSystem = useCurrentSystem,
+    withinTopoContext = withinTopoContext,
 }

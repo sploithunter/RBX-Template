@@ -62,20 +62,20 @@ export type World = typeof(World.new())
 export type Loop = typeof(Loop.new())
 
 return table.freeze({
-	World = World,
-	Loop = Loop,
+    World = World,
+    Loop = Loop,
 
-	component = newComponent,
+    component = newComponent,
 
-	useEvent = require(script.hooks.useEvent),
-	useDeltaTime = require(script.hooks.useDeltaTime),
-	useThrottle = require(script.hooks.useThrottle),
-	log = require(script.hooks.log),
-	useHookState = topoRuntime.useHookState,
-	useCurrentSystem = topoRuntime.useCurrentSystem,
+    useEvent = require(script.hooks.useEvent),
+    useDeltaTime = require(script.hooks.useDeltaTime),
+    useThrottle = require(script.hooks.useThrottle),
+    log = require(script.hooks.log),
+    useHookState = topoRuntime.useHookState,
+    useCurrentSystem = topoRuntime.useCurrentSystem,
 
-	merge = immutable.merge,
-	None = immutable.None,
+    merge = immutable.merge,
+    None = immutable.None,
 
-	Debugger = require(script.debugger.debugger),
+    Debugger = require(script.debugger.debugger),
 })

@@ -18,7 +18,7 @@ local DEFAULT_CURRENT_WORLD = "Spawn" -- Default world for pets
 
 function PetCompatibilityService:CreatePlayerDataStructure(player)
     print("🔧 PetCompatibilityService: Creating Data structure for", player.Name)
-    
+
     -- Create Data folder if it doesn't exist
     local dataFolder = player:FindFirstChild("Data")
     if not dataFolder then
@@ -26,7 +26,7 @@ function PetCompatibilityService:CreatePlayerDataStructure(player)
         dataFolder.Name = "Data"
         dataFolder.Parent = player
     end
-    
+
     -- Create FollowType StringValue
     local followType = dataFolder:FindFirstChild("FollowType")
     if not followType then
@@ -38,7 +38,7 @@ function PetCompatibilityService:CreatePlayerDataStructure(player)
         -- Force-align for physics parity with legacy until configurable
         followType.Value = DEFAULT_FOLLOW_TYPE
     end
-    
+
     -- Create CurrentWorld StringValue (directly under player, not in Data)
     local currentWorld = player:FindFirstChild("CurrentWorld")
     if not currentWorld then
@@ -47,7 +47,7 @@ function PetCompatibilityService:CreatePlayerDataStructure(player)
         currentWorld.Value = DEFAULT_CURRENT_WORLD
         currentWorld.Parent = player
     end
-    
+
     print("✅ PetCompatibilityService: Data structure created for", player.Name)
     print("   - FollowType:", followType.Value)
     print("   - CurrentWorld:", currentWorld.Value)
@@ -60,7 +60,7 @@ function PetCompatibilityService:OnPlayerAdded(player)
         task.wait(1)
         self:CreatePlayerDataStructure(player)
     end)
-    
+
     -- Also create immediately if character already exists
     if player.Character then
         task.wait(1)
@@ -70,17 +70,17 @@ end
 
 function PetCompatibilityService:Initialize()
     print("🚀 PetCompatibilityService: Initializing...")
-    
+
     -- Handle existing players
     for _, player in pairs(Players:GetPlayers()) do
         self:OnPlayerAdded(player)
     end
-    
+
     -- Handle new players
     Players.PlayerAdded:Connect(function(player)
         self:OnPlayerAdded(player)
     end)
-    
+
     print("✅ PetCompatibilityService: Initialized!")
 end
 

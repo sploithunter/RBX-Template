@@ -1,7 +1,7 @@
 local topoRuntime = require(script.Parent.Parent.topoRuntime)
 
 local function cleanup(storage)
-	return os.clock() < storage.expiry
+    return os.clock() < storage.expiry
 end
 
 --[=[
@@ -37,15 +37,15 @@ end
 	@return boolean -- returns true every x seconds, otherwise false
 ]=]
 local function useThrottle(seconds, discriminator)
-	local storage = topoRuntime.useHookState(discriminator, cleanup)
+    local storage = topoRuntime.useHookState(discriminator, cleanup)
 
-	if storage.time == nil or os.clock() - storage.time >= seconds then
-		storage.time = os.clock()
-		storage.expiry = os.clock() + seconds
-		return true
-	end
+    if storage.time == nil or os.clock() - storage.time >= seconds then
+        storage.time = os.clock()
+        storage.expiry = os.clock() + seconds
+        return true
+    end
 
-	return false
+    return false
 end
 
 return useThrottle

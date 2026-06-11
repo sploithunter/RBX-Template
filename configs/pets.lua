@@ -1058,18 +1058,15 @@ local petConfig = {
         },
 
         -- CREATOR / MEET REWARD FAMILY
+        -- TWO PETS, ONE MODEL (Jason): the EXCLUSIVE colorado (meet-egg / wild — two
+        -- buffs, no eternal) and the CREATOR-class colorado_creator (the apex — every
+        -- buff + eternal) are different species that share the same 3D assets.
         colorado = {
-            display_name = "Colorado Plays",
+            display_name = "Colorado",
             category = "creator",
             rarity = "exclusive",
             base_power = 100,
             base_health = 500,
-            eternal = {
-                enabled = true,
-                creator_only = true, -- authored for the APEX pet; meet/wild colorados aren't eternal
-                power_percent = 80,
-                baseline = "top_team_average",
-            },
 
             -- Imported avatar-like models often arrive with different facing/scale.
             -- `scale` is the normal model multiplier, `huge_scale` is applied to
@@ -1092,19 +1089,68 @@ local petConfig = {
                 basic = {
                     asset_id = "rbxassetid://100466492312776",
                     image_id = "rbxassetid://0",
-                    display_name = "Colorado Plays",
+                    display_name = "Colorado",
                     abilities = { "creator_wave" },
                 },
                 golden = {
                     asset_id = "rbxassetid://121192248833075",
                     image_id = "rbxassetid://0",
-                    display_name = "Golden Colorado Plays",
+                    display_name = "Golden Colorado",
                     abilities = { "creator_wave", "coin_magnet" },
                 },
                 rainbow = {
                     asset_id = "rbxassetid://100466492312776",
                     image_id = "rbxassetid://0",
-                    display_name = "Rainbow Colorado Plays",
+                    display_name = "Rainbow Colorado",
+                    abilities = { "creator_wave", "luck_aura" },
+                },
+            },
+        },
+
+        colorado_creator = {
+            display_name = "Creator Colorado",
+            category = "creator",
+            rarity = "exclusive",
+            base_power = 100,
+            base_health = 500,
+            -- authored for the APEX pet: eternal lives on THIS species only
+            eternal = {
+                enabled = true,
+                power_percent = 80,
+                baseline = "top_team_average",
+            },
+
+            asset_transform = {
+                scale = 1,
+                huge_scale = 3,
+                orientation = { x = 0, y = 0, z = 0 },
+            },
+
+            camera = {
+                distance = 4,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+
+            variants = {
+                basic = {
+                    asset_id = "rbxassetid://100466492312776",
+                    image_id = "rbxassetid://0",
+                    display_name = "Creator Colorado",
+                    abilities = { "creator_wave" },
+                },
+                golden = {
+                    asset_id = "rbxassetid://121192248833075",
+                    image_id = "rbxassetid://0",
+                    display_name = "Golden Creator Colorado",
+                    abilities = { "creator_wave", "coin_magnet" },
+                },
+                rainbow = {
+                    asset_id = "rbxassetid://100466492312776",
+                    image_id = "rbxassetid://0",
+                    display_name = "Rainbow Creator Colorado",
                     abilities = { "creator_wave", "luck_aura" },
                 },
             },

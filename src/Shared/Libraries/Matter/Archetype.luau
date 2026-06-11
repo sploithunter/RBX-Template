@@ -6,98 +6,98 @@ local compatibilityCache = {}
 local archetypeCache = {}
 
 local function getValueId(value)
-	local valueId = valueIds[value]
-	if valueId == nil then
-		valueIds[value] = nextValueId
-		valueId = nextValueId
-		nextValueId += 1
-	end
+    local valueId = valueIds[value]
+    if valueId == nil then
+        valueIds[value] = nextValueId
+        valueId = nextValueId
+        nextValueId += 1
+    end
 
-	return valueId
+    return valueId
 end
 
 function archetypeOf(...)
-	debug.profilebegin("archetypeOf")
+    debug.profilebegin("archetypeOf")
 
-	local length = select("#", ...)
+    local length = select("#", ...)
 
-	local currentNode = archetypeCache
+    local currentNode = archetypeCache
 
-	for i = 1, length do
-		local nextNode = currentNode[select(i, ...)]
+    for i = 1, length do
+        local nextNode = currentNode[select(i, ...)]
 
-		if not nextNode then
-			nextNode = {}
-			currentNode[select(i, ...)] = nextNode
-		end
+        if not nextNode then
+            nextNode = {}
+            currentNode[select(i, ...)] = nextNode
+        end
 
-		currentNode = nextNode
-	end
+        currentNode = nextNode
+    end
 
-	if currentNode._archetype then
-		debug.profileend()
-		return currentNode._archetype
-	end
+    if currentNode._archetype then
+        debug.profileend()
+        return currentNode._archetype
+    end
 
-	local list = table.create(length)
+    local list = table.create(length)
 
-	for i = 1, length do
-		list[i] = getValueId(select(i, ...))
-	end
+    for i = 1, length do
+        list[i] = getValueId(select(i, ...))
+    end
 
-	table.sort(list)
+    table.sort(list)
 
-	local archetype = table.concat(list, "_")
+    local archetype = table.concat(list, "_")
 
-	currentNode._archetype = archetype
+    currentNode._archetype = archetype
 
-	debug.profileend()
+    debug.profileend()
 
-	return archetype
+    return archetype
 end
 
 function negateArchetypeOf(...)
-	return string.gsub(archetypeOf(...), "_", "x")
+    return string.gsub(archetypeOf(...), "_", "x")
 end
 
 function areArchetypesCompatible(queryArchetype, targetArchetype)
-	local archetypes = string.split(queryArchetype, "x")
-	local baseArchetype = table.remove(archetypes, 1)
+    local archetypes = string.split(queryArchetype, "x")
+    local baseArchetype = table.remove(archetypes, 1)
 
-	local cachedCompatibility = compatibilityCache[queryArchetype .. "-" .. targetArchetype]
-	if cachedCompatibility ~= nil then
-		return cachedCompatibility
-	end
-	debug.profilebegin("areArchetypesCompatible")
+    local cachedCompatibility = compatibilityCache[queryArchetype .. "-" .. targetArchetype]
+    if cachedCompatibility ~= nil then
+        return cachedCompatibility
+    end
+    debug.profilebegin("areArchetypesCompatible")
 
-	local queryIds = string.split(baseArchetype, "_")
-	local targetIds = toSet(string.split(targetArchetype, "_"))
-	local excludeIds = toSet(archetypes)
+    local queryIds = string.split(baseArchetype, "_")
+    local targetIds = toSet(string.split(targetArchetype, "_"))
+    local excludeIds = toSet(archetypes)
 
-	for _, queryId in ipairs(queryIds) do
-		if targetIds[queryId] == nil then
-			compatibilityCache[queryArchetype .. "-" .. targetArchetype] = false
-			debug.profileend()
-			return false
-		end
-	end
+    for _, queryId in ipairs(queryIds) do
+        if targetIds[queryId] == nil then
+            compatibilityCache[queryArchetype .. "-" .. targetArchetype] = false
+            debug.profileend()
+            return false
+        end
+    end
 
-	for excludeId in excludeIds do
-		if targetIds[excludeId] then
-			compatibilityCache[queryArchetype .. "-" .. targetArchetype] = false
-			debug.profileend()
-			return false
-		end
-	end
+    for excludeId in excludeIds do
+        if targetIds[excludeId] then
+            compatibilityCache[queryArchetype .. "-" .. targetArchetype] = false
+            debug.profileend()
+            return false
+        end
+    end
 
-	compatibilityCache[queryArchetype .. "-" .. targetArchetype] = true
+    compatibilityCache[queryArchetype .. "-" .. targetArchetype] = true
 
-	debug.profileend()
-	return true
+    debug.profileend()
+    return true
 end
 
 return {
-	archetypeOf = archetypeOf,
-	negateArchetypeOf = negateArchetypeOf,
-	areArchetypesCompatible = areArchetypesCompatible,
+    archetypeOf = archetypeOf,
+    negateArchetypeOf = negateArchetypeOf,
+    areArchetypesCompatible = areArchetypesCompatible,
 }

@@ -10,12 +10,12 @@ local negateArchetypeOf = archetypeModule.negateArchetypeOf
 local areArchetypesCompatible = archetypeModule.areArchetypesCompatible
 
 local function assertEntityExists(world, id: number)
-	assert(world:contains(id), "Entity doesn't exist, use world:contains to check if needed")
+    assert(world:contains(id), "Entity doesn't exist, use world:contains to check if needed")
 end
 
 local function assertWorldOperationIsValid(world, id: number, ...)
-	assertEntityExists(world, id)
-	assertComponentArgsProvided(...)
+    assertEntityExists(world, id)
+    assertComponentArgsProvided(...)
 end
 
 --[=[
@@ -32,82 +32,82 @@ World.__index = World
 	Creates a new World.
 ]=]
 function World.new()
-	local firstStorage = {}
+    local firstStorage = {}
 
-	return setmetatable({
-		-- List of maps from archetype string --> entity ID --> entity data
-		_storages = { firstStorage },
-		-- The most recent storage that has not been dirtied by an iterator
-		_pristineStorage = firstStorage,
+    return setmetatable({
+        -- List of maps from archetype string --> entity ID --> entity data
+        _storages = { firstStorage },
+        -- The most recent storage that has not been dirtied by an iterator
+        _pristineStorage = firstStorage,
 
-		-- Map from entity ID -> archetype string
-		_entityArchetypes = {},
+        -- Map from entity ID -> archetype string
+        _entityArchetypes = {},
 
-		-- Cache of the component metatables on each entity. Used for generating archetype.
-		-- Map of entity ID -> array
-		_entityMetatablesCache = {},
+        -- Cache of the component metatables on each entity. Used for generating archetype.
+        -- Map of entity ID -> array
+        _entityMetatablesCache = {},
 
-		-- Cached ordered list of what query archetypes are compatible with what component archetypes
-		_orderedQueryCache = {},
+        -- Cached ordered list of what query archetypes are compatible with what component archetypes
+        _orderedQueryCache = {},
 
-		-- Cache of what entity archetypes have ever existed in the game. This is used for knowing
-		-- when to update the queryCache.
-		_entityArchetypeCache = {},
+        -- Cache of what entity archetypes have ever existed in the game. This is used for knowing
+        -- when to update the queryCache.
+        _entityArchetypeCache = {},
 
-		-- The next ID that will be assigned with World:spawn
-		_nextId = 1,
+        -- The next ID that will be assigned with World:spawn
+        _nextId = 1,
 
-		-- The total number of active entities in the world
-		_size = 0,
+        -- The total number of active entities in the world
+        _size = 0,
 
-		-- Storage for `queryChanged`
-		_changedStorage = {},
-	}, World)
+        -- Storage for `queryChanged`
+        _changedStorage = {},
+    }, World)
 end
 
 -- Searches all archetype storages for the entity with the given archetype
 -- Returns the storage that the entity is in if it exists, otherwise nil
 function World:_getStorageWithEntity(archetype, id)
-	for _, storage in self._storages do
-		local archetypeStorage = storage[archetype]
-		if archetypeStorage then
-			if archetypeStorage[id] then
-				return storage
-			end
-		end
-	end
-	return nil
+    for _, storage in self._storages do
+        local archetypeStorage = storage[archetype]
+        if archetypeStorage then
+            if archetypeStorage[id] then
+                return storage
+            end
+        end
+    end
+    return nil
 end
 
 function World:_markStorageDirty()
-	local newStorage = {}
-	table.insert(self._storages, newStorage)
-	self._pristineStorage = newStorage
+    local newStorage = {}
+    table.insert(self._storages, newStorage)
+    self._pristineStorage = newStorage
 
-	if topoRuntime.withinTopoContext() then
-		local frameState = topoRuntime.useFrameState()
+    if topoRuntime.withinTopoContext() then
+        local frameState = topoRuntime.useFrameState()
 
-		frameState.dirtyWorlds[self] = true
-	end
+        frameState.dirtyWorlds[self] = true
+    end
 end
 
 function World:_getEntity(id)
-	local archetype = self._entityArchetypes[id]
-	local storage = self:_getStorageWithEntity(archetype, id)
+    local archetype = self._entityArchetypes[id]
+    local storage = self:_getStorageWithEntity(archetype, id)
 
-	return storage[archetype][id]
+    return storage[archetype][id]
 end
 
 function World:_next(last)
-	local entityId, archetype = next(self._entityArchetypes, last)
+    local entityId, archetype = next(self._entityArchetypes, last)
 
-	if entityId == nil then
-		return nil
-	end
+    if entityId == nil then
+        return nil
+    end
 
-	local storage = self:_getStorageWithEntity(archetype, entityId)
+    local storage = self:_getStorageWithEntity(archetype, entityId)
 
-	return entityId, storage[archetype][entityId]
+    return entityId, storage[archetype][entityId]
 end
 
 --[=[
@@ -126,7 +126,7 @@ end
 	@return {[Component]: ComponentInstance}
 ]=]
 function World:__iter()
-	return World._next, self
+    return World._next, self
 end
 
 --[=[
@@ -136,7 +136,7 @@ end
 	@return number -- The new entity ID.
 ]=]
 function World:spawn(...)
-	return self:spawnAt(self._nextId, ...)
+    return self:spawnAt(self._nextId, ...)
 end
 
 --[=[
@@ -149,114 +149,114 @@ end
 	@return number -- The same entity ID that was passed in
 ]=]
 function World:spawnAt(id, ...)
-	if self:contains(id) then
-		error(
-			string.format(
-				"The world already contains an entity with ID %d. Use World:replace instead if this is intentional.",
-				id
-			),
-			2
-		)
-	end
+    if self:contains(id) then
+        error(
+            string.format(
+                "The world already contains an entity with ID %d. Use World:replace instead if this is intentional.",
+                id
+            ),
+            2
+        )
+    end
 
-	self._size += 1
+    self._size += 1
 
-	if id >= self._nextId then
-		self._nextId = id + 1
-	end
+    if id >= self._nextId then
+        self._nextId = id + 1
+    end
 
-	local components = {}
-	local metatables = {}
+    local components = {}
+    local metatables = {}
 
-	for i = 1, select("#", ...) do
-		local newComponent = select(i, ...)
+    for i = 1, select("#", ...) do
+        local newComponent = select(i, ...)
 
-		assertValidComponentInstance(newComponent, i)
+        assertValidComponentInstance(newComponent, i)
 
-		local metatable = getmetatable(newComponent)
+        local metatable = getmetatable(newComponent)
 
-		if components[metatable] then
-			error(("Duplicate component type at index %d"):format(i), 2)
-		end
+        if components[metatable] then
+            error(("Duplicate component type at index %d"):format(i), 2)
+        end
 
-		self:_trackChanged(metatable, id, nil, newComponent)
+        self:_trackChanged(metatable, id, nil, newComponent)
 
-		components[metatable] = newComponent
-		table.insert(metatables, metatable)
-	end
+        components[metatable] = newComponent
+        table.insert(metatables, metatable)
+    end
 
-	self._entityMetatablesCache[id] = metatables
+    self._entityMetatablesCache[id] = metatables
 
-	self:_transitionArchetype(id, components)
+    self:_transitionArchetype(id, components)
 
-	return id
+    return id
 end
 
 function World:_newQueryArchetype(queryArchetype)
-	if self._orderedQueryCache[queryArchetype] == nil then
-		self._orderedQueryCache[queryArchetype] = {}
-	else
-		return -- Archetype isn't actually new
-	end
+    if self._orderedQueryCache[queryArchetype] == nil then
+        self._orderedQueryCache[queryArchetype] = {}
+    else
+        return -- Archetype isn't actually new
+    end
 
-	for _, storage in self._storages do
-		for entityArchetype in storage do
-			if areArchetypesCompatible(queryArchetype, entityArchetype) then
-				table.insert(self._orderedQueryCache[queryArchetype], entityArchetype)
-			end
-		end
-	end
+    for _, storage in self._storages do
+        for entityArchetype in storage do
+            if areArchetypesCompatible(queryArchetype, entityArchetype) then
+                table.insert(self._orderedQueryCache[queryArchetype], entityArchetype)
+            end
+        end
+    end
 end
 
 function World:_updateQueryCache(entityArchetype)
-	for queryArchetype, compatibleArchetypes in pairs(self._orderedQueryCache) do
-		if areArchetypesCompatible(queryArchetype, entityArchetype) then
-			table.insert(compatibleArchetypes, entityArchetype)
-		end
-	end
+    for queryArchetype, compatibleArchetypes in pairs(self._orderedQueryCache) do
+        if areArchetypesCompatible(queryArchetype, entityArchetype) then
+            table.insert(compatibleArchetypes, entityArchetype)
+        end
+    end
 end
 
 function World:_transitionArchetype(id, components)
-	debug.profilebegin("transitionArchetype")
-	local newArchetype = nil
-	local oldArchetype = self._entityArchetypes[id]
-	local oldStorage
+    debug.profilebegin("transitionArchetype")
+    local newArchetype = nil
+    local oldArchetype = self._entityArchetypes[id]
+    local oldStorage
 
-	if oldArchetype then
-		oldStorage = self:_getStorageWithEntity(oldArchetype, id)
+    if oldArchetype then
+        oldStorage = self:_getStorageWithEntity(oldArchetype, id)
 
-		if not components then
-			oldStorage[oldArchetype][id] = nil
-		end
-	end
+        if not components then
+            oldStorage[oldArchetype][id] = nil
+        end
+    end
 
-	if components then
-		newArchetype = archetypeOf(unpack(self._entityMetatablesCache[id]))
+    if components then
+        newArchetype = archetypeOf(unpack(self._entityMetatablesCache[id]))
 
-		if oldArchetype ~= newArchetype then
-			if oldStorage then
-				oldStorage[oldArchetype][id] = nil
-			end
+        if oldArchetype ~= newArchetype then
+            if oldStorage then
+                oldStorage[oldArchetype][id] = nil
+            end
 
-			if self._pristineStorage[newArchetype] == nil then
-				self._pristineStorage[newArchetype] = {}
-			end
+            if self._pristineStorage[newArchetype] == nil then
+                self._pristineStorage[newArchetype] = {}
+            end
 
-			if self._entityArchetypeCache[newArchetype] == nil then
-				debug.profilebegin("update query cache")
-				self._entityArchetypeCache[newArchetype] = true
-				self:_updateQueryCache(newArchetype)
-				debug.profileend()
-			end
-			self._pristineStorage[newArchetype][id] = components
-		else
-			oldStorage[newArchetype][id] = components
-		end
-	end
+            if self._entityArchetypeCache[newArchetype] == nil then
+                debug.profilebegin("update query cache")
+                self._entityArchetypeCache[newArchetype] = true
+                self:_updateQueryCache(newArchetype)
+                debug.profileend()
+            end
+            self._pristineStorage[newArchetype][id] = components
+        else
+            oldStorage[newArchetype][id] = components
+        end
+    end
 
-	self._entityArchetypes[id] = newArchetype
+    self._entityArchetypes[id] = newArchetype
 
-	debug.profileend()
+    debug.profileend()
 end
 
 --[=[
@@ -267,38 +267,38 @@ end
 	@param ... ComponentInstance -- The component values to spawn the entity with.
 ]=]
 function World:replace(id, ...)
-	assertWorldOperationIsValid(self, id, ...)
+    assertWorldOperationIsValid(self, id, ...)
 
-	local components = {}
-	local metatables = {}
-	local entity = self:_getEntity(id)
+    local components = {}
+    local metatables = {}
+    local entity = self:_getEntity(id)
 
-	for i = 1, select("#", ...) do
-		local newComponent = select(i, ...)
+    for i = 1, select("#", ...) do
+        local newComponent = select(i, ...)
 
-		assertValidComponentInstance(newComponent, i)
+        assertValidComponentInstance(newComponent, i)
 
-		local metatable = getmetatable(newComponent)
+        local metatable = getmetatable(newComponent)
 
-		if components[metatable] then
-			error(("Duplicate component type at index %d"):format(i), 2)
-		end
+        if components[metatable] then
+            error(("Duplicate component type at index %d"):format(i), 2)
+        end
 
-		self:_trackChanged(metatable, id, entity[metatable], newComponent)
+        self:_trackChanged(metatable, id, entity[metatable], newComponent)
 
-		components[metatable] = newComponent
-		table.insert(metatables, metatable)
-	end
+        components[metatable] = newComponent
+        table.insert(metatables, metatable)
+    end
 
-	for metatable, component in pairs(entity) do
-		if not components[metatable] then
-			self:_trackChanged(metatable, id, component, nil)
-		end
-	end
+    for metatable, component in pairs(entity) do
+        if not components[metatable] then
+            self:_trackChanged(metatable, id, component, nil)
+        end
+    end
 
-	self._entityMetatablesCache[id] = metatables
+    self._entityMetatablesCache[id] = metatables
 
-	self:_transitionArchetype(id, components)
+    self:_transitionArchetype(id, components)
 end
 
 --[=[
@@ -307,16 +307,16 @@ end
 	@param id number -- The entity ID
 ]=]
 function World:despawn(id)
-	local entity = self:_getEntity(id)
+    local entity = self:_getEntity(id)
 
-	for metatable, component in pairs(entity) do
-		self:_trackChanged(metatable, id, component, nil)
-	end
+    for metatable, component in pairs(entity) do
+        self:_trackChanged(metatable, id, component, nil)
+    end
 
-	self._entityMetatablesCache[id] = nil
-	self:_transitionArchetype(id, nil)
+    self._entityMetatablesCache[id] = nil
+    self:_transitionArchetype(id, nil)
 
-	self._size -= 1
+    self._size -= 1
 end
 
 --[=[
@@ -327,13 +327,13 @@ end
 	:::
 ]=]
 function World:clear()
-	local firstStorage = {}
-	self._storages = { firstStorage }
-	self._pristineStorage = firstStorage
-	self._entityArchetypes = {}
-	self._entityMetatablesCache = {}
-	self._size = 0
-	self._changedStorage = {}
+    local firstStorage = {}
+    self._storages = { firstStorage }
+    self._pristineStorage = firstStorage
+    self._entityArchetypes = {}
+    self._entityMetatablesCache = {}
+    self._size = 0
+    self._changedStorage = {}
 end
 
 --[=[
@@ -343,7 +343,7 @@ end
 	@return bool -- `true` if the entity exists
 ]=]
 function World:contains(id)
-	return self._entityArchetypes[id] ~= nil
+    return self._entityArchetypes[id] ~= nil
 end
 
 --[=[
@@ -354,55 +354,55 @@ end
 	@return ... -- Returns the component values in the same order they were passed in
 ]=]
 function World:get(id, ...)
-	assertWorldOperationIsValid(self, id, ...)
+    assertWorldOperationIsValid(self, id, ...)
 
-	local entity = self:_getEntity(id)
+    local entity = self:_getEntity(id)
 
-	local length = select("#", ...)
+    local length = select("#", ...)
 
-	if length == 1 then
-		assertValidComponent((...), 1)
-		return entity[...]
-	end
+    if length == 1 then
+        assertValidComponent((...), 1)
+        return entity[...]
+    end
 
-	local components = {}
-	for i = 1, length do
-		local metatable = select(i, ...)
-		assertValidComponent(metatable, i)
-		components[i] = entity[metatable]
-	end
+    local components = {}
+    for i = 1, length do
+        local metatable = select(i, ...)
+        assertValidComponent(metatable, i)
+        components[i] = entity[metatable]
+    end
 
-	return unpack(components, 1, length)
+    return unpack(components, 1, length)
 end
 
 local function noop() end
 
 local noopQuery = setmetatable({
-	next = noop,
-	snapshot = function()
-		return {}
-	end,
-	without = function(self)
-		return self
-	end,
-	view = function()
-		return setmetatable({
-			get = noop,
-			contains = function()
-				return false
-			end,
-		}, {
-			__iter = function()
-				return noop
-			end,
-			__call = noop,
-		})
-	end,
+    next = noop,
+    snapshot = function()
+        return {}
+    end,
+    without = function(self)
+        return self
+    end,
+    view = function()
+        return setmetatable({
+            get = noop,
+            contains = function()
+                return false
+            end,
+        }, {
+            __iter = function()
+                return noop
+            end,
+            __call = noop,
+        })
+    end,
 }, {
-	__iter = function()
-		return noop
-	end,
-	__call = noop,
+    __iter = function()
+        return noop
+    end,
+    __call = noop,
 })
 
 --[=[
@@ -424,81 +424,81 @@ local QueryResult = {}
 QueryResult.__index = QueryResult
 
 function QueryResult.new(world, expand, queryArchetype, compatibleArchetypes, metatables)
-	return setmetatable({
-		world = world,
-		seenEntities = {},
-		currentCompatibleArchetypeIndex = next(compatibleArchetypes),
-		compatibleArchetypes = compatibleArchetypes,
-		storageIndex = 1,
-		metatables = metatables,
-		_expand = expand,
-		_queryArchetype = queryArchetype,
-	}, QueryResult)
+    return setmetatable({
+        world = world,
+        seenEntities = {},
+        currentCompatibleArchetypeIndex = next(compatibleArchetypes),
+        compatibleArchetypes = compatibleArchetypes,
+        storageIndex = 1,
+        metatables = metatables,
+        _expand = expand,
+        _queryArchetype = queryArchetype,
+    }, QueryResult)
 end
 
 local function nextItem(query)
-	local world = query.world
-	local compatibleArchetypes = query.compatibleArchetypes
-	local currentCompatibleArchetypeIndex = query.currentCompatibleArchetypeIndex
-	local currentCompatibleArchetype = compatibleArchetypes[currentCompatibleArchetypeIndex]
-	local seenEntities = query.seenEntities
+    local world = query.world
+    local compatibleArchetypes = query.compatibleArchetypes
+    local currentCompatibleArchetypeIndex = query.currentCompatibleArchetypeIndex
+    local currentCompatibleArchetype = compatibleArchetypes[currentCompatibleArchetypeIndex]
+    local seenEntities = query.seenEntities
 
-	local entityId, entityData
+    local entityId, entityData
 
-	local storages = world._storages
-	repeat
-		local nextStorage = storages[query.storageIndex]
-		local currently = nextStorage[currentCompatibleArchetype]
-		if currently then
-			entityId, entityData = next(currently, query.lastEntityId)
-		end
+    local storages = world._storages
+    repeat
+        local nextStorage = storages[query.storageIndex]
+        local currently = nextStorage[currentCompatibleArchetype]
+        if currently then
+            entityId, entityData = next(currently, query.lastEntityId)
+        end
 
-		while entityId == nil do
-			currentCompatibleArchetypeIndex, currentCompatibleArchetype =
-				next(compatibleArchetypes, currentCompatibleArchetypeIndex)
+        while entityId == nil do
+            currentCompatibleArchetypeIndex, currentCompatibleArchetype =
+                next(compatibleArchetypes, currentCompatibleArchetypeIndex)
 
-			if currentCompatibleArchetype == nil then
-				query.storageIndex += 1
+            if currentCompatibleArchetype == nil then
+                query.storageIndex += 1
 
-				nextStorage = storages[query.storageIndex]
+                nextStorage = storages[query.storageIndex]
 
-				if nextStorage == nil or next(nextStorage) == nil then
-					return
-				end
+                if nextStorage == nil or next(nextStorage) == nil then
+                    return
+                end
 
-				currentCompatibleArchetypeIndex, currentCompatibleArchetype = nil, nil
+                currentCompatibleArchetypeIndex, currentCompatibleArchetype = nil, nil
 
-				if world._pristineStorage == nextStorage then
-					world:_markStorageDirty()
-				end
+                if world._pristineStorage == nextStorage then
+                    world:_markStorageDirty()
+                end
 
-				continue
-			elseif nextStorage[currentCompatibleArchetype] == nil then
-				continue
-			end
+                continue
+            elseif nextStorage[currentCompatibleArchetype] == nil then
+                continue
+            end
 
-			entityId, entityData = next(nextStorage[currentCompatibleArchetype])
-		end
+            entityId, entityData = next(nextStorage[currentCompatibleArchetype])
+        end
 
-		query.lastEntityId = entityId
+        query.lastEntityId = entityId
 
-	until seenEntities[entityId] == nil
+    until seenEntities[entityId] == nil
 
-	query.currentCompatibleArchetypeIndex = currentCompatibleArchetypeIndex
+    query.currentCompatibleArchetypeIndex = currentCompatibleArchetypeIndex
 
-	seenEntities[entityId] = true
+    seenEntities[entityId] = true
 
-	return entityId, entityData
+    return entityId, entityData
 end
 
 function QueryResult:__iter()
-	return function()
-		return self._expand(nextItem(self))
-	end
+    return function()
+        return self._expand(nextItem(self))
+    end
 end
 
 function QueryResult:__call()
-	return self._expand(nextItem(self))
+    return self._expand(nextItem(self))
 end
 
 --[=[
@@ -528,23 +528,23 @@ end
 	@return ...ComponentInstance -- The requested component values
 ]=]
 function QueryResult:next()
-	return self._expand(nextItem(self))
+    return self._expand(nextItem(self))
 end
 
 local snapshot = {
-	__iter = function(self): any
-		local i = 0
-		return function()
-			i += 1
+    __iter = function(self): any
+        local i = 0
+        return function()
+            i += 1
 
-			local data = self[i]
+            local data = self[i]
 
-			if data then
-				return unpack(data, 1, data.n)
-			end
-			return
-		end
-	end,
+            if data then
+                return unpack(data, 1, data.n)
+            end
+            return
+        end
+    end,
 }
 
 --[=[
@@ -574,19 +574,19 @@ local snapshot = {
 	@return {{entityId: number, component: ComponentInstance, component: ComponentInstance, component: ComponentInstance, ...}}
 ]=]
 function QueryResult:snapshot()
-	local list = setmetatable({}, snapshot)
+    local list = setmetatable({}, snapshot)
 
-	local function iter()
-		return nextItem(self)
-	end
+    local function iter()
+        return nextItem(self)
+    end
 
-	for entityId, entityData in iter do
-		if entityId then
-			table.insert(list, table.pack(self._expand(entityId, entityData)))
-		end
-	end
+    for entityId, entityData in iter do
+        if entityId then
+            table.insert(list, table.pack(self._expand(entityId, entityData)))
+        end
+    end
 
-	return list
+    return list
 end
 
 --[=[
@@ -611,20 +611,20 @@ end
 ]=]
 
 function QueryResult:without(...)
-	local world = self.world
-	local filter = negateArchetypeOf(...)
+    local world = self.world
+    local filter = negateArchetypeOf(...)
 
-	local negativeArchetype = `{self._queryArchetype}x{filter}`
+    local negativeArchetype = `{self._queryArchetype}x{filter}`
 
-	if world._orderedQueryCache[negativeArchetype] == nil then
-		world:_newQueryArchetype(negativeArchetype)
-	end
+    if world._orderedQueryCache[negativeArchetype] == nil then
+        world:_newQueryArchetype(negativeArchetype)
+    end
 
-	local compatibleArchetypes = world._orderedQueryCache[negativeArchetype]
+    local compatibleArchetypes = world._orderedQueryCache[negativeArchetype]
 
-	self.compatibleArchetypes = compatibleArchetypes
-	self.currentCompatibleArchetypeIndex = next(compatibleArchetypes)
-	return self
+    self.compatibleArchetypes = compatibleArchetypes
+    self.currentCompatibleArchetypeIndex = next(compatibleArchetypes)
+    return self
 end
 
 --[=[
@@ -658,101 +658,104 @@ end
 ]=]
 
 function QueryResult:view()
-	local components = {}
-	local metatables = self.metatables
-	local queryLength = #metatables
-	local componentRecords = {}
-	for index, metatable in metatables do
-		components[index] = {}
-		componentRecords[metatable] = index
-	end
+    local components = {}
+    local metatables = self.metatables
+    local queryLength = #metatables
+    local componentRecords = {}
+    for index, metatable in metatables do
+        components[index] = {}
+        componentRecords[metatable] = index
+    end
 
-	local function iter()
-		return nextItem(self)
-	end
+    local function iter()
+        return nextItem(self)
+    end
 
-	local entities = {}
-	local entityIndex = 0
-	local entityRecords = {}
+    local entities = {}
+    local entityIndex = 0
+    local entityRecords = {}
 
-	for entityId, entityData in iter do
-		entityIndex += 1
+    for entityId, entityData in iter do
+        entityIndex += 1
 
-		for metatable, componentIndex in componentRecords do
-			components[componentIndex][entityId] = entityData[metatable]
-		end
+        for metatable, componentIndex in componentRecords do
+            components[componentIndex][entityId] = entityData[metatable]
+        end
 
-		entities[entityIndex] = entityId
-		entityRecords[entityId] = entityIndex
-	end
+        entities[entityIndex] = entityId
+        entityRecords[entityId] = entityIndex
+    end
 
-	local View = {}
-	View.__index = View
+    local View = {}
+    View.__index = View
 
-	local tuple = {}
-	local function expand(entity)
-		if queryLength == 1 then
-			return components[1][entity]
-		elseif queryLength == 2 then
-			return components[1][entity], components[2][entity]
-		elseif queryLength == 3 then
-			return components[1][entity], components[2][entity], components[3][entity]
-		elseif queryLength == 4 then
-			return components[1][entity], components[2][entity], components[3][entity], components[4][entity]
-		elseif queryLength == 5 then
-			return components[1][entity],
-				components[2][entity],
-				components[3][entity],
-				components[4][entity],
-				components[5][entity]
-		end
+    local tuple = {}
+    local function expand(entity)
+        if queryLength == 1 then
+            return components[1][entity]
+        elseif queryLength == 2 then
+            return components[1][entity], components[2][entity]
+        elseif queryLength == 3 then
+            return components[1][entity], components[2][entity], components[3][entity]
+        elseif queryLength == 4 then
+            return components[1][entity],
+                components[2][entity],
+                components[3][entity],
+                components[4][entity]
+        elseif queryLength == 5 then
+            return components[1][entity],
+                components[2][entity],
+                components[3][entity],
+                components[4][entity],
+                components[5][entity]
+        end
 
-		for index, componentField in components do
-			tuple[index] = componentField[entity]
-		end
+        for index, componentField in components do
+            tuple[index] = componentField[entity]
+        end
 
-		return unpack(tuple)
-	end
+        return unpack(tuple)
+    end
 
-	function View:__iter()
-		local index = 0
-		return function()
-			index += 1
-			local entity = entities[index]
-			if not entity then
-				return
-			end
+    function View:__iter()
+        local index = 0
+        return function()
+            index += 1
+            local entity = entities[index]
+            if not entity then
+                return
+            end
 
-			return entity, expand(entity)
-		end
-	end
+            return entity, expand(entity)
+        end
+    end
 
-	--[=[
+    --[=[
 		@within View
 			Retrieve the query results to corresponding `entity`
 		@param entity number - the entity ID
 		@return ...ComponentInstance
 	]=]
-	function View:get(entity)
-		if not self:contains(entity) then
-			return
-		end
+    function View:get(entity)
+        if not self:contains(entity) then
+            return
+        end
 
-		return expand(entity)
-	end
+        return expand(entity)
+    end
 
-	--[=[
+    --[=[
 		@within View
 		Equivalent to `world:contains()`
 		@param entity number - the entity ID
 		@return boolean
 	]=]
 
-	function View:contains(entity)
-		return entityRecords[entity] ~= nil
-	end
+    function View:contains(entity)
+        return entityRecords[entity] ~= nil
+    end
 
-	return setmetatable({}, View)
+    return setmetatable({}, View)
 end
 
 --[=[
@@ -776,83 +779,86 @@ end
 ]=]
 
 function World:query(...)
-	debug.profilebegin("World:query")
-	assertValidComponent((...), 1)
+    debug.profilebegin("World:query")
+    assertValidComponent((...), 1)
 
-	local metatables = { ... }
-	local queryLength = select("#", ...)
+    local metatables = { ... }
+    local queryLength = select("#", ...)
 
-	local archetype = archetypeOf(...)
+    local archetype = archetypeOf(...)
 
-	if self._orderedQueryCache[archetype] == nil then
-		self:_newQueryArchetype(archetype)
-	end
+    if self._orderedQueryCache[archetype] == nil then
+        self:_newQueryArchetype(archetype)
+    end
 
-	local compatibleArchetypes = self._orderedQueryCache[archetype]
+    local compatibleArchetypes = self._orderedQueryCache[archetype]
 
-	debug.profileend()
+    debug.profileend()
 
-	if next(compatibleArchetypes) == nil then
-		-- If there are no compatible storages avoid creating our complicated iterator
-		return noopQuery
-	end
+    if next(compatibleArchetypes) == nil then
+        -- If there are no compatible storages avoid creating our complicated iterator
+        return noopQuery
+    end
 
-	local queryOutput = table.create(queryLength)
+    local queryOutput = table.create(queryLength)
 
-	local function expand(entityId, entityData)
-		if not entityId then
-			return
-		end
+    local function expand(entityId, entityData)
+        if not entityId then
+            return
+        end
 
-		if queryLength == 1 then
-			return entityId, entityData[metatables[1]]
-		elseif queryLength == 2 then
-			return entityId, entityData[metatables[1]], entityData[metatables[2]]
-		elseif queryLength == 3 then
-			return entityId, entityData[metatables[1]], entityData[metatables[2]], entityData[metatables[3]]
-		elseif queryLength == 4 then
-			return entityId,
-				entityData[metatables[1]],
-				entityData[metatables[2]],
-				entityData[metatables[3]],
-				entityData[metatables[4]]
-		elseif queryLength == 5 then
-			return entityId,
-				entityData[metatables[1]],
-				entityData[metatables[2]],
-				entityData[metatables[3]],
-				entityData[metatables[4]],
-				entityData[metatables[5]]
-		end
+        if queryLength == 1 then
+            return entityId, entityData[metatables[1]]
+        elseif queryLength == 2 then
+            return entityId, entityData[metatables[1]], entityData[metatables[2]]
+        elseif queryLength == 3 then
+            return entityId,
+                entityData[metatables[1]],
+                entityData[metatables[2]],
+                entityData[metatables[3]]
+        elseif queryLength == 4 then
+            return entityId,
+                entityData[metatables[1]],
+                entityData[metatables[2]],
+                entityData[metatables[3]],
+                entityData[metatables[4]]
+        elseif queryLength == 5 then
+            return entityId,
+                entityData[metatables[1]],
+                entityData[metatables[2]],
+                entityData[metatables[3]],
+                entityData[metatables[4]],
+                entityData[metatables[5]]
+        end
 
-		for i, metatable in ipairs(metatables) do
-			queryOutput[i] = entityData[metatable]
-		end
+        for i, metatable in ipairs(metatables) do
+            queryOutput[i] = entityData[metatable]
+        end
 
-		return entityId, unpack(queryOutput, 1, queryLength)
-	end
+        return entityId, unpack(queryOutput, 1, queryLength)
+    end
 
-	if self._pristineStorage == self._storages[1] then
-		self:_markStorageDirty()
-	end
+    if self._pristineStorage == self._storages[1] then
+        self:_markStorageDirty()
+    end
 
-	return QueryResult.new(self, expand, archetype, compatibleArchetypes, metatables)
+    return QueryResult.new(self, expand, archetype, compatibleArchetypes, metatables)
 end
 
 local function cleanupQueryChanged(hookState)
-	local world = hookState.world
-	local componentToTrack = hookState.componentToTrack
+    local world = hookState.world
+    local componentToTrack = hookState.componentToTrack
 
-	for index, object in world._changedStorage[componentToTrack] do
-		if object == hookState.storage then
-			table.remove(world._changedStorage[componentToTrack], index)
-			break
-		end
-	end
+    for index, object in world._changedStorage[componentToTrack] do
+        if object == hookState.storage then
+            table.remove(world._changedStorage[componentToTrack], index)
+            break
+        end
+    end
 
-	if next(world._changedStorage[componentToTrack]) == nil then
-		world._changedStorage[componentToTrack] = nil
-	end
+    if next(world._changedStorage[componentToTrack]) == nil then
+        world._changedStorage[componentToTrack] = nil
+    end
 end
 
 --[=[
@@ -922,72 +928,72 @@ end
 	@return () -> (id, ChangeRecord) -- Iterator of entity ID and change record
 ]=]
 function World:queryChanged(componentToTrack, ...: nil)
-	if ... then
-		error("World:queryChanged does not take any additional parameters", 2)
-	end
+    if ... then
+        error("World:queryChanged does not take any additional parameters", 2)
+    end
 
-	local hookState = topoRuntime.useHookState(componentToTrack, cleanupQueryChanged)
+    local hookState = topoRuntime.useHookState(componentToTrack, cleanupQueryChanged)
 
-	if hookState.storage then
-		return function(): any
-			local entityId, record = next(hookState.storage)
+    if hookState.storage then
+        return function(): any
+            local entityId, record = next(hookState.storage)
 
-			if entityId then
-				hookState.storage[entityId] = nil
+            if entityId then
+                hookState.storage[entityId] = nil
 
-				return entityId, record
-			end
-			return
-		end
-	end
+                return entityId, record
+            end
+            return
+        end
+    end
 
-	if not self._changedStorage[componentToTrack] then
-		self._changedStorage[componentToTrack] = {}
-	end
+    if not self._changedStorage[componentToTrack] then
+        self._changedStorage[componentToTrack] = {}
+    end
 
-	local storage = {}
-	hookState.storage = storage
-	hookState.world = self
-	hookState.componentToTrack = componentToTrack
+    local storage = {}
+    hookState.storage = storage
+    hookState.world = self
+    hookState.componentToTrack = componentToTrack
 
-	table.insert(self._changedStorage[componentToTrack], storage)
+    table.insert(self._changedStorage[componentToTrack], storage)
 
-	local queryResult = self:query(componentToTrack)
+    local queryResult = self:query(componentToTrack)
 
-	return function(): any
-		local entityId, component = queryResult:next()
+    return function(): any
+        local entityId, component = queryResult:next()
 
-		if entityId then
-			return entityId, table.freeze({ new = component })
-		end
-		return
-	end
+        if entityId then
+            return entityId, table.freeze({ new = component })
+        end
+        return
+    end
 end
 
 function World:_trackChanged(metatable, id, old, new)
-	if not self._changedStorage[metatable] then
-		return
-	end
+    if not self._changedStorage[metatable] then
+        return
+    end
 
-	if old == new then
-		return
-	end
+    if old == new then
+        return
+    end
 
-	local record = table.freeze({
-		old = old,
-		new = new,
-	})
+    local record = table.freeze({
+        old = old,
+        new = new,
+    })
 
-	for _, storage in ipairs(self._changedStorage[metatable]) do
-		-- If this entity has changed since the last time this system read it,
-		-- we ensure that the "old" value is whatever the system saw it as last, instead of the
-		-- "old" value we have here.
-		if storage[id] then
-			storage[id] = table.freeze({ old = storage[id].old, new = new })
-		else
-			storage[id] = record
-		end
-	end
+    for _, storage in ipairs(self._changedStorage[metatable]) do
+        -- If this entity has changed since the last time this system read it,
+        -- we ensure that the "old" value is whatever the system saw it as last, instead of the
+        -- "old" value we have here.
+        if storage[id] then
+            storage[id] = table.freeze({ old = storage[id].old, new = new })
+        else
+            storage[id] = record
+        end
+    end
 end
 
 --[=[
@@ -1011,38 +1017,38 @@ end
 	@param ... ComponentInstance -- The component values to insert
 ]=]
 function World:insert(id, ...)
-	debug.profilebegin("insert")
+    debug.profilebegin("insert")
 
-	assertWorldOperationIsValid(self, id, ...)
+    assertWorldOperationIsValid(self, id, ...)
 
-	local entity = self:_getEntity(id)
+    local entity = self:_getEntity(id)
 
-	local wasNew = false
-	for i = 1, select("#", ...) do
-		local newComponent = select(i, ...)
+    local wasNew = false
+    for i = 1, select("#", ...) do
+        local newComponent = select(i, ...)
 
-		assertValidComponentInstance(newComponent, i)
+        assertValidComponentInstance(newComponent, i)
 
-		local metatable = getmetatable(newComponent)
+        local metatable = getmetatable(newComponent)
 
-		local oldComponent = entity[metatable]
+        local oldComponent = entity[metatable]
 
-		if not oldComponent then
-			wasNew = true
+        if not oldComponent then
+            wasNew = true
 
-			table.insert(self._entityMetatablesCache[id], metatable)
-		end
+            table.insert(self._entityMetatablesCache[id], metatable)
+        end
 
-		self:_trackChanged(metatable, id, oldComponent, newComponent)
+        self:_trackChanged(metatable, id, oldComponent, newComponent)
 
-		entity[metatable] = newComponent
-	end
+        entity[metatable] = newComponent
+    end
 
-	if wasNew then -- wasNew
-		self:_transitionArchetype(id, entity)
-	end
+    if wasNew then -- wasNew
+        self:_transitionArchetype(id, entity)
+    end
 
-	debug.profileend()
+    debug.profileend()
 end
 
 --[=[
@@ -1057,46 +1063,46 @@ end
 	@return ...ComponentInstance -- Returns the component instance values that were removed in the order they were passed.
 ]=]
 function World:remove(id, ...)
-	assertWorldOperationIsValid(self, id, ...)
+    assertWorldOperationIsValid(self, id, ...)
 
-	local entity = self:_getEntity(id)
+    local entity = self:_getEntity(id)
 
-	local length = select("#", ...)
-	local removed = {}
+    local length = select("#", ...)
+    local removed = {}
 
-	for i = 1, length do
-		local metatable = select(i, ...)
+    for i = 1, length do
+        local metatable = select(i, ...)
 
-		assertValidComponent(metatable, i)
+        assertValidComponent(metatable, i)
 
-		local oldComponent = entity[metatable]
+        local oldComponent = entity[metatable]
 
-		removed[i] = oldComponent
+        removed[i] = oldComponent
 
-		self:_trackChanged(metatable, id, oldComponent, nil)
+        self:_trackChanged(metatable, id, oldComponent, nil)
 
-		entity[metatable] = nil
-	end
+        entity[metatable] = nil
+    end
 
-	-- Rebuild entity metatable cache
-	local metatables = {}
+    -- Rebuild entity metatable cache
+    local metatables = {}
 
-	for metatable in pairs(entity) do
-		table.insert(metatables, metatable)
-	end
+    for metatable in pairs(entity) do
+        table.insert(metatables, metatable)
+    end
 
-	self._entityMetatablesCache[id] = metatables
+    self._entityMetatablesCache[id] = metatables
 
-	self:_transitionArchetype(id, entity)
+    self:_transitionArchetype(id, entity)
 
-	return unpack(removed, 1, length)
+    return unpack(removed, 1, length)
 end
 
 --[=[
 	Returns the number of entities currently spawned in the world.
 ]=]
 function World:size()
-	return self._size
+    return self._size
 end
 
 --[=[
@@ -1114,33 +1120,33 @@ end
 	again.
 ]=]
 function World:optimizeQueries()
-	if #self._storages == 1 then
-		return
-	end
+    if #self._storages == 1 then
+        return
+    end
 
-	local firstStorage = self._storages[1]
+    local firstStorage = self._storages[1]
 
-	for i = 2, #self._storages do
-		local storage = self._storages[i]
+    for i = 2, #self._storages do
+        local storage = self._storages[i]
 
-		for archetype, entities in storage do
-			if firstStorage[archetype] == nil then
-				firstStorage[archetype] = entities
-			else
-				for entityId, entityData in entities do
-					if firstStorage[archetype][entityId] then
-						error("Entity ID already exists in first storage...")
-					end
-					firstStorage[archetype][entityId] = entityData
-				end
-			end
-		end
-	end
+        for archetype, entities in storage do
+            if firstStorage[archetype] == nil then
+                firstStorage[archetype] = entities
+            else
+                for entityId, entityData in entities do
+                    if firstStorage[archetype][entityId] then
+                        error("Entity ID already exists in first storage...")
+                    end
+                    firstStorage[archetype][entityId] = entityData
+                end
+            end
+        end
+    end
 
-	table.clear(self._storages)
+    table.clear(self._storages)
 
-	self._storages[1] = firstStorage
-	self._pristineStorage = firstStorage
+    self._storages[1] = firstStorage
+    self._pristineStorage = firstStorage
 end
 
 return World

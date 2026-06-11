@@ -26,22 +26,24 @@ function ProductIdMapper:Init()
     if self._modules and self._modules.Logger then
         self._logger = self._modules.Logger
     end
-    
+
     -- Load monetization config
     self:_loadConfig()
-    
+
     if self._logger then
         self._logger:Info("ProductIdMapper initialized", {
             productCount = self:_countProducts(),
             passCount = self:_countPasses(),
-            testMode = self:IsTestMode()
+            testMode = self:IsTestMode(),
         })
     end
 end
 
 function ProductIdMapper:_loadConfig()
-    if configLoaded then return end
-    
+    if configLoaded then
+        return
+    end
+
     local success, result = pcall(function()
         -- Try to load from ConfigLoader if available
         if self._modules and self._modules.ConfigLoader then
@@ -49,19 +51,20 @@ function ProductIdMapper:_loadConfig()
         else
             -- Fallback to direct require
             local ReplicatedStorage = game:GetService("ReplicatedStorage")
-            local configModule = ReplicatedStorage:FindFirstChild("Configs"):FindFirstChild("monetization")
+            local configModule = ReplicatedStorage:FindFirstChild("Configs")
+                :FindFirstChild("monetization")
             if configModule then
                 return require(configModule)
             end
         end
     end)
-    
+
     if success and result then
         monetizationConfig = result
         configLoaded = true
     else
         if self._logger then
-            self._logger:Error("Failed to load monetization config", {error = tostring(result)})
+            self._logger:Error("Failed to load monetization config", { error = tostring(result) })
         else
             warn("ProductIdMapper: Failed to load monetization config:", result)
         end
@@ -73,22 +76,22 @@ function ProductIdMapper:GetProductId(configId)
     if not monetizationConfig then
         self:_loadConfig()
     end
-    
+
     if not monetizationConfig or not monetizationConfig.product_id_mapping then
         if self._logger then
             self._logger:Warn("No product ID mapping found")
         end
         return nil
     end
-    
+
     local productId = monetizationConfig.product_id_mapping[configId]
-    
+
     if not productId then
         if self._logger then
-            self._logger:Warn("No product ID found for config ID", {configId = configId})
+            self._logger:Warn("No product ID found for config ID", { configId = configId })
         end
     end
-    
+
     return productId
 end
 
@@ -97,17 +100,17 @@ function ProductIdMapper:GetProductConfig(configId)
     if not monetizationConfig then
         self:_loadConfig()
     end
-    
+
     if not monetizationConfig or not monetizationConfig.products then
         return nil
     end
-    
+
     for _, product in ipairs(monetizationConfig.products) do
         if product.id == configId then
             return product
         end
     end
-    
+
     return nil
 end
 
@@ -116,17 +119,17 @@ function ProductIdMapper:GetPassConfig(configId)
     if not monetizationConfig then
         self:_loadConfig()
     end
-    
+
     if not monetizationConfig or not monetizationConfig.passes then
         return nil
     end
-    
+
     for _, pass in ipairs(monetizationConfig.passes) do
         if pass.id == configId then
             return pass
         end
     end
-    
+
     return nil
 end
 
@@ -135,11 +138,11 @@ function ProductIdMapper:GetProductByRobloxId(robloxProductId)
     if not monetizationConfig then
         self:_loadConfig()
     end
-    
+
     if not monetizationConfig then
         return nil
     end
-    
+
     -- Find the config ID that maps to this Roblox ID
     local configId = nil
     for id, productId in pairs(monetizationConfig.product_id_mapping or {}) do
@@ -148,11 +151,11 @@ function ProductIdMapper:GetProductByRobloxId(robloxProductId)
             break
         end
     end
-    
+
     if not configId then
         return nil
     end
-    
+
     -- Return the product config
     return self:GetProductConfig(configId)
 end
@@ -162,7 +165,7 @@ function ProductIdMapper:GetAllProducts()
     if not monetizationConfig then
         self:_loadConfig()
     end
-    
+
     return monetizationConfig and monetizationConfig.products or {}
 end
 
@@ -171,7 +174,7 @@ function ProductIdMapper:GetAllPasses()
     if not monetizationConfig then
         self:_loadConfig()
     end
-    
+
     return monetizationConfig and monetizationConfig.passes or {}
 end
 
@@ -180,7 +183,7 @@ function ProductIdMapper:GetPremiumBenefits()
     if not monetizationConfig then
         self:_loadConfig()
     end
-    
+
     return monetizationConfig and monetizationConfig.premium_benefits or {}
 end
 
@@ -189,7 +192,7 @@ function ProductIdMapper:GetFirstPurchaseBonus()
     if not monetizationConfig then
         self:_loadConfig()
     end
-    
+
     return monetizationConfig and monetizationConfig.first_purchase_bonus or {}
 end
 
@@ -198,9 +201,12 @@ function ProductIdMapper:IsTestMode()
     if not monetizationConfig then
         self:_loadConfig()
     end
-    
+
     local validation = monetizationConfig and monetizationConfig.validation_rules
-    return RunService:IsStudio() and validation and validation.test_mode and validation.test_mode.enabled
+    return RunService:IsStudio()
+        and validation
+        and validation.test_mode
+        and validation.test_mode.enabled
 end
 
 -- Validate a product purchase
@@ -209,30 +215,30 @@ function ProductIdMapper:ValidatePurchase(player, configId)
     if not product then
         return false, "product_not_found"
     end
-    
+
     -- Check level requirements
     if product.level_requirement then
         local playerLevel = self:_getPlayerLevel(player)
-        
+
         if product.level_requirement.min and playerLevel < product.level_requirement.min then
-            return false, "level_too_low", {level = product.level_requirement.min}
+            return false, "level_too_low", { level = product.level_requirement.min }
         end
-        
+
         if product.level_requirement.max and playerLevel > product.level_requirement.max then
             return false, "level_too_high"
         end
     end
-    
+
     -- Check one-time purchase
     if product.one_time_only and self:_hasPlayerPurchased(player, configId) then
         return false, "one_time_only"
     end
-    
+
     -- Check first time buyer restriction
     if product.first_time_buyer_only and self:_hasPlayerMadeAnyPurchase(player) then
         return false, "not_first_time_buyer"
     end
-    
+
     return true, "valid"
 end
 
@@ -241,16 +247,16 @@ function ProductIdMapper:GetErrorMessage(errorCode, params)
     if not monetizationConfig or not monetizationConfig.error_messages then
         return "Purchase failed."
     end
-    
+
     local message = monetizationConfig.error_messages[errorCode] or "Unknown error."
-    
+
     -- Replace parameters
     if params then
         for key, value in pairs(params) do
             message = message:gsub("{" .. key .. "}", tostring(value))
         end
     end
-    
+
     return message
 end
 
@@ -293,4 +299,4 @@ function ProductIdMapper:_hasPlayerMadeAnyPurchase(player)
     return false
 end
 
-return ProductIdMapper 
+return ProductIdMapper

@@ -46,27 +46,27 @@ local merge = require(script.Parent.immutable).merge
 local DIAGNOSTIC_COMPONENT_MARKER = {}
 
 local function newComponent(name, defaultData)
-	name = name or debug.info(2, "s") .. "@" .. debug.info(2, "l")
+    name = name or debug.info(2, "s") .. "@" .. debug.info(2, "l")
 
-	assert(
-		defaultData == nil or type(defaultData) == "table",
-		"if component default data is specified, it must be a table"
-	)
+    assert(
+        defaultData == nil or type(defaultData) == "table",
+        "if component default data is specified, it must be a table"
+    )
 
-	local component = {}
-	component.__index = component
+    local component = {}
+    component.__index = component
 
-	function component.new(data)
-		data = data or {}
+    function component.new(data)
+        data = data or {}
 
-		if defaultData then
-			data = merge(defaultData, data)
-		end
+        if defaultData then
+            data = merge(defaultData, data)
+        end
 
-		return table.freeze(setmetatable(data, component))
-	end
+        return table.freeze(setmetatable(data, component))
+    end
 
-	--[=[
+    --[=[
 	@within Component
 
 	```lua
@@ -95,79 +95,82 @@ local function newComponent(name, defaultData)
 	@param partialNewData {} -- The table to be merged with the existing component data.
 	@return ComponentInstance -- A copy of the component instance with values from `partialNewData` overriding existing values.
 	]=]
-	function component:patch(partialNewData)
-		debug.profilebegin("patch")
-		local patch = getmetatable(self).new(merge(self, partialNewData))
-		debug.profileend()
-		return patch
-	end
+    function component:patch(partialNewData)
+        debug.profilebegin("patch")
+        local patch = getmetatable(self).new(merge(self, partialNewData))
+        debug.profileend()
+        return patch
+    end
 
-	setmetatable(component, {
-		__call = function(_, ...)
-			return component.new(...)
-		end,
-		__tostring = function()
-			return name
-		end,
-		[DIAGNOSTIC_COMPONENT_MARKER] = true,
-	})
+    setmetatable(component, {
+        __call = function(_, ...)
+            return component.new(...)
+        end,
+        __tostring = function()
+            return name
+        end,
+        [DIAGNOSTIC_COMPONENT_MARKER] = true,
+    })
 
-	return component
+    return component
 end
 
 local function assertValidType(value, position)
-	if typeof(value) ~= "table" then
-		error(string.format("Component #%d is invalid: not a table", position), 3)
-	end
+    if typeof(value) ~= "table" then
+        error(string.format("Component #%d is invalid: not a table", position), 3)
+    end
 
-	local metatable = getmetatable(value)
+    local metatable = getmetatable(value)
 
-	if metatable == nil then
-		error(string.format("Component #%d is invalid: has no metatable", position), 3)
-	end
+    if metatable == nil then
+        error(string.format("Component #%d is invalid: has no metatable", position), 3)
+    end
 end
 
 local function assertValidComponent(value, position)
-	assertValidType(value, position)
+    assertValidType(value, position)
 
-	local metatable = getmetatable(value)
+    local metatable = getmetatable(value)
 
-	if getmetatable(metatable) ~= nil and getmetatable(metatable)[DIAGNOSTIC_COMPONENT_MARKER] then
-		error(
-			string.format(
-				"Component #%d is invalid: Component Instance %s was passed instead of the Component itself!",
-				position,
-				tostring(metatable)
-			),
-			3
-		)
-	end
+    if getmetatable(metatable) ~= nil and getmetatable(metatable)[DIAGNOSTIC_COMPONENT_MARKER] then
+        error(
+            string.format(
+                "Component #%d is invalid: Component Instance %s was passed instead of the Component itself!",
+                position,
+                tostring(metatable)
+            ),
+            3
+        )
+    end
 end
 
 local function assertValidComponentInstance(value, position)
-	assertValidType(value, position)
+    assertValidType(value, position)
 
-	if getmetatable(value)[DIAGNOSTIC_COMPONENT_MARKER] ~= nil then
-		error(
-			string.format(
-				"Component #%d is invalid: passed a Component instead of a Component instance; "
-					.. "did you forget to call it as a function?",
-				position
-			),
-			3
-		)
-	end
+    if getmetatable(value)[DIAGNOSTIC_COMPONENT_MARKER] ~= nil then
+        error(
+            string.format(
+                "Component #%d is invalid: passed a Component instead of a Component instance; "
+                    .. "did you forget to call it as a function?",
+                position
+            ),
+            3
+        )
+    end
 end
 
 local function assertComponentArgsProvided(...)
-	if not (...) then
-		error(`No components passed to world:{debug.info(3, "n")}, at least one component is required`, 2)
-	end
+    if not (...) then
+        error(
+            `No components passed to world:{debug.info(3, "n")}, at least one component is required`,
+            2
+        )
+    end
 end
 
 return {
-	newComponent = newComponent,
-	assertValidComponentInstance = assertValidComponentInstance,
-	assertValidComponent = assertValidComponent,
-	assertComponentArgsProvided = assertComponentArgsProvided,
+    newComponent = newComponent,
+    assertValidComponentInstance = assertValidComponentInstance,
+    assertValidComponent = assertValidComponent,
+    assertComponentArgsProvided = assertComponentArgsProvided,
 }

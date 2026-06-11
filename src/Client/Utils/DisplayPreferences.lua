@@ -6,7 +6,7 @@
 --
 -- USAGE:
 -- - DisplayPreferences.GetDisplayMethod("inventory") -> "images" | "viewports"
--- - DisplayPreferences.SetDisplayMethod("inventory", "viewports") 
+-- - DisplayPreferences.SetDisplayMethod("inventory", "viewports")
 -- - DisplayPreferences.GetControllableContexts() -> {"inventory", "egg_preview"}
 --
 -- This utility handles the config fallback logic and communicates with the server-side
@@ -35,14 +35,14 @@ function DisplayPreferences.GetDisplayMethod(context)
             end
         end
     end
-    
+
     -- Fallback to config defaults
     local ConfigLoader = require(ReplicatedStorage.Shared.ConfigLoader)
     local petsConfig = ConfigLoader:LoadConfig("pets")
-    
+
     if petsConfig and petsConfig.ui_display and petsConfig.ui_display[context] then
         local contextConfig = petsConfig.ui_display[context]
-        
+
         if contextConfig == "images" or contextConfig == "viewports" then
             return contextConfig
         elseif contextConfig == "user" then
@@ -53,7 +53,7 @@ function DisplayPreferences.GetDisplayMethod(context)
             end
         end
     end
-    
+
     -- Final fallback
     return "images"
 end
@@ -61,10 +61,10 @@ end
 -- Set display preference (sends to server via Signal)
 function DisplayPreferences.SetDisplayMethod(context, method)
     print("📤 Sending display preference to server:", context, "=", method)
-    
+
     -- Send to server via Signal
     Signals.SaveDisplayPreferences:FireServer({
-        [context] = method
+        [context] = method,
     })
 end
 
@@ -72,21 +72,25 @@ end
 function DisplayPreferences.GetControllableContexts()
     local ConfigLoader = require(ReplicatedStorage.Shared.ConfigLoader)
     local petsConfig = ConfigLoader:LoadConfig("pets")
-    
+
     local controllable = {}
-    
+
     if petsConfig and petsConfig.ui_display then
         for context, setting in pairs(petsConfig.ui_display) do
             if context ~= "user_preferences" and setting == "user" then
                 -- Check if user control is allowed
                 local userPrefs = petsConfig.ui_display.user_preferences
-                if userPrefs and userPrefs.allow_user_control and userPrefs.allow_user_control[context] then
+                if
+                    userPrefs
+                    and userPrefs.allow_user_control
+                    and userPrefs.allow_user_control[context]
+                then
                     table.insert(controllable, context)
                 end
             end
         end
     end
-    
+
     return controllable
 end
 

@@ -1428,7 +1428,7 @@ function AdminPanel:_executePetGrantAction(action)
         },
         -- the APEX: dev-only, untradeable, pinned to max_pet_power (own serial chain)
         grant_colorado_creator = {
-            petType = "colorado",
+            petType = "colorado_creator",
             variant = "rainbow",
             quantity = 1,
             huge = true,

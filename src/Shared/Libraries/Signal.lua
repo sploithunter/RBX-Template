@@ -4,7 +4,7 @@ Signal.__index = Signal
 
 function Signal.new()
     return setmetatable({
-        _connections = {}
+        _connections = {},
     }, Signal)
 end
 
@@ -12,9 +12,9 @@ function Signal:Connect(callback)
     local connection = {
         _callback = callback,
         _signal = self,
-        Connected = true
+        Connected = true,
     }
-    
+
     function connection:Disconnect()
         if self.Connected then
             self.Connected = false
@@ -27,7 +27,7 @@ function Signal:Connect(callback)
             end
         end
     end
-    
+
     table.insert(self._connections, connection)
     return connection
 end

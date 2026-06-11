@@ -99,7 +99,7 @@ function PetVariantVisuals.StartClient(rootFolder)
                 table.insert(parts, {
                     part = descendant,
                     baseColor = descendant.Color,
-                    offset = (#parts % 7) / 7
+                    offset = (#parts % 7) / 7,
                 })
             end
         end
@@ -108,7 +108,7 @@ function PetVariantVisuals.StartClient(rootFolder)
         active[model] = {
             parts = parts,
             highlight = highlight,
-            startedAt = os.clock()
+            startedAt = os.clock(),
         }
     end
 
@@ -124,47 +124,53 @@ function PetVariantVisuals.StartClient(rootFolder)
 
     scan(rootFolder)
 
-    table.insert(connections, rootFolder.DescendantAdded:Connect(function(descendant)
-        if descendant:IsA("Model") then
-            task.defer(addRainbowModel, descendant)
-        elseif descendant:IsA("BasePart") then
-            local model = descendant:FindFirstAncestorOfClass("Model")
-            if model and active[model] then
-                table.insert(active[model].parts, {
-                    part = descendant,
-                    baseColor = descendant.Color,
-                    offset = (#active[model].parts % 7) / 7
-                })
-            end
-        end
-    end))
-
-    table.insert(connections, RunService.RenderStepped:Connect(function()
-        local now = os.clock()
-        for model, state in pairs(active) do
-            if not model.Parent then
-                active[model] = nil
-                continue
-            end
-
-            local elapsed = now - state.startedAt
-            for _, entry in ipairs(state.parts) do
-                local part = entry.part
-                if part and part.Parent then
-                    local hue = (elapsed * RAINBOW_SPEED + entry.offset) % 1
-                    local color = Color3.fromHSV(hue, RAINBOW_SATURATION, RAINBOW_VALUE)
-                    part.Color = entry.baseColor:Lerp(color, 0.72)
+    table.insert(
+        connections,
+        rootFolder.DescendantAdded:Connect(function(descendant)
+            if descendant:IsA("Model") then
+                task.defer(addRainbowModel, descendant)
+            elseif descendant:IsA("BasePart") then
+                local model = descendant:FindFirstAncestorOfClass("Model")
+                if model and active[model] then
+                    table.insert(active[model].parts, {
+                        part = descendant,
+                        baseColor = descendant.Color,
+                        offset = (#active[model].parts % 7) / 7,
+                    })
                 end
             end
+        end)
+    )
 
-            if state.highlight and state.highlight.Parent then
-                local hue = (elapsed * RAINBOW_SPEED) % 1
-                local outlineHue = (hue + 0.42) % 1
-                state.highlight.FillColor = Color3.fromHSV(hue, 0.8, 1)
-                state.highlight.OutlineColor = Color3.fromHSV(outlineHue, 0.85, 1)
+    table.insert(
+        connections,
+        RunService.RenderStepped:Connect(function()
+            local now = os.clock()
+            for model, state in pairs(active) do
+                if not model.Parent then
+                    active[model] = nil
+                    continue
+                end
+
+                local elapsed = now - state.startedAt
+                for _, entry in ipairs(state.parts) do
+                    local part = entry.part
+                    if part and part.Parent then
+                        local hue = (elapsed * RAINBOW_SPEED + entry.offset) % 1
+                        local color = Color3.fromHSV(hue, RAINBOW_SATURATION, RAINBOW_VALUE)
+                        part.Color = entry.baseColor:Lerp(color, 0.72)
+                    end
+                end
+
+                if state.highlight and state.highlight.Parent then
+                    local hue = (elapsed * RAINBOW_SPEED) % 1
+                    local outlineHue = (hue + 0.42) % 1
+                    state.highlight.FillColor = Color3.fromHSV(hue, 0.8, 1)
+                    state.highlight.OutlineColor = Color3.fromHSV(outlineHue, 0.85, 1)
+                end
             end
-        end
-    end))
+        end)
+    )
 
     return function()
         for _, connection in ipairs(connections) do

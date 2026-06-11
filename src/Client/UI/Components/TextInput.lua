@@ -47,7 +47,7 @@ local ValidationPatterns = {
     phone = "^%+?[%d%s%-%(%)]+$",
     alphanumeric = "^[%w%s]*$",
     letters_only = "^[%a%s]*$",
-    no_spaces = "^%S*$"
+    no_spaces = "^%S*$",
 }
 
 -- === HELPER FUNCTIONS ===
@@ -65,7 +65,7 @@ local function validateInput(text, inputType, customValidator)
     if customValidator then
         return customValidator(text)
     end
-    
+
     if inputType == "email" then
         return string.match(text, ValidationPatterns.email) ~= nil
     elseif inputType == "number" then
@@ -81,14 +81,14 @@ local function validateInput(text, inputType, customValidator)
     elseif inputType == "no_spaces" then
         return string.match(text, ValidationPatterns.no_spaces) ~= nil
     end
-    
+
     return true -- Default to valid for "text" type
 end
 
 -- === TEXTINPUT CLASS ===
 function TextInput.new(config)
     local self = setmetatable({}, TextInput)
-    
+
     -- Configuration with defaults
     config = config or {}
     self.config = {
@@ -96,34 +96,34 @@ function TextInput.new(config)
         placeholder = config.placeholder or "Enter text...",
         size = config.size or uiConfig.defaults.text_input.size,
         position = config.position or UDim2.new(0, 0, 0, 0),
-        
+
         -- Input type and validation
         inputType = config.inputType or "text", -- text, number, integer, email, password, phone, alphanumeric, letters_only, no_spaces
         maxLength = config.maxLength,
         validation = config.validation, -- Custom validation function
         required = config.required or false,
-        
+
         -- Visual styling
         cornerRadius = config.cornerRadius or uiConfig.defaults.text_input.corner_radius,
         font = config.font or uiConfig.defaults.text_input.font,
         fontSize = config.fontSize or uiConfig.defaults.text_input.font_size,
         padding = config.padding or uiConfig.defaults.text_input.padding,
-        
+
         -- Behavior
         clearButtonVisible = config.clearButtonVisible ~= false, -- Default true
         selectAllOnFocus = config.selectAllOnFocus or false,
         multiline = config.multiline or false,
-        
+
         -- Callbacks
         onChanged = config.onChanged,
         onFocus = config.onFocus,
         onBlur = config.onBlur,
         onEnter = config.onEnter,
-        
+
         -- Responsive
         autoScale = config.autoScale ~= false, -- Default true
     }
-    
+
     -- State
     self.state = {
         focused = false,
@@ -131,12 +131,12 @@ function TextInput.new(config)
         errorMessage = "",
         text = self.config.text,
     }
-    
+
     self.theme = uiConfig.helpers.get_theme(uiConfig)
-    
+
     -- Create UI
     self:_createUI()
-    
+
     return self
 end
 
@@ -148,7 +148,7 @@ function TextInput:_createUI()
     self.frame.Position = self.config.position
     self.frame.BackgroundTransparency = 1
     self.frame.BorderSizePixel = 0
-    
+
     -- Input background frame
     self.inputFrame = Instance.new("Frame")
     self.inputFrame.Name = "InputFrame"
@@ -158,23 +158,23 @@ function TextInput:_createUI()
     self.inputFrame.BorderSizePixel = 1
     self.inputFrame.BorderColor3 = self.theme.input.border
     self.inputFrame.Parent = self.frame
-    
+
     -- Corner radius
     if self.config.cornerRadius and self.config.cornerRadius ~= "none" then
         self.corner = Instance.new("UICorner")
         self.corner.CornerRadius = uiConfig.helpers.get_radius(uiConfig, self.config.cornerRadius)
         self.corner.Parent = self.inputFrame
     end
-    
+
     -- Padding
     self.uiPadding = Instance.new("UIPadding")
-            local paddingValue = uiConfig.helpers.get_spacing(uiConfig, self.config.padding)
+    local paddingValue = uiConfig.helpers.get_spacing(uiConfig, self.config.padding)
     self.uiPadding.PaddingTop = paddingValue
     self.uiPadding.PaddingBottom = paddingValue
     self.uiPadding.PaddingLeft = paddingValue
     self.uiPadding.PaddingRight = paddingValue
     self.uiPadding.Parent = self.inputFrame
-    
+
     -- Text input box
     if self.config.multiline then
         self.textBox = Instance.new("TextBox")
@@ -185,7 +185,7 @@ function TextInput:_createUI()
         self.textBox.MultiLine = false
         self.textBox.TextYAlignment = Enum.TextYAlignment.Center
     end
-    
+
     self.textBox.Name = "TextBox"
     self.textBox.Size = UDim2.new(1, self.config.clearButtonVisible and -30 or 0, 1, 0)
     self.textBox.Position = UDim2.new(0, 0, 0, 0)
@@ -201,21 +201,21 @@ function TextInput:_createUI()
     self.textBox.TextXAlignment = Enum.TextXAlignment.Left
     self.textBox.ClearTextOnFocus = false
     self.textBox.Parent = self.inputFrame
-    
+
     -- Configure text input based on type
     self:_configureInputType()
-    
+
     -- Clear button (if enabled)
     if self.config.clearButtonVisible then
         self:_createClearButton()
     end
-    
+
     -- Error message label (hidden by default)
     self:_createErrorLabel()
-    
+
     -- Setup interactions
     self:_setupInteractions()
-    
+
     -- Auto-scaling for responsive design
     if self.config.autoScale then
         self:_setupAutoScaling()
@@ -246,17 +246,17 @@ function TextInput:_createClearButton()
     self.clearButton.TextScaled = true
     self.clearButton.Visible = false -- Hidden when empty
     self.clearButton.Parent = self.inputFrame
-    
+
     self.clearButton.Activated:Connect(function()
         self:SetText("")
         self:_updateClearButtonVisibility()
     end)
-    
+
     -- Hover effects for clear button
     self.clearButton.MouseEnter:Connect(function()
         self.clearButton.TextColor3 = self.theme.primary.error
     end)
-    
+
     self.clearButton.MouseLeave:Connect(function()
         self.clearButton.TextColor3 = self.theme.text.muted
     end)
@@ -272,7 +272,9 @@ function TextInput:_createErrorLabel()
     self.errorLabel.Text = ""
     self.errorLabel.TextColor3 = self.theme.primary.error
     self.errorLabel.Font = uiConfig.fonts[self.config.font] or uiConfig.fonts.primary
-    self.errorLabel.TextSize = (uiConfig.fonts.sizes[self.config.fontSize] or uiConfig.fonts.sizes.md) - 2
+    self.errorLabel.TextSize = (
+        uiConfig.fonts.sizes[self.config.fontSize] or uiConfig.fonts.sizes.md
+    ) - 2
     self.errorLabel.TextXAlignment = Enum.TextXAlignment.Left
     self.errorLabel.TextYAlignment = Enum.TextYAlignment.Top
     self.errorLabel.TextScaled = false
@@ -285,19 +287,19 @@ function TextInput:_setupInteractions()
     self.textBox.Focused:Connect(function()
         self:_onFocus()
     end)
-    
+
     self.textBox.FocusLost:Connect(function(enterPressed)
         self:_onBlur()
         if enterPressed and self.config.onEnter then
             self.config.onEnter(self.state.text)
         end
     end)
-    
+
     -- Text change events
     self.textBox:GetPropertyChangedSignal("Text"):Connect(function()
         self:_onTextChanged()
     end)
-    
+
     -- Mobile-specific optimizations
     if UserInputService.TouchEnabled then
         self:_setupMobileOptimizations()
@@ -320,14 +322,14 @@ end
 function TextInput:_onFocus()
     self.state.focused = true
     self:_updateAppearance()
-    
+
     if self.config.selectAllOnFocus and #self.textBox.Text > 0 then
         self.textBox:CaptureFocus()
         task.wait(0.1) -- Small delay to ensure focus is captured
         self.textBox.SelectionStart = 1
         self.textBox.CursorPosition = #self.textBox.Text + 1
     end
-    
+
     if self.config.onFocus then
         self.config.onFocus()
     end
@@ -337,7 +339,7 @@ function TextInput:_onBlur()
     self.state.focused = false
     self:_validateCurrentText()
     self:_updateAppearance()
-    
+
     if self.config.onBlur then
         self.config.onBlur(self.state.text)
     end
@@ -345,22 +347,22 @@ end
 
 function TextInput:_onTextChanged()
     local newText = self.textBox.Text
-    
+
     -- Handle password masking
     if self.config.inputType == "password" then
         self:_handlePasswordInput(newText)
         return
     end
-    
+
     -- Apply character limit
     if self.config.maxLength and #newText > self.config.maxLength then
         newText = string.sub(newText, 1, self.config.maxLength)
         self.textBox.Text = newText
     end
-    
+
     self.state.text = newText
     self:_updateClearButtonVisibility()
-    
+
     if self.config.onChanged then
         self.config.onChanged(newText)
     end
@@ -370,7 +372,7 @@ function TextInput:_handlePasswordInput(newText)
     -- Simple password masking - replace characters with dots
     local actualLength = #self.actualText
     local newLength = #newText
-    
+
     if newLength > actualLength then
         -- Characters added
         local addedChars = string.sub(newText, actualLength + 1)
@@ -379,14 +381,14 @@ function TextInput:_handlePasswordInput(newText)
         -- Characters removed
         self.actualText = string.sub(self.actualText, 1, newLength)
     end
-    
+
     -- Update display with masked characters
     self.maskedText = string.rep("•", #self.actualText)
     self.textBox.Text = self.maskedText
     self.state.text = self.actualText -- Store actual password
-    
+
     self:_updateClearButtonVisibility()
-    
+
     if self.config.onChanged then
         self.config.onChanged(self.actualText)
     end
@@ -396,7 +398,7 @@ function TextInput:_validateCurrentText()
     local text = self.state.text
     local isValid = true
     local errorMessage = ""
-    
+
     -- Required field validation
     if self.config.required and #text == 0 then
         isValid = false
@@ -404,7 +406,7 @@ function TextInput:_validateCurrentText()
     elseif #text > 0 then
         -- Type-specific validation
         isValid = validateInput(text, self.config.inputType, self.config.validation)
-        
+
         if not isValid then
             if self.config.inputType == "email" then
                 errorMessage = "Please enter a valid email address"
@@ -419,7 +421,7 @@ function TextInput:_validateCurrentText()
             end
         end
     end
-    
+
     self.state.valid = isValid
     self.state.errorMessage = errorMessage
     self:_updateErrorDisplay()
@@ -432,7 +434,7 @@ function TextInput:_updateErrorDisplay()
     else
         self.errorLabel.Text = self.state.errorMessage
         self.errorLabel.Visible = true
-        
+
         -- Animate error message
         self.errorLabel.TextTransparency = 1
         local fadeTween = TweenService:Create(
@@ -442,7 +444,7 @@ function TextInput:_updateErrorDisplay()
                 uiConfig.animations.easing.ease_out,
                 uiConfig.animations.direction.out_dir
             ),
-            {TextTransparency = 0}
+            { TextTransparency = 0 }
         )
         fadeTween:Play()
     end
@@ -451,7 +453,7 @@ end
 function TextInput:_updateAppearance()
     local borderColor
     local backgroundColor = self.theme.input.background
-    
+
     if not self.state.valid then
         borderColor = getInputColor("", "error", self.theme)
     elseif self.state.focused then
@@ -460,7 +462,7 @@ function TextInput:_updateAppearance()
     else
         borderColor = self.theme.input.border
     end
-    
+
     -- Animate border color change
     local borderTween = TweenService:Create(
         self.inputFrame,
@@ -469,7 +471,7 @@ function TextInput:_updateAppearance()
             uiConfig.animations.easing.ease_out,
             uiConfig.animations.direction.out_dir
         ),
-        {BorderColor3 = borderColor, BackgroundColor3 = backgroundColor}
+        { BorderColor3 = borderColor, BackgroundColor3 = backgroundColor }
     )
     borderTween:Play()
 end
@@ -491,7 +493,7 @@ function TextInput:_setupAutoScaling()
             if screenGui then
                 connection:Disconnect()
                 self:_updateScale()
-                
+
                 -- Listen for viewport changes
                 screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
                     self:_updateScale()
@@ -500,7 +502,7 @@ function TextInput:_setupAutoScaling()
         end)
     else
         self:_updateScale()
-        
+
         -- Listen for viewport changes
         screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
             self:_updateScale()
@@ -510,11 +512,13 @@ end
 
 function TextInput:_updateScale()
     local screenGui = self.frame:FindFirstAncestorOfClass("ScreenGui")
-    if not screenGui then return end
-    
+    if not screenGui then
+        return
+    end
+
     local screenSize = screenGui.AbsoluteSize
     local scaleFactor = uiConfig.helpers.get_scale_factor(uiConfig, screenSize)
-    
+
     -- Create or update UIScale
     local uiScale = self.frame:FindFirstChild("UIScale") or Instance.new("UIScale")
     uiScale.Scale = scaleFactor
@@ -524,7 +528,7 @@ end
 -- === PUBLIC METHODS ===
 function TextInput:SetText(text)
     self.state.text = text
-    
+
     if self.config.inputType == "password" then
         self.actualText = text
         self.maskedText = string.rep("•", #text)
@@ -532,7 +536,7 @@ function TextInput:SetText(text)
     else
         self.textBox.Text = text
     end
-    
+
     self:_updateClearButtonVisibility()
     self:_validateCurrentText()
 end
@@ -574,7 +578,7 @@ end
 function TextInput:SetEnabled(enabled)
     self.textBox.Editable = enabled
     self.inputFrame.BackgroundTransparency = enabled and 0 or 0.5
-    
+
     if self.clearButton then
         self.clearButton.Visible = enabled and self.clearButton.Visible
     end
@@ -582,7 +586,7 @@ end
 
 function TextInput:SetParent(parent)
     self.frame.Parent = parent
-    
+
     -- Setup auto-scaling if needed
     if self.config.autoScale then
         self:_setupAutoScaling()
@@ -611,4 +615,4 @@ function TextInput:Destroy()
     self.frame:Destroy()
 end
 
-return TextInput 
+return TextInput

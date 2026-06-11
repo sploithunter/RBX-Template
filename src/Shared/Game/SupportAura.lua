@@ -25,10 +25,9 @@ function SupportAura.forPet(petType, rolesConfig)
 end
 
 -- A pet's auras as a LIST. Config value may be a single aura table { kind = ... } or an
--- ARRAY of them (creator pets carry every buffer — Jason). Single wraps to a one-list.
--- isCreator: a CREATOR-CLASS record gets the `<petType>_creator` entry when one exists
--- (regular colorados buff less than Jason's apex).
-function SupportAura.aurasFor(petType, rolesConfig, isCreator)
+-- ARRAY of them (the colorado_creator SPECIES carries every buffer — Jason). Single
+-- wraps to a one-list.
+function SupportAura.aurasFor(petType, rolesConfig)
     if type(rolesConfig) ~= "table" or petType == nil then
         return nil
     end
@@ -36,7 +35,7 @@ function SupportAura.aurasFor(petType, rolesConfig, isCreator)
     if type(auras) ~= "table" then
         return nil
     end
-    local entry = (isCreator == true and auras[tostring(petType) .. "_creator"]) or auras[petType]
+    local entry = auras[petType]
     if type(entry) ~= "table" then
         return nil
     end

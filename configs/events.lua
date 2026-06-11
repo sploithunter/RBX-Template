@@ -101,13 +101,13 @@ return {
     scheduled_global_events = {
         lucky_day_tuesday_thursday = {
             event_id = "lucky_day",
-            weekdays_utc = {3, 5},
+            weekdays_utc = { 3, 5 },
             reason = "Scheduled lucky day",
         },
 
         secret_luck_friday = {
             event_id = "secret_luck_day",
-            weekdays_utc = {6},
+            weekdays_utc = { 6 },
             reason = "Scheduled secret luck day",
         },
     },

@@ -230,7 +230,8 @@ local function createProceduralBolt(parent, startPart, endPosition, color, confi
     local minThickness = math.max(0.02, tonumber(config.min_thickness_multiplier) or 0.2)
     local maxThickness = math.max(minThickness, tonumber(config.max_thickness_multiplier) or 1)
     local minRadius = math.max(0, tonumber(config.min_radius) or 0)
-    local maxRadius = math.max(minRadius, tonumber(config.max_radius) or tonumber(config.jitter) or 1)
+    local maxRadius =
+        math.max(minRadius, tonumber(config.max_radius) or tonumber(config.jitter) or 1)
     local frequency = math.max(0.01, tonumber(config.frequency) or 1)
     local animationSpeed = tonumber(config.animation_speed) or 7
     local curveSize0 = tonumber(config.curve_size0) or math.min(10, distance * 0.35)
@@ -239,7 +240,8 @@ local function createProceduralBolt(parent, startPart, endPosition, color, confi
     local flicker = math.clamp(tonumber(config.flicker) or 0.35, 0, 0.95)
     local neonLift = math.clamp(tonumber(config.neon_lift) or 0.2, 0, 1)
     local coreEnabled = config.core_enabled ~= false
-    local coreThicknessMultiplier = math.max(0.05, tonumber(config.core_thickness_multiplier) or 0.32)
+    local coreThicknessMultiplier =
+        math.max(0.05, tonumber(config.core_thickness_multiplier) or 0.32)
     local coreOpacityMultiplier = math.max(0.05, tonumber(config.core_opacity_multiplier) or 1)
     local seed = math.random() * 1000
     local right, second = makeBasis(direction)
@@ -249,7 +251,8 @@ local function createProceduralBolt(parent, startPart, endPosition, color, confi
     for index = 1, partCount do
         parts[index] = createBoltPart(parent, "EnchantLightningBoltPart", color)
         if coreEnabled then
-            coreParts[index] = createBoltPart(parent, "EnchantLightningCorePart", Color3.fromRGB(255, 255, 255))
+            coreParts[index] =
+                createBoltPart(parent, "EnchantLightningCorePart", Color3.fromRGB(255, 255, 255))
         end
     end
 
@@ -274,7 +277,7 @@ local function createProceduralBolt(parent, startPart, endPosition, color, confi
         local p3 = endPosition
         local p2 = p3 + endDir * curveSize1
         local fadeMultiplier = elapsed > duration - fadeOutSeconds
-            and math.max(0, (duration - elapsed) / fadeOutSeconds)
+                and math.max(0, (duration - elapsed) / fadeOutSeconds)
             or 1
         local previousPoint = p0
 
@@ -291,7 +294,14 @@ local function createProceduralBolt(parent, startPart, endPosition, color, confi
             local opacity = fadeMultiplier * flickerNoise
             local segmentColor = color:Lerp(Color3.fromRGB(255, 255, 255), neonLift)
 
-            setSegment(part, previousPoint, nextPoint, thickness * thicknessNoise, opacity, segmentColor)
+            setSegment(
+                part,
+                previousPoint,
+                nextPoint,
+                thickness * thicknessNoise,
+                opacity,
+                segmentColor
+            )
             if coreParts[index] then
                 setSegment(
                     coreParts[index],
@@ -330,22 +340,18 @@ local function createCenterFlash(parent, position, color, radius, duration)
     light.Range = radius * 5
     light.Parent = orb
 
-    TweenService:Create(
-        orb,
-        TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        {
+    TweenService
+        :Create(orb, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
             Transparency = 1,
             Size = Vector3.new(radius * 1.35, radius * 1.35, radius * 1.35),
-        }
-    ):Play()
-    TweenService:Create(
-        light,
-        TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        {
+        })
+        :Play()
+    TweenService
+        :Create(light, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
             Brightness = 0,
             Range = radius * 2,
-        }
-    ):Play()
+        })
+        :Play()
     Debris:AddItem(orb, duration + 0.25)
 end
 
@@ -425,7 +431,13 @@ function EnchantLightning.Play(station, config, targetInstance)
     local centerPosition = centerPart.Position + centerOffset
 
     playThunder(station, config)
-    createCenterFlash(parent, centerPosition, colors[math.random(1, #colors)], thickness * 3.2, duration)
+    createCenterFlash(
+        parent,
+        centerPosition,
+        colors[math.random(1, #colors)],
+        thickness * 3.2,
+        duration
+    )
 
     for originIndex, origin in ipairs(origins) do
         if originIndex > originLimit then

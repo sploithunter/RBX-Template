@@ -142,9 +142,11 @@ local function spawnShield(pp, theme, duration)
 
     local full = bubble.Size
     bubble.Size = full * 0.2
-    TweenService:Create(bubble, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = full,
-    }):Play()
+    TweenService
+        :Create(bubble, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = full,
+        })
+        :Play()
 
     local stopped = false
     local function stop()
@@ -152,10 +154,12 @@ local function spawnShield(pp, theme, duration)
             return
         end
         stopped = true
-        TweenService:Create(bubble, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Size = full * 1.25,
-            Transparency = 1,
-        }):Play()
+        TweenService
+            :Create(bubble, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = full * 1.25,
+                Transparency = 1,
+            })
+            :Play()
         Debris:AddItem(bubble, 0.4)
     end
     if duration and duration > 0 then
@@ -229,7 +233,9 @@ function CombatFX.attach(entity, spec)
         return nil
     end
     local cfg = config.attached or {}
-    local theme = cfg.themes and cfg.themes[spec.element] and cfg.themes[spec.element][spec.category]
+    local theme = cfg.themes
+        and cfg.themes[spec.element]
+        and cfg.themes[spec.element][spec.category]
     local reskinCfg = spec.reskin or (theme and theme.reskin)
     if not theme and not reskinCfg then
         return nil -- nothing to show for this element/category
@@ -314,11 +320,20 @@ function CombatFX.play(spec, ctx)
         -- spec.projectile forces a specific RangedFX kind (boulder/frost_shard/arc/laser) regardless
         -- of element; without it the element picks the default projectile.
         local kind = spec.projectile or rangedKind(spec)
-        return RangedFX.Play(ctx.caster, rangedCfg, ctx.target, kind, spec.crit == true, spec.element)
+        return RangedFX.Play(
+            ctx.caster,
+            rangedCfg,
+            ctx.target,
+            kind,
+            spec.crit == true,
+            spec.element
+        )
     elseif pattern == "impact" then
         -- A bare point-impact from the RangedFX library (shatter/dust/big/bloom/…), no projectile —
         -- coloured by the element's area theme. For hit-flashes decoupled from a travelling bolt.
-        local tp = ctx.point or (targetPart and targetPart.Position) or (casterPart and casterPart.Position)
+        local tp = ctx.point
+            or (targetPart and targetPart.Position)
+            or (casterPart and casterPart.Position)
         if not tp then
             return false
         end
@@ -327,7 +342,9 @@ function CombatFX.play(spec, ctx)
         local c2 = toColor(theme and theme.color2, c1)
         return RangedFX.playImpact(spec.impact or "small", tp, c1, c2, { crit = spec.crit == true })
     elseif pattern == "st_aoe" then
-        local tp = ctx.point or (targetPart and targetPart.Position) or (casterPart and casterPart.Position)
+        local tp = ctx.point
+            or (targetPart and targetPart.Position)
+            or (casterPart and casterPart.Position)
         if not tp then
             return false
         end
@@ -336,7 +353,14 @@ function CombatFX.play(spec, ctx)
         local cp = (spec.origin == "upfront") and tp or ((casterPart and casterPart.Position) or tp)
         -- spec.variant selects the AreaFX shape: "targeted" (slam/eruption, default) or "pit" (a
         -- lingering bubbling pool — DoT/brand ground hazard).
-        return AreaFX.Play(areaCfg, areaElement(spec), spec.variant or "targeted", cp, tp, healOverride(spec))
+        return AreaFX.Play(
+            areaCfg,
+            areaElement(spec),
+            spec.variant or "targeted",
+            cp,
+            tp,
+            healOverride(spec)
+        )
     elseif pattern == "pbaoe" then
         local cp = (casterPart and casterPart.Position) or ctx.point
         if not cp then

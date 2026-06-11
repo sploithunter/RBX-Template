@@ -11,20 +11,20 @@ local clientBindings = require(script.Parent.clientBindings)
 local hookWorld = require(script.Parent.hookWorld)
 
 local customWidgetConstructors: { [string]: any } = {
-	panel = require(script.Parent.widgets.panel),
-	selectionList = require(script.Parent.widgets.selectionList),
-	container = require(script.Parent.widgets.container),
-	frame = require(script.Parent.widgets.frame),
-	link = require(script.Parent.widgets.link),
-	realmSwitch = require(script.Parent.widgets.realmSwitch),
-	valueInspect = require(script.Parent.widgets.valueInspect),
-	worldInspect = require(script.Parent.widgets.worldInspect),
-	entityInspect = require(script.Parent.widgets.entityInspect),
-	tooltip = require(script.Parent.widgets.tooltip),
-	hoverInspect = require(script.Parent.widgets.hoverInspect),
-	queryInspect = require(script.Parent.widgets.queryInspect),
-	codeText = require(script.Parent.widgets.codeText),
-	errorInspect = require(script.Parent.widgets.errorInspect),
+    panel = require(script.Parent.widgets.panel),
+    selectionList = require(script.Parent.widgets.selectionList),
+    container = require(script.Parent.widgets.container),
+    frame = require(script.Parent.widgets.frame),
+    link = require(script.Parent.widgets.link),
+    realmSwitch = require(script.Parent.widgets.realmSwitch),
+    valueInspect = require(script.Parent.widgets.valueInspect),
+    worldInspect = require(script.Parent.widgets.worldInspect),
+    entityInspect = require(script.Parent.widgets.entityInspect),
+    tooltip = require(script.Parent.widgets.tooltip),
+    hoverInspect = require(script.Parent.widgets.hoverInspect),
+    queryInspect = require(script.Parent.widgets.queryInspect),
+    codeText = require(script.Parent.widgets.codeText),
+    errorInspect = require(script.Parent.widgets.errorInspect),
 }
 
 local IS_SERVER = RunService:IsServer()
@@ -34,9 +34,11 @@ local remoteEvent, clientBindingConnections
 
 -- Assert plasma is compatible via feature detection
 local function assertCompatiblePlasma(plasma)
-	if not plasma.highlight then
-		error("Plasma passed to Matter debugger is out of date, please update it to use the debugger.")
-	end
+    if not plasma.highlight then
+        error(
+            "Plasma passed to Matter debugger is out of date, please update it to use the debugger."
+        )
+    end
 end
 
 --[=[
@@ -138,85 +140,87 @@ Debugger.__index = Debugger
 	@return Debugger
 ]=]
 function Debugger.new(plasma)
-	assertCompatiblePlasma(plasma)
+    assertCompatiblePlasma(plasma)
 
-	if not remoteEvent then
-		if IS_SERVER then
-			remoteEvent = Instance.new("RemoteEvent")
-			remoteEvent.Name = "MatterDebuggerRemote"
-			remoteEvent.Parent = ReplicatedStorage
-		else
-			remoteEvent = ReplicatedStorage:WaitForChild("MatterDebuggerRemote")
+    if not remoteEvent then
+        if IS_SERVER then
+            remoteEvent = Instance.new("RemoteEvent")
+            remoteEvent.Name = "MatterDebuggerRemote"
+            remoteEvent.Parent = ReplicatedStorage
+        else
+            remoteEvent = ReplicatedStorage:WaitForChild("MatterDebuggerRemote")
 
-			remoteEvent.OnClientEvent:Connect(function(action, ...)
-				if not EventBridge.clientActions[action] then
-					return
-				end
+            remoteEvent.OnClientEvent:Connect(function(action, ...)
+                if not EventBridge.clientActions[action] then
+                    return
+                end
 
-				EventBridge.clientActions[action](function(...)
-					remoteEvent:FireServer(...)
-				end, ...)
-			end)
-		end
-	end
+                EventBridge.clientActions[action](function(...)
+                    remoteEvent:FireServer(...)
+                end, ...)
+            end)
+        end
+    end
 
-	local self = setmetatable({
-		plasma = plasma,
-		loop = nil,
-		loopParameterNames = {},
-		enabled = false,
-		componentRefreshFrequency = 3,
-		_windowCount = 0,
-		_queries = {},
-		_queryDurationSamples = {},
-		_seenEvents = {},
-		_eventOrder = {},
-		_eventBridge = EventBridge.new(function(...)
-			remoteEvent:FireClient(...)
-		end),
-		_playersUsingDebugger = {},
-		_customWidgets = {},
-	}, Debugger)
+    local self = setmetatable({
+        plasma = plasma,
+        loop = nil,
+        loopParameterNames = {},
+        enabled = false,
+        componentRefreshFrequency = 3,
+        _windowCount = 0,
+        _queries = {},
+        _queryDurationSamples = {},
+        _seenEvents = {},
+        _eventOrder = {},
+        _eventBridge = EventBridge.new(function(...)
+            remoteEvent:FireClient(...)
+        end),
+        _playersUsingDebugger = {},
+        _customWidgets = {},
+    }, Debugger)
 
-	for name, create in customWidgetConstructors do
-		self._customWidgets[name] = create(plasma)
-	end
+    for name, create in customWidgetConstructors do
+        self._customWidgets[name] = create(plasma)
+    end
 
-	if IS_SERVER then
-		self:_connectRemoteEvent()
-	else
-		if not clientBindingConnections then
-			clientBindingConnections = clientBindings(self)
-		end
-	end
+    if IS_SERVER then
+        self:_connectRemoteEvent()
+    else
+        if not clientBindingConnections then
+            clientBindingConnections = clientBindings(self)
+        end
+    end
 
-	return self
+    return self
 end
 
 function Debugger:_connectRemoteEvent()
-	remoteEvent.OnServerEvent:Connect(function(player, action, instance, event, ...)
-		if action == "event" then
-			self._eventBridge:fireEventFromPlayer(player, instance, event, ...)
-		elseif action == "start" then
-			if not RunService:IsStudio() then
-				if self.authorize then
-					if not self.authorize(player) then
-						return
-					end
-				else
-					warn("Player attempted to connect to matter debugger but no authorize function is configured.")
-					return
-				end
-			end
-			self:connectPlayer(player)
-		elseif action == "stop" then
-			self:disconnectPlayer(player)
-		elseif action == "inspect" then
-			self.debugEntity = instance
-		elseif action == "hover" then
-			self.hoverEntity = instance
-		end
-	end)
+    remoteEvent.OnServerEvent:Connect(function(player, action, instance, event, ...)
+        if action == "event" then
+            self._eventBridge:fireEventFromPlayer(player, instance, event, ...)
+        elseif action == "start" then
+            if not RunService:IsStudio() then
+                if self.authorize then
+                    if not self.authorize(player) then
+                        return
+                    end
+                else
+                    warn(
+                        "Player attempted to connect to matter debugger but no authorize function is configured."
+                    )
+                    return
+                end
+            end
+            self:connectPlayer(player)
+        elseif action == "stop" then
+            self:disconnectPlayer(player)
+        elseif action == "inspect" then
+            self.debugEntity = instance
+        elseif action == "hover" then
+            self.hoverEntity = instance
+        end
+    end)
 end
 
 --[=[
@@ -225,11 +229,11 @@ end
 	Shows the debugger panel
 ]=]
 function Debugger:show()
-	if not IS_CLIENT then
-		error("show can only be called from the client")
-	end
+    if not IS_CLIENT then
+        error("show can only be called from the client")
+    end
 
-	self:_enable()
+    self:_enable()
 end
 
 --[=[
@@ -238,15 +242,15 @@ end
 	Hides the debugger panel
 ]=]
 function Debugger:hide()
-	if not IS_CLIENT then
-		error("hide can only be called from the client")
-	end
+    if not IS_CLIENT then
+        error("hide can only be called from the client")
+    end
 
-	self:_disable()
+    self:_disable()
 
-	if self:_isServerView() then
-		self:switchToClientView()
-	end
+    if self:_isServerView() then
+        self:switchToClientView()
+    end
 end
 
 --[=[
@@ -255,76 +259,76 @@ end
 	Toggles visibility of the debugger panel
 ]=]
 function Debugger:toggle()
-	if not IS_CLIENT then
-		error("toggle can only be called from the client")
-	end
+    if not IS_CLIENT then
+        error("toggle can only be called from the client")
+    end
 
-	if self.enabled then
-		self:_disable()
-	else
-		self:_enable()
-	end
+    if self.enabled then
+        self:_disable()
+    else
+        self:_enable()
+    end
 end
 
 function Debugger:_enable()
-	if self.enabled then
-		return
-	end
+    if self.enabled then
+        return
+    end
 
-	-- TODO: Find a better way for the user to specify the world.
-	if not self.debugWorld then
-		for _, object in self.loop._state do
-			if getmetatable(object) == World then
-				self.debugWorld = object
-				break
-			end
-		end
-	end
+    -- TODO: Find a better way for the user to specify the world.
+    if not self.debugWorld then
+        for _, object in self.loop._state do
+            if getmetatable(object) == World then
+                self.debugWorld = object
+                break
+            end
+        end
+    end
 
-	self.enabled = true
-	self.loop.profiling = self.loop.profiling or {}
+    self.enabled = true
+    self.loop.profiling = self.loop.profiling or {}
 
-	hookWorld.hookWorld(self)
+    hookWorld.hookWorld(self)
 end
 
 function Debugger:_disable()
-	self.enabled = false
-	self.debugSystem = nil
-	self.loop.profiling = nil
-	hookWorld.unhookWorld()
+    self.enabled = false
+    self.debugSystem = nil
+    self.loop.profiling = nil
+    hookWorld.unhookWorld()
 
-	if self.plasmaNode then
-		self.plasma.start(self.plasmaNode, function() end)
-	end
+    if self.plasmaNode then
+        self.plasma.start(self.plasmaNode, function() end)
+    end
 end
 
 function Debugger:connectPlayer(player)
-	if not IS_SERVER then
-		error("connectClient can only be called from the server")
-	end
+    if not IS_SERVER then
+        error("connectClient can only be called from the server")
+    end
 
-	if not self.enabled then
-		print("Matter server debugger started")
-		self:_enable()
-	end
+    if not self.enabled then
+        print("Matter server debugger started")
+        self:_enable()
+    end
 
-	self._eventBridge:connectPlayer(player)
-	self._playersUsingDebugger[player] = true
+    self._eventBridge:connectPlayer(player)
+    self._playersUsingDebugger[player] = true
 end
 
 function Debugger:disconnectPlayer(player)
-	if not IS_SERVER then
-		error("disconnectClient can only be called from the server")
-	end
+    if not IS_SERVER then
+        error("disconnectClient can only be called from the server")
+    end
 
-	self._eventBridge:disconnectPlayer(player)
-	self._playersUsingDebugger[player] = nil
+    self._eventBridge:disconnectPlayer(player)
+    self._playersUsingDebugger[player] = nil
 
-	if #self._eventBridge.players == 0 then
-		self:_disable()
-		self.debugSystem = nil
-		print("Matter server debugger stopped")
-	end
+    if #self._eventBridge.players == 0 then
+        self:_disable()
+        self.debugSystem = nil
+        print("Matter server debugger stopped")
+    end
 end
 
 --[=[
@@ -344,68 +348,68 @@ end
 	@param loop Loop
 ]=]
 function Debugger:autoInitialize(loop)
-	self.loop = loop
-	loop._debugger = self
+    self.loop = loop
+    loop._debugger = self
 
-	self.loop.trackErrors = true
+    self.loop.trackErrors = true
 
-	local parent = Instance.new("ScreenGui")
-	parent.Name = "MatterDebugger"
-	parent.DisplayOrder = 2 ^ 31 - 1
-	parent.ResetOnSpawn = false
-	parent.IgnoreGuiInset = true
-	parent.AutoLocalize = false
+    local parent = Instance.new("ScreenGui")
+    parent.Name = "MatterDebugger"
+    parent.DisplayOrder = 2 ^ 31 - 1
+    parent.ResetOnSpawn = false
+    parent.IgnoreGuiInset = true
+    parent.AutoLocalize = false
 
-	if IS_CLIENT then
-		parent.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-	else
-		parent.Parent = ReplicatedStorage
-	end
+    if IS_CLIENT then
+        parent.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+    else
+        parent.Parent = ReplicatedStorage
+    end
 
-	local plasmaNode = self.plasma.new(parent)
-	self.plasmaNode = plasmaNode
+    local plasmaNode = self.plasma.new(parent)
+    self.plasmaNode = plasmaNode
 
-	self.loop:addMiddleware(function(nextFn, eventName)
-		return function()
-			if not self._seenEvents[eventName] then
-				self._seenEvents[eventName] = true
-				table.insert(self._eventOrder, eventName)
-			end
+    self.loop:addMiddleware(function(nextFn, eventName)
+        return function()
+            if not self._seenEvents[eventName] then
+                self._seenEvents[eventName] = true
+                table.insert(self._eventOrder, eventName)
+            end
 
-			if not self.enabled then
-				nextFn()
-				return
-			end
+            if not self.enabled then
+                nextFn()
+                return
+            end
 
-			if eventName == self._eventOrder[1] then
-				self._continueHandle = self.plasma.beginFrame(plasmaNode, function()
-					self.plasma.setEventCallback(function(...)
-						return self._eventBridge:connect(...)
-					end)
+            if eventName == self._eventOrder[1] then
+                self._continueHandle = self.plasma.beginFrame(plasmaNode, function()
+                    self.plasma.setEventCallback(function(...)
+                        return self._eventBridge:connect(...)
+                    end)
 
-					self:update()
+                    self:update()
 
-					nextFn()
-				end)
-			elseif self._continueHandle then
-				self.plasma.continueFrame(self._continueHandle, function()
-					self.plasma.setEventCallback(function(...)
-						return self._eventBridge:connect(...)
-					end)
+                    nextFn()
+                end)
+            elseif self._continueHandle then
+                self.plasma.continueFrame(self._continueHandle, function()
+                    self.plasma.setEventCallback(function(...)
+                        return self._eventBridge:connect(...)
+                    end)
 
-					nextFn()
-				end)
-			end
+                    nextFn()
+                end)
+            end
 
-			if eventName == self._eventOrder[#self._eventOrder] then
-				self.plasma.finishFrame(plasmaNode)
-			end
-		end
-	end)
+            if eventName == self._eventOrder[#self._eventOrder] then
+                self.plasma.finishFrame(plasmaNode)
+            end
+        end
+    end)
 
-	if IS_CLIENT then
-		self.plasma.hydrateAutomaticSize()
-	end
+    if IS_CLIENT then
+        self.plasma.hydrateAutomaticSize()
+    end
 end
 
 --[=[
@@ -415,9 +419,9 @@ end
 	@param new System
 ]=]
 function Debugger:replaceSystem(old, new)
-	if self.debugSystem == old then
-		self.debugSystem = new
-	end
+    if self.debugSystem == old then
+        self.debugSystem = new
+    end
 end
 
 --[=[
@@ -426,42 +430,42 @@ end
 	Switch the client to server view. This starts the server debugger if it isn't already started.
 ]=]
 function Debugger:switchToServerView()
-	if not IS_CLIENT then
-		error("switchToServerView may only be called from the client.")
-	end
+    if not IS_CLIENT then
+        error("switchToServerView may only be called from the client.")
+    end
 
-	self.debugSystem = nil
+    self.debugSystem = nil
 
-	if not self.serverGui then
-		self.serverGui = ReplicatedStorage:WaitForChild("MatterDebugger")
+    if not self.serverGui then
+        self.serverGui = ReplicatedStorage:WaitForChild("MatterDebugger")
 
-		self.serverGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-	end
+        self.serverGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+    end
 
-	remoteEvent:FireServer("start")
+    remoteEvent:FireServer("start")
 
-	self.serverGui.Enabled = true
+    self.serverGui.Enabled = true
 end
 
 --[=[
 	Switch the client to client view. This stops the server debugger if there are no other players connected.
 ]=]
 function Debugger:switchToClientView()
-	if not IS_CLIENT then
-		error("switchToClientView may only be called from the client.")
-	end
+    if not IS_CLIENT then
+        error("switchToClientView may only be called from the client.")
+    end
 
-	if not self.serverGui then
-		return
-	end
+    if not self.serverGui then
+        return
+    end
 
-	remoteEvent:FireServer("stop")
+    remoteEvent:FireServer("stop")
 
-	self.serverGui.Enabled = false
+    self.serverGui.Enabled = false
 end
 
 function Debugger:_isServerView()
-	return self.serverGui and self.serverGui.Enabled
+    return self.serverGui and self.serverGui.Enabled
 end
 
 --[=[
@@ -471,13 +475,13 @@ end
 	you didn't call `autoInitialize`.
 ]=]
 function Debugger:update()
-	ui(self, self.loop)
+    ui(self, self.loop)
 
-	table.clear(self._queries)
+    table.clear(self._queries)
 
-	if IS_CLIENT then
-		mouseHighlight(self, remoteEvent)
-	end
+    if IS_CLIENT then
+        mouseHighlight(self, remoteEvent)
+    end
 end
 
 --[=[
@@ -507,7 +511,7 @@ end
 	@return {[string]: Widget}
 ]=]
 function Debugger:getWidgets()
-	return hookWidgets(self)
+    return hookWidgets(self)
 end
 
 return Debugger

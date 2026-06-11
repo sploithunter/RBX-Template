@@ -67,13 +67,15 @@ local function seatEyes(head, eyesCfg)
 
     for _, sign in ipairs({ 1, -1 }) do
         local lateral = U * up + R * (side * sign)
-        local res = Workspace:Raycast(fcenter + L * (maxdim * 6) + lateral, -L * (maxdim * 12), params)
+        local res =
+            Workspace:Raycast(fcenter + L * (maxdim * 6) + lateral, -L * (maxdim * 12), params)
         local epos = res and (res.Position - L * recess) or (fcenter + lateral + L * (maxdim * 0.4))
 
         local pupil = Instance.new("Part")
         pupil.Name = sign > 0 and "PupilL" or "PupilR"
         pupil.Shape = Enum.PartType.Ball
-        pupil.Anchored, pupil.CanCollide, pupil.CanQuery, pupil.CastShadow = true, false, false, false
+        pupil.Anchored, pupil.CanCollide, pupil.CanQuery, pupil.CastShadow =
+            true, false, false, false
         pupil.Material = Enum.Material.Neon
         pupil.Color = color
         pupil.Transparency = baseTransparency
@@ -297,7 +299,8 @@ function RealmHellFaces.start()
                 local brightness = s.faceBrightness
                 if flash > 0 and s.flashBrightness then
                     brightness = s.faceBrightness + (s.flashBrightness - s.faceBrightness) * flash
-                    s.faceLight.Range = s.faceRange + ((s.flashRange or s.faceRange) - s.faceRange) * flash
+                    s.faceLight.Range = s.faceRange
+                        + ((s.flashRange or s.faceRange) - s.faceRange) * flash
                 else
                     s.faceLight.Range = s.faceRange
                 end

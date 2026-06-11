@@ -19,9 +19,13 @@ local lastAttack = {}
 
 local function findBreakableById(id)
     local gameFolder = workspace:FindFirstChild("Game")
-    if not gameFolder then return nil end
+    if not gameFolder then
+        return nil
+    end
     local breakables = gameFolder:FindFirstChild("Breakables")
-    if not breakables then return nil end
+    if not breakables then
+        return nil
+    end
     for _, typeFolder in ipairs(breakables:GetChildren()) do
         for _, worldFolder in ipairs(typeFolder:GetChildren()) do
             local items = worldFolder:FindFirstChild("Items")
@@ -44,10 +48,14 @@ end
 local function petLockedOnLiveEnemy(petInst)
     local tt = petInst:FindFirstChild("TargetType")
     local tid = petInst:FindFirstChild("TargetID")
-    if not (tt and tt.Value == "Enemy" and tid and tid.Value ~= 0) then return false end
+    if not (tt and tt.Value == "Enemy" and tid and tid.Value ~= 0) then
+        return false
+    end
     local gameFolder = workspace:FindFirstChild("Game")
     local enemies = gameFolder and gameFolder:FindFirstChild("Enemies")
-    if not enemies then return false end
+    if not enemies then
+        return false
+    end
     for _, m in ipairs(enemies:GetChildren()) do
         local bid = m:FindFirstChild("BreakableID")
         if bid and bid.Value == tid.Value and (m:GetAttribute("HP") or 0) > 0 then
@@ -58,11 +66,17 @@ local function petLockedOnLiveEnemy(petInst)
 end
 
 local function assignPlayerPetsToTarget(player, breakableModel)
-    if not player or not breakableModel then return end
+    if not player or not breakableModel then
+        return
+    end
     local petInstancesFolder = workspace:FindFirstChild("PlayerPets")
-    if not petInstancesFolder then return end
+    if not petInstancesFolder then
+        return
+    end
     local playerPets = petInstancesFolder:FindFirstChild(player.Name)
-    if not playerPets then return end
+    if not playerPets then
+        return
+    end
 
     -- Determine world name from ancestry: ...Breakables/<Type>/<World>/Items/<Model>
     local worldName = ""
@@ -72,7 +86,9 @@ local function assignPlayerPetsToTarget(player, breakableModel)
         worldName = worldFolder and worldFolder.Name or ""
     end
 
-    local targetId = breakableModel:FindFirstChild("BreakableID") and breakableModel.BreakableID.Value or 0
+    local targetId = breakableModel:FindFirstChild("BreakableID")
+            and breakableModel.BreakableID.Value
+        or 0
     for _, petInst in ipairs(playerPets:GetChildren()) do
         local petIdVal = petInst:FindFirstChild("PetID")
         local targetIdVal = petInst:FindFirstChild("TargetID")
@@ -122,8 +138,12 @@ function BreakableService:Init()
 end
 
 function BreakableService:_onAttack(player, payload)
-    if not player or not player:IsA("Player") then return end
-    if type(payload) ~= "table" then return end
+    if not player or not player:IsA("Player") then
+        return
+    end
+    if type(payload) ~= "table" then
+        return
+    end
     local id = tonumber(payload.id)
     local dmg = tonumber(payload.damage) or 1
 
@@ -135,7 +155,9 @@ function BreakableService:_onAttack(player, payload)
     lastAttack[player] = now
 
     local target = findBreakableById(id)
-    if not target or not target:GetAttribute("HP") then return end
+    if not target or not target:GetAttribute("HP") then
+        return
+    end
 
     -- Ensure pets are assigned to this target for follow/damage behavior
     assignPlayerPetsToTarget(player, target)
@@ -154,4 +176,3 @@ function BreakableService:Attack(player, payload)
 end
 
 return BreakableService
-

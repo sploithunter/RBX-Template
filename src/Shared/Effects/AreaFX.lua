@@ -103,7 +103,8 @@ local function column(pos, color, mat, height, life)
     tween(c, life, {
         Size = Vector3.new(height, diam * 0.3, diam * 0.3),
         Transparency = 1,
-        CFrame = CFrame.new(pos + Vector3.new(0, height * 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+        CFrame = CFrame.new(pos + Vector3.new(0, height * 0.5, 0))
+            * CFrame.Angles(0, 0, math.rad(90)),
     })
 end
 
@@ -160,7 +161,8 @@ local function radialSpikes(pos, color, mat, count, radius, len, life, tiltDeg)
         local ang = (i / count) * math.pi * 2 + math.random() * 0.2
         local dir = Vector3.new(math.cos(ang), 0, math.sin(ang))
         local base = pos + dir * (radius * 0.5) + Vector3.new(0, 0.3, 0)
-        local face = CFrame.lookAt(base, base + dir) * CFrame.Angles(math.rad(-(tiltDeg or 30)), 0, 0)
+        local face = CFrame.lookAt(base, base + dir)
+            * CFrame.Angles(math.rad(-(tiltDeg or 30)), 0, 0)
         local p = newPart(Enum.PartType.Block, mat, color, 0.1)
         p.Size = Vector3.new(len * 0.18, len * 0.18, 0.4)
         p.CFrame = face
@@ -180,12 +182,21 @@ local function swirlMotes(pos, color, mat, count, radius, height, life)
         local r = radius * (0.5 + math.random() * 0.5)
         local start = pos + Vector3.new(math.cos(ang0) * r, 0.5, math.sin(ang0) * r)
         local ang1 = ang0 + 2.2 -- swirl ~125deg as it rises
-        local dest = pos + Vector3.new(math.cos(ang1) * r * 0.7, height * (0.6 + math.random() * 0.5), math.sin(ang1) * r * 0.7)
+        local dest = pos
+            + Vector3.new(
+                math.cos(ang1) * r * 0.7,
+                height * (0.6 + math.random() * 0.5),
+                math.sin(ang1) * r * 0.7
+            )
         local m = newPart(Enum.PartType.Ball, mat, color, 0.2)
         local s = 0.3 + math.random() * 0.4
         m.Size = Vector3.new(s, s, s)
         m.CFrame = CFrame.new(start)
-        tween(m, life, { CFrame = CFrame.new(dest), Transparency = 1, Size = Vector3.new(0.05, 0.05, 0.05) })
+        tween(
+            m,
+            life,
+            { CFrame = CFrame.new(dest), Transparency = 1, Size = Vector3.new(0.05, 0.05, 0.05) }
+        )
     end
 end
 
@@ -211,11 +222,20 @@ end
 local function fallingBits(pos, color, mat, count, fromHeight, spread, life, elongated)
     for i = 1, count do
         local ang = (i / count) * math.pi * 2 + math.random()
-        local off = Vector3.new(math.cos(ang) * spread * math.random(), 0, math.sin(ang) * spread * math.random())
+        local off = Vector3.new(
+            math.cos(ang) * spread * math.random(),
+            0,
+            math.sin(ang) * spread * math.random()
+        )
         local p = newPart(Enum.PartType.Block, mat, color, 0.05)
         p.Size = elongated and Vector3.new(0.4, 2.2, 0.4) or Vector3.new(0.6, 0.6, 0.6)
         p.CFrame = CFrame.new(pos + off + Vector3.new(0, fromHeight, 0))
-        tween(p, life, { CFrame = CFrame.new(pos + off + Vector3.new(0, 0.3, 0)), Transparency = 1 }, DIR_IN)
+        tween(
+            p,
+            life,
+            { CFrame = CFrame.new(pos + off + Vector3.new(0, 0.3, 0)), Transparency = 1 },
+            DIR_IN
+        )
     end
 end
 
@@ -230,27 +250,40 @@ local function ricochet(pos, c1, c2, mat, count, spread)
         local sz = spread * (0.07 + math.random() * 0.06)
         local chunk = newPart(Enum.PartType.Block, mat, (i % 2 == 0) and c1 or c2, 0.05)
         chunk.Size = Vector3.new(sz, sz * 0.8, sz * 1.1)
-        local startPos = pos + dir * (spread * 0.2) + Vector3.new(0, spread * 0.55 + math.random() * 2, 0)
-        local spin0 = CFrame.Angles(math.random() * 6.28, math.random() * 6.28, math.random() * 6.28)
+        local startPos = pos
+            + dir * (spread * 0.2)
+            + Vector3.new(0, spread * 0.55 + math.random() * 2, 0)
+        local spin0 =
+            CFrame.Angles(math.random() * 6.28, math.random() * 6.28, math.random() * 6.28)
         chunk.CFrame = CFrame.new(startPos) * spin0
         local tumble = (math.random() < 0.5 and 1 or -1) * (8 + math.random() * 6)
 
         task.spawn(function()
             -- A) HIT — accelerate down into the contact point next to the target
             local hitPos = pos + dir * (spread * 0.12) + Vector3.new(0, 0.5, 0)
-            TweenService:Create(chunk, TweenInfo.new(0.08, OUT, DIR_IN), { CFrame = CFrame.new(hitPos) * spin0 }):Play()
+            TweenService:Create(
+                chunk,
+                TweenInfo.new(0.08, OUT, DIR_IN),
+                { CFrame = CFrame.new(hitPos) * spin0 }
+            ):Play()
             task.wait(0.08)
             -- B) BOUNCE — kick up and out, decelerating to an apex
             local apex = pos + dir * (spread * 0.5) + Vector3.new(0, spread * 0.3, 0)
-            TweenService:Create(chunk, TweenInfo.new(0.15, OUT, DIR_OUT), {
-                CFrame = CFrame.new(apex) * spin0 * CFrame.Angles(0, 0, tumble * 0.4),
-            }):Play()
+            TweenService
+                :Create(chunk, TweenInfo.new(0.15, OUT, DIR_OUT), {
+                    CFrame = CFrame.new(apex) * spin0 * CFrame.Angles(0, 0, tumble * 0.4),
+                })
+                :Play()
             task.wait(0.15)
             -- C) ROLL — fall to the ground and tumble further outward
-            local rest = pos + dir * (spread * (0.95 + math.random() * 0.4)) + Vector3.new(0, 0.3, 0)
-            TweenService:Create(chunk, TweenInfo.new(0.45, OUT, DIR_OUT), {
-                CFrame = CFrame.new(rest) * spin0 * CFrame.Angles(0, 0, tumble),
-            }):Play()
+            local rest = pos
+                + dir * (spread * (0.95 + math.random() * 0.4))
+                + Vector3.new(0, 0.3, 0)
+            TweenService
+                :Create(chunk, TweenInfo.new(0.45, OUT, DIR_OUT), {
+                    CFrame = CFrame.new(rest) * spin0 * CFrame.Angles(0, 0, tumble),
+                })
+                :Play()
             task.wait(0.42)
             -- D) FADE — shrink + vanish where it settled
             TweenService:Create(chunk, TweenInfo.new(0.28, OUT, DIR_OUT), {
@@ -274,7 +307,8 @@ local function fireRing(pos, count, radius, life, color, color2)
         holder.CanCollide = false
         holder.CanQuery = false
         holder.CastShadow = false
-        holder.CFrame = CFrame.new(pos + Vector3.new(math.cos(ang) * radius, 0.5, math.sin(ang) * radius))
+        holder.CFrame =
+            CFrame.new(pos + Vector3.new(math.cos(ang) * radius, 0.5, math.sin(ang) * radius))
         holder.Parent = fxFolder()
         local fire = Instance.new("Fire")
         fire.Size = math.max(4, radius * 0.7)
@@ -335,7 +369,8 @@ end
 -- Molten tar pit (lingering ground hazard): a dark pool disc + a continuous ParticleEmitter of
 -- rising, glowing bubbles. Stays for `life` seconds, then stops emitting + fades out.
 local function tarPit(pos, c1, c2, radius, life)
-    local pool = newPart(Enum.PartType.Cylinder, Enum.Material.Glass, Color3.fromRGB(28, 20, 16), 0.15)
+    local pool =
+        newPart(Enum.PartType.Cylinder, Enum.Material.Glass, Color3.fromRGB(28, 20, 16), 0.15)
     pool.Reflectance = 0.05
     pool.Size = Vector3.new(0.3, 1, 1)
     pool.CFrame = CFrame.new(pos + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.rad(90))
@@ -519,7 +554,8 @@ local EFFECTS = {
         local sz = radius * 0.5
         meteor.Size = Vector3.new(sz, sz, sz)
         meteor.CFrame = CFrame.new(pos + Vector3.new(0, radius * 2, 0))
-        TweenService:Create(meteor, TweenInfo.new(0.18, OUT, DIR_IN), { CFrame = CFrame.new(pos) }):Play()
+        TweenService:Create(meteor, TweenInfo.new(0.18, OUT, DIR_IN), { CFrame = CFrame.new(pos) })
+            :Play()
         Debris:AddItem(meteor, 0.4)
         task.delay(0.18, function()
             meteor:Destroy()
@@ -534,7 +570,14 @@ local EFFECTS = {
 
 -- Targeted variants lead with a cast tell (beam from caster + ground telegraph), then run.
 local function castTell(c2, mat, origin, target, radius, castTime)
-    beam(origin + Vector3.new(0, 2, 0), target + Vector3.new(0, 1, 0), c2, mat, 0.35, castTime + 0.08)
+    beam(
+        origin + Vector3.new(0, 2, 0),
+        target + Vector3.new(0, 1, 0),
+        c2,
+        mat,
+        0.35,
+        castTime + 0.08
+    )
     groundRing(target, c2, mat, radius * 1.6, castTime + 0.12, 0.55)
 end
 
