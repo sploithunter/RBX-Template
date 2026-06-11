@@ -2079,3 +2079,49 @@ the mining economy.
 ---
 
 *End of design document. Total target word count: ~15,000 words. Designed for handoff to coding agent or split into multiple architecture docs as needed.*
+
+---
+
+## Dragons, Secrets, and Player Class (Rebirth) — Jason, 2026-06-10
+
+### Dragons are SECRET-tier, permanently
+
+Dragons are and will always be **secret** pets. Secret is one of the special rarities
+(`configs/inventory.lua special_rarities`), which means every dragon is a **per-instance
+uid record** — never a common quantity-stack. Each unique pet record carries:
+
+- `uid` — per-instance UUID (minted at hatch)
+- `obtained_at` — timestamp
+- `hatched_by` — UserId of the original hatcher (new mints from 2026-06-10; legacy
+  records pre-date the field and leave it unset, since trades make it unknowable)
+- `player_class` — the **hatcher's** player class at hatch time (see below). Legacy
+  unique pets (the huges) are retrofitted to `player_class = 1` on join.
+
+### Player Class (number, default 1)
+
+`data.PlayerClass` on the player (default 1, implied when absent) and `player_class`
+on every unique pet record. The pet's field is stamped from the **hatcher's** class at
+the moment of hatch and never changes afterward — provenance, not state.
+
+### The Rebirth design (directional, not yet built)
+
+- Reaching **Level 50** unlocks **Rebirth**. Rebirthing raises the player's class
+  (1 → 2 → …) and resets the climb.
+- The rebirth reward: **one HUGE dragon**.
+- Post-rebirth, **only dragons work for you** — the class-2 climb is hatched on
+  dragon teams.
+- To reach the *next* Level 50, you must hatch a **full team of dragons** yourself.
+- **The anti-shortcut rule (why player_class exists):** progression checks count only
+  dragons whose `player_class` matches your current class. A dragon hatched by a
+  class-1 player (or bought/traded from one) can NEVER satisfy a class-2 requirement —
+  you cannot stockpile dragons before rebirthing, and you cannot buy your way up.
+- Rainbow/golden ladders may join the same structure later; the class stamp is the
+  general mechanism, not a dragon-only hack.
+
+### Implementation status
+
+- ✅ `player_class` + `hatched_by` stamped on all new unique-pet mints
+  (`InventoryService:_addPetRecords`)
+- ✅ Join-time retrofit: legacy uid records get `player_class = 1`
+- ⏳ Rebirth action, class increment, dragon-only progression checks, huge-dragon
+  reward: future epic (design above is the SoT)

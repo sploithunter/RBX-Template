@@ -562,6 +562,15 @@ function InventoryService:_addPetRecords(player, itemData, bucket)
 
     if self:_isSpecialPetData(itemData) then
         local lastUid
+        -- provenance (Jason): every UNIQUE pet records who hatched it and the
+        -- hatcher's PLAYER CLASS (1 = base; rebirth raises it). Class-gated hatches
+        -- (dragons) check the HATCHER's class, so progress can't be bought/traded —
+        -- a class-1 hatched dragon never counts toward a class-2 ladder.
+        local hatcherClass = 1
+        do
+            local data = self._dataService and self._dataService:GetData(player)
+            hatcherClass = (data and tonumber(data.PlayerClass)) or 1
+        end
         for _ = 1, count do
             local uid = self:GenerateUID(itemData.id or "pet")
             local record = {
@@ -569,6 +578,8 @@ function InventoryService:_addPetRecords(player, itemData, bucket)
                 obtained_at = os.time(),
                 uid = uid,
                 equipped_slot = nil,
+                hatched_by = player.UserId,
+                player_class = hatcherClass,
             }
             for key, value in pairs(itemData) do
                 if
@@ -780,6 +791,23 @@ function InventoryService:_onPlayerAdded(player)
         end
 
         if self._dataService:IsDataLoaded(player) then
+            -- RETROFIT (Jason): unique pets minted before provenance existed (the
+            -- huges) get player_class = 1. hatched_by stays unset for legacy records
+            -- (unknowable after trades) — only new mints carry it.
+            do
+                local data = self._dataService:GetData(player)
+                local pets = data and data.Inventory and data.Inventory.pets
+                local changed = false
+                for _, rec in pairs((pets and pets.items) or {}) do
+                    if rec.uid and rec.player_class == nil then
+                        rec.player_class = 1
+                        changed = true
+                    end
+                end
+                if changed then
+                    self._dataService:RequestSave(player, "pet_player_class_backfill")
+                end
+            end
             self:_createInventoryFolders(player)
             self:_connectPlayerLevelRewards(player)
         else
