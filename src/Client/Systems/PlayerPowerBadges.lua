@@ -35,6 +35,25 @@ local BUFFS = {
         fixed = { element = "earth", symbol = "clover_lucky" },
         steady = true, -- continuously refreshed aura: solid badge, no countdown/blink
     },
+    -- LUCKY SERVER (creator presence): purple-tinted clover — color from
+    -- configs/creators.lua server_luck.display so the styling stays one-sourced
+    -- (Jason: not the green look; individually configurable)
+    {
+        attr = "ServerLuckBuff",
+        label = "LUCKY",
+        fixed = { element = "neutral", symbol = "clover_lucky" },
+        steady = true,
+        tint = (function()
+            local ok, creators = pcall(function()
+                return require(
+                    game:GetService("ReplicatedStorage").Configs:WaitForChild("creators")
+                )
+            end)
+            local c = ok and creators and creators.server_luck and creators.server_luck.display
+            c = c and c.color or { 170, 90, 255 }
+            return Color3.fromRGB(c[1], c[2], c[3])
+        end)(),
+    },
     { attr = "MoveSpeedBuff", label = "SPD" }, -- Swift
     { attr = "RechargeBuff", label = "RCH" }, -- Hasten
     { attr = "XpBuff", label = "XP" }, -- XP Surge
@@ -140,6 +159,7 @@ function PlayerPowerBadges.start()
                     disc = badge and POWER_ICONS.discFor(badge.element, badge.symbol)
                 end
                 b.disc.Image = disc or ""
+                b.disc.ImageColor3 = def.tint or Color3.fromRGB(255, 255, 255)
                 local remaining = untilT - now
                 -- PASSIVE / TOGGLE buffs (Magnet/Swift/Hasten/XP) are always-on: their `Until` is a
                 -- far-future sentinel. Show "ON", not a ~73-year countdown.
