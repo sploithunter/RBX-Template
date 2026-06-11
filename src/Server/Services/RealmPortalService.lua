@@ -64,6 +64,9 @@ end
 -- Direct jump: enter this portal's exact layer; if already standing on it, return to base.
 -- (Per-layer toggle lets you hop base -> Halo3 -> Halo5 to test any depth, and step out anywhere.)
 function RealmPortalService:_onTriggered(player, destLayer)
+    if self._portalsConfig.locked == true then
+        return -- gates locked: no realm content yet
+    end
     local layers = self:_layerService()
     if not layers then
         return
@@ -90,7 +93,10 @@ function RealmPortalService:_ensurePrompt(part, def)
     prompt.KeyboardKeyCode = Enum.KeyCode.E
     prompt.HoldDuration = tonumber(self._portalsConfig.prompt_hold) or 0
     prompt.MaxActivationDistance = tonumber(self._portalsConfig.max_distance) or 14
-    prompt.Enabled = true
+    -- LOCKED gates (no realm content yet): the prompt is dead and the portal wears
+    -- a big lock badge instead — config flip re-opens everything
+    prompt.Enabled = self._portalsConfig.locked ~= true
+    self:_ensureLockBadge(part)
 
     if not prompt:GetAttribute("RealmPortalConnected") then
         prompt:SetAttribute("RealmPortalConnected", true)
@@ -99,6 +105,48 @@ function RealmPortalService:_ensurePrompt(part, def)
         end)
     end
     return prompt
+end
+
+-- A big 🔒 billboard on a locked portal (programmatic — no 3D asset needed). Sized in
+-- STUDS so it reads on the huge arches; removed when the config unlocks.
+function RealmPortalService:_ensureLockBadge(part)
+    local existing = part:FindFirstChild("RealmLockBadge")
+    if self._portalsConfig.locked ~= true then
+        if existing then
+            existing:Destroy()
+        end
+        return
+    end
+    if existing then
+        return
+    end
+    local studs = tonumber(self._portalsConfig.lock_badge_studs) or 10
+    local gui = Instance.new("BillboardGui")
+    gui.Name = "RealmLockBadge"
+    gui.Size = UDim2.new(studs, 0, studs, 0)
+    gui.AlwaysOnTop = true
+    gui.MaxDistance = 250
+    gui.StudsOffsetWorldSpace = Vector3.new(0, 2, 0)
+    gui.Parent = part
+    local lock = Instance.new("TextLabel")
+    lock.Size = UDim2.fromScale(1, 1)
+    lock.BackgroundTransparency = 1
+    lock.Text = "🔒"
+    lock.TextScaled = true
+    lock.Font = Enum.Font.GothamBlack
+    lock.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lock.TextStrokeTransparency = 0.2
+    lock.Parent = gui
+    local caption = Instance.new("TextLabel")
+    caption.Size = UDim2.fromScale(1, 0.18)
+    caption.Position = UDim2.fromScale(0, 1)
+    caption.BackgroundTransparency = 1
+    caption.Text = "COMING SOON"
+    caption.TextScaled = true
+    caption.Font = Enum.Font.GothamBlack
+    caption.TextColor3 = Color3.fromRGB(255, 215, 0)
+    caption.TextStrokeTransparency = 0.1
+    caption.Parent = gui
 end
 
 -- World S3: LoadAsset the Hell-face model once into ReplicatedStorage.RealmModels so the client

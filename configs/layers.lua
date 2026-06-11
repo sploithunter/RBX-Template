@@ -61,6 +61,10 @@ return {
     -- is grindable — flip false once gating is being verified. Reuses the same map (the
     -- RealmAtmosphere client skin retints the world); not the production realm-geometry path.
     realm_portals = {
+        -- LOCKED (Jason): no realm content behind the gates yet — prompts disabled,
+        -- a big 🔒 billboard on every portal. Flip false when realms have content.
+        locked = true,
+        lock_badge_studs = 10, -- billboard size (the arches are huge)
         bypass_access = true,
         prompt_hold = 0,
         max_distance = 14,
