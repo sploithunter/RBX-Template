@@ -408,6 +408,30 @@ function TradeService:_deliver(session)
     )
     self:_appendAudit(rec)
     self:_push(session, "completed")
+    -- trader-track stats (Jason: capture the data now, leaderboard later) —
+    -- trades_completed rides the trade_complete event via StatEventCounters;
+    -- the per-pet counts vary per trade so they increment here.
+    local function countEscrow(escrow)
+        local n = 0
+        for _ in pairs(escrow or {}) do
+            n += 1
+        end
+        return n
+    end
+    local gaveA, gaveB =
+        countEscrow(session.escrow[session.a]), countEscrow(session.escrow[session.b])
+    local stats = self:_service("StatsService")
+    if stats then
+        if pa then
+            stats:Increment(pa, "pets_traded_away", gaveA)
+            stats:Increment(pa, "pets_traded_received", gaveB)
+        end
+        if pb then
+            stats:Increment(pb, "pets_traded_away", gaveB)
+            stats:Increment(pb, "pets_traded_received", gaveA)
+        end
+    end
+
     -- config-driven celebration for BOTH sides of a completed trade (game_events)
     if pa then
         fireGameEvent(pa, "trade_complete", { with = session.b })

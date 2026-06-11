@@ -90,6 +90,39 @@ return {
             scope = "lifetime",
             default = 0,
         },
+        -- TRADER TRACK (Jason: "a leaderboard for prolific traders... not the
+        -- billboard now, but let's start capturing the data"). Kept fully separate
+        -- from the *_earned_lifetime environment counters.
+        trades_completed = {
+            display_name = "Trades Completed",
+            scope = "lifetime",
+            default = 0,
+        },
+        pets_traded_away = {
+            display_name = "Pets Traded Away",
+            scope = "lifetime",
+            default = 0,
+        },
+        pets_traded_received = {
+            display_name = "Pets Received in Trade",
+            scope = "lifetime",
+            default = 0,
+        },
+        gems_traded_lifetime = {
+            display_name = "Gems Received in Trade",
+            scope = "lifetime",
+            default = 0,
+        },
+        coins_traded_lifetime = {
+            display_name = "Coins Received in Trade",
+            scope = "lifetime",
+            default = 0,
+        },
+        crystals_traded_lifetime = {
+            display_name = "Crystals Received in Trade",
+            scope = "lifetime",
+            default = 0,
+        },
     },
 
     -- EVENT-FED COUNTERS (Jason: "it's free data — if there's an event, we can just
@@ -98,6 +131,7 @@ return {
     -- achievement/alignment stat is ONE LINE here, no service edits. Lifetime
     -- counters stay the substrate; quests window them via QuestBaselines.
     event_counters = {
+        trade_complete = "trades_completed",
         met_creator = "creators_met",
         level_earned = "levels_earned",
         area_unlocked = "areas_unlocked",

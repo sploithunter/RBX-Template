@@ -1190,6 +1190,14 @@ function DataService:AddCurrency(player, currencyType, amount, source)
         if data and data.Stats and data.Stats.Counters then
             data.Stats.Counters[counter] = (data.Stats.Counters[counter] or 0) + amount
         end
+    elseif counter and src:find("trade") then
+        -- the TRADER track: trade-sourced currency accrues to its own counters
+        -- (gems/coins/crystals_traded_lifetime), never the earned ones
+        local tradedCounter = counter:gsub("_earned_", "_traded_")
+        local data = self:GetData(player)
+        if data and data.Stats and data.Stats.Counters then
+            data.Stats.Counters[tradedCounter] = (data.Stats.Counters[tradedCounter] or 0) + amount
+        end
     end
     return self:SetCurrency(player, currencyType, currentAmount + amount, source or "currency_add")
 end
