@@ -1312,8 +1312,8 @@ end
 -- when they don't fit; desktop computes above the floor, so it looks unchanged.
 local function makeColumnHolder(parent, xScale)
     local f = Instance.new("ScrollingFrame")
-    f.Size = UDim2.fromScale(0.46, 0.82)
-    f.Position = UDim2.fromScale(xScale, 0.14)
+    f.Size = UDim2.fromScale(0.46, 0.815)
+    f.Position = UDim2.fromScale(xScale, 0.138)
     f.BackgroundTransparency = 1
     f.BorderSizePixel = 0
     f.ScrollBarThickness = 6
@@ -1392,8 +1392,8 @@ function PowerChoiceMenu:Show(parent)
 
     -- status line (what to do this beat)
     local status = Instance.new("TextLabel")
-    status.Size = UDim2.fromScale(0.8, 0.035)
-    status.Position = UDim2.fromScale(0.5, 0.075)
+    status.Size = UDim2.fromScale(0.8, 0.03)
+    status.Position = UDim2.fromScale(0.5, 0.062)
     status.AnchorPoint = Vector2.new(0.5, 0)
     status.BackgroundTransparency = 1
     status.Text = ""
@@ -1424,8 +1424,8 @@ function PowerChoiceMenu:Show(parent)
 
     -- headers
     local nHeader = Instance.new("TextLabel")
-    nHeader.Size = UDim2.fromScale(0.46, 0.045)
-    nHeader.Position = UDim2.fromScale(0.02, 0.105)
+    nHeader.Size = UDim2.fromScale(0.46, 0.036)
+    nHeader.Position = UDim2.fromScale(0.02, 0.094)
     nHeader.BackgroundTransparency = 1
     nHeader.Text = "NATURAL"
     nHeader.TextColor3 = NATURAL_COLOR
@@ -1434,8 +1434,8 @@ function PowerChoiceMenu:Show(parent)
     nHeader.Parent = root
 
     local oHeader = Instance.new("TextButton")
-    oHeader.Size = UDim2.fromScale(0.46, 0.045)
-    oHeader.Position = UDim2.fromScale(0.52, 0.103)
+    oHeader.Size = UDim2.fromScale(0.46, 0.036)
+    oHeader.Position = UDim2.fromScale(0.52, 0.094)
     oHeader.BackgroundColor3 = Color3.fromRGB(46, 43, 60)
     oHeader.BackgroundTransparency = 0.35
     oHeader.AutoButtonColor = true
