@@ -25,14 +25,17 @@ return {
             -- group-owned assets (scripts/egg_assets.json is the manifest)
             egg_icon = "rbxassetid://120328710003120", -- inventory card image
             egg_model_asset = 94487781424433, -- 3D egg (PlaceAssets-cached; AssetFetch id)
-            -- variant odds on hatch (weights)
-            variants = { basic = 85, golden = 12, rainbow = 3 },
+            -- hatch odds live on the EGG (configs/pets.lua colorado_egg): standard
+            -- golden/rainbow channels + slim huge chance — normal mechanics, luck
+            -- applies; this registry only names the egg.
         },
     },
 
     meet = {
         enabled = true,
-        -- once per (player, creator) pair, forever
+        -- once per (player, creator) pair, forever. Creators DO meet themselves
+        -- (Jason: "that would include myself" — in a server with the creator is in a
+        -- server with the creator) — which also makes the mechanic solo-testable.
         check_delay = 8, -- seconds after a join before scanning (lets data load)
     },
 }

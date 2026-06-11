@@ -1208,6 +1208,38 @@ local petConfig = {
 
     -- === EGG SOURCES (Two-Stage Hatching System) ===
     egg_sources = {
+        -- MEET-THE-CREATOR egg (Jason): not purchasable, not placed in the world —
+        -- hatched from the eggs INVENTORY bucket (MeetCreatorService.HatchEggItem).
+        -- One species (the creator's), standard golden/rainbow channels (luck
+        -- applies normally), and a slim huge chance — "the system takes care of
+        -- golden/rainbow; use normal mechanics."
+        colorado_egg = {
+            name = "Colorado Egg",
+            description = "A gift from ColoradoPlays himself. Hatches a Colorado!",
+            cost = 0,
+            currency = "coins",
+            purchasable = false,
+            huge = { chance = 0.01, pets = { colorado = 1 } }, -- 1 in 100: the jackpot
+            asset_id = "rbxassetid://94487781424433", -- 3D egg (PlaceAssets-cached)
+            image_id = "rbxassetid://120328710003120",
+            unlock_requirement = nil,
+
+            pet_weights = {
+                colorado = 1, -- the only species; variants via standard channels
+            },
+            rarity_rates = {
+                golden_chance = 0.05, -- standard
+                rainbow_chance = 0.005, -- standard
+            },
+            variant_rolls = {
+                enabled = true,
+                allow_basic = true,
+                allow_golden = true,
+                allow_rainbow = true,
+                cost_multiplier = 20,
+            },
+        },
+
         basic_egg = {
             name = "Basic Egg",
             description = "Contains all your favorite pets in Basic, Golden, and Rainbow variants!",

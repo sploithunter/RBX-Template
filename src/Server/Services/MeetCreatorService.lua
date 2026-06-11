@@ -48,9 +48,8 @@ end
 
 -- Award `player` the meet-egg for `creatorUserId` if this is their first meeting.
 function MeetCreatorService:_tryMeet(player, creatorUserId, creatorDef)
-    if player.UserId == tonumber(creatorUserId) then
-        return -- creators don't meet themselves
-    end
+    -- creators DO meet themselves (being in a server with the creator includes
+    -- being the creator) — Jason's call, and it makes the mechanic solo-testable
     local dataService = self:_svc("DataService")
     if not (dataService and dataService:IsDataLoaded(player)) then
         return
@@ -87,7 +86,7 @@ end
 function MeetCreatorService:_scanFor(player)
     for creatorId, def in pairs(self._config.creators or {}) do
         local creatorPlayer = Players:GetPlayerByUserId(tonumber(creatorId))
-        if creatorPlayer and creatorPlayer ~= player then
+        if creatorPlayer then -- including the creator themselves
             self:_tryMeet(player, creatorId, def)
         end
     end
@@ -141,27 +140,26 @@ function MeetCreatorService:HatchEggItem(player, eggItemId)
     if not rec or (tonumber(rec.quantity) or 0) < 1 then
         return { ok = false, reason = "no_egg" }
     end
-    -- roll variant by weight
-    local total = 0
-    for _, w in pairs(def.variants or { basic = 1 }) do
-        total += w
-    end
-    local roll = math.random() * total
-    local variant = "basic"
-    for v, w in pairs(def.variants or { basic = 1 }) do
-        roll -= w
-        if roll <= 0 then
-            variant = v
-            break
-        end
+    -- NORMAL hatch mechanics (Jason): the creator egg is a REAL egg definition in
+    -- configs/pets.lua — simulateHatch runs the standard pipeline (species, the
+    -- golden/rainbow channels WITH the player's luck, and the slim huge chance).
+    local dataService = self:_svc("DataService")
+    local playerData = dataService and dataService:GetData(player)
+    local petsConfig = require(ReplicatedStorage.Configs:WaitForChild("pets"))
+    local okSim, hatch = pcall(function()
+        return petsConfig.simulateHatch(eggItemId, playerData)
+    end)
+    if not okSim or type(hatch) ~= "table" or not hatch.pet then
+        return { ok = false, reason = "hatch_failed" }
     end
     local grantSvc = self:_svc("PetGrantService")
     if not grantSvc then
         return { ok = false, reason = "service_unavailable" }
     end
     local result = grantSvc:GrantPet(player, {
-        petType = def.pet,
-        variant = variant,
+        petType = hatch.pet,
+        variant = hatch.variant,
+        huge = hatch.huge == true,
         quantity = 1,
         source = "creator_egg:" .. eggItemId,
     })
@@ -172,10 +170,11 @@ function MeetCreatorService:HatchEggItem(player, eggItemId)
     self._logger:Info("Creator egg hatched", {
         player = player.Name,
         egg = eggItemId,
-        pet = def.pet,
-        variant = variant,
+        pet = hatch.pet,
+        variant = hatch.variant,
+        huge = hatch.huge == true,
     })
-    return { ok = true, pet = def.pet, variant = variant }
+    return { ok = true, pet = hatch.pet, variant = hatch.variant, huge = hatch.huge == true }
 end
 
 return MeetCreatorService
