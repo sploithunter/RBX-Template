@@ -15,6 +15,7 @@ This is the living project wiki for the RBX Template pet/clicker game. It follow
 - [Map Integration Contract](MAP_INTEGRATION_CONTRACT.md) — how Rojo systems bind to Studio-authored worlds.
 - [Egg System Plan](EGG_SYSTEM_PLAN.md) — planned hatch modes, auto hatch, multi hatch, animation, and egg config architecture.
 - [Reference Game Insights](REFERENCE_GAME_INSIGHTS.md) — useful ideas from ColorfulClickers.
+- [Emergent Behaviors](EMERGENT_BEHAVIORS.md) — mechanics that fell out of systems interacting (dormant zones, window-shopping locked biomes); recorded so refactors don't "fix" them.
 - [Open Questions](OPEN_QUESTIONS.md) — decisions still pending.
 - [Log](LOG.md) — dated session notes.
 - [Schema](SCHEMA.md) — how to maintain this wiki.
