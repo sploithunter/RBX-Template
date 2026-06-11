@@ -50,6 +50,9 @@ function AdminToolsService:Init()
     Signals.Admin_GrantPet.OnServerEvent:Connect(function(player, data)
         self:_handleGrantPet(player, data)
     end)
+    Signals.Admin_RetirePet.OnServerEvent:Connect(function(player, data)
+        self:_handleRetirePet(player, data)
+    end)
 
     Signals.Admin_ResetPets.OnServerEvent:Connect(function(player, data)
         self:_handleResetPets(player, data)
@@ -749,6 +752,48 @@ function AdminToolsService:_handleForceSave(adminPlayer, data)
         message = ok and ("Force save requested for " .. targetPlayer.Name)
             or ("Force save failed for " .. targetPlayer.Name),
         snapshot = self:_buildSnapshot(targetPlayer),
+    })
+end
+
+-- Remove a single pet RECORD by uid (admin tooling — e.g. retiring a mis-granted
+-- special). Deliberately works on specials too: this is the scalpel the reset's
+-- huge-guard intentionally refuses to be.
+function AdminToolsService:_handleRetirePet(adminPlayer, data)
+    local targetPlayer, errorMessage = self:_resolveTarget(adminPlayer, "giveItems", data)
+    if not targetPlayer then
+        self:_sendResult(
+            adminPlayer,
+            { kind = "retire_pet", success = false, message = errorMessage }
+        )
+        return
+    end
+    local uid = type(data) == "table" and tostring(data.uid or "") or ""
+    local playerData = self._dataService:GetData(targetPlayer)
+    local pets = playerData and playerData.Inventory and playerData.Inventory.pets
+    local rec = pets and pets.items and pets.items[uid]
+    if not rec then
+        self:_sendResult(
+            adminPlayer,
+            { kind = "retire_pet", success = false, message = "No pet record: " .. uid }
+        )
+        return
+    end
+    pets.items[uid] = nil
+    pets.used_slots = math.max(0, (pets.used_slots or 1) - 1)
+    self._dataService:RequestSave(targetPlayer, "admin_retire_pet", { critical = true })
+    pcall(function()
+        self._inventoryService:_updateBucketFolders(targetPlayer, "pets")
+    end)
+    self._logger:Warn("Admin retired pet record", {
+        admin = adminPlayer.Name,
+        target = targetPlayer.Name,
+        uid = uid,
+        id = rec.id,
+    })
+    self:_sendResult(adminPlayer, {
+        kind = "retire_pet",
+        success = true,
+        message = ("Retired %s (%s) from %s"):format(uid, tostring(rec.id), targetPlayer.Name),
     })
 end
 

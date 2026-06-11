@@ -26,6 +26,7 @@ local Signals = {
     Admin_GetPlayerSnapshot = Net:RemoteEvent("Admin_GetPlayerSnapshot"), -- c->s admin player state request
     Admin_ForceSave = Net:RemoteEvent("Admin_ForceSave"), -- c->s admin force save
     Admin_GrantPet = Net:RemoteEvent("Admin_GrantPet"), -- c->s admin grant configured pet
+    Admin_RetirePet = Net:RemoteEvent("Admin_RetirePet"), -- c->s admin remove a pet record by uid
     Admin_ResetPets = Net:RemoteEvent("Admin_ResetPets"), -- c->s admin wipe a player's pet inventory + equips
     Admin_ResetToBeginning = Net:RemoteEvent("Admin_ResetToBeginning"), -- c->s admin reset profile to start (KEEP huge pets); pass {dryRun=true} to preview
     Admin_SetZoneLock = Net:RemoteEvent("Admin_SetZoneLock"), -- c->s admin lock/unlock configured zone
