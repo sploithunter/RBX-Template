@@ -38,6 +38,13 @@ return {
             pile = "rbxassetid://106846660303472",
             bag = "rbxassetid://96892408129617",
         },
+        -- PREMIUM gems (the `gems` currency — bonus drops, not biome coins): Jason's
+        -- amethyst art (Jun 11), purple = premium/generic.
+        amethyst = {
+            single = "rbxassetid://97110236926395",
+            pile = "rbxassetid://115584169887230",
+            bag = "rbxassetid://122020476621862",
+        },
     },
 
     -- Internal PointLight tint per color (the glow inside each gem).
@@ -46,6 +53,7 @@ return {
         emerald = { 80, 230, 90 },
         ruby = { 235, 45, 95 },
         citrine = { 245, 185, 45 },
+        amethyst = { 170, 90, 255 },
     },
 
     -- Biome currency -> gem color (ice=sapphire, grass/earth=emerald, lava=ruby, desert=citrine).
@@ -58,6 +66,7 @@ return {
         desert_coins = "citrine",
         beach_coins = "citrine",
         coins = "emerald",
+        gems = "amethyst", -- premium currency drops (crystal-break bonus roll) read as amethyst
     },
     default_color = "emerald",
 

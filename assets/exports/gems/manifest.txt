@@ -12,3 +12,6 @@ ruby_gem_single	ruby_gem_single_3500tris.fbx	2610 tris	ruby_gem_single.png
 sapphire_gem_bag	sapphire_gem_bag_3500tris.fbx	3499 tris	sapphire_gem_bag.png
 sapphire_gem_pile	sapphire_gem_pile_3500tris.fbx	3500 tris	sapphire_gem_pile.png
 sapphire_gem_single	sapphire_gem_single_3500tris.fbx	2610 tris	sapphire_gem_single.png
+amethyst_gem_bag	amethyst_gem_bag.obj	9777 tris (source)	amethyst_gem_bag.png	decimation pending
+amethyst_gem_pile	amethyst_gem_pile.obj	6076 tris (source)	amethyst_gem_pile.png	decimation pending
+amethyst_gem_single	amethyst_gem_single.obj	2610 tris (source)	amethyst_gem_single.png	decimation pending
