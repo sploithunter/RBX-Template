@@ -1244,13 +1244,17 @@ local petConfig = {
         -- Luck system configuration
         base_luck = 1.0, -- Default luck multiplier
         max_luck = 100.0, -- Maximum luck value achievable
-        -- Luck progression CURVES (Jason: no hard caps — "get a good curve to start").
-        -- Each term adds `per_doubling` every time the count doubles past
-        -- `first_bonus_at`: the first +per_doubling lands AT first_bonus_at, the next
-        -- at 2x, then 4x... Early progress is felt, late progress never runs away
-        -- (the old linear 0.01/hatch hit +5 at the Egg Baron quest's 500 alone).
+        -- Luck progression (Jason: no hard caps, no runaway terms).
+        -- LEVEL: diminishing-doubling curve — +per_doubling each time the level
+        -- doubles past first_bonus_at (log2; bounded by the level cap anyway).
         level_luck = { per_doubling = 0.5, first_bonus_at = 3 },
-        hatched_luck = { per_doubling = 0.35, first_bonus_at = 25 },
+        -- COLLECTION (replaces the old per-hatch volume term, which a parked 24/7
+        -- auto-hatcher farmed for free): bonus = max_bonus x the fraction of the
+        -- OBTAINABLE pet index discovered (species x variants + huges — from
+        -- PetIndexService:GetCompletion, fed in as playerData.indexCompletion).
+        -- 100% collection = the full bonus: a natural cap that grows with content;
+        -- volume-hatching pets you already found earns nothing.
+        index_luck = { max_bonus = 2.0 },
 
         -- VIP benefits
         vip_luck_bonus = 1.5, -- 1.5x luck for VIP players
@@ -1914,7 +1918,13 @@ function petConfig.simulateHatch(eggType, playerData)
 
     local luckMultiplier = gamepassMods.base_luck
     luckMultiplier = luckMultiplier + curveBonus(playerData.level, gamepassMods.level_luck)
-    luckMultiplier = luckMultiplier + curveBonus(playerData.petsHatched, gamepassMods.hatched_luck)
+    -- collection completion (0..1 from the pet index, fed by EggService) x weight —
+    -- naturally capped at max_bonus when the whole obtainable index is discovered
+    local indexLuck = gamepassMods.index_luck
+    if indexLuck then
+        local completion = math.clamp(tonumber(playerData.indexCompletion) or 0, 0, 1)
+        luckMultiplier = luckMultiplier + (tonumber(indexLuck.max_bonus) or 0) * completion
+    end
     if playerData.luckBoost then
         luckMultiplier = luckMultiplier + playerData.luckBoost
     end
@@ -2115,7 +2125,7 @@ end
 function petConfig.testHatching()
     local playerData = {
         level = 10,
-        petsHatched = 25,
+        indexCompletion = 0.25,
         hasLuckGamepass = true,
         hasGoldenGamepass = false,
         hasRainbowGamepass = false,

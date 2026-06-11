@@ -7,8 +7,16 @@ local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local PetIndexService = {}
 PetIndexService.__index = PetIndexService
 
-local function petKey(petId, variant)
-    return tostring(petId) .. ":" .. tostring(variant or "basic")
+-- Huge pets are their own index entries (Jason: the collection denominator counts
+-- "all variants ... huges and exclusives included"), so a huge bear is a separate
+-- discovery from a basic bear. Pre-huge-aware discoveries (plain id:variant keys)
+-- stay valid — they just count as the non-huge entry.
+local function petKey(petId, variant, huge)
+    local key = tostring(petId) .. ":" .. tostring(variant or "basic")
+    if huge == true then
+        key = key .. ":huge"
+    end
+    return key
 end
 
 local function countMapEntries(map)
@@ -127,7 +135,8 @@ function PetIndexService:RecordPetObtained(player, petData)
     end
 
     local variant = petData.variant or self._config.default_variant or "basic"
-    local key = petKey(petData.id, variant)
+    local huge = petData.huge == true
+    local key = petKey(petData.id, variant, huge)
     local index = self:_ensureIndex(data)
     local entry = index.Discovered[key]
     local isNew = entry == nil
@@ -136,6 +145,7 @@ function PetIndexService:RecordPetObtained(player, petData)
         index.Discovered[key] = {
             id = petData.id,
             variant = variant,
+            huge = huge or nil,
             discovered_at = os.time(),
         }
     end
@@ -164,14 +174,69 @@ function PetIndexService:RecordPetObtained(player, petData)
     }
 end
 
-function PetIndexService:_countConfiguredPets()
-    local total = 0
-    for _, pet in pairs(self._petsConfig.pets or {}) do
-        for _ in pairs(pet.variants or {}) do
-            total += 1
+-- The collection DENOMINATOR: every entry a player can actually obtain, derived
+-- from the egg defs (not the raw pets table, which includes unobtainable entries
+-- like the creator-class pet). For each egg: its species x the variants its rolls
+-- allow, plus a separate huge entry per huge-capable species. Adding an egg or a
+-- species to a config grows the denominator automatically. Cached per boot.
+function PetIndexService:_countObtainable()
+    if self._obtainableTotal then
+        return self._obtainableTotal
+    end
+    local entries = {}
+    for _, egg in pairs(self._petsConfig.egg_sources or {}) do
+        local vr = egg.variant_rolls or {}
+        local allowed = {}
+        if vr.enabled == false then
+            allowed = { "basic" }
+        else
+            local noBasic = egg.rarity_rates and egg.rarity_rates.no_basic_variants
+            if vr.allow_basic ~= false and not noBasic then
+                table.insert(allowed, "basic")
+            end
+            if vr.allow_golden ~= false then
+                table.insert(allowed, "golden")
+            end
+            if vr.allow_rainbow ~= false then
+                table.insert(allowed, "rainbow")
+            end
+        end
+        for petId in pairs(egg.pet_weights or {}) do
+            for _, v in ipairs(allowed) do
+                entries[petKey(petId, v, false)] = true
+            end
+        end
+        local huge = egg.huge
+        if huge and (tonumber(huge.chance) or 0) > 0 then
+            for petId in pairs(huge.pets or {}) do
+                entries[petKey(petId, "basic", true)] = true
+            end
         end
     end
-    return total
+    local total = 0
+    for _ in pairs(entries) do
+        total += 1
+    end
+    self._obtainableTotal = math.max(total, 1)
+    return self._obtainableTotal
+end
+
+-- Collection completion (0..1) — the input to hatch luck (configs/pets.lua
+-- index_luck): discovered entries over obtainable entries. A natural cap: 100%
+-- collection = the full configured bonus, and parking on one egg stops paying
+-- the moment its entries are found.
+function PetIndexService:GetCompletion(player)
+    local total = self:_countObtainable()
+    local data = self._dataService:GetData(player)
+    local count = 0
+    if data then
+        count = countMapEntries(self:_ensureIndex(data).Discovered)
+    end
+    return {
+        count = count,
+        total = total,
+        fraction = math.clamp(count / total, 0, 1),
+    }
 end
 
 function PetIndexService:GetIndex(player)
@@ -179,7 +244,7 @@ function PetIndexService:GetIndex(player)
     if not data then
         return {
             count = 0,
-            total = self:_countConfiguredPets(),
+            total = self:_countObtainable(),
             discovered = {},
             milestones = {},
         }
@@ -188,7 +253,7 @@ function PetIndexService:GetIndex(player)
     local index = self:_ensureIndex(data)
     return {
         count = countMapEntries(index.Discovered),
-        total = self:_countConfiguredPets(),
+        total = self:_countObtainable(),
         discovered = index.Discovered,
         milestones = index.Milestones,
     }

@@ -749,9 +749,22 @@ function EggService:ResolveHatchOptions(_player, request, entitlements)
 end
 
 function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
+    -- Collection-completion luck input (Jason: "not raw count — index"): fraction
+    -- of obtainable index entries discovered. Parking on one egg stops paying luck
+    -- once its entries are found; collection breadth is the only way up.
+    local indexCompletion = 0
+    if self._petIndexService and self._petIndexService.GetCompletion then
+        local ok, completion = pcall(function()
+            return self._petIndexService:GetCompletion(player)
+        end)
+        if ok and type(completion) == "table" then
+            indexCompletion = tonumber(completion.fraction) or 0
+        end
+    end
+
     local playerData = {
         level = player:GetAttribute("Level") or 1,
-        petsHatched = player:GetAttribute("PetsHatched") or 0,
+        indexCompletion = indexCompletion,
         hasLuckGamepass = false,
         hasGoldenGamepass = false,
         hasRainbowGamepass = false,
@@ -1457,6 +1470,7 @@ function EggService:Initialize(moduleLoader)
         self._modifierService = moduleLoader:Get("ModifierService")
         self._autoTargetService = moduleLoader:Get("AutoTargetService")
         self._hatchEntitlementService = moduleLoader:Get("HatchEntitlementService")
+        self._petIndexService = moduleLoader:Get("PetIndexService")
 
         if self._inventoryService then
             Logger:Info("EggService: InventoryService connection established")
