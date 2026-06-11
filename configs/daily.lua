@@ -10,13 +10,18 @@
 return {
     max_gap_days = 1,
     cycle_length = 7,
+    -- Denominated in the LIVE economy (Jason: legacy 100-coins / 5-crystals predated
+    -- the per-zone coin system and read as noise). Yardsticks: one small ore break
+    -- pays ~20, Meadow unlock = 2000 crystals (~3 min of mining). Each day gifts a
+    -- few minutes of progress; day 4 = exactly one Meadow unlock; day 7 stays the
+    -- golden-bear streak payoff. Gems keep their shop sinks.
     calendar = {
-        [1] = { currencies = { coins = 100 } },
-        [2] = { currencies = { coins = 250 } },
-        [3] = { currencies = { crystals = 5 } },
-        [4] = { currencies = { coins = 500 } },
-        [5] = { currencies = { gems = 2 } },
-        [6] = { currencies = { crystals = 10 } },
+        [1] = { currencies = { crystals = 500 } },
+        [2] = { currencies = { crystals = 1000 } },
+        [3] = { currencies = { gems = 2 } },
+        [4] = { currencies = { crystals = 2000 } },
+        [5] = { currencies = { gems = 5 } },
+        [6] = { currencies = { crystals = 4000 } },
         [7] = { pets = { { id = "bear", variant = "golden" } } },
     },
 }
