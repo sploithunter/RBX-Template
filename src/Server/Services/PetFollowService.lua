@@ -94,12 +94,14 @@ function PetFollowService:_preloadFxAssets()
         folder.Parent = ReplicatedStorage
     end
     local InsertService = game:GetService("InsertService")
+
+    local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
     for id in pairs(ids) do
         local name = tostring(id)
         if not folder:FindFirstChild(name) then
             task.spawn(function()
                 local ok, container = pcall(function()
-                    return InsertService:LoadAsset(id)
+                    return AssetFetch.load(id)
                 end)
                 if ok and container then
                     local part = container:FindFirstChildWhichIsA("BasePart", true)

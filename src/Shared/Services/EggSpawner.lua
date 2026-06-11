@@ -17,6 +17,8 @@ local TweenService = game:GetService("TweenService")
 local InsertService = game:GetService("InsertService")
 local CollectionService = game:GetService("CollectionService")
 
+local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
+
 -- Dependencies
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local Logger
@@ -69,7 +71,7 @@ local function loadEggTemplateFromAsset(eggType, eggData)
     end
 
     local success, eggAsset = pcall(function()
-        return InsertService:LoadAsset(tonumber(cleanId))
+        return AssetFetch.load(tonumber(cleanId))
     end)
 
     if not success or not eggAsset then

@@ -17,6 +17,7 @@
 local EggPetPreviewService = {}
 
 local RunService = game:GetService("RunService")
+local AssetFetch = require(game:GetService("ReplicatedStorage").Shared.Utils.AssetFetch)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -696,7 +697,7 @@ function EggPetPreviewService:Load3DPetModel(assetId, viewport, camera, petType,
                     }
                 )
 
-                local loadedAsset = InsertService:LoadAsset(tonumber(cleanId))
+                local loadedAsset = AssetFetch.load(tonumber(cleanId))
                 if not loadedAsset then
                     error("Failed to load asset: " .. cleanId)
                 end
@@ -931,6 +932,8 @@ end
 -- Get UI display method based on user preferences + configuration
 function EggPetPreviewService:GetDisplayMethod(context)
     local Players = game:GetService("Players")
+
+    local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
     local player = Players.LocalPlayer
 
     if not player then

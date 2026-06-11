@@ -19,6 +19,8 @@ local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local RunService = game:GetService("RunService")
 local InsertService = game:GetService("InsertService")
 
+local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
+
 local SummonService = {}
 SummonService.__index = SummonService
 
@@ -70,7 +72,7 @@ function SummonService:_buildModel(player, gkind, gcfg)
     local assetId = self._config.model_asset and self._config.model_asset[gkind]
     if assetId then
         local ok, loaded = pcall(function()
-            return InsertService:LoadAsset(assetId)
+            return AssetFetch.load(assetId)
         end)
         if ok and loaded then
             model = loaded:FindFirstChildWhichIsA("Model") or loaded

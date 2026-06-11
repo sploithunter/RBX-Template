@@ -26,6 +26,8 @@ local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local Debris = game:GetService("Debris")
 
+local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
+
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
 local AggroTable = require(ReplicatedStorage.Shared.Game.AggroTable)
@@ -157,7 +159,7 @@ function EnemyService:_enemyTemplate(assetId, needsPrimaryPart)
     end
 
     local ok, container = pcall(function()
-        return InsertService:LoadAsset(assetId)
+        return AssetFetch.load(assetId)
     end)
     local template
     if ok and container then

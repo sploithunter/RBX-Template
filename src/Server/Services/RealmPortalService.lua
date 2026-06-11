@@ -121,8 +121,10 @@ function RealmPortalService:_preloadHellFace()
         return
     end
     local InsertService = game:GetService("InsertService")
+
+    local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
     local ok, container = pcall(function()
-        return InsertService:LoadAsset(cfg.model_asset_id)
+        return AssetFetch.load(cfg.model_asset_id)
     end)
     if not ok or not container then
         if self._logger then

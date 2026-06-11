@@ -17,6 +17,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local AssetFetch = require(game:GetService("ReplicatedStorage").Shared.Utils.AssetFetch)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -2347,7 +2348,7 @@ function InventoryPanel:_load3DPetModel(viewport, camera, item)
                 if assetId and assetId ~= "rbxassetid://0" then
                     local assetNumber = tonumber(assetId:match("%d+"))
                     if assetNumber then
-                        local asset = InsertService:LoadAsset(assetNumber)
+                        local asset = AssetFetch.load(assetNumber)
                         modelClone = asset:FindFirstChildOfClass("Model")
                         if modelClone then
                             modelClone = modelClone:Clone()
@@ -3979,6 +3980,8 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
 
     -- Global right-click detection (but only act if over this frame)
     local userInputService = game:GetService("UserInputService")
+
+    local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
     local rightClickConnection = userInputService.InputBegan:Connect(function(input, gameProcessed)
         -- print("🔍 RIGHT CLICK INPUT:", input.UserInputType, "gameProcessed:", gameProcessed, "isMouseOver:", isMouseOverFrame, "for item:", item.id)
 

@@ -18,6 +18,8 @@ AssetPreloadService.__index = AssetPreloadService
 
 local InsertService = game:GetService("InsertService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
 local PetVariantVisuals = require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
 
 -- Service dependencies (injected)
@@ -802,7 +804,7 @@ function AssetPreloadService:LoadModelIntoFolder(
             cleanId = cleanId,
         })
 
-        local loadedAsset = InsertService:LoadAsset(tonumber(cleanId))
+        local loadedAsset = AssetFetch.load(tonumber(cleanId))
         if not loadedAsset then
             error("Failed to load asset: " .. cleanId)
         end
