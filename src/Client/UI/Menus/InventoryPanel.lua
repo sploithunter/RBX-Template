@@ -614,6 +614,23 @@ function InventoryPanel:Hide()
         return
     end
 
+    -- per-card right-click listeners are GLOBAL UIS connections — without this they
+    -- outlive the panel and right-click steering spawns orphan context menus
+    if self._rightClickConnections then
+        for _, connection in pairs(self._rightClickConnections) do
+            if connection then
+                connection:Disconnect()
+            end
+        end
+        self._rightClickConnections = {}
+    end
+    local pg = Players.LocalPlayer:FindFirstChild("PlayerGui")
+    for _, gui in ipairs(pg and pg:GetChildren() or {}) do
+        if gui.Name == "ContextMenuGui" then
+            gui:Destroy()
+        end
+    end
+
     if self.frame then
         self.frame:Destroy()
         self.frame = nil
@@ -4057,7 +4074,10 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
         end
 
         -- right-click debug removed (noisy)
-        if isMouseOverFrame then
+        -- self.isVisible guard: closing the panel UNDER the cursor (the hatch-confirm
+        -- flow does exactly this) leaves isMouseOverFrame stuck true with this UIS
+        -- connection alive — every steering right-click then spawned orphan menus.
+        if isMouseOverFrame and self.isVisible and itemFrame.Parent then
             print("🖱️ RIGHT CLICK DETECTED ON:", item.id)
             local mouse = Players.LocalPlayer:GetMouse()
             self.logger:info(
