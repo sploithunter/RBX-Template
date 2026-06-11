@@ -83,6 +83,20 @@ function PetPower.resolveProfile(input)
     local function cap(x)
         return math.min(x, maxPower)
     end
+    -- CREATOR pets ARE the apex (Jason): pinned to max_pet_power — nothing can ever
+    -- be stronger, and the ceiling doubles as the top anchor of the whole curve.
+    if input.creator == true then
+        local apex = num(input.maxPower, math.huge)
+        return {
+            base = apex,
+            intrinsicCommon = apex,
+            miningBase = apex,
+            combatBase = apex,
+            contextMult = 1,
+            miningEffective = apex,
+            combatEffective = apex,
+        }
+    end
     -- shinyMult: the 5th pet axis — a flat cosmetic multiplier, power-neutral by default (1.0).
     local base = num(input.base, 0) * num(input.baseScale, 1)
     local intrinsicCommon = base

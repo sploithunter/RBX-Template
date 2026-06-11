@@ -210,6 +210,7 @@ local TEST_CATEGORIES = {
             { name = "👑 Grant Golden Colorado", action = "grant_colorado_golden" },
             { name = "🌈 Grant Rainbow Colorado", action = "grant_colorado_rainbow" },
             { name = "⬆ Grant Huge Rainbow Colorado", action = "grant_colorado_huge" },
+            { name = "👑 Grant CREATOR Colorado (apex)", action = "grant_colorado_creator" },
             { name = "🗺️ Toggle Meadow Lock", action = "toggle_zone_meadow" },
             { name = "🗺️ Lock Meadow", action = "lock_zone_meadow" },
             { name = "🗺️ Unlock Meadow", action = "unlock_zone_meadow" },
@@ -1424,6 +1425,14 @@ function AdminPanel:_executePetGrantAction(action)
             variant = "rainbow",
             quantity = 1,
             huge = true,
+        },
+        -- the APEX: dev-only, untradeable, pinned to max_pet_power (own serial chain)
+        grant_colorado_creator = {
+            petType = "colorado",
+            variant = "rainbow",
+            quantity = 1,
+            huge = true,
+            creator = true,
         },
     }
 

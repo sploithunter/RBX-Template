@@ -3156,6 +3156,7 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
                 base = item.power,
                 petType = item.petType,
                 variant = item.variant,
+                creator = item.creator == true, -- apex pins to max_pet_power
             })
         end)
         if okProfile and profile then

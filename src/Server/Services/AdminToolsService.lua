@@ -759,6 +759,7 @@ function AdminToolsService:_parseGrantData(data)
     local quantity = math.clamp(math.floor(tonumber(data.quantity) or 1), 1, 99)
     local traits = {
         huge = data.huge == true,
+        creator = data.creator == true,
     }
 
     return petType, variant, quantity, traits
@@ -790,6 +791,7 @@ function AdminToolsService:_handleGrantPet(adminPlayer, data)
         variant = variant,
         quantity = traits.huge and 1 or quantity,
         huge = traits.huge,
+        creator = traits.creator,
         source = "admin_grant_pet",
     })
     if not result.ok then

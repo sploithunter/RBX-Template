@@ -113,6 +113,7 @@ function PetGrantService:_normalizeGrant(request)
         variant = tostring(request.variant or "basic"):lower(),
         quantity = math.clamp(math.floor(tonumber(request.quantity) or 1), 1, 99),
         huge = request.huge == true,
+        creator = request.creator == true,
         locked = request.locked,
         nickname = request.nickname,
         source = request.source or "pet_grant",
@@ -136,7 +137,9 @@ function PetGrantService:BuildPetData(request, player)
         level = 1,
         exp = 0,
         nickname = grant.nickname or "",
-        locked = grant.locked ~= nil and grant.locked == true or grant.huge == true,
+        -- creator pets are ALWAYS locked (untradeable apex — Jason)
+        locked = grant.creator
+            or (grant.locked ~= nil and grant.locked == true or grant.huge == true),
         grant_source = grant.source,
     }
 
@@ -159,21 +162,26 @@ function PetGrantService:BuildPetData(request, player)
         petData.eternal_percent = tonumber(petConfig.eternal.power_percent) or 0
     end
 
-    if grant.huge then
+    if grant.huge or grant.creator then
+        -- CREATOR pets serialize in their OWN chain (creator:<pet>:<variant>) — the
+        -- apex ledger is separate from natural huges, so a wild-hatched huge
+        -- colorado (slim odds, NOT a creator pet) numbers independently.
+        local serialType = grant.creator and "creator" or "huge"
         local serial, serialInfo =
-            self._petSerialService:NextHugeSerial(grant.petType, grant.variant)
+            self._petSerialService:NextSerial(serialType, grant.petType, grant.variant)
         if not serial then
             return nil,
-                "Failed to allocate huge serial: " .. tostring(
+                "Failed to allocate " .. serialType .. " serial: " .. tostring(
                     serialInfo and serialInfo.error or "unknown"
                 )
         end
 
-        petData.huge = true
+        petData.huge = grant.huge == true
+        petData.creator = grant.creator == true or nil
         petData.serial = serial
         petData.serial_key = serialInfo.key
         petData.serial_source = serialInfo.source
-        petData.rarity_id = "huge"
+        petData.rarity_id = grant.creator and "creator" or "huge"
     end
 
     self:_applyEnchantDefaults(petData)

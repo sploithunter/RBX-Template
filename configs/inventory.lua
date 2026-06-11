@@ -33,7 +33,7 @@ return {
             stack_key_fields = { "id", "variant" },
             count_stacks_as_single = true, -- one display/used slot per kind (commons) + per special
             max_stack_size = 99999,
-            special_rarities = { "mythic", "secret", "exclusive", "huge" },
+            special_rarities = { "mythic", "secret", "exclusive", "huge", "creator" },
             equip_individualization = "equipped_layer", -- equip is tracked in Equipped.pets, not the stack
 
             -- Limit extensions via gamepasses

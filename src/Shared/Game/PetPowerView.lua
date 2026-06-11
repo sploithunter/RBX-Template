@@ -76,6 +76,7 @@ function PetPowerView.profile(input)
     local shinyMult = input.shiny and (tonumber(power.shiny_mult) or 1) or 1
 
     return PetPower.resolveProfile({
+        creator = input.creator == true, -- apex pin: resolves straight to maxPower
         base = input.base,
         baseScale = tonumber(power.base_scale) or 1,
         elementMult = elemMult,
