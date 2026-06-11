@@ -1280,7 +1280,7 @@ end
 
 -- Heal aura (Grass / bunny): mend the most-hurt non-downed ally in the squad — reduce its
 -- accumulated CombatDamageTaken. The squad healer keeps the tank up.
-function EnemyService:_auraHeal(folder, heal)
+function EnemyService:_auraHeal(folder, heal, vmult)
     local factor = self._combatConfig.pet_down_threshold_factor or 1
     local target, worst
     for _, ally in ipairs(folder:GetChildren()) do
@@ -1298,6 +1298,7 @@ function EnemyService:_auraHeal(folder, heal)
     -- — or a flat `amount` if configured instead.
     local pool = PetEndurance.maxEndurance(self:_petPower(target), factor)
     local healAmt = heal.fraction and (pool * heal.fraction) or (heal.amount or 0)
+    healAmt = healAmt * (tonumber(vmult) or 1) -- variant-scaled (golden/rainbow mend more)
     local newTaken = math.max(0, (target:GetAttribute("CombatDamageTaken") or 0) - healAmt)
     target:SetAttribute("CombatDamageTaken", newTaken)
     if newTaken <= 0 then
@@ -1324,8 +1325,9 @@ end
 
 -- Defense aura (Ice / penguin): a short-lived TeamDefenseBuff on EVERY ally. Consumed in
 -- _hitPet, added on the armor curve (separate from a power's DefenseBuff, so they stack).
-function EnemyService:_auraDefense(folder, aura, count)
-    local amount = (tonumber(aura.amount) or 0) * (count or 1) -- N penguins stack defense
+function EnemyService:_auraDefense(folder, aura, count, weight)
+    -- weight = variant-scaled buffer units (falls back to count for callers without it)
+    local amount = (tonumber(aura.amount) or 0) * (weight or count or 1)
     local until_ = os.time() + (tonumber(aura.duration) or 3)
     for _, ally in ipairs(folder:GetChildren()) do
         if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
@@ -1339,15 +1341,15 @@ end
 -- A team player-attribute buff (Lava offense -> PetTeamDamageBuff in _mine; Desert yield ->
 -- CoinYieldBuff in BreakableSpawner). Short-lived + refreshed each interval, on a channel
 -- separate from Powers so an aura stacks with an activated power buff.
-function EnemyService:_auraPlayerBuff(folder, attr, aura, count)
+function EnemyService:_auraPlayerBuff(folder, attr, aura, count, weight)
     local owner = Players:FindFirstChild(folder.Name)
     if not owner then
         return
     end
-    -- Stored as a multiplier; each buffer contributes (mult - 1), so N buffers STACK additively
-    -- (2 meerkats @1.25 => 1 + 0.25*2 = x1.5). The consumer sums this with any power on the same
-    -- axis via BuffStack, clamped to the axis cap.
-    local frac = ((tonumber(aura.mult) or 1) - 1) * (count or 1)
+    -- Stored as a multiplier; each buffer contributes (mult - 1) x its VARIANT multiplier
+    -- (weight = sum of variant units), so buffers stack additively and a rainbow counts
+    -- 1.5x a basic. The consumer sums this with same-axis powers via BuffStack (axis cap).
+    local frac = ((tonumber(aura.mult) or 1) - 1) * (weight or count or 1)
     owner:SetAttribute(attr, 1 + frac)
     owner:SetAttribute(attr .. "Until", os.time() + (tonumber(aura.duration) or 3))
     -- the PLAYER is the buffed entity — surface how many buffers contribute (Jason:
@@ -1381,12 +1383,17 @@ function EnemyService:_supportPass(now)
     for _, folder in ipairs(playerPets:GetChildren()) do
         -- Count live buffers of each kind so multiple buffers of the same kind STACK additively
         -- (2 meerkats => 2x the coin-yield contribution, clamped by the axis cap downstream).
-        local counts, rep = {}, {}
+        -- count = # contributing buffers (badge piles); weight = variant-scaled units
+        -- (basic 1.0 / golden 1.25 / rainbow 1.5 — the math multiplier downstream)
+        local vmults = self._petRoles and self._petRoles.variant_effect_multipliers or {}
+        local counts, weights, rep = {}, {}, {}
         for _, pet in ipairs(folder:GetChildren()) do
             if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
+                local vmult = tonumber(vmults[pet:GetAttribute("PetVariant")]) or 1
                 for _, aura in ipairs(self:_petAuras(pet) or {}) do
                     if aura.kind then
                         counts[aura.kind] = (counts[aura.kind] or 0) + 1
+                        weights[aura.kind] = (weights[aura.kind] or 0) + vmult
                         rep[aura.kind] = rep[aura.kind] or aura
                     end
                 end
@@ -1399,19 +1406,20 @@ function EnemyService:_supportPass(now)
         end
         for kind, count in pairs(counts) do
             local aura = rep[kind]
+            local weight = weights[kind] or count
             if not gate[kind] or now >= gate[kind] then
                 gate[kind] = now + (aura.interval or 1.5)
                 if kind == "heal" then
-                    for _ = 1, count do -- N healers => N mends
-                        self:_auraHeal(folder, aura)
+                    for _ = 1, count do -- N healers => N mends (variant scales each mend)
+                        self:_auraHeal(folder, aura, weight / count)
                     end
                 elseif kind == "defense" then
-                    self:_auraDefense(folder, aura, count)
+                    self:_auraDefense(folder, aura, count, weight)
                 elseif kind == "offense" then
-                    self:_auraPlayerBuff(folder, "PetTeamDamageBuff", aura, count)
+                    self:_auraPlayerBuff(folder, "PetTeamDamageBuff", aura, count, weight)
                     self:_stampAuraFx(folder, "OffenseFxUntil", aura, count)
                 elseif kind == "yield" then
-                    self:_auraPlayerBuff(folder, "CoinYieldBuff", aura, count)
+                    self:_auraPlayerBuff(folder, "CoinYieldBuff", aura, count, weight)
                     self:_stampAuraFx(folder, "YieldFxUntil", aura, count)
                 elseif kind == "buff" then
                     -- GENERIC aura (Jason: "keep it configurable and flexible") — the
@@ -1426,7 +1434,7 @@ function EnemyService:_supportPass(now)
                     local target = aura.target or "player"
                     local until_ = os.time() + (tonumber(aura.duration) or 3)
                     if aura.attr and (target == "player" or target == "both") then
-                        self:_auraPlayerBuff(folder, aura.attr, aura, count)
+                        self:_auraPlayerBuff(folder, aura.attr, aura, count, weight)
                     end
                     if aura.attr and (target == "pets" or target == "both") then
                         for _, ally in ipairs(folder:GetChildren()) do
@@ -1457,7 +1465,7 @@ function EnemyService:_supportPass(now)
                     -- stamping the whole squad implied the PETS were lucky (Jason:
                     -- "luck should be given to the player"). The player-side tells are
                     -- the green clover bar badge + the Active Buffs Luck row.
-                    self:_auraPlayerBuff(folder, "HatchLuckBuff", aura, count)
+                    self:_auraPlayerBuff(folder, "HatchLuckBuff", aura, count, weight)
                     local until_ = os.time() + (tonumber(aura.duration) or 3)
                     for _, ally in ipairs(folder:GetChildren()) do
                         if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then

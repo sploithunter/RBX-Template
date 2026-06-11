@@ -54,26 +54,41 @@ return {
         -- Grass: LUCK (Jason: heal was off-theme — lucky rabbit's foot + clover fields).
         -- durations sit WELL above intervals so the continuously-refreshed buffs never
         -- gap between stamps (a 3s window on a 2s tick flickered at the boundary)
-        bunny = { kind = "luck", interval = 2.0, mult = 1.25, duration = 6 },
-        penguin = { kind = "defense", interval = 2.0, amount = 80, duration = 6 }, -- Ice
-        emberimp = { kind = "offense", interval = 2.0, mult = 1.25, duration = 6 }, -- Lava
-        meerkat = { kind = "yield", interval = 2.0, mult = 1.25, duration = 6 }, -- Desert
+        -- BASES REBASED for variant scaling (Jason: "rainbows should hit 25% — adjust
+        -- the base accordingly... give people a reason to roll until they get rainbow
+        -- bunnies"): rainbow (x1.5) lands exactly on the OLD value, so basic +16.7%,
+        -- golden +20.8%, rainbow +25% (and defense ~53/67/80, heal 20%/25%/30%).
+        bunny = { kind = "luck", interval = 2.0, mult = 1.1667, duration = 6 },
+        penguin = { kind = "defense", interval = 2.0, amount = 53.3, duration = 6 }, -- Ice
+        emberimp = { kind = "offense", interval = 2.0, mult = 1.1667, duration = 6 }, -- Lava
+        meerkat = { kind = "yield", interval = 2.0, mult = 1.1667, duration = 6 }, -- Desert
         -- Colorado (meet-egg / wild): TWO buffs, not all — "all" was really meant for
         -- creator testing (Jason). Heal + luck: the creator's gift is lucky and kind,
         -- and neither duplicates a zone buffer's whole identity.
         colorado = {
-            { kind = "heal", interval = 1.5, fraction = 0.3 },
-            { kind = "luck", interval = 2.0, mult = 1.25, duration = 6 },
+            { kind = "heal", interval = 1.5, fraction = 0.2 },
+            { kind = "luck", interval = 2.0, mult = 1.1667, duration = 6 },
         },
         -- The colorado_creator SPECIES (the apex — different pet, same model): every
         -- buffer at once — the creator's testing/scaling tool.
+        -- (the apex is a rainbow record, so x1.5 puts it at the old full values)
         colorado_creator = {
-            { kind = "heal", interval = 1.5, fraction = 0.3 },
-            { kind = "defense", interval = 2.0, amount = 80, duration = 6 },
-            { kind = "offense", interval = 2.0, mult = 1.25, duration = 6 },
-            { kind = "yield", interval = 2.0, mult = 1.25, duration = 6 },
-            { kind = "luck", interval = 2.0, mult = 1.25, duration = 6 },
+            { kind = "heal", interval = 1.5, fraction = 0.2 },
+            { kind = "defense", interval = 2.0, amount = 53.3, duration = 6 },
+            { kind = "offense", interval = 2.0, mult = 1.1667, duration = 6 },
+            { kind = "yield", interval = 2.0, mult = 1.1667, duration = 6 },
+            { kind = "luck", interval = 2.0, mult = 1.1667, duration = 6 },
         },
+    },
+
+    -- VARIANT EFFECT MULTIPLIERS (Jason: "would it make sense for a variant pet to be
+    -- better? ...they give people a reason to roll"): scales aura/effect MAGNITUDE
+    -- only — never duration or recharge (potency is containable, recharge compounds).
+    -- One global knob; PowerModel P7 (pet-cast parity) reuses this same table.
+    variant_effect_multipliers = {
+        basic = 1.0,
+        golden = 1.25,
+        rainbow = 1.5,
     },
 
     -- Role definitions. glyph = placeholder letter (until art exists via `icon`).
