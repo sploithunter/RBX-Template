@@ -1180,7 +1180,12 @@ function DataService:AddCurrency(player, currencyType, amount, source)
     -- lifetime EARNED tally: positive, non-admin grants only (admin testing must not
     -- inflate achievement progress); spending later never subtracts
     local counter = amount and amount > 0 and LIFETIME_COUNTER[currencyType]
-    if counter and not tostring(source or ""):lower():find("admin") then
+    -- EARNED means earned IN THE ENVIRONMENT (Jason): admin grants and TRADES don't
+    -- count toward *_earned_lifetime — achievements/alignment read genuine play.
+    -- The Ledger still records every movement by source, so traded totals stay
+    -- auditable; only the earn counters are source-gated.
+    local src = tostring(source or ""):lower()
+    if counter and not (src:find("admin") or src:find("trade")) then
         local data = self:GetData(player)
         if data and data.Stats and data.Stats.Counters then
             data.Stats.Counters[counter] = (data.Stats.Counters[counter] or 0) + amount
