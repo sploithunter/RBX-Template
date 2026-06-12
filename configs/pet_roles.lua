@@ -160,8 +160,13 @@ return {
             icon = "",
             attack_range = 16,
             standoff = 9,
-            mining_mult = 0.35,
-            combat_mult = 0.35,
+            -- 0.35 -> 0.45 (Jason, 2026-06-12): the rainbow-imp buffer team only beat the
+            -- three-strongest team 202 vs 194 (~4%) — "a little weak". The BODY aptitude is
+            -- the safe lever to sweeten buffers: it's per-pet and linear. The AURA fractions
+            -- stay put because they stack ADDITIVELY across multiple buff pets (BuffStack) —
+            -- raising those raises the multi-buffer ceiling, "we don't want it to get crazy".
+            mining_mult = 0.45,
+            combat_mult = 0.45,
             auto_heal = { interval = 1.5, fraction = 0.3 },
             defense = 10,
         },

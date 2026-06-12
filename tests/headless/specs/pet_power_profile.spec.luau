@@ -15,14 +15,15 @@ return function()
             expect(r.combatEffective).to.equal(10)
         end)
 
-        it("matches the live bear/bunny numbers (tank 0.6 / support 0.35, grass 1.0)", function()
+        it("matches the live bear/bunny numbers (tank 0.6 / support 0.45, grass 1.0)", function()
             -- bear: power 10, tank mining_mult 0.6 -> 6
             local bear = PetPower.resolveProfile({ base = 10, miningMult = 0.6, elementMult = 1.0 })
             expect(bear.miningBase).to.equal(6)
-            -- bunny: power 8, support mining_mult 0.35 -> 2.8
+            -- bunny: power 8, support mining_mult 0.45 -> 3.6 (buffer body sweetened from
+            -- 0.35 — the per-pet linear lever; aura fractions stack additively and stay put)
             local bunny =
-                PetPower.resolveProfile({ base = 8, miningMult = 0.35, elementMult = 1.0 })
-            expect(bunny.miningBase).to.near(2.8, 1e-9)
+                PetPower.resolveProfile({ base = 8, miningMult = 0.45, elementMult = 1.0 })
+            expect(bunny.miningBase).to.near(3.6, 1e-9)
         end)
 
         it("mining and combat diverge when their aptitudes differ (the trade driver)", function()
