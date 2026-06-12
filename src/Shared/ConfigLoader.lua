@@ -3384,20 +3384,24 @@ function ConfigLoader:_validatePetProgressionConfig(config)
     if type(powerScaling) ~= "table" then
         return self:_configError("pet_progression", "power_scaling", "expected table")
     end
-    if powerScaling.type ~= "percent_per_level" then
+    -- normalized_cap (2026-06-12): bonus = max_bonus x (level-1)/(maxLevel-1); only
+    -- the cap is configured. percent_per_level remains valid for the legacy form.
+    if powerScaling.type ~= "percent_per_level" and powerScaling.type ~= "normalized_cap" then
         return self:_configError(
             "pet_progression",
             "power_scaling.type",
-            "expected percent_per_level"
+            "expected percent_per_level or normalized_cap"
         )
     end
-    ok, err = self:_requireNonNegativeNumber(
-        "pet_progression",
-        powerScaling.percent_per_level,
-        "power_scaling.percent_per_level"
-    )
-    if not ok then
-        return ok, err
+    if powerScaling.type == "percent_per_level" then
+        ok, err = self:_requireNonNegativeNumber(
+            "pet_progression",
+            powerScaling.percent_per_level,
+            "power_scaling.percent_per_level"
+        )
+        if not ok then
+            return ok, err
+        end
     end
     ok, err = self:_requireNonNegativeNumber(
         "pet_progression",
