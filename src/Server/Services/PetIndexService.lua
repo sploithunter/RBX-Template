@@ -27,6 +27,25 @@ local function countMapEntries(map)
     return count
 end
 
+-- Variants an egg can roll (shared by the obtainable count and the huge census).
+local function allowedVariants(egg)
+    local vr = egg.variant_rolls or {}
+    if vr.enabled == false then
+        return { "basic" }
+    end
+    local allowed = {}
+    if vr.allow_basic ~= false then
+        table.insert(allowed, "basic")
+    end
+    if vr.allow_golden ~= false then
+        table.insert(allowed, "golden")
+    end
+    if vr.allow_rainbow ~= false then
+        table.insert(allowed, "rainbow")
+    end
+    return allowed
+end
+
 function PetIndexService:Init()
     self._logger = self._modules.Logger
     self._configLoader = self._modules.ConfigLoader
@@ -38,10 +57,100 @@ function PetIndexService:Init()
     self._petsConfig = self._configLoader:LoadConfig("pets")
     self.IndexChanged = Signal.new()
 
+    -- GLOBAL HUGE CENSUS (Jason: "can we peek to see if there is any in existence
+    -- without triggering the counter? ... it's gonna grow and we want to grow
+    -- dynamically" + "if the index updates you basically get a global announcement
+    -- that there's a new huge in the realm"): any_pet huge index entries exist only
+    -- once the FIRST one has been minted ANYWHERE (PeekSerial reads the global
+    -- counter without incrementing). The census fills the set at boot; live growth
+    -- arrives on the PetWorldFirst topic (a same-server publish delivers here too,
+    -- so the minting server uses the SAME path as everyone else — no double banner).
+    self._globalHuges = {}
+    task.delay(5, function()
+        self:_runHugeCensus()
+    end)
+    task.spawn(function()
+        pcall(function()
+            game:GetService("MessagingService"):SubscribeAsync("PetWorldFirst", function(message)
+                local d = message and message.Data
+                if type(d) == "table" and d.t then
+                    self:NotifyWorldFirst(d.t, d.v, d.p, true)
+                end
+            end)
+        end)
+    end)
+
     self._logger:Info("PetIndexService initialized", {
         context = "PetIndexService",
         milestones = #(self._config.milestones or {}),
     })
+end
+
+-- Peek every any_pet huge combo's global serial counter; combos with at least one
+-- mint anywhere enter the obtainable index. Throttled GetAsyncs; lazy denominator
+-- recount after. Combos discovered later (other servers) arrive via PetWorldFirst.
+function PetIndexService:_runHugeCensus()
+    local locator = _G.RBXTemplateServices
+    local ok, serials = pcall(function()
+        return locator and locator:Get("PetSerialService")
+    end)
+    if not (ok and serials and serials.PeekSerial) then
+        return
+    end
+    local grew = false
+    for _, egg in pairs(self._petsConfig.egg_sources or {}) do
+        local huge = egg.huge
+        if huge and (tonumber(huge.chance) or 0) > 0 and huge.any_pet == true then
+            for petId in pairs(egg.pet_weights or {}) do
+                for _, v in ipairs(allowedVariants(egg)) do
+                    local comboKey = petId .. ":" .. v
+                    if not self._globalHuges[comboKey] then
+                        local count = serials:PeekSerial("huge", petId, v)
+                        if (tonumber(count) or 0) > 0 then
+                            self._globalHuges[comboKey] = true
+                            grew = true
+                        end
+                        task.wait(0.1) -- budget the DataStore reads
+                    end
+                end
+            end
+        end
+    end
+    if grew then
+        self._obtainableTotal = nil
+    end
+end
+
+-- A huge species:variant just minted serial #1 SOMEWHERE (this server publishes,
+-- every server's subscriber lands here): grow the index and, when announce is set,
+-- show the realm-wide banner — the index updating IS the global announcement.
+function PetIndexService:NotifyWorldFirst(petType, variant, playerName, announce)
+    local comboKey = tostring(petType) .. ":" .. tostring(variant or "basic")
+    if self._globalHuges[comboKey] then
+        return -- already known (duplicate message / census raced the mint)
+    end
+    self._globalHuges[comboKey] = true
+    self._obtainableTotal = nil -- the realm's index GREW; the denominator recounts lazily
+    if announce ~= true then
+        return
+    end
+    local family = self._petsConfig.pets and self._petsConfig.pets[petType]
+    local display = (family and family.display_name) or tostring(petType)
+    local vLabel = (variant and variant ~= "basic") and (string.upper(tostring(variant)) .. " ")
+        or ""
+    local name = string.format(
+        "🌍 FIRST HUGE %s%s EVER — hatched by %s!",
+        vLabel,
+        string.upper(display),
+        tostring(playerName or "someone")
+    )
+    for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do
+        pcall(fireGameEvent, plr, "huge_world_first", {
+            name = name,
+            petType = petType,
+            variant = variant,
+        })
+    end
 end
 
 function PetIndexService:_ensureIndex(data)
@@ -185,21 +294,7 @@ function PetIndexService:_countObtainable()
     end
     local entries = {}
     for _, egg in pairs(self._petsConfig.egg_sources or {}) do
-        local vr = egg.variant_rolls or {}
-        local allowed = {}
-        if vr.enabled == false then
-            allowed = { "basic" }
-        else
-            if vr.allow_basic ~= false then
-                table.insert(allowed, "basic")
-            end
-            if vr.allow_golden ~= false then
-                table.insert(allowed, "golden")
-            end
-            if vr.allow_rainbow ~= false then
-                table.insert(allowed, "rainbow")
-            end
-        end
+        local allowed = allowedVariants(egg)
         for petId in pairs(egg.pet_weights or {}) do
             for _, v in ipairs(allowed) do
                 entries[petKey(petId, v, false)] = true
@@ -207,8 +302,23 @@ function PetIndexService:_countObtainable()
         end
         local huge = egg.huge
         if huge and (tonumber(huge.chance) or 0) > 0 then
-            for petId in pairs(huge.pets or {}) do
-                entries[petKey(petId, "basic", true)] = true
+            if huge.any_pet == true then
+                -- ORTHOGONAL huges are CENSUS-GATED (Jason): an entry joins the
+                -- obtainable index only once the FIRST one is minted anywhere in
+                -- the realm — the index grows dynamically with global discovery
+                -- (and index-completion luck self-adjusts as it does).
+                for petId in pairs(egg.pet_weights or {}) do
+                    for _, v in ipairs(allowed) do
+                        if self._globalHuges[petId .. ":" .. v] then
+                            entries[petKey(petId, v, true)] = true
+                        end
+                    end
+                end
+            else
+                -- curated lists (colorado meet egg) stay statically obtainable
+                for petId in pairs(huge.pets or {}) do
+                    entries[petKey(petId, "basic", true)] = true
+                end
             end
         end
     end

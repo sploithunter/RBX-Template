@@ -1345,9 +1345,10 @@ local petConfig = {
             description = "Contains all your favorite pets in Basic, Golden, and Rainbow variants!",
             cost = 100,
             currency = "coins",
-            -- HUGE hatching (mechanism live, content gated): set chance > 0 to enable.
-            -- "Extremely extremely extremely rare" — think 0.00002 (1 in 50,000).
-            huge = { chance = 0, pets = { bear = 1 } },
+            -- ORTHOGONAL HUGE (was the gated curated-bear block): "extremely extremely
+            -- extremely rare" — the jackpot now applies to whatever species rolled
+            -- (bear included), variant preserved. THE knob; tune freely.
+            huge = { chance = 0.00002, any_pet = true }, -- 1 in 50,000 hatches
             asset_id = "rbxassetid://77451518796778", -- 3D BasicEgg model for import
             image_id = "rbxassetid://0", -- Generated from 3D model
             unlock_requirement = nil, -- Always available
@@ -1411,6 +1412,10 @@ local petConfig = {
             world_placeable = true,
             cost = 250,
             currency = "lava_coins",
+            -- ORTHOGONAL HUGE (Jason: "perfectly fine to have a huge roll for any pet" —
+            -- the jackpot applies to whatever species stage 1 rolled, variant preserved,
+            -- so huge golden/rainbow rarities COMPOUND). THE knob; tune freely.
+            huge = { chance = 0.00002, any_pet = true }, -- 1 in 50,000 hatches
             asset_id = "rbxassetid://79770174701008",
             image_id = "rbxassetid://0",
             camera = {
@@ -1459,6 +1464,10 @@ local petConfig = {
             world_placeable = true,
             cost = 250,
             currency = "ice_coins",
+            -- ORTHOGONAL HUGE (Jason: "perfectly fine to have a huge roll for any pet" —
+            -- the jackpot applies to whatever species stage 1 rolled, variant preserved,
+            -- so huge golden/rainbow rarities COMPOUND). THE knob; tune freely.
+            huge = { chance = 0.00002, any_pet = true }, -- 1 in 50,000 hatches
             asset_id = "rbxassetid://96544163202240",
             image_id = "rbxassetid://0",
             camera = {
@@ -1512,6 +1521,10 @@ local petConfig = {
             world_placeable = true,
             cost = 250,
             currency = "desert_coins",
+            -- ORTHOGONAL HUGE (Jason: "perfectly fine to have a huge roll for any pet" —
+            -- the jackpot applies to whatever species stage 1 rolled, variant preserved,
+            -- so huge golden/rainbow rarities COMPOUND). THE knob; tune freely.
+            huge = { chance = 0.00002, any_pet = true }, -- 1 in 50,000 hatches
             asset_id = "rbxassetid://86278537786961",
             image_id = "rbxassetid://0",
             camera = {
@@ -1563,6 +1576,10 @@ local petConfig = {
             world_placeable = true,
             cost = 100,
             currency = "grass_coins",
+            -- ORTHOGONAL HUGE (Jason: "perfectly fine to have a huge roll for any pet" —
+            -- the jackpot applies to whatever species stage 1 rolled, variant preserved,
+            -- so huge golden/rainbow rarities COMPOUND). THE knob; tune freely.
+            huge = { chance = 0.00002, any_pet = true }, -- 1 in 50,000 hatches
             asset_id = "rbxassetid://95237477079273",
             image_id = "rbxassetid://0",
             camera = {
@@ -1820,14 +1837,15 @@ function petConfig.simulateHatch(eggType, playerData)
             end
         end
         selectedPet = selectedPet or next(fixedWeights)
-        -- huge stage at the flat stated chance
+        -- huge stage at the flat stated chance (any_pet: the rolled species goes huge —
+        -- this is how a purchasable exclusive egg can carry a STATED huge chance)
         local hugeData = eggData.huge
         if
             hugeData
             and (tonumber(hugeData.chance) or 0) > 0
             and math.random() < hugeData.chance
         then
-            local hp = next(hugeData.pets or {})
+            local hp = (hugeData.any_pet == true and selectedPet) or next(hugeData.pets or {})
             if hp then
                 return {
                     pet = hp,
@@ -1984,13 +2002,24 @@ function petConfig.simulateHatch(eggType, playerData)
     -- Stage 2.5: HUGE roll (Jason's design): huges are SEPARATE unique pets, never a
     -- variant. The normal pet above is the QUEUED outcome; the player then gets
     -- `attempts` shots at the huge jackpot (attempts = their huge luck multiple — a 3x
-    -- huge luck = 3 rolls, Jason's hold-in-queue-and-reroll model). Any hit replaces
-    -- the queued pet with a huge. Per-egg config:
-    --   egg_sources.<egg>.huge = { chance = 0.00002, pets = { bear = 1 } }
-    -- chance = 0 / no table = huges not hatchable from this egg (current default).
+    -- huge luck = 3 rolls, Jason's hold-in-queue-and-reroll model). Per-egg config:
+    --   egg_sources.<egg>.huge = { chance = 0.00002, pets = { bear = 1 } }  -- curated list
+    --   egg_sources.<egg>.huge = { chance = 0.00002, any_pet = true }       -- ORTHOGONAL
+    -- chance = 0 / no table = huges not hatchable from this egg.
+    --
+    -- ANY_PET (Jason: "it's perfectly fine to have a huge roll for any pet... a huge
+    -- secret dragon would be radically rare because you'd have to roll a dragon and
+    -- then roll huge on top"): the jackpot applies to WHATEVER species stage 1 rolled —
+    -- huge becomes a third orthogonal axis (species x variant x huge) and compound
+    -- rarity emerges instead of being authored. any_pet huges fall through to the
+    -- variant roll below (huge golden/rainbow exist; their eternal percent scales
+    -- by variant_effect_multipliers); curated-list huges stay basic (legacy shape).
+    -- Power needs no per-species authoring: huges are ETERNAL (120% of the player's
+    -- baseline), so a huge owl and a huge bear hit identically — species is identity.
     local hugeCfg = eggData.huge
     local hugeChance = hugeCfg and tonumber(hugeCfg.chance) or 0
-    if hugeChance > 0 and hugeCfg.pets and next(hugeCfg.pets) then
+    local rolledHuge = false
+    if hugeChance > 0 and (hugeCfg.any_pet == true or (hugeCfg.pets and next(hugeCfg.pets))) then
         -- fractional attempts (Jason): 2.75x luck = 2 rolls + a 75% chance of a third —
         -- expected attempts exactly equals the multiplier, and at jackpot-tier chances
         -- attempts and pure odds-multiplication are mathematically equivalent
@@ -2001,7 +2030,12 @@ function petConfig.simulateHatch(eggType, playerData)
         end
         for _ = 1, attempts do
             if math.random() <= hugeChance then
-                -- jackpot: weighted pick among this egg's huge-capable species
+                if hugeCfg.any_pet == true then
+                    -- orthogonal: the stage-1 species IS the huge; variant rolls below
+                    rolledHuge = true
+                    break
+                end
+                -- curated jackpot: weighted pick among this egg's huge-capable species
                 local hugeTotal = 0
                 for _, w in pairs(hugeCfg.pets) do
                     hugeTotal = hugeTotal + w
@@ -2069,6 +2103,7 @@ function petConfig.simulateHatch(eggType, playerData)
     return {
         pet = selectedPet,
         variant = selectedVariant,
+        huge = rolledHuge or nil, -- any_pet huge: stage-1 species + rolled variant, huge on top
         finalGoldenChance = goldenChance,
         finalRainbowChance = rainbowChance,
         luckMultiplier = luckMultiplier,

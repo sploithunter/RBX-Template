@@ -183,6 +183,17 @@ function PetGrantService:BuildPetData(request, player)
         petData.serial_key = serialInfo.key
         petData.serial_source = serialInfo.source
         petData.rarity_id = grant.creator and "creator" or "huge"
+
+        -- WORLD FIRST (Jason: "if the index updates you basically get a global
+        -- announcement that there's a new huge in the realm"): serial #1 means this
+        -- exact huge species:variant has NEVER existed anywhere. Detected for free
+        -- at mint; announced realm-wide. Creator chain excluded (the apex ledger is
+        -- Jason's own). pcall'd celebration — never breaks the grant.
+        if serial == 1 and grant.huge and not grant.creator then
+            task.spawn(function()
+                self:_announceWorldFirst(player, grant.petType, grant.variant)
+            end)
+        end
     end
 
     self:_applyEnchantDefaults(petData)
@@ -203,6 +214,29 @@ function PetGrantService:BuildPetData(request, player)
     self:_applyProvenance(petData, player)
 
     return petData, nil, petConfig
+end
+
+-- Publish a huge world-first to EVERY server: each server's PetIndexService
+-- subscriber (PetWorldFirst topic) grows its index and shows the realm banner —
+-- including THIS server (a same-server publish delivers to its own subscriber, so
+-- there's exactly one announcement path and no double banner). Offline fallback
+-- (Studio without API access): notify the local index service directly so testing
+-- still shows the moment.
+function PetGrantService:_announceWorldFirst(player, petType, variant)
+    local payload = { t = petType, v = variant or "basic", p = player and player.Name or "?" }
+    local ok = pcall(function()
+        game:GetService("MessagingService"):PublishAsync("PetWorldFirst", payload)
+    end)
+    if ok then
+        return
+    end
+    local locator = _G.RBXTemplateServices
+    local okIdx, indexService = pcall(function()
+        return locator and locator:Get("PetIndexService")
+    end)
+    if okIdx and indexService and indexService.NotifyWorldFirst then
+        indexService:NotifyWorldFirst(petType, variant, payload.p, true)
+    end
 end
 
 function PetGrantService:GrantPet(player, request)

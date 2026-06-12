@@ -115,4 +115,23 @@ function PetSerialService:NextHugeSerial(petType, variant)
     return self:NextSerial("huge", petType, variant)
 end
 
+-- PEEK a serial counter WITHOUT minting (Jason: "can we peek to see if there is any in
+-- existence without triggering the counter?"). GetAsync reads the count and never
+-- increments; the counter is EVER-MINTED (deleted huges stay counted), which is exactly
+-- the index semantics — "has one ever existed in the realm". 0 = never minted (or the
+-- store is unreachable — callers treat unknown as not-yet-discovered, never the reverse).
+function PetSerialService:PeekSerial(serialType, petType, variant)
+    local key = self:_serialKey(serialType, petType, variant)
+    if self._store then
+        local ok, value = pcall(function()
+            return self._store:GetAsync(key)
+        end)
+        if ok and tonumber(value) then
+            return tonumber(value), key
+        end
+    end
+    -- Studio fallback mirrors NextSerial's memory counters (so census tests work offline)
+    return self._memoryCounters[key] or 0, key
+end
+
 return PetSerialService

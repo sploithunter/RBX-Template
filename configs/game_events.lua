@@ -73,6 +73,17 @@ return {
         banner = { seconds = 6, color = { 170, 90, 255 } },
     },
 
+    -- A HUGE WORLD FIRST (Jason: "if the index updates you basically get a global
+    -- announcement that there's a new huge in the realm"): serial #1 of a huge
+    -- species:variant, fired to EVERY player on EVERY server (PetWorldFirst topic via
+    -- PetIndexService). Banner text rides ctx.name ("🌍 FIRST HUGE POLAR BEAR EVER —
+    -- hatched by X!"). Personal `sound` (not world_sound): the hatcher may be on
+    -- another server, so there's no position to play it at.
+    huge_world_first = {
+        sound = "celebratory_jingle",
+        banner = { seconds = 10, color = { 255, 105, 180 } }, -- huge pink
+    },
+
     met_creator = {
         world_sound = "celebratory_jingle", -- audible around the meeting, not just to the met player
         vfx = { kind = "burst", color = { 255, 215, 0 } }, -- creator gold
