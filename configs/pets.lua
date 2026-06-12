@@ -34,10 +34,13 @@ local petConfig = {
     eternal = {
         huge_power_percent = 120,
         -- CREATOR pin (Jason: the huge creator pet is "essential for scaling work" and
-        -- must ALWAYS be the strongest pet in the game): a huge pet whose species
-        -- category is "creator" scales at THIS percent instead of huge_power_percent,
-        -- so it structurally beats every player huge (130 > 120).
-        creator_power_percent = 130,
+        -- must ALWAYS be the strongest pet in the game — "we will never make a pet
+        -- stronger"): a huge pet whose species category is "creator" scales at THIS
+        -- percent instead of huge_power_percent. TWO reserved class slots sit between
+        -- huge (120) and the pin, for future top tiers (titans 150, colossals 180,
+        -- 30-point class steps) — the creator stays one full gap above even those.
+        -- Variant-scaled like everything: 210 / 263 / 315 (the rainbow apex).
+        creator_power_percent = 210,
         -- UNIQUE => ETERNAL (Jason, 2026-06-12: "if pet is unique it is eternal").
         -- Rarity defaults applied when a species has no explicit eternal block.
         -- Hierarchy: huge 120 > exclusive 90 > secret 85 (Jason: exclusives outrank
