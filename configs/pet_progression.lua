@@ -29,22 +29,27 @@ return {
 
     enchant_slots = {
         default_unlocked_slots = 1,
+        -- CAPSTONE rule (Jason): the FINAL enchant slot unlocks at the rarity's MAX
+        -- level — the last awakening is the max-level celebration. Intermediates
+        -- spread evenly. (Permanent classes auto-roll + lock at each unlock —
+        -- enchants.lua `permanent`; secrets/exclusives unlock an empty slot for
+        -- the Enchanter station.)
         unlocks_by_rarity = {
             mythic = {
                 { level = 1, slots = 1 },
             },
-            secret = {
+            secret = { -- max 50
                 { level = 1, slots = 1 },
-                { level = 25, slots = 2 },
+                { level = 50, slots = 2 },
             },
-            exclusive = {
+            exclusive = { -- max 75
                 { level = 1, slots = 1 },
-                { level = 25, slots = 2 },
+                { level = 75, slots = 2 },
             },
-            huge = {
+            huge = { -- max 100: hatch / midpoint / capstone
                 { level = 1, slots = 1 },
-                { level = 25, slots = 2 },
-                { level = 75, slots = 3 },
+                { level = 50, slots = 2 },
+                { level = 100, slots = 3 },
             },
         },
     },

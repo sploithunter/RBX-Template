@@ -65,8 +65,11 @@ return {
     -- shared world effect per the see-it -> hear-it rule.
     enchant_awakened = {
         world_sound = "celebratory_jingle",
-        vfx = { kind = "burst", color = { 170, 90, 255 } }, -- enchant purple
-        float = { color = { 170, 90, 255 }, prefix = "✨ ", size = 140 },
+        -- PLACEHOLDER big explosion (Jason: "a big explosion or something" until the
+        -- real awakening animation lands). Purely visual — never blocks combat/input,
+        -- so an awakening mid-fight can't get anyone killed.
+        vfx = { kind = "burst", color = { 170, 90, 255 }, count = 40 }, -- enchant purple, BIG
+        float = { color = { 170, 90, 255 }, prefix = "✨ ", size = 160 },
         banner = { seconds = 6, color = { 170, 90, 255 } },
     },
 
