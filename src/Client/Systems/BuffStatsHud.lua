@@ -20,6 +20,15 @@
          with buffs in area as well"): intrinsic (zone-neutral), × the current zone's
          biome-RPS resonance, × the live pet_damage axis. The buffer-balance instrument:
          each layer's pip shows its own contribution (squad size / net area % / net buff %).
+      🎲 EV / Swing : the rolls (accuracy, crit) folded to expected value — a probability
+         is just a damage multiplier you haven't averaged yet. ⛏ never misses (mining);
+         ⚔ × to-hit vs an EVEN-LEVEL enemy (the standard candle — what the training dummy
+         measures); both × (1 + crit·(critMult−1)) incl. live CritBuff/CritAura channels.
+      🛡 Toughness / With Buffs : team effective HP. A pet's pool is its endurance
+         threshold (Power × pet_down_threshold_factor); armor is MULTIPLICATIVE on it
+         (EHP = pool × (Defense+k)/k — Jason: armor "is essentially a hit point increase");
+         shields (CombatShield, incl. Mirage "evasion") are ADDITIVE flat pools on top.
+         Buffed row folds DefenseBuff + the penguin's TeamDefenseBuff onto the curve.
 
     A row dims to grey at base (x1.00 / no buff); an active row fills a faint bar toward its axis cap
     and shows the remaining seconds of the soonest-expiring source, blinking under ~5s. Pure dev tool:
@@ -34,9 +43,26 @@ local Workspace = game:GetService("Workspace")
 local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
 local PetPowerView = require(ReplicatedStorage.Shared.Game.PetPowerView)
 local ElementResonance = require(ReplicatedStorage.Shared.Game.ElementResonance)
+local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local BuffsConfig = require(ReplicatedStorage.Configs:WaitForChild("buffs"))
 local CombatConfig = require(ReplicatedStorage.Configs:WaitForChild("combat"))
 local DropsConfig = require(ReplicatedStorage.Configs:WaitForChild("drops"))
+local rolesOk, PetRolesConfig = pcall(function()
+    return require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
+end)
+
+-- Innate role toughness for a pet model (mirrors EnemyService:_roleDefense resolution:
+-- PetRole attr -> by_type[PetType] -> default role; role def.defense or 0).
+local function roleDefenseFor(pet)
+    if not (rolesOk and PetRolesConfig) then
+        return 0
+    end
+    local id = pet:GetAttribute("PetRole")
+        or (PetRolesConfig.by_type and PetRolesConfig.by_type[pet:GetAttribute("PetType")])
+        or PetRolesConfig.default
+    local def = PetRolesConfig.roles and PetRolesConfig.roles[id]
+    return (def and tonumber(def.defense)) or 0
+end
 
 -- Biome-RPS configs for the team-power rows (pcall'd: a template game without these
 -- configs just reads neutral resonance, the rows still work).
@@ -258,6 +284,11 @@ function BuffStatsHud:_build()
     makeRow("team", "👥 Team Power", Color3.fromRGB(235, 235, 245), 10)
     makeRow("team_area", "🌍 In Area", Color3.fromRGB(120, 220, 160), 11)
     makeRow("team_buffed", "🌍 With Buffs", Color3.fromRGB(255, 170, 80), 12)
+    -- EV row: accuracy + crit folded in (vs an even-level enemy — the dummy candle).
+    makeRow("team_ev", "🎲 EV / Swing", Color3.fromRGB(200, 160, 255), 13)
+    -- Team effective HP: endurance pools × armor curve (+ flat shields when buffed).
+    makeRow("tough", "🛡 Toughness", Color3.fromRGB(140, 185, 240), 14)
+    makeRow("tough_buffed", "🛡 With Buffs", Color3.fromRGB(95, 215, 230), 15)
 end
 
 -- ---- data ---------------------------------------------------------------
@@ -483,6 +514,58 @@ function BuffStatsHud:_refresh()
         (atk - 1) / math.max(axis("pet_damage").cap or 1, 0.0001),
         string.format("+%d%%", math.floor((atk - 1) * 100 + 0.5))
     )
+
+    -- 🎲 EV / Swing: accuracy + crit folded into the With-Buffs sums as expected-value
+    -- multipliers (a probability is a damage multiplier you haven't averaged yet).
+    -- Combat to-hit vs an EVEN-LEVEL enemy — the standard candle the training dummy
+    -- measures; mining never misses. Crit chance mirrors _mine's additive channels
+    -- (config base + CritBuff power + CritAura pet), same 0.9 cap.
+    local accCfg = CombatConfig.accuracy
+    local petAtkRoll = CombatConfig.engagement
+        and CombatConfig.engagement.rolls
+        and CombatConfig.engagement.rolls.pet_attack
+    local lvl = p:GetAttribute("EffectiveLevel") or p:GetAttribute("Level") or 1
+    local hitEven = Accuracy.combatToHit(lvl, lvl, accCfg)
+    local hitMining = Accuracy.miningHitChance(accCfg)
+    local critChance = (petAtkRoll and petAtkRoll.crit_chance) or 0
+    if (p:GetAttribute("CritBuffUntil") or 0) > now then
+        critChance = critChance + (p:GetAttribute("CritBuff") or 0)
+    end
+    if (p:GetAttribute("CritAuraUntil") or 0) > now then
+        critChance = critChance + (p:GetAttribute("CritAura") or 0)
+    end
+    critChance = math.min(critChance, 0.9)
+    local critEv = 1 + critChance * (((petAtkRoll and petAtkRoll.crit_mult) or 2) - 1)
+    local evCombatMult = hitEven * critEv
+    self:_setTeam(
+        "team_ev",
+        t.areaMine * atk * hitMining * critEv,
+        t.areaCombat * atk * evCombatMult,
+        t.count > 0 and math.abs(evCombatMult - 1) > 0.0001,
+        math.abs(evCombatMult - 1),
+        string.format("%+d%%", math.floor((evCombatMult - 1) * 100 + 0.5)) -- ⚔ net roll EV
+    )
+
+    -- 🛡 Toughness: team effective HP. Intrinsic = endurance pools on the armor curve
+    -- with innate role defense + the pet's own Defense only; buffed folds DefenseBuff +
+    -- TeamDefenseBuff onto the curve and adds live CombatShield pools flat (shields are
+    -- additive temporary HP; armor is multiplicative and also scales every heal).
+    local toughPct = t.pool > 0 and (t.ehp / t.pool - 1) or 0
+    self:_setOne(
+        "tough",
+        t.ehp,
+        t.count > 0 and t.ehp > t.pool + 0.5,
+        math.min(toughPct, 1),
+        string.format("+%d%%", math.floor(toughPct * 100 + 0.5)) -- EHP above the raw pool
+    )
+    local toughBuffPct = t.ehp > 0 and (t.ehpBuffed / t.ehp - 1) or 0
+    self:_setOne(
+        "tough_buffed",
+        t.ehpBuffed,
+        t.count > 0 and t.ehpBuffed > t.ehp + 0.5,
+        math.min(toughBuffPct, 1),
+        string.format("+%d%%", math.floor(toughBuffPct * 100 + 0.5)) -- buffs' EHP contribution
+    )
 end
 
 -- Σ over the player's DEPLOYED pets of the dealt-chain power profile — the same resolver
@@ -493,12 +576,25 @@ end
 -- pet's server-stamped Power value (huge/level/eternal-resolved). Downed pets are out
 -- healing (they neither mine nor fight — _mine skips them), so they contribute nothing.
 function BuffStatsHud:_teamPower()
-    local t = { mine = 0, combat = 0, areaMine = 0, areaCombat = 0, count = 0 }
+    local t = {
+        mine = 0,
+        combat = 0,
+        areaMine = 0,
+        areaCombat = 0,
+        count = 0,
+        -- defensive side: raw endurance pool, intrinsic EHP, buffed EHP (+ shields)
+        pool = 0,
+        ehp = 0,
+        ehpBuffed = 0,
+    }
     local pp = Workspace:FindFirstChild("PlayerPets")
     local folder = pp and pp:FindFirstChild(self.player.Name)
     if not folder then
         return t
     end
+    local nowT = os.time()
+    local k = CombatConfig.armor_curve_k or 100
+    local downFactor = CombatConfig.pet_down_threshold_factor or 1
     for _, m in ipairs(folder:GetChildren()) do
         local powerNV = m:IsA("Model") and m:FindFirstChild("Power")
         if powerNV and not m:GetAttribute("CombatDowned") then
@@ -519,6 +615,21 @@ function BuffStatsHud:_teamPower()
                 t.areaCombat += profile.combatEffective or 0
                 t.count += 1
             end
+            -- EHP (mirrors EnemyService:_hitPet): the pool is the endurance threshold
+            -- (Power × pet_down_threshold_factor); armor curve turns Defense into a
+            -- multiplicative EHP factor (D+k)/k; live CombatShield pools add flat.
+            local pool = (tonumber(powerNV.Value) or 0) * downFactor
+            local defense = roleDefenseFor(m) + (m:GetAttribute("Defense") or 0)
+            local defenseBuffed = defense
+            if (m:GetAttribute("DefenseBuffUntil") or 0) > nowT then
+                defenseBuffed += m:GetAttribute("DefenseBuff") or 0
+            end
+            if (m:GetAttribute("TeamDefenseBuffUntil") or 0) > nowT then
+                defenseBuffed += m:GetAttribute("TeamDefenseBuff") or 0
+            end
+            t.pool += pool
+            t.ehp += pool * (defense + k) / k
+            t.ehpBuffed += pool * (defenseBuffed + k) / k + (m:GetAttribute("CombatShield") or 0)
         end
     end
     return t
@@ -593,6 +704,17 @@ function BuffStatsHud:_setTeam(key, mine, combat, active, fillFrac, pipText)
         math.floor(mine + 0.5),
         math.floor(combat + 0.5)
     )
+end
+
+-- Single-value team rows (Toughness EHP): one number, pip carries the layer's contribution.
+function BuffStatsHud:_setOne(key, value, active, fillFrac, pipText)
+    local row = self.rows[key]
+    if not row then
+        return
+    end
+    self:_style(row, active, fillFrac, nil)
+    row.pip.Text = active and (pipText or "") or ""
+    row.text.Text = string.format("%s: %d", row.label, math.floor(value + 0.5))
 end
 
 -- Magnet collect RADIUS in studs (base + Magnet power bonus) — not a multiplier. Bar scales the
