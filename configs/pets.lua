@@ -41,6 +41,15 @@ local petConfig = {
         -- 30-point class steps) — the creator stays one full gap above even those.
         -- Variant-scaled like everything: 210 / 263 / 315 (the rainbow apex).
         creator_power_percent = 210,
+        -- ETERNAL LEVEL BONUS (Jason, 2026-06-12): pet leveling shows up in the
+        -- eternal OUTPUT too — one cap, normalized by the pet's max level:
+        --   bonus = level_bonus_max x (level-1)/(maxLevel-1)
+        -- A 100-level huge earns ~0.25%/level, a 50-level secret 0.5%/level, both
+        -- landing exactly +25% at the capstone. Floors keep their own +2%/level
+        -- (pet_progression.power_scaling); this multiplies the baseline x percent
+        -- side only. A maxed lower class KNOCKS on the next class's door without
+        -- passing it (basic secret 85 -> 106 vs basic huge 120).
+        level_bonus_max = 0.25,
         -- UNIQUE => ETERNAL (Jason, 2026-06-12: "if pet is unique it is eternal").
         -- Rarity defaults applied when a species has no explicit eternal block.
         -- Hierarchy: huge 120 > exclusive 90 > secret 85 (Jason: exclusives outrank

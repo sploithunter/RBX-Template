@@ -681,7 +681,33 @@ local function calculateTeamPowerContext(equippedFolders, petsFolder, teamCapaci
     }
 end
 
-local function resolveEffectivePetPower(basePower, eternalPercent, teamContext)
+-- Eternal level bonus (configs/pets.lua eternal.level_bonus_max): the eternal
+-- OUTPUT scales with pet level, normalized by the rarity's max level so every
+-- class earns the same +25% across its full arc regardless of how many levels
+-- that is (Jason: "we only have to set a cap... it's just scaled").
+local function getEternalLevelScale(petFolder, petIdName, petVariantName)
+    local cap = petsConfig and petsConfig.eternal and tonumber(petsConfig.eternal.level_bonus_max)
+    if not cap or cap <= 0 then
+        return 1
+    end
+    local level = getPetFolderLevel(petFolder)
+    if level <= 1 then
+        return 1
+    end
+    local petData = getPetConfigData(petIdName, petVariantName)
+    local rarityId = petData and petData.rarity_id
+    local maxLevels = petProgressionConfig and petProgressionConfig.max_level_by_rarity
+    local maxLevel = (rarityId and maxLevels and tonumber(maxLevels[rarityId]))
+        or (petProgressionConfig and tonumber(petProgressionConfig.default_max_level))
+        or 1
+    if maxLevel <= 1 then
+        return 1
+    end
+    local fraction = math.clamp((level - 1) / (maxLevel - 1), 0, 1)
+    return 1 + cap * fraction
+end
+
+local function resolveEffectivePetPower(basePower, eternalPercent, teamContext, eternalLevelScale)
     basePower = math.max(1, tonumber(basePower) or 1)
     eternalPercent = tonumber(eternalPercent) or 0
     if eternalPercent <= 0 then
@@ -689,7 +715,8 @@ local function resolveEffectivePetPower(basePower, eternalPercent, teamContext)
     end
 
     local baseline = math.max(1, tonumber(teamContext and teamContext.topTeamAverageBasePower) or 1)
-    local eternalPower = math.floor((baseline * eternalPercent / 100) + 0.5)
+    local eternalPower =
+        math.floor((baseline * eternalPercent / 100) * (tonumber(eternalLevelScale) or 1) + 0.5)
     return math.max(basePower, eternalPower)
 end
 
@@ -1295,8 +1322,12 @@ function loadEquipped(Player)
                 or getPetFolderBasePower(petFolder, petIdName, petVariantName)
             local eternalPercent = teamPowerContext.eternalPercents[petFolder]
                 or getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
-            local effectivePower =
-                resolveEffectivePetPower(basePower, eternalPercent, teamPowerContext)
+            local effectivePower = resolveEffectivePetPower(
+                basePower,
+                eternalPercent,
+                teamPowerContext,
+                getEternalLevelScale(petFolder, petIdName, petVariantName)
+            )
             effectivePower = resolveTeamModifiedPetPower(
                 Player,
                 petIdName,
