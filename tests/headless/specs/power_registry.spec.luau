@@ -29,7 +29,7 @@ return function()
             expect(r.name).to.equal("Eternal Winter")
             expect(r.effect).to.equal("root") -- dispatch = family
             expect(r.durationBase).to.equal(12)
-            expect(r.damageBase).to.equal(0.5) -- from dot.per_tick
+            expect(r.damageBase).to.equal(5) -- from dot.per_tick (10x world)
             expect(r.tickBase).to.equal(1)
             expect(r.dot.aoe).to.equal(true)
             expect(r.origin[1]).to.equal("cryomancer")
@@ -42,7 +42,7 @@ return function()
             expect(r.effect).to.equal("vulnerable")
             expect(r.magnitudeBase).to.equal(1.5)
             expect(r.durationBase).to.equal(6) -- via the damage_over_time effect key
-            expect(r.damageBase).to.equal(2) -- dot.per_tick (now on the USED key)
+            expect(r.damageBase).to.equal(20) -- dot.per_tick (now on the USED key, 10x world)
             expect(r.dot.aoe).to.equal(false)
             expect(contains(r.kind, "dot")).to.equal(true)
         end)
@@ -91,12 +91,12 @@ return function()
         local rec = PowerRegistry.record("eternal_winter", cfg)
         it("is flat at level 1 (×1)", function()
             local eff = PowerStats.resolveEffective(rec, { casterLevel = 1, scaling = cfg.scaling })
-            expect(approx(eff.damage, 0.5)).to.equal(true)
+            expect(approx(eff.damage, 5)).to.equal(true)
         end)
-        it("grows by +3%/level (level 50 ≈ 0.5 × 2.47)", function()
+        it("grows by +3%/level (level 50 ≈ 5 × 2.47)", function()
             local eff =
                 PowerStats.resolveEffective(rec, { casterLevel = 50, scaling = cfg.scaling })
-            expect(approx(eff.damage, 0.5 * (1 + 0.03 * 49))).to.equal(true) -- 1.235
+            expect(approx(eff.damage, 5 * (1 + 0.03 * 49))).to.equal(true) -- 12.35
         end)
         it("leaves duration FLAT (no scaling entry for it)", function()
             local eff =

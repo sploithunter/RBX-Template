@@ -21,7 +21,13 @@ return {
         per_extra_player = 0.5,
     },
 
-    pet_down_threshold_factor = 1.0,
+    -- 10x WORLD (Jason, 2026-06-12): pools x10 on BOTH sides (this factor + every
+    -- enemies.lua hp) with damage untouched -> fights run ~10x longer at IDENTICAL
+    -- win rates / survival fractions (CoH pacing: pull -> 3-4 power casts -> defeat
+    -- -> breathe). Every pool-relative FLAT scaled with it: regen trickles below,
+    -- power heal/absorb/DoT magnitudes in configs/powers.lua. Fractions (rage
+    -- threshold, aura heals, degradation stages) scale for free.
+    pet_down_threshold_factor = 10.0,
 
     -- Pet attack pacing (fire-rate <-> damage tradeoff). Applied to every pet swing in
     -- PetFollowService:_mine: the per-pet attack interval is multiplied by interval_mult
@@ -49,11 +55,20 @@ return {
     -- Packs are simulated under focus fire: incoming damage DECAYS as targets die.
     dev_candle = {
         matchups = {
-            { label = "Lieut.", pack = { { enemy = "ember_brute", count = 1 } } },
-            { label = "Boss", pack = { { enemy = "dire_bear", count = 1 } } },
-            { label = "3 Minions", pack = { { enemy = "lava_imp", count = 3 } } },
+            {
+                label = "Lieut.",
+                max_seconds = 300,
+                pack = { { enemy = "ember_brute", count = 1 } },
+            },
+            { label = "Boss", max_seconds = 300, pack = { { enemy = "dire_bear", count = 1 } } },
+            {
+                label = "3 Minions",
+                max_seconds = 300,
+                pack = { { enemy = "lava_imp", count = 3 } },
+            },
             {
                 label = "Warband",
+                max_seconds = 300,
                 pack = {
                     { enemy = "ember_brute", count = 1 },
                     { enemy = "lava_imp", count = 3 },
@@ -119,16 +134,16 @@ return {
         -- the FAST way back — that's what makes them worth slotting. Tune the trickle here.
         full_defeat_heal_seconds = 25,
         regen = {
-            partial_per_second = 1.5, -- a slow trickle (~1/sec) — heals/support/potions are the FAST way back
+            partial_per_second = 15, -- a slow trickle (x10 world; same relative rate) — heals/support/potions are the FAST way back
             delay_seconds = 5, -- the "must disengage" window before the trickle even starts
         },
         -- ENEMY regen (Jason: "enemies and pets are essentially supposed to be the exact
         -- same mechanic") — same shape as the pet trickle above, at A THIRD of the pet
-        -- rate (1.5 / 3 = 0.5 HP/sec; the anchor is the CURRENT pet rate — if the pet
+        -- rate (15 / 3 = 5 HP/sec; the anchor is the CURRENT pet rate — if the pet
         -- trickle gets retuned, revisit this). Disengage from a half-dead enemy and it
         -- slowly knits back together, so you can't whittle one down across visits for free.
         enemy_regen = {
-            partial_per_second = 0.5,
+            partial_per_second = 5,
             delay_seconds = 5,
         },
         -- Instant effects (heals etc.) have no duration to show, so we flash a blinking

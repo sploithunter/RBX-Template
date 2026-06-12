@@ -64,9 +64,9 @@ return function()
 
     describe("CombatMath.isPetDowned", function()
         it("downs a pet once accumulated damage reaches power * factor", function()
-            -- factor 1.0, power 100 -> downed at 100 absorbed
-            expect(CombatMath.isPetDowned(99, 100, combatConfig)).to.equal(false)
-            expect(CombatMath.isPetDowned(100, 100, combatConfig)).to.equal(true)
+            -- 10x world: factor 10.0, power 100 -> downed at 1000 absorbed
+            expect(CombatMath.isPetDowned(999, 100, combatConfig)).to.equal(false)
+            expect(CombatMath.isPetDowned(1000, 100, combatConfig)).to.equal(true)
         end)
     end)
 

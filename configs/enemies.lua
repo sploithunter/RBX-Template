@@ -2,7 +2,8 @@
     Enemies — Halo & Horns [PROTOTYPE] (Feature 10: Combat).
 
     Enemy archetypes for Hell-focused combat. Each enemy has:
-      hp         — base health (scaled by party size at spawn, see configs/combat.lua)
+      hp         — base health (10x world: pools x10 both sides, damage untouched —
+                   see configs/combat.lua pet_down_threshold_factor; scaled by party size at spawn)
       tier       — Spirit Form cooldown tier applied to a pet this enemy downs
                    (maps to configs/spirit_form.lua cooldown_tiers)
       attack     — { damage, cadence, sundering }
@@ -49,7 +50,7 @@ return {
 
     enemies = {
         lava_imp = {
-            hp = 120,
+            hp = 1200,
             display_name = "Lava Imp",
             tier = "trash_mob",
             move_speed = 15, -- studs/sec while chasing (slice 2); skittery + fast
@@ -73,7 +74,7 @@ return {
         -- numbers you read are the pet's/power's RAW output (raise armor to test mitigation). Spawn
         -- via the combat.spawnEnemy bus command; read damage as MaxHP-HP or the Contrib ledger.
         training_dummy = {
-            hp = 100000,
+            hp = 1000000,
             display_name = "Training Dummy",
             tier = "trash_mob",
             move_speed = 0,
@@ -83,7 +84,7 @@ return {
             drop_table = {},
         },
         ember_brute = {
-            hp = 400,
+            hp = 4000,
             display_name = "Ember Brute",
             tier = "mid_tier",
             move_speed = 10, -- heavier, slower
@@ -95,7 +96,7 @@ return {
             drop_table = { lava_coins = 30, shadow_tokens = 4, rare_drop_chance = 0.1 },
         },
         ember_acolyte = {
-            hp = 200,
+            hp = 2000,
             display_name = "Ember Acolyte",
             tier = "trash_mob",
             move_speed = 13,
@@ -107,7 +108,7 @@ return {
             drop_table = { lava_coins = 12, shadow_tokens = 2 },
         },
         raging_bear = {
-            hp = 350,
+            hp = 3500,
             display_name = "Raging Bear",
             tier = "mid_tier",
             move_speed = 11, -- charges in faster than the brute
@@ -123,7 +124,7 @@ return {
             drop_table = { lava_coins = 35, shadow_tokens = 4, rare_drop_chance = 0.12 },
         },
         dire_bear = {
-            hp = 6500,
+            hp = 65000,
             display_name = "Dire Bear",
             tier = "boss",
             move_speed = 8, -- lumbering colossus
@@ -138,7 +139,7 @@ return {
             drop_table = { lava_coins = 280, shadow_tokens = 32, rare_drop_chance = 0.5 },
         },
         infernal_boss = {
-            hp = 5000,
+            hp = 50000,
             display_name = "Infernal Boss",
             tier = "boss",
             move_speed = 8, -- lumbering

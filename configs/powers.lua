@@ -114,7 +114,7 @@ return {
         -- shields = ABSORPTION pools (soak `magnitude` damage before endurance), not heals.
         -- duration > 0 = the shield also EXPIRES after that many seconds even if not fully soaked
         -- (no permanent player power); whichever comes first — depleted or timed out — drops it.
-        shield = { family = "absorb", magnitude = 40, duration = 12 },
+        shield = { family = "absorb", magnitude = 400, duration = 12 },
         -- Armor / hardening = a temp +Defense % reducer on the armor curve (NOT an absorb pool):
         -- the pet's own material HARDENS (Stone Skin, Ice Armor). Sustained mitigation vs. shield's
         -- burst soak. Applies to the squad and expires after `duration`s (no permanent armor).
@@ -123,7 +123,7 @@ return {
         team_shield = { family = "defense_buff", magnitude = 120, duration = 15 },
         -- `evade=true`: an absorb pool that reads as DODGE (no shield bubble; pops "Dodge!" per hit
         -- it turns aside) rather than a shield. See PowerService EvasionUntil + CombatAuraController.
-        dodge = { family = "absorb", magnitude = 30, duration = 8, evade = true },
+        dodge = { family = "absorb", magnitude = 300, duration = 8, evade = true },
         damage_buff = { family = "buff", magnitude = 1.5, duration = 8 },
         -- Critical Strike (Pyromancer): +crit CHANCE (fraction, additive) on the squad's hits for a
         -- duration — boosts crit on both combat AND mining. Crit damage stays at the roll's crit_mult.
@@ -133,12 +133,12 @@ return {
         blizzard = { family = "root", magnitude = 0, duration = 6 },
         aoe_blind = { family = "vulnerable", magnitude = 1.5, duration = 6 },
         -- Targeted DoT: Mark of Flame (the only power using this key) burns its single target
-        -- ~2 HP/sec on top of the +50% damage debuff for 6s.
+        -- ~20 HP/sec (10x world) on top of the +50% damage debuff for 6s.
         damage_over_time = {
             family = "vulnerable",
             magnitude = 1.5,
             duration = 6,
-            dot = { per_tick = 2, interval = 1, aoe = false },
+            dot = { per_tick = 20, interval = 1, aoe = false },
         },
         aoe_damage = { family = "vulnerable", magnitude = 2.0, duration = 5 },
         eruption = { family = "vulnerable", magnitude = 2.0, duration = 5 },
@@ -176,8 +176,8 @@ return {
         taunt = { family = "taunt", magnitude = 0, duration = 8 }, -- TBD: aggro pull (threat)
         rage = { family = "rage", magnitude = 0.5, toggle = true }, -- TBD: lower HP -> higher damage
         armor_field = { family = "armor", magnitude = 0.25, duration = 12 }, -- player_field team armor
-        restoring_sands = { family = "heal", magnitude = 0.3, duration = 0 }, -- single-target instant heal
-        healing_field = { family = "heal", magnitude = 0.15, duration = 8 }, -- player_field HoT
+        restoring_sands = { family = "heal", magnitude = 3, duration = 0 }, -- single-target instant heal
+        healing_field = { family = "heal", magnitude = 1.5, duration = 8 }, -- player_field HoT
         fear = { family = "fear", magnitude = 0, duration = 5 }, -- TBD: flee (AI state)
         ice_shard = { family = "vulnerable", magnitude = 1.4, duration = 4 }, -- targeted damage (via pets)
         deep_freeze = { family = "root", magnitude = 0, duration = 4 }, -- TBD: full hold (Capacitor)
@@ -204,7 +204,7 @@ return {
             spread_radius = 14,
             spread_interval = 1.5,
             -- the fire actually burns as it spreads: AoE DoT, 1 HP/sec across every enemy
-            dot = { per_tick = 1, interval = 1, aoe = true },
+            dot = { per_tick = 10, interval = 1, aoe = true },
         },
         firestorm = { family = "team_cleave", magnitude = 0.5, duration = 6, cleave_radius = 8 },
         cataclysm = {
@@ -222,13 +222,13 @@ return {
         -- by identity — earth=summon guardian, fire=damage meteor, ice=field hold, desert=summon+revive.
         -- Most reuse existing families (firewall-safe + badge-ready); a few combos add small branches. =====
         -- Earth / Geomancer (shield/tank)
-        bastion = { family = "absorb", magnitude = 90, duration = 14 }, -- anchor: huge squad shield
+        bastion = { family = "absorb", magnitude = 900, duration = 14 }, -- anchor: huge squad shield
         seismic_hold = { family = "root_guard", magnitude = 120, duration = 6 }, -- root enemies + squad +Def
         living_mountain = {
             family = "fortify",
             magnitude = 150,
             duration = 10,
-            heal = 30,
+            heal = 300,
             hot_tick = 2,
         }, -- +Def + heal-over-time (30/2s)
         gaia_colossus = { family = "summon", guardian = "colossus", magnitude = 0, duration = 20 }, -- summon tank
@@ -240,43 +240,43 @@ return {
             magnitude = 1.9,
             duration = 8,
             ramp_to = 2.6,
-            dot = { per_tick = 2.5, interval = 1, aoe = false },
+            dot = { per_tick = 25, interval = 1, aoe = false },
         },
         -- Ice / Cryomancer (control)
-        -- anchor: strong AoE lockdown + light frostbite (0.3 HP/sec AoE; lowest of the cryomancer line)
+        -- anchor: strong AoE lockdown + light frostbite (3 HP/sec AoE (10x world); lowest of the cryomancer line)
         permafrost = {
             family = "root",
             magnitude = 0,
             duration = 8,
-            dot = { per_tick = 0.3, interval = 1, aoe = true },
+            dot = { per_tick = 3, interval = 1, aoe = true },
         },
         shatter = { family = "vulnerable", magnitude = 2.2, duration = 5, frozen_bonus = 1.4 }, -- big vuln, x1.4 again on FROZEN targets (2.2->3.08)
-        -- mass hard freeze + deeper frostbite (0.4 HP/sec AoE; between Permafrost and Eternal Winter)
+        -- mass hard freeze + deeper frostbite (4 HP/sec AoE (10x world); between Permafrost and Eternal Winter)
         absolute_zero = {
             family = "root",
             magnitude = 0,
             duration = 7,
-            dot = { per_tick = 0.4, interval = 1, aoe = true },
+            dot = { per_tick = 4, interval = 1, aoe = true },
         },
-        -- Capstone: field-wide hold + a MINOR AoE DoT — 0.5 HP/sec (a float; deliberately < 1 so the
+        -- Capstone: field-wide hold + a MINOR AoE DoT — 5 HP/sec (10x world; deliberately small so the
         -- frostbite chips slowly rather than bursting). Holds every enemy and grinds them down.
         eternal_winter = {
             family = "root",
             magnitude = 0,
             duration = 12,
-            dot = { per_tick = 0.5, interval = 1, aoe = true },
+            dot = { per_tick = 5, interval = 1, aoe = true },
         },
         -- Desert / Sandwalker (heal/sustain)
         oasis = {
             family = "heal",
-            magnitude = 70,
+            magnitude = 700,
             duration = 0,
-            hot = 20,
+            hot = 200,
             hot_tick = 2,
             hot_seconds = 8,
-        }, -- big heal + 20/2s tail for 8s
-        mirage_veil = { family = "absorb", magnitude = 45, duration = 10, evade_heal = 12 }, -- evasion/absorb + heal-on-evade
-        simoom = { family = "heal_blind", magnitude = 55, duration = 6, vuln = 1.5 }, -- heal squad + blind
+        }, -- big heal + 200/2s tail for 8s (10x world)
+        mirage_veil = { family = "absorb", magnitude = 450, duration = 10, evade_heal = 120 }, -- evasion/absorb + heal-on-evade
+        simoom = { family = "heal_blind", magnitude = 550, duration = 6, vuln = 1.5 }, -- heal squad + blind
         genie_dunes = {
             family = "summon",
             guardian = "djinn",

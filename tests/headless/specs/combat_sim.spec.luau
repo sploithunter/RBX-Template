@@ -53,11 +53,12 @@ return function()
         )
 
         it("the Sundering brute drains player Focus over the fight", function()
-            -- One 100-power pet clears the 400hp brute in 4 rounds, taking 3
-            -- sundering hits first (100 -> 80 -> 60 -> 40) before the kill round.
+            -- 10x world (brute 4000hp): one 1000-power pet clears it in 4 rounds,
+            -- taking 3 sundering hits first (100 -> 80 -> 60 -> 40) before the kill
+            -- round — the SAME fight shape as pre-10x, which is the whole point.
             local scenario = {
                 enemies = { spawn("ember_brute", 30) },
-                pets = { { power = 100 } },
+                pets = { { power = 1000 } },
             }
             local r = CombatSim.run(scenario, deps, cfg)
             expect(r.ended).to.equal(true)
