@@ -1286,7 +1286,15 @@ local petConfig = {
         rainbow_gamepass_id = 0,
 
         -- Gamepass multipliers
-        luck_gamepass_multiplier = 2.0, -- 2x luck boost
+        luck_gamepass_multiplier = 2.0, -- DEV ONLY: test_mode.super_luck ramp (multiplicative)
+        -- PAID LUCK (Jason, 2026-06-12): the luck gamepass ADDS a flat bonus, and only
+        -- to the SPECIES channel ("2x is usually additive — added to your luck, not
+        -- multiplied over your current luck" + "gamepasses don't apply to variants,
+        -- just shifts your odds for pets"). +1.0 = the advertised "2x" for a fresh
+        -- 1.0x player; the 10-bunny endgame stack goes 5.56x -> 6.56x (not 11x), and
+        -- golden/rainbow rates don't move at all (paid luck stays out of the
+        -- tradeable variant supply). See docs/wiki/HATCH_LUCK.md.
+        luck_gamepass_bonus = 1.0,
         golden_gamepass_multiplier = 2.0, -- 2x golden chance
         rainbow_gamepass_multiplier = 3.0, -- 3x rainbow chance
 
@@ -1320,9 +1328,11 @@ local petConfig = {
         -- 90%-index player effectively ALWAYS has 3 rainbow bunnies equipped
         -- (+0.75 boost) — "they're not that hard to hatch... we can just assume
         -- it". So balance against L7 / 90% / bunnies = 3.81x luck, ~12% golden,
-        -- ~1.2% rainbow as the endgame floor. A 2x luck gamepass on top of that
-        -- state would land ~7.6x -> ~21% golden: price/design future luck
-        -- products against THIS baseline, not the no-bunny mid-game one.
+        -- ~1.2% rainbow as the endgame floor (10-bunny full squad: 5.56x / ~16%
+        -- golden / ~1.5% rainbow). Price/design future luck products against
+        -- THIS baseline, not the no-bunny mid-game one. The luck gamepass adds
+        -- +1.0 species-only on top (see luck_gamepass_bonus above): variant
+        -- rates are unchanged by paid luck BY DESIGN.
 
         -- VIP benefits
         vip_luck_bonus = 1.5, -- 1.5x luck for VIP players
@@ -1939,17 +1949,27 @@ function petConfig.simulateHatch(eggType, playerData)
     if playerData.luckBoost then
         luckMultiplier = luckMultiplier + playerData.luckBoost
     end
-    if
-        playerData.hasLuckGamepass
-        or (petConfig.test_mode and petConfig.test_mode.enabled and petConfig.test_mode.super_luck)
-    then
+    -- PAID LUCK: ADDITIVE + SPECIES-ONLY (Jason). The gamepass adds a flat bonus
+    -- like every other luck source (it can't compound over level/index/bunnies),
+    -- and only the SPECIES roll sees it — the golden/rainbow channels below read
+    -- earnedLuck, so paid luck never inflates the tradeable variant supply.
+    local earnedLuck = luckMultiplier
+    if playerData.hasLuckGamepass then
+        luckMultiplier = luckMultiplier + (tonumber(gamepassMods.luck_gamepass_bonus) or 0)
+    end
+    if petConfig.test_mode and petConfig.test_mode.enabled and petConfig.test_mode.super_luck then
+        -- dev knob (not a product): multiplicative, and it hits EVERY channel
         luckMultiplier = luckMultiplier * gamepassMods.luck_gamepass_multiplier
+        earnedLuck = earnedLuck * gamepassMods.luck_gamepass_multiplier
     end
     local maxLuck = eggData.modifier_support.max_luck_multiplier or gamepassMods.max_luck
     luckMultiplier = math.min(luckMultiplier, maxLuck)
+    earnedLuck = math.min(earnedLuck, maxLuck)
     -- FIRST EGG EVER: one-roll mega-luck (consumed here; post-cap so it's a true 50x)
     if playerData.firstHatchLuck then
-        luckMultiplier = luckMultiplier * (tonumber(playerData.firstHatchLuck) or 1)
+        local firstLuck = tonumber(playerData.firstHatchLuck) or 1
+        luckMultiplier = luckMultiplier * firstLuck
+        earnedLuck = earnedLuck * firstLuck
         playerData.firstHatchLuck = nil
     end
 
@@ -2035,8 +2055,9 @@ function petConfig.simulateHatch(eggType, playerData)
     --   rainbow : luckMultiplier * rainbowLuckBoost                [stage 2]
     --   huge    : hugeLuckBoost (fractional attempts)              [stage 2.5]
     -- VARIANT LUCK DAMPING: variants see a WEIGHTED multiplier (1 + (mult-1) x weight)
-    -- so species luck stays steep while golden/rainbow inflation is tamed.
-    local variantLuck = 1 + (luckMultiplier - 1) * (tonumber(gamepassMods.variant_luck_weight) or 1)
+    -- so species luck stays steep while golden/rainbow inflation is tamed. Source is
+    -- earnedLuck — the luck gamepass bonus is species-only and never lands here.
+    local variantLuck = 1 + (earnedLuck - 1) * (tonumber(gamepassMods.variant_luck_weight) or 1)
     goldenChance = goldenChance * variantLuck * (tonumber(playerData.goldenLuckBoost) or 1)
     rainbowChance = rainbowChance * variantLuck * (tonumber(playerData.rainbowLuckBoost) or 1)
 

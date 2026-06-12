@@ -142,3 +142,13 @@ UI: a City-of-Heroes-style **right-side squad HUD** — per-slot portrait + stat
   - **Enemy/debuff powers** act on **the enemy that the selected pet is currently targeting** (target-through-ally). The server already carries each pet's `TargetID`, so the client resolves the assist target from the selected slot.
 - **Click-to-select from either side:** click the world pet model OR its strip card → selects that slot (highlights both).
 - **Stretch (deferred, may not be feasible in Roblox):** fully movable/dockable HUD like CoH (drag panels anywhere). v1 is fixed-right; revisit later.
+
+## Hatch Luck: Curved Index Bonus + Paid-Luck Rules (2026-06-12)
+
+Full system + numbers in [Hatch Luck & Pacing](HATCH_LUCK.md). The durable rules:
+
+- **All luck sources are ADDITIVE into one earned multiplier** (level curve, curved index bonus, bunny auras, events). Nothing multiplies over the player's grind; the only multiplicative path is the dev-only `test_mode.super_luck`.
+- **Index bonus is curved** (`completion^2.5`, fit from simulation): the free 40% of the index pays ~10% of the bonus; the 90%+ grind earns the rest. The exponent is a feel knob — pacing is owned by the coin economy and index size, not by luck.
+- **Paid luck is additive and species-only.** A "2x luck" gamepass adds +1.0 to the species channel: a fresh player gets exactly the advertised 2x, the stacked endgame player gets the same flat +1.0, and golden/rainbow chances never move (tradeable variant supply stays earn-only). Golden/rainbow boosts are separate channels for separate products/events.
+- **Luck auras live on support-role pets only** — the squad-slot opportunity cost is the balance. The bunny stays common; the RAINBOW variant is the rarity gate. Watch equip-slot growth (it dilutes the tax) and don't repeat the colorado ranged+luck combo on farmable pets.
+- **Endgame baseline assumes bunnies equipped** (90% index → 3+ rainbow bunnies): price luck products against 3.81x/~12% golden (3 bunnies) and 5.56x/~16% (10-bunny loadout), not the no-bunny rows.

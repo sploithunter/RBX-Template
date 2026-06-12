@@ -272,12 +272,23 @@ for _, state in
         { label = "L7 idx 20%, 3 rainbow bunnies", level = 7, idx = 0.2, boost = 0.75 },
         { label = "L7 idx 60%, no bunnies", level = 7, idx = 0.6, boost = 0 },
         { label = "L7 idx 60%, 3 rainbow bunnies", level = 7, idx = 0.6, boost = 0.75 },
+        { label = "L7 idx 90%, 3 rainbow bunnies", level = 7, idx = 0.9, boost = 0.75 },
+        { label = "L7 idx 90%, 10 rainbow bunnies", level = 7, idx = 0.9, boost = 2.5 },
+        -- paid luck: species-only additive — golden/rainbow must match the row above
+        {
+            label = "L7 idx 90%, 10 bunnies + luck pass",
+            level = 7,
+            idx = 0.9,
+            boost = 2.5,
+            pass = true,
+        },
     }
 do
     local r = rateSim("ice_egg", {
         level = state.level,
         indexCompletion = state.idx,
         luckBoost = state.boost > 0 and state.boost or nil,
+        hasLuckGamepass = state.pass or nil,
     }, TRIALS)
     print(
         string.format(

@@ -14,6 +14,7 @@ This is the living project wiki for the RBX Template pet/clicker game. It follow
 - [Automation API Design](AUTOMATION_API_DESIGN.md) — the CommandBus boundary, GameAPIService, and AutomationService that let tests drive the game below the GUI.
 - [Map Integration Contract](MAP_INTEGRATION_CONTRACT.md) — how Rojo systems bind to Studio-authored worlds.
 - [Egg System Plan](EGG_SYSTEM_PLAN.md) — planned hatch modes, auto hatch, multi hatch, animation, and egg config architecture.
+- [Hatch Luck & Pacing](HATCH_LUCK.md) — the staged luck channels (species/variant/huge), the curved index bonus and how it was fit, locked balance baselines (endgame = bunnies equipped), paid-luck rules (additive, species-only), and the off-Roblox progression simulator.
 - [Reference Game Insights](REFERENCE_GAME_INSIGHTS.md) — useful ideas from ColorfulClickers.
 - [Emergent Behaviors](EMERGENT_BEHAVIORS.md) — mechanics that fell out of systems interacting (dormant zones, window-shopping locked biomes); recorded so refactors don't "fix" them.
 - [Open Questions](OPEN_QUESTIONS.md) — decisions still pending.

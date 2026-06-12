@@ -67,5 +67,38 @@ return function()
             local buffed = luckFor({ level = 10, indexCompletion = 0.5, luckBoost = 1.5 })
             expect(near(buffed - base, 1.5)).to.equal(true)
         end)
+
+        -- PAID LUCK RULES (Jason, locked 2026-06-12): the gamepass ADDS a flat
+        -- bonus ("2x is usually additive... added to your luck, not multiplied
+        -- over your current luck") and only the SPECIES channel sees it
+        -- ("gamepasses don't apply to variants, just shifts your odds for pets").
+        it("the luck gamepass ADDS its flat bonus — never multiplies", function()
+            local bonus = pets.gamepass_modifiers.luck_gamepass_bonus
+            -- fresh player: 1.0 + bonus = exactly the advertised "2x"
+            local fresh = luckFor({ level = 0, indexCompletion = 0, hasLuckGamepass = true })
+            expect(near(fresh, 1.0 + bonus)).to.equal(true)
+            -- stacked endgame state: SAME flat bonus (no compounding over the grind)
+            local base = luckFor({ level = 10, indexCompletion = 0.9, luckBoost = 2.5 })
+            local withPass = luckFor({
+                level = 10,
+                indexCompletion = 0.9,
+                luckBoost = 2.5,
+                hasLuckGamepass = true,
+            })
+            expect(near(withPass - base, bonus)).to.equal(true)
+        end)
+
+        it("the luck gamepass never moves golden/rainbow chances (species-only)", function()
+            local state = { level = 10, indexCompletion = 0.9, luckBoost = 2.5 }
+            local without = pets.simulateHatch("earth_egg", table.clone(state))
+            state.hasLuckGamepass = true
+            local withPass = pets.simulateHatch("earth_egg", state)
+            expect(near(withPass.finalGoldenChance, without.finalGoldenChance, 1e-9)).to.equal(true)
+            expect(near(withPass.finalRainbowChance, without.finalRainbowChance, 1e-9)).to.equal(
+                true
+            )
+            -- but the species channel DID get the bonus
+            expect(withPass.luckMultiplier > without.luckMultiplier).to.equal(true)
+        end)
     end)
 end
