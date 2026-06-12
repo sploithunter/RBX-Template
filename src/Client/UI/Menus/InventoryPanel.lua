@@ -1767,12 +1767,13 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
     end
 
     local function getConfiguredPowerForLevel(pdata, level, isHuge)
-        -- Shared source of truth: huge pets use huge_base_power, then level scaling.
+        -- Shared source of truth: huge pets use huge_base_power, then the
+        -- normalized-cap level scaling (rarity max level derived inside).
         local base = PetPower.configuredBasePower(pdata, isHuge == true)
         if base <= 0 then
             return 0
         end
-        return PetPower.withLevel(base, level, petProgressionConfig)
+        return PetPower.basePowerForLevel(pdata, isHuge == true, level, petProgressionConfig)
     end
 
     local function getConfiguredMaxEnchantments(rarityId)

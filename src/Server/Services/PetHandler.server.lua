@@ -370,27 +370,14 @@ local function getPetConfigData(petIdName, petVariantName)
     return nil
 end
 
-local function getPetProgressionPowerMultiplier(level)
-    if not petProgressionConfig or petProgressionConfig.enabled == false then
-        return 1
-    end
-
-    level = math.max(1, math.floor(tonumber(level) or 1))
-    local scaling = petProgressionConfig.power_scaling or {}
-    local perLevel = tonumber(scaling.percent_per_level) or 0
-    local maxBonus = tonumber(scaling.max_bonus_percent) or 0
-    local bonus = math.min(maxBonus, math.max(0, (level - 1) * perLevel))
-    return 1 + bonus
-end
-
 local function getPetFolderLevel(petFolder)
     return math.max(1, math.floor(getValueObjectNumber(petFolder, { "level", "Level" }) or 1))
 end
 
 local function getConfiguredPetPower(petIdName, petVariantName, level)
     local petData = getPetConfigData(petIdName, petVariantName)
-    local configuredPower = tonumber(petData and petData.power) or 1
-    return math.max(1, math.floor(configuredPower * getPetProgressionPowerMultiplier(level)))
+    -- one source of truth (normalized-cap level scaling lives in PetPower)
+    return PetPower.basePowerForLevel(petData, false, level, petProgressionConfig)
 end
 
 local function getPetFolderBasePower(petFolder, petIdName, petVariantName)

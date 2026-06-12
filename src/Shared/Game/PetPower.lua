@@ -34,24 +34,49 @@ function PetPower.configuredBasePower(petConfigData, isHuge)
     return tonumber(petConfigData.power) or 1
 end
 
+-- Max pet level for a rarity (configs/pet_progression.lua max_level_by_rarity).
+function PetPower.maxLevelForRarity(rarityId, progressionConfig)
+    if not progressionConfig then
+        return 1
+    end
+    local byRarity = progressionConfig.max_level_by_rarity
+    local maxLevel = (rarityId and type(byRarity) == "table" and tonumber(byRarity[rarityId]))
+        or tonumber(progressionConfig.default_max_level)
+        or 1
+    return math.max(1, math.floor(maxLevel))
+end
+
 -- Apply the shared level-progression multiplier (configs/pet_progression.lua).
-function PetPower.withLevel(base, level, progressionConfig)
+-- NORMALIZED-CAP form (Jason: "we only have to set a cap... it's just scaled"):
+--   multiplier = 1 + max_bonus_percent x (level-1)/(maxLevel-1)
+-- Every pet spends its full arc earning the same cap, whatever its max level —
+-- a 100-level huge gains ~1%/level toward +100%, a 50-level secret ~2%/level.
+function PetPower.withLevel(base, level, progressionConfig, maxLevel)
     local multiplier = 1
     if progressionConfig and progressionConfig.enabled ~= false then
         local scaling = progressionConfig.power_scaling or {}
-        local perLevel = tonumber(scaling.percent_per_level) or 0
         local maxBonus = tonumber(scaling.max_bonus_percent) or 0
         local lvl = math.max(1, math.floor(tonumber(level) or 1))
-        multiplier = 1 + math.min(maxBonus, math.max(0, (lvl - 1) * perLevel))
+        local cap = math.max(1, math.floor(tonumber(maxLevel) or 0))
+        if cap <= 1 then
+            cap = math.max(1, math.floor(tonumber(progressionConfig.default_max_level) or 1))
+        end
+        if maxBonus > 0 and cap > 1 then
+            local fraction = math.clamp((lvl - 1) / (cap - 1), 0, 1)
+            multiplier = 1 + maxBonus * fraction
+        end
     end
     return math.max(1, math.floor((tonumber(base) or 1) * multiplier))
 end
 
 function PetPower.basePowerForLevel(petConfigData, isHuge, level, progressionConfig)
+    local rarityId = petConfigData
+        and (petConfigData.rarity_id or petConfigData.rarity_override or petConfigData.rarity)
     return PetPower.withLevel(
         PetPower.configuredBasePower(petConfigData, isHuge),
         level,
-        progressionConfig
+        progressionConfig,
+        PetPower.maxLevelForRarity(rarityId, progressionConfig)
     )
 end
 

@@ -21,9 +21,14 @@ return {
         growth = 1.18,
     },
 
+    -- FLOOR power level scaling — NORMALIZED CAP (Jason: same mechanic as the
+    -- eternal level bonus, "we only have to set a cap... it's just scaled"):
+    --   bonus = max_bonus_percent x (level-1)/(maxLevel-1)
+    -- The per-level step derives from the rarity's max level (100-level huge
+    -- ~1%/level, 50-level secret ~2%/level), all landing at +100% at the capstone.
+    -- The eternal-output twin lives in pets.lua eternal.level_bonus_max (0.25).
     power_scaling = {
-        type = "percent_per_level",
-        percent_per_level = 0.02,
+        type = "normalized_cap",
         max_bonus_percent = 1.0,
     },
 
