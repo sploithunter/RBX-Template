@@ -580,10 +580,11 @@ function PetFollowService:_mine(player, pet, breakable)
         miss = roll.multiplier <= 0,
     }
     Signals.Combat_PetHit:FireClient(player, hit)
-    -- SPECTATORS (Jason: "if another player can see it, they should hear it" — other
-    -- players' pets mined in silence with no effects): fan the same hit out to every
-    -- OTHER player near the target. foreign = true keeps their floating damage
-    -- numbers off (numbers stay personal); the bolt/impact/sound render identically.
+    -- SPECTATORS (Jason: "this is supposed to be a team effect game" — other players'
+    -- pets mined in silence with no effects): fan the same hit out to every OTHER
+    -- player near the target. The FULL presentation is shared — bolt/impact/sound AND
+    -- the damage stream off the target; only private events (achievements, hatching)
+    -- stay owner-only. foreign = true marks the copy for any future client-side needs.
     local bRange = tonumber(
         self._combatConfig.pet_hit_broadcast_range
             or (self._combatConfig.engagement and self._combatConfig.engagement.perception_range)

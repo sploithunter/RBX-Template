@@ -1313,13 +1313,9 @@ function EnemyService:_auraHeal(folder, heal, vmult)
     ) or 3
     target:SetAttribute("HealFxUntil", os.time() + fxSec)
     self:_spawnHealVisual(target)
-    -- Floating green heal number, to the squad's owner.
-    local owner = Players:FindFirstChild(folder.Name)
-    if owner and healAmt >= 1 then
-        Signals.Combat_Heal:FireClient(
-            owner,
-            { target = target, amount = math.floor(healAmt + 0.5) }
-        )
+    -- Floating green heal number — shared world effect (Jason: team effect game).
+    if healAmt >= 1 then
+        Signals.Combat_Heal:FireAllClients({ target = target, amount = math.floor(healAmt + 0.5) })
     end
 end
 

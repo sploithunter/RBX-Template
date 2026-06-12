@@ -456,7 +456,8 @@ function PowerService:_healPet(player, pet, amount, now)
     pet:SetAttribute("CombatDamageTaken", math.max(0, taken - amount))
     pet:SetAttribute("HealFxUntil", now + 3)
     if healed >= 1 then
-        Signals.Combat_Heal:FireClient(player, { target = pet, amount = math.floor(healed + 0.5) })
+        -- shared world effect (Jason: team effect game) — every nearby client sees the +N
+        Signals.Combat_Heal:FireAllClients({ target = pet, amount = math.floor(healed + 0.5) })
     end
 end
 
@@ -716,10 +717,10 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                         -- combat.engagement.instant_fx_seconds) — same feedback as auto-heal.
                         pet:SetAttribute("HealFxUntil", now + 3)
                         if healed >= 1 then
-                            Signals.Combat_Heal:FireClient(
-                                player,
-                                { target = pet, amount = math.floor(healed + 0.5) }
-                            )
+                            Signals.Combat_Heal:FireAllClients({
+                                target = pet,
+                                amount = math.floor(healed + 0.5),
+                            })
                         end
                     end
                 end
@@ -927,10 +928,13 @@ function PowerService:_applyEffect(player, kind, now, powerId)
         player:SetAttribute("TeamCleaveRadius", tonumber(kind.cleave_radius) or 8)
         local center = self:_squadCenter(player)
         if center then
-            Signals.Power_AreaFx:FireClient(
-                player,
-                { element = "lava", variant = "self", center = center, pit = false, hits = {} }
-            )
+            Signals.Power_AreaFx:FireAllClients({
+                element = "lava",
+                variant = "self",
+                center = center,
+                pit = false,
+                hits = {},
+            })
         end
     end
 end
@@ -1164,7 +1168,8 @@ function PowerService:_amplifiedBurst(player, kind, now)
         end
     end
 
-    Signals.Power_AreaFx:FireClient(player, {
+    -- shared world effect (Jason: team effect game) — the blast renders for everyone
+    Signals.Power_AreaFx:FireAllClients({
         element = "lava",
         variant = "targeted",
         center = center,
@@ -1306,10 +1311,11 @@ function PowerService:Cast(player, powerId)
             or (fx and fx.source)
             or (isAoe and "cast_burst")
             or "cast_emit"
-        Signals.Power_AreaFx:FireClient(
-            player,
-            { primId = sourcePrim, element = element, kind = "source" }
-        )
+        Signals.Power_AreaFx:FireAllClients({
+            primId = sourcePrim,
+            element = element,
+            kind = "source",
+        })
         if not generic and self._powersConfig.enemy_targeted_families[family] then
             local targetPrim = (def.fx and def.fx.target) or (fx and fx.target) or "eruption"
             -- AoE powers land the impact on EVERY enemy; single-target ones land ONLY on the enemy
@@ -1324,10 +1330,12 @@ function PowerService:Cast(player, powerId)
             end
             for _, foe in ipairs(impactFoes) do
                 if foe.PrimaryPart or foe:FindFirstChildWhichIsA("BasePart") then
-                    Signals.Power_AreaFx:FireClient(
-                        player,
-                        { primId = targetPrim, element = element, kind = "target", target = foe }
-                    )
+                    Signals.Power_AreaFx:FireAllClients({
+                        primId = targetPrim,
+                        element = element,
+                        kind = "target",
+                        target = foe,
+                    })
                 end
             end
         end
