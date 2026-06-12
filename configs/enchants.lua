@@ -41,12 +41,14 @@ return {
         -- are deliberately separated by VALUE (light warm vs dark warm) so they
         -- read apart at badge size; onyx carries a faint purple cast so a black
         -- ring never vanishes against dark card chrome.
+        -- Jason's metal ring art (assets/ui/enchant_rings, uploaded 2026-06-12);
+        -- tint remains as the fallback if an asset ever fails to load.
         ring_tiers = {
-            { name = "Copper", tint = { 196, 120, 70 }, asset = nil },
-            { name = "Bronze", tint = { 110, 74, 42 }, asset = nil },
-            { name = "Silver", tint = { 201, 209, 220 }, asset = nil },
-            { name = "Gold", tint = { 240, 196, 60 }, asset = nil },
-            { name = "Onyx", tint = { 38, 32, 56 }, asset = nil },
+            { name = "Copper", tint = { 196, 120, 70 }, asset = "rbxassetid://98395799121019" },
+            { name = "Bronze", tint = { 110, 74, 42 }, asset = "rbxassetid://100659029330565" },
+            { name = "Silver", tint = { 201, 209, 220 }, asset = "rbxassetid://127566698062573" },
+            { name = "Gold", tint = { 240, 196, 60 }, asset = "rbxassetid://94783967669881" },
+            { name = "Onyx", tint = { 38, 32, 56 }, asset = "rbxassetid://119998247389513" },
         },
     },
 
