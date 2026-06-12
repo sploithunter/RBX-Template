@@ -169,6 +169,47 @@ return function()
             local withHeal = BattleSim.run(squad(true), alwaysHit)
             expect(withHeal.t > without.t).to.equal(true)
         end)
+
+        -- RAGE rides SupportAura.rageFraction — the SAME function EnemyService stamps
+        -- live rage with (the unified code path), so this also proves the sim consumes
+        -- the shared rules.
+        it("a raging pet clears faster once hurt past its threshold", function()
+            local function squad(withRage)
+                local auras = withRage and { { kind = "rage", enrage_below = 0.5, mult = 2.0 } }
+                    or {}
+                -- enemy chews 10/s into a 300 pool: rage flips on at 150 taken (~15s)
+                return {
+                    max_seconds = 60,
+                    pets = { pet({ perHit = 50, pool = 300, auras = auras }) },
+                    enemies = { enemy({ hp = 1000, dmg = 10, cadence = 1 }) },
+                }
+            end
+            local plain = BattleSim.run(squad(false), alwaysHit)
+            local raging = BattleSim.run(squad(true), alwaysHit)
+            expect(plain.cleared).to.equal(true)
+            expect(raging.cleared).to.equal(true)
+            expect(raging.t < plain.t).to.equal(true)
+        end)
+
+        it("rage scales by the pet's variantMult (rainbow rages harder)", function()
+            local function squad(variantMult)
+                return {
+                    max_seconds = 60,
+                    pets = {
+                        pet({
+                            perHit = 50,
+                            pool = 300,
+                            variantMult = variantMult,
+                            auras = { { kind = "rage", enrage_below = 0.5, mult = 2.0 } },
+                        }),
+                    },
+                    enemies = { enemy({ hp = 2000, dmg = 10, cadence = 1 }) },
+                }
+            end
+            local basic = BattleSim.run(squad(1), alwaysHit)
+            local rainbow = BattleSim.run(squad(1.5), alwaysHit)
+            expect(rainbow.t < basic.t).to.equal(true)
+        end)
     end)
 
     describe("BattleSim.runMany aggregation", function()

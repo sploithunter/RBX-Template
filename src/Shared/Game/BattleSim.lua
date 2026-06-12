@@ -29,13 +29,21 @@
         defense = 0,           -- innate role + Defense attr + static power buffs
         threatMult = 1, taunt = false,
         dmgBuffFraction = 0,   -- STATIC player-power damage fraction (PetDamageBuff-1)
+        variantMult = 1,       -- variant effect multiplier (basic 1 / golden 1.25 / rainbow 1.5)
         auras = { { kind = "offense"|"defense"|"heal", fraction|amount, interval } },
+        -- rage auras pass through RAW ({ kind = "rage", enrage_below, mult }): the rules
+        -- live in SupportAura.rageFraction — the SAME function EnemyService:_supportPass
+        -- stamps live rage with (Jason: "the same unified code path"), scaled by
+        -- variantMult here, not pre-scaled by the spec builder.
       } },
       enemies = { { hp, armor, dmg, cadence, hitChance, critChance, critMult } },
     }
 
     result = { cleared, t, petsDown, poolLeftFrac } | { cleared=false, t (die/timeout), timeout }
 ]]
+
+-- Sibling pure module (headless loadModule resolves script.Parent to the repo dir).
+local SupportAura = require(script.Parent:WaitForChild("SupportAura"))
 
 local BattleSim = {}
 
@@ -77,6 +85,7 @@ function BattleSim.run(spec, rng)
             threatMult = num(p.threatMult, 1),
             taunt = p.taunt == true,
             dmgBuffFraction = num(p.dmgBuffFraction, 0),
+            variantMult = num(p.variantMult, 1),
             auras = p.auras or {},
             threat = p.taunt and 1 or 0, -- a taunt pet starts on the table (it pulls)
             swingAt = 0,
@@ -185,7 +194,15 @@ function BattleSim.run(spec, rng)
                 p.swingAt = t + p.interval
                 if rng() < p.hitChance then
                     local dmg = p.perHit
-                    local mult = math.min(1 + p.dmgBuffFraction + offFraction, dmgCap)
+                    -- RAGE: same rules as live (SupportAura.rageFraction — the unified
+                    -- path), evaluated against this pet's CURRENT health each swing.
+                    -- pool floor of 1 mirrors PetEndurance.maxEndurance.
+                    local rageF = SupportAura.rageFraction(
+                        p.auras,
+                        1 - p.taken / math.max(p.pool, 1),
+                        p.variantMult
+                    )
+                    local mult = math.min(1 + p.dmgBuffFraction + offFraction + rageF, dmgCap)
                     dmg = dmg * mult
                     if rng() < p.critChance then
                         dmg = dmg * p.critMult

@@ -80,9 +80,20 @@ local function roleDefenseFor(pet)
     return tonumber(roleDefFor(pet).defense) or 0
 end
 
+-- A pet's variant effect multiplier (basic 1 / golden 1.25 / rainbow 1.5) — the same
+-- table EnemyService:_supportPass scales auras with.
+local function variantEffectMultFor(pet)
+    local mults = rolesOk and PetRolesConfig and PetRolesConfig.variant_effect_multipliers
+    return (
+        mults and tonumber(mults[string.lower(tostring(pet:GetAttribute("PetVariant") or "basic"))])
+    ) or 1
+end
+
 -- A pet's support auras as BattleSim aura specs (kind + magnitude x the variant effect
 -- multiplier — the same scaling EnemyService:_supportPass applies). Combat-relevant
--- kinds only; luck/yield buff the economy, not the fight.
+-- kinds only; luck/yield buff the economy, not the fight. RAGE passes through RAW:
+-- its rules live in SupportAura.rageFraction (the unified path EnemyService also
+-- stamps from), which BattleSim calls with the pet spec's variantMult.
 local function simAurasFor(pet)
     if not (rolesOk and PetRolesConfig) then
         return {}
@@ -93,10 +104,7 @@ local function simAurasFor(pet)
         return {}
     end
     local list = entry.kind and { entry } or entry -- single aura or a LIST (colorado)
-    local mults = PetRolesConfig.variant_effect_multipliers
-    local vMult = (
-        mults and tonumber(mults[string.lower(tostring(pet:GetAttribute("PetVariant") or "basic"))])
-    ) or 1
+    local vMult = variantEffectMultFor(pet)
     local auras = {}
     for _, a in ipairs(list) do
         if a.kind == "offense" then
@@ -112,6 +120,8 @@ local function simAurasFor(pet)
                 fraction = (tonumber(a.fraction) or 0) * vMult,
                 interval = tonumber(a.interval) or 2,
             })
+        elseif a.kind == "rage" then
+            table.insert(auras, { kind = "rage", enrage_below = a.enrage_below, mult = a.mult })
         end
     end
     return auras
@@ -801,6 +811,7 @@ function BuffStatsHud:_teamPower()
                     defense = defense + ownDefBuff,
                     threatMult = tonumber(roleDef.threat_mult) or 1,
                     taunt = roleDef.implicit_taunt == true,
+                    variantMult = variantEffectMultFor(m), -- rage scales by this in-sim
                     auras = simAurasFor(m),
                 })
             end
