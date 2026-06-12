@@ -57,6 +57,17 @@ return {
         require_unlocked_slot = true,
     },
 
+    -- PERMANENT ENCHANTS (Jason, 2026-06-12): huge-and-above are FATED, not crafted —
+    -- "once a huge is hatched its first enchant is permanent", and each slot a pet
+    -- level-up unlocks auto-rolls on the spot (the level-up IS the reveal, with a
+    -- celebration) and locks forever. No Enchanter station access. Secrets and
+    -- exclusives stay re-enchantable — that's what makes them the craftable,
+    -- highly-tradeable tier. Future top classes (titan/colossal) add their flag here.
+    permanent = {
+        huge = true, -- the huge TRAIT on the record, not a rarity
+        categories = { creator = true }, -- species categories that also lock
+    },
+
     reroll = {
         enabled = true,
         requires_station = true,

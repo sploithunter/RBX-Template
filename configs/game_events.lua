@@ -60,6 +60,16 @@ return {
 
     -- A player met a registered CREATOR for the first time (MeetCreatorService) —
     -- once ever per creator; the reward egg rides the event payload.
+    -- A PERMANENT-class pet (huge+/creator) leveled up and AWAKENED a new enchant —
+    -- fated and unchangeable the moment it lands (Jason). World-visible celebration:
+    -- shared world effect per the see-it -> hear-it rule.
+    enchant_awakened = {
+        world_sound = "celebratory_jingle",
+        vfx = { kind = "burst", color = { 170, 90, 255 } }, -- enchant purple
+        float = { color = { 170, 90, 255 }, prefix = "✨ ", size = 140 },
+        banner = { seconds = 6, color = { 170, 90, 255 } },
+    },
+
     met_creator = {
         world_sound = "celebratory_jingle", -- audible around the meeting, not just to the met player
         vfx = { kind = "burst", color = { 255, 215, 0 } }, -- creator gold

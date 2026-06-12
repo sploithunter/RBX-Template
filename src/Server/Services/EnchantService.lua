@@ -277,6 +277,60 @@ function EnchantService:RollEnchant(rarityId, excludedEffects)
     return enchant
 end
 
+-- PERMANENT ENCHANTS (Jason): huge trait or creator-category species — fated rolls,
+-- no station access, ever.
+function EnchantService:IsPermanentEnchantPet(petData)
+    local perm = self._config and self._config.permanent
+    if type(perm) ~= "table" or type(petData) ~= "table" then
+        return false
+    end
+    if perm.huge == true and petData.huge == true then
+        return true
+    end
+    local cats = perm.categories
+    if type(cats) == "table" then
+        local cfg = self:_getPetConfigForRecord(petData)
+        if cfg and cfg.category and cats[cfg.category] == true then
+            return true
+        end
+    end
+    return false
+end
+
+-- Auto-roll any newly unlocked, still-empty slots on a PERMANENT pet (called from the
+-- pet level-up path — these pets can't visit the station, so the level-up is the
+-- reveal). Rolls lock by existing; returns the list of new enchants (or nil).
+function EnchantService:FillPermanentSlots(player, petData)
+    if not self:IsEnabled() or not self:IsPermanentEnchantPet(petData) then
+        return nil
+    end
+    local unlocked = math.max(0, math.floor(tonumber(petData.unlocked_enchant_slots) or 0))
+    petData.enchantments = petData.enchantments or {}
+    if #petData.enchantments >= unlocked then
+        return nil
+    end
+    local rarityId = petData.rarity_id
+    local excluded = {}
+    for _, e in ipairs(petData.enchantments) do
+        if e.id then
+            excluded[e.id] = true
+        end
+    end
+    local added = {}
+    while #petData.enchantments < unlocked do
+        local enchant = self:RollEnchant(rarityId, excluded)
+        if not enchant then
+            break
+        end
+        if enchant.id then
+            excluded[enchant.id] = true
+        end
+        table.insert(petData.enchantments, enchant)
+        table.insert(added, enchant)
+    end
+    return #added > 0 and added or nil
+end
+
 function EnchantService:RollInitialEnchantments(player, petData, petConfig, source)
     if not self:IsEnabled() or type(petData) ~= "table" then
         return petData
@@ -860,6 +914,15 @@ function EnchantService:RerollPetEnchant(player, payload)
         return {
             ok = false,
             reason = petError,
+            petUid = petUid,
+        }
+    end
+
+    -- PERMANENT classes (huge+/creator): fated — the station refuses them outright
+    if self:IsPermanentEnchantPet(petData) then
+        return {
+            ok = false,
+            reason = "enchants_permanent",
             petUid = petUid,
         }
     end

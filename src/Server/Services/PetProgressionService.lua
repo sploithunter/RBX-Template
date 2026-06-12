@@ -7,6 +7,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
 
 local PetProgressionService = {}
@@ -201,7 +202,37 @@ function PetProgressionService:AddPetExperience(player, petUid, amount, reason)
 
     petData.level = level
     petData.exp = exp
+    local prevEnchantCount = #(petData.enchantments or {})
     self:ApplyProgression(petData, petConfig)
+
+    -- PERMANENT-class pets (huge+/creator) auto-roll any slot this level-up just
+    -- unlocked — the level-up IS the enchant reveal (Jason: "some kind of
+    -- celebration... and then it is unchangeable"). Locked by existing: the
+    -- station refuses these pets, so the roll is final the moment it lands.
+    local enchantService = self._modules and self._modules.EnchantService
+    if not enchantService and _G.RBXTemplateServices then
+        pcall(function()
+            enchantService = _G.RBXTemplateServices:Get("EnchantService")
+        end)
+    end
+    if enchantService and enchantService.FillPermanentSlots then
+        local added
+        pcall(function()
+            added = enchantService:FillPermanentSlots(player, petData)
+        end)
+        if added then
+            for _, enchant in ipairs(added) do
+                fireGameEvent(player, "enchant_awakened", {
+                    pet = petData.id,
+                    petUid = petUid,
+                    enchant = enchant.id,
+                    strength = enchant.strength,
+                    slot = prevEnchantCount + 1,
+                })
+                prevEnchantCount += 1
+            end
+        end
+    end
 
     -- XP only changes a special's level/exp display, never equip — light refresh (called
     -- per-equipped-pet on every breakable destroyed, so avoid the equip re-validate).
