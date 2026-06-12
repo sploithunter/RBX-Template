@@ -1613,11 +1613,15 @@ local petConfig = {
 
             -- Stage 1: Pet Selection (same animals as BasicEgg)
             pet_weights = {
-                bear = 25, -- 25% chance to get a bear
-                bunny = 25, -- 25% chance to get a bunny
-                doggy = 25, -- 25% chance to get a doggy
-                kitty = 20, -- 20% chance to get a kitty
-                dragon = 5, -- 5% chance to get a dragon
+                bear = 25000, -- ~26.3% (commons split the bulk)
+                bunny = 25000, -- ~26.3%
+                doggy = 25000, -- ~26.3%
+                kitty = 20000, -- ~21% — premium egg's kitty bias (vs ~0.66% in basic_egg)
+                -- SECRET stays secret-rare even in the premium egg: ~0.05% (~1 in 2,000),
+                -- matched to basic/earth egg odds. Was "dragon = 5" — a 5% SPECIES roll,
+                -- misreading the 5% golden VARIANT chance (which rarity_rates handles);
+                -- it made 1 in 20 golden-egg hatches a dragon.
+                dragon = 48,
             },
 
             -- Stage 2: Rarity Calculation (NO BASIC VARIANTS)
