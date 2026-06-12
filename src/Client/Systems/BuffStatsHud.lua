@@ -29,11 +29,14 @@
          (EHP = pool × (Defense+k)/k — Jason: armor "is essentially a hit point increase");
          shields (CombatShield, incl. Mirage "evasion") are ADDITIVE flat pools on top.
          Buffed row folds DefenseBuff + the penguin's TeamDefenseBuff onto the curve.
-      ⏱ vs Lieut. : THE PACING ROW — expected battle clock vs the dev candle
-         (combat.dev_candle, a same-level lieutenant): ⚔ time to kill it / 💀 time it
-         takes to chew through the squad's buffed EHP. Jason: "battles are way too
-         fast... over before you realize they've started" — tune enemy HP/damage and
-         watch the clock move without fighting anything.
+      ⏱ matchup rows : THE PACING ROWS — one per combat.dev_candle matchup (Lieut. /
+         Boss / 3 Minions / Warband...), each played FOR REAL by BattleSim N times
+         (Jason: "the only way to make this real is to simulate it... what if my armor
+         buffer dies? It is no longer armoring"): swing timers, hit/crit rolls,
+         threat/taunt targeting, downs that remove a dead pet's damage AND its auras.
+         "⚔ 14s ❤ 62%" = median clear + EHP margin; "💀 9s" = you go down first;
+         pip = wins/trials; color = the verdict (green sweep / amber costly / red losing).
+         Sims recompute every ~2s (cheap: ~tick-per-0.1s × trials), rows repaint from cache.
 
     A row dims to grey at base (x1.00 / no buff); an active row fills a faint bar toward its axis cap
     and shows the remaining seconds of the soonest-expiring source, blinking under ~5s. Pure dev tool:
@@ -50,6 +53,7 @@ local PetPowerView = require(ReplicatedStorage.Shared.Game.PetPowerView)
 local ElementResonance = require(ReplicatedStorage.Shared.Game.ElementResonance)
 local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
+local BattleSim = require(ReplicatedStorage.Shared.Game.BattleSim)
 local BuffsConfig = require(ReplicatedStorage.Configs:WaitForChild("buffs"))
 local CombatConfig = require(ReplicatedStorage.Configs:WaitForChild("combat"))
 local DropsConfig = require(ReplicatedStorage.Configs:WaitForChild("drops"))
@@ -60,17 +64,57 @@ local rolesOk, PetRolesConfig = pcall(function()
     return require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
 end)
 
--- Innate role toughness for a pet model (mirrors EnemyService:_roleDefense resolution:
--- PetRole attr -> by_type[PetType] -> default role; role def.defense or 0).
-local function roleDefenseFor(pet)
+-- Role definition for a pet model (mirrors EnemyService resolution: PetRole attr ->
+-- by_type[PetType] -> default role). Used for defense, threat_mult, implicit_taunt.
+local function roleDefFor(pet)
     if not (rolesOk and PetRolesConfig) then
-        return 0
+        return {}
     end
     local id = pet:GetAttribute("PetRole")
         or (PetRolesConfig.by_type and PetRolesConfig.by_type[pet:GetAttribute("PetType")])
         or PetRolesConfig.default
-    local def = PetRolesConfig.roles and PetRolesConfig.roles[id]
-    return (def and tonumber(def.defense)) or 0
+    return (PetRolesConfig.roles and PetRolesConfig.roles[id]) or {}
+end
+
+local function roleDefenseFor(pet)
+    return tonumber(roleDefFor(pet).defense) or 0
+end
+
+-- A pet's support auras as BattleSim aura specs (kind + magnitude x the variant effect
+-- multiplier — the same scaling EnemyService:_supportPass applies). Combat-relevant
+-- kinds only; luck/yield buff the economy, not the fight.
+local function simAurasFor(pet)
+    if not (rolesOk and PetRolesConfig) then
+        return {}
+    end
+    local entry = PetRolesConfig.support_auras
+        and PetRolesConfig.support_auras[pet:GetAttribute("PetType")]
+    if not entry then
+        return {}
+    end
+    local list = entry.kind and { entry } or entry -- single aura or a LIST (colorado)
+    local mults = PetRolesConfig.variant_effect_multipliers
+    local vMult = (
+        mults and tonumber(mults[string.lower(tostring(pet:GetAttribute("PetVariant") or "basic"))])
+    ) or 1
+    local auras = {}
+    for _, a in ipairs(list) do
+        if a.kind == "offense" then
+            table.insert(
+                auras,
+                { kind = "offense", fraction = ((tonumber(a.mult) or 1) - 1) * vMult }
+            )
+        elseif a.kind == "defense" then
+            table.insert(auras, { kind = "defense", amount = (tonumber(a.amount) or 0) * vMult })
+        elseif a.kind == "heal" then
+            table.insert(auras, {
+                kind = "heal",
+                fraction = (tonumber(a.fraction) or 0) * vMult,
+                interval = tonumber(a.interval) or 2,
+            })
+        end
+    end
+    return auras
 end
 
 -- Biome-RPS configs for the team-power rows (pcall'd: a template game without these
@@ -298,8 +342,12 @@ function BuffStatsHud:_build()
     -- Team effective HP: endurance pools × armor curve (+ flat shields when buffed).
     makeRow("tough", "🛡 Toughness", Color3.fromRGB(140, 185, 240), 14)
     makeRow("tough_buffed", "🛡 With Buffs", Color3.fromRGB(95, 215, 230), 15)
-    -- The PACING row: expected battle clock vs the dev candle (same-level lieutenant).
-    makeRow("battle", "⏱ vs Lieut.", Color3.fromRGB(255, 130, 130), 16)
+    -- The PACING rows: expected battle clock vs each dev-candle matchup (config-driven:
+    -- combat.dev_candle.matchups — one row per entry, add/remove scenarios in config).
+    self._matchups = (CombatConfig.dev_candle and CombatConfig.dev_candle.matchups) or {}
+    for i, m in ipairs(self._matchups) do
+        makeRow("battle_" .. i, "⏱ " .. (m.label or "?"), Color3.fromRGB(235, 90, 80), 15 + i)
+    end
 end
 
 -- ---- data ---------------------------------------------------------------
@@ -578,40 +626,100 @@ function BuffStatsHud:_refresh()
         string.format("+%d%%", math.floor(toughBuffPct * 100 + 0.5)) -- buffs' EHP contribution
     )
 
-    -- ⏱ THE PACING ROW (Jason: "battles are way too fast... over before you realize
-    -- they've started"): the expected battle clock vs the dev candle (combat.dev_candle
-    -- -> a same-level lieutenant from enemies.lua, so it tracks enemy rebalances).
-    --   Kill = candle HP / team DPS  (EV swings, × the candle's armor mitigation,
-    --          ÷ the pet swing interval at base efficiency)
-    --   Die  = team buffed EHP / candle DPS  (its EV damage ÷ its cadence) — the
-    --          squad's total survival budget under sustained focus.
-    local candleId = (CombatConfig.dev_candle and CombatConfig.dev_candle.enemy) or "ember_brute"
-    local candle = enemiesOk
-        and EnemiesConfig
-        and EnemiesConfig.enemies
-        and EnemiesConfig.enemies[candleId]
-    if candle and t.count > 0 then
-        local k = CombatConfig.armor_curve_k or 100
-        local armorFactor = k / ((tonumber(candle.armor) or 0) + k)
-        local outDps = (t.areaCombat * atk * evCombatMult * armorFactor)
-            / PetCombat.attackInterval(1)
-        local ttk = outDps > 0 and (tonumber(candle.hp) or 1) / outDps or math.huge
+    -- ⏱ THE PACING ROWS (Jason: "battles are way too fast... over before you realize
+    -- they've started"; "a Lieutenant, a boss, three minions and maybe a team"; then
+    -- "the only way to make this real is to SIMULATE it... what if my armor buffer
+    -- dies? It is no longer armoring"): each dev-candle matchup is played for real by
+    -- BattleSim N times — swing timers, hit/crit rolls, threat/taunt targeting, downs
+    -- that take a dead pet's damage AND its auras out of the fight. Throttled: sims
+    -- recompute every SIM_REFRESH seconds, the rows repaint from cache in between.
+    if not self._nextSimAt or os.clock() >= self._nextSimAt then
+        self._nextSimAt = os.clock() + 2
+        self._simAgg = {}
+        local cd = CombatConfig.dev_candle or {}
+        local trials = tonumber(cd.trials) or 5
         local eRolls = CombatConfig.engagement
             and CombatConfig.engagement.rolls
             and CombatConfig.engagement.rolls.enemy_attack
-        local eCritEv = 1
-            + ((eRolls and eRolls.crit_chance) or 0)
-                * (((eRolls and eRolls.crit_mult) or 2) - 1)
-        local atkDef = candle.attack or {}
-        local inDps = ((tonumber(atkDef.damage) or 0) * hitEven * eCritEv)
-            / math.max(tonumber(atkDef.cadence) or 1.5, 0.05)
-        local ttd = inDps > 0 and t.ehpBuffed / inDps or math.huge
-        self:_setBattle("battle", ttk, ttd, lvl)
-    else
-        local row = self.rows.battle
-        if row then
-            self:_style(row, false, 0, nil)
-            row.text.Text = row.label .. ": —"
+        -- per-pet sim entries share the squad-wide roll + static-buff context
+        local petInterval = PetCombat.attackInterval(1)
+        local staticDmgFraction = math.max(0, (p:GetAttribute("PetDamageBuff") or 1) - 1)
+        if (p:GetAttribute("PetDamageBuffUntil") or 0) <= now then
+            staticDmgFraction = 0
+        end
+        local simPets = {}
+        for _, s in ipairs(t.squad) do
+            table.insert(simPets, {
+                perHit = s.perHit,
+                interval = petInterval,
+                hitChance = hitEven,
+                critChance = critChance,
+                critMult = (
+                    CombatConfig.engagement
+                    and CombatConfig.engagement.rolls
+                    and CombatConfig.engagement.rolls.pet_attack
+                    and CombatConfig.engagement.rolls.pet_attack.crit_mult
+                ) or 2,
+                pool = s.pool,
+                shield = s.shield,
+                defense = s.defense,
+                threatMult = s.threatMult,
+                taunt = s.taunt,
+                dmgBuffFraction = staticDmgFraction,
+                auras = s.auras,
+            })
+        end
+        for i, m in ipairs(self._matchups or {}) do
+            local pack = {}
+            for _, entry in ipairs(m.pack or {}) do
+                local def = enemiesOk
+                    and EnemiesConfig
+                    and EnemiesConfig.enemies
+                    and EnemiesConfig.enemies[entry.enemy]
+                if def then
+                    local atkDef = def.attack or {}
+                    for _ = 1, math.max(1, math.floor(tonumber(entry.count) or 1)) do
+                        table.insert(pack, {
+                            hp = tonumber(def.hp) or 1,
+                            armor = tonumber(def.armor) or 0,
+                            dmg = tonumber(atkDef.damage) or 0,
+                            cadence = tonumber(atkDef.cadence) or 1.5,
+                            hitChance = hitEven, -- same-level candle, both directions
+                            critChance = (eRolls and eRolls.crit_chance) or 0,
+                            critMult = (eRolls and eRolls.crit_mult) or 2,
+                        })
+                    end
+                end
+            end
+            if #pack > 0 and #simPets > 0 then
+                self._simAgg[i] = BattleSim.runMany(
+                    {
+                        tick = tonumber(cd.tick) or 0.1,
+                        max_seconds = tonumber(cd.max_seconds) or 90,
+                        armor_k = CombatConfig.armor_curve_k or 100,
+                        dmg_axis_cap = axis("pet_damage").cap,
+                        pets = simPets,
+                        enemies = pack,
+                    },
+                    trials,
+                    function()
+                        return math.random()
+                    end
+                )
+            end
+        end
+    end
+    for i in ipairs(self._matchups or {}) do
+        local key = "battle_" .. i
+        local agg = self._simAgg and self._simAgg[i]
+        if agg then
+            self:_setBattle(key, agg, lvl)
+        else
+            local row = self.rows[key]
+            if row then
+                self:_style(row, false, 0, nil)
+                row.text.Text = row.label .. ": —"
+            end
         end
     end
 end
@@ -634,6 +742,8 @@ function BuffStatsHud:_teamPower()
         pool = 0,
         ehp = 0,
         ehpBuffed = 0,
+        -- per-pet snapshots for the BattleSim pacing rows
+        squad = {},
     }
     local pp = Workspace:FindFirstChild("PlayerPets")
     local folder = pp and pp:FindFirstChild(self.player.Name)
@@ -668,16 +778,32 @@ function BuffStatsHud:_teamPower()
             -- multiplicative EHP factor (D+k)/k; live CombatShield pools add flat.
             local pool = (tonumber(powerNV.Value) or 0) * downFactor
             local defense = roleDefenseFor(m) + (m:GetAttribute("Defense") or 0)
-            local defenseBuffed = defense
+            local ownDefBuff = 0
             if (m:GetAttribute("DefenseBuffUntil") or 0) > nowT then
-                defenseBuffed += m:GetAttribute("DefenseBuff") or 0
+                ownDefBuff = m:GetAttribute("DefenseBuff") or 0
             end
+            local defenseBuffed = defense + ownDefBuff
             if (m:GetAttribute("TeamDefenseBuffUntil") or 0) > nowT then
                 defenseBuffed += m:GetAttribute("TeamDefenseBuff") or 0
             end
             t.pool += pool
             t.ehp += pool * (defense + k) / k
             t.ehpBuffed += pool * (defenseBuffed + k) / k + (m:GetAttribute("CombatShield") or 0)
+            -- BattleSim snapshot: defense EXCLUDES the live TeamDefenseBuff stamp — the
+            -- sim re-derives that from the buffer pet's aura so it can DIE mid-fight
+            -- (Jason: "what if my armor buffer dies? It is no longer armoring").
+            if ok and profile then
+                local roleDef = roleDefFor(m)
+                table.insert(t.squad, {
+                    perHit = profile.combatEffective or 1,
+                    pool = pool,
+                    shield = m:GetAttribute("CombatShield") or 0,
+                    defense = defense + ownDefBuff,
+                    threatMult = tonumber(roleDef.threat_mult) or 1,
+                    taunt = roleDef.implicit_taunt == true,
+                    auras = simAurasFor(m),
+                })
+            end
         end
     end
     return t
@@ -764,34 +890,47 @@ local function fmtSeconds(s)
     return string.format("%ds", math.floor(s + 0.5))
 end
 
--- The pacing row: expected kill/die clock vs the candle. Pip = the candle's level.
--- The COLOR is the VERDICT (Jason: "shouldn't it be green? It's not lopsided" — a fixed
--- red read as danger while the matchup was a blowout in his favor): green = comfortable
--- win (you outlast 2x+ while killing), amber = close fight, red = it kills you first.
-function BuffStatsHud:_setBattle(key, ttk, ttd, candleLevel)
+-- The pacing rows: BattleSim aggregate vs one matchup. Pip = wins/trials. The COLOR is
+-- the VERDICT (Jason: "shouldn't it be green?"): green = every trial cleared with no
+-- pets down, amber = wins but it cost pets (or a mixed record), red = mostly losses.
+--   all wins   -> "⚔ <median clear>  ❤ <median pool left %>" (+ " ☠N" if pets went down)
+--   mixed      -> "⚔ <median clear>  💀 <median die>"
+--   all losses -> "💀 <median die>"  (timeout-dominated shows ⚔ ∞)
+function BuffStatsHud:_setBattle(key, agg, candleLevel)
     local row = self.rows[key]
     if not row then
         return
     end
-    local ratio -- survival margin: die-time per kill-time
-    if ttk <= 0 or ttk == math.huge then
-        ratio = (ttd > 0) and math.huge or 0
+    local text
+    if agg.winRate >= 1 then
+        text = string.format(
+            "⚔ %s  ❤ %d%%",
+            fmtSeconds(agg.clearTime or math.huge),
+            math.floor((agg.poolLeftFrac or 0) * 100 + 0.5)
+        )
+        if (agg.petsDown or 0) > 0 then
+            text ..= string.format("  ☠%d", agg.petsDown)
+        end
+    elseif agg.winRate > 0 then
+        text = string.format(
+            "⚔ %s  💀 %s",
+            fmtSeconds(agg.clearTime or math.huge),
+            fmtSeconds(agg.dieTime or math.huge)
+        )
     else
-        ratio = ttd / ttk
+        text = agg.timeouts >= agg.trials and "⚔ ∞ (stalemate)"
+            or string.format("💀 %s", fmtSeconds(agg.dieTime or math.huge))
     end
-    if ratio < 1 then
-        row.fill.BackgroundColor3 = Color3.fromRGB(235, 90, 80) -- you die before it does
-    elseif ratio < 2 then
-        row.fill.BackgroundColor3 = Color3.fromRGB(240, 200, 70) -- close fight
+    if agg.winRate >= 1 and (agg.petsDown or 0) == 0 then
+        row.fill.BackgroundColor3 = Color3.fromRGB(110, 210, 130) -- clean sweep
+    elseif agg.winRate >= 0.5 then
+        row.fill.BackgroundColor3 = Color3.fromRGB(240, 200, 70) -- costly / shaky
     else
-        row.fill.BackgroundColor3 = Color3.fromRGB(110, 210, 130) -- comfortable win
+        row.fill.BackgroundColor3 = Color3.fromRGB(235, 90, 80) -- losing record
     end
-    -- bar = the survival margin itself (full at 3x+ headroom, sliver when it's dicey)
-    local frac = math.clamp(ratio / 3, 0, 1)
-    self:_style(row, true, frac, nil)
-    row.pip.Text = string.format("L%d", candleLevel or 1)
-    row.text.Text =
-        string.format("%s: ⚔ %s  💀 %s", row.label, fmtSeconds(ttk), fmtSeconds(ttd))
+    self:_style(row, true, agg.winRate, nil)
+    row.pip.Text = string.format("%d/%d L%d", agg.wins, agg.trials, candleLevel or 1)
+    row.text.Text = string.format("%s: %s", row.label, text)
 end
 
 -- Single-value team rows (Toughness EHP): one number, pip carries the layer's contribution.

@@ -40,13 +40,26 @@ return {
     -- Tune k to set how much a point of armor is worth.
     armor_curve_k = 100,
 
-    -- DEV CANDLE (BuffStatsHud ⏱ row): the standard opponent for the time-to-kill /
-    -- time-to-die pacing readout — a SAME-LEVEL lieutenant (Jason: "battles are way
-    -- too fast... over before you realize they've started"; a typical opponent makes
-    -- pacing measurable). References a real enemies.lua def (ember_brute, mid_tier)
-    -- so the candle tracks every enemy-balance change automatically.
+    -- DEV CANDLES (BuffStatsHud ⏱ rows): standard SAME-LEVEL matchups for the battle-
+    -- clock pacing readout (Jason: "battles are way too fast... over before you realize
+    -- they've started"; then "a Lieutenant, a boss, three minions and maybe a team").
+    -- One row per matchup; each pack entry references a real enemies.lua def so every
+    -- candle tracks enemy rebalances automatically. Add/remove matchups freely — the
+    -- panel builds a row per entry (this list IS how you manage "it's getting a lot").
+    -- Packs are simulated under focus fire: incoming damage DECAYS as targets die.
     dev_candle = {
-        enemy = "ember_brute",
+        matchups = {
+            { label = "Lieut.", pack = { { enemy = "ember_brute", count = 1 } } },
+            { label = "Boss", pack = { { enemy = "dire_bear", count = 1 } } },
+            { label = "3 Minions", pack = { { enemy = "lava_imp", count = 3 } } },
+            {
+                label = "Warband",
+                pack = {
+                    { enemy = "ember_brute", count = 1 },
+                    { enemy = "lava_imp", count = 3 },
+                },
+            },
+        },
     },
 
     -- Defensive inverse mining (Feature 10 slice 1b). An enemy "mines" the
