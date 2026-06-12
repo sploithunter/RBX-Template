@@ -33,6 +33,19 @@ local petConfig = {
     -- acts as a floor (see PetPower / PetHandler resolveEffectivePetPower).
     eternal = {
         huge_power_percent = 120,
+        -- CREATOR pin (Jason: the huge creator pet is "essential for scaling work" and
+        -- must ALWAYS be the strongest pet in the game): a huge pet whose species
+        -- category is "creator" scales at THIS percent instead of huge_power_percent,
+        -- so it structurally beats every player huge (130 > 120).
+        creator_power_percent = 130,
+        -- UNIQUE => ETERNAL (Jason, 2026-06-12: "if pet is unique it is eternal").
+        -- Rarity defaults applied when a species has no explicit eternal block.
+        -- Hierarchy: huge 120 > secret 100 > exclusive 90 > creator-species 80
+        -- (creator's 80 is moot for the huge apex, which pins at 130 above).
+        default_percent_by_rarity = {
+            secret = 100,
+            exclusive = 90,
+        },
         -- The eternal power base = average of the player's top-N pets (N = equip
         -- capacity). By default eternal/huge pets are EXCLUDED from that baseline
         -- (so their power never feeds the baseline that defines them). Set true to
@@ -975,15 +988,7 @@ local petConfig = {
             rarity = "secret",
             base_power = 25,
             base_health = 200,
-            -- SECRETS ARE ETERNAL (Jason, 2026-06-12: the rare INDIVIDUALS — huge,
-            -- secret, creator — ride the team curve; everything else ages out).
-            -- 100% of top-team average: always a solid squad member, never beats a
-            -- huge (120%). base_power stays as the early-game floor.
-            eternal = {
-                enabled = true,
-                power_percent = 100,
-                baseline = "top_team_average",
-            },
+            -- eternal via the SECRET rarity default (eternal.default_percent_by_rarity)
 
             -- Camera configuration for image generation
             camera = {

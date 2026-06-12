@@ -410,8 +410,15 @@ end
 
 local function getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
     -- Huge pets always scale at the configurable huge percent (e.g. 120% of the
-    -- eternal power base), overriding any per-pet eternal config.
+    -- eternal power base), overriding any per-pet eternal config. EXCEPTION: a huge
+    -- CREATOR-species pet pins at eternal.creator_power_percent (130) — Jason: the
+    -- apex must ALWAYS be the strongest pet in the game (scaling reference).
     if isHugePetFolder(petFolder) then
+        local species = petsConfig and petsConfig.pets and petsConfig.pets[petIdName]
+        if species and species.category == "creator" then
+            local eternalCfg = petsConfig and petsConfig.eternal
+            return (eternalCfg and tonumber(eternalCfg.creator_power_percent)) or 130
+        end
         return getHugeEternalPercent()
     end
 
@@ -442,6 +449,20 @@ local function getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
             end
         end
         return tonumber(eternalConfig.power_percent) or 0
+    end
+
+    -- UNIQUE => ETERNAL (Jason): rarity default when the species has no explicit
+    -- block — secret 100 / exclusive 90 (eternal.default_percent_by_rarity). Keyed
+    -- off the FAMILY rarity, so rainbow commons (variant rarity mythic) stay stacked.
+    local species = petsConfig and petsConfig.pets and petsConfig.pets[petIdName]
+    local defaults = petsConfig
+        and petsConfig.eternal
+        and petsConfig.eternal.default_percent_by_rarity
+    if species and species.rarity and type(defaults) == "table" then
+        local pct = tonumber(defaults[species.rarity])
+        if pct and pct > 0 then
+            return pct
+        end
     end
 
     return 0
