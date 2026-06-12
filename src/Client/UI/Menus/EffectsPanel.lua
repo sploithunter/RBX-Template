@@ -205,9 +205,6 @@ function EffectsPanel:_createUI(parent)
     -- Close button
     -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham)
     CloseButton.attach(self.frame, {
-        size = UDim2.new(0, 40, 0, 40),
-        position = UDim2.new(1, -50, 0, 10),
-        anchor = Vector2.new(0, 0),
         onClick = function()
             self:Hide()
         end,

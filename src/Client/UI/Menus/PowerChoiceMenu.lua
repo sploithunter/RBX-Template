@@ -1403,8 +1403,6 @@ function PowerChoiceMenu:Show(parent)
     -- close — THE standard X (shared component). This was Jason's "weird page button":
     -- a maroon circle whose "✕" glyph has no Gotham glyph, rendering as the tofu box.
     CloseButton.attach(root, {
-        size = UDim2.fromOffset(34, 34),
-        position = UDim2.new(1, -12, 0, 12),
         onClick = function()
             if _G.MenuManager then
                 _G.MenuManager:CloseCurrentPanel()

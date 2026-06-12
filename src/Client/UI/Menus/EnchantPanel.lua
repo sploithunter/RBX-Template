@@ -291,9 +291,6 @@ function EnchantPanel:_createUI(parent)
 
     -- THE standard close X (shared component; replaces the hand-styled text "X")
     CloseButton.attach(header, {
-        size = UDim2.new(0, 42, 0, 42),
-        position = UDim2.new(1, -54, 0, 13),
-        anchor = Vector2.new(0, 0),
         zindex = 102,
         onClick = function()
             self:Hide()

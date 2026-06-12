@@ -255,9 +255,6 @@ function ShopPanel:_createHeader()
     -- Close button
     -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham)
     CloseButton.attach(header, {
-        size = UDim2.new(0, 60, 0, 60),
-        position = UDim2.new(1, -70, 0, 10),
-        anchor = Vector2.new(0, 0),
         zindex = 102,
         onClick = function()
             self:Hide()

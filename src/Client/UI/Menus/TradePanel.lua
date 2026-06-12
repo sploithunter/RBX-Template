@@ -243,9 +243,6 @@ function TradePanel:_buildHeader(parent, titleText, onClose, baseZ)
     tc.Parent = title
     -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham)
     CloseButton.attach(header, {
-        size = UDim2.new(0, 48, 0, 48),
-        position = UDim2.new(1, -60, 0, 12),
-        anchor = Vector2.new(0, 0),
         zindex = baseZ + 2,
         onClick = onClose,
     })

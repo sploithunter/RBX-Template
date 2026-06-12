@@ -197,9 +197,6 @@ function QuestPanel:_createHeader()
 
     -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham)
     CloseButton.attach(header, {
-        size = UDim2.new(0, 52, 0, 52),
-        position = UDim2.new(1, -64, 0, 12),
-        anchor = Vector2.new(0, 0),
         zindex = 102,
         onClick = function()
             self:Hide()
