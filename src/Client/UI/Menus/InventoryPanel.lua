@@ -1980,6 +1980,9 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                         category = "Pets",
                         count = qtyValue.Value,
                         power = power,
+                        -- zone-aware SORT key (grid reorders on zone change to match
+                        -- the numbers the cards show)
+                        zonePower = math.floor(power * zoneResonanceFor(petType) + 0.5),
                         basePower = power,
                         effectivePower = power,
                         eternalPercent = eternalPercent,
@@ -2130,6 +2133,7 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                         category = "Pets",
                         count = 1,
                         power = power,
+                        zonePower = math.floor(power * zoneResonanceFor(petType) + 0.5),
                         basePower = basePower,
                         effectivePower = effectivePower,
                         eternalBaselinePower = eternalBaselinePower,
@@ -2932,8 +2936,8 @@ function InventoryPanel:_updateItemsDisplay()
         if aEquipped ~= bEquipped then
             return aEquipped and not bEquipped
         end
-        local ap = tonumber(a.power) or 0
-        local bp = tonumber(b.power) or 0
+        local ap = tonumber(a.zonePower or a.power) or 0
+        local bp = tonumber(b.zonePower or b.power) or 0
         if ap == bp then
             -- tie-break: stacks with higher count first
             local ac = tonumber(a.count) or 1
