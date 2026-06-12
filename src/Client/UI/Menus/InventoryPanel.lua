@@ -1742,28 +1742,52 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
         return nil
     end
 
-    local function getConfiguredEternalPercent(pdata, isHuge)
-        local eternalPercent = 0
-        if type(pdata and pdata.eternal) == "table" and pdata.eternal.enabled == true then
-            eternalPercent = tonumber(pdata.eternal.power_percent) or 0
+    -- Mirror the SERVER eternal resolution (PetHandler) for the card display, so
+    -- shown power == fought power: huge/creator pin > species block > rarity
+    -- default, then the variant effect scale (one law: x1 / x1.25 / x1.5).
+    local function applyVariantEternalScale(percent, variantName)
+        if not percent or percent <= 0 then
+            return percent or 0
         end
-        if isHuge then
-            eternalPercent = math.max(100, eternalPercent)
-        end
-        return eternalPercent
+        local mults = PET_ROLES and PET_ROLES.variant_effect_multipliers
+        local m = mults and tonumber(mults[string.lower(tostring(variantName or "basic"))])
+        return percent * (m or 1)
     end
 
-    local function getPowerMultiplierForLevel(level)
-        if not petProgressionConfig or petProgressionConfig.enabled == false then
+    local function getConfiguredEternalPercent(pdata, isHuge, variantName)
+        local eternalCfg = (petConfig and petConfig.eternal) or {}
+        local pct = 0
+        if isHuge then
+            if pdata and pdata.category == "creator" then
+                pct = tonumber(eternalCfg.creator_power_percent) or 130
+            else
+                pct = tonumber(eternalCfg.huge_power_percent) or 120
+            end
+        elseif type(pdata and pdata.eternal) == "table" and pdata.eternal.enabled == true then
+            pct = tonumber(pdata.eternal.power_percent) or 0
+        else
+            local defaults = eternalCfg.default_percent_by_rarity
+            local rarity = pdata and pdata.rarity_id
+            if type(defaults) == "table" and rarity then
+                pct = tonumber(defaults[rarity]) or 0
+            end
+        end
+        return applyVariantEternalScale(pct, variantName)
+    end
+
+    -- Eternal level bonus (pets.lua eternal.level_bonus_max), normalized by the
+    -- rarity max level — same formula as the server.
+    local function getEternalLevelScaleForDisplay(rarityId, level)
+        local cap = petConfig and petConfig.eternal and tonumber(petConfig.eternal.level_bonus_max)
+        if not cap or cap <= 0 then
             return 1
         end
-
+        local maxLevel = PetPower.maxLevelForRarity(rarityId, petProgressionConfig)
         level = math.max(1, math.floor(tonumber(level) or 1))
-        local scaling = petProgressionConfig.power_scaling or {}
-        local perLevel = tonumber(scaling.percent_per_level) or 0
-        local maxBonus = tonumber(scaling.max_bonus_percent) or 0
-        local bonus = math.min(maxBonus, math.max(0, (level - 1) * perLevel))
-        return 1 + bonus
+        if maxLevel <= 1 or level <= 1 then
+            return 1
+        end
+        return 1 + cap * math.clamp((level - 1) / (maxLevel - 1), 0, 1)
     end
 
     local function getConfiguredPowerForLevel(pdata, level, isHuge)
@@ -1898,7 +1922,7 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                         .. " "
                         .. petType:gsub("^%l", string.upper)
                     if pdata then
-                        eternalPercent = getConfiguredEternalPercent(pdata, false)
+                        eternalPercent = getConfiguredEternalPercent(pdata, false, variant)
                         rarityId = pdata.rarity_id or variant
                         displayName = pdata.name or displayName
                     end
@@ -2015,17 +2039,33 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                     local level = readNumberValue(uidFolder, { "level", "Level" }) or 1
                     local power = getConfiguredPowerForLevel(pdata, level, isHuge)
                     local basePower = power
-                    local effectivePower = power
-                    local eternalBaselinePower = nil
+                    -- ETERNAL display (Jason: the card showed the config floor while the
+                    -- pet fought at baseline x percent — shown must equal fought):
+                    -- stored record percent wins (pre-variant, like the server), else
+                    -- the configured resolution; then baseline x pct x level bonus.
                     local eternalPercent = readNumberValue(
                         uidFolder,
                         { "EternalPercent", "eternal_percent", "Eternal" }
                     ) or 0
-                    if eternalPercent == 0 then
-                        eternalPercent = getConfiguredEternalPercent(pdata, isHuge)
-                    elseif isHuge then
-                        eternalPercent = math.max(100, eternalPercent)
+                    if eternalPercent > 0 then
+                        eternalPercent = applyVariantEternalScale(eternalPercent, variant)
+                    else
+                        eternalPercent = getConfiguredEternalPercent(pdata, isHuge, variant)
                     end
+                    local eternalBaselinePower = tonumber(
+                        Players.LocalPlayer and Players.LocalPlayer:GetAttribute("EternalPowerBase")
+                    )
+                    local effectivePower = power
+                    if eternalPercent > 0 and eternalBaselinePower and eternalBaselinePower > 0 then
+                        local eternalPower = math.floor(
+                            eternalBaselinePower
+                                    * (eternalPercent / 100)
+                                    * getEternalLevelScaleForDisplay(rarityId, level)
+                                + 0.5
+                        )
+                        effectivePower = math.max(power, eternalPower)
+                    end
+                    power = effectivePower
                     local petName = (pdata and (pdata.family_display_name or pdata.name))
                         or petType:gsub("^%l", string.upper)
                     local item = {
