@@ -172,10 +172,16 @@ function EggPetPreviewService:CalculatePetChances(eggType)
         -- Golden/rainbow is a second hidden variant roll handled by hatching config.
         local variantsToShow = { "basic" }
 
-        -- Get variants for this pet type
-        if petConfig.pets[petType] and petConfig.pets[petType].variants then
+        local family = petConfig.pets[petType]
+        -- SECRET pets are never advertised (Jason: "they shouldn't be there at all") —
+        -- no row, not even "??". The "??" marking is reserved for sub-threshold
+        -- NON-secret rares (min_chance_to_show). Secret weight still counts in
+        -- totalWeight so the shown odds stay truthful (they just sum below 100%).
+        local isSecret = family and family.rarity == "secret"
+
+        if family and family.variants and not isSecret then
             for _, variant in ipairs(variantsToShow) do
-                if petConfig.pets[petType].variants[variant] then
+                if family.variants[variant] then
                     table.insert(petChances, {
                         petType = petType,
                         variant = variant,

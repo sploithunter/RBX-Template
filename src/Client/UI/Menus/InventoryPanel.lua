@@ -2380,6 +2380,24 @@ function InventoryPanel:_eggOddsLines(eggDef)
     if not eggDef then
         return { "Odds unknown" }
     end
+
+    -- Mirror the egg billboard's display rules (EggPetPreviewService): SECRET pets are
+    -- never advertised — no line at all, not even "??" — while non-secret rares below
+    -- min_chance_to_show (1 in 10,000 by config) get the "??" marking instead of a rate.
+    -- Secret weight still counts in the total so the shown odds stay truthful.
+    local okPets, petsConfig = pcall(function()
+        return ConfigLoader:LoadConfig("pets")
+    end)
+    local okEggSys, eggSysConfig = pcall(function()
+        return ConfigLoader:LoadConfig("egg_system")
+    end)
+    local minShow = (
+        okEggSys
+        and eggSysConfig
+        and eggSysConfig.pet_preview
+        and tonumber(eggSysConfig.pet_preview.min_chance_to_show)
+    ) or 0.0001
+
     local hugeChance = (eggDef.huge and tonumber(eggDef.huge.chance)) or 0
     local lines = {}
     local total = 0
@@ -2387,11 +2405,17 @@ function InventoryPanel:_eggOddsLines(eggDef)
         total = total + w
     end
     for petName, w in pairs(eggDef.pet_weights or {}) do
-        local pct = (w / math.max(total, 1)) * (1 - hugeChance) * 100
-        lines[#lines + 1] = ("%s — %.2f%%"):format(
-            petName:gsub("_", " "):gsub("^%l", string.upper),
-            pct
-        )
+        local family = okPets and petsConfig and petsConfig.pets and petsConfig.pets[petName]
+        local isSecret = family and family.rarity == "secret"
+        if not isSecret then
+            local frac = (w / math.max(total, 1)) * (1 - hugeChance)
+            local displayName = petName:gsub("_", " "):gsub("^%l", string.upper)
+            if frac < minShow then
+                lines[#lines + 1] = ("%s — ??"):format(displayName)
+            else
+                lines[#lines + 1] = ("%s — %.2f%%"):format(displayName, frac * 100)
+            end
+        end
     end
     if hugeChance > 0 then
         lines[#lines + 1] = ("??? — %.2f%%"):format(hugeChance * 100)

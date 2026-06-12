@@ -1366,7 +1366,7 @@ local petConfig = {
                 bunny = 24990,
                 doggy = 24990,
                 kitty = 500, -- ~0.66% (~1 in 150): the learnable "rare exists" moment
-                dragon = 38, -- ~0.05% (~1 in 2,000): the "??" chase — farmable with luck
+                dragon = 38, -- ~0.05% (~1 in 2,000): SECRET — hidden from all odds displays; farmable with luck
             },
 
             -- Stage 2: Rarity Calculation (basic/golden/rainbow)
@@ -1567,7 +1567,7 @@ local petConfig = {
                 bunny = 24990,
                 doggy = 24990,
                 kitty = 500, -- ~0.66% — matched to basic_egg (was a 10/1 test placeholder)
-                dragon = 38, -- ~0.05% secret "??" chase
+                dragon = 38, -- ~0.05% SECRET — hidden from all odds displays
             },
             -- Stage 2: variant rarity (basic mostly; small golden/rainbow chance).
             rarity_rates = {
