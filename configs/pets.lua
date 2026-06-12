@@ -1296,7 +1296,12 @@ local petConfig = {
         -- Luck progression (Jason: no hard caps, no runaway terms).
         -- LEVEL: diminishing-doubling curve — +per_doubling each time the level
         -- doubles past first_bonus_at (log2; bounded by the level cap anyway).
-        level_luck = { per_doubling = 0.5, first_bonus_at = 3 },
+        -- eased 0.5 -> 0.3 (Jason: "we're scaling player luck really really steeply")
+        level_luck = { per_doubling = 0.3, first_bonus_at = 3 },
+        -- VARIANT LUCK DAMPING (Jason): variant (golden/rainbow) chances see only this
+        -- fraction of the luck multiplier — species luck (the index chase) stays FULL
+        -- potency, but luck stops triple-dipping into variant rates. 1 = undamped.
+        variant_luck_weight = 0.5,
         -- COLLECTION (replaces the old per-hatch volume term, which a parked 24/7
         -- auto-hatcher farmed for free): bonus = max_bonus x the fraction of the
         -- OBTAINABLE pet index discovered (species x variants + huges — from
@@ -2013,8 +2018,11 @@ function petConfig.simulateHatch(eggType, playerData)
     --   golden  : luckMultiplier * goldenLuckBoost                 [stage 2]
     --   rainbow : luckMultiplier * rainbowLuckBoost                [stage 2]
     --   huge    : hugeLuckBoost (fractional attempts)              [stage 2.5]
-    goldenChance = goldenChance * luckMultiplier * (tonumber(playerData.goldenLuckBoost) or 1)
-    rainbowChance = rainbowChance * luckMultiplier * (tonumber(playerData.rainbowLuckBoost) or 1)
+    -- VARIANT LUCK DAMPING: variants see a WEIGHTED multiplier (1 + (mult-1) x weight)
+    -- so species luck stays steep while golden/rainbow inflation is tamed.
+    local variantLuck = 1 + (luckMultiplier - 1) * (tonumber(gamepassMods.variant_luck_weight) or 1)
+    goldenChance = goldenChance * variantLuck * (tonumber(playerData.goldenLuckBoost) or 1)
+    rainbowChance = rainbowChance * variantLuck * (tonumber(playerData.rainbowLuckBoost) or 1)
 
     -- Stage 2.5: HUGE roll (Jason's design): huges are SEPARATE unique pets, never a
     -- variant. The normal pet above is the QUEUED outcome; the player then gets

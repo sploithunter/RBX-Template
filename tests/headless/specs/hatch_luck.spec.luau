@@ -29,10 +29,11 @@ return function()
         end)
 
         it("level follows the doubling curve", function()
-            -- level 10: 1 + 0.5*log2(1 + 10/3) = ~2.06
-            expect(near(luckFor({ level = 10, indexCompletion = 0 }), 2.06, 0.02)).to.equal(true)
-            -- level 50: 1 + 0.5*log2(1 + 50/3) = ~3.07
-            expect(near(luckFor({ level = 50, indexCompletion = 0 }), 3.07, 0.02)).to.equal(true)
+            -- eased per_doubling 0.5 -> 0.3 (Jason: "scaling player luck really really steeply")
+            -- level 10: 1 + 0.3*log2(1 + 10/3) = ~1.63
+            expect(near(luckFor({ level = 10, indexCompletion = 0 }), 1.63, 0.02)).to.equal(true)
+            -- level 50: 1 + 0.3*log2(1 + 50/3) = ~2.24
+            expect(near(luckFor({ level = 50, indexCompletion = 0 }), 2.24, 0.02)).to.equal(true)
         end)
 
         it("collection completion scales the index bonus linearly to its natural cap", function()
