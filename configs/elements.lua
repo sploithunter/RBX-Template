@@ -8,6 +8,28 @@
 ]]
 
 return {
+    -- BIOME ROCK-PAPER-SCISSORS (Jason, 2026-06-12): one directed cycle over the four
+    -- homeworld elements — each element is STRONG in the zone it beats, WEAK in the
+    -- zone that beats it, neutral at home and at its opposite. Replaces the old
+    -- static element_stats attack bias ("weird fire pets are just better") with pure
+    -- geography. Special/unknown zones resolve neutral by construction (map miss).
+    --   lava -> grass   (fire burns the meadow)
+    --   grass -> desert (life reclaims the wasteland)
+    --   desert -> ice   (the desert heat melts the ice)
+    --   ice -> lava     (ice quenches the fire)
+    -- Migration ring: zone N's pets shine later in the unlock chain — ice pets
+    -- conquer Lava, and the day-one grass starters get their renaissance in Desert.
+    biome = {
+        beats = {
+            lava = "grass",
+            grass = "desert",
+            desert = "ice",
+            ice = "lava",
+        },
+        advantage = 1.25, -- standing in the zone your element beats
+        disadvantage = 0.8, -- standing in the zone that beats your element
+    },
+
     -- resonance[petElement][realmAlignment] -> multiplier
     resonance = {
         light = { heaven = 1.2, hell = 1.5, neutral = 1.0 },

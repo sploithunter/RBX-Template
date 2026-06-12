@@ -89,11 +89,16 @@ return {
         -- lava   = glass cannon (pyro): hits hardest, also takes the most
         -- ice    = durable controller (cryo): softer hits, tankiest
         -- desert = sturdy skirmisher (sand): slightly under on offense, mildly tanky
+        -- NEUTRALIZED (Jason, 2026-06-12: a static element bias — "weird fire pets
+        -- are just better" — was never the lore). Element power is now GEOGRAPHY:
+        -- the biome RPS in elements.lua (strong in the zone you beat, weak in the
+        -- zone that beats you). These stay as knobs if a flat per-element identity
+        -- is ever wanted again.
         element_stats = {
             grass = { attack_mult = 1.00, taken_mult = 1.00 },
-            lava = { attack_mult = 1.15, taken_mult = 1.12 },
-            ice = { attack_mult = 0.90, taken_mult = 0.88 },
-            desert = { attack_mult = 0.97, taken_mult = 0.95 },
+            lava = { attack_mult = 1.00, taken_mult = 1.00 },
+            ice = { attack_mult = 1.00, taken_mult = 1.00 },
+            desert = { attack_mult = 1.00, taken_mult = 1.00 },
         },
     },
 

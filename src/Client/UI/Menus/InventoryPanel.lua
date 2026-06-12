@@ -88,6 +88,34 @@ end)
 if not petRolesOk then
     PET_ROLES = nil
 end
+-- Biome RPS (zone resonance) — the card recalculates as the player crosses zones.
+local elementsOk, ELEMENTS_CONFIG = pcall(function()
+    return require(ReplicatedStorage.Configs:WaitForChild("elements"))
+end)
+if not elementsOk then
+    ELEMENTS_CONFIG = nil
+end
+local areasOk, AREAS_CONFIG = pcall(function()
+    return require(ReplicatedStorage.Configs:WaitForChild("areas"))
+end)
+if not areasOk then
+    AREAS_CONFIG = nil
+end
+local ElementResonance = require(ReplicatedStorage.Shared.Game.ElementResonance)
+
+-- Current zone resonance multiplier for a pet type (1.0 when neutral/unknown).
+local function zoneResonanceFor(petType)
+    if not (ELEMENTS_CONFIG and PetBadge) then
+        return 1
+    end
+    local zones = AREAS_CONFIG and AREAS_CONFIG.zones
+    local player = Players.LocalPlayer
+    local zone = zones and player and zones[tostring(player:GetAttribute("CurrentArea"))]
+    local zoneElement = zone and zone.element
+    local petElement = PetBadge.elementForPetType(petType)
+    return ElementResonance.biomeMultiplier(petElement, zoneElement, ELEMENTS_CONFIG)
+end
+
 -- Enchant display (metal ring tiers + per-effect %) for badges + readable tooltips.
 local enchantsOk, ENCHANTS_CONFIG = pcall(function()
     return require(ReplicatedStorage.Configs:WaitForChild("enchants"))
@@ -442,6 +470,20 @@ function InventoryPanel:Show(parent)
     self:_loadRealInventoryData() -- Load real data first
     self:_updateItemsDisplay() -- Update items display with real data
     self:_refreshCategoryTabs() -- Update category tabs with real counts (after data is loaded)
+
+    -- BIOME RPS: crossing a zone border re-prices every pet card (the zone event we
+    -- already capture — Jason: "recalculate the pets in the inventory"). The power
+    -- sort re-runs with the new numbers, so the grid reorders to this zone's truth.
+    if not self._zoneListener then
+        self._zoneListener = Players.LocalPlayer
+            :GetAttributeChangedSignal("CurrentArea")
+            :Connect(function()
+                if self.isVisible then
+                    self:_loadRealInventoryData()
+                    self:_updateItemsDisplay()
+                end
+            end)
+    end
     self:_setupEquippedFolderListeners() -- Listen for equipped changes
     self:SetupRealTimeUpdates() -- Listen for inventory changes
 
@@ -3312,13 +3354,16 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
                 petType = item.petType,
                 variant = item.variant,
                 creator = item.creator == true, -- apex pins to max_pet_power
+                -- BIOME RPS: the card shows what the pet does HERE — numbers
+                -- recalculate when the player crosses a zone border.
+                context = { zone = zoneResonanceFor(item.petType) },
             })
         end)
         if okProfile and profile then
             powerText = string.format(
                 "⛏ %d  ⚔ %d",
-                PetPowerView.displayRound(profile.miningBase),
-                PetPowerView.displayRound(profile.combatBase)
+                PetPowerView.displayRound(profile.miningEffective),
+                PetPowerView.displayRound(profile.combatEffective)
             )
         end
     end
@@ -4095,6 +4140,20 @@ function InventoryPanel:_showItemTooltip(item)
         table.insert(lines, { label = "Enchants", value = tostring(item.enchantmentCount) })
     else
         table.insert(lines, { label = "Enchants", value = "None" })
+    end
+    if item.category == "Pets" and item.petType then
+        local mult = zoneResonanceFor(item.petType)
+        if mult > 1 then
+            table.insert(
+                lines,
+                { label = "Zone", value = ("Strong here (+%d%%)"):format((mult - 1) * 100 + 0.5) }
+            )
+        elseif mult < 1 then
+            table.insert(
+                lines,
+                { label = "Zone", value = ("Weak here (-%d%%)"):format((1 - mult) * 100 + 0.5) }
+            )
+        end
     end
     if item.locked ~= nil then
         table.insert(lines, { label = "Locked", value = item.locked and "Yes" or "No" })

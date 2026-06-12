@@ -17,4 +17,26 @@ function ElementResonance.multiplier(element, realmAlignment, config)
     return row[realmAlignment] or 1.0
 end
 
+-- BIOME RPS (Jason): petElement vs the zone the player stands in.
+-- advantage in the zone your element beats, disadvantage in the zone that beats
+-- you, 1.0 everywhere else — including unknown/special zones (map miss = neutral).
+function ElementResonance.biomeMultiplier(petElement, zoneElement, cfg)
+    local biome = cfg and cfg.biome
+    if type(biome) ~= "table" or type(biome.beats) ~= "table" then
+        return 1
+    end
+    petElement = tostring(petElement or "")
+    zoneElement = tostring(zoneElement or "")
+    if petElement == "" or zoneElement == "" then
+        return 1
+    end
+    if biome.beats[petElement] == zoneElement then
+        return tonumber(biome.advantage) or 1
+    end
+    if biome.beats[zoneElement] == petElement then
+        return tonumber(biome.disadvantage) or 1
+    end
+    return 1
+end
+
 return ElementResonance

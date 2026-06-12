@@ -20,6 +20,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local ElementResonance = require(game:GetService("ReplicatedStorage").Shared.Game.ElementResonance)
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -396,6 +397,13 @@ function PetFollowService:_mine(player, pet, breakable)
         currency = breakable:GetAttribute("Currency"),
     }
     local dmg = combat:ResolvePetDamage(player, ctx)
+
+    -- BIOME RPS (Jason: "rock paper scissors... one area's pets are better in
+    -- another area and worse in a second"): pet element vs the zone the player
+    -- stands in. Advantage in the zone you beat, disadvantage in the zone that
+    -- beats you, neutral at home/opposite/unknown. Same multiplier the inventory
+    -- shows (shown = dealt).
+    dmg = dmg * self:_zoneResonance(player, pet)
     -- Archetype damage curve: support/control hit softer, melee/ranged full.
     dmg = dmg * self:_roleDamageMult(pet)
     -- Combat-origin element: each element trades attack vs durability (lava hits hardest,
@@ -600,6 +608,32 @@ function PetFollowService:_mine(player, pet, breakable)
             end
         end
     end
+end
+
+-- Zone-resonance multiplier for a pet right now (configs/elements.lua biome +
+-- combat_fx pettype_element + areas zone element). Cached config reads.
+function PetFollowService:_zoneResonance(player, pet)
+    if self._elementsConfig == nil then
+        local ok1, elements = pcall(function()
+            return require(game:GetService("ReplicatedStorage").Configs:WaitForChild("elements"))
+        end)
+        local ok2, fx = pcall(function()
+            return require(game:GetService("ReplicatedStorage").Configs:WaitForChild("combat_fx"))
+        end)
+        local ok3, areas = pcall(function()
+            return require(game:GetService("ReplicatedStorage").Configs:WaitForChild("areas"))
+        end)
+        self._elementsConfig = (ok1 and elements) or false
+        self._petElementMap = (ok2 and fx and fx.origin and fx.origin.pettype_element) or {}
+        self._zonesConfig = (ok3 and areas and areas.zones) or {}
+    end
+    if not self._elementsConfig then
+        return 1
+    end
+    local petElement = self._petElementMap[pet:GetAttribute("PetType")]
+    local zone = self._zonesConfig[tostring(player:GetAttribute("CurrentArea"))]
+    local zoneElement = zone and zone.element
+    return ElementResonance.biomeMultiplier(petElement, zoneElement, self._elementsConfig)
 end
 
 function PetFollowService:_tickPlayer(player)

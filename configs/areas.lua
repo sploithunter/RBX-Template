@@ -25,6 +25,7 @@ return {
         Spawn = {
             id = "Spawn",
             kind = "area",
+            element = "grass", -- biome RPS (elements.lua biome)
             -- ZONE LEVEL (Jason): the base level of this zone's content. Crystals stamp
             -- MiningLevel = zone_level + size offset (S/M/L = +0/+1/+2, mirroring enemy
             -- rank_offset); XP diminishes vs out-leveled targets (leveling.xp_level_scale).
@@ -54,6 +55,7 @@ return {
         Meadow = {
             id = "Meadow",
             kind = "area",
+            element = "grass", -- biome RPS (elements.lua biome)
             zone_level = 1, -- earth tier, same as Spawn (boost island, not a step up)
             mining_currency = "grass_coins", -- what the zone's ore PAYS (area_coins rewards resolve here)
             parent = "meadow_island",
@@ -89,6 +91,7 @@ return {
         Lava = {
             id = "Lava",
             kind = "area",
+            element = "lava", -- biome RPS (elements.lua biome)
             zone_level = 3, -- third gate (see Spawn note)
             mining_currency = "lava_coins", -- what the zone's ore PAYS (area_coins rewards resolve here)
             parent = "lava_island",
@@ -121,6 +124,7 @@ return {
         Ice = {
             id = "Ice",
             kind = "area",
+            element = "ice", -- biome RPS (elements.lua biome)
             zone_level = 2, -- second gate (see Spawn note)
             mining_currency = "ice_coins", -- what the zone's ore PAYS (area_coins rewards resolve here)
             parent = "ice_island",
@@ -159,6 +163,7 @@ return {
         Desert = {
             id = "Desert",
             kind = "area",
+            element = "desert", -- biome RPS (elements.lua biome)
             zone_level = 4, -- last homeworld gate (see Spawn note)
             mining_currency = "desert_coins", -- what the zone's ore PAYS (area_coins rewards resolve here)
             parent = "desert_island",

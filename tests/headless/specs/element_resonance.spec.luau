@@ -6,7 +6,35 @@
 local ElementResonance = loadModule("src/Shared/Game/ElementResonance.lua")
 local elementsConfig = loadModule("configs/elements.lua")
 
+local biomeCfg = loadModule("configs/elements.lua")
+
 return function()
+    describe("ElementResonance.biomeMultiplier (zone RPS)", function()
+        it("advantage in the zone your element beats", function()
+            expect(ElementResonance.biomeMultiplier("lava", "grass", biomeCfg)).to.equal(1.25)
+            expect(ElementResonance.biomeMultiplier("grass", "desert", biomeCfg)).to.equal(1.25)
+            expect(ElementResonance.biomeMultiplier("desert", "ice", biomeCfg)).to.equal(1.25)
+            expect(ElementResonance.biomeMultiplier("ice", "lava", biomeCfg)).to.equal(1.25)
+        end)
+
+        it("disadvantage in the zone that beats you", function()
+            expect(ElementResonance.biomeMultiplier("grass", "lava", biomeCfg)).to.equal(0.8)
+            expect(ElementResonance.biomeMultiplier("lava", "ice", biomeCfg)).to.equal(0.8)
+        end)
+
+        it("home and opposite are neutral", function()
+            expect(ElementResonance.biomeMultiplier("grass", "grass", biomeCfg)).to.equal(1)
+            expect(ElementResonance.biomeMultiplier("grass", "ice", biomeCfg)).to.equal(1)
+            expect(ElementResonance.biomeMultiplier("lava", "desert", biomeCfg)).to.equal(1)
+        end)
+
+        it("special/unknown zones are neutral by construction", function()
+            expect(ElementResonance.biomeMultiplier("lava", "heaven_3", biomeCfg)).to.equal(1)
+            expect(ElementResonance.biomeMultiplier(nil, "grass", biomeCfg)).to.equal(1)
+            expect(ElementResonance.biomeMultiplier("lava", "grass", nil)).to.equal(1)
+        end)
+    end)
+
     describe("ElementResonance.multiplier", function()
         local function m(element, realm)
             return ElementResonance.multiplier(element, realm, elementsConfig)
