@@ -108,6 +108,7 @@ local ORE_TIERS = {
         size_scale = 0.6,
         health = 100,
         value = 20,
+        level_offset = 0, -- minion tier (Jason: S/M/L = minion/lieutenant/boss, like enemy rank_offset)
         placement = { height_offset = 1, sink_depth = 0.75 },
     },
     {
@@ -116,6 +117,7 @@ local ORE_TIERS = {
         size_scale = 1.0,
         health = 500,
         value = 100,
+        level_offset = 1, -- lieutenant tier
         placement = { height_offset = 2, sink_depth = 1.05 },
     },
     {
@@ -124,6 +126,7 @@ local ORE_TIERS = {
         size_scale = 1.8,
         health = 2000,
         value = 400,
+        level_offset = 2, -- boss tier
         placement = { height_offset = 7, sink_depth = 1.45 },
     },
 }
@@ -563,6 +566,7 @@ for _, fam in ipairs(ORE_FAMILIES) do
                 scale = scale,
                 health = tier.health,
                 value = tier.value,
+                level_offset = tier.level_offset, -- spawner: MiningLevel = zone_level + this
                 currency = fam.currency,
                 glow = fam.glow,
                 default_orientation = orientation,

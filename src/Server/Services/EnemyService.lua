@@ -338,7 +338,7 @@ function EnemyService:_onDefeated(targetId)
             local player = userId and Players:GetPlayerByUserId(userId)
             if player then
                 pcall(function()
-                    combat:AwardLoot(player, entry.enemyId)
+                    combat:AwardLoot(player, entry.enemyId, model:GetAttribute("Level"))
                 end)
                 fireGameEvent(player, "enemy_defeated", { enemy = entry.enemyId })
                 pcall(function() -- mission counter (Origin Story combat beats)

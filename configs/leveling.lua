@@ -22,6 +22,19 @@ return {
         combat = { per_value = 0.1, min = 1 }, -- ~10% of the enemy's loot total
     },
 
+    -- DIMINISHING XP vs out-leveled targets (Jason: "nobody should be able to put on an
+    -- auto clicker... and wake up 10-20 levels ahead"; "-3 levels should be almost not
+    -- worth it"). Applied via LevelDiffYield.xp to mining (crystal MiningLevel) and
+    -- combat (enemy Level). At/above your level = full XP; below = -30%/level, floored
+    -- at 10% (-3 levels -> 10%). Combined with the exponential xp curve (each level
+    -- costs 1.18x more), parked overnight farming crawls to ~a level or two, not 30.
+    xp_level_scale = { per_level_down = 0.30, floor = 0.10 },
+
+    -- COIN payout vs level — a tuning SEAM shipped NEUTRAL (exactly x1 at any diff).
+    -- Jason: money stays full at any level because coins fund hatching (more eggs =
+    -- the actual game); this lever exists in case income inflation ever needs a brake.
+    payout_level_scale = { per_level = 0, min = 1, max = 1 },
+
     -- Damage multiplier per level of (attacker - defender), clamped. +8% dmg per level up.
     scale = { per_level = 0.08, min = 0.3, max = 2.5 },
 

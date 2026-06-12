@@ -31,6 +31,7 @@ local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 
 local XpReward = require(ReplicatedStorage.Shared.Game.XpReward)
+local LevelDiffYield = require(ReplicatedStorage.Shared.Game.LevelDiffYield)
 local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
 local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local buffsConfig = require(ReplicatedStorage.Configs:WaitForChild("buffs"))
@@ -46,6 +47,9 @@ local petProgressionService
 -- Local state
 local breakablesConfig
 local xpRewardsConfig = {} -- configs/leveling.lua xp_rewards (mining grants XP — see _onBreak)
+local xpLevelScaleCfg -- configs/leveling.lua xp_level_scale (diminishing XP vs out-leveled crystals)
+local payoutLevelScaleCfg -- configs/leveling.lua payout_level_scale (NEUTRAL x1 seam today)
+local zonesConfig = {} -- configs/areas.lua zones (zone_level -> crystal MiningLevel)
 -- Legacy "ring mining": the invisible Star align-ring (unanchored physics boxes + AlignPosition/
 -- Orientation constraints per mined node) that made pets ORBIT a node while mining. The current
 -- pet system (PetFollowService) uses its own mining animation and never touches this ring, so it
@@ -657,6 +661,12 @@ function BreakableSpawner:Init()
         return configLoader:LoadConfig("leveling")
     end)
     xpRewardsConfig = (okLvl and type(lvlCfg) == "table" and lvlCfg.xp_rewards) or {}
+    xpLevelScaleCfg = okLvl and type(lvlCfg) == "table" and lvlCfg.xp_level_scale or nil
+    payoutLevelScaleCfg = okLvl and type(lvlCfg) == "table" and lvlCfg.payout_level_scale or nil
+    local okAreas, areasCfg = pcall(function()
+        return configLoader:LoadConfig("areas")
+    end)
+    zonesConfig = (okAreas and type(areasCfg) == "table" and areasCfg.zones) or {}
 
     -- Legacy ring-mining toggle (OFF by default — see decl above). The current pet system uses
     -- its own mining animation, so the Star align-ring is not built unless ring_mining is enabled.
@@ -1609,6 +1619,17 @@ function BreakableSpawner:_trySpawnOne(
     model:SetAttribute("BreakableType", "Crystal")
     model:SetAttribute("CrystalName", crystalName)
     model:SetAttribute("World", worldFolder.Name)
+    -- CRYSTAL LEVEL (Jason): zone_level + size tier offset (S/M/L = minion/lieutenant/
+    -- boss = +0/+1/+2, mirroring enemy rank_offset). Drives the diminishing-XP gate in
+    -- _onBreak. Deliberately NOT the "Level" attribute — mining never enters the to-hit
+    -- math (crystals can't dodge) and must not start.
+    local zoneDef = zonesConfig[worldFolder.Name]
+    local zoneLevel = (type(zoneDef) == "table" and tonumber(zoneDef.zone_level)) or 1
+    local sizeOffset = type(crystalCfg) == "table" and tonumber(crystalCfg.level_offset)
+    if not sizeOffset then -- legacy/placeholder names carry the tier in the name
+        sizeOffset = (crystalName:find("Large") and 2) or (crystalName:find("Medium") and 1) or 0
+    end
+    model:SetAttribute("MiningLevel", zoneLevel + sizeOffset)
     -- Slot path: tag which slot this crystal occupies, so ChildRemoved frees exactly that slot.
     if claimedSlot then
         model:SetAttribute("SlotId", claimedSlot.id)
@@ -2092,6 +2113,17 @@ function BreakableSpawner:_trySpawnOne(
                         local plr = Players:GetPlayerByUserId(tonumber(v.Name))
                         if plr and share > 0 then
                             local resolvedShare = resolvePlayerAward(plr, share)
+                            -- level-vs-payout seam — NEUTRAL today (x1; Jason: coins fund
+                            -- hatching), the lever lives in leveling.payout_level_scale
+                            resolvedShare = math.floor(
+                                resolvedShare
+                                        * LevelDiffYield.payout(
+                                            plr:GetAttribute("Level"),
+                                            model:GetAttribute("MiningLevel"),
+                                            payoutLevelScaleCfg
+                                        )
+                                    + 0.5
+                            )
                             pcall(function()
                                 creditCoins(plr, resolvedShare, "crystal_break_split")
                                 rollGemBonus(plr) -- premium gem bonus per contributor
@@ -2117,6 +2149,16 @@ function BreakableSpawner:_trySpawnOne(
                                 -- HUD level bar ticks live.
                                 if progression and progression.AddExperience then
                                     local xp = XpReward.fromValue(share, xpRewardsConfig.mining)
+                                    -- DIMINISHING XP vs out-leveled crystals (Jason: no
+                                    -- overnight auto-click leveling; -3 levels ~ not worth it)
+                                    xp = math.floor(
+                                        xp
+                                            * LevelDiffYield.xp(
+                                                plr:GetAttribute("Level"),
+                                                model:GetAttribute("MiningLevel"),
+                                                xpLevelScaleCfg
+                                            )
+                                    )
                                     if xp > 0 then
                                         progression:AddExperience(plr, xp)
                                     end

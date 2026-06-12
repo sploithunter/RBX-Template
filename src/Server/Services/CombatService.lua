@@ -30,6 +30,7 @@ local FocusMath = require(ReplicatedStorage.Shared.Game.FocusMath)
 local CombatSim = require(ReplicatedStorage.Shared.Game.CombatSim)
 local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
 local XpReward = require(ReplicatedStorage.Shared.Game.XpReward)
+local LevelDiffYield = require(ReplicatedStorage.Shared.Game.LevelDiffYield)
 
 local CombatService = {}
 CombatService.__index = CombatService
@@ -46,6 +47,7 @@ function CombatService:Init()
         return self._configLoader:LoadConfig("leveling")
     end)
     self._xpRewards = (okLvl and type(lvlCfg) == "table" and lvlCfg.xp_rewards) or {}
+    self._xpLevelScale = okLvl and type(lvlCfg) == "table" and lvlCfg.xp_level_scale or nil
     self._deps = { Targeting = Targeting, CombatMath = CombatMath, FocusMath = FocusMath }
 end
 
@@ -133,7 +135,7 @@ end
 
 -- Credit a defeated enemy's deterministic drops to the player (Feature 10:
 -- "loot includes biome currency + Shadow Tokens in Hell").
-function CombatService:AwardLoot(player, enemyId)
+function CombatService:AwardLoot(player, enemyId, enemyLevel)
     local def = self:_enemyDef(enemyId)
     if not def then
         return { ok = false, reason = "unknown_enemy" }
@@ -147,6 +149,16 @@ function CombatService:AwardLoot(player, enemyId)
     -- Combat grants XP too: scale off the enemy's loot total so tougher drops = more XP.
     -- AddExperience publishes the XP attribute -> the HUD level bar ticks live.
     local xp = XpReward.fromValue(lootTotal, self._xpRewards and self._xpRewards.combat)
+    -- DIMINISHING XP vs out-leveled enemies (Jason: no overnight farm-leveling; same
+    -- gate as mining). enemyLevel = the model's Level attribute (rank already baked).
+    xp = math.floor(
+        xp
+            * LevelDiffYield.xp(
+                player:GetAttribute("Level"),
+                enemyLevel or def.level,
+                self._xpLevelScale
+            )
+    )
     if xp > 0 then
         local progression = self:_service("PlayerProgressionService")
         if progression and progression.AddExperience then
