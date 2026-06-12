@@ -765,13 +765,29 @@ local function fmtSeconds(s)
 end
 
 -- The pacing row: expected kill/die clock vs the candle. Pip = the candle's level.
+-- The COLOR is the VERDICT (Jason: "shouldn't it be green? It's not lopsided" — a fixed
+-- red read as danger while the matchup was a blowout in his favor): green = comfortable
+-- win (you outlast 2x+ while killing), amber = close fight, red = it kills you first.
 function BuffStatsHud:_setBattle(key, ttk, ttd, candleLevel)
     local row = self.rows[key]
     if not row then
         return
     end
-    -- bar = how lopsided the fight is (kill fast relative to dying = mostly full)
-    local frac = (ttk < math.huge and ttd > 0) and math.clamp(ttd / (ttk + ttd), 0, 1) or 0
+    local ratio -- survival margin: die-time per kill-time
+    if ttk <= 0 or ttk == math.huge then
+        ratio = (ttd > 0) and math.huge or 0
+    else
+        ratio = ttd / ttk
+    end
+    if ratio < 1 then
+        row.fill.BackgroundColor3 = Color3.fromRGB(235, 90, 80) -- you die before it does
+    elseif ratio < 2 then
+        row.fill.BackgroundColor3 = Color3.fromRGB(240, 200, 70) -- close fight
+    else
+        row.fill.BackgroundColor3 = Color3.fromRGB(110, 210, 130) -- comfortable win
+    end
+    -- bar = the survival margin itself (full at 3x+ headroom, sliver when it's dicey)
+    local frac = math.clamp(ratio / 3, 0, 1)
     self:_style(row, true, frac, nil)
     row.pip.Text = string.format("L%d", candleLevel or 1)
     row.text.Text =
