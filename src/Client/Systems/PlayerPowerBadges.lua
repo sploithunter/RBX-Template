@@ -58,6 +58,28 @@ local BUFFS = {
     { attr = "RechargeBuff", label = "RCH" }, -- Hasten
     { attr = "XpBuff", label = "XP" }, -- XP Surge
     { attr = "MagnetBuff", label = "MAG" }, -- Magnet (drop pull radius, #167)
+    -- ENCHANT aggregates (Jason: "I do have the buff... [but] not buffed visually on my
+    -- player bar"): EnchantService stamps <Attr>+Until while any equipped pet carries the
+    -- matching enchant. Neutral (purple) disc = the enchant system's color, same as the
+    -- card badges. Permanent while equipped -> renders as "ON".
+    {
+        attr = "EnchantCoinBonus",
+        label = "COIN",
+        fixed = { element = "neutral", symbol = "coins_up" },
+        steady = true,
+    },
+    {
+        attr = "EnchantPetXpBonus",
+        label = "XP",
+        fixed = { element = "neutral", symbol = "xp_up" },
+        steady = true,
+    },
+    {
+        attr = "EnchantHatchLuck",
+        label = "LUCK",
+        fixed = { element = "neutral", symbol = "clover_lucky" },
+        steady = true,
+    },
 }
 
 local BLINK_LEAD = 5 -- seconds: blink in the final stretch

@@ -109,6 +109,13 @@ function EnchantService:_stampAggregates(player)
         if (player:GetAttribute(attr) or 0) ~= value then
             player:SetAttribute(attr, value)
         end
+        -- `Until` sentinel drives the player-bar badge pile (PlayerPowerBadges shows a
+        -- buff only while <Attr>Until > now): far-future while active -> permanent "ON"
+        -- badge, 0 when the last enchanted pet is unequipped.
+        local untilValue = value > 0 and (os.time() + 86400 * 3650) or 0
+        if (player:GetAttribute(attr .. "Until") or 0) ~= untilValue then
+            player:SetAttribute(attr .. "Until", untilValue)
+        end
     end
 end
 
