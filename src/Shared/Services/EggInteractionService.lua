@@ -621,11 +621,13 @@ end
 local function formatStopReason(stopReason)
     local labels = {
         currency = "out of currency",
-        storage = "storage full",
+        -- Storage v2: stacks never truncate; only UNIQUE (secret+) jackpots can hit
+        -- the cap, so name the resource so the player knows what filled up.
+        storage = "unique pet storage full",
         entitlement = "hatch limit",
         partial = "partial hatch",
         grant_failed = "grant issue",
-        no_storage = "storage full",
+        no_storage = "unique pet storage full",
     }
     return labels[stopReason] or tostring(stopReason or "")
 end

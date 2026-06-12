@@ -1,6 +1,9 @@
 # Pet Storage v2 — uniques-only cap, stackable enchanted mythics, ops telemetry
 
-Status: **DESIGN BLESSED** (Jason, 2026-06-12) — not yet implemented.
+Status: **IMPLEMENTED & LIVE-VERIFIED** (2026-06-12). All four stages shipped.
+Deviation from D6: the Max button still computes from coins/entitlement only — with
+stacks never consuming slots, Max IS what lands except the sub-1% case of a secret+
+jackpot at a full unique cap, which the readable toast + storage_truncated alert cover.
 Origin: live bug on the published game — auto-hatch max-9 yielded fewer than 9 pets
 with ample coins, then "pet storage is not available." Root cause: the pets bucket's
 `base_limit = 50` is a template-era fossil (commit 7a082256, 2025-07-31, pre-Pet-Realm)

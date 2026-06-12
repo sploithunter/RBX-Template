@@ -17,6 +17,7 @@ local eggSystemConfig = Locations.getConfig("egg_system")
 local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
 local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
+local OpsAlert = require(script.Parent.Parent.OpsAlert)
 local HatchTiming = require(ReplicatedStorage.Shared.Game.HatchTiming)
 
 -- Egg-hatch animation timing (not registered in Locations.ConfigFiles; require directly like
@@ -1036,6 +1037,15 @@ function EggService:ResolveStorageLimitedOutcomes(player, outcomes)
         end
 
         if requiresSlot and usedNewSlots >= availableSlots then
+            -- OPS TELEMETRY (Storage v2 D8): a real player just hit the unique cap —
+            -- the evidence ships itself instead of needing an alt-account stakeout.
+            OpsAlert.send("storage_truncated", {
+                player = player and player.Name or "?",
+                used = usedSlots,
+                total = totalSlots,
+                requested = #outcomes,
+                accepted = #accepted,
+            })
             return accepted, "storage"
         end
 

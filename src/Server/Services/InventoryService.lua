@@ -1151,6 +1151,7 @@ function InventoryService:_buildPetBucketFolders(bucketFolder, items, equippedBy
                 id = sample.id,
                 variant = sample.variant,
                 quantity = group.unequippedCount,
+                enchant = sample.enchant, -- Storage v2: the stack's identity enchant
             })
         end
     end
@@ -1176,6 +1177,14 @@ function InventoryService:_createPetStackFolder(parentFolder, stackKey, itemData
     qty.Name = "Quantity"
     qty.Value = itemData.quantity or 1
     qty.Parent = stackFolder
+
+    -- Storage v2: enchant-keyed stacks surface their effect for the card badge
+    if itemData.enchant ~= nil then
+        local enchant = Instance.new("StringValue")
+        enchant.Name = "Enchant"
+        enchant.Value = tostring(itemData.enchant)
+        enchant.Parent = stackFolder
+    end
 end
 
 -- Create a folder for a special pet (unique)

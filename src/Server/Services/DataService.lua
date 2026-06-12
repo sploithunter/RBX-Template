@@ -22,6 +22,7 @@ local Locations = require(game.ReplicatedStorage.Shared.Locations)
 local ProfileStore = Locations.getPackage("ProfileStore")
 local Promise = Locations.getPackage("Promise")
 local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
+local OpsAlert = require(script.Parent.Parent.OpsAlert)
 local PetMigrationV5 = require(ReplicatedStorage.Shared.Inventory.PetMigrationV5)
 local PetCompaction = require(ReplicatedStorage.Shared.Inventory.PetCompaction)
 local PetEquipMigration = require(ReplicatedStorage.Shared.Inventory.PetEquipMigration)
@@ -1472,6 +1473,20 @@ function DataService:MigrateProfile(profile)
             migrationsApplied = migrationCount,
             schemaVersion = data.SchemaVersion,
         })
+    end
+    -- OPS TELEMETRY (Storage v2 D8): warn US when a player's unique-pet storage runs
+    -- hot (>= 80% of cap) — measured at every load, shipped to the OpsAlerts ring.
+    do
+        local pets = data.Inventory and data.Inventory.pets
+        local used = pets and tonumber(pets.used_slots) or 0
+        local total = pets and tonumber(pets.total_slots) or 0
+        if total > 0 and used / total >= 0.8 then
+            OpsAlert.send("unique_storage_high", {
+                player = tostring(data.PlayerName or data.UserId or "?"),
+                used = used,
+                total = total,
+            })
+        end
     end
 end
 

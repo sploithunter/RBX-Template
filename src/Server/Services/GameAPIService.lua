@@ -1693,6 +1693,32 @@ function GameAPIService:_registerTestCommands()
         end,
     })
 
+    -- Ops: read recent OpsAlert telemetry (Storage v2 D8 — the dev logging ring).
+    -- Admin-gated; returns up to 14 days of day-keyed alert batches, newest first.
+    self._bus:register("ops.alerts", {
+        description = "[admin] Read recent OpsAlert telemetry (day-keyed ring buffer).",
+        validate = function(args)
+            return Validators.fields(args, {
+                days = { type = "int", min = 0, max = 14, optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local isAdmin = context.isTest
+                or (context.player and context.player:GetAttribute("IsAdmin") == true)
+                or game:GetService("RunService"):IsStudio()
+            if not isAdmin then
+                return { ok = false, reason = "not_admin" }
+            end
+            local ok, OpsAlert = pcall(function()
+                return require(script.Parent.Parent.OpsAlert)
+            end)
+            if not ok or not OpsAlert then
+                return { ok = false, reason = "module_unavailable" }
+            end
+            return { ok = true, alerts = OpsAlert.recent(args.days or 3) }
+        end,
+    })
+
     -- Combat: clear all live enemies (dev/test reset). Studio-gated. Sets each enemy's HP to 0 so
     -- the normal defeat path runs (cleanup + removal); no-op in production.
     self._bus:register("combat.clearEnemies", {

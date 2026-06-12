@@ -1979,9 +1979,11 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                 local itemId = stackFolder:FindFirstChild("ItemId")
                 local variantValue = stackFolder:FindFirstChild("Variant")
                 local qtyValue = stackFolder:FindFirstChild("Quantity")
+                local enchantValue = stackFolder:FindFirstChild("Enchant")
                 if itemId and variantValue and qtyValue then
                     local petType = itemId.Value
                     local variant = variantValue.Value
+                    local stackEnchant = enchantValue and enchantValue.Value or nil
                     local eternalPercent = 0
                     local pdata = getPetConfigData(petType, variant)
                     local power = getConfiguredPowerForLevel(pdata, 1)
@@ -2021,6 +2023,8 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                         folder_source = "pets",
                         petType = petType,
                         variant = variant,
+                        -- Storage v2: enchant-keyed stack -> card badge (flat strength)
+                        enchant = stackEnchant,
                         use3DModel = true,
                     }
                     -- Only create a visible inventory card when count > 0
@@ -3563,6 +3567,21 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     -- species role): white disc carries the effect symbol, ring metal carries
     -- strength 1-5 (copper/bronze/silver/gold/onyx). Extras fan RIGHT, mirroring
     -- the aura pile. Same PetBadge alphabet as every other badge surface.
+    -- Storage v2: an enchant-keyed STACK shows its one effect as a badge at the flat
+    -- "Mythic Strength" (resolved from config at render — never stored on the stack).
+    if
+        PetBadge
+        and item.category == "Pets"
+        and item.enchant
+        and type(item.enchantments) ~= "table"
+    then
+        local stackStrength = (
+            ENCHANTS_CONFIG
+            and ENCHANTS_CONFIG.stack_enchants
+            and tonumber(ENCHANTS_CONFIG.stack_enchants.strength)
+        ) or 1
+        item.enchantments = { { id = item.enchant, strength = stackStrength } }
+    end
     if PetBadge and item.category == "Pets" and type(item.enchantments) == "table" then
         local shownEnch = 0
         for _, enchant in ipairs(item.enchantments) do

@@ -15,13 +15,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--softness", type=int, default=20, help="Feather range below the threshold")
     parser.add_argument(
         "--mode",
-        choices=["edge-white", "ring-white", "all-white", "edge-green"],
+        choices=["edge-white", "ring-white", "all-white", "edge-green", "ring-green"],
         default="edge-white",
         help=(
             "edge-white: background connected to image edges; "
             "ring-white: edge background plus center hole (for ring/frame UI art); "
             "all-white: every near-white pixel; "
-            "edge-green: green-screen background connected to image edges."
+            "edge-green: green-screen background connected to image edges; "
+            "ring-green: green-screen edge background plus center hole."
         ),
     )
     parser.add_argument(
@@ -183,6 +184,31 @@ def ring_connected_background(image: Image.Image, threshold: int, softness: int)
     return outer | inner
 
 
+def ring_connected_green_screen(
+    image: Image.Image,
+    min_green: int,
+    dominance: int,
+    softness: int,
+) -> set[tuple[int, int]]:
+    width, height = image.size
+    center_x = width // 2
+    center_y = height // 2
+    center_seeds = [
+        (center_x, center_y),
+        (center_x - 1, center_y),
+        (center_x + 1, center_y),
+        (center_x, center_y - 1),
+        (center_x, center_y + 1),
+    ]
+
+    def candidate(red: int, green: int, blue: int) -> bool:
+        return is_green_screen_candidate(red, green, blue, min_green, dominance, softness)
+
+    outer = edge_connected_green_screen(image, min_green, dominance, softness)
+    inner = flood_connected_background(image, 0, 0, center_seeds, candidate=candidate)
+    return outer | inner
+
+
 def main() -> None:
     args = parse_args()
     source = Path(args.input)
@@ -196,6 +222,13 @@ def main() -> None:
         background_mask = edge_connected_background(image, args.threshold, args.softness)
     elif args.mode == "ring-white":
         background_mask = ring_connected_background(image, args.threshold, args.softness)
+    elif args.mode == "ring-green":
+        background_mask = ring_connected_green_screen(
+            image,
+            args.green_min,
+            args.green_dominance,
+            args.softness,
+        )
     elif args.mode == "edge-green":
         background_mask = edge_connected_green_screen(
             image,
@@ -213,6 +246,22 @@ def main() -> None:
                 continue
 
             if args.mode == "edge-green":
+                next_alpha = min(
+                    alpha,
+                    green_screen_alpha(
+                        red,
+                        green,
+                        blue,
+                        args.green_min,
+                        args.green_dominance,
+                        args.softness,
+                    ),
+                )
+                red, green, blue = despill_green(red, green, blue, next_alpha)
+                pixels.append((red, green, blue, next_alpha))
+                continue
+
+            if args.mode == "ring-green":
                 next_alpha = min(
                     alpha,
                     green_screen_alpha(
