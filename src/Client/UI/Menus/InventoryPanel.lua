@@ -116,6 +116,28 @@ local function zoneResonanceFor(petType)
     return ElementResonance.biomeMultiplier(petElement, zoneElement, ELEMENTS_CONFIG)
 end
 
+-- SORT KEY = the displayed number, exactly: full profile chain (element x variant x
+-- aptitude x zone resonance). Sorting raw power missed aptitude — buffer pets (0.35)
+-- displayed 15 but sorted as ~43, landing between 45s and 42s (Jason's catch).
+local function displaySortPower(power, petType, variant, isCreator)
+    local mult = zoneResonanceFor(petType)
+    if petPowerViewOk and PetPowerView then
+        local ok, profile = pcall(function()
+            return PetPowerView.profile({
+                base = power,
+                petType = petType,
+                variant = variant,
+                creator = isCreator == true,
+                context = { zone = mult },
+            })
+        end)
+        if ok and profile then
+            return math.max(profile.miningEffective or 0, profile.combatEffective or 0)
+        end
+    end
+    return (tonumber(power) or 0) * mult
+end
+
 -- Enchant display (metal ring tiers + per-effect %) for badges + readable tooltips.
 local enchantsOk, ENCHANTS_CONFIG = pcall(function()
     return require(ReplicatedStorage.Configs:WaitForChild("enchants"))
@@ -1980,9 +2002,8 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                         category = "Pets",
                         count = qtyValue.Value,
                         power = power,
-                        -- zone-aware SORT key (grid reorders on zone change to match
-                        -- the numbers the cards show)
-                        zonePower = math.floor(power * zoneResonanceFor(petType) + 0.5),
+                        -- zone-aware SORT key = the displayed number (full profile chain)
+                        zonePower = displaySortPower(power, petType, variant),
                         basePower = power,
                         effectivePower = power,
                         eternalPercent = eternalPercent,
@@ -2133,7 +2154,7 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                         category = "Pets",
                         count = 1,
                         power = power,
-                        zonePower = math.floor(power * zoneResonanceFor(petType) + 0.5),
+                        zonePower = displaySortPower(power, petType, variant),
                         basePower = basePower,
                         effectivePower = effectivePower,
                         eternalBaselinePower = eternalBaselinePower,
