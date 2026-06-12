@@ -23,12 +23,13 @@ return {
     },
 
     -- DIMINISHING XP vs out-leveled targets (Jason: "nobody should be able to put on an
-    -- auto clicker... and wake up 10-20 levels ahead"; "-3 levels should be almost not
-    -- worth it"). Applied via LevelDiffYield.xp to mining (crystal MiningLevel) and
-    -- combat (enemy Level). At/above your level = full XP; below = -30%/level, floored
-    -- at 10% (-3 levels -> 10%). Combined with the exponential xp curve (each level
-    -- costs 1.18x more), parked overnight farming crawls to ~a level or two, not 30.
-    xp_level_scale = { per_level_down = 0.30, floor = 0.10 },
+    -- auto clicker... and wake up 10-20 levels ahead"). Applied via LevelDiffYield.xp to
+    -- mining (crystal MiningLevel) and combat (enemy Level). At/above your level = full
+    -- XP; below = -45%/level, floored at 10% (-1 -> 55%, -2 -> the floor). With the
+    -- homeworld banded 1-4 (desert larges = 6), a level-7 player is near the floor on
+    -- everything but larges and a level-9 is floored everywhere (Jason's targets) —
+    -- heaven/hell realm bands (5+) are where leveling continues.
+    xp_level_scale = { per_level_down = 0.45, floor = 0.10 },
 
     -- COIN payout vs level — a tuning SEAM shipped NEUTRAL (exactly x1 at any diff).
     -- Jason: money stays full at any level because coins fund hatching (more eggs =

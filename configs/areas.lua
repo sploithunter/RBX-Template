@@ -28,7 +28,7 @@ return {
             -- ZONE LEVEL (Jason): the base level of this zone's content. Crystals stamp
             -- MiningLevel = zone_level + size offset (S/M/L = +0/+1/+2, mirroring enemy
             -- rank_offset); XP diminishes vs out-leveled targets (leveling.xp_level_scale).
-            zone_level = 1, -- starter grass
+            zone_level = 1, -- earth tier (homeworld spans 1-4; heaven/hell realms take 5+)
             mining_currency = "grass_coins", -- what the zone's ore PAYS (area_coins rewards resolve here)
             parent = "spawn_island",
             display_name = "Spawn Area",
@@ -54,7 +54,7 @@ return {
         Meadow = {
             id = "Meadow",
             kind = "area",
-            zone_level = 2, -- grass + permanent boost island (see Spawn note)
+            zone_level = 1, -- earth tier, same as Spawn (boost island, not a step up)
             mining_currency = "grass_coins", -- what the zone's ore PAYS (area_coins rewards resolve here)
             parent = "meadow_island",
             display_name = "Meadow",
@@ -89,7 +89,7 @@ return {
         Lava = {
             id = "Lava",
             kind = "area",
-            zone_level = 7, -- third gate (see Spawn note)
+            zone_level = 3, -- third gate (see Spawn note)
             mining_currency = "lava_coins", -- what the zone's ore PAYS (area_coins rewards resolve here)
             parent = "lava_island",
             display_name = "Lava Fields",
@@ -121,7 +121,7 @@ return {
         Ice = {
             id = "Ice",
             kind = "area",
-            zone_level = 4, -- second gate (grass coins pay for it) (see Spawn note)
+            zone_level = 2, -- second gate (see Spawn note)
             mining_currency = "ice_coins", -- what the zone's ore PAYS (area_coins rewards resolve here)
             parent = "ice_island",
             display_name = "Ice Fields",
@@ -159,7 +159,7 @@ return {
         Desert = {
             id = "Desert",
             kind = "area",
-            zone_level = 10, -- last homeworld gate (see Spawn note)
+            zone_level = 4, -- last homeworld gate (see Spawn note)
             mining_currency = "desert_coins", -- what the zone's ore PAYS (area_coins rewards resolve here)
             parent = "desert_island",
             display_name = "Desert Fields",
