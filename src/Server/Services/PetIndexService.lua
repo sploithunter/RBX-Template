@@ -190,8 +190,7 @@ function PetIndexService:_countObtainable()
         if vr.enabled == false then
             allowed = { "basic" }
         else
-            local noBasic = egg.rarity_rates and egg.rarity_rates.no_basic_variants
-            if vr.allow_basic ~= false and not noBasic then
+            if vr.allow_basic ~= false then
                 table.insert(allowed, "basic")
             end
             if vr.allow_golden ~= false then

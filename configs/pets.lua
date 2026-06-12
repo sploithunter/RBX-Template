@@ -1728,8 +1728,10 @@ function petConfig.getEggCost(eggType)
 
     local cost = tonumber(eggData.cost) or 0
     local variantRolls = eggData.variant_rolls
-    local noBasicMode = (eggData.rarity_rates and eggData.rarity_rates.no_basic_variants == true)
-        or (variantRolls and variantRolls.allow_basic == false)
+    -- no-basic eggs charge the variant_rolls cost_multiplier (the "golden hatch is a
+    -- paid setting on the same egg" mechanism; the legacy no_basic_variants flag died
+    -- with golden_egg)
+    local noBasicMode = variantRolls and variantRolls.allow_basic == false
 
     if noBasicMode and variantRolls and variantRolls.cost_multiplier ~= nil then
         cost = cost * math.max(0, tonumber(variantRolls.cost_multiplier) or 1)
@@ -2033,8 +2035,8 @@ function petConfig.simulateHatch(eggType, playerData)
 
     if not variantRollsEnabled then
         selectedVariant = "basic"
-    elseif eggData.rarity_rates.no_basic_variants or not allowBasic then
-        -- Premium egg - only golden/rainbow
+    elseif not allowBasic then
+        -- No-basic roll (goldenMode hatch setting or allow_basic = false) - only golden/rainbow
         if allowRainbow and rarityRoll <= rainbowChance then
             selectedVariant = "rainbow"
         elseif allowGolden then
