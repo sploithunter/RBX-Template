@@ -1316,6 +1316,13 @@ local petConfig = {
         -- effort: 40% completion (free, from leveling) pays ~10% of max; 80% pays
         -- ~57%; the grind past 90% earns the rest. 1 = old linear behavior.
         index_luck = { max_bonus = 2.0, curve_exponent = 2.5 },
+        -- ENDGAME BASELINE (Jason, 2026-06-12, scripts/hatch_progression.luau): a
+        -- 90%-index player effectively ALWAYS has 3 rainbow bunnies equipped
+        -- (+0.75 boost) — "they're not that hard to hatch... we can just assume
+        -- it". So balance against L7 / 90% / bunnies = 3.81x luck, ~12% golden,
+        -- ~1.2% rainbow as the endgame floor. A 2x luck gamepass on top of that
+        -- state would land ~7.6x -> ~21% golden: price/design future luck
+        -- products against THIS baseline, not the no-bunny mid-game one.
 
         -- VIP benefits
         vip_luck_bonus = 1.5, -- 1.5x luck for VIP players
