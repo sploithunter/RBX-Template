@@ -571,14 +571,34 @@ function PetFollowService:_mine(player, pet, breakable)
     -- Drive the attack VISUAL off the real hit: tell the owning client to play this pet's
     -- effect (bolt/projectile for ranged, impact for melee) at this exact moment + target, so
     -- the animation, impact, sound, crit AND the floating damage number are the swing that
-    -- actually happened — not a parallel client timer. Owner-only (their pets are local).
-    Signals.Combat_PetHit:FireClient(player, {
+    -- actually happened — not a parallel client timer.
+    local hit = {
         pet = pet,
         target = breakable,
         crit = roll.crit,
         amount = dmg, -- floored, post-roll/mitigation damage (0 on a miss)
         miss = roll.multiplier <= 0,
-    })
+    }
+    Signals.Combat_PetHit:FireClient(player, hit)
+    -- SPECTATORS (Jason: "if another player can see it, they should hear it" — other
+    -- players' pets mined in silence with no effects): fan the same hit out to every
+    -- OTHER player near the target. foreign = true keeps their floating damage
+    -- numbers off (numbers stay personal); the bolt/impact/sound render identically.
+    local bRange = tonumber(
+        self._combatConfig.pet_hit_broadcast_range
+            or (self._combatConfig.engagement and self._combatConfig.engagement.perception_range)
+    ) or 80
+    local tp = (breakable.PrimaryPart and breakable.PrimaryPart.Position)
+        or breakable:GetPivot().Position
+    hit.foreign = true
+    for _, other in ipairs(Players:GetPlayers()) do
+        if other ~= player then
+            local hrp = other.Character and other.Character:FindFirstChild("HumanoidRootPart")
+            if hrp and (hrp.Position - tp).Magnitude <= bRange then
+                Signals.Combat_PetHit:FireClient(other, hit)
+            end
+        end
+    end
 end
 
 function PetFollowService:_tickPlayer(player)

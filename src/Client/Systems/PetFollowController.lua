@@ -288,6 +288,11 @@ function PetFollowController.start()
         pcall(RangedFX.Play, pet, boltCfg, target, kind, isCrit, element)
 
         -- Floating combat text: the damage number (or MISS) pops + rises above the target.
+        -- foreign = another player's pet (spectator fan-out): we render their bolt/impact/
+        -- sound (see it -> hear it) but numbers stay personal — skip the text.
+        if data.foreign then
+            return
+        end
         if ctCfg.enabled ~= false then
             local pos = (target.PrimaryPart and target.PrimaryPart.Position)
                 or target:GetPivot().Position
