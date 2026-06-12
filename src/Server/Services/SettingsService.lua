@@ -129,6 +129,7 @@ function SettingsService:_createSettingsFolders(player)
             AutoSystems = {},
             PetFormation = self:_defaultPetFormation(),
             PetAttackStyle = self:_defaultPetAttackStyle(),
+            InventoryCardScale = "small",
         }
     end
 
@@ -168,6 +169,7 @@ function SettingsService:_createSettingsFolders(player)
     self:_replicateAutoSystemSettings(player)
     self:_applyPetFormation(player)
     self:_applyPetAttackStyle(player)
+    self:_applyInventoryCardScale(player)
 
     self._logger:Info("✅ SETTINGS - Settings folders created successfully", {
         player = player.Name,
@@ -595,6 +597,50 @@ function SettingsService:_setPetAttackStyle(player, value)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
+-- INVENTORY CARD SCALE (pet-card grid size — persisted; applied as the player's
+-- InventoryCardScale attribute, which InventoryPanel reads/listens to)
+-- ═══════════════════════════════════════════════════════════════════════════════════
+
+local INVENTORY_CARD_SCALES = { small = true, medium = true, large = true }
+
+function SettingsService:_sanitizeInventoryCardScale(value)
+    if type(value) == "table" then
+        value = value.scale or value.size or value.value
+    end
+    value = type(value) == "string" and string.lower(value) or nil
+    if value and INVENTORY_CARD_SCALES[value] then
+        return value
+    end
+    return "small"
+end
+
+-- Push the saved scale onto the player as a (replicated) attribute the client reads.
+function SettingsService:_applyInventoryCardScale(player)
+    local data = self._dataService:GetData(player)
+    local scale = "small"
+    if data and data.Settings and type(data.Settings.InventoryCardScale) == "string" then
+        scale = self:_sanitizeInventoryCardScale(data.Settings.InventoryCardScale)
+    end
+    player:SetAttribute("InventoryCardScale", scale)
+    return scale
+end
+
+function SettingsService:_setInventoryCardScale(player, value)
+    local data = self._dataService:GetData(player)
+    if not data then
+        return false
+    end
+
+    data.Settings = data.Settings or {}
+    local scale = self:_sanitizeInventoryCardScale(value)
+    data.Settings.InventoryCardScale = scale
+    player:SetAttribute("InventoryCardScale", scale)
+
+    self._logger:Info("Updated inventory card scale", { player = player.Name, scale = scale })
+    return true
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════════
 -- NETWORK SIGNALS (following InventoryService pattern)
 -- ═══════════════════════════════════════════════════════════════════════════════════
 
@@ -638,6 +684,10 @@ function SettingsService:_setupNetworkSignals()
 
     Signals.Settings_SetPetAttackStyle.OnServerEvent:Connect(function(player, payload)
         self:_setPetAttackStyle(player, payload)
+    end)
+
+    Signals.Settings_SetInventoryCardScale.OnServerEvent:Connect(function(player, payload)
+        self:_setInventoryCardScale(player, payload)
     end)
 
     self._logger:Info("📡 Settings network signals configured")
@@ -685,6 +735,14 @@ end
 
 function SettingsService:GetPetAttackStyle(player)
     return self:_applyPetAttackStyle(player)
+end
+
+function SettingsService:SetInventoryCardScale(player, value)
+    return self:_setInventoryCardScale(player, value)
+end
+
+function SettingsService:GetInventoryCardScale(player)
+    return self:_applyInventoryCardScale(player)
 end
 
 return SettingsService

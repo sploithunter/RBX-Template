@@ -27,6 +27,13 @@ local Workspace = game:GetService("Workspace")
 -- #179 down-lockout: pill ring assets (white = available, red = locked) for the equipped view.
 local PILL_UI = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
 
+-- Player-facing pet-card grid sizes (persisted setting; small = the dense default).
+-- Card internals are cardSize-derived (fromScale or math.floor(cardSize * k) pixel math),
+-- so multiplying cardSize rescales the whole card.
+local CARD_SCALE_FACTORS = { small = 1, medium = 1.5, large = 2 }
+local CARD_SCALE_NEXT = { small = "medium", medium = "large", large = "small" }
+local CARD_SCALE_LABEL = { small = "Cards: S", medium = "Cards: M", large = "Cards: L" }
+
 local function lockoutFormatTime(sec)
     sec = math.max(0, math.ceil(sec))
     if sec >= 60 then
@@ -363,7 +370,67 @@ function InventoryPanel.new()
     self.signals = nil
     self:_initializeNetworking()
 
+    -- Player-facing card scale (persisted: SettingsService → InventoryCardScale attribute).
+    -- The config sizes above stay the SMALL baseline (the dense "lay of the land" default);
+    -- medium/large multiply it for players who find 45px cards squinty.
+    self.baseCardSize = self.cardSize
+    self.baseCardPadding = self.cardPadding
+    self._cardScale = nil
+    self:_applyCardScale(self:_getCardScaleName())
+    -- the attribute lands a beat after join (and echoes our own sets) — re-apply on change;
+    -- _applyCardScale dedupes, so the echo after an optimistic local apply is a no-op
+    self.player:GetAttributeChangedSignal("InventoryCardScale"):Connect(function()
+        self:_applyCardScale(self:_getCardScaleName())
+    end)
+
     return self
+end
+
+-- Current persisted scale name ("small"/"medium"/"large") from the replicated attribute.
+function InventoryPanel:_getCardScaleName()
+    local value = self.player:GetAttribute("InventoryCardScale")
+    if type(value) == "string" and CARD_SCALE_FACTORS[value] then
+        return value
+    end
+    return "small"
+end
+
+-- Apply a card scale: multiply the config baseline into self.cardSize/cardPadding and,
+-- if the panel is open, resize both UIGridLayouts and rebuild the cards (card internals
+-- are cardSize-derived, so the rebuild rescales badges/chips too).
+function InventoryPanel:_applyCardScale(scaleName)
+    if not CARD_SCALE_FACTORS[scaleName] then
+        scaleName = "small"
+    end
+    if self._cardScale == scaleName then
+        return
+    end
+    self._cardScale = scaleName
+
+    local factor = CARD_SCALE_FACTORS[scaleName]
+    self.cardSize = Vector2.new(
+        math.floor(self.baseCardSize.X * factor + 0.5),
+        math.floor(self.baseCardSize.Y * factor + 0.5)
+    )
+    self.cardPadding = Vector2.new(
+        math.floor(self.baseCardPadding.X * factor + 0.5),
+        math.floor(self.baseCardPadding.Y * factor + 0.5)
+    )
+
+    if self.isVisible and self.equippedGrid and self.inventoryGrid then
+        for _, container in ipairs({ self.equippedGrid, self.inventoryGrid }) do
+            local grid = container:FindFirstChildOfClass("UIGridLayout")
+            if grid then
+                grid.CellSize = UDim2.new(0, self.cardSize.X, 0, self.cardSize.Y)
+                grid.CellPadding = UDim2.new(0, self.cardPadding.X, 0, self.cardPadding.Y)
+            end
+        end
+        self:_updateItemsDisplay()
+    end
+
+    if self._cardScaleButton then
+        self._cardScaleButton.Text = CARD_SCALE_LABEL[scaleName]
+    end
 end
 
 function InventoryPanel:Show(parent)
@@ -644,6 +711,7 @@ function InventoryPanel:Hide()
         self.frame:Destroy()
         self.frame = nil
     end
+    self._cardScaleButton = nil -- lived in the destroyed header
 
     self.itemFrames = {}
     self.isVisible = false
@@ -730,6 +798,30 @@ function InventoryPanel:_createUI(parent)
             end)
         end
 
+        -- Shared header-pill builder (hatch settings + card-size settings below).
+        -- offset = distance from the close-X slot to the pill's RIGHT edge (right-to-left chain).
+        local function pill(text, width, offset, color)
+            local b = Instance.new("TextButton")
+            b.Size = UDim2.new(0, width, 0, config.size.height)
+            b.AnchorPoint = Vector2.new(1, 0)
+            b.Position =
+                UDim2.new(1, (config.offset.x or 10) - (config.size.width or 36) - offset, 0, 6)
+            b.BackgroundColor3 = color
+            b.TextColor3 = Color3.fromRGB(240, 248, 255)
+            b.Text = text
+            b.TextScaled = true
+            b.Font = Enum.Font.GothamBold
+            b.ZIndex = 250
+            local c = Instance.new("UICorner")
+            c.CornerRadius = UDim.new(0, config.corner_radius or 8)
+            c.Parent = b
+            b.Parent = self.header
+            local tc2 = Instance.new("UITextSizeConstraint")
+            tc2.MaxTextSize = 14
+            tc2.Parent = b
+            return b
+        end
+
         -- HATCH CONTROLS (Jason: "our inventory and pets menu are the same thing") —
         -- three header pills left of Trade driving the REAL egg system
         -- (EggInteractionService): Auto/Manual, count cycle 1/Half/Max, and HATCH
@@ -739,31 +831,6 @@ function InventoryPanel:_createUI(parent)
                 return require(ReplicatedStorage.Shared.Services.EggInteractionService)
             end)
             if okEgg and EggSvc then
-                local function pill(text, width, offset, color)
-                    local b = Instance.new("TextButton")
-                    b.Size = UDim2.new(0, width, 0, config.size.height)
-                    b.AnchorPoint = Vector2.new(1, 0)
-                    b.Position = UDim2.new(
-                        1,
-                        (config.offset.x or 10) - (config.size.width or 36) - offset,
-                        0,
-                        6
-                    )
-                    b.BackgroundColor3 = color
-                    b.TextColor3 = Color3.fromRGB(240, 248, 255)
-                    b.Text = text
-                    b.TextScaled = true
-                    b.Font = Enum.Font.GothamBold
-                    b.ZIndex = 250
-                    local c = Instance.new("UICorner")
-                    c.CornerRadius = UDim.new(0, config.corner_radius or 8)
-                    c.Parent = b
-                    b.Parent = self.header
-                    local tc2 = Instance.new("UITextSizeConstraint")
-                    tc2.MaxTextSize = 14
-                    tc2.Parent = b
-                    return b
-                end
                 -- right-to-left after Trade: TWO settings pills only (Jason: "not sure
                 -- why we have a hatch button" — hatching happens AT the egg; these
                 -- configure how the E-key/auto hatch behaves)
@@ -813,6 +880,28 @@ function InventoryPanel:_createUI(parent)
                 end)
                 refresh()
             end
+        end
+
+        -- CARD SIZE pill — cycles the pet-card grid scale S/M/L (persisted player setting:
+        -- SettingsService → InventoryCardScale attribute). Small stays the dense default;
+        -- M/L are for players who find the 45px cards squinty.
+        do
+            local scaleBtn = pill(
+                CARD_SCALE_LABEL[self._cardScale or "small"],
+                80,
+                8 + 86 + 8 + 86 + 8 + 80 + 8, -- left of the Auto/Manual pill
+                Color3.fromRGB(90, 90, 110)
+            )
+            self._cardScaleButton = scaleBtn
+            scaleBtn.Activated:Connect(function()
+                local nextScale = CARD_SCALE_NEXT[self._cardScale] or "medium"
+                -- optimistic local apply (instant re-layout); the server echo via the
+                -- replicated attribute is deduped in _applyCardScale
+                self:_applyCardScale(nextScale)
+                if self.signals and self.signals.Settings_SetInventoryCardScale then
+                    self.signals.Settings_SetInventoryCardScale:FireServer({ scale = nextScale })
+                end
+            end)
         end
 
         local closeButton = Instance.new("ImageButton")

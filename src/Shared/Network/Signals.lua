@@ -115,6 +115,7 @@ local Signals = {
     HatchSettings_SetModes = Net:RemoteEvent("HatchSettings_SetModes"), -- c->s persist selected egg hatch modes
     Settings_SetPetFormation = Net:RemoteEvent("Settings_SetPetFormation"), -- c->s persist equipped-pet formation layout
     Settings_SetPetAttackStyle = Net:RemoteEvent("Settings_SetPetAttackStyle"), -- c->s persist pet attack/mining formation
+    Settings_SetInventoryCardScale = Net:RemoteEvent("Settings_SetInventoryCardScale"), -- c->s persist inventory pet-card grid size (small/medium/large)
     PetReportPositions = Net:RemoteEvent("PetReportPositions"), -- c->s throttled local pet positions (mining gate + multiplayer)
     PetPositionsRelay = Net:RemoteEvent("PetPositionsRelay"), -- s->c relay OTHER players' pet positions (owner renders its own locally)
     AutoTarget_Status = Net:RemoteEvent("AutoTarget_Status"), -- s->c push current auto-target status
