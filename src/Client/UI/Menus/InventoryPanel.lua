@@ -2085,14 +2085,22 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                     -- pet fought at baseline x percent — shown must equal fought):
                     -- stored record percent wins (pre-variant, like the server), else
                     -- the configured resolution; then baseline x pct x level bonus.
-                    local eternalPercent = readNumberValue(
-                        uidFolder,
-                        { "EternalPercent", "eternal_percent", "Eternal" }
-                    ) or 0
-                    if eternalPercent > 0 then
-                        eternalPercent = applyVariantEternalScale(eternalPercent, variant)
+                    -- SERVER precedence (PetHandler): the huge/creator PIN overrides any
+                    -- stored record percent (pre-pin reissues carry stale eternal_percent
+                    -- values, e.g. the apex's 120); stored only applies to non-huge records.
+                    local eternalPercent
+                    if isHuge then
+                        eternalPercent = getConfiguredEternalPercent(pdata, true, variant)
                     else
-                        eternalPercent = getConfiguredEternalPercent(pdata, isHuge, variant)
+                        local stored = readNumberValue(
+                            uidFolder,
+                            { "EternalPercent", "eternal_percent", "Eternal" }
+                        ) or 0
+                        if stored > 0 then
+                            eternalPercent = applyVariantEternalScale(stored, variant)
+                        else
+                            eternalPercent = getConfiguredEternalPercent(pdata, false, variant)
+                        end
                     end
                     local eternalBaselinePower = tonumber(
                         Players.LocalPlayer and Players.LocalPlayer:GetAttribute("EternalPowerBase")
