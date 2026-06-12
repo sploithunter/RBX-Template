@@ -576,9 +576,6 @@ function PowerChoiceMenu:_renderEnhanceStrip()
     -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham —
     -- Jason: "I found that weird page button inside of the powers menu")
     CloseButton.attach(strip, {
-        size = UDim2.fromScale(0.05, 0.07),
-        position = UDim2.fromScale(0.99, 0.02),
-        anchor = Vector2.new(1, 0),
         zindex = 7,
         onClick = function()
             self.enhanceFor = nil

@@ -714,12 +714,7 @@ function HotbarBar.start()
         title.Parent = p
 
         -- THE standard close X (shared component; "✕" tofu-boxes in Gotham)
-        CloseButton.attach(p, {
-            size = UDim2.fromOffset(22, 22),
-            position = UDim2.new(1, -26, 0, 5),
-            anchor = Vector2.new(0, 0),
-            onClick = closePicker,
-        })
+        CloseButton.attach(p, { onClick = closePicker })
 
         local listFrame = Instance.new("ScrollingFrame")
         listFrame.Position = UDim2.fromOffset(6, 30)
