@@ -975,6 +975,15 @@ local petConfig = {
             rarity = "secret",
             base_power = 25,
             base_health = 200,
+            -- SECRETS ARE ETERNAL (Jason, 2026-06-12: the rare INDIVIDUALS — huge,
+            -- secret, creator — ride the team curve; everything else ages out).
+            -- 100% of top-team average: always a solid squad member, never beats a
+            -- huge (120%). base_power stays as the early-game floor.
+            eternal = {
+                enabled = true,
+                power_percent = 100,
+                baseline = "top_team_average",
+            },
 
             -- Camera configuration for image generation
             camera = {
