@@ -14,6 +14,12 @@
       🐾 Speed     move_speed : 1 + MoveSpeedBuff (fraction) -> x, cap 1.0
       ⚡ Recharge  recharge   : RechargeBuff (fraction, clamp 0.9) -> -N% cooldown
       ✨ XP        xp         : 1 + XpBuff (fraction) -> x, cap 3.0
+      👥 Team Power / 🌍 In Area / 🌍 With Buffs : Σ over the deployed squad of the
+         DEALT-chain power (PetPowerView.profile — the same resolver the inventory card
+         and _mine run, #132), in three layers (Jason: "team power in area and team power
+         with buffs in area as well"): intrinsic (zone-neutral), × the current zone's
+         biome-RPS resonance, × the live pet_damage axis. The buffer-balance instrument:
+         each layer's pip shows its own contribution (squad size / net area % / net buff %).
 
     A row dims to grey at base (x1.00 / no buff); an active row fills a faint bar toward its axis cap
     and shows the remaining seconds of the soonest-expiring source, blinking under ~5s. Pure dev tool:
@@ -26,9 +32,40 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
+local PetPowerView = require(ReplicatedStorage.Shared.Game.PetPowerView)
+local ElementResonance = require(ReplicatedStorage.Shared.Game.ElementResonance)
 local BuffsConfig = require(ReplicatedStorage.Configs:WaitForChild("buffs"))
 local CombatConfig = require(ReplicatedStorage.Configs:WaitForChild("combat"))
 local DropsConfig = require(ReplicatedStorage.Configs:WaitForChild("drops"))
+
+-- Biome-RPS configs for the team-power rows (pcall'd: a template game without these
+-- configs just reads neutral resonance, the rows still work).
+local elementsOk, ElementsConfig = pcall(function()
+    return require(ReplicatedStorage.Configs:WaitForChild("elements"))
+end)
+local fxOk, CombatFxConfig = pcall(function()
+    return require(ReplicatedStorage.Configs:WaitForChild("combat_fx"))
+end)
+local areasOk, AreasConfig = pcall(function()
+    return require(ReplicatedStorage.Configs:WaitForChild("areas"))
+end)
+
+-- Zone-resonance multiplier for a pet type RIGHT NOW — the same resolution the inventory
+-- card and the server damage path use (ElementResonance.biomeMultiplier), so the team sum
+-- changes when the player crosses a zone border, exactly like the cards do.
+local function zoneResonanceFor(player, petType)
+    if not (elementsOk and ElementsConfig) then
+        return 1
+    end
+    local petElement = fxOk
+        and CombatFxConfig
+        and CombatFxConfig.origin
+        and CombatFxConfig.origin.pettype_element
+        and CombatFxConfig.origin.pettype_element[petType]
+    local zones = areasOk and AreasConfig and AreasConfig.zones
+    local zone = zones and zones[tostring(player:GetAttribute("CurrentArea"))]
+    return ElementResonance.biomeMultiplier(petElement, zone and zone.element, ElementsConfig)
+end
 
 local REFRESH = 0.25 -- readout cadence (s)
 local BLINK_LEAD = 5 -- seconds-to-expiry under which the time pip blinks
@@ -104,7 +141,9 @@ function BuffStatsHud:_build()
 
     local panel = Instance.new("Frame")
     panel.Name = "Panel"
-    panel.Size = UDim2.new(0, 240, 0, 196)
+    -- height follows the row list (conditional rows + the team-power pair come and go)
+    panel.Size = UDim2.new(0, 240, 0, 0)
+    panel.AutomaticSize = Enum.AutomaticSize.Y
     panel.Position = UDim2.new(0, 8, 0, 180) -- top-left, stacked under DevMetricsHud
     panel.AnchorPoint = Vector2.new(0, 0)
     panel.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
@@ -214,6 +253,11 @@ function BuffStatsHud:_build()
     makeRow("recharge", "⚡ Recharge", Color3.fromRGB(160, 130, 240), 7)
     makeRow("xp", "✨ XP", Color3.fromRGB(150, 110, 235), 8)
     makeRow("magnet", "🧲 Magnet", Color3.fromRGB(120, 200, 235), 9)
+    -- Σ TEAM POWER (Jason's buffer-balance instrument): the dealt-chain ⛏/⚔ sums over the
+    -- deployed squad in three layers — intrinsic, × zone resonance, × buffs (_teamPower).
+    makeRow("team", "👥 Team Power", Color3.fromRGB(235, 235, 245), 10)
+    makeRow("team_area", "🌍 In Area", Color3.fromRGB(120, 220, 160), 11)
+    makeRow("team_buffed", "🌍 With Buffs", Color3.fromRGB(255, 170, 80), 12)
 end
 
 -- ---- data ---------------------------------------------------------------
@@ -414,6 +458,70 @@ function BuffStatsHud:_refresh()
         magBonus = p:GetAttribute("MagnetBuff") or 0
     end
     self:_setRange("magnet", magBase, magBonus, soonestRemaining(p, { "MagnetBuffUntil" }, now))
+
+    -- 👥/🌍 Team power in three layers (Jason: "team power in area and team power with
+    -- buffs in area as well"): intrinsic Σ (zone-neutral — a buffer's 0.35 aptitude
+    -- honestly drags it down), × the current zone's biome resonance, × the SAME
+    -- pet_damage axis the attack row shows (exactly where buffs land in _mine). Each
+    -- pip isolates one layer: squad size / net area % (can be negative!) / net buff %.
+    local t = self:_teamPower()
+    self:_setTeam("team", t.mine, t.combat, t.count > 0, 0, string.format("×%d", t.count))
+    local areaPct = t.mine > 0 and (t.areaMine / t.mine - 1) or 0
+    self:_setTeam(
+        "team_area",
+        t.areaMine,
+        t.areaCombat,
+        t.count > 0 and math.abs(areaPct) > 0.0001,
+        math.abs(areaPct), -- bar = how much the zone is moving the needle
+        string.format("%+d%%", math.floor(areaPct * 100 + 0.5))
+    )
+    self:_setTeam(
+        "team_buffed",
+        t.areaMine * atk,
+        t.areaCombat * atk,
+        t.count > 0 and atk > 1.0001,
+        (atk - 1) / math.max(axis("pet_damage").cap or 1, 0.0001),
+        string.format("+%d%%", math.floor((atk - 1) * 100 + 0.5))
+    )
+end
+
+-- Σ over the player's DEPLOYED pets of the dealt-chain power profile — the same resolver
+-- the inventory card and the server damage path run (PetPowerView.profile, #132). One
+-- profile call per pet yields both layers: miningBase/combatBase are the intrinsic
+-- (zone-neutral) numbers, miningEffective/combatEffective the zone-resonant ones (the
+-- pet's own element vs the current zone, so a mixed squad shifts unevenly). base = the
+-- pet's server-stamped Power value (huge/level/eternal-resolved). Downed pets are out
+-- healing (they neither mine nor fight — _mine skips them), so they contribute nothing.
+function BuffStatsHud:_teamPower()
+    local t = { mine = 0, combat = 0, areaMine = 0, areaCombat = 0, count = 0 }
+    local pp = Workspace:FindFirstChild("PlayerPets")
+    local folder = pp and pp:FindFirstChild(self.player.Name)
+    if not folder then
+        return t
+    end
+    for _, m in ipairs(folder:GetChildren()) do
+        local powerNV = m:IsA("Model") and m:FindFirstChild("Power")
+        if powerNV and not m:GetAttribute("CombatDowned") then
+            local petType = m:GetAttribute("PetType")
+            local ok, profile = pcall(function()
+                return PetPowerView.profile({
+                    base = powerNV.Value,
+                    petType = petType,
+                    variant = m:GetAttribute("PetVariant"),
+                    role = m:GetAttribute("PetRole"),
+                    context = { zone = zoneResonanceFor(self.player, petType) },
+                })
+            end)
+            if ok and profile then
+                t.mine += profile.miningBase or 0
+                t.combat += profile.combatBase or 0
+                t.areaMine += profile.miningEffective or 0
+                t.areaCombat += profile.combatEffective or 0
+                t.count += 1
+            end
+        end
+    end
+    return t
 end
 
 -- ---- row writers --------------------------------------------------------
@@ -468,6 +576,23 @@ function BuffStatsHud:_setRecharge(key, frac, rem)
     row.text.Text = active
             and string.format("%s: −%d%% CD", row.label, math.floor(frac * 100 + 0.5))
         or string.format("%s: −0%% CD", row.label)
+end
+
+-- Team-power rows: absolute ⛏/⚔ output sums, not multipliers. pipText replaces the timer
+-- (squad size on the raw row; the net buff % on the buffed row — the balance verdict).
+function BuffStatsHud:_setTeam(key, mine, combat, active, fillFrac, pipText)
+    local row = self.rows[key]
+    if not row then
+        return
+    end
+    self:_style(row, active, fillFrac, nil)
+    row.pip.Text = active and (pipText or "") or ""
+    row.text.Text = string.format(
+        "%s: ⛏ %d  ⚔ %d",
+        row.label,
+        math.floor(mine + 0.5),
+        math.floor(combat + 0.5)
+    )
 end
 
 -- Magnet collect RADIUS in studs (base + Magnet power bonus) — not a multiplier. Bar scales the
