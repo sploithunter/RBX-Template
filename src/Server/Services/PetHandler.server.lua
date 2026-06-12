@@ -37,6 +37,10 @@ local petProgressionConfig = nil
 pcall(function()
     petProgressionConfig = require(ReplicatedStorage.Configs.pet_progression)
 end)
+local petRolesConfig = nil
+pcall(function()
+    petRolesConfig = require(ReplicatedStorage.Configs.pet_roles)
+end)
 
 local function getLoadedService(serviceName)
     local registry = _G.RBXTemplateServices
@@ -408,7 +412,23 @@ local function getHugeEternalPercent()
     return (eternalCfg and tonumber(eternalCfg.huge_power_percent)) or 120
 end
 
-local function getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
+-- VARIANT-SCALED ETERNAL (Jason, 2026-06-12: "the rainbow should apply to its
+-- calculated value as well... same with golden"): the resolved eternal percent is
+-- multiplied by the SAME variant effect scale the support auras use
+-- (pet_roles.variant_effect_multipliers: basic 1.0 / golden 1.25 / rainbow 1.5) —
+-- one consistent law: rainbow = 1.5x effect, everywhere. Keeps variants permanently
+-- meaningful on eternals (a rainbow secret at 150% outranks a plain huge at 120%)
+-- while the class hierarchy holds within any variant tier.
+local function applyVariantEternalScale(percent, petVariantName)
+    if not percent or percent <= 0 then
+        return percent or 0
+    end
+    local mults = petRolesConfig and petRolesConfig.variant_effect_multipliers
+    local m = mults and tonumber(mults[string.lower(tostring(petVariantName or "basic"))])
+    return percent * (m or 1)
+end
+
+local function getRawPetFolderEternalPercent(petFolder, petIdName, petVariantName)
     -- Huge pets always scale at the configurable huge percent (e.g. 120% of the
     -- eternal power base), overriding any per-pet eternal config. EXCEPTION: a huge
     -- CREATOR-species pet pins at eternal.creator_power_percent (130) — Jason: the
@@ -466,6 +486,13 @@ local function getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
     end
 
     return 0
+end
+
+local function getPetFolderEternalPercent(petFolder, petIdName, petVariantName)
+    return applyVariantEternalScale(
+        getRawPetFolderEternalPercent(petFolder, petIdName, petVariantName),
+        petVariantName
+    )
 end
 
 local function getEquippedTeamCapacity(player, fallback)
