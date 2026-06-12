@@ -38,8 +38,11 @@ return function()
 
         it("collection completion scales the index bonus linearly to its natural cap", function()
             local base = luckFor({ level = 0, indexCompletion = 0 })
-            -- 50% collection (Jason's hypothetical: 160 of 330 entries) = half the weight
-            expect(near(luckFor({ level = 0, indexCompletion = 0.5 }) - base, 1.0)).to.equal(true)
+            -- CURVED (exponent 2.5): 50% collection pays 0.5^2.5 = ~17.7% of max_bonus
+            -- (the easy half of the index is nearly free; the grind earns the bonus)
+            expect(near(luckFor({ level = 0, indexCompletion = 0.5 }) - base, 0.354, 0.01)).to.equal(
+                true
+            )
             -- full collection = the full configured max_bonus (2.0)
             expect(near(luckFor({ level = 0, indexCompletion = 1 }) - base, 2.0)).to.equal(true)
         end)

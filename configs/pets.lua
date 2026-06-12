@@ -1308,7 +1308,14 @@ local petConfig = {
         -- PetIndexService:GetCompletion, fed in as playerData.indexCompletion).
         -- 100% collection = the full bonus: a natural cap that grows with content;
         -- volume-hatching pets you already found earns nothing.
-        index_luck = { max_bonus = 2.0 },
+        -- CURVED (Jason: "20% is super easy... 90% is much more difficult than 80%...
+        -- we need to curve it"): bonus = max_bonus x completion^curve_exponent. The
+        -- exponent was FIT FROM SIMULATION (25k-hatch journey, gate checks at
+        -- 50/100/.../25000): completion is ~log-linear in effort (27% at 50 hatches,
+        -- 50% at 250, 80% at 5000, 95% at 25000), and 2.5 makes the BONUS track
+        -- effort: 40% completion (free, from leveling) pays ~10% of max; 80% pays
+        -- ~57%; the grind past 90% earns the rest. 1 = old linear behavior.
+        index_luck = { max_bonus = 2.0, curve_exponent = 2.5 },
 
         -- VIP benefits
         vip_luck_bonus = 1.5, -- 1.5x luck for VIP players
@@ -1918,7 +1925,9 @@ function petConfig.simulateHatch(eggType, playerData)
     local indexLuck = gamepassMods.index_luck
     if indexLuck then
         local completion = math.clamp(tonumber(playerData.indexCompletion) or 0, 0, 1)
-        luckMultiplier = luckMultiplier + (tonumber(indexLuck.max_bonus) or 0) * completion
+        -- effort curve: early completion is nearly free; the bonus tracks the GRIND
+        local curved = completion ^ (tonumber(indexLuck.curve_exponent) or 1)
+        luckMultiplier = luckMultiplier + (tonumber(indexLuck.max_bonus) or 0) * curved
     end
     if playerData.luckBoost then
         luckMultiplier = luckMultiplier + playerData.luckBoost
