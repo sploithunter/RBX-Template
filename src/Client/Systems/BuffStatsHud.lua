@@ -29,6 +29,11 @@
          (EHP = pool × (Defense+k)/k — Jason: armor "is essentially a hit point increase");
          shields (CombatShield, incl. Mirage "evasion") are ADDITIVE flat pools on top.
          Buffed row folds DefenseBuff + the penguin's TeamDefenseBuff onto the curve.
+      ⏱ vs Lieut. : THE PACING ROW — expected battle clock vs the dev candle
+         (combat.dev_candle, a same-level lieutenant): ⚔ time to kill it / 💀 time it
+         takes to chew through the squad's buffed EHP. Jason: "battles are way too
+         fast... over before you realize they've started" — tune enemy HP/damage and
+         watch the clock move without fighting anything.
 
     A row dims to grey at base (x1.00 / no buff); an active row fills a faint bar toward its axis cap
     and shows the remaining seconds of the soonest-expiring source, blinking under ~5s. Pure dev tool:
@@ -44,9 +49,13 @@ local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
 local PetPowerView = require(ReplicatedStorage.Shared.Game.PetPowerView)
 local ElementResonance = require(ReplicatedStorage.Shared.Game.ElementResonance)
 local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
+local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
 local BuffsConfig = require(ReplicatedStorage.Configs:WaitForChild("buffs"))
 local CombatConfig = require(ReplicatedStorage.Configs:WaitForChild("combat"))
 local DropsConfig = require(ReplicatedStorage.Configs:WaitForChild("drops"))
+local enemiesOk, EnemiesConfig = pcall(function()
+    return require(ReplicatedStorage.Configs:WaitForChild("enemies"))
+end)
 local rolesOk, PetRolesConfig = pcall(function()
     return require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
 end)
@@ -289,6 +298,8 @@ function BuffStatsHud:_build()
     -- Team effective HP: endurance pools × armor curve (+ flat shields when buffed).
     makeRow("tough", "🛡 Toughness", Color3.fromRGB(140, 185, 240), 14)
     makeRow("tough_buffed", "🛡 With Buffs", Color3.fromRGB(95, 215, 230), 15)
+    -- The PACING row: expected battle clock vs the dev candle (same-level lieutenant).
+    makeRow("battle", "⏱ vs Lieut.", Color3.fromRGB(255, 130, 130), 16)
 end
 
 -- ---- data ---------------------------------------------------------------
@@ -566,6 +577,43 @@ function BuffStatsHud:_refresh()
         math.min(toughBuffPct, 1),
         string.format("+%d%%", math.floor(toughBuffPct * 100 + 0.5)) -- buffs' EHP contribution
     )
+
+    -- ⏱ THE PACING ROW (Jason: "battles are way too fast... over before you realize
+    -- they've started"): the expected battle clock vs the dev candle (combat.dev_candle
+    -- -> a same-level lieutenant from enemies.lua, so it tracks enemy rebalances).
+    --   Kill = candle HP / team DPS  (EV swings, × the candle's armor mitigation,
+    --          ÷ the pet swing interval at base efficiency)
+    --   Die  = team buffed EHP / candle DPS  (its EV damage ÷ its cadence) — the
+    --          squad's total survival budget under sustained focus.
+    local candleId = (CombatConfig.dev_candle and CombatConfig.dev_candle.enemy) or "ember_brute"
+    local candle = enemiesOk
+        and EnemiesConfig
+        and EnemiesConfig.enemies
+        and EnemiesConfig.enemies[candleId]
+    if candle and t.count > 0 then
+        local k = CombatConfig.armor_curve_k or 100
+        local armorFactor = k / ((tonumber(candle.armor) or 0) + k)
+        local outDps = (t.areaCombat * atk * evCombatMult * armorFactor)
+            / PetCombat.attackInterval(1)
+        local ttk = outDps > 0 and (tonumber(candle.hp) or 1) / outDps or math.huge
+        local eRolls = CombatConfig.engagement
+            and CombatConfig.engagement.rolls
+            and CombatConfig.engagement.rolls.enemy_attack
+        local eCritEv = 1
+            + ((eRolls and eRolls.crit_chance) or 0)
+                * (((eRolls and eRolls.crit_mult) or 2) - 1)
+        local atkDef = candle.attack or {}
+        local inDps = ((tonumber(atkDef.damage) or 0) * hitEven * eCritEv)
+            / math.max(tonumber(atkDef.cadence) or 1.5, 0.05)
+        local ttd = inDps > 0 and t.ehpBuffed / inDps or math.huge
+        self:_setBattle("battle", ttk, ttd, lvl)
+    else
+        local row = self.rows.battle
+        if row then
+            self:_style(row, false, 0, nil)
+            row.text.Text = row.label .. ": —"
+        end
+    end
 end
 
 -- Σ over the player's DEPLOYED pets of the dealt-chain power profile — the same resolver
@@ -704,6 +752,30 @@ function BuffStatsHud:_setTeam(key, mine, combat, active, fillFrac, pipText)
         math.floor(mine + 0.5),
         math.floor(combat + 0.5)
     )
+end
+
+-- Seconds for the battle clock: one decimal under 10s, whole above, ∞ when it never ends.
+local function fmtSeconds(s)
+    if s == math.huge then
+        return "∞"
+    elseif s < 10 then
+        return string.format("%.1fs", s)
+    end
+    return string.format("%ds", math.floor(s + 0.5))
+end
+
+-- The pacing row: expected kill/die clock vs the candle. Pip = the candle's level.
+function BuffStatsHud:_setBattle(key, ttk, ttd, candleLevel)
+    local row = self.rows[key]
+    if not row then
+        return
+    end
+    -- bar = how lopsided the fight is (kill fast relative to dying = mostly full)
+    local frac = (ttk < math.huge and ttd > 0) and math.clamp(ttd / (ttk + ttd), 0, 1) or 0
+    self:_style(row, true, frac, nil)
+    row.pip.Text = string.format("L%d", candleLevel or 1)
+    row.text.Text =
+        string.format("%s: ⚔ %s  💀 %s", row.label, fmtSeconds(ttk), fmtSeconds(ttd))
 end
 
 -- Single-value team rows (Toughness EHP): one number, pip carries the layer's contribution.

@@ -40,6 +40,15 @@ return {
     -- Tune k to set how much a point of armor is worth.
     armor_curve_k = 100,
 
+    -- DEV CANDLE (BuffStatsHud ⏱ row): the standard opponent for the time-to-kill /
+    -- time-to-die pacing readout — a SAME-LEVEL lieutenant (Jason: "battles are way
+    -- too fast... over before you realize they've started"; a typical opponent makes
+    -- pacing measurable). References a real enemies.lua def (ember_brute, mid_tier)
+    -- so the candle tracks every enemy-balance change automatically.
+    dev_candle = {
+        enemy = "ember_brute",
+    },
+
     -- Defensive inverse mining (Feature 10 slice 1b). An enemy "mines" the
     -- endurance of the pets attacking it; pets attack back when an enemy is in
     -- range (combat outranks auto-mine so pets don't scatter to crystals).
