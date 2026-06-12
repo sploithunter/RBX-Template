@@ -12,6 +12,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Test setup
 return function()
     local TestEZ = require(ReplicatedStorage.Packages.TestEZ)
+    local Locations = require(ReplicatedStorage.Shared.Locations)
+    local petConfigModule = Locations.getConfig("pets")
 
     describe("EggPetPreviewService", function()
         local EggPetPreviewService
@@ -106,7 +108,10 @@ return function()
                 end
 
                 expect(variants.basic).to.equal(true)
-                expect(math.abs(totalChance - 1) < 0.000001).to.equal(true)
+                -- SECRET pets are excluded from the preview but their weight still counts
+                -- in the total (truthful odds), so the sum lands just UNDER 1.
+                expect(totalChance <= 1).to.equal(true)
+                expect(totalChance > 0.99).to.equal(true)
 
                 local bearBasicChance = nil
                 for _, chance in ipairs(chances) do
@@ -117,13 +122,14 @@ return function()
                 expect(bearBasicChance).to.be.ok()
             end)
 
-            it("should still preview premium eggs in basic form", function()
-                local chances = EggPetPreviewService:CalculatePetChances("golden_egg")
+            it("should never list secret pets, not even as ??", function()
+                local chances = EggPetPreviewService:CalculatePetChances("basic_egg")
                 expect(#chances > 0).to.equal(true)
 
-                -- The egg may roll only golden/rainbow, but the preview remains species-only.
                 for _, chance in ipairs(chances) do
-                    expect(chance.variant).to.equal("basic")
+                    local family = petConfigModule.pets[chance.petType]
+                    expect(family).to.be.ok()
+                    expect(family.rarity ~= "secret").to.equal(true)
                 end
             end)
 

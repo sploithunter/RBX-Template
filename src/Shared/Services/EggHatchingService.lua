@@ -2170,7 +2170,7 @@ function EggHatchingService:CreateEggViewportDebugger()
 
     -- Load and display egg viewports
     task.spawn(function()
-        local eggTypes = { "basic_egg", "golden_egg" } -- Add more as needed
+        local eggTypes = { "basic_egg" } -- golden_egg removed: premium eggs are gone (one egg, hidden variant roll)
         local yOffset = 10
 
         for _, eggType in ipairs(eggTypes) do

@@ -1592,100 +1592,12 @@ local petConfig = {
             bonus_xp = 0,
         },
 
-        golden_egg = {
-            name = "Golden Basic Egg",
-            description = "Premium egg - Only Golden and Rainbow pets, no Basic variants!",
-            world_placeable = false, -- Not used as a default map object; basic_egg can roll golden/rainbow.
-            cost = 100,
-            currency = "gems",
-            asset_id = "rbxassetid://83992435784076", -- 3D Golden_BasicEgg model for import
-            image_id = "rbxassetid://0", -- Generated from 3D model
-            unlock_requirement = { type = "pets_hatched", amount = 10 },
-
-            -- Camera configuration for egg image generation
-            camera = {
-                distance = 3.5,
-                angle_y = 0, -- Same as working pets
-                angle_x = 180, -- Same as working pets
-                offset = Vector3.new(0, 0, 0),
-                lighting = "default", -- Use same lighting for consistency
-            },
-
-            -- Stage 1: Pet Selection (same animals as BasicEgg)
-            pet_weights = {
-                bear = 25000, -- ~26.3% (commons split the bulk)
-                bunny = 25000, -- ~26.3%
-                doggy = 25000, -- ~26.3%
-                kitty = 20000, -- ~21% — premium egg's kitty bias (vs ~0.66% in basic_egg)
-                -- SECRET stays secret-rare even in the premium egg: ~0.05% (~1 in 2,000),
-                -- matched to basic/earth egg odds. Was "dragon = 5" — a 5% SPECIES roll,
-                -- misreading the 5% golden VARIANT chance (which rarity_rates handles);
-                -- it made 1 in 20 golden-egg hatches a dragon.
-                dragon = 48,
-            },
-
-            -- Stage 2: Rarity Calculation (NO BASIC VARIANTS)
-            rarity_rates = {
-                golden_chance = 0.95, -- 95% chance for golden
-                rainbow_chance = 0.05, -- 5% chance for rainbow
-                -- 0% chance for basic (premium egg!)
-                no_basic_variants = true, -- Flag for hatching script
-            },
-            variant_rolls = {
-                enabled = true,
-                allow_basic = false,
-                allow_golden = true,
-                allow_rainbow = true,
-                cost_multiplier = 20,
-            },
-
-            -- Gamepass & Luck Modifiers
-            modifier_support = {
-                supports_luck_gamepass = true,
-                supports_golden_gamepass = false, -- Already guaranteed golden+
-                supports_rainbow_gamepass = true,
-                max_luck_multiplier = 5.0, -- Lower cap since already premium
-            },
-
-            hatching_time = 30, -- 30 seconds of anticipation
-            guaranteed_shiny_chance = 0.1, -- 10% chance for extra sparkles
-            bonus_xp = 50,
-        },
-
-        -- Future eggs (disabled for now)
-        --[[
-        rainbow_egg = {
-            name = "Rainbow Egg", 
-            description = "Mythical rainbow pets with ultimate power",
-            cost = 10000,
-            currency = "gems", 
-            asset_id = "rbxassetid://0", -- Add when you have rainbow egg model
-            image_id = "rbxassetid://0", -- Generated from 3D model
-            unlock_requirement = {type = "golden_pets_hatched", amount = 5},
-            
-            -- Camera configuration for egg image generation
-            camera = {
-                distance = 4.5,
-                angle_y = 35,    -- Different angle for rainbow egg
-                angle_x = 170,   -- Show the rainbow effect
-                offset = Vector3.new(0, 0.3, 0),
-                lighting = "dramatic"  -- Special lighting for rainbow egg
-            },
-            
-            possible_pets = {
-                {pet = "bear", variant = "rainbow", weight = 20, display_rate = "20%"},
-                {pet = "bunny", variant = "rainbow", weight = 20, display_rate = "20%"},
-                {pet = "doggy", variant = "rainbow", weight = 20, display_rate = "20%"},
-                {pet = "kitty", variant = "rainbow", weight = 20, display_rate = "20%"},
-                {pet = "dragon", variant = "rainbow", weight = 20, display_rate = "20%"},
-            },
-            
-            hatching_time = 300,
-            guaranteed_shiny_chance = 1.0,
-            bonus_xp = 500,
-            special_hatch_animation = true,
-        }
-        --]]
+        -- NOTE (Jason): separate golden/rainbow premium eggs are GONE — remnants of the
+        -- old design. There is one egg per source with golden/rainbow as a hidden variant
+        -- roll (rarity_rates). If a "golden hatch" returns, it is a SETTING on the same
+        -- egg — pay a cost multiple, no basic chance — i.e. variant_rolls with
+        -- allow_basic = false + cost_multiplier (see colorado_egg's variant_rolls),
+        -- NOT a new egg_sources entry.
     },
 }
 

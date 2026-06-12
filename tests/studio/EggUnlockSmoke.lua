@@ -51,12 +51,34 @@ local function invoke(remote, action, payload)
     return response
 end
 
-local function beginLockedEgg(remote, eggType, eggsHatched)
+-- The unlock requirement comes from the egg's config (EggService:GetEggUnlockStatus).
+-- golden_egg — the old hardcoded subject — was removed (premium eggs are gone), so the
+-- smoke now derives its subject: any egg_sources entry with an unlock_requirement.
+local function getUnlockRequirement(eggType)
+    local Locations = require(ReplicatedStorage.Shared.Locations)
+    local petConfig = Locations.getConfig("pets")
+    local eggData = petConfig.egg_sources and petConfig.egg_sources[eggType]
+    return eggData and eggData.unlock_requirement or nil
+end
+
+local function findGatedEggType()
+    local Locations = require(ReplicatedStorage.Shared.Locations)
+    local petConfig = Locations.getConfig("pets")
+    for eggType, eggData in pairs(petConfig.egg_sources or {}) do
+        local req = eggData.unlock_requirement
+        if type(req) == "table" and (tonumber(req.amount) or 0) > 0 then
+            return eggType
+        end
+    end
+    return nil
+end
+
+local function beginLockedEgg(remote, eggType, counterId, counterValue)
     return invoke(remote, "BeginEggProximity", {
         eggType = eggType,
         setupTemporaryEggStand = true,
         setupCounters = {
-            eggs_hatched = eggsHatched,
+            [counterId] = counterValue,
         },
         setupCurrencyAmount = 5000,
         setupPetInventoryEmpty = true,
@@ -72,7 +94,20 @@ end
 
 function EggUnlockSmoke.run(options)
     options = options or {}
-    local eggType = options.eggType or "golden_egg"
+    local eggType = options.eggType or findGatedEggType()
+    if not eggType then
+        error(
+            "EggUnlockSmoke: no egg in configs/pets.lua egg_sources has an unlock_requirement"
+                .. " — add one (or pass options.eggType) to exercise the locked-egg flow"
+        )
+    end
+    local requirement = getUnlockRequirement(eggType)
+    if type(requirement) ~= "table" or (tonumber(requirement.amount) or 0) <= 0 then
+        error("EggUnlockSmoke: egg '" .. tostring(eggType) .. "' has no unlock_requirement")
+    end
+    -- same counter resolution as EggService:GetEggUnlockStatus
+    local counterId = requirement.counter or requirement.stat or requirement.type
+    local requiredAmount = tonumber(requirement.amount)
     local timeoutSeconds = options.timeoutSeconds or DEFAULT_TIMEOUT_SECONDS
     local player = getPlayer(options)
     local remote = waitFor(REMOTE_NAME .. " RemoteFunction", timeoutSeconds, function()
@@ -86,7 +121,7 @@ function EggUnlockSmoke.run(options)
     local restoreNeeded = false
     local result = {}
     local success, err = pcall(function()
-        local lockedBegin = beginLockedEgg(remote, eggType, 9)
+        local lockedBegin = beginLockedEgg(remote, eggType, counterId, requiredAmount - 1)
         restoreNeeded = true
         invoke(remote, "MoveEggProximity", { placement = "near" })
         task.wait(0.25)
@@ -101,11 +136,11 @@ function EggUnlockSmoke.run(options)
         assert(locked.afterCurrency == locked.beforeCurrency, "Locked egg changed currency")
         assert(locked.afterPetCount == locked.beforePetCount, "Locked egg changed pet inventory")
         assert(
-            locked.result.details and locked.result.details.required == 10,
+            locked.result.details and locked.result.details.required == requiredAmount,
             "Locked egg response missed required unlock amount"
         )
         assert(
-            locked.result.details and locked.result.details.current == 9,
+            locked.result.details and locked.result.details.current == requiredAmount - 1,
             "Locked egg response missed current unlock progress"
         )
         result.lockedCode = locked.result.code
@@ -117,7 +152,7 @@ function EggUnlockSmoke.run(options)
         restoreNeeded = false
         task.wait(0.4)
 
-        local unlockedBegin = beginLockedEgg(remote, eggType, 10)
+        local unlockedBegin = beginLockedEgg(remote, eggType, counterId, requiredAmount)
         restoreNeeded = true
         invoke(remote, "MoveEggProximity", { placement = "near" })
         task.wait(0.25)
