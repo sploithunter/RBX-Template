@@ -1017,6 +1017,38 @@ function EnemyService:_regenPass(now, dt, eng)
     end
 end
 
+-- Enemy regen pass (Jason: "enemies and pets are essentially supposed to be the exact
+-- same mechanic" — but enemies never healed at all): once an enemy has gone
+-- enemy_regen.delay_seconds without taking damage, it trickles HP back at
+-- enemy_regen.partial_per_second (a THIRD of the pet rate). Damage detection is
+-- self-contained: the pass watches each entry's HP for decreases instead of hooking
+-- every damage path, so DoTs/AoEs/splash all reset the delay automatically.
+function EnemyService:_enemyRegenPass(now, dt, eng)
+    local cfg = eng.enemy_regen
+    if not cfg then
+        return
+    end
+    local delay = tonumber(cfg.delay_seconds) or 5
+    local perSec = tonumber(cfg.partial_per_second) or 0.5
+    for _, entry in pairs(self._enemies) do
+        local model = entry.model
+        if model and model.Parent then
+            local hp = model:GetAttribute("HP") or 0
+            local maxHp = model:GetAttribute("MaxHP") or hp
+            if hp > 0 then
+                if entry.lastSeenHp and hp < entry.lastSeenHp then
+                    entry.lastDamagedAt = now
+                end
+                if hp < maxHp and now - (entry.lastDamagedAt or 0) >= delay then
+                    hp = math.min(maxHp, hp + perSec * dt)
+                    model:SetAttribute("HP", hp)
+                end
+                entry.lastSeenHp = hp
+            end
+        end
+    end
+end
+
 -- Find a player's equipped pet by its squad slot (PositionNumber).
 function EnemyService:_findPlayerPetBySlot(player, slotIndex)
     local folder = Workspace:FindFirstChild("PlayerPets")
@@ -1633,6 +1665,7 @@ function EnemyService:_combatTick(dt)
     local now = os.clock()
     local nowTime = os.time()
     self:_regenPass(now, dt, eng)
+    self:_enemyRegenPass(now, dt, eng)
     self:_supportPass(now)
     self:_enemyHealPass(now)
     self:_enforceLockouts(nowTime) -- #179: hold re-teamed/locked pets down for their recovery

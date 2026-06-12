@@ -100,6 +100,15 @@ return {
             partial_per_second = 1.5, -- a slow trickle (~1/sec) — heals/support/potions are the FAST way back
             delay_seconds = 5, -- the "must disengage" window before the trickle even starts
         },
+        -- ENEMY regen (Jason: "enemies and pets are essentially supposed to be the exact
+        -- same mechanic") — same shape as the pet trickle above, at A THIRD of the pet
+        -- rate (1.5 / 3 = 0.5 HP/sec; the anchor is the CURRENT pet rate — if the pet
+        -- trickle gets retuned, revisit this). Disengage from a half-dead enemy and it
+        -- slowly knits back together, so you can't whittle one down across visits for free.
+        enemy_regen = {
+            partial_per_second = 0.5,
+            delay_seconds = 5,
+        },
         -- Instant effects (heals etc.) have no duration to show, so we flash a blinking
         -- badge on the pet's squad card for this long + pop a world puff — a visible
         -- "tell" of what just happened. Server stamps `HealFxUntil = os.time()+this`.
