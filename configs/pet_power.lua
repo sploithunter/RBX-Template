@@ -23,11 +23,16 @@ return {
     -- Global lever: dev base_power -> pre-multiplier power. 1.0 keeps the current 1:1 mapping.
     base_scale = 1.0,
 
-    -- INTRINSIC variant power multiplier (golden/rainbow are simply stronger). Dev knobs.
+    -- VARIANT POWER LIVES ONCE in pets.lua variants.power_multiplier (x1 / x1.5 / x2),
+    -- already baked into the pet's Power value that feeds `base` here. These knobs are
+    -- NEUTRAL by design — they MULTIPLY ON TOP of that law, so any non-1.0 value
+    -- double-counts the variant (the 2026-06-12 bug: golden displayed x2.25, rainbow
+    -- x5, while the eternal baseline only saw the first multiplier). Only diverge
+    -- these if you deliberately want display/damage to outpace the baseline law.
     variant_mult = {
         basic = 1.0,
-        golden = 1.5,
-        rainbow = 2.5,
+        golden = 1.0,
+        rainbow = 1.0,
     },
     default_variant_mult = 1.0,
 
