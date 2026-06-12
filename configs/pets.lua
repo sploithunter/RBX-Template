@@ -40,14 +40,15 @@ local petConfig = {
         creator_power_percent = 130,
         -- UNIQUE => ETERNAL (Jason, 2026-06-12: "if pet is unique it is eternal").
         -- Rarity defaults applied when a species has no explicit eternal block.
-        -- Hierarchy: huge 120 > EXCLUSIVE 100 > secret 90 > creator-species 80
-        -- (Jason: exclusives outrank secrets — "you either have to meet a creator
-        -- or buy an egg", an act of access; secrets are a lucky roll). The huge
-        -- apex pins at creator_power_percent (130) above. All percents scale by
-        -- variant (x1 / x1.25 / x1.5 — pet_roles.variant_effect_multipliers).
+        -- Hierarchy: huge 120 > exclusive 90 > secret 85 (Jason: exclusives outrank
+        -- secrets — "you either have to meet a creator or buy an egg", an act of
+        -- access; secrets are a lucky roll). The creator SPECIES is just an
+        -- exclusive (no one-off block); the huge apex pins at creator_power_percent
+        -- (130) above everything. All percents scale by variant
+        -- (x1 / x1.25 / x1.5 — pet_roles.variant_effect_multipliers).
         default_percent_by_rarity = {
-            exclusive = 100,
-            secret = 90,
+            exclusive = 90, -- 90 / 113 / 135
+            secret = 85, -- 85 / 106 / 128
         },
         -- The eternal power base = average of the player's top-N pets (N = equip
         -- capacity). By default eternal/huge pets are EXCLUDED from that baseline
@@ -1130,12 +1131,8 @@ local petConfig = {
             rarity = "exclusive",
             base_power = 100,
             base_health = 500,
-            -- authored for the APEX pet: eternal lives on THIS species only
-            eternal = {
-                enabled = true,
-                power_percent = 80,
-                baseline = "top_team_average",
-            },
+            -- eternal via the EXCLUSIVE rarity default (no one-off block — Jason);
+            -- the HUGE apex pins at eternal.creator_power_percent via its category
 
             asset_transform = {
                 scale = 1,
