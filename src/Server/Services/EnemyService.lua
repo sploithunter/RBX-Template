@@ -1487,6 +1487,45 @@ function EnemyService:_supportPass(now)
                             end
                         end
                     end
+                elseif kind == "rage" then
+                    -- RAGE (bear): an inherent power a pet uses on ITSELF — per-pet,
+                    -- never aggregated. Each rager gates on ITS OWN health (endurance
+                    -- fraction <= enrage_below) and scales by ITS OWN variant (golden/
+                    -- rainbow rage harder, mirroring the buffer rebase). Consumer:
+                    -- PetFollowService adds RageDamageBuff to the additive pet_damage
+                    -- axis. The buff/FX expire via Until, so cooling off (regen above
+                    -- the threshold) lets rage fade on its own.
+                    local factor = self._combatConfig.pet_down_threshold_factor or 1
+                    local enrageBelow = math.clamp(tonumber(aura.enrage_below) or 0.5, 0, 1)
+                    local until_ = os.time() + (tonumber(aura.duration) or 3)
+                    for _, ally in ipairs(folder:GetChildren()) do
+                        if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
+                            local rages = false
+                            for _, a in ipairs(self:_petAuras(ally) or {}) do
+                                if a.kind == "rage" then
+                                    rages = true
+                                end
+                            end
+                            if rages then
+                                local frac = PetEndurance.healthFraction(
+                                    ally:GetAttribute("CombatDamageTaken") or 0,
+                                    self:_petPower(ally),
+                                    factor
+                                )
+                                if frac <= enrageBelow then
+                                    local vmult = tonumber(vmults[ally:GetAttribute("PetVariant")])
+                                        or 1
+                                    ally:SetAttribute(
+                                        "RageDamageBuff",
+                                        1 + ((tonumber(aura.mult) or 1) - 1) * vmult
+                                    )
+                                    ally:SetAttribute("RageDamageBuffUntil", until_)
+                                    ally:SetAttribute("RageFxUntil", until_)
+                                    ally:SetAttribute("RageFxUntilStacks", 1)
+                                end
+                            end
+                        end
+                    end
                 elseif kind == "luck" then
                     -- lucky-rabbit aura: hatch luck for the PLAYER (the buff already
                     -- targets the player). Display: stamp ONLY the providing bunnies —

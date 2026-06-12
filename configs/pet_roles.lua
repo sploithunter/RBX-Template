@@ -69,6 +69,14 @@ return {
         penguin = { kind = "defense", interval = 2.0, amount = 53.3, duration = 6 }, -- Ice
         emberimp = { kind = "offense", interval = 2.0, mult = 1.1667, duration = 6 }, -- Lava
         meerkat = { kind = "yield", interval = 2.0, mult = 1.1667, duration = 6 }, -- Desert
+        -- Bear: RAGE — an inherent power the pet casts on ITSELF (Jason: per-SPECIES
+        -- assignment like the zone buffers, NOT a tank-role trait — "I don't want all
+        -- tanks to have rage"). The starter tank gets angry as it soaks: at or below
+        -- half health (enrage_below, endurance fraction) it pulses a self damage buff.
+        -- mult 1.5 = +50% basic; the variant multipliers scale the fraction (golden
+        -- +62.5%, rainbow +75%), so a raging bear claws back the tank role's 0.6
+        -- haircut exactly while it's doing its job (0.6 × 1.5 = 0.9; rainbow 1.05).
+        bear = { kind = "rage", enrage_below = 0.5, mult = 1.5, interval = 2.0, duration = 6 },
         -- Colorado (meet-egg / wild): TWO buffs, not all — "all" was really meant for
         -- creator testing (Jason). Heal + luck: the creator's gift is lucky and kind,
         -- and neither duplicates a zone buffer's whole identity.

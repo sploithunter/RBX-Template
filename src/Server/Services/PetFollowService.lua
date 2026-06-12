@@ -410,6 +410,14 @@ function PetFollowService:_mine(player, pet, breakable)
             fraction = (player:GetAttribute("PetTeamDamageBuff") or 1) - 1,
             expiry = player:GetAttribute("PetTeamDamageBuffUntil") or 0,
         },
+        {
+            -- RAGE (inherent self power, e.g. bear — pet_roles support_auras kind
+            -- "rage"): a per-PET stamp from EnemyService:_supportPass while the pet is
+            -- hurt past its enrage threshold. Same additive axis as the player buffs,
+            -- so it ADDS under the pet_damage cap, never compounds.
+            fraction = (pet:GetAttribute("RageDamageBuff") or 1) - 1,
+            expiry = pet:GetAttribute("RageDamageBuffUntil") or 0,
+        },
     }
     dmg = dmg
         * BuffStack.multiplier(

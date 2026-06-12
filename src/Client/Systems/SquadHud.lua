@@ -278,6 +278,18 @@ local PET_EFFECTS = {
         label = "COIN",
         icon = POWER_ICONS.discFor("desert", "coins_up"),
     },
+    -- RAGE (inherent self power — bear, pet_roles support_auras kind "rage"): only the
+    -- raging pet wears it, and only while hurt past its enrage threshold. Conditional,
+    -- not permanent, so it pulses instead of sitting steady like the buffer auras.
+    {
+        key = "rage",
+        source = "pet",
+        untilAttr = "RageFxUntil",
+        color = Color3.fromRGB(235, 80, 60),
+        label = "RAGE",
+        icon = POWER_ICONS.discFor("fire", "rage"),
+        pulse = true,
+    },
     -- Armor/absorb shield: now time-limited (CombatShieldUntil), so it shows as a countdown badge
     -- on the card (the thin blue bar still shows the remaining pool magnitude).
     {
