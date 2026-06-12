@@ -1468,13 +1468,18 @@ local petConfig = {
                 offset = Vector3.new(0, 0, 0),
                 lighting = "default",
             },
-            -- Stage 1: which ice pet (rarer = lower weight).
+            -- Stage 1: which ice pet (rarer = lower weight; weights are RELATIVE —
+            -- only the sum defines the odds, so fractions are fine).
             pet_weights = {
                 snowflakeowl = 45,
                 snowfox = 30,
                 penguin = 18,
                 snowleopard = 6,
-                polarbear = 1,
+                -- THE APEX-PREDATOR-TANK chase (Jason): tuned so a player has a 50%
+                -- chance to own one within 500 hatches -> p = 1 - 0.5^(1/500) ≈ 1/721
+                -- per hatch -> weight 0.1374 against the 99 points above. (A flat
+                -- 1-in-500 weight would actually land 63% within 500 — exponentials.)
+                polarbear = 0.1374,
             },
             -- Stage 2: variant rarity (basic mostly; small golden/rainbow chance).
             rarity_rates = {
