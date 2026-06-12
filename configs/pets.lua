@@ -93,8 +93,10 @@ local petConfig = {
         -- Stackable pets stay compact. Enchants are only applied to unique pets
         -- whose rarity has slots here, or to stack pets after a future promotion flow.
         -- Add future rarities here to change capacity without touching services.
+        -- NOTE: a rarity here is FORCED unique (per-uid record) — mythic was removed
+        -- by Storage v2 D1/D2: mythics are stackable with a hatch-rolled STACK enchant
+        -- (configs/enchants.lua stack_enchants), not per-uid enchantable records.
         max_enchantments_by_rarity = {
-            mythic = 1,
             secret = 2,
             exclusive = 2,
             huge = 3,

@@ -29,12 +29,22 @@ return {
         pets = {
             display_name = "Pets",
             icon = "🐾",
-            base_limit = 50,
+            -- STORAGE V2 (docs/PET_STORAGE_V2.md): base_limit counts UNIQUE records ONLY
+            -- (secret+). Stacks NEVER count — they're self-bounding (a kind exists once;
+            -- the catalog is their cap). The old 50 was a template-era fossil that
+            -- truncated auto-hatch batches in production (Jason's alt-account find).
+            base_limit = 500,
             storage_type = "mixed",
-            stack_key_fields = { "id", "variant" },
-            count_stacks_as_single = true, -- one display/used slot per kind (commons) + per special
+            -- the ENCHANT is part of a stack's identity (Storage v2 D2): a mythic's
+            -- hatch-rolled effect splits it into its own pile ("Mythic Scorpion · Coin
+            -- Finder"). "" component for enchantless stacks.
+            stack_key_fields = { "id", "variant", "enchant" },
+            count_stacks_as_single = true, -- one display slot per kind (commons) + per special
+            stacks_count_toward_limit = false, -- Storage v2: only uniques consume slots
             max_stack_size = 99999,
-            special_rarities = { "mythic", "secret", "exclusive", "huge", "creator" },
+            -- mythic DEMOTED to stackable (Storage v2 D1) — it keeps an enchant via the
+            -- stack key instead of a per-uid record (see enchants.lua stack_enchants)
+            special_rarities = { "secret", "exclusive", "huge", "creator" },
             equip_individualization = "equipped_layer", -- equip is tracked in Equipped.pets, not the stack
 
             -- Limit extensions via gamepasses
@@ -55,7 +65,7 @@ return {
             schema = {
                 stacks = {
                     required = { "id", "variant", "quantity" },
-                    optional = { "obtained_at" },
+                    optional = { "obtained_at", "element", "enchant" },
                 },
                 special = {
                     required = { "id", "variant", "obtained_at" },

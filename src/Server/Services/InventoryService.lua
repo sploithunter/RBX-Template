@@ -238,22 +238,10 @@ end
 
 function InventoryService:_getRequiredSlotsForAdd(bucketName, itemData, bucket, bucketConfig)
     if bucketName == "pets" then
-        if self:_isSpecialPetData(itemData) then
-            return 1 -- a special always consumes its own display slot
-        end
-        -- A common needs a new slot only if no existing common record shares its stack key.
-        local targetKey = self:_petStackKey(itemData.id, itemData.variant or "basic")
-        local capability = self:_petCapability()
-        for _, rec in pairs(bucket.items or {}) do
-            if
-                type(rec) == "table"
-                and not PetInventoryView.isSpecial(rec, capability)
-                and self:_petStackKey(rec.id, rec.variant) == targetKey
-            then
-                return 0
-            end
-        end
-        return 1
+        -- STORAGE V2: only UNIQUE records (secret+) consume slots. Stacks are
+        -- self-bounding (the catalog is their cap) — commons AND mythics never
+        -- fail on space, which kills the silent auto-hatch truncation for good.
+        return self:_isSpecialPetData(itemData) and 1 or 0
     end
 
     if bucketConfig.storage_type == "stackable" and bucket.items and bucket.items[itemData.id] then
@@ -418,10 +406,15 @@ function InventoryService:_isSpecialPet(petId, variant)
     return false
 end
 
--- Compute stack key for pets: id:variant
-function InventoryService:_petStackKey(petId, variant)
-    variant = variant or "basic"
-    return string.format("%s:%s", petId, variant)
+-- Compute stack key for pets: id:variant:enchant (Storage v2 — the enchant is part of
+-- a stack's IDENTITY; "" component for enchantless stacks). MUST stay byte-identical
+-- to PetInventoryView.stackKey over the configured stack_key_fields.
+function InventoryService:_petStackKey(petId, variant, enchant)
+    return table.concat({
+        tostring(petId),
+        tostring(variant or "basic"),
+        tostring(enchant or ""),
+    }, ":")
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
@@ -468,6 +461,12 @@ function InventoryService:_petViewConfig()
     self._petViewConfigCache = {
         stack_key_fields = fields,
         count_stacks_as_single = (petsCfg and petsCfg.count_stacks_as_single) ~= false,
+        -- Storage v2: false => only UNIQUE records count toward the bucket limit
+        stacks_count_toward_limit = not (
+                    petsCfg and petsCfg.stacks_count_toward_limit == false
+                )
+                and true
+            or false,
     }
     return self._petViewConfigCache
 end
@@ -616,8 +615,8 @@ function InventoryService:_addPetRecords(player, itemData, bucket)
         return lastUid, true
     end
 
-    -- Common: increment the compact stack.
-    local stackKey = self:_petStackKey(itemData.id, itemData.variant or "basic")
+    -- Common: increment the compact stack (key includes the stack enchant — Storage v2).
+    local stackKey = self:_petStackKey(itemData.id, itemData.variant or "basic", itemData.enchant)
     local stack = bucket.items[stackKey]
     if not stack then
         stack = {
@@ -628,6 +627,9 @@ function InventoryService:_addPetRecords(player, itemData, bucket)
         }
         if itemData.element ~= nil then
             stack.element = itemData.element
+        end
+        if itemData.enchant ~= nil then
+            stack.enchant = itemData.enchant
         end
         bucket.items[stackKey] = stack
     end

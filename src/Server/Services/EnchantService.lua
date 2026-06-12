@@ -104,6 +104,19 @@ function EnchantService:_stampAggregates(player)
             end
         end
     end
+    -- STACK ENCHANTS (Storage v2): equipped mythic stacks contribute their effect at
+    -- the flat "Mythic Strength" — one contribution per equipped slot referencing the
+    -- stack (each equipped copy is a working pet, same as uniques).
+    local stackStrength = self:GetStackEnchantStrength()
+    for _, s in ipairs(self:_getEquippedEnchantStacks(player)) do
+        local enchantConfig = self._config.effects and self._config.effects[s.effect]
+        local modifier = enchantConfig and enchantConfig.modifier
+        local kind = modifier and modifier.kind
+        if kind and STAMPED_KINDS[kind] then
+            totals[kind] = (totals[kind] or 0)
+                + stackStrength * (tonumber(modifier.amount_per_strength) or 0)
+        end
+    end
     for kind, attr in pairs(STAMPED_KINDS) do
         local value = totals[kind] or 0
         if (player:GetAttribute(attr) or 0) ~= value then
@@ -239,6 +252,38 @@ function EnchantService:_buildEnchant(entry, profileId)
         roll_profile = profileId,
         rolled_at = tick(),
     }
+end
+
+-- STACK ENCHANT ROLL (Storage v2 D2-D4): one effect id (or nil) for a STACKABLE
+-- rarity, from the SAME per-rarity pool the unique hatch rolls use (the mythical
+-- profile: initial_roll_chance gate + weighted effects) — but effect-only. Strength
+-- is never rolled or stored: it resolves at read time from the flat config value
+-- (enchants.stack_enchants.strength — "Mythic Strength").
+function EnchantService:RollStackEnchant(rarityId)
+    if not self:IsEnabled() then
+        return nil
+    end
+    local cfg = self._config.stack_enchants
+    if not (cfg and cfg.rarities and rarityId and cfg.rarities[rarityId] == true) then
+        return nil
+    end
+    local profile = self:_getRollProfileForRarity(rarityId)
+    if not profile then
+        return nil
+    end
+    local rollChance = tonumber(profile.initial_roll_chance) or 1
+    if math.random() > rollChance then
+        return nil
+    end
+    local entry = self:_chooseWeighted(profile.chances or {})
+    return entry and entry.effect or nil
+end
+
+-- The flat strength every STACK enchant resolves at ("Mythic Strength" — one knob,
+-- applies live to every mythic enchant in the world).
+function EnchantService:GetStackEnchantStrength()
+    local cfg = self._config.stack_enchants
+    return (cfg and tonumber(cfg.strength)) or 1
 end
 
 function EnchantService:RollEnchant(rarityId, excludedEffects)
@@ -1032,6 +1077,29 @@ function EnchantService:_getEquippedUniquePets(player)
     return pets
 end
 
+-- Equipped STACKS carrying a stack enchant (Storage v2): resolve Equipped.pets refs
+-- of kind "stack" to their inventory records; each equipped slot referencing an
+-- enchanted stack yields one entry { key, effect }.
+function EnchantService:_getEquippedEnchantStacks(player)
+    local data = self._dataService and self._dataService:GetData(player)
+    local items = data and data.Inventory and data.Inventory.pets and data.Inventory.pets.items
+    local equipped = data and data.Equipped and data.Equipped.pets
+    if type(items) ~= "table" or type(equipped) ~= "table" then
+        return {}
+    end
+    local list = {}
+    for _, ref in pairs(equipped) do
+        local desc = PetInventoryView.parseRef(ref)
+        if desc and desc.kind == "stack" then
+            local rec = items[desc.stackKey]
+            if type(rec) == "table" and rec.enchant ~= nil then
+                table.insert(list, { key = desc.stackKey, effect = rec.enchant })
+            end
+        end
+    end
+    return list
+end
+
 function EnchantService:_getModifierContributions(context)
     if type(context) ~= "table" or not context.player then
         return {}
@@ -1057,6 +1125,24 @@ function EnchantService:_getModifierContributions(context)
                     combine = combine,
                 })
             end
+        end
+    end
+
+    -- STACK ENCHANTS (Storage v2): equipped mythic stacks contribute at the flat
+    -- "Mythic Strength" through the same modifier-context matching as uniques.
+    local stackStrength = self:GetStackEnchantStrength()
+    for _, s in ipairs(self:_getEquippedEnchantStacks(context.player)) do
+        local enchantConfig = self._config.effects and self._config.effects[s.effect]
+        local modifier = enchantConfig and enchantConfig.modifier
+        if modifier and self:_matchesModifierContext(modifier, context) then
+            local value = stackStrength * (tonumber(modifier.amount_per_strength) or 0)
+            local combine = modifier.combine or "add"
+            table.insert(contributions, {
+                id = tostring(s.key) .. ":" .. tostring(s.effect),
+                label = enchantConfig.display_name or s.effect,
+                amount = combine == "multiply" and (1 + value) or value,
+                combine = combine,
+            })
         end
     end
 

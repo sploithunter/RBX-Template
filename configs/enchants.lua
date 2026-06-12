@@ -68,6 +68,23 @@ return {
         categories = { creator = true }, -- species categories that also lock
     },
 
+    -- STACKABLE ENCHANTS (Storage v2 D2-D4, Jason): rarities here roll ONE effect at
+    -- hatch that becomes part of the pet's STACK KEY (id:variant:enchant) — the pet
+    -- stays stackable and the enchant is the STACK's identity ("Mythic Scorpion ·
+    -- Coin Finder" is its own pile). Strength is FLAT — "Mythic Strength" — resolved
+    -- at READ time from `strength` below (never stored on the stack), so tweaking it
+    -- retunes every mythic enchant in the world instantly. No rerolls on stacks:
+    -- hatching IS the mythic enchant gamble (want a Luck mythic? hatch more mythics);
+    -- rerolling stays the privilege of secrets+. Rolls use the same per-rarity pool
+    -- as unique hatch rolls (the `mythical` profile: 35% chance, weighted effects).
+    stack_enchants = {
+        -- legendary is the top STACKABLE tier in today's catalog (no mythic species
+        -- exist yet — mythic is pre-wired for when that tier ships). Roll odds come
+        -- from each rarity's pool profile (legendary 100%, mythical 35%).
+        rarities = { legendary = true, mythic = true },
+        strength = 2, -- "Mythic Strength" — THE knob (mid of the old 1-3 ranges)
+    },
+
     reroll = {
         enabled = true,
         requires_station = true,

@@ -50,7 +50,15 @@ local function isStackEntry(entry, key)
         return false
     end
     if key ~= nil then
-        return key == (tostring(entry.id) .. ":" .. tostring(entry.variant or "basic"))
+        -- A stack's storage key starts with "id:variant"; Storage v2 appends the
+        -- enchant component ("id:variant:<effect-or-empty>"). Accept BOTH the legacy
+        -- 2-field key (pre-migration data passing through) and the 3-field form.
+        -- uid record keys never contain ":" (GenerateUID format), so no collision.
+        local base = tostring(entry.id) .. ":" .. tostring(entry.variant or "basic")
+        if key == base then
+            return true
+        end
+        return string.sub(tostring(key), 1, #base + 1) == (base .. ":")
     end
     return type(entry.quantity) == "number" and entry.uid == nil
 end
@@ -277,6 +285,22 @@ end
 
 -- One slot per common kind + per special.
 function PetInventoryView.usedSlots(items, config, capability)
+    -- STORAGE V2: stacks are SELF-BOUNDING (a kind exists once; the catalog is their
+    -- cap), so when stacks_count_toward_limit == false only UNIQUE records (specials)
+    -- consume slots. Legacy non-special uid records (pre-migration mythics) are free too.
+    if config and config.stacks_count_toward_limit == false then
+        local n = 0
+        for key, entry in pairs(items or {}) do
+            if
+                type(entry) == "table"
+                and not isStackEntry(entry, key)
+                and PetInventoryView.isSpecial(entry, capability)
+            then
+                n += 1
+            end
+        end
+        return n
+    end
     if not config or config.count_stacks_as_single ~= false then
         return #PetInventoryView.groups(items, config, capability)
     end

@@ -36,7 +36,7 @@ local DEFAULT_SAVE_DEBOUNCE_SECONDS = 15
 local CRITICAL_SAVE_DEBOUNCE_SECONDS = 1
 local PERIODIC_SAVE_SECONDS = 60
 local SAVE_CONFIRM_TIMEOUT_SECONDS = 10
-local CURRENT_SCHEMA_VERSION = 10
+local CURRENT_SCHEMA_VERSION = 11
 
 local function countInventoryItems(inventory)
     local counts = {}
@@ -477,6 +477,21 @@ SchemaMigrations[9] = function(self, data)
         end
     end
     data.SchemaVersion = 10
+    return migrations + 1
+end
+
+-- v10 -> v11: STORAGE V2 (docs/PET_STORAGE_V2.md). Mythic demoted to stackable; the
+-- stack key gains the enchant component (id:variant:enchant). This migration:
+--   1. rekeys every common stack to the 3-field key,
+--   2. collapses non-special uid records (old mythics) into enchant-keyed stacks —
+--      collapse-and-flatten: the first rolled enchantment's EFFECT survives as the
+--      stack enchant; strength is dropped (it resolves flat at read time now),
+--   3. rewrites Equipped.pets refs (stack|old -> stack|new; uid-of-collapsed -> stack|new),
+--   4. recomputes used_slots under the uniques-only rule and resyncs total_slots
+--      from config (it was persisted at profile creation — the 50-slot fossil).
+SchemaMigrations[10] = function(self, data)
+    local migrations = self:_migratePetsToStorageV2(data)
+    data.SchemaVersion = 11
     return migrations + 1
 end
 
@@ -1836,6 +1851,7 @@ function DataService:_petViewConfig()
     local okInv, inv = pcall(function()
         return self._configLoader:LoadConfig("inventory")
     end)
+    local stacksCount = true
     if
         okInv
         and inv
@@ -1846,7 +1862,14 @@ function DataService:_petViewConfig()
     then
         fields = inv.buckets.pets.stack_key_fields
     end
-    return { stack_key_fields = fields, count_stacks_as_single = true }
+    if okInv and inv and inv.buckets and inv.buckets.pets then
+        stacksCount = inv.buckets.pets.stacks_count_toward_limit ~= false
+    end
+    return {
+        stack_key_fields = fields,
+        count_stacks_as_single = true,
+        stacks_count_toward_limit = stacksCount,
+    }
 end
 
 -- v4 -> v5 pet store flip. Pure transform + conservation guard; commits only when safe.
@@ -1964,6 +1987,129 @@ function DataService:_migratePetsToEquipLayerV7(data)
         usedSlots = pets.used_slots,
     })
     return 1
+end
+
+-- STORAGE V2 (v10 -> v11, docs/PET_STORAGE_V2.md): rekey stacks to the 3-field key
+-- (id:variant:enchant), collapse old non-special uid records (demoted mythics) into
+-- enchant-keyed stacks (collapse-and-flatten: the first enchantment's EFFECT becomes
+-- the stack enchant; strength resolves flat at read time), rewrite equip refs, and
+-- recompute the slot books under the uniques-only rule. Conservation-guarded.
+function DataService:_migratePetsToStorageV2(data)
+    local pets = data.Inventory and data.Inventory.pets
+    if type(pets) ~= "table" or type(pets.items) ~= "table" then
+        return 0
+    end
+
+    local capability = self:_petCapabilityFromConfig()
+
+    -- conservation: total owned (Σ stack quantities + record count) must not change
+    local function countOwned(items)
+        local n = 0
+        for _, rec in pairs(items) do
+            if type(rec) == "table" then
+                n += math.max(1, math.floor(tonumber(rec.quantity) or 1))
+            end
+        end
+        return n
+    end
+    local before = countOwned(pets.items)
+
+    local newItems = {}
+    local keyRemap = {} -- old storage key (stack key OR uid) -> new stack key
+    local collapsed, rekeyed = 0, 0
+
+    for key, rec in pairs(pets.items) do
+        if type(rec) ~= "table" or PetInventoryView.isSpecial(rec, capability) then
+            newItems[key] = rec -- uniques (secret+) and non-tables pass through untouched
+        else
+            -- common stack OR demoted mythic uid record -> enchant-keyed stack
+            local effect = rec.enchant
+            if effect == nil and type(rec.enchantments) == "table" then
+                local first = rec.enchantments[1]
+                effect = first and first.id or nil -- collapse-and-flatten (D7)
+            end
+            local qty = math.max(1, math.floor(tonumber(rec.quantity) or 1))
+            local newKey = table.concat({
+                tostring(rec.id),
+                tostring(rec.variant or "basic"),
+                tostring(effect or ""),
+            }, ":")
+            local stack = newItems[newKey]
+            if not stack then
+                stack = {
+                    id = rec.id,
+                    variant = rec.variant or "basic",
+                    quantity = 0,
+                    obtained_at = rec.obtained_at or os.time(),
+                }
+                if rec.element ~= nil then
+                    stack.element = rec.element
+                end
+                if effect ~= nil then
+                    stack.enchant = effect
+                end
+                newItems[newKey] = stack
+            end
+            stack.quantity += qty
+            if key ~= newKey then
+                keyRemap[key] = newKey
+                if rec.uid ~= nil or rec.enchantments ~= nil then
+                    collapsed += 1
+                else
+                    rekeyed += 1
+                end
+            end
+        end
+    end
+
+    local after = countOwned(newItems)
+    if after ~= before then
+        self._logger:Error("❌ STORAGE V2 migration ABORTED (conservation failed)", {
+            before = before,
+            after = after,
+        })
+        return 0 -- keep the old shape; version still bumps but data is untouched
+    end
+    pets.items = newItems
+
+    -- rewrite equip refs: stack|old -> stack|new; bare-uid refs of collapsed records too
+    local equipped = data.Equipped and data.Equipped.pets
+    if type(equipped) == "table" then
+        for slot, ref in pairs(equipped) do
+            local desc = PetInventoryView.parseRef(ref)
+            if desc then
+                if desc.kind == "stack" and keyRemap[desc.stackKey] then
+                    equipped[slot] = "stack|" .. keyRemap[desc.stackKey]
+                elseif desc.kind == "special" and keyRemap[desc.uid] then
+                    equipped[slot] = "stack|" .. keyRemap[desc.uid]
+                end
+            end
+        end
+    end
+
+    -- slot books under the new rule: used = uniques only; total = config authority
+    -- (total_slots was persisted at profile creation — the 50-slot fossil)
+    pets.used_slots = PetInventoryView.usedSlots(pets.items, self:_petViewConfig(), capability)
+    local okInv, inv = pcall(function()
+        return self._configLoader:LoadConfig("inventory")
+    end)
+    local baseLimit = okInv
+        and inv
+        and inv.buckets
+        and inv.buckets.pets
+        and tonumber(inv.buckets.pets.base_limit)
+    if baseLimit then
+        pets.total_slots = baseLimit
+    end
+
+    self._logger:Info("✅ STORAGE V2 migration complete", {
+        owned = after,
+        collapsed = collapsed,
+        rekeyed = rekeyed,
+        usedSlots = pets.used_slots,
+        totalSlots = pets.total_slots,
+    })
+    return collapsed + rekeyed + 1
 end
 
 function DataService:_migrateInventoryBuckets(data)

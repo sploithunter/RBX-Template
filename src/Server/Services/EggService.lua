@@ -1002,6 +1002,10 @@ function EggService:IsSpecialRevealOutcome(hatchResult)
     return type(rarityId) == "string" and specialRarities[rarityId] == true
 end
 
+-- STORAGE V2: only UNIQUE records (secret+) consume slots — stacks are self-bounding
+-- (the catalog is their cap), so commons AND mythics never truncate a batch. The
+-- special check here is the CAPABILITY one (storage truth, mythic excluded), NOT
+-- IsSpecialPetOutcome (which keeps mythic for reveal flair).
 function EggService:ResolveStorageLimitedOutcomes(player, outcomes)
     if not self._inventoryService then
         return outcomes, nil
@@ -1015,49 +1019,20 @@ function EggService:ResolveStorageLimitedOutcomes(player, outcomes)
     local totalSlots = tonumber(bucket.total_slots) or 0
     local usedSlots = tonumber(bucket.used_slots) or 0
     local availableSlots = math.max(0, totalSlots - usedSlots)
+    local capability = self._inventoryService.GetPetCapability
+            and self._inventoryService:GetPetCapability()
+        or {}
     local usedNewSlots = 0
-    local simulatedStacks = {}
     local accepted = {}
 
     for _, outcome in ipairs(outcomes) do
         local requiresSlot = false
         if not outcome.autoDeleted then
-            if self:IsSpecialPetOutcome(outcome.hatchResult) then
-                requiresSlot = true
-            else
-                local stackKey = string.format(
-                    "%s:%s",
-                    tostring(outcome.hatchResult.pet),
-                    tostring(outcome.hatchResult.variant or "basic")
-                )
-                -- SSOT: a common "stack" exists if any non-special record shares the
-                -- id:variant key (records are uid-keyed, never keyed by the stack key).
-                local hasExistingStack = false
-                if bucket.items then
-                    local capability = self._inventoryService.GetPetCapability
-                            and self._inventoryService:GetPetCapability()
-                        or {}
-                    for _, rec in pairs(bucket.items) do
-                        if
-                            type(rec) == "table"
-                            and not PetInventoryView.isSpecial(rec, capability)
-                            and string.format(
-                                    "%s:%s",
-                                    tostring(rec.id),
-                                    tostring(rec.variant or "basic")
-                                )
-                                == stackKey
-                        then
-                            hasExistingStack = true
-                            break
-                        end
-                    end
-                end
-                if not hasExistingStack and not simulatedStacks[stackKey] then
-                    requiresSlot = true
-                    simulatedStacks[stackKey] = true
-                end
-            end
+            local hr = outcome.hatchResult or {}
+            requiresSlot = PetInventoryView.isSpecial({
+                huge = hr.huge == true,
+                rarity_id = hr.petData and hr.petData.rarity_id,
+            }, capability)
         end
 
         if requiresSlot and usedNewSlots >= availableSlots then

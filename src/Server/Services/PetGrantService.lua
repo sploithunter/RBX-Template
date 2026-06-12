@@ -211,6 +211,24 @@ function PetGrantService:BuildPetData(request, player)
     then
         self._enchantService:RollInitialEnchantments(player, petData, petConfig, grant.source)
     end
+    -- STACK ENCHANT (Storage v2 D2-D4): stackable rarities (mythic) roll ONE effect at
+    -- hatch that becomes part of the STACK KEY (id:variant:enchant) — the pet stays
+    -- stackable; strength is the flat "Mythic Strength" config value resolved at READ
+    -- time (never stored). A trade/grant that already carries .enchant keeps it.
+    if
+        petData.enchantable ~= true
+        and petData.enchant == nil
+        and self._enchantService
+        and self._enchantService.RollStackEnchant
+        and self._petsConfig.enchanting
+        and self._petsConfig.enchanting.hatch_rolls_enabled == true
+    then
+        local effect =
+            self._enchantService:RollStackEnchant(petData.rarity_id or petConfig.rarity_id)
+        if effect then
+            petData.enchant = effect
+        end
+    end
     self:_applyProvenance(petData, player)
 
     return petData, nil, petConfig
