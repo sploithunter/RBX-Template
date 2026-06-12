@@ -696,6 +696,12 @@ local petConfig = {
             rarity = "legendary",
             base_power = 42,
             base_health = 260,
+            -- THE APEX-PREDATOR TANK (Jason): tank role (pet_roles.by_type — toughness,
+            -- taunt, threat) but FULL damage — these per-pet aptitudes override the tank
+            -- role's 0.6, so it hits like a fighter while soaking like a tank. Rare
+            -- enough (legendary, maybe rarer later) to justify breaking the role curve.
+            mining_mult = 1.0,
+            combat_mult = 1.0,
             viewport_zoom = 1.5, -- ice card framing (see emberling note)
             asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {

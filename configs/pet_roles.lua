@@ -18,6 +18,11 @@ return {
     -- `PetRole` attribute on its model.
     by_type = {
         bear = "tank",
+        -- Jason: "in real life a polar bear has no predators other than people and it
+        -- actually hunts humans — top tier tough and scary." A HIGH-DAMAGE tank: the
+        -- tank role brings the toughness + taunt; a per-pet aptitude override in
+        -- pets.lua (mining/combat_mult 1.0) overcomes the tank damage debuff.
+        polarbear = "tank",
         doggy = "melee",
         dog = "melee",
         bunny = "support", -- Grass buffer (LUCK — lucky rabbit/clover) — see support_auras
