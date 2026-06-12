@@ -31,7 +31,7 @@ local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
-local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
+local PetPowerView = require(ReplicatedStorage.Shared.Game.PetPowerView)
 local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
@@ -46,7 +46,6 @@ function PetFollowService:Init()
     self._petRoles = self._configLoader:LoadConfig("pet_roles")
     self._levelingConfig = self._configLoader:LoadConfig("leveling")
     self._buffsConfig = self._configLoader:LoadConfig("buffs") or {}
-    self._originConfig = (self._configLoader:LoadConfig("combat_fx") or {}).origin or {}
     self._nextHit = {} -- pet model -> os.clock() of next allowed mining hit
     self._petPos = setmetatable({}, { __mode = "k" }) -- pet model -> { pos, t } (weak: dead pets GC)
 
@@ -271,31 +270,6 @@ function PetFollowService:_findBreakable(targetType, world, id)
     return nil
 end
 
--- A pet's role damage multiplier (archetype curve): PetRole attr -> by_type[PetType]
--- -> default; falls back to 1. Support/control hit softer, melee/ranged full.
-function PetFollowService:_roleDamageMult(pet)
-    local roles = self._petRoles
-    if not roles then
-        return 1
-    end
-    local id = pet:GetAttribute("PetRole")
-        or (roles.by_type and roles.by_type[pet:GetAttribute("PetType")])
-        or roles.default
-    local def = roles.roles and roles.roles[id]
-    return (def and tonumber(def.damage_mult)) or 1
-end
-
--- A pet's combat-origin stat modifiers (CombatOrigin.statMod) — the same resolution the client
--- VFX uses: element from PetType (origin.pettype_element), unified to the owner's archetype when
--- origin.unify_to_player is set. Returns { attack_mult, taken_mult }, both default 1.
-function PetFollowService:_originStat(pet, player)
-    local cfg = self._originConfig or {}
-    local petEl = cfg.pettype_element and cfg.pettype_element[pet:GetAttribute("PetType")]
-    local archetype = player and player:GetAttribute("Archetype")
-    local element = CombatOrigin.resolve(petEl, archetype, cfg)
-    return CombatOrigin.statMod(element, cfg)
-end
-
 -- A pet's effective attack range (mining-gate distance), by combat role: PetRole attr
 -- -> pet_roles.by_type[PetType] -> default. Ranged pets reach much further than melee,
 -- so they can deal damage from their standoff. Falls back to mining.range.
@@ -396,19 +370,21 @@ function PetFollowService:_mine(player, pet, breakable)
         breakableId = breakable:GetAttribute("BreakableId"),
         currency = breakable:GetAttribute("Currency"),
     }
-    local dmg = combat:ResolvePetDamage(player, ctx)
-
-    -- BIOME RPS (Jason: "rock paper scissors... one area's pets are better in
-    -- another area and worse in a second"): pet element vs the zone the player
-    -- stands in. Advantage in the zone you beat, disadvantage in the zone that
-    -- beats you, neutral at home/opposite/unknown. Same multiplier the inventory
-    -- shows (shown = dealt).
-    dmg = dmg * self:_zoneResonance(player, pet)
-    -- Archetype damage curve: support/control hit softer, melee/ranged full.
-    dmg = dmg * self:_roleDamageMult(pet)
-    -- Combat-origin element: each element trades attack vs durability (lava hits hardest,
-    -- ice softest) — see configs/combat_fx.lua origin.element_stats. Outgoing side here.
-    dmg = dmg * self:_originStat(pet, player).attack_mult
+    -- DISPLAY = DEALT, structurally (#132): the pre-roll hit comes from the SAME resolver the
+    -- inventory card runs (PetPowerView.profile) — element flat, variant bump, role/pet aptitude
+    -- (mining vs combat) and the biome-RPS zone multiplier all live in ONE place. base = the
+    -- enchant/modifier-resolved Power (ResolvePetDamage); a crystal swing is the card's ⛏ number,
+    -- an enemy swing its ⚔. Everything below this point is contextual (level scale, buffs,
+    -- vulnerability, armor, rolls) or pacing — never intrinsic.
+    local profile = PetPowerView.profile({
+        base = combat:ResolvePetDamage(player, ctx),
+        petType = pet:GetAttribute("PetType"),
+        variant = pet:GetAttribute("PetVariant"),
+        role = pet:GetAttribute("PetRole"),
+        context = { zone = self:_zoneResonance(player, pet) },
+    })
+    local dmg = breakable:GetAttribute("EnemyId") and profile.combatEffective
+        or profile.miningEffective
     -- Level scaling vs ENEMIES only (crystals have no Level): out-level it -> hit harder.
     if breakable:GetAttribute("EnemyId") then
         -- Attacker fights at the owner's EFFECTIVE level (the teaming seam) — same value the

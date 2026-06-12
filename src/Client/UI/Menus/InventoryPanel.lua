@@ -112,7 +112,11 @@ local function zoneResonanceFor(petType)
     local player = Players.LocalPlayer
     local zone = zones and player and zones[tostring(player:GetAttribute("CurrentArea"))]
     local zoneElement = zone and zone.element
-    local petElement = PetBadge.elementForPetType(petType)
+    -- RAW biome id, NOT the badge-color alias: elementForPetType returns the disc key
+    -- (lava->"fire", grass->"earth"), which the biome cycle doesn't contain — lava and
+    -- grass pets silently read NEUTRAL on cards/sort/tooltips while ice/desert (alias =
+    -- identity) worked. Jason's catch: Ember Lion card 63 in Spawn while it dealt 83.
+    local petElement = PetBadge.biomeElementForPetType(petType)
     return ElementResonance.biomeMultiplier(petElement, zoneElement, ELEMENTS_CONFIG)
 end
 

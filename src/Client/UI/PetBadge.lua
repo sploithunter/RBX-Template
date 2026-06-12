@@ -36,8 +36,17 @@ local function pettypeElement()
 end
 
 -- Badge element key (earth/fire/desert/ice, else "neutral") for a pet type.
+-- DISPLAY ONLY (disc colors): this is the power_icons ALIAS (lava->fire, grass->earth),
+-- NOT the biome id — never feed it into ElementResonance (the alias silently reads
+-- neutral for lava/grass pets; ice/desert alias to themselves, which hid the bug).
 function PetBadge.elementForPetType(petType)
     return POWER_ICONS.elementKey(pettypeElement()[petType or ""])
+end
+
+-- RAW biome element (grass/lava/ice/desert) for a pet type — the combat_fx id the
+-- biome-RPS math (ElementResonance.biomeMultiplier) and the server damage path use.
+function PetBadge.biomeElementForPetType(petType)
+    return pettypeElement()[petType or ""]
 end
 
 -- Lazy power/archetype configs (for power-slot badges in the hotbar).
