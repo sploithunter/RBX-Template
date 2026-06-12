@@ -40,11 +40,14 @@ local petConfig = {
         creator_power_percent = 130,
         -- UNIQUE => ETERNAL (Jason, 2026-06-12: "if pet is unique it is eternal").
         -- Rarity defaults applied when a species has no explicit eternal block.
-        -- Hierarchy: huge 120 > secret 100 > exclusive 90 > creator-species 80
-        -- (creator's 80 is moot for the huge apex, which pins at 130 above).
+        -- Hierarchy: huge 120 > EXCLUSIVE 100 > secret 90 > creator-species 80
+        -- (Jason: exclusives outrank secrets — "you either have to meet a creator
+        -- or buy an egg", an act of access; secrets are a lucky roll). The huge
+        -- apex pins at creator_power_percent (130) above. All percents scale by
+        -- variant (x1 / x1.25 / x1.5 — pet_roles.variant_effect_multipliers).
         default_percent_by_rarity = {
-            secret = 100,
-            exclusive = 90,
+            exclusive = 100,
+            secret = 90,
         },
         -- The eternal power base = average of the player's top-N pets (N = equip
         -- capacity). By default eternal/huge pets are EXCLUDED from that baseline
