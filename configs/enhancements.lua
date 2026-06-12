@@ -176,8 +176,10 @@ return {
     drops = {
         enabled = true,
         -- chance per breakable broken / enemy defeated that an enhancement drops
-        breakable_chance = 0.02,
-        enemy_chance = 0.08,
+        -- (doubled 0.02/0.08 -> 0.04/0.16, Jason 2026-06-11: a full 1->6 leveling run
+        -- yielded only two drops that fit any of his powers; roll back if it floods)
+        breakable_chance = 0.04,
+        enemy_chance = 0.16,
         -- of those drops, this fraction are NATURAL (origin-less junk tier) — Jason:
         -- "allow generics to drop everywhere; that makes an actual junk economy."
         -- The rest are zone-branded origin drops (~25/75 single/dual structurally).
