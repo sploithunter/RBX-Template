@@ -522,6 +522,14 @@ function AutoTargetService:ShouldAutoDeleteHatch(player, hatchResult)
         return false, "invalid_hatch"
     end
 
+    -- ORTHOGONAL HUGES (Jason: deletion of huges+ is "simply denied"): the huge flag
+    -- rides the hatch RESULT, not the species — a huge snowflakeowl is still rarity
+    -- "common" by family, so the rarity protections below would never catch it. A
+    -- player's common-species filter must NEVER eat a fresh huge.
+    if hatchResult.huge == true then
+        return false, "huge"
+    end
+
     local petId = tostring(hatchResult.pet or hatchResult.id or ""):lower()
     local variant = tostring(hatchResult.variant or "basic"):lower()
     local petData = petsConfig and petsConfig.getPet and petsConfig.getPet(petId, variant)

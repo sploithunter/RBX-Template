@@ -1501,6 +1501,36 @@ function InventoryService:_setupNetworkSignals()
     self._logger:Info("📡 Inventory Network Signals connected")
 end
 
+-- DELETION POLICY (configs/pets.lua `deletion`): protected classes are undeletable —
+-- huge/creator flags on the record, plus denied rarities (exclusive, creator, future
+-- titans/colossals). Rarity falls back to the family config when the record predates
+-- rarity stamping.
+function InventoryService:_isDeletionDenied(record)
+    if self._petsConfigCache == nil then
+        local ok, cfg = pcall(function()
+            return self._configLoader:LoadConfig("pets")
+        end)
+        self._petsConfigCache = (ok and cfg) or false
+    end
+    local pets = self._petsConfigCache
+    local policy = pets and pets.deletion
+    if not policy then
+        return false
+    end
+    if policy.deny_huge ~= false and record.huge == true then
+        return true
+    end
+    if policy.deny_creator ~= false and record.creator == true then
+        return true
+    end
+    local rarity = record.rarity_id
+    if rarity == nil and pets.pets and record.id then
+        local family = pets.pets[record.id]
+        rarity = family and (family.rarity_id or family.rarity)
+    end
+    return (policy.denied_rarities and rarity and policy.denied_rarities[rarity] == true) or false
+end
+
 function InventoryService:_handleDeleteInventoryItem(player, data)
     self._logger:Info("🗑️ DELETE ITEM REQUEST", {
         player = player.Name,
@@ -1538,6 +1568,21 @@ function InventoryService:_handleDeleteInventoryItem(player, data)
     -- Pets: resolve the identifier; a special deletes its uid record, a common decrements its
     -- stack by `quantity` (RemoveItem handles equipped_slots re-clamping + stack cleanup).
     if data.bucket == "pets" then
+        -- DELETION POLICY (Jason: huges/exclusives/creator+ deletion is "simply
+        -- denied"): the guard lives on the DELETE INTENT, not RemoveItem — trades
+        -- and fusion route through RemoveItem and must stay open (huges trade).
+        local record = bucketData.items[data.itemUid]
+        if record and self:_isDeletionDenied(record) then
+            self._logger:Warn("⛔ Delete DENIED (protected class)", {
+                player = player.Name,
+                itemUid = data.itemUid,
+                petId = record.id,
+                huge = record.huge == true,
+                creator = record.creator == true,
+                rarity = record.rarity_id,
+            })
+            return
+        end
         local deleteQuantity = math.max(1, math.floor(tonumber(data.quantity) or 1))
         local ok = self:RemoveItem(player, "pets", data.itemUid, deleteQuantity)
         if not ok then

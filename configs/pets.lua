@@ -74,6 +74,21 @@ local petConfig = {
         store_name = "PetSerials_v1",
     },
 
+    -- DELETION POLICY (Jason: "we will never allow the deletion of Huges or
+    -- Exclusives... or anything above that. It's simply denied."): server-enforced
+    -- at the player DELETE intent (InventoryService) and the auto-delete hatch
+    -- filter. Trading and fusion are NOT deletion and stay open (huges are
+    -- tradeable); Admin_RetirePet is the scalpel and bypasses. Add future top
+    -- classes (titan/colossal) to denied_rarities when they exist.
+    deletion = {
+        deny_huge = true,
+        deny_creator = true,
+        denied_rarities = {
+            exclusive = true,
+            creator = true,
+        },
+    },
+
     enchanting = {
         -- Stackable pets stay compact. Enchants are only applied to unique pets
         -- whose rarity has slots here, or to stack pets after a future promotion flow.
