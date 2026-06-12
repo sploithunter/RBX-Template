@@ -45,6 +45,7 @@ local enhancementsCfg = require(ReplicatedStorage.Configs:WaitForChild("enhancem
 local PowerSlotRow = require(script.Parent.Parent.PowerSlotRow)
 local Enhancements = require(ReplicatedStorage.Shared.Game.Enhancements)
 local enhCfg = require(Configs:WaitForChild("enhancements"))
+local CloseButton = require(script.Parent.Parent.Components.CloseButton)
 -- The level a new player chooses their origin (NATURAL picks come before this; ORIGIN powers after).
 local ORIGIN_CHOICE_LEVEL = levelTrackCfg.origin_choice_level or 5
 
@@ -572,21 +573,18 @@ function PowerChoiceMenu:_renderEnhanceStrip()
     header.ZIndex = 7
     header.Parent = strip
 
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.fromScale(0.05, 0.07)
-    closeBtn.AnchorPoint = Vector2.new(1, 0)
-    closeBtn.Position = UDim2.fromScale(0.99, 0.02)
-    closeBtn.BackgroundTransparency = 1
-    closeBtn.Text = "✕"
-    closeBtn.TextScaled = true
-    closeBtn.TextColor3 = Color3.fromRGB(220, 160, 160)
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.ZIndex = 7
-    closeBtn.Parent = strip
-    closeBtn.Activated:Connect(function()
-        self.enhanceFor = nil
-        self:_renderEnhanceStrip()
-    end)
+    -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham —
+    -- Jason: "I found that weird page button inside of the powers menu")
+    CloseButton.attach(strip, {
+        size = UDim2.fromScale(0.05, 0.07),
+        position = UDim2.fromScale(0.99, 0.02),
+        anchor = Vector2.new(1, 0),
+        zindex = 7,
+        onClick = function()
+            self.enhanceFor = nil
+            self:_renderEnhanceStrip()
+        end,
+    })
 
     -- ===== SLOTS row: big badges, click to target (gold halo), staged ghost =====
     if self._enhTargetPower ~= powerId then
@@ -879,7 +877,7 @@ function PowerChoiceMenu:_renderEnhanceStrip()
         ac.Parent = applyBtn
         local cancelBtn = applyBtn:Clone()
         cancelBtn.BackgroundColor3 = Color3.fromRGB(120, 70, 70)
-        cancelBtn.Text = "✕ CANCEL"
+        cancelBtn.Text = "CANCEL" -- (was "✕ CANCEL"; the glyph tofu-boxes in Gotham)
         cancelBtn.Position = UDim2.fromScale(0.97, 0.98)
         cancelBtn.Parent = strip
         applyBtn.Activated:Connect(function()
@@ -1402,25 +1400,17 @@ function PowerChoiceMenu:Show(parent)
     status.Parent = root
     self.statusLabel = status
 
-    -- close
-    local close = Instance.new("TextButton")
-    close.Size = UDim2.fromOffset(34, 34)
-    close.AnchorPoint = Vector2.new(1, 0)
-    close.Position = UDim2.new(1, -12, 0, 12)
-    close.BackgroundColor3 = Color3.fromRGB(120, 50, 60)
-    close.Text = "✕"
-    close.TextColor3 = Color3.fromRGB(255, 235, 235)
-    close.Font = Enum.Font.GothamBold
-    close.TextSize = 18
-    local cc = Instance.new("UICorner")
-    cc.CornerRadius = UDim.new(1, 0)
-    cc.Parent = close
-    close.Parent = root
-    close.Activated:Connect(function()
-        if _G.MenuManager then
-            _G.MenuManager:CloseCurrentPanel()
-        end
-    end)
+    -- close — THE standard X (shared component). This was Jason's "weird page button":
+    -- a maroon circle whose "✕" glyph has no Gotham glyph, rendering as the tofu box.
+    CloseButton.attach(root, {
+        size = UDim2.fromOffset(34, 34),
+        position = UDim2.new(1, -12, 0, 12),
+        onClick = function()
+            if _G.MenuManager then
+                _G.MenuManager:CloseCurrentPanel()
+            end
+        end,
+    })
 
     -- headers
     local nHeader = Instance.new("TextLabel")

@@ -12,6 +12,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local CloseButton = require(script.Parent.Parent.Components.CloseButton)
 
 local REMOTE_NAME = "GameAPICommand"
 
@@ -194,26 +195,16 @@ function QuestPanel:_createHeader()
     titleConstraint.MaxTextSize = 34
     titleConstraint.Parent = title
 
-    local close = Instance.new("TextButton")
-    close.Name = "CloseButton"
-    close.Size = UDim2.new(0, 52, 0, 52)
-    close.Position = UDim2.new(1, -64, 0, 12)
-    close.BackgroundColor3 = COLORS.close
-    close.BorderSizePixel = 0
-    close.Text = "✕"
-    close.TextColor3 = COLORS.text
-    close.TextScaled = true
-    close.Font = Enum.Font.GothamBold
-    close.ZIndex = 102
-    close.Parent = header
-
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 26)
-    closeCorner.Parent = close
-
-    close.Activated:Connect(function()
-        self:Hide()
-    end)
+    -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham)
+    CloseButton.attach(header, {
+        size = UDim2.new(0, 52, 0, 52),
+        position = UDim2.new(1, -64, 0, 12),
+        anchor = Vector2.new(0, 0),
+        zindex = 102,
+        onClick = function()
+            self:Hide()
+        end,
+    })
 end
 
 -- Rebuild the list from a fresh quest.list call.

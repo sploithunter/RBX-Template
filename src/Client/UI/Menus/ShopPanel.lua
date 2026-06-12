@@ -23,6 +23,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
+local CloseButton = require(script.Parent.Parent.Components.CloseButton)
 
 -- Load Logger with wrapper
 local LoggerWrapper
@@ -252,28 +253,16 @@ function ShopPanel:_createHeader()
     self:_createCurrencyDisplay(header)
 
     -- Close button
-    local closeButton = Instance.new("TextButton")
-    closeButton.Name = "CloseButton"
-    closeButton.Size = UDim2.new(0, 60, 0, 60)
-    closeButton.Position = UDim2.new(1, -70, 0, 10)
-    closeButton.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
-    closeButton.BorderSizePixel = 0
-    closeButton.Text = "✕"
-    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeButton.TextScaled = true
-    closeButton.Font = Enum.Font.GothamBold
-    closeButton.ZIndex = 102
-    closeButton.Parent = header
-
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 30)
-    closeCorner.Parent = closeButton
-
-    closeButton.Activated:Connect(function()
-        self:Hide()
-    end)
-
-    self:_addButtonHoverEffect(closeButton, Color3.fromRGB(231, 76, 60))
+    -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham)
+    CloseButton.attach(header, {
+        size = UDim2.new(0, 60, 0, 60),
+        position = UDim2.new(1, -70, 0, 10),
+        anchor = Vector2.new(0, 0),
+        zindex = 102,
+        onClick = function()
+            self:Hide()
+        end,
+    })
 end
 
 function ShopPanel:_createCurrencyDisplay(parent)
@@ -902,17 +891,13 @@ end
 
 function ShopPanel:_addButtonHoverEffect(button, originalColor)
     button.MouseEnter:Connect(function()
-        local tween = TweenService:Create(
-            button,
-            TweenInfo.new(0.15, Enum.EasingStyle.Quad),
-            {
-                BackgroundColor3 = Color3.new(
-                    math.min(1, originalColor.R + 0.1),
-                    math.min(1, originalColor.G + 0.1),
-                    math.min(1, originalColor.B + 0.1)
-                ),
-            }
-        )
+        local tween = TweenService:Create(button, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+            BackgroundColor3 = Color3.new(
+                math.min(1, originalColor.R + 0.1),
+                math.min(1, originalColor.G + 0.1),
+                math.min(1, originalColor.B + 0.1)
+            ),
+        })
         tween:Play()
     end)
 
@@ -931,18 +916,15 @@ function ShopPanel:_addItemHoverEffect(itemFrame)
     local stroke = itemFrame:FindFirstChild("UIStroke")
 
     itemFrame.MouseEnter:Connect(function()
-        local sizeTween = TweenService:Create(
-            itemFrame,
-            TweenInfo.new(0.2, Enum.EasingStyle.Quad),
-            {
+        local sizeTween =
+            TweenService:Create(itemFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
                 Size = UDim2.new(
                     originalSize.X.Scale,
                     originalSize.X.Offset + 5,
                     originalSize.Y.Scale,
                     originalSize.Y.Offset + 5
                 ),
-            }
-        )
+            })
         sizeTween:Play()
 
         if stroke then

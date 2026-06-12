@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ConfigLoader = require(ReplicatedStorage.Shared.ConfigLoader)
 local Locations = require(ReplicatedStorage.Shared.Locations)
+local CloseButton = require(script.Parent.Parent.Components.CloseButton)
 
 local LoggerWrapper
 local loggerSuccess, loggerResult = pcall(function()
@@ -288,22 +289,16 @@ function EnchantPanel:_createUI(parent)
     cost.ZIndex = 102
     cost.Parent = header
 
-    local closeButton = Instance.new("TextButton")
-    closeButton.Name = "CloseButton"
-    closeButton.Size = UDim2.new(0, 42, 0, 42)
-    closeButton.Position = UDim2.new(1, -54, 0, 13)
-    closeButton.BackgroundColor3 = Color3.fromRGB(202, 58, 64)
-    closeButton.BorderSizePixel = 0
-    closeButton.Font = Enum.Font.GothamBold
-    closeButton.Text = "X"
-    closeButton.TextColor3 = TEXT
-    closeButton.TextSize = 18
-    closeButton.ZIndex = 102
-    closeButton.Parent = header
-    addCorner(closeButton, 8)
-    closeButton.Activated:Connect(function()
-        self:Hide()
-    end)
+    -- THE standard close X (shared component; replaces the hand-styled text "X")
+    CloseButton.attach(header, {
+        size = UDim2.new(0, 42, 0, 42),
+        position = UDim2.new(1, -54, 0, 13),
+        anchor = Vector2.new(0, 0),
+        zindex = 102,
+        onClick = function()
+            self:Hide()
+        end,
+    })
 
     self.petList = Instance.new("ScrollingFrame")
     self.petList.Name = "PetList"

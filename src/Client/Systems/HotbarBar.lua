@@ -26,6 +26,7 @@ local POWERS = require(ReplicatedStorage.Configs:WaitForChild("powers"))
 local POWER_DESC = require(ReplicatedStorage.Configs:WaitForChild("power_descriptions"))
 local PetBadge = require(script.Parent.Parent.UI.PetBadge)
 local UITheme = require(script.Parent.Parent.UI.UITheme)
+local CloseButton = require(script.Parent.Parent.UI.Components.CloseButton)
 
 -- Tint a pill ImageLabel to the player's area palette (frames are keyed by colour name —
 -- sapphire/citrine/ruby/emerald/neutral — same keys UITheme returns), re-applying when the area
@@ -712,17 +713,13 @@ function HotbarBar.start()
         title.Text = "Assign slot " .. slot
         title.Parent = p
 
-        local close = Instance.new("TextButton")
-        close.Size = UDim2.fromOffset(22, 22)
-        close.Position = UDim2.new(1, -26, 0, 5)
-        close.Text = "✕"
-        close.Font = Enum.Font.GothamBold
-        close.TextSize = 14
-        close.TextColor3 = Color3.fromRGB(230, 230, 235)
-        close.BackgroundColor3 = Color3.fromRGB(50, 52, 64)
-        close.BorderSizePixel = 0
-        close.Parent = p
-        close.MouseButton1Click:Connect(closePicker)
+        -- THE standard close X (shared component; "✕" tofu-boxes in Gotham)
+        CloseButton.attach(p, {
+            size = UDim2.fromOffset(22, 22),
+            position = UDim2.new(1, -26, 0, 5),
+            anchor = Vector2.new(0, 0),
+            onClick = closePicker,
+        })
 
         local listFrame = Instance.new("ScrollingFrame")
         listFrame.Position = UDim2.fromOffset(6, 30)

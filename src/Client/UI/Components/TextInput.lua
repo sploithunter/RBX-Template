@@ -240,7 +240,7 @@ function TextInput:_createClearButton()
     self.clearButton.Position = UDim2.new(1, -25, 0.5, -10)
     self.clearButton.BackgroundTransparency = 1
     self.clearButton.BorderSizePixel = 0
-    self.clearButton.Text = "✕"
+    self.clearButton.Text = "X" -- (was "✕"; the glyph tofu-boxes in Gotham)
     self.clearButton.TextColor3 = self.theme.text.muted
     self.clearButton.Font = Enum.Font.GothamBold
     self.clearButton.TextScaled = true

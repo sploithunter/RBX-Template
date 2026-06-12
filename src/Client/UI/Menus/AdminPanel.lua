@@ -25,6 +25,7 @@ local Locations = require(ReplicatedStorage.Shared.Locations)
 
 -- New Net Signals
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local CloseButton = require(script.Parent.Parent.Components.CloseButton)
 
 -- Load Logger with wrapper (following the established pattern)
 local LoggerWrapper
@@ -441,25 +442,15 @@ function AdminPanel:_createUI(parent)
     titleLabel.Parent = self.frame
 
     -- Close button
-    local closeButton = Instance.new("TextButton")
-    closeButton.Name = "CloseButton"
-    closeButton.Size = UDim2.new(0, 40, 0, 40)
-    closeButton.Position = UDim2.new(1, -50, 0, 35)
-    closeButton.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-    closeButton.BorderSizePixel = 0
-    closeButton.Text = "✕"
-    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeButton.TextSize = 20
-    closeButton.Font = Enum.Font.GothamBold
-    closeButton.Parent = self.frame
-
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 8)
-    closeCorner.Parent = closeButton
-
-    closeButton.Activated:Connect(function()
-        self:Hide()
-    end)
+    -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham)
+    CloseButton.attach(self.frame, {
+        size = UDim2.new(0, 40, 0, 40),
+        position = UDim2.new(1, -50, 0, 35),
+        anchor = Vector2.new(0, 0),
+        onClick = function()
+            self:Hide()
+        end,
+    })
 
     -- Player Selection Section (NEW)
     self:_createPlayerSelector()

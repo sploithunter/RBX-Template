@@ -15,6 +15,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CloseButton = require(script.Parent.Parent.Components.CloseButton)
 
 local REMOTE_NAME = "GameAPICommand"
 local UPDATE_REMOTE = "TradeUpdate"
@@ -240,18 +241,14 @@ function TradePanel:_buildHeader(parent, titleText, onClose, baseZ)
     local tc = Instance.new("UITextSizeConstraint")
     tc.MaxTextSize = 30
     tc.Parent = title
-    local close = Instance.new("TextButton")
-    close.Size = UDim2.new(0, 48, 0, 48)
-    close.Position = UDim2.new(1, -60, 0, 12)
-    close.BackgroundColor3 = COLORS.close
-    close.Text = "✕"
-    close.TextColor3 = COLORS.text
-    close.TextScaled = true
-    close.Font = Enum.Font.GothamBold
-    close.ZIndex = baseZ + 2
-    close.Parent = header
-    corner(close, 24)
-    close.Activated:Connect(onClose)
+    -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham)
+    CloseButton.attach(header, {
+        size = UDim2.new(0, 48, 0, 48),
+        position = UDim2.new(1, -60, 0, 12),
+        anchor = Vector2.new(0, 0),
+        zindex = baseZ + 2,
+        onClick = onClose,
+    })
 end
 
 function TradePanel:_refreshPlayers()

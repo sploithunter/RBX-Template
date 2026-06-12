@@ -787,7 +787,7 @@ function SquadHud.start()
         killBtn.AnchorPoint = Vector2.new(1, 0)
         killBtn.Position = UDim2.new(1, -2, 0, 2)
         killBtn.BackgroundColor3 = Color3.fromRGB(185, 45, 45)
-        killBtn.Text = "✕"
+        killBtn.Text = "X" -- (was "✕"; the glyph tofu-boxes in Gotham)
         killBtn.Font = Enum.Font.GothamBold
         killBtn.TextSize = 13
         killBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
