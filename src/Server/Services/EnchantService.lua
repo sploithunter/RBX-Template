@@ -76,8 +76,56 @@ function EnchantService:Init()
     })
 end
 
+-- FOREGROUND fold-in (Jason: the Buff HUD needs one honest number per axis): stamp the
+-- player's aggregate enchant bonuses as attributes on a slow heartbeat, summed across
+-- EQUIPPED pets per modifier kind — the same math the per-break resolution does, made
+-- visible. Attribute per surfaced kind; only-on-change writes.
+local STAMPED_KINDS = {
+    breakable_reward = "EnchantCoinBonus",
+    pet_xp = "EnchantPetXpBonus",
+    hatch_luck = "EnchantHatchLuck",
+    secret_hatch_luck = "EnchantSecretLuck",
+    pet_damage = "EnchantPetDamage",
+    team_power = "EnchantTeamPower",
+    pet_efficiency = "EnchantEfficiency",
+}
+
+function EnchantService:_stampAggregates(player)
+    local totals = {}
+    for _, pet in ipairs(self:_getEquippedUniquePets(player)) do
+        for _, enchant in ipairs(pet.data.enchantments or {}) do
+            local enchantConfig = self._config.effects and self._config.effects[enchant.id]
+            local modifier = enchantConfig and enchantConfig.modifier
+            local kind = modifier and modifier.kind
+            if kind and STAMPED_KINDS[kind] then
+                local strength = tonumber(enchant.strength or enchant.value) or 0
+                totals[kind] = (totals[kind] or 0)
+                    + strength * (tonumber(modifier.amount_per_strength) or 0)
+            end
+        end
+    end
+    for kind, attr in pairs(STAMPED_KINDS) do
+        local value = totals[kind] or 0
+        if (player:GetAttribute(attr) or 0) ~= value then
+            player:SetAttribute(attr, value)
+        end
+    end
+end
+
 function EnchantService:Start()
     self._signals = require(game:GetService("ReplicatedStorage").Shared.Network.Signals)
+    -- aggregate heartbeat (cheap: equips change rarely; 5s keeps the HUD honest)
+    task.spawn(function()
+        local Players = game:GetService("Players")
+        while true do
+            for _, player in ipairs(Players:GetPlayers()) do
+                pcall(function()
+                    self:_stampAggregates(player)
+                end)
+            end
+            task.wait(5)
+        end
+    end)
     local fireGameEvent = require(game:GetService("ReplicatedStorage").Shared.Network.FireGameEvent)
     self._signals.EnchantPetRequest.OnServerEvent:Connect(function(player, payload)
         local result = self:RerollPetEnchant(player, payload)

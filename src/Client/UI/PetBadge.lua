@@ -63,6 +63,17 @@ end
 
 -- Lazy enhancement deps (config + pure core + origin->element map for tints).
 local _enhCfg, _enhCore, _archElement
+local _enchantsCfg
+local function enchantsCfg()
+    if _enchantsCfg == nil then
+        local ok, cfg = pcall(function()
+            return require(game:GetService("ReplicatedStorage").Configs:WaitForChild("enchants"))
+        end)
+        _enchantsCfg = (ok and type(cfg) == "table") and cfg or false
+    end
+    return _enchantsCfg or nil
+end
+
 local function enhancementCfg()
     if _enhCfg == nil then
         local ok, c = pcall(function()
@@ -141,6 +152,65 @@ function PetBadge.createEnhancementBadge(parent, opts)
         ring.ImageColor3 = GREY
         ring.ImageTransparency = 0.45
     end
+    return holder
+end
+
+-- ENCHANT badge (Jason): the per-copy identity axis. NEUTRAL (white) disc carries the
+-- effect symbol — same alphabet as auras/powers — and the RING METAL carries strength
+-- 1-5 (copper/bronze/silver/gold/onyx, configs/enchants.lua display.ring_tiers). When
+-- Jason's metal ring art lands (tier.asset) it replaces the tinted grayscale ring.
+-- opts: { enchantId, strength, size?, position?, anchor?, zindex? }
+function PetBadge.createEnchantBadge(parent, opts)
+    opts = opts or {}
+    local holder = Instance.new("Frame")
+    holder.Name = "EnchantBadge"
+    holder.Size = opts.size or UDim2.fromScale(1, 1)
+    holder.Position = opts.position or UDim2.fromScale(0, 0)
+    if opts.anchor then
+        holder.AnchorPoint = opts.anchor
+    end
+    holder.BackgroundTransparency = 1
+    if opts.zindex then
+        holder.ZIndex = opts.zindex
+    end
+    holder.Parent = parent
+    local cfg = enchantsCfg()
+    local display = cfg and cfg.display or {}
+    local symbol = (display.symbols and display.symbols[opts.enchantId]) or "star_sparkle"
+    local discImage = POWER_ICONS.discFor("neutral", symbol)
+        or POWER_ICONS.discFor("neutral", "star_sparkle")
+    if not discImage then
+        return holder -- no neutral disc art -> empty holder (caller may destroy)
+    end
+    local z = opts.zindex or 1
+    local disc = Instance.new("ImageLabel")
+    disc.BackgroundTransparency = 1
+    disc.AnchorPoint = Vector2.new(0.5, 0.5)
+    disc.Position = UDim2.fromScale(0.5, 0.5)
+    disc.Size = UDim2.fromScale(0.8, 0.8)
+    disc.ScaleType = Enum.ScaleType.Fit
+    disc.Image = discImage
+    disc.ZIndex = z
+    disc.Parent = holder
+    local tiers = display.ring_tiers or {}
+    local strength = math.clamp(math.floor(tonumber(opts.strength) or 1), 1, math.max(#tiers, 1))
+    local tier = tiers[strength]
+    local ring = Instance.new("ImageLabel")
+    ring.BackgroundTransparency = 1
+    ring.AnchorPoint = Vector2.new(0.5, 0.5)
+    ring.Position = UDim2.fromScale(0.5, 0.5)
+    ring.Size = UDim2.fromScale(1, 1)
+    ring.ScaleType = Enum.ScaleType.Fit
+    if tier and tier.asset then
+        ring.Image = tier.asset
+    else
+        ring.Image = POWER_ICONS.rings.enhancement or POWER_ICONS.rings.aura or ""
+        local tint = tier and tier.tint
+        ring.ImageColor3 = tint and Color3.fromRGB(tint[1], tint[2], tint[3])
+            or Color3.fromRGB(220, 220, 225)
+    end
+    ring.ZIndex = z + 1
+    ring.Parent = holder
     return holder
 end
 

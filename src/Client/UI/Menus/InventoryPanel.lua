@@ -81,6 +81,13 @@ end)
 if not petRolesOk then
     PET_ROLES = nil
 end
+-- Enchant display (metal ring tiers + per-effect %) for badges + readable tooltips.
+local enchantsOk, ENCHANTS_CONFIG = pcall(function()
+    return require(ReplicatedStorage.Configs:WaitForChild("enchants"))
+end)
+if not enchantsOk then
+    ENCHANTS_CONFIG = nil
+end
 -- Support-aura kind -> { biome element for the disc colour, human label }.
 local PetCardStyle = require(script.Parent.Parent.PetCardStyle)
 
@@ -3316,6 +3323,35 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
         end
     end
 
+    -- ENCHANT badges (lower-LEFT — Jason: per-copy IDENTITY, vs auras lower-right =
+    -- species role): white disc carries the effect symbol, ring metal carries
+    -- strength 1-5 (copper/bronze/silver/gold/onyx). Extras fan RIGHT, mirroring
+    -- the aura pile. Same PetBadge alphabet as every other badge surface.
+    if PetBadge and item.category == "Pets" and type(item.enchantments) == "table" then
+        local shownEnch = 0
+        for _, enchant in ipairs(item.enchantments) do
+            if enchant.id and shownEnch < 3 then
+                local holder = PetBadge.createEnchantBadge(itemFrame, {
+                    enchantId = enchant.id,
+                    strength = enchant.strength,
+                    size = UDim2.new(0.4, 0, 0.4, 0),
+                    position = UDim2.new(
+                        -0.06,
+                        shownEnch * math.floor(self.cardSize.X * 0.14),
+                        0.5,
+                        0
+                    ),
+                    zindex = 107 + shownEnch,
+                })
+                local aspect = Instance.new("UIAspectRatioConstraint")
+                aspect.AspectRatio = 1
+                aspect.AspectType = Enum.AspectType.FitWithinMaxSize
+                aspect.Parent = holder
+                shownEnch += 1
+            end
+        end
+    end
+
     -- Add interaction system (includes hover effects)
     -- DEBUG SPAM SUPPRESSED
     self:_addItemInteractions(itemFrame, item)
@@ -3899,12 +3935,31 @@ function InventoryPanel:_showItemTooltip(item)
         end
         table.insert(lines, { label = "Enchants", value = value })
         for index, enchant in ipairs(item.enchantments or {}) do
+            -- readable identity line (Jason: players can't price a trade on opaque
+            -- integers): "Coin Finder · Silver (+4.5%)" — metal from display.ring_tiers,
+            -- percent from the effect's amount_per_strength
             local strength = tonumber(enchant.strength)
-            local suffix = strength and (" +" .. self:_formatNumber(strength)) or ""
-            table.insert(lines, {
-                label = "Enchant " .. tostring(index),
-                value = tostring(enchant.displayName or enchant.id or "-") .. suffix,
-            })
+            local value = tostring(enchant.displayName or enchant.id or "-")
+            local enchCfg = ENCHANTS_CONFIG
+            if strength and enchCfg then
+                local tiers = enchCfg.display and enchCfg.display.ring_tiers
+                local tier = tiers and tiers[math.clamp(strength, 1, #tiers)]
+                if tier and tier.name then
+                    value = value .. " · " .. tier.name
+                end
+                local effect = enchCfg.effects and enchant.id and enchCfg.effects[enchant.id]
+                local per = effect
+                    and effect.modifier
+                    and tonumber(effect.modifier.amount_per_strength)
+                if per then
+                    value = value .. (" (+%.1f%%)"):format(strength * per * 100)
+                else
+                    value = value .. " +" .. self:_formatNumber(strength)
+                end
+            elseif strength then
+                value = value .. " +" .. self:_formatNumber(strength)
+            end
+            table.insert(lines, { label = "Enchant " .. tostring(index), value = value })
         end
     elseif item.enchantmentCount and item.enchantmentCount > 0 then
         table.insert(lines, { label = "Enchants", value = tostring(item.enchantmentCount) })

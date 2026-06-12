@@ -17,6 +17,39 @@ return {
     version = "1.0.0",
     enabled = true,
 
+    -- FOREGROUND DISPLAY (Jason, 2026-06-12: enchants were the only buff system with
+    -- zero visible presence — "we need a foreground use of it"). Enchant badges use
+    -- the SAME visual alphabet as auras/powers (disc symbol = what it does) on the
+    -- NEUTRAL (white) disc, with the RING METAL carrying strength 1-5. Cards place
+    -- enchants lower-LEFT (per-copy identity) vs auras lower-RIGHT (species role).
+    display = {
+        -- effect id -> disc symbol (power_icons neutral disc set)
+        symbols = {
+            coin_finder = "coins_up",
+            crystal_finder = "magnet",
+            scholar = "xp_up",
+            luck = "clover_lucky",
+            secret_luck = "clover_huge",
+            efficiency = "chevrons_up",
+            tactics = "target",
+            leadership = "star_sparkle",
+            home_world = "portal",
+        },
+        -- METAL RING per strength (copper -> bronze -> silver -> gold -> onyx).
+        -- `asset` = Jason's ring art (drop the rbxassetid in when it lands); until
+        -- then the grayscale enhancement ring is tinted with `tint`. Copper/bronze
+        -- are deliberately separated by VALUE (light warm vs dark warm) so they
+        -- read apart at badge size; onyx carries a faint purple cast so a black
+        -- ring never vanishes against dark card chrome.
+        ring_tiers = {
+            { name = "Copper", tint = { 196, 120, 70 }, asset = nil },
+            { name = "Bronze", tint = { 110, 74, 42 }, asset = nil },
+            { name = "Silver", tint = { 201, 209, 220 }, asset = nil },
+            { name = "Gold", tint = { 240, 196, 60 }, asset = nil },
+            { name = "Onyx", tint = { 38, 32, 56 }, asset = nil },
+        },
+    },
+
     hatch_rolls = {
         enabled = true,
         require_unlocked_slot = true,

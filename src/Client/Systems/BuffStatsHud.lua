@@ -309,6 +309,12 @@ function BuffStatsHud:_refresh()
             fraction = p:GetAttribute("CoinYieldPower") or 0,
             expiry = p:GetAttribute("CoinYieldPowerUntil") or 0,
         },
+        {
+            -- ENCHANT contribution (Jason: one honest coin number): EnchantService
+            -- stamps the equipped pets' coin_finder total as EnchantCoinBonus
+            fraction = p:GetAttribute("EnchantCoinBonus") or 0,
+            expiry = math.huge, -- permanent while the enchanted pets stay equipped
+        },
     }, now, axis("coin_yield"))
     -- Timer counts down only the TIMED power (CoinYieldPower); the yield AURA (CoinYieldBuff) is
     -- permanent while the buffer pet is deployed -> no countdown (shows ∞).
