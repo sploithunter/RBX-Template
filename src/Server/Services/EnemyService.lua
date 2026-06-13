@@ -143,6 +143,19 @@ function EnemyService:AddAggro(model, key, amount)
     local entry = idVal and self._enemies[idVal.Value]
     if entry and entry.aggro then
         AggroTable.add(entry.aggro, key, amount)
+        -- BEING ATTACKED ACQUIRES AGGRO (Jason: bunny fought imps from beyond the
+        -- owner's perception range and "they don't care" — perception watched the
+        -- PLAYER only). Damage is its own acquisition path: an unaware enemy that
+        -- takes a hit wakes on the attacking pet's OWNER, regardless of how far
+        -- away that player is standing. Perception stays the ambient path.
+        if not entry.aggroPlayerName and typeof(key) == "Instance" and key.Parent then
+            local ownerName = key.Parent.Name
+            if game:GetService("Players"):FindFirstChild(ownerName) then
+                entry.aggroPlayerName = ownerName
+                entry.meander = nil
+                entry.home = nil -- re-home wherever this fight leaves it
+            end
+        end
     end
 end
 
