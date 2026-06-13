@@ -126,6 +126,17 @@ return {
             ref_speed = 8, -- speed (studs/s) at which the gait reaches full amplitude
             ease_rate = 8, -- how fast the gait fades in/out as it starts/stops
         },
+        -- Idle LOITER (#217): an unaware enemy drifts around its home like idle
+        -- pets meander (same PetMeander machine, server-side; the client gait
+        -- renders the stroll). Slower + ranger than pets - they're patrolling,
+        -- not pottering. Aggro/chase overrides instantly. enabled=false to kill.
+        loiter = {
+            enabled = true,
+            radius = 10,
+            speed = 3,
+            pause_min = 2,
+            pause_max = 6,
+        },
         -- A downed pet (taken all the way down) is out for this long, then fully
         -- heals — the "fully defeated takes X to heal" consequence. Partially
         -- damaged pets bleed their damage back at regen.partial_per_second once

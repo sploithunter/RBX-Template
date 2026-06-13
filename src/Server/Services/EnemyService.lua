@@ -30,6 +30,7 @@ local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
 
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
+local PetMeander = require(ReplicatedStorage.Shared.Game.PetMeander)
 local AggroTable = require(ReplicatedStorage.Shared.Game.AggroTable)
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
@@ -798,6 +799,31 @@ function EnemyService:_isTaunt(pet)
     return def ~= nil and def.implicit_taunt == true
 end
 
+-- Idle LOITER (#217, Jason: enemies were "frozen statues" too): an unaware enemy
+-- drifts around its HOME (where it stood when it last went idle) using the SAME
+-- pure PetMeander state machine the idle pets use - server-side here, writing
+-- entry.pos + MoveTarget so the client EnemyMotion lerp + gait render the stroll.
+-- Aggro/chase takes over instantly (this only runs in the unaware branch), and
+-- the meander state resets on aggro so a fight never teleports it back.
+-- Config: combat.lua engagement.loiter (enabled/radius/speed/pause_min/pause_max).
+function EnemyService:_loiter(entry, model, ePos, dt)
+    local eng = self._combatConfig and self._combatConfig.engagement
+    local cfg = eng and eng.loiter
+    if not cfg or cfg.enabled == false then
+        return
+    end
+    entry.home = entry.home or ePos
+    entry.meander = entry.meander or PetMeander.newState(cfg, math.random)
+    local ox, oz = PetMeander.step(entry.meander, dt or 0, cfg, math.random)
+    local np = Vector3.new(entry.home.X + ox, ePos.Y, entry.home.Z + oz)
+    local moveVec = Vector3.new(np.X - ePos.X, 0, np.Z - ePos.Z)
+    entry.pos = np
+    model:SetAttribute("MoveTarget", np)
+    if moveVec.Magnitude > 0.02 then
+        model:SetAttribute("MoveFace", np + moveVec.Unit * 4)
+    end
+end
+
 -- Nearest player whose character is within maxRange of a point (or nil).
 function EnemyService:_nearestPlayer(ePos, maxRange)
     local best, bestD
@@ -843,10 +869,13 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
                 and (d <= proxRange or EnemyAI.shouldNotice(d, perceptionRange, math.random()))
             then
                 entry.aggroPlayerName = player.Name
+                entry.meander = nil
+                entry.home = nil -- re-home wherever the fight leaves it
             end
         end
         if not entry.aggroPlayerName then
-            return -- still unaware: idle
+            self:_loiter(entry, model, ePos, dt)
+            return -- still unaware: idle (loitering around home, not frozen)
         end
     end
 

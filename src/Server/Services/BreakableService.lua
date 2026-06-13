@@ -128,9 +128,10 @@ function BreakableService:Init()
     Signals.Breakables_Attack.OnServerEvent:Connect(function(player, payload)
         local ok, err = pcall(function()
             -- NEVER trust client damage (payload.damage was applied verbatim - an
-            -- exploit hole): the remote path is pinned to the 1-damage token nibble.
-            -- Server-internal callers (AutoTargetService) pass through :Attack().
-            local sanitized = type(payload) == "table" and { id = payload.id, damage = 1 }
+            -- exploit hole). Clients cannot deal breakable damage AT ALL (the
+            -- design firewall: players amplify via Boost, pets deal) - a client
+            -- request only assigns pets to the node.
+            local sanitized = type(payload) == "table" and { id = payload.id, damage = 0 }
                 or payload
             self:_onAttack(player, sanitized)
         end)
