@@ -851,13 +851,22 @@ function PowerChoiceMenu:_renderEnhanceStrip()
             hidden += 1
         end
     end
-    -- highest level first within the grid read order
+    -- strongest first (Jason): GRADE is the strength order — single (0.33) > dual (0.20)
+    -- > natural (0.15) — then the more potent LEVEL within a grade (above you scales up),
+    -- then type for a stable read. This mixes types together, which is fine: a power takes
+    -- several enhancement types and you want the biggest gains on top regardless of axis.
     table.sort(order, function(a, b)
-        local ga, gb = groups[a], groups[b]
-        if ga.item.type ~= gb.item.type then
-            return tostring(ga.item.type) < tostring(gb.item.type)
+        local ia, ib = groups[a].item, groups[b].item
+        local va, vb = Enhancements.value(enhCfg, ia), Enhancements.value(enhCfg, ib)
+        if va ~= vb then
+            return va > vb
         end
-        return (ga.item.level or 0) > (gb.item.level or 0)
+        local fa = Enhancements.levelFactor(enhCfg, ia.level, self.level)
+        local fb = Enhancements.levelFactor(enhCfg, ib.level, self.level)
+        if fa ~= fb then
+            return fa > fb
+        end
+        return tostring(ia.type) < tostring(ib.type)
     end)
 
     local G_W, G_H, G_GAPX, G_GAPY = 0.075, 0.14, 0.012, 0.05
