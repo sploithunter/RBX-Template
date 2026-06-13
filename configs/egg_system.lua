@@ -8,10 +8,16 @@ return {
 
     -- The player's VERY FIRST egg ever (lifetime eggs_hatched == 0) rolls with this
     -- luck multiplier, applied AFTER the luck cap and consumed by exactly ONE roll —
-    -- a great first impression (Jason: "extremely lucky, like 10x, but only the very
-    -- first egg"). 1 disables.
-    first_hatch_luck_multiplier = 10, -- back from 50: luck now reweights SPECIES too,
-    -- so 10x = ~40% golden / 5% rainbow first egg AND 10x kitty/dragon odds — plenty
+    -- a great first impression (Jason: "extremely lucky... but only the very first
+    -- egg"). 1 disables. Hits BOTH channels: species (full) + variant (damped by
+    -- variant_luck_weight). Verified via scripts/hatch_progression-style sim.
+    -- 50x (Jason, 2026-06-13, "radically increase it"): the variant_luck_weight=0.5
+    -- damping had quietly cut the old 10x from ~40% to ~28% golden. At 50x the
+    -- first pet is GUARANTEED shiny (~87% golden + ~13% rainbow = ~100% non-basic),
+    -- with a 1-in-4 shot at a legendary species. golden% actually PEAKS near 50x —
+    -- past it, rainbow (rolled first) steals from golden. Was 50 before the
+    -- species-reweight change; this restores + re-grounds it under the new math.
+    first_hatch_luck_multiplier = 50,
 
     version = "1.0.0",
 
