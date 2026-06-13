@@ -20,6 +20,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
+local PetRevive = require(script.Parent.Parent.PetRevive)
 local ServerStorage = game:GetService("ServerStorage")
 local InsertService = game:GetService("InsertService")
 local TweenService = game:GetService("TweenService")
@@ -661,21 +662,7 @@ end
 
 -- Re-summon a recovered pet back onto the field (clears the downed state + heals it).
 function EnemyService:_revivePet(pet)
-    pet:SetAttribute("CombatDowned", false)
-    pet:SetAttribute("CombatDamageTaken", 0)
-    pet:SetAttribute("CooldownUntil", 0)
-    pet:SetAttribute("DownedReason", "")
-    -- RESUMMON AT THE PLAYER (Jason: the model is reused, so without this it
-    -- pops up wherever it DIED and resumes a far-away fight)
-    local owner = pet.Parent and Players:FindFirstChild(pet.Parent.Name)
-    local hrp = owner and owner.Character and owner.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        pet:PivotTo(CFrame.new(hrp.Position + Vector3.new(2, 2, 2)))
-    end
-    local rtid = pet:FindFirstChild("TargetID")
-    if rtid then
-        rtid.Value = 0
-    end
+    PetRevive.revive(pet)
     self:_clearEnduranceBar(pet)
 end
 

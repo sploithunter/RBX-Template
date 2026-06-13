@@ -14,6 +14,7 @@ local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 
 local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
+local PetRevive = require(script.Parent.Parent.PetRevive)
 local Enhancements = require(ReplicatedStorage.Shared.Game.Enhancements)
 local PowerSelection = require(ReplicatedStorage.Shared.Game.PowerSelection)
 local ArchetypeLogic = require(ReplicatedStorage.Shared.Game.ArchetypeLogic)
@@ -824,23 +825,7 @@ function PowerService:_applyEffect(player, kind, now, powerId)
             end
             target = target or firstDowned
             if target then
-                target:SetAttribute("CombatDowned", false)
-                target:SetAttribute("CombatDamageTaken", 0)
-                target:SetAttribute("CooldownUntil", 0)
-                target:SetAttribute("DownedReason", "")
-                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    -- RESUMMON AT THE PLAYER (Jason: the model is reused, so without
-                    -- this it pops up wherever it DIED and resumes a far-away fight)
-                    target:PivotTo(
-                        CFrame.new(
-                            player.Character.HumanoidRootPart.Position + Vector3.new(2, 2, 2)
-                        )
-                    )
-                    local rtid = target:FindFirstChild("TargetID")
-                    if rtid then
-                        rtid.Value = 0
-                    end
-                end
+                PetRevive.revive(target, player)
                 fireGameEvent(player, "pet_revive", { pet = target.Name })
             end
         end
