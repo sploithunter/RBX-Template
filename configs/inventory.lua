@@ -360,6 +360,11 @@ return {
                     "type", -- damage / accuracy / recharge / ...
                     "origins", -- { archetype } single or { a, b } dual
                     "name", -- resolved display name ("Pyro Damage")
+                    "level", -- enhancement tier — drives both the card badge AND the slotted
+                    -- effect strength. Was MISSING from optional, so AddItem dropped it and
+                    -- origin cogs stored no level (card showed "Level: ?", effect ran at
+                    -- default). The stackId still encodes it (_L#), so it's recoverable.
+                    "origins_csv", -- folder-mirror friendly ordered origins ("geo,cryo")
                 },
             },
             limit_extensions = {},

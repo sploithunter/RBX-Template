@@ -2322,10 +2322,16 @@ function InventoryPanel:_loadEnhancementsFromFolder(enhFolder)
             end
             local single = #origins == 1
             local typeName = (typeV and typeV:IsA("StringValue") and typeV.Value) or nil
-            local levelV = itemFolder:FindFirstChild("level")
-            local level = (levelV and (levelV:IsA("NumberValue") or levelV:IsA("IntValue")))
-                    and math.floor(levelV.Value)
-                or nil
+            -- LEVEL is part of the IDENTITY, encoded in the stack id ("..._L8"), so read
+            -- it from there (SSOT) — fixes records whose separate `level` value drifted or
+            -- was never stored (origin cogs showed "Level: ?"). Fall back to the value.
+            local level = tonumber(itemFolder.Name:match("_L(%d+)$"))
+            if not level then
+                local levelV = itemFolder:FindFirstChild("level")
+                level = (levelV and (levelV:IsA("NumberValue") or levelV:IsA("IntValue")))
+                        and math.floor(levelV.Value)
+                    or nil
+            end
             local qtyV = itemFolder:FindFirstChild("Quantity")
                 or itemFolder:FindFirstChild("quantity")
             local quantity = (qtyV and (qtyV:IsA("NumberValue") or qtyV:IsA("IntValue")))
