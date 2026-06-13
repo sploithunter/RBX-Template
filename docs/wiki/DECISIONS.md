@@ -152,3 +152,25 @@ Full system + numbers in [Hatch Luck & Pacing](HATCH_LUCK.md). The durable rules
 - **Paid luck is additive and species-only.** A "2x luck" gamepass adds +1.0 to the species channel: a fresh player gets exactly the advertised 2x, the stacked endgame player gets the same flat +1.0, and golden/rainbow chances never move (tradeable variant supply stays earn-only). Golden/rainbow boosts are separate channels for separate products/events.
 - **Luck auras live on support-role pets only** — the squad-slot opportunity cost is the balance. The bunny stays common; the RAINBOW variant is the rarity gate. Watch equip-slot growth (it dilutes the tax) and don't repeat the colorado ranged+luck combo on farmable pets.
 - **Endgame baseline assumes bunnies equipped** (90% index → 3+ rainbow bunnies): price luck products against 3.81x/~12% golden (3 bunnies) and 5.56x/~16% (10-bunny loadout), not the no-bunny rows.
+
+## Build Versioning + Load-Screen Stamp (2026-06-13)
+
+Jason: "when I publish, I want to see on the load screen what version it is and
+when it was updated, so if something's not working I can tell if it actually
+updated." Implemented as a git-stamped build info shown on the BootLoader:
+
+- `VERSION` (repo root) — hand-bumped semver.
+- `scripts/stamp_build.sh` (`mise run stamp`) — regenerates `configs/build_info.lua`
+  from git (short SHA, branch, committer date) + the current time, all in Mountain
+  Time (`TZ=America/Denver`, DST-correct). Stamps a `dirty` flag for uncommitted changes.
+- The build/release/publish-studio mise tasks run the stamp FIRST, so every publish
+  path re-stamps; rojo syncs the file into Studio for the live-publish workflow.
+- `src/ReplicatedFirst/BootLoader.client.lua` reads `configs/build_info.lua` and shows
+  `v<version> · <sha>[*]  ·  updated <Mountain Time>` at the bottom of the load screen.
+  Falls back to "dev build" when unstamped (a live rojo Studio session with no stamp).
+- `configs/build_info.lua` is COMMITTED (with the last stamp) so dev/CI/fresh-clone have
+  a valid value; publishes overwrite it. Shape pinned by tests/headless/specs/build_info.spec.luau.
+
+**Publish workflow:** run a publish task (`mise run publish-studio` / `release`) which
+stamps automatically; or if publishing manually from Studio, run `mise run stamp` first
+so rojo-serve syncs the fresh stamp before File → Publish.

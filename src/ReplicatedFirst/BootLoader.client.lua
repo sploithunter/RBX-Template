@@ -79,6 +79,42 @@ fill.BorderSizePixel = 0
 fill.Parent = track
 Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
 
+-- ---- build/version stamp ----------------------------------------------
+-- Jason: show what version this is + when it was built (Mountain Time) so a
+-- published build is identifiable — "if something's not working I can tell if
+-- it actually updated." Source: configs/build_info.lua, regenerated from git by
+-- scripts/stamp_build.sh on every build/publish. Falls back to "dev build" when
+-- unstamped (a live rojo Studio session). Bottom-center, dim — informational.
+local versionText = "dev build"
+do
+    local ok, info = pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local configs = ReplicatedStorage:WaitForChild("Configs", 10)
+        local mod = configs and configs:WaitForChild("build_info", 5)
+        return mod and require(mod)
+    end)
+    if ok and type(info) == "table" and info.commit and info.commit ~= "unknown" then
+        versionText = string.format("v%s · %s", info.version or "?", info.commit)
+        if info.dirty then
+            versionText = versionText .. "*"
+        end
+        if info.built_at then
+            versionText = versionText .. "  ·  updated " .. info.built_at
+        end
+    end
+end
+
+local versionLabel = Instance.new("TextLabel")
+versionLabel.Size = UDim2.fromScale(0.9, 0.035)
+versionLabel.Position = UDim2.fromScale(0.5, 0.96)
+versionLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+versionLabel.BackgroundTransparency = 1
+versionLabel.Font = Enum.Font.Gotham
+versionLabel.TextScaled = true
+versionLabel.TextColor3 = Color3.fromRGB(95, 100, 115)
+versionLabel.Text = versionText
+versionLabel.Parent = bg
+
 -- ---- control lock ------------------------------------------------------
 -- Disable the default PlayerModule controls while loading so the player can't move/interact behind
 -- the cover. Wrapped in pcall + retry because PlayerModule may not exist the instant we boot.

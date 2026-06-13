@@ -33,17 +33,21 @@ run = [
 description = "Start Rojo file sync server"
 run = "rojo serve"
 
+[tasks.stamp]
+description = "Stamp configs/build_info.lua from git + Mountain Time (shown on the load screen). Run before publishing; rojo syncs it into Studio."
+run = "bash scripts/stamp_build.sh"
+
 [tasks.build]
 description = "Build the project for production"
-run = "rojo build --output game.rbxl"
+run = ["bash scripts/stamp_build.sh", "rojo build --output game.rbxl"]
 
 [tasks.release]
 description = "Publish to Roblox via Open Cloud (rojo upload). Needs ROBLOX_OPEN_CLOUD_KEY/UNIVERSE_ID/PLACE_ID env; refuses if unset. DRY_RUN=1 to validate only."
-run = "bash scripts/release.sh"
+run = ["bash scripts/stamp_build.sh", "bash scripts/release.sh"]
 
 [tasks.publish-studio]
 description = "Publish the place open in Roblox Studio via File -> Publish (AppleScript; macOS; needs Accessibility). Preserves the authored map, no Open Cloud key. Works for a headless agent."
-run = "bash scripts/studio_publish.sh"
+run = ["bash scripts/stamp_build.sh", "bash scripts/studio_publish.sh"]
 
 [tasks.gen-icons]
 description = "Generate configs/power_icons_assets.lua from scripts/asset_manifest.json (icon registry)"
