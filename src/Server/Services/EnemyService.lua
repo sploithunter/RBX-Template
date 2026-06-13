@@ -922,6 +922,15 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         entry.aggroPlayerName = nil
         return
     end
+    -- DRAFT RANGE (Jason: an enemy ~60 studs out kept re-conscripting his fresh
+    -- revive the moment its grace expired): the leash keeps the enemy ANGRY, but
+    -- it may only POINT THE SQUAD at itself while the player is inside the
+    -- engagement radius. Farther out, the pets are released home — they re-engage
+    -- the moment the player closes back in (or the enemy chases into range).
+    if (hrp.Position - ePos).Magnitude > (eng.aggro_range or 45) then
+        self:_releasePets(targetId)
+        return
+    end
 
     -- 3) Aggro: point the (non-downed) squad at this enemy + gather threat candidates.
     local petsFolder = Workspace:FindFirstChild("PlayerPets")
