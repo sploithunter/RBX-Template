@@ -511,7 +511,8 @@ function InventoryPanel:Show(parent)
             end)
     end
     self:_setupEquippedFolderListeners() -- Listen for equipped changes
-    self:SetupRealTimeUpdates() -- Listen for inventory changes
+    self:SetupRealTimeUpdates() -- Listen for inventory changes (pets)
+    self:_setupBucketListeners() -- Live-update the open non-pet bucket (enhancements/etc.)
 
     self.isVisible = true
     -- #179: tick the availability rings / red counts while the window is open (timers count down).
@@ -831,6 +832,8 @@ function InventoryPanel:Hide()
         end
         self._rightClickConnections = {}
     end
+    -- bucket folder listeners are live ChildAdded/Removed connections — drop them with the panel
+    self:_teardownBucketListeners()
     local pg = Players.LocalPlayer:FindFirstChild("PlayerGui")
     for _, gui in ipairs(pg and pg:GetChildren() or {}) do
         if gui.Name == "ContextMenuGui" then
@@ -3744,6 +3747,9 @@ function InventoryPanel:_selectCategory(categoryName)
 
     -- Update items display
     self:_updateItemsDisplay()
+
+    -- Re-scope the live bucket listeners to the newly-selected category's folders
+    self:_setupBucketListeners()
 end
 
 function InventoryPanel:_addButtonHoverEffect(button, originalColor)
@@ -5722,6 +5728,69 @@ function InventoryPanel:SetupRealTimeUpdates()
             end)
         end
     end
+end
+
+-- Live-update the OPEN bucket(s): the non-pet buckets (enhancements / consumables /
+-- resources…) are projected by InventoryService:_updateBucketFolders, which DESTROYS and
+-- rebuilds every item folder under the bucket on each change. So a freshly-collected cog
+-- arrives as ChildRemoved+ChildAdded churn on its bucket folder — watch that and re-render.
+-- Pets already live-update through their dedicated Stacks/Special listener
+-- (SetupRealTimeUpdates), so we skip them here. Scoped to the currently-selected category's
+-- folders so a burst in an off-screen bucket can't thrash the open view (Jason: cogs mined
+-- with the panel already open needed a close/reopen to appear).
+function InventoryPanel:_setupBucketListeners()
+    self:_teardownBucketListeners()
+
+    local inventoryFolder = self.player:FindFirstChild("Inventory")
+    if not inventoryFolder then
+        return
+    end
+
+    for _, folderName in ipairs(self:_getCategoryFolders(self.selectedCategory)) do
+        if folderName ~= "pets" then
+            local bucketFolder = inventoryFolder:FindFirstChild(folderName)
+            if bucketFolder then
+                -- the rebuild fires Removed-then-Added across the whole bucket; the per-event
+                -- refresh is debounced so one burst collapses into a single re-render
+                table.insert(
+                    self._bucketConnections,
+                    bucketFolder.ChildAdded:Connect(function()
+                        self:_scheduleBucketRefresh()
+                    end)
+                )
+                table.insert(
+                    self._bucketConnections,
+                    bucketFolder.ChildRemoved:Connect(function()
+                        self:_scheduleBucketRefresh()
+                    end)
+                )
+            end
+        end
+    end
+end
+
+function InventoryPanel:_teardownBucketListeners()
+    if self._bucketConnections then
+        for _, connection in ipairs(self._bucketConnections) do
+            connection:Disconnect()
+        end
+    end
+    self._bucketConnections = {}
+end
+
+-- Coalesce a burst of bucket folder events (a full destroy+rebuild fires many in one frame)
+-- into ONE RefreshFromRealData on the next defer, so we rebuild the grid once, not per item.
+function InventoryPanel:_scheduleBucketRefresh()
+    if self._bucketRefreshPending then
+        return
+    end
+    self._bucketRefreshPending = true
+    task.defer(function()
+        self._bucketRefreshPending = false
+        if self.isVisible then
+            self:RefreshFromRealData()
+        end
+    end)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
