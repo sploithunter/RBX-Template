@@ -543,14 +543,26 @@ function PowerChoiceMenu:_previewDiff(powerId, slots, staged)
             level = staged.item.level,
         },
     }
+    -- radius-magnitude families (Magnet): range folds into magnitude, exactly as the cast
+    -- stamp does — record.effect IS the effect-kind family (PowerRegistry sets it).
+    local radiusMagnitude = (enhCfg.radius_families or {})[record.effect] == true
     local function resolve(slotList)
         return PowerStats.resolveEffective(record, {
             casterLevel = lvl,
             scaling = powersCfg.scaling, -- nil today ⇒ identity; matches PowerService
             enhancements = Enhancements.aggregate(enhCfg, slotList, lvl),
+            radiusMagnitude = radiusMagnitude,
         })
     end
     return PowerStatsDiff.diff(resolve(slots), resolve(projected))
+end
+
+-- For a radius-magnitude power (Magnet), the `magnitude` axis IS the reach, so the preview
+-- labels that line "Range" rather than the generic "Potency".
+function PowerChoiceMenu:_isRadiusMagnitude(powerId)
+    local def = powersCfg.powers[powerId]
+    local family = def and (powersCfg.effect_kinds[def.effect] or {}).family
+    return family ~= nil and (enhCfg.radius_families or {})[family] == true
 end
 
 -- The preview card: the power name + each stat line the staged enhancement would shift, with
@@ -628,12 +640,15 @@ function PowerChoiceMenu:_renderResultPreview(parent, powerId, slots, staged)
         line("No change at your level", Color3.fromRGB(170, 170, 190), 12, Enum.Font.GothamMedium)
         return
     end
+    local radiusMagnitude = self:_isRadiusMagnitude(powerId)
     for _, r in ipairs(rows) do
         local color = r.improved and PREVIEW_UP or PREVIEW_DOWN
+        -- Magnet's magnitude IS its reach — say "Range", not the generic "Potency"
+        local label = (radiusMagnitude and r.axis == "magnitude") and "Range" or r.label
         local arrow = ("%s → %s"):format(fmtStat(r.from, r.unit), fmtStat(r.to, r.unit))
         local pctText = r.deltaPct and ("  (%+d%%)"):format(math.floor(r.deltaPct * 100 + 0.5))
             or ""
-        line(("%s   %s%s"):format(r.label, arrow, pctText), color, 13, Enum.Font.GothamMedium)
+        line(("%s   %s%s"):format(label, arrow, pctText), color, 13, Enum.Font.GothamMedium)
     end
 end
 
@@ -1006,6 +1021,20 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                 layer.ImageTransparency = 0.45
                 layer.ZIndex = 11
             end
+        end
+        -- the ghost wears the STAGED level (Jason: "I put a 6 in and it still says 5") —
+        -- above the old slot label underneath, colored vs the player's level like the rest
+        if staged.item.level then
+            local lv = Instance.new("TextLabel")
+            lv.Size = UDim2.fromScale(1, 0.3)
+            lv.Position = UDim2.fromScale(0, 0.88)
+            lv.BackgroundTransparency = 1
+            lv.Font = Enum.Font.GothamBold
+            lv.TextScaled = true
+            lv.TextColor3 = levelColor(staged.item.level, self.level)
+            lv.Text = tostring(staged.item.level)
+            lv.ZIndex = 12
+            lv.Parent = ghost
         end
         local applyBtn = Instance.new("TextButton")
         applyBtn.Size = UDim2.fromScale(0.12, 0.08)

@@ -1264,6 +1264,15 @@ function GameAPIService:_registerCommands()
             return s:Add(player, args.uid)
         end),
     })
+    bus:register("trade.addMany", {
+        description = "Offer N copies of a stack at once (slider bulk-add); clamps to headroom.",
+        validate = function(args)
+            return Validators.fields(args, { uid = "string", count = { type = "int", min = 1 } })
+        end,
+        handler = tradeAction(function(s, player, args)
+            return s:AddMany(player, args.uid, args.count)
+        end),
+    })
     bus:register("trade.remove", {
         description = "Pull a pet back out of your offer (returns it from escrow).",
         validate = function(args)

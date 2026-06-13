@@ -62,6 +62,9 @@ end
 --     scaling?      = { recharge?, duration?, damage?, radius?, magnitude?, heal?, shield? } per-axis
 --                     levelScale cfgs (each {per_level, base_level, min, max}); absent ⇒ identity,
 --     critBonus?    = number — additive crit from buffs/auras (CritBuff + CritAura),
+--     radiusMagnitude? = boolean — radius-magnitude families (Magnet): the reach IS the magnitude,
+--                     so a `range` (radius) enhancement folds into the magnitude boost — both axes
+--                     do the same job. Caller sets it from enhancements.radius_families[family].
 --   }
 function PowerStats.resolveEffective(power, ctx)
     power = power or {}
@@ -75,6 +78,14 @@ function PowerStats.resolveEffective(power, ctx)
     local enh = ctx.enhancements or {}
     local function boost(axis)
         return 1 + (num(enh[axis], 0))
+    end
+    -- radius-magnitude families (Magnet): the reach IS the magnitude, so a `range` (radius)
+    -- enhancement folds INTO the magnitude boost — both axes do the same job (Jason). This is
+    -- the single home for that fold; the passive cast stamp resolves through here too, so the
+    -- ENHANCE preview and the live HUD can never diverge.
+    local magBoost = num(enh.magnitude, 0)
+    if ctx.radiusMagnitude then
+        magBoost += num(enh.radius, 0)
     end
 
     local eff = {
@@ -94,7 +105,7 @@ function PowerStats.resolveEffective(power, ctx)
         ),
         magnitude = num(power.magnitudeBase, 0)
             * PowerStats.levelScale(casterLevel, s.magnitude)
-            * boost("magnitude"),
+            * (1 + magBoost),
         heal = num(power.healBase, 0) * PowerStats.levelScale(casterLevel, s.heal) * boost("heal"),
         shield = num(power.shieldBase, 0) * PowerStats.levelScale(casterLevel, s.shield) * boost(
             "shield"

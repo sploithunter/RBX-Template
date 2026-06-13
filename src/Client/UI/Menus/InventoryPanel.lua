@@ -34,6 +34,16 @@ local CARD_SCALE_FACTORS = { small = 1, medium = 1.5, large = 2 }
 local CARD_SCALE_NEXT = { small = "medium", medium = "large", large = "small" }
 local CARD_SCALE_LABEL = { small = "Cards: S", medium = "Cards: M", large = "Cards: L" }
 
+-- delete-mode chrome: the 🗑 header pill is muted when idle, red when armed; the
+-- selection highlight + bulk-confirm reuse this same red (matches the existing
+-- delete-confirm stroke at 231/76/60).
+local DELETE_PILL_IDLE = Color3.fromRGB(120, 72, 78)
+local DELETE_RED = Color3.fromRGB(231, 76, 60)
+-- rarities the SERVER refuses to delete (configs/pets.lua deletion.denied_rarities)
+-- plus the specials surfaced on stack cards (secret/huge ride the item.special flag).
+-- This is the client-side visual gate; InventoryService:_isDeletionDenied is the backstop.
+local DELETE_DENIED_RARITIES = { exclusive = true, creator = true, secret = true, huge = true }
+
 local function lockoutFormatTime(sec)
     sec = math.max(0, math.ceil(sec))
     if sec >= 60 then
@@ -151,6 +161,8 @@ if not enchantsOk then
 end
 -- Support-aura kind -> { biome element for the disc colour, human label }.
 local PetCardStyle = require(script.Parent.Parent.PetCardStyle)
+-- shared amount-picker popover (delete: how many of a stack; same widget trade uses)
+local QuantitySelector = require(script.Parent.Parent.Components.QuantitySelector)
 
 local SUPPORT_META = {
     heal = { element = "earth", label = "Heal" },
@@ -413,6 +425,14 @@ function InventoryPanel.new()
     self.itemFrames = {}
     self.selectedCategory = "All"
     self.searchTerm = ""
+
+    -- Delete mode (header 🗑 toggle + multi-select): off by default. _deleteSelection
+    -- is keyed by bucket+uid -> item; _deleteSelectedFrames mirrors it with the live
+    -- card frame so a re-render (folder replication) can re-paint the highlight.
+    self._deleteMode = false
+    self._deleteSelection = {}
+    self._deleteSelectedFrames = {}
+    self._deleteSelectionCount = 0
 
     -- Initialize with empty data - will be populated from real inventory
     self.inventoryData = {}
@@ -847,6 +867,15 @@ function InventoryPanel:Hide()
     end
     self._cardScaleButton = nil -- lived in the destroyed header
 
+    -- delete-mode chrome lived in the destroyed frame/header; reset to idle so a
+    -- re-open starts clean (no stale selection or armed pill)
+    self._deletePill = nil
+    self._deleteActionButton = nil
+    self._deleteMode = false
+    self._deleteSelection = {}
+    self._deleteSelectedFrames = {}
+    self._deleteSelectionCount = 0
+
     self.itemFrames = {}
     self.isVisible = false
     self.logger:info("Inventory panel hidden")
@@ -1036,6 +1065,56 @@ function InventoryPanel:_createUI(parent)
                     self.signals.Settings_SetInventoryCardScale:FireServer({ scale = nextScale })
                 end
             end)
+        end
+
+        -- DELETE pill — a TOGGLE (Jason: "a DELETE button that is a TOGGLE"). Armed,
+        -- it turns card clicks into multi-select of deletable STACKS (uniques refuse);
+        -- the actual delete runs from the floating "Delete (N)" button -> confirm.
+        -- Sits left of the card-size pill in the same right-to-left chain.
+        do
+            local delPill = pill(
+                "🗑 Delete",
+                90,
+                8 + 86 + 8 + 86 + 8 + 80 + 8 + 80 + 8, -- left of the card-size pill
+                DELETE_PILL_IDLE
+            )
+            self._deletePill = delPill
+            delPill.Activated:Connect(function()
+                self:_setDeleteMode(not self._deleteMode)
+            end)
+            self:_restyleDeletePill()
+        end
+
+        -- DELETE action button — floats bottom-center, only visible while armed.
+        -- Disabled (no-op) at zero selection; otherwise opens the bulk-confirm dialog.
+        do
+            local del = Instance.new("TextButton")
+            del.Name = "DeleteActionButton"
+            del.Size = UDim2.new(0, 200, 0, 44)
+            del.AnchorPoint = Vector2.new(0.5, 1)
+            del.Position = UDim2.new(0.5, 0, 1, -14)
+            del.BackgroundColor3 = DELETE_PILL_IDLE
+            del.Text = "🗑 Delete (0)"
+            del.TextColor3 = Color3.fromRGB(255, 245, 245)
+            del.TextScaled = true
+            del.Font = Enum.Font.GothamBold
+            del.ZIndex = 260
+            del.Visible = false
+            local dc = Instance.new("UICorner")
+            dc.CornerRadius = UDim.new(0, 10)
+            dc.Parent = del
+            local dcon = Instance.new("UITextSizeConstraint")
+            dcon.MaxTextSize = 18
+            dcon.Parent = del
+            del.Parent = self.frame
+            self._deleteActionButton = del
+            del.Activated:Connect(function()
+                if not self._deleteMode or (self._deleteSelectionCount or 0) <= 0 then
+                    return
+                end
+                self:_showBulkDeleteConfirmation()
+            end)
+            self:_updateDeleteActionButton()
         end
 
         local closeButton = Instance.new("ImageButton")
@@ -3009,6 +3088,105 @@ function InventoryPanel:_extractPetDataFromFolder(petFolder)
     return petData
 end
 
+-- Origin "pair key" so identical origin pairs cluster regardless of order: the origins
+-- sorted + joined, e.g. {pyromancer, sandwalker} and {sandwalker, pyromancer} both ->
+-- "pyromancer+sandwalker". Empty (naturals) -> "".
+local function enhancementPairKey(item)
+    local origins = item.origins
+    if type(origins) ~= "table" or #origins == 0 then
+        return ""
+    end
+    local copy = table.clone(origins)
+    table.sort(copy)
+    return table.concat(copy, "+")
+end
+
+-- natural (#origins 0) / dual (>=2) / single (1) -> the configured class rank.
+local function enhancementClassRank(item, classOrder)
+    local n = (type(item.origins) == "table" and #item.origins) or 0
+    local key = (n == 0 and "natural") or (n >= 2 and "dual") or "single"
+    return classOrder[key] or 99
+end
+
+-- Cached inventory-sort config (configs/inventory.lua `sorting`). Falls back to the
+-- built-in pets→enhancements→eggs order + natural→dual→single if the block is absent.
+function InventoryPanel:_sortConfig()
+    if self._sortCfg == nil then
+        local cfg = {
+            section_order = { pets = 0, enhancements = 1, eggs = 2 },
+            enhancement_class_order = { natural = 0, dual = 1, single = 2 },
+        }
+        pcall(function()
+            local inv = require(ReplicatedStorage.Configs:WaitForChild("inventory"))
+            if inv and inv.sorting then
+                cfg.section_order = inv.sorting.section_order or cfg.section_order
+                cfg.enhancement_class_order = inv.sorting.enhancement_class_order
+                    or cfg.enhancement_class_order
+            end
+        end)
+        self._sortCfg = cfg
+    end
+    return self._sortCfg
+end
+
+-- Inventory grid comparator. Order: equipped first → bucket section (pets, then
+-- enhancements, then eggs, then the rest) → a per-section rule:
+--   • enhancements: class (natural→dual→single) → origin PAIR → type (A–Z) → level desc
+--   • eggs: by name
+--   • pets / other: power desc → count desc → name (the original rule)
+function InventoryPanel:_compareInventoryItems(a, b)
+    local aEq = self:_isItemEquipped(a)
+    local bEq = self:_isItemEquipped(b)
+    if aEq ~= bEq then
+        return aEq -- equipped before non-equipped
+    end
+
+    local cfg = self:_sortConfig()
+    local as = cfg.section_order[a.folder_source] or 50
+    local bs = cfg.section_order[b.folder_source] or 50
+    if as ~= bs then
+        return as < bs
+    end
+
+    if a.folder_source == "enhancements" and b.folder_source == "enhancements" then
+        local ac = enhancementClassRank(a, cfg.enhancement_class_order)
+        local bc = enhancementClassRank(b, cfg.enhancement_class_order)
+        if ac ~= bc then
+            return ac < bc
+        end
+        local ak, bk = enhancementPairKey(a), enhancementPairKey(b)
+        if ak ~= bk then
+            return ak < bk
+        end
+        local at = tostring(a.enhancement_type or a.name)
+        local bt = tostring(b.enhancement_type or b.name)
+        if at ~= bt then
+            return at < bt
+        end
+        local al = tonumber(a.level) or 0
+        local bl = tonumber(b.level) or 0
+        if al ~= bl then
+            return al > bl -- higher level first
+        end
+        return tostring(a.name) < tostring(b.name)
+    elseif a.folder_source == "eggs" and b.folder_source == "eggs" then
+        return tostring(a.name) < tostring(b.name)
+    end
+
+    -- pets / other: power desc, count desc, name (unchanged behavior)
+    local ap = tonumber(a.zonePower or a.power) or 0
+    local bp = tonumber(b.zonePower or b.power) or 0
+    if ap ~= bp then
+        return ap > bp
+    end
+    local acn = tonumber(a.count) or 1
+    local bcn = tonumber(b.count) or 1
+    if acn ~= bcn then
+        return acn > bcn
+    end
+    return tostring(a.name) < tostring(b.name)
+end
+
 function InventoryPanel:_updateItemsDisplay()
     -- Cleanup old right-click connections to prevent memory leaks
     if self._rightClickConnections then
@@ -3054,25 +3232,10 @@ function InventoryPanel:_updateItemsDisplay()
         end
     end
 
-    -- Sort: equipped first, then by power desc, then by count desc, then name
+    -- Sort: equipped first, then by bucket section (pets → enhancements → eggs → rest),
+    -- with a per-section rule (pets by power, enhancements grouped, eggs by name).
     table.sort(filteredItems, function(a, b)
-        local aEquipped = self:_isItemEquipped(a)
-        local bEquipped = self:_isItemEquipped(b)
-        if aEquipped ~= bEquipped then
-            return aEquipped and not bEquipped
-        end
-        local ap = tonumber(a.zonePower or a.power) or 0
-        local bp = tonumber(b.zonePower or b.power) or 0
-        if ap == bp then
-            -- tie-break: stacks with higher count first
-            local ac = tonumber(a.count) or 1
-            local bc = tonumber(b.count) or 1
-            if ac ~= bc then
-                return ac > bc
-            end
-            return tostring(a.name) < tostring(b.name)
-        end
-        return ap > bp
+        return self:_compareInventoryItems(a, b)
     end)
 
     -- Create item frames into equipped or inventory sections
@@ -4411,8 +4574,27 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
 
     leftClickDetection.Activated:Connect(function()
         -- DEBUG SPAM SUPPRESSED
+        -- Delete mode hijacks the primary action: a click toggles selection instead
+        -- of equipping/consuming/hatching (uniques refuse + flash a "protected" tell).
+        if self._deleteMode then
+            self:_toggleDeleteSelection(item, itemFrame)
+            return
+        end
         self:_handlePrimaryAction(item)
     end)
+
+    -- Re-paint the selection highlight after a re-render: folder replication rebuilds
+    -- the cards while delete mode is still armed, so the new frame must reclaim its
+    -- highlight + refresh the stored frame ref (keyed by bucket+uid).
+    if self._deleteMode and self._deleteSelection then
+        local key = self:_deleteSelectionKey(item)
+        local entry = self._deleteSelection[key]
+        if entry then
+            self._deleteSelectedFrames = self._deleteSelectedFrames or {}
+            self._deleteSelectedFrames[key] = itemFrame
+            self:_applyDeleteHighlight(itemFrame, true, entry.quantity)
+        end
+    end
 
     -- Right-click: Context menu (using UserInputService with frame detection)
     local isMouseOverFrame = false
@@ -4693,6 +4875,440 @@ function InventoryPanel:_hatchEggItem(item)
             },
         })
     end)
+end
+
+-- 🗑 DELETE MODE — toggle + multi-select + bulk confirm.
+-- Mirrors InventoryService:_isDeletionDenied so the UI never offers a delete the
+-- server would refuse: per-uid uniques (special pets) and protected classes
+-- (huge/creator/exclusive/secret) are NOT deletable; everything else is a stack.
+function InventoryPanel:_isItemDeletable(item)
+    if not item then
+        return false
+    end
+    -- per-uid unique records live one-folder-per-uid (id "special|<uid>") — never a stack
+    if type(item.id) == "string" and item.id:sub(1, 8) == "special|" then
+        return false
+    end
+    if item.special == true or item.huge == true or item.creator == true then
+        return false
+    end
+    local rarity = item.rarityId
+    if rarity and DELETE_DENIED_RARITIES[rarity] then
+        return false
+    end
+    return true
+end
+
+-- Stable per-card selection key (a card's uid is unique within its bucket).
+function InventoryPanel:_deleteSelectionKey(item)
+    return tostring(item.folder_source or "?") .. "::" .. tostring(item.uid or item.id)
+end
+
+-- Red border + count badge on a selected card (removed on deselect). The badge reads
+-- "×N" = how many of the stack are marked (the picker's chosen amount). Named children
+-- so re-render / deselect can find and clear them without disturbing the rarity chrome.
+function InventoryPanel:_applyDeleteHighlight(itemFrame, on, quantity)
+    if not itemFrame then
+        return
+    end
+    local existing = itemFrame:FindFirstChild("DeleteSelectStroke")
+    local badge = itemFrame:FindFirstChild("DeleteSelectBadge")
+    if on then
+        if not existing then
+            local s = Instance.new("UIStroke")
+            s.Name = "DeleteSelectStroke"
+            s.Color = DELETE_RED
+            s.Thickness = 3
+            s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            s.Parent = itemFrame
+        end
+        if not badge then
+            badge = Instance.new("TextLabel")
+            badge.Name = "DeleteSelectBadge"
+            badge.Size = UDim2.new(0, 30, 0, 22)
+            badge.AnchorPoint = Vector2.new(1, 0)
+            badge.Position = UDim2.new(1, -4, 0, 4)
+            badge.BackgroundColor3 = DELETE_RED
+            badge.TextColor3 = Color3.fromRGB(255, 255, 255)
+            badge.TextScaled = true
+            badge.Font = Enum.Font.GothamBold
+            badge.ZIndex = 130
+            local bc = Instance.new("UICorner")
+            bc.CornerRadius = UDim.new(0, 8)
+            bc.Parent = badge
+            local bcon = Instance.new("UITextSizeConstraint")
+            bcon.MaxTextSize = 14
+            bcon.Parent = badge
+            badge.Parent = itemFrame
+        end
+        badge.Text = quantity and ("×%d"):format(quantity) or "✓"
+    else
+        if existing then
+            existing:Destroy()
+        end
+        if badge then
+            badge:Destroy()
+        end
+    end
+end
+
+-- "Give the user a tell, don't silently ignore" (Jason): a brief 🔒 Protected tag
+-- when they click a unique in delete mode.
+function InventoryPanel:_flashUndeletable(itemFrame)
+    if not itemFrame or not itemFrame.Parent or itemFrame:FindFirstChild("UndeletableTell") then
+        return
+    end
+    local tag = Instance.new("TextLabel")
+    tag.Name = "UndeletableTell"
+    tag.Size = UDim2.new(1, -6, 0, 16)
+    tag.AnchorPoint = Vector2.new(0.5, 1)
+    tag.Position = UDim2.new(0.5, 0, 1, -4)
+    tag.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+    tag.BackgroundTransparency = 0.15
+    tag.Text = "🔒 Protected"
+    tag.TextColor3 = Color3.fromRGB(255, 175, 95)
+    tag.TextScaled = true
+    tag.Font = Enum.Font.GothamBold
+    tag.ZIndex = 131
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = tag
+    local con = Instance.new("UITextSizeConstraint")
+    con.MaxTextSize = 12
+    con.Parent = tag
+    tag.Parent = itemFrame
+    task.delay(0.9, function()
+        if tag and tag.Parent then
+            tag:Destroy()
+        end
+    end)
+end
+
+-- The header pill reflects armed/idle: muted when off, red "Cancel" when on (the
+-- floating action button is the actual delete trigger).
+function InventoryPanel:_restyleDeletePill()
+    local b = self._deletePill
+    if not b then
+        return
+    end
+    if self._deleteMode then
+        b.BackgroundColor3 = DELETE_RED
+        b.Text = "🗑 Cancel"
+    else
+        b.BackgroundColor3 = DELETE_PILL_IDLE
+        b.Text = "🗑 Delete"
+    end
+end
+
+-- Recount selection -> drives the floating button's label + enabled state + visibility.
+-- The button names total UNITS to be destroyed (sum of per-stack picks), since that's
+-- the number the player actually cares about; the confirm dialog adds the stack count.
+function InventoryPanel:_updateDeleteActionButton()
+    local stacks, units = 0, 0
+    if self._deleteSelection then
+        for _, entry in pairs(self._deleteSelection) do
+            stacks += 1
+            units += (entry.quantity or 0)
+        end
+    end
+    self._deleteSelectionCount = stacks
+    self._deleteUnitCount = units
+    local btn = self._deleteActionButton
+    if not btn then
+        return
+    end
+    btn.Visible = self._deleteMode == true
+    btn.Text = ("🗑 Delete (%d)"):format(units)
+    if stacks > 0 then
+        btn.BackgroundColor3 = DELETE_RED
+        btn.AutoButtonColor = true
+        btn.TextTransparency = 0
+    else
+        btn.BackgroundColor3 = DELETE_PILL_IDLE
+        btn.AutoButtonColor = false
+        btn.TextTransparency = 0.35
+    end
+end
+
+-- Drop every highlight + reset the selection maps.
+function InventoryPanel:_clearDeleteSelection()
+    if self._deleteSelectedFrames then
+        for _, frame in pairs(self._deleteSelectedFrames) do
+            if frame and frame.Parent then
+                self:_applyDeleteHighlight(frame, false)
+            end
+        end
+    end
+    self._deleteSelection = {}
+    self._deleteSelectedFrames = {}
+    self:_updateDeleteActionButton()
+end
+
+-- Arm / disarm delete mode. Disarming always clears the current selection.
+function InventoryPanel:_setDeleteMode(on)
+    on = on and true or false
+    if self._deleteMode == on then
+        return
+    end
+    self._deleteMode = on
+    if not on then
+        self:_clearDeleteSelection()
+    end
+    self:_restyleDeletePill()
+    self:_updateDeleteActionButton()
+end
+
+-- Low-level: set or clear one stack's selection entry ({ item, quantity }) + repaint.
+function InventoryPanel:_setDeleteSelection(key, entry, itemFrame)
+    self._deleteSelection = self._deleteSelection or {}
+    self._deleteSelectedFrames = self._deleteSelectedFrames or {}
+    if entry then
+        self._deleteSelection[key] = entry
+        self._deleteSelectedFrames[key] = itemFrame
+        self:_applyDeleteHighlight(itemFrame, true, entry.quantity)
+    else
+        self._deleteSelection[key] = nil
+        self._deleteSelectedFrames[key] = nil
+        self:_applyDeleteHighlight(itemFrame, false)
+    end
+    self:_updateDeleteActionButton()
+end
+
+-- The starting amount on the delete slider: configurable (configs/inventory.lua
+-- ui.delete_picker_default = "min" | "max"), defaulting to "min" (1) so a misclick
+-- can't pre-arm deleting the whole stack. Cached after first read.
+function InventoryPanel:_deletePickerDefault(total)
+    if self._deletePickerMode == nil then
+        local mode = "min"
+        pcall(function()
+            local cfg = require(ReplicatedStorage.Configs:WaitForChild("inventory"))
+            if cfg and cfg.ui and cfg.ui.delete_picker_default then
+                mode = cfg.ui.delete_picker_default
+            end
+        end)
+        self._deletePickerMode = mode
+    end
+    return self._deletePickerMode == "max" and total or 1
+end
+
+-- The shared amount-picker popover for "how many of THIS stack to delete". The
+-- starting amount comes from config (see _deletePickerDefault). count==1 stacks skip it.
+function InventoryPanel:_promptDeleteQuantity(item, itemFrame, default)
+    local total = math.max(1, math.floor(tonumber(item.count) or 1))
+    local key = self:_deleteSelectionKey(item)
+    QuantitySelector.prompt({
+        parent = self.frame,
+        title = "Delete how many?",
+        subtitle = (item.name or "Stack") .. ("  •  have %d"):format(total),
+        iconText = type(item.icon) == "string" and #item.icon <= 6 and item.icon or "🗑",
+        accent = DELETE_RED,
+        min = 1,
+        max = total,
+        default = default or self:_deletePickerDefault(total),
+        confirmText = "Select",
+        onConfirm = function(amount)
+            self:_setDeleteSelection(key, { item = item, quantity = amount }, itemFrame)
+        end,
+    })
+end
+
+-- A card click in delete mode. Deletable stacks only (uniques flash a tell). A stack
+-- with >1 opens the amount picker; a single-unit stack toggles directly. Re-tapping a
+-- selected stack re-opens the picker to adjust (or toggles off for single-unit stacks).
+function InventoryPanel:_toggleDeleteSelection(item, itemFrame)
+    self._deleteSelection = self._deleteSelection or {}
+    self._deleteSelectedFrames = self._deleteSelectedFrames or {}
+    if not self:_isItemDeletable(item) then
+        self:_flashUndeletable(itemFrame)
+        return
+    end
+    local key = self:_deleteSelectionKey(item)
+    local total = math.max(1, math.floor(tonumber(item.count) or 1))
+    local existing = self._deleteSelection[key]
+    if total <= 1 then
+        -- single-unit stack: plain toggle, no picker needed
+        self:_setDeleteSelection(key, existing and nil or { item = item, quantity = 1 }, itemFrame)
+        return
+    end
+    -- multi-unit: pick the amount. Re-editing pre-fills the current pick; a fresh
+    -- selection passes nil so _promptDeleteQuantity uses the configured starting amount.
+    self:_promptDeleteQuantity(item, itemFrame, existing and existing.quantity or nil)
+end
+
+-- "Give the user every chance to not do it" (Jason): the bulk confirm. Cancel is the
+-- default/left button; Delete is the red commit. Reuses the delete-confirm visual
+-- vocabulary (red stroke, gotham, corner) from _showDeleteConfirmation.
+function InventoryPanel:_showBulkDeleteConfirmation()
+    local entries = {}
+    local stacks, units = 0, 0
+    if self._deleteSelection then
+        for _, entry in pairs(self._deleteSelection) do
+            entries[#entries + 1] = entry
+            stacks += 1
+            units += (entry.quantity or 0)
+        end
+    end
+    if stacks == 0 or units == 0 or not self.frame then
+        return
+    end
+
+    local prior = self.frame:FindFirstChild("DeleteConfirmation")
+    if prior then
+        prior:Destroy()
+    end
+
+    local confirmFrame = Instance.new("Frame")
+    confirmFrame.Name = "DeleteConfirmation"
+    confirmFrame.Size = UDim2.new(0, 320, 0, 160)
+    confirmFrame.Position = UDim2.new(0.5, -160, 0.5, -80)
+    confirmFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    confirmFrame.BorderSizePixel = 0
+    confirmFrame.ZIndex = 300
+    confirmFrame.Parent = self.frame
+
+    local confirmCorner = Instance.new("UICorner")
+    confirmCorner.CornerRadius = UDim.new(0, 12)
+    confirmCorner.Parent = confirmFrame
+
+    local confirmStroke = Instance.new("UIStroke")
+    confirmStroke.Color = DELETE_RED
+    confirmStroke.Thickness = 2
+    confirmStroke.Parent = confirmFrame
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -20, 0, 30)
+    titleLabel.Position = UDim2.new(0, 10, 0, 12)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = ("Delete %d %s?"):format(units, units == 1 and "item" or "items")
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.TextSize = 18
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.ZIndex = 301
+    titleLabel.Parent = confirmFrame
+
+    local messageLabel = Instance.new("TextLabel")
+    messageLabel.Size = UDim2.new(1, -20, 0, 46)
+    messageLabel.Position = UDim2.new(0, 10, 0, 48)
+    messageLabel.BackgroundTransparency = 1
+    messageLabel.Text = ("This destroys %d %s across %d %s and cannot be undone."):format(
+        units,
+        units == 1 and "item" or "items",
+        stacks,
+        stacks == 1 and "stack" or "stacks"
+    )
+    messageLabel.TextColor3 = Color3.fromRGB(255, 180, 120)
+    messageLabel.TextSize = 14
+    messageLabel.Font = Enum.Font.Gotham
+    messageLabel.TextWrapped = true
+    messageLabel.ZIndex = 301
+    messageLabel.Parent = confirmFrame
+
+    local buttonContainer = Instance.new("Frame")
+    buttonContainer.Size = UDim2.new(1, -20, 0, 35)
+    buttonContainer.Position = UDim2.new(0, 10, 1, -45)
+    buttonContainer.BackgroundTransparency = 1
+    buttonContainer.ZIndex = 301
+    buttonContainer.Parent = confirmFrame
+
+    local buttonLayout = Instance.new("UIListLayout")
+    buttonLayout.FillDirection = Enum.FillDirection.Horizontal
+    buttonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    buttonLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    buttonLayout.Padding = UDim.new(0, 10)
+    buttonLayout.Parent = buttonContainer
+
+    -- Cancel is the default (left, neutral) — the easy way out.
+    local cancelButton = Instance.new("TextButton")
+    cancelButton.Size = UDim2.new(0, 100, 1, 0)
+    cancelButton.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+    cancelButton.BorderSizePixel = 0
+    cancelButton.Text = "Cancel"
+    cancelButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    cancelButton.TextSize = 14
+    cancelButton.Font = Enum.Font.GothamBold
+    cancelButton.LayoutOrder = 1
+    cancelButton.ZIndex = 302
+    cancelButton.Parent = buttonContainer
+    local cancelCorner = Instance.new("UICorner")
+    cancelCorner.CornerRadius = UDim.new(0, 6)
+    cancelCorner.Parent = cancelButton
+
+    local deleteButton = Instance.new("TextButton")
+    deleteButton.Size = UDim2.new(0, 100, 1, 0)
+    deleteButton.BackgroundColor3 = DELETE_RED
+    deleteButton.BorderSizePixel = 0
+    deleteButton.Text = ("Delete %d"):format(units)
+    deleteButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    deleteButton.TextSize = 14
+    deleteButton.Font = Enum.Font.GothamBold
+    deleteButton.LayoutOrder = 2
+    deleteButton.ZIndex = 302
+    deleteButton.Parent = buttonContainer
+    local deleteCorner = Instance.new("UICorner")
+    deleteCorner.CornerRadius = UDim.new(0, 6)
+    deleteCorner.Parent = deleteButton
+
+    cancelButton.Activated:Connect(function()
+        confirmFrame:Destroy()
+    end)
+    deleteButton.Activated:Connect(function()
+        confirmFrame:Destroy()
+        self:_performBulkDelete(entries)
+    end)
+
+    -- Entrance animation (same back-ease pop as the single-item confirm).
+    confirmFrame.BackgroundTransparency = 1
+    confirmFrame.Size = UDim2.new(0, 0, 0, 0)
+    confirmFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    TweenService
+        :Create(confirmFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            BackgroundTransparency = 0,
+            Size = UDim2.new(0, 320, 0, 160),
+            Position = UDim2.new(0.5, -160, 0.5, -80),
+        })
+        :Play()
+end
+
+-- Fire one DeleteInventoryItem per selected stack at its CHOSEN quantity (the picker's
+-- amount, clamped to the stack count), then disarm (clears selection + highlights +
+-- hides the button) and let folder replication refresh the grid (the egg/quantity
+-- delete paths do the same nudge). entries = { { item = <card>, quantity = N }, ... }.
+function InventoryPanel:_performBulkDelete(entries)
+    if not self.signals or not self.signals.DeleteInventoryItem then
+        self.logger:warn("❌ Signals not available for deletion")
+        self:_setDeleteMode(false)
+        return
+    end
+    local fired = 0
+    for _, entry in ipairs(entries) do
+        local item = entry.item
+        -- re-check the gate (server is the backstop, but never even ask for a unique)
+        if item and self:_isItemDeletable(item) then
+            local itemUid = item.uid or item.uniqueId
+            -- clamp the pick to the stack count (the picker already does, but defend it)
+            local total = math.max(1, math.floor(tonumber(item.count) or 1))
+            local qty = math.clamp(math.floor(tonumber(entry.quantity) or total), 1, total)
+            if item.folder_source and itemUid then
+                self.signals.DeleteInventoryItem:FireServer({
+                    bucket = item.folder_source,
+                    itemUid = itemUid,
+                    itemId = item.id,
+                    quantity = qty,
+                    reason = "player_deleted",
+                })
+                fired += 1
+            else
+                self.logger:warn("❌ Skipped delete - missing source or UID", {
+                    itemId = item.id,
+                    hasSource = item.folder_source ~= nil,
+                })
+            end
+        end
+    end
+    self.logger:info("🗑️ BULK DELETE", { requested = #entries, fired = fired })
+    self:_setDeleteMode(false)
+    task.wait(0.1)
+    self:RefreshFromRealData()
 end
 
 function InventoryPanel:_showDeleteConfirmation(item)

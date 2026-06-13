@@ -524,6 +524,33 @@ return {
         -- InventoryPanel.lua will fall back to 96x96 and 8x8 if these are not provided.
         card_size = Vector2.new(96, 96),
         card_padding = Vector2.new(8, 8),
+
+        -- Where the delete-amount slider starts when you tap a stack in delete mode:
+        -- "min" (1 — safest; a misclick won't pre-arm "delete the whole stack") or
+        -- "max" (the entire stack). Default "min" per Jason. Falls back to "min".
+        delete_picker_default = "min",
+    },
+
+    -- Grid ordering for InventoryPanel. `section_order` ranks the buckets within the
+    -- "All" view (lower = earlier); per-category tabs hold one bucket so only the
+    -- within-section rule applies. Buckets not listed sort after the listed ones.
+    sorting = {
+        -- Pets first (kept power-sorted), then enhancements (grouped, see below), then
+        -- eggs (by name), then everything else. Reorder / add buckets (tools,
+        -- consumables, resources) here without touching code.
+        section_order = {
+            pets = 0,
+            enhancements = 1,
+            eggs = 2,
+        },
+        -- Enhancement ordering within its section (Jason): naturals first, dual origins
+        -- second, single origins third. Then grouped by origin PAIR (e.g. every
+        -- pyromancer+sandwalker together), then by type (A–Z), then highest level first.
+        enhancement_class_order = {
+            natural = 0,
+            dual = 1,
+            single = 2,
+        },
     },
 
     -- Default values for new items

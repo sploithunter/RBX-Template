@@ -337,6 +337,82 @@ function TradeService:Add(player, uid)
     return { ok = true, count = #offer.items }
 end
 
+-- Bulk-offer N copies of a STACK in one shot (Jason: "a slider, trade 50-100 at a
+-- time, not a window full of individual cards"). One escrow op + one push instead of
+-- N round-trips through Add. Specials are unique (count is meaningless) so they fall
+-- through to Add. The amount is clamped to BOTH the offer headroom (max_offer_items)
+-- and the stack's available quantity, and reported back as `added` so the client can
+-- toast a partial fill. Each escrowed copy is still its own descriptor (the offer
+-- column aggregates them into one ×N card), keeping the swap/refund paths unchanged.
+function TradeService:AddMany(player, uid, count)
+    count = math.floor(tonumber(count) or 1)
+    if count <= 1 then
+        return self:Add(player, uid) -- single copy / special: the existing path
+    end
+    local session = self:_sessionOf(player.UserId)
+    if not session then
+        return { ok = false, reason = "no_trade" }
+    end
+    local inventory = self:_service("InventoryService")
+    if not inventory then
+        return { ok = false, reason = "service_unavailable" }
+    end
+    local target = inventory.ResolvePetTarget and inventory:ResolvePetTarget(player, uid) or nil
+    local bucket = inventory:GetInventory(player, PETS_BUCKET)
+    local items = bucket and bucket.items
+    if not target or not items then
+        return { ok = false, reason = "pet_not_found" }
+    end
+    -- specials can't bulk (one unique record) — defer to the single-add path
+    if target.kind == "special" then
+        return self:Add(player, uid)
+    end
+
+    local offer = session.offers[player.UserId]
+    local headroom = (self._config.max_offer_items or 10) - #offer.items
+    if headroom <= 0 then
+        return { ok = false, reason = "offer_full" }
+    end
+
+    local stack = items[target.stackKey]
+    if not stack or (tonumber(stack.quantity) or 0) <= 0 then
+        return { ok = false, reason = "pet_not_found" }
+    end
+    local verdict =
+        TradeLogic.canAddItem("pets", { id = stack.id, locked = stack.locked }, self._config)
+    if not verdict.ok then
+        return verdict
+    end
+
+    local available = math.floor(tonumber(stack.quantity) or 0)
+    local toAdd = math.min(count, headroom, available)
+    if toAdd <= 0 then
+        return { ok = false, reason = "offer_full" }
+    end
+
+    -- Move N copies out of the stack at once, then escrow N single-copy descriptors.
+    inventory:RemoveItem(player, PETS_BUCKET, target.stackKey, toAdd)
+    for _ = 1, toAdd do
+        local descriptor = {
+            uid = nextOfferId(),
+            id = stack.id,
+            variant = stack.variant or "basic",
+            quantity = 1,
+        }
+        if stack.element ~= nil then
+            descriptor.element = stack.element
+        end
+        session.escrow[player.UserId][descriptor.uid] = descriptor
+        table.insert(offer.items, descriptor)
+    end
+
+    self:_reloadEquipped(player)
+    session.offers[session.a].confirmed = false
+    session.offers[session.b].confirmed = false
+    self:_push(session, "updated")
+    return { ok = true, count = #offer.items, added = toAdd }
+end
+
 -- Pull a pet back out of the offer and return it to the owner's inventory.
 function TradeService:Remove(player, uid)
     local session = self:_sessionOf(player.UserId)

@@ -16,6 +16,8 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CloseButton = require(script.Parent.Parent.Components.CloseButton)
+-- shared amount-picker popover (offer N copies of a stack with a slider, vs N clicks)
+local QuantitySelector = require(script.Parent.Parent.Components.QuantitySelector)
 
 local REMOTE_NAME = "GameAPICommand"
 local UPDATE_REMOTE = "TradeUpdate"
@@ -58,6 +60,22 @@ function TradePanel.new()
         end
     end)
     return self
+end
+
+-- Where the offer slider starts when you tap a stack: configs/trade.lua
+-- offer_picker_default = "min" | "max", defaulting to "min" (1). Cached after first read.
+function TradePanel:_offerPickerDefault(qty)
+    if self._offerPickerMode == nil then
+        local mode = "min"
+        pcall(function()
+            local cfg = require(ReplicatedStorage.Configs:WaitForChild("trade"))
+            if cfg and cfg.offer_picker_default then
+                mode = cfg.offer_picker_default
+            end
+        end)
+        self._offerPickerMode = mode
+    end
+    return self._offerPickerMode == "max" and qty or 1
 end
 
 function TradePanel:_callBus(name, args)
@@ -556,7 +574,31 @@ function TradePanel:_renderWindow(state)
         offeredCount = offeredCount,
         kindKey = kindKey,
         onClick = function(pet)
-            self:_callBus("trade.add", { uid = pet.uid })
+            -- A stack (>1 remaining) opens the slider so you can offer many at once
+            -- (Jason: "trade 50-100 at a time, not a window full of cards"). A single
+            -- copy / special goes straight in via the one-shot add.
+            local qty = tonumber(pet.quantity) or 1
+            if qty <= 1 then
+                self:_callBus("trade.add", { uid = pet.uid })
+                return
+            end
+            QuantitySelector.prompt({
+                parent = self:_ensureLiveGui(),
+                title = "Offer how many?",
+                subtitle = petText(pet),
+                accent = COLORS.accept,
+                min = 1,
+                max = qty,
+                default = self:_offerPickerDefault(qty),
+                confirmText = "Offer",
+                onConfirm = function(amount)
+                    -- server clamps to the offer headroom; toast if it couldn't take all
+                    local res = self:_callBus("trade.addMany", { uid = pet.uid, count = amount })
+                    if type(res) == "table" and res.added and res.added < amount then
+                        self:_toast(("Offered %d of %d (offer full)"):format(res.added, amount))
+                    end
+                end,
+            })
         end,
     })
     self:_petColumn(

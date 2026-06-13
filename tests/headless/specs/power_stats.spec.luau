@@ -127,6 +127,34 @@ return function()
         end)
     end)
 
+    describe("PowerStats — radius-magnitude fold (Magnet: range == reach)", function()
+        -- a Magnet-like passive: reach lives on magnitudeBase, no radiusBase
+        local magnet = { kind = { "self" }, magnitudeBase = 30 }
+        it("folds a range (radius) enhancement INTO magnitude when flagged", function()
+            local eff = PowerStats.resolveEffective(magnet, {
+                casterLevel = 7,
+                enhancements = { radius = 0.2 },
+                radiusMagnitude = true,
+            })
+            expect(approx(eff.magnitude, 36)).to.equal(true) -- 30 × (1 + 0.2)
+        end)
+        it("adds magnitude + radius boosts together when both axes are slotted", function()
+            local eff = PowerStats.resolveEffective(magnet, {
+                casterLevel = 7,
+                enhancements = { magnitude = 0.15, radius = 0.2 },
+                radiusMagnitude = true,
+            })
+            expect(approx(eff.magnitude, 40.5)).to.equal(true) -- 30 × (1 + 0.35)
+        end)
+        it("WITHOUT the flag, a radius boost does nothing to magnitude (default)", function()
+            local eff = PowerStats.resolveEffective(magnet, {
+                casterLevel = 7,
+                enhancements = { radius = 0.2 },
+            })
+            expect(eff.magnitude).to.equal(30) -- radius lands on radiusBase (0), not the reach
+        end)
+    end)
+
     describe("PowerStats — crit is additive (power + buff/aura)", function()
         it("sums critBase and the injected critBonus", function()
             local power = { kind = { "target" }, critBase = 0.1 }

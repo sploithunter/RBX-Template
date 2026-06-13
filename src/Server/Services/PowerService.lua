@@ -158,11 +158,18 @@ function PowerService:_applyOwnedPassives(player)
                 type(data.Slots) == "table" and data.Slots[tostring(powerId)] or {},
                 tonumber(player:GetAttribute("Level")) or 1
             )
-            -- a passive's magnitude takes BOTH axes: potency (magnitude) and — for
-            -- radius-magnitude passives like Magnet — range (radius). Additive, per
-            -- the stacking model. (Range on Magnet did nothing before this.)
-            local boost = (enhAxes.magnitude or 0) + (enhAxes.radius or 0)
-            player:SetAttribute(attr, kind.magnitude * (1 + boost))
+            -- ONE resolver for the effective magnitude (PowerStats), shared with the ENHANCE
+            -- preview so the two can't drift. radius-magnitude passives like Magnet fold range
+            -- (radius) INTO magnitude there — both axes do the same job (Jason). magnitudeBase
+            -- IS kind.magnitude, scaling is identity today, so this matches the old inline math.
+            local record = PowerRegistry.record(tostring(powerId), self._powersConfig)
+            local eff = PowerStats.resolveEffective(record, {
+                casterLevel = tonumber(player:GetAttribute("Level")) or 1,
+                scaling = self._powersConfig.scaling,
+                enhancements = enhAxes,
+                radiusMagnitude = (self._enhConfig.radius_families or {})[kind.family] == true,
+            })
+            player:SetAttribute(attr, eff.magnitude)
             player:SetAttribute(attr .. "Until", PASSIVE_UNTIL)
             player:SetAttribute(attr .. "Toggle", true) -- permanent: HUDs show no countdown
             player:SetAttribute(attr .. "PowerId", powerId)
@@ -1271,6 +1278,9 @@ function PowerService:Cast(player, powerId)
             casterLevel = casterLevel,
             scaling = self._powersConfig.scaling, -- nil today ⇒ identity; P3 fills it
             enhancements = enhAxes,
+            -- radius-magnitude families fold range INTO magnitude (only Magnet today, and it's
+            -- passive — harmless here, but keeps every cast path on the one rule)
+            radiusMagnitude = (self._enhConfig.radius_families or {})[rawKind.family] == true,
         })
         kind = self:_effectiveKind(rawKind, effective)
         -- carry the accuracy inputs so the per-enemy to-hit roll (P4) can resolve in _applyEffect
