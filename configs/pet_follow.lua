@@ -71,6 +71,24 @@ return {
         period = 2,
     },
 
+    -- Idle meander (Jason: "pets should meander near their group location so they
+    -- don't just stand there — frozen statues unless they're in combat"). Once the
+    -- PLAYER has stood still for player_still_seconds, each untargeted follower
+    -- strolls to random points within `radius` of its formation slot at `speed`,
+    -- pausing pause_min..pause_max between strolls (randomized per pet, so the
+    -- squad desyncs naturally). Purely cosmetic + client-side: the moment the
+    -- player moves or the pet gets a target it glides back to formation. Keep
+    -- `speed` above movement.face_move_speed so strolling pets face their walk.
+    -- Logic: src/Shared/Game/PetMeander.lua (pure), applied by PetFollowController.
+    meander = {
+        enabled = true,
+        player_still_seconds = 2,
+        radius = 6,
+        speed = 4,
+        pause_min = 1.5,
+        pause_max = 4,
+    },
+
     -- Attack mode: pets arrange around the target while attacking (client-driven, purely
     -- visual). `style` is the default; players override it with a saved PetAttackStyle setting,
     -- live-switchable via the PetAttackStyle attribute.

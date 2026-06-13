@@ -21,6 +21,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
+local PetMeander = require(ReplicatedStorage.Shared.Game.PetMeander)
 local Gait = require(ReplicatedStorage.Shared.Game.Gait)
 local AttackAnim = require(ReplicatedStorage.Shared.Game.AttackAnim)
 local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
@@ -137,6 +138,12 @@ function PetFollowController.start()
         return -- legacy scripts own movement; controller idle
     end
     local startClock = os.clock()
+    -- Idle meander (PetMeander): per-pet stroll state + how long the PLAYER has
+    -- been standing still (the gate that releases the squad to wander).
+    local meanderCfg = config.meander or {}
+    local meanderStates = {}
+    local lastPlayerPos = nil
+    local playerStillFor = 0
     local reportAccum = 0
     local reportInterval = (config.replication and config.replication.interval) or 0.1
 
@@ -426,6 +433,33 @@ function PetFollowController.start()
         local flat = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
         local upFwd = flat.Magnitude > 0.01 and flat.Unit or Vector3.new(0, 0, -1)
 
+        -- Player stillness clock (meander gate): any real movement resets it, so the
+        -- squad snaps to formation while travelling and only wanders once you settle.
+        if lastPlayerPos and (cf.Position - lastPlayerPos).Magnitude < 0.5 then
+            playerStillFor += dt
+        else
+            playerStillFor = 0
+        end
+        lastPlayerPos = cf.Position
+        local meanderActive = meanderCfg.enabled ~= false
+            and playerStillFor >= (tonumber(meanderCfg.player_still_seconds) or 2)
+
+        -- Idle stroll offset for an untargeted follower; everyone else glides home.
+        local function meanderOffset(model, isIdle)
+            local state = meanderStates[model]
+            if not (isIdle and meanderActive) then
+                if state then
+                    PetMeander.reset(state, meanderCfg, math.random)
+                end
+                return 0, 0
+            end
+            if not state then
+                state = PetMeander.newState(meanderCfg, math.random)
+                meanderStates[model] = state
+            end
+            return PetMeander.step(state, dt, meanderCfg, math.random)
+        end
+
         -- Frame-rate-independent smoothing (momentum feel), scaled per pet by move speed:
         -- the player's PetMoveSpeed stat times the pet's optional MoveSpeedMult. Higher = the
         -- pet catches its slot / repositions faster.
@@ -638,14 +672,16 @@ function PetFollowController.start()
                 local model = e.pet.model
                 local t = PetFormation.toWorld(frame, e.offset)
                 local bob = PetFormation.floatOffset(phase + slot, config.float)
-                local target = Vector3.new(t.x, t.y + bob, t.z)
+                local mx, mz = meanderOffset(model, kiterFace[model] == nil)
+                local target = Vector3.new(t.x + mx, t.y + bob, t.z + mz)
                 moveToward(model, target, followerRestDir(model, target), followRate)
             end
         else
             for _, f in ipairs(followers) do
                 local t = PetFormation.targetPosition(frame, f.index, count, config.formation)
                 local bob = PetFormation.floatOffset(phase + f.index, config.float)
-                local target = Vector3.new(t.x, t.y + bob, t.z)
+                local mx, mz = meanderOffset(f.pet, kiterFace[f.pet] == nil)
+                local target = Vector3.new(t.x + mx, t.y + bob, t.z + mz)
                 moveToward(f.pet, target, followerRestDir(f.pet, target), followRate)
             end
         end
@@ -705,6 +741,13 @@ function PetFollowController.start()
 
         -- Throttled: report this player's pet positions to the server (drives the mining gate;
         -- foundation for multiplayer pet visibility). Positions are post-move (this frame).
+        -- prune meander states for despawned pets (recall/down/re-team)
+        for model in pairs(meanderStates) do
+            if not model.Parent then
+                meanderStates[model] = nil
+            end
+        end
+
         reportAccum += dt
         if reportAccum >= reportInterval then
             reportAccum = 0
