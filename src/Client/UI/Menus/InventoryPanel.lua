@@ -584,7 +584,10 @@ end
 
 -- Draw a blank ring for every UNLOCKED-but-empty equip slot, so the row always shows how many slots
 -- you have (filled cards + blank rings = total slots). Count comes from the replicated PetEquipSlots.
+-- Rings start neutral; _refreshLockoutVisuals repaints them every tick from the lockout pool, so a
+-- slot freed by unequipping a downed pet stays RED (with its timer) until it's actually available.
 function InventoryPanel:_renderEmptySlotRings(filledCount)
+    self._emptySlotRings = {}
     local total = tonumber(self.player and self.player:GetAttribute("PetEquipSlots")) or 0
     if total <= filledCount then
         return
@@ -606,6 +609,37 @@ function InventoryPanel:_renderEmptySlotRings(filledCount)
         rc.CornerRadius = UDim.new(0, 10)
         rc.Parent = ring
         ring.Parent = self.equippedGrid
+        table.insert(self._emptySlotRings, ring)
+    end
+end
+
+-- Repaint one EMPTY slot ring from the lockout pool: red + timer while its slot lock is still
+-- recovering, neutral once it's genuinely open. Same lazy timer chip as _applyAvailabilityRing.
+function InventoryPanel:_applyEmptySlotRing(ring, lockUntil, now)
+    local locked = lockUntil ~= nil
+    ring.Image = locked and PILL_UI.slot_locked or PILL_UI.slot_available
+    ring.ImageTransparency = locked and 0 or 0.25
+    local timer = ring:FindFirstChild("AvailTimer")
+    if locked and not timer then
+        timer = Instance.new("TextLabel")
+        timer.Name = "AvailTimer"
+        timer.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+        timer.BackgroundTransparency = 0.15
+        timer.AnchorPoint = Vector2.new(0.5, 1)
+        timer.Position = UDim2.fromScale(0.5, 0.97)
+        timer.Size = UDim2.fromOffset(46, 18)
+        timer.Font = Enum.Font.GothamBlack
+        timer.TextSize = 12
+        timer.TextColor3 = Color3.fromRGB(255, 255, 255)
+        timer.ZIndex = 122
+        local tc = Instance.new("UICorner")
+        tc.CornerRadius = UDim.new(0, 6)
+        tc.Parent = timer
+        timer.Parent = ring
+    end
+    if timer then
+        timer.Visible = locked
+        timer.Text = locked and lockoutFormatTime(lockUntil - now) or ""
     end
 end
 
@@ -627,14 +661,21 @@ end
 -- sitting in a still-recovering slot carries SlotLockUntil > now and its card stays RED until it's
 -- summonable, instead of going white the moment it's re-slotted.
 function InventoryPanel:_deployedLocks(now)
-    local byUid, byKey = {}, {}
+    local byUid, byKey, claimedSlots = {}, {}, {}
     local pp = Workspace:FindFirstChild("PlayerPets")
     local folder = pp and self.player and pp:FindFirstChild(self.player.Name)
     if not folder then
-        return byUid, byKey
+        return byUid, byKey, claimedSlots
     end
     for _, m in ipairs(folder:GetChildren()) do
         if m:IsA("Model") then
+            -- Every live pet CLAIMS its squad position: a slot lock with a live occupant is shown
+            -- on that pet's card, so only occupant-less locks belong to the empty slot rings.
+            local pn = m:FindFirstChild("PositionNumber")
+            local pos = (pn and pn.Value) or m:GetAttribute("PositionNumber")
+            if pos then
+                claimedSlots["slot_" .. tostring(pos)] = true
+            end
             local until_ = math.max(
                 tonumber(m:GetAttribute("SlotLockUntil")) or 0,
                 tonumber(m:GetAttribute("CooldownUntil")) or 0
@@ -657,7 +698,7 @@ function InventoryPanel:_deployedLocks(now)
             return a > b
         end)
     end
-    return byUid, byKey
+    return byUid, byKey, claimedSlots
 end
 
 -- Repaint every card's lockout overlay from the decoded pool. Equipped cards get the ring; an
@@ -689,7 +730,7 @@ function InventoryPanel:_refreshLockoutVisuals()
             end
         end
     end
-    local depUid, depKey = self:_deployedLocks(now)
+    local depUid, depKey, claimedSlots = self:_deployedLocks(now)
     local depKeyUsed = {}
     local stackUsed = {}
     for _, frame in ipairs(frames) do
@@ -748,6 +789,28 @@ function InventoryPanel:_refreshLockoutVisuals()
                     countLbl.TextColor3 = recovering > 0 and Color3.fromRGB(235, 70, 70)
                         or Color3.fromRGB(255, 255, 255)
                 end
+            end
+        end
+    end
+    -- EMPTY slot rings: a slot lock with NO live occupant (its downed pet was unequipped) is a
+    -- recovering OPEN slot — ring it red with the remaining time. Truth is the persisted lockout
+    -- pool (replicated PetLockouts.slots); locks claimed by a live pet already paint that card.
+    local rings = self._emptySlotRings
+    if rings and #rings > 0 then
+        local freed = {}
+        if map and type(map.slots) == "table" then
+            for slotName, t in pairs(map.slots) do
+                if type(t) == "number" and t > now and not claimedSlots[slotName] then
+                    freed[#freed + 1] = t
+                end
+            end
+            table.sort(freed, function(a, b)
+                return a > b
+            end)
+        end
+        for i, ring in ipairs(rings) do
+            if ring.Parent then
+                self:_applyEmptySlotRing(ring, freed[i], now)
             end
         end
     end
