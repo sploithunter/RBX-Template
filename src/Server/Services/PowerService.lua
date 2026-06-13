@@ -591,10 +591,23 @@ function PowerService:_damageOverTime(
             local targets
             if aoe then
                 targets = enemiesAlive()
+                -- #174 extension (Jason: "powers should be beneficial in both farming and
+                -- combat, maybe not symmetrically"): DoT ticks also chip the crystals the
+                -- squad is actively mining. _dotHit is target-agnostic (HP attribute +
+                -- Contrib ledger — breakables have both, and BreakableSpawner's HP watcher
+                -- owns the payout), so crediting/loot just works. The asymmetry is
+                -- structural: a DoT is a FLAT total per recharge while pet mining DPS is
+                -- the scaling axis — strong vs same-scale enemy HP, a sprinkle on crystals.
+                for _, c in ipairs(self:_engagedBreakables(player)) do
+                    targets[#targets + 1] = c
+                end
             else
-                -- single-target DoT burns the ENEMY THE SQUAD IS FIGHTING (assist target / most-
-                -- targeted), not an arbitrary first-in-list. Falls back to any alive enemy.
-                local primary = self:_engagedEnemy(player) or enemiesAlive()[1]
+                -- single-target DoT burns the ENEMY THE SQUAD IS FIGHTING (assist target /
+                -- most-targeted) first; a squad that is MINING (no engaged enemy) burns its
+                -- crystal instead. Only then fall back to an arbitrary alive enemy.
+                local primary = self:_engagedEnemy(player)
+                    or self:_engagedBreakables(player)[1]
+                    or enemiesAlive()[1]
                 targets = primary and { primary } or {}
             end
             local now = os.time()
