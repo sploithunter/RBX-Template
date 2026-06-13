@@ -23,6 +23,7 @@ local Workspace = game:GetService("Workspace")
 local PetFormation = require(ReplicatedStorage.Shared.Game.PetFormation)
 local PetMeander = require(ReplicatedStorage.Shared.Game.PetMeander)
 local Gait = require(ReplicatedStorage.Shared.Game.Gait)
+local HitReact = require(ReplicatedStorage.Shared.Game.HitReact)
 local AttackAnim = require(ReplicatedStorage.Shared.Game.AttackAnim)
 local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local RangedFX = require(ReplicatedStorage.Shared.Effects.RangedFX)
@@ -167,6 +168,11 @@ function PetFollowController.start()
     local baseCF = setmetatable({}, { __mode = "k" }) -- pet model -> clean CFrame (no gait)
     local gaitState = setmetatable({}, { __mode = "k" }) -- pet model -> { phase, amp }
     local attackTimer = setmetatable({}, { __mode = "k" }) -- pet model -> { t } (attack-anim clock)
+    -- HIT-REACT (Jason: don't stay frozen when struck): a rise in CombatDamageTaken
+    -- means this pet just got bitten -> flinch it backward. flinchState holds the
+    -- per-pet HitReact state; lastDmg tracks the previous damage to detect the rise.
+    local flinchState = setmetatable({}, { __mode = "k" })
+    local lastDmg = setmetatable({}, { __mode = "k" })
 
     -- Attack flourishes (layered like the gait): one per target type, resolved once.
     -- mining = breakables/ore (spin), combat = enemies (face for now). See AttackAnim.
@@ -542,7 +548,31 @@ function PetFollowController.start()
             if aLunge ~= 0 then
                 pivot = cleanPivot * CFrame.new(0, 0, -aLunge) -- jab forward toward the faced target
             end
-            model:PivotTo(CFrame.new(0, bob + aBob, 0) * pivot * CFrame.Angles(0, yaw + aYaw, roll))
+
+            -- Hit-react: a rise in CombatDamageTaken = this pet was just bitten. Flinch it
+            -- backward (recoil along -look) + a twist; decays to 0 so it never sticks.
+            local dmg = tonumber(model:GetAttribute("CombatDamageTaken")) or 0
+            local prev = lastDmg[model]
+            if prev and dmg > prev then
+                local fs = flinchState[model]
+                if not fs then
+                    fs = {}
+                    flinchState[model] = fs
+                end
+                local lv = cleanPivot.LookVector
+                HitReact.start(fs, os.clock(), -lv.X, -lv.Z, math.random() < 0.5 and 1 or -1)
+            end
+            lastDmg[model] = dmg
+
+            local cf = CFrame.new(0, bob + aBob, 0) * pivot * CFrame.Angles(0, yaw + aYaw, roll)
+            local fs = flinchState[model]
+            if fs then
+                local fx, fz, fyaw = HitReact.sample(fs, os.clock())
+                if fx ~= 0 or fz ~= 0 or fyaw ~= 0 then
+                    cf = (cf + Vector3.new(fx, 0, fz)) * CFrame.Angles(0, fyaw, 0)
+                end
+            end
+            model:PivotTo(cf)
         end
 
         -- Move a pet toward goalPos (Vector3), facing its heading while moving / restDir at

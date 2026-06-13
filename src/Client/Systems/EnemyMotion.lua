@@ -23,6 +23,8 @@ local Players = game:GetService("Players")
 
 local Gait = require(ReplicatedStorage.Shared.Game.Gait)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
+local HitReact = require(ReplicatedStorage.Shared.Game.HitReact)
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local EnemyMotion = {}
 
@@ -83,6 +85,35 @@ function EnemyMotion.start()
 
     -- model -> { base = CFrame (no gait), phase, amp }. Weak keys so enemies drop out.
     local state = setmetatable({}, { __mode = "k" })
+    -- HIT-REACT (Jason: don't stay frozen when struck): a pet swing fires Combat_PetHit
+    -- {pet,target}; flinch the target enemy away from the pet. Per-model weak-keyed state.
+    local flinch = setmetatable({}, { __mode = "k" })
+    Signals.Combat_PetHit.OnClientEvent:Connect(function(data)
+        local target = data and data.target
+        if typeof(target) ~= "Instance" or not target:IsA("Model") then
+            return
+        end
+        local fs = flinch[target]
+        if not fs then
+            fs = {}
+            flinch[target] = fs
+        end
+        -- shove away from the attacker (pet -> enemy); fall back to the enemy's -look
+        local dx, dz = 0, 0
+        local tp = target.PrimaryPart and target.PrimaryPart.Position
+        local pet = data.pet
+        local pp = typeof(pet) == "Instance"
+            and pet:IsA("Model")
+            and pet.PrimaryPart
+            and pet.PrimaryPart.Position
+        if tp and pp then
+            dx, dz = tp.X - pp.X, tp.Z - pp.Z
+        elseif tp then
+            local lv = target.PrimaryPart.CFrame.LookVector
+            dx, dz = -lv.X, -lv.Z
+        end
+        HitReact.start(fs, os.clock(), dx, dz, math.random() < 0.5 and 1 or -1)
+    end)
 
     RunService.RenderStepped:Connect(function(dt)
         local folder = enemiesFolder()
@@ -121,7 +152,16 @@ function EnemyMotion.start()
                     -- 2) Layer the procedural gait (shared with pets) on the clean base.
                     local gait = resolveGait(model:GetAttribute("EnemyId"))
                     local bob, roll, yaw = Gait.advance(st, gait, stepDist, dt)
-                    model:PivotTo(CFrame.new(0, bob, 0) * base * CFrame.Angles(0, yaw, roll))
+                    local cf = CFrame.new(0, bob, 0) * base * CFrame.Angles(0, yaw, roll)
+                    -- 3) Hit-react flinch: world-space recoil + a local twist, decaying to 0.
+                    local fs = flinch[model]
+                    if fs then
+                        local fx, fz, fyaw = HitReact.sample(fs, os.clock())
+                        if fx ~= 0 or fz ~= 0 or fyaw ~= 0 then
+                            cf = (cf + Vector3.new(fx, 0, fz)) * CFrame.Angles(0, fyaw, 0)
+                        end
+                    end
+                    model:PivotTo(cf)
                 end
             end
         end
