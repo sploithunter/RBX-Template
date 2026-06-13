@@ -71,6 +71,26 @@ return function()
             expect(state.wait >= CFG.pause_min).to.equal(true)
         end)
 
+        it("separate() pushes overlapping targets apart to minDist, half each", function()
+            local push = PetMeander.separate({ { x = 0, z = 0 }, { x = 1, z = 0 } }, 3)
+            expect(math.abs(push[1].x - -1) < 1e-6).to.equal(true) -- 2 short, 1 each way
+            expect(math.abs(push[2].x - 1) < 1e-6).to.equal(true)
+            expect(push[1].z).to.equal(0)
+        end)
+
+        it("separate() leaves well-spaced targets alone", function()
+            local push = PetMeander.separate({ { x = 0, z = 0 }, { x = 10, z = 0 } }, 3)
+            expect(push[1].x).to.equal(0)
+            expect(push[2].x).to.equal(0)
+        end)
+
+        it("separate() breaks coincident-point ties instead of dividing by zero", function()
+            local push = PetMeander.separate({ { x = 5, z = 5 }, { x = 5, z = 5 } }, 3)
+            local len1 = math.sqrt(push[1].x ^ 2 + push[1].z ^ 2)
+            expect(math.abs(len1 - 1.5) < 1e-4).to.equal(true) -- half of minDist each
+            expect(push[1].x == -push[2].x and push[1].z == -push[2].z).to.equal(true)
+        end)
+
         it("randomized pauses desync a squad (different rand, different waits)", function()
             local early = PetMeander.newState(CFG, randSeq({ 0 }))
             local late = PetMeander.newState(CFG, randSeq({ 1 }))

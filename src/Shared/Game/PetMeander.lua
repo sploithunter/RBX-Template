@@ -84,4 +84,45 @@ function PetMeander.step(state, dt, cfg, rand)
     return state.x, state.z
 end
 
+-- Soft separation (Jason: "we're not going to prevent overlap via collisions —
+-- they'll kind of move away from each other so the other system can take over").
+-- One relaxation pass over TARGET points: any pair closer than minDist gets
+-- pushed apart along their connecting axis, half each. The caller adds the push
+-- to each pet's goal and the normal moveToward smoothing walks them apart — no
+-- physics, no hard constraint, well-spaced formations are untouched (no-op past
+-- minDist). Coincident points tie-break on a per-index golden-angle direction.
+-- points: array of { x, z }; returns a parallel array of { x, z } pushes.
+function PetMeander.separate(points, minDist)
+    local push = {}
+    for i = 1, #points do
+        push[i] = { x = 0, z = 0 }
+    end
+    minDist = tonumber(minDist) or 0
+    if minDist <= 0 then
+        return push
+    end
+    for i = 1, #points - 1 do
+        for j = i + 1, #points do
+            local dx = points[j].x - points[i].x
+            local dz = points[j].z - points[i].z
+            local dist = math.sqrt(dx * dx + dz * dz)
+            if dist < minDist then
+                local ux, uz
+                if dist > 1e-4 then
+                    ux, uz = dx / dist, dz / dist
+                else
+                    local ang = i * 2.399963 -- golden angle: stable, spread-out tie-break
+                    ux, uz = math.cos(ang), math.sin(ang)
+                end
+                local half = (minDist - dist) / 2
+                push[i].x -= ux * half
+                push[i].z -= uz * half
+                push[j].x += ux * half
+                push[j].z += uz * half
+            end
+        end
+    end
+    return push
+end
+
 return PetMeander

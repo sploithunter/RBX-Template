@@ -587,6 +587,7 @@ function PetFollowController.start()
 
         local groups = {} -- id -> { center, pets = {} }   (melee/tank: orbit the target)
         local followers = {}
+        local followPlace = {} -- resolved follower placements (separated before moving)
         local kiterFace = {} -- kiter pet -> its target model (so it faces what it snipes)
         for slot, pet in ipairs(pets) do
             local tid = pet:FindFirstChild("TargetID")
@@ -673,17 +674,34 @@ function PetFollowController.start()
                 local t = PetFormation.toWorld(frame, e.offset)
                 local bob = PetFormation.floatOffset(phase + slot, config.float)
                 local mx, mz = meanderOffset(model, kiterFace[model] == nil)
-                local target = Vector3.new(t.x + mx, t.y + bob, t.z + mz)
-                moveToward(model, target, followerRestDir(model, target), followRate)
+                followPlace[#followPlace + 1] =
+                    { model = model, target = Vector3.new(t.x + mx, t.y + bob, t.z + mz) }
             end
         else
             for _, f in ipairs(followers) do
                 local t = PetFormation.targetPosition(frame, f.index, count, config.formation)
                 local bob = PetFormation.floatOffset(phase + f.index, config.float)
                 local mx, mz = meanderOffset(f.pet, kiterFace[f.pet] == nil)
-                local target = Vector3.new(t.x + mx, t.y + bob, t.z + mz)
-                moveToward(f.pet, target, followerRestDir(f.pet, target), followRate)
+                followPlace[#followPlace + 1] =
+                    { model = f.pet, target = Vector3.new(t.x + mx, t.y + bob, t.z + mz) }
             end
+        end
+
+        -- Soft separation (no collisions): overlapping TARGETS get pushed apart and
+        -- the regular moveToward smoothing walks the pets off each other.
+        local sepDist = tonumber(meanderCfg.separation) or 0
+        if sepDist > 0 and #followPlace > 1 then
+            local pts = {}
+            for i, p in ipairs(followPlace) do
+                pts[i] = { x = p.target.X, z = p.target.Z }
+            end
+            local push = PetMeander.separate(pts, sepDist)
+            for i, p in ipairs(followPlace) do
+                p.target = p.target + Vector3.new(push[i].x, 0, push[i].z)
+            end
+        end
+        for _, p in ipairs(followPlace) do
+            moveToward(p.model, p.target, followerRestDir(p.model, p.target), followRate)
         end
 
         -- Attackers: arrange around the target per the attack style, facing the center.

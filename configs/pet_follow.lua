@@ -82,6 +82,11 @@ return {
     -- Logic: src/Shared/Game/PetMeander.lua (pure), applied by PetFollowController.
     meander = {
         enabled = true,
+        -- soft separation (Jason: "not via collisions — they move away from each
+        -- other so the other system can take over"): follower TARGETS closer than
+        -- this get nudged apart; the normal lerp walks the pets off each other.
+        -- Applies whenever pets follow (not just while meandering). 0 = off.
+        separation = 3,
         player_still_seconds = 2,
         radius = 6,
         speed = 4,
