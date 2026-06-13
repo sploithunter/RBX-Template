@@ -3617,12 +3617,29 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     self:_applyEquippedStyling(itemFrame, isEquipped, item.color)
 
     -- #179 down-lockout identity (read by _refreshLockoutVisuals for the availability ring / red
-    -- count). Equipped = lives in the equipped grid; stacks key off <id:variant>, specials off uid.
+    -- count). Equipped = lives in the equipped grid. Stacks MUST key by the model's 2-field
+    -- LockoutKey (<petType:variant>) — the live pets and the replicated pool both use it — NOT the
+    -- 3-field storage stack key (<id:variant:enchant>), which matches neither. Build the key from
+    -- the item's own petType/variant so the ring reads the pet's CombatDowned/CooldownUntil truth
+    -- instead of guessing at string formats.
     do
-        local ref = (type(item.uid) == "string" and item.uid) or item.id
-        if type(ref) == "string" and ref:sub(1, 6) == "stack|" then
+        local isStackCard = (type(item.id) == "string" and item.id:sub(1, 6) == "stack|")
+            or (type(item.uid) == "string" and item.uid:sub(1, 6) == "stack|")
+        if isStackCard then
+            local key
+            if item.petType then
+                key = tostring(item.petType) .. ":" .. tostring(item.variant or "basic")
+            else
+                -- no petType on the item (shouldn't happen): first two fields of the stack key
+                local raw = (type(item.uid) == "string" and item.uid:sub(1, 6) == "stack|")
+                        and (string.split(item.uid, "|"))[2]
+                    or item.uid
+                    or ""
+                local f = string.split(tostring(raw), ":")
+                key = tostring(f[1] or "") .. ":" .. tostring(f[2] or "")
+            end
             itemFrame:SetAttribute("LockKind", "stack")
-            itemFrame:SetAttribute("LockId", (string.split(ref, "|"))[2] or "")
+            itemFrame:SetAttribute("LockId", key)
         elseif type(item.uid) == "string" and item.uid ~= "" then
             itemFrame:SetAttribute("LockKind", "special")
             itemFrame:SetAttribute("LockId", item.uid)
