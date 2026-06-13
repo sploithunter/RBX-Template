@@ -331,8 +331,16 @@ return {
         enhancements = {
             display_name = "Enhancements",
             icon = "⚙️",
-            base_limit = 60, -- 60 distinct IDENTITIES (stacks share a slot)
-            stack_size = 999, -- identical (type+origins+level) pile into one record
+            -- NEAR-INFINITE (Jason: "collect an infinite amount... within the bounds
+            -- of the variable carrying it"). Cogs stack by identity, so the only real
+            -- bounds are (a) the FINITE identity space — type x origins x level, a few
+            -- thousand combos at most, materialized on demand — and (b) the per-stack
+            -- quantity counter, a Lua double exact to 2^53 (~9.0e15). base_limit far
+            -- exceeds every possible identity; stack_size sits well under 2^53. Raising
+            -- base_limit auto-lifts existing profiles (DataService migration's "only
+            -- increase total_slots" rule), so the old 60-slot fossil frees up on load.
+            base_limit = 100000, -- distinct IDENTITIES (stacks share a slot); never hit in practice
+            stack_size = 1000000000000, -- 1e12 per identity (< 2^53) = effectively unlimited
             allow_duplicates = true,
             -- STACKABLE (Jason: uid-per-drop = "save explosion... that's why we have
             -- stacks"). The stack id IS the identity: type|origins(ordered)|level —
