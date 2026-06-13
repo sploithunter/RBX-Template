@@ -467,9 +467,13 @@ function DropService:TrySpawnEnhancementDrop(player, source, position)
     part.Anchored = true
     local groundY = self:_groundY(position.X, position.Z, position.Y, position.Y - 1)
     part.CFrame = CFrame.new(position.X, groundY + part.Size.Y * 0.5 + 0.2, position.Z)
-    model.Parent = Workspace
 
+    -- OWNER-ONLY VISIBLE (Jason: other players could see enhancement drops): stamp
+    -- DropOwner BEFORE parenting, and parent into CoinDrops (not bare Workspace) so
+    -- the client DropVisibility filter hides it for non-owners — same as gems. The
+    -- attribute is set first so it's already correct on the client's ChildAdded.
     model:SetAttribute("DropOwner", player.UserId)
+    model.Parent = self._folder or Workspace
     self._active[#self._active + 1] = {
         kind = "enhancement",
         record = record,
