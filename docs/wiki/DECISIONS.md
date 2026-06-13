@@ -174,3 +174,24 @@ updated." Implemented as a git-stamped build info shown on the BootLoader:
 **Publish workflow:** run a publish task (`mise run publish-studio` / `release`) which
 stamps automatically; or if publishing manually from Studio, run `mise run stamp` first
 so rojo-serve syncs the fresh stamp before File → Publish.
+
+## Biome Naming: "Earth" is canonical (2026-06-13)
+
+The starter/green biome is named **Earth** — full stop, everywhere player-facing.
+geomancer is its origin (earth mage), the egg is earth_egg, the pets are "earth
+pets", biomes.lua registers id="earth", and PetBadge.element_alias maps the
+internal element to the "earth" badge. Use **Earth** in all new UI, copy, and
+content. Do NOT introduce "grass", "meadow", or "spawn" as the biome's name.
+
+**Frozen internal id — `grass`.** The combat/RPS element id stored on every pet
+(`petData.element`), keyed in elements.lua's RPS ring (lava→grass→desert→ice),
+and the `grass_coins` currency, all use the legacy id **`grass`**. This is a
+PERSISTED key (pet records + currency balances) — treat it like an old database
+column: never rename casually. Code that keys by the biome element (e.g.
+enhancements `area_origins`, ElementResonance) correctly uses `grass`.
+
+Renaming the internal id `grass` → `earth` is a deliberate DATA MIGRATION
+(migrate every pet's stored element + the currency balance + the RPS/badge
+sweep), deferred until intentionally scheduled — not a casual find/replace. Until
+then: **player sees Earth, storage says grass, and that mapping is the
+PetBadge.element_alias.** This entry exists so we stop re-litigating it.
