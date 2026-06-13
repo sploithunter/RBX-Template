@@ -127,7 +127,12 @@ function BreakableService:Init()
     local Signals = require(ReplicatedStorage.Shared.Network.Signals)
     Signals.Breakables_Attack.OnServerEvent:Connect(function(player, payload)
         local ok, err = pcall(function()
-            self:_onAttack(player, payload)
+            -- NEVER trust client damage (payload.damage was applied verbatim - an
+            -- exploit hole): the remote path is pinned to the 1-damage token nibble.
+            -- Server-internal callers (AutoTargetService) pass through :Attack().
+            local sanitized = type(payload) == "table" and { id = payload.id, damage = 1 }
+                or payload
+            self:_onAttack(player, sanitized)
         end)
         if not ok then
             logger:Warn("Breakables_Attack handler error", { error = tostring(err) })
@@ -165,8 +170,26 @@ function BreakableService:_onAttack(player, payload)
     -- Reduce HP
     local hp = tonumber(target:GetAttribute("HP")) or 0
     local maxHp = tonumber(target:GetAttribute("MaxHP")) or hp
+    local applied = math.min(dmg, hp)
     hp = math.max(0, hp - dmg)
     target:SetAttribute("HP", hp)
+
+    -- Credit the damage in the Contrib ledger (same ledger pet mining and DoTs
+    -- write) so a node this path finishes still PAYS - the dead-squad ghost
+    -- drain broke crystals with an empty ledger and rewarded nothing.
+    if applied > 0 then
+        local contrib = target:FindFirstChild("Contrib")
+        if contrib then
+            local key = tostring(player.UserId)
+            local nv = contrib:FindFirstChild(key)
+            if not nv then
+                nv = Instance.new("NumberValue")
+                nv.Name = key
+                nv.Parent = contrib
+            end
+            nv.Value += applied
+        end
+    end
 
     -- Do not destroy here; BreakableSpawner listens to HP attribute and handles death/awards
 end

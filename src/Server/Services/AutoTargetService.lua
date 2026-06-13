@@ -744,7 +744,22 @@ function AutoTargetService:RequestAutoTargetAttack(player)
         return info
     end
 
-    if breakableService and breakableService.Attack then
+    -- GHOST-MINER GATE (Jason's dead-bunny bug): the token nibble below kept
+    -- draining crystals after the whole squad was downed - the crystal broke
+    -- with an empty Contrib ledger, so it paid NOTHING. Auto-target only deals
+    -- its 1 damage while at least one pet is alive to do the real mining.
+    local hasLivePet = false
+    local pf = workspace:FindFirstChild("PlayerPets")
+    local folder = pf and pf:FindFirstChild(player.Name)
+    if folder then
+        for _, pet in ipairs(folder:GetChildren()) do
+            if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
+                hasLivePet = true
+                break
+            end
+        end
+    end
+    if hasLivePet and breakableService and breakableService.Attack then
         breakableService:Attack(player, {
             id = info.id,
             damage = 1,
