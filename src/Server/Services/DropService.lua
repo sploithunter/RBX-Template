@@ -31,6 +31,10 @@ end
 function DropService:Init()
     self._logger = self._modules and self._modules.Logger
     self._configLoader = self._modules and self._modules.ConfigLoader
+    -- DataService for the enhancement-drop origin gate (Jason: was getting ONLY
+    -- natural drops — this was never assigned, so hasOrigin was always false and
+    -- TrySpawnEnhancementDrop forced natural=true on every roll).
+    self._dataService = self._modules and self._modules.DataService
     self._config = (self._configLoader and self._configLoader:LoadConfig("drops"))
         or require(ReplicatedStorage.Configs:WaitForChild("drops"))
     self._gems = (self._configLoader and self._configLoader:LoadConfig("gems"))
