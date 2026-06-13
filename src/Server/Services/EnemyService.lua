@@ -665,6 +665,17 @@ function EnemyService:_revivePet(pet)
     pet:SetAttribute("CombatDamageTaken", 0)
     pet:SetAttribute("CooldownUntil", 0)
     pet:SetAttribute("DownedReason", "")
+    -- RESUMMON AT THE PLAYER (Jason: the model is reused, so without this it
+    -- pops up wherever it DIED and resumes a far-away fight)
+    local owner = pet.Parent and Players:FindFirstChild(pet.Parent.Name)
+    local hrp = owner and owner.Character and owner.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        pet:PivotTo(CFrame.new(hrp.Position + Vector3.new(2, 2, 2)))
+    end
+    local rtid = pet:FindFirstChild("TargetID")
+    if rtid then
+        rtid.Value = 0
+    end
     self:_clearEnduranceBar(pet)
 end
 

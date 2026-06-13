@@ -193,6 +193,19 @@ function SummonService:Summon(player, kind, now, powerId)
                     pet:SetAttribute("CombatDamageTaken", 0)
                     pet:SetAttribute("CooldownUntil", 0)
                     pet:SetAttribute("DownedReason", "")
+                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        -- RESUMMON AT THE PLAYER (Jason: the model is reused, so without
+                        -- this it pops up wherever it DIED and resumes a far-away fight)
+                        pet:PivotTo(
+                            CFrame.new(
+                                player.Character.HumanoidRootPart.Position + Vector3.new(2, 2, 2)
+                            )
+                        )
+                        local rtid = pet:FindFirstChild("TargetID")
+                        if rtid then
+                            rtid.Value = 0
+                        end
+                    end
                 end
             end
         end
