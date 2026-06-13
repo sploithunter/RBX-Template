@@ -864,6 +864,26 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
             entry.nextPerception = now + (eng.perception_interval or 0.75)
             local proxRange = (eng.aggro and eng.aggro.proximity_range) or 30
             local player, d = self:_nearestPlayer(ePos, perceptionRange)
+            -- NO SQUAD, NO FIGHT (Jason's statue imps): enemies fight PETS, not
+            -- players. A player with no live pet deployed is not a target — the
+            -- pack keeps loitering around them instead of freezing mid-aggro on
+            -- a fight that cannot happen. Resummon a pet and they engage.
+            if player then
+                local pf = Workspace:FindFirstChild("PlayerPets")
+                local folder = pf and pf:FindFirstChild(player.Name)
+                local live = false
+                if folder then
+                    for _, pet in ipairs(folder:GetChildren()) do
+                        if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
+                            live = true
+                            break
+                        end
+                    end
+                end
+                if not live then
+                    player = nil
+                end
+            end
             if
                 player
                 and (d <= proxRange or EnemyAI.shouldNotice(d, perceptionRange, math.random()))
@@ -893,6 +913,8 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     local petsFolder = Workspace:FindFirstChild("PlayerPets")
         and Workspace.PlayerPets:FindFirstChild(player.Name)
     if not petsFolder then
+        self:_releasePets(targetId)
+        entry.aggroPlayerName = nil -- nothing to fight: back to loitering
         return
     end
     -- Aggro upkeep: assign the (non-downed) squad to this enemy, DECAY the table, and tick
