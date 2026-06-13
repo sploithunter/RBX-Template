@@ -928,8 +928,17 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     -- engagement radius. Farther out, the pets are released home — they re-engage
     -- the moment the player closes back in (or the enemy chases into range).
     if (hrp.Position - ePos).Magnitude > (eng.aggro_range or 45) then
-        self:_releasePets(targetId)
-        return
+        -- ...UNLESS something is actively hurting it (Jason's bunny-sniper
+        -- exploit: assist-target a boss from beyond draft range and it could
+        -- never bite back). A live attacker in the threat table keeps the whole
+        -- combat tick running — the enemy bites whoever is hurting it.
+        local attacker = AggroTable.top(entry.aggro, 0.5, function(k)
+            return typeof(k) == "Instance" and k.Parent ~= nil
+        end)
+        if not attacker then
+            self:_releasePets(targetId)
+            return
+        end
     end
 
     -- 3) Aggro: point the (non-downed) squad at this enemy + gather threat candidates.
