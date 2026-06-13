@@ -45,6 +45,11 @@ local enhancementsCfg = require(ReplicatedStorage.Configs:WaitForChild("enhancem
 local PowerSlotRow = require(script.Parent.Parent.PowerSlotRow)
 local Enhancements = require(ReplicatedStorage.Shared.Game.Enhancements)
 local enhCfg = require(Configs:WaitForChild("enhancements"))
+-- result-preview math (the SAME path PowerService casts through): record -> effective stats,
+-- diffed committed-vs-staged so the strip can show what slotting will change before APPLY.
+local PowerRegistry = require(ReplicatedStorage.Shared.Game.PowerRegistry)
+local PowerStats = require(ReplicatedStorage.Shared.Game.PowerStats)
+local PowerStatsDiff = require(ReplicatedStorage.Shared.Game.PowerStatsDiff)
 local CloseButton = require(script.Parent.Parent.Components.CloseButton)
 -- The level a new player chooses their origin (NATURAL picks come before this; ORIGIN powers after).
 local ORIGIN_CHOICE_LEVEL = levelTrackCfg.origin_choice_level or 5
@@ -490,6 +495,23 @@ local function enhBadge(parent, size, pos, rec, dead)
     )
 end
 
+-- format an effective-stat value for the result preview: seconds (8.0s), a 0..1 chance as a
+-- percent (92%), or a plain number (whole when it rounds clean, else one decimal).
+local function fmtStat(value, unit)
+    value = tonumber(value) or 0
+    if unit == "s" then
+        return ("%.1fs"):format(value)
+    elseif unit == "%" then
+        return ("%d%%"):format(math.floor(value * 100 + 0.5))
+    elseif math.abs(value - math.floor(value + 0.5)) < 0.05 then
+        return ("%d"):format(math.floor(value + 0.5))
+    end
+    return ("%.1f"):format(value)
+end
+
+local PREVIEW_UP = Color3.fromRGB(120, 220, 120) -- the staged change helps this axis
+local PREVIEW_DOWN = Color3.fromRGB(225, 130, 120) -- … or hurts it (e.g. a longer recharge)
+
 function PowerChoiceMenu:_toggleEnhance(powerId)
     if self.enhanceFor == powerId then
         self.enhanceFor = nil
@@ -497,6 +519,122 @@ function PowerChoiceMenu:_toggleEnhance(powerId)
         self.enhanceFor = powerId
     end
     self:_renderEnhanceStrip()
+end
+
+-- RESULT PREVIEW math. Resolve the power's effective stats TWICE — committed slots vs
+-- committed + the staged enhancement dropped into its target slot — then diff. Reuses the
+-- exact cast path (PowerRegistry.record -> Enhancements.aggregate -> PowerStats.resolveEffective)
+-- so the preview can never disagree with what the power actually does. Returns the diff rows
+-- (PowerStatsDiff order) or nil if the power has no record.
+function PowerChoiceMenu:_previewDiff(powerId, slots, staged)
+    local record = PowerRegistry.record(tostring(powerId), powersCfg)
+    if not (record and staged and staged.item) then
+        return nil
+    end
+    local lvl = self.level
+    -- projected slot list = the committed slots with the staged record placed at its index
+    -- (overwrites whatever's there — APPLY replaces a filled slot, mirroring the preview).
+    -- slots is a pure array of slot records, so a shallow clone is the projected list.
+    local projected = table.clone(slots)
+    projected[staged.slotIndex] = {
+        enh = {
+            type = staged.item.type,
+            origins = staged.item.origins,
+            level = staged.item.level,
+        },
+    }
+    local function resolve(slotList)
+        return PowerStats.resolveEffective(record, {
+            casterLevel = lvl,
+            scaling = powersCfg.scaling, -- nil today ⇒ identity; matches PowerService
+            enhancements = Enhancements.aggregate(enhCfg, slotList, lvl),
+        })
+    end
+    return PowerStatsDiff.diff(resolve(slots), resolve(projected))
+end
+
+-- The preview card: the power name + each stat line the staged enhancement would shift, with
+-- the before→after and signed %, improvements green / regressions red. Lives in the staged
+-- block of _renderEnhanceStrip, so it's rebuilt on every stage and gone on APPLY/CANCEL.
+function PowerChoiceMenu:_renderResultPreview(parent, powerId, slots, staged)
+    local rows = self:_previewDiff(powerId, slots, staged)
+    if not rows then
+        return
+    end
+    local def = powersCfg.powers[powerId] or {}
+
+    local card = Instance.new("Frame")
+    card.Name = "ResultPreview"
+    card.AnchorPoint = Vector2.new(1, 1)
+    card.Position = UDim2.fromScale(0.985, 0.88) -- tucked above APPLY/CANCEL, right side
+    card.Size = UDim2.new(0.34, 0, 0, 0)
+    card.AutomaticSize = Enum.AutomaticSize.Y
+    card.BackgroundColor3 = Color3.fromRGB(16, 14, 26)
+    card.BackgroundTransparency = 0.05
+    card.ZIndex = 12
+    local cc = Instance.new("UICorner")
+    cc.CornerRadius = UDim.new(0, 8)
+    cc.Parent = card
+    local cs = Instance.new("UIStroke")
+    cs.Color = Color3.fromRGB(255, 205, 70) -- the menu's gold tooltip stroke
+    cs.Thickness = 1.5
+    cs.Parent = card
+    local pad = Instance.new("UIPadding")
+    pad.PaddingTop = UDim.new(0, 8)
+    pad.PaddingBottom = UDim.new(0, 8)
+    pad.PaddingLeft = UDim.new(0, 10)
+    pad.PaddingRight = UDim.new(0, 10)
+    pad.Parent = card
+    local list = Instance.new("UIListLayout")
+    list.FillDirection = Enum.FillDirection.Vertical
+    list.Padding = UDim.new(0, 4)
+    list.SortOrder = Enum.SortOrder.LayoutOrder
+    list.Parent = card
+    card.Parent = parent
+
+    local order = 0
+    local function line(text, color, size, font)
+        order += 1
+        local l = Instance.new("TextLabel")
+        l.BackgroundTransparency = 1
+        l.Size = UDim2.new(1, 0, 0, 0)
+        l.AutomaticSize = Enum.AutomaticSize.Y
+        l.Font = font or Enum.Font.Gotham
+        l.TextSize = size or 13
+        l.TextColor3 = color
+        l.TextWrapped = true
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.LayoutOrder = order
+        l.ZIndex = 13
+        l.Text = text
+        l.Parent = card
+        return l
+    end
+
+    line("RESULT PREVIEW", Color3.fromRGB(170, 160, 110), 11, Enum.Font.GothamBold)
+    line(def.display_name or powerId, Color3.fromRGB(255, 205, 70), 15, Enum.Font.GothamBold)
+    -- the PowerDescribe summary, so it reads like the row tooltips
+    local d = PowerDescribe.describe(powersCfg, powerId)
+    if d and d.summary then
+        line(d.summary, Color3.fromRGB(205, 205, 220), 12)
+    end
+    line(
+        "with " .. Enhancements.displayName(enhCfg, staged.item),
+        Color3.fromRGB(150, 150, 170),
+        11
+    )
+
+    if #rows == 0 then
+        line("No change at your level", Color3.fromRGB(170, 170, 190), 12, Enum.Font.GothamMedium)
+        return
+    end
+    for _, r in ipairs(rows) do
+        local color = r.improved and PREVIEW_UP or PREVIEW_DOWN
+        local arrow = ("%s → %s"):format(fmtStat(r.from, r.unit), fmtStat(r.to, r.unit))
+        local pctText = r.deltaPct and ("  (%+d%%)"):format(math.floor(r.deltaPct * 100 + 0.5))
+            or ""
+        line(("%s   %s%s"):format(r.label, arrow, pctText), color, 13, Enum.Font.GothamMedium)
+    end
 end
 
 function PowerChoiceMenu:_renderEnhanceStrip()
@@ -844,6 +982,8 @@ function PowerChoiceMenu:_renderEnhanceStrip()
     -- ===== STAGED: ghost over the destination slot + APPLY / CANCEL =====
     local staged = self._enhStaged
     if staged and staged.item then
+        -- live RESULT PREVIEW: what the power becomes once this enhancement is APPLIED
+        self:_renderResultPreview(strip, powerId, slots, staged)
         local gxs = (0.5 - rowW / 2) + (staged.slotIndex - 1) * (SLOT_W + SLOT_GAP)
         local ghost = enhBadge(
             strip,
