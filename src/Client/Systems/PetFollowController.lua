@@ -415,6 +415,13 @@ function PetFollowController.start()
                 end
                 if not downed then
                     table.insert(pets, m)
+                else
+                    -- Forget the cached transform while down (Jason's wandering-revive
+                    -- saga): the client skips positioning downed pets, so the server's
+                    -- revive teleport replicates cleanly — but resuming the lerp from
+                    -- this stale cache rendered the pet back at its death spot. With
+                    -- the cache cleared, revival reads the fresh (at-the-player) pivot.
+                    baseCF[m] = nil
                 end
             end
         end
