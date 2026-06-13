@@ -178,10 +178,8 @@ return {
         -- chance per breakable broken / enemy defeated that an enhancement drops
         -- (doubled 0.02/0.08 -> 0.04/0.16, Jason 2026-06-11: a full 1->6 leveling run
         -- yielded only two drops that fit any of his powers; roll back if it floods)
-        -- TEMP TEST (2026-06-13): 100% to verify origin drops flow after the
-        -- DataService-wiring fix. REVERT to 0.04 / 0.16 before publishing.
-        breakable_chance = 1.0,
-        enemy_chance = 1.0,
+        breakable_chance = 0.04,
+        enemy_chance = 0.16,
         -- of those drops, this fraction are NATURAL (origin-less junk tier) — Jason:
         -- "allow generics to drop everywhere; that makes an actual junk economy."
         -- The rest are zone-branded origin drops (~25/75 single/dual structurally).
