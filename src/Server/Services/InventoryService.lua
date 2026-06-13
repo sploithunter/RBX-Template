@@ -244,6 +244,17 @@ function InventoryService:_getRequiredSlotsForAdd(bucketName, itemData, bucket, 
         return self:_isSpecialPetData(itemData) and 1 or 0
     end
 
+    -- UNIFIED MODEL (Jason): any bucket flagged stacks_count_toward_limit = false
+    -- follows the pet rule — stackable items are FREE, only unique-tier items count
+    -- toward base_limit. These buckets (enhancements/eggs/consumables/resources)
+    -- have no unique tier today, so a stackable add never consumes a slot.
+    if
+        bucketConfig.stacks_count_toward_limit == false
+        and bucketConfig.storage_type == "stackable"
+    then
+        return 0
+    end
+
     if bucketConfig.storage_type == "stackable" and bucket.items and bucket.items[itemData.id] then
         return 0
     end
@@ -319,7 +330,11 @@ function InventoryService:_addStackableItem(player, bucketName, itemData, bucket
             end
         end
 
-        bucket.used_slots = bucket.used_slots + 1
+        -- UNIFIED MODEL: stacks-free buckets don't grow used_slots (it tracks
+        -- UNIQUES only, like pets) so the 80% OpsAlert telemetry stays honest.
+        if bucketConfig.stacks_count_toward_limit ~= false then
+            bucket.used_slots = bucket.used_slots + 1
+        end
 
         self._logger:Debug("📦 STACKABLE ADD - Created new stack", {
             player = player.Name,

@@ -316,8 +316,14 @@ return {
         eggs = {
             display_name = "Eggs",
             icon = "🥚",
-            base_limit = 20, -- distinct egg identities
-            stack_size = 99,
+            -- UNIFIED STORAGE MODEL (Jason): every stackable bucket follows the pet
+            -- Storage-v2 path — stacks (and every variation) are FREE, only UNIQUE
+            -- items count toward base_limit (the shared 500 cap), and OpsAlert warns
+            -- us at 80% of uniques. base_limit = the unique headroom (eggs have none
+            -- today). stack_size = per-identity quantity bound (< 2^53).
+            base_limit = 500,
+            stack_size = 1000000000000,
+            stacks_count_toward_limit = false,
             allow_duplicates = true,
             -- INVENTORY eggs (Meet-The-Creator etc.) — held items hatched on demand,
             -- unlike the world egg stations. Stackable by egg id.
@@ -331,16 +337,14 @@ return {
         enhancements = {
             display_name = "Enhancements",
             icon = "⚙️",
-            -- NEAR-INFINITE (Jason: "collect an infinite amount... within the bounds
-            -- of the variable carrying it"). Cogs stack by identity, so the only real
-            -- bounds are (a) the FINITE identity space — type x origins x level, a few
-            -- thousand combos at most, materialized on demand — and (b) the per-stack
-            -- quantity counter, a Lua double exact to 2^53 (~9.0e15). base_limit far
-            -- exceeds every possible identity; stack_size sits well under 2^53. Raising
-            -- base_limit auto-lifts existing profiles (DataService migration's "only
-            -- increase total_slots" rule), so the old 60-slot fossil frees up on load.
-            base_limit = 100000, -- distinct IDENTITIES (stacks share a slot); never hit in practice
+            -- UNIFIED STORAGE MODEL (Jason): the SAME pet Storage-v2 path. Cogs stack
+            -- by identity (type+origins+level); stacks are FREE (stacks_count_toward_limit
+            -- = false) — only UNIQUE items would count toward base_limit (the shared 500
+            -- cap; enhancements have no unique tier, so they're effectively unbounded).
+            -- stack_size = per-identity quantity, a Lua double exact to 2^53 (~9.0e15).
+            base_limit = 500,
             stack_size = 1000000000000, -- 1e12 per identity (< 2^53) = effectively unlimited
+            stacks_count_toward_limit = false,
             allow_duplicates = true,
             -- STACKABLE (Jason: uid-per-drop = "save explosion... that's why we have
             -- stacks"). The stack id IS the identity: type|origins(ordered)|level —
@@ -363,8 +367,9 @@ return {
         consumables = {
             display_name = "Consumables",
             icon = "🧪",
-            base_limit = 100,
-            stack_size = 99, -- Items can stack
+            base_limit = 500, -- unified unique cap (consumables have no unique tier)
+            stack_size = 99, -- per-stack quantity cap stays a gameplay knob (see validation)
+            stacks_count_toward_limit = false, -- unified model: stacks free, uniques count
             allow_duplicates = false, -- Same items merge into stacks
             storage_type = "stackable", -- NEW: Indicates items are identical/countable
 
@@ -397,8 +402,9 @@ return {
         resources = {
             display_name = "Resources",
             icon = "🪨",
-            base_limit = 50, -- 50 different resource types
-            stack_size = 10000, -- Each resource can stack to 10k
+            base_limit = 500, -- unified unique cap (resources have no unique tier)
+            stack_size = 10000, -- per-stack quantity cap stays a gameplay knob (see validation)
+            stacks_count_toward_limit = false, -- unified model: stacks free, uniques count
             allow_duplicates = false, -- Same resources merge into stacks
             storage_type = "stackable", -- Identical items, store as counts
 

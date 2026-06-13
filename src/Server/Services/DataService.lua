@@ -1474,18 +1474,25 @@ function DataService:MigrateProfile(profile)
             schemaVersion = data.SchemaVersion,
         })
     end
-    -- OPS TELEMETRY (Storage v2 D8): warn US when a player's unique-pet storage runs
-    -- hot (>= 80% of cap) — measured at every load, shipped to the OpsAlerts ring.
-    do
-        local pets = data.Inventory and data.Inventory.pets
-        local used = pets and tonumber(pets.used_slots) or 0
-        local total = pets and tonumber(pets.total_slots) or 0
-        if total > 0 and used / total >= 0.8 then
-            OpsAlert.send("unique_storage_high", {
-                player = tostring(data.PlayerName or data.UserId or "?"),
-                used = used,
-                total = total,
-            })
+    -- OPS TELEMETRY (Storage v2 D8, unified): warn US when ANY bucket's UNIQUE storage
+    -- runs hot (>= 80% of its cap) — measured at every load, shipped to the OpsAlerts
+    -- ring. Under the unified model every bucket's used_slots is uniques-only (stacks
+    -- are free), so this is the "approaching the unique limit" alarm Jason described,
+    -- now across pets/enhancements/eggs/potions/... not just pets.
+    if data.Inventory then
+        for bucketName, bucket in pairs(data.Inventory) do
+            if type(bucket) == "table" then
+                local used = tonumber(bucket.used_slots) or 0
+                local total = tonumber(bucket.total_slots) or 0
+                if total > 0 and used / total >= 0.8 then
+                    OpsAlert.send("unique_storage_high", {
+                        player = tostring(data.PlayerName or data.UserId or "?"),
+                        bucket = bucketName,
+                        used = used,
+                        total = total,
+                    })
+                end
+            end
         end
     end
 end
@@ -2241,6 +2248,20 @@ function DataService:_migrateInventoryBuckets(data)
                                     newLimit = bucketConfig.base_limit,
                                 }
                             )
+                        end
+                        -- UNIFIED MODEL (Jason): a pure-stackable bucket flagged
+                        -- stacks_count_toward_limit = false counts UNIQUES only. These
+                        -- buckets have no unique tier, so used_slots is 0 — reset the
+                        -- old per-identity fossil (e.g. enhancements stuck at 60/60) so
+                        -- the slot books + 80% telemetry reflect the real (uniques) rule.
+                        if
+                            bucketName ~= "pets"
+                            and bucketConfig.stacks_count_toward_limit == false
+                            and bucketConfig.storage_type == "stackable"
+                            and (existingBucket.used_slots or 0) ~= 0
+                        then
+                            existingBucket.used_slots = 0
+                            migrations = migrations + 1
                         end
                     end
                 end
