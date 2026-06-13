@@ -29,6 +29,10 @@ function EnhancementService:Init()
     self._dataService = self._modules and self._modules.DataService
     self._config = self._configLoader:LoadConfig("enhancements")
     self._powersConfig = self._configLoader:LoadConfig("powers")
+    -- areas: drop origins key by the zone's BIOME (element), resolved from the area
+    -- id at RollDrop time (Jason: "in your origin's zone the cog interior is 100%
+    -- that origin"). Every grass area maps to geomancer, not just a literal "Grass".
+    self._areasConfig = self._configLoader:LoadConfig("areas")
 end
 
 local Players = game:GetService("Players")
@@ -389,8 +393,12 @@ function EnhancementService:RollDrop(rng, areaId, opts)
 
     -- PRIMARY origin = the zone's own (the disc color brands the land — Jason); the
     -- RING is uniform random. Ring == primary -> a SINGLE-origin drop, so pure singles
-    -- only exist in their home world (~1/#origins of drops).
-    local zoneOrigin = (drops.area_origins or {})[areaId]
+    -- only exist in their home world (~1/#origins of drops). Resolve the area id to its
+    -- BIOME (element) first, then to the origin — so all grass areas map to geomancer.
+    local zones = self._areasConfig and self._areasConfig.zones
+    local areaDef = zones and areaId and zones[areaId]
+    local element = areaDef and areaDef.element
+    local zoneOrigin = element and (drops.area_origins or {})[element]
     if zoneOrigin then
         local ring = origins[rng:NextInteger(1, #origins)]
         if ring == zoneOrigin then

@@ -178,8 +178,10 @@ return {
         -- chance per breakable broken / enemy defeated that an enhancement drops
         -- (doubled 0.02/0.08 -> 0.04/0.16, Jason 2026-06-11: a full 1->6 leveling run
         -- yielded only two drops that fit any of his powers; roll back if it floods)
-        breakable_chance = 0.04,
-        enemy_chance = 0.16,
+        -- TEMP TEST (2026-06-13): 100% to verify origin drops flow after the
+        -- DataService-wiring fix. REVERT to 0.04 / 0.16 before publishing.
+        breakable_chance = 1.0,
+        enemy_chance = 1.0,
         -- of those drops, this fraction are NATURAL (origin-less junk tier) — Jason:
         -- "allow generics to drop everywhere; that makes an actual junk economy."
         -- The rest are zone-branded origin drops (~25/75 single/dual structurally).
@@ -221,11 +223,17 @@ return {
         -- the zone's own — earth zone drops are always green. The RING (second origin)
         -- is random; when it rolls the zone's origin the drop is SINGLE-origin, so pure
         -- singles can only be found in their home world. Unmapped areas roll legacy.
+        -- Keyed by the zone's BIOME/element (configs/areas.lua zones[*].element), NOT
+        -- the area NAME — so EVERY grass area (Spawn, Meadow, ...) maps to geomancer,
+        -- not just a literal "Grass" that no area is named (Jason: the old name-keyed
+        -- table silently never matched grass, so geomancer interiors never dropped).
+        -- The zone's origin is the cog INTERIOR at 100%; the RING is random. Spend
+        -- time in your origin's biome to farm its interior.
         area_origins = {
-            Grass = "geomancer",
-            Lava = "pyromancer",
-            Ice = "cryomancer",
-            Desert = "sandwalker",
+            grass = "geomancer",
+            lava = "pyromancer",
+            ice = "cryomancer",
+            desert = "sandwalker",
         },
 
         -- relative weight per type (uniform start; tune freely)
