@@ -34,6 +34,11 @@ function PetRevive.revive(pet, owner)
     if tid then
         tid.Value = 0
     end
+    -- REVIVE GRACE (Jason's solidified beer): without this, an enemy that still
+    -- holds aggro on the owner re-drafts the fresh pet on the NEXT combat tick
+    -- and it renders right back at the fight it just died in. A few protected
+    -- seconds let it reach the player's side first.
+    pet:SetAttribute("ReviveGraceUntil", os.time() + 4)
     return true
 end
 

@@ -415,6 +415,9 @@ end
 
 -- Point a pet at this enemy (attack back). Idempotent — only writes on change.
 function EnemyService:_assignPetToEnemy(pet, targetId)
+    if (pet:GetAttribute("ReviveGraceUntil") or 0) > os.time() then
+        return -- fresh revive: not draftable until the grace expires (PetRevive)
+    end
     local tt = pet:FindFirstChild("TargetType")
     local tid = pet:FindFirstChild("TargetID")
     if not (tt and tid) then
