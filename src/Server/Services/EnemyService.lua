@@ -23,6 +23,7 @@ local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local PetRevive = require(script.Parent.Parent.PetRevive)
 local ServerStorage = game:GetService("ServerStorage")
 local InsertService = game:GetService("InsertService")
+local AssetService = game:GetService("AssetService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local Debris = game:GetService("Debris")
@@ -224,6 +225,50 @@ function EnemyService:_enemyTemplate(assetId, needsPrimaryPart)
     return template
 end
 
+-- Build (once, cached) a MODEL from a separately-uploaded MESH + TEXTURE — the same combine the
+-- gem drops use (DropService): CreateMeshPartAsync(meshId) + MeshPart.TextureID = texId. Avoids an
+-- InsertService Model fetch (group-safe, cacheable) and keeps mesh/texture as independent assets.
+-- Returns a Model whose PrimaryPart is the anchored MeshPart, or nil to fall back to a procedural block.
+function EnemyService:_meshTemplate(meshId, textureId)
+    self._meshCache = self._meshCache or {}
+    local key = tostring(meshId) .. "|" .. tostring(textureId)
+    local cached = self._meshCache[key]
+    if cached ~= nil then
+        return cached or nil
+    end
+    local ok, mesh = pcall(function()
+        -- selene: allow(undefined_variable)
+        local content = Content.fromUri(meshId) -- `Content` is a runtime global selene's std lacks
+        return AssetService:CreateMeshPartAsync(content, {
+            CollisionFidelity = Enum.CollisionFidelity.Box,
+            RenderFidelity = Enum.RenderFidelity.Automatic,
+        })
+    end)
+    local template
+    if ok and mesh then
+        if textureId then
+            pcall(function()
+                mesh.TextureID = textureId
+            end)
+        end
+        mesh.Name = "Body"
+        mesh.Anchored = true
+        mesh.CanCollide = false
+        local model = Instance.new("Model")
+        mesh.Parent = model
+        model.PrimaryPart = mesh
+        model.Parent = ServerStorage
+        template = model
+    elseif self._logger then
+        self._logger:Warn(
+            "Enemy mesh build failed; using procedural fallback",
+            { mesh = tostring(meshId), error = tostring(mesh) }
+        )
+    end
+    self._meshCache[key] = template or false
+    return template
+end
+
 -- Attach the combat contract every enemy needs regardless of art: the generic target
 -- id the pet plumbing keys on, the contrib ledger, HP/armor attributes, and an HP bar
 -- sized to sit above the model.
@@ -296,18 +341,23 @@ end
 -- pet formations surround its pivot, and movement is via PivotTo (parts are anchored).
 function EnemyService:_buildModel(enemyId, def, position, targetId)
     local model, body
-    if def.model_asset then
-        local template = self:_enemyTemplate(def.model_asset, def.needs_primary_part)
-        if template then
-            model = template:Clone()
-            body = model.PrimaryPart
-            -- Scale the CLONE (not the shared cached template) so enemies that reuse the
-            -- same art at different model_scale values each get their own size.
-            if def.model_scale and def.model_scale ~= 1 then
-                pcall(function()
-                    model:ScaleTo(def.model_scale)
-                end)
-            end
+    -- `mesh_asset` (+ optional `texture_asset`) -> build via CreateMeshPartAsync (the gem combine);
+    -- else `model_asset` -> InsertService/PlaceAssets clone; else the procedural block below.
+    local template
+    if def.mesh_asset then
+        template = self:_meshTemplate(def.mesh_asset, def.texture_asset)
+    elseif def.model_asset then
+        template = self:_enemyTemplate(def.model_asset, def.needs_primary_part)
+    end
+    if template then
+        model = template:Clone()
+        body = model.PrimaryPart
+        -- Scale the CLONE (not the shared cached template) so enemies that reuse the
+        -- same art at different model_scale values each get their own size.
+        if def.model_scale and def.model_scale ~= 1 then
+            pcall(function()
+                model:ScaleTo(def.model_scale)
+            end)
         end
     end
 

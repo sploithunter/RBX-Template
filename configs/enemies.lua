@@ -98,8 +98,11 @@ return {
             tier = "trash_mob",
             move_speed = 16, -- quick + aggressive
             armor = 0,
-            -- model pending: assets/exports/pets/cube_dog_basic (upload mesh+texture to the group,
-            -- combine via CreateMeshPartAsync like DropService gems). Procedural block until then.
+            -- Real art (cube_dog): mesh + texture uploaded separately to the Open Simulator group,
+            -- combined at spawn via CreateMeshPartAsync (the gem pattern) — no InsertService fetch.
+            mesh_asset = "rbxassetid://139565210250366",
+            texture_asset = "rbxassetid://87011938206497",
+            model_scale = 4,
             gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 14, stride_length = 4 },
             attack = { damage = 12, cadence = 1.3, sundering = 0 },
             drop_table = { grass_coins = 9, shadow_tokens = 1 },
@@ -112,7 +115,10 @@ return {
             tier = "trash_mob",
             move_speed = 14,
             armor = 0,
-            -- model pending: assets/exports/pets/raven_basic
+            -- Real art (raven): mesh + texture combined at spawn via CreateMeshPartAsync.
+            mesh_asset = "rbxassetid://79312260838341",
+            texture_asset = "rbxassetid://120154730842284",
+            model_scale = 4,
             gait = { style = "hop", bob_height = 0.7, tilt_degrees = 6, stride_length = 5 },
             attack = { damage = 14, cadence = 1.6, sundering = 0 },
             drop_table = { grass_coins = 10, shadow_tokens = 1 },
@@ -125,7 +131,10 @@ return {
             tier = "trash_mob",
             move_speed = 15,
             armor = 0,
-            -- model pending: assets/exports/pets/grumpy_cat_basic
+            -- Real art (grumpy_cat): mesh + texture combined at spawn via CreateMeshPartAsync.
+            mesh_asset = "rbxassetid://140220411587261",
+            texture_asset = "rbxassetid://89093502801465",
+            model_scale = 4,
             gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 10, stride_length = 4 },
             attack = { damage = 13, cadence = 1.5, sundering = 0 },
             drop_table = { grass_coins = 10, shadow_tokens = 2 },
