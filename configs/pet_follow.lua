@@ -112,7 +112,10 @@ return {
         -- (A per-species override + the PetAttackStyle player attribute both still win over this.)
         role_styles = {
             tank = "static_ring", -- a wall holds the line, doesn't pirouette
-            melee = "lunge", -- gets in close, jabs in and out
+            -- melee = orbit (not lunge): the constant circling reads as DODGING/weaving — an agile,
+            -- never-still melee (superhero feel) — where lunge read as a telegraphed brute. One pet
+            -- circling its OWN target is "slippery", not the whole-team swirl that was the problem.
+            melee = "orbit",
             ranged = "firing_line", -- stands back and volleys (blaster)
             support = "orbit", -- weaves around the squad
             control = "pincer", -- flanks to set up debuffs
