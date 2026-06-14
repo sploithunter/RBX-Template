@@ -178,8 +178,19 @@ return {
         taunt = { family = "taunt", magnitude = 0, duration = 8 }, -- TBD: aggro pull (threat)
         rage = { family = "rage", magnitude = 0.5, toggle = true }, -- TBD: lower HP -> higher damage
         armor_field = { family = "armor", magnitude = 0.25, duration = 12 }, -- player_field team armor
-        restoring_sands = { family = "heal", magnitude = 3, duration = 0 }, -- single-target instant heal
-        healing_field = { family = "heal", magnitude = 1.5, duration = 8 }, -- player_field HoT
+        -- 10x-world heal values (were 3 / 1.5 placeholder stubs — negligible vs ~hundreds-deep
+        -- pools). restoring_sands = a strong FOCUSED single-pet mend (target=single_pet -> the
+        -- selected squad card); healing_field = a self-AoE that hits the squad with a smaller
+        -- upfront + a sustaining tail. Tuning starting points — adjust freely.
+        restoring_sands = { family = "heal", magnitude = 600, duration = 0 }, -- single-pet instant heal
+        healing_field = {
+            family = "heal",
+            magnitude = 200,
+            duration = 8,
+            hot = 120,
+            hot_tick = 2,
+            hot_seconds = 8,
+        }, -- player_field heal + tail
         fear = { family = "fear", magnitude = 0, duration = 5 }, -- TBD: flee (AI state)
         ice_shard = { family = "vulnerable", magnitude = 1.4, duration = 4 }, -- targeted damage (via pets)
         deep_freeze = { family = "root", magnitude = 0, duration = 4 }, -- TBD: full hold (Capacitor)

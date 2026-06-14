@@ -725,25 +725,23 @@ function PowerService:_applyEffect(player, kind, now, powerId)
         )
     end
     if family == "heal" then
-        local pets = Workspace:FindFirstChild("PlayerPets")
-            and Workspace.PlayerPets:FindFirstChild(player.Name)
-        if pets then
-            for _, pet in ipairs(pets:GetChildren()) do
-                if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
-                    local taken = pet:GetAttribute("CombatDamageTaken") or 0
-                    if taken > 0 then
-                        local healed = math.min(taken, mag)
-                        pet:SetAttribute("CombatDamageTaken", math.max(0, taken - mag))
-                        -- Instant-effect tell: blinking heal badge on the card (3s, mirrors
-                        -- combat.engagement.instant_fx_seconds) — same feedback as auto-heal.
-                        pet:SetAttribute("HealFxUntil", now + 3)
-                        if healed >= 1 then
-                            Signals.Combat_Heal:FireAllClients({
-                                target = pet,
-                                amount = math.floor(healed + 0.5),
-                            })
-                        end
-                    end
+        -- Respect the power's targeting RING (like absorb): single_pet -> the selected squad
+        -- card only (the pet you AIMED at, not the most-hurt); otherwise squad-wide
+        -- (player_field / team_aoe — pets cluster on the player, so squad-wide reads as the
+        -- around-you AoE). _targetPets already drops downed pets.
+        for _, pet in ipairs(self:_targetPets(player, powerId)) do
+            local taken = pet:GetAttribute("CombatDamageTaken") or 0
+            if taken > 0 then
+                local healed = math.min(taken, mag)
+                pet:SetAttribute("CombatDamageTaken", math.max(0, taken - mag))
+                -- Instant-effect tell: blinking heal badge on the card (3s, mirrors
+                -- combat.engagement.instant_fx_seconds) — same feedback as auto-heal.
+                pet:SetAttribute("HealFxUntil", now + 3)
+                if healed >= 1 then
+                    Signals.Combat_Heal:FireAllClients({
+                        target = pet,
+                        amount = math.floor(healed + 0.5),
+                    })
                 end
             end
         end
