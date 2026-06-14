@@ -66,7 +66,8 @@ local SPAWNS = {
     {
         label = "💀 Scary Team",
         pack = {
-            { enemyId = "ember_brute", count = 1 },
+            -- tank wall = raging_bear (modeled); ember_brute is Lava/unmodeled (a placeholder block).
+            { enemyId = "raging_bear", count = 1 },
             { enemyId = "rabid_bunny", count = 1, forward = 10 },
             { enemyId = "rabid_dog", count = 3, spread = 9 },
             { enemyId = "murder_crow", count = 2, spread = 12, forward = 14 },

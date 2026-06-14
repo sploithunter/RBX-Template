@@ -79,7 +79,10 @@ return {
             {
                 weight = 2,
                 units = {
-                    { enemy = "ember_brute", count = 1 }, -- tank wall
+                    -- tank wall = raging_bear (Earth, MODELED). Was ember_brute, but the Lava faction
+                    -- is unmodeled so it spawned a placeholder block in the field; the rest of this
+                    -- pack is Earth anyway, so the bear makes the apex wave coherent + fully-modeled.
+                    { enemy = "raging_bear", count = 1 },
                     { enemy = "rabid_bunny", count = 1 }, -- healer (kill first)
                     { enemy = "rabid_dog", count = 3 }, -- melee crowd
                     { enemy = "murder_crow", count = 2 }, -- snipers
