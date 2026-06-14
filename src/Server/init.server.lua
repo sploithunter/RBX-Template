@@ -480,6 +480,15 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.AscensionAltarService,
     { "Logger", "ConfigLoader" }
 )
+-- DailyRewardZoneService: the in-world Daily Reward pad — auto-claims the daily streak
+-- when a player walks into the authored "Daily Reward" model (no prompt/menu), paying the
+-- player's ORIGIN biome coin and floating an ~8s reward description. Resolves
+-- DailyService/RewardService at runtime via the locator.
+loader:RegisterModule(
+    "DailyRewardZoneService",
+    ServerScriptService.Server.Services.DailyRewardZoneService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- BaddieSpawnerService: proximity enemy waves at map-authored BaddieSpawner* parts
 -- (combat taste before the Heaven/Hell choice — Jason). Resolves EnemyService at runtime.
 loader:RegisterModule(
@@ -658,6 +667,7 @@ table.insert(requiredModules, "PetFollowService")
 table.insert(requiredModules, "DropService")
 table.insert(requiredModules, "SummonService")
 table.insert(requiredModules, "AscensionAltarService")
+table.insert(requiredModules, "DailyRewardZoneService")
 table.insert(requiredModules, "RealmPortalService")
 table.insert(requiredModules, "ZoneTrackerService")
 table.insert(requiredModules, "GameAPIService")

@@ -221,6 +221,9 @@ REACTIONS.float = function(spec, ctx)
     local c = spec.color
     local color = (type(c) == "table") and Color3.fromRGB(c[1] or 255, c[2] or 255, c[3] or 255)
         or Color3.fromRGB(255, 235, 170)
+    -- Duration: rise + fade span (default 1.6s for the quick farming floats). A row can
+    -- set `seconds` to linger — the daily-reward float runs ~8s so it reads at a glance.
+    local seconds = tonumber(spec.seconds) or 1.6
     local bb = Instance.new("BillboardGui")
     bb.Size = UDim2.fromOffset(spec.size or 360, 44)
     bb.StudsOffset = Vector3.new(0, 3, 0)
@@ -236,14 +239,14 @@ REACTIONS.float = function(spec, ctx)
     lbl.TextColor3 = color
     lbl.TextStrokeTransparency = 0.3
     lbl.Parent = bb
-    TweenService:Create(bb, TweenInfo.new(1.6, Enum.EasingStyle.Quad), {
+    TweenService:Create(bb, TweenInfo.new(seconds, Enum.EasingStyle.Quad), {
         StudsOffset = Vector3.new(0, 7, 0),
     }):Play()
-    TweenService:Create(lbl, TweenInfo.new(1.6), {
+    TweenService:Create(lbl, TweenInfo.new(seconds), {
         TextTransparency = 1,
         TextStrokeTransparency = 1,
     }):Play()
-    task.delay(1.7, function()
+    task.delay(seconds + 0.1, function()
         bb:Destroy()
     end)
 end

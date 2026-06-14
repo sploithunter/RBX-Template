@@ -38,9 +38,22 @@ function RewardService:_service(name)
     return ok and service or nil
 end
 
+-- Per-player override for the "area_coins" token, consumed for the duration of a
+-- single synchronous Grant. DailyRewardZoneService ties the daily reward to the
+-- player's ORIGIN biome coin (not the area they're standing in), so it sets this
+-- around its DailyService:Claim call and clears it immediately after.
+function RewardService:SetAreaCoinOverride(player, currencyId)
+    self._areaCoinOverride = self._areaCoinOverride or {}
+    self._areaCoinOverride[player] = currencyId
+end
+
 -- The mining coin of the player's current area (configs/areas.lua mining_currency).
 -- Fallback: grass_coins (the starter zone's coin) when the area is unknown.
 function RewardService:_resolveAreaCoin(player)
+    local override = self._areaCoinOverride and self._areaCoinOverride[player]
+    if override then
+        return override
+    end
     local areaId = player and player:GetAttribute("CurrentArea")
     local ok, areasConfig = pcall(function()
         return self._configLoader and self._configLoader:LoadConfig("areas")

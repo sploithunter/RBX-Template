@@ -113,6 +113,14 @@ return {
         vfx = { kind = "burst", color = { 80, 220, 210 } }, -- teal
     },
 
+    -- The Daily Reward zone auto-claim landed (server: DailyRewardZoneService). A
+    -- LINGERING ~8s float describing the reward (text = ctx.name, e.g. "Daily Reward!
+    -- +500 Earth Coins  ·  Streak 3"). Float-only on purpose — daily_claim above already
+    -- fires the sound + burst, so this just adds the readable description over the player.
+    daily_reward = {
+        float = { color = { 90, 230, 215 }, size = 420, seconds = 8 }, -- teal, lingers ~8s
+    },
+
     -- An escrow trade completed — fired to BOTH players (server: TradeService:_deliver).
     trade_complete = {
         sound = "celebratory_jingle",
