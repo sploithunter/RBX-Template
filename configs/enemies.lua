@@ -147,6 +147,9 @@ return {
             texture_asset = "rbxassetid://120154730842284",
             model_scale = 4,
             gait = { style = "hop", bob_height = 0.7, tilt_degrees = 6, stride_length = 5 },
+            -- RANGED: holds ~31 studs out and fires a dark plasma bolt (it doesn't close to bite).
+            attack_range = 34,
+            bolt_kind = "plasma",
             attack = { damage = 14, cadence = 1.6, sundering = 0 },
             drop_table = { grass_coins = 10, shadow_tokens = 1 },
         },
@@ -163,6 +166,9 @@ return {
             texture_asset = "rbxassetid://89093502801465",
             model_scale = 4,
             gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 10, stride_length = 4 },
+            -- RANGED: shorter reach than the crow, spits a venom (poison) bolt; tankier up close.
+            attack_range = 28,
+            bolt_kind = "poison",
             attack = { damage = 13, cadence = 1.5, sundering = 0 },
             drop_table = { grass_coins = 10, shadow_tokens = 2 },
         },

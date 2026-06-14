@@ -25,6 +25,7 @@ local Gait = require(ReplicatedStorage.Shared.Game.Gait)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
 local HitReact = require(ReplicatedStorage.Shared.Game.HitReact)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local RangedFX = require(ReplicatedStorage.Shared.Effects.RangedFX)
 
 local EnemyMotion = {}
 
@@ -113,6 +114,28 @@ function EnemyMotion.start()
             dx, dz = -lv.X, -lv.Z
         end
         HitReact.start(fs, os.clock(), dx, dz, math.random() < 0.5 and 1 or -1)
+    end)
+
+    -- RANGED enemy bolt: the server fires Combat_EnemyHit {enemy,target,kind,crit} on each ranged
+    -- swing (damage already applied server-side). Fly the matching projectile enemy->pet via the
+    -- shared RangedFX engine, themed by the enemy's bolt_kind (plasma/poison/frost/...). This is
+    -- what makes a "ranged" enemy read as ranged — it shoots instead of biting in your face.
+    local boltCfg = petCfg.ranged_bolt or {}
+    Signals.Combat_EnemyHit.OnClientEvent:Connect(function(data)
+        if type(data) ~= "table" then
+            return
+        end
+        local enemy, target = data.enemy, data.target
+        if typeof(enemy) ~= "Instance" or typeof(target) ~= "Instance" then
+            return
+        end
+        if not enemy.Parent or not target.Parent then
+            return
+        end
+        local kind = data.kind or boltCfg.kind or "plasma"
+        pcall(function()
+            RangedFX.Play(enemy, boltCfg, target, kind, data.crit == true)
+        end)
     end)
 
     RunService.RenderStepped:Connect(function(dt)

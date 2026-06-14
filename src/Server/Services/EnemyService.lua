@@ -971,10 +971,13 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     -- never re-pivots the model after spawn, so its live CFrame is client-owned for
     -- smooth rendering (EnemyMotion). entry.pos drives all server-side combat math.
     local ePos = entry.pos or model:GetPivot().Position
-    local atk = eng.attack_range or 11
     local perceptionRange = eng.perception_range or 70
     local leash = eng.leash_range or 90
     local def = self._enemiesConfig.enemies and self._enemiesConfig.enemies[entry.enemyId]
+    -- Per-enemy attack range: RANGED foes (def.attack_range, e.g. 30+) hold at distance and fire,
+    -- because the chase below stops at attack_range - attack_press. Melee/tank fall to the global
+    -- default and close to bite range. This is what makes the "ranged" role read as ranged.
+    local atk = (def and def.attack_range) or eng.attack_range or 11
     local pfs = self:_petFollowService()
 
     -- 1) PERCEPTION: while unaware, notice the nearest player. Within proximity_range it
@@ -1193,6 +1196,19 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
             or (player:GetAttribute("Level") or 1)
         self:_hitPet(biteTarget, def, now, eng, enemyLevel, petLevel)
         entry.nextAttack = now + ((def and def.attack and def.attack.cadence) or 1.5)
+        -- RANGED enemies fly a cosmetic bolt enemy->pet (damage is already applied above; the bolt
+        -- is the swing, like the pets' Combat_PetHit). Broadcast to ALL clients so everyone nearby
+        -- sees the volley (shared-world FX). Melee/tank skip it (they're in your face already).
+        if def and (def.role == "ranged" or def.bolt_kind) then
+            pcall(function()
+                Signals.Combat_EnemyHit:FireAllClients({
+                    enemy = model,
+                    target = biteTarget,
+                    kind = def.bolt_kind,
+                    crit = biteTarget:GetAttribute("LastHitCrit") == true,
+                })
+            end)
+        end
     end
 end
 
