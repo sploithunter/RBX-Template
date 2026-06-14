@@ -260,9 +260,10 @@ local TEST_CATEGORIES = {
             { name = "🐰 Spawn Jackalope (healer)", action = "spawn_enemy_rabid_bunny" },
             { name = "🐻 Spawn Raging Bear (tank)", action = "spawn_enemy_raging_bear" },
             -- Lava faction.
-            { name = "👹 Spawn Lava Imp (trash)", action = "spawn_enemy_lava_imp" },
-            { name = "🔥 Spawn Ember Brute (mid)", action = "spawn_enemy_ember_brute" },
-            { name = "💀 Spawn Infernal Boss", action = "spawn_enemy_infernal_boss" },
+            { name = "🦎 Spawn Cinder Whelp (melee)", action = "spawn_enemy_lava_imp" },
+            { name = "🦏 Spawn Ember Brute (tank)", action = "spawn_enemy_ember_brute" },
+            { name = "🦋 Spawn Ember Moth (healer)", action = "spawn_enemy_ember_acolyte" },
+            { name = "🐉 Spawn Magma Wyrm (boss)", action = "spawn_enemy_infernal_boss" },
         },
         customInputs = {
             {

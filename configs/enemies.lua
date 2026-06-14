@@ -179,17 +179,22 @@ return {
             drop_table = { grass_coins = 35, shadow_tokens = 4, rare_drop_chance = 0.12 },
         },
 
-        -- ============================ LAVA / HELL FACTION (existing) ============================
+        -- ============================ LAVA / HELL FACTION ============================
+        -- Now fully MODELED (self-serve mesh+texture, group 15872767 — see scripts/pet_mesh_ids.json):
+        -- a role-balanced beast pack mirroring Earth — melee=cinder_whelp · tank=ember_brute(rhino) ·
+        -- ranged TBD · support=ember_acolyte(moth) · boss=infernal_boss(wyrm). All non-humanoid by
+        -- design (semi-humanoid look is reserved for Creator pets). texture_asset = the resolved IMAGE
+        -- id, not the Decal id the upload returns (else grey). See scripts/pet_pipeline.md.
         lava_imp = {
             role = "melee",
             hp = 1200,
-            display_name = "Lava Imp",
+            display_name = "Cinder Whelp", -- the fast molten salamander (Lava's mirror of the dog)
             tier = "trash_mob",
             move_speed = 15,
             armor = 0,
-            -- No model: Lava faction is unmodeled, so the service builds a procedural placeholder
-            -- block. (It USED to borrow the bunny art 110801864701636 — but that asset is now the
-            -- rabid_bunny support enemy, so spawning an imp looked like spawning rabbits. Jason.)
+            mesh_asset = "rbxassetid://131428937593668",
+            texture_asset = "rbxassetid://113493690033768",
+            model_scale = 4,
             gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 16, stride_length = 3.5 },
             attack = { damage = 10, cadence = 1.5, sundering = 0 },
             drop_table = { lava_coins = 8, shadow_tokens = 1 },
@@ -197,10 +202,13 @@ return {
         ember_brute = {
             role = "tank",
             hp = 4000,
-            display_name = "Ember Brute",
+            display_name = "Ember Brute", -- the molten rhino: obsidian plates, lava cracks, horned charge
             tier = "mid_tier",
             move_speed = 10, -- heavier, slower
             armor = 80, -- tougher: ~44% pet-damage reduction at k=100
+            mesh_asset = "rbxassetid://80444941740535",
+            texture_asset = "rbxassetid://84646732890800",
+            model_scale = 5,
             gait = { style = "march", bob_height = 0.9, tilt_degrees = 4, stride_length = 7 },
             -- A Sundering attacker: drains player Focus on hit (Feature 12).
             attack = { damage = 25, cadence = 2.0, sundering = 20 },
@@ -209,10 +217,13 @@ return {
         ember_acolyte = {
             role = "support",
             hp = 2000,
-            display_name = "Ember Acolyte",
+            display_name = "Ember Moth", -- the drifting lava moth healer (Lava's mirror of the jackalope)
             tier = "trash_mob",
             move_speed = 13,
             armor = 0,
+            mesh_asset = "rbxassetid://119015123255528",
+            texture_asset = "rbxassetid://129651164618641",
+            model_scale = 4,
             attack = { damage = 8, cadence = 2.0, sundering = 0 },
             -- Enemy HEALER: restores HP to the most-hurt nearby enemy (mirrors the support role).
             auto_heal = { interval = 2.0, amount = 120, range = 45 },
@@ -235,10 +246,13 @@ return {
         infernal_boss = {
             role = "tank",
             hp = 50000,
-            display_name = "Infernal Boss",
+            display_name = "Magma Wyrm", -- the serpentine lava dragon: the Lava apex (mirror of dire_bear)
             tier = "boss",
             move_speed = 8, -- lumbering
             armor = 200, -- heavily armored (~67% reduction at k=100)
+            mesh_asset = "rbxassetid://73070415401707",
+            texture_asset = "rbxassetid://120005508573070",
+            model_scale = 11, -- boss-scale, like dire_bear
             gait = { style = "march", bob_height = 1.3, tilt_degrees = 3, stride_length = 10 },
             attack = { damage = 60, cadence = 2.5, sundering = 40 },
             drop_table = { lava_coins = 200, shadow_tokens = 25 },

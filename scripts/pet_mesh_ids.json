@@ -8,5 +8,37 @@
     "nativeStuds": "1.47 x 1.91 x 1.84",
     "wiredInto": "configs/enemies.lua rabid_bunny",
     "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "cinder_whelp": {
+    "modelAssetId": "88693448235505",
+    "meshId": "rbxassetid://131428937593668",
+    "textureDecalId": "103301304669240",
+    "imageId": "rbxassetid://113493690033768",
+    "wiredInto": "configs/enemies.lua lava_imp (display: Cinder Whelp)",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "ember_moth": {
+    "modelAssetId": "84908002147466",
+    "meshId": "rbxassetid://119015123255528",
+    "textureDecalId": "92236723719121",
+    "imageId": "rbxassetid://129651164618641",
+    "wiredInto": "configs/enemies.lua ember_acolyte (display: Ember Moth)",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "molten_rhino": {
+    "modelAssetId": "94334612690527",
+    "meshId": "rbxassetid://80444941740535",
+    "textureDecalId": "112831001070520",
+    "imageId": "rbxassetid://84646732890800",
+    "wiredInto": "configs/enemies.lua ember_brute (display: Ember Brute)",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "magma_wyrm": {
+    "modelAssetId": "123379592825207",
+    "meshId": "rbxassetid://73070415401707",
+    "textureDecalId": "78725577938916",
+    "imageId": "rbxassetid://120005508573070",
+    "wiredInto": "configs/enemies.lua infernal_boss (display: Magma Wyrm)",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
   }
 }
