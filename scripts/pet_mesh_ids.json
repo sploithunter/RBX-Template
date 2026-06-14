@@ -1,0 +1,12 @@
+{
+  "_comment": "Self-serve mesh+texture uploads (Open Simulator group 15872767). meshId = raw MeshId inside the uploaded Model; imageId = resolved Image id for MeshPart.TextureID (NOT the Decal id). See scripts/pet_pipeline.md.",
+  "jackalope": {
+    "modelAssetId": "92963403852789",
+    "meshId": "rbxassetid://111943527947344",
+    "textureDecalId": "80470033415118",
+    "imageId": "rbxassetid://71212761122379",
+    "nativeStuds": "1.47 x 1.91 x 1.84",
+    "wiredInto": "configs/enemies.lua rabid_bunny",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
+  }
+}

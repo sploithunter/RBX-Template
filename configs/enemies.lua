@@ -139,8 +139,12 @@ return {
             attack = { damage = 13, cadence = 1.5, sundering = 0 },
             drop_table = { grass_coins = 10, shadow_tokens = 2 },
         },
-        -- SUPPORT — the rabid bunny (the old "imp" art, 110801864701636, repurposed): an enemy
-        -- HEALER that mends the most-hurt nearby enemy. Kill it first to flip the fight. Real art NOW.
+        -- SUPPORT — the rabid bunny, now wearing its REAL art: the "Midnight Horned Rabbit"
+        -- jackalope (a dark, antlered hare). An enemy HEALER that mends the most-hurt nearby enemy;
+        -- kill it first to flip the fight. Mesh + texture combined at spawn via CreateMeshPartAsync
+        -- (the gem pattern) — uploaded self-serve to the Open Simulator group (see the manifest /
+        -- scripts/pet_pipeline.md). NB: texture_asset is the resolved IMAGE id, not the Decal id the
+        -- Open Cloud upload returns (MeshPart.TextureID needs the underlying image, else it renders grey).
         rabid_bunny = {
             role = "support",
             hp = 1100,
@@ -148,9 +152,9 @@ return {
             tier = "trash_mob",
             move_speed = 13,
             armor = 0,
-            model_asset = 110801864701636,
+            mesh_asset = "rbxassetid://111943527947344",
+            texture_asset = "rbxassetid://71212761122379",
             model_scale = 4,
-            needs_primary_part = true,
             gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 16, stride_length = 3.5 },
             attack = { damage = 6, cadence = 2.0, sundering = 0 },
             auto_heal = { interval = 2.5, amount = 100, range = 45 },
