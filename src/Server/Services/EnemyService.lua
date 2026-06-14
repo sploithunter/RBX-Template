@@ -1861,6 +1861,10 @@ function EnemyService:_enemyHealPass(now)
                     local before = target:GetAttribute("HP") or 0
                     local after = math.min(maxhp, before + heal.amount)
                     target:SetAttribute("HP", after)
+                    -- Same heal attribute pets carry (SquadHud reads HealFxUntil) — so the EnemyHud
+                    -- lights a HEAL badge on the mended foe via the SHARED StatusBadges path. The
+                    -- enemy speaks the pet status vocabulary; one renderer reads both.
+                    target:SetAttribute("HealFxUntil", os.time() + 2)
                     self:_spawnHealVisual(target) -- works on any model with a PrimaryPart
                     -- Green heal number to ALL clients, so you SEE the enemy healer working
                     -- (the "kill the healer to flip the fight" tell).

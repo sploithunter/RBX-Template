@@ -24,6 +24,8 @@ local Workspace = game:GetService("Workspace")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local HudCard = require(script.Parent.Parent.UI.HudCard)
+local StatusBadges = require(script.Parent.Parent.UI.StatusBadges)
+local POWER_ICONS = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_icons"))
 
 local EnemyHud = {}
 
@@ -31,6 +33,36 @@ local localPlayer = Players.LocalPlayer
 
 -- Threat chip colour (red) — the enemy counterpart to the pet's element disc.
 local THREAT_RED = Color3.fromRGB(200, 64, 64)
+
+-- Status badges shown on an enemy card — the SAME engine + chrome the squad cards use (the row
+-- grows leftward out of the card's inner edge, "out to the left"). Enemies carry the pet status
+-- vocabulary, so this is just a different descriptor table over the same renderer:
+--   HEAL — an enemy SUPPORT cast: the rabid_bunny/acolyte mending a hurt ally (HealFxUntil). The
+--          "kill the healer to flip the fight" tell, now on the card (matches the world heal splash).
+--   HEX  — YOUR debuff landing on the foe (DebuffUntil; set by every vulnerable/sunder/expose power),
+--          a timed countdown so you can read when it lapses.
+-- New enemy casts drop in as one more row here — no new rendering code.
+local ENEMY_EFFECTS = {
+    {
+        key = "heal",
+        source = "enemy",
+        untilAttr = "HealFxUntil",
+        pulse = true,
+        color = Color3.fromRGB(90, 210, 110),
+        label = "HEAL",
+        icon = POWER_ICONS.discFor("earth", "plus"), -- green heal cross (same disc the pets show)
+    },
+    {
+        key = "hex",
+        source = "enemy",
+        untilAttr = "DebuffUntil",
+        color = Color3.fromRGB(175, 110, 215),
+        label = "HEX",
+    },
+}
+-- Expiry-blink cadence (matches SquadHud's defaults; a near-expiry timed badge flashes).
+local BLINK_LEAD = 5
+local BLINK_PERIOD = 0.5
 -- Don't paper the screen in a big pull: show the nearest N foes (the ones you can act on).
 local MAX_CARDS = 8
 -- Big-pull compaction: cards render full size up to DENSITY_FULL, then the whole strip scales
@@ -253,6 +285,13 @@ function EnemyHud.start()
             -- The indirect target (player → selected pet → THIS enemy) wears the amber border,
             -- matching the world target highlight; every other foe shows the idle outline.
             HudCard.applyHighlight(card, (e.bid == focusBid) and "target" or nil)
+            -- Buff/debuff badges off the enemy's attributes — shared StatusBadges engine, growing
+            -- leftward from the card's inner edge (a healed foe lights HEAL, a debuffed foe HEX).
+            StatusBadges.update(
+                card,
+                StatusBadges.resolveEffects(ENEMY_EFFECTS, { enemy = m }, os.time()),
+                BLINK_LEAD
+            )
         end
         for bid, card in pairs(cards) do
             if not present[bid] then
@@ -260,6 +299,11 @@ function EnemyHud.start()
                 cards[bid] = nil
             end
         end
+    end)
+
+    -- Expiry blink: every frame (not the 0.2s reconcile) for a smooth flash — same engine as SquadHud.
+    RunService.RenderStepped:Connect(function()
+        StatusBadges.applyBlink(cards, BLINK_PERIOD)
     end)
 end
 

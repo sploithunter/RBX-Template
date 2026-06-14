@@ -29,6 +29,7 @@ local POWER_ICONS = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChi
 local PET_ROLES = require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
 local PetBadge = require(script.Parent.Parent.UI.PetBadge)
 local HudCard = require(script.Parent.Parent.UI.HudCard)
+local StatusBadges = require(script.Parent.Parent.UI.StatusBadges)
 
 local SquadHud = {}
 
@@ -283,212 +284,8 @@ local PET_EFFECTS = {
     },
 }
 
-local function activeEffectsFor(pet, player, now)
-    local out = {}
-    for idx, e in ipairs(PET_EFFECTS) do
-        local src = (e.source == "player") and player or pet
-        -- Resolve the FULL badge (element disc + tinted ring) from the POWER that applied this buff
-        -- so it matches the hotbar / role badge / world shield; fall back to the static icon (no
-        -- ring) when nothing tagged it.
-        local icon = e.icon
-        local ringImg, ringColor
-        if e.powerIdAttr then
-            local badge = PetBadge.forPower(src:GetAttribute(e.powerIdAttr))
-            local disc = badge and POWER_ICONS.discFor(badge.element, badge.symbol)
-            if disc then
-                icon = disc
-                ringImg = POWER_ICONS.rings[badge.ring] or POWER_ICONS.rings.aura
-                ringColor = POWER_ICONS.elementColor3(badge.element, "dark")
-            end
-        end
-        if e.untilAttr then
-            local until_ = src:GetAttribute(e.untilAttr) or 0
-            if until_ > now then
-                out[#out + 1] = {
-                    key = e.key,
-                    color = e.color,
-                    label = e.label,
-                    -- Pulse/steady effects show no countdown; timed buffs do.
-                    timer = (e.pulse or e.steady) and "" or (math.ceil(until_ - now) .. "s"),
-                    icon = icon,
-                    ringImg = ringImg,
-                    ringColor = ringColor,
-                    steady = e.steady, -- steady buffs never blink (continuously refreshed = permanent)
-                    remaining = until_ - now, -- seconds left (drives the expiry blink)
-                    order = idx, -- stable PET_EFFECTS position (steady badges sort by this, not time)
-                    -- # of same-kind sources stacked into this buff (e.g. 3 lava pets -> ATK x3) so the
-                    -- card can pile the badge + show "xN" (same buff stacks; different ones stay separate).
-                    stacks = e.stacksAttr and (src:GetAttribute(e.stacksAttr) or 1) or nil,
-                }
-            end
-        elseif e.poolAttr then
-            local v = src:GetAttribute(e.poolAttr) or 0
-            if v > 0 then
-                out[#out + 1] = {
-                    key = e.key,
-                    color = e.color,
-                    label = e.label,
-                    timer = tostring(math.floor(v)),
-                    icon = icon,
-                    ringImg = ringImg,
-                    ringColor = ringColor,
-                    order = idx,
-                }
-            end
-        end
-    end
-    return out
-end
-
--- A small status badge — one per buff INSTANCE (duplicates included). Positioned manually by
--- updateBadges so same-kind instances overlap by half (a coin-stack); each blinks on its own timer.
-local BADGE_PX = 30
-local function makeBadge(parent)
-    local f = Instance.new("Frame")
-    f.Size = UDim2.fromOffset(BADGE_PX, BADGE_PX)
-    f.BorderSizePixel = 0
-    f.ClipsDescendants = true -- crop the icon's zoomed-out transparent border
-    f.Parent = parent
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 6)
-    c.Parent = f
-    local icon = Instance.new("ImageLabel")
-    icon.Name = "Icon"
-    icon.BackgroundTransparency = 1
-    icon.AnchorPoint = Vector2.new(0.5, 0.5)
-    icon.Position = UDim2.fromScale(0.5, 0.5)
-    icon.ScaleType = Enum.ScaleType.Fit
-    icon.Size = UDim2.fromScale(1, 1) -- zoom set per-icon in updateBadges
-    icon.Image = ""
-    icon.Parent = f
-    -- Tinted element ring framing the disc (power-applied buffs only; hidden otherwise).
-    local ring = Instance.new("ImageLabel")
-    ring.Name = "Ring"
-    ring.BackgroundTransparency = 1
-    ring.AnchorPoint = Vector2.new(0.5, 0.5)
-    ring.Position = UDim2.fromScale(0.5, 0.5)
-    ring.Size = UDim2.fromScale(1, 1)
-    ring.ScaleType = Enum.ScaleType.Fit
-    ring.Image = ""
-    ring.Visible = false
-    ring.Parent = f
-    local label = Instance.new("TextLabel")
-    label.Name = "Label"
-    label.BackgroundTransparency = 1
-    label.Size = UDim2.new(1, 0, 0.6, 0)
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 9
-    label.TextColor3 = Color3.fromRGB(20, 22, 28)
-    label.Parent = f
-    local timer = Instance.new("TextLabel")
-    timer.Name = "Timer"
-    timer.BackgroundTransparency = 1
-    timer.Position = UDim2.fromScale(0, 0.55)
-    timer.Size = UDim2.new(1, 0, 0.45, 0)
-    timer.Font = Enum.Font.GothamBold
-    timer.TextSize = 9
-    timer.TextColor3 = Color3.fromRGB(20, 22, 28)
-    timer.Parent = f
-    return { frame = f, icon = icon, ring = ring, label = label, timer = timer }
-end
-
--- Under the GUI's Sibling ZIndexBehavior, a badge frame's ZIndex governs the whole badge vs its
--- sibling badges (descendants keep their own intra-badge order). A more-urgent (later) instance
--- gets a higher ZIndex so it draws OVER the coin it overlaps — its blink stays visible on top.
-
--- Reconcile a card's badges against the pet's active effects. Ordered so the SHORTEST
--- remaining sits leftmost (toward screen centre, most urgent): the row grows left under
--- HorizontalAlignment.Right, so a higher LayoutOrder = further left. The blink loop owns
--- live transparency (badges are never hidden/destroyed mid-blink, so the row never shifts).
-local BADGE_GAP = 3
-local function updateBadges(card, effects, blinkLead)
-    -- ONE badge per buff INSTANCE (duplicates included): N lava buffers -> N ATK badges; the renderer
-    -- is per-instance so distinct-expiry sources blink independently — only the coin within blinkLead
-    -- of dropping flashes, not the whole stack.
-    local instances = {}
-    for _, eff in ipairs(effects) do
-        local n = math.max(1, math.floor(eff.stacks or 1))
-        for k = 1, n do
-            instances[#instances + 1] = { eff = eff, k = k }
-        end
-    end
-    -- Order: TIMED by shortest-remaining toward the centre EDGE (most urgent leftmost); STEADY auras
-    -- hold a fixed slot by PET_EFFECTS index (no refresh jitter). Same-kind instances end up adjacent.
-    table.sort(instances, function(a, b)
-        local ae, be = a.eff, b.eff
-        local aSteady, bSteady = ae.steady or false, be.steady or false
-        if aSteady ~= bSteady then
-            return bSteady -- timed first -> leftmost edge
-        end
-        if aSteady then
-            if (ae.order or 0) ~= (be.order or 0) then
-                return (ae.order or 0) < (be.order or 0)
-            end
-            return a.k < b.k
-        end
-        if (ae.remaining or math.huge) ~= (be.remaining or math.huge) then
-            return (ae.remaining or math.huge) > (be.remaining or math.huge) -- shortest -> leftmost
-        end
-        return a.k < b.k
-    end)
-
-    local seen = {}
-    -- Position manually: adjacent DUPLICATES (same kind) overlap by HALF a badge (a coin-stack);
-    -- different kinds get the normal gap. Lay out right(least urgent)->left(most urgent); the row is
-    -- anchored at the card's left edge and grows toward screen centre.
-    local OVERLAP = math.floor(BADGE_PX / 2)
-    local rightX = 0
-    for i, inst in ipairs(instances) do
-        local eff = inst.eff
-        local id = eff.key .. "#" .. inst.k
-        seen[id] = true
-        local b = card.badges[id]
-        if not b then
-            b = makeBadge(card.status)
-            b.frame.Name = id
-            card.badges[id] = b
-        end
-        -- per-INSTANCE blink: only THIS coin flashes when IT is within blinkLead of expiry.
-        b.blinking = not eff.steady and eff.remaining ~= nil and eff.remaining <= (blinkLead or 0)
-        local hasIcon = eff.icon and eff.icon ~= ""
-        b.frame.BackgroundColor3 = eff.color
-        b.bgBase = hasIcon and 1 or 0 -- icon badges: transparent backing (no square chip behind the disc)
-        b.label.Text = hasIcon and "" or eff.label
-        b.icon.Image = eff.icon or ""
-        if eff.ringImg then
-            b.ring.Image = eff.ringImg
-            b.ring.ImageColor3 = eff.ringColor or Color3.fromRGB(70, 76, 96)
-            b.ring.Visible = true
-            b.icon.Size = UDim2.fromScale(0.72, 0.72)
-        else
-            b.ring.Visible = false
-            if hasIcon then
-                local s = POWER_ICONS.scaleFor(eff.icon) -- zoom past the art's transparent border
-                b.icon.Size = UDim2.fromScale(s, s)
-            end
-        end
-        -- Only the FRONT (most-urgent) coin of a same-kind stack prints the countdown, so the pile
-        -- doesn't stamp the same number on every coin underneath.
-        local nextInst = instances[i + 1]
-        local frontOfStack = not (nextInst and nextInst.eff.key == eff.key)
-        b.timer.Text = (frontOfStack and eff.timer) or ""
-        -- advance the right-edge offset: overlap-by-half when this instance duplicates the previous.
-        local prev = instances[i - 1]
-        if prev then
-            rightX = rightX + ((prev.eff.key == eff.key) and OVERLAP or (BADGE_PX + BADGE_GAP))
-        end
-        b.frame.AnchorPoint = Vector2.new(1, 0.5)
-        b.frame.Position = UDim2.new(1, -rightX, 0.5, 0)
-        b.frame.ZIndex = 2 + i -- later = more urgent (leftmost) = on top, so its blink shows
-    end
-    card.status.Size = UDim2.fromOffset(rightX + BADGE_PX, BADGE_PX)
-    for key, b in pairs(card.badges) do
-        if not seen[key] then
-            b.frame:Destroy()
-            card.badges[key] = nil
-        end
-    end
-end
+-- (badge engine extracted to src/Client/UI/StatusBadges.lua — shared with EnemyHud). Pet effects
+-- resolve against the pet (most attrs) + the player (squad-wide buffs) via the sources map below.
 
 function SquadHud.start()
     local config = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("combat"))
@@ -927,7 +724,15 @@ function SquadHud.start()
                     -- Selection = an OUTLINE only (the gems-pill look): the dark bar stays dark, just
                     -- the stroke pops to bright blue. No background colour change (that swamped it).
                     HudCard.applyHighlight(card, (selectedSlot == s.slot) and "select" or nil)
-                    updateBadges(card, activeEffectsFor(pet, localPlayer, os.time()), blinkLead)
+                    StatusBadges.update(
+                        card,
+                        StatusBadges.resolveEffects(
+                            PET_EFFECTS,
+                            { pet = pet, player = localPlayer },
+                            os.time()
+                        ),
+                        blinkLead
+                    )
                 end
             end
         end
@@ -944,21 +749,9 @@ function SquadHud.start()
         end
     end)
 
-    -- Expiry blink: runs every frame (not the 0.2s reconcile) so the flash is smooth.
-    -- Blinks via TRANSPARENCY (not Visible) so the badge keeps its layout slot — the row
-    -- doesn't re-pack/shift each blink. Badges flagged `blinking` fade on a tuned cycle.
+    -- Expiry blink: runs every frame (not the 0.2s reconcile) so the flash is smooth (shared engine).
     RunService.RenderStepped:Connect(function()
-        local on = (os.clock() % blinkPeriod) < (blinkPeriod * 0.5)
-        for _, card in pairs(cards) do
-            for _, b in pairs(card.badges) do
-                local hidden = b.blinking and not on
-                b.icon.ImageTransparency = hidden and 1 or 0
-                b.ring.ImageTransparency = hidden and 1 or 0
-                b.label.TextTransparency = hidden and 1 or 0
-                b.timer.TextTransparency = hidden and 1 or 0
-                b.frame.BackgroundTransparency = hidden and 1 or (b.bgBase or 0)
-            end
-        end
+        StatusBadges.applyBlink(cards, blinkPeriod)
     end)
 end
 
