@@ -83,11 +83,20 @@ local function indirectTargetBid()
     return nil
 end
 
--- Every enemy aggro'd onto MY squad, nearest first. An enemy counts as "mine" when its server-
--- mirrored AggroOwner is me OR one of my pets is currently biting it (covers the assist-sniper
--- case where a pet hits a foe before its aggro settles). Loitering enemies that haven't engaged
--- my squad stay off the strip — the HUD is the FIGHT, not the neighbourhood.
-local function engagedEnemies()
+-- How long an enemy's card lingers after it stops reading as "engaged" (seconds). The server
+-- clears an enemy's aggro the instant its threat decays below the disengage line, then re-acquires
+-- it on the next perception tick (~0.75s) — so AggroOwner flickers off/on for every foe the squad
+-- isn't focus-firing. This grace rides through that blink so all aggro'd enemies stay on the strip,
+-- and a card only drops when the enemy truly leaves (dies / leashes out for good).
+local ENGAGE_GRACE = 3
+local engagedUntil = {} -- bid -> os.clock() expiry (module-level: one local player)
+
+-- Every enemy aggro'd onto MY squad, nearest first. An enemy is "engaged" when its server-mirrored
+-- AggroOwner is me OR one of my pets is biting it; once engaged it stays on the strip for
+-- ENGAGE_GRACE seconds (flicker-proof). Loitering enemies that never engaged my squad stay off it —
+-- the HUD is the FIGHT, not the neighbourhood. A card drops the moment the enemy dies/despawns
+-- (gated on the live model), regardless of grace.
+local function engagedEnemies(now)
     local char = localPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local origin = hrp and hrp.Position
@@ -105,22 +114,35 @@ local function engagedEnemies()
         end
     end
 
-    local out = {}
+    local out, liveBids = {}, {}
     local enemies = enemiesFolder()
     if enemies then
         for _, m in ipairs(enemies:GetChildren()) do
             if m:IsA("Model") and m.PrimaryPart and (m:GetAttribute("HP") or 0) > 0 then
-                local bid = m:FindFirstChild("BreakableID")
-                local mine = bid
-                    and (m:GetAttribute("AggroOwner") == localPlayer.Name or petTargets[bid.Value])
-                if mine then
-                    out[#out + 1] = {
-                        bid = bid.Value,
-                        model = m,
-                        dist = origin and (m.PrimaryPart.Position - origin).Magnitude or 0,
-                    }
+                local bidObj = m:FindFirstChild("BreakableID")
+                if bidObj then
+                    local bid = bidObj.Value
+                    liveBids[bid] = true
+                    -- engaged RIGHT NOW → refresh the grace window
+                    if m:GetAttribute("AggroOwner") == localPlayer.Name or petTargets[bid] then
+                        engagedUntil[bid] = now + ENGAGE_GRACE
+                    end
+                    -- shown if engaged within the grace window (rides the aggro flicker)
+                    if (engagedUntil[bid] or 0) > now then
+                        out[#out + 1] = {
+                            bid = bid,
+                            model = m,
+                            dist = origin and (m.PrimaryPart.Position - origin).Magnitude or 0,
+                        }
+                    end
                 end
             end
+        end
+    end
+    -- forget enemies that have died/despawned so their grace can't resurrect a card
+    for bid in pairs(engagedUntil) do
+        if not liveBids[bid] then
+            engagedUntil[bid] = nil
         end
     end
     table.sort(out, function(a, b)
@@ -181,7 +203,7 @@ function EnemyHud.start()
         end
         accum = 0
 
-        local list = engagedEnemies()
+        local list = engagedEnemies(os.clock())
         local focusBid = indirectTargetBid()
         local present = {}
         for rank, e in ipairs(list) do
