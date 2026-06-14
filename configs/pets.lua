@@ -1118,7 +1118,11 @@ local petConfig = {
             display_name = "Colorado",
             category = "creator",
             rarity = "exclusive",
-            base_power = 100,
+            -- Premium exclusive, ~1.2x the normal ceiling (42) — the best ROLLABLE pet, not a god.
+            -- Was 100 (~7x a starter): power feeds damage AND the endurance pool, so a too-high
+            -- base made Wild Colorado out-nuke AND out-tank everything at low level (three bears
+            -- couldn't threaten him). The colorado_creator APEX stays 100 (eternal, the ceiling).
+            base_power = 50,
             base_health = 500,
 
             -- Imported avatar-like models often arrive with different facing/scale.
