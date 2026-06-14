@@ -1900,7 +1900,9 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
 
     -- Admin-spawned enemies engage the spawning player immediately (skip the
     -- perception roll — the combat tick handles chase + threat targeting from here).
-    self._enemies[targetId].aggroPlayerName = player.Name
+    -- Via the helper so the replicated AggroOwner attribute is stamped too (else the
+    -- enemy chases + attacks but never shows on the client EnemyHud).
+    self:_setAggroOwner(self._enemies[targetId], player.Name)
     if self._logger then
         self._logger:Info("Enemy spawned", { enemyId = enemyId, targetId = targetId, hp = def.hp })
     end
