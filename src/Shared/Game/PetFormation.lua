@@ -78,21 +78,23 @@ end
 --   "pincer"      — two arcs clamping the target from opposite sides, squeezing in/out
 --   "firing_line" — a row on one side facing the target, staggered recoil (a volley)
 --   "swarm"       — a deterministic jitter cloud buzzing around the target
--- Resolve which attack STYLE a single pet uses, layered (most specific wins):
---   1. playerOverride — the PetAttackStyle attribute forces ONE style on the whole squad (testing).
---   2. speciesStyle   — a per-pet exception (e.g. an agile-tank polar bear), nil for most.
---   3. role style     — when the target-type's mode is "individual", the pet's role decides
---                       (attack.role_styles[role]); each role fights in character.
---   4. team style     — when the mode is "team" (or nothing resolves), everyone shares attack.style.
--- `isCombat` picks the mode lane (attack.mode.combat vs attack.mode.mining), so the squad can farm
--- as a "team" cluster and then break into individual role positions the moment a fight starts. Pure.
+-- Resolve which attack STYLE a single pet uses.
+--   COMBAT enters its own "combat mode": the player's SAVED settings (their PetAttackStyle /
+--   mining-formation pick) are OVERRIDDEN, and the squad runs the per-role styles — tank plants,
+--   blaster lines up, melee weaves (attack.role_styles[role], with a per-species exception). Jason:
+--   "during combat all saved settings get overridden and it goes into combat mode." (We may later
+--   let saved prefs drive combat too; for now combat owns it.)
+--   FARMING uses the player's pick: their saved PetAttackStyle is their mining formation, falling
+--   back to the team style.
+-- `isCombat` picks the lane (attack.mode.combat vs attack.mode.mining). Pure.
 function PetFormation.resolveStyle(attack, role, isCombat, playerOverride, speciesStyle)
     attack = attack or {}
-    if playerOverride and playerOverride ~= "" then
-        return playerOverride
-    end
     local modeKey = isCombat and "combat" or "mining"
     local mode = (attack.mode and attack.mode[modeKey]) or "team"
+    -- Mining only: the player's saved formation pick wins (ignored in combat — see above).
+    if not isCombat and playerOverride and playerOverride ~= "" then
+        return playerOverride
+    end
     if mode == "individual" then
         return speciesStyle
             or (attack.role_styles and attack.role_styles[role])

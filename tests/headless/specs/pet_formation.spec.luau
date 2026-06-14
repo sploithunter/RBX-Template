@@ -399,17 +399,25 @@ return function()
             expect(PetFormation.resolveStyle(attack, "control", true)).to.equal("orbit")
         end)
 
-        it("player override force-wins over mode + role", function()
-            expect(PetFormation.resolveStyle(attack, "tank", true, "swarm")).to.equal("swarm")
+        it("player override applies while MINING (their saved farm formation)", function()
             expect(PetFormation.resolveStyle(attack, "ranged", false, "swarm")).to.equal("swarm")
+            expect(PetFormation.resolveStyle(attack, "tank", false, "swarm")).to.equal("swarm")
         end)
 
-        it("species override beats role (but not the player override)", function()
+        it("player override is IGNORED in combat (combat mode owns it -> per-role)", function()
+            -- a saved "swarm" mining pref does not leak into a fight; the tank still plants
+            expect(PetFormation.resolveStyle(attack, "tank", true, "swarm")).to.equal("static_ring")
+            expect(PetFormation.resolveStyle(attack, "ranged", true, "swarm")).to.equal(
+                "firing_line"
+            )
+        end)
+
+        it("species override beats role in combat (override can't reach combat anyway)", function()
             expect(PetFormation.resolveStyle(attack, "tank", true, nil, "spiral")).to.equal(
                 "spiral"
             )
             expect(PetFormation.resolveStyle(attack, "tank", true, "swarm", "spiral")).to.equal(
-                "swarm"
+                "spiral"
             )
         end)
 
