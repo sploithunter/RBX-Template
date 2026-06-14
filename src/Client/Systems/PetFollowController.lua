@@ -617,10 +617,11 @@ function PetFollowController.start()
             applyMotion(model, cleanPivot, stepDist, anim)
         end
 
-        -- Full attack config (so every style's params reach attackOffset) with the player's
-        -- saved/live PetAttackStyle override.
+        -- Full attack config (so every style's params reach attackOffset). The per-pet STYLE is
+        -- resolved in the group loop below (role-driven in "individual" mode, shared in "team");
+        -- a PetAttackStyle attribute still force-overrides the whole squad for live testing.
         local attackCfg = table.clone(config.attack)
-        attackCfg.style = localPlayer:GetAttribute("PetAttackStyle") or config.attack.style
+        local styleOverride = localPlayer:GetAttribute("PetAttackStyle")
 
         local groups = {} -- id -> { center, pets = {} }   (melee/tank: orbit the target)
         local followers = {}
@@ -754,6 +755,14 @@ function PetFollowController.start()
             end)
             local gcount = #g.pets
             for gi, pet in ipairs(g.pets) do
+                -- per-pet style: role-driven in "individual" mode, team-shared otherwise (g.isEnemy
+                -- picks the combat vs mining mode lane). Mutating .style is cheap — no per-frame alloc.
+                attackCfg.style = PetFormation.resolveStyle(
+                    config.attack,
+                    petRoleId(pet),
+                    g.isEnemy,
+                    styleOverride
+                )
                 local off = PetFormation.attackOffset(gi, gcount, phase, attackCfg)
                 -- Role standoff: ranged/support hold further out (push the slot radially
                 -- away from the target) so melee crowds in and ranged kites at distance.

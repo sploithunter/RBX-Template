@@ -78,6 +78,30 @@ end
 --   "pincer"      — two arcs clamping the target from opposite sides, squeezing in/out
 --   "firing_line" — a row on one side facing the target, staggered recoil (a volley)
 --   "swarm"       — a deterministic jitter cloud buzzing around the target
+-- Resolve which attack STYLE a single pet uses, layered (most specific wins):
+--   1. playerOverride — the PetAttackStyle attribute forces ONE style on the whole squad (testing).
+--   2. speciesStyle   — a per-pet exception (e.g. an agile-tank polar bear), nil for most.
+--   3. role style     — when the target-type's mode is "individual", the pet's role decides
+--                       (attack.role_styles[role]); each role fights in character.
+--   4. team style     — when the mode is "team" (or nothing resolves), everyone shares attack.style.
+-- `isCombat` picks the mode lane (attack.mode.combat vs attack.mode.mining), so the squad can farm
+-- as a "team" cluster and then break into individual role positions the moment a fight starts. Pure.
+function PetFormation.resolveStyle(attack, role, isCombat, playerOverride, speciesStyle)
+    attack = attack or {}
+    if playerOverride and playerOverride ~= "" then
+        return playerOverride
+    end
+    local modeKey = isCombat and "combat" or "mining"
+    local mode = (attack.mode and attack.mode[modeKey]) or "team"
+    if mode == "individual" then
+        return speciesStyle
+            or (attack.role_styles and attack.role_styles[role])
+            or attack.style
+            or "orbit"
+    end
+    return attack.style or "orbit"
+end
+
 function PetFormation.attackOffset(index, count, phase, attack)
     local n = math.max(count, 1)
     local i = index - 1

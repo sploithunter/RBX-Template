@@ -102,7 +102,21 @@ return {
     -- (No distance leash: AutoTargetService owns target selection + range; the pet clears its
     --  target only when the breakable is mined out, like the legacy.)
     attack = {
-        style = "orbit",
+        style = "orbit", -- the TEAM style: used when `mode` (below) is "team", and as fallback
+        -- mode = how the squad arranges, per target type (PetFormation.resolveStyle):
+        --   "team"       — every pet shares `style` (one shared formation, the classic look)
+        --   "individual" — each pet uses its ROLE's style from `role_styles` (fights in character)
+        -- Starting split (Jason): farm as a team cluster, then break into role positions in a fight.
+        mode = { mining = "team", combat = "individual" },
+        -- Per-role attack styles for "individual" mode. Role = PetRole / pet_roles.by_type.
+        -- (A per-species override + the PetAttackStyle player attribute both still win over this.)
+        role_styles = {
+            tank = "static_ring", -- a wall holds the line, doesn't pirouette
+            melee = "lunge", -- gets in close, jabs in and out
+            ranged = "firing_line", -- stands back and volleys (blaster)
+            support = "orbit", -- weaves around the squad
+            control = "pincer", -- flanks to set up debuffs
+        },
         ring_radius = 6,
         ring_height = 3,
         orbit_speed = 2.5, -- radians/sec wheel spin (orbit)

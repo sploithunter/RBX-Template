@@ -376,4 +376,45 @@ return function()
             expect(PetFormation.inMiningRange(50, nil)).to.equal(true)
         end)
     end)
+
+    describe("PetFormation.resolveStyle (per-role attack style)", function()
+        local attack = {
+            style = "orbit",
+            mode = { mining = "team", combat = "individual" },
+            role_styles = { tank = "static_ring", ranged = "firing_line", melee = "lunge" },
+        }
+
+        it("uses the shared team style in team mode (e.g. mining)", function()
+            expect(PetFormation.resolveStyle(attack, "tank", false)).to.equal("orbit")
+            expect(PetFormation.resolveStyle(attack, "ranged", false)).to.equal("orbit")
+        end)
+
+        it("uses the role's style in individual mode (e.g. combat)", function()
+            expect(PetFormation.resolveStyle(attack, "tank", true)).to.equal("static_ring")
+            expect(PetFormation.resolveStyle(attack, "ranged", true)).to.equal("firing_line")
+            expect(PetFormation.resolveStyle(attack, "melee", true)).to.equal("lunge")
+        end)
+
+        it("falls back to the team style for a role with no mapping", function()
+            expect(PetFormation.resolveStyle(attack, "control", true)).to.equal("orbit")
+        end)
+
+        it("player override force-wins over mode + role", function()
+            expect(PetFormation.resolveStyle(attack, "tank", true, "swarm")).to.equal("swarm")
+            expect(PetFormation.resolveStyle(attack, "ranged", false, "swarm")).to.equal("swarm")
+        end)
+
+        it("species override beats role (but not the player override)", function()
+            expect(PetFormation.resolveStyle(attack, "tank", true, nil, "spiral")).to.equal(
+                "spiral"
+            )
+            expect(PetFormation.resolveStyle(attack, "tank", true, "swarm", "spiral")).to.equal(
+                "swarm"
+            )
+        end)
+
+        it("defaults to orbit with no config", function()
+            expect(PetFormation.resolveStyle(nil, "tank", true)).to.equal("orbit")
+        end)
+    end)
 end
