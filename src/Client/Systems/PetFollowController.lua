@@ -820,6 +820,21 @@ function PetFollowController.start()
                         off = { x = pushed.X, y = off.y, z = pushed.Z }
                     end
                 end
+                -- Orient the attack ring toward the PLAYER (combat). The wheel's angle-0 is world
+                -- +x, so a lone attacker always sat on the +x side of its target → the enemy chased
+                -- it that way and the pair walked the same compass direction off the map no matter
+                -- where it spawned. Rotating the offset so angle-0 points target->player makes pets
+                -- engage from YOUR side and draws enemies back toward you (the on-map anchor).
+                if g.isEnemy then
+                    local toP =
+                        Vector3.new(cf.Position.X - g.center.X, 0, cf.Position.Z - g.center.Z)
+                    if toP.Magnitude > 0.01 then
+                        local a = math.atan2(toP.Z, toP.X)
+                        local ca, sa = math.cos(a), math.sin(a)
+                        off =
+                            { x = off.x * ca - off.z * sa, y = off.y, z = off.x * sa + off.z * ca }
+                    end
+                end
                 local target = g.center + Vector3.new(off.x, off.y, off.z)
                 -- Map clamp: if the slot is inside a wall/rock, hold the pet's current (already-clear)
                 -- spot instead of marching into geometry / off the map. Only enemy fights can drift
