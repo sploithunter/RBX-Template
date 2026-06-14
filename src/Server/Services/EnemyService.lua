@@ -334,6 +334,52 @@ function EnemyService:_attachEnemyDecor(model, body, enemyId, def, targetId)
     nameLbl.TextStrokeTransparency = 0.35
     nameLbl.Text = def.display_name or enemyId
     nameLbl.Parent = nameBb
+
+    -- Lava-faction ambience: small glowing embers drifting up off the body (def.embers). A cheap
+    -- continuous ParticleEmitter on the PrimaryPart, modelled on the molten-tar-pit look in
+    -- AreaFX. Server-created so every nearby player sees it (shared-world FX). Rate + ember size
+    -- scale with model_scale, so the boss billows and a whelp just wisps.
+    if def.embers then
+        self:_attachEmbers(body, def)
+    end
+end
+
+-- A continuous rising-ember aura for molten enemies (config `embers = true`). Tuned small so it
+-- reads as "smoldering," not a bonfire. Parented to the body part; emits from its top.
+function EnemyService:_attachEmbers(body, def)
+    if not body then
+        return
+    end
+    pcall(function()
+        local scale = def.model_scale or 4
+        local e = Instance.new("ParticleEmitter")
+        e.Name = "EmberAura"
+        e.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 200, 90)), -- bright spark
+            ColorSequenceKeypoint.new(0.6, Color3.fromRGB(235, 110, 40)), -- ember orange
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 30, 20)), -- cooling red
+        })
+        e.LightEmission = 0.7 -- glow
+        e.Lifetime = NumberRange.new(0.8, 1.6)
+        e.Rate = math.clamp(scale * 1.5, 5, 26) -- bigger enemy -> more embers
+        e.Speed = NumberRange.new(1, 3)
+        e.Acceleration = Vector3.new(0, 2, 0) -- rise
+        e.SpreadAngle = Vector2.new(22, 22)
+        e.EmissionDirection = Enum.NormalId.Top
+        e.Rotation = NumberRange.new(0, 360)
+        e.RotSpeed = NumberRange.new(-90, 90)
+        local px = math.clamp(scale * 0.12, 0.3, 2) -- ember size grows with the enemy
+        e.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, px),
+            NumberSequenceKeypoint.new(1, 0),
+        })
+        e.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.2),
+            NumberSequenceKeypoint.new(0.8, 0.5),
+            NumberSequenceKeypoint.new(1, 1),
+        })
+        e.Parent = body
+    end)
 end
 
 -- Build the enemy model. Uses the configured `model_asset` art when present (cloned

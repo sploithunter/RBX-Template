@@ -88,6 +88,23 @@ return {
                     { enemy = "murder_crow", count = 2 }, -- snipers
                 },
             },
+            -- LAVA / HELL faction packs (Jason: "get them all in, we'll test them"). The wave list
+            -- is GLOBAL for now (not zone-routed), so these mix into every biome — variety while we
+            -- test; zone-routing (Lava packs only in lava) is the clean follow-up.
+            -- lava swarm: a darting whelp pack
+            { weight = 5, units = { { enemy = "cinder_whelp", count = 3 } } },
+            -- lava warband: rhino wall + whelps + a moth healer
+            {
+                weight = 3,
+                units = {
+                    { enemy = "ember_brute", count = 1 }, -- molten rhino tank
+                    { enemy = "cinder_whelp", count = 2 }, -- melee
+                    { enemy = "ember_acolyte", count = 1 }, -- moth healer
+                },
+            },
+            -- LAVA APEX (rare): the Magma Wyrm boss. weight 1 = a real "oh no" moment; tune/remove
+            -- if a 50k-HP boss from a proximity spawner is too punishing in the field.
+            { weight = 1, units = { { enemy = "infernal_boss", count = 1 } } },
         },
     },
 
@@ -194,7 +211,8 @@ return {
             armor = 0,
             mesh_asset = "rbxassetid://131428937593668",
             texture_asset = "rbxassetid://113493690033768",
-            model_scale = 4,
+            model_scale = 3, -- small + quick (Jason: a touch smaller than the dogs)
+            embers = true,
             gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 16, stride_length = 3.5 },
             attack = { damage = 10, cadence = 1.5, sundering = 0 },
             drop_table = { lava_coins = 8, shadow_tokens = 1 },
@@ -209,6 +227,7 @@ return {
             mesh_asset = "rbxassetid://80444941740535",
             texture_asset = "rbxassetid://84646732890800",
             model_scale = 5,
+            embers = true,
             gait = { style = "march", bob_height = 0.9, tilt_degrees = 4, stride_length = 7 },
             -- A Sundering attacker: drains player Focus on hit (Feature 12).
             attack = { damage = 25, cadence = 2.0, sundering = 20 },
@@ -224,6 +243,7 @@ return {
             mesh_asset = "rbxassetid://119015123255528",
             texture_asset = "rbxassetid://129651164618641",
             model_scale = 4,
+            embers = true,
             attack = { damage = 8, cadence = 2.0, sundering = 0 },
             -- Enemy HEALER: restores HP to the most-hurt nearby enemy (mirrors the support role).
             auto_heal = { interval = 2.0, amount = 120, range = 45 },
@@ -252,7 +272,8 @@ return {
             armor = 200, -- heavily armored (~67% reduction at k=100)
             mesh_asset = "rbxassetid://73070415401707",
             texture_asset = "rbxassetid://120005508573070",
-            model_scale = 11, -- boss-scale, like dire_bear
+            model_scale = 16, -- BOSS: dwarfs everything (Jason: much bigger; dire_bear is 11)
+            embers = true,
             gait = { style = "march", bob_height = 1.3, tilt_degrees = 3, stride_length = 10 },
             attack = { damage = 60, cadence = 2.5, sundering = 40 },
             drop_table = { lava_coins = 200, shadow_tokens = 25 },
