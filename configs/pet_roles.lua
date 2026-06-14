@@ -81,7 +81,10 @@ return {
         -- creator testing (Jason). Heal + luck: the creator's gift is lucky and kind,
         -- and neither duplicates a zone buffer's whole identity.
         colorado = {
-            { kind = "heal", interval = 1.5, fraction = 0.2 },
+            -- Heal on a long 15s cycle (was 1.5s): a 20%-pool heal every 1.5s let Colorado
+            -- out-heal incoming damage and never go down — essentially invulnerable. 15s makes
+            -- the heal a meaningful clutch, not passive immortality. (Tuning starting point.)
+            { kind = "heal", interval = 15, fraction = 0.2 },
             { kind = "luck", interval = 2.0, mult = 1.1667, duration = 6 },
         },
         -- The colorado_creator SPECIES (the apex — different pet, same model): every
