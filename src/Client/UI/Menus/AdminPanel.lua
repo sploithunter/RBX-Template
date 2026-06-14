@@ -257,7 +257,7 @@ local TEST_CATEGORIES = {
             { name = "🐕 Spawn Rabid Dog (melee)", action = "spawn_enemy_rabid_dog" },
             { name = "🐦 Spawn Murder Crow (ranged)", action = "spawn_enemy_murder_crow" },
             { name = "🐈 Spawn Vicious Cat (ranged)", action = "spawn_enemy_vicious_cat" },
-            { name = "🐰 Spawn Rabid Bunny (healer)", action = "spawn_enemy_rabid_bunny" },
+            { name = "🐰 Spawn Jackalope (healer)", action = "spawn_enemy_rabid_bunny" },
             { name = "🐻 Spawn Raging Bear (tank)", action = "spawn_enemy_raging_bear" },
             -- Lava faction.
             { name = "👹 Spawn Lava Imp (trash)", action = "spawn_enemy_lava_imp" },

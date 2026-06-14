@@ -45,7 +45,7 @@ local SPAWNS = {
         color = { 150, 130, 90 },
     },
     {
-        label = "🐰 Rabid Bunny",
+        label = "🐰 Jackalope",
         pack = { { enemyId = "rabid_bunny", count = 1 } },
         color = { 180, 120, 150 },
     },
@@ -56,7 +56,7 @@ local SPAWNS = {
     },
     -- Mixed packs (Jason: the old "Imp ×3" spawned bunnies — replaced by a real Earth pack).
     {
-        label = "🐕 Pack: 2 Dog + Bunny",
+        label = "🐕 Pack: 2 Dog + Jackalope",
         pack = {
             { enemyId = "rabid_dog", count = 2, spread = 7 },
             { enemyId = "rabid_bunny", count = 1, forward = 8 },

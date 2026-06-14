@@ -148,7 +148,7 @@ return {
         rabid_bunny = {
             role = "support",
             hp = 1100,
-            display_name = "Rabid Bunny",
+            display_name = "Jackalope",
             tier = "trash_mob",
             move_speed = 13,
             armor = 0,
