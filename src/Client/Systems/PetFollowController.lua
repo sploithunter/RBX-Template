@@ -61,6 +61,34 @@ local function attackRangeOf(pet)
     return (def and tonumber(def.attack_range)) or 9
 end
 
+-- Map-collision clamp for pet attack slots (Jason: a kiting/standoff pet marched off the map —
+-- pets are non-colliding). Mirrors the crystal spawner's blocker rule: a slot is BLOCKED if a
+-- solid (CanCollide + opaque + queryable) part sits in an ELEVATED box at it. The band is above
+-- the floor, so flat sidewalks/baseplate never count — only WALLS/ROCKS reach into it. The map
+-- floor extends past the walls, so "is there floor?" can't bound it; the wall does (the pet hits
+-- the wall before it could reach the floor on the far side). `exclude` drops everything dynamic
+-- (Workspace.Game = crystals/enemies/drops, PlayerPets, characters) so only authored map blocks.
+local CLEAR_BOX_W = 4 -- pet body footprint (studs) sampled for an obstacle
+local CLEAR_BOX_H = 6 -- vertical band height — skips flat ground, catches walls/rocks
+local CLEAR_BOX_Y = 2 -- box centre, this far above the slot (keeps the band off the floor)
+local function slotBlocked(pos, exclude)
+    local params = OverlapParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = exclude
+    params.MaxParts = 8
+    local parts = Workspace:GetPartBoundsInBox(
+        CFrame.new(pos + Vector3.new(0, CLEAR_BOX_Y, 0)),
+        Vector3.new(CLEAR_BOX_W, CLEAR_BOX_H, CLEAR_BOX_W),
+        params
+    )
+    for _, part in ipairs(parts) do
+        if part.CanCollide and part.CanQuery and part.Transparency < 0.95 then
+            return true -- a wall/rock occupies the slot
+        end
+    end
+    return false
+end
+
 local PetFollowController = {}
 
 local localPlayer = Players.LocalPlayer
@@ -742,6 +770,24 @@ function PetFollowController.start()
             moveToward(p.model, p.target, followerRestDir(p.model, p.target), followRate)
         end
 
+        -- Map-collision exclude set (built once/frame): everything dynamic the pet should pass
+        -- through — Workspace.Game (crystals/enemies/drops), all players' pets, and characters —
+        -- so slotBlocked() only ever flags authored MAP walls/rocks.
+        local mapExclude = {}
+        local gameFolder = Workspace:FindFirstChild("Game")
+        if gameFolder then
+            mapExclude[#mapExclude + 1] = gameFolder
+        end
+        local petsRoot = Workspace:FindFirstChild("PlayerPets")
+        if petsRoot then
+            mapExclude[#mapExclude + 1] = petsRoot
+        end
+        for _, pl in ipairs(Players:GetPlayers()) do
+            if pl.Character then
+                mapExclude[#mapExclude + 1] = pl.Character
+            end
+        end
+
         -- Attackers: arrange around the target per the attack style, facing the center.
         for _, g in pairs(groups) do
             -- smallest -> first slot, so huge pets take the outer slots (spiral arm / line ends).
@@ -775,6 +821,12 @@ function PetFollowController.start()
                     end
                 end
                 local target = g.center + Vector3.new(off.x, off.y, off.z)
+                -- Map clamp: if the slot is inside a wall/rock, hold the pet's current (already-clear)
+                -- spot instead of marching into geometry / off the map. Only enemy fights can drift
+                -- the slot far (mining targets sit on clear ground), so gate on g.isEnemy.
+                if g.isEnemy and slotBlocked(target, mapExclude) then
+                    target = (baseCF[pet] and baseCF[pet].Position) or pet:GetPivot().Position
+                end
                 local toC = Vector3.new(g.center.X - target.X, 0, g.center.Z - target.Z)
                 local dir = toC.Magnitude > 0.01 and toC.Unit or upFwd
                 -- Mining (breakables) spins; combat (enemies) faces the target. The flourish
