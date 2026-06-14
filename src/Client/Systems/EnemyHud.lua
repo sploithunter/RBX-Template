@@ -33,6 +33,11 @@ local localPlayer = Players.LocalPlayer
 local THREAT_RED = Color3.fromRGB(200, 64, 64)
 -- Don't paper the screen in a big pull: show the nearest N foes (the ones you can act on).
 local MAX_CARDS = 8
+-- Big-pull compaction: cards render full size up to DENSITY_FULL, then the whole strip scales
+-- down (uniformly) so a large fight stays bounded — it never grows past ~DENSITY_FULL cards'
+-- height into the squad strip below. The floor keeps even a capped stack legible.
+local DENSITY_FULL = 5
+local DENSITY_MIN = 0.5
 
 local function enemiesFolder()
     local g = Workspace:FindFirstChild("Game")
@@ -170,17 +175,32 @@ function EnemyHud.start()
     root.BackgroundTransparency = 1
     root.Parent = gui
     require(script.Parent.Parent.UI.UIViewportScale).attach(root)
+
+    -- Inner frame carries its OWN UIScale (DensityScale) so a big pull can shrink the cards
+    -- independently of the viewport scaler on root — Roblox honours only one UIScale per object,
+    -- so the two live on separate frames and compose (viewport × density).
+    local listFrame = Instance.new("Frame")
+    listFrame.Name = "List"
+    listFrame.AnchorPoint = Vector2.new(1, 0)
+    listFrame.Position = UDim2.fromScale(1, 0)
+    listFrame.Size = UDim2.fromOffset(186, 10)
+    listFrame.AutomaticSize = Enum.AutomaticSize.Y
+    listFrame.BackgroundTransparency = 1
+    listFrame.Parent = root
+    local densityScale = Instance.new("UIScale")
+    densityScale.Name = "DensityScale"
+    densityScale.Parent = listFrame
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
     layout.Padding = UDim.new(0, 4)
-    layout.Parent = root
+    layout.Parent = listFrame
 
     local cards = {} -- bid -> card refs
 
     local function makeCard(bid)
-        local card = HudCard.createCard(root, { name = "Enemy_" .. bid })
+        local card = HudCard.createCard(listFrame, { name = "Enemy_" .. bid })
         -- Foes have no element disc art; the chip is a flat red threat square with the enemy's
         -- level (the glyph fallback the chrome already supports), so the strip reads at a glance.
         card.roleIcon.Image = ""
@@ -205,6 +225,9 @@ function EnemyHud.start()
 
         local list = engagedEnemies(os.clock())
         local focusBid = indirectTargetBid()
+        -- Shrink the strip uniformly once the pull exceeds DENSITY_FULL, so it stays bounded.
+        local shownCount = math.min(#list, MAX_CARDS)
+        densityScale.Scale = math.clamp(DENSITY_FULL / math.max(1, shownCount), DENSITY_MIN, 1)
         local present = {}
         for rank, e in ipairs(list) do
             if rank > MAX_CARDS then
