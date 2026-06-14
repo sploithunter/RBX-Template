@@ -13,28 +13,65 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DevSpawnPanel = {}
 local started = false
 
--- Each button: a label + the args passed to combat.spawnEnemy. spread = ring radius so they don't
--- stack; forward = push further out (the "Far Dummy" is an out-of-AoE-range control).
+-- Each button: a label + a `pack` = one or more combat.spawnEnemy arg-sets fired together. spread =
+-- ring radius so a group doesn't stack; forward = push further out (the "Far Dummy" is an
+-- out-of-AoE-range control). A multi-entry pack spawns a MIXED-role wave in one click (e.g. the
+-- Earth warband) — handy for eyeballing imported art + the role/surround systems side by side.
 local SPAWNS = {
     {
         label = "🎯 Dummy ×3",
-        args = { enemyId = "training_dummy", count = 3, spread = 7 },
+        pack = { { enemyId = "training_dummy", count = 3, spread = 7 } },
         color = { 90, 140, 200 },
     },
     {
         label = "🎯 Far Dummy",
-        args = { enemyId = "training_dummy", count = 1, forward = 40 },
+        pack = { { enemyId = "training_dummy", count = 1, forward = 40 } },
         color = { 70, 110, 160 },
     },
+    -- Earth faction — individual spawns to verify each imported mesh renders + moves right.
     {
-        label = "👹 Imp ×3",
-        args = { enemyId = "lava_imp", count = 3, spread = 7 },
-        color = { 200, 90, 70 },
+        label = "🐕 Rabid Dog ×3",
+        pack = { { enemyId = "rabid_dog", count = 3, spread = 7 } },
+        color = { 150, 110, 80 },
+    },
+    {
+        label = "🐦 Murder Crow ×3",
+        pack = { { enemyId = "murder_crow", count = 3, spread = 7 } },
+        color = { 80, 80, 110 },
+    },
+    {
+        label = "🐈 Vicious Cat ×2",
+        pack = { { enemyId = "vicious_cat", count = 2, spread = 6 } },
+        color = { 150, 130, 90 },
+    },
+    {
+        label = "🐰 Rabid Bunny",
+        pack = { { enemyId = "rabid_bunny", count = 1 } },
+        color = { 180, 120, 150 },
     },
     {
         label = "🐻 Bear",
-        args = { enemyId = "raging_bear", count = 1 },
+        pack = { { enemyId = "raging_bear", count = 1 } },
         color = { 170, 110, 60 },
+    },
+    -- Mixed packs (Jason: the old "Imp ×3" spawned bunnies — replaced by a real Earth pack).
+    {
+        label = "🐕 Pack: 2 Dog + Bunny",
+        pack = {
+            { enemyId = "rabid_dog", count = 2, spread = 7 },
+            { enemyId = "rabid_bunny", count = 1, forward = 8 },
+        },
+        color = { 160, 100, 90 },
+    },
+    {
+        label = "💀 Scary Team",
+        pack = {
+            { enemyId = "ember_brute", count = 1 },
+            { enemyId = "rabid_bunny", count = 1, forward = 10 },
+            { enemyId = "rabid_dog", count = 3, spread = 9 },
+            { enemyId = "murder_crow", count = 2, spread = 12, forward = 14 },
+        },
+        color = { 120, 60, 80 },
     },
 }
 
@@ -110,7 +147,9 @@ function DevSpawnPanel.start()
 
     for i, s in ipairs(SPAWNS) do
         button(i, s.label, rgb(s.color), function()
-            fire("combat.spawnEnemy", s.args)
+            for _, unit in ipairs(s.pack) do
+                fire("combat.spawnEnemy", unit)
+            end
         end)
     end
     button(#SPAWNS + 1, "✖ Clear", Color3.fromRGB(80, 80, 100), function()

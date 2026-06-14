@@ -253,6 +253,13 @@ local TEST_CATEGORIES = {
     combat = {
         title = "⚔️ Combat (test enemies)",
         tests = {
+            -- Earth faction (real art): melee dog · ranged crow/cat · support bunny · tank bear.
+            { name = "🐕 Spawn Rabid Dog (melee)", action = "spawn_enemy_rabid_dog" },
+            { name = "🐦 Spawn Murder Crow (ranged)", action = "spawn_enemy_murder_crow" },
+            { name = "🐈 Spawn Vicious Cat (ranged)", action = "spawn_enemy_vicious_cat" },
+            { name = "🐰 Spawn Rabid Bunny (healer)", action = "spawn_enemy_rabid_bunny" },
+            { name = "🐻 Spawn Raging Bear (tank)", action = "spawn_enemy_raging_bear" },
+            -- Lava faction.
             { name = "👹 Spawn Lava Imp (trash)", action = "spawn_enemy_lava_imp" },
             { name = "🔥 Spawn Ember Brute (mid)", action = "spawn_enemy_ember_brute" },
             { name = "💀 Spawn Infernal Boss", action = "spawn_enemy_infernal_boss" },
@@ -260,7 +267,7 @@ local TEST_CATEGORIES = {
         customInputs = {
             {
                 label = "Spawn Enemy (id):",
-                placeholder = "e.g. lava_imp, ember_brute, infernal_boss",
+                placeholder = "e.g. rabid_dog, murder_crow, raging_bear, ember_brute",
                 action = "spawn_enemy_custom",
             },
         },
