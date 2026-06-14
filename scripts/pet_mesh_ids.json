@@ -40,5 +40,45 @@
     "imageId": "rbxassetid://120005508573070",
     "wiredInto": "configs/enemies.lua infernal_boss (display: Magma Wyrm)",
     "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "sand_jackal": {
+    "modelAssetId": "119830405666730",
+    "meshId": "rbxassetid://133579601499458",
+    "textureDecalId": "135937721533949",
+    "imageId": "rbxassetid://81743984263831",
+    "wiredInto": "configs/enemies.lua sand_jackal (Desert melee)",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "carrion_vulture": {
+    "modelAssetId": "107744135810301",
+    "meshId": "rbxassetid://72134348866721",
+    "textureDecalId": "106400449525072",
+    "imageId": "rbxassetid://109527952252689",
+    "wiredInto": "configs/enemies.lua carrion_vulture (Desert ranged)",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "golden_scarab": {
+    "modelAssetId": "86448855305255",
+    "meshId": "rbxassetid://113362318411916",
+    "textureDecalId": "93591958215641",
+    "imageId": "rbxassetid://91987727517751",
+    "wiredInto": "configs/enemies.lua golden_scarab (Desert support)",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "dune_tortoise": {
+    "modelAssetId": "123856963281585",
+    "meshId": "rbxassetid://86038686611345",
+    "textureDecalId": "82591642552697",
+    "imageId": "rbxassetid://126431717175323",
+    "wiredInto": "configs/enemies.lua dune_tortoise (Desert tank)",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "sand_scorpion": {
+    "modelAssetId": "104593041195990",
+    "meshId": "rbxassetid://83939345076794",
+    "textureDecalId": "90324732890759",
+    "imageId": "rbxassetid://113335145419297",
+    "wiredInto": "configs/enemies.lua sand_scorpion (Desert boss)",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
   }
 }

@@ -41,7 +41,7 @@ return {
         -- has BaddieSpawnerLava + BaddieSpawnerDesert, so "Lava" -> the lava packs, everything else
         -- -> default_faction. A wave with no `faction` field counts as the default (earth).
         default_faction = "earth",
-        zone_faction = { Lava = "lava" }, -- Desert (+ future suffixes) fall back to earth wildlife
+        zone_faction = { Lava = "lava", Desert = "desert" }, -- each biome spawner draws its own faction
         -- VARIETY (Jason): weighted compositions, not just "3 imps / 1 bear". Mixed-role packs make
         -- the role + surround systems sing — a healer behind a tank reads totally differently from a
         -- melee swarm. Weight = relative frequency (rarer = scarier). NOTE: rabid_dog/murder_crow/
@@ -112,6 +112,31 @@ return {
             -- NO BOSS in the proximity waves: a 50k-HP Magma Wyrm from a field spawner stacked to a
             -- death zone (Jason hit THREE at once, unkillable). Bosses are deliberate encounters —
             -- admin/special spawns only — never random field rolls.
+
+            -- DESERT faction packs (BaddieSpawnerDesert). No boss (sand_scorpion = admin/special).
+            -- jackal swarm: a fast pack hunt
+            { weight = 6, faction = "desert", units = { { enemy = "sand_jackal", count = 3 } } },
+            -- a wake of vultures: ranged harass, fragile (focus them)
+            { weight = 5, faction = "desert", units = { { enemy = "carrion_vulture", count = 3 } } },
+            -- caravan ambush: tortoise wall + jackals + a scarab healer (kill the scarab first)
+            {
+                weight = 4,
+                faction = "desert",
+                units = {
+                    { enemy = "dune_tortoise", count = 1 }, -- shell wall
+                    { enemy = "sand_jackal", count = 2 }, -- melee
+                    { enemy = "golden_scarab", count = 1 }, -- healer
+                },
+            },
+            -- ambush duo: vultures + a flanking jackal
+            {
+                weight = 4,
+                faction = "desert",
+                units = {
+                    { enemy = "carrion_vulture", count = 2 },
+                    { enemy = "sand_jackal", count = 1 },
+                },
+            },
         },
     },
 
@@ -207,6 +232,99 @@ return {
             gait = { style = "waddle", bob_height = 0.8, tilt_degrees = 12, stride_length = 6 },
             attack = { damage = 22, cadence = 1.8, sundering = 0 },
             drop_table = { grass_coins = 35, shadow_tokens = 4, rare_drop_chance = 0.12 },
+        },
+
+        -- ============================ DESERT FACTION ============================
+        -- Sun-scorched wildlife of the Desert biome (BaddieSpawnerDesert). Role-balanced like the
+        -- others: melee jackal · ranged vulture · support scarab · tank tortoise · boss scorpion.
+        -- Self-serve mesh+texture (group 15872767, see scripts/pet_mesh_ids.json); dust-mote aura
+        -- (def.dust). texture_asset = the resolved IMAGE id, not the Decal id (else grey).
+        -- MELEE — the sand jackal: a fast, big-eared pack hunter (Desert's mirror of the rabid_dog).
+        sand_jackal = {
+            role = "melee",
+            hp = 1300,
+            display_name = "Sand Jackal",
+            tier = "trash_mob",
+            move_speed = 17, -- quick desert runner
+            armor = 0,
+            mesh_asset = "rbxassetid://133579601499458",
+            texture_asset = "rbxassetid://81743984263831",
+            model_scale = 4,
+            dust = true,
+            gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 14, stride_length = 4 },
+            attack = { damage = 12, cadence = 1.3, sundering = 0 },
+            drop_table = { desert_coins = 9, shadow_tokens = 1 },
+        },
+        -- RANGED — the carrion vulture: dives + flings a rock/dust bolt from standoff (Desert's mirror
+        -- of the murder_crow), bald-headed scavenger, very squishy.
+        carrion_vulture = {
+            role = "ranged",
+            hp = 900,
+            display_name = "Carrion Vulture",
+            tier = "trash_mob",
+            move_speed = 14,
+            armor = 0,
+            mesh_asset = "rbxassetid://72134348866721",
+            texture_asset = "rbxassetid://109527952252689",
+            model_scale = 4,
+            dust = true,
+            attack_range = 32, -- holds out and dives
+            bolt_kind = "rock", -- the desert projectile (RangedFX rock launcher)
+            gait = { style = "hop", bob_height = 0.7, tilt_degrees = 6, stride_length = 5 },
+            attack = { damage = 14, cadence = 1.6, sundering = 0 },
+            drop_table = { desert_coins = 10, shadow_tokens = 1 },
+        },
+        -- SUPPORT — the golden scarab: an Egyptian rebirth beetle that mends the most-hurt ally.
+        -- Kill it first to flip the fight (Desert's mirror of the jackalope / ember moth).
+        golden_scarab = {
+            role = "support",
+            hp = 2000,
+            display_name = "Golden Scarab",
+            tier = "trash_mob",
+            move_speed = 13,
+            armor = 0,
+            mesh_asset = "rbxassetid://113362318411916",
+            texture_asset = "rbxassetid://91987727517751",
+            model_scale = 3, -- small beetle
+            dust = true,
+            gait = { style = "waddle", bob_height = 0.4, tilt_degrees = 8, stride_length = 3 },
+            attack = { damage = 8, cadence = 2.0, sundering = 0 },
+            auto_heal = { interval = 2.0, amount = 120, range = 45 },
+            drop_table = { desert_coins = 12, shadow_tokens = 2 },
+        },
+        -- TANK — the dune tortoise: a sandstone-shelled wall, slow + heavily armored (Desert's mirror
+        -- of the raging_bear / ember_brute). The shell IS the armor tell.
+        dune_tortoise = {
+            role = "tank",
+            hp = 3600,
+            display_name = "Dune Tortoise",
+            tier = "mid_tier",
+            move_speed = 9, -- lumbering
+            armor = 90, -- thick shell: ~47% pet-damage reduction at k=100
+            mesh_asset = "rbxassetid://86038686611345",
+            texture_asset = "rbxassetid://126431717175323",
+            model_scale = 5,
+            dust = true,
+            gait = { style = "march", bob_height = 0.5, tilt_degrees = 4, stride_length = 5 },
+            attack = { damage = 24, cadence = 2.0, sundering = 0 },
+            drop_table = { desert_coins = 35, shadow_tokens = 4, rare_drop_chance = 0.12 },
+        },
+        -- BOSS — the sand scorpion: armored pincers + a Sundering stinger. The Desert apex (mirror of
+        -- dire_bear / magma_wyrm). Boss = deliberate encounter (admin/special spawn), NOT field waves.
+        sand_scorpion = {
+            role = "tank",
+            hp = 55000,
+            display_name = "Sand Scorpion",
+            tier = "boss",
+            move_speed = 8,
+            armor = 210, -- ~68% pet-damage reduction at k=100
+            mesh_asset = "rbxassetid://83939345076794",
+            texture_asset = "rbxassetid://113335145419297",
+            model_scale = 14, -- boss-scale
+            dust = true,
+            gait = { style = "march", bob_height = 0.8, tilt_degrees = 3, stride_length = 9 },
+            attack = { damage = 65, cadence = 2.4, sundering = 30 },
+            drop_table = { desert_coins = 230, shadow_tokens = 28, rare_drop_chance = 0.5 },
         },
 
         -- ============================ LAVA / HELL FACTION ============================
