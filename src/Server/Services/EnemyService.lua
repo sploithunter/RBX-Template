@@ -1404,13 +1404,31 @@ function EnemyService:_spawnHealVisual(pet)
     Debris:AddItem(fx, 0.8)
 end
 
+-- Does this pet provide a heal aura itself? Healers are excluded as aura-heal TARGETS so a
+-- support pet can't passively mend itself (Jason: a self-healing Colorado was unkillable). The
+-- healer is meant to be the vulnerable priority target you protect — out-of-combat _regenPass
+-- still recovers it, and a player-cast heal power can deliberately top it up.
+function EnemyService:_isHealer(pet)
+    for _, aura in ipairs(self:_petAuras(pet) or {}) do
+        if aura.kind == "heal" then
+            return true
+        end
+    end
+    return false
+end
+
 -- Heal aura (Grass / bunny): mend the most-hurt non-downed ally in the squad — reduce its
--- accumulated CombatDamageTaken. The squad healer keeps the tank up.
+-- accumulated CombatDamageTaken. The squad healer keeps the tank up. Healers themselves are NOT
+-- valid targets (no passive self-heal), so a lone support pet can still go down.
 function EnemyService:_auraHeal(folder, heal, vmult)
     local factor = self._combatConfig.pet_down_threshold_factor or 1
     local target, worst
     for _, ally in ipairs(folder:GetChildren()) do
-        if ally:IsA("Model") and not ally:GetAttribute("CombatDowned") then
+        if
+            ally:IsA("Model")
+            and not ally:GetAttribute("CombatDowned")
+            and not self:_isHealer(ally)
+        then
             local taken = ally:GetAttribute("CombatDamageTaken") or 0
             if taken > 0 and (not worst or taken > worst) then
                 worst, target = taken, ally
