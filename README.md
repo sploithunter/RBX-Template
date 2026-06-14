@@ -4,7 +4,7 @@ A config-as-code Roblox pet game built with Rojo. You mine biome ore, hatch and 
 
 The project started as a generic pet/clicker template and **is now the game itself** (the repo *is* Pet Realm) — the template baseline survives underneath as the foundation layer.
 
-![Pet Realm gameplay screenshot](RBX-Template.png)
+![Pet Realm — Halo & Horns](CurrentGame.png)
 
 ## The Core Loop
 
