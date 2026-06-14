@@ -1196,19 +1196,20 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
             or (player:GetAttribute("Level") or 1)
         self:_hitPet(biteTarget, def, now, eng, enemyLevel, petLevel)
         entry.nextAttack = now + ((def and def.attack and def.attack.cadence) or 1.5)
-        -- RANGED enemies fly a cosmetic bolt enemy->pet (damage is already applied above; the bolt
-        -- is the swing, like the pets' Combat_PetHit). Broadcast to ALL clients so everyone nearby
-        -- sees the volley (shared-world FX). Melee/tank skip it (they're in your face already).
-        if def and (def.role == "ranged" or def.bolt_kind) then
-            pcall(function()
-                Signals.Combat_EnemyHit:FireAllClients({
-                    enemy = model,
-                    target = biteTarget,
-                    kind = def.bolt_kind,
-                    crit = biteTarget:GetAttribute("LastHitCrit") == true,
-                })
-            end)
-        end
+        -- Broadcast the swing's VISUAL (damage is already applied above; the FX is just the swing,
+        -- exactly like the pets' Combat_PetHit). Fired on EVERY attack so enemies attack the same
+        -- way pets do: ranged -> a themed bolt enemy->pet, melee -> an impact at the pet. The client
+        -- (EnemyMotion -> CombatHitFX) is the same path the pets use. To all clients = shared world.
+        local isRanged = def and (def.role == "ranged" or def.bolt_kind ~= nil) or false
+        pcall(function()
+            Signals.Combat_EnemyHit:FireAllClients({
+                enemy = model,
+                target = biteTarget,
+                ranged = isRanged,
+                kind = def and def.bolt_kind,
+                crit = biteTarget:GetAttribute("LastHitCrit") == true,
+            })
+        end)
     end
 end
 

@@ -25,7 +25,7 @@ local Gait = require(ReplicatedStorage.Shared.Game.Gait)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
 local HitReact = require(ReplicatedStorage.Shared.Game.HitReact)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
-local RangedFX = require(ReplicatedStorage.Shared.Effects.RangedFX)
+local CombatHitFX = require(ReplicatedStorage.Shared.Effects.CombatHitFX)
 
 local EnemyMotion = {}
 
@@ -116,10 +116,11 @@ function EnemyMotion.start()
         HitReact.start(fs, os.clock(), dx, dz, math.random() < 0.5 and 1 or -1)
     end)
 
-    -- RANGED enemy bolt: the server fires Combat_EnemyHit {enemy,target,kind,crit} on each ranged
-    -- swing (damage already applied server-side). Fly the matching projectile enemy->pet via the
-    -- shared RangedFX engine, themed by the enemy's bolt_kind (plasma/poison/frost/...). This is
-    -- what makes a "ranged" enemy read as ranged — it shoots instead of biting in your face.
+    -- Enemy swing FX: the server fires Combat_EnemyHit {enemy,target,kind,crit,ranged} on EVERY
+    -- enemy attack (damage already applied server-side). Same attack-FX path the pets use
+    -- (CombatHitFX, off Combat_PetHit): ranged -> a themed bolt enemy->pet (bolt_kind), melee ->
+    -- an impact at the pet. So a ranged enemy reads as ranged, and a melee bite lands a hit like a
+    -- pet's swing. One code path for "how a combatant attacks".
     local boltCfg = petCfg.ranged_bolt or {}
     Signals.Combat_EnemyHit.OnClientEvent:Connect(function(data)
         if type(data) ~= "table" then
@@ -132,10 +133,13 @@ function EnemyMotion.start()
         if not enemy.Parent or not target.Parent then
             return
         end
-        local kind = data.kind or boltCfg.kind or "plasma"
-        pcall(function()
-            RangedFX.Play(enemy, boltCfg, target, kind, data.crit == true)
-        end)
+        pcall(CombatHitFX.play, enemy, target, {
+            boltCfg = boltCfg,
+            ranged = data.ranged == true,
+            kind = data.kind,
+            defaultKind = boltCfg.kind or "plasma",
+            crit = data.crit == true,
+        })
     end)
 
     RunService.RenderStepped:Connect(function(dt)

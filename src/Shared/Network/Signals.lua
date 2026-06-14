@@ -41,7 +41,7 @@ local Signals = {
     Combat_SelectPetTarget = Net:RemoteEvent("Combat_SelectPetTarget"), -- c->s the selected squad pet (PositionNumber) for single-target buffs; 0 clears
     Combat_PetHit = Net:RemoteEvent("Combat_PetHit"), -- s->c (owner) a pet landed a swing {pet,target,crit} -> client plays the matching FX
     Combat_Heal = Net:RemoteEvent("Combat_Heal"), -- s->c a heal landed {target,amount} -> client floats a green number
-    Combat_EnemyHit = Net:RemoteEvent("Combat_EnemyHit"), -- s->c (all) a RANGED enemy fired {enemy,target,kind,crit} -> client flies a bolt (damage is already applied server-side)
+    Combat_EnemyHit = Net:RemoteEvent("Combat_EnemyHit"), -- s->c (all) an enemy swung {enemy,target,ranged,kind,crit} -> client plays the attack FX via CombatHitFX (ranged=bolt, melee=impact); damage already applied server-side
     Hotbar_Activate = Net:RemoteEvent("Hotbar_Activate"), -- c->s fire the bind on a hotbar slot (1-20)
     Hotbar_Rebind = Net:RemoteEvent("Hotbar_Rebind"), -- c->s assign/clear a hotbar slot's bind
     Power_Cooldown = Net:RemoteEvent("Power_Cooldown"), -- s->c a cast power's cooldown {power, untilTime, cooldown}

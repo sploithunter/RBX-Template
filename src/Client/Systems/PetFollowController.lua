@@ -27,6 +27,7 @@ local HitReact = require(ReplicatedStorage.Shared.Game.HitReact)
 local AttackAnim = require(ReplicatedStorage.Shared.Game.AttackAnim)
 local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local RangedFX = require(ReplicatedStorage.Shared.Effects.RangedFX)
+local CombatHitFX = require(ReplicatedStorage.Shared.Effects.CombatHitFX)
 local AreaFX = require(ReplicatedStorage.Shared.Effects.AreaFX)
 local FloatingText = require(ReplicatedStorage.Shared.Effects.FloatingText)
 local PowerSound = require(ReplicatedStorage.Shared.Effects.PowerSound)
@@ -324,21 +325,24 @@ function PetFollowController.start()
         end
         local isCrit = data.crit == true
         local element = elementFor(pet)
-        local kind
-        if roleKites(pet) then
-            -- ranged: a per-pet by_type override wins; otherwise the resolved element picks the
-            -- projectile (grass->lightning, lava->fireball, ice->frost, desert->rock).
-            kind = (boltCfg.by_type and boltCfg.by_type[pet:GetAttribute("PetType")])
-                or elementKind[element]
-                or boltCfg.kind
-                or "lightning"
-            if castLockSeconds > 0 then
-                castLockUntil[pet] = os.clock() + castLockSeconds
-            end
-        else
-            kind = "melee" -- impact-only at the target; element picks the biome melee look
+        local ranged = roleKites(pet)
+        -- ranged cast-lock is a PET-only counterplay (a pet that just fired can't move); not part
+        -- of "how they attack", so it stays here rather than in the shared dispatcher.
+        if ranged and castLockSeconds > 0 then
+            castLockUntil[pet] = os.clock() + castLockSeconds
         end
-        pcall(RangedFX.Play, pet, boltCfg, target, kind, isCrit, element)
+        -- Same attack-FX path the enemies use (CombatHitFX): resolve the kind + fire it via RangedFX.
+        -- ranged -> the per-pet by_type override or the biome element bolt; melee -> impact look.
+        pcall(CombatHitFX.play, pet, target, {
+            boltCfg = boltCfg,
+            ranged = ranged,
+            byType = pet:GetAttribute("PetType"),
+            byTypeMap = boltCfg.by_type,
+            element = element,
+            elementKind = elementKind,
+            defaultKind = boltCfg.kind or "lightning",
+            crit = isCrit,
+        })
 
         -- Floating combat text: the damage number (or MISS) pops + rises above the target.
         -- Renders for FOREIGN hits too (Jason: "this is supposed to be a team effect game"
