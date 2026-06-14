@@ -1,7 +1,11 @@
 --[[
     Enemies — Halo & Horns [PROTOTYPE] (Feature 10: Combat).
 
-    Enemy archetypes for Hell-focused combat. Each enemy has:
+    Enemy archetypes. Each enemy has:
+      role       — combat role, the MIRROR of the pet roles (configs/pet_roles.lua):
+                   tank | melee | ranged | support. A TAG for now (drives the enemy HUD
+                   threat read + future role-motion: tanks plant, ranged kite, etc.). Movement
+                   is NOT yet role-driven — that lands as a separate A/B pass so we can compare.
       hp         — base health (10x world: pools x10 both sides, damage untouched —
                    see configs/combat.lua pet_down_threshold_factor; scaled by party size at spawn)
       tier       — Spirit Form cooldown tier applied to a pet this enemy downs
@@ -10,70 +14,223 @@
                      damage    = damage dealt to a targeted pet per hit
                      cadence   = seconds between attacks
                      sundering = Focus drained from the player per hit (0 = none)
-      drop_table — currency/token amounts awarded on defeat (numeric keys are
-                   awarded deterministically; *_chance keys are random [studio]).
+      auto_heal  — (support) { interval, amount, range }: mends the most-hurt nearby enemy.
+      model_asset— uploaded model id (cloned via AssetFetch → PlaceAssets cache). Omit and the
+                   service builds a procedural block (placeholder until the art is imported).
+      drop_table — currency/token amounts on defeat (numeric = deterministic; *_chance = random).
 
-    Read by CombatService via ConfigLoader; pure math lives in
-    `src/Shared/Game/CombatMath.lua`.
+    EARTH enemy faction (the starter biome's wild creatures, the dark mirror of your Earth pets):
+      tank=bear · melee=rabid_dog · ranged=murder_crow + vicious_cat · support=rabid_bunny.
+    Read by CombatService via ConfigLoader; pure math lives in `src/Shared/Game/CombatMath.lua`.
 ]]
 
 return {
-    -- Proximity baddie spawners (Jason): map parts named BaddieSpawner* (he placed
-    -- BaddieSpawnerLava + BaddieSpawnerDesert) spawn a wave when a player comes near —
-    -- "a taste of combat before they decide to go up or down the Heaven/Hell tree."
-    -- No bosses here (no real models yet).
+    -- Proximity baddie spawners (Jason): map parts named BaddieSpawner* spawn a wave when a
+    -- player comes near — "a taste of combat before they decide to go up or down the tree."
     spawners = {
         part_prefix = "BaddieSpawner",
         radius = 50, -- studs: trigger distance from the part
-        -- RANDOM cooldown (Jason: "sometimes you'll get more than one") — each trigger
-        -- rolls a value in [min,max]; a short roll can land a second wave while the
-        -- first is still up.
+        -- RANDOM cooldown (Jason: "sometimes you'll get more than one") — each trigger rolls a
+        -- value in [min,max]; a short roll can land a second wave while the first is still up.
         cooldown = { min = 30, max = 120 },
-        -- hard cap on LIVING baddies tied to one spawner (Jason: don't bury the
-        -- player, and no stockpiling a crap ton for the next guy) — at the cap the
-        -- spawner stays quiet until some die.
-        max_alive = 6,
+        -- hard cap on LIVING baddies per spawner (don't bury the player / stockpile for the next).
+        max_alive = 8,
         scatter = 8, -- studs: random spread around the part so the wave isn't a stack
+        -- VARIETY (Jason): weighted compositions, not just "3 imps / 1 bear". Mixed-role packs make
+        -- the role + surround systems sing — a healer behind a tank reads totally differently from a
+        -- melee swarm. Weight = relative frequency (rarer = scarier). NOTE: rabid_dog/murder_crow/
+        -- vicious_cat render as PLACEHOLDER blocks until their meshes are uploaded — the comps are
+        -- wired and play now; the art swaps in later.
         waves = {
-            { weight = 10, units = { { enemy = "lava_imp", count = 3 } } },
-            { weight = 10, units = { { enemy = "raging_bear", count = 1 } } },
-            -- the rare one: the full welcoming committee
+            -- common: a fast melee swarm
+            { weight = 10, units = { { enemy = "rabid_dog", count = 3 } } },
+            -- common: a lone bruiser to soak
+            { weight = 9, units = { { enemy = "raging_bear", count = 1 } } },
+            -- a murder of crows — ranged harass, fragile (focus them down)
+            { weight = 7, units = { { enemy = "murder_crow", count = 3 } } },
+            -- backline healer + escorts: kill the bunny first or grind forever
+            {
+                weight = 6,
+                units = {
+                    { enemy = "rabid_bunny", count = 1 },
+                    { enemy = "rabid_dog", count = 2 },
+                },
+            },
+            -- warband: tank anchor + melee + a sniper
+            {
+                weight = 6,
+                units = {
+                    { enemy = "raging_bear", count = 1 },
+                    { enemy = "rabid_dog", count = 2 },
+                    { enemy = "murder_crow", count = 1 },
+                },
+            },
+            -- ambush: ranged duo + a flanking cat
+            {
+                weight = 5,
+                units = {
+                    { enemy = "murder_crow", count = 2 },
+                    { enemy = "vicious_cat", count = 1 },
+                },
+            },
+            -- THE SCARY TEAM (Jason): a full role-balanced pack — a bruiser wall, a healer keeping
+            -- it alive, melee crowding in, and a sniper picking off your backline. Rare, and a real
+            -- check on a one-note squad (you want your OWN tank/heal to answer it).
             {
                 weight = 2,
                 units = {
-                    { enemy = "lava_imp", count = 3 },
-                    { enemy = "raging_bear", count = 1 },
+                    { enemy = "ember_brute", count = 1 }, -- tank wall
+                    { enemy = "rabid_bunny", count = 1 }, -- healer (kill first)
+                    { enemy = "rabid_dog", count = 3 }, -- melee crowd
+                    { enemy = "murder_crow", count = 2 }, -- snipers
                 },
             },
         },
     },
 
     enemies = {
-        lava_imp = {
-            hp = 1200,
-            display_name = "Lava Imp",
+        -- ============================ EARTH FACTION ============================
+        -- MELEE — fast, fragile, gets in your face (the new cube_dog art).
+        rabid_dog = {
+            role = "melee",
+            hp = 1400,
+            display_name = "Rabid Dog",
             tier = "trash_mob",
-            move_speed = 15, -- studs/sec while chasing (slice 2); skittery + fast
-            armor = 0, -- defensive stat: pet damage mitigated by armor/(armor+k)
-            -- Real art (uploaded model). EnemyService clones+anchors+scales it; falls
-            -- back to the procedural block if the asset can't load. model_scale brings
-            -- the ~1.9-stud mesh up to enemy size (~7.6 tall). needs_primary_part = the
-            -- model ships without a PrimaryPart, so the service assigns one (first part);
-            -- omit it for models that already define their own PrimaryPart.
+            move_speed = 16, -- quick + aggressive
+            armor = 0,
+            -- model pending: assets/exports/pets/cube_dog_basic (upload mesh+texture to the group,
+            -- combine via CreateMeshPartAsync like DropService gems). Procedural block until then.
+            gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 14, stride_length = 4 },
+            attack = { damage = 12, cadence = 1.3, sundering = 0 },
+            drop_table = { grass_coins = 9, shadow_tokens = 1 },
+        },
+        -- RANGED — a murder of crows: hits a touch harder, very squishy (the new raven art).
+        murder_crow = {
+            role = "ranged",
+            hp = 850,
+            display_name = "Murder Crow",
+            tier = "trash_mob",
+            move_speed = 14,
+            armor = 0,
+            -- model pending: assets/exports/pets/raven_basic
+            gait = { style = "hop", bob_height = 0.7, tilt_degrees = 6, stride_length = 5 },
+            attack = { damage = 14, cadence = 1.6, sundering = 0 },
+            drop_table = { grass_coins = 10, shadow_tokens = 1 },
+        },
+        -- RANGED — a vicious cat: a second ranged flavour, slightly tankier than the crow (grumpy_cat).
+        vicious_cat = {
+            role = "ranged",
+            hp = 1000,
+            display_name = "Vicious Cat",
+            tier = "trash_mob",
+            move_speed = 15,
+            armor = 0,
+            -- model pending: assets/exports/pets/grumpy_cat_basic
+            gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 10, stride_length = 4 },
+            attack = { damage = 13, cadence = 1.5, sundering = 0 },
+            drop_table = { grass_coins = 10, shadow_tokens = 2 },
+        },
+        -- SUPPORT — the rabid bunny (the old "imp" art, 110801864701636, repurposed): an enemy
+        -- HEALER that mends the most-hurt nearby enemy. Kill it first to flip the fight. Real art NOW.
+        rabid_bunny = {
+            role = "support",
+            hp = 1100,
+            display_name = "Rabid Bunny",
+            tier = "trash_mob",
+            move_speed = 13,
+            armor = 0,
             model_asset = 110801864701636,
             model_scale = 4,
             needs_primary_part = true,
-            -- Skittery little imp: quick, springy waddle with an exaggerated tilt.
+            gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 16, stride_length = 3.5 },
+            attack = { damage = 6, cadence = 2.0, sundering = 0 },
+            auto_heal = { interval = 2.5, amount = 100, range = 45 },
+            drop_table = { grass_coins = 12, shadow_tokens = 2 },
+        },
+        -- TANK — the bear: thick hide, soaks for the pack (the bear art). The wall of the faction.
+        raging_bear = {
+            role = "tank",
+            hp = 3500,
+            display_name = "Raging Bear",
+            tier = "mid_tier",
+            move_speed = 11, -- charges in faster than the brute
+            armor = 70, -- thick hide: ~41% pet-damage reduction at k=100
+            model_asset = 99990991951749,
+            model_scale = 5,
+            needs_primary_part = true,
+            gait = { style = "waddle", bob_height = 0.8, tilt_degrees = 12, stride_length = 6 },
+            attack = { damage = 22, cadence = 1.8, sundering = 0 },
+            drop_table = { grass_coins = 35, shadow_tokens = 4, rare_drop_chance = 0.12 },
+        },
+
+        -- ============================ LAVA / HELL FACTION (existing) ============================
+        lava_imp = {
+            role = "melee",
+            hp = 1200,
+            display_name = "Lava Imp",
+            tier = "trash_mob",
+            move_speed = 15,
+            armor = 0,
+            model_asset = 110801864701636, -- shares the bunny art for now (Lava faction unmodeled)
+            model_scale = 4,
+            needs_primary_part = true,
             gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 16, stride_length = 3.5 },
             attack = { damage = 10, cadence = 1.5, sundering = 0 },
             drop_table = { lava_coins = 8, shadow_tokens = 1 },
         },
-        -- [TEST] A tanky, harmless training dummy for measuring damage + AoE. Enormous HP so it
-        -- survives a whole test session (damage keeps logging instead of one-shotting), zero attack
-        -- so it never hurts pets, stationary so an AoE cluster stays put, and zero armor so the
-        -- numbers you read are the pet's/power's RAW output (raise armor to test mitigation). Spawn
-        -- via the combat.spawnEnemy bus command; read damage as MaxHP-HP or the Contrib ledger.
+        ember_brute = {
+            role = "tank",
+            hp = 4000,
+            display_name = "Ember Brute",
+            tier = "mid_tier",
+            move_speed = 10, -- heavier, slower
+            armor = 80, -- tougher: ~44% pet-damage reduction at k=100
+            gait = { style = "march", bob_height = 0.9, tilt_degrees = 4, stride_length = 7 },
+            -- A Sundering attacker: drains player Focus on hit (Feature 12).
+            attack = { damage = 25, cadence = 2.0, sundering = 20 },
+            drop_table = { lava_coins = 30, shadow_tokens = 4, rare_drop_chance = 0.1 },
+        },
+        ember_acolyte = {
+            role = "support",
+            hp = 2000,
+            display_name = "Ember Acolyte",
+            tier = "trash_mob",
+            move_speed = 13,
+            armor = 0,
+            attack = { damage = 8, cadence = 2.0, sundering = 0 },
+            -- Enemy HEALER: restores HP to the most-hurt nearby enemy (mirrors the support role).
+            auto_heal = { interval = 2.0, amount = 120, range = 45 },
+            drop_table = { lava_coins = 12, shadow_tokens = 2 },
+        },
+        dire_bear = {
+            role = "tank",
+            hp = 65000,
+            display_name = "Dire Bear",
+            tier = "boss",
+            move_speed = 8, -- lumbering colossus
+            armor = 230, -- ~70% pet-damage reduction at k=100
+            model_asset = 99990991951749,
+            model_scale = 11,
+            needs_primary_part = true,
+            gait = { style = "march", bob_height = 1.4, tilt_degrees = 3, stride_length = 11 },
+            attack = { damage = 75, cadence = 2.6, sundering = 35 },
+            drop_table = { lava_coins = 280, shadow_tokens = 32, rare_drop_chance = 0.5 },
+        },
+        infernal_boss = {
+            role = "tank",
+            hp = 50000,
+            display_name = "Infernal Boss",
+            tier = "boss",
+            move_speed = 8, -- lumbering
+            armor = 200, -- heavily armored (~67% reduction at k=100)
+            gait = { style = "march", bob_height = 1.3, tilt_degrees = 3, stride_length = 10 },
+            attack = { damage = 60, cadence = 2.5, sundering = 40 },
+            drop_table = { lava_coins = 200, shadow_tokens = 25 },
+        },
+
+        -- [TEST] Tanky harmless dummy for measuring damage/AoE. Enormous HP, zero attack, stationary.
         training_dummy = {
+            role = "tank",
             hp = 1000000,
             display_name = "Training Dummy",
             tier = "trash_mob",
@@ -82,72 +239,6 @@ return {
             attack = { damage = 0, cadence = 999, sundering = 0 },
             gait = { style = "march", bob_height = 0, tilt_degrees = 0, stride_length = 0 },
             drop_table = {},
-        },
-        ember_brute = {
-            hp = 4000,
-            display_name = "Ember Brute",
-            tier = "mid_tier",
-            move_speed = 10, -- heavier, slower
-            armor = 80, -- tougher: ~44% pet-damage reduction at k=100
-            -- Heavy bruiser: a slow, stiff march with a deep stomp and little tilt.
-            gait = { style = "march", bob_height = 0.9, tilt_degrees = 4, stride_length = 7 },
-            -- A Sundering attacker: drains player Focus on hit (Feature 12).
-            attack = { damage = 25, cadence = 2.0, sundering = 20 },
-            drop_table = { lava_coins = 30, shadow_tokens = 4, rare_drop_chance = 0.1 },
-        },
-        ember_acolyte = {
-            hp = 2000,
-            display_name = "Ember Acolyte",
-            tier = "trash_mob",
-            move_speed = 13,
-            armor = 0,
-            attack = { damage = 8, cadence = 2.0, sundering = 0 },
-            -- Enemy HEALER: restores HP to the most-hurt nearby enemy on a cadence (mirrors
-            -- the pet support role). Kill the acolyte first to flip the fight.
-            auto_heal = { interval = 2.0, amount = 120, range = 45 },
-            drop_table = { lava_coins = 12, shadow_tokens = 2 },
-        },
-        raging_bear = {
-            hp = 3500,
-            display_name = "Raging Bear",
-            tier = "mid_tier",
-            move_speed = 11, -- charges in faster than the brute
-            armor = 70, -- thick hide: ~41% pet-damage reduction at k=100
-            -- Real art (uploaded model: a bear MeshPart, no PrimaryPart). Native ~1.9 tall;
-            -- model_scale 5 brings it to ~9.5 — bigger and meaner than the imp.
-            model_asset = 99990991951749,
-            model_scale = 5,
-            needs_primary_part = true,
-            -- Heavy aggressive lope: a big springy waddle with a pronounced shoulder roll.
-            gait = { style = "waddle", bob_height = 0.8, tilt_degrees = 12, stride_length = 6 },
-            attack = { damage = 22, cadence = 1.8, sundering = 0 },
-            drop_table = { lava_coins = 35, shadow_tokens = 4, rare_drop_chance = 0.12 },
-        },
-        dire_bear = {
-            hp = 65000,
-            display_name = "Dire Bear",
-            tier = "boss",
-            move_speed = 8, -- lumbering colossus
-            armor = 230, -- ~70% pet-damage reduction at k=100
-            -- Same bear art, scaled WAY up for a boss: ~1.9 * 11 = ~21 studs tall.
-            model_asset = 99990991951749,
-            model_scale = 11,
-            needs_primary_part = true,
-            -- Ground-shaking march: deep slow stomp, minimal tilt (too massive to sway).
-            gait = { style = "march", bob_height = 1.4, tilt_degrees = 3, stride_length = 11 },
-            attack = { damage = 75, cadence = 2.6, sundering = 35 },
-            drop_table = { lava_coins = 280, shadow_tokens = 32, rare_drop_chance = 0.5 },
-        },
-        infernal_boss = {
-            hp = 50000,
-            display_name = "Infernal Boss",
-            tier = "boss",
-            move_speed = 8, -- lumbering
-            armor = 200, -- heavily armored (~67% reduction at k=100)
-            -- Lumbering colossus: huge slow ground-shaking stomp, almost no tilt.
-            gait = { style = "march", bob_height = 1.3, tilt_degrees = 3, stride_length = 10 },
-            attack = { damage = 60, cadence = 2.5, sundering = 40 },
-            drop_table = { lava_coins = 200, shadow_tokens = 25 },
         },
     },
 }
