@@ -36,3 +36,33 @@ living at the payout (the mine gate), not the border.
 **Verdict:** Keeper. Previewing the next biome is better marketing than a wall;
 enforcement at the economic layer is also simpler and cheat-resistant. Watch-item:
 whether silent mining refusal needs a "🔒 Unlock Ice Fields first" nudge.
+
+## Pets herd the fight — push-away vs draw-toward, and the multi-tank spread (2026-06-14)
+
+**Behavior:** Where pets STAND relative to their target (the attack ring's angle-0,
+`configs/pet_follow.lua attack.combat_ring_zero`) silently decides whether the squad
+*shoves enemies away from the player* or *pulls them toward the player* — and that
+turns the player's own position into a tactical lever (walk an enemy into a corner,
+funnel a pack through a choke). The current default (`toward_player`) makes a pet body
+up between you and its target; the enemy backs to the far side to keep range, so the
+squad **peels/shoves enemies away** — a bodyguard pushing the threat off you. The
+unexpected twist: with **multiple tanks**, each shoves toward *its own* "away from
+you" direction (every tank sits at a different angle), so the divergent pushes make
+the fight **spread out and de-centre** instead of concentrating.
+
+**Produced by:** anchored, non-colliding pets positioned every frame around their
+target (`PetFollowController` + `PetFormation.attackOffset`), the ring oriented to the
+player, AND enemies independently holding their own attack range around the pet
+(`EnemyService` chase + `RingSeparate`). Neither side "pushes" the other — the herd
+falls out of two range-keeping loops fighting over the same axis.
+
+**Verdict:** Keeper, *and* the spread is treated as intentional friction. A full tank
+team being too chaotic/uncentred to control is a FEATURE — it makes team composition a
+real choice (don't free-stack tanks; mix roles). The opposite pole
+(`away_from_player`) is exposed as a config flip — pets take the far side and DRAW
+enemies toward you, so many pets all pull to one point (you) and the fight
+**concentrates**. Left on `toward_player` for now (Jason); the flip is one config
+value when we want the concentrating variant, and the two poles could later split by
+role (tanks peel-away, dps draw-toward). The flip-side risk to watch: pets can pin an
+enemy against a wall/tree and trap it (the map-clamp corner-pin) — fine as a tactic,
+watch for unwinnable stalls.

@@ -120,6 +120,19 @@ return {
             support = "orbit", -- weaves around the squad
             control = "pincer", -- flanks to set up debuffs
         },
+        -- COMBAT ring orientation — which way the attack wheel's angle-0 points (the slot a lone
+        -- pet takes). This decides whether your squad SHOVES enemies away from you or PULLS them
+        -- toward you, and it is a real tactical tension (see docs/wiki/EMERGENT_BEHAVIORS.md):
+        --   "toward_player"      — pet bodies up between you and its target → the enemy backs to the
+        --                          far side to keep range → the squad PEELS/SHOVES enemies AWAY
+        --                          from you. Great solo (a bodyguard pushing the threat off you),
+        --                          but multiple tanks each shove toward a DIFFERENT "away" → the
+        --                          fight SPREADS and de-centres. (default — Jason: leave as is.)
+        --   "away_from_player"   — pet takes the far side → enemies are DRAWN TOWARD you. Multiple
+        --                          pets all pull to the same point (you) → the fight CONCENTRATES.
+        -- The spread under many tanks is intentional friction: a full tank team is unwieldy/chaotic,
+        -- so team composition is a CHOICE, not a free stack. Players learn to mix roles.
+        combat_ring_zero = "toward_player",
         ring_radius = 6,
         ring_height = 3,
         orbit_speed = 2.5, -- radians/sec wheel spin (orbit)

@@ -830,6 +830,12 @@ function PetFollowController.start()
                         Vector3.new(cf.Position.X - g.center.X, 0, cf.Position.Z - g.center.Z)
                     if toP.Magnitude > 0.01 then
                         local a = math.atan2(toP.Z, toP.X)
+                        -- Flip the pole if configured: "away_from_player" points angle-0 AWAY from
+                        -- you, so pets take the far side and DRAW enemies toward you (vs the default
+                        -- "toward_player", which peels/shoves them away). See pet_follow.lua.
+                        if config.attack.combat_ring_zero == "away_from_player" then
+                            a = a + math.pi
+                        end
                         local ca, sa = math.cos(a), math.sin(a)
                         off =
                             { x = off.x * ca - off.z * sa, y = off.y, z = off.x * sa + off.z * ca }

@@ -195,3 +195,34 @@ Renaming the internal id `grass` → `earth` is a deliberate DATA MIGRATION
 sweep), deferred until intentionally scheduled — not a casual find/replace. Until
 then: **player sees Earth, storage says grass, and that mapping is the
 PetBadge.element_alias.** This entry exists so we stop re-litigating it.
+
+## Combat positioning — pets herd the fight; player position is a lever (2026-06-14)
+
+Pet *attack positioning* is a deliberate combat layer, not just visuals:
+
+- **Per-role attack styles** (`configs/pet_follow.lua attack.role_styles`, resolved by
+  `PetFormation.resolveStyle`). In COMBAT the squad runs "individual" mode — each pet
+  fights in character (tank=static_ring/planted, melee=orbit/weaving, ranged=firing_line,
+  support=orbit, control=pincer). While MINING it runs "team" mode (everyone shares the
+  player's saved formation). **Combat overrides saved settings** (Jason: "during combat
+  all saved settings get overridden and it goes into combat mode"); the player's
+  `PetAttackStyle` is a MINING pref and is ignored in a fight. May revisit later.
+- **Ring orientation = a herding pole** (`attack.combat_ring_zero`). The attack wheel's
+  angle-0 points either `toward_player` (default — pets interpose and PEEL/SHOVE enemies
+  away from you) or `away_from_player` (pets take the far side and DRAW enemies toward
+  you → the fight concentrates on your position). This makes the PLAYER'S OWN POSITION a
+  tactic (funnel into a corner / choke). Default is `toward_player`; the spread it causes
+  with multiple tanks is intentional friction (a full tank team is too chaotic to centre,
+  so composition is a real choice). See EMERGENT_BEHAVIORS.md. Open: split the pole by
+  role (tanks peel-away, dps draw-toward).
+- **Map clamp + corner-pinning.** Anchored, non-colliding pets are clamped out of walls/
+  rocks (reusing the crystal-spawner blocker rule: a solid part in an elevated box; flat
+  ground ignored, dynamic stuff excluded). Pets hold at the wall instead of marching off
+  the map — and can pin an enemy against geometry. Enemies are NOT given the same self-
+  clamp (they must traverse to reach you; a hard stop would strand them).
+- **Enemy fan** (`RingSeparate`): co-attackers on one target spread tangentially on a
+  fixed-radius ring instead of stacking — positional only (proximity/threat/damage
+  unchanged).
+
+**Deferred:** enemy role-motion (a tank enemy like the raging bear should PLANT, so
+tank-vs-tank stalemates) — the symmetric counterpart, not yet built.
