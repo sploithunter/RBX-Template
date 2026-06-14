@@ -1,214 +1,155 @@
-# RBX Template
+# Pet Realm — *Halo & Horns*
 
-A configuration-as-code Roblox pet/clicker template built with Rojo. The project is designed so code owns reusable game systems and Studio/world builders own map geometry, art, and invisible gameplay markers.
+A config-as-code Roblox pet game built with Rojo. You mine biome ore, hatch and grow a squad of pets, fight alongside them with a City-of-Heroes–style power kit, and push outward through a ring of biomes toward a heaven/hell realm axis. Code owns the reusable game systems; Studio and world builders own map geometry, art, and invisible gameplay markers.
 
-![RBX Template gameplay screenshot](RBX-Template.png)
+The project started as a generic pet/clicker template and **is now the game itself** (the repo *is* Pet Realm) — the template baseline survives underneath as the foundation layer.
+
+![Pet Realm gameplay screenshot](RBX-Template.png)
+
+## The Core Loop
+
+**Mine biome ore → earn that biome's coins → hatch eggs → grow & equip a pet squad → claim levels (powers, slots, egg-hatch) → fight & conquer → unlock the next zone** — ringing outward toward the heaven/hell realm endgame.
+
+Pets are the stars: each has a two-number profile (⛏ mining vs ⚔ combat), an origin element, and a role (tank/melee/blaster/support). You build *you* through archetypes, a pick-10 power roster, and slotted enhancements; your pets carry the fight.
 
 ## Current Checkpoint
 
-Phase 5 has its first server-authoritative auto systems slice. The pet follow/mining feel refactor is intentionally deferred until hands-on playtesting.
+The game is built in two stacked tracks, both well past their core milestones, with an active polish/content lane on top.
 
-- Phase 0: foundations complete.
-- Phase 1: map integration contract complete for synthetic and partial authored maps.
-- Phase 2: economy depth complete for the current baseline.
-- Phase 3: stats-derived wins complete: pet index, achievements, and live leaderboards.
-- Phase 4: progression depth complete for the current baseline: unique pet XP/levels, enchant-slot unlock milestones, hatch-time enchant rolls, manual reroll service hooks, enchant modifier providers, player-level team power, configurable level rewards, eternal/huge pet handling, source-of-truth pet power, and offline balance tooling.
-- Phase 5: auto-system slice active: server-selected auto-target modes, persisted auto settings, server-enforced hatch auto-delete filters, and first dynamic egg hatch foundation.
+**Template baseline — Phases 0–11 complete** (the config-as-code foundation):
+- P0 data spine · P1 map integration contract · P2 economy depth · P3 stats/achievements/leaderboards · P4 progression & enchants · P5 auto-systems · …through P11 the SSOT pet-inventory model.
 
-## Current Implemented Features
+**Halo & Horns game build — Phases 0–10 complete** (the heaven/hell pet game on top of the baseline):
+- **P0 Data spine** — ring topology, Soul alignment, themed per-biome currencies.
+- **P1 Pets & power** — element resonance, the multiplicative power formula, element-at-hatch.
+- **P2 Heaven vertical slice** — layer access/portals + Heaven reward scaling (logic).
+- **P3 Pet party core** — Spirit Form, the stacked-pet token-bucket pool, the active-squad hierarchy.
+- **P4 Combat & focus** — enemy spawners, auto-target, loot, the no-HP player Focus model.
+- **P5 Build depth** — archetypes, level-up power selection, augmentation slots + set bonuses, hotbar, rosters.
+- **P6 Social/endgame** — party scaling, escrow trade, chaotic fusion, chaos rifts.
+- **P7–P10** — reward spine (quests/daily/shop), achievements→spine, unified player level, two-player escrow trade UI.
 
-The playable baseline currently includes:
+**Active game lane — Pet Realm progression, power, economy & balance.** Per-biome zone economy, mining/combat balance, the PetPower mining/combat split, a level-50 XP-everywhere system with a claimed-vs-earned split + Ascension Altar, a level-diff accuracy curve, a bounded "pets-are-stars" power model with a Creator ceiling, the full powers/icons + enhancements systems, a CoH-style squad HUD and matching enemy HUD, a tutorial + early mission chain, orthogonal Huges, and Storage v2. All bound to the pinned design spec (`docs/PET_REALM_PROGRESSION_POWER_TEAMING.md` + `docs/PET_REALM_DESIGN_DOCUMENT.md`).
 
-- Rojo-owned code/config with Studio-owned map geometry and marker hooks.
-- Persistent ProfileStore-backed player data after Studio API access is enabled.
-- Breakable crystal spawning, coin spawning, contribution rewards, and configurable reward modifiers.
-- Eggs, proximity hatch validation, server-authoritative dynamic `1..99` requested hatch counts, and hatching from configured pet asset ids.
-- Mixed pet inventory storage: normal pets stack, special pets are unique records.
-- Pet equip limits, storage limits, config-driven upgrades, and admin test controls.
-- Imported pet asset transforms for scale, orientation, Huge scale, and variant visuals.
-- Centralized pet grants through `PetGrantService`, including huge serial allocation and hatcher provenance.
-- Eternal/Huge pet power handling with config-only durable pet power.
-- Unique-pet XP, levels, enchant-slot unlock milestones, and hover-time XP display refresh.
-- Configurable player-level team power and level milestone rewards, starting with extra equipped pet slots.
-- Hatch-time enchants, server-authoritative manual rerolls, and a map-authored enchanter station.
-- Live enchant consumers for breakable rewards, pet XP, hatch luck, secret hatch luck, pet damage, team power, and pet efficiency.
-- Enchanter VFX using a reusable ColorfulClickers-style lightning module plus station-configured endpoints.
-- Enchanter UI descriptions/reveal copy sourced from enchant config.
-- Paid area unlocks, locked-gate prompts/notices, and server-authoritative portal/pad travel.
-- Active-zone breakable spawning so inactive areas stay dormant until entered.
-- Pet index milestones, achievements, and live leaderboard service over shared stats.
-- Config-driven auto-target modes: nearest, highest value, weakest, strongest, and selected currency.
-- Config-driven hatch auto-delete filters by rarity, pet family, and variant, with protected special rarities.
-- Hatch panel controls and hotkeys for selected-count, max, and auto hatch, backed by the same server batch endpoint and server-validated auto entitlement/session handling.
-- Compact hatch auto-delete filter drawer for rarity, pet-family, and variant filters, backed by the server-authoritative auto-delete settings event.
-- Hatch mode toggles for Golden/Charged/Fast/Skip/Silent; Golden and Charged are server-entitlement checked, explain locked access, and use configured cost/roll modifiers.
-- Config-driven hatch drawer help text for mode and auto-delete filter education.
-- Admin hatch entitlement controls for testing Auto, Golden, Charged, Fast, Skip, and max hatch count shop stubs before the shop UI exists.
-- Special hatch metadata is config-driven for reveal polish, and Skip Hatch remains a hard animation-suppression preference for auto-hatching.
-- Admin panel tools and Studio MCP smoke-test tooling for repeatable validation.
+## Implemented Features
 
-## In Process / Partially Implemented
+**World & economy**
+- Ring of biomes (Earth → Ice → Lava → Desert), each with its own non-tradeable coin currency; the HUD shows all four with a live `+N` gain indicator.
+- `ZoneTrackerService` resolves the current area by raycasting biome baseplates; farming is scoped to the area you're standing in, and inactive zones stay dormant until entered.
+- Mining income identity `coins/sec = DPS × (value/HP)` (fixed 0.2 ratio) so every crystal tier pays the same rate — bigger nodes just take longer. Active mining (clicking a node) amplifies pet damage on it.
+- Zone unlocks paid in the *prior* zone's coins (no skipping), tuned to a real chapter per zone.
+- Per-biome egg stands placing real hatch-target eggs; server-authoritative travel via teleport pads / portals.
 
-These systems exist but still need polish or later-phase expansion:
+**Pets, power & progression**
+- Mixed SSOT inventory: common pets compress into enchant-keyed stacks; Secret/Exclusive/Huge are unique records. 500-entry cap with effective-max including equip slots, storage telemetry, and stack enchant badges.
+- PetPower mining/combat split (role aptitude × element × variant) shown on each card, with a bounded geometric tier curve and a code-enforced power ceiling (the Creator apex).
+- **Eternal pets** (Huge/Secret/Exclusive) scale dynamically off the average of your top non-eternal pets, so they stay relevant forever without breaking the ceiling.
+- Two-stage hatching (species, then basic/golden/rainbow), hatch-time enchants, hatch-luck curve with a radically-boosted first hatch, auto-delete filters, and an authored hatch-reveal animation.
+- **Orthogonal Huges:** any pet can roll Huge, with a global census index and a world-first realm announcement.
+- XP from **both** mining and combat feeds a level-50 track. **Claimed-vs-earned split:** XP earns levels; powers/slots/egg-hatch are *claimed* through a level-up sequence UI. Hybrid **Ascension Altar** — filler levels auto-claim in the field, milestone levels train at the altar. Caps: 10 equipped pets + 10 power picks.
 
-- Player-level and enchant balance values are intentionally first-pass and need tuning from real playtesting.
-- Pet follow/mining still runs through a stabilized legacy cloned script. Phase 4 now routes its damage/cadence through the modifier pipeline, but a cleaner PetWork/Combat service should replace that script.
-- Enchanter UI works and now explains config descriptions, but richer player education such as signs/help panels is still future polish.
-- Auto systems currently have server/config/smoke coverage and compatibility with the existing Low/High buttons; richer settings UI controls are still future polish.
-- Egg hatching now has the server transaction foundation and a first-pass near-egg Hatch/Max/Auto panel, but the UI still needs visual QA and broader player education around settings/filter behavior.
-- Egg hatch responses include authored egg visual metadata and `EggHatchingService` has a first-pass authored ViewportFrame clone/scale path, but the animation still needs richer UI polish.
-- Offline balance tooling reads the current player-level curve, but it remains a rough calculator rather than a full economy simulator.
-- Authored-map workflow works through markers, but visible production map fixtures/gate art are still early.
+**Combat & powers**
+- Pet-squad combat: server-owned perception/aggro (tanks pull, hurt enemies retaliate), Spirit-Form down/recovery with per-pet + slot lockouts, and a slowed 10× HP world tuned for engaging multi-second fights.
+- Archetypes + a pick-10-of-many power roster: damage, defense, heal, buffs/debuffs (which apply to **farming** crystals too, not just enemies), travel/utility (Swift, Hasten, Revive, Recall), and per-origin signature powers including summon capstones.
+- Slotted **enhancements** (origin-keyed cogs) that modify power stats, with drops, an inventory surface, a slotting UI, and an in-slot result preview.
+- Unified, programmatic **icon/badge system**: a colored origin disc + white effect symbol + targeting ring, generated from an asset manifest (no hand-typed ids), driving the hotbar, squad cards, and world VFX from one registry.
+- Additive **BuffStack** model (same-axis buffs add, never compound), config-driven combat VFX, and a shared-world FX broadcast so nearby players see your combat/mining numbers and power effects.
 
-## Planned Features
+**HUD & UX**
+- CoH-style **squad HUD** (right edge): one card per pet — element/role chip, health bar, status-buff badges, recharge/lockout timers, click-to-select assist targeting.
+- Matching **enemy HUD** (left edge): the foes aggro'd onto your squad, with the indirect target (selected pet → enemy) bordered — built from the same shared `HudCard` chrome.
+- Center player bar (XP pill + level ring + level-up arrow), area-themed tray/currency/quest panels, a buff-stats readout (effective attack/defense/coin/luck multipliers), floating coin payouts, daily-streak / shop / quest panels, and a viewport-relative mobile scale pass.
+- A **tutorial** (objective capsule + egg beacon + UI pulse) and an early ordered **mission chain**, with derived power tooltips.
+- A boot loader / loading screen that gates play until data is ready and stamps the build version + Mountain-Time update timestamp.
 
-Planned or intentionally deferred work:
+**Foundation (template baseline)**
+- ProfileStore-backed persistence with schema versioning and migrations; a stat-counter + modifier-pipeline + currency-ledger spine; deterministic UTC day/seed; feature flags.
+- `ConfigLoader` validates every config at startup, with focused validators for core gameplay configs.
+- Achievements, a pet index, and live leaderboards over shared stats; permanent upgrades; admin tooling and Studio MCP smoke-test bridges.
 
-- Potions, boosts, shops, and other player enhancements that feed the shared modifier pipeline.
-- Richer auto-system UI controls and player-facing explanations.
-- Richer egg UI polish: locked-mode explanations, responsive layout QA, special reveal presentation, and fuller player-facing hatch education.
-- Daily gifts, reward tracks, codes, stock/limited items, and Pet of the Day style rotations.
-- Chaseables, seasonal/event currencies, and more authored-world content.
-- Trading/marketplace with Roblox-native escrow and anti-duplication guarantees.
-- Automated Meshi-to-Roblox asset workflow.
-- Pet follow/mining refactor into a service-owned assignment, cadence, and damage system.
-- Rebirth only if it becomes rare and dramatic; it is deferred out of Phase 4.
-- No generic stack-to-unique promotion flow for normal pets; pets needing per-copy state should be unique from grant/craft/reward time.
+## In Process / Planned
+
+- **World S3** — the heaven/hell realm axis as a *non-terminal* endgame (token earning loop, traversal-sink knob, depth-as-desirability via Eternal pets) rather than a dead-end ring terminus.
+- **Teaming S4** — guest pass + lead-anchored sidekick/exemplar (power axis only).
+- **Creator S5** — Creator class (dev-only, untradeable apex) + Meet-the-Creator + shiny pets.
+- Earning-rate enemy pressure (anti-cheat), support-pet targeted buff/debuff, PetPower display=dealt, a Power S2b balance rebase, and an overnight memory-leak investigation.
+- Authored realm geometry + portals (art) for the stacked heaven/hell layers; enhancement trading + natural-conversion sink; a full mobile-input audit; ongoing balance tuning from real playtesting.
 
 ## Configuration As Code
 
-Most gameplay tuning lives in `configs/*.lua`. Designers should be able to add or rebalance content by editing configs and Studio markers instead of writing service code.
+Most gameplay tuning lives in `configs/*.lua` — designers add or rebalance content by editing configs and Studio markers, not service code. Selected configs:
 
-Important configs:
+- `game.lua` — feature flags and global settings.
+- `biomes.lua`, `areas.lua`, `currencies.lua`, `zone_tracker.lua` — the biome ring, zone tree/unlocks, themed coins, area resolution.
+- `pets.lua`, `pet_power.lua`, `pet_roles.lua`, `pet_progression.lua`, `level_track.lua` — pet families/rarity/variants/transforms, the mining/combat power model, role aptitudes, XP curves, the claimed-vs-earned level track.
+- `powers.lua`, `archetypes.lua`, `augmentation.lua`, `hotbar.lua`, `enhancements.lua`, `buffs.lua` — the power roster, archetypes, slots/set-bonuses, hotbar, enhancement cogs, additive buff stacking.
+- `power_icons.lua` / `power_icons_assets.lua` (generated), `combat_fx.lua`, `power_fx.lua` — the icon/badge registry and combat/power VFX.
+- `enemies.lua`, `combat.lua`, `focus.lua`, `spirit_form.lua`, `squad.lua`, `stack_pool.lua` — combat, the no-HP Focus model, Spirit Form, the squad/stack-pool math.
+- `egg_system.lua`, `enchants.lua`, `auto_systems.lua`, `drops.lua`, `gems.lua` — hatching, enchants, auto-target/auto-delete, drops & gems.
+- `soul.lua`, `layers.lua`, `elements.lua`, `theme_utility.lua` — Soul alignment, heaven/hell layers, element resonance.
+- `rewards.lua`, `quests.lua`, `daily.lua`, `shop.lua`, `trade.lua`, `fusion.lua`, `rifts.lua`, `party.lua` — the reward spine and social/endgame systems.
 
-- `configs/game.lua`: feature flags and global settings.
-- `configs/pets.lua`: pet families, rarity, variant multipliers, asset ids, transforms, eternal settings, and enchant capacity.
-- `configs/pet_progression.lua`: unique-pet XP curves, level caps, power growth, and enchant-slot unlocks.
-- `configs/player_progression.lua`: player-level team-power scaling and level reward milestones.
-- `configs/enchants.lua`: enchant effects, rarity roll profiles, roll counts, chance weights, strength ranges, reroll costs, and modifier mappings.
-- `configs/auto_systems.lua`: auto-target modes, default auto settings, and hatch auto-delete filter rules.
-- `configs/areas.lua`: zone tree and area unlock requirements.
-- `configs/markers.lua`: Studio-authored map marker contract.
-- `configs/breakables.lua`: crystals, spawn tables, and world/area spawner settings.
-- `configs/upgrades.lua`: permanent player upgrades.
-- `configs/pet_index.lua`, `configs/achievements.lua`, `configs/leaderboards.lua`: Phase 3 stats-derived systems.
+Durable pet power has a single source of truth in `configs/pets.lua` + `pet_power.lua` (family/role/element/variant), never persisted per copy. Enchant and enhancement behavior likewise live in config; saved pets store only rolled identity/strength.
 
-Durable pet power has a single source of truth in `configs/pets.lua`: family base power plus variant multipliers. Saved pet inventory records should store identity and mutable per-copy state such as level, XP, enchants, serials, hatcher metadata, lock state, and Huge/Eternal traits, but not power values.
+## AI & Wiki Workflow
 
-Enchant chance and behavior also have a single source of truth in `configs/enchants.lua`. Services read configured rarity profiles, weighted chance entries, slot counts, strength ranges, and modifier mappings; saved pets store only the rolled enchant identity/strength. Changing what `scholar`, `crystal_finder`, or any future enchant does should not require editing pet records or pet configs.
-
-## AI And Wiki Workflow
-
-This repo is intended to be developed with Codex or another AI coding agent. The persistent project memory lives in `docs/wiki/`, so useful decisions survive beyond one chat thread and future agents can move quickly without rediscovering the same context.
-
-Recommended start-of-work flow for any agent:
+This repo is developed with AI coding agents. Persistent project memory lives in `docs/wiki/` so decisions survive beyond one chat thread. Recommended start-of-work flow:
 
 1. Read `AGENTS.md`.
-2. Read `docs/wiki/INDEX.md`.
-3. Follow the links relevant to the task, especially `CURRENT_STATUS.md`, `DECISIONS.md`, `ARCHITECTURE.md`, `STUDIO_WORKFLOW.md`, and `MAP_INTEGRATION_CONTRACT.md`.
-4. Verify the wiki against source files before editing code, because code and formal requirements remain the final authority.
-5. Make the smallest useful code/config/doc change.
-6. Run the relevant local checks and Studio smoke runners.
-7. Update the wiki before finishing if the work changed architecture, config shape, map contracts, data shapes, save fields, network packets, Studio workflow, or project direction.
+2. Read `docs/wiki/INDEX.md`, then follow links relevant to the task — especially `CURRENT_STATUS.md`, `DECISIONS.md`, `ARCHITECTURE.md`, and `STUDIO_WORKFLOW.md`.
+3. Verify the wiki against source before editing code; code and the pinned design specs are the final authority.
+4. Make the smallest useful change, run the local checks (`mise run ci`) and any relevant Studio smokes, and update the wiki if the change touched architecture, config shape, data/save shapes, network packets, map contracts, Studio workflow, or direction.
 
-The wiki pattern is deliberately lightweight:
+Wiki map: `INDEX.md` (contents) · `CURRENT_STATUS.md` (what's true now) · `DECISIONS.md` (durable decisions) · `ARCHITECTURE.md` (service/data boundaries) · `STUDIO_WORKFLOW.md` (Rojo/Studio/MCP) · `LOG.md` (dated sessions) · `raw/` (unsynthesized notes). The game design SoT lives in `docs/PET_REALM_*.md`. Run `python3 scripts/wiki_status.py` as a health check after wiki edits.
 
-- `docs/wiki/INDEX.md` is the table of contents.
-- `docs/wiki/CURRENT_STATUS.md` says what is true right now.
-- `docs/wiki/DECISIONS.md` captures durable decisions and rationale.
-- `docs/wiki/ARCHITECTURE.md` explains service and data boundaries.
-- `docs/wiki/STUDIO_WORKFLOW.md` captures Rojo, Studio, MCP, and smoke-test workflow.
-- `docs/wiki/LOG.md` records dated session summaries.
-- `docs/wiki/raw/` is for unsynthesized notes; do not treat raw notes as current truth until they are compiled into a normal wiki page.
+## Studio & Rojo Workflow
 
-Use `python3 scripts/wiki_status.py` as a quick health check after wiki edits. The goal is not heavy documentation; the goal is a short, current project memory that lets an AI agent and a human developer maintain momentum together.
-
-## Studio And Rojo Workflow
-
-Prerequisites:
-
-- Roblox Studio.
-- Rojo 7.6.1 or newer.
-- `mise` for local tool versions.
-
-Common commands:
+Prerequisites: Roblox Studio · Rojo 7.6.1+ · `mise` for tool versions.
 
 ```bash
-mise exec -- rojo serve --port 34872
-mise exec -- rojo build --output /tmp/rbx-template.rbxl
-mise exec -- selene configs src tests --allow-warnings
-python3 scripts/wiki_status.py
-python3 scripts/balance_team_power.py --list-pets
+mise exec -- rojo serve            # sync to Studio (Rojo plugin → localhost)
+mise run ci                        # fast gate: selene + StyLua (owned paths) + rojo build + headless tests
+mise run test-headless             # pure-logic specs only (lune)
+mise run stamp                     # stamp build_info.lua (git + Mountain Time) before publishing
+python3 scripts/wiki_status.py     # wiki health check
 ```
 
-In Roblox Studio:
-
-1. Open the place.
-2. Connect the Rojo plugin to `localhost:34872`.
-3. Start Play mode for datastore/API-dependent tests.
-4. Keep Studio API access enabled when testing persistence.
-
-Useful Studio command-bar runners after Rojo sync:
-
-```lua
-return require(game:GetService("ReplicatedStorage").Tests.studio.GrantColoradoTestPets).runText()
-return require(game:GetService("ReplicatedStorage").Tests.studio.BackfillPetHatcherProvenance).runText()
-return require(game:GetService("ReplicatedStorage").Tests.studio.BackfillPetPowerSourceOfTruth).runText()
-return require(game:GetService("ReplicatedStorage").Tests.studio.EternalPowerSmoke).runText()
-return require(game:GetService("ReplicatedStorage").Tests.studio.Phase4PetProgressionSmoke).runText()
-return require(game:GetService("ReplicatedStorage").Tests.studio.Phase5AutoSystemsSmoke).runText()
-return require(game:GetService("ReplicatedStorage").Tests.studio.EggBatchHatchSmoke).runText()
-return require(game:GetService("ReplicatedStorage").Tests.studio.EggAutoHatchSmoke).runText()
-return require(game:GetService("ReplicatedStorage").Tests.studio.HatchEntitlementAdminSmoke).runText()
-```
+In Studio: open the place, connect the Rojo plugin, start Play for datastore/API-dependent tests, and keep Studio API access enabled when testing persistence. Live verification beyond headless uses the Studio MCP (read Output, capture screenshots, start/stop play, execute Luau, drive the real UI) plus the server-side `AutomationSuite` and the `Phase*Smoke` / game smoke runners.
 
 ## Project Structure
 
 ```text
-configs/                  Gameplay and system configuration
-docs/                     Requirements, implementation plan, and reference docs
+configs/                  Gameplay and system configuration (config-as-code)
+docs/                     Requirements, design specs (PET_REALM_*), and reference docs
 docs/wiki/                Persistent LLM-maintained project memory
-scripts/                  Local tools and Studio helper scripts
-src/Client/               Client UI and local systems
-src/Server/               Server services and Studio smoke bridge
-src/Shared/               Shared config loader, network signals, and utilities
-tests/studio/             Studio command-bar/MCP smoke runners
-tests/unit/               Unit specs for config and service behavior
+scripts/                  Local tools, asset pipeline, and Studio helpers
+src/Client/               Client UI, HUD systems, and local controllers
+src/Server/               Server services and the Studio smoke/automation bridges
+src/Shared/               Pure game logic, config loader, network signals, the command bus
+tests/headless/           Headless pure-logic specs (lune)
+tests/studio/             Studio command-bar / MCP smoke runners
 ```
 
 ## Automation API & Remote Dev Pipeline
 
-The template can be developed, tested, and released from a CLI/AI agent without GUI clicking — by driving the game through a command boundary and the Roblox Studio MCP instead of the screen.
+The game can be developed, tested, and released from a CLI/AI agent without GUI clicking, by driving it through a command boundary and the Studio MCP.
 
-- **Command boundary** (`src/Shared/API/CommandBus.lua`) — a pure dispatcher every gameplay action flows through. The GUI, the network layer, and automated tests are just different callers of the same commands, so tests exercise the exact code path a button would. `GameAPIService` owns the bus and exposes one `GameAPICommand` RemoteFunction; handlers are thin adapters over existing services (untrusted clients can never reach test-only commands).
-- **Headless tests** — `mise run test-headless` runs pure-logic specs (lune) with no Studio (`CommandBus`, `Navigation`, `Validators`, `TestReport`).
-- **Fast gate / CI** — `mise run ci` (selene + StyLua on owned paths + `rojo build` + headless) runs locally and in **GitHub Actions** (`.github/workflows/ci.yml`) on every push.
-- **Studio integration** — `AutomationService` (Studio-only) drives pathfinding movement, state snapshot/restore, and assertions, exposed as test-only `automation.*` commands; `RunAutomationSuite` runs the server-side suite via the MCP.
-- **UI sanity** — the Studio MCP's `character_navigation` + `user_mouse_input`/`user_keyboard_input` drive the *real* UI for last-mile end-to-end checks (used sparingly).
-- **Release** — `mise run release` publishes via `rojo upload` (Open Cloud); secrets read from `ROBLOX_OPEN_CLOUD_KEY`/`ROBLOX_UNIVERSE_ID`/`ROBLOX_PLACE_ID` env only (`DRY_RUN=1` validates).
+- **Command boundary** (`src/Shared/API/CommandBus.lua`) — a pure dispatcher every gameplay action flows through; the GUI, network layer, and tests are different callers of the same commands. `GameAPIService` owns the bus behind one `GameAPICommand` RemoteFunction (untrusted clients can never reach test-only commands).
+- **Headless tests** — `mise run test-headless` runs pure-logic specs (lune) with no Studio.
+- **Fast gate / CI** — `mise run ci` (selene + StyLua on owned paths + `rojo build` + headless) runs locally and in GitHub Actions on every push.
+- **Studio integration** — `AutomationService` (Studio-only) drives pathfinding movement, state snapshot/restore, and assertions; `RunAutomationSuite` runs the server-side suite via the MCP.
+- **Release** — `mise run release` publishes via Open Cloud `rojo upload`; secrets read from env only (`DRY_RUN=1` validates).
 
-Testing methodology (the test pyramid): **pure logic → server-side command-bus integration (primary, state-based) → thin UI sanity with screenshots.** State proves; pixels confirm. See [Remote Dev Pipeline](docs/wiki/REMOTE_DEV_PIPELINE.md) (incl. the hard-limit gap analysis) and [Automation API Design](docs/wiki/AUTOMATION_API_DESIGN.md).
+Testing methodology (the pyramid): **pure logic → server-side command-bus integration (primary, state-based) → thin UI sanity with screenshots.** State proves; pixels confirm. See `docs/wiki/REMOTE_DEV_PIPELINE.md` and `docs/wiki/AUTOMATION_API_DESIGN.md`.
 
 ## Verification Baseline
 
-Latest local checkpoint:
+- `mise run ci` (fast gate): green — selene 0 errors, StyLua clean on owned paths, `rojo build` passes, **headless 837/837 across 76 specs**. GitHub Actions runs the same gate on every push.
+- Live in *Halo & Horns* (Rojo connected): the server-side `AutomationSuite` covers the alignment chain, pets/power/element resonance, layer access, party core (Spirit Form / stack pool / squad), combat & focus, and the Phase-5 build-depth systems. Studio `Phase*Smoke` + game smoke runners cover the egg system, progression, and zone/economy paths.
+- Game-layer features (combat, HUD, powers, enhancements, tutorial) are iterated live in Studio play sessions and verified through the MCP + in-session play.
 
-- `rojo build`: passes.
-- `selene configs src tests --allow-warnings`: passes with existing warnings.
-- `python3 scripts/wiki_status.py`: passes.
-- `git diff --check`: passes.
-- `mise run ci` (fast gate): green — selene 0 errors, StyLua clean on owned paths, `rojo build`, headless 35/35. GitHub Actions runs the same gate on every push.
-- Live Studio E2E (Place1): command-bus network path verified, server-side `AutomationSuite` 11/11, and a full UI-driven egg hatch (navigate → press `E` → pet granted, verified via the bus).
-- Phase 3 Studio smoke coverage exists for pet index, achievements, leaderboards, and Phase 2 regressions.
-- `Phase4PetProgressionSmoke`: passes in Studio for hatch enchants, breakable XP, manual reroll, player-level slot rewards, hatch/secret luck, pet damage, team power, pet efficiency, and profile restoration.
-- `Phase5AutoSystemsSmoke`: passes in Studio for server-selected nearest/highest/weakest/strongest/selected-currency targets, hatch auto-delete filters, protected special rarity behavior, and profile restoration.
-- `EggBatchHatchSmoke`: added for server batch hatch count/cost behavior, rapid-repeat hatch lock rejection, partial hatch by available funds/storage, hatch-time auto-delete inventory/stat behavior, locked Auto/Golden mode rejection, and Golden mode cost/no-basic behavior.
-- `EggAutoHatchSmoke`: added for client auto-hatch stop feedback when an auto session cannot afford the next hatch, has no storage, or moves too far from the egg.
-- `EggProximitySmoke`: now also checks the near-egg hatch panel appears with Hatch/Max/Auto/count controls and config-driven hatch drawer help text.
-- `HatchEntitlementAdminSmoke`: added for admin-managed hatch entitlement/shop-stub attributes, including lock/unlock/reset and max hatch count restoration.
-
-See `docs/wiki/CURRENT_STATUS.md` for detailed verification history and `docs/IMPLEMENTATION_PLAN.md` for the phase roadmap.
+See `docs/wiki/CURRENT_STATUS.md` for detailed verification history and `docs/PET_REALM_IMPLEMENTATION_PLAN.md` for the game roadmap.
 
 ## Next Work
 
-The next big hands-on lane is replacing the legacy pet follow/mining script with a service-owned PetWork/Combat loop. That should wait for play-feel testing; smaller MCP-friendly work can continue around settings UI, auto-system polish, and docs.
+The active lane is the **Pet Realm game layer**: the heaven/hell realm axis as a non-terminal endgame (World S3), teaming (S4), the Creator apex (S5), earning-rate enemy pressure, and ongoing combat/economy balance from real playtesting. Authored realm geometry/art and the legacy pet-follow service refactor are the parked map/foundation lanes.
