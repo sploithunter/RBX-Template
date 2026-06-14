@@ -136,6 +136,17 @@ function EnemyService:_enemiesFolder()
     return folder
 end
 
+-- Set (or clear, with nil) the player whose squad this enemy is fighting. entry.aggroPlayerName
+-- stays the server SoT; AggroOwner is its replicated read-only shadow so the client EnemyHud can
+-- list only the foes engaged with ITS squad (every aggro mutation goes through here).
+function EnemyService:_setAggroOwner(entry, name)
+    entry.aggroPlayerName = name
+    local model = entry.model
+    if model and model.Parent then
+        model:SetAttribute("AggroOwner", name or "")
+    end
+end
+
 -- Add aggro for an attacker (pet Model / Player) on the enemy identified by `model`.
 -- Called when something hurts the enemy (PetFollowService mining) — damage builds threat.
 -- No-op if `model` isn't a tracked enemy. Public so other services can feed the table.
@@ -152,7 +163,7 @@ function EnemyService:AddAggro(model, key, amount)
         if not entry.aggroPlayerName and typeof(key) == "Instance" and key.Parent then
             local ownerName = key.Parent.Name
             if game:GetService("Players"):FindFirstChild(ownerName) then
-                entry.aggroPlayerName = ownerName
+                self:_setAggroOwner(entry, ownerName)
                 entry.meander = nil
                 entry.home = nil -- re-home wherever this fight leaves it
             end
@@ -902,7 +913,7 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
                 player
                 and (d <= proxRange or EnemyAI.shouldNotice(d, perceptionRange, math.random()))
             then
-                entry.aggroPlayerName = player.Name
+                self:_setAggroOwner(entry, player.Name)
                 entry.meander = nil
                 entry.home = nil -- re-home wherever the fight leaves it
             end
@@ -919,7 +930,7 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     local hrp = character and character:FindFirstChild("HumanoidRootPart")
     if not hrp or (hrp.Position - ePos).Magnitude > leash then
         self:_releasePets(targetId)
-        entry.aggroPlayerName = nil
+        self:_setAggroOwner(entry, nil)
         return
     end
     -- DRAFT RANGE (Jason: an enemy ~60 studs out kept re-conscripting his fresh
@@ -946,7 +957,7 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         and Workspace.PlayerPets:FindFirstChild(player.Name)
     if not petsFolder then
         self:_releasePets(targetId)
-        entry.aggroPlayerName = nil -- nothing to fight: back to loitering
+        self:_setAggroOwner(entry, nil) -- nothing to fight: back to loitering
         return
     end
     -- Aggro upkeep: assign the (non-downed) squad to this enemy, DECAY the table, and tick
@@ -1011,7 +1022,7 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     end)
     if not targetPet then
         self:_releasePets(targetId)
-        entry.aggroPlayerName = nil
+        self:_setAggroOwner(entry, nil)
         return
     end
 

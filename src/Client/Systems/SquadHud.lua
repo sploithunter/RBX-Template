@@ -28,6 +28,7 @@ local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local POWER_ICONS = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_icons"))
 local PET_ROLES = require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
 local PetBadge = require(script.Parent.Parent.UI.PetBadge)
+local HudCard = require(script.Parent.Parent.UI.HudCard)
 
 local SquadHud = {}
 
@@ -66,31 +67,10 @@ local STATE_COLOR = {
 local SLOT_BAR_COLOR = Color3.fromRGB(235, 150, 70) -- the SLOT timer (thin bar) when a pet is downed
 local SHIELD_BAR_COLOR = Color3.fromRGB(95, 170, 235) -- the shield-pool thin bar when alive
 
--- "Ns" under a minute, "M:SS" above (a 5-min pet lockout shouldn't read "284s").
-local function formatTime(sec)
-    sec = math.max(0, math.ceil(sec))
-    if sec >= 60 then
-        return string.format("%d:%02d", math.floor(sec / 60), sec % 60)
-    end
-    return sec .. "s"
-end
-
--- Continuous health-bar colour: green (full) -> yellow (half) -> red (empty), so the
--- fill itself reads the pet's condition (no separate state label needed).
-local HP_GREEN = Color3.fromRGB(70, 205, 95)
-local HP_YELLOW = Color3.fromRGB(235, 200, 60)
-local HP_RED = Color3.fromRGB(220, 70, 70)
-
--- How far the role badge pokes off the card's inner (left) edge: the badge's anchor-X fraction.
--- 0 = flush inside, 0.5 = half overhangs. Bigger = more "hanging off" the gems-pill style.
-local BADGE_OVERHANG = 0.35
-local function healthColor(f)
-    f = math.clamp(f, 0, 1)
-    if f >= 0.5 then
-        return HP_YELLOW:Lerp(HP_GREEN, (f - 0.5) * 2)
-    end
-    return HP_RED:Lerp(HP_YELLOW, f * 2)
-end
+-- Card chrome (frame/chip/health bar), the colour palette, and the green→red health curve all
+-- live in HudCard, shared with the enemy strip so the two HUDs stay pixel-identical.
+local formatTime = HudCard.formatTime
+local healthColor = HudCard.healthColor
 
 local function petsFolder()
     local pp = Workspace:FindFirstChild("PlayerPets")
@@ -622,134 +602,16 @@ function SquadHud.start()
         end
     end)
 
-    -- Build one card (returns refs for live updates).
+    -- Build one card (returns refs for live updates). The chrome (frame/chip/health bar/status
+    -- row) comes from the shared HudCard builder; the squad card then adds its pet-only extras:
+    -- the thin shield bar, the admin kill button, and the summon/select click.
     local function makeCard(slot)
-        local frame = Instance.new("TextButton")
-        frame.Name = "Slot_" .. slot
-        frame.AutoButtonColor = false
-        frame.Text = ""
-        frame.Size = UDim2.fromOffset(186, 44)
-        frame.BackgroundColor3 = Color3.fromRGB(28, 30, 40)
-        frame.BackgroundTransparency = 0.1
-        frame.BorderSizePixel = 0
-        frame.LayoutOrder = slot
-        frame.Parent = root
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 6)
-        corner.Parent = frame
-        -- Always-on subtle outline on the black bar (so the badge poking off its edge reads);
-        -- brightens to the selection blue when this slot is selected/cycled (see render loop).
-        local stroke = Instance.new("UIStroke")
-        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border -- draw a real outer border (Contextual was invisible here)
-        stroke.Color = Color3.fromRGB(70, 76, 96)
-        stroke.Thickness = 1.5
-        stroke.Transparency = 0.4
-        stroke.Parent = frame
-
-        -- Archetype/role chip on the left (tank/melee/ranged/support/control). Coloured
-        -- letter glyph now; swaps to art when a role gets an icon in configs/pet_roles.
-        local roleChip = Instance.new("Frame")
-        roleChip.Name = "Role"
-        -- Anchored so the badge pokes off the card's inner edge (the "gems" look) — relative, no
-        -- pixel offset. BADGE_OVERHANG is the knob: anchor-X fraction, bigger = hangs further left.
-        roleChip.AnchorPoint = Vector2.new(BADGE_OVERHANG, 0.5)
-        roleChip.Position = UDim2.new(0, 0, 0.5, 0)
-        -- Relative: fill the card, then an aspect-ratio constraint (FitWithinMaxSize) squares it
-        -- to the smaller axis = the card's HEIGHT. Scales with the card automatically — no pixels.
-        roleChip.Size = UDim2.new(1, 0, 1, 0)
-        roleChip.BorderSizePixel = 0
-        roleChip.ClipsDescendants = false
-        roleChip.Parent = frame
-        local roleAspect = Instance.new("UIAspectRatioConstraint")
-        roleAspect.AspectRatio = 1
-        roleAspect.AspectType = Enum.AspectType.FitWithinMaxSize
-        roleAspect.Parent = roleChip
-        local roleCorner = Instance.new("UICorner")
-        roleCorner.CornerRadius = UDim.new(0, 6)
-        roleCorner.Parent = roleChip
-        local roleGlyph = Instance.new("TextLabel")
-        roleGlyph.Name = "Glyph"
-        roleGlyph.BackgroundTransparency = 1
-        roleGlyph.Size = UDim2.fromScale(1, 1)
-        roleGlyph.Font = Enum.Font.GothamBold
-        roleGlyph.TextSize = 14
-        roleGlyph.TextColor3 = Color3.fromRGB(255, 255, 255)
-        roleGlyph.TextStrokeTransparency = 0.5
-        roleGlyph.Parent = roleChip
-        -- The badge: a colored element DISC (roleIcon) inset behind a tinted framing RING
-        -- (roleRing), built once and re-skinned each tick by PetBadge.apply. Falls back to the
-        -- coloured glyph above when the (element, role) combo has no uploaded disc art.
-        local roleIcon = Instance.new("ImageLabel")
-        roleIcon.Name = "Icon"
-        roleIcon.BackgroundTransparency = 1
-        roleIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-        roleIcon.Position = UDim2.fromScale(0.5, 0.5)
-        roleIcon.Size = UDim2.fromScale(0.82, 0.82)
-        roleIcon.ScaleType = Enum.ScaleType.Fit
-        roleIcon.ZIndex = 2
-        roleIcon.Image = ""
-        roleIcon.Parent = roleChip
-        local roleRing = Instance.new("ImageLabel")
-        roleRing.Name = "Ring"
-        roleRing.BackgroundTransparency = 1
-        roleRing.AnchorPoint = Vector2.new(0.5, 0.5)
-        roleRing.Position = UDim2.fromScale(0.5, 0.5)
-        roleRing.Size = UDim2.fromScale(1, 1)
-        roleRing.ScaleType = Enum.ScaleType.Fit
-        roleRing.ZIndex = 3
-        roleRing.Image = ""
-        roleRing.Parent = roleChip
-
-        -- Compact health bar: a near-black backing (so white text stays legible as the
-        -- fill drains), a fill that goes green->yellow->red, the pet NAME inside it, and
-        -- a right-aligned note (recharge countdown / Summon when downed). Rounded corners.
-        local barBg = Instance.new("Frame")
-        barBg.Name = "BarBg"
-        barBg.Position = UDim2.fromOffset(40, 9)
-        barBg.Size = UDim2.new(1, -48, 0, 20)
-        barBg.BackgroundColor3 = Color3.fromRGB(12, 13, 18)
-        barBg.BorderSizePixel = 0
-        barBg.ClipsDescendants = true
-        barBg.Parent = frame
-        local barCorner = Instance.new("UICorner")
-        barCorner.CornerRadius = UDim.new(0, 6)
-        barCorner.Parent = barBg
-
-        local fill = Instance.new("Frame")
-        fill.Name = "Fill"
-        fill.Size = UDim2.fromScale(1, 1)
-        fill.BorderSizePixel = 0
-        fill.ZIndex = 2
-        fill.Parent = barBg
-        local fillCorner = Instance.new("UICorner")
-        fillCorner.CornerRadius = UDim.new(0, 6)
-        fillCorner.Parent = fill
-
-        local nameLbl = Instance.new("TextLabel")
-        nameLbl.Name = "Name"
-        nameLbl.BackgroundTransparency = 1
-        nameLbl.Position = UDim2.fromOffset(8, 0)
-        nameLbl.Size = UDim2.new(1, -16, 1, 0)
-        nameLbl.Font = Enum.Font.GothamBold
-        nameLbl.TextSize = 13
-        nameLbl.TextXAlignment = Enum.TextXAlignment.Left
-        nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-        nameLbl.TextStrokeTransparency = 0.4 -- keeps it readable over any fill colour
-        nameLbl.ZIndex = 3
-        nameLbl.Parent = barBg
-
-        local noteLbl = Instance.new("TextLabel")
-        noteLbl.Name = "Note"
-        noteLbl.BackgroundTransparency = 1
-        noteLbl.Position = UDim2.fromOffset(8, 0)
-        noteLbl.Size = UDim2.new(1, -16, 1, 0)
-        noteLbl.Font = Enum.Font.GothamBold
-        noteLbl.TextSize = 11
-        noteLbl.TextXAlignment = Enum.TextXAlignment.Right
-        noteLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-        noteLbl.TextStrokeTransparency = 0.4
-        noteLbl.ZIndex = 3
-        noteLbl.Parent = barBg
+        local card = HudCard.createCard(root, { name = "Slot_" .. slot, layoutOrder = slot })
+        local frame = card.frame
+        local nameLbl, noteLbl, fill = card.name, card.note, card.fill
+        local roleChip, roleGlyph, roleIcon, roleRing =
+            card.roleChip, card.roleGlyph, card.roleIcon, card.roleRing
+        local stroke, status = card.stroke, card.status
 
         -- Thin secondary bar = shield absorption pool (blue), CoH endurance-bar style.
         -- Hidden when the pet has no shield; rounded (pill) corners.
@@ -774,21 +636,6 @@ function SquadHud.start()
         local shieldFillCorner = Instance.new("UICorner")
         shieldFillCorner.CornerRadius = UDim.new(1, 0)
         shieldFillCorner.Parent = shieldFill
-
-        -- Status-badge row: anchored at the card's left edge, growing toward screen
-        -- centre (left) as more buffs/debuffs stack on this pet.
-        local status = Instance.new("Frame")
-        status.Name = "Status"
-        status.AnchorPoint = Vector2.new(1, 0.5)
-        -- Start left of the overhanging role badge (which pokes ~15px off the card edge) so the
-        -- status badges grow further toward centre without colliding with it.
-        status.Position = UDim2.new(0, -20, 0.5, 0)
-        -- Width is set by updateBadges (badges are positioned manually so same-kind ones can overlap
-        -- by half — a UIListLayout's uniform spacing can't do the coin-stack).
-        status.Size = UDim2.fromOffset(0, 30)
-        status.AutomaticSize = Enum.AutomaticSize.None
-        status.BackgroundTransparency = 1
-        status.Parent = frame
 
         -- Admin-only ✕ KILL button (top-right): force THIS slot's pet down so the lockout / Spirit
         -- Form fires with no enemies — fast testing. Shown only while admin mode is ON (the same
@@ -1079,12 +926,7 @@ function SquadHud.start()
                     end
                     -- Selection = an OUTLINE only (the gems-pill look): the dark bar stays dark, just
                     -- the stroke pops to bright blue. No background colour change (that swamped it).
-                    local isSel = selectedSlot == s.slot
-                    card.stroke.Color = isSel and Color3.fromRGB(120, 200, 255)
-                        or Color3.fromRGB(70, 76, 96)
-                    card.stroke.Transparency = isSel and 0 or 0.5
-                    card.stroke.Thickness = isSel and 3 or 1.5
-                    card.frame.BackgroundTransparency = isSel and 0 or 0.1
+                    HudCard.applyHighlight(card, (selectedSlot == s.slot) and "select" or nil)
                     updateBadges(card, activeEffectsFor(pet, localPlayer, os.time()), blinkLead)
                 end
             end

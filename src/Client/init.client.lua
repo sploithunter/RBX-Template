@@ -162,6 +162,18 @@ do
     end
 end
 
+-- Enemy HUD: left-side mirror of the squad strip — one card per foe aggro'd onto YOUR squad
+-- (server-mirrored AggroOwner), the indirect target (selected pet → enemy) bordered amber.
+-- Same HudCard chrome as SquadHud; auto-collapses to nothing when there's no fight.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.EnemyHud).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start EnemyHud", { error = tostring(err) })
+    end
+end
+
 -- Leaderboard consumer: drains + caches LeaderboardService's periodic LeaderboardUpdated
 -- broadcast so it doesn't pile up unhandled (queue-exhaustion leak). Caches snapshots for a
 -- future leaderboard UI to read (LeaderboardController.Get / .OnUpdate).
