@@ -36,6 +36,12 @@ return {
         -- hard cap on LIVING baddies per spawner (don't bury the player / stockpile for the next).
         max_alive = 8,
         scatter = 8, -- studs: random spread around the part so the wave isn't a stack
+        -- ZONE ROUTING (Jason: "I'm in lava but it's spawning bears"). A spawner draws only waves
+        -- of its faction. The faction is keyed off the part-name SUFFIX (after part_prefix): the map
+        -- has BaddieSpawnerLava + BaddieSpawnerDesert, so "Lava" -> the lava packs, everything else
+        -- -> default_faction. A wave with no `faction` field counts as the default (earth).
+        default_faction = "earth",
+        zone_faction = { Lava = "lava" }, -- Desert (+ future suffixes) fall back to earth wildlife
         -- VARIETY (Jason): weighted compositions, not just "3 imps / 1 bear". Mixed-role packs make
         -- the role + surround systems sing — a healer behind a tank reads totally differently from a
         -- melee swarm. Weight = relative frequency (rarer = scarier). NOTE: rabid_dog/murder_crow/
@@ -92,10 +98,11 @@ return {
             -- is GLOBAL for now (not zone-routed), so these mix into every biome — variety while we
             -- test; zone-routing (Lava packs only in lava) is the clean follow-up.
             -- lava swarm: a darting whelp pack
-            { weight = 5, units = { { enemy = "cinder_whelp", count = 3 } } },
+            { weight = 5, faction = "lava", units = { { enemy = "cinder_whelp", count = 3 } } },
             -- lava warband: rhino wall + whelps + a moth healer
             {
                 weight = 3,
+                faction = "lava",
                 units = {
                     { enemy = "ember_brute", count = 1 }, -- molten rhino tank
                     { enemy = "cinder_whelp", count = 2 }, -- melee
@@ -104,7 +111,7 @@ return {
             },
             -- LAVA APEX (rare): the Magma Wyrm boss. weight 1 = a real "oh no" moment; tune/remove
             -- if a 50k-HP boss from a proximity spawner is too punishing in the field.
-            { weight = 1, units = { { enemy = "infernal_boss", count = 1 } } },
+            { weight = 1, faction = "lava", units = { { enemy = "infernal_boss", count = 1 } } },
         },
     },
 

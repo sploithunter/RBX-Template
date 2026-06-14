@@ -53,27 +53,47 @@ function BaddieSpawnerService:_scan()
     end
 end
 
-function BaddieSpawnerService:_pickWave(rng)
+-- The faction a spawner draws from, keyed off its name SUFFIX (after part_prefix). The map has
+-- BaddieSpawnerLava + BaddieSpawnerDesert; zone_faction maps "Lava" -> "lava", and everything else
+-- falls back to default_faction. So a lava-zone spawner only rolls lava packs, never Earth bears.
+function BaddieSpawnerService:_factionFor(part)
+    local prefix = self._config.part_prefix or "BaddieSpawner"
+    local suffix = part.Name:sub(#prefix + 1)
+    local map = self._config.zone_faction or {}
+    return map[suffix] or self._config.default_faction or "earth"
+end
+
+-- Weighted pick among the waves of the given faction. A wave with no `faction` counts as the
+-- default faction (earth), so untagged legacy waves still resolve.
+function BaddieSpawnerService:_pickWave(rng, faction)
     local waves = self._config.waves or {}
+    local default = self._config.default_faction or "earth"
+    local pool = {}
     local total = 0
     for _, w in ipairs(waves) do
-        total += (tonumber(w.weight) or 0)
+        if (w.faction or default) == faction then
+            local weight = tonumber(w.weight) or 0
+            if weight > 0 then
+                pool[#pool + 1] = w
+                total += weight
+            end
+        end
     end
     if total <= 0 then
         return nil
     end
     local roll = rng:NextNumber() * total
-    for _, w in ipairs(waves) do
+    for _, w in ipairs(pool) do
         roll -= (tonumber(w.weight) or 0)
         if roll <= 0 then
             return w
         end
     end
-    return waves[#waves]
+    return pool[#pool]
 end
 
 function BaddieSpawnerService:_trigger(part, player, rng)
-    local wave = self:_pickWave(rng)
+    local wave = self:_pickWave(rng, self:_factionFor(part))
     if not wave then
         return
     end
