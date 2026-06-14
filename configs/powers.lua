@@ -146,7 +146,9 @@ return {
         -- ===== GENERIC pool (farming / luck / utility) — magnitude = FRACTION (+0.5 = +50%),
         -- summed per axis via BuffStack (docs Part E). White disc (no element origin). =====
         coin_yield = { family = "coin_yield", magnitude = 0.5, duration = 30 }, -- Prospector
-        windfall = { family = "coin_yield", magnitude = 2.0, duration = 10 }, -- Windfall (big burst)
+        -- Windfall (Jason): +200% DROP-TABLE chance (loot — enhancement cogs + premium
+        -- gems), NOT coins. drop_rate axis, consumed by DropService + BreakableSpawner.
+        windfall = { family = "drop_rate", magnitude = 2.0, duration = 10 },
         luck = { family = "luck", magnitude = 0.5, duration = 60 }, -- Fortune
         luck_huge = { family = "luck", magnitude = 2.0, duration = 30 }, -- Huge Fortune (marquee)
         -- PASSIVE (always-on by ownership): owning the power applies the buff permanently — no cast,

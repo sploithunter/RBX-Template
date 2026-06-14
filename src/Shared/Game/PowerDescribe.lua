@@ -87,6 +87,11 @@ local FAMILY_TEXT = {
     coin_yield = function(kind)
         return ("+%s coins from mining."):format(pct(kind.magnitude))
     end,
+    drop_rate = function(kind)
+        return ("+%s drop chance — more loot (cogs & gems) from breaks."):format(
+            pct(kind.magnitude)
+        )
+    end,
     luck = function(kind)
         return ("+%s luck — rarer pets from eggs."):format(pct(kind.magnitude))
     end,

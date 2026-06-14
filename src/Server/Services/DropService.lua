@@ -408,6 +408,10 @@ function DropService:TrySpawnEnhancementDrop(player, source, position)
         return false
     end
     local chance = (source == "enemy" and drops.enemy_chance) or drops.breakable_chance or 0
+    -- Windfall (drop_rate axis): an active drop-rate buff multiplies the loot chance.
+    if (player:GetAttribute("DropRateBuffUntil") or 0) > os.time() then
+        chance = chance * (1 + (tonumber(player:GetAttribute("DropRateBuff")) or 0))
+    end
     if math.random() >= chance then
         return false
     end
