@@ -1,8 +1,9 @@
 --[[
-    EnemyHud — the foes side of the combat HUD. A left-edge strip (mirroring SquadHud's right-edge
-    pet strip) that appears the moment a fight starts and lists every enemy aggro'd onto YOUR
-    squad, sorted nearest-first. Built from the exact same HudCard chrome as the pet cards, so the
-    two strips frame the screen "us vs them" and read identically.
+    EnemyHud — the foes side of the combat HUD. A top-right strip that appears the moment a fight
+    starts and lists every enemy aggro'd onto YOUR squad, sorted nearest-first. Built from the
+    exact same HudCard chrome as the pet cards (SquadHud, right-centre), so "enemies up top, your
+    squad below" both hug the right edge and read identically. (It started left-centre but collided
+    with the currency stack, hiding the cards behind the coin pills — top-right keeps it clear.)
 
     The chain player → selected pet → enemy is made legible: the enemy your SELECTED pet is
     currently attacking — the indirect target — gets an amber border, the same colour the world
@@ -136,11 +137,12 @@ function EnemyHud.start()
     gui.IgnoreGuiInset = true
     gui.Parent = localPlayer:WaitForChild("PlayerGui")
 
-    -- Left-edge container, vertically centred — the mirror of SquadHud's right-edge strip.
+    -- Top-right container, growing downward — enemies up top, the squad strip below (both right-
+    -- edge). Left-centre collided with the currency stack, so the cards hid behind the coin pills.
     local root = Instance.new("Frame")
     root.Name = "Strip"
-    root.AnchorPoint = Vector2.new(0, 0.5)
-    root.Position = UDim2.new(0, 8, 0.5, 0)
+    root.AnchorPoint = Vector2.new(1, 0)
+    root.Position = UDim2.new(1, -8, 0, 8)
     root.Size = UDim2.fromOffset(186, 10)
     root.AutomaticSize = Enum.AutomaticSize.Y
     root.BackgroundTransparency = 1
@@ -149,7 +151,7 @@ function EnemyHud.start()
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
     layout.Padding = UDim.new(0, 4)
     layout.Parent = root
 
