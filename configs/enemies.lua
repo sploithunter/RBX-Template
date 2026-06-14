@@ -109,9 +109,9 @@ return {
                     { enemy = "ember_acolyte", count = 1 }, -- moth healer
                 },
             },
-            -- LAVA APEX (rare): the Magma Wyrm boss. weight 1 = a real "oh no" moment; tune/remove
-            -- if a 50k-HP boss from a proximity spawner is too punishing in the field.
-            { weight = 1, faction = "lava", units = { { enemy = "infernal_boss", count = 1 } } },
+            -- NO BOSS in the proximity waves: a 50k-HP Magma Wyrm from a field spawner stacked to a
+            -- death zone (Jason hit THREE at once, unkillable). Bosses are deliberate encounters —
+            -- admin/special spawns only — never random field rolls.
         },
     },
 

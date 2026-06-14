@@ -97,6 +97,11 @@ return {
         perception_range = 70,
         perception_interval = 0.75,
         leash_range = 90,
+        -- IDLE DESPAWN (engagement timer): an enemy that has been DISENGAGED (no aggro on anyone)
+        -- this many seconds leaves the field — so abandoned/leashed packs (and a fled-from death
+        -- zone) clean themselves up instead of piling to max_alive. A live fight refreshes the clock
+        -- every tick the enemy holds aggro, so it NEVER fires mid-battle (Jason). 0 disables.
+        despawn_idle_seconds = 30,
         default_move_speed = 12,
         -- When chasing, the enemy presses this many studs INSIDE attack_range instead of
         -- parking on its edge — otherwise it stalls just out of bite range of a kiting

@@ -444,6 +444,20 @@ function EnemyService:_releasePets(targetId)
     end
 end
 
+-- Quietly retire an enemy that's been idle too long (engagement timer expired) — NO loot, no death
+-- FX, it just leaves the field. Releases any pets still pointed at it and untracks it.
+function EnemyService:_despawnEnemy(targetId)
+    local entry = self._enemies[targetId]
+    if not entry then
+        return
+    end
+    self._enemies[targetId] = nil
+    self:_releasePets(targetId)
+    if entry.model then
+        entry.model:Destroy()
+    end
+end
+
 function EnemyService:_onDefeated(targetId)
     local entry = self._enemies[targetId]
     if not entry then
@@ -1950,11 +1964,22 @@ function EnemyService:_combatTick(dt)
     self:_supportPass(now)
     self:_enemyHealPass(now)
     self:_enforceLockouts(nowTime) -- #179: hold re-teamed/locked pets down for their recovery
+    local idleDespawn = eng.despawn_idle_seconds or 0
     for targetId, entry in pairs(self._enemies) do
         local model = entry.model
         if model and model.Parent and (model:GetAttribute("HP") or 0) > 0 then
-            self:_engageEnemy(entry, targetId, now, eng, dt)
-            self:_updateDebuffBadges(model, nowTime)
+            -- Engagement timer: while it holds aggro it's IN a fight — refresh the clock so the
+            -- idle-despawn below never fires mid-battle. When aggro drops (leashed / player fled /
+            -- never engaged), the clock runs; past despawn_idle_seconds the enemy leaves the field.
+            if entry.aggroPlayerName then
+                entry.lastActiveAt = now
+            elseif idleDespawn > 0 and (now - (entry.lastActiveAt or now)) > idleDespawn then
+                self:_despawnEnemy(targetId)
+            end
+            if self._enemies[targetId] then -- still alive (not just despawned)
+                self:_engageEnemy(entry, targetId, now, eng, dt)
+                self:_updateDebuffBadges(model, nowTime)
+            end
         end
     end
     -- After enemies have updated their aggro this tick, let each pet self-select its
@@ -2026,6 +2051,7 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
         enemyId = enemyId,
         pos = position,
         aggro = AggroTable.new(),
+        lastActiveAt = os.clock(), -- engagement timer seed (idle-despawn clock; refreshed while aggro'd)
     }
     model:SetAttribute("MoveTarget", position)
     model:SetAttribute("MoveFace", Vector3.new(hrp.Position.X, position.Y, hrp.Position.Z))
