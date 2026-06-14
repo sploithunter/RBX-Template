@@ -102,6 +102,11 @@ return {
         -- parking on its edge — otherwise it stalls just out of bite range of a kiting
         -- target (float boundary) and never lands a hit. Keep < attack_range.
         attack_press = 3,
+        -- Surround spacing: when several enemies pile onto ONE pet they fan out around it
+        -- (RingSeparate) instead of stacking on the same point. This is how close two of them
+        -- may sit (studs) before they slide tangentially apart — bigger = a looser fan. Purely
+        -- positional: each stays the same distance from the target, so threat/damage are unchanged.
+        surround_gap = 6,
         -- Client render smoothing: the server moves enemies in ~update_interval steps;
         -- EnemyMotion (client) interpolates the visible model toward each step at this
         -- exponential rate (higher = snappier, lower = floatier). Server stays the

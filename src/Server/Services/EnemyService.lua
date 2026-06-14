@@ -32,6 +32,7 @@ local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
 local PetMeander = require(ReplicatedStorage.Shared.Game.PetMeander)
+local RingSeparate = require(ReplicatedStorage.Shared.Game.RingSeparate)
 local AggroTable = require(ReplicatedStorage.Shared.Game.AggroTable)
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
@@ -1025,26 +1026,46 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         self:_setAggroOwner(entry, nil)
         return
     end
+    entry.targetPet = targetPet -- published so co-attackers can spread off each other (below)
 
     -- 4) CHASE the aggro target until in attack range. A tank/melee target orbits inside
     -- attack_range so the enemy just holds + bites it; a ranged target kites near the
     -- player, so the enemy has to close the gap. A ROOTED enemy can't move.
-    local chaseTo = self:_petPosition(targetPet, pfs)
+    local targetPos = self:_petPosition(targetPet, pfs)
     local rooted = (model:GetAttribute("RootedUntil") or 0) > os.time()
     local moveSpeed = rooted and 0 or ((def and def.move_speed) or eng.default_move_speed or 12)
     -- Press inside attack_range so the enemy closes into bite range instead of stalling
     -- on its edge (where a kiting target floats just out of reach).
     local chaseStop = math.max(1, atk - (eng.attack_press or 3))
+    -- RING SEPARATION: instead of every enemy chasing the EXACT pet point (and piling on top of
+    -- each other), each fans out to its own slot on a ring around the target — same distance
+    -- (so proximity / threat / damage are unchanged), just spread by angle. Gather the other
+    -- enemies attacking THIS pet and let RingSeparate nudge us tangentially off them.
+    local others = {}
+    for _, e in pairs(self._enemies) do
+        if e ~= entry and e.aggroPlayerName and e.targetPet == targetPet and e.pos then
+            others[#others + 1] = { x = e.pos.X, z = e.pos.Z }
+        end
+    end
+    local slot = RingSeparate.point(
+        { x = ePos.X, z = ePos.Z },
+        { x = targetPos.X, z = targetPos.Z },
+        others,
+        chaseStop,
+        eng.surround_gap or 6
+    )
+    local chaseTo = Vector3.new(slot.x, targetPos.Y, slot.z)
     local np = EnemyAI.chaseStep(
         { x = ePos.X, y = ePos.Y, z = ePos.Z },
         { x = chaseTo.X, y = chaseTo.Y, z = chaseTo.Z },
         moveSpeed,
         dt or 0.15,
-        chaseStop
+        0 -- the slot already sits at bite range, so close all the way onto it
     )
     if math.abs(np.x - ePos.X) > 1e-3 or math.abs(np.z - ePos.Z) > 1e-3 then
         local newPos = Vector3.new(np.x, np.y, np.z)
-        local faceTarget = Vector3.new(chaseTo.X, np.y, chaseTo.Z)
+        -- face the TARGET it's biting (the pet), not its movement slot
+        local faceTarget = Vector3.new(targetPos.X, np.y, targetPos.Z)
         -- Publish the step target instead of pivoting the model. The client (EnemyMotion)
         -- interpolates the visible model toward MoveTarget every frame; because the server
         -- no longer writes the model CFrame, there's no replicated snap to fight, so the
@@ -1057,8 +1078,9 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     end
 
     -- Always face the current aggro target, even when standing still in bite range, so the
-    -- enemy visibly turns to whoever it's attacking (the client lerps toward MoveFace).
-    model:SetAttribute("MoveFace", Vector3.new(chaseTo.X, ePos.Y, chaseTo.Z))
+    -- enemy visibly turns to whoever it's attacking (the client lerps toward MoveFace). Faces the
+    -- TARGET (the pet), not the ring slot it's standing on, so a fanned-out pack still looks inward.
+    model:SetAttribute("MoveFace", Vector3.new(targetPos.X, ePos.Y, targetPos.Z))
 
     -- 5) ATTACK: bite the highest-aggro pet that is CURRENTLY within attack range — not
     -- only the chase target. The enemy may be pursuing an unreachable top-aggro pet (a
