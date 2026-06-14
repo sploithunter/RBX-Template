@@ -41,6 +41,18 @@ local function petRoleId(pet)
         or PetRoles.default
 end
 
+-- Combat ring SLOT priority (lower = nearer slot-0, the player-facing "peel" anchor). The attack
+-- ring's slot-0 sits between you and the target; whoever holds it shoves the enemy AWAY from you
+-- (the bodyguard peel). The enemy keeps its range from its aggro-holder — the TANK — so the tank
+-- MUST own slot-0 or the fight inverts (a huge tank, size-sorted to a far slot, draws the enemy
+-- TOWARD you — Jason's "polar bear is driving it at me" bug, which only shows with 2+ pets).
+-- Tank first, then the front line, then standoff roles last (they want the far slots anyway).
+-- Ties (e.g. multiple tanks) fall through to the stable size/equip-slot sort = current ordering.
+local COMBAT_SLOT_PRIORITY = { tank = 0, melee = 1, control = 2, ranged = 3, support = 4 }
+local function combatSlotPriority(pet)
+    return COMBAT_SLOT_PRIORITY[petRoleId(pet)] or 2
+end
+
 -- Studs the pet holds back from its target in the attack formation (role.standoff).
 local function roleStandoff(pet)
     local def = PetRoles.roles and PetRoles.roles[petRoleId(pet)]
@@ -790,9 +802,18 @@ function PetFollowController.start()
 
         -- Attackers: arrange around the target per the attack style, facing the center.
         for _, g in pairs(groups) do
-            -- smallest -> first slot, so huge pets take the outer slots (spiral arm / line ends).
-            -- Tiebreak by equip slot so identical pets keep a fixed order (no frame-to-frame swap).
+            -- Combat (enemy) rings: ROLE first so the tank owns slot-0 (the peel anchor) regardless
+            -- of size — otherwise a huge tank size-sorts to a far slot and draws the enemy toward you.
+            -- Mining rings: smallest -> first slot, so huge pets take the outer slots (spiral arm /
+            -- line ends). Either way, tiebreak by equip slot so identical pets keep a fixed order
+            -- (no frame-to-frame swap), which is also how multiple same-role tanks order.
             table.sort(g.pets, function(p1, p2)
+                if g.isEnemy then
+                    local r1, r2 = combatSlotPriority(p1), combatSlotPriority(p2)
+                    if r1 ~= r2 then
+                        return r1 < r2
+                    end
+                end
                 local f1, f2 = petFootprint(p1, config), petFootprint(p2, config)
                 if f1 ~= f2 then
                     return f1 < f2

@@ -56,6 +56,18 @@ player, AND enemies independently holding their own attack range around the pet
 (`EnemyService` chase + `RingSeparate`). Neither side "pushes" the other — the herd
 falls out of two range-keeping loops fighting over the same axis.
 
+**Slot-0 is the tank's (2026-06-14).** The peel only works if the enemy's aggro-holder
+— the TANK — owns the ring's slot-0 (the player-facing anchor); the enemy keeps range
+from *its target*, so whoever the enemy chases decides which way it gets pushed. The
+combat ring was originally size-sorted (smallest → slot-0, so huge pets take outer
+slots — a *mining* aesthetic), which silently put a big tank like the Polar Bear in a
+*far* slot and **inverted the peel into a draw-toward** ("the polar bear is driving it
+at me"). It only ever looked right with a single pet (that pet *is* slot-0). Fix:
+combat (enemy) rings now sort by ROLE first (`COMBAT_SLOT_PRIORITY`: tank→melee→control
+→ranged→support) so the tank anchors slot-0 regardless of size; ranged/support fall to
+the far slots they want anyway. Multiple tanks tie-break to the stable size/equip order
+(no frame-to-frame swap). Mining rings keep the size-sort.
+
 **Verdict:** Keeper, *and* the spread is treated as intentional friction. A full tank
 team being too chaotic/uncentred to control is a FEATURE — it makes team composition a
 real choice (don't free-stack tanks; mix roles). The opposite pole

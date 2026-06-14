@@ -180,9 +180,9 @@ return {
             tier = "trash_mob",
             move_speed = 15,
             armor = 0,
-            model_asset = 110801864701636, -- shares the bunny art for now (Lava faction unmodeled)
-            model_scale = 4,
-            needs_primary_part = true,
+            -- No model: Lava faction is unmodeled, so the service builds a procedural placeholder
+            -- block. (It USED to borrow the bunny art 110801864701636 — but that asset is now the
+            -- rabid_bunny support enemy, so spawning an imp looked like spawning rabbits. Jason.)
             gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 16, stride_length = 3.5 },
             attack = { damage = 10, cadence = 1.5, sundering = 0 },
             drop_table = { lava_coins = 8, shadow_tokens = 1 },
