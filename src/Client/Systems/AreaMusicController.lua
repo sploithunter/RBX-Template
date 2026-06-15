@@ -13,6 +13,11 @@
     for the whole fight. When InCombat clears we wait `combat_music_exit_delay` seconds before fading
     back to the area track, so brief aggro flicker (enemy drops + re-acquires) doesn't restart music.
 
+    SAFETY NET: every track swap is watched — if the chosen asset never loads (still moderating at
+    publish, or taken down post-approval), within FALLBACK_LOAD_TIMEOUT we swap to `music_fallback`
+    (a guaranteed-approved track) so an area is never silent. SFX (PowerSound) are already safe by
+    their gaps-are-silent design; this covers the one noticeable case — looping area/combat music.
+
     Add tracks + remap areas + grow the combat list entirely in configs/sounds.lua — no code here.
 ]]
 
@@ -27,6 +32,7 @@ local sounds = require(ReplicatedStorage.Configs:WaitForChild("sounds"))
 local AreaMusicController = {}
 
 local FADE = 1.5 -- seconds for each half of the crossfade
+local FALLBACK_LOAD_TIMEOUT = 6 -- seconds to let a track load before assuming a dead asset
 local localPlayer = Players.LocalPlayer
 
 function AreaMusicController.start()
@@ -77,6 +83,30 @@ function AreaMusicController.start()
         local myToken = token
         local target = def.volume or 0.45
 
+        -- If the chosen asset never loads (still moderating at publish, or taken down post-approval),
+        -- fall back to music_fallback so the area is never silent. Guarded by token (a newer swap wins)
+        -- and won't recurse onto itself.
+        local function watchLoad()
+            task.delay(FALLBACK_LOAD_TIMEOUT, function()
+                if myToken ~= token then
+                    return -- superseded by a newer swap
+                end
+                if sound.IsLoaded and sound.TimeLength > 0 then
+                    return -- loaded fine, nothing to do
+                end
+                local fbKey = sounds.music_fallback
+                local fbDef = fbKey and music[fbKey]
+                if not fbDef or not fbDef.id or key == fbKey then
+                    return -- no fallback, or we're already on it (avoid a loop)
+                end
+                currentKey = fbKey
+                sound.SoundId = fbDef.id
+                sound:Play()
+                TweenService:Create(sound, TweenInfo.new(FADE), { Volume = fbDef.volume or 0.45 })
+                    :Play()
+            end)
+        end
+
         local function swapIn()
             if myToken ~= token then
                 return -- a newer area change superseded this one
@@ -84,6 +114,7 @@ function AreaMusicController.start()
             sound.SoundId = def.id
             sound:Play()
             TweenService:Create(sound, TweenInfo.new(FADE), { Volume = target }):Play()
+            watchLoad()
         end
 
         if sound.IsPlaying and sound.Volume > 0 then

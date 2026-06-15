@@ -156,6 +156,12 @@ return {
     combat_music = { "combat_1", "combat_2", "combat_3" },
     combat_music_exit_delay = 3.0,
 
+    -- SAFETY NET: if an area track's ASSET fails to load (still moderating at publish time, or taken
+    -- down by Roblox after approval), AreaMusicController swaps to this track so the area is never
+    -- silent. Must be a long-stable, guaranteed-approved key in `music` (awe = the original hub theme,
+    -- now otherwise unassigned). `default` above only covers UNKNOWN AREAS; this covers DEAD ASSETS.
+    music_fallback = "awe",
+
     -- Which looping track plays in each AREA (edit freely — falls back to `default`). Only 3 tracks
     -- so far, so some areas share; add more tracks + remap for fully distinct per-area music.
     area_music = {
