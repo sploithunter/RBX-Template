@@ -141,6 +141,7 @@ return {
         viking_drum = { id = "rbxassetid://92543861599965", volume = 0.45 }, -- VikingDrumLooping
         epic_drum = { id = "rbxassetid://131000740431597", volume = 0.45 }, -- DrumEpicLooping
         arctic_hunt = { id = "rbxassetid://138050990766154", volume = 0.45 }, -- Arctic Hunt (Ice, Jason)
+        desert_hunt = { id = "rbxassetid://107638957982907", volume = 0.45 }, -- Desert Hunt (Desert, Jason)
         -- COMBAT loops (~30s drum instrumentals, Jason). Chosen at RANDOM from combat_music below
         -- whenever the player is InCombat; same looping "music" bus as the area tracks.
         combat_1 = { id = "rbxassetid://116560838965766", volume = 0.5 },
@@ -161,7 +162,7 @@ return {
         default = "awe",
         Spawn = "spa", -- calm hub (gentle spa loop)
         Grass = "spa", -- gentle starter biome (gentle spa loop)
-        Desert = "awe", -- the old hub/grass theme reassigned here (Jason)
+        Desert = "desert_hunt", -- Desert Hunt (Jason: better than the old track)
         Ice = "arctic_hunt", -- harsh cold (Arctic Hunt)
         Lava = "epic_drum", -- intense endgame
     },
