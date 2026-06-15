@@ -216,8 +216,17 @@ return {
         -- crit roars with "A Large Fire Igniting With A Whoosh"; other elements stay silent (gaps are
         -- silent) until they get their own. Pairs with the existing bigger crit-impact VFX.
         crit = {
+            grass = {
+                { id = "rbxassetid://140491649982510", seconds = 3.0 }, -- grass_crit_landslide
+            },
             lava = {
                 { id = "rbxassetid://131412280596753", seconds = 5.2 }, -- fire_ignite_whoosh
+            },
+            ice = {
+                { id = "rbxassetid://134084999884785", seconds = 2.9 }, -- ice_crit_avalanche
+            },
+            desert = {
+                { id = "rbxassetid://105787180419764", seconds = 6.0 }, -- desert_crit_boom
             },
         },
         cast = {
@@ -264,16 +273,27 @@ return {
         },
         -- buff activation (rides the `aura` primitive; neutral ⇒ plays under any origin)
         buff = {
+            grass = {
+                { id = "rbxassetid://86957589418529", seconds = 4.0 }, -- grass_buff_lion_roar
+            },
+            ice = {
+                { id = "rbxassetid://121252019063530", seconds = 2.3 }, -- ice_buff_storm_wind
+            },
             neutral = {
                 { id = "rbxassetid://105379088796995", seconds = 1.0 }, -- power_up_stronger
             },
         },
         -- shield raise (rides the `shield_bubble` primitive)
         shield = {
-            -- ICE armor/shield: giant crystals forming as the world freezes (Jason). Other elements
-            -- fall through to the neutral force-field raise until they get their own.
+            -- Per-element shield/armor raise; remaining elements fall through to the neutral force-field.
+            grass = {
+                { id = "rbxassetid://103081443898093", seconds = 6.0 }, -- grass_shield_dark
+            },
             ice = {
                 { id = "rbxassetid://115983199480080", seconds = 6.8 }, -- ice_crystals_freeze
+            },
+            desert = {
+                { id = "rbxassetid://100882476598763", seconds = 4.6 }, -- desert_shield_snake
             },
             neutral = {
                 { id = "rbxassetid://124911631879452", seconds = 1.0 }, -- force_field_raise
