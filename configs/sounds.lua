@@ -76,6 +76,15 @@ return {
         bus = "effects",
     },
 
+    -- Fireworks for a SECRET-and-above hatch (Jason) — the unique tiers (secret/exclusive/huge/
+    -- creator). Personal (hatching stays owner-only). NOTE: ~15s track; trim if it feels long.
+    hatch_fireworks = {
+        id = "rbxassetid://114557545020062",
+        volume = 0.5,
+        playback_speed = 1.0,
+        bus = "effects",
+    },
+
     -- Rising "power up" sting (uploaded SFX) — pet revive and similar comeback moments.
     power_up_stronger = {
         id = "rbxassetid://105379088796995",

@@ -14,6 +14,21 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local petConfig = Locations.getConfig("pets")
 local eggSystemConfig = Locations.getConfig("egg_system")
+
+-- "Secret and above" = the UNIQUE rarities (Storage-v2 SSOT: inventory.buckets.pets.special_rarities
+-- = secret/exclusive/huge/creator; mythic is stackable, NOT counted). Hatching one fires the
+-- fireworks celebration (egg_hatch_secret game event).
+local SECRET_RARITIES = {}
+do
+    local invCfg = Locations.getConfig("inventory")
+    local list = invCfg
+        and invCfg.buckets
+        and invCfg.buckets.pets
+        and invCfg.buckets.pets.special_rarities
+    for _, r in ipairs(list or {}) do
+        SECRET_RARITIES[r] = true
+    end
+end
 local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
 local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
@@ -189,6 +204,7 @@ function EggService:SummarizeHatchResults(resultEntries)
     local summary = {}
     local autoDeletedCount = 0
     local specialCount = 0
+    local secretCount = 0 -- pets of a UNIQUE rarity (secret+); drives the fireworks celebration
     local sampleLimit = self:GetHatchHistoryResultSampleLimit()
 
     for index, entry in ipairs(resultEntries or {}) do
@@ -197,6 +213,10 @@ function EggService:SummarizeHatchResults(resultEntries)
         end
         if entry.SpecialHatch == true or entry.specialHatch == true then
             specialCount += 1
+        end
+        local rid = entry.RarityId or entry.rarityId
+        if type(rid) == "string" and SECRET_RARITIES[rid] then
+            secretCount += 1
         end
         if index <= sampleLimit then
             table.insert(summary, {
@@ -211,7 +231,7 @@ function EggService:SummarizeHatchResults(resultEntries)
         end
     end
 
-    return summary, autoDeletedCount, specialCount
+    return summary, autoDeletedCount, specialCount, secretCount
 end
 
 function EggService:RecordHatchHistory(player, entry)
@@ -266,7 +286,8 @@ function EggService:ReturnHatchError(player, request, message, code, details)
 end
 
 function EggService:RecordHatchSuccess(player, request, response)
-    local results, autoDeletedCount, specialCount = self:SummarizeHatchResults(response.results)
+    local results, autoDeletedCount, specialCount, secretCount =
+        self:SummarizeHatchResults(response.results)
     fireGameEvent(player, "egg_hatch", { count = response.hatchCount }) -- reactions config-optional
     -- XP per egg (configs/egg_system.lua xp_per_hatch; Jason: 1/egg) — per batch
     local xpPer = tonumber(eggSystemConfig and eggSystemConfig.xp_per_hatch) or 0
@@ -281,6 +302,10 @@ function EggService:RecordHatchSuccess(player, request, response)
     if specialCount > 0 then
         -- ONE rare-hatch celebration per batch (not per pet) — golden/rainbow/special reveals.
         fireGameEvent(player, "egg_hatch_rare", { count = specialCount })
+    end
+    if secretCount > 0 then
+        -- SECRET-and-above (unique-tier) hatch -> fireworks (egg_hatch_secret). Once per batch.
+        fireGameEvent(player, "egg_hatch_secret", { count = secretCount })
     end
     return self:RecordHatchHistory(player, {
         ok = true,

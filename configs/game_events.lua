@@ -171,6 +171,15 @@ return {
         vfx = { kind = "burst", color = { 255, 120, 255 }, count = 24 }, -- big rainbow-pink
     },
 
+    -- SECRET-and-above hatch (Jason): a batch contained a UNIQUE-tier pet — secret/exclusive/huge/
+    -- creator (inventory.buckets.pets.special_rarities; mythic is stackable, NOT counted). Fired once
+    -- per batch from EggService when secretCount > 0. Fireworks + a big gold burst. Personal sound
+    -- (hatching stays owner-only).
+    egg_hatch_secret = {
+        sound = "hatch_fireworks",
+        vfx = { kind = "burst", color = { 255, 215, 120 }, count = 40 }, -- huge golden firework burst
+    },
+
     -- ===== Batch 3: economy / enchant / pet-down (existing toasts stay; the bus adds the juice) =====
 
     -- A shop item was bought (server: EconomyService — the PurchaseSuccess toast still shows).
