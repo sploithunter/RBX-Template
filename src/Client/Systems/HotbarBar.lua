@@ -61,6 +61,11 @@ local TYPE_COLOR = {
     roster = Color3.fromRGB(70, 170, 230),
     pet = Color3.fromRGB(90, 200, 120),
 }
+-- Authored disc icons for tactical commands (rendered like a power disc but with NO targeting ring).
+-- element = disc colour tier (neutral = the purple "generic command" disc). Add rows as art lands.
+local TACTICAL_BADGE = {
+    rally = { element = "neutral", symbol = "flag" }, -- rally the squad = banner/flag
+}
 local FARM_COLOR = {
     Off = Color3.fromRGB(70, 72, 84),
     Near = Color3.fromRGB(90, 200, 120),
@@ -585,6 +590,15 @@ function HotbarBar.start()
                 local badge = bind and bind.type == "power" and PetBadge.forPower(bind.target)
                     or nil
                 local discImg = badge and POWER_ICONS.discFor(badge.element, badge.symbol) or nil
+                -- Tactical commands can carry an authored disc (e.g. rally -> flag) — same disc art as
+                -- powers, but NO targeting ring (a command isn't aimed).
+                local tacBadge = (not discImg)
+                    and bind
+                    and bind.type == "tactical"
+                    and TACTICAL_BADGE[bind.target]
+                    or nil
+                local tacDisc = tacBadge and POWER_ICONS.discFor(tacBadge.element, tacBadge.symbol)
+                    or nil
                 local hasArt = false
                 if discImg then
                     card.icon.Image = discImg
@@ -597,6 +611,12 @@ function HotbarBar.start()
                     card.ring.Position = UDim2.new(0.5 + (off.x or 0), 0, 0.5 + (off.y or 0), 0)
                     card.ring.Size = UDim2.fromScale(off.scale or 1, off.scale or 1)
                     card.ring.Visible = true
+                    card.bind.Visible = false
+                    hasArt = true
+                elseif tacDisc then
+                    card.icon.Image = tacDisc
+                    card.icon.Size = UDim2.fromScale(0.9, 0.9) -- no ring, so a touch larger
+                    card.ring.Visible = false
                     card.bind.Visible = false
                     hasArt = true
                 else
