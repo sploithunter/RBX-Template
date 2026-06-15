@@ -385,7 +385,7 @@ return {
             armor = 0,
             mesh_asset = "rbxassetid://78750320845033",
             texture_asset = "rbxassetid://98079418333409",
-            model_scale = 4,
+            model_scale = 2.8, -- Jason: scaled down ~30% from 4
             frost = true,
             attack_range = 32,
             bolt_kind = "frost", -- ice projectile (RangedFX frost theme)
