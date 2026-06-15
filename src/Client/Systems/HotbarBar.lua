@@ -276,8 +276,23 @@ function HotbarBar.start()
 
     -- Two rows of 10 slots. Bottom row = slots 1-10, top row = 11-20.
     local cards = {}
-    local locked = {} -- slot -> true when AUTO-CAST locked (right-click); re-fires on cooldown
+    local locked = {} -- slot -> true when AUTO-CAST locked; re-fires on cooldown
     local lastAuto = {} -- slot -> os.clock() of the last auto-fire (bridges the fire->cooldown round-trip)
+    local longPressConsumed = {} -- slot -> true: a long-press just toggled, so suppress the tap's activate
+    local LONG_PRESS = 0.45 -- seconds: hold a slot this long (touch or mouse) to toggle the lock
+
+    -- Toggle a slot's auto-cast lock. Same action on desktop (right-click) and mobile (long-press).
+    local function toggleAutoLock(slot)
+        if editMode then
+            return
+        end
+        local card = cards[slot]
+        if not (card and card.bindObj) then
+            return
+        end
+        locked[slot] = not locked[slot] or nil
+        card.lock.Visible = locked[slot] == true
+    end
 
     -- Hover tooltip: after a short hover on a power slot, a popup shows the power's NAME + what it
     -- DOES (configs/power_descriptions). Anchored bottom-left at the slot's top edge, so it pops up
@@ -468,25 +483,46 @@ function HotbarBar.start()
             local cool = attachRadial(b)
 
             b.MouseButton1Click:Connect(function()
+                -- A long-press just toggled the lock on this slot; swallow the tap so it doesn't
+                -- also fire the power (mobile: a hold ends in a click event).
+                if longPressConsumed[slot] then
+                    longPressConsumed[slot] = nil
+                    return
+                end
                 if editMode then
                     openPicker(slot)
                 else
                     Signals.Hotbar_Activate:FireServer({ slot = slot })
                 end
             end)
-            -- Right-click toggles AUTO-CAST LOCK: a locked slot re-fires itself the moment its power
-            -- is off cooldown (the Heartbeat loop below). Only meaningful for a bound slot.
+            -- AUTO-CAST LOCK toggle: a locked slot re-fires itself the moment its power is off
+            -- cooldown (the Heartbeat loop below). Desktop: RIGHT-CLICK. Mobile: LONG-PRESS the slot.
             b.MouseButton2Click:Connect(function()
-                if editMode then
-                    return
-                end
-                local card = cards[slot]
-                if not (card and card.bindObj) then
-                    return
-                end
-                locked[slot] = not locked[slot] or nil
-                card.lock.Visible = locked[slot] == true
+                toggleAutoLock(slot)
             end)
+            -- Long-press (touch or held mouse): start a timer on press; if still held past LONG_PRESS
+            -- without a release/leave bumping the token, toggle the lock and mark the tap consumed.
+            local pressToken = 0
+            local function startPress(input)
+                if
+                    input.UserInputType == Enum.UserInputType.Touch
+                    or input.UserInputType == Enum.UserInputType.MouseButton1
+                then
+                    pressToken += 1
+                    local mine = pressToken
+                    task.delay(LONG_PRESS, function()
+                        if pressToken == mine then -- still held
+                            longPressConsumed[slot] = true
+                            toggleAutoLock(slot)
+                        end
+                    end)
+                end
+            end
+            local function endPress()
+                pressToken += 1 -- cancel any pending long-press
+            end
+            b.InputBegan:Connect(startPress)
+            b.InputEnded:Connect(endPress)
             -- Delayed hover tooltip: show after HOVER_DELAY of hovering; cancel/hide on leave.
             b.MouseEnter:Connect(function()
                 hoverToken += 1
@@ -500,6 +536,7 @@ function HotbarBar.start()
             b.MouseLeave:Connect(function()
                 hoverToken += 1 -- invalidate any pending show
                 hideTip()
+                endPress() -- cursor left the slot: cancel a pending long-press
             end)
             cards[slot] = {
                 frame = b,
