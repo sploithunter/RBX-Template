@@ -35,6 +35,15 @@ return function()
             expect(bob).to.equal(0)
             expect(yaw).to.near(1, 1e-6)
         end)
+
+        it("flap: smooth sine bob centred on zero, gentle bank, no yaw", function()
+            local bob0, roll0, yaw0 = Gait.STYLES.flap(0)
+            expect(bob0).to.near(0, 1e-6) -- centred (not sunk like hop/waddle at phase 0)
+            expect(roll0).to.near(0, 1e-6)
+            expect(yaw0).to.equal(0)
+            local bobUp = Gait.STYLES.flap(PI / 2)
+            expect(bobUp).to.near(1, 1e-6) -- peaks at the quarter cycle
+        end)
     end)
 
     describe("Gait.resolve", function()
@@ -94,6 +103,37 @@ return function()
             end
             expect(st.amp > 0.7).to.equal(true)
             -- then stand still -> amp decays back toward 0
+            for _ = 1, 120 do
+                Gait.advance(st, g, 0, 1 / 60)
+            end
+            expect(st.amp < 0.05).to.equal(true)
+        end)
+
+        it("hover: phase advances by time even when standing still", function()
+            local g = Gait.resolve({ style = "flap", hover = true, flap_hz = 1, stride_length = 5 })
+            local st = { phase = 0, amp = 0 }
+            Gait.advance(st, g, 0, 0.25) -- no movement, quarter-second at 1 Hz -> quarter cycle
+            expect(st.phase).to.near(PI / 2, 1e-6)
+        end)
+
+        it("hover: amplitude never decays below idle_amp when still", function()
+            local g = Gait.resolve({
+                style = "flap",
+                hover = true,
+                idle_amp = 0.6,
+                ease_rate = 8,
+                stride_length = 5,
+            })
+            local st = { phase = 0, amp = 0 }
+            for _ = 1, 240 do
+                Gait.advance(st, g, 0, 1 / 60) -- stationary the whole time
+            end
+            expect(st.amp > 0.55).to.equal(true) -- floored at idle_amp, not decayed to 0
+        end)
+
+        it("non-hover gait still rests fully when idle (regression)", function()
+            local g = Gait.resolve({ style = "flap", stride_length = 5 }) -- hover defaults off
+            local st = { phase = 0, amp = 0.9 }
             for _ = 1, 120 do
                 Gait.advance(st, g, 0, 1 / 60)
             end

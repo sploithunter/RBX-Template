@@ -199,7 +199,16 @@ return {
             texture_asset = "rbxassetid://120154730842284",
             model_scale = 2, -- Jason: scaled down 50% from 4
             hover_height = 7, -- a crow flies: float above the ground-snap floor
-            gait = { style = "hop", bob_height = 0.7, tilt_degrees = 6, stride_length = 5 },
+            -- flyer: smooth hover bounce that keeps bobbing even when floating in place.
+            gait = {
+                style = "flap",
+                bob_height = 1.4,
+                tilt_degrees = 8,
+                stride_length = 5,
+                hover = true,
+                idle_amp = 0.8,
+                flap_hz = 1.2,
+            },
             -- RANGED: holds ~31 studs out and fires a dark plasma bolt (it doesn't close to bite).
             attack_range = 34,
             bolt_kind = "plasma",
@@ -299,7 +308,16 @@ return {
             attack_range = 32, -- holds out and dives
             bolt_kind = "rock", -- the desert projectile (RangedFX rock launcher)
             hover_height = 8, -- a vulture circles: float above the ground-snap floor
-            gait = { style = "hop", bob_height = 0.7, tilt_degrees = 6, stride_length = 5 },
+            -- flyer: smooth hover bounce that keeps bobbing even when floating in place.
+            gait = {
+                style = "flap",
+                bob_height = 1.4,
+                tilt_degrees = 8,
+                stride_length = 5,
+                hover = true,
+                idle_amp = 0.8,
+                flap_hz = 1.2,
+            },
             attack = { damage = 14, cadence = 1.6, sundering = 0 },
             drop_table = { desert_coins = 10, shadow_tokens = 1 },
         },
@@ -392,7 +410,16 @@ return {
             attack_range = 32,
             bolt_kind = "frost", -- ice projectile (RangedFX frost theme)
             hover_height = 7, -- an owl flies: float above the ground-snap floor
-            gait = { style = "hop", bob_height = 0.7, tilt_degrees = 6, stride_length = 5 },
+            -- flyer: smooth hover bounce that keeps bobbing even when floating in place.
+            gait = {
+                style = "flap",
+                bob_height = 1.4,
+                tilt_degrees = 8,
+                stride_length = 5,
+                hover = true,
+                idle_amp = 0.8,
+                flap_hz = 1.2,
+            },
             attack = { damage = 14, cadence = 1.6, sundering = 0 },
             drop_table = { ice_coins = 10, shadow_tokens = 1 },
         },
@@ -495,6 +522,16 @@ return {
             texture_asset = "rbxassetid://129651164618641",
             model_scale = 2, -- Jason: scaled down 50% from 4
             hover_height = 6, -- a moth drifts: float above the ground-snap floor
+            -- flyer: a slower, daintier flutter than the birds.
+            gait = {
+                style = "flap",
+                bob_height = 1.1,
+                tilt_degrees = 6,
+                stride_length = 5,
+                hover = true,
+                idle_amp = 0.85,
+                flap_hz = 1.6,
+            },
             embers = true,
             attack = { damage = 8, cadence = 2.0, sundering = 0 },
             -- Enemy HEALER: restores HP to the most-hurt nearby enemy (mirrors the support role).

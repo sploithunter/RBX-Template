@@ -38,6 +38,11 @@ Gait.STYLES = {
     slither = function(p)
         return 0, 0, math.sin(p)
     end,
+    -- flyer hover: a smooth sine bounce centred on the hover line, with a gentle wing-bank.
+    -- Pair with hover=true (below) so it keeps bobbing while the creature floats in place.
+    flap = function(p)
+        return math.sin(p), 0.35 * math.sin(p), 0
+    end,
 }
 
 local function clamp01(n)
@@ -61,6 +66,12 @@ function Gait.resolve(default, override)
         stride = default.stride_length or 5,
         refSpeed = default.ref_speed or 8,
         easeRate = default.ease_rate or 8,
+        -- HOVER (flyers): keep bobbing while floating in place. hover=true advances the phase by
+        -- time (flapHz cycles/sec) on top of distance, and floors the amplitude at idleAmp so the
+        -- bounce never fully decays when the creature is still.
+        hover = default.hover == true,
+        idleAmp = clamp01(default.idle_amp or 0),
+        flapHz = default.flap_hz or 1.2,
     }
     if type(override) == "table" then
         if override.enabled ~= nil then
@@ -72,6 +83,11 @@ function Gait.resolve(default, override)
         g.stride = override.stride_length or g.stride
         g.refSpeed = override.ref_speed or g.refSpeed
         g.easeRate = override.ease_rate or g.easeRate
+        if override.hover ~= nil then
+            g.hover = override.hover == true
+        end
+        g.idleAmp = override.idle_amp and clamp01(override.idle_amp) or g.idleAmp
+        g.flapHz = override.flap_hz or g.flapHz
     end
     g.fn = Gait.STYLES[g.style] or Gait.STYLES.waddle
     return g
@@ -87,9 +103,17 @@ function Gait.advance(state, gait, stepDist, dt)
         state.amp = 0
         return 0, 0, 0
     end
-    state.phase = (state.phase + (stepDist / gait.stride) * TWO_PI) % TWO_PI
+    local phaseStep = (stepDist / gait.stride) * TWO_PI
+    if gait.hover then
+        -- time-driven flap so a hovering (stationary) flyer keeps bouncing
+        phaseStep = phaseStep + gait.flapHz * TWO_PI * dt
+    end
+    state.phase = (state.phase + phaseStep) % TWO_PI
     local speed = stepDist / math.max(dt, 1e-3)
     local targetAmp = clamp01(speed / gait.refSpeed)
+    if gait.hover then
+        targetAmp = math.max(targetAmp, gait.idleAmp) -- never fully rest: keep the hover bob alive
+    end
     state.amp = state.amp + (targetAmp - state.amp) * (1 - math.exp(-gait.easeRate * dt))
     local bobN, rollN, yawN = gait.fn(state.phase)
     return gait.bobHeight * state.amp * bobN,
