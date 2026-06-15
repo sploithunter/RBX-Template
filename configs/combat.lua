@@ -96,7 +96,7 @@ return {
         -- aggro off squishier pets. It drops aggro if the player leaves leash_range.
         perception_range = 70,
         perception_interval = 0.75,
-        leash_range = 90,
+        -- (leash_range removed: persistence now lives in the aggro block's engage_radius/give_up_range)
         -- COMBAT ONRAMP (Jason): enemies stay INERT toward players below this level — they spawn,
         -- loiter, and are visible to everyone, but won't aggress, and a sub-threshold player's pets
         -- won't pull (they keep mining). So L1..(min-1) is a peaceful mining onramp with the threat
@@ -214,12 +214,21 @@ return {
             decay_per_second = 4,
             disengage_threshold = 0.5,
             taunt_amount = 250,
-            -- ENGAGEMENT GRACE (Jason): once an enemy is genuinely in a fight it shouldn't give up
-            -- the instant contact breaks. While it has a real aggro target the grace clock refreshes;
-            -- if aggro then bleeds below the threshold (a kite, a Rally retreat, a pet stepping out of
-            -- proximity), it keeps PURSUING the nearest live pet for this many seconds before letting
-            -- go. Rally relies on this to drag the fight home. 0 = old instant-disengage behaviour.
-            hold_seconds = 5,
+            -- LEASH (src/Shared/Game/AggroLeash) — how long an enemy stays angry as its target moves
+            -- away. Measured to the NEAREST LIVE PET (combat is vs pets; pets follow the player, so a
+            -- teleport/world-hop takes the squad out of range = instant give-up). Replaces the old
+            -- player-keyed leash(90)/draft(45) — those were the wrong reference frame and far too
+            -- short (Jason: "45 studs is nowhere near far enough").
+            --   <= engage_radius           : LOCKED on (never disengages); threat decays at base rate.
+            --   engage_radius..give_up_range: chasing; threat decays chase_decay_mult× faster (and
+            --                                 leave_area_decay_mult× once the target has left the
+            --                                 enemy's home area) -> pursues a fleeing target a little,
+            --                                 then loses interest.
+            --   > give_up_range            : DROP instantly (teleport / far side of map / new world).
+            engage_radius = 160,
+            give_up_range = 400,
+            chase_decay_mult = 3,
+            leave_area_decay_mult = 6,
             -- Proximity aggro: any attacker within proximity_range of the enemy keeps a
             -- baseline aggro of proximity_floor (> disengage_threshold), so decay can't
             -- make the enemy "forget" a pet right next to it — get close enough and it

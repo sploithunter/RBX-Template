@@ -35,6 +35,7 @@ local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
 local PetMeander = require(ReplicatedStorage.Shared.Game.PetMeander)
 local RingSeparate = require(ReplicatedStorage.Shared.Game.RingSeparate)
 local AggroTable = require(ReplicatedStorage.Shared.Game.AggroTable)
+local AggroLeash = require(ReplicatedStorage.Shared.Game.AggroLeash)
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
@@ -1140,9 +1141,10 @@ function EnemyService:_nearestPlayer(ePos, maxRange)
     return best, bestD
 end
 
--- One alive enemy, per tick: PERCEIVE a player (distance x probability) to acquire
--- aggro, CHASE the aggro'd squad until in attack range, and bite the highest-THREAT
--- pet in range (so a tank pet pulls aggro). Drops aggro past the leash range.
+-- One alive enemy, per tick: PERCEIVE a player (distance x probability) to acquire aggro, CHASE the
+-- aggro'd squad until in attack range, and bite the highest-THREAT pet in range (so a tank pet pulls
+-- aggro). How long it stays angry as the squad flees is the LEASH (AggroLeash): locked-on within
+-- engage_radius, decaying faster the farther it chases, dropped hard past give_up_range.
 function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     local model = entry.model
     -- Authoritative position lives in entry.pos (NOT the model pivot): the server
@@ -1150,11 +1152,6 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     -- smooth rendering (EnemyMotion). entry.pos drives all server-side combat math.
     local ePos = entry.pos or model:GetPivot().Position
     local perceptionRange = eng.perception_range or 70
-    local leash = eng.leash_range or 90
-    -- Engagement grace (set at the end of a tick that had a real aggro target; here it reflects the
-    -- PREVIOUS tick, i.e. "was fighting very recently"). Keeps a freshly-disengaged enemy committed
-    -- to the chase instead of giving up the instant contact breaks (a kite / a Rally retreat).
-    local graceActive = (entry.engagedUntil or 0) > now
     local def = self._enemiesConfig.enemies and self._enemiesConfig.enemies[entry.enemyId]
     -- Per-enemy attack range: RANGED foes (def.attack_range, e.g. 30+) hold at distance and fire,
     -- because the chase below stops at attack_range - attack_press. Melee/tank fall to the global
@@ -1213,47 +1210,47 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         end
     end
 
-    -- 2) Resolve the aggro'd player; drop aggro if gone or past the leash.
+    -- 2) Resolve the aggro'd player + its live squad. Combat is fought against PETS, so ALL
+    -- persistence is measured to the nearest live pet (not the player) — see AggroLeash. This is the
+    -- fix for the old player-keyed leash/draft (45/90 studs): wrong reference frame, far too short.
     local player = Players:FindFirstChild(entry.aggroPlayerName)
-    local character = player and player.Character
-    local hrp = character and character:FindFirstChild("HumanoidRootPart")
-    if not hrp or (hrp.Position - ePos).Magnitude > leash then
+    local petsFolder = player
+        and Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+    if not player or not petsFolder then
+        self:_releasePets(targetId)
+        self:_setAggroOwner(entry, nil) -- player/squad gone: back to loitering
+        return
+    end
+    local aggroCfg = eng.aggro or {}
+
+    -- Nearest live-pet distance drives the leash: locked-on while close, threat decays faster the
+    -- farther the squad runs, hard drop past give_up_range (a teleport / world-hop takes the whole
+    -- squad out of range at once -> instant give-up, so nothing chases you to another world).
+    local nearestDist = math.huge
+    for _, pet in ipairs(petsFolder:GetChildren()) do
+        if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
+            local d = (self:_petPosition(pet, pfs) - ePos).Magnitude
+            if d < nearestDist then
+                nearestDist = d
+            end
+        end
+    end
+    if nearestDist > (aggroCfg.give_up_range or 400) then
         self:_releasePets(targetId)
         self:_setAggroOwner(entry, nil)
         return
     end
-    -- DRAFT RANGE (Jason: an enemy ~60 studs out kept re-conscripting his fresh
-    -- revive the moment its grace expired): the leash keeps the enemy ANGRY, but
-    -- it may only POINT THE SQUAD at itself while the player is inside the
-    -- engagement radius. Farther out, the pets are released home — they re-engage
-    -- the moment the player closes back in (or the enemy chases into range).
-    if (hrp.Position - ePos).Magnitude > (eng.aggro_range or 45) then
-        -- ...UNLESS something is actively hurting it (Jason's bunny-sniper
-        -- exploit: assist-target a boss from beyond draft range and it could
-        -- never bite back). A live attacker in the threat table keeps the whole
-        -- combat tick running — the enemy bites whoever is hurting it.
-        local attacker = AggroTable.top(entry.aggro, 0.5, function(k)
-            return typeof(k) == "Instance" and k.Parent ~= nil
-        end)
-        if not attacker and not graceActive then
-            self:_releasePets(targetId)
-            return
-        end
-    end
+    local inTerritory = self:_inTerritory(entry, player)
 
-    -- 3) Aggro: point the (non-downed) squad at this enemy + gather threat candidates.
-    local petsFolder = Workspace:FindFirstChild("PlayerPets")
-        and Workspace.PlayerPets:FindFirstChild(player.Name)
-    if not petsFolder then
-        self:_releasePets(targetId)
-        self:_setAggroOwner(entry, nil) -- nothing to fight: back to loitering
-        return
-    end
-    -- Aggro upkeep: assign the (non-downed) squad to this enemy, DECAY the table, and tick
-    -- PASSIVE threat (× each pet's Threat stat, so a tank climbs fastest). `valid` is the
-    -- set of attackers still eligible to be targeted (present + not downed).
-    local aggroCfg = eng.aggro or {}
-    AggroTable.decay(entry.aggro, dt or 0.15, aggroCfg.decay_per_second or 4)
+    -- 3) Aggro upkeep: DECAY the table (faster the farther the squad is, faster still once it has
+    -- left the enemy's home area — AggroLeash.decayMult), then tick PASSIVE threat (× each pet's
+    -- Threat stat, so a tank climbs fastest) + the proximity floor. `valid` = targetable attackers.
+    AggroTable.decay(
+        entry.aggro,
+        dt or 0.15,
+        (aggroCfg.decay_per_second or 4) * AggroLeash.decayMult(nearestDist, inTerritory, aggroCfg)
+    )
     local valid = {}
     local proxRange = aggroCfg.proximity_range or 30
     local proxFloor = aggroCfg.proximity_floor or 6
@@ -1304,18 +1301,21 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         end
     end
 
-    -- Target = the highest-aggro attacker still valid. If the top has decayed to/below the
-    -- disengage threshold (nothing is hurting this enemy anymore), give up and idle.
+    -- Target = the highest-aggro attacker still valid. Then the LEASH verdict (AggroLeash):
+    --   drop   -> beyond give_up_range, give up and idle.
+    --   engage -> has a real threat target, fight normally.
+    --   lock   -> threat bled below the disengage threshold BUT still inside engage_radius: keep
+    --             pursuing the nearest live pet (a kite, a Rally retreat) instead of quitting. This
+    --             is what makes an engaged enemy stay committed — no enemy quits while you're near.
     local targetPet = AggroTable.top(entry.aggro, aggroCfg.disengage_threshold or 0.5, function(k)
         return valid[k] == true
     end)
-    if targetPet then
-        -- genuinely engaged this tick -> (re)arm the grace clock
-        entry.engagedUntil = now + (aggroCfg.hold_seconds or 0)
-    elseif (entry.engagedUntil or 0) > now then
-        -- ENGAGEMENT GRACE: aggro bled below the threshold but we were fighting moments ago. Keep
-        -- pursuing the NEAREST live pet (it may be retreating — e.g. a Rally) rather than giving up.
-        -- Picks from the live squad directly, so it holds even after the threat table has emptied.
+    local verdict = AggroLeash.verdict(nearestDist, targetPet ~= nil, aggroCfg)
+    if verdict == "drop" then
+        self:_releasePets(targetId)
+        self:_setAggroOwner(entry, nil)
+        return
+    elseif verdict == "lock" then
         local best, bestD
         for pet in pairs(valid) do
             local d = (self:_petPosition(pet, pfs) - ePos).Magnitude
@@ -1326,6 +1326,7 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         targetPet = best
     end
     if not targetPet then
+        -- locked but no live pet left to pursue (all downed / removed): nothing to fight.
         self:_releasePets(targetId)
         self:_setAggroOwner(entry, nil)
         return
@@ -1628,29 +1629,19 @@ function EnemyService:ExecuteTactical(player, command)
             end
         end
     elseif command == "rally" then
-        -- Recall the squad to formation for a window (RallyUntil): pets break off and return to
-        -- the player; enemies keep their aggro on the pets and chase them home. _assignPetTargets
-        -- suppresses re-targeting while the window holds, so the fight migrates back to the player
-        -- instead of the pets immediately re-engaging and drifting off again.
+        -- Recall the squad to formation for a window (RallyUntil): pets break off and return to the
+        -- player; _assignPetTargets suppresses re-targeting while the window holds, so they don't
+        -- instantly re-engage and drift off again. The enemies follow on their own — the engaged
+        -- ones are inside their leash's engage_radius, so the AggroLeash "lock" keeps them pursuing
+        -- the retreating pets all the way home (no special aggro commit needed).
         local engCfg = self._combatConfig.engagement or {}
-        local dur = engCfg.rally_seconds or 3.5
-        player:SetAttribute("RallyUntil", os.clock() + dur)
+        player:SetAttribute("RallyUntil", os.clock() + (engCfg.rally_seconds or 3.5))
         for _, pet in ipairs(petsFolder:GetChildren()) do
             if pet:IsA("Model") then
                 local tid = pet:FindFirstChild("TargetID")
                 if tid then
                     tid.Value = 0 -- drop the current target now -> return to follow this frame
                 end
-            end
-        end
-        -- Commit every enemy already fighting this player to chase the retreating squad home: arm
-        -- their engagement grace past the rally window so they keep pursuing the nearest pet even
-        -- though it has stopped attacking (this is what makes them follow the pets back, not give up).
-        local commitUntil = os.clock()
-            + math.max(dur + 2, (engCfg.aggro and engCfg.aggro.hold_seconds) or 5)
-        for _, entry in pairs(self._enemies) do
-            if entry.aggroPlayerName == player.Name then
-                entry.engagedUntil = commitUntil
             end
         end
     end
