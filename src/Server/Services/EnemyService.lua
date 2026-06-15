@@ -2136,8 +2136,15 @@ function EnemyService:_assignPetTargets(eng)
                         end
                         tid.Value = chosen
                     end
-                elseif tt.Value == "Enemy" then
-                    tid.Value = 0 -- enemy gone / out of range -> release to follow/mine
+                elseif tt.Value == "Enemy" or (player and player:GetAttribute("InCombat")) then
+                    -- Release this pet's target to 0 (follow formation) when EITHER its enemy is gone
+                    -- / out of range, OR the player is in combat and this pet isn't engaged (a buffer
+                    -- hanging back, or a melee with no enemy in range) -> COMBAT STANCE: stop mining
+                    -- and hold formation. Auto-farm assignment is paused too, so it stays put until
+                    -- the fight ends (InCombat clears -> farming resumes).
+                    if tid.Value ~= 0 then
+                        tid.Value = 0
+                    end
                 end
             end
         end
@@ -2228,6 +2235,21 @@ function EnemyService:_combatTick(dt)
                 self:_engageEnemy(entry, targetId, now, eng, dt)
                 self:_updateDebuffBadges(model, nowTime)
             end
+        end
+    end
+    -- COMBAT STANCE: mark each player whose squad has >=1 enemy aggroed on it as InCombat, so
+    -- auto-farm pauses (AutoTargetService) and non-engaged pets hold formation instead of mining
+    -- (below). Computed AFTER the enemy loop so aggroPlayerName is current; cleared the moment no
+    -- enemy is angry at them, so farming auto-resumes.
+    if eng.pause_farm_in_combat ~= false then
+        local fighting = {}
+        for _, entry in pairs(self._enemies) do
+            if entry.aggroPlayerName then
+                fighting[entry.aggroPlayerName] = true
+            end
+        end
+        for _, pl in ipairs(Players:GetPlayers()) do
+            pl:SetAttribute("InCombat", fighting[pl.Name] == true)
         end
     end
     -- After enemies have updated their aggro this tick, let each pet self-select its

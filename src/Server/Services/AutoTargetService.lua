@@ -727,6 +727,16 @@ function AutoTargetService:RequestAutoTargetAttack(player)
         }
     end
 
+    -- COMBAT STANCE (Jason): pause auto-farm while the player is in a fight. The auto-farm setting
+    -- stays ON (the player never sees it toggle) — assignment just no-ops until EnemyService clears
+    -- the InCombat flag, so pets fight / hold formation instead of wandering off to mine mid-battle.
+    if player:GetAttribute("InCombat") then
+        return {
+            ok = false,
+            error = "in_combat",
+        }
+    end
+
     local interval = tonumber(
         autoConfig.auto_target and autoConfig.auto_target.request_interval_seconds
     ) or 0.3

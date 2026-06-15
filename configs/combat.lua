@@ -97,6 +97,11 @@ return {
         perception_range = 70,
         perception_interval = 0.75,
         -- (leash_range removed: persistence is now the aggro block's decay_start_range/give_up_range)
+        -- COMBAT STANCE (Jason): while a player has >=1 enemy aggroed on them ("in combat"), AUTO-FARM
+        -- pauses and non-engaged pets hold combat formation instead of wandering off to mine crystals.
+        -- The auto-farm SETTING is untouched (player never sees it toggle) — it just doesn't fire while
+        -- a fight is on, and resumes the instant no enemy is angry at them. false = keep farming mid-fight.
+        pause_farm_in_combat = true,
         -- COMBAT ONRAMP (Jason): enemies stay INERT toward players below this level — they spawn,
         -- loiter, and are visible to everyone, but won't aggress, and a sub-threshold player's pets
         -- won't pull (they keep mining). So L1..(min-1) is a peaceful mining onramp with the threat
