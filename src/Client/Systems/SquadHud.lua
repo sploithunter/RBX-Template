@@ -27,6 +27,49 @@ local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local POWER_ICONS = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_icons"))
 local PET_ROLES = require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
+local PETS = require(ReplicatedStorage.Configs:WaitForChild("pets"))
+
+-- Card name = the pet's DISPLAY name (configs/pets.lua), NOT the PetType key ("dragon" not the key),
+-- and the VARIANT is shown by COLOURING the word (gold / rainbow) instead of a "(golden)" suffix —
+-- saves a lot of width. Falls back to a capitalised key if a pet has no display_name.
+local RAINBOW_NAME = ColorSequence.new({
+    ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 105, 105)),
+    ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 210, 90)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(110, 235, 130)),
+    ColorSequenceKeypoint.new(0.75, Color3.fromRGB(95, 190, 255)),
+    ColorSequenceKeypoint.new(1.0, Color3.fromRGB(205, 120, 255)),
+})
+local GOLD_NAME = Color3.fromRGB(255, 215, 0)
+local WHITE_NAME = Color3.fromRGB(255, 255, 255)
+
+local function petDisplayName(key)
+    local def = PETS.pets and PETS.pets[key]
+    if def and type(def.display_name) == "string" then
+        return def.display_name
+    end
+    return (tostring(key):gsub("^%l", string.upper)) -- fallback: capitalise the key
+end
+
+-- Set the card name to `displayName`, coloured by variant (golden = solid gold, rainbow = gradient,
+-- basic = white). The rainbow gradient is a child the label keeps/drops as the variant changes.
+local function applyVariantName(label, displayName, variant)
+    label.Text = displayName
+    local grad = label:FindFirstChild("VariantGrad")
+    if variant == "rainbow" then
+        label.TextColor3 = WHITE_NAME -- gradient tints the white base
+        if not grad then
+            grad = Instance.new("UIGradient")
+            grad.Name = "VariantGrad"
+            grad.Parent = label
+        end
+        grad.Color = RAINBOW_NAME
+    else
+        if grad then
+            grad:Destroy()
+        end
+        label.TextColor3 = (variant == "golden") and GOLD_NAME or WHITE_NAME
+    end
+end
 local PetBadge = require(script.Parent.Parent.UI.PetBadge)
 local HudCard = require(script.Parent.Parent.UI.HudCard)
 local StatusBadges = require(script.Parent.Parent.UI.StatusBadges)
@@ -671,8 +714,7 @@ function SquadHud.start()
                         card = makeCard(s.slot)
                         cards[s.slot] = card
                     end
-                    card.name.Text = s.name
-                        .. (s.variant ~= "basic" and (" (" .. s.variant .. ")") or "")
+                    applyVariantName(card.name, petDisplayName(s.name), s.variant)
                     -- Archetype/role badge: element DISC + tinted aura RING (the universal
                     -- PetBadge). Element from the pet's origin; role from PetRole/by_type. Falls
                     -- back to the coloured letter glyph when that (element, role) has no disc art.
