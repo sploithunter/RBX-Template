@@ -339,7 +339,7 @@ function EnemyService:_attachEnemyDecor(model, body, enemyId, def, targetId)
     -- (def.embers), sand-motes for Desert (def.dust). A cheap continuous ParticleEmitter modelled
     -- on the molten-tar-pit look in AreaFX. Server-created so every nearby player sees it
     -- (shared-world FX). Rate + size scale with model_scale, so a boss billows and a whelp wisps.
-    if def.embers or def.dust then
+    if def.embers or def.dust or def.frost then
         self:_attachAura(body, def)
     end
 end
@@ -363,12 +363,20 @@ local AURA_PALETTES = {
             { 1, Color3.fromRGB(150, 130, 95) }, -- dusty brown
         },
     },
+    frost = {
+        light = 0.4, -- ice crystals catch a faint shimmer
+        colors = {
+            { 0, Color3.fromRGB(235, 250, 255) }, -- bright frost
+            { 0.6, Color3.fromRGB(175, 220, 255) }, -- ice blue
+            { 1, Color3.fromRGB(120, 170, 220) }, -- deep glacier blue
+        },
+    },
 }
 function EnemyService:_attachAura(body, def)
     if not body then
         return
     end
-    local pal = AURA_PALETTES[def.dust and "dust" or "embers"]
+    local pal = AURA_PALETTES[(def.frost and "frost") or (def.dust and "dust") or "embers"]
     pcall(function()
         local scale = def.model_scale or 4
         local e = Instance.new("ParticleEmitter")

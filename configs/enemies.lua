@@ -41,7 +41,9 @@ return {
         -- has BaddieSpawnerLava + BaddieSpawnerDesert, so "Lava" -> the lava packs, everything else
         -- -> default_faction. A wave with no `faction` field counts as the default (earth).
         default_faction = "earth",
-        zone_faction = { Lava = "lava", Desert = "desert" }, -- each biome spawner draws its own faction
+        -- each biome spawner draws its own faction (keyed off the BaddieSpawner<Suffix> part name).
+        -- Ice is wired + ready for when a BaddieSpawnerIce part is placed in the map.
+        zone_faction = { Lava = "lava", Desert = "desert", Ice = "ice" },
         -- VARIETY (Jason): weighted compositions, not just "3 imps / 1 bear". Mixed-role packs make
         -- the role + surround systems sing — a healer behind a tank reads totally differently from a
         -- melee swarm. Weight = relative frequency (rarer = scarier). NOTE: rabid_dog/murder_crow/
@@ -135,6 +137,31 @@ return {
                 units = {
                     { enemy = "carrion_vulture", count = 2 },
                     { enemy = "sand_jackal", count = 1 },
+                },
+            },
+
+            -- ICE faction packs (BaddieSpawnerIce, when placed). No boss (glacial_leviathan = special).
+            -- fox swarm: a fast frozen pack
+            { weight = 6, faction = "ice", units = { { enemy = "frost_fox", count = 3 } } },
+            -- a parliament of owls: ranged ice harass
+            { weight = 5, faction = "ice", units = { { enemy = "snowy_owl", count = 3 } } },
+            -- glacial pack: mammoth wall + foxes + a seal healer (kill the seal first)
+            {
+                weight = 4,
+                faction = "ice",
+                units = {
+                    { enemy = "glacial_mammoth", count = 1 }, -- tusked wall
+                    { enemy = "frost_fox", count = 2 }, -- melee
+                    { enemy = "aurora_seal", count = 1 }, -- healer
+                },
+            },
+            -- snow ambush: owls + a flanking fox
+            {
+                weight = 4,
+                faction = "ice",
+                units = {
+                    { enemy = "snowy_owl", count = 2 },
+                    { enemy = "frost_fox", count = 1 },
                 },
             },
         },
@@ -325,6 +352,96 @@ return {
             gait = { style = "march", bob_height = 0.8, tilt_degrees = 3, stride_length = 9 },
             attack = { damage = 65, cadence = 2.4, sundering = 30 },
             drop_table = { desert_coins = 230, shadow_tokens = 28, rare_drop_chance = 0.5 },
+        },
+
+        -- ============================ ICE FACTION ============================
+        -- Frozen wildlife of the Ice biome (BaddieSpawnerIce, when placed). Role-balanced: melee fox ·
+        -- ranged owl · support seal · tank mammoth · boss leviathan. Self-serve mesh+texture (group
+        -- 15872767, see scripts/pet_mesh_ids.json); frost-mote aura (def.frost). texture_asset = the
+        -- resolved IMAGE id, not the Decal id (else grey).
+        -- MELEE — the frost fox: a quick, frost-furred pack hunter (Ice's mirror of the rabid_dog).
+        frost_fox = {
+            role = "melee",
+            hp = 1300,
+            display_name = "Frost Fox",
+            tier = "trash_mob",
+            move_speed = 17,
+            armor = 0,
+            mesh_asset = "rbxassetid://73221295389959",
+            texture_asset = "rbxassetid://79395384255362",
+            model_scale = 4,
+            frost = true,
+            gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 14, stride_length = 4 },
+            attack = { damage = 12, cadence = 1.3, sundering = 0 },
+            drop_table = { ice_coins = 9, shadow_tokens = 1 },
+        },
+        -- RANGED — the snowy owl: dives + looses an ICE bolt from standoff (Ice's mirror of the crow).
+        snowy_owl = {
+            role = "ranged",
+            hp = 900,
+            display_name = "Snowy Owl",
+            tier = "trash_mob",
+            move_speed = 14,
+            armor = 0,
+            mesh_asset = "rbxassetid://78750320845033",
+            texture_asset = "rbxassetid://98079418333409",
+            model_scale = 4,
+            frost = true,
+            attack_range = 32,
+            bolt_kind = "frost", -- ice projectile (RangedFX frost theme)
+            gait = { style = "hop", bob_height = 0.7, tilt_degrees = 6, stride_length = 5 },
+            attack = { damage = 14, cadence = 1.6, sundering = 0 },
+            drop_table = { ice_coins = 10, shadow_tokens = 1 },
+        },
+        -- SUPPORT — the aurora seal: a gentle glowing seal that mends the most-hurt ally. Kill it first.
+        aurora_seal = {
+            role = "support",
+            hp = 2000,
+            display_name = "Aurora Seal",
+            tier = "trash_mob",
+            move_speed = 12, -- waddles
+            armor = 0,
+            mesh_asset = "rbxassetid://107376865437053",
+            texture_asset = "rbxassetid://102794256383293",
+            model_scale = 3,
+            frost = true,
+            gait = { style = "waddle", bob_height = 0.4, tilt_degrees = 10, stride_length = 3 },
+            attack = { damage = 8, cadence = 2.0, sundering = 0 },
+            auto_heal = { interval = 2.0, amount = 120, range = 45 },
+            drop_table = { ice_coins = 12, shadow_tokens = 2 },
+        },
+        -- TANK — the glacial mammoth: a tusked woolly wall, slow + armored (Ice's mirror of the bear).
+        glacial_mammoth = {
+            role = "tank",
+            hp = 3600,
+            display_name = "Glacial Mammoth",
+            tier = "mid_tier",
+            move_speed = 9,
+            armor = 90, -- thick coat: ~47% pet-damage reduction at k=100
+            mesh_asset = "rbxassetid://112055300686821",
+            texture_asset = "rbxassetid://100199878594533",
+            model_scale = 6,
+            frost = true,
+            gait = { style = "march", bob_height = 0.9, tilt_degrees = 4, stride_length = 7 },
+            attack = { damage = 24, cadence = 2.0, sundering = 0 },
+            drop_table = { ice_coins = 35, shadow_tokens = 4, rare_drop_chance = 0.12 },
+        },
+        -- BOSS — the glacial leviathan: a crystal-plated ice titan, Sundering. The Ice apex (mirror of
+        -- dire_bear / magma_wyrm / sand_scorpion). Boss = deliberate encounter, NOT field waves.
+        glacial_leviathan = {
+            role = "tank",
+            hp = 58000,
+            display_name = "Glacial Leviathan",
+            tier = "boss",
+            move_speed = 8,
+            armor = 220, -- ~69% pet-damage reduction at k=100
+            mesh_asset = "rbxassetid://71215778120863",
+            texture_asset = "rbxassetid://131210888307665",
+            model_scale = 15, -- boss-scale, dwarfs everything
+            frost = true,
+            gait = { style = "march", bob_height = 1.2, tilt_degrees = 3, stride_length = 10 },
+            attack = { damage = 68, cadence = 2.4, sundering = 30 },
+            drop_table = { ice_coins = 250, shadow_tokens = 30, rare_drop_chance = 0.5 },
         },
 
         -- ============================ LAVA / HELL FACTION ============================

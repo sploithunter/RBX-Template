@@ -80,5 +80,45 @@
     "imageId": "rbxassetid://113335145419297",
     "wiredInto": "configs/enemies.lua sand_scorpion (Desert boss)",
     "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "frost_fox": {
+    "modelAssetId": "115560426261635",
+    "meshId": "rbxassetid://73221295389959",
+    "textureDecalId": "82074623157961",
+    "imageId": "rbxassetid://79395384255362",
+    "wiredInto": "configs/enemies.lua frost_fox (Ice melee)",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "snowy_owl": {
+    "modelAssetId": "108986351643371",
+    "meshId": "rbxassetid://78750320845033",
+    "textureDecalId": "119437132505456",
+    "imageId": "rbxassetid://98079418333409",
+    "wiredInto": "configs/enemies.lua snowy_owl (Ice ranged)",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "aurora_seal": {
+    "modelAssetId": "80304619055720",
+    "meshId": "rbxassetid://107376865437053",
+    "textureDecalId": "129482838553815",
+    "imageId": "rbxassetid://102794256383293",
+    "wiredInto": "configs/enemies.lua aurora_seal (Ice support)",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "glacial_mammoth": {
+    "modelAssetId": "113465930952048",
+    "meshId": "rbxassetid://112055300686821",
+    "textureDecalId": "129356636701588",
+    "imageId": "rbxassetid://100199878594533",
+    "wiredInto": "configs/enemies.lua glacial_mammoth (Ice tank)",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "glacial_leviathan": {
+    "modelAssetId": "139672151646425",
+    "meshId": "rbxassetid://71215778120863",
+    "textureDecalId": "88846886680558",
+    "imageId": "rbxassetid://131210888307665",
+    "wiredInto": "configs/enemies.lua glacial_leviathan (Ice boss)",
+    "uploadedBy": "self-serve (Claude) 2026-06-14"
   }
 }
