@@ -348,7 +348,7 @@ function EnemyService:_attachEnemyDecor(model, body, enemyId, def, targetId)
     end
 
     local bb = Instance.new("BillboardGui")
-    bb.Size = UDim2.new(6, 0, 0.8, 0)
+    bb.Size = UDim2.new(4.5, 0, 0.5, 0) -- slimmer than the old 6 x 0.8 (Jason: smaller HP bars)
     bb.StudsOffset = Vector3.new(0, height / 2 + 1.5, 0)
     bb.AlwaysOnTop = true
     bb.Adornee = body
@@ -358,12 +358,18 @@ function EnemyService:_attachEnemyDecor(model, body, enemyId, def, targetId)
     bg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     bg.BorderSizePixel = 0
     bg.Parent = bb
+    local bgCorner = Instance.new("UICorner")
+    bgCorner.CornerRadius = UDim.new(1, 0) -- pill (rounded HP bar, Jason)
+    bgCorner.Parent = bg
     local fill = Instance.new("Frame")
     fill.Name = "Fill"
     fill.Size = UDim2.fromScale(1, 1)
     fill.BackgroundColor3 = Color3.fromRGB(220, 70, 70)
     fill.BorderSizePixel = 0
     fill.Parent = bg
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(1, 0)
+    fillCorner.Parent = fill
 
     -- Name tag above the HP bar. The client (EnemyMotion) sets its text ("Name Lv N") and
     -- COLOUR by difficulty relative to the viewing player's level — so it's per-viewer.

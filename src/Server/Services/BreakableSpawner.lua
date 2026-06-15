@@ -1721,6 +1721,9 @@ function BreakableSpawner:_trySpawnOne(
                 bg.BackgroundTransparency = 0.25
                 bg.BorderSizePixel = 0
                 bg.Parent = bb
+                local bgCorner = Instance.new("UICorner")
+                bgCorner.CornerRadius = UDim.new(1, 0) -- pill (rounded bar, Jason)
+                bgCorner.Parent = bg
                 local fill = Instance.new("Frame")
                 fill.Name = fillName
                 fill.Size = UDim2.new(0, 100, 0, 10)
@@ -1728,6 +1731,9 @@ function BreakableSpawner:_trySpawnOne(
                 fill.BackgroundColor3 = fillColor
                 fill.BorderSizePixel = 0
                 fill.Parent = bg
+                local fillCorner = Instance.new("UICorner")
+                fillCorner.CornerRadius = UDim.new(1, 0)
+                fillCorner.Parent = fill
                 bb.Parent = pp
             end
             makeBar("HealthBillboardGui", "Health", Color3.fromRGB(80, 220, 90), topY + 0.45)
