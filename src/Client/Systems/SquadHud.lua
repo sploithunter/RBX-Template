@@ -32,12 +32,14 @@ local PETS = require(ReplicatedStorage.Configs:WaitForChild("pets"))
 -- Card name = the pet's DISPLAY name (configs/pets.lua), NOT the PetType key ("dragon" not the key),
 -- and the VARIANT is shown by COLOURING the word (gold / rainbow) instead of a "(golden)" suffix —
 -- saves a lot of width. Falls back to a capitalised key if a pet has no display_name.
+-- Blue (left) -> red (right). Starts COOL on purpose: a warm/gold start read as the golden
+-- variant (Jason), so the rainbow now opens blue and only reaches red/orange at the far right.
 local RAINBOW_NAME = ColorSequence.new({
-    ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 105, 105)),
-    ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 210, 90)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(110, 235, 130)),
-    ColorSequenceKeypoint.new(0.75, Color3.fromRGB(95, 190, 255)),
-    ColorSequenceKeypoint.new(1.0, Color3.fromRGB(205, 120, 255)),
+    ColorSequenceKeypoint.new(0.0, Color3.fromRGB(80, 170, 255)), -- blue
+    ColorSequenceKeypoint.new(0.3, Color3.fromRGB(95, 225, 220)), -- cyan
+    ColorSequenceKeypoint.new(0.55, Color3.fromRGB(120, 235, 110)), -- green
+    ColorSequenceKeypoint.new(0.8, Color3.fromRGB(255, 150, 70)), -- orange
+    ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255, 70, 70)), -- red
 })
 local GOLD_NAME = Color3.fromRGB(255, 215, 0)
 local WHITE_NAME = Color3.fromRGB(255, 255, 255)

@@ -344,6 +344,18 @@ function PetFollowController.start()
             crit = isCrit,
         })
 
+        -- CRIT ROAR: a ranged pet's critical hit gets an element crit sound (power_fx sounds.crit).
+        -- Only fire (lava) is authored, so a fire blaster's crit whooshes; other elements are silent
+        -- (gaps are silent). Positional at the target -> shared-world (every nearby client hears it).
+        if isCrit and ranged then
+            local okPos, pos = pcall(function()
+                return target:GetPivot().Position
+            end)
+            if okPos and pos then
+                pcall(PowerSound.play, "crit", element, pos)
+            end
+        end
+
         -- Floating combat text: the damage number (or MISS) pops + rises above the target.
         -- Renders for FOREIGN hits too (Jason: "this is supposed to be a team effect game"
         -- — shared world effects are fully shared, damage stream included; only private

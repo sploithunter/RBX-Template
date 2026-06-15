@@ -211,6 +211,15 @@ return {
     -- buff/shield phases ride the aura/shield primitives. ambient = LOOPS (zone/sustained), not wired
     -- to the one-shot probe. Uploaded via scripts/upload_audio.js (ids in scripts/audio_ids.json).
     sounds = {
+        -- CRIT (Jason): a ranged pet's CRITICAL hit. PetFollowController plays it on crit+ranged via
+        -- PowerSound.play("crit", element, pos). Only `lava` (fire) has an entry, so a fire blaster's
+        -- crit roars with "A Large Fire Igniting With A Whoosh"; other elements stay silent (gaps are
+        -- silent) until they get their own. Pairs with the existing bigger crit-impact VFX.
+        crit = {
+            lava = {
+                { id = "rbxassetid://131412280596753", seconds = 5.2 }, -- fire_ignite_whoosh
+            },
+        },
         cast = {
             grass = {
                 { id = "rbxassetid://132509816311774", seconds = 2.0 }, -- earth_magic_casting
