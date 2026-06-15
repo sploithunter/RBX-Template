@@ -44,6 +44,7 @@ local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local TargetPriority = require(ReplicatedStorage.Shared.Game.TargetPriority)
 local SupportAura = require(ReplicatedStorage.Shared.Game.SupportAura)
 local PetLockout = require(ReplicatedStorage.Shared.Game.PetLockout)
+local ZoneResolver = require(ReplicatedStorage.Shared.Game.ZoneResolver)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local EnemyService = {}
@@ -60,6 +61,11 @@ function EnemyService:Init()
     self._levelingConfig = self._configLoader:LoadConfig("leveling")
     self._originConfig = (self._configLoader:LoadConfig("combat_fx") or {}).origin or {}
     self._powersConfig = self._configLoader:LoadConfig("powers") -- combat_vfx.on_hit (e.g. dodge pops)
+    -- Territorial engagement: the SAME area bounds ZoneTrackerService uses for the player's
+    -- CurrentArea SSOT, so an enemy's home area (resolved from where it spawned) and a player's
+    -- CurrentArea are compared in one id space (Spawn/Meadow/Lava/Ice/Desert).
+    local areasConfig = self._configLoader:LoadConfig("areas")
+    self._areaBounds = (areasConfig and ZoneResolver.boundsFromAreas(areasConfig)) or {}
     self._nextId = 0
     self._enemies = {} -- targetId -> { model, enemyId, nextAttack }
     -- pet model -> { lastHit } (weak so dead pets GC). Accumulated damage, the downed
@@ -168,6 +174,27 @@ function EnemyService:_engagesCombat(player)
     return (player:GetAttribute("Level") or 1) >= minLvl
 end
 
+-- The area id at a world position (Spawn/Meadow/Lava/Ice/Desert), or nil outside every area. Same
+-- resolver + bounds as the player CurrentArea SSOT, so the two ids compare 1:1.
+function EnemyService:_areaAt(pos)
+    if not pos or not next(self._areaBounds) then
+        return nil
+    end
+    return ZoneResolver.resolve(pos, self._areaBounds)
+end
+
+-- TERRITORIAL gate (Jason): an enemy only engages a player who is in ITS area — so a foe across a
+-- wall in a different biome won't be dragged through it by proximity; it stays loitering. Lava
+-- fights in lava, ice in ice, etc. An enemy with no resolved home area (spawned off-grid) has no
+-- gate (engages anyone).
+function EnemyService:_inTerritory(entry, player)
+    local home = entry.homeArea
+    if not home then
+        return true
+    end
+    return player:GetAttribute("CurrentArea") == home
+end
+
 -- Add aggro for an attacker (pet Model / Player) on the enemy identified by `model`.
 -- Called when something hurts the enemy (PetFollowService mining) — damage builds threat.
 -- No-op if `model` isn't a tracked enemy. Public so other services can feed the table.
@@ -183,8 +210,9 @@ function EnemyService:AddAggro(model, key, amount)
         -- away that player is standing. Perception stays the ambient path.
         if not entry.aggroPlayerName and typeof(key) == "Instance" and key.Parent then
             local owner = game:GetService("Players"):FindFirstChild(key.Parent.Name)
-            -- ONRAMP: only retaliate if the attacking pet's owner is at/above min_engage_level.
-            if owner and self:_engagesCombat(owner) then
+            -- ONRAMP + TERRITORIAL: only retaliate if the attacking pet's owner is at/above
+            -- min_engage_level AND standing in this enemy's area.
+            if owner and self:_engagesCombat(owner) and self:_inTerritory(entry, owner) then
                 self:_setAggroOwner(entry, owner.Name)
                 entry.meander = nil
                 entry.home = nil -- re-home wherever this fight leaves it
@@ -1071,7 +1099,10 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
                 end
             end
             -- ONRAMP: a sub-threshold player is invisible to perception (enemy keeps loitering).
-            if player and not self:_engagesCombat(player) then
+            -- TERRITORIAL: so is a player in a DIFFERENT area (across a wall) — no pulling through it.
+            if
+                player and (not self:_engagesCombat(player) or not self:_inTerritory(entry, player))
+            then
                 player = nil
             end
             if
@@ -1922,7 +1953,9 @@ function EnemyService:_assignPetTargets(eng)
                     local candidates = {}
                     for etid, entry in pairs(live) do
                         local d = (entry.pos - petPos).Magnitude
-                        if d <= reach then
+                        -- TERRITORIAL: pets only auto-pick foes in the player's own area (no
+                        -- reaching across a wall into another biome's pack).
+                        if d <= reach and self:_inTerritory(entry, player) then
                             local edef = self._enemiesConfig.enemies
                                 and self._enemiesConfig.enemies[entry.enemyId]
                             candidates[#candidates + 1] = {
@@ -2114,6 +2147,7 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
         pos = position,
         aggro = AggroTable.new(),
         lastActiveAt = os.clock(), -- engagement timer seed (idle-despawn clock; refreshed while aggro'd)
+        homeArea = self:_areaAt(position), -- territorial: only engages players in this area
     }
     model:SetAttribute("MoveTarget", position)
     model:SetAttribute("MoveFace", Vector3.new(hrp.Position.X, position.Y, hrp.Position.Z))
@@ -2148,7 +2182,7 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
     -- AggroOwner attribute is stamped too (else the enemy chases + attacks but never shows on the
     -- client EnemyHud). ONRAMP: a sub-threshold trigger (a low-level player walking a spawner) gets
     -- a wave that LOITERS instead — visible in the world, but it won't aggress until they hit L5+.
-    if self:_engagesCombat(player) then
+    if self:_engagesCombat(player) and self:_inTerritory(self._enemies[targetId], player) then
         self:_setAggroOwner(self._enemies[targetId], player.Name)
     end
     if self._logger then
