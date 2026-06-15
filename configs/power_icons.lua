@@ -177,6 +177,7 @@ local M = {
         offense = "chevrons_up",
         yield = "coins_up",
         luck = "clover_lucky", -- bunny (Grass) — lucky-rabbit hatch-luck aura
+        hold = "capacitor", -- controller HOLD glyph (capacitor IS the hold art; see discs map above)
     },
     power_glyph_symbol = {
         debuff = "contagion",
