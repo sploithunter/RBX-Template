@@ -1106,7 +1106,14 @@ function EnemyService:_loiter(entry, model, ePos, dt)
     entry.meander = entry.meander or PetMeander.newState(cfg, math.random)
     local ox, oz = PetMeander.step(entry.meander, dt or 0, cfg, math.random)
     local gx, gz = entry.home.X + ox, entry.home.Z + oz
-    local np = Vector3.new(gx, self:_groundedY(entry, gx, gz, ePos.Y), gz)
+    local gy = self:_groundedY(entry, gx, gz, ePos.Y)
+    if (gy - ePos.Y) > (eng.ground_climb_max or 10) then
+        -- a wall/ledge ahead (the downcast jumped to the wall top): don't mount it. Re-seed the
+        -- wander so the next step heads a fresh direction instead of pushing into the wall again.
+        entry.meander = PetMeander.newState(cfg, math.random)
+        return
+    end
+    local np = Vector3.new(gx, gy, gz)
     local moveVec = Vector3.new(np.X - ePos.X, 0, np.Z - ePos.Z)
     entry.pos = np
     model:SetAttribute("MoveTarget", np)
@@ -1337,8 +1344,14 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         dt or 0.15,
         0 -- the slot already sits at bite range, so close all the way onto it
     )
-    if math.abs(np.x - ePos.X) > 1e-3 or math.abs(np.z - ePos.Z) > 1e-3 then
-        local groundedY = self:_groundedY(entry, np.x, np.z, np.y)
+    local groundedY = self:_groundedY(entry, np.x, np.z, np.y)
+    local wallAhead = (groundedY - ePos.Y) > (eng.ground_climb_max or 10)
+    if wallAhead then
+        -- a wall/ledge between the enemy and its slot: hold at the base rather than climbing
+        -- onto it (it still faces + attacks the target below). Keeps fights off the rooftops.
+        groundedY = ePos.Y
+    end
+    if not wallAhead and (math.abs(np.x - ePos.X) > 1e-3 or math.abs(np.z - ePos.Z) > 1e-3) then
         local newPos = Vector3.new(np.x, groundedY, np.z)
         -- face the TARGET it's biting (the pet), not its movement slot
         local faceTarget = Vector3.new(targetPos.X, groundedY, targetPos.Z)

@@ -114,6 +114,10 @@ return {
         -- height because nothing pulled their Y to the terrain. Each move step now raycasts down to
         -- the floor and sits the body on it (+ per-enemy hover_height for flyers). false = off.
         ground_snap = true,
+        -- Max studs an enemy may snap UP in one move step. Slopes rise a little per step and pass;
+        -- a vertical wall makes the downcast jump to the wall top (a big rise) -> the step is
+        -- rejected, so enemies don't climb onto walls/ledges. Steps DOWN are always allowed.
+        ground_climb_max = 10,
         -- IDLE DESPAWN (engagement timer): an enemy that has been DISENGAGED (no aggro on anyone)
         -- this many seconds leaves the field — so abandoned/leashed packs (and a fled-from death
         -- zone) clean themselves up instead of piling to max_alive. A live fight refreshes the clock
