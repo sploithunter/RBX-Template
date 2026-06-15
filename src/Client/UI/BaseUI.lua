@@ -38,6 +38,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
+local SoundService = game:GetService("SoundService")
+local Debris = game:GetService("Debris")
 
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
@@ -3118,6 +3120,7 @@ function BaseUI:_setupCurrencyUpdates()
 
     -- Update currency displays when player attributes change (like working TestEconomyGUI)
     local function updateAllCurrencies()
+        local gained = false
         for currencyType, display in pairs(self.currencyDisplays) do
             if display and display.amount then
                 local realAmount = self.player:GetAttribute(attrFor(currencyType)) or 0
@@ -3136,11 +3139,19 @@ function BaseUI:_setupCurrencyUpdates()
                 -- shows the floating "+N" indicator).
                 if initialized and realAmount ~= previousAmount then
                     self:_animateCurrencyUpdate(display, realAmount - previousAmount)
+                    if realAmount > previousAmount then
+                        gained = true
+                    end
                 end
 
                 -- Store current value for next comparison
                 previousValues[currencyType] = realAmount
             end
+        end
+        -- One "throwing coins" sound per counter-up event, regardless of how many currencies
+        -- ticked this pass (Jason: tie it to the same moment the left-HUD coin counters go up).
+        if gained then
+            self:_playCoinGainSound()
         end
     end
 
@@ -3165,6 +3176,35 @@ function BaseUI:_setupCurrencyUpdates()
     end)
 
     self.logger:info("Currency update system initialized with animations")
+end
+
+-- "Throwing coins" SFX on a HUD currency gain. Debounced (sounds.coin_collect_min_gap) so a farming
+-- burst doesn't machine-gun the clip. Personal UI sound on the effects bus (rides the SFX slider).
+function BaseUI:_playCoinGainSound()
+    local ok, soundsCfg = pcall(function()
+        return require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("sounds"))
+    end)
+    local def = ok and soundsCfg and soundsCfg.coin_collect
+    if not def or not def.id then
+        return
+    end
+    local now = os.clock()
+    local minGap = (ok and soundsCfg.coin_collect_min_gap) or 0.12
+    if self._lastCoinSoundAt and (now - self._lastCoinSoundAt) < minGap then
+        return
+    end
+    self._lastCoinSoundAt = now
+
+    local s = Instance.new("Sound")
+    s.SoundId = def.id
+    s.Volume = tonumber(def.volume) or 0.5
+    s.PlaybackSpeed = tonumber(def.playback_speed) or 1.0
+    pcall(function()
+        require(ReplicatedStorage.Shared.Effects.SoundGroups).assign(s, def.bus or "effects")
+    end)
+    s.Parent = SoundService
+    s:Play()
+    Debris:AddItem(s, 5)
 end
 
 -- Animate currency updates with visual feedback for floating cards

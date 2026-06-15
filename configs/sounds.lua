@@ -97,6 +97,17 @@ return {
         bus = "effects",
     },
 
+    -- COIN GAIN (Jason): "throwing coins" — played on the client whenever a HUD currency counter
+    -- ticks UP (BaseUI currency-update path). Personal UI sound on the effects bus. Debounced by
+    -- coin_collect_min_gap so a farming burst doesn't machine-gun the clip.
+    coin_collect = {
+        id = "rbxassetid://118665363889363",
+        volume = 0.5,
+        playback_speed = 1.0,
+        bus = "effects",
+    },
+    coin_collect_min_gap = 0.12, -- min seconds between coin-gain sounds (anti-spam during farming)
+
     -- Rising "power up" sting (uploaded SFX) — pet revive and similar comeback moments.
     power_up_stronger = {
         id = "rbxassetid://105379088796995",
