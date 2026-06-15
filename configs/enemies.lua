@@ -490,7 +490,7 @@ return {
             armor = 0,
             mesh_asset = "rbxassetid://119015123255528",
             texture_asset = "rbxassetid://129651164618641",
-            model_scale = 4,
+            model_scale = 2, -- Jason: scaled down 50% from 4
             embers = true,
             attack = { damage = 8, cadence = 2.0, sundering = 0 },
             -- Enemy HEALER: restores HP to the most-hurt nearby enemy (mirrors the support role).
