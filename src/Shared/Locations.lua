@@ -80,6 +80,7 @@ Locations.ConfigFiles = {
     Effects = "effects",
     ui = "ui",
     pets = "pets",
+    inventory = "inventory",
     egg_system = "egg_system",
     auto_systems = "auto_systems",
     logging = "logging",
