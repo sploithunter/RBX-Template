@@ -46,6 +46,7 @@ local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local TargetPriority = require(ReplicatedStorage.Shared.Game.TargetPriority)
 local SupportAura = require(ReplicatedStorage.Shared.Game.SupportAura)
+local OverheadBar = require(ReplicatedStorage.Shared.UI.OverheadBar) -- shared enemy HP / pet endurance bar
 local PetLockout = require(ReplicatedStorage.Shared.Game.PetLockout)
 local ZoneResolver = require(ReplicatedStorage.Shared.Game.ZoneResolver)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
@@ -347,29 +348,13 @@ function EnemyService:_attachEnemyDecor(model, body, enemyId, def, targetId)
         height = sz.Y
     end
 
-    local bb = Instance.new("BillboardGui")
-    bb.Size = UDim2.new(4.5, 0, 0.5, 0) -- slimmer than the old 6 x 0.8 (Jason: smaller HP bars)
-    bb.StudsOffset = Vector3.new(0, height / 2 + 1.5, 0)
-    bb.AlwaysOnTop = true
-    bb.Adornee = body
-    bb.Parent = body
-    local bg = Instance.new("Frame")
-    bg.Size = UDim2.fromScale(1, 1)
-    bg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    bg.BorderSizePixel = 0
-    bg.Parent = bb
-    local bgCorner = Instance.new("UICorner")
-    bgCorner.CornerRadius = UDim.new(1, 0) -- pill (rounded HP bar, Jason)
-    bgCorner.Parent = bg
-    local fill = Instance.new("Frame")
-    fill.Name = "Fill"
-    fill.Size = UDim2.fromScale(1, 1)
-    fill.BackgroundColor3 = Color3.fromRGB(220, 70, 70)
-    fill.BorderSizePixel = 0
-    fill.Parent = bg
-    local fillCorner = Instance.new("UICorner")
-    fillCorner.CornerRadius = UDim.new(1, 0)
-    fillCorner.Parent = fill
+    -- Enemy HP bar: the shared OverheadBar widget (same as the pet endurance bar, red fill).
+    OverheadBar.create({
+        adornee = body,
+        name = "HealthBar",
+        studsOffset = Vector3.new(0, height / 2 + 1.5, 0),
+        fillColor = Color3.fromRGB(220, 70, 70), -- enemy = red
+    })
 
     -- Name tag above the HP bar. The client (EnemyMotion) sets its text ("Name Lv N") and
     -- COLOUR by difficulty relative to the viewing player's level — so it's per-viewer.
@@ -680,39 +665,22 @@ function EnemyService:_updateEnduranceBar(pet, taken, power, factor)
     if not pp then
         return
     end
-    local bb = pp:FindFirstChild("EnduranceBar")
-    if not bb then
-        bb = Instance.new("BillboardGui")
-        bb.Name = "EnduranceBar"
-        bb.Size = UDim2.new(4, 0, 0.5, 0)
-        bb.StudsOffset = Vector3.new(0, 3.5, 0)
-        bb.AlwaysOnTop = true
-        local bg = Instance.new("Frame")
-        bg.Name = "BG"
-        bg.Size = UDim2.fromScale(1, 1)
-        bg.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-        bg.BorderSizePixel = 0
-        bg.Parent = bb
-        local bgCorner = Instance.new("UICorner")
-        bgCorner.CornerRadius = UDim.new(1, 0) -- pill (rounded pet HP bar, Jason)
-        bgCorner.Parent = bg
-        local fill = Instance.new("Frame")
-        fill.Name = "Fill"
-        fill.Size = UDim2.fromScale(1, 1)
-        fill.BorderSizePixel = 0
-        fill.Parent = bg
-        local fillCorner = Instance.new("UICorner")
-        fillCorner.CornerRadius = UDim.new(1, 0)
-        fillCorner.Parent = fill
-        bb.Parent = pp
+    -- Pet endurance bar: the SAME shared OverheadBar widget as the enemy HP bar (green->red fill).
+    if not pp:FindFirstChild("EnduranceBar") then
+        OverheadBar.create({
+            adornee = pp,
+            name = "EnduranceBar",
+            studsOffset = Vector3.new(0, 3.5, 0),
+            bgColor = Color3.fromRGB(25, 25, 25),
+            fillColor = Color3.fromRGB(70, 200, 90), -- pet = green (re-ramped by fraction below)
+        })
     end
     local frac = PetEndurance.healthFraction(taken, power, factor)
-    local fill = bb:FindFirstChild("BG") and bb.BG:FindFirstChild("Fill")
-    if fill then
-        fill.Size = UDim2.fromScale(math.clamp(frac, 0, 1), 1)
-        fill.BackgroundColor3 =
-            Color3.fromRGB(math.floor(215 * (1 - frac)) + 40, math.floor(195 * frac) + 30, 45)
-    end
+    OverheadBar.setFraction(
+        OverheadBar.fillOf(pp, "EnduranceBar"),
+        frac,
+        Color3.fromRGB(math.floor(215 * (1 - frac)) + 40, math.floor(195 * frac) + 30, 45)
+    )
 end
 
 function EnemyService:_clearEnduranceBar(pet)
@@ -2432,13 +2400,10 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
     model:GetAttributeChangedSignal("HP"):Connect(function()
         local hp = model:GetAttribute("HP") or 0
         local maxHp = model:GetAttribute("MaxHP") or 1
-        local fill = model.PrimaryPart
-            and model.PrimaryPart:FindFirstChild("BillboardGui")
-            and model.PrimaryPart.BillboardGui:FindFirstChild("Frame")
-            and model.PrimaryPart.BillboardGui.Frame:FindFirstChild("Fill")
-        if fill then
-            fill.Size = UDim2.fromScale(math.clamp(hp / math.max(maxHp, 1), 0, 1), 1)
-        end
+        OverheadBar.setFraction(
+            OverheadBar.fillOf(model.PrimaryPart, "HealthBar"),
+            hp / math.max(maxHp, 1)
+        )
         if hp <= 0 then
             self:_onDefeated(targetId)
         end

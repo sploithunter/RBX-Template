@@ -1,5 +1,5 @@
 assets_dir: /Users/jason/Documents/RBX-Template/assets/ui/red_icons
-icon_count: 52
+icon_count: 53
 
 armor_chest.png
 arrow_right.png
@@ -18,6 +18,7 @@ fire_storm.png
 fist.png
 fist_broken.png
 fist_impact.png
+flag.png
 focus.png
 gift_up.png
 hand_stop.png
