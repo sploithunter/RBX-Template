@@ -220,7 +220,9 @@ return {
                 { id = "rbxassetid://140491649982510", seconds = 3.0 }, -- grass_crit_landslide
             },
             lava = {
-                { id = "rbxassetid://131412280596753", seconds = 5.2 }, -- fire_ignite_whoosh
+                -- Jason: the whoosh didn't fit the fire crit — swapped to the heavy boom_swoosh
+                -- (same slam sound used for AoE impacts below). The whoosh is freed for root/hold.
+                { id = "rbxassetid://139898524491568", seconds = 4.0 }, -- boom_swoosh
             },
             ice = {
                 { id = "rbxassetid://134084999884785", seconds = 2.9 }, -- ice_crit_avalanche
@@ -297,6 +299,14 @@ return {
             },
             neutral = {
                 { id = "rbxassetid://124911631879452", seconds = 1.0 }, -- force_field_raise
+            },
+        },
+        -- AoE SLAM (Jason): the "winds up, lands hard" boom_swoosh — played at the center of any
+        -- area power as it lands, ON TOP of the per-element impact (the boom is the weight, the
+        -- element impact is the flavor). neutral-only ⇒ every element's AoE gets the same slam.
+        slam = {
+            neutral = {
+                { id = "rbxassetid://139898524491568", seconds = 4.0 }, -- boom_swoosh
             },
         },
         -- ambient LOOPS — registered for zone ambience / sustained holds; NOT one-shot. A looping

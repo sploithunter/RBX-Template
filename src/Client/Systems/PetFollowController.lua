@@ -289,6 +289,8 @@ function PetFollowController.start()
             -- (silent if none authored for this element/phase).
             local phase = (data.variant == "self") and "cast" or "impact"
             pcall(PowerSound.play, phase, element, center)
+            -- the heavy "lands hard" boom under every AoE (slam.neutral ⇒ all elements get it).
+            pcall(PowerSound.play, "slam", element, center)
         end
         for _, h in ipairs(data.hits or {}) do
             if type(h) == "table" and typeof(h.pos) == "Vector3" and h.amount then

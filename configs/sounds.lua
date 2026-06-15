@@ -85,6 +85,18 @@ return {
         bus = "effects",
     },
 
+    -- PARKED (Jason): "A Large Fire Igniting With A Whoosh" — was the fire crit, but the whoosh
+    -- "didn't fit" a hard crit; boom_swoosh took that slot. Freed for a LESS impactful, sustained
+    -- moment — Jason: "might be better for like a root or hold or something." Best next slot: the
+    -- ROOT family (PowerService RootedUntil) — play it positionally on the rooted target the way
+    -- _auraHold plays freeze_hold. Uploaded + ready; not yet wired (confirm root vs hold first).
+    root_whoosh = {
+        id = "rbxassetid://131412280596753",
+        volume = 0.5,
+        playback_speed = 1.0,
+        bus = "effects",
+    },
+
     -- Rising "power up" sting (uploaded SFX) — pet revive and similar comeback moments.
     power_up_stronger = {
         id = "rbxassetid://105379088796995",
