@@ -693,11 +693,17 @@ function EnemyService:_updateEnduranceBar(pet, taken, power, factor)
         bg.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
         bg.BorderSizePixel = 0
         bg.Parent = bb
+        local bgCorner = Instance.new("UICorner")
+        bgCorner.CornerRadius = UDim.new(1, 0) -- pill (rounded pet HP bar, Jason)
+        bgCorner.Parent = bg
         local fill = Instance.new("Frame")
         fill.Name = "Fill"
         fill.Size = UDim2.fromScale(1, 1)
         fill.BorderSizePixel = 0
         fill.Parent = bg
+        local fillCorner = Instance.new("UICorner")
+        fillCorner.CornerRadius = UDim.new(1, 0)
+        fillCorner.Parent = fill
         bb.Parent = pp
     end
     local frac = PetEndurance.healthFraction(taken, power, factor)
