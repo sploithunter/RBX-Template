@@ -369,7 +369,7 @@ return {
             armor = 0,
             mesh_asset = "rbxassetid://73221295389959",
             texture_asset = "rbxassetid://79395384255362",
-            model_scale = 4,
+            model_scale = 2.8, -- Jason: scaled down ~30% from 4 (a small, quick fox)
             frost = true,
             gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 14, stride_length = 4 },
             attack = { damage = 12, cadence = 1.3, sundering = 0 },
@@ -403,7 +403,7 @@ return {
             armor = 0,
             mesh_asset = "rbxassetid://107376865437053",
             texture_asset = "rbxassetid://102794256383293",
-            model_scale = 3,
+            model_scale = 2.7, -- Jason: scaled down ~10% from 3
             frost = true,
             gait = { style = "waddle", bob_height = 0.4, tilt_degrees = 10, stride_length = 3 },
             attack = { damage = 8, cadence = 2.0, sundering = 0 },
