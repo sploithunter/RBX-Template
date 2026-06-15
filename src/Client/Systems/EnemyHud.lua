@@ -59,6 +59,14 @@ local ENEMY_EFFECTS = {
         color = Color3.fromRGB(175, 110, 215),
         label = "HEX",
     },
+    {
+        key = "held",
+        source = "enemy",
+        untilAttr = "HeldUntil", -- controller HOLD pinning this foe (no move/attack) — timed countdown
+        color = Color3.fromRGB(150, 110, 215), -- control violet (matches the world HELD badge)
+        label = "HELD",
+        icon = POWER_ICONS.discFor("ice", "capacitor"), -- hold glyph (capacitor IS the hold art)
+    },
 }
 -- Expiry-blink cadence (matches SquadHud's defaults; a near-expiry timed badge flashes).
 local BLINK_LEAD = 5
