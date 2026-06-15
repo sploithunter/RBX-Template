@@ -270,6 +270,11 @@ return {
         },
         -- shield raise (rides the `shield_bubble` primitive)
         shield = {
+            -- ICE armor/shield: giant crystals forming as the world freezes (Jason). Other elements
+            -- fall through to the neutral force-field raise until they get their own.
+            ice = {
+                { id = "rbxassetid://115983199480080", seconds = 6.8 }, -- ice_crystals_freeze
+            },
             neutral = {
                 { id = "rbxassetid://124911631879452", seconds = 1.0 }, -- force_field_raise
             },

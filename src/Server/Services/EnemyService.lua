@@ -37,6 +37,7 @@ local RingSeparate = require(ReplicatedStorage.Shared.Game.RingSeparate)
 local AggroTable = require(ReplicatedStorage.Shared.Game.AggroTable)
 local AggroLeash = require(ReplicatedStorage.Shared.Game.AggroLeash)
 local PowerIcons = require(ReplicatedStorage.Configs:WaitForChild("power_icons")) -- world debuff disc
+local Sounds = require(ReplicatedStorage.Configs:WaitForChild("sounds")) -- positional hold/freeze SFX
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
@@ -1879,6 +1880,21 @@ function EnemyService:_auraHold(folder, aura)
         return
     end
     model:SetAttribute("HeldUntil", now + (tonumber(aura.duration) or 10))
+
+    -- FREEZE roar: positional ice-crystal sound at the moment the hold lands (server-created, so
+    -- every nearby player hears the foe get frozen). Plays once per hold (guarded above).
+    local pp = model.PrimaryPart
+    local def = pp and Sounds.freeze_hold
+    if pp and def and def.id then
+        local s = Instance.new("Sound")
+        s.SoundId = def.id
+        s.Volume = tonumber(def.volume) or 0.5
+        s.RollOffMode = Enum.RollOffMode.InverseTapered
+        s.RollOffMaxDistance = 120
+        s.Parent = pp
+        s:Play()
+        Debris:AddItem(s, 10)
+    end
 end
 
 -- A team player-attribute buff (Lava offense -> PetTeamDamageBuff in _mine; Desert yield ->

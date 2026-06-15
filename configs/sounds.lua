@@ -47,6 +47,16 @@ return {
         bus = "effects", -- rides the SFX slider (same reasoning as celebratory_jingle above)
     },
 
+    -- Ice CONTROL: giant crystals forming / cracking as the world freezes (Jason) — played
+    -- positionally at an enemy the instant a HOLD lands on it (EnemyService:_auraHold). The same
+    -- track also skins ice shields (power_fx sounds.shield.ice). Server-created -> everyone hears it.
+    freeze_hold = {
+        id = "rbxassetid://115983199480080",
+        volume = 0.5,
+        playback_speed = 1.0,
+        bus = "effects",
+    },
+
     -- Rising "power up" sting (uploaded SFX) — pet revive and similar comeback moments.
     power_up_stronger = {
         id = "rbxassetid://105379088796995",
