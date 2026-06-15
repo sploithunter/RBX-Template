@@ -143,10 +143,29 @@ end
 -- list only the foes engaged with ITS squad (every aggro mutation goes through here).
 function EnemyService:_setAggroOwner(entry, name)
     entry.aggroPlayerName = name
+    if name then
+        entry.everEngaged = true -- has fought at least once -> eligible for idle-despawn when abandoned
+    end
     local model = entry.model
     if model and model.Parent then
         model:SetAttribute("AggroOwner", name or "")
     end
+end
+
+-- COMBAT ONRAMP gate (configs/combat.lua engagement.min_engage_level). Below the threshold a
+-- player is invisible to combat: enemies won't aggress them and their pets won't pull (they keep
+-- mining), so early levels are a peaceful onramp with the enemies on display. Combat switches on
+-- at min_engage_level. 0/1/absent = no gate (everyone fights).
+function EnemyService:_engagesCombat(player)
+    if not player then
+        return false
+    end
+    local eng = self._combatConfig and self._combatConfig.engagement
+    local minLvl = eng and tonumber(eng.min_engage_level)
+    if not minLvl or minLvl <= 1 then
+        return true
+    end
+    return (player:GetAttribute("Level") or 1) >= minLvl
 end
 
 -- Add aggro for an attacker (pet Model / Player) on the enemy identified by `model`.
@@ -163,9 +182,10 @@ function EnemyService:AddAggro(model, key, amount)
         -- takes a hit wakes on the attacking pet's OWNER, regardless of how far
         -- away that player is standing. Perception stays the ambient path.
         if not entry.aggroPlayerName and typeof(key) == "Instance" and key.Parent then
-            local ownerName = key.Parent.Name
-            if game:GetService("Players"):FindFirstChild(ownerName) then
-                self:_setAggroOwner(entry, ownerName)
+            local owner = game:GetService("Players"):FindFirstChild(key.Parent.Name)
+            -- ONRAMP: only retaliate if the attacking pet's owner is at/above min_engage_level.
+            if owner and self:_engagesCombat(owner) then
+                self:_setAggroOwner(entry, owner.Name)
                 entry.meander = nil
                 entry.home = nil -- re-home wherever this fight leaves it
             end
@@ -1050,6 +1070,10 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
                     player = nil
                 end
             end
+            -- ONRAMP: a sub-threshold player is invisible to perception (enemy keeps loitering).
+            if player and not self:_engagesCombat(player) then
+                player = nil
+            end
             if
                 player
                 and (d <= proxRange or EnemyAI.shouldNotice(d, perceptionRange, math.random()))
@@ -1859,6 +1883,11 @@ function EnemyService:_assignPetTargets(eng)
     local aggroRange = eng.aggro_range or 45
     for _, folder in ipairs(playerPets:GetChildren()) do
         local player = Players:FindFirstChild(folder.Name)
+        -- ONRAMP: a sub-threshold player's pets never auto-pick an enemy — they stay on mining /
+        -- AutoTarget, so early levels are peaceful even with enemies loitering nearby.
+        if not self:_engagesCombat(player) then
+            continue
+        end
         local assist = player and player:GetAttribute("CombatAssistTarget")
         for _, pet in ipairs(folder:GetChildren()) do
             local tid = pet:FindFirstChild("TargetID")
@@ -2000,7 +2029,13 @@ function EnemyService:_combatTick(dt)
             -- never engaged), the clock runs; past despawn_idle_seconds the enemy leaves the field.
             if entry.aggroPlayerName then
                 entry.lastActiveAt = now
-            elseif idleDespawn > 0 and (now - (entry.lastActiveAt or now)) > idleDespawn then
+            elseif
+                idleDespawn > 0
+                and entry.everEngaged -- only retire enemies that ENGAGED then got abandoned;
+                and (now - (entry.lastActiveAt or now)) > idleDespawn
+            then
+                -- never-engaged loiterers persist as ambiance (the combat-onramp preview for
+                -- low-level players); the spawner's max_alive still caps how many can pile up.
                 self:_despawnEnemy(targetId)
             end
             if self._enemies[targetId] then -- still alive (not just despawned)
@@ -2108,11 +2143,14 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
         end
     end)
 
-    -- Admin-spawned enemies engage the spawning player immediately (skip the
-    -- perception roll — the combat tick handles chase + threat targeting from here).
-    -- Via the helper so the replicated AggroOwner attribute is stamped too (else the
-    -- enemy chases + attacks but never shows on the client EnemyHud).
-    self:_setAggroOwner(self._enemies[targetId], player.Name)
+    -- Spawned enemies engage the triggering player immediately (skip the perception roll — the
+    -- combat tick handles chase + threat targeting from here). Via the helper so the replicated
+    -- AggroOwner attribute is stamped too (else the enemy chases + attacks but never shows on the
+    -- client EnemyHud). ONRAMP: a sub-threshold trigger (a low-level player walking a spawner) gets
+    -- a wave that LOITERS instead — visible in the world, but it won't aggress until they hit L5+.
+    if self:_engagesCombat(player) then
+        self:_setAggroOwner(self._enemies[targetId], player.Name)
+    end
     if self._logger then
         self._logger:Info("Enemy spawned", { enemyId = enemyId, targetId = targetId, hp = def.hp })
     end

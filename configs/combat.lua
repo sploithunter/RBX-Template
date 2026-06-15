@@ -97,6 +97,13 @@ return {
         perception_range = 70,
         perception_interval = 0.75,
         leash_range = 90,
+        -- COMBAT ONRAMP (Jason): enemies stay INERT toward players below this level — they spawn,
+        -- loiter, and are visible to everyone, but won't aggress, and a sub-threshold player's pets
+        -- won't pull (they keep mining). So L1..(min-1) is a peaceful mining onramp with the threat
+        -- on display; combat switches on at min_engage_level — the level BEFORE the first origin power
+        -- (L6) + the heaven/hell choice, so the taste of combat comes before picking a direction.
+        -- 0/1 disables the gate (everyone fights).
+        min_engage_level = 5,
         -- IDLE DESPAWN (engagement timer): an enemy that has been DISENGAGED (no aggro on anyone)
         -- this many seconds leaves the field — so abandoned/leashed packs (and a fled-from death
         -- zone) clean themselves up instead of piling to max_alive. A live fight refreshes the clock
