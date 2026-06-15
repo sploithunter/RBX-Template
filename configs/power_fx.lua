@@ -225,7 +225,7 @@ return {
                 { id = "rbxassetid://139898524491568", seconds = 4.0 }, -- boom_swoosh
             },
             ice = {
-                { id = "rbxassetid://134084999884785", seconds = 2.9 }, -- ice_crit_avalanche
+                { id = "rbxassetid://91568270674401", seconds = 1.7 }, -- ice_crit_sudden_blast (Jason)
             },
             desert = {
                 { id = "rbxassetid://105787180419764", seconds = 6.0 }, -- desert_crit_boom
