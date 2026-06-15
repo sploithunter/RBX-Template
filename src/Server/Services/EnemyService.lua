@@ -498,8 +498,43 @@ function EnemyService:_buildModel(enemyId, def, position, targetId)
 
     model.Name = "Enemy_" .. enemyId .. "_" .. targetId
     model:PivotTo(CFrame.new(position))
+    self:_attachFillLight(model, body, def)
     self:_attachEnemyDecor(model, body, enemyId, def, targetId)
     return model
+end
+
+-- Internal FILL LIGHT (Jason): the dark biomes have almost no ambient, so a mesh's baked texture
+-- reads gray/washed-out. A PointLight parented straight to the body (its centre is just inside the
+-- mesh, so nothing visible) lifts the creature out of the murk. Range auto-scales to the model so a
+-- whelp isn't over-lit and a boss isn't under-lit; shadows off (cheap on big waves). Config in
+-- combat.lua engagement.fill_light; per-enemy `fill_light = false` disables, `= <number>` overrides
+-- brightness.
+function EnemyService:_attachFillLight(model, body, def)
+    if not body or def.fill_light == false then
+        return
+    end
+    local cfg = (self._combatConfig.engagement and self._combatConfig.engagement.fill_light) or {}
+    if cfg.enabled == false then
+        return
+    end
+    pcall(function()
+        local maxExtent = 4
+        local okE, sz = pcall(function()
+            return model:GetExtentsSize()
+        end)
+        if okE and sz then
+            maxExtent = math.max(sz.X, sz.Y, sz.Z)
+        end
+        local light = Instance.new("PointLight")
+        light.Name = "FillLight"
+        light.Brightness = (type(def.fill_light) == "number" and def.fill_light)
+            or cfg.brightness
+            or 1.75
+        light.Range = math.clamp(maxExtent * (cfg.range_factor or 0.6), 6, 60)
+        light.Color = Color3.new(1, 1, 1)
+        light.Shadows = false -- keep it cheap on big waves
+        light.Parent = body
+    end)
 end
 
 -- Release any pets still targeting this enemy back to following.

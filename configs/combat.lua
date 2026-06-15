@@ -104,6 +104,12 @@ return {
         -- (L6) + the heaven/hell choice, so the taste of combat comes before picking a direction.
         -- 0/1 disables the gate (everyone fights).
         min_engage_level = 5,
+        -- FILL LIGHT (Jason): an internal PointLight on each spawned creature so its baked texture
+        -- doesn't read gray/washed-out in the low-ambient biomes (it lifts the mesh out of the murk;
+        -- the light sits at the body centre, just inside the mesh, so nothing is visible). Range
+        -- auto-scales to the model (range_factor x max extent), shadows off. Per-enemy `fill_light`
+        -- in configs/enemies.lua: false disables, a number overrides brightness. enabled=false = off.
+        fill_light = { enabled = true, brightness = 1.75, range_factor = 0.6 },
         -- IDLE DESPAWN (engagement timer): an enemy that has been DISENGAGED (no aggro on anyone)
         -- this many seconds leaves the field — so abandoned/leashed packs (and a fled-from death
         -- zone) clean themselves up instead of piling to max_alive. A live fight refreshes the clock
