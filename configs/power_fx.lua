@@ -231,6 +231,15 @@ return {
                 { id = "rbxassetid://105787180419764", seconds = 6.0 }, -- desert_crit_boom
             },
         },
+        -- MELEE/TANK CRIT (Jason): a non-ranged pet's crit is a heavy CONCUSSION, not a ranged
+        -- elemental blast — mirrors the attack-VFX split (ranged bolt vs melee impact). neutral-only
+        -- ⇒ every element's melee/tank crit shares the boom_swoosh slam. Authoring a per-element
+        -- entry here later would override it for that element.
+        crit_melee = {
+            neutral = {
+                { id = "rbxassetid://139898524491568", seconds = 4.0 }, -- boom_swoosh
+            },
+        },
         cast = {
             grass = {
                 { id = "rbxassetid://132509816311774", seconds = 2.0 }, -- earth_magic_casting

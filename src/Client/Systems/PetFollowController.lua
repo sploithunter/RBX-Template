@@ -346,16 +346,17 @@ function PetFollowController.start()
             crit = isCrit,
         })
 
-        -- CRIT ROAR: ANY pet's critical hit gets an element crit sound (power_fx sounds.crit) —
-        -- not just ranged (Jason: an ice polar bear is a tank, and its crit must roar too). Authored
-        -- per element (grass/lava/ice/desert); unauthored elements stay silent (gaps are silent).
-        -- Positional at the target -> shared-world (every nearby client hears it).
+        -- CRIT ROAR: ANY pet's critical hit roars (Jason: a tank polar bear's crit must sound too),
+        -- but the sound SPLITS by role to match the attack-VFX split: ranged -> the per-element crit
+        -- BLAST (power_fx sounds.crit, e.g. ice = SuddenBlast); melee/tank/other -> the heavier
+        -- CONCUSSION (sounds.crit_melee, neutral boom_swoosh for every element). Unauthored gaps stay
+        -- silent. Positional at the target -> shared-world (every nearby client hears it).
         if isCrit then
             local okPos, pos = pcall(function()
                 return target:GetPivot().Position
             end)
             if okPos and pos then
-                pcall(PowerSound.play, "crit", element, pos)
+                pcall(PowerSound.play, ranged and "crit" or "crit_melee", element, pos)
             end
         end
 
