@@ -304,7 +304,9 @@ return {
                 { id = "rbxassetid://115983199480080", seconds = 6.8 }, -- ice_crystals_freeze
             },
             desert = {
-                { id = "rbxassetid://100882476598763", seconds = 4.6 }, -- desert_shield_snake
+                -- volume 1.0 (2x the 0.5 default): the snake-slither clip was barely audible on cast
+                -- (Jason, via Mirage Step). Shared by all desert shield-raises (Mirage Step, Dune Shield).
+                { id = "rbxassetid://100882476598763", seconds = 4.6, volume = 1.0 }, -- desert_shield_snake
             },
             neutral = {
                 { id = "rbxassetid://124911631879452", seconds = 1.0 }, -- force_field_raise
