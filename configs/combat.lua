@@ -214,6 +214,12 @@ return {
             decay_per_second = 4,
             disengage_threshold = 0.5,
             taunt_amount = 250,
+            -- ENGAGEMENT GRACE (Jason): once an enemy is genuinely in a fight it shouldn't give up
+            -- the instant contact breaks. While it has a real aggro target the grace clock refreshes;
+            -- if aggro then bleeds below the threshold (a kite, a Rally retreat, a pet stepping out of
+            -- proximity), it keeps PURSUING the nearest live pet for this many seconds before letting
+            -- go. Rally relies on this to drag the fight home. 0 = old instant-disengage behaviour.
+            hold_seconds = 5,
             -- Proximity aggro: any attacker within proximity_range of the enemy keeps a
             -- baseline aggro of proximity_floor (> disengage_threshold), so decay can't
             -- make the enemy "forget" a pet right next to it — get close enough and it
