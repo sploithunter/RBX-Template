@@ -231,6 +231,19 @@ function EnemyHud.start()
 
     local cards = {} -- bid -> card refs
 
+    -- World highlight on the player's chosen FOCUS enemy (the assist target). The inverse of the pet
+    -- selection: clicking a pet highlights the enemy IT attacks; clicking an enemy card now selects
+    -- THAT enemy — a blue border on the card + this glow on the world model — so you can see what you
+    -- directed the squad at. (Jason: clicking an enemy should do the inverse and at least select it.)
+    local assistHighlight = Instance.new("Highlight")
+    assistHighlight.Name = "AssistTargetHighlight"
+    assistHighlight.FillTransparency = 0.7
+    assistHighlight.FillColor = Color3.fromRGB(95, 170, 235)
+    assistHighlight.OutlineColor = Color3.fromRGB(125, 195, 255)
+    assistHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    assistHighlight.Enabled = false
+    assistHighlight.Parent = gui
+
     -- STABLE SLOTS (Jason: the strip re-sorted by distance every tick, so a card slid out from under
     -- the cursor and clicks missed the foe). Each enemy keeps a fixed slot (1..MAX_CARDS) for its
     -- whole life on the strip; a freed slot is reused by the nearest waiting foe. No live card ever
@@ -279,6 +292,10 @@ function EnemyHud.start()
 
         local list = engagedEnemies(os.clock())
         local focusBid = indirectTargetBid()
+        -- The player's directed FOCUS (assist target) — set server-side when you click an enemy card
+        -- (Combat_SetAssist), replicated back as this attribute. Drives the blue card + world select.
+        local assistBid = localPlayer:GetAttribute("CombatAssistTarget")
+        local assistModel = nil
 
         -- Free the slots of foes that have left so the nearest waiting foe can reuse them.
         local liveSet = {}
@@ -316,9 +333,16 @@ function EnemyHud.start()
                 card.fill.Size = UDim2.fromScale(frac, 1)
                 card.fill.BackgroundColor3 = HudCard.healthColor(frac)
                 card.note.Text = ""
-                -- The indirect target (player → selected pet → THIS enemy) wears the amber border,
-                -- matching the world target highlight; every other foe shows the idle outline.
-                HudCard.applyHighlight(card, (e.bid == focusBid) and "target" or nil)
+                -- Highlight precedence: your DIRECTED focus (assist target = you clicked it) wears the
+                -- blue SELECT border (matches the pet-selection convention) + lights in the world; else
+                -- the indirect target (the enemy your SELECTED pet is hitting) wears the amber border.
+                local mode = (assistBid and assistBid ~= 0 and e.bid == assistBid and "select")
+                    or (e.bid == focusBid and "target")
+                    or nil
+                HudCard.applyHighlight(card, mode)
+                if assistBid and assistBid ~= 0 and e.bid == assistBid then
+                    assistModel = m
+                end
                 -- Buff/debuff badges off the enemy's attributes — shared StatusBadges engine, growing
                 -- leftward from the card's inner edge (a healed foe lights HEAL, a debuffed foe HEX).
                 StatusBadges.update(
@@ -328,6 +352,9 @@ function EnemyHud.start()
                 )
             end
         end
+        -- World glow on the directed focus enemy (off when nothing's selected / it's gone).
+        assistHighlight.Adornee = assistModel
+        assistHighlight.Enabled = assistModel ~= nil
         -- Shrink the strip uniformly once the pull exceeds DENSITY_FULL, so it stays bounded.
         densityScale.Scale = math.clamp(DENSITY_FULL / math.max(1, shown), DENSITY_MIN, 1)
         for bid, card in pairs(cards) do
