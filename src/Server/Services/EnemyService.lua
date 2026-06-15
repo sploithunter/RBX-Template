@@ -1636,90 +1636,10 @@ function EnemyService:ExecuteTactical(player, command)
     end
 end
 
--- Debuffs shown above an enemy. Placeholder colour+label now; set `icon` later.
-local ENEMY_DEBUFFS = {
-    {
-        key = "vuln",
-        untilAttr = "VulnerableUntil",
-        color = Color3.fromRGB(235, 90, 90),
-        label = "VULN",
-    },
-    {
-        key = "root",
-        untilAttr = "RootedUntil",
-        color = Color3.fromRGB(90, 200, 235),
-        label = "ROOT",
-    },
-    {
-        key = "hold",
-        untilAttr = "HeldUntil",
-        color = Color3.fromRGB(150, 110, 215), -- control violet (matches the controller/CC theme)
-        label = "HELD",
-    },
-}
-
--- Billboard above the enemy (above its HP bar) showing active debuffs + countdowns.
-function EnemyService:_updateDebuffBadges(model, nowTime)
-    local pp = model.PrimaryPart
-    if not pp then
-        return
-    end
-    local bb = pp:FindFirstChild("DebuffBar")
-    if not bb then
-        bb = Instance.new("BillboardGui")
-        bb.Name = "DebuffBar"
-        bb.Size = UDim2.fromOffset(140, 24)
-        bb.StudsOffset = Vector3.new(0, 6.4, 0) -- just above the HP bar (+5)
-        bb.AlwaysOnTop = true
-        bb.Adornee = pp
-        bb.Parent = pp
-        local lay = Instance.new("UIListLayout")
-        lay.FillDirection = Enum.FillDirection.Horizontal
-        lay.HorizontalAlignment = Enum.HorizontalAlignment.Center
-        lay.SortOrder = Enum.SortOrder.LayoutOrder
-        lay.Padding = UDim.new(0, 3)
-        lay.Parent = bb
-    end
-    for i, d in ipairs(ENEMY_DEBUFFS) do
-        local until_ = model:GetAttribute(d.untilAttr) or 0
-        local badge = bb:FindFirstChild(d.key)
-        if until_ > nowTime then
-            if not badge then
-                badge = Instance.new("Frame")
-                badge.Name = d.key
-                badge.Size = UDim2.fromOffset(46, 22)
-                badge.BackgroundColor3 = d.color
-                badge.BorderSizePixel = 0
-                badge.LayoutOrder = i
-                badge.Parent = bb
-                local c = Instance.new("UICorner")
-                c.CornerRadius = UDim.new(0, 5)
-                c.Parent = badge
-                local icon = Instance.new("ImageLabel")
-                icon.Name = "Icon"
-                icon.BackgroundTransparency = 1
-                icon.Size = UDim2.fromScale(1, 1)
-                icon.Image = d.icon or ""
-                icon.ZIndex = 3
-                icon.Parent = badge
-                local lbl = Instance.new("TextLabel")
-                lbl.Name = "Label"
-                lbl.BackgroundTransparency = 1
-                lbl.Size = UDim2.fromScale(1, 1)
-                lbl.Font = Enum.Font.GothamBold
-                lbl.TextSize = 10
-                lbl.TextColor3 = Color3.fromRGB(20, 22, 28)
-                lbl.Parent = badge
-            end
-            local lbl = badge:FindFirstChild("Label")
-            if lbl then
-                lbl.Text = d.label .. " " .. math.ceil(until_ - nowTime)
-            end
-        elseif badge then
-            badge:Destroy()
-        end
-    end
-end
+-- (RETIRED) The floating world billboard of enemy debuffs (VULN/ROOT/HELD above the HP bar) was a
+-- placeholder. Enemy debuffs now render in the enemy HUD card (src/Client/Systems/EnemyHud.lua,
+-- ENEMY_EFFECTS) via the shared StatusBadges engine — the canonical badge surface, matching how the
+-- squad HUD badges pets. Every debuff power also stamps DebuffUntil (HUD "HEX"); HELD has its own row.
 
 -- A buffer pet's team aura (configs/pet_roles.lua support_auras, keyed by PetType — a
 -- `SupportAura` model attribute can override later), or nil. The returned table carries
@@ -2331,7 +2251,8 @@ function EnemyService:_combatTick(dt)
             end
             if self._enemies[targetId] then -- still alive (not just despawned)
                 self:_engageEnemy(entry, targetId, now, eng, dt)
-                self:_updateDebuffBadges(model, nowTime)
+                -- (the floating world debuff billboard is retired — enemy debuffs now show in the
+                -- enemy HUD card via StatusBadges, the canonical badge surface; see EnemyHud.)
             end
         end
     end
