@@ -1556,6 +1556,8 @@ end
 --   focus_fire — every non-downed pet attacks the nearest alive enemy
 --   scatter/regroup — clear enemy targets so pets return to follow / auto-mine
 --   retreat — recall every non-downed pet (short cooldown), pulling the squad out
+--   rally — pets ignore combat + return to formation for a window; enemies (still aggro'd on
+--           the pets) chase them home, dragging the fight back to the player
 function EnemyService:ExecuteTactical(player, command)
     local petsFolder = Workspace:FindFirstChild("PlayerPets")
         and Workspace.PlayerPets:FindFirstChild(player.Name)
@@ -1593,6 +1595,22 @@ function EnemyService:ExecuteTactical(player, command)
                 local pn = pet:FindFirstChild("PositionNumber")
                 if pn then
                     self:RecallPet(player, { slot = pn.Value })
+                end
+            end
+        end
+    elseif command == "rally" then
+        -- Recall the squad to formation for a window (RallyUntil): pets break off and return to
+        -- the player; enemies keep their aggro on the pets and chase them home. _assignPetTargets
+        -- suppresses re-targeting while the window holds, so the fight migrates back to the player
+        -- instead of the pets immediately re-engaging and drifting off again.
+        local dur = (self._combatConfig.engagement and self._combatConfig.engagement.rally_seconds)
+            or 3.5
+        player:SetAttribute("RallyUntil", os.clock() + dur)
+        for _, pet in ipairs(petsFolder:GetChildren()) do
+            if pet:IsA("Model") then
+                local tid = pet:FindFirstChild("TargetID")
+                if tid then
+                    tid.Value = 0 -- drop the current target now -> return to follow this frame
                 end
             end
         end
@@ -2011,6 +2029,19 @@ function EnemyService:_assignPetTargets(eng)
         -- ONRAMP: a sub-threshold player's pets never auto-pick an enemy — they stay on mining /
         -- AutoTarget, so early levels are peaceful even with enemies loitering nearby.
         if not self:_engagesCombat(player) then
+            continue
+        end
+        -- RALLY: during the window the pets ignore combat and return to formation (clear targets);
+        -- enemies keep their aggro and chase the returning pets, pulling the fight back to the player.
+        if player and (player:GetAttribute("RallyUntil") or 0) > os.clock() then
+            for _, pet in ipairs(folder:GetChildren()) do
+                if pet:IsA("Model") then
+                    local tid = pet:FindFirstChild("TargetID")
+                    if tid then
+                        tid.Value = 0
+                    end
+                end
+            end
             continue
         end
         local assist = player and player:GetAttribute("CombatAssistTarget")

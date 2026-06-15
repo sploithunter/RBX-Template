@@ -83,8 +83,13 @@ local function bindLabel(bind)
     end
     local t = tostring(bind.target or "")
     if bind.type == "tactical" then
-        local abbr =
-            { focus_fire = "Focus", scatter = "Scatter", regroup = "Regroup", retreat = "Retreat" }
+        local abbr = {
+            focus_fire = "Focus",
+            scatter = "Scatter",
+            regroup = "Regroup",
+            retreat = "Retreat",
+            rally = "Rally",
+        }
         return abbr[t] or t
     end
     -- power/roster/pet: trim to something readable

@@ -118,6 +118,10 @@ return {
         -- a vertical wall makes the downcast jump to the wall top (a big rise) -> the step is
         -- rejected, so enemies don't climb onto walls/ledges. Steps DOWN are always allowed.
         ground_climb_max = 10,
+        -- RALLY (tactical command): for this many seconds the player's pets ignore combat and
+        -- return to formation around the player; the enemies keep their aggro on the pets and
+        -- chase them home, so the fight comes back to the player instead of drifting off.
+        rally_seconds = 3.5,
         -- IDLE DESPAWN (engagement timer): an enemy that has been DISENGAGED (no aggro on anyone)
         -- this many seconds leaves the field — so abandoned/leashed packs (and a fled-from death
         -- zone) clean themselves up instead of piling to max_alive. A live fight refreshes the clock

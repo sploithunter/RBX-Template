@@ -10,7 +10,7 @@
 return {
     slot_count = 20,
     bind_types = { "power", "roster", "pet", "tactical" },
-    tactical_commands = { "scatter", "focus_fire", "regroup", "retreat" },
+    tactical_commands = { "scatter", "focus_fire", "regroup", "retreat", "rally" },
 
     -- Default layout for a new player. Power slots fill from the player's OWNED powers (picked via
     -- level-up) in order — a fresh character owns none, so the bar comes up EMPTY and fills as you
