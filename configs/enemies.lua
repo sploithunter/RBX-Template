@@ -197,7 +197,7 @@ return {
             -- Real art (raven): mesh + texture combined at spawn via CreateMeshPartAsync.
             mesh_asset = "rbxassetid://79312260838341",
             texture_asset = "rbxassetid://120154730842284",
-            model_scale = 4,
+            model_scale = 2, -- Jason: scaled down 50% from 4
             gait = { style = "hop", bob_height = 0.7, tilt_degrees = 6, stride_length = 5 },
             -- RANGED: holds ~31 studs out and fires a dark plasma bolt (it doesn't close to bite).
             attack_range = 34,
@@ -216,7 +216,7 @@ return {
             -- Real art (grumpy_cat): mesh + texture combined at spawn via CreateMeshPartAsync.
             mesh_asset = "rbxassetid://140220411587261",
             texture_asset = "rbxassetid://89093502801465",
-            model_scale = 4,
+            model_scale = 2.8, -- Jason: scaled down ~30% from 4
             gait = { style = "waddle", bob_height = 0.5, tilt_degrees = 10, stride_length = 4 },
             -- RANGED: shorter reach than the crow, spits a venom (poison) bolt; tankier up close.
             attack_range = 28,
