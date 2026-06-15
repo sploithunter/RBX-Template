@@ -1,0 +1,8 @@
+# Lava pet preview images (2026-06-14 batch)
+# Contact sheet: assets/exports/pets/lava_pets_2026-06-14_contact_sheet.png
+
+pet	download_preview	copied_to
+ember_moth	~/Downloads/Ember Moth.png	ember_moth_basic.png
+magma_wyrm	~/Downloads/Magma Wyrm.png	magma_wyrm_basic.png
+molten_rhino	~/Downloads/molten rhino.png	molten_rhino_basic.png
+cinder_whelp	~/Downloads/Cinder Whelp.png	cinder_whelp_basic.png

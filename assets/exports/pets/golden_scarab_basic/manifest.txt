@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/pets/golden_scarab_basic.obj
+original_tris: 6816
+
+5k: golden_scarab_basic_5k.fbx (5000 tris, target 5000)
+7500tris: golden_scarab_basic_7500tris.fbx (6816 tris, target 7500)
+10k: golden_scarab_basic_10k.fbx (6816 tris, target 10000)

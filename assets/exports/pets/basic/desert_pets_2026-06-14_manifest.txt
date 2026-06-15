@@ -1,0 +1,9 @@
+# Desert pet preview images (2026-06-14 batch)
+# Contact sheet: assets/exports/pets/desert_pets_2026-06-14_contact_sheet.png
+
+pet	download_preview	copied_to
+carrion_vulture	~/Downloads/CarrionVulture.png	carrion_vulture_basic.png
+golden_scarab	~/Downloads/GoldenScarab.png	golden_scarab_basic.png
+sand_scorpion	~/Downloads/SandScorpion.png	sand_scorpion_basic.png
+dune_tortoise	~/Downloads/DuneTortoise.png	dune_tortoise_basic.png
+sand_jackal	~/Downloads/SandJackal.png	sand_jackal_basic.png

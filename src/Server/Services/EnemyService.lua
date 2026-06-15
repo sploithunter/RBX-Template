@@ -1052,6 +1052,50 @@ end
 -- Aggro/chase takes over instantly (this only runs in the unaware branch), and
 -- the meander state resets on aggro so a fight never teleports it back.
 -- Config: combat.lua engagement.loiter (enabled/radius/speed/pause_min/pause_max).
+-- Rebuild the ground-snap exclude list once per tick: ignore dynamic gameplay objects (enemies,
+-- ore, drops under Workspace.Game), pets, and player characters so a downcast hits only the map
+-- floor. The authored biome floor lives outside Workspace.Game, so it is NOT filtered out.
+function EnemyService:_refreshGroundExclude()
+    local exclude = {}
+    local game = Workspace:FindFirstChild("Game")
+    if game then
+        exclude[#exclude + 1] = game
+    end
+    local pets = Workspace:FindFirstChild("PlayerPets")
+    if pets then
+        exclude[#exclude + 1] = pets
+    end
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            exclude[#exclude + 1] = player.Character
+        end
+    end
+    self._groundExclude = exclude
+end
+
+-- Raycast down to the floor at (x, z) and return the Y the enemy's pivot should sit at so the
+-- body rests on the terrain (+ hoverHeight for flyers). Returns fallbackY if grounding is off or
+-- the ray misses (e.g. over a void). self._groundExclude is rebuilt once per combat tick so a
+-- single downcast ignores dynamic stuff (enemies/pets/characters/Game objects) and only hits the map.
+function EnemyService:_groundedY(entry, x, z, fallbackY)
+    local eng = self._combatConfig and self._combatConfig.engagement
+    if eng and eng.ground_snap == false then
+        return fallbackY
+    end
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = self._groundExclude or {}
+    params.IgnoreWater = true
+    -- Start well above the enemy's current/target Y so a creature stuck high in a cave still
+    -- casts down to the floor below it; 1000 studs of reach covers any biome drop.
+    local origin = Vector3.new(x, (fallbackY or 0) + 80, z)
+    local hit = Workspace:Raycast(origin, Vector3.new(0, -1000, 0), params)
+    if hit then
+        return hit.Position.Y + (entry.halfHeight or 3) + (entry.hoverHeight or 0)
+    end
+    return fallbackY
+end
+
 function EnemyService:_loiter(entry, model, ePos, dt)
     local eng = self._combatConfig and self._combatConfig.engagement
     local cfg = eng and eng.loiter
@@ -1061,7 +1105,8 @@ function EnemyService:_loiter(entry, model, ePos, dt)
     entry.home = entry.home or ePos
     entry.meander = entry.meander or PetMeander.newState(cfg, math.random)
     local ox, oz = PetMeander.step(entry.meander, dt or 0, cfg, math.random)
-    local np = Vector3.new(entry.home.X + ox, ePos.Y, entry.home.Z + oz)
+    local gx, gz = entry.home.X + ox, entry.home.Z + oz
+    local np = Vector3.new(gx, self:_groundedY(entry, gx, gz, ePos.Y), gz)
     local moveVec = Vector3.new(np.X - ePos.X, 0, np.Z - ePos.Z)
     entry.pos = np
     model:SetAttribute("MoveTarget", np)
@@ -1293,9 +1338,10 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         0 -- the slot already sits at bite range, so close all the way onto it
     )
     if math.abs(np.x - ePos.X) > 1e-3 or math.abs(np.z - ePos.Z) > 1e-3 then
-        local newPos = Vector3.new(np.x, np.y, np.z)
+        local groundedY = self:_groundedY(entry, np.x, np.z, np.y)
+        local newPos = Vector3.new(np.x, groundedY, np.z)
         -- face the TARGET it's biting (the pet), not its movement slot
-        local faceTarget = Vector3.new(targetPos.X, np.y, targetPos.Z)
+        local faceTarget = Vector3.new(targetPos.X, groundedY, targetPos.Z)
         -- Publish the step target instead of pivoting the model. The client (EnemyMotion)
         -- interpolates the visible model toward MoveTarget every frame; because the server
         -- no longer writes the model CFrame, there's no replicated snap to fight, so the
@@ -2088,6 +2134,7 @@ function EnemyService:_combatTick(dt)
     self:_supportPass(now)
     self:_enemyHealPass(now)
     self:_enforceLockouts(nowTime) -- #179: hold re-teamed/locked pets down for their recovery
+    self:_refreshGroundExclude() -- rebuild the ground-snap raycast filter once for the whole tick
     local idleDespawn = eng.despawn_idle_seconds or 0
     for targetId, entry in pairs(self._enemies) do
         local model = entry.model
@@ -2176,6 +2223,17 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
     -- entry.pos = authoritative position (server never re-pivots the model after this
     -- initial placement). Seed MoveTarget so the gate + client render have a value
     -- before the first chase step.
+    -- Half the (scaled) body height: ground-snap sits the pivot this far above the floor so the
+    -- model rests ON the terrain. hoverHeight lifts flyers (def.hover_height) above that.
+    local halfHeight = 3
+    do
+        local okE, ext = pcall(function()
+            return model:GetExtentsSize()
+        end)
+        if okE and ext then
+            halfHeight = math.max(ext.Y * 0.5, 0.5)
+        end
+    end
     self._enemies[targetId] = {
         model = model,
         enemyId = enemyId,
@@ -2183,6 +2241,8 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
         aggro = AggroTable.new(),
         lastActiveAt = os.clock(), -- engagement timer seed (idle-despawn clock; refreshed while aggro'd)
         homeArea = self:_areaAt(position), -- territorial: only engages players in this area
+        halfHeight = halfHeight, -- ground-snap pivot offset
+        hoverHeight = tonumber(def.hover_height) or 0, -- flyers float this far above the ground
     }
     model:SetAttribute("MoveTarget", position)
     model:SetAttribute("MoveFace", Vector3.new(hrp.Position.X, position.Y, hrp.Position.Z))

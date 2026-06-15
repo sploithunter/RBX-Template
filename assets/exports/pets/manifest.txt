@@ -1,14 +1,65 @@
-# Pet model image naming convention.
+# Pet export art
 #
-# Downloads handoff folders (~/Downloads/PetImages/):
-#   Basic/{pet}_basic.png   — e.g. bear_basic.png, snowfox_basic.png
-#   Gold/{pet}_gold.png     — e.g. dragon_gold.png, penguin_gold.png
-#
-# Exported copies + contact sheets:
+# 2D model preview PNGs (contact sheets):
 #   assets/exports/pets/basic/{pet}_basic.png
 #   assets/exports/pets/gold/{pet}_gold.png
-#   assets/exports/pets/basic_models_contact_sheet.png
-#   assets/exports/pets/gold_models_contact_sheet.png
-#
-# Rebuild:
 #   python3 scripts/build_pet_contact_sheet.py
+#
+# 3D meshes (2026-06-14 batch):
+#   Recommended Roblox import: {stem}_5k.fbx + texture PNG in same folder.
+#   Pipeline: bash scripts/decimate_mesh.sh assets/source/pets/<stem>.obj --targets 5000,7500,10000 --output assets/exports/pets/<stem>/
+#
+# 2026-06-14 lava batch contact sheet:
+#   assets/exports/pets/lava_pets_2026-06-14_contact_sheet.png
+#   import manifest: assets/ui/imports/manifest_2026-06-14_lava_pets.txt
+#
+# 2026-06-14 desert batch contact sheet:
+#   assets/exports/pets/desert_pets_2026-06-14_contact_sheet.png
+#   import manifest: assets/ui/imports/manifest_2026-06-14_desert_pets.txt
+#
+# 2026-06-14 ice batch contact sheet:
+#   assets/exports/pets/ice_pets_2026-06-14_contact_sheet.png
+#   import manifest: assets/ui/imports/manifest_2026-06-14_ice_pets.txt
+
+pet	variant	source_tris	export_dir	5k	7500tris	10k	texture
+grumpy_cat	basic	7500	assets/exports/pets/grumpy_cat_basic/	5000 tris	7500 tris	7500 tris*	grumpy_cat_basic.png
+cube_dog	basic	7004	assets/exports/pets/cube_dog_basic/	5000 tris	7004 tris*	7004 tris*	cube_dog_basic.png
+raven	basic	12588	assets/exports/pets/raven_basic/	5000 tris	7500 tris	10000 tris	raven_basic.png
+jackalope	basic	16812	assets/exports/pets/jackalope_basic/	5000 tris	7500 tris	10000 tris	jackalope_basic.png
+ember_moth	basic	13124	assets/exports/pets/ember_moth_basic/	5000 tris	7500 tris	10000 tris	ember_moth_basic.png
+magma_wyrm	basic	11782	assets/exports/pets/magma_wyrm_basic/	5000 tris	7500 tris	10000 tris	magma_wyrm_basic.png
+molten_rhino	basic	17488	assets/exports/pets/molten_rhino_basic/	5000 tris	7500 tris	10000 tris	molten_rhino_basic.png
+cinder_whelp	basic	11334	assets/exports/pets/cinder_whelp_basic/	5000 tris	7500 tris	10000 tris	cinder_whelp_basic.png
+carrion_vulture	basic	12458	assets/exports/pets/carrion_vulture_basic/	5000 tris	7500 tris	10000 tris	carrion_vulture_basic.png
+golden_scarab	basic	6816	assets/exports/pets/golden_scarab_basic/	5000 tris	6816 tris*	6816 tris*	golden_scarab_basic.png
+sand_scorpion	basic	11128	assets/exports/pets/sand_scorpion_basic/	5000 tris	7500 tris	10000 tris	sand_scorpion_basic.png
+dune_tortoise	basic	17350	assets/exports/pets/dune_tortoise_basic/	5000 tris	7500 tris	10000 tris	dune_tortoise_basic.png
+sand_jackal	basic	13138	assets/exports/pets/sand_jackal_basic/	5000 tris	7500 tris	10000 tris	sand_jackal_basic.png
+snowy_owl	basic	14678	assets/exports/pets/snowy_owl_basic/	5000 tris	7500 tris	10000 tris	snowy_owl_basic.png
+glacial_mammoth	basic	12573	assets/exports/pets/glacial_mammoth_basic/	5000 tris	7500 tris	10000 tris	glacial_mammoth_basic.png
+glacial_leviathan	basic	12100	assets/exports/pets/glacial_leviathan_basic/	5000 tris	7500 tris	10000 tris	glacial_leviathan_basic.png
+aurora_seal	basic	12862	assets/exports/pets/aurora_seal_basic/	5000 tris	7500 tris	10000 tris	aurora_seal_basic.png
+frost_fox	basic	12742	assets/exports/pets/frost_fox_basic/	5000 tris	7500 tris	10000 tris	frost_fox_basic.png
+
+* below target — source mesh already under budget; export kept at native count
+
+source_manifest: assets/source/pets/manifest.txt
+download:
+  grumpy_cat: ~/Downloads/Meshy_AI_Grumpy Nightbat_1781457563_texture.zip (renamed from Nightbat)
+  cube_dog: ~/Downloads/Meshy_AI_Crimson Eyed Cube Dog_1781457955_texture.zip
+  raven: ~/Downloads/Meshy_AI_Red-Eyed Raven_1781457967_texture.zip
+  jackalope: ~/Downloads/Meshy_AI_Midnight Horned Rabbit_1781458991_texture.zip (renamed from Midnight Horned Rabbit)
+  ember_moth: ~/Downloads/Ember Moth.zip + Ember Moth.png (preview)
+  magma_wyrm: ~/Downloads/Magma Wyrm.zip + Magma Wyrm.png (preview)
+  molten_rhino: ~/Downloads/molten rhino.zip + molten rhino.png (preview)
+  cinder_whelp: ~/Downloads/Cinder Whelp.zip + Cinder Whelp.png (preview)
+  carrion_vulture: ~/Downloads/CarrionVulture.zip + CarrionVulture.png (preview)
+  golden_scarab: ~/Downloads/GoldenScarab.zip + GoldenScarab.png (preview)
+  sand_scorpion: ~/Downloads/SandScorpion.zip + SandScorpion.png (preview)
+  dune_tortoise: ~/Downloads/DuneTortoise.zip + DuneTortoise.png (preview)
+  sand_jackal: ~/Downloads/SandJackal.zip + SandJackal.png (preview)
+  snowy_owl: ~/Downloads/SnowyOwl.zip + SnowyOwl.png (preview)
+  glacial_mammoth: ~/Downloads/GlacialMammoth.zip + GlacialMammoth.png (preview)
+  glacial_leviathan: ~/Downloads/GlacialLeviathan.zip + GlacialLeviathan.png (preview)
+  aurora_seal: ~/Downloads/AuroraSeal.zip + AuroraSeal.png (preview)
+  frost_fox: ~/Downloads/FrostFox.zip + FrostFox.png (preview)

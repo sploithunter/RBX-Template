@@ -110,6 +110,10 @@ return {
         -- auto-scales to the model (range_factor x max extent), shadows off. Per-enemy `fill_light`
         -- in configs/enemies.lua: false disables, a number overrides brightness. enabled=false = off.
         fill_light = { enabled = true, brightness = 1.75, range_factor = 0.6 },
+        -- GROUND SNAP (Jason): enemies born in an elevated spawner (a cave) were hovering at spawn
+        -- height because nothing pulled their Y to the terrain. Each move step now raycasts down to
+        -- the floor and sits the body on it (+ per-enemy hover_height for flyers). false = off.
+        ground_snap = true,
         -- IDLE DESPAWN (engagement timer): an enemy that has been DISENGAGED (no aggro on anyone)
         -- this many seconds leaves the field — so abandoned/leashed packs (and a fled-from death
         -- zone) clean themselves up instead of piling to max_alive. A live fight refreshes the clock

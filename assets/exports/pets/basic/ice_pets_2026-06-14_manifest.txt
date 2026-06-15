@@ -1,0 +1,9 @@
+# Ice pet preview images (2026-06-14 batch)
+# Contact sheet: assets/exports/pets/ice_pets_2026-06-14_contact_sheet.png
+
+pet	download_preview	copied_to
+snowy_owl	~/Downloads/SnowyOwl.png	snowy_owl_basic.png
+glacial_mammoth	~/Downloads/GlacialMammoth.png	glacial_mammoth_basic.png
+glacial_leviathan	~/Downloads/GlacialLeviathan.png	glacial_leviathan_basic.png
+aurora_seal	~/Downloads/AuroraSeal.png	aurora_seal_basic.png
+frost_fox	~/Downloads/FrostFox.png	frost_fox_basic.png

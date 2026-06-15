@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/pets/grumpy_cat_basic.obj
+original_tris: 7500
+
+5k: grumpy_cat_basic_5k.fbx (5000 tris, target 5000)
+7500tris: grumpy_cat_basic_7500tris.fbx (7500 tris, target 7500)
+10k: grumpy_cat_basic_10k.fbx (7500 tris, target 10000)

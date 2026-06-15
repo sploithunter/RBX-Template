@@ -1,0 +1,22 @@
+# Pet source meshes (Meshy OBJ + texture)
+# Decimate via: bash scripts/decimate_mesh.sh assets/source/pets/<stem>.obj --targets 5000,7500,10000 --output assets/exports/pets/<stem>/
+
+stem	pet	variant	download_zip	original_tris	note
+grumpy_cat_basic	grumpy_cat	basic	Meshy_AI_Grumpy Nightbat_1781457563_texture.zip	7500	Meshy export says Nightbat; art is grumpy cat
+cube_dog_basic	cube_dog	basic	Meshy_AI_Crimson Eyed Cube Dog_1781457955_texture.zip	7004	
+raven_basic	raven	basic	Meshy_AI_Red-Eyed Raven_1781457967_texture.zip	12588	
+jackalope_basic	jackalope	basic	Meshy_AI_Midnight Horned Rabbit_1781458991_texture.zip	16812	Meshy export says Midnight Horned Rabbit; art is jackalope
+ember_moth_basic	ember_moth	basic	Ember Moth.zip	13124	
+magma_wyrm_basic	magma_wyrm	basic	Magma Wyrm.zip	11782	
+molten_rhino_basic	molten_rhino	basic	molten rhino.zip	17488	
+cinder_whelp_basic	cinder_whelp	basic	Cinder Whelp.zip	11334	
+carrion_vulture_basic	carrion_vulture	basic	CarrionVulture.zip	12458	
+golden_scarab_basic	golden_scarab	basic	GoldenScarab.zip	6816	
+sand_scorpion_basic	sand_scorpion	basic	SandScorpion.zip	11128	
+dune_tortoise_basic	dune_tortoise	basic	DuneTortoise.zip	17350	
+sand_jackal_basic	sand_jackal	basic	SandJackal.zip	13138	
+snowy_owl_basic	snowy_owl	basic	SnowyOwl.zip	14678	
+glacial_mammoth_basic	glacial_mammoth	basic	GlacialMammoth.zip	12573	
+glacial_leviathan_basic	glacial_leviathan	basic	GlacialLeviathan.zip	12100	
+aurora_seal_basic	aurora_seal	basic	AuroraSeal.zip	12862	
+frost_fox_basic	frost_fox	basic	FrostFox.zip	12742	
