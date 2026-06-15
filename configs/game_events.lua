@@ -41,6 +41,10 @@ return {
     -- times itself to sounds.lua level_up_epic.duration_seconds.
     level_earned = {
         world_sound = "level_up_epic",
+        -- the local world fanfare around the leveler (sparkles + glow), timed to the song's length
+        -- (sounds.lua level_up_epic.duration_seconds). Non-interrupting; everyone nearby hears the
+        -- world_sound, the leveler sees the effect centred on their character.
+        fanfare = { sound = "level_up_epic" },
     },
 
     -- A new area/gate was unlocked (client: init.client ZoneUnlockResult ok). Celebratory, and no

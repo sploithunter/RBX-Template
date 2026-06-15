@@ -36,6 +36,7 @@ local PetMeander = require(ReplicatedStorage.Shared.Game.PetMeander)
 local RingSeparate = require(ReplicatedStorage.Shared.Game.RingSeparate)
 local AggroTable = require(ReplicatedStorage.Shared.Game.AggroTable)
 local AggroLeash = require(ReplicatedStorage.Shared.Game.AggroLeash)
+local PowerIcons = require(ReplicatedStorage.Configs:WaitForChild("power_icons")) -- world debuff disc
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
@@ -1636,10 +1637,42 @@ function EnemyService:ExecuteTactical(player, command)
     end
 end
 
--- (RETIRED) The floating world billboard of enemy debuffs (VULN/ROOT/HELD above the HP bar) was a
--- placeholder. Enemy debuffs now render in the enemy HUD card (src/Client/Systems/EnemyHud.lua,
--- ENEMY_EFFECTS) via the shared StatusBadges engine — the canonical badge surface, matching how the
--- squad HUD badges pets. Every debuff power also stamps DebuffUntil (HUD "HEX"); HELD has its own row.
+-- The old floating debuff billboard was a placeholder PILL (coloured box + text) — retired in favour
+-- of the enemy HUD card badges (the canonical surface). The HOLD state, though, also wears a world
+-- badge ABOVE the enemy so you can see at a glance which foe is pinned without reading the HUD — but
+-- rendered as the proper ICON DISC (the same capacitor glyph the HUD uses), not a placeholder pill.
+-- Server-created so every nearby player sees the pinned enemy.
+local HELD_DISC = nil -- resolved once (PowerIcons.discFor); the ice "capacitor" hold glyph
+function EnemyService:_updateHeldBadge(model, nowTime)
+    local pp = model.PrimaryPart
+    if not pp then
+        return
+    end
+    local held = (model:GetAttribute("HeldUntil") or 0) > nowTime
+    local bb = pp:FindFirstChild("HeldBadge")
+    if held then
+        if not bb then
+            if HELD_DISC == nil then
+                HELD_DISC = (PowerIcons.discFor and PowerIcons.discFor("ice", "capacitor")) or false
+            end
+            bb = Instance.new("BillboardGui")
+            bb.Name = "HeldBadge"
+            bb.Size = UDim2.fromOffset(36, 36)
+            bb.StudsOffset = Vector3.new(0, 6.6, 0) -- just above the HP bar
+            bb.AlwaysOnTop = true
+            bb.Adornee = pp
+            bb.Parent = pp
+            local img = Instance.new("ImageLabel")
+            img.Name = "Icon"
+            img.BackgroundTransparency = 1
+            img.Size = UDim2.fromScale(1, 1)
+            img.Image = HELD_DISC or ""
+            img.Parent = bb
+        end
+    elseif bb then
+        bb:Destroy()
+    end
+end
 
 -- A buffer pet's team aura (configs/pet_roles.lua support_auras, keyed by PetType — a
 -- `SupportAura` model attribute can override later), or nil. The returned table carries
@@ -2251,8 +2284,7 @@ function EnemyService:_combatTick(dt)
             end
             if self._enemies[targetId] then -- still alive (not just despawned)
                 self:_engageEnemy(entry, targetId, now, eng, dt)
-                -- (the floating world debuff billboard is retired — enemy debuffs now show in the
-                -- enemy HUD card via StatusBadges, the canonical badge surface; see EnemyHud.)
+                self:_updateHeldBadge(model, nowTime) -- world icon disc above a pinned (held) enemy
             end
         end
     end

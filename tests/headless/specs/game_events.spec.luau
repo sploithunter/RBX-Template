@@ -20,6 +20,7 @@ local KNOWN_KINDS = {
     world_visual = true, -- ANNOTATION, not a reaction: the world itself is the visual
     world_sound = true, -- SERVER-side positional sound at the player (everyone nearby hears)
     world_sound_range = true, -- optional RollOffMaxDistance for world_sound (studs)
+    fanfare = true, -- local non-interrupting world celebration around the player (sparkles + glow)
 }
 
 return function()

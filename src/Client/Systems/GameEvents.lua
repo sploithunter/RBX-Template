@@ -104,6 +104,77 @@ REACTIONS.vfx = function(spec)
     end
 end
 
+-- fanfare: a LOCAL, non-interrupting world celebration AROUND the leveling player — rising gold
+-- sparkles + a warm glow that runs as long as the paired song. spec = { sound = "<sounds key>" } ->
+-- duration = sounds[sound].duration_seconds (the SSOT in sounds.lua; Jason: "keep the length in
+-- config so the animation knows how long to go"); falls back to spec.seconds. The effect rides an
+-- Attachment on the HRP so it FOLLOWS the player and never locks input/combat — you keep fighting
+-- while it plays. The SOUND is world-wide (world_sound, server-side); this visual is the leveler's
+-- local event ("starts out with sparkles... centers around the player" — Jason).
+REACTIONS.fanfare = function(spec)
+    spec = type(spec) == "table" and spec or {}
+    local char = Players.LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        return
+    end
+    local def = spec.sound and sounds[spec.sound]
+    local dur = (def and tonumber(def.duration_seconds)) or tonumber(spec.seconds) or 7
+
+    -- follows the player (centred on them; no physics, no input lock)
+    local att = Instance.new("Attachment")
+    att.Name = "LevelUpFanfare"
+    att.Parent = hrp
+
+    -- rising gold sparkles — the sustained body, emits for the whole song
+    local sparks = Instance.new("ParticleEmitter")
+    sparks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    sparks.Color = ColorSequence.new(Color3.fromRGB(255, 230, 140), Color3.fromRGB(255, 165, 55))
+    sparks.LightEmission = 1
+    sparks.LightInfluence = 0
+    sparks.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.9),
+        NumberSequenceKeypoint.new(1, 0),
+    })
+    sparks.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.05),
+        NumberSequenceKeypoint.new(0.85, 0.35),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    sparks.Lifetime = NumberRange.new(1.1, 1.8)
+    sparks.Rate = 55
+    sparks.Speed = NumberRange.new(3, 6)
+    sparks.SpreadAngle = Vector2.new(28, 28)
+    sparks.Acceleration = Vector3.new(0, 7, 0) -- waft upward
+    sparks.Rotation = NumberRange.new(0, 360)
+    sparks.Parent = att
+
+    -- warm glow: pulses up on the downbeat, holds, fades out with the last bar
+    local light = Instance.new("PointLight")
+    light.Color = Color3.fromRGB(255, 205, 110)
+    light.Range = 18
+    light.Brightness = 0
+    light.Shadows = false
+    light.Parent = att
+    TweenService:Create(light, TweenInfo.new(0.6, Enum.EasingStyle.Quad), { Brightness = 3.5 }):Play()
+
+    -- wind down: stop spawning a beat early (stragglers fade), drop the glow, then clean up
+    task.delay(math.max(0.1, dur - 1.0), function()
+        if sparks.Parent then
+            sparks.Enabled = false
+        end
+        if light.Parent then
+            TweenService:Create(light, TweenInfo.new(1.0, Enum.EasingStyle.Quad), { Brightness = 0 })
+                :Play()
+        end
+    end)
+    task.delay(dur + 2.2, function()
+        if att.Parent then
+            att:Destroy()
+        end
+    end)
+end
+
 -- float: rising announcement text. spec = { color = {r,g,b}?, prefix = ""?, size = px? };
 -- the TEXT comes from ctx.name (config stays generic). Anchors at ctx.position (a Vector3 —
 -- e.g. the broken crystal) when given, else at the local player.
