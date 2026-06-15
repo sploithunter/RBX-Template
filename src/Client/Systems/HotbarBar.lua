@@ -276,6 +276,8 @@ function HotbarBar.start()
 
     -- Two rows of 10 slots. Bottom row = slots 1-10, top row = 11-20.
     local cards = {}
+    local locked = {} -- slot -> true when AUTO-CAST locked (right-click); re-fires on cooldown
+    local lastAuto = {} -- slot -> os.clock() of the last auto-fire (bridges the fire->cooldown round-trip)
 
     -- Hover tooltip: after a short hover on a power slot, a popup shows the power's NAME + what it
     -- DOES (configs/power_descriptions). Anchored bottom-left at the slot's top edge, so it pops up
@@ -435,6 +437,22 @@ function HotbarBar.start()
             key.Text = keyLabel(slot)
             key.Parent = b
 
+            -- Auto-cast lock badge (top-right): shown when the slot is locked to auto-fire on cooldown.
+            local lockBadge = Instance.new("TextLabel")
+            lockBadge.Name = "Lock"
+            lockBadge.ZIndex = 4
+            lockBadge.AnchorPoint = Vector2.new(1, 0)
+            lockBadge.BackgroundTransparency = 1
+            lockBadge.Position = UDim2.new(1, -3, 0, 0)
+            lockBadge.Size = UDim2.fromOffset(14, 14)
+            lockBadge.Font = Enum.Font.GothamBold
+            lockBadge.TextSize = 12
+            lockBadge.TextColor3 = Color3.fromRGB(120, 235, 140) -- green = "running"
+            lockBadge.TextStrokeTransparency = 0.3
+            lockBadge.Text = "⟳"
+            lockBadge.Visible = false
+            lockBadge.Parent = b
+
             local lbl = Instance.new("TextLabel")
             lbl.Name = "Bind"
             lbl.BackgroundTransparency = 1
@@ -455,6 +473,19 @@ function HotbarBar.start()
                 else
                     Signals.Hotbar_Activate:FireServer({ slot = slot })
                 end
+            end)
+            -- Right-click toggles AUTO-CAST LOCK: a locked slot re-fires itself the moment its power
+            -- is off cooldown (the Heartbeat loop below). Only meaningful for a bound slot.
+            b.MouseButton2Click:Connect(function()
+                if editMode then
+                    return
+                end
+                local card = cards[slot]
+                if not (card and card.bindObj) then
+                    return
+                end
+                locked[slot] = not locked[slot] or nil
+                card.lock.Visible = locked[slot] == true
             end)
             -- Delayed hover tooltip: show after HOVER_DELAY of hovering; cancel/hide on leave.
             b.MouseEnter:Connect(function()
@@ -500,6 +531,13 @@ function HotbarBar.start()
             if card then
                 local bind = state.hotbar[tostring(slot)] or state.hotbar[slot]
                 card.bindObj = bind
+                -- An emptied/rebound slot drops its auto-cast lock so the badge can't linger.
+                if not bind and locked[slot] then
+                    locked[slot] = nil
+                end
+                if card.lock then
+                    card.lock.Visible = locked[slot] == true
+                end
                 -- Power slots render the universal badge: element disc + tinted directional ring
                 -- (the ring's SHAPE = targeting). Falls back to the old flat icon, then to text.
                 local badge = bind and bind.type == "power" and PetBadge.forPower(bind.target)
@@ -560,11 +598,22 @@ function HotbarBar.start()
             if card and card.cool then
                 local b = card.bindObj
                 local cd = b and b.type == "power" and powerCooldowns[b.target]
+                local ready = true
                 if cd then
                     local since = nowC - cd.startClock
                     card.cool(since / cd.cooldown, cd.cooldown - since)
+                    ready = since >= cd.cooldown
                 else
                     card.cool(1) -- ready / not a power -> hide the clock
+                end
+                -- AUTO-CAST: a locked, bound slot re-fires the instant it's off cooldown. The 0.5s
+                -- guard bridges the gap between firing and the server's Power_Cooldown push (so we
+                -- don't double-fire in the round-trip window); the server is authoritative either way.
+                if locked[slot] and b and not editMode and ready then
+                    if nowC - (lastAuto[slot] or 0) > 0.5 then
+                        lastAuto[slot] = nowC
+                        Signals.Hotbar_Activate:FireServer({ slot = slot })
+                    end
                 end
             end
         end
