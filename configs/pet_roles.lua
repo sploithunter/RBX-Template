@@ -68,7 +68,12 @@ return {
         bunny = { kind = "luck", interval = 2.0, mult = 1.1667, duration = 6 },
         penguin = { kind = "defense", interval = 2.0, amount = 53.3, duration = 6 }, -- Ice
         emberimp = { kind = "offense", interval = 2.0, mult = 1.1667, duration = 6 }, -- Lava
-        meerkat = { kind = "yield", interval = 2.0, mult = 1.1667, duration = 6 }, -- Desert
+        -- TEMP CONTROL EXPERIMENT (Jason): meerkat is the controller test vehicle — it HOLDS the
+        -- focused enemy (10s hold, fires every 30s = recharge) so we can prototype the CC feel vs
+        -- flyers. It targets the player's focus (assist target → most-targeted-by-pets → nearest).
+        -- REVERT to its Desert yield aura when done:
+        --   meerkat = { kind = "yield", interval = 2.0, mult = 1.1667, duration = 6 }, -- Desert
+        meerkat = { kind = "hold", interval = 30, duration = 10 }, -- Desert (TEMP control test)
         -- Bear: RAGE — an inherent power the pet casts on ITSELF (Jason: per-SPECIES
         -- assignment like the zone buffers, NOT a tank-role trait — "I don't want all
         -- tanks to have rage"). The starter tank gets angry as it soaks: at or below

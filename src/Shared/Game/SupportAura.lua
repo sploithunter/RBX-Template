@@ -14,6 +14,8 @@
       yield    — team +coin payout on mining (Desert / meerkat). { interval, mult, duration }
       luck     — hatch luck for the PLAYER (Grass / bunny).
       rage     — SELF damage buff while hurt (bear). { enrage_below, mult, interval, duration }
+      hold     — CONTROL: pin one enemy (no move/attack) for `duration`s; targets the player's focus
+                 (assist → most-targeted-by-pets → nearest). { interval = recharge, duration } (experimental)
 
     SupportAura.forPet(petType, rolesConfig) -> aura table (with .kind) | nil
     SupportAura.isBuffer(petType, rolesConfig) -> boolean

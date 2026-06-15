@@ -1320,7 +1320,10 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     -- attack_range so the enemy just holds + bites it; a ranged target kites near the
     -- player, so the enemy has to close the gap. A ROOTED enemy can't move.
     local targetPos = self:_petPosition(targetPet, pfs)
-    local rooted = (model:GetAttribute("RootedUntil") or 0) > os.time()
+    -- CONTROL: HeldUntil = full mez (can't move OR attack — see the bite gate below); RootedUntil =
+    -- snare (can't move, still bites). Either zeroes move speed. This is the controller's lockdown.
+    local held = (model:GetAttribute("HeldUntil") or 0) > os.time()
+    local rooted = held or (model:GetAttribute("RootedUntil") or 0) > os.time()
     local moveSpeed = rooted and 0 or ((def and def.move_speed) or eng.default_move_speed or 12)
     -- Press inside attack_range so the enemy closes into bite range instead of stalling
     -- on its edge (where a kiting target floats just out of reach).
@@ -1391,7 +1394,7 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         return valid[k] == true and (self:_petPosition(k, pfs) - ePos).Magnitude <= atk
     end)
     entry.nextAttack = entry.nextAttack or 0
-    if biteTarget and now >= entry.nextAttack then
+    if biteTarget and not held and now >= entry.nextAttack then
         local enemyLevel = model:GetAttribute("Level") or 1
         -- Pet defends at its owner's EFFECTIVE level (teaming seam), same value its own attacks use.
         local petLevel = player:GetAttribute("EffectiveLevel")
@@ -1647,6 +1650,12 @@ local ENEMY_DEBUFFS = {
         color = Color3.fromRGB(90, 200, 235),
         label = "ROOT",
     },
+    {
+        key = "hold",
+        untilAttr = "HeldUntil",
+        color = Color3.fromRGB(150, 110, 215), -- control violet (matches the controller/CC theme)
+        label = "HELD",
+    },
 }
 
 -- Billboard above the enemy (above its HP bar) showing active debuffs + countdowns.
@@ -1834,6 +1843,91 @@ function EnemyService:_auraDefense(folder, aura, count, weight)
     end
 end
 
+-- CONTROL aura (kind = "hold") — pin one enemy: it can't move OR attack for `duration`s (HeldUntil).
+-- TARGETING mirrors how the PLAYER designates an enemy — INDIRECTLY through the squad (Jason): hold
+-- the player's focus = CombatAssistTarget if set (clicking the enemy HUD), else the enemy the most
+-- pets are currently attacking, else the nearest engaged enemy. So the controller pins what you're
+-- already fighting, and you steer it the same way you steer the squad. Experimental (meerkat test).
+function EnemyService:_auraHold(folder, aura)
+    local player = Players:FindFirstChild(folder.Name)
+    if not player then
+        return
+    end
+    local now = os.time()
+
+    local function liveEnemy(targetId)
+        local entry = targetId and self._enemies[targetId]
+        local model = entry and entry.model
+        if model and model.Parent and (model:GetAttribute("HP") or 0) > 0 then
+            return entry, model
+        end
+        return nil
+    end
+
+    -- 1) the player's explicit focus (assist target set by clicking the enemy HUD)
+    local targetId = player:GetAttribute("CombatAssistTarget")
+    local entry, model = liveEnemy(targetId ~= 0 and targetId or nil)
+
+    -- 2) else the enemy the most of this player's pets are currently attacking (de-facto focus)
+    if not model then
+        local petsFolder = Workspace:FindFirstChild("PlayerPets")
+            and Workspace.PlayerPets:FindFirstChild(player.Name)
+        if petsFolder then
+            local tally = {}
+            for _, pet in ipairs(petsFolder:GetChildren()) do
+                local tt = pet:FindFirstChild("TargetType")
+                local tid = pet:FindFirstChild("TargetID")
+                if tt and tt.Value == "Enemy" and tid and tid.Value ~= 0 then
+                    tally[tid.Value] = (tally[tid.Value] or 0) + 1
+                end
+            end
+            local bestId, bestN
+            for id, n in pairs(tally) do
+                if not bestN or n > bestN then
+                    bestId, bestN = id, n
+                end
+            end
+            entry, model = liveEnemy(bestId)
+        end
+    end
+
+    -- 3) else the nearest enemy aggro'd on this player's squad
+    if not model then
+        local ref = entry and entry.pos
+        if not ref then
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            ref = hrp and hrp.Position
+        end
+        if ref then
+            local bestD
+            for _, e in pairs(self._enemies) do
+                local m = e.model
+                if
+                    e.aggroPlayerName == player.Name
+                    and m
+                    and m.Parent
+                    and (m:GetAttribute("HP") or 0) > 0
+                then
+                    local d = (e.pos - ref).Magnitude
+                    if not bestD or d < bestD then
+                        bestD, model = d, m
+                    end
+                end
+            end
+        end
+    end
+
+    if not model then
+        return
+    end
+    -- don't re-stamp an already-held target (lets a repeat cast roll onto a fresh enemy instead)
+    if (model:GetAttribute("HeldUntil") or 0) > now then
+        return
+    end
+    model:SetAttribute("HeldUntil", now + (tonumber(aura.duration) or 10))
+end
+
 -- A team player-attribute buff (Lava offense -> PetTeamDamageBuff in _mine; Desert yield ->
 -- CoinYieldBuff in BreakableSpawner). Short-lived + refreshed each interval, on a channel
 -- separate from Powers so an aura stacks with an activated power buff.
@@ -1908,6 +2002,10 @@ function EnemyService:_supportPass(now)
                 if kind == "heal" then
                     for _ = 1, count do -- N healers => N mends (variant scales each mend)
                         self:_auraHeal(folder, aura, weight / count)
+                    end
+                elseif kind == "hold" then
+                    for _ = 1, count do -- N controllers => N enemies pinned (each picks a fresh one)
+                        self:_auraHold(folder, aura)
                     end
                 elseif kind == "defense" then
                     self:_auraDefense(folder, aura, count, weight)
