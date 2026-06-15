@@ -1,5 +1,6 @@
 --[[
-    AreaMusicController — looping background music that follows the player's CURRENT area.
+    AreaMusicController — looping background music that follows the player's CURRENT area, and
+    swaps to COMBAT music while the player is fighting.
 
     One Sound, Looped, routed through the "music" SoundGroup bus (so the Settings "Music Volume"
     slider controls it). On spawn and whenever CurrentArea (or HomeArea as a fallback) changes, it
@@ -7,7 +8,12 @@
     and CROSSFADES: fade the current track down, swap the SoundId, fade the new one up. A token guards
     against rapid area changes so only the latest swap wins.
 
-    Add tracks + remap areas entirely in configs/sounds.lua — no code change needed here.
+    COMBAT: while the server-set Player attribute `InCombat` is true, the desired track becomes a
+    RANDOM key from `combat_music` (config) instead of the area track — chosen ONCE on entry and held
+    for the whole fight. When InCombat clears we wait `combat_music_exit_delay` seconds before fading
+    back to the area track, so brief aggro flicker (enemy drops + re-acquires) doesn't restart music.
+
+    Add tracks + remap areas + grow the combat list entirely in configs/sounds.lua — no code here.
 ]]
 
 local Players = game:GetService("Players")
@@ -26,6 +32,9 @@ local localPlayer = Players.LocalPlayer
 function AreaMusicController.start()
     local music = sounds.music or {}
     local areaMap = sounds.area_music or {}
+    local combatList = sounds.combat_music or {}
+    local combatExitDelay = sounds.combat_music_exit_delay or 3.0
+    local rng = Random.new()
 
     local sound = Instance.new("Sound")
     sound.Name = "AreaMusic"
@@ -36,17 +45,29 @@ function AreaMusicController.start()
 
     local currentKey -- the track key currently playing
     local token = 0
+    local inCombat = false -- are we currently in the combat-music state?
+    local combatKey -- the combat track chosen for THIS fight (held until it ends)
+    local exitToken = 0 -- cancels a pending "return to area music" when combat re-engages
 
     local function trackForArea(area)
         local key = areaMap[area] or areaMap.default
         return key, key and music[key]
     end
 
-    local function apply()
+    -- The track we WANT playing right now: a held random combat track while fighting, else the area
+    -- track. Area changes mid-combat are no-ops (combat track wins until the fight ends).
+    local function desiredTrack()
+        if inCombat and combatKey then
+            return combatKey, music[combatKey]
+        end
         local area = localPlayer:GetAttribute("CurrentArea")
             or localPlayer:GetAttribute("HomeArea")
             or "Spawn"
-        local key, def = trackForArea(area)
+        return trackForArea(area)
+    end
+
+    local function apply()
+        local key, def = desiredTrack()
         if not def or not def.id or key == currentKey then
             return -- unknown area/track, or already playing the right one
         end
@@ -74,9 +95,38 @@ function AreaMusicController.start()
         end
     end
 
+    -- Combat-music transitions, driven by the server-set `InCombat` Player attribute.
+    local function onCombatChanged()
+        local fighting = localPlayer:GetAttribute("InCombat") == true
+        if fighting then
+            exitToken += 1 -- cancel any pending return-to-area fade
+            if not inCombat then
+                inCombat = true
+                if #combatList > 0 then
+                    combatKey = combatList[rng:NextInteger(1, #combatList)]
+                end
+                apply()
+            end
+        elseif inCombat then
+            -- Left combat: wait out brief aggro flicker before fading back to the area track.
+            exitToken += 1
+            local myExit = exitToken
+            task.delay(combatExitDelay, function()
+                if myExit ~= exitToken then
+                    return -- combat re-engaged within the delay; stay on the combat track
+                end
+                inCombat = false
+                combatKey = nil
+                apply()
+            end)
+        end
+    end
+
     apply()
+    onCombatChanged() -- in case we spawn already in combat
     localPlayer:GetAttributeChangedSignal("CurrentArea"):Connect(apply)
     localPlayer:GetAttributeChangedSignal("HomeArea"):Connect(apply)
+    localPlayer:GetAttributeChangedSignal("InCombat"):Connect(onCombatChanged)
 end
 
 return AreaMusicController

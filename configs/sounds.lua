@@ -128,7 +128,19 @@ return {
         awe = { id = "rbxassetid://137816344186500", volume = 0.45 }, -- LoopingAweMusic
         viking_drum = { id = "rbxassetid://92543861599965", volume = 0.45 }, -- VikingDrumLooping
         epic_drum = { id = "rbxassetid://131000740431597", volume = 0.45 }, -- DrumEpicLooping
+        -- COMBAT loops (~30s drum instrumentals, Jason). Chosen at RANDOM from combat_music below
+        -- whenever the player is InCombat; same looping "music" bus as the area tracks.
+        combat_1 = { id = "rbxassetid://116560838965766", volume = 0.5 },
+        combat_2 = { id = "rbxassetid://123517410314080", volume = 0.5 },
+        combat_3 = { id = "rbxassetid://109435606276359", volume = 0.5 },
     },
+
+    -- COMBAT MUSIC: while the local player is InCombat (server-set Player attribute), AreaMusicController
+    -- crossfades from the area track to a RANDOM key in this list; when combat ends it crossfades back
+    -- to the area track after combat_music_exit_delay seconds (the delay rides out brief aggro flicker so
+    -- the music doesn't restart). Grow this array freely — selection is uniform-random over its length.
+    combat_music = { "combat_1", "combat_2", "combat_3" },
+    combat_music_exit_delay = 3.0,
 
     -- Which looping track plays in each AREA (edit freely — falls back to `default`). Only 3 tracks
     -- so far, so some areas share; add more tracks + remap for fully distinct per-area music.
