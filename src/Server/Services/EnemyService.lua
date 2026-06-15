@@ -2085,7 +2085,12 @@ function EnemyService:_assignPetTargets(eng)
                     local roleDef = roles and roles.roles and roles.roles[roleId]
                     local kites = roleDef
                         and (roleDef.kite or (tonumber(roleDef.standoff) or 0) > 0)
-                    local reach = (kites and roleDef and tonumber(roleDef.attack_range))
+                    -- Acquisition range: an explicit role engage_range wins (a blaster acquires from
+                    -- well beyond its attack_range, then advances to standoff to fire). Otherwise a
+                    -- kiter is capped at its attack_range (snipe-in-place roles stay back) and a
+                    -- chaser uses the squad aggro range.
+                    local reach = (roleDef and tonumber(roleDef.engage_range))
+                        or (kites and roleDef and tonumber(roleDef.attack_range))
                         or aggroRange
                     local petPos = self:_petPosition(pet, pfs)
                     local candidates = {}

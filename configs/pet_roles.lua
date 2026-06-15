@@ -165,6 +165,12 @@ return {
             attack_range = 28,
             standoff = 17,
             kite = true,
+            -- ACQUIRE range (Jason: "ranged pets just meander during a fight"): a blaster joins a
+            -- fight happening anywhere within this radius, then advances to its standoff and fires.
+            -- Without it, selection caps a kiter at its attack_range (28) — the SHORTEST of any role
+            -- — so when the tank drags the fight 30-45 studs out the blaster never picks a target.
+            -- Set > attack_range so it engages from range; the advance-to-standoff logic does the rest.
+            engage_range = 60,
             mining_mult = 1.0,
             combat_mult = 1.0,
             defense = 0,
