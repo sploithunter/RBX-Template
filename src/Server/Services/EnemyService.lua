@@ -1143,8 +1143,8 @@ end
 
 -- One alive enemy, per tick: PERCEIVE a player (distance x probability) to acquire aggro, CHASE the
 -- aggro'd squad until in attack range, and bite the highest-THREAT pet in range (so a tank pet pulls
--- aggro). How long it stays angry as the squad flees is the LEASH (AggroLeash): locked-on within
--- engage_radius, decaying faster the farther it chases, dropped hard past give_up_range.
+-- aggro). How long it stays angry as the squad flees is the LEASH (AggroLeash): pure decay — threat
+-- bleeds faster the farther it chases (and once you leave its area), dropped hard only past give_up.
 function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     local model = entry.model
     -- Authoritative position lives in entry.pos (NOT the model pivot): the server
@@ -1236,7 +1236,7 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
             end
         end
     end
-    if nearestDist > (aggroCfg.give_up_range or 400) then
+    if nearestDist > (aggroCfg.give_up_range or 300) then
         self:_releasePets(targetId)
         self:_setAggroOwner(entry, nil)
         return
@@ -1301,32 +1301,15 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         end
     end
 
-    -- Target = the highest-aggro attacker still valid. Then the LEASH verdict (AggroLeash):
-    --   drop   -> beyond give_up_range, give up and idle.
-    --   engage -> has a real threat target, fight normally.
-    --   lock   -> threat bled below the disengage threshold BUT still inside engage_radius: keep
-    --             pursuing the nearest live pet (a kite, a Rally retreat) instead of quitting. This
-    --             is what makes an engaged enemy stay committed — no enemy quits while you're near.
+    -- Target = the highest-aggro attacker still valid. Let go (AggroLeash.shouldDrop) only when the
+    -- squad has teleported past give_up_range OR threat has bled below the disengage threshold (no
+    -- valid target left). Within range the enemy keeps chasing as long as ANY threat remains, and the
+    -- distance-scaled decay above is what eventually bleeds it to zero if you keep your distance —
+    -- pure decay, no hard "locked on" zone.
     local targetPet = AggroTable.top(entry.aggro, aggroCfg.disengage_threshold or 0.5, function(k)
         return valid[k] == true
     end)
-    local verdict = AggroLeash.verdict(nearestDist, targetPet ~= nil, aggroCfg)
-    if verdict == "drop" then
-        self:_releasePets(targetId)
-        self:_setAggroOwner(entry, nil)
-        return
-    elseif verdict == "lock" then
-        local best, bestD
-        for pet in pairs(valid) do
-            local d = (self:_petPosition(pet, pfs) - ePos).Magnitude
-            if not bestD or d < bestD then
-                best, bestD = pet, d
-            end
-        end
-        targetPet = best
-    end
-    if not targetPet then
-        -- locked but no live pet left to pursue (all downed / removed): nothing to fight.
+    if AggroLeash.shouldDrop(nearestDist, targetPet ~= nil, aggroCfg) then
         self:_releasePets(targetId)
         self:_setAggroOwner(entry, nil)
         return
@@ -1631,9 +1614,9 @@ function EnemyService:ExecuteTactical(player, command)
     elseif command == "rally" then
         -- Recall the squad to formation for a window (RallyUntil): pets break off and return to the
         -- player; _assignPetTargets suppresses re-targeting while the window holds, so they don't
-        -- instantly re-engage and drift off again. The enemies follow on their own — the engaged
-        -- ones are inside their leash's engage_radius, so the AggroLeash "lock" keeps them pursuing
-        -- the retreating pets all the way home (no special aggro commit needed).
+        -- instantly re-engage and drift off again. The enemies follow on their own — their built-up
+        -- threat is high and decays only slowly while the retreating squad stays close (AggroLeash),
+        -- so they keep chasing the pets home with no special aggro commit needed.
         local engCfg = self._combatConfig.engagement or {}
         player:SetAttribute("RallyUntil", os.clock() + (engCfg.rally_seconds or 3.5))
         for _, pet in ipairs(petsFolder:GetChildren()) do
