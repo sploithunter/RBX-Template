@@ -57,6 +57,25 @@ return {
         bus = "effects",
     },
 
+    -- DAZE (parked): action-lock CC sound, sibling of the hold/freeze (AggroLeash header). The daze
+    -- power/effect isn't built yet — when it lands, play this positionally on the dazed target the
+    -- same way _auraHold plays freeze_hold. Uploaded + ready.
+    daze_hit = {
+        id = "rbxassetid://99863232608134",
+        volume = 0.5,
+        playback_speed = 1.0,
+        bus = "effects",
+    },
+
+    -- PARKED (Jason: "very good whoosh with loud impact, not sure where to use this"). Uploaded +
+    -- recorded; pick a slot later — best fits a heavy AoE/slam power impact or a big cast.
+    boom_swoosh = {
+        id = "rbxassetid://139898524491568",
+        volume = 0.5,
+        playback_speed = 1.0,
+        bus = "effects",
+    },
+
     -- Rising "power up" sting (uploaded SFX) — pet revive and similar comeback moments.
     power_up_stronger = {
         id = "rbxassetid://105379088796995",
