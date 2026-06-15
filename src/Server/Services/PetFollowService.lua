@@ -286,6 +286,20 @@ function PetFollowService:_attackRange(pet)
     return (def and tonumber(def.attack_range)) or fallback
 end
 
+-- Does this pet KITE (ranged/support/control — holds position and shoots) vs CHASE (melee/tank)?
+-- A kiter's reach is horizontal: it can hit a flyer perched above without closing the vertical gap.
+function PetFollowService:_kites(pet)
+    local roles = self._petRoles
+    if not roles then
+        return false
+    end
+    local id = pet:GetAttribute("PetRole")
+        or (roles.by_type and roles.by_type[pet:GetAttribute("PetType")])
+        or roles.default
+    local def = roles.roles and roles.roles[id]
+    return def ~= nil and (def.kite == true or (tonumber(def.standoff) or 0) > 0)
+end
+
 -- One mining hit on the pet's current target (server-authoritative damage).
 
 -- ZONE GATE (Jason's alt-account find: "unlocking from a single player perspective
@@ -355,7 +369,16 @@ function PetFollowService:_mine(player, pet, breakable)
         -- server no longer pivots the model — the client owns the render CFrame for
         -- smooth motion). Breakables have no such attribute, so fall back to the pivot.
         local targetPos = breakable:GetAttribute("MoveTarget") or breakable:GetPivot().Position
-        dist = (rec.cf.Position - targetPos).Magnitude
+        -- RANGED vs a flyer: a kiting pet shoots, so its reach is HORIZONTAL — it can hit an enemy
+        -- perched up on a wall/ledge above it without the vertical gap pushing it out of range. Melee
+        -- (and all crystal mining) use true 3D distance: they must physically reach the target.
+        if breakable:GetAttribute("EnemyId") and self:_kites(pet) then
+            local dx = rec.cf.Position.X - targetPos.X
+            local dz = rec.cf.Position.Z - targetPos.Z
+            dist = math.sqrt(dx * dx + dz * dz)
+        else
+            dist = (rec.cf.Position - targetPos).Magnitude
+        end
     end
     local miningRange = self:_attackRange(pet)
     if not PetFormation.inMiningRange(dist, miningRange) then

@@ -2090,7 +2090,16 @@ function EnemyService:_assignPetTargets(eng)
                     local petPos = self:_petPosition(pet, pfs)
                     local candidates = {}
                     for etid, entry in pairs(live) do
-                        local d = (entry.pos - petPos).Magnitude
+                        -- A kiting pet shoots, so it picks targets by HORIZONTAL distance — it can
+                        -- engage a flyer perched above (the vertical gap shouldn't hide it). A chaser
+                        -- uses true 3D distance (it has to physically reach + the jump-assist climbs).
+                        local d
+                        if kites then
+                            local dx, dz = entry.pos.X - petPos.X, entry.pos.Z - petPos.Z
+                            d = math.sqrt(dx * dx + dz * dz)
+                        else
+                            d = (entry.pos - petPos).Magnitude
+                        end
                         -- TERRITORIAL: pets only auto-pick foes in the player's own area (no
                         -- reaching across a wall into another biome's pack).
                         if d <= reach and self:_inTerritory(entry, player) then
