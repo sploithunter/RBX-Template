@@ -346,10 +346,11 @@ function PetFollowController.start()
             crit = isCrit,
         })
 
-        -- CRIT ROAR: a ranged pet's critical hit gets an element crit sound (power_fx sounds.crit).
-        -- Only fire (lava) is authored, so a fire blaster's crit whooshes; other elements are silent
-        -- (gaps are silent). Positional at the target -> shared-world (every nearby client hears it).
-        if isCrit and ranged then
+        -- CRIT ROAR: ANY pet's critical hit gets an element crit sound (power_fx sounds.crit) —
+        -- not just ranged (Jason: an ice polar bear is a tank, and its crit must roar too). Authored
+        -- per element (grass/lava/ice/desert); unauthored elements stay silent (gaps are silent).
+        -- Positional at the target -> shared-world (every nearby client hears it).
+        if isCrit then
             local okPos, pos = pcall(function()
                 return target:GetPivot().Position
             end)
