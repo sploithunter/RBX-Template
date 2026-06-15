@@ -136,7 +136,8 @@ return {
     -- on the "music" SoundGroup bus (so the Music volume slider controls it), crossfading on area
     -- change. New uploads play once Roblox moderation approves them.
     music = {
-        awe = { id = "rbxassetid://137816344186500", volume = 0.45 }, -- LoopingAweMusic
+        awe = { id = "rbxassetid://137816344186500", volume = 0.45 }, -- LoopingAweMusic (now Desert)
+        spa = { id = "rbxassetid://110546405983160", volume = 0.45 }, -- gentle spa loop (Spawn/Grass, Jason)
         viking_drum = { id = "rbxassetid://92543861599965", volume = 0.45 }, -- VikingDrumLooping
         epic_drum = { id = "rbxassetid://131000740431597", volume = 0.45 }, -- DrumEpicLooping
         -- COMBAT loops (~30s drum instrumentals, Jason). Chosen at RANDOM from combat_music below
@@ -157,9 +158,9 @@ return {
     -- so far, so some areas share; add more tracks + remap for fully distinct per-area music.
     area_music = {
         default = "awe",
-        Spawn = "awe", -- calm hub
-        Grass = "awe", -- gentle starter biome
-        Desert = "viking_drum", -- arid march
+        Spawn = "spa", -- calm hub (gentle spa loop)
+        Grass = "spa", -- gentle starter biome (gentle spa loop)
+        Desert = "awe", -- the old hub/grass theme reassigned here (Jason)
         Ice = "viking_drum", -- harsh cold
         Lava = "epic_drum", -- intense endgame
     },
