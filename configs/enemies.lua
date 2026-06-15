@@ -420,7 +420,7 @@ return {
             armor = 90, -- thick coat: ~47% pet-damage reduction at k=100
             mesh_asset = "rbxassetid://112055300686821",
             texture_asset = "rbxassetid://100199878594533",
-            model_scale = 6,
+            model_scale = 8, -- Jason: sized up ~30% from 6 (a proper mammoth bulk)
             frost = true,
             gait = { style = "march", bob_height = 0.9, tilt_degrees = 4, stride_length = 7 },
             attack = { damage = 24, cadence = 2.0, sundering = 0 },
