@@ -90,7 +90,10 @@ return function()
             -- on level_earned; the client-fired level_up row keeps the burst visual.
             expect(type(gameEvents.level_up)).to.equal("table")
             expect(type(gameEvents.level_up.vfx)).to.equal("table")
-            expect(gameEvents.level_earned.world_sound).to.equal("celebratory_jingle")
+            -- the epic level-up theme rides level_earned (a real world_sound); level_up has no sound
+            expect(gameEvents.level_earned.world_sound).to.equal("level_up_epic")
+            expect(gameEvents.level_up.sound).to.equal(nil)
+            expect(gameEvents.level_up.world_sound).to.equal(nil)
         end)
     end)
 end

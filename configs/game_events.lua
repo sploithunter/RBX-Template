@@ -36,10 +36,11 @@ return {
 
     -- LEVEL EARNED: the bar just filled and the arrow starts blinking (server truth,
     -- once per earned level). THIS is the public moment — the epic level-up animation
-    -- + sound land here (Jason). Placeholder jingle until the epic sound is sourced;
-    -- plays AT the player's character, audible nearby (3D falloff, ~120 studs).
+    -- + sound land here (Jason). The 7.5s "An Epic Modern-day Video Game" theme; plays AT
+    -- the player's character, audible nearby (3D falloff, ~120 studs). The level-up ANIMATION
+    -- times itself to sounds.lua level_up_epic.duration_seconds.
     level_earned = {
-        world_sound = "celebratory_jingle",
+        world_sound = "level_up_epic",
     },
 
     -- A new area/gate was unlocked (client: init.client ZoneUnlockResult ok). Celebratory, and no

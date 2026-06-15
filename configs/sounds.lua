@@ -35,6 +35,18 @@ return {
         -- not on the sound bus"). effects = rides the slider like everything else.
     },
 
+    -- LEVEL-UP theme ("An Epic Modern-day Video Game", instrumental) — the full 7.5s level-up
+    -- fanfare. `duration_seconds` is the SSOT for the song length so the level-up ANIMATION can
+    -- time itself to the track (LevelUpController reads it). Uploaded via scripts/upload_audio.js
+    -- (assets/audio/sfx/level_up_epic.mp3 -> id below). New uploads moderate before they play.
+    level_up_epic = {
+        id = "rbxassetid://71989899201509",
+        volume = 0.5, -- starting point; tune like the jingle if it's hot
+        playback_speed = 1.0,
+        duration_seconds = 7.5, -- track length; the level-up animation runs to this
+        bus = "effects", -- rides the SFX slider (same reasoning as celebratory_jingle above)
+    },
+
     -- Rising "power up" sting (uploaded SFX) — pet revive and similar comeback moments.
     power_up_stronger = {
         id = "rbxassetid://105379088796995",
