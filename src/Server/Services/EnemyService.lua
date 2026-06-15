@@ -1107,9 +1107,11 @@ function EnemyService:_loiter(entry, model, ePos, dt)
     local ox, oz = PetMeander.step(entry.meander, dt or 0, cfg, math.random)
     local gx, gz = entry.home.X + ox, entry.home.Z + oz
     local gy = self:_groundedY(entry, gx, gz, ePos.Y)
-    if (gy - ePos.Y) > (eng.ground_climb_max or 10) then
-        -- a wall/ledge ahead (the downcast jumped to the wall top): don't mount it. Re-seed the
-        -- wander so the next step heads a fresh direction instead of pushing into the wall again.
+    -- Ground dwellers don't WANDER up walls while loitering (flyers may, they fly): if the next
+    -- meander step would mount a ledge, skip it and re-seed the wander to head a fresh direction.
+    -- (Pursuit is different -- the chase path gets a jump-assist so they can climb OUT to a target.)
+    local flyer = (entry.hoverHeight or 0) > 0
+    if not flyer and (gy - ePos.Y) > (eng.ground_climb_max or 10) then
         entry.meander = PetMeander.newState(cfg, math.random)
         return
     end
@@ -1345,11 +1347,18 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         0 -- the slot already sits at bite range, so close all the way onto it
     )
     local groundedY = self:_groundedY(entry, np.x, np.z, np.y)
-    local wallAhead = (groundedY - ePos.Y) > (eng.ground_climb_max or 10)
-    if wallAhead then
-        -- a wall/ledge between the enemy and its slot: hold at the base rather than climbing
-        -- onto it (it still faces + attacks the target below). Keeps fights off the rooftops.
-        groundedY = ePos.Y
+    -- Vertical traversal while CHASING (the target is ahead, so an up-step is pursuit, not aimless
+    -- wandering): steps DOWN and small step-ups (slopes / cave thresholds) are always fine. A bigger
+    -- rise is a wall/lip -> JUMP-ASSIST up toward the target if the climb is modest (so they get OUT
+    -- of the spawn cave and over ledges); only a genuinely tall wall blocks. Flyers ignore this and
+    -- rise freely (they fly over). A pet that then drops below is just a step DOWN next tick, so an
+    -- enemy that hopped onto a ledge self-recovers instead of getting marooned up there.
+    local rise = groundedY - ePos.Y
+    local flyer = (entry.hoverHeight or 0) > 0
+    local wallAhead = false
+    if not flyer and rise > (eng.ground_climb_max or 10) and rise > (eng.ground_jump_max or 28) then
+        wallAhead = true
+        groundedY = ePos.Y -- too tall to scale: hold at the base (still faces + attacks below)
     end
     if not wallAhead and (math.abs(np.x - ePos.X) > 1e-3 or math.abs(np.z - ePos.Z) > 1e-3) then
         local newPos = Vector3.new(np.x, groundedY, np.z)
