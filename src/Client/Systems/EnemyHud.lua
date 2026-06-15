@@ -231,6 +231,28 @@ function EnemyHud.start()
 
     local cards = {} -- bid -> card refs
 
+    -- STABLE SLOTS (Jason: the strip re-sorted by distance every tick, so a card slid out from under
+    -- the cursor and clicks missed the foe). Each enemy keeps a fixed slot (1..MAX_CARDS) for its
+    -- whole life on the strip; a freed slot is reused by the nearest waiting foe. No live card ever
+    -- moves, so clicking is reliable.
+    local slotOf = {} -- bid -> slot
+    local function assignSlot(bid)
+        if slotOf[bid] then
+            return slotOf[bid]
+        end
+        local used = {}
+        for _, s in pairs(slotOf) do
+            used[s] = true
+        end
+        for s = 1, MAX_CARDS do
+            if not used[s] then
+                slotOf[bid] = s
+                return s
+            end
+        end
+        return nil -- strip full; this foe waits for a slot to free
+    end
+
     local function makeCard(bid)
         local card = HudCard.createCard(listFrame, { name = "Enemy_" .. bid })
         -- Foes have no element disc art; the chip is a flat red threat square with the enemy's
@@ -257,42 +279,57 @@ function EnemyHud.start()
 
         local list = engagedEnemies(os.clock())
         local focusBid = indirectTargetBid()
-        -- Shrink the strip uniformly once the pull exceeds DENSITY_FULL, so it stays bounded.
-        local shownCount = math.min(#list, MAX_CARDS)
-        densityScale.Scale = math.clamp(DENSITY_FULL / math.max(1, shownCount), DENSITY_MIN, 1)
-        local present = {}
-        for rank, e in ipairs(list) do
-            if rank > MAX_CARDS then
-                break
-            end
-            present[e.bid] = true
-            local card = cards[e.bid]
-            if not card then
-                card = makeCard(e.bid)
-                cards[e.bid] = card
-            end
-            local m = e.model
-            card.frame.LayoutOrder = rank
-            card.name.Text =
-                tostring(m:GetAttribute("DisplayName") or m:GetAttribute("EnemyId") or "Enemy")
-            card.roleGlyph.Text = tostring(m:GetAttribute("Level") or "!")
-            local hp = m:GetAttribute("HP") or 0
-            local maxHp = math.max(1, m:GetAttribute("MaxHP") or 1)
-            local frac = math.clamp(hp / maxHp, 0, 1)
-            card.fill.Size = UDim2.fromScale(frac, 1)
-            card.fill.BackgroundColor3 = HudCard.healthColor(frac)
-            card.note.Text = ""
-            -- The indirect target (player → selected pet → THIS enemy) wears the amber border,
-            -- matching the world target highlight; every other foe shows the idle outline.
-            HudCard.applyHighlight(card, (e.bid == focusBid) and "target" or nil)
-            -- Buff/debuff badges off the enemy's attributes — shared StatusBadges engine, growing
-            -- leftward from the card's inner edge (a healed foe lights HEAL, a debuffed foe HEX).
-            StatusBadges.update(
-                card,
-                StatusBadges.resolveEffects(ENEMY_EFFECTS, { enemy = m }, os.time()),
-                BLINK_LEAD
-            )
+
+        -- Free the slots of foes that have left so the nearest waiting foe can reuse them.
+        local liveSet = {}
+        for _, e in ipairs(list) do
+            liveSet[e.bid] = true
         end
+        for bid in pairs(slotOf) do
+            if not liveSet[bid] then
+                slotOf[bid] = nil
+            end
+        end
+
+        -- Walk nearest-first ONLY to decide which foes claim freed slots; a foe that already has a
+        -- slot keeps it (no re-sort), so the visual order is stable even as distances change.
+        local present = {}
+        local shown = 0
+        for _, e in ipairs(list) do
+            local slot = slotOf[e.bid] or assignSlot(e.bid)
+            if slot then -- nil = strip full; this foe waits for a slot to free
+                shown += 1
+                present[e.bid] = true
+                local card = cards[e.bid]
+                if not card then
+                    card = makeCard(e.bid)
+                    cards[e.bid] = card
+                end
+                local m = e.model
+                card.frame.LayoutOrder = slot
+                card.name.Text =
+                    tostring(m:GetAttribute("DisplayName") or m:GetAttribute("EnemyId") or "Enemy")
+                card.roleGlyph.Text = tostring(m:GetAttribute("Level") or "!")
+                local hp = m:GetAttribute("HP") or 0
+                local maxHp = math.max(1, m:GetAttribute("MaxHP") or 1)
+                local frac = math.clamp(hp / maxHp, 0, 1)
+                card.fill.Size = UDim2.fromScale(frac, 1)
+                card.fill.BackgroundColor3 = HudCard.healthColor(frac)
+                card.note.Text = ""
+                -- The indirect target (player → selected pet → THIS enemy) wears the amber border,
+                -- matching the world target highlight; every other foe shows the idle outline.
+                HudCard.applyHighlight(card, (e.bid == focusBid) and "target" or nil)
+                -- Buff/debuff badges off the enemy's attributes — shared StatusBadges engine, growing
+                -- leftward from the card's inner edge (a healed foe lights HEAL, a debuffed foe HEX).
+                StatusBadges.update(
+                    card,
+                    StatusBadges.resolveEffects(ENEMY_EFFECTS, { enemy = m }, os.time()),
+                    BLINK_LEAD
+                )
+            end
+        end
+        -- Shrink the strip uniformly once the pull exceeds DENSITY_FULL, so it stays bounded.
+        densityScale.Scale = math.clamp(DENSITY_FULL / math.max(1, shown), DENSITY_MIN, 1)
         for bid, card in pairs(cards) do
             if not present[bid] then
                 card.frame:Destroy()
