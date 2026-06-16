@@ -1926,8 +1926,13 @@ local petConfig = {
             cost = 500,
             currency = "coins",
             huge = { chance = 0.00002, any_pet = true }, -- 1 in 50,000; tune freely
-            asset_id = "rbxassetid://77584635179884", -- 3D egg model (untextured for now)
-            image_id = "rbxassetid://95897439317999", -- 2D egg icon (correct image)
+            -- Textured via the shared mesh combine (MeshAssembly) — same path as pets. mesh_asset +
+            -- texture_asset build a textured egg Model at load (no more grey egg). asset_id kept as
+            -- a fallback only.
+            mesh_asset = "rbxassetid://120776006241642", -- egg mesh
+            texture_asset = "rbxassetid://72536199373579", -- egg image (IMAGE, not Decal)
+            asset_id = "rbxassetid://77584635179884", -- 3D egg model fallback
+            image_id = "rbxassetid://95897439317999", -- 2D egg icon (UI)
             camera = {
                 distance = 3.5,
                 angle_y = 0,

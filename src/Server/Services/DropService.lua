@@ -19,7 +19,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local AssetService = game:GetService("AssetService")
+local MeshAssembly = require(ReplicatedStorage.Shared.Assets.MeshAssembly)
 
 local DropService = {}
 DropService.__index = DropService
@@ -101,28 +101,20 @@ function DropService:_ensureTemplate(color, form)
     if not (meshId and texId) then
         return nil
     end
-    local ok, mesh = pcall(function()
-        -- selene: allow(undefined_variable)
-        local content = Content.fromUri(meshId) -- `Content` is a runtime global selene's std lacks
-        return AssetService:CreateMeshPartAsync(content, {
-            CollisionFidelity = Enum.CollisionFidelity.Box,
-            RenderFidelity = Enum.RenderFidelity.Automatic,
-        })
-    end)
-    if not ok or not mesh then
+    -- THE single combine path (shared with pets/enemies/eggs): mesh + texture -> textured Model.
+    local model = MeshAssembly.build(meshId, texId, { modelName = "GemDrop", partName = "Gem" })
+    if not model then
         if self._logger and self._logger.Warn then
-            self._logger:Warn("Gem mesh build failed", { key = key, error = tostring(mesh) })
+            self._logger:Warn("Gem mesh build failed", { key = key })
         end
         return nil -- caller falls back to a tinted ball
     end
-    mesh.TextureID = texId
-    mesh.Anchored = true
-    mesh.CanCollide = false
+    local mesh = model.PrimaryPart
+    -- gem-specific tuning on the textured MeshPart
     mesh.CanQuery = false
     mesh.CanTouch = false
     mesh.Massless = true
     mesh.Material = Enum.Material.Glass
-    mesh.Name = "Gem"
     -- scale so the widest side ≈ the per-form target studs
     local widest = math.max(mesh.Size.X, mesh.Size.Y, mesh.Size.Z)
     if widest > 0 then
@@ -133,10 +125,6 @@ function DropService:_ensureTemplate(color, form)
     light.Range = self._gems.light_range or 9
     light.Brightness = self._gems.light_brightness or 2.5
     light.Parent = mesh
-    local model = Instance.new("Model")
-    model.Name = "GemDrop"
-    mesh.Parent = model
-    model.PrimaryPart = mesh
     model.Parent = self._templateHolder
     self._templates[key] = model
     return model
@@ -341,35 +329,24 @@ function DropService:_ensureCogTemplate(cog, color)
     if not (cog.mesh and texId) then
         return nil
     end
-    local ok, mesh = pcall(function()
-        -- selene: allow(undefined_variable)
-        local content = Content.fromUri(cog.mesh) -- runtime global (same as gem templates)
-        return AssetService:CreateMeshPartAsync(content, {
-            CollisionFidelity = Enum.CollisionFidelity.Box,
-            RenderFidelity = Enum.RenderFidelity.Automatic,
-        })
-    end)
-    if not ok or not mesh then
+    -- THE single combine path (shared with pets/enemies/gems/eggs): mesh + texture -> textured Model.
+    local model =
+        MeshAssembly.build(cog.mesh, texId, { modelName = "EnhancementDrop", partName = "Body" })
+    if not model then
         return nil
     end
-    mesh.TextureID = texId
+    local mesh = model.PrimaryPart
     local target = tonumber(cog.size) or 1.6
     local widest = math.max(mesh.Size.X, mesh.Size.Y, mesh.Size.Z)
     if widest > 0 then
         mesh.Size = mesh.Size * (target / widest)
     end
-    mesh.Anchored = true
-    mesh.CanCollide = false
     mesh.CanQuery = false
     mesh.Material = Enum.Material.Metal
     local light = Instance.new("PointLight")
     light.Range = 7
     light.Brightness = 0.8
     light.Parent = mesh
-    local model = Instance.new("Model")
-    model.Name = "EnhancementDrop"
-    mesh.Parent = model
-    model.PrimaryPart = mesh
     self._cogTemplates[color] = model
     return model
 end

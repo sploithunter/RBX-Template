@@ -22,6 +22,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
 local PetVariantVisuals = require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
+local MeshAssembly = require(ReplicatedStorage.Shared.Assets.MeshAssembly)
 
 -- Service dependencies (injected)
 local logger
@@ -551,8 +552,7 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                 local hasMeshAsset = type(variantData.mesh_asset) == "string"
                     and variantData.mesh_asset ~= ""
                     and variantData.mesh_asset ~= "rbxassetid://0"
-                local hasAssetId = variantData.asset_id
-                    and variantData.asset_id ~= "rbxassetid://0"
+                local hasAssetId = variantData.asset_id and variantData.asset_id ~= "rbxassetid://0"
 
                 if hasMeshAsset or hasAssetId then
                     local existingVariant = petTypeFolder:FindFirstChild(variant)
@@ -695,15 +695,44 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
     for eggType, eggData in pairs(petConfig.egg_sources or {}) do
         totalAssets = totalAssets + 1
 
-        if eggData.asset_id and eggData.asset_id ~= "rbxassetid://0" then
+        local hasEggMesh = type(eggData.mesh_asset) == "string"
+            and eggData.mesh_asset ~= ""
+            and eggData.mesh_asset ~= "rbxassetid://0"
+        local hasEggModel = eggData.asset_id and eggData.asset_id ~= "rbxassetid://0"
+
+        if hasEggMesh or hasEggModel then
             -- Replace existing egg model to avoid duplicates
             local existingEgg = eggsFolder:FindFirstChild(eggType)
             if existingEgg then
                 existingEgg:Destroy()
             end
-            -- Load 3D egg model
-            local modelSuccess =
-                self:LoadModelIntoFolder(eggData.asset_id, eggsFolder, eggType, eggType .. "_egg")
+
+            local modelSuccess
+            if hasEggMesh then
+                -- THE single combine path: FBX->Model egg uploads import untextured (grey), so an
+                -- egg ships mesh_asset (+ texture_asset) and we build the textured Model here, the
+                -- same way pets/enemies/gems do, then store it in Assets.Models.Eggs like any model.
+                local eggModel = MeshAssembly.build(
+                    eggData.mesh_asset,
+                    eggData.texture_asset,
+                    { modelName = eggType }
+                )
+                if eggModel then
+                    eggModel.Parent = eggsFolder
+                    modelSuccess = true
+                else
+                    logger:Warn("Egg mesh combine failed; trying asset_id", { eggType = eggType })
+                end
+            end
+            if not modelSuccess and hasEggModel then
+                -- Fallback: packaged Model (may be untextured for FBX uploads).
+                modelSuccess = self:LoadModelIntoFolder(
+                    eggData.asset_id,
+                    eggsFolder,
+                    eggType,
+                    eggType .. "_egg"
+                )
+            end
 
             if modelSuccess then
                 modelSuccessCount = modelSuccessCount + 1
@@ -810,25 +839,11 @@ function AssetPreloadService:BuildMeshPartModelIntoFolder(
     end
 
     local success, result = pcall(function()
-        -- selene: allow(undefined_variable)
-        local content = Content.fromUri(meshId) -- `Content` is a runtime global selene's std lacks
-        local mesh = AssetService:CreateMeshPartAsync(content, {
-            CollisionFidelity = Enum.CollisionFidelity.Box,
-            RenderFidelity = Enum.RenderFidelity.Automatic,
-        })
-        if textureId and textureId ~= "" and textureId ~= "rbxassetid://0" then
-            pcall(function()
-                mesh.TextureID = textureId
-            end)
+        -- THE single combine path (shared with enemies/gems/eggs): mesh + texture -> textured Model.
+        local modelClone = MeshAssembly.build(meshId, textureId, { modelName = folderName })
+        if not modelClone then
+            error("MeshAssembly.build returned nil for " .. tostring(meshId))
         end
-        mesh.Name = "Body"
-        mesh.Anchored = true
-        mesh.CanCollide = false
-
-        local modelClone = Instance.new("Model")
-        modelClone.Name = folderName
-        mesh.Parent = modelClone
-        modelClone.PrimaryPart = mesh
 
         -- Identical post-processing to LoadModelIntoFolder so meshy pets behave the same.
         self:SetPreferredPrimaryPart(modelClone)

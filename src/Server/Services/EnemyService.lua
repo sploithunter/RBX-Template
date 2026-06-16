@@ -23,7 +23,6 @@ local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local PetRevive = require(script.Parent.Parent.PetRevive)
 local ServerStorage = game:GetService("ServerStorage")
 local InsertService = game:GetService("InsertService")
-local AssetService = game:GetService("AssetService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local Debris = game:GetService("Debris")
@@ -31,6 +30,7 @@ local Debris = game:GetService("Debris")
 local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
 
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
+local MeshAssembly = require(ReplicatedStorage.Shared.Assets.MeshAssembly)
 local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
 local PetMeander = require(ReplicatedStorage.Shared.Game.PetMeander)
 local RingSeparate = require(ReplicatedStorage.Shared.Game.RingSeparate)
@@ -288,33 +288,16 @@ function EnemyService:_meshTemplate(meshId, textureId)
     if cached ~= nil then
         return cached or nil
     end
-    local ok, mesh = pcall(function()
-        -- selene: allow(undefined_variable)
-        local content = Content.fromUri(meshId) -- `Content` is a runtime global selene's std lacks
-        return AssetService:CreateMeshPartAsync(content, {
-            CollisionFidelity = Enum.CollisionFidelity.Box,
-            RenderFidelity = Enum.RenderFidelity.Automatic,
-        })
-    end)
+    -- THE single combine path (shared with pets/gems/eggs): mesh + texture -> textured Model.
+    local model, err = MeshAssembly.build(meshId, textureId, { partName = "Body" })
     local template
-    if ok and mesh then
-        if textureId then
-            pcall(function()
-                mesh.TextureID = textureId
-            end)
-        end
-        mesh.Name = "Body"
-        mesh.Anchored = true
-        mesh.CanCollide = false
-        local model = Instance.new("Model")
-        mesh.Parent = model
-        model.PrimaryPart = mesh
+    if model then
         model.Parent = ServerStorage
         template = model
     elseif self._logger then
         self._logger:Warn(
             "Enemy mesh build failed; using procedural fallback",
-            { mesh = tostring(meshId), error = tostring(mesh) }
+            { mesh = tostring(meshId), error = tostring(err) }
         )
     end
     self._meshCache[key] = template or false
