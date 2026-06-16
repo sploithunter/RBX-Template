@@ -1,0 +1,11 @@
+# Map prop export art (FBX + texture)
+#
+# Recommended Roblox import: {stem}_5k.fbx + texture PNG in same folder.
+# Pipeline: bash scripts/decimate_mesh.sh assets/source/props/<stem>.obj --targets 5000,7500,10000 --output assets/exports/props/<stem>/
+
+prop_id	biome	source_tris	export_dir	5k	7500tris	10k	texture	preview
+joshua_tree	desert	18851	assets/exports/props/joshua_tree/	5000 tris	7500 tris	10000 tris	joshua_tree.png	joshua_tree_preview.png
+
+source_manifest: assets/source/props/manifest.txt
+download:
+  joshua_tree: ~/Downloads/Meshy_AI_Desert_Bloom_Tree_0616211659_texture_obj.zip + Joshua Tree.png (preview)

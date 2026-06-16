@@ -1,0 +1,6 @@
+# Map prop / scenery meshes (Meshy OBJ + texture)
+# Not pets, lairs, or breakables — decorative world art for authored maps.
+# Decimate via: bash scripts/decimate_mesh.sh assets/source/props/<stem>.obj --targets 5000,7500,10000 --output assets/exports/props/<stem>/
+
+stem	prop_id	biome	download_zip	display_name	original_tris	note
+joshua_tree	joshua_tree	desert	Meshy_AI_Desert_Bloom_Tree_0616211659_texture_obj.zip	Joshua Tree	18851	Meshy export says Desert Bloom Tree
