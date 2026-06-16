@@ -169,4 +169,31 @@ return function()
             end
         end)
     end)
+
+    describe("breakables worlds satisfy ConfigLoader's boot rules", function()
+        -- Ports ConfigLoader:_validateBreakablesConfig's world rule verbatim: every
+        -- breakables.worlds.<id> must be EITHER a realm world (Heaven_N / Hell_N, gated by
+        -- BreakableSpawner._isWorldActive) OR reference a kind="area" zone in areas.lua.
+        -- A Heaven_1 crystal world that wasn't exempted killed boot on 2026-06-16; this is the
+        -- pre-Studio gate. If ConfigLoader's rule changes, update BOTH.
+        local breakables = loadModule("configs/breakables.lua")
+        local areas = loadModule("configs/areas.lua")
+
+        it("every world is a realm world OR an area zone", function()
+            for worldId in pairs(breakables.worlds or {}) do
+                local isRealmWorld = tostring(worldId):match("^Heaven_%d")
+                    or tostring(worldId):match("^Hell_%d")
+                local zone = areas.zones and areas.zones[worldId]
+                local isAreaZone = zone and zone.kind == "area"
+                if not isRealmWorld and not isAreaZone then
+                    error(
+                        "breakables world '"
+                            .. tostring(worldId)
+                            .. "' is neither a realm world (Heaven_N/Hell_N) nor a kind=area zone "
+                            .. "in areas.lua — ConfigLoader will reject it and boot will die"
+                    )
+                end
+            end
+        end)
+    end)
 end

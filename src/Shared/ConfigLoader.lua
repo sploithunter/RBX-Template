@@ -1065,8 +1065,14 @@ function ConfigLoader:_validateBreakablesConfig(config)
             return ok, err
         end
 
+        -- Realm worlds (Heaven_N / Hell_N) are not biome area zones; they are
+        -- gated by the realm rule in BreakableSpawner._isWorldActive, not by an
+        -- areas.lua zone unlock. Exempt them from the area-zone requirement.
+        local isRealmWorld = tostring(worldId):match("^Heaven_%d") or tostring(worldId):match("^Hell_%d")
+
         if
-            areas
+            not isRealmWorld
+            and areas
             and areas.zones
             and (not areas.zones[worldId] or areas.zones[worldId].kind ~= "area")
         then
