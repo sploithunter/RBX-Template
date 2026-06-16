@@ -1827,8 +1827,23 @@ function ConfigLoader:_validatePetsConfig(config)
             if type(petVariant) ~= "table" then
                 return self:_configError("pets", variantPath, "expected table")
             end
-            if type(petVariant.asset_id) ~= "string" then
-                return self:_configError("pets", variantPath .. ".asset_id", "expected string")
+            -- A variant supplies its art EITHER as a packaged Model (`asset_id`, loaded via
+            -- InsertService) OR as a separately-uploaded mesh+texture (`mesh_asset` [+ optional
+            -- `texture_asset`], combined at load via AssetService:CreateMeshPartAsync — the same
+            -- path enemies/gems use). FBX→Model uploads come out untextured, so meshy pets use
+            -- the combine. Require at least one art source.
+            if type(petVariant.asset_id) ~= "string" and type(petVariant.mesh_asset) ~= "string" then
+                return self:_configError(
+                    "pets",
+                    variantPath,
+                    "expected asset_id (Model) or mesh_asset (combine) string"
+                )
+            end
+            if petVariant.mesh_asset ~= nil and type(petVariant.mesh_asset) ~= "string" then
+                return self:_configError("pets", variantPath .. ".mesh_asset", "expected string")
+            end
+            if petVariant.texture_asset ~= nil and type(petVariant.texture_asset) ~= "string" then
+                return self:_configError("pets", variantPath .. ".texture_asset", "expected string")
             end
             if type(petVariant.display_name) ~= "string" or petVariant.display_name == "" then
                 return self:_configError(

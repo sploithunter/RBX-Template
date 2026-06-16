@@ -17,6 +17,7 @@ local AssetPreloadService = {}
 AssetPreloadService.__index = AssetPreloadService
 
 local InsertService = game:GetService("InsertService")
+local AssetService = game:GetService("AssetService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
@@ -547,11 +548,31 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                 totalAssets = totalAssets + 1
                 local transformOptions = self:ResolvePetAssetTransform(petData, variantData)
 
-                if variantData.asset_id and variantData.asset_id ~= "rbxassetid://0" then
+                local hasMeshAsset = type(variantData.mesh_asset) == "string"
+                    and variantData.mesh_asset ~= ""
+                    and variantData.mesh_asset ~= "rbxassetid://0"
+                local hasAssetId = variantData.asset_id
+                    and variantData.asset_id ~= "rbxassetid://0"
+
+                if hasMeshAsset or hasAssetId then
                     local existingVariant = petTypeFolder:FindFirstChild(variant)
                     local modelSuccess
 
-                    if variantData.asset_source == "rojo" then
+                    if hasMeshAsset then
+                        -- Combine path: textured MeshPart from a separately-uploaded mesh + texture
+                        -- (FBX->Model uploads come out untextured). Mirrors the enemy/gem combine.
+                        if existingVariant then
+                            existingVariant:Destroy()
+                        end
+                        modelSuccess = self:BuildMeshPartModelIntoFolder(
+                            variantData.mesh_asset,
+                            variantData.texture_asset,
+                            petTypeFolder,
+                            variant,
+                            petType .. "_" .. variant,
+                            transformOptions
+                        )
+                    elseif variantData.asset_source == "rojo" then
                         if existingVariant and existingVariant:IsA("Model") then
                             logger:Info("Using Rojo-managed pet model", {
                                 petType = petType,
@@ -771,6 +792,79 @@ function AssetPreloadService:LoadAllSoundsIntoAssets()
 end
 
 -- Load a single model into a folder
+-- Build a textured pet model from a separately-uploaded MESH + TEXTURE — the same combine enemies
+-- and gems use (AssetService:CreateMeshPartAsync + MeshPart.TextureID = imageId). FBX->Model uploads
+-- come out untextured, so meshy pets ship `mesh_asset` (+ optional `texture_asset`) instead of a
+-- packaged `asset_id` Model. Parents a Model (named folderName, PrimaryPart = the mesh) into
+-- parentFolder and runs the SAME pet post-processing as LoadModelIntoFolder. Returns true on success.
+function AssetPreloadService:BuildMeshPartModelIntoFolder(
+    meshId,
+    textureId,
+    parentFolder,
+    folderName,
+    debugName,
+    options
+)
+    if not meshId or not parentFolder then
+        return false
+    end
+
+    local success, result = pcall(function()
+        -- selene: allow(undefined_variable)
+        local content = Content.fromUri(meshId) -- `Content` is a runtime global selene's std lacks
+        local mesh = AssetService:CreateMeshPartAsync(content, {
+            CollisionFidelity = Enum.CollisionFidelity.Box,
+            RenderFidelity = Enum.RenderFidelity.Automatic,
+        })
+        if textureId and textureId ~= "" and textureId ~= "rbxassetid://0" then
+            pcall(function()
+                mesh.TextureID = textureId
+            end)
+        end
+        mesh.Name = "Body"
+        mesh.Anchored = true
+        mesh.CanCollide = false
+
+        local modelClone = Instance.new("Model")
+        modelClone.Name = folderName
+        mesh.Parent = modelClone
+        modelClone.PrimaryPart = mesh
+
+        -- Identical post-processing to LoadModelIntoFolder so meshy pets behave the same.
+        self:SetPreferredPrimaryPart(modelClone)
+        modelClone:PivotTo(CFrame.identity)
+        self:ApplyConfiguredModelTransform(modelClone, options)
+        self:WeldModelParts(modelClone)
+
+        local isPetFolder = (parentFolder.Name == "Pets")
+            or (parentFolder.Parent and parentFolder.Parent.Name == "Pets")
+        if isPetFolder then
+            self:NormalizePetModelParts(modelClone)
+            self:AddPetSystemComponents(modelClone)
+        end
+
+        modelClone.Parent = parentFolder
+        return true
+    end)
+
+    if not success then
+        logger:Warn("Failed to build mesh-combine pet model", {
+            meshId = tostring(meshId),
+            textureId = tostring(textureId),
+            debugName = debugName,
+            error = tostring(result),
+        })
+        return false
+    end
+
+    logger:Info("✅ BuildMeshPartModelIntoFolder: textured pet model built", {
+        meshId = tostring(meshId),
+        debugName = debugName,
+        path = parentFolder:GetFullName() .. "." .. tostring(folderName),
+    })
+    return true
+end
+
 function AssetPreloadService:LoadModelIntoFolder(
     assetId,
     parentFolder,
