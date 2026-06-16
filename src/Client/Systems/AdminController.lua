@@ -26,7 +26,7 @@ local started = false
 local ADMIN_AREAS = { "Grass", "Desert", "Ice", "Lava", "Spawn" }
 
 -- The dev/admin overlay ScreenGuis this chip shows/hides (by Name in PlayerGui).
-local OVERLAYS = { "DevSpawnPanel", "DevMetricsHud", "BuffStatsHud" }
+local OVERLAYS = { "DevSpawnPanel", "DevMetricsHud", "BuffStatsHud", "PetSyncDiag" }
 
 local function isAdmin(player)
     return RunService:IsStudio() or player:GetAttribute("IsAdmin") == true

@@ -293,6 +293,15 @@ do
     end
 end
 
+do
+    local ok, err = pcall(function()
+        require(script.Systems.PetSyncDiag).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start PetSyncDiag", { error = tostring(err) })
+    end
+end
+
 -- Buff-stats overlay (Studio-only): current effective buff multipliers (attack/defense/coin/luck/…),
 -- resolved via the same BuffStack math the server uses — for verifying powers + auras while testing.
 do

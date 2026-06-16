@@ -211,7 +211,42 @@ function PetFollowService:Start()
         pcall(function()
             self:_tick()
         end)
+        pcall(function()
+            self:_stampPetSyncDiag()
+        end)
     end)
+end
+
+-- ADMIN DIAGNOSTIC: stamp each pet with what the SERVER knows about its position, so the client
+-- PetSyncDiag overlay can show the client<->server gap live (no MCP archaeology mid-fight). Pets are
+-- client-moved + anchored at origin server-side; combat reads GetReportedPosition (client report),
+-- falling back to the owner. We stamp the gate's view + report age so a desync is VISIBLE:
+--   DiagGatePos    (Vector3) — the position server combat would use for this pet RIGHT NOW
+--   DiagReportAge  (number)  — seconds since the client last reported (or -1 = never -> on fallback)
+function PetFollowService:_stampPetSyncDiag()
+    local petsRoot = Workspace:FindFirstChild("PlayerPets")
+    if not petsRoot then
+        return
+    end
+    local now = os.clock()
+    for _, folder in ipairs(petsRoot:GetChildren()) do
+        local owner = Players:FindFirstChild(folder.Name)
+        local hrp = owner and owner.Character and owner.Character:FindFirstChild("HumanoidRootPart")
+        for _, pet in ipairs(folder:GetChildren()) do
+            if pet:IsA("Model") then
+                local rec = self._petPos[pet]
+                local gatePos
+                if rec and rec.cf then
+                    gatePos = rec.cf.Position
+                    pet:SetAttribute("DiagReportAge", now - rec.t)
+                else
+                    gatePos = hrp and hrp.Position or pet:GetPivot().Position
+                    pet:SetAttribute("DiagReportAge", -1) -- no report -> combat is on the owner fallback
+                end
+                pet:SetAttribute("DiagGatePos", gatePos)
+            end
+        end
+    end
 end
 
 -- Anchor every part so the pet can't fall/drift (the client moves it via PivotTo).
