@@ -213,7 +213,34 @@ function LayerService:UseLayer(player, layerId, opts)
         local char = player.Character
         if char and char.PrimaryPart then
             pcall(function()
-                char:PivotTo(char:GetPivot() + Vector3.new(0, dy, 0))
+                local hrp = char.PrimaryPart
+                local destCFrame = char:GetPivot() + Vector3.new(0, dy, 0)
+
+                -- StreamingEnabled gotcha: the stacked realms are identical copies offset on Y, but
+                -- when we teleport the character up (or down) the client has NOT yet streamed in the
+                -- destination geometry, so it falls through empty space and lands back on whatever is
+                -- already loaded (the base realm). The fix that matters is the ANCHOR: pin the root
+                -- so it can't fall, move it, and the client streams the destination floor in around
+                -- the (now-relocated) character during the hold; release once it has had time to
+                -- arrive and the client resumes simulation on solid ground. Verified live: Home->
+                -- Heaven_1 lands and holds at the destination Y instead of dropping back to base.
+                hrp.Anchored = true
+                char:PivotTo(destCFrame)
+
+                -- Best-effort streaming hint to speed the load. Not present in every engine/runtime
+                -- (absent in the Studio MCP sandbox), so it gets its OWN pcall — its absence must
+                -- never abort the anchor+move above, which is what actually prevents the fall.
+                pcall(function()
+                    player:RequestStreamingAround(destCFrame.Position)
+                end)
+
+                local settle = self._layersConfig.teleport_settle_seconds or 2.5
+                task.delay(settle, function()
+                    -- Guard: the character may have respawned/left during the hold.
+                    if hrp and hrp.Parent and char.Parent and player.Character == char then
+                        hrp.Anchored = false
+                    end
+                end)
             end)
         end
     end
