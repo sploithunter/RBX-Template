@@ -630,6 +630,18 @@ function EnemyService:_petPosition(pet, pfs)
             return cf.Position
         end
     end
+    -- ROBUST FALLBACK: pets are client-moved, so their server pivot sits at world ORIGIN (0,0,0)
+    -- until a position report lands. NEVER gate combat off origin — that strands the squad 500+
+    -- studs from every enemy (pets "do nothing" while a foe is on top of you). Pets cluster around
+    -- their owner, so fall back to the OWNER's position: an adjacent enemy is then in range and the
+    -- squad engages even if the report hiccups. Only with no owner do we use the (origin) pivot.
+    local ownerName = pet.Parent and pet.Parent.Name
+    local owner = ownerName and Players:FindFirstChild(ownerName)
+    local char = owner and owner.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        return hrp.Position
+    end
     return pet:GetPivot().Position
 end
 
