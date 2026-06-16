@@ -132,141 +132,141 @@
   "emberling_cherub": {
     "modelAssetId": "118586395472511",
     "textureDecalId": "122191177755527",
-    "meshId": "PENDING_RESOLVE",
-    "imageId": "PENDING_RESOLVE",
+    "meshId": "rbxassetid://116841977025611",
+    "imageId": "rbxassetid://94914506294486",
     "realm": "heaven",
     "origin": "fire",
     "variant": "basic",
-    "uploadedBy": "self-serve (Claude) 2026-06-16"
+    "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
   },
   "sunmane_lion": {
     "modelAssetId": "96975946763082",
     "textureDecalId": "100362163847924",
-    "meshId": "PENDING_RESOLVE",
-    "imageId": "PENDING_RESOLVE",
+    "meshId": "rbxassetid://91899181124144",
+    "imageId": "rbxassetid://78357606272605",
     "realm": "heaven",
     "origin": "fire",
     "variant": "basic",
-    "uploadedBy": "self-serve (Claude) 2026-06-16"
+    "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
   },
   "solar_phoenix": {
     "modelAssetId": "112992399689526",
     "textureDecalId": "130359443605270",
-    "meshId": "PENDING_RESOLVE",
-    "imageId": "PENDING_RESOLVE",
+    "meshId": "rbxassetid://97859401243319",
+    "imageId": "rbxassetid://140706326750464",
     "realm": "heaven",
     "origin": "fire",
     "variant": "basic",
-    "uploadedBy": "self-serve (Claude) 2026-06-16"
+    "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
   },
   "radiant_salamander": {
     "modelAssetId": "136929117398474",
     "textureDecalId": "106480741580847",
-    "meshId": "PENDING_RESOLVE",
-    "imageId": "PENDING_RESOLVE",
+    "meshId": "rbxassetid://138720991598866",
+    "imageId": "rbxassetid://73640515480960",
     "realm": "heaven",
     "origin": "fire",
     "variant": "basic",
-    "uploadedBy": "self-serve (Claude) 2026-06-16"
+    "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
   },
   "frostlight_hare": {
     "modelAssetId": "71864824881393",
     "textureDecalId": "97527371225529",
-    "meshId": "PENDING_RESOLVE",
-    "imageId": "PENDING_RESOLVE",
+    "meshId": "rbxassetid://107524318254684",
+    "imageId": "rbxassetid://114645080646227",
     "realm": "heaven",
     "origin": "ice",
     "variant": "basic",
-    "uploadedBy": "self-serve (Claude) 2026-06-16"
+    "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
   },
   "aurora_fox": {
     "modelAssetId": "104847472914781",
     "textureDecalId": "91982948750247",
-    "meshId": "PENDING_RESOLVE",
-    "imageId": "PENDING_RESOLVE",
+    "meshId": "rbxassetid://127631988479086",
+    "imageId": "rbxassetid://110891545797270",
     "realm": "heaven",
     "origin": "ice",
     "variant": "basic",
-    "uploadedBy": "self-serve (Claude) 2026-06-16"
+    "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
   },
   "seraph_owl": {
     "modelAssetId": "110077550520357",
     "textureDecalId": "134302969029760",
-    "meshId": "PENDING_RESOLVE",
-    "imageId": "PENDING_RESOLVE",
+    "meshId": "rbxassetid://135316858270183",
+    "imageId": "rbxassetid://106553753889944",
     "realm": "heaven",
     "origin": "ice",
     "variant": "basic",
-    "uploadedBy": "self-serve (Claude) 2026-06-16"
+    "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
   },
   "glacial_seraph": {
     "modelAssetId": "85971911468960",
     "textureDecalId": "98628385536150",
-    "meshId": "PENDING_RESOLVE",
-    "imageId": "PENDING_RESOLVE",
+    "meshId": "rbxassetid://108033269485105",
+    "imageId": "rbxassetid://140080728182463",
     "realm": "heaven",
     "origin": "ice",
     "variant": "basic",
-    "uploadedBy": "self-serve (Claude) 2026-06-16"
+    "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
   },
   "aurora_leviathan": {
     "modelAssetId": "71144924639371",
     "textureDecalId": "72383132001009",
-    "meshId": "PENDING_RESOLVE",
-    "imageId": "PENDING_RESOLVE",
+    "meshId": "rbxassetid://72083922606915",
+    "imageId": "rbxassetid://71006049826639",
     "realm": "heaven",
     "origin": "ice",
     "variant": "basic",
-    "uploadedBy": "self-serve (Claude) 2026-06-16"
+    "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
   },
   "bloomlamb": {
     "modelAssetId": "101978010006139",
     "textureDecalId": "101944610636171",
-    "meshId": "PENDING_RESOLVE",
-    "imageId": "PENDING_RESOLVE",
+    "meshId": "rbxassetid://136218552388886",
+    "imageId": "rbxassetid://120469805143348",
     "realm": "heaven",
     "origin": "grass",
     "variant": "basic",
-    "uploadedBy": "self-serve (Claude) 2026-06-16"
+    "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
   },
   "halo_hare": {
     "modelAssetId": "84948553907785",
     "textureDecalId": "125811365860618",
-    "meshId": "PENDING_RESOLVE",
-    "imageId": "PENDING_RESOLVE",
+    "meshId": "rbxassetid://89072031420145",
+    "imageId": "rbxassetid://108749758653177",
     "realm": "heaven",
     "origin": "grass",
     "variant": "basic",
-    "uploadedBy": "self-serve (Claude) 2026-06-16"
+    "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
   },
   "goldleaf_stag": {
     "modelAssetId": "133452657360635",
     "textureDecalId": "72615851591558",
-    "meshId": "PENDING_RESOLVE",
-    "imageId": "PENDING_RESOLVE",
+    "meshId": "rbxassetid://128403713787560",
+    "imageId": "rbxassetid://126160913361786",
     "realm": "heaven",
     "origin": "grass",
     "variant": "basic",
-    "uploadedBy": "self-serve (Claude) 2026-06-16"
+    "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
   },
   "verdant_sprite": {
     "modelAssetId": "111559377822167",
     "textureDecalId": "84845266730002",
-    "meshId": "PENDING_RESOLVE",
-    "imageId": "PENDING_RESOLVE",
+    "meshId": "rbxassetid://133677960495137",
+    "imageId": "rbxassetid://73688873294516",
     "realm": "heaven",
     "origin": "grass",
     "variant": "basic",
-    "uploadedBy": "self-serve (Claude) 2026-06-16"
+    "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
   },
   "worldroot_ent": {
     "modelAssetId": "84609800651657",
     "textureDecalId": "110938081310346",
-    "meshId": "PENDING_RESOLVE",
-    "imageId": "PENDING_RESOLVE",
+    "meshId": "rbxassetid://86951654674051",
+    "imageId": "rbxassetid://108111117095510",
     "realm": "heaven",
     "origin": "grass",
     "variant": "basic",
-    "uploadedBy": "self-serve (Claude) 2026-06-16"
+    "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
   }
 }
