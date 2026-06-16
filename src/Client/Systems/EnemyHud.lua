@@ -26,31 +26,21 @@ local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local HudCard = require(script.Parent.Parent.UI.HudCard)
 local StatusBadges = require(script.Parent.Parent.UI.StatusBadges)
 local PetBadge = require(script.Parent.Parent.UI.PetBadge)
+local EnemyCon = require(ReplicatedStorage.Shared.Game.EnemyCon)
 local POWER_ICONS = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_icons"))
 
 local EnemyHud = {}
 
 local localPlayer = Players.LocalPlayer
 
--- Threat chip colour (red) — the enemy counterpart to the pet's element disc.
-local THREAT_RED = Color3.fromRGB(200, 64, 64)
-
--- Name colour encodes THREAT (enemy level vs the local player's): green = weaker, white = even,
--- orange = stronger, red = much stronger. Replaces the old standalone red level box.
+-- Enemy NAME colour = the City-of-Heroes con scale (shared EnemyCon resolver): the enemy's level
+-- relative to the local player (gray -3 / green -2 / blue -1 / white even / yellow +1 / orange +2 /
+-- red +3 / purple +4+). Rank is already baked into the published Level. Replaces the old red box.
 local function threatColor(enemyLvl)
     if not enemyLvl then
         return Color3.fromRGB(240, 240, 245)
     end
-    local mine = tonumber(localPlayer:GetAttribute("Level")) or 1
-    local d = enemyLvl - mine
-    if d >= 3 then
-        return THREAT_RED
-    elseif d >= 1 then
-        return Color3.fromRGB(240, 180, 80)
-    elseif d <= -3 then
-        return Color3.fromRGB(120, 210, 120)
-    end
-    return Color3.fromRGB(240, 240, 245)
+    return EnemyCon.colorForLevels(enemyLvl, localPlayer:GetAttribute("Level"))
 end
 
 -- Status badges shown on an enemy card — the SAME engine + chrome the squad cards use (the row
