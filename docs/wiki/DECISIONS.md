@@ -226,3 +226,21 @@ Pet *attack positioning* is a deliberate combat layer, not just visuals:
 
 **Deferred:** enemy role-motion (a tank enemy like the raging bear should PLANT, so
 tank-vs-tank stalemates) — the symmetric counterpart, not yet built.
+
+## Realm Rosters & the 11-Dragon Rebirth Gate
+
+There are exactly **11 realms** (Base/Earth + Heaven 1–5 + Hell 1–5) and **one SECRET-tier
+dragon per realm**, so the dragon roster is a fixed set of **11**. Rebirth (the class-N climb)
+requires hatching **all 11 dragon species yourself, at your current class** — the complete set,
+not "a full team" loosely. The `player_class` provenance stamp (progression counts only
+matching-class, hatcher-stamped dragons) blocks trading/buying/stockpiling past it; every rebirth
+is re-earned across the whole stack. Two pure apex dragons cap the ends (Seraph at Heaven 5, Void
+at Hell 5).
+
+Realms **transfigure the 4 origins** (Fire/Ice/Grass/Desert) rather than adding a 5th element:
+Heaven = ascended (radiant), Hell = fallen (corrupted). A pet keeps its **origin** (element/stats)
+and gains a **realm** tag (treatment) — resolved via `src/Shared/Game/WorldContext.lua`. Every
+heaven pet has a 1:1 hell mirror, so the rig/skeleton re-skins across the pair (and across several
+of the 11 dragons), keeping 2 realms ≈ 1 set of work. Full rosters + the 11-dragon ladder:
+[PET_REALM_HEAVEN_HELL_ROSTER.md](../PET_REALM_HEAVEN_HELL_ROSTER.md) and the Design Document's
+"Dragons, Secrets, and Player Class (Rebirth)" section.

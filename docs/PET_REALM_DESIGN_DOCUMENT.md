@@ -2118,10 +2118,46 @@ the moment of hatch and never changes afterward — provenance, not state.
 - Rainbow/golden ladders may join the same structure later; the class stamp is the
   general mechanism, not a dragon-only hack.
 
+### The 11 Dragons — one per realm (the rebirth collection)
+
+There are exactly **11 realms** (Base/Earth + Heaven 1–5 + Hell 1–5), and **exactly one
+signature dragon per realm** — so the dragon roster is a fixed set of **11**. Each realm's
+dragon is that realm's SECRET-tier chase pet (its hatch odds anchor the realm's egg pool),
+and together the 11 form the rebirth collection. The 4 origins repeat up and down the stack,
+capped by two pure apexes (Seraph at Heaven 5, Void at Hell 5).
+
+| #  | Realm        | Dragon (working name) | Origin            | Note               |
+|----|--------------|-----------------------|-------------------|--------------------|
+| 1  | Base (Earth) | *(existing grass dragon)* | Grass         | the starter        |
+| 2  | Heaven 1     | Empyrean Dragon       | Fire (solar)      | first ascended     |
+| 3  | Heaven 2     | Aurora Dragon         | Ice               |                    |
+| 4  | Heaven 3     | Verdant Dragon        | Grass (bloom)     |                    |
+| 5  | Heaven 4     | Gilded Dragon         | Desert            |                    |
+| 6  | Heaven 5     | Seraph Dragon         | radiant apex      | grandest ascended  |
+| 7  | Hell 1       | Abyssal Wyrm          | Fire (infernal)   | Empyrean's mirror  |
+| 8  | Hell 2       | Rimewraith Dragon     | Ice (black-ice)   |                    |
+| 9  | Hell 3       | Blight Dragon         | Grass (rot)       |                    |
+| 10 | Hell 4       | Glass Dragon          | Desert (scorched) |                    |
+| 11 | Hell 5       | Void Dragon           | shadow apex       | grandest fallen    |
+
+Names are working titles; the **structure (one dragon per realm, 11 total)** is the locked
+part. Full per-realm pet rosters (the farmable supporting cast around each dragon) live in
+[PET_REALM_HEAVEN_HELL_ROSTER.md](PET_REALM_HEAVEN_HELL_ROSTER.md).
+
+### The all-11 self-hatch gate
+
+The class-N climb requires hatching **all 11 dragon species yourself, at your current class**,
+to rebirth again — not "a full team" loosely, but the **complete set of 11**. This makes
+"playing for dragons" literal: late game is a tour of all 11 realms to complete the set before
+each rebirth. Combined with the anti-shortcut rule above (a dragon's `player_class` is stamped
+from the hatcher; progression counts only matching-class dragons), you cannot trade, buy, or
+stockpile your way past it — every rebirth is re-earned across the whole realm stack. The gate
+check is `hatched_dragon_species(at current class) ⊇ {all 11 realm dragons}`.
+
 ### Implementation status
 
 - ✅ `player_class` + `hatched_by` stamped on all new unique-pet mints
   (`InventoryService:_addPetRecords`)
 - ✅ Join-time retrofit: legacy uid records get `player_class = 1`
-- ⏳ Rebirth action, class increment, dragon-only progression checks, huge-dragon
+- ⏳ Rebirth action, class increment, **all-11-dragon** progression check, huge-dragon
   reward: future epic (design above is the SoT)

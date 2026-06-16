@@ -26,6 +26,8 @@ This is the living project wiki for the RBX Template pet/clicker game. It follow
 Formal requirements and plans live outside the wiki and should be treated as source material:
 
 - [Foundation & Requirements](../FOUNDATION_AND_REQUIREMENTS.md)
+- [Pet Realm Design Document](../PET_REALM_DESIGN_DOCUMENT.md) — the full game design SoT (ring map, realms, soul, pets, rebirth).
+- [Heaven & Hell Rosters](../PET_REALM_HEAVEN_HELL_ROSTER.md) — per-realm pet pools (4–5 per origin, ascended/fallen) + the 11-dragon rebirth set.
 - [Implementation Plan](../IMPLEMENTATION_PLAN.md)
 - [Asset Pipeline](../ASSET_PIPELINE.md)
 - [Map Marker Reference](../MAP_MARKER_REFERENCE.md)

@@ -244,3 +244,13 @@ Horns) progression/power/economy/balance work landed on `main`. This entry + the
 - **Ghost-mining exploit/bug KILLED** (336add16, beb998fc): live-debugged a crystal draining at 2.6/s with the squad dead — the LEGACY auto-target 1-damage token (pre-dating the "players amplify, pets deal" firewall) had no live-pet check and no Contrib credit, so nodes broke for ZERO reward; the remote also trusted client payload.damage (exploit). Removed entirely: auto-target only assigns; clients cannot deal breakable damage; all mining damage flows through Contrib-credited paths.
 - **No squad, no fight** (c1356da0): perception skips players with no live pet deployed (a petless player stands amid a loitering pack); enemies whose target squad vanishes release to idle instead of freezing (Jason's statue-imps repro).
 - Debug lesson: Studio MCP script_grep does NOT search ServerScriptService sources — a "missing" server token is inconclusive; verify via a config the same commit touched.
+
+## 2026-06-16 — Heaven/Hell rosters + 11-dragon rebirth gate documented
+
+Documented the realm pet roster design (4–5 pets per origin per realm, origins transfigured
+ascended/fallen, every heaven pet a 1:1 hell mirror) and the **11-dragon rebirth gate**: one
+secret dragon per realm (Base + Heaven 1–5 + Hell 1–5 = 11), must hatch all 11 yourself at the
+current class to rebirth. New doc `docs/PET_REALM_HEAVEN_HELL_ROSTER.md`; extended the Design
+Document's Rebirth section with the 11-dragon ladder + all-11 gate; DECISIONS + INDEX updated.
+Also live this session: Heaven_1 world cloned (+2000 Y, admin portal), crystal proto world for
+Heaven_1, OverheadBar unify, rounded health bars, WorldContext resolver, streaming enabled.
