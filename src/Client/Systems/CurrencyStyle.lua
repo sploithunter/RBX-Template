@@ -15,6 +15,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local Pill = require(script.Parent.Parent.UI.Pill)
 
 local CurrencyStyle = {}
 local started = false
@@ -153,17 +154,13 @@ local function styleBox(pane, key)
     -- the pane itself becomes the round capsule
     pane.BackgroundColor3 = col.fill
     pane.BackgroundTransparency = 0
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(1, 0) -- fully round ends (capsule)
-    corner.Parent = pane
-    local grad = Instance.new("UIGradient")
-    grad.Rotation = 90
-    grad.Color = ColorSequence.new(col.light, col.fill) -- glossy: light top -> fill bottom
-    grad.Parent = pane
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = col.light
-    stroke.Thickness = 2.5
-    stroke.Parent = pane
+    -- shared capsule treatment (pill corner + glossy gradient + brighter stroke)
+    Pill.applyTo(pane, {
+        color = col.fill,
+        gradientTop = col.light,
+        strokeColor = col.light,
+        strokeThickness = 2.5,
+    })
 
     addGemIcon(pane, col, key)
 end
