@@ -308,38 +308,42 @@ function RealmPortalService:Start()
     if #portals == 0 then
         return
     end
-    -- Map geometry may stream in slightly after boot; retry a few times for missing parts.
+    -- Index the config portals by part name for a whole-workspace scan.
+    local defByName = {}
+    for _, def in ipairs(portals) do
+        defByName[def.part] = def
+    end
+    -- Bind EVERY instance matching a portal name — each stacked world (Home, Heaven_n, Hell_n) has
+    -- its own copy of the portals, so binding only the first (FindFirstChild) left the cloned worlds
+    -- with no working gate. Walk all descendants; the RealmPortalBound guard keeps it idempotent.
+    -- Map geometry is server-resident (streaming is client-only), so a couple of retries suffice.
     task.spawn(function()
-        for attempt = 1, 10 do
-            local allFound = true
-            for _, def in ipairs(portals) do
-                local inst = Workspace:FindFirstChild(def.part, true)
-                local part = resolvePart(inst)
-                if part then
-                    if not part:GetAttribute("RealmPortalBound") then
+        local totalBound = 0
+        for _ = 1, 10 do
+            local boundThisPass = 0
+            for _, inst in ipairs(Workspace:GetDescendants()) do
+                local def = defByName[inst.Name]
+                if def then
+                    local part = resolvePart(inst)
+                    if part and not part:GetAttribute("RealmPortalBound") then
                         part:SetAttribute("RealmPortalBound", true)
                         self:_ensurePrompt(part, def)
+                        boundThisPass += 1
+                        totalBound += 1
                         if self._logger then
                             self._logger:Info("RealmPortalService bound portal", {
-                                part = def.part,
+                                part = inst:GetFullName(),
                                 layer = def.layer,
                             })
                         end
                     end
-                else
-                    allFound = false
                 end
             end
-            if allFound then
+            -- Done once we've bound at least one and a later pass finds nothing new to bind.
+            if totalBound > 0 and boundThisPass == 0 then
                 return
             end
             task.wait(2)
-        end
-        if self._logger then
-            self._logger:Warn(
-                "RealmPortalService: some portals never appeared",
-                { expected = portals }
-            )
         end
     end)
 end
