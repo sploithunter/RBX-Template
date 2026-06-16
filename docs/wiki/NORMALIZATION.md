@@ -38,8 +38,11 @@ Canonical: `OverheadBar` (world fill bars), `HudCard` + `StatusBadges` (combat c
   ~1713-1746) — pets+enemies use `OverheadBar`, crystals don't. NOTE: migrating also means moving the
   breakable bar UPDATE/bind path (it finds Frames named `Health`/`Boost`) onto OverheadBar's
   `fillOf`/`setFraction`, AND keeping authored-crystal billboards working. Careful pass + live verify.
-- **5 on-screen fill bars** hand-rolled (BaseUI quest, QuestPanel, EffectsPanel, PlayerBar XP,
-  SettingsPanel slider) → extract a shared `FillBar` (configurable corner radius / gradient).
+- On-screen fill bars → shared `FillBar` (`src/Client/UI/FillBar.lua`). DONE: QuestPanel tracker,
+  EffectsPanel duration, BaseUI on-screen quest tracker. DELIBERATELY LEFT: PlayerBar **XP bar**
+  (bespoke — glossy, area-tinted live-recolored gradient + 10-segment level mechanic; a distinct
+  widget, not a generic bar), SettingsPanel **slider** (an input control, not a status bar),
+  SquadHud **shield bar** (small; migrate when next touched). New generic bars use FillBar.
 - **~6 hand-rolled pills/capsules** (AdminController, BootLoader, CurrencyStyle, HotbarBar,
   PowerChoiceMenu, InventoryPanel) → a shared `Pill` component.
 - `InventoryPanel` still carries an inline copy of `PetCardStyle` → use the shared module.

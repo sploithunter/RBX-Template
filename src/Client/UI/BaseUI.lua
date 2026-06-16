@@ -43,6 +43,7 @@ local Debris = game:GetService("Debris")
 
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
+local FillBar = require(script.Parent.FillBar)
 
 -- Load Logger with fallback
 local Logger
@@ -2170,33 +2171,19 @@ function BaseUI:_createQuestTrackerElement(config, parent)
     description.ZIndex = 13
     description.Parent = parent
 
-    -- Progress bar background
-    local progressBG = Instance.new("Frame")
-    progressBG.Name = "ProgressBackground"
-    progressBG.Size = UDim2.new(1, -20, 0, 15)
-    progressBG.Position = UDim2.new(0, 10, 0, yOffset + 67)
-    progressBG.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-    progressBG.BorderSizePixel = 0
-    progressBG.ZIndex = 13
-    progressBG.Parent = parent
-
-    local progressCorner = Instance.new("UICorner")
-    progressCorner.CornerRadius = UDim.new(0, 8)
-    progressCorner.Parent = progressBG
-
-    -- Progress bar fill
-    local progressFill = Instance.new("Frame")
-    progressFill.Name = "ProgressFill"
-    progressFill.Size = UDim2.new(self.questData.progress / self.questData.maxProgress, 0, 1, 0)
-    progressFill.Position = UDim2.new(0, 0, 0, 0)
-    progressFill.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
-    progressFill.BorderSizePixel = 0
-    progressFill.ZIndex = 14
-    progressFill.Parent = progressBG
-
-    local fillCorner = Instance.new("UICorner")
-    fillCorner.CornerRadius = UDim.new(0, 8)
-    fillCorner.Parent = progressFill
+    -- Progress bar (shared FillBar)
+    local maxProg = self.questData.maxProgress or 0
+    local progressBG = FillBar.create({
+        parent = parent,
+        name = "ProgressBackground",
+        size = UDim2.new(1, -20, 0, 15),
+        position = UDim2.new(0, 10, 0, yOffset + 67),
+        cornerRadius = UDim.new(0, 8),
+        bgColor = Color3.fromRGB(50, 50, 60),
+        fillColor = Color3.fromRGB(46, 204, 113),
+        fraction = maxProg > 0 and (self.questData.progress / maxProg) or 0,
+        zIndex = 13,
+    })
 
     -- Progress text
     local progressText = Instance.new("TextLabel")
@@ -2213,7 +2200,7 @@ function BaseUI:_createQuestTrackerElement(config, parent)
 
     -- Keep the tracker live from the real quest list (replaces the hardcoded placeholder).
     self._questDesc = description
-    self._questFill = progressFill
+    self._questFill = FillBar.fillOf(progressBG)
     self._questText = progressText
     self:_bindQuestTracker()
 
