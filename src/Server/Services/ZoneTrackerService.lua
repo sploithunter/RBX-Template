@@ -32,6 +32,18 @@ function ZoneTrackerService:Init()
     local areasConfig = self._configLoader and self._configLoader:LoadConfig("areas") or {}
     self._bounds = ZoneResolver.boundsFromAreas(areasConfig)
 
+    -- Realm worlds (Heaven_1/Hell_1) are copies of Home, so their biome floors reuse Home's part
+    -- NAMES ("Lava", "Ice", …). A raycast that maps by name alone would resolve a player standing in
+    -- Heaven_1 to the homeworld "Lava" area (already unlocked) — so the realm unlock prompt never
+    -- shows. Build the set of area-zone ids whose id is also a world folder name; when the floor we
+    -- land on lives inside such a world, the player is in that REALM zone, not the homeworld biome.
+    self._areaZoneIds = {}
+    for id, z in pairs(areasConfig.zones or {}) do
+        if type(z) == "table" and z.kind == "area" then
+            self._areaZoneIds[id] = true
+        end
+    end
+
     local cfg = (self._configLoader and self._configLoader:LoadConfig("zone_tracker")) or {}
     self._pollInterval = tonumber(cfg.poll_interval) or 0.25
     self._verticalBand = tonumber(cfg.vertical_band) or 80
@@ -136,9 +148,28 @@ function ZoneTrackerService:_resolveByRaycast(player)
     local origin = hrp.Position + Vector3.new(0, 5, 0)
     local hit = workspace:Raycast(origin, Vector3.new(0, -(self._raycastDepth + 5), 0), params)
     if hit and hit.Instance then
+        -- If the floor lives inside a realm world folder that is itself an area zone (Heaven_1/
+        -- Hell_1), the player is in that realm — return its zone id, NOT the shared biome name.
+        local worldName = self:_worldFolderName(hit.Instance)
+        if worldName and self._areaZoneIds[worldName] then
+            return worldName
+        end
         return self._baseplateArea[hit.Instance.Name]
     end
     return nil
+end
+
+-- Name of the Workspace.Maps child (world folder) that contains `inst`, or nil if not under Maps.
+function ZoneTrackerService:_worldFolderName(inst)
+    local maps = workspace:FindFirstChild("Maps")
+    if not maps then
+        return nil
+    end
+    local node = inst
+    while node and node.Parent and node.Parent ~= maps do
+        node = node.Parent
+    end
+    return (node and node.Parent == maps) and node.Name or nil
 end
 
 function ZoneTrackerService:_resolveFor(player)

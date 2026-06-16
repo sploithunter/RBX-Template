@@ -34,6 +34,10 @@ local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
 local OpsAlert = require(script.Parent.Parent.OpsAlert)
 local HatchTiming = require(ReplicatedStorage.Shared.Game.HatchTiming)
+local HttpService = game:GetService("HttpService")
+-- Area config for the zone-unlock hatch gate: a gated area's egg stand can only be hatched once the
+-- AREA is unlocked (same gate as its crystals). Mirrors ZoneService/ZoneUnlockPrompt membership.
+local areasConfig = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("areas"))
 
 -- Egg-hatch animation timing (not registered in Locations.ConfigFiles; require directly like
 -- the client does). Used to size the post-success cooldown so it tracks the client animation.
@@ -623,6 +627,41 @@ function EggService:ReleaseHatchLock(player, success, context)
     }
 end
 
+-- Zone-unlock hatch gate. The player is confirmed at the egg's stand (IsPlayerNearEgg), so their
+-- CurrentArea is that stand's zone. If that zone is gated and the player hasn't unlocked it, return
+-- the lock info (so hatching is blocked until they buy the unlock via the ZoneUnlockPrompt); nil if
+-- the area is free/unlocked. Membership mirrors ZoneService (UnlockedAreasJson SSOT) exactly.
+function EggService:GetAreaHatchLock(player)
+    local areaId = player:GetAttribute("CurrentArea")
+    if not areaId then
+        return nil
+    end
+    local zone = areasConfig and areasConfig.zones and areasConfig.zones[areaId]
+    local req = zone and zone.kind == "area" and zone.unlock
+    if type(req) ~= "table" or req.unlocked_by_default == true or not req.cost or req.cost <= 0 then
+        return nil -- free / starter / non-gated area
+    end
+    local raw = player:GetAttribute("UnlockedAreasJson")
+    if type(raw) == "string" and raw ~= "" then
+        local ok, list = pcall(function()
+            return HttpService:JSONDecode(raw)
+        end)
+        if ok and type(list) == "table" then
+            for _, id in ipairs(list) do
+                if id == areaId then
+                    return nil -- already unlocked
+                end
+            end
+        end
+    end
+    return {
+        areaId = areaId,
+        displayName = zone.display_name or areaId,
+        cost = req.cost,
+        currency = req.currency,
+    }
+end
+
 function EggService:HasEnoughCurrency(player, currency, cost)
     if self._dataService then
         return self._dataService:CanAfford(player, currency, cost),
@@ -1157,6 +1196,26 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         Logger:Warn("Player too far from egg", { player = player.Name, eggType = request.eggType })
         self:ReleaseHatchLock(player, false)
         return self:ReturnHatchError(player, request, "Too far away", "too_far")
+    end
+
+    -- Gated-area lock: you must UNLOCK the area (via the ZoneUnlockPrompt) before you can hatch its
+    -- egg — same gate as the area's crystals. The proximity check above guarantees CurrentArea is
+    -- this stand's zone.
+    local areaLock = self:GetAreaHatchLock(player)
+    if areaLock then
+        Logger:Warn("Player tried to hatch in a locked area", {
+            player = player.Name,
+            eggType = request.eggType,
+            area = areaLock.areaId,
+        })
+        self:ReleaseHatchLock(player, false)
+        return self:ReturnHatchError(
+            player,
+            request,
+            "Unlock " .. areaLock.displayName .. " first",
+            "area_locked",
+            areaLock
+        )
     end
 
     local entitlements = self:ResolveHatchEntitlements(player)
