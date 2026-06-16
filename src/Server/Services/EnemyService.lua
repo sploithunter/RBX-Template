@@ -49,6 +49,7 @@ local SupportAura = require(ReplicatedStorage.Shared.Game.SupportAura)
 local OverheadBar = require(ReplicatedStorage.Shared.UI.OverheadBar) -- shared enemy HP / pet endurance bar
 local PetLockout = require(ReplicatedStorage.Shared.Game.PetLockout)
 local ZoneResolver = require(ReplicatedStorage.Shared.Game.ZoneResolver)
+local EnemyLeash = require(ReplicatedStorage.Shared.Game.EnemyLeash)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local EnemyService = {}
@@ -70,6 +71,10 @@ function EnemyService:Init()
     -- CurrentArea are compared in one id space (Spawn/Meadow/Lava/Ice/Desert).
     local areasConfig = self._configLoader:LoadConfig("areas")
     self._areaBounds = (areasConfig and ZoneResolver.boundsFromAreas(areasConfig)) or {}
+    -- Movement leash regions resolved from the live map parts (configs/enemy_leash). Each region
+    -- is a union of footprint shapes; an enemy spawned inside one is confined to it (hard wall).
+    self._leashConfig = self._configLoader:LoadConfig("enemy_leash")
+    self._leashRegions = self:_buildLeashRegions(self._leashConfig)
     self._nextId = 0
     self._enemies = {} -- targetId -> { model, enemyId, nextAttack }
     -- pet model -> { lastHit } (weak so dead pets GC). Accumulated damage, the downed
@@ -167,7 +172,29 @@ function EnemyService:_setAggroOwner(entry, name)
     local model = entry.model
     if model and model.Parent then
         model:SetAttribute("AggroOwner", name or "")
+        if not name then
+            self:_publishAggroTarget(model, nil) -- disengaged: drop the red-beam ref
+        end
     end
+end
+
+-- Publish the exact pet/character this enemy is currently biting as a replicated ObjectValue
+-- ("AggroTargetRef"), so the client TargetBeams overlay can draw a red beam enemy->victim. This
+-- is the only client-readable handle on entry.targetPet (a server-side table field).
+function EnemyService:_publishAggroTarget(model, target)
+    if not (model and model.Parent) then
+        return
+    end
+    local ref = model:FindFirstChild("AggroTargetRef")
+    if not ref then
+        if target == nil then
+            return
+        end
+        ref = Instance.new("ObjectValue")
+        ref.Name = "AggroTargetRef"
+        ref.Parent = model
+    end
+    ref.Value = target
 end
 
 -- COMBAT ONRAMP gate (configs/combat.lua engagement.min_engage_level). Below the threshold a
@@ -193,6 +220,74 @@ function EnemyService:_areaAt(pos)
         return nil
     end
     return ZoneResolver.resolve(pos, self._areaBounds)
+end
+
+-- Resolve configs/enemy_leash into { regionName -> { shapes } } by reading the live map parts.
+-- box    -> the part's X/Z footprint (axis-aligned half-extents).
+-- circle -> a disc at the part's position, radius = half its largest horizontal dimension.
+-- A part that can't be found is skipped (logged), so a renamed map asset degrades gracefully.
+function EnemyService:_buildLeashRegions(cfg)
+    local regions = {}
+    if not (cfg and cfg.regions) then
+        return regions
+    end
+    local function resolvePart(path)
+        local node = Workspace
+        for segment in string.gmatch(path, "[^%.]+") do
+            node = node and node:FindFirstChild(segment)
+        end
+        return node
+    end
+    for name, shapeDefs in pairs(cfg.regions) do
+        local shapes = {}
+        for _, def in ipairs(shapeDefs) do
+            local part = resolvePart(def.part)
+            if part and part:IsA("BasePart") then
+                local p, s = part.Position, part.Size
+                if def.shape == "circle" then
+                    shapes[#shapes + 1] =
+                        { kind = "circle", cx = p.X, cz = p.Z, r = math.max(s.X, s.Z) / 2 }
+                else
+                    shapes[#shapes + 1] =
+                        { kind = "box", cx = p.X, cz = p.Z, halfX = s.X / 2, halfZ = s.Z / 2 }
+                end
+            elseif self._logger then
+                self._logger:Warn("Leash part not found", { region = name, part = def.part })
+            end
+        end
+        if #shapes > 0 then
+            regions[name] = shapes
+        end
+    end
+    return regions
+end
+
+-- The leash region (name) whose shape-union contains a spawn position, or nil if none. Stamped on
+-- the enemy at spawn so the chase step can be clamped to the SAME pen it spawned in.
+function EnemyService:_leashRegionAt(pos)
+    if not pos then
+        return nil
+    end
+    for name, shapes in pairs(self._leashRegions) do
+        if EnemyLeash.inside(pos.X, pos.Z, shapes) then
+            return name
+        end
+    end
+    return nil
+end
+
+-- LEASH a chase step into the enemy's spawn region (a hard wall at the region boundary). The
+-- region is a UNION of shapes (e.g. Grass mesh ∪ Spawn circle), so the enemy roams the whole pen
+-- but can't leave it. Y untouched. An enemy with no resolved region is returned unchanged.
+function EnemyService:_leashToHomeArea(entry, pos)
+    local region = entry and entry.leashRegion
+    local shapes = region and self._leashRegions[region]
+    if not shapes then
+        return pos
+    end
+    local inset = (self._leashConfig and self._leashConfig.inset) or 0
+    local x, z = EnemyLeash.clamp(pos.X, pos.Z, shapes, inset)
+    return Vector3.new(x, pos.Y, z)
 end
 
 -- TERRITORIAL gate (Jason): an enemy only engages a player who is in ITS area — so a foe across a
@@ -1303,6 +1398,7 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         return
     end
     entry.targetPet = targetPet -- published so co-attackers can spread off each other (below)
+    self:_publishAggroTarget(model, targetPet) -- red-beam ref for the TargetBeams admin overlay
 
     -- 4) CHASE the aggro target until in attack range. A tank/melee target orbits inside
     -- attack_range so the enemy just holds + bites it; a ranged target kites near the
@@ -1357,6 +1453,12 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     end
     if not wallAhead and (math.abs(np.x - ePos.X) > 1e-3 or math.abs(np.z - ePos.Z) > 1e-3) then
         local newPos = Vector3.new(np.x, groundedY, np.z)
+        -- LEASH: an enemy can chase up to the edge of the area it spawned in, but no further — a
+        -- hard wall at the area footprint. Stops desert foes from trailing the player across the
+        -- whole map. Clamps the step's X/Z into the home-area box (config bounds == the area mesh's
+        -- bounding box); enemies with no resolved home area (spawned off-grid) are left unclamped.
+        newPos = self:_leashToHomeArea(entry, newPos)
+        np.x, np.z = newPos.X, newPos.Z
         -- face the TARGET it's biting (the pet), not its movement slot
         local faceTarget = Vector3.new(targetPos.X, groundedY, targetPos.Z)
         -- Publish the step target instead of pivoting the model. The client (EnemyMotion)
@@ -2181,7 +2283,32 @@ function EnemyService:_assignPetTargets(eng)
                                 hp = (entry.model and entry.model:GetAttribute("HP")) or 0,
                                 aggro = AggroTable.get(entry.aggro, pet),
                                 teamDamage = (edef and edef.attack and edef.attack.damage) or 0,
+                                -- flyers hover (hover_height); a grounded chaser can't reach them.
+                                flyer = (edef and (edef.hover_height or 0) > 0) or false,
                             }
+                        end
+                    end
+                    -- REACHABILITY (chasers only): a melee/tank pet can't hit a hovering flyer, so
+                    -- it would stand there as a punching bag. If ANY ground-reachable enemy is in
+                    -- range, drop the flyers from its candidate set so it engages something it can
+                    -- actually hit; only fall back to a flyer when that's the sole option. Kiters
+                    -- shoot upward (horizontal distance above), so they keep flyers.
+                    if not kites then
+                        local hasGround = false
+                        for _, cand in ipairs(candidates) do
+                            if not cand.flyer then
+                                hasGround = true
+                                break
+                            end
+                        end
+                        if hasGround then
+                            local ground = {}
+                            for _, cand in ipairs(candidates) do
+                                if not cand.flyer then
+                                    ground[#ground + 1] = cand
+                                end
+                            end
+                            candidates = ground
                         end
                     end
                     local mode = pet:GetAttribute("TargetPriority")
@@ -2398,6 +2525,7 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
         aggro = AggroTable.new(),
         lastActiveAt = os.clock(), -- engagement timer seed (idle-despawn clock; refreshed while aggro'd)
         homeArea = self:_areaAt(position), -- territorial: only engages players in this area
+        leashRegion = self:_leashRegionAt(position), -- movement pen (hard wall at its boundary)
         halfHeight = halfHeight, -- ground-snap pivot offset
         hoverHeight = tonumber(def.hover_height) or 0, -- flyers float this far above the ground
     }

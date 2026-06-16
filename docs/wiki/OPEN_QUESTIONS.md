@@ -34,6 +34,7 @@ Status: current
 - How strict should config validation be during early prototyping versus shipping?
 - Which systems should be feature-flagged first?
 - What is the minimum useful admin panel for balancing and world-builder validation?
+- Should the player be confined to an area's bounds (reusing the enemy leash union clamp + a Y ceiling), so a future flying power can't carry them off the map — while still allowing free biome transitions and world teleports? Possibility recorded in [Area Bounds & Movement Leash](AREA_BOUNDS_LEASH.md); the open part is client-side clamp (+ anti-cheat) vs. collision walls, and what the per-world allowed-union should be.
 
 ## Links
 

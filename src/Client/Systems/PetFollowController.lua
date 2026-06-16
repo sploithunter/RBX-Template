@@ -704,14 +704,22 @@ function PetFollowController.start()
             local kiteSnipe = false
             if breakable and roleKites(pet) then
                 local c = breakable:GetPivot().Position
-                local d = Vector3.new(cf.Position.X - c.X, 0, cf.Position.Z - c.Z)
-                -- MARGIN (Jason's gold dragon "stays at my shoulder, not close enough
-                -- to fire"): this decision measures PLAYER->target, but the server
-                -- mining gate measures PET->target — and the formation slot sits
-                -- studs behind the player. Without the margin, a target near the
-                -- range boundary passes here and fails the gate: the pet holds
-                -- formation and never fires. Beyond the margin it advances instead.
-                kiteSnipe = d.Magnitude <= (attackRangeOf(pet) - 8)
+                local petPos = pet:GetPivot().Position
+                -- Snipe-in-place ONLY if the pet's formation SLOT would actually be within attack
+                -- range of the target — otherwise advance to a forward standoff and fire from there.
+                -- The old check measured PLAYER->target minus a fixed 8-stud fudge, but a kiter's slot
+                -- sits ~10-15 studs BEHIND the player; when the player stood ~20 out from a target the
+                -- pet "sniped" from ~33 (outside its 28 range) and froze forever (Jason's gold dragon
+                -- "stays at my shoulder, never fires"). Estimate the slot as player->target plus the
+                -- pet's own current distance-behind-the-player (its formation depth); the triangle-
+                -- inequality over-estimate errs toward ADVANCING, which is what we want for engaging.
+                -- As the pet advances forward its depth grows, so it stays in advance mode (no flip-
+                -- flop) and holds at the attack-group standoff, which is inside range.
+                local playerToTarget =
+                    Vector3.new(cf.Position.X - c.X, 0, cf.Position.Z - c.Z).Magnitude
+                local formationDepth =
+                    Vector3.new(petPos.X - cf.Position.X, 0, petPos.Z - cf.Position.Z).Magnitude
+                kiteSnipe = (playerToTarget + formationDepth) <= attackRangeOf(pet)
             end
             if kiteSnipe then
                 -- Ranged in range: hold the player formation and fire, facing the target.
@@ -883,11 +891,23 @@ function PetFollowController.start()
                     end
                 end
                 local target = g.center + Vector3.new(off.x, off.y, off.z)
-                -- Map clamp: if the slot is inside a wall/rock, hold the pet's current (already-clear)
-                -- spot instead of marching into geometry / off the map. Only enemy fights can drift
-                -- the slot far (mining targets sit on clear ground), so gate on g.isEnemy.
+                -- Map clamp: the standoff slot can land inside authored geometry (a rock/cliff the
+                -- foe hovers against, a cactus). Do NOT freeze the pet at its current spot — that
+                -- strands the whole squad whenever an enemy sits near terrain (combat just stops,
+                -- the exact "pets do nothing" bug). Pets don't collide, so instead walk the goal
+                -- back along pet->target to the nearest CLEAR point: the pet still advances as far
+                -- as it can and gets into range. Only if the entire approach is blocked do we hold.
                 if g.isEnemy and slotBlocked(target, mapExclude) then
-                    target = (baseCF[pet] and baseCF[pet].Position) or pet:GetPivot().Position
+                    local from = (baseCF[pet] and baseCF[pet].Position) or pet:GetPivot().Position
+                    local cleared
+                    for step = 1, 6 do
+                        local probe = target:Lerp(from, step / 7) -- from the goal back toward the pet
+                        if not slotBlocked(probe, mapExclude) then
+                            cleared = probe
+                            break
+                        end
+                    end
+                    target = cleared or from
                 end
                 local toC = Vector3.new(g.center.X - target.X, 0, g.center.Z - target.Z)
                 local dir = toC.Magnitude > 0.01 and toC.Unit or upFwd

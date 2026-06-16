@@ -32,6 +32,19 @@ function ZoneResolver.contains(pos, area, verticalBand, margin)
         and math.abs(pos.y - c.y) <= halfY
 end
 
+-- Clamp `pos` into `area`'s X/Z footprint, optionally inset by `margin` so a mover stops just
+-- inside the edge instead of straddling it. Y is left untouched (areas are thin floor slabs).
+-- Returns the clamped x, z. Used to LEASH enemies to the area they spawned in (hard wall).
+function ZoneResolver.clampToFootprint(pos, area, margin)
+    margin = margin or 0
+    local c, s = area.center, area.size
+    local halfX = math.max(0, (s.x or 0) / 2 - margin)
+    local halfZ = math.max(0, (s.z or 0) / 2 - margin)
+    local x = math.clamp(pos.x, c.x - halfX, c.x + halfX)
+    local z = math.clamp(pos.z, c.z - halfZ, c.z + halfZ)
+    return x, z
+end
+
 -- Footprint area (X*Z) — the specificity tiebreak. Smaller footprint = more specific.
 local function footprint(area)
     return (area.size.x or 0) * (area.size.z or 0)

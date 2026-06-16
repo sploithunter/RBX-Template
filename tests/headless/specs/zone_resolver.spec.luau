@@ -99,4 +99,26 @@ return function()
             ).to.equal("Ice")
         end)
     end)
+
+    describe("ZoneResolver.clampToFootprint (enemy leash)", function()
+        local area =
+            { id = "Box", center = { x = 0, y = 0, z = 0 }, size = { x = 100, y = 4, z = 60 } }
+
+        it("leaves a point already inside the footprint unchanged", function()
+            local x, z = ZoneResolver.clampToFootprint({ x = 10, y = 50, z = -5 }, area)
+            expect(x).to.equal(10)
+            expect(z).to.equal(-5)
+        end)
+
+        it("clamps a point past the edge back onto the boundary", function()
+            local x, z = ZoneResolver.clampToFootprint({ x = 999, y = 0, z = -999 }, area)
+            expect(x).to.equal(50) -- +halfX
+            expect(z).to.equal(-30) -- -halfZ
+        end)
+
+        it("insets by margin so the mover stops just inside the edge", function()
+            local x = ZoneResolver.clampToFootprint({ x = 999, y = 0, z = 0 }, area, 2)
+            expect(x).to.equal(48) -- halfX(50) - margin(2)
+        end)
+    end)
 end
