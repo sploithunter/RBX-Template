@@ -64,6 +64,10 @@ return {
         -- LOCKED (Jason): no realm content behind the gates yet — prompts disabled,
         -- a big 🔒 billboard on every portal. Flip false when realms have content.
         locked = true,
+        -- ADMIN test access: while locked, admins can still use the portals (prompt enabled for
+        -- them; _onTriggered gates the action to admins, and a layer with no built geometry is
+        -- refused so admins can't fall into the void). The public still sees only the 🔒.
+        admin_unlock = true,
         lock_badge_studs = 10, -- billboard size (the arches are huge)
         bypass_access = true,
         prompt_hold = 0,

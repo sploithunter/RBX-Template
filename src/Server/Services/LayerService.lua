@@ -175,6 +175,7 @@ function LayerService:UseLayer(player, layerId, opts)
         return { ok = false, reason = "unknown_layer" }
     end
 
+    local fromLayer = data.CurrentLayer or "base" -- captured before we overwrite it (for the Y-move)
     local soul = data.Soul or 0
     local cost, currency = 0, nil
 
@@ -202,6 +203,21 @@ function LayerService:UseLayer(player, layerId, opts)
 
     data.CurrentLayer = layerId
     self:_publishLayer(player, layerId)
+
+    -- PHYSICAL MOVE to the layer's Y-offset geometry (the previously-deferred teleport): shift the
+    -- character by the delta between the old and new layer's y_offset (base = 0). The stacked worlds
+    -- are identical copies, so a pure Y shift lands the player at the SAME spot in the target realm.
+    local access = self._layersConfig.access or {}
+    local dy = ((access[layerId] or {}).y_offset or 0) - ((access[fromLayer] or {}).y_offset or 0)
+    if dy ~= 0 then
+        local char = player.Character
+        if char and char.PrimaryPart then
+            pcall(function()
+                char:PivotTo(char:GetPivot() + Vector3.new(0, dy, 0))
+            end)
+        end
+    end
+
     self._dataService:RequestSave(player, "layer_use_" .. layerId, { critical = true })
 
     if self._logger then

@@ -47,6 +47,41 @@ function RealmPortalService:_layerService()
     return ok and svc or nil
 end
 
+function RealmPortalService:_adminService()
+    local locator = _G.RBXTemplateServices
+    if not locator then
+        return nil
+    end
+    local ok, svc = pcall(function()
+        return locator:Get("AdminService")
+    end)
+    return ok and svc or nil
+end
+
+function RealmPortalService:_isAdmin(player)
+    local admin = self:_adminService()
+    return (admin and admin:IsAuthorized(player)) and true or false
+end
+
+-- The Maps/<World> folder name for a layer id: "heaven_1" -> "Heaven_1", "base" -> "Home".
+local function layerFolderName(layerId)
+    if layerId == "base" then
+        return "Home"
+    end
+    local realm, n = tostring(layerId):match("^(%a+)_(%d+)$")
+    if realm then
+        return realm:sub(1, 1):upper() .. realm:sub(2) .. "_" .. n
+    end
+    return layerId
+end
+
+-- A layer is enterable only if its geometry exists, else the player falls into the void. The
+-- stacked worlds are authored incrementally, so most layers have no folder yet.
+function RealmPortalService:_layerHasGeometry(layerId)
+    local maps = Workspace:FindFirstChild("Maps")
+    return (maps and maps:FindFirstChild(layerFolderName(layerId))) and true or false
+end
+
 -- Resolve a named workspace instance to a BasePart to host the prompt (Model -> primary/first part).
 local function resolvePart(inst)
     if not inst then
@@ -65,15 +100,25 @@ end
 -- (Per-layer toggle lets you hop base -> Halo3 -> Halo5 to test any depth, and step out anywhere.)
 function RealmPortalService:_onTriggered(player, destLayer)
     if self._portalsConfig.locked == true then
-        return -- gates locked: no realm content yet
+        -- admin_unlock: admins may pass the lock to TEST realms; everyone else stays blocked.
+        if not (self._portalsConfig.admin_unlock == true and self:_isAdmin(player)) then
+            return
+        end
     end
     local layers = self:_layerService()
     if not layers then
         return
     end
-    local force = self._portalsConfig.bypass_access ~= false
     local current = layers:GetCurrentLayer(player)
     local target = (current == destLayer) and "base" or destLayer
+    -- Never teleport INTO a layer whose geometry isn't built yet (a void fall). base is always safe.
+    if target ~= "base" and not self:_layerHasGeometry(target) then
+        if self._logger then
+            self._logger:Info("Realm portal blocked: layer has no geometry", { layer = target })
+        end
+        return
+    end
+    local force = self._portalsConfig.bypass_access ~= false
     layers:UseLayer(player, target, { force = force })
 end
 
@@ -93,9 +138,11 @@ function RealmPortalService:_ensurePrompt(part, def)
     prompt.KeyboardKeyCode = Enum.KeyCode.E
     prompt.HoldDuration = tonumber(self._portalsConfig.prompt_hold) or 0
     prompt.MaxActivationDistance = tonumber(self._portalsConfig.max_distance) or 14
-    -- LOCKED gates (no realm content yet): the prompt is dead and the portal wears
-    -- a big lock badge instead — config flip re-opens everything
-    prompt.Enabled = self._portalsConfig.locked ~= true
+    -- LOCKED gates (no realm content yet): the prompt is dead and the portal wears a big lock badge.
+    -- admin_unlock re-enables the prompt so ADMINS can test (the lock badge stays for everyone, and
+    -- _onTriggered still gates the action to admins). Config flip re-opens everything for real.
+    prompt.Enabled = (self._portalsConfig.locked ~= true)
+        or (self._portalsConfig.admin_unlock == true)
     self:_ensureLockBadge(part)
 
     if not prompt:GetAttribute("RealmPortalConnected") then
