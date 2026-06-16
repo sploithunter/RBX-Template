@@ -40,6 +40,32 @@ return {
         meerkat = "support", -- Desert buffer (yield)
         -- Heaven (solar egg) — a full archetype spread so the first realm egg fields a real team:
         emberling_cherub = "support", -- Heaven buffer (HEAL — angelic healer; see support_auras)
+        -- Realm pets (Heaven Desert + Hell) — generated
+        sun_scarab = "support",
+        mirage_jackal = "melee",
+        dawn_camel = "tank",
+        gilded_sphinx = "ranged",
+        solar_roc = "ranged",
+        cinderling_imp = "support",
+        brimstone_salamander = "melee",
+        ashmane_lion = "tank",
+        ashfeather_phoenix = "ranged",
+        abyssal_wyrm = "ranged",
+        carrion_scarab = "support",
+        phantom_jackal = "melee",
+        dust_camel = "tank",
+        glass_sphinx = "ranged",
+        ash_roc = "ranged",
+        rimelight_hare = "support",
+        rimewraith_fox = "melee",
+        dread_owl = "ranged",
+        black_seraph = "tank",
+        black_ice_leviathan = "ranged",
+        blightlamb = "support",
+        dread_hare = "melee",
+        rotleaf_stag = "tank",
+        wither_sprite = "ranged",
+        gravewood_ent = "tank",
         radiant_salamander = "melee", -- ground bruiser
         sunmane_lion = "tank", -- front-line soak/taunt
         solar_phoenix = "ranged", -- flies + fires from range
@@ -84,6 +110,12 @@ return {
         -- A gentle continuous mend of the most-hurt ally (fraction of its pool every 2s); kept well
         -- under Colorado's old 20%/1.5s that read as invulnerable. Tune freely.
         emberling_cherub = { kind = "heal", interval = 2.0, fraction = 0.08, duration = 6 },
+        -- Realm support pets — generated
+        sun_scarab = { kind = "yield", interval = 2.0, mult = 1.1667, duration = 6 },
+        cinderling_imp = { kind = "offense", interval = 2.0, mult = 1.1667, duration = 6 },
+        carrion_scarab = { kind = "yield", interval = 2.0, mult = 1.1667, duration = 6 },
+        rimelight_hare = { kind = "heal", interval = 2.0, fraction = 0.08, duration = 6 },
+        blightlamb = { kind = "defense", interval = 2.0, amount = 53.3, duration = 6 },
         -- Bear: RAGE — an inherent power the pet casts on ITSELF (Jason: per-SPECIES
         -- assignment like the zone buffers, NOT a tank-role trait — "I don't want all
         -- tanks to have rage"). The starter tank gets angry as it soaks: at or below

@@ -26,5 +26,117 @@
    "texture": "assets/exports/eggs/solar_egg/solar_egg.png"
   },
   "uploadedBy": "self-serve (Claude) 2026-06-16"
+ },
+ "infernal_egg": {
+  "icon_decal": "139281307686047",
+  "icon_image": "124723876358018",
+  "model_asset": "138837852735149",
+  "mesh_id": "rbxassetid://72980753133146",
+  "mesh_image": "rbxassetid://87250695013962",
+  "creator": "Open Simulator Group (15872767)",
+  "realm": "hell",
+  "origin": "fire",
+  "sources": {
+   "icon": "assets/source/eggs/infernal_egg.png",
+   "fbx": "assets/exports/eggs/infernal_egg/infernal_egg_5k.fbx",
+   "texture": "assets/exports/eggs/infernal_egg/infernal_egg.png"
+  },
+  "uploadedBy": "upload_eggs.js 2026-06-16"
+ },
+ "aurora_egg": {
+  "icon_decal": "112520698555463",
+  "icon_image": "114046727287190",
+  "model_asset": "74522830834998",
+  "mesh_id": "rbxassetid://83610100600955",
+  "mesh_image": "rbxassetid://140277885621849",
+  "creator": "Open Simulator Group (15872767)",
+  "realm": "heaven",
+  "origin": "ice",
+  "sources": {
+   "icon": "assets/source/eggs/aurora_egg.png",
+   "fbx": "assets/exports/eggs/aurora_egg/aurora_egg_5k.fbx",
+   "texture": "assets/exports/eggs/aurora_egg/aurora_egg.png"
+  },
+  "uploadedBy": "upload_eggs.js 2026-06-16"
+ },
+ "bloom_egg": {
+  "icon_decal": "111536533168238",
+  "icon_image": "90209675714356",
+  "model_asset": "135147499819558",
+  "mesh_id": "rbxassetid://95206555175588",
+  "mesh_image": "rbxassetid://97881865156853",
+  "creator": "Open Simulator Group (15872767)",
+  "realm": "heaven",
+  "origin": "earth",
+  "sources": {
+   "icon": "assets/source/eggs/bloom_egg.png",
+   "fbx": "assets/exports/eggs/bloom_egg/bloom_egg_5k.fbx",
+   "texture": "assets/exports/eggs/bloom_egg/bloom_egg.png"
+  },
+  "uploadedBy": "upload_eggs.js 2026-06-16"
+ },
+ "gilded_egg": {
+  "icon_decal": "115099478312114",
+  "icon_image": "139125176202650",
+  "model_asset": "116703860678458",
+  "mesh_id": "rbxassetid://96910056672038",
+  "mesh_image": "rbxassetid://95387752152620",
+  "creator": "Open Simulator Group (15872767)",
+  "realm": "heaven",
+  "origin": "desert",
+  "sources": {
+   "icon": "assets/source/eggs/gilded_egg.png",
+   "fbx": "assets/exports/eggs/gilded_egg/gilded_egg_5k.fbx",
+   "texture": "assets/exports/eggs/gilded_egg/gilded_egg.png"
+  },
+  "uploadedBy": "upload_eggs.js 2026-06-16"
+ },
+ "black_ice_egg": {
+  "icon_decal": "138265981027828",
+  "icon_image": "129696909512326",
+  "model_asset": "133490974371883",
+  "mesh_id": "rbxassetid://77865901338290",
+  "mesh_image": "rbxassetid://117724720749402",
+  "creator": "Open Simulator Group (15872767)",
+  "realm": "hell",
+  "origin": "ice",
+  "sources": {
+   "icon": "assets/source/eggs/black_ice_egg.png",
+   "fbx": "assets/exports/eggs/black_ice_egg/black_ice_egg_5k.fbx",
+   "texture": "assets/exports/eggs/black_ice_egg/black_ice_egg.png"
+  },
+  "uploadedBy": "upload_eggs.js 2026-06-16"
+ },
+ "ash_egg": {
+  "icon_decal": "117360336936196",
+  "icon_image": "140611734712844",
+  "model_asset": "85400070997354",
+  "mesh_id": "rbxassetid://76039070814624",
+  "mesh_image": "rbxassetid://81432308149691",
+  "creator": "Open Simulator Group (15872767)",
+  "realm": "hell",
+  "origin": "desert",
+  "sources": {
+   "icon": "assets/source/eggs/ash_egg.png",
+   "fbx": "assets/exports/eggs/ash_egg/ash_egg_5k.fbx",
+   "texture": "assets/exports/eggs/ash_egg/ash_egg.png"
+  },
+  "uploadedBy": "upload_eggs.js 2026-06-16"
+ },
+ "blight_egg": {
+  "icon_decal": "114800547541385",
+  "icon_image": "99525542754369",
+  "model_asset": "120754517837077",
+  "mesh_id": "rbxassetid://92966116192331",
+  "mesh_image": "rbxassetid://110483576540897",
+  "creator": "Open Simulator Group (15872767)",
+  "realm": "hell",
+  "origin": "earth",
+  "sources": {
+   "icon": "assets/source/eggs/blight_egg.png",
+   "fbx": "assets/exports/eggs/blight_egg/blight_egg_5k.fbx",
+   "texture": "assets/exports/eggs/blight_egg/blight_egg.png"
+  },
+  "uploadedBy": "upload_eggs.js 2026-06-16"
  }
 }

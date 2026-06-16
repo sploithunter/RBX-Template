@@ -268,5 +268,465 @@
     "origin": "grass",
     "variant": "basic",
     "uploadedBy": "self-serve (Claude) 2026-06-16 | resolved 2026-06-16"
+  },
+  "solar_roc_basic": {
+    "modelAssetId": "77466398693286",
+    "textureDecalId": "81051964489830",
+    "meshId": "rbxassetid://116671854394638",
+    "imageId": "rbxassetid://115618589082921",
+    "realm": "heaven",
+    "origin": "desert",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "solar_roc_gold": {
+    "modelAssetId": "94602853822204",
+    "textureDecalId": "94236123163889",
+    "meshId": "rbxassetid://128027754188600",
+    "imageId": "rbxassetid://83759859428776",
+    "realm": "heaven",
+    "origin": "desert",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "dawn_camel_basic": {
+    "modelAssetId": "87734914300672",
+    "textureDecalId": "78245924424031",
+    "meshId": "rbxassetid://139355234799890",
+    "imageId": "rbxassetid://104395483900979",
+    "realm": "heaven",
+    "origin": "desert",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "dawn_camel_gold": {
+    "modelAssetId": "96995575267372",
+    "textureDecalId": "89451556406464",
+    "meshId": "rbxassetid://74527311568984",
+    "imageId": "rbxassetid://118216770630396",
+    "realm": "heaven",
+    "origin": "desert",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "gilded_sphinx_basic": {
+    "modelAssetId": "130799487919003",
+    "textureDecalId": "122835939664814",
+    "meshId": "rbxassetid://122480587896006",
+    "imageId": "rbxassetid://87378733668373",
+    "realm": "heaven",
+    "origin": "desert",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "gilded_sphinx_gold": {
+    "modelAssetId": "78826340001585",
+    "textureDecalId": "117209635907409",
+    "meshId": "rbxassetid://81521301168767",
+    "imageId": "rbxassetid://103204422041182",
+    "realm": "heaven",
+    "origin": "desert",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "mirage_jackal_basic": {
+    "modelAssetId": "87685913092532",
+    "textureDecalId": "86483693937331",
+    "meshId": "rbxassetid://86089167601576",
+    "imageId": "rbxassetid://79926349825243",
+    "realm": "heaven",
+    "origin": "desert",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "mirage_jackal_gold": {
+    "modelAssetId": "110957222213009",
+    "textureDecalId": "86008064411422",
+    "meshId": "rbxassetid://71669047099658",
+    "imageId": "rbxassetid://119902014925489",
+    "realm": "heaven",
+    "origin": "desert",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "sun_scarab_basic": {
+    "modelAssetId": "127572589035780",
+    "textureDecalId": "124722252099030",
+    "meshId": "rbxassetid://73332712518373",
+    "imageId": "rbxassetid://134203791912591",
+    "realm": "heaven",
+    "origin": "desert",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "sun_scarab_gold": {
+    "modelAssetId": "86277105681791",
+    "textureDecalId": "86248770884671",
+    "meshId": "rbxassetid://104348542190408",
+    "imageId": "rbxassetid://92963956113960",
+    "realm": "heaven",
+    "origin": "desert",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "wither_sprite_basic": {
+    "modelAssetId": "120364094428800",
+    "textureDecalId": "128178603116988",
+    "meshId": "rbxassetid://134744771703129",
+    "imageId": "rbxassetid://81462683371606",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "wither_sprite_gold": {
+    "modelAssetId": "86635271476100",
+    "textureDecalId": "81786696873557",
+    "meshId": "rbxassetid://139193192765458",
+    "imageId": "rbxassetid://134796044100436",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "ash_roc_basic": {
+    "modelAssetId": "78098221738959",
+    "textureDecalId": "111420147699030",
+    "meshId": "rbxassetid://75669852536753",
+    "imageId": "rbxassetid://98251479011998",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "ash_roc_gold": {
+    "modelAssetId": "131139794481046",
+    "textureDecalId": "93712469062336",
+    "meshId": "rbxassetid://130975680217736",
+    "imageId": "rbxassetid://92821105693774",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "dust_camel_basic": {
+    "modelAssetId": "71378307182830",
+    "textureDecalId": "72684299010340",
+    "meshId": "rbxassetid://82798917595161",
+    "imageId": "rbxassetid://97653779839485",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "dust_camel_gold": {
+    "modelAssetId": "73512030451974",
+    "textureDecalId": "89332953712729",
+    "meshId": "rbxassetid://138374942461875",
+    "imageId": "rbxassetid://104511804218076",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "glass_sphinx_basic": {
+    "modelAssetId": "114111371106680",
+    "textureDecalId": "131258541263380",
+    "meshId": "rbxassetid://118457170788842",
+    "imageId": "rbxassetid://111438588093806",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "glass_sphinx_gold": {
+    "modelAssetId": "103723030473259",
+    "textureDecalId": "76735790162874",
+    "meshId": "rbxassetid://105258154096279",
+    "imageId": "rbxassetid://134847103626707",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "phantom_jackal_basic": {
+    "modelAssetId": "130185921277585",
+    "textureDecalId": "79971525625209",
+    "meshId": "rbxassetid://79946135453979",
+    "imageId": "rbxassetid://135322483297246",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "phantom_jackal_gold": {
+    "modelAssetId": "117510594967680",
+    "textureDecalId": "74455780130406",
+    "meshId": "rbxassetid://75043902095149",
+    "imageId": "rbxassetid://80589132499430",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "carrion_scarab_basic": {
+    "modelAssetId": "117335665507996",
+    "textureDecalId": "101911866955410",
+    "meshId": "rbxassetid://98306065841571",
+    "imageId": "rbxassetid://129648894206925",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "carrion_scarab_gold": {
+    "modelAssetId": "129157903509757",
+    "textureDecalId": "78825189201390",
+    "meshId": "rbxassetid://138354454854951",
+    "imageId": "rbxassetid://85049669208984",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "gravewood_ent_basic": {
+    "modelAssetId": "86873077728126",
+    "textureDecalId": "78042106589625",
+    "meshId": "rbxassetid://109444894295382",
+    "imageId": "rbxassetid://120236929167829",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "gravewood_ent_gold": {
+    "modelAssetId": "98579334338214",
+    "textureDecalId": "87375083438477",
+    "meshId": "rbxassetid://123953246844670",
+    "imageId": "rbxassetid://118797679746109",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "rotleaf_stag_basic": {
+    "modelAssetId": "133418959918312",
+    "textureDecalId": "71014866963022",
+    "meshId": "rbxassetid://93266374910718",
+    "imageId": "rbxassetid://89632484169244",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "rotleaf_stag_gold": {
+    "modelAssetId": "76716381727881",
+    "textureDecalId": "83098047489606",
+    "meshId": "rbxassetid://127689471104912",
+    "imageId": "rbxassetid://100017137282495",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "dread_hare_basic": {
+    "modelAssetId": "120339468540231",
+    "textureDecalId": "124681914252929",
+    "meshId": "rbxassetid://121440684335083",
+    "imageId": "rbxassetid://92304520820784",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "blightlamb_basic": {
+    "modelAssetId": "93573224643541",
+    "textureDecalId": "74591421443598",
+    "meshId": "rbxassetid://139517913010828",
+    "imageId": "rbxassetid://79520465410591",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "blightlamb_gold": {
+    "modelAssetId": "119574042258859",
+    "textureDecalId": "108289655573568",
+    "meshId": "rbxassetid://123137786714004",
+    "imageId": "rbxassetid://100726203509737",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "abyssal_wyrm_basic": {
+    "modelAssetId": "96183865260803",
+    "textureDecalId": "71745721988393",
+    "meshId": "rbxassetid://120251779791971",
+    "imageId": "rbxassetid://105911393275923",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "abyssal_wyrm_gold": {
+    "modelAssetId": "79527250782964",
+    "textureDecalId": "131896643492869",
+    "meshId": "rbxassetid://98720896512023",
+    "imageId": "rbxassetid://95319838784226",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "brimstone_salamander_basic": {
+    "modelAssetId": "82354950778738",
+    "textureDecalId": "92931054694876",
+    "meshId": "rbxassetid://129063913885552",
+    "imageId": "rbxassetid://82463506593661",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "brimstone_salamander_gold": {
+    "modelAssetId": "78796595125199",
+    "textureDecalId": "84679941073203",
+    "meshId": "rbxassetid://95603490039912",
+    "imageId": "rbxassetid://98116339898928",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "ashfeather_phoenix_basic": {
+    "modelAssetId": "96069031103269",
+    "textureDecalId": "71220122872799",
+    "meshId": "rbxassetid://122905788999757",
+    "imageId": "rbxassetid://134594543635884",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "ashfeather_phoenix_gold": {
+    "modelAssetId": "74935903643689",
+    "textureDecalId": "109863535638832",
+    "meshId": "rbxassetid://133206474330233",
+    "imageId": "rbxassetid://133230643312925",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "ashmane_lion_basic": {
+    "modelAssetId": "85898892229498",
+    "textureDecalId": "129018804467121",
+    "meshId": "rbxassetid://130895363032605",
+    "imageId": "rbxassetid://86639577582230",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "rimelight_hare_gold": {
+    "modelAssetId": "88378580926301",
+    "textureDecalId": "97508030636013",
+    "meshId": "rbxassetid://98069080756576",
+    "imageId": "rbxassetid://104105788222325",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "black_ice_leviathan_basic": {
+    "modelAssetId": "80192036087196",
+    "textureDecalId": "86290539461291",
+    "meshId": "rbxassetid://132408400724358",
+    "imageId": "rbxassetid://109056186265736",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "black_ice_leviathan_gold": {
+    "modelAssetId": "126750138237749",
+    "textureDecalId": "110512783985816",
+    "meshId": "rbxassetid://125129952786233",
+    "imageId": "rbxassetid://114238718029724",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "black_seraph_basic": {
+    "modelAssetId": "71220350292534",
+    "textureDecalId": "95087933762514",
+    "meshId": "rbxassetid://101628787878969",
+    "imageId": "rbxassetid://118744003801200",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "dread_owl_basic": {
+    "modelAssetId": "82439707348792",
+    "textureDecalId": "108073122268410",
+    "meshId": "rbxassetid://137504379335505",
+    "imageId": "rbxassetid://109944839650581",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "dread_owl_gold": {
+    "modelAssetId": "104170830025983",
+    "textureDecalId": "94875497105498",
+    "meshId": "rbxassetid://111230161187895",
+    "imageId": "rbxassetid://108865915940822",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "rimewraith_fox_basic": {
+    "modelAssetId": "135547282234290",
+    "textureDecalId": "75682255132769",
+    "meshId": "rbxassetid://111762205560710",
+    "imageId": "rbxassetid://74970518631613",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "rimewraith_fox_gold": {
+    "modelAssetId": "85409160603912",
+    "textureDecalId": "117131206555080",
+    "meshId": "rbxassetid://78979230424025",
+    "imageId": "rbxassetid://116612211529697",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "cinderling_imp_basic": {
+    "modelAssetId": "111259309798837",
+    "textureDecalId": "122581774277827",
+    "meshId": "rbxassetid://76817837300598",
+    "imageId": "rbxassetid://138153098673951",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "cinderling_imp_gold": {
+    "modelAssetId": "114551743477812",
+    "textureDecalId": "118003214563027",
+    "meshId": "rbxassetid://116516461055149",
+    "imageId": "rbxassetid://86376169166922",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "dread_hare_gold": {
+    "modelAssetId": "86421201781074",
+    "textureDecalId": "121093972023542",
+    "meshId": "rbxassetid://92867387409380",
+    "imageId": "rbxassetid://130307800033417",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "ashmane_lion_gold": {
+    "modelAssetId": "102883385645235",
+    "textureDecalId": "122909481798034",
+    "meshId": "rbxassetid://125897597705128",
+    "imageId": "rbxassetid://139008728069962",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "rimelight_hare_basic": {
+    "modelAssetId": "126961832053462",
+    "textureDecalId": "113515324641885",
+    "meshId": "rbxassetid://93425700930815",
+    "imageId": "rbxassetid://108856515454947",
+    "realm": "hell",
+    "variant": "basic",
+    "uploadedBy": "upload_pets.js 2026-06-16"
+  },
+  "black_seraph_gold": {
+    "modelAssetId": "119276250659117",
+    "textureDecalId": "79994395208445",
+    "meshId": "rbxassetid://73640726632502",
+    "imageId": "rbxassetid://81154041310938",
+    "realm": "hell",
+    "variant": "gold",
+    "uploadedBy": "upload_pets.js 2026-06-16"
   }
 }

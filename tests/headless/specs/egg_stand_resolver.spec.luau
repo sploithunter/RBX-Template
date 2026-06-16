@@ -31,8 +31,8 @@ return function()
         end)
 
         it("returns nil for an unknown realm, unknown area, or a name matching nothing", function()
-            expect(EggStandResolver.eggFor("hell", "Lava", MATRIX)).never.to.be.ok() -- no hell areas yet
-            expect(EggStandResolver.eggFor("base", "Lava", MATRIX)).never.to.be.ok() -- lava is heaven-only
+            expect(EggStandResolver.eggFor("limbo", "Lava", MATRIX)).never.to.be.ok() -- no such realm
+            expect(EggStandResolver.eggFor("base", "Lava", MATRIX)).never.to.be.ok() -- lava is heaven/hell-only
             expect(EggStandResolver.eggFor("base", "Pedestal", MATRIX)).never.to.be.ok()
         end)
 
