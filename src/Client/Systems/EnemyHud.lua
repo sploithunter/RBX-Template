@@ -25,6 +25,7 @@ local Workspace = game:GetService("Workspace")
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local HudCard = require(script.Parent.Parent.UI.HudCard)
 local StatusBadges = require(script.Parent.Parent.UI.StatusBadges)
+local PetBadge = require(script.Parent.Parent.UI.PetBadge)
 local POWER_ICONS = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_icons"))
 
 local EnemyHud = {}
@@ -33,6 +34,24 @@ local localPlayer = Players.LocalPlayer
 
 -- Threat chip colour (red) — the enemy counterpart to the pet's element disc.
 local THREAT_RED = Color3.fromRGB(200, 64, 64)
+
+-- Name colour encodes THREAT (enemy level vs the local player's): green = weaker, white = even,
+-- orange = stronger, red = much stronger. Replaces the old standalone red level box.
+local function threatColor(enemyLvl)
+    if not enemyLvl then
+        return Color3.fromRGB(240, 240, 245)
+    end
+    local mine = tonumber(localPlayer:GetAttribute("Level")) or 1
+    local d = enemyLvl - mine
+    if d >= 3 then
+        return THREAT_RED
+    elseif d >= 1 then
+        return Color3.fromRGB(240, 180, 80)
+    elseif d <= -3 then
+        return Color3.fromRGB(120, 210, 120)
+    end
+    return Color3.fromRGB(240, 240, 245)
+end
 
 -- Status badges shown on an enemy card — the SAME engine + chrome the squad cards use (the row
 -- grows leftward out of the card's inner edge, "out to the left"). Enemies carry the pet status
@@ -276,13 +295,11 @@ function EnemyHud.start()
 
     local function makeCard(bid)
         local card = HudCard.createCard(listFrame, { name = "Enemy_" .. bid })
-        -- Foes have no element disc art; the chip is a flat red threat square with the enemy's
-        -- level (the glyph fallback the chrome already supports), so the strip reads at a glance.
-        card.roleIcon.Image = ""
-        card.roleRing.Image = ""
-        card.roleChip.BackgroundColor3 = THREAT_RED
-        card.roleChip.BackgroundTransparency = 0
-        card.roleGlyph.Visible = true
+        -- Enemy ARCHETYPE chip — the SAME PetBadge ringed disc the pet cards use (role symbol on a
+        -- neutral disc + element ring), so foes read tank/melee/ranged/support at a glance just like
+        -- pets. Standardized: no more ringless flat badge. Level moves into the name (threat-coloured).
+        card.roleChip.BackgroundTransparency = 1
+        card.roleGlyph.Visible = false
         -- Click an enemy card to direct the squad to focus it (same assist-target as a world click).
         card.frame.MouseButton1Click:Connect(function()
             Signals.Combat_SetAssist:FireServer({ targetId = bid })
@@ -332,9 +349,18 @@ function EnemyHud.start()
                 end
                 local m = e.model
                 card.frame.LayoutOrder = slot
-                card.name.Text =
+                local display =
                     tostring(m:GetAttribute("DisplayName") or m:GetAttribute("EnemyId") or "Enemy")
-                card.roleGlyph.Text = tostring(m:GetAttribute("Level") or "!")
+                local lvl = tonumber(m:GetAttribute("Level"))
+                card.name.Text = lvl and (display .. "  (" .. lvl .. ")") or display
+                card.name.TextColor3 = threatColor(lvl)
+                -- archetype chip via the shared PetBadge (role symbol + ring), neutral disc colour
+                PetBadge.apply(
+                    card.roleIcon,
+                    card.roleRing,
+                    "neutral",
+                    m:GetAttribute("Role") or "melee"
+                )
                 local hp = m:GetAttribute("HP") or 0
                 local maxHp = math.max(1, m:GetAttribute("MaxHP") or 1)
                 local frac = math.clamp(hp / maxHp, 0, 1)

@@ -342,6 +342,9 @@ function EnemyService:_attachEnemyDecor(model, body, enemyId, def, targetId)
     -- Name tag above the HP bar. The client (EnemyMotion) sets its text ("Name Lv N") and
     -- COLOUR by difficulty relative to the viewing player's level — so it's per-viewer.
     model:SetAttribute("DisplayName", def.display_name or enemyId)
+    -- Role (tank/melee/ranged/support) so the client HUD can show the enemy's ARCHETYPE the same
+    -- way pet cards do — uses the same role vocabulary as pets (pet_roles / power_icons role_symbol).
+    model:SetAttribute("Role", def.role or "melee")
     local nameBb = Instance.new("BillboardGui")
     nameBb.Name = "NameTag"
     nameBb.Size = UDim2.new(8, 0, 1.1, 0)
