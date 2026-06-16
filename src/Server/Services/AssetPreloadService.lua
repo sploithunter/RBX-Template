@@ -1436,18 +1436,16 @@ function AssetPreloadService:AddPetSystemComponents(petModel)
         modelName = petModel.Name,
     })
 
-    -- 1. Create all required values on the pet model
+    -- 1. Create the values the service-owned pet system reads (PetFollowService /
+    -- PetFollowController + EnemyService). The legacy follow Values (Pos/Refresh/Timer/AttackPos)
+    -- and the `Follow` script are gone — that whole code path was deleted.
     local values = {
         { name = "TargetID", class = "NumberValue", value = 0 },
         { name = "PetID", class = "NumberValue", value = 0 },
         { name = "PetSize", class = "Vector3Value", value = Vector3.new(1, 1, 1) },
-        { name = "Pos", class = "Vector3Value", value = Vector3.new(0, 0, 0) },
         { name = "PositionNumber", class = "NumberValue", value = 0 },
-        { name = "Refresh", class = "BoolValue", value = false },
         { name = "TargetType", class = "StringValue", value = "" },
         { name = "TargetWorld", class = "StringValue", value = "" },
-        { name = "Timer", class = "NumberValue", value = 0 },
-        { name = "AttackPos", class = "StringValue", value = "" },
     }
 
     for _, valueData in pairs(values) do
@@ -1463,18 +1461,17 @@ function AssetPreloadService:AddPetSystemComponents(petModel)
         value.Value = valueData.value
     end
 
-    -- 2. Add Follow script placeholder to the pet model (disabled)
-    -- NOTE: Do not set `Script.Source` at runtime; it is read-only in live games.
-    local followScript = petModel:FindFirstChild("Follow")
-    if not followScript or not followScript:IsA("Script") then
-        if followScript then
-            followScript:Destroy()
+    -- 2. Strip any `Follow` script baked into the uploaded pet ASSET. The repo no longer
+    -- contains, creates, or enables this legacy script anywhere — but it can ride along inside
+    -- the LoadAsset'd pet model (the original game shipped it in the asset). LoadAsset content
+    -- isn't in the repo, so the only way to keep it off spawned pets is to delete it on load.
+    do
+        local stale = petModel:FindFirstChild("Follow")
+        while stale do
+            stale:Destroy()
+            stale = petModel:FindFirstChild("Follow")
         end
-        followScript = Instance.new("Script")
-        followScript.Name = "Follow"
-        followScript.Parent = petModel
     end
-    followScript.Disabled = true
 
     -- 3. Add attachmentPet to the pet model's PrimaryPart
     if petModel.PrimaryPart then

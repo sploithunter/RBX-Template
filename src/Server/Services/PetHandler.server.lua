@@ -979,11 +979,11 @@ local function ensureWeldsToPrimary(model)
                 weld.Parent = primary
                 created += 1
             end
-            -- Leave anchoring as-is until Follow binds constraints
+            -- Anchoring is owned by PetFollowService (service-owned movement)
             normalizeRuntimePetPart(d)
         end
     end
-    -- Keep PrimaryPart anchored until Follow binds constraints
+    -- PrimaryPart anchoring is owned by PetFollowService (service-owned movement)
     normalizeRuntimePetPart(primary)
     return created
 end
@@ -1242,7 +1242,6 @@ function loadEquipped(Player)
             print("  - Box has Center attachment:", box:FindFirstChild("Center") ~= nil)
             print("  - Box has AlignPosition:", box:FindFirstChild("AlignPosition") ~= nil)
             print("  - Box has AlignOrientation:", box:FindFirstChild("AlignOrientation") ~= nil)
-            print("  - Box has FollowBox script:", box:FindFirstChild("FollowBox") ~= nil)
             print("  - Box has Pet attachment:", box:FindFirstChild("Pet") ~= nil)
             print("  - Box has Back attachment:", box:FindFirstChild("Back") ~= nil)
 
@@ -1501,7 +1500,7 @@ function loadEquipped(Player)
             -- Remove any non-weld constraints left and purge collision/anchored on all parts
             for _, bp in ipairs(PetModel:GetDescendants()) do
                 if bp:IsA("BasePart") then
-                    -- Do not unanchor individual parts here; Follow will manage after attachments
+                    -- Do not unanchor individual parts here; PetFollowService owns anchoring
                     normalizeRuntimePetPart(bp)
                 elseif bp:IsA("Constraint") and not bp:IsA("WeldConstraint") then
                     bp:Destroy()
@@ -1587,10 +1586,9 @@ function loadEquipped(Player)
             -- (issue #4) are removed — under the flag they only ever returned early, so cloning a
             -- 43 KB script onto every pet was pure dead weight.
 
-            -- Set pet properties (ensure compatibility values exist)
+            -- Set pet properties. PositionNumber drives the service-owned formation slot;
+            -- the legacy AttackPos/Pos circle values are gone with the Follow script.
             PetModel.PositionNumber.Value = i
-            PetModel.AttackPos.Value = "Pos" .. tostring((i * skip) % 36)
-            PetModel.Pos.Value = GetPointOnCircle(PET_CIRCLE_RADIUS, Increment * i)
             do
                 local petIdNv = PetModel:FindFirstChild("PetID")
                 if not petIdNv then
@@ -1613,32 +1611,21 @@ function loadEquipped(Player)
             print("🔍 DEBUG PetHandler: Pet model", PetModel.Name)
             print("  - Pet has PrimaryPart:", PetModel.PrimaryPart ~= nil)
             print("  - Pet has PetSetup:", PetModel:FindFirstChild("PetSetup") ~= nil)
-            print("  - Pet has Follow script:", PetModel:FindFirstChild("Follow") ~= nil)
             if PetModel.PrimaryPart then
                 print("  - PrimaryPart anchored:", PetModel.PrimaryPart.Anchored)
                 print("  - PrimaryPart can collide:", PetModel.PrimaryPart.CanCollide)
             end
 
-            -- Set timer value if it exists
-            local timerValue = petFolder:FindFirstChild("Timer")
-            if timerValue then
-                PetModel.Timer.Value = timerValue.Value
-            end
-
             -- NOW parent everything to workspace (AFTER everything is built)
             PetModel.Parent = petModelsLocation
             box.Parent = petLocation
-            -- Match legacy: set pet model network owner immediately after parenting
+            -- Anchor the pet's PrimaryPart; PetFollowService owns its position from here
+            -- (anchored server-side, moved on the client RenderStepped).
             if PetModel.PrimaryPart then
                 pcall(function()
-                    -- Keep anchored until Follow unanchors; prevents initial clump
                     PetModel.PrimaryPart.Anchored = true
                     PetModel.PrimaryPart:SetNetworkOwner(Player)
                 end)
-            end
-            -- Trigger refresh like legacy
-            if PetModel:FindFirstChild("Refresh") and PetModel.Refresh:IsA("BoolValue") then
-                PetModel.Refresh.Value = true
             end
 
             -- Immediate spawn position log (full geometry after parent). Physics settles next frame; sample again shortly.
@@ -1670,18 +1657,8 @@ function loadEquipped(Player)
                 end)
             end
 
-            -- Legacy: box unanchored & network owner set; pet model anchoring handled by Follow
             box.Anchored = false
-            -- Set network owner for the control box only; PetModel owner will be set by Follow after constraints bind
             box:SetNetworkOwner(Player)
-
-            -- Do not toggle Refresh here; it causes duplicate setFollowType runs and dueling constraints
-
-            -- Finally enable Follow after everything is live and networked
-            local followScript = PetModel:FindFirstChild("Follow")
-            if followScript then
-                followScript.Disabled = false
-            end
 
             -- Watch for unexpected deletion to debug fast-despawn
             PetModel.AncestryChanged:Connect(function(_, newParent)
