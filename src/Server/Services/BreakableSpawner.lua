@@ -749,10 +749,16 @@ function BreakableSpawner:_isWorldActive(worldName)
         return true
     end
 
-    -- Realm test worlds (Heaven_n / Hell_n): always active for now (proto — proving crystals can
-    -- live in a stacked realm). Proper realm-entry gating arrives with the world-aware crystal pass.
+    -- Realm worlds (Heaven_n / Hell_n): if the realm area is a REGISTERED unlock zone (areas.lua),
+    -- gate it on its unlock exactly like a homeworld biome (fall through to the IsZoneUnlocked
+    -- check below). A bare proto realm world with no zone yet stays always-active so it's testable.
     if worldName:match("^Heaven_%d+$") or worldName:match("^Hell_%d+$") then
-        return true
+        local zs = self:_zoneService()
+        local registered = zs and zs._getZone and zs:_getZone(worldName)
+        if not registered then
+            return true
+        end
+        -- else: registered realm zone -> gate via the unlock check below.
     end
 
     -- A biome spawns ore only if at least one CURRENTLY-PRESENT player has it unlocked. This is

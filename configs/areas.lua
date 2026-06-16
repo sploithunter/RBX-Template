@@ -185,5 +185,36 @@ return {
                 egg_stands = {},
             },
         },
+        -- HEAVEN_1 (first realm above the homeworld). Its first origin = the Fire/lava area (the
+        -- Solar Egg + Emberstone ore). Unlock-gated like every homeworld biome: pay 100k of the
+        -- origin's coin (Jason: same flat cost for all four origins on a level). required_zone =
+        -- Desert (the last homeworld gate) so you progress through the homeworld first — the true
+        -- "unlock all four origins to open the next gate" AND-rule is a later refinement.
+        -- Bounds are Home.Lava +2000 Y; vertical_band (80) keeps this distinct from the base Lava.
+        -- NOTE: the zone id is "Heaven_1" to match the breakables world; when the other three
+        -- Heaven_1 origins are wired, split into per-origin zones (Heaven_1_Lava, _Ice, …).
+        Heaven_1 = {
+            id = "Heaven_1",
+            kind = "area",
+            element = "lava",
+            zone_level = 5,
+            mining_currency = "lava_coins",
+            display_name = "Empyrean Lava",
+            order = 6,
+            unlock = {
+                unlocked_by_default = false,
+                required_zone = "Desert",
+                currency = "lava_coins",
+                cost = 100000,
+            },
+            boosts = {},
+            synthetic = {
+                center = { x = -207, y = 2000, z = 68 },
+                size = { x = 361, y = 4, z = 458 },
+                floor_y = 2000.5,
+                spawn_position = { x = -207, y = 2006, z = 68 },
+                egg_stands = {},
+            },
+        },
     },
 }
