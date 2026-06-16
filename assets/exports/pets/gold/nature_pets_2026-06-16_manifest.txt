@@ -1,0 +1,9 @@
+# Nature pet preview images — gold (2026-06-16 batch)
+# Contact sheet: assets/exports/pets/nature_pets_2026-06-16_gold_contact_sheet.png
+
+pet	download_preview	copied_to
+bloomlamb	~/Downloads/Bloomlamb Gold.png	bloomlamb_gold.png
+worldroot_ent	~/Downloads/Worldroot Ent Gold.png	worldroot_ent_gold.png
+verdant_sprite	~/Downloads/Verdant Sprite Gold.png	verdant_sprite_gold.png
+goldleaf_stag	~/Downloads/Goldleaf Stag Gold.png	goldleaf_stag_gold.png
+halo_hare	~/Downloads/Halo Hare Gold.png	halo_hare_gold.png

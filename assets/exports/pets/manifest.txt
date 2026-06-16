@@ -25,6 +25,11 @@
 #   assets/exports/pets/premium_pets_2026-06-15_basic_contact_sheet.png
 #   assets/exports/pets/premium_pets_2026-06-15_gold_contact_sheet.png
 #   import manifest: assets/ui/imports/manifest_2026-06-15_premium_pets.txt
+#
+# 2026-06-16 nature pets batch (basic + gold):
+#   assets/exports/pets/nature_pets_2026-06-16_basic_contact_sheet.png
+#   assets/exports/pets/nature_pets_2026-06-16_gold_contact_sheet.png
+#   import manifest: assets/ui/imports/manifest_2026-06-16_nature_pets.txt
 
 pet	variant	source_tris	export_dir	5k	7500tris	10k	texture
 grumpy_cat	basic	7500	assets/exports/pets/grumpy_cat_basic/	5000 tris	7500 tris	7500 tris*	grumpy_cat_basic.png
@@ -65,6 +70,16 @@ radiant_salamander	basic	18207	assets/exports/pets/radiant_salamander_basic/	500
 radiant_salamander	gold	18207	assets/exports/pets/radiant_salamander_gold/	5000 tris	7500 tris	10000 tris	radiant_salamander_gold.png
 emberling_cherub	basic	12234	assets/exports/pets/emberling_cherub_basic/	5000 tris	7500 tris	10000 tris	emberling_cherub_basic.png
 emberling_cherub	gold	12234	assets/exports/pets/emberling_cherub_gold/	5000 tris	7500 tris	10000 tris	emberling_cherub_gold.png
+bloomlamb	basic	9110	assets/exports/pets/bloomlamb_basic/	5000 tris	7500 tris	9110 tris*	bloomlamb_basic.png
+bloomlamb	gold	9110	assets/exports/pets/bloomlamb_gold/	5000 tris	7500 tris	9110 tris*	bloomlamb_gold.png
+worldroot_ent	basic	12026	assets/exports/pets/worldroot_ent_basic/	5000 tris	7500 tris	10000 tris	worldroot_ent_basic.png
+worldroot_ent	gold	12026	assets/exports/pets/worldroot_ent_gold/	5000 tris	7500 tris	10000 tris	worldroot_ent_gold.png
+verdant_sprite	basic	17182	assets/exports/pets/verdant_sprite_basic/	5000 tris	7500 tris	10000 tris	verdant_sprite_basic.png
+verdant_sprite	gold	17182	assets/exports/pets/verdant_sprite_gold/	5000 tris	7500 tris	10000 tris	verdant_sprite_gold.png
+goldleaf_stag	basic	12416	assets/exports/pets/goldleaf_stag_basic/	5000 tris	7500 tris	10000 tris	goldleaf_stag_basic.png
+goldleaf_stag	gold	12416	assets/exports/pets/goldleaf_stag_gold/	5000 tris	7500 tris	10000 tris	goldleaf_stag_gold.png
+halo_hare	basic	14008	assets/exports/pets/halo_hare_basic/	5000 tris	7500 tris	10000 tris	halo_hare_basic.png
+halo_hare	gold	14008	assets/exports/pets/halo_hare_gold/	5000 tris	7500 tris	10000 tris	halo_hare_gold.png
 
 * below target — source mesh already under budget; export kept at native count
 
@@ -98,3 +113,8 @@ download:
   solar_phoenix: ~/Downloads/Solar Phoenix.zip + Solar Phoenix.png / Solar Phoenix Gold.zip + Solar Phoenix Gold.png
   radiant_salamander: ~/Downloads/Radiant Salamander.zip + Radiant Salamander.png / Radiant Salamander Gold.zip + Radiant Salamander Gold.png
   emberling_cherub: ~/Downloads/Emberling Cherub.zip + Emberling Cherub.png / Emberling Cherub Gold.zip + Emberling Cherub Gold.png
+  bloomlamb: ~/Downloads/Bloomlamb.zip + Bloomlamb.png / Bloomlamb Gold.zip + Bloomlamb Gold.png
+  worldroot_ent: ~/Downloads/Worldroot Ent.zip + Worldroot Ent.png / Worldroot Ent Gold.zip + Worldroot Ent Gold.png
+  verdant_sprite: ~/Downloads/Verdant Sprite.zip + Verdant Sprite.png / Verdant Sprite Gold.zip + Verdant Sprite Gold.png
+  goldleaf_stag: ~/Downloads/Goldleaf Stag.zip + Goldleaf Stag.png / Goldleaf Stag Gold.zip + Goldleaf Stag Gold.png
+  halo_hare: ~/Downloads/Halo Hare.zip + Halo Hare.png / Halo Hare Gold.zip + Halo Hare Gold.png

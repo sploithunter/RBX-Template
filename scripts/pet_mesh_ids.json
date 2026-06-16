@@ -128,5 +128,145 @@
     "imageId": "rbxassetid://125916543159827",
     "wiredInto": "pending configs/pets.lua (Heaven 1 secret dragon, fire origin)",
     "uploadedBy": "self-serve (Claude) 2026-06-16"
+  },
+  "emberling_cherub": {
+    "modelAssetId": "118586395472511",
+    "textureDecalId": "122191177755527",
+    "meshId": "PENDING_RESOLVE",
+    "imageId": "PENDING_RESOLVE",
+    "realm": "heaven",
+    "origin": "fire",
+    "variant": "basic",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
+  },
+  "sunmane_lion": {
+    "modelAssetId": "96975946763082",
+    "textureDecalId": "100362163847924",
+    "meshId": "PENDING_RESOLVE",
+    "imageId": "PENDING_RESOLVE",
+    "realm": "heaven",
+    "origin": "fire",
+    "variant": "basic",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
+  },
+  "solar_phoenix": {
+    "modelAssetId": "112992399689526",
+    "textureDecalId": "130359443605270",
+    "meshId": "PENDING_RESOLVE",
+    "imageId": "PENDING_RESOLVE",
+    "realm": "heaven",
+    "origin": "fire",
+    "variant": "basic",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
+  },
+  "radiant_salamander": {
+    "modelAssetId": "136929117398474",
+    "textureDecalId": "106480741580847",
+    "meshId": "PENDING_RESOLVE",
+    "imageId": "PENDING_RESOLVE",
+    "realm": "heaven",
+    "origin": "fire",
+    "variant": "basic",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
+  },
+  "frostlight_hare": {
+    "modelAssetId": "71864824881393",
+    "textureDecalId": "97527371225529",
+    "meshId": "PENDING_RESOLVE",
+    "imageId": "PENDING_RESOLVE",
+    "realm": "heaven",
+    "origin": "ice",
+    "variant": "basic",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
+  },
+  "aurora_fox": {
+    "modelAssetId": "104847472914781",
+    "textureDecalId": "91982948750247",
+    "meshId": "PENDING_RESOLVE",
+    "imageId": "PENDING_RESOLVE",
+    "realm": "heaven",
+    "origin": "ice",
+    "variant": "basic",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
+  },
+  "seraph_owl": {
+    "modelAssetId": "110077550520357",
+    "textureDecalId": "134302969029760",
+    "meshId": "PENDING_RESOLVE",
+    "imageId": "PENDING_RESOLVE",
+    "realm": "heaven",
+    "origin": "ice",
+    "variant": "basic",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
+  },
+  "glacial_seraph": {
+    "modelAssetId": "85971911468960",
+    "textureDecalId": "98628385536150",
+    "meshId": "PENDING_RESOLVE",
+    "imageId": "PENDING_RESOLVE",
+    "realm": "heaven",
+    "origin": "ice",
+    "variant": "basic",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
+  },
+  "aurora_leviathan": {
+    "modelAssetId": "71144924639371",
+    "textureDecalId": "72383132001009",
+    "meshId": "PENDING_RESOLVE",
+    "imageId": "PENDING_RESOLVE",
+    "realm": "heaven",
+    "origin": "ice",
+    "variant": "basic",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
+  },
+  "bloomlamb": {
+    "modelAssetId": "101978010006139",
+    "textureDecalId": "101944610636171",
+    "meshId": "PENDING_RESOLVE",
+    "imageId": "PENDING_RESOLVE",
+    "realm": "heaven",
+    "origin": "grass",
+    "variant": "basic",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
+  },
+  "halo_hare": {
+    "modelAssetId": "84948553907785",
+    "textureDecalId": "125811365860618",
+    "meshId": "PENDING_RESOLVE",
+    "imageId": "PENDING_RESOLVE",
+    "realm": "heaven",
+    "origin": "grass",
+    "variant": "basic",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
+  },
+  "goldleaf_stag": {
+    "modelAssetId": "133452657360635",
+    "textureDecalId": "72615851591558",
+    "meshId": "PENDING_RESOLVE",
+    "imageId": "PENDING_RESOLVE",
+    "realm": "heaven",
+    "origin": "grass",
+    "variant": "basic",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
+  },
+  "verdant_sprite": {
+    "modelAssetId": "111559377822167",
+    "textureDecalId": "84845266730002",
+    "meshId": "PENDING_RESOLVE",
+    "imageId": "PENDING_RESOLVE",
+    "realm": "heaven",
+    "origin": "grass",
+    "variant": "basic",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
+  },
+  "worldroot_ent": {
+    "modelAssetId": "84609800651657",
+    "textureDecalId": "110938081310346",
+    "meshId": "PENDING_RESOLVE",
+    "imageId": "PENDING_RESOLVE",
+    "realm": "heaven",
+    "origin": "grass",
+    "variant": "basic",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
   }
 }

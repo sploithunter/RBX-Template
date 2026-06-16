@@ -40,3 +40,13 @@ radiant_salamander_basic	radiant_salamander	basic	Radiant Salamander.zip	18207
 radiant_salamander_gold	radiant_salamander	gold	Radiant Salamander Gold.zip	18207	
 emberling_cherub_basic	emberling_cherub	basic	Emberling Cherub.zip	12234	
 emberling_cherub_gold	emberling_cherub	gold	Emberling Cherub Gold.zip	12234	
+bloomlamb_basic	bloomlamb	basic	Bloomlamb.zip	9110	
+bloomlamb_gold	bloomlamb	gold	Bloomlamb Gold.zip	9110	
+worldroot_ent_basic	worldroot_ent	basic	Worldroot Ent.zip	12026	
+worldroot_ent_gold	worldroot_ent	gold	Worldroot Ent Gold.zip	12026	
+verdant_sprite_basic	verdant_sprite	basic	Verdant Sprite.zip	17182	
+verdant_sprite_gold	verdant_sprite	gold	Verdant Sprite Gold.zip	17182	
+goldleaf_stag_basic	goldleaf_stag	basic	Goldleaf Stag.zip	12416	
+goldleaf_stag_gold	goldleaf_stag	gold	Goldleaf Stag Gold.zip	12416	
+halo_hare_basic	halo_hare	basic	Halo Hare.zip	14008	
+halo_hare_gold	halo_hare	gold	Halo Hare Gold.zip	14008	

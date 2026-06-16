@@ -1,0 +1,9 @@
+# Nature pet preview images — basic (2026-06-16 batch)
+# Contact sheet: assets/exports/pets/nature_pets_2026-06-16_basic_contact_sheet.png
+
+pet	download_preview	copied_to
+bloomlamb	~/Downloads/Bloomlamb.png	bloomlamb_basic.png
+worldroot_ent	~/Downloads/Worldroot Ent.png	worldroot_ent_basic.png
+verdant_sprite	~/Downloads/Verdant Sprite.png	verdant_sprite_basic.png
+goldleaf_stag	~/Downloads/Goldleaf Stag.png	goldleaf_stag_basic.png
+halo_hare	~/Downloads/Halo Hare.png	halo_hare_basic.png
