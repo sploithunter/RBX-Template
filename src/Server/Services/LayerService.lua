@@ -208,22 +208,45 @@ function LayerService:UseLayer(player, layerId, opts)
     -- character by the delta between the old and new layer's y_offset (base = 0). The stacked worlds
     -- are identical copies, so a pure Y shift lands the player at the SAME spot in the target realm.
     local access = self._layersConfig.access or {}
-    local dy = ((access[layerId] or {}).y_offset or 0) - ((access[fromLayer] or {}).y_offset or 0)
-    if dy ~= 0 then
-        local char = player.Character
-        if char and char.PrimaryPart then
+    local layerAccess = access[layerId] or {}
+    local dy = (layerAccess.y_offset or 0) - ((access[fromLayer] or {}).y_offset or 0)
+
+    local char = player.Character
+    if char and char.PrimaryPart then
+        -- Resolve the destination CFrame. PREFER the realm's named entry anchor — a Part in the
+        -- destination map folder (workspace.Maps.<Folder>) — so each realm starts the player in a
+        -- specific area (Heaven 1 -> Lava, where the Fire/Dragon roster lives). FALL BACK to a pure
+        -- Y-shift from where they stood (the stacked copies are identical, so the same spot lands).
+        local destCFrame
+        if layerAccess.entry_anchor then
+            local folderName = (layerId:gsub("^%l", string.upper)) -- heaven_1 -> Heaven_1
+            local maps = workspace:FindFirstChild("Maps")
+            local mapFolder = maps and maps:FindFirstChild(folderName)
+            local anchor = mapFolder and mapFolder:FindFirstChild(layerAccess.entry_anchor, true)
+            if anchor and anchor:IsA("BasePart") then
+                destCFrame = anchor.CFrame + Vector3.new(0, 4, 0) -- stand just above the anchor
+            elseif self._logger then
+                self._logger:Warn("Layer entry_anchor not found; falling back to Y-shift", {
+                    layer = layerId,
+                    anchor = layerAccess.entry_anchor,
+                    folder = folderName,
+                })
+            end
+        end
+        if not destCFrame and dy ~= 0 then
+            destCFrame = char:GetPivot() + Vector3.new(0, dy, 0)
+        end
+
+        if destCFrame then
             pcall(function()
                 local hrp = char.PrimaryPart
-                local destCFrame = char:GetPivot() + Vector3.new(0, dy, 0)
 
-                -- StreamingEnabled gotcha: the stacked realms are identical copies offset on Y, but
-                -- when we teleport the character up (or down) the client has NOT yet streamed in the
-                -- destination geometry, so it falls through empty space and lands back on whatever is
-                -- already loaded (the base realm). The fix that matters is the ANCHOR: pin the root
-                -- so it can't fall, move it, and the client streams the destination floor in around
-                -- the (now-relocated) character during the hold; release once it has had time to
-                -- arrive and the client resumes simulation on solid ground. Verified live: Home->
-                -- Heaven_1 lands and holds at the destination Y instead of dropping back to base.
+                -- StreamingEnabled gotcha: the destination geometry hasn't streamed in at the moment
+                -- we arrive, so an un-anchored character falls through empty space and lands back on
+                -- whatever is already loaded (the base realm). The fix that matters is the ANCHOR:
+                -- pin the root, move it, let the client stream the destination floor in around the
+                -- (now-relocated) character during the hold, then release onto solid ground. Verified
+                -- live: Home -> Heaven_1 lands and holds instead of dropping back to base.
                 hrp.Anchored = true
                 char:PivotTo(destCFrame)
 

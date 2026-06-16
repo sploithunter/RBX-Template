@@ -284,7 +284,18 @@ return {
     access = {
         base = { y_offset = 0, requires_soul = nil, token_cost = 0, requires_level = nil },
 
-        heaven_1 = { y_offset = 2000, requires_soul = 20, token_cost = 100, requires_level = 10 },
+        -- entry_anchor: a named anchor Part inside the destination realm's map folder
+        -- (workspace.Maps.<Folder>) that the gate teleports the player TO, instead of a pure
+        -- Y-shift from where they stood. Lets each realm START the player in a specific area
+        -- (Heaven 1 -> Lava, where the Fire/Dragon roster lives). Falls back to the Y-shift if
+        -- the anchor is absent.
+        heaven_1 = {
+            y_offset = 2000,
+            requires_soul = 20,
+            token_cost = 100,
+            requires_level = 10,
+            entry_anchor = "SpawnLocationLava",
+        },
         heaven_2 = { y_offset = 4000, requires_soul = 40, token_cost = 250, requires_level = 20 },
         heaven_3 = { y_offset = 6000, requires_soul = 60, token_cost = 500, requires_level = 30 },
         heaven_4 = { y_offset = 8000, requires_soul = 80, token_cost = 1000, requires_level = 40 },
