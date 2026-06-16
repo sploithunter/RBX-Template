@@ -64,3 +64,20 @@ me a low poly image of"* and ends *"game ready, baked texture."* — paste one a
 - **Glass Sphinx:** In the same style with a plain white background (no shadows) give me a low poly image of a small menacing sphinx-cat of blackened volcanic glass with sharp obsidian edges and a dull red glow, game ready, baked texture.
 - **Dust Camel:** In the same style with a plain white background (no shadows) give me a low poly image of a gaunt camel of ashen grey-black fur and dried bone with sunken eyes and wisps of dust, game ready, baked texture.
 - **Ash Roc:** In the same style with a plain white background (no shadows) give me a low poly image of a great dark bird with ash-grey and charred-black feathers, glowing ember-red wingtips, and sharp glass talons, game ready, baked texture.
+
+## Eggs — 8 (one per origin per realm)
+
+Each egg carries its origin's realm treatment (ascended for Heaven, fallen for Hell), matching the
+pet rosters. One egg per origin per realm = 4 Heaven + 4 Hell.
+
+### Heaven 1 eggs — radiant / celestial
+- **Heaven · Fire (solar):** In the same style with a plain white background (no shadows) give me a low poly image of a smooth egg with a white-and-gold shell covered in radiant dawn-fire swirls, a soft golden glow, and a faint halo of light above it, game ready, baked texture.
+- **Heaven · Ice (aurora):** In the same style with a plain white background (no shadows) give me a low poly image of a smooth egg with a pale frost-white shell banded in shimmering aurora blue, teal and violet, with faint starlight sparkle and a soft glow, game ready, baked texture.
+- **Heaven · Grass (bloom):** In the same style with a plain white background (no shadows) give me a low poly image of a smooth egg with a white-and-gold shell wrapped in tiny glowing flowers and gilded leaves, gentle green-gold light, game ready, baked texture.
+- **Heaven · Desert (gilded):** In the same style with a plain white background (no shadows) give me a low poly image of a smooth egg with a luminous gold-and-cream shell carved with sun motifs, a polished gilded sheen and a soft radiant glow, game ready, baked texture.
+
+### Hell 1 eggs — corrupted / fallen
+- **Hell · Fire (infernal):** In the same style with a plain white background (no shadows) give me a low poly image of a smooth egg with a charred black shell laced with glowing red-orange molten cracks, wisps of smoke and smoldering ember light, game ready, baked texture.
+- **Hell · Ice (black-ice):** In the same style with a plain white background (no shadows) give me a low poly image of a smooth egg of dark blue-black ice with jagged frost ridges, a cold glowing violet sheen and a sinister chill mist, game ready, baked texture.
+- **Hell · Grass (blight):** In the same style with a plain white background (no shadows) give me a low poly image of a smooth egg with a rotted grey-green shell cracked and veined with sickly glowing blight and small black thorns, game ready, baked texture.
+- **Hell · Desert (ash/glass):** In the same style with a plain white background (no shadows) give me a low poly image of a smooth egg with a blackened ash-and-glass shell flecked with dull bone-white, sharp obsidian cracks and a faint sickly glow, game ready, baked texture.
