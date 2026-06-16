@@ -5,6 +5,46 @@ import** — uploads happen over Open Cloud, and the two Studio-only steps (Deca
 Model→MeshId extract) are one `execute_luau` each. Proven end-to-end on the **jackalope**
 (2026-06-14). This is the path that scales to thousands of pets.
 
+## Easy batch path for PETS — `scripts/upload_pets.js` (use this; don't do them individually)
+
+`scripts/upload_pets.js` wraps the whole pet flow so a fresh batch is three commands, not N
+manual uploads. Exports must be staged at `assets/exports/pets/<pet>_<variant>/` (the
+`<stem>_5k.fbx` + texture `.png` — exactly what `decimate_mesh.sh` produces).
+
+```
+# 1) upload mesh + texture for every pet/variant; records ids in scripts/pet_mesh_ids.json
+node scripts/upload_pets.js upload \
+  --pets solar_roc,dawn_camel,gilded_sphinx,mirage_jackal,sun_scarab \
+  --variants basic,gold --realm heaven --origin desert
+
+# 2) print a Luau resolve block for ALL pending entries (no hand-typed id lists)
+node scripts/upload_pets.js emit-resolve
+#    -> paste the block into Studio execute_luau (Edit or Server); it returns
+#       "name|mesh=...|img=..." lines. Save them to a file.
+
+# 3) write the resolved MeshId + Image id back into the registry
+node scripts/upload_pets.js apply-resolve --file studio_out.txt
+```
+
+Registry keys are `<pet>_<variant>` (e.g. `solar_roc_basic`, `solar_roc_gold`); each carries
+`modelAssetId, textureDecalId, meshId, imageId, realm, origin, variant`. Creator defaults to the
+group `15872767`. The resolve is the only non-headless step (it needs the engine's `LoadAsset`).
+
+## Wiring a meshy pet into `configs/pets.lua` (the combine path)
+
+A pet variant supplies its art as **`mesh_asset` + `texture_asset`** (the resolved `meshId` /
+`imageId` from the registry) — NOT `asset_id`. `asset_id` loads a packaged Model, but FBX→Model
+uploads are untextured (grey). `AssetPreloadService:BuildMeshPartModelIntoFolder` combines mesh +
+texture at load (`CreateMeshPartAsync` + `TextureID`). Example variant:
+```lua
+basic = {
+    mesh_asset = "rbxassetid://97859401243319",   -- registry meshId
+    texture_asset = "rbxassetid://140706326750464", -- registry imageId (IMAGE, not Decal)
+    display_name = "Solar Phoenix",
+    abilities = { "dawn_bolt" },
+},
+```
+
 ## Why mesh + texture SEPARATELY (not a textured Model)
 
 A Meshy FBX imports **untextured** (the texture is a sibling `.png`, not embedded). So we upload the
