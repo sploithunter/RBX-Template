@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/pets/phantom_jackal_basic.obj
+original_tris: 14014
+
+5k: phantom_jackal_basic_5k.fbx (4999 tris, target 5000)
+7500tris: phantom_jackal_basic_7500tris.fbx (7498 tris, target 7500)
+10k: phantom_jackal_basic_10k.fbx (10000 tris, target 10000)

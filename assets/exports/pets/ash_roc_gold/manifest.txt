@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/pets/ash_roc_gold.obj
+original_tris: 19058
+
+5k: ash_roc_gold_5k.fbx (5000 tris, target 5000)
+7500tris: ash_roc_gold_7500tris.fbx (7500 tris, target 7500)
+10k: ash_roc_gold_10k.fbx (10000 tris, target 10000)

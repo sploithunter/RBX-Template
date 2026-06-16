@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/pets/brimstone_salamander_gold.obj
+original_tris: 10478
+
+5k: brimstone_salamander_gold_5k.fbx (5000 tris, target 5000)
+7500tris: brimstone_salamander_gold_7500tris.fbx (7500 tris, target 7500)
+10k: brimstone_salamander_gold_10k.fbx (10000 tris, target 10000)

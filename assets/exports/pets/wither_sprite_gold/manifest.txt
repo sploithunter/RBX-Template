@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/pets/wither_sprite_gold.obj
+original_tris: 26633
+
+5k: wither_sprite_gold_5k.fbx (5000 tris, target 5000)
+7500tris: wither_sprite_gold_7500tris.fbx (7499 tris, target 7500)
+10k: wither_sprite_gold_10k.fbx (9999 tris, target 10000)

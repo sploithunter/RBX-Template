@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/pets/carrion_scarab_basic.obj
+original_tris: 10816
+
+5k: carrion_scarab_basic_5k.fbx (5000 tris, target 5000)
+7500tris: carrion_scarab_basic_7500tris.fbx (7498 tris, target 7500)
+10k: carrion_scarab_basic_10k.fbx (10000 tris, target 10000)

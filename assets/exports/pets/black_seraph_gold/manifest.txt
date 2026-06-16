@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/pets/black_seraph_gold.obj
+original_tris: 16299
+
+5k: black_seraph_gold_5k.fbx (4999 tris, target 5000)
+7500tris: black_seraph_gold_7500tris.fbx (7499 tris, target 7500)
+10k: black_seraph_gold_10k.fbx (9999 tris, target 10000)

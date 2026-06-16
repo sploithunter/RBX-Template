@@ -1,0 +1,24 @@
+# Blight pet preview images — basic (2026-06-16 batch)
+# Contact sheet: assets/exports/pets/blight_pets_2026-06-16_basic_contact_sheet.png
+
+pet	download_preview	copied_to
+wither_sprite	~/Downloads/Wither Sprite.png	wither_sprite_basic.png
+ash_roc	~/Downloads/Ash Roc.png	ash_roc_basic.png
+dust_camel	~/Downloads/Dust Camel.png	dust_camel_basic.png
+glass_sphinx	~/Downloads/Glass Sphinx.png	glass_sphinx_basic.png
+phantom_jackal	~/Downloads/Phantom Jackal.png	phantom_jackal_basic.png
+carrion_scarab	~/Downloads/Carrion Scarab.png	carrion_scarab_basic.png
+gravewood_ent	~/Downloads/Gravewood Ent.png	gravewood_ent_basic.png
+rotleaf_stag	~/Downloads/Rotleaf Stag.png	rotleaf_stag_basic.png
+dread_hare	~/Downloads/Dread Hare.png	dread_hare_basic.png
+blightlamb	~/Downloads/Blightlamb.png	blightlamb_basic.png
+abyssal_wyrm	~/Downloads/Abyssal Wyrm.png	abyssal_wyrm_basic.png
+brimstone_salamander	~/Downloads/Brimstone Salamander.png	brimstone_salamander_basic.png
+ashfeather_phoenix	~/Downloads/Ashfeather Phoenix.png	ashfeather_phoenix_basic.png
+ashmane_lion	~/Downloads/Ashmane Lion.png	ashmane_lion_basic.png
+rimelight_hare	~/Downloads/Rimelight Hare.png	rimelight_hare_basic.png
+black_ice_leviathan	~/Downloads/Black-Ice Leviathan.png	black_ice_leviathan_basic.png
+black_seraph	~/Downloads/Black Seraph.png	black_seraph_basic.png
+dread_owl	~/Downloads/Dread Owl.png	dread_owl_basic.png
+rimewraith_fox	~/Downloads/Rimewraith Fox.png	rimewraith_fox_basic.png
+cinderling_imp	~/Downloads/Cinderling Imp.png	cinderling_imp_basic.png

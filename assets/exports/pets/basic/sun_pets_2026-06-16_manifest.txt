@@ -1,0 +1,9 @@
+# Sun pet preview images — basic (2026-06-16 batch)
+# Contact sheet: assets/exports/pets/sun_pets_2026-06-16_basic_contact_sheet.png
+
+pet	download_preview	copied_to
+solar_roc	~/Downloads/Solar Roc.png	solar_roc_basic.png
+dawn_camel	~/Downloads/Dawn Camel.png	dawn_camel_basic.png
+gilded_sphinx	~/Downloads/Gilded Sphinx.png	gilded_sphinx_basic.png
+mirage_jackal	~/Downloads/Mirage Jackal.png	mirage_jackal_basic.png
+sun_scarab	~/Downloads/Sun Scarab.png	sun_scarab_basic.png

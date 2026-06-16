@@ -30,6 +30,16 @@
 #   assets/exports/pets/nature_pets_2026-06-16_basic_contact_sheet.png
 #   assets/exports/pets/nature_pets_2026-06-16_gold_contact_sheet.png
 #   import manifest: assets/ui/imports/manifest_2026-06-16_nature_pets.txt
+#
+# 2026-06-16 sun pets batch (basic + gold):
+#   assets/exports/pets/sun_pets_2026-06-16_basic_contact_sheet.png
+#   assets/exports/pets/sun_pets_2026-06-16_gold_contact_sheet.png
+#   import manifest: assets/ui/imports/manifest_2026-06-16_sun_pets.txt
+#
+# 2026-06-16 blight pets batch (basic + gold):
+#   assets/exports/pets/blight_pets_2026-06-16_basic_contact_sheet.png
+#   assets/exports/pets/blight_pets_2026-06-16_gold_contact_sheet.png
+#   import manifest: assets/ui/imports/manifest_2026-06-16_blight_pets.txt
 
 pet	variant	source_tris	export_dir	5k	7500tris	10k	texture
 grumpy_cat	basic	7500	assets/exports/pets/grumpy_cat_basic/	5000 tris	7500 tris	7500 tris*	grumpy_cat_basic.png
@@ -80,6 +90,56 @@ goldleaf_stag	basic	12416	assets/exports/pets/goldleaf_stag_basic/	5000 tris	750
 goldleaf_stag	gold	12416	assets/exports/pets/goldleaf_stag_gold/	5000 tris	7500 tris	10000 tris	goldleaf_stag_gold.png
 halo_hare	basic	14008	assets/exports/pets/halo_hare_basic/	5000 tris	7500 tris	10000 tris	halo_hare_basic.png
 halo_hare	gold	14008	assets/exports/pets/halo_hare_gold/	5000 tris	7500 tris	10000 tris	halo_hare_gold.png
+solar_roc	basic	11313	assets/exports/pets/solar_roc_basic/	5000 tris	7500 tris	10000 tris	solar_roc_basic.png
+solar_roc	gold	11313	assets/exports/pets/solar_roc_gold/	5000 tris	7500 tris	10000 tris	solar_roc_gold.png
+dawn_camel	basic	6156	assets/exports/pets/dawn_camel_basic/	5000 tris	6156 tris*	6156 tris*	dawn_camel_basic.png
+dawn_camel	gold	6156	assets/exports/pets/dawn_camel_gold/	5000 tris	6156 tris*	6156 tris*	dawn_camel_gold.png
+gilded_sphinx	basic	10088	assets/exports/pets/gilded_sphinx_basic/	5000 tris	7500 tris	10000 tris	gilded_sphinx_basic.png
+gilded_sphinx	gold	10088	assets/exports/pets/gilded_sphinx_gold/	5000 tris	7500 tris	10000 tris	gilded_sphinx_gold.png
+mirage_jackal	basic	8444	assets/exports/pets/mirage_jackal_basic/	5000 tris	7500 tris	8444 tris*	mirage_jackal_basic.png
+mirage_jackal	gold	8444	assets/exports/pets/mirage_jackal_gold/	5000 tris	7500 tris	8444 tris*	mirage_jackal_gold.png
+sun_scarab	basic	11060	assets/exports/pets/sun_scarab_basic/	5000 tris	7500 tris	10000 tris	sun_scarab_basic.png
+sun_scarab	gold	11060	assets/exports/pets/sun_scarab_gold/	5000 tris	7500 tris	10000 tris	sun_scarab_gold.png
+wither_sprite	basic	26633	assets/exports/pets/wither_sprite_basic/	5000 tris	7500 tris	10000 tris	wither_sprite_basic.png
+wither_sprite	gold	26633	assets/exports/pets/wither_sprite_gold/	5000 tris	7500 tris	10000 tris	wither_sprite_gold.png
+ash_roc	basic	19076	assets/exports/pets/ash_roc_basic/	5000 tris	7500 tris	10000 tris	ash_roc_basic.png
+ash_roc	gold	19058	assets/exports/pets/ash_roc_gold/	5000 tris	7500 tris	10000 tris	ash_roc_gold.png
+dust_camel	basic	18084	assets/exports/pets/dust_camel_basic/	5000 tris	7500 tris	10000 tris	dust_camel_basic.png
+dust_camel	gold	18084	assets/exports/pets/dust_camel_gold/	5000 tris	7500 tris	10000 tris	dust_camel_gold.png
+glass_sphinx	basic	11794	assets/exports/pets/glass_sphinx_basic/	5000 tris	7500 tris	10000 tris	glass_sphinx_basic.png
+glass_sphinx	gold	11794	assets/exports/pets/glass_sphinx_gold/	5000 tris	7500 tris	10000 tris	glass_sphinx_gold.png
+phantom_jackal	basic	14014	assets/exports/pets/phantom_jackal_basic/	5000 tris	7500 tris	10000 tris	phantom_jackal_basic.png
+phantom_jackal	gold	14014	assets/exports/pets/phantom_jackal_gold/	5000 tris	7500 tris	10000 tris	phantom_jackal_gold.png
+carrion_scarab	basic	10816	assets/exports/pets/carrion_scarab_basic/	5000 tris	7500 tris	10000 tris	carrion_scarab_basic.png
+carrion_scarab	gold	10816	assets/exports/pets/carrion_scarab_gold/	5000 tris	7500 tris	10000 tris	carrion_scarab_gold.png
+gravewood_ent	basic	16990	assets/exports/pets/gravewood_ent_basic/	5000 tris	7500 tris	10000 tris	gravewood_ent_basic.png
+gravewood_ent	gold	16990	assets/exports/pets/gravewood_ent_gold/	5000 tris	7500 tris	10000 tris	gravewood_ent_gold.png
+rotleaf_stag	basic	13182	assets/exports/pets/rotleaf_stag_basic/	5000 tris	7500 tris	10000 tris	rotleaf_stag_basic.png
+rotleaf_stag	gold	13182	assets/exports/pets/rotleaf_stag_gold/	5000 tris	7500 tris	10000 tris	rotleaf_stag_gold.png
+dread_hare	basic	14449	assets/exports/pets/dread_hare_basic/	5000 tris	7500 tris	10000 tris	dread_hare_basic.png
+dread_hare	gold	14449	assets/exports/pets/dread_hare_gold/	5000 tris	7500 tris	10000 tris	dread_hare_gold.png
+blightlamb	basic	14516	assets/exports/pets/blightlamb_basic/	5000 tris	7500 tris	10000 tris	blightlamb_basic.png
+blightlamb	gold	14512	assets/exports/pets/blightlamb_gold/	5000 tris	7500 tris	10000 tris	blightlamb_gold.png
+abyssal_wyrm	basic	15078	assets/exports/pets/abyssal_wyrm_basic/	5000 tris	7500 tris	10000 tris	abyssal_wyrm_basic.png
+abyssal_wyrm	gold	15078	assets/exports/pets/abyssal_wyrm_gold/	5000 tris	7500 tris	10000 tris	abyssal_wyrm_gold.png
+brimstone_salamander	basic	10478	assets/exports/pets/brimstone_salamander_basic/	5000 tris	7500 tris	10000 tris	brimstone_salamander_basic.png
+brimstone_salamander	gold	10478	assets/exports/pets/brimstone_salamander_gold/	5000 tris	7500 tris	10000 tris	brimstone_salamander_gold.png
+ashfeather_phoenix	basic	22337	assets/exports/pets/ashfeather_phoenix_basic/	5000 tris	7500 tris	10000 tris	ashfeather_phoenix_basic.png
+ashfeather_phoenix	gold	22337	assets/exports/pets/ashfeather_phoenix_gold/	5000 tris	7500 tris	10000 tris	ashfeather_phoenix_gold.png
+ashmane_lion	basic	11892	assets/exports/pets/ashmane_lion_basic/	5000 tris	7500 tris	10000 tris	ashmane_lion_basic.png
+ashmane_lion	gold	11892	assets/exports/pets/ashmane_lion_gold/	5000 tris	7500 tris	10000 tris	ashmane_lion_gold.png
+rimelight_hare	basic	11962	assets/exports/pets/rimelight_hare_basic/	5000 tris	7500 tris	10000 tris	rimelight_hare_basic.png
+rimelight_hare	gold	11962	assets/exports/pets/rimelight_hare_gold/	5000 tris	7500 tris	10000 tris	rimelight_hare_gold.png
+black_ice_leviathan	basic	23242	assets/exports/pets/black_ice_leviathan_basic/	5000 tris	7500 tris	10000 tris	black_ice_leviathan_basic.png
+black_ice_leviathan	gold	23242	assets/exports/pets/black_ice_leviathan_gold/	5000 tris	7500 tris	10000 tris	black_ice_leviathan_gold.png
+black_seraph	basic	16299	assets/exports/pets/black_seraph_basic/	5000 tris	7500 tris	10000 tris	black_seraph_basic.png
+black_seraph	gold	16299	assets/exports/pets/black_seraph_gold/	5000 tris	7500 tris	10000 tris	black_seraph_gold.png
+dread_owl	basic	11278	assets/exports/pets/dread_owl_basic/	5000 tris	7500 tris	10000 tris	dread_owl_basic.png
+dread_owl	gold	11278	assets/exports/pets/dread_owl_gold/	5000 tris	7500 tris	10000 tris	dread_owl_gold.png
+rimewraith_fox	basic	10823	assets/exports/pets/rimewraith_fox_basic/	5000 tris	7500 tris	10000 tris	rimewraith_fox_basic.png
+rimewraith_fox	gold	10821	assets/exports/pets/rimewraith_fox_gold/	5000 tris	7500 tris	10000 tris	rimewraith_fox_gold.png
+cinderling_imp	basic	11848	assets/exports/pets/cinderling_imp_basic/	5000 tris	7500 tris	10000 tris	cinderling_imp_basic.png
+cinderling_imp	gold	11848	assets/exports/pets/cinderling_imp_gold/	5000 tris	7500 tris	10000 tris	cinderling_imp_gold.png
 
 * below target — source mesh already under budget; export kept at native count
 
@@ -118,3 +178,28 @@ download:
   verdant_sprite: ~/Downloads/Verdant Sprite.zip + Verdant Sprite.png / Verdant Sprite Gold.zip + Verdant Sprite Gold.png
   goldleaf_stag: ~/Downloads/Goldleaf Stag.zip + Goldleaf Stag.png / Goldleaf Stag Gold.zip + Goldleaf Stag Gold.png
   halo_hare: ~/Downloads/Halo Hare.zip + Halo Hare.png / Halo Hare Gold.zip + Halo Hare Gold.png
+  solar_roc: ~/Downloads/Solar Roc.zip + Solar Roc.png / Solar Roc Gold.zip + Solar Roc Gold.png
+  dawn_camel: ~/Downloads/Dawn Camel.zip + Dawn Camel.png / Dawn Camel Gold.zip + Dawn Camel Gold.png
+  gilded_sphinx: ~/Downloads/Gilded Sphinx.zip + Gilded Sphinx.png / Gilded Sphinx Gold.zip + Gilded Sphinx Gold.png
+  mirage_jackal: ~/Downloads/Mirage Jackal.zip + Mirage Jackal.png / Mirage Jackal Gold.zip + Mirage Jackal Gold.png
+  sun_scarab: ~/Downloads/Sun Scarab.zip + Sun Scarab.png / Sun Scarab Gold.zip + Sun Scarab Gold.png
+  wither_sprite: ~/Downloads/Wither Sprite.zip + Wither Sprite.png / Wither Sprite Gold.zip + Wither Sprite Gold.png
+  ash_roc: ~/Downloads/Ash Roc.zip + Ash Roc.png / Ash Roc Gold.zip + Ash Roc Gold.png
+  dust_camel: ~/Downloads/Dust Camel.zip + Dust Camel.png / Dust Camel Gold.zip + Dust Camel Gold.png
+  glass_sphinx: ~/Downloads/Glass Sphinx.zip + Glass Sphinx.png / Glass Sphinx Gold.zip + Glass Sphinx Gold.png
+  phantom_jackal: ~/Downloads/Phantom Jackal.zip + Phantom Jackal.png / Phantom Jackal Gold.zip + Phantom Jackal Gold.png
+  carrion_scarab: ~/Downloads/Carrion Scarab.zip + Carrion Scarab.png / Carrion Scarab Gold.zip + Carrion Scarab Gold.png
+  gravewood_ent: ~/Downloads/Gravewood Ent.zip + Gravewood Ent.png / Gravewood Ent Gold.zip + Gravewood Ent Gold.png
+  rotleaf_stag: ~/Downloads/Rotleaf Stag.zip + Rotleaf Stag.png / Rotleaf Stag Gold.zip + Rotleaf Stag Gold.png
+  dread_hare: ~/Downloads/Dread Hare.zip + Dread Hare.png / Dread Hare Gold.zip + Dread Hare Gold.png
+  blightlamb: ~/Downloads/Blightlamb.zip + Blightlamb.png / Blightlamb Gold.zip + Blightlamb Gold.png
+  abyssal_wyrm: ~/Downloads/Abyssal Wyrm.zip + Abyssal Wyrm.png / Abyssal Wyrm Gold.zip + Abyssal Wyrm Gold.png
+  brimstone_salamander: ~/Downloads/Brimstone Salamander.zip + Brimstone Salamander.png / Brimstone Salamander Gold.zip + Brimstone Salamander Gold.png
+  ashfeather_phoenix: ~/Downloads/Ashfeather Phoenix.zip + Ashfeather Phoenix.png / Ashfeather Phoenix Gold.zip + Ashfeather Phoenix Gold.png
+  ashmane_lion: ~/Downloads/Ashmane Lion.zip + Ashmane Lion.png / Ashmane Lion Gold.zip + Ashmane Lion Gold.png
+  rimelight_hare: ~/Downloads/Rimelight Hare.zip + Rimelight Hare.png / Rimelight Hare Gold.zip + Rimelight Hare Gold.png
+  black_ice_leviathan: ~/Downloads/Black-Ice Leviathan.zip + Black-Ice Leviathan.png / Black-Ice Leviathan Gold.zip + Black-Ice Leviathan Gold.png
+  black_seraph: ~/Downloads/Black Seraph.zip + Black Seraph.png / Black Seraph Gold.zip + Black Seraph Gold.png
+  dread_owl: ~/Downloads/Dread Owl.zip + Dread Owl.png / Dread Owl Gold.zip + Dread Owl Gold.png
+  rimewraith_fox: ~/Downloads/Rimewraith Fox.zip + Rimewraith Fox.png / Rimewraith Fox Gold.zip + Rimewraith Fox Gold.png
+  cinderling_imp: ~/Downloads/Cinderling Imp.zip + Cinderling Imp.png / Cinderling Imp Gold.zip + Cinderling Imp Gold.png

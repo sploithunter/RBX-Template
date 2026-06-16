@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/pets/dust_camel_basic.obj
+original_tris: 18084
+
+5k: dust_camel_basic_5k.fbx (5000 tris, target 5000)
+7500tris: dust_camel_basic_7500tris.fbx (7500 tris, target 7500)
+10k: dust_camel_basic_10k.fbx (10000 tris, target 10000)

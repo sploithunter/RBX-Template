@@ -1,0 +1,24 @@
+# Blight pet preview images — gold (2026-06-16 batch)
+# Contact sheet: assets/exports/pets/blight_pets_2026-06-16_gold_contact_sheet.png
+
+pet	download_preview	copied_to
+wither_sprite	~/Downloads/Wither Sprite Gold.png	wither_sprite_gold.png
+ash_roc	~/Downloads/Ash Roc Gold.png	ash_roc_gold.png
+dust_camel	~/Downloads/Dust Camel Gold.png	dust_camel_gold.png
+glass_sphinx	~/Downloads/Glass Sphinx Gold.png	glass_sphinx_gold.png
+phantom_jackal	~/Downloads/Phantom Jackal Gold.png	phantom_jackal_gold.png
+carrion_scarab	~/Downloads/Carrion Scarab Gold.png	carrion_scarab_gold.png
+gravewood_ent	~/Downloads/Gravewood Ent Gold.png	gravewood_ent_gold.png
+rotleaf_stag	~/Downloads/Rotleaf Stag Gold.png	rotleaf_stag_gold.png
+dread_hare	~/Downloads/Dread Hare Gold.png	dread_hare_gold.png
+blightlamb	~/Downloads/Blightlamb Gold.png	blightlamb_gold.png
+abyssal_wyrm	~/Downloads/Abyssal Wyrm Gold.png	abyssal_wyrm_gold.png
+brimstone_salamander	~/Downloads/Brimstone Salamander Gold.png	brimstone_salamander_gold.png
+ashfeather_phoenix	~/Downloads/Ashfeather Phoenix Gold.png	ashfeather_phoenix_gold.png
+ashmane_lion	~/Downloads/Ashmane Lion Gold.png	ashmane_lion_gold.png
+rimelight_hare	~/Downloads/Rimelight Hare Gold.png	rimelight_hare_gold.png
+black_ice_leviathan	~/Downloads/Black-Ice Leviathan Gold.png	black_ice_leviathan_gold.png
+black_seraph	~/Downloads/Black Seraph Gold.png	black_seraph_gold.png
+dread_owl	~/Downloads/Dread Owl Gold.png	dread_owl_gold.png
+rimewraith_fox	~/Downloads/Rimewraith Fox Gold.png	rimewraith_fox_gold.png
+cinderling_imp	~/Downloads/Cinderling Imp Gold.png	cinderling_imp_gold.png

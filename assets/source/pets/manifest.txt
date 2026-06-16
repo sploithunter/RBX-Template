@@ -50,3 +50,53 @@ goldleaf_stag_basic	goldleaf_stag	basic	Goldleaf Stag.zip	12416
 goldleaf_stag_gold	goldleaf_stag	gold	Goldleaf Stag Gold.zip	12416	
 halo_hare_basic	halo_hare	basic	Halo Hare.zip	14008	
 halo_hare_gold	halo_hare	gold	Halo Hare Gold.zip	14008	
+solar_roc_basic	solar_roc	basic	Solar Roc.zip	11313	
+solar_roc_gold	solar_roc	gold	Solar Roc Gold.zip	11313	
+dawn_camel_basic	dawn_camel	basic	Dawn Camel.zip	6156	
+dawn_camel_gold	dawn_camel	gold	Dawn Camel Gold.zip	6156	
+gilded_sphinx_basic	gilded_sphinx	basic	Gilded Sphinx.zip	10088	
+gilded_sphinx_gold	gilded_sphinx	gold	Gilded Sphinx Gold.zip	10088	
+mirage_jackal_basic	mirage_jackal	basic	Mirage Jackal.zip	8444	
+mirage_jackal_gold	mirage_jackal	gold	Mirage Jackal Gold.zip	8444	
+sun_scarab_basic	sun_scarab	basic	Sun Scarab.zip	11060	
+sun_scarab_gold	sun_scarab	gold	Sun Scarab Gold.zip	11060	
+wither_sprite_basic	wither_sprite	basic	Wither Sprite.zip	26633	
+wither_sprite_gold	wither_sprite	gold	Wither Sprite Gold.zip	26633	
+ash_roc_basic	ash_roc	basic	Ash Roc.zip	19076	
+ash_roc_gold	ash_roc	gold	Ash Roc Gold.zip	19058	
+dust_camel_basic	dust_camel	basic	Dust Camel.zip	18084	
+dust_camel_gold	dust_camel	gold	Dust Camel Gold.zip	18084	
+glass_sphinx_basic	glass_sphinx	basic	Glass Sphinx.zip	11794	
+glass_sphinx_gold	glass_sphinx	gold	Glass Sphinx Gold.zip	11794	
+phantom_jackal_basic	phantom_jackal	basic	Phantom Jackal.zip	14014	
+phantom_jackal_gold	phantom_jackal	gold	Phantom Jackal Gold.zip	14014	
+carrion_scarab_basic	carrion_scarab	basic	Carrion Scarab.zip	10816	
+carrion_scarab_gold	carrion_scarab	gold	Carrion Scarab Gold.zip	10816	
+gravewood_ent_basic	gravewood_ent	basic	Gravewood Ent.zip	16990	
+gravewood_ent_gold	gravewood_ent	gold	Gravewood Ent Gold.zip	16990	
+rotleaf_stag_basic	rotleaf_stag	basic	Rotleaf Stag.zip	13182	
+rotleaf_stag_gold	rotleaf_stag	gold	Rotleaf Stag Gold.zip	13182	
+dread_hare_basic	dread_hare	basic	Dread Hare.zip	14449	
+dread_hare_gold	dread_hare	gold	Dread Hare Gold.zip	14449	
+blightlamb_basic	blightlamb	basic	Blightlamb.zip	14516	
+blightlamb_gold	blightlamb	gold	Blightlamb Gold.zip	14512	
+abyssal_wyrm_basic	abyssal_wyrm	basic	Abyssal Wyrm.zip	15078	
+abyssal_wyrm_gold	abyssal_wyrm	gold	Abyssal Wyrm Gold.zip	15078	
+brimstone_salamander_basic	brimstone_salamander	basic	Brimstone Salamander.zip	10478	
+brimstone_salamander_gold	brimstone_salamander	gold	Brimstone Salamander Gold.zip	10478	
+ashfeather_phoenix_basic	ashfeather_phoenix	basic	Ashfeather Phoenix.zip	22337	
+ashfeather_phoenix_gold	ashfeather_phoenix	gold	Ashfeather Phoenix Gold.zip	22337	
+ashmane_lion_basic	ashmane_lion	basic	Ashmane Lion.zip	11892	
+ashmane_lion_gold	ashmane_lion	gold	Ashmane Lion Gold.zip	11892	
+rimelight_hare_basic	rimelight_hare	basic	Rimelight Hare.zip	11962	
+rimelight_hare_gold	rimelight_hare	gold	Rimelight Hare Gold.zip	11962	
+black_ice_leviathan_basic	black_ice_leviathan	basic	Black-Ice Leviathan.zip	23242	
+black_ice_leviathan_gold	black_ice_leviathan	gold	Black-Ice Leviathan Gold.zip	23242	
+black_seraph_basic	black_seraph	basic	Black Seraph.zip	16299	
+black_seraph_gold	black_seraph	gold	Black Seraph Gold.zip	16299	
+dread_owl_basic	dread_owl	basic	Dread Owl.zip	11278	
+dread_owl_gold	dread_owl	gold	Dread Owl Gold.zip	11278	
+rimewraith_fox_basic	rimewraith_fox	basic	Rimewraith Fox.zip	10823	
+rimewraith_fox_gold	rimewraith_fox	gold	Rimewraith Fox Gold.zip	10821	
+cinderling_imp_basic	cinderling_imp	basic	Cinderling Imp.zip	11848	
+cinderling_imp_gold	cinderling_imp	gold	Cinderling Imp Gold.zip	11848	

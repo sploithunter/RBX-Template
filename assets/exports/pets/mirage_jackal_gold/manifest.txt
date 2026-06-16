@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/pets/mirage_jackal_gold.obj
+original_tris: 8444
+
+5k: mirage_jackal_gold_5k.fbx (5000 tris, target 5000)
+7500tris: mirage_jackal_gold_7500tris.fbx (7500 tris, target 7500)
+10k: mirage_jackal_gold_10k.fbx (8444 tris, target 10000)
