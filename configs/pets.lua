@@ -31,23 +31,37 @@ local petConfig = {
             ice = "ice_egg",
             sand = "sand_egg",
         },
+        -- Keys are matched as a substring of the authored stand NAME (longest wins). Heaven stands
+        -- are authored with EGG-themed names (Solar/Aurora/Bloom/Guilded), Home/Hell stands use
+        -- area names (BasicEmber/BasicIce/BasicSand/BasicEarth) — so both naming styles get keys.
+        -- NB: "ember" (5) must beat the accidental "ice" inside "bas-ICE-mber" (3); hence the ember key.
         heaven = { -- Heaven_1+ — Fire/lava starter is the solar egg; the other three origins below
             lava = "solar_egg",
-            solar = "solar_egg", -- accept a stand named "Solar" too
+            solar = "solar_egg", -- authored stand "Solar"
+            ember = "solar_egg", -- area-named "BasicEmber" stand → Fire origin
             ice = "aurora_egg", -- Ice origin (Frostlight Hare → Aurora Leviathan)
+            aurora = "aurora_egg", -- authored stand "Aurora"
             grass = "bloom_egg", -- Earth/grass origin (Bloomlamb → Worldroot Ent)
-            earth = "bloom_egg", -- accept a stand named "Earth" too
+            earth = "bloom_egg",
+            bloom = "bloom_egg", -- authored stand "Bloom"
             desert = "gilded_egg", -- Desert origin (Sun Scarab → Solar Roc)
-            sand = "gilded_egg", -- accept a stand named "Sand" too
+            sand = "gilded_egg",
+            gilded = "gilded_egg",
+            guilded = "gilded_egg", -- authored stand "Guilded" (as spelled in the map)
         },
         hell = { -- Hell_1+ — fallen mirror of Heaven; same four origins, Blight pets
             lava = "infernal_egg", -- Fire/lava origin (Cinderling Imp → secret Abyssal Wyrm)
             fire = "infernal_egg",
+            ember = "infernal_egg", -- area-named "BasicEmber" stand → Fire origin (beats stray "ice")
             ice = "black_ice_egg", -- Ice origin (Rimelight Hare → Black-Ice Leviathan)
+            aurora = "black_ice_egg", -- accept an egg-named stand too
             grass = "blight_egg", -- Earth/grass origin (Blightlamb → Gravewood Ent)
             earth = "blight_egg",
+            bloom = "blight_egg",
             desert = "ash_egg", -- Desert origin (Carrion Scarab → Ash Roc)
             sand = "ash_egg",
+            gilded = "ash_egg",
+            guilded = "ash_egg",
         },
     },
 

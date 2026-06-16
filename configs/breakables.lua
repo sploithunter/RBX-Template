@@ -285,6 +285,48 @@ local M = {
                 { name = "EmberstoneLargeV3", weight = 1 },
             },
         },
+        -- HELL_1 — fallen mirror of Heaven_1: same Emberstone ore (lava_coins), same surface raycast,
+        -- just the Home Lava floor -2000 Y instead of +2000. Gated by the Hell_1 zone unlock (100k
+        -- lava_coins) via BreakableSpawner:_isWorldActive, same as Heaven_1. Old ore models reused
+        -- (Jason: "put in the old models" — swap to real Hell crystal art later).
+        Hell_1 = {
+            max = 100,
+            interval = 8,
+            spawn_area = {
+                name = "SpawnArea",
+                size = { x = 340, y = 1, z = 420 }, -- covers the Hell_1 Lava pad (361x458)
+                position = { x = -207, y = -2000, z = 68 }, -- over the Hell_1 Lava floor (Home Lava -2000 Y)
+            },
+            spawn_settings = {
+                upright = true,
+                surface_y = -2000, -- fallback; the surface raycast below sets the real Y per node
+                use_spawner_bounds = true,
+                surface_mode = "surface",
+                surface_match_name = "Lava",
+                surface_raycast_height = 140,
+                surface_normal_min_y = 0.5,
+                spawn_area_margin = 30,
+                spawn_center = { x = -207, z = 68 },
+                spawn_radius = 150,
+                spawn_exclusion_radius = 12,
+                embed_ratio = 0,
+                min_distance = 12,
+                spawn_attempts = 90,
+                respawn_min_seconds = 5,
+                respawn_max_seconds = 60,
+            },
+            spawn_table = {
+                { name = "EmberstoneSmallV1", weight = 4 },
+                { name = "EmberstoneSmallV2", weight = 4 },
+                { name = "EmberstoneSmallV3", weight = 4 },
+                { name = "EmberstoneMediumV1", weight = 2 },
+                { name = "EmberstoneMediumV2", weight = 2 },
+                { name = "EmberstoneMediumV3", weight = 2 },
+                { name = "EmberstoneLargeV1", weight = 1 },
+                { name = "EmberstoneLargeV2", weight = 1 },
+                { name = "EmberstoneLargeV3", weight = 1 },
+            },
+        },
         Meadow = {
             max = 8,
             interval = 10,

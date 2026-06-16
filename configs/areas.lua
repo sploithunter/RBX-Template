@@ -216,5 +216,33 @@ return {
                 egg_stands = {},
             },
         },
+        -- HELL_1 (first realm BELOW the homeworld) — fallen mirror of Heaven_1. Same Fire/lava first
+        -- origin (Infernal Egg + Emberstone ore → lava_coins), same 100k flat unlock. Bounds are
+        -- Home.Lava -2000 Y (Hell_1 = Home copied 2000 down); vertical_band keeps it distinct from
+        -- the base Lava and from Heaven_1. Like Heaven_1, split into per-origin zones (Hell_1_Lava,
+        -- _Ice, …) once the other three Hell origins get their own areas.
+        Hell_1 = {
+            id = "Hell_1",
+            kind = "area",
+            element = "lava",
+            zone_level = 5,
+            mining_currency = "lava_coins",
+            display_name = "Infernal Lava",
+            order = 7,
+            unlock = {
+                unlocked_by_default = false,
+                required_zone = "Desert",
+                currency = "lava_coins",
+                cost = 100000,
+            },
+            boosts = {},
+            synthetic = {
+                center = { x = -207, y = -2000, z = 68 },
+                size = { x = 361, y = 4, z = 458 },
+                floor_y = -1999.5,
+                spawn_position = { x = -207, y = -1994, z = 68 },
+                egg_stands = {},
+            },
+        },
     },
 }

@@ -24,6 +24,31 @@ return function()
             )
         end)
 
+        -- Regression: the REAL authored stand names in the live map. Heaven uses egg-themed names
+        -- (Aurora/Bloom/Guilded/Solar); Home/Hell use area names (BasicEmber/Ice/Sand/Earth). The
+        -- "ember" key must beat the accidental "ice" inside "bas-ICE-mber" (3 chars) so a Fire stand
+        -- never resolves to the ice egg.
+        it("resolves the authored Heaven egg-themed stand names", function()
+            expect(EggStandResolver.eggFor("heaven", "Aurora", MATRIX)).to.equal("aurora_egg")
+            expect(EggStandResolver.eggFor("heaven", "Bloom", MATRIX)).to.equal("bloom_egg")
+            expect(EggStandResolver.eggFor("heaven", "Guilded", MATRIX)).to.equal("gilded_egg")
+            expect(EggStandResolver.eggFor("heaven", "Solar", MATRIX)).to.equal("solar_egg")
+        end)
+
+        it(
+            "resolves Hell BasicEmber to the fire egg, not the ice egg (ember beats stray 'ice')",
+            function()
+                expect(EggStandResolver.eggFor("hell", "BasicEmber", MATRIX)).to.equal(
+                    "infernal_egg"
+                )
+                expect(EggStandResolver.eggFor("hell", "BasicIce", MATRIX)).to.equal(
+                    "black_ice_egg"
+                )
+                expect(EggStandResolver.eggFor("hell", "BasicSand", MATRIX)).to.equal("ash_egg")
+                expect(EggStandResolver.eggFor("hell", "BasicEarth", MATRIX)).to.equal("blight_egg")
+            end
+        )
+
         it("is case-insensitive and returns the matched area", function()
             local egg, area = EggStandResolver.eggFor("base", "myICEpedestal", MATRIX)
             expect(egg).to.equal("ice_egg")
