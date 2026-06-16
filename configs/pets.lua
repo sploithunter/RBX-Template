@@ -13,20 +13,28 @@
 local petConfig = {
     version = "1.0.0",
 
-    -- Place an egg model (egg_sources id) centered inside a named map stand. The EggStandPlacement
-    -- server script clones the loaded egg model and centers it at the stand's UIanchor (or pivot).
-    -- Just name the stand + the egg here — no per-instance attributes/tags needed.
-    -- Value may be a string (egg id) OR a table for tuning:
-    --   { egg = "<id>", scale = <number>, offset_y = <studs> }
-    --   scale    multiplies the egg model's size (Model:ScaleTo), default 1
-    --   offset_y raises the egg above the stand anchor in studs, default 0
-    egg_stand_placements = {
-        ["BasicEarth"] = { egg = "earth_egg", scale = 3.5, offset_y = 0.5 },
-        ["BasicEmber"] = { egg = "ember_egg", scale = 3.5, offset_y = 0.5 },
-        ["BasicIce"] = { egg = "ice_egg", scale = 3.5, offset_y = 0.5 },
-        ["BasicSand"] = { egg = "sand_egg", scale = 3.5, offset_y = 0.5 },
-        -- Heaven 1, Fire origin: a stand named "HeavenSolarStand" in the Heaven_1 map's Lava area.
-        ["HeavenSolarStand"] = { egg = "solar_egg", scale = 3.5, offset_y = 0.5 },
+    -- Egg-stand resolution (unified, area/world-based). An egg-hatcher stand is an AUTHORED map
+    -- Model with a `UIanchor` part. EggStandPlacement discovers every such stand under
+    -- `Workspace.Maps.<World>`, then resolves which egg sits on it WITHOUT per-stand config:
+    --   • REALM comes from the world folder path (WorldContext.parseName: Home -> base,
+    --     Heaven_1 -> heaven, Hell_1 -> hell).
+    --   • AREA comes from the stand's NAME (the first matrix area key the name contains, e.g.
+    --     "BasicIce" -> ice, a stand named "Lava" -> lava). Name stands by their area.
+    --   • EGG = realm_area_eggs[realm][area].
+    -- So you just drop an authored stand in the right area of a world — no names-to-eggs table, no
+    -- fabricated stands. See EggStandResolver + docs/wiki/AREA_BOUNDS_LEASH sibling notes.
+    egg_stand_defaults = { scale = 3.5, offset_y = 0.5 },
+    realm_area_eggs = {
+        base = { -- the Home island (Earth realm, depth 0)
+            earth = "earth_egg",
+            ember = "ember_egg",
+            ice = "ice_egg",
+            sand = "sand_egg",
+        },
+        heaven = { -- Heaven_1+ (Fire origin starter is the solar egg in the lava area)
+            lava = "solar_egg",
+            solar = "solar_egg", -- accept a stand named "Solar" too
+        },
     },
 
     -- Eternal pets scale to a percentage of the player's "eternal power base"
@@ -2131,7 +2139,7 @@ local petConfig = {
         },
 
         -- IceEgg (ice biome). Place an EggStand part in the Ice zone with attribute
-        -- EggId = "ice_egg" (or via egg_stand_placements["BasicIce"]). Hatches the Ice family.
+        -- EggId = "ice_egg" (resolved onto an authored "Ice" stand via realm_area_eggs). Hatches the Ice family.
         ice_egg = {
             name = "Ice Egg",
             description = "Ice-biome egg — hatches the Ice pets (Snowflake Owl up to Polar Bear).",
@@ -2188,7 +2196,7 @@ local petConfig = {
         },
 
         -- SandEgg (desert biome). Place an EggStand part in the Desert zone with attribute
-        -- EggId = "sand_egg" (or via egg_stand_placements["BasicSand"]). Hatches the Sand family.
+        -- EggId = "sand_egg" (resolved onto an authored "Sand" stand via realm_area_eggs). Hatches the Sand family.
         sand_egg = {
             name = "Sand Egg",
             description = "Desert-biome egg — hatches the Sand pets (Fennec up to Scorpion).",
