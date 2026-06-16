@@ -20,6 +20,11 @@
 # 2026-06-14 ice batch contact sheet:
 #   assets/exports/pets/ice_pets_2026-06-14_contact_sheet.png
 #   import manifest: assets/ui/imports/manifest_2026-06-14_ice_pets.txt
+#
+# 2026-06-15 premium pets batch (basic + gold):
+#   assets/exports/pets/premium_pets_2026-06-15_basic_contact_sheet.png
+#   assets/exports/pets/premium_pets_2026-06-15_gold_contact_sheet.png
+#   import manifest: assets/ui/imports/manifest_2026-06-15_premium_pets.txt
 
 pet	variant	source_tris	export_dir	5k	7500tris	10k	texture
 grumpy_cat	basic	7500	assets/exports/pets/grumpy_cat_basic/	5000 tris	7500 tris	7500 tris*	grumpy_cat_basic.png
@@ -40,6 +45,26 @@ glacial_mammoth	basic	12573	assets/exports/pets/glacial_mammoth_basic/	5000 tris
 glacial_leviathan	basic	12100	assets/exports/pets/glacial_leviathan_basic/	5000 tris	7500 tris	10000 tris	glacial_leviathan_basic.png
 aurora_seal	basic	12862	assets/exports/pets/aurora_seal_basic/	5000 tris	7500 tris	10000 tris	aurora_seal_basic.png
 frost_fox	basic	12742	assets/exports/pets/frost_fox_basic/	5000 tris	7500 tris	10000 tris	frost_fox_basic.png
+empyrean_dragon	basic	13398	assets/exports/pets/empyrean_dragon_basic/	5000 tris	7500 tris	10000 tris	empyrean_dragon_basic.png
+empyrean_dragon	gold	13398	assets/exports/pets/empyrean_dragon_gold/	5000 tris	7500 tris	10000 tris	empyrean_dragon_gold.png
+aurora_leviathan	basic	13042	assets/exports/pets/aurora_leviathan_basic/	5000 tris	7500 tris	10000 tris	aurora_leviathan_basic.png
+aurora_leviathan	gold	13042	assets/exports/pets/aurora_leviathan_gold/	5000 tris	7500 tris	10000 tris	aurora_leviathan_gold.png
+glacial_seraph	basic	11438	assets/exports/pets/glacial_seraph_basic/	5000 tris	7500 tris	10000 tris	glacial_seraph_basic.png
+glacial_seraph	gold	11438	assets/exports/pets/glacial_seraph_gold/	5000 tris	7500 tris	10000 tris	glacial_seraph_gold.png
+seraph_owl	basic	7127	assets/exports/pets/seraph_owl_basic/	5000 tris	7127 tris*	7127 tris*	seraph_owl_basic.png
+seraph_owl	gold	7127	assets/exports/pets/seraph_owl_gold/	5000 tris	7127 tris*	7127 tris*	seraph_owl_gold.png
+aurora_fox	basic	11272	assets/exports/pets/aurora_fox_basic/	5000 tris	7500 tris	10000 tris	aurora_fox_basic.png
+aurora_fox	gold	11272	assets/exports/pets/aurora_fox_gold/	5000 tris	7500 tris	10000 tris	aurora_fox_gold.png
+frostlight_hare	basic	6988	assets/exports/pets/frostlight_hare_basic/	5000 tris	6988 tris*	6988 tris*	frostlight_hare_basic.png
+frostlight_hare	gold	6988	assets/exports/pets/frostlight_hare_gold/	5000 tris	6988 tris*	6988 tris*	frostlight_hare_gold.png
+sunmane_lion	basic	19226	assets/exports/pets/sunmane_lion_basic/	5000 tris	7500 tris	10000 tris	sunmane_lion_basic.png
+sunmane_lion	gold	19226	assets/exports/pets/sunmane_lion_gold/	5000 tris	7500 tris	10000 tris	sunmane_lion_gold.png
+solar_phoenix	basic	17672	assets/exports/pets/solar_phoenix_basic/	5000 tris	7500 tris	10000 tris	solar_phoenix_basic.png
+solar_phoenix	gold	17672	assets/exports/pets/solar_phoenix_gold/	5000 tris	7500 tris	10000 tris	solar_phoenix_gold.png
+radiant_salamander	basic	18207	assets/exports/pets/radiant_salamander_basic/	5000 tris	7500 tris	10000 tris	radiant_salamander_basic.png
+radiant_salamander	gold	18207	assets/exports/pets/radiant_salamander_gold/	5000 tris	7500 tris	10000 tris	radiant_salamander_gold.png
+emberling_cherub	basic	12234	assets/exports/pets/emberling_cherub_basic/	5000 tris	7500 tris	10000 tris	emberling_cherub_basic.png
+emberling_cherub	gold	12234	assets/exports/pets/emberling_cherub_gold/	5000 tris	7500 tris	10000 tris	emberling_cherub_gold.png
 
 * below target — source mesh already under budget; export kept at native count
 
@@ -63,3 +88,13 @@ download:
   glacial_leviathan: ~/Downloads/GlacialLeviathan.zip + GlacialLeviathan.png (preview)
   aurora_seal: ~/Downloads/AuroraSeal.zip + AuroraSeal.png (preview)
   frost_fox: ~/Downloads/FrostFox.zip + FrostFox.png (preview)
+  empyrean_dragon: ~/Downloads/Empyrean Dragon.zip + Empyrean Dragon.png / Empyrean Dragon Gold.zip + Empyrean Dragon Gold.png
+  aurora_leviathan: ~/Downloads/Aurora Leviathan.zip + Aurora Leviathan.png / Aurora Leviathan Gold.zip + Aurora Leviathan Gold.png
+  glacial_seraph: ~/Downloads/Glacial Seraph.zip + Glacial Seraph.png / Glacial Seraph Gold.zip + Glacial Seraph Gold.png
+  seraph_owl: ~/Downloads/Seraph Owl.zip + Seraph Owl.png / Seraph Owl Gold.zip + Seraph Owl Gold.png
+  aurora_fox: ~/Downloads/Aurora Fox.zip + Aurora Fox.png / Aurora Fox Gold.zip + Aurora Fox Gold.png
+  frostlight_hare: ~/Downloads/Frostlight Hare.zip + Frostlight Hare.png / Frostlight Hare Gold.zip + Frostlight Hare Gold.png
+  sunmane_lion: ~/Downloads/Sunmane Lion.zip + Sunmane Lion.png / Sunmane Lion Gold.zip + Sunmane Lion Gold.png
+  solar_phoenix: ~/Downloads/Solar Phoenix.zip + Solar Phoenix.png / Solar Phoenix Gold.zip + Solar Phoenix Gold.png
+  radiant_salamander: ~/Downloads/Radiant Salamander.zip + Radiant Salamander.png / Radiant Salamander Gold.zip + Radiant Salamander Gold.png
+  emberling_cherub: ~/Downloads/Emberling Cherub.zip + Emberling Cherub.png / Emberling Cherub Gold.zip + Emberling Cherub Gold.png

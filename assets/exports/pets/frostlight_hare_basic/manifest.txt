@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/pets/frostlight_hare_basic.obj
+original_tris: 6988
+
+5k: frostlight_hare_basic_5k.fbx (5000 tris, target 5000)
+7500tris: frostlight_hare_basic_7500tris.fbx (6988 tris, target 7500)
+10k: frostlight_hare_basic_10k.fbx (6988 tris, target 10000)

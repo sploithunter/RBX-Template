@@ -20,3 +20,23 @@ glacial_mammoth_basic	glacial_mammoth	basic	GlacialMammoth.zip	12573
 glacial_leviathan_basic	glacial_leviathan	basic	GlacialLeviathan.zip	12100	
 aurora_seal_basic	aurora_seal	basic	AuroraSeal.zip	12862	
 frost_fox_basic	frost_fox	basic	FrostFox.zip	12742	
+empyrean_dragon_basic	empyrean_dragon	basic	Empyrean Dragon.zip	13398	
+empyrean_dragon_gold	empyrean_dragon	gold	Empyrean Dragon Gold.zip	13398	
+aurora_leviathan_basic	aurora_leviathan	basic	Aurora Leviathan.zip	13042	
+aurora_leviathan_gold	aurora_leviathan	gold	Aurora Leviathan Gold.zip	13042	
+glacial_seraph_basic	glacial_seraph	basic	Glacial Seraph.zip	11438	
+glacial_seraph_gold	glacial_seraph	gold	Glacial Seraph Gold.zip	11438	
+seraph_owl_basic	seraph_owl	basic	Seraph Owl.zip	7127	
+seraph_owl_gold	seraph_owl	gold	Seraph Owl Gold.zip	7127	
+aurora_fox_basic	aurora_fox	basic	Aurora Fox.zip	11272	
+aurora_fox_gold	aurora_fox	gold	Aurora Fox Gold.zip	11272	
+frostlight_hare_basic	frostlight_hare	basic	Frostlight Hare.zip	6988	
+frostlight_hare_gold	frostlight_hare	gold	Frostlight Hare Gold.zip	6988	
+sunmane_lion_basic	sunmane_lion	basic	Sunmane Lion.zip	19226	
+sunmane_lion_gold	sunmane_lion	gold	Sunmane Lion Gold.zip	19226	
+solar_phoenix_basic	solar_phoenix	basic	Solar Phoenix.zip	17672	
+solar_phoenix_gold	solar_phoenix	gold	Solar Phoenix Gold.zip	17672	
+radiant_salamander_basic	radiant_salamander	basic	Radiant Salamander.zip	18207	
+radiant_salamander_gold	radiant_salamander	gold	Radiant Salamander Gold.zip	18207	
+emberling_cherub_basic	emberling_cherub	basic	Emberling Cherub.zip	12234	
+emberling_cherub_gold	emberling_cherub	gold	Emberling Cherub Gold.zip	12234	

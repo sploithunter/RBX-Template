@@ -120,5 +120,13 @@
     "imageId": "rbxassetid://131210888307665",
     "wiredInto": "configs/enemies.lua glacial_leviathan (Ice boss)",
     "uploadedBy": "self-serve (Claude) 2026-06-14"
+  },
+  "empyrean_dragon_basic": {
+    "modelAssetId": "137652441547836",
+    "meshId": "rbxassetid://133319241632541",
+    "textureDecalId": "125837048667958",
+    "imageId": "rbxassetid://125916543159827",
+    "wiredInto": "pending configs/pets.lua (Heaven 1 secret dragon, fire origin)",
+    "uploadedBy": "self-serve (Claude) 2026-06-16"
   }
 }

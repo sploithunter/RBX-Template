@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/pets/seraph_owl_gold.obj
+original_tris: 7127
+
+5k: seraph_owl_gold_5k.fbx (4999 tris, target 5000)
+7500tris: seraph_owl_gold_7500tris.fbx (7127 tris, target 7500)
+10k: seraph_owl_gold_10k.fbx (7127 tris, target 10000)

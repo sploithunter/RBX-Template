@@ -1,0 +1,14 @@
+# Premium pet preview images — basic (2026-06-15 batch)
+# Contact sheet: assets/exports/pets/premium_pets_2026-06-15_basic_contact_sheet.png
+
+pet	download_preview	copied_to
+empyrean_dragon	~/Downloads/Empyrean Dragon.png	empyrean_dragon_basic.png
+aurora_leviathan	~/Downloads/Aurora Leviathan.png	aurora_leviathan_basic.png
+glacial_seraph	~/Downloads/Glacial Seraph.png	glacial_seraph_basic.png
+seraph_owl	~/Downloads/Seraph Owl.png	seraph_owl_basic.png
+aurora_fox	~/Downloads/Aurora Fox.png	aurora_fox_basic.png
+frostlight_hare	~/Downloads/Frostlight Hare.png	frostlight_hare_basic.png
+sunmane_lion	~/Downloads/Sunmane Lion.png	sunmane_lion_basic.png
+solar_phoenix	~/Downloads/Solar Phoenix.png	solar_phoenix_basic.png
+radiant_salamander	~/Downloads/Radiant Salamander.png	radiant_salamander_basic.png
+emberling_cherub	~/Downloads/Emberling Cherub.png	emberling_cherub_basic.png
