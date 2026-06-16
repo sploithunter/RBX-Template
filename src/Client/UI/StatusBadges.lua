@@ -65,6 +65,13 @@ function StatusBadges.resolveEffects(EFFECTS, sources, now)
                     ringColor = POWER_ICONS.elementColor3(badge.element, "dark")
                 end
             end
+            -- Static ring: a descriptor can declare `ringElement` (+ optional `ringShape`) so even a
+            -- non-power-tagged status badge (enemy heal/held/hex) gets the standard tinted ring —
+            -- no more ringless discs. Power-resolved rings above win when present.
+            if not ringImg and e.ringElement then
+                ringImg = POWER_ICONS.rings[e.ringShape or "aura"] or POWER_ICONS.rings.aura
+                ringColor = POWER_ICONS.elementColor3(e.ringElement, "dark")
+            end
             if e.untilAttr then
                 local until_ = src:GetAttribute(e.untilAttr) or 0
                 if until_ > now then

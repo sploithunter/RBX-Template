@@ -60,6 +60,7 @@ local ENEMY_EFFECTS = {
         color = Color3.fromRGB(90, 210, 110),
         label = "HEAL",
         icon = POWER_ICONS.discFor("earth", "plus"), -- green heal cross (same disc the pets show)
+        ringElement = "earth", -- standard tinted ring (no more ringless disc)
     },
     {
         key = "hex",
@@ -75,6 +76,7 @@ local ENEMY_EFFECTS = {
         color = Color3.fromRGB(150, 110, 215), -- control violet (matches the world HELD badge)
         label = "HELD",
         icon = POWER_ICONS.discFor("ice", "capacitor"), -- hold glyph (capacitor IS the hold art)
+        ringElement = "ice", -- standard tinted ring (matches the world HELD badge) — was ringless
     },
 }
 -- Expiry-blink cadence (matches SquadHud's defaults; a near-expiry timed badge flashes).
