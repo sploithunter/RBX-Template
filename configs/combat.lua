@@ -132,6 +132,12 @@ return {
         -- return to formation around the player; the enemies keep their aggro on the pets and
         -- chase them home, so the fight comes back to the player instead of drifting off.
         rally_seconds = 3.5,
+        -- FOCUS / assist target (clicking an enemy to direct the squad) is a TRANSIENT order, not a
+        -- permanent lock: it expires this many seconds after it's issued, then pets fall back to
+        -- their normal auto-targeting (nearest aggressor). Re-click to refresh. Prevents the
+        -- "stuck on an unreachable focus, squad does nothing" trap (Jason): orders are nudges you
+        -- re-issue as the field changes, like real squad commands.
+        assist_seconds = 5,
         -- IDLE DESPAWN (engagement timer): an enemy that has been DISENGAGED (no aggro on anyone)
         -- this many seconds leaves the field — so abandoned/leashed packs (and a fled-from death
         -- zone) clean themselves up instead of piling to max_alive. A live fight refreshes the clock

@@ -100,6 +100,14 @@ function EnemyService:Init()
     Signals.Combat_SetAssist.OnServerEvent:Connect(function(player, payload)
         local id = tonumber(type(payload) == "table" and payload.targetId or payload) or 0
         player:SetAttribute("CombatAssistTarget", id)
+        -- Transient focus: stamp an expiry so the order lapses (pets resume auto-targeting) instead
+        -- of locking forever. Re-clicking refreshes it. Cleared when id == 0.
+        if id ~= 0 then
+            local engCfg = (self._combatConfig and self._combatConfig.engagement) or {}
+            player:SetAttribute("CombatAssistUntil", os.clock() + (engCfg.assist_seconds or 5))
+        else
+            player:SetAttribute("CombatAssistUntil", nil)
+        end
     end)
 
     -- Buff target: the selected squad pet (its PositionNumber slot), used by single-target
@@ -2091,6 +2099,17 @@ function EnemyService:_assignPetTargets(eng)
             continue
         end
         local assist = player and player:GetAttribute("CombatAssistTarget")
+        -- TRANSIENT focus: a directed assist target lapses after assist_seconds so the squad is never
+        -- stranded on an unreachable/stale focus — it reverts to normal auto-targeting (re-click to
+        -- refresh). This is what stops "focus a far enemy -> pets do nothing forever".
+        if assist and assist ~= 0 then
+            local until_ = player:GetAttribute("CombatAssistUntil")
+            if until_ and os.clock() >= until_ then
+                player:SetAttribute("CombatAssistTarget", 0)
+                player:SetAttribute("CombatAssistUntil", nil)
+                assist = 0
+            end
+        end
         for _, pet in ipairs(folder:GetChildren()) do
             local tid = pet:FindFirstChild("TargetID")
             local tt = pet:FindFirstChild("TargetType")
