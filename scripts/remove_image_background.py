@@ -65,6 +65,17 @@ def is_green_screen_candidate(
     return green >= min_green - softness and (green - max(red, blue)) >= dominance - softness
 
 
+def is_blue_screen_candidate(
+    red: int,
+    green: int,
+    blue: int,
+    min_blue: int,
+    dominance: int,
+    softness: int,
+) -> bool:
+    return blue >= min_blue - softness and (blue - max(red, green)) >= dominance - softness
+
+
 def green_screen_alpha(
     red: int,
     green: int,
@@ -91,12 +102,46 @@ def green_screen_alpha(
     return int(255 * (softness - score) / softness)
 
 
+def blue_screen_alpha(
+    red: int,
+    green: int,
+    blue: int,
+    min_blue: int,
+    dominance: int,
+    softness: int,
+) -> int:
+    excess = blue - max(red, green)
+    if blue < min_blue - softness or excess <= 0:
+        return 255
+    if excess >= dominance and blue >= min_blue:
+        return 0
+    if softness <= 0:
+        return 255
+
+    blue_headroom = blue - (min_blue - softness)
+    excess_headroom = excess - (dominance - softness)
+    score = min(blue_headroom, excess_headroom)
+    if score <= 0:
+        return 255
+    if score >= softness:
+        return 0
+    return int(255 * (softness - score) / softness)
+
+
 def despill_green(red: int, green: int, blue: int, alpha: int) -> tuple[int, int, int]:
     spill = max(0, green - max(red, blue))
     if spill <= 0 or alpha <= 0:
         return red, green, blue
     reduction = spill * alpha // 255
     return red, max(red, blue, green - reduction), blue
+
+
+def despill_blue(red: int, green: int, blue: int, alpha: int) -> tuple[int, int, int]:
+    spill = max(0, blue - max(red, green))
+    if spill <= 0 or alpha <= 0:
+        return red, green, blue
+    reduction = spill * alpha // 255
+    return red, green, max(red, green, blue - reduction)
 
 
 def flood_connected_background(
@@ -164,6 +209,25 @@ def edge_connected_green_screen(
 
     def candidate(red: int, green: int, blue: int) -> bool:
         return is_green_screen_candidate(red, green, blue, min_green, dominance, softness)
+
+    return flood_connected_background(image, 0, 0, seeds, candidate=candidate)
+
+
+def edge_connected_blue_screen(
+    image: Image.Image,
+    min_blue: int,
+    dominance: int,
+    softness: int,
+) -> set[tuple[int, int]]:
+    width, height = image.size
+    seeds: list[tuple[int, int]] = []
+    for x in range(width):
+        seeds.extend([(x, 0), (x, height - 1)])
+    for y in range(height):
+        seeds.extend([(0, y), (width - 1, y)])
+
+    def candidate(red: int, green: int, blue: int) -> bool:
+        return is_blue_screen_candidate(red, green, blue, min_blue, dominance, softness)
 
     return flood_connected_background(image, 0, 0, seeds, candidate=candidate)
 

@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/eggs/blight_egg/blight_egg.obj
+original_tris: 1508
+
+5k: blight_egg_5k.fbx (1508 tris, target 5000)
+7500tris: blight_egg_7500tris.fbx (1508 tris, target 7500)
+10k: blight_egg_10k.fbx (1508 tris, target 10000)

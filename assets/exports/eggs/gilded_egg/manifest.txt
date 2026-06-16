@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/eggs/gilded_egg/gilded_egg.obj
+original_tris: 12126
+
+5k: gilded_egg_5k.fbx (5000 tris, target 5000)
+7500tris: gilded_egg_7500tris.fbx (7500 tris, target 7500)
+10k: gilded_egg_10k.fbx (10000 tris, target 10000)

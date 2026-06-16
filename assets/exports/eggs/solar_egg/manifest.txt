@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/eggs/solar_egg/solar_egg.obj
+original_tris: 4508
+
+5k: solar_egg_5k.fbx (4508 tris, target 5000)
+7500tris: solar_egg_7500tris.fbx (4508 tris, target 7500)
+10k: solar_egg_10k.fbx (4508 tris, target 10000)

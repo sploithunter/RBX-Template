@@ -10,5 +10,21 @@
    "fbx": "assets/exports/eggs/colorado_egg/colorado_egg.fbx",
    "texture": "assets/source/eggs/colorado_egg/colorado_egg.png"
   }
+ },
+ "solar_egg": {
+  "icon_decal": "131049741138255",
+  "icon_image": "95897439317999",
+  "model_asset": "77584635179884",
+  "mesh_id": "rbxassetid://120776006241642",
+  "mesh_image": "rbxassetid://72536199373579",
+  "creator": "Open Simulator Group (15872767)",
+  "realm": "heaven",
+  "origin": "fire",
+  "sources": {
+   "icon": "assets/source/eggs/solar_egg.png",
+   "fbx": "assets/exports/eggs/solar_egg/solar_egg_5k.fbx",
+   "texture": "assets/exports/eggs/solar_egg/solar_egg.png"
+  },
+  "uploadedBy": "self-serve (Claude) 2026-06-16"
  }
 }

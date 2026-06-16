@@ -1,18 +1,53 @@
 # Egg export art (upload / Studio reference)
+#
+# Recommended Roblox import: {egg_id}_5k.fbx + {egg_id}.png from assets/exports/eggs/{egg_id}/
+# Pipeline: bash scripts/decimate_mesh.sh assets/source/eggs/<egg_id>/<egg_id>.obj --targets 5000,7500,10000 --output assets/exports/eggs/<egg_id>/
 
-# 2D icons
+# 2D icons (transparent PNGs)
 asset_key	file	description
-colorado_egg	colorado_egg.png	Colorado flag faceted egg (front) — inventory/UI icon; pairs with configs/creators.lua egg_id colorado_egg
-colorado_egg_back	colorado_egg_back.png	Colorado egg back view
-colorado_egg_left	colorado_egg_left.png	Colorado egg left view
-colorado_egg_right	colorado_egg_right.png	Colorado egg right view
+colorado_egg	colorado_egg.png	Colorado flag faceted egg (front)
+colorado_egg_back	colorado_egg_back.png	back view
+colorado_egg_left	colorado_egg_left.png	left view
+colorado_egg_right	colorado_egg_right.png	right view
+ash_egg	../source/eggs/ash_egg.png	2D inventory icon
+blight_egg	../source/eggs/blight_egg.png	2D inventory icon
+black_ice_egg	../source/eggs/black_ice_egg.png	2D inventory icon
+infernal_egg	../source/eggs/infernal_egg.png	2D inventory icon
+gilded_egg	../source/eggs/gilded_egg.png	2D inventory icon
+bloom_egg	../source/eggs/bloom_egg.png	2D inventory icon
+aurora_egg	../source/eggs/aurora_egg.png	2D inventory icon
+solar_egg	../source/eggs/solar_egg.png	2D inventory icon
 
-# 3D mesh (import OBJ + texture; no decimation — 1461 tris)
+2d_contact_sheet: assets/source/eggs/eggs_2026-06-16_contact_sheet.png
+
+# 3D meshes (2026-06-16 batch)
+egg_id	source_tris	export_dir	5k	7500tris	10k	texture
+ash_egg	13270	assets/exports/eggs/ash_egg/	5000 tris	7500 tris	10000 tris	ash_egg.png
+blight_egg	1508	assets/exports/eggs/blight_egg/	1508 tris*	1508 tris*	1508 tris*	blight_egg.png
+black_ice_egg	13353	assets/exports/eggs/black_ice_egg/	4999 tris	7499 tris	9999 tris	black_ice_egg.png
+infernal_egg	11886	assets/exports/eggs/infernal_egg/	5000 tris	7500 tris	10000 tris	infernal_egg.png
+gilded_egg	12126	assets/exports/eggs/gilded_egg/	5000 tris	7500 tris	10000 tris	gilded_egg.png
+bloom_egg	15754	assets/exports/eggs/bloom_egg/	5000 tris	7500 tris	10000 tris	bloom_egg.png
+aurora_egg	1022	assets/exports/eggs/aurora_egg/	1022 tris*	1022 tris*	1022 tris*	aurora_egg.png
+solar_egg	4508	assets/exports/eggs/solar_egg/	4508 tris*	4508 tris*	4508 tris*	solar_egg.png
+
+* below target — source mesh already under budget; export kept at native count
+
+# 3D mesh (colorado — no decimation)
 colorado_egg_mesh	colorado_egg/colorado_egg.obj	1461 tris
 colorado_egg_mesh	colorado_egg/colorado_egg.png	diffuse texture
 colorado_egg_mesh	colorado_egg/colorado_egg.mtl	material
 
 source_2d: assets/source/eggs/
-source_mesh: assets/source/eggs/colorado_egg/
-download_2d: ~/Downloads/ColoradoGreenScreenFront.png (+ Back/Left/Right)
-download_mesh: ~/Downloads/38d24117-8933-4786-84e0-5ea8b7344869.zip
+source_mesh: assets/source/eggs/<egg_id>/
+import_manifest_2d: assets/ui/imports/manifest_2026-06-16_eggs.txt
+download_mesh:
+  ash_egg: ~/Downloads/AshEgg.zip
+  blight_egg: ~/Downloads/BlightEgg.zip
+  black_ice_egg: ~/Downloads/BlackIceEgg.zip
+  infernal_egg: ~/Downloads/InfernalEgg.zip
+  gilded_egg: ~/Downloads/GildedEgg.zip
+  bloom_egg: ~/Downloads/BloomEgg.zip
+  aurora_egg: ~/Downloads/AuroraEgg.zip
+  solar_egg: ~/Downloads/SolarEgg.zip
+  colorado_egg: ~/Downloads/38d24117-8933-4786-84e0-5ea8b7344869.zip

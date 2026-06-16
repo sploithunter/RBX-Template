@@ -7,7 +7,30 @@ colorado_egg_left.png	<- ColoradoGreenScreenLeft.png
 colorado_egg_right.png	<- ColoradoGreenScreenRight.png
 pipeline_2d: scripts/normalize_icons.py (edge-connected green-screen key)
 
-# 3D mesh (~1461 tris — no decimation needed)
+# 2026-06-16 batch (auto green/blue screen key)
+ash_egg.png	<- AshEgg.png	blue-screen
+blight_egg.png	<- BlightEgg.png	blue-screen
+black_ice_egg.png	<- BlackIceEgg.png	green-screen
+infernal_egg.png	<- InfernalEgg.png	green-screen
+gilded_egg.png	<- GildedEgg.png	green-screen
+bloom_egg.png	<- BloomEgg.png	blue-screen
+aurora_egg.png	<- auroraEgg.png	green-screen
+solar_egg.png	<- SolarEggBlueScreen.png	blue-screen (replaced green-screen SolarEgg.png — green spill on art)
+contact_sheet: assets/source/eggs/eggs_2026-06-16_contact_sheet.png
+import_manifest: assets/ui/imports/manifest_2026-06-16_eggs.txt
+
+# 3D meshes (2026-06-16 batch) — decimate via scripts/decimate_mesh.sh
+egg_id	source_tris	download_zip	meshy_name	note
+ash_egg	13270	AshEgg.zip	Luminous Crag Egg	
+blight_egg	1508	BlightEgg.zip	(basic export)	below 5k — native kept
+black_ice_egg	13353	BlackIceEgg.zip	Frostfire Crystal Egg	
+infernal_egg	11886	InfernalEgg.zip	Lava Egg	
+gilded_egg	12126	GildedEgg.zip	Golden Sunburst Egg	
+bloom_egg	15754	BloomEgg.zip	Golden Blossom Egg	
+aurora_egg	1022	AuroraEgg.zip	(basic export)	below 5k — native kept
+solar_egg	4508	SolarEgg.zip	Golden Ember Egg	below 5k — native kept
+
+# 3D mesh (colorado — no decimation, 1461 tris)
 colorado_egg/colorado_egg.obj	<- 38d24117-8933-4786-84e0-5ea8b7344869.zip (base.obj)
 colorado_egg/colorado_egg.png	<- texture_diffuse.png
 colorado_egg/colorado_egg.mtl	<- generated (map_Kd colorado_egg.png)

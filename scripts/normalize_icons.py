@@ -23,10 +23,14 @@ from PIL import Image
 
 from remove_image_background import (
     background_alpha,
+    blue_screen_alpha,
+    despill_blue,
     despill_green,
     edge_connected_background,
+    edge_connected_blue_screen,
     edge_connected_green_screen,
     green_screen_alpha,
+    is_blue_screen_candidate,
     is_green_screen_candidate,
 )
 
@@ -88,8 +92,20 @@ def parse_args() -> argparse.Namespace:
         help="Required green excess over max(red, blue) for green-screen key",
     )
     parser.add_argument(
+        "--blue-min",
+        type=int,
+        default=120,
+        help="Minimum blue channel for blue-screen key",
+    )
+    parser.add_argument(
+        "--blue-dominance",
+        type=int,
+        default=40,
+        help="Required blue excess over max(red, green) for blue-screen key",
+    )
+    parser.add_argument(
         "--background-mode",
-        choices=["auto", "white", "dark", "green"],
+        choices=["auto", "white", "dark", "green", "blue"],
         default="auto",
         help="Background removal mode (default: auto-detect from corners)",
     )
@@ -177,6 +193,8 @@ def detect_background_mode(
     dark_threshold: int,
     green_min: int,
     green_dominance: int,
+    blue_min: int = 120,
+    blue_dominance: int = 40,
 ) -> str | None:
     alpha = image.split()[-1]
     transparent_corners = sum(1 for value in alpha.getdata() if value < 16)
@@ -194,9 +212,15 @@ def detect_background_mode(
         for red, green, blue in samples
         if is_green_screen_candidate(red, green, blue, green_min, green_dominance, 0)
     )
+    blue_votes = sum(
+        1
+        for red, green, blue in samples
+        if is_blue_screen_candidate(red, green, blue, blue_min, blue_dominance, 0)
+    )
 
-    if green_votes >= max(white_votes, dark_votes) and green_votes >= len(samples) // 2:
-        return "green"
+    screen_votes = max(green_votes, blue_votes)
+    if screen_votes >= max(white_votes, dark_votes) and screen_votes >= len(samples) // 2:
+        return "green" if green_votes >= blue_votes else "blue"
     if white_votes >= dark_votes and white_votes >= len(samples) // 2:
         return "white"
     if dark_votes > white_votes:
@@ -251,6 +275,53 @@ def remove_green_spill(image: Image.Image, max_dist: int = 10) -> Image.Image:
     return result
 
 
+def remove_blue_spill(image: Image.Image, max_dist: int = 10) -> Image.Image:
+    """Remove residual blue-screen spill near the keyed silhouette edge."""
+    from collections import deque
+
+    rgba = image.convert("RGBA")
+    width, height = rgba.size
+    pixels = rgba.load()
+    dist: dict[tuple[int, int], int] = {}
+    queue: deque[tuple[int, int]] = deque()
+
+    for y in range(height):
+        for x in range(width):
+            if pixels[x, y][3] < 16:
+                dist[(x, y)] = 0
+                queue.append((x, y))
+
+    while queue:
+        x, y = queue.popleft()
+        for next_x, next_y in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if not (0 <= next_x < width and 0 <= next_y < height):
+                continue
+            if (next_x, next_y) in dist:
+                continue
+            dist[(next_x, next_y)] = dist[(x, y)] + 1
+            queue.append((next_x, next_y))
+
+    cleaned = []
+    for y in range(height):
+        for x in range(width):
+            red, green, blue, alpha = pixels[x, y]
+            if alpha < 16:
+                cleaned.append((red, green, blue, alpha))
+                continue
+
+            distance = dist.get((x, y), max_dist + 1)
+            excess = blue - max(red, green)
+            bluish = excess >= 12 or (excess >= 5 and blue >= 35)
+            if distance <= max_dist and bluish:
+                cleaned.append((red, green, blue, 0))
+            else:
+                cleaned.append((red, green, blue, alpha))
+
+    result = rgba.copy()
+    result.putdata(cleaned)
+    return result
+
+
 def remove_background(
     image: Image.Image,
     mode: str | None,
@@ -259,6 +330,8 @@ def remove_background(
     softness: int,
     green_min: int = 120,
     green_dominance: int = 40,
+    blue_min: int = 120,
+    blue_dominance: int = 40,
 ) -> Image.Image:
     if mode is None:
         return image
@@ -276,6 +349,14 @@ def remove_background(
                 alpha,
                 green_screen_alpha(red, green, blue, green_min, green_dominance, softness),
             )
+    elif mode == "blue":
+        background_mask = edge_connected_blue_screen(image, blue_min, blue_dominance, softness)
+
+        def alpha_for_pixel(red: int, green: int, blue: int, alpha: int) -> int:
+            return min(
+                alpha,
+                blue_screen_alpha(red, green, blue, blue_min, blue_dominance, softness),
+            )
     else:
         background_mask = edge_connected_dark_background(image, dark_threshold, softness)
 
@@ -292,6 +373,8 @@ def remove_background(
         next_alpha = alpha_for_pixel(red, green, blue, alpha)
         if mode == "green" and next_alpha > 0:
             red, green, blue = despill_green(red, green, blue, next_alpha)
+        elif mode == "blue" and next_alpha > 0:
+            red, green, blue = despill_blue(red, green, blue, next_alpha)
         pixels.append((red, green, blue, next_alpha))
 
     result = image.copy()
@@ -339,11 +422,21 @@ def normalize_icon(
     softness: int,
     green_min: int = 120,
     green_dominance: int = 40,
+    blue_min: int = 120,
+    blue_dominance: int = 40,
     background_mode: str = "auto",
 ) -> tuple[Image.Image, str | None]:
     rgba = image.convert("RGBA")
     if background_mode == "auto":
-        mode = detect_background_mode(rgba, white_threshold, dark_threshold, green_min, green_dominance)
+        mode = detect_background_mode(
+            rgba,
+            white_threshold,
+            dark_threshold,
+            green_min,
+            green_dominance,
+            blue_min,
+            blue_dominance,
+        )
     else:
         mode = background_mode
     rgba = remove_background(
@@ -354,9 +447,13 @@ def normalize_icon(
         softness,
         green_min,
         green_dominance,
+        blue_min,
+        blue_dominance,
     )
     if mode == "green":
         rgba = remove_green_spill(rgba)
+    elif mode == "blue":
+        rgba = remove_blue_spill(rgba)
     rgba = crop_to_content(rgba, padding, square)
     if size > 0:
         rgba = rgba.resize((size, size), Image.Resampling.LANCZOS)
@@ -433,6 +530,8 @@ def main() -> int:
             args.softness,
             args.green_min,
             args.green_dominance,
+            args.blue_min,
+            args.blue_dominance,
             args.background_mode,
         )
         destination = output_path_for(source, input_path, output_root, args.prefix, index)

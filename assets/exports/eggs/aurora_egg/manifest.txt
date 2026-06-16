@@ -1,0 +1,6 @@
+source: /Users/jason/Documents/RBX-Template/assets/source/eggs/aurora_egg/aurora_egg.obj
+original_tris: 1022
+
+5k: aurora_egg_5k.fbx (1022 tris, target 5000)
+7500tris: aurora_egg_7500tris.fbx (1022 tris, target 7500)
+10k: aurora_egg_10k.fbx (1022 tris, target 10000)
