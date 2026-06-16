@@ -33,7 +33,15 @@ Canonical: `src/Client/UI/PetBadge.lua` (disc + ring + symbol) + `configs/power_
 ## Domain 3 — UI components  (bars/cards/badges mostly shared)
 
 Canonical: `OverheadBar` (world fill bars), `HudCard` + `StatusBadges` (combat cards), `PetBadge`
-(icon badges), `PetCardStyle` (pet-card chrome). Consolidation targets:
+(icon badges), `PetCardStyle` (pet-card chrome), `Pill` (capsule primitive: corner+gradient+stroke,
+`button`/`frame`/`applyTo`), `FillBar` (on-screen fill bars). Consolidation targets:
+
+> **Pattern to extract on next use — "icon-pill"** (Jason, 2026-06): round `Pill` + a circular icon
+> lapping over the left edge + a value label = the labeled-stat-with-icon capsule. Currency capsules
+> are the reference look (CurrencyStyle). Only one consumer today, so NOT yet extracted (avoid a
+> one-user abstraction); add `Pill.iconPill` the moment a 2nd stat readout needs it, and retrofit
+> currency then. Note: the buff-stats HUD is NOT this — those are FillBar rows.
+
 - 🎯 **`BreakableSpawner` crystal health/boost overhead bars are hand-rolled** (BreakableSpawner.lua
   ~1713-1746) — pets+enemies use `OverheadBar`, crystals don't. NOTE: migrating also means moving the
   breakable bar UPDATE/bind path (it finds Frames named `Health`/`Boost`) onto OverheadBar's
