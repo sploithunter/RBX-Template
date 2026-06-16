@@ -748,6 +748,12 @@ function BreakableSpawner:_isWorldActive(worldName)
         return true
     end
 
+    -- Realm test worlds (Heaven_n / Hell_n): always active for now (proto — proving crystals can
+    -- live in a stacked realm). Proper realm-entry gating arrives with the world-aware crystal pass.
+    if worldName:match("^Heaven_%d+$") or worldName:match("^Hell_%d+$") then
+        return true
+    end
+
     -- A biome spawns ore only if at least one CURRENTLY-PRESENT player has it unlocked. This is
     -- the authoritative lockout / anti-cheat layer: a player who C-frame-teleports into a locked
     -- biome finds nothing to mine because the server never spawned ore there. (Per-player MINING

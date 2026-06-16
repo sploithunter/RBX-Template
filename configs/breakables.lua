@@ -238,6 +238,44 @@ local M = {
                 { name = "BloomstoneLargeV3", weight = 1 },
             },
         },
+        -- HEAVEN_1 PROTO (Jason): confirm crystals can live in a stacked realm. A copy of the Spawn
+        -- crystal world lifted to the Heaven_1 floor (Home +2000 Y). Reuses Bloomstone ore for now —
+        -- swap to heaven-themed crystals later. BreakableSpawner:_isWorldActive treats Heaven_/Hell_
+        -- worlds as active; the SpawnArea part is synthesized at the position below.
+        Heaven_1 = {
+            max = 14,
+            interval = 8,
+            spawn_area = {
+                name = "SpawnArea",
+                size = { x = 140, y = 1, z = 140 },
+                position = { x = 0, y = 2000, z = 0 }, -- over the Heaven_1 floor
+            },
+            spawn_settings = {
+                upright = true,
+                surface_y = 2000, -- Heaven_1 floor (base spawn floor + 2000)
+                use_spawner_bounds = true,
+                spawn_area_margin = 14,
+                spawn_center = { x = 0, z = 0 },
+                spawn_radius = 55,
+                spawn_exclusion_radius = 28,
+                embed_ratio = 0,
+                min_distance = 18,
+                spawn_attempts = 30,
+                respawn_min_seconds = 5,
+                respawn_max_seconds = 60,
+            },
+            spawn_table = {
+                { name = "BloomstoneSmallV1", weight = 4 },
+                { name = "BloomstoneSmallV2", weight = 4 },
+                { name = "BloomstoneSmallV3", weight = 4 },
+                { name = "BloomstoneMediumV1", weight = 2 },
+                { name = "BloomstoneMediumV2", weight = 2 },
+                { name = "BloomstoneMediumV3", weight = 2 },
+                { name = "BloomstoneLargeV1", weight = 1 },
+                { name = "BloomstoneLargeV2", weight = 1 },
+                { name = "BloomstoneLargeV3", weight = 1 },
+            },
+        },
         Meadow = {
             max = 8,
             interval = 10,
