@@ -60,6 +60,22 @@ return {
             meerkat = "desert",
             desertiguana = "desert",
             scorpion = "desert",
+            -- Heaven 1 roster: origin element drives RPS/stats/VFX; realm tag (heaven) is separate.
+            emberling_cherub = "lava",
+            sunmane_lion = "lava",
+            solar_phoenix = "lava",
+            radiant_salamander = "lava",
+            empyrean_dragon = "lava",
+            frostlight_hare = "ice",
+            aurora_fox = "ice",
+            seraph_owl = "ice",
+            glacial_seraph = "ice",
+            aurora_leviathan = "ice",
+            bloomlamb = "grass",
+            halo_hare = "grass",
+            goldleaf_stag = "grass",
+            verdant_sprite = "grass",
+            worldroot_ent = "grass",
         },
 
         -- Canonical element -> ranged projectile kind (damage). Melee + heal are routed

@@ -1208,6 +1208,573 @@ local petConfig = {
                 },
             },
         },
+
+        -- ============================================================
+        -- HEAVEN 1 ROSTER (realm=heaven). Meshy combine pets (mesh_asset+texture_asset).
+        -- Golden/Rainbow reuse the basic mesh until dedicated variant art exists.
+        -- ============================================================
+
+        -- --- HEAVEN FIRE (solar) ---
+        emberling_cherub = {
+            display_name = "Emberling Cherub",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "common",
+            base_power = 12,
+            base_health = 130,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://116841977025611",
+                    texture_asset = "rbxassetid://94914506294486",
+                    display_name = "Emberling Cherub",
+                    abilities = { "fire_breath" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://116841977025611",
+                    texture_asset = "rbxassetid://94914506294486",
+                    display_name = "Golden Emberling Cherub",
+                    abilities = { "golden_flame", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://116841977025611",
+                    texture_asset = "rbxassetid://94914506294486",
+                    display_name = "Rainbow Emberling Cherub",
+                    abilities = { "fire_breath", "luck_aura" },
+                },
+            },
+        },
+        sunmane_lion = {
+            display_name = "Sunmane Lion",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "uncommon",
+            base_power = 16,
+            base_health = 150,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://91899181124144",
+                    texture_asset = "rbxassetid://78357606272605",
+                    display_name = "Sunmane Lion",
+                    abilities = { "fire_breath" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://91899181124144",
+                    texture_asset = "rbxassetid://78357606272605",
+                    display_name = "Golden Sunmane Lion",
+                    abilities = { "golden_flame", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://91899181124144",
+                    texture_asset = "rbxassetid://78357606272605",
+                    display_name = "Rainbow Sunmane Lion",
+                    abilities = { "fire_breath", "luck_aura" },
+                },
+            },
+        },
+        solar_phoenix = {
+            display_name = "Solar Phoenix",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "rare",
+            base_power = 22,
+            base_health = 150,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://97859401243319",
+                    texture_asset = "rbxassetid://140706326750464",
+                    display_name = "Solar Phoenix",
+                    abilities = { "fire_breath" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://97859401243319",
+                    texture_asset = "rbxassetid://140706326750464",
+                    display_name = "Golden Solar Phoenix",
+                    abilities = { "golden_flame", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://97859401243319",
+                    texture_asset = "rbxassetid://140706326750464",
+                    display_name = "Rainbow Solar Phoenix",
+                    abilities = { "fire_breath", "luck_aura" },
+                },
+            },
+        },
+        radiant_salamander = {
+            display_name = "Radiant Salamander",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "uncommon",
+            base_power = 16,
+            base_health = 140,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://138720991598866",
+                    texture_asset = "rbxassetid://73640515480960",
+                    display_name = "Radiant Salamander",
+                    abilities = { "fire_breath" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://138720991598866",
+                    texture_asset = "rbxassetid://73640515480960",
+                    display_name = "Golden Radiant Salamander",
+                    abilities = { "golden_flame", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://138720991598866",
+                    texture_asset = "rbxassetid://73640515480960",
+                    display_name = "Rainbow Radiant Salamander",
+                    abilities = { "fire_breath", "luck_aura" },
+                },
+            },
+        },
+        empyrean_dragon = {
+            display_name = "Empyrean Dragon",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "secret",
+            base_power = 34,
+            base_health = 260,
+            huge_base_power = 180,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://133319241632541",
+                    texture_asset = "rbxassetid://125916543159827",
+                    display_name = "Empyrean Dragon",
+                    abilities = { "fire_breath" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://133319241632541",
+                    texture_asset = "rbxassetid://125916543159827",
+                    display_name = "Golden Empyrean Dragon",
+                    abilities = { "golden_flame", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://133319241632541",
+                    texture_asset = "rbxassetid://125916543159827",
+                    display_name = "Rainbow Empyrean Dragon",
+                    abilities = { "fire_breath", "luck_aura" },
+                },
+            },
+        },
+
+        -- --- HEAVEN ICE (aurora) ---
+        frostlight_hare = {
+            display_name = "Frostlight Hare",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "common",
+            base_power = 10,
+            base_health = 120,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://107524318254684",
+                    texture_asset = "rbxassetid://114645080646227",
+                    display_name = "Frostlight Hare",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://107524318254684",
+                    texture_asset = "rbxassetid://114645080646227",
+                    display_name = "Golden Frostlight Hare",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://107524318254684",
+                    texture_asset = "rbxassetid://114645080646227",
+                    display_name = "Rainbow Frostlight Hare",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+        aurora_fox = {
+            display_name = "Aurora Fox",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "uncommon",
+            base_power = 16,
+            base_health = 140,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://127631988479086",
+                    texture_asset = "rbxassetid://110891545797270",
+                    display_name = "Aurora Fox",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://127631988479086",
+                    texture_asset = "rbxassetid://110891545797270",
+                    display_name = "Golden Aurora Fox",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://127631988479086",
+                    texture_asset = "rbxassetid://110891545797270",
+                    display_name = "Rainbow Aurora Fox",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+        seraph_owl = {
+            display_name = "Seraph Owl",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "uncommon",
+            base_power = 16,
+            base_health = 140,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://135316858270183",
+                    texture_asset = "rbxassetid://106553753889944",
+                    display_name = "Seraph Owl",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://135316858270183",
+                    texture_asset = "rbxassetid://106553753889944",
+                    display_name = "Golden Seraph Owl",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://135316858270183",
+                    texture_asset = "rbxassetid://106553753889944",
+                    display_name = "Rainbow Seraph Owl",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+        glacial_seraph = {
+            display_name = "Glacial Seraph",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "rare",
+            base_power = 22,
+            base_health = 160,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://108033269485105",
+                    texture_asset = "rbxassetid://140080728182463",
+                    display_name = "Glacial Seraph",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://108033269485105",
+                    texture_asset = "rbxassetid://140080728182463",
+                    display_name = "Golden Glacial Seraph",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://108033269485105",
+                    texture_asset = "rbxassetid://140080728182463",
+                    display_name = "Rainbow Glacial Seraph",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+        aurora_leviathan = {
+            display_name = "Aurora Leviathan",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "epic",
+            base_power = 28,
+            base_health = 220,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://72083922606915",
+                    texture_asset = "rbxassetid://71006049826639",
+                    display_name = "Aurora Leviathan",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://72083922606915",
+                    texture_asset = "rbxassetid://71006049826639",
+                    display_name = "Golden Aurora Leviathan",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://72083922606915",
+                    texture_asset = "rbxassetid://71006049826639",
+                    display_name = "Rainbow Aurora Leviathan",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+
+        -- --- HEAVEN GRASS (bloom) ---
+        bloomlamb = {
+            display_name = "Bloomlamb",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "common",
+            base_power = 10,
+            base_health = 130,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://136218552388886",
+                    texture_asset = "rbxassetid://120469805143348",
+                    display_name = "Bloomlamb",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://136218552388886",
+                    texture_asset = "rbxassetid://120469805143348",
+                    display_name = "Golden Bloomlamb",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://136218552388886",
+                    texture_asset = "rbxassetid://120469805143348",
+                    display_name = "Rainbow Bloomlamb",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+        halo_hare = {
+            display_name = "Halo Hare",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "common",
+            base_power = 10,
+            base_health = 120,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://89072031420145",
+                    texture_asset = "rbxassetid://108749758653177",
+                    display_name = "Halo Hare",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://89072031420145",
+                    texture_asset = "rbxassetid://108749758653177",
+                    display_name = "Golden Halo Hare",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://89072031420145",
+                    texture_asset = "rbxassetid://108749758653177",
+                    display_name = "Rainbow Halo Hare",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+        goldleaf_stag = {
+            display_name = "Goldleaf Stag",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "uncommon",
+            base_power = 16,
+            base_health = 180,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://128403713787560",
+                    texture_asset = "rbxassetid://126160913361786",
+                    display_name = "Goldleaf Stag",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://128403713787560",
+                    texture_asset = "rbxassetid://126160913361786",
+                    display_name = "Golden Goldleaf Stag",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://128403713787560",
+                    texture_asset = "rbxassetid://126160913361786",
+                    display_name = "Rainbow Goldleaf Stag",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+        verdant_sprite = {
+            display_name = "Verdant Sprite",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "uncommon",
+            base_power = 14,
+            base_health = 130,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://133677960495137",
+                    texture_asset = "rbxassetid://73688873294516",
+                    display_name = "Verdant Sprite",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://133677960495137",
+                    texture_asset = "rbxassetid://73688873294516",
+                    display_name = "Golden Verdant Sprite",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://133677960495137",
+                    texture_asset = "rbxassetid://73688873294516",
+                    display_name = "Rainbow Verdant Sprite",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
+        worldroot_ent = {
+            display_name = "Worldroot Ent",
+            category = "heaven",
+            realm = "heaven",
+            rarity = "rare",
+            base_power = 22,
+            base_health = 220,
+            viewport_zoom = 1.5,
+            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            variants = {
+                basic = {
+                    mesh_asset = "rbxassetid://86951654674051",
+                    texture_asset = "rbxassetid://108111117095510",
+                    display_name = "Worldroot Ent",
+                    abilities = { "scratch" },
+                },
+                golden = {
+                    mesh_asset = "rbxassetid://86951654674051",
+                    texture_asset = "rbxassetid://108111117095510",
+                    display_name = "Golden Worldroot Ent",
+                    abilities = { "golden_scratch", "coin_magnet" },
+                },
+                rainbow = {
+                    mesh_asset = "rbxassetid://86951654674051",
+                    texture_asset = "rbxassetid://108111117095510",
+                    display_name = "Rainbow Worldroot Ent",
+                    abilities = { "rainbow_scratch", "luck_aura" },
+                },
+            },
+        },
     },
 
     -- === ABILITIES SYSTEM ===
@@ -1346,6 +1913,56 @@ local petConfig = {
 
     -- === EGG SOURCES (Two-Stage Hatching System) ===
     egg_sources = {
+        -- SolarEgg (Heaven 1, Fire origin). First realm egg — hatches the Heaven-1 Fire pets,
+        -- with the Empyrean Dragon as the secret chase (rebirth dragon #2 of 11). NOTE: the 3D
+        -- egg model is an untextured FBX upload for now (eggs don't yet use the mesh combine);
+        -- the 2D icon (image_id) is correct. world_placeable -> drop a stand in Heaven_1.
+        solar_egg = {
+            name = "Solar Egg",
+            description = "Heaven egg — hatches the radiant Fire pets (Emberling Cherub up to the Empyrean Dragon).",
+            world_placeable = true,
+            cost = 500,
+            currency = "coins",
+            huge = { chance = 0.00002, any_pet = true }, -- 1 in 50,000; tune freely
+            asset_id = "rbxassetid://77584635179884", -- 3D egg model (untextured for now)
+            image_id = "rbxassetid://95897439317999", -- 2D egg icon (correct image)
+            camera = {
+                distance = 3.5,
+                angle_y = 0,
+                angle_x = 180,
+                offset = Vector3.new(0, 0, 0),
+                lighting = "default",
+            },
+            -- Stage 1: which Fire pet (rarer = lower weight). Empyrean Dragon is the SECRET.
+            pet_weights = {
+                emberling_cherub = 45,
+                radiant_salamander = 30,
+                sunmane_lion = 18,
+                solar_phoenix = 6,
+                empyrean_dragon = 1, -- SECRET chase; ~1% (tune down for production)
+            },
+            rarity_rates = {
+                golden_chance = 0.05,
+                rainbow_chance = 0.005,
+            },
+            variant_rolls = {
+                enabled = true,
+                allow_basic = true,
+                allow_golden = true,
+                allow_rainbow = true,
+                cost_multiplier = 20,
+            },
+            modifier_support = {
+                supports_luck_gamepass = true,
+                supports_golden_gamepass = true,
+                supports_rainbow_gamepass = true,
+                max_luck_multiplier = 10.0,
+            },
+            hatching_time = 3,
+            guaranteed_shiny_chance = 0,
+            bonus_xp = 0,
+        },
+
         -- MEET-THE-CREATOR egg (Jason): not purchasable, not placed in the world —
         -- hatched from the eggs INVENTORY bucket (MeetCreatorService.HatchEggItem).
         -- One species (the creator's), standard golden/rainbow channels (luck
