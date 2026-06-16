@@ -13,6 +13,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local CloseButton = require(script.Parent.Parent.Components.CloseButton)
+local FillBar = require(script.Parent.Parent.FillBar)
 
 local REMOTE_NAME = "GameAPICommand"
 
@@ -341,30 +342,17 @@ function QuestPanel:_createQuestRow(quest, order)
     descConstraint.MaxTextSize = 14
     descConstraint.Parent = desc
 
-    -- Progress bar track
-    local track = Instance.new("Frame")
-    track.Size = UDim2.new(1, -150, 0, 14)
-    track.Position = UDim2.new(0, 16, 1, -26)
-    track.BackgroundColor3 = COLORS.track
-    track.BorderSizePixel = 0
-    track.ZIndex = 103
-    track.Parent = row
-
-    local trackCorner = Instance.new("UICorner")
-    trackCorner.CornerRadius = UDim.new(1, 0)
-    trackCorner.Parent = track
-
+    -- Progress bar track (shared FillBar)
     local fraction = math.clamp(progress.fraction or 0, 0, 1)
-    local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(fraction, 0, 1, 0)
-    fill.BackgroundColor3 = COLORS.fill
-    fill.BorderSizePixel = 0
-    fill.ZIndex = 104
-    fill.Parent = track
-
-    local fillCorner = Instance.new("UICorner")
-    fillCorner.CornerRadius = UDim.new(1, 0)
-    fillCorner.Parent = fill
+    local track = FillBar.create({
+        parent = row,
+        size = UDim2.new(1, -150, 0, 14),
+        position = UDim2.new(0, 16, 1, -26),
+        bgColor = COLORS.track,
+        fillColor = COLORS.fill,
+        fraction = fraction,
+        zIndex = 103,
+    })
 
     local progressText = Instance.new("TextLabel")
     progressText.Size = UDim2.new(1, 0, 1, 0)

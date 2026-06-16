@@ -19,6 +19,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local CloseButton = require(script.Parent.Parent.Components.CloseButton)
+local FillBar = require(script.Parent.Parent.FillBar)
 
 -- Load Logger with wrapper (following the established pattern)
 local LoggerWrapper
@@ -362,28 +363,16 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
 
     -- Progress bar (for timed effects)
     if remaining ~= -1 then
-        local progressBG = Instance.new("Frame")
-        progressBG.Size = UDim2.new(0, 150, 0, 4)
-        progressBG.Position = UDim2.new(1, -160, 1, -8)
-        progressBG.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        progressBG.BorderSizePixel = 0
-        progressBG.Parent = effectFrame
-
-        local progressFill = Instance.new("Frame")
         local progress = duration > 0 and math.clamp(remaining / duration, 0, 1) or 0
-        progressFill.Size = UDim2.new(progress, 0, 1, 0)
-        progressFill.Position = UDim2.new(0, 0, 0, 0)
-        progressFill.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
-        progressFill.BorderSizePixel = 0
-        progressFill.Parent = progressBG
-
-        local progressCorner1 = Instance.new("UICorner")
-        progressCorner1.CornerRadius = UDim.new(0, 2)
-        progressCorner1.Parent = progressBG
-
-        local progressCorner2 = Instance.new("UICorner")
-        progressCorner2.CornerRadius = UDim.new(0, 2)
-        progressCorner2.Parent = progressFill
+        FillBar.create({
+            parent = effectFrame,
+            size = UDim2.new(0, 150, 0, 4),
+            position = UDim2.new(1, -160, 1, -8),
+            cornerRadius = UDim.new(0, 2),
+            bgColor = Color3.fromRGB(60, 60, 60),
+            fillColor = Color3.fromRGB(0, 180, 0),
+            fraction = progress,
+        })
     end
 
     table.insert(self.effectDisplays, effectFrame)
