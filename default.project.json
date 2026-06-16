@@ -7,7 +7,12 @@
   "tree": {
     "$className": "DataModel",
     "Workspace": {
-      "$ignoreUnknownInstances": true
+      "$ignoreUnknownInstances": true,
+      "$properties": {
+        "StreamingEnabled": true,
+        "StreamingMinRadius": 512,
+        "StreamingTargetRadius": 1500
+      }
     },
     "ServerScriptService": {
       "Server": {
