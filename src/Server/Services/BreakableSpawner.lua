@@ -36,6 +36,7 @@ local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
 local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local buffsConfig = require(ReplicatedStorage.Configs:WaitForChild("buffs"))
 local SpawnSlots = require(ReplicatedStorage.Shared.Game.SpawnSlots)
+local OverheadBar = require(ReplicatedStorage.Shared.UI.OverheadBar)
 
 -- Injected services
 local logger
@@ -1695,115 +1696,73 @@ function BreakableSpawner:_trySpawnOne(
     -- baked Health bar (template blue crystals). Starts hidden; shown only while being attacked.
     do
         local pp = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
-        local hasHealthUI = false
-        for _, d in ipairs(model:GetDescendants()) do
-            if d:IsA("BillboardGui") then
-                local container = d:FindFirstChildWhichIsA("Frame")
-                if
-                    d:FindFirstChild("Health") or (container and container:FindFirstChild("Health"))
-                then
-                    hasHealthUI = true
-                    break
+        if pp then
+            -- Normalization: EVERY breakable's HP/boost meters use the ONE shared OverheadBar widget
+            -- (same as pets + enemies) — no per-crystal hand-rolled bars. Strip any authored
+            -- Health/Boost meter billboards first so there's exactly one of each, built the standard way.
+            for _, d in ipairs(model:GetDescendants()) do
+                if d:IsA("BillboardGui") then
+                    local c = d:FindFirstChildWhichIsA("Frame")
+                    if
+                        d:FindFirstChild("Health")
+                        or d:FindFirstChild("Boost")
+                        or (c and (c:FindFirstChild("Health") or c:FindFirstChild("Boost")))
+                    then
+                        d:Destroy()
+                    end
                 end
             end
-        end
-        if pp and not hasHealthUI then
             local _, bsize = model:GetBoundingBox()
             local topY = (bsize.Y * 0.5) + 1.2
-            local function makeBar(guiName, fillName, fillColor, yOff)
-                local bb = Instance.new("BillboardGui")
-                bb.Name = guiName
-                bb.Size = UDim2.fromOffset(104, 12)
-                bb.StudsOffset = Vector3.new(0, yOff, 0)
-                bb.AlwaysOnTop = true
-                bb.LightInfluence = 0
-                bb.MaxDistance = 75
-                bb.Enabled = false -- hidden until attacked
-                bb.Adornee = pp
-                local bg = Instance.new("Frame")
-                bg.Name = "BG"
-                bg.Size = UDim2.fromOffset(104, 12)
-                bg.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
-                bg.BackgroundTransparency = 0.25
-                bg.BorderSizePixel = 0
-                bg.Parent = bb
-                local bgCorner = Instance.new("UICorner")
-                bgCorner.CornerRadius = UDim.new(1, 0) -- pill (rounded bar, Jason)
-                bgCorner.Parent = bg
-                local fill = Instance.new("Frame")
-                fill.Name = fillName
-                fill.Size = UDim2.new(0, 100, 0, 10)
-                fill.Position = UDim2.fromOffset(2, 1)
-                fill.BackgroundColor3 = fillColor
-                fill.BorderSizePixel = 0
-                fill.Parent = bg
-                local fillCorner = Instance.new("UICorner")
-                fillCorner.CornerRadius = UDim.new(1, 0)
-                fillCorner.Parent = fill
-                bb.Parent = pp
-            end
-            makeBar("HealthBillboardGui", "Health", Color3.fromRGB(80, 220, 90), topY + 0.45)
-            makeBar("BoostBillboardGui", "Boost", Color3.fromRGB(255, 205, 70), topY)
+            -- Billboard NAMES kept (HealthBillboardGui/BoostBillboardGui) so existing MaxDistance
+            -- tuning still finds them; internals are the standard OverheadBar (pill BG + scale fill).
+            local healthBar = OverheadBar.create({
+                adornee = pp,
+                name = "HealthBillboardGui",
+                studsOffset = Vector3.new(0, topY + 0.45, 0),
+                fillColor = Color3.fromRGB(80, 220, 90),
+            })
+            healthBar.Enabled = false -- hidden until attacked
+            healthBar.MaxDistance = 75
+            local boostBar = OverheadBar.create({
+                adornee = pp,
+                name = "BoostBillboardGui",
+                studsOffset = Vector3.new(0, topY, 0),
+                fillColor = Color3.fromRGB(255, 205, 70),
+            })
+            boostBar.Enabled = false
+            boostBar.MaxDistance = 75
         end
     end
 
-    -- Bind health bar UI (if present in model)
-    -- Match MCP: find any descendant BillboardGui with a child Frame named 'Health'
-    local healthFrames = {}
-    for _, d in ipairs(model:GetDescendants()) do
-        if d:IsA("BillboardGui") then
-            d.MaxDistance = 75
-            local hf = d:FindFirstChild("Health")
-            if hf and hf:IsA("Frame") then
-                table.insert(healthFrames, hf)
-            end
+    -- Health + boost meters drive the shared OverheadBar (fillOf/setFraction) off model attributes.
+    local function setOverheadBar(name, value, maxValue)
+        local pp = model.PrimaryPart
+        local bb = pp and pp:FindFirstChild(name)
+        local fill = pp and OverheadBar.fillOf(pp, name)
+        if not (bb and fill) then
+            return nil
         end
-    end
-    local function repopulateHealthFrames()
-        table.clear(healthFrames)
-        -- Deep scan all descendants; handle multiple nested Billboards
-        for _, d in ipairs(model:GetDescendants()) do
-            if d:IsA("BillboardGui") then
-                d.MaxDistance = 75
-                local hf = d:FindFirstChild("Health")
-                if not hf then
-                    -- Some rigs put the Health under a container frame
-                    local container = d:FindFirstChildWhichIsA("Frame")
-                    if container then
-                        hf = container:FindFirstChild("Health")
-                    end
-                end
-                if hf and (hf:IsA("Frame") or hf:IsA("ImageLabel") or hf:IsA("TextLabel")) then
-                    table.insert(healthFrames, hf)
-                end
-            end
-        end
+        local maxV = tonumber(maxValue) or 0
+        local v = tonumber(value) or 0
+        local frac = (maxV > 0) and math.clamp(v / maxV, 0, 1) or 0
+        OverheadBar.setFraction(fill, frac)
+        return bb, v, maxV
     end
 
     local function updateHealthBar()
-        if #healthFrames == 0 then
-            repopulateHealthFrames()
-        end
-        if #healthFrames == 0 then
+        local bb, hp, maxHp = setOverheadBar(
+            "HealthBillboardGui",
+            model:GetAttribute("HP"),
+            model:GetAttribute("MaxHP")
+        )
+        if not bb then
             return
         end
-        local maxHp = tonumber(model:GetAttribute("MaxHP")) or 0
-        local hp = tonumber(model:GetAttribute("HP")) or 0
-        if maxHp <= 0 then
-            return
-        end
-        -- width is percent [0..100] pixels, fixed height 10px
-        local percentPx = math.max(0, math.floor((hp / maxHp) * 100))
-        -- Pet Realm: show the bars ONLY while a node is being attacked (HP below max, not yet
-        -- destroyed). Toggle the parent billboard(s) + the boost billboard together.
-        local engaged = hp < maxHp and hp > 0
-        for _, frame in ipairs(healthFrames) do
-            frame.Size = UDim2.new(0, percentPx, 0, 10)
-            local bb = frame:FindFirstAncestorWhichIsA("BillboardGui")
-            if bb then
-                bb.Enabled = engaged
-            end
-        end
+        -- Show bars ONLY while a node is being attacked (HP below max, not destroyed). Toggle the
+        -- health + boost billboards together.
+        local engaged = maxHp > 0 and hp < maxHp and hp > 0
+        bb.Enabled = engaged
         local ppNow = model.PrimaryPart
         local boostBB = ppNow and ppNow:FindFirstChild("BoostBillboardGui")
         if boostBB then
@@ -1825,30 +1784,13 @@ function BreakableSpawner:_trySpawnOne(
         end
     end)
 
-    -- Boost bar hookup
+    -- Boost bar hookup (shared OverheadBar fill).
     local function updateBoostBar()
-        local pp = model.PrimaryPart
-        if not pp then
-            return
-        end
-        local bbg = pp:FindFirstChild("BoostBillboardGui")
-        if not bbg then
-            return
-        end
-        local boostFrame = bbg:FindFirstChild("Boost")
-        if not boostFrame then
-            local container = bbg:FindFirstChildWhichIsA("Frame")
-            boostFrame = container and container:FindFirstChild("Boost")
-        end
-        if not boostFrame then
-            return
-        end
-        local b = tonumber(model:GetAttribute("Boost")) or 0
-        local mb = tonumber(model:GetAttribute("MaxBoost")) or 100
-        local percentPx = (mb > 0) and math.max(0, math.floor((b / mb) * 100)) or 0
-        if boostFrame:IsA("GuiObject") then
-            boostFrame.Size = UDim2.new(0, percentPx, 0, 10)
-        end
+        setOverheadBar(
+            "BoostBillboardGui",
+            model:GetAttribute("Boost"),
+            model:GetAttribute("MaxBoost") or 100
+        )
     end
     updateBoostBar()
     model:GetAttributeChangedSignal("Boost"):Connect(updateBoostBar)
