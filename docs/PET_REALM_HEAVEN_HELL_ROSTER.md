@@ -71,14 +71,53 @@ Control ×1–2 (ice owns it) · + the secret dragon. A player can field a full 
 and each origin has an apex (Empyrean Dragon, Aurora Leviathan, Worldroot Ent, Solar Roc) — with
 **fire's apex being the secret/rebirth dragon**.
 
-## Hell 1 — mirror skeleton
+## Hell 1 — "The Cinderreach" — full pool (5 per origin, 20 + the dragon)
 
-Same 20-name structure, fallen treatment (1:1 mirrors):
+The smoldering, ash-and-rot first descent. **Theme signature — give → take:** where Heaven
+supports by GIVING (heal / shield / buff), Hell supports by TAKING (drain / shred / curse). Same
+roles as Heaven, inverted morality — the City-of-Heroes debuffer/controller fantasy of the Hell
+path. Origins keep their leans; only the flavor darkens. Every entry is a 1:1 mirror of the
+Heaven 1 pet of the same slot (rig re-skins).
 
-- Fire: Cinderling Imp · Ashmane Lion · Ashfeather Phoenix · Brimstone Salamander · **Abyssal Wyrm** (secret, dragon #7 of 11)
-- Ice: Rimelight Hare · Rimewraith Fox · Dread Owl · Black Seraph · Black-Ice Leviathan
-- Grass: Blightlamb · Dread Hare · Rotleaf Stag · Wither Sprite · Gravewood Ent
-- Desert: Carrion Scarab · Phantom Jackal · Glass Sphinx · Dust Camel · Ash Roc
+### 🔥 Fire — leans damage (infernal / brimstone)
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Cinderling Imp | Melee | Common | charred imp, claws & cinders |
+| Ashmane Lion | Melee (bruiser) | Uncommon | smoldering black lion, ember-maned |
+| Ashfeather Phoenix | Ranged | Rare | cinder-bolts; rises from its own ash |
+| Brimstone Salamander | Support (burn-curse) | Uncommon | brands foes — squad deals bonus burn (offense "buff" as an enemy debuff) |
+| **★ Abyssal Wyrm** | **Damage (capstone)** | **SECRET** | void-black infernal wyrm — Hell 1's chase + rebirth dragon #7 of 11 |
+
+### ❄️ Ice — leans control (black-ice / dread)
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Rimelight Hare | Melee | Common | frostbitten dark hare |
+| Rimewraith Fox | Control | Uncommon | spectral chill that freezes with dread (fear/root) |
+| Dread Owl | Ranged | Uncommon | black owl, icy shards from the dark |
+| Black Seraph | Support (armor-shred) | Rare | fallen frost-angel that strips enemy armor (shield inverted to anti-shield) |
+| Black-Ice Leviathan | Tank / Control | Epic | vast black-ice serpent — holds + slows |
+
+### 🌿 Grass — leans sustain (blight / rot / drain)
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Blightlamb | Support (life-drain heal) | Common | rotted lamb that heals the squad by leeching enemy life |
+| Dread Hare | Melee | Common | gaunt, fanged hare |
+| Rotleaf Stag | Tank | Uncommon | thorned decaying stag — soaks + spreads rot |
+| Wither Sprite | Support (wither-curse) | Uncommon | blight-spirit that saps foes' output |
+| Gravewood Ent | Tank / Drain | Rare | dead-tree guardian, big HP + life-leech aura |
+
+### 🏜️ Desert — leans durable/utility (ash / glass / carrion)
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Carrion Scarab | Support (coin-from-kills) | Common | feeds on the fallen — yield on enemy death |
+| Phantom Jackal | Melee (evasion) | Uncommon | ash-mirage jackal, dodges + flanks |
+| Glass Sphinx | Tank | Rare | blackened-glass guardian, sharp + durable |
+| Dust Camel | Support (regen-denial) | Uncommon | sand-wraith that stops enemy healing |
+| Ash Roc | Ranged | Rare | great ash-feathered bird, glass-talon dives |
+
+**Role coverage** mirrors Heaven 1 (Tank ×4 · Melee ×5 · Ranged ×3 · Support ×6 · Control ×1–2 ·
++ secret dragon) — same squad shapes, but the supports **debuff/drain** instead of heal/shield.
+Apexes: Abyssal Wyrm (secret), Black-Ice Leviathan, Gravewood Ent, Ash Roc.
 
 ## Building economically
 
