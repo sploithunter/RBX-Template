@@ -1266,8 +1266,8 @@ local petConfig = {
             display_name = "Sunmane Lion",
             category = "heaven",
             realm = "heaven",
-            rarity = "uncommon",
-            base_power = 16,
+            rarity = "rare", -- slot-3 (rare) tier, matching the biome eggs' rare buffer slot
+            base_power = 22,
             base_health = 150,
             viewport_zoom = 1.5,
             asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
@@ -1303,8 +1303,8 @@ local petConfig = {
             display_name = "Solar Phoenix",
             category = "heaven",
             realm = "heaven",
-            rarity = "rare",
-            base_power = 22,
+            rarity = "epic", -- slot-4 (epic) tier, matching the biome eggs
+            base_power = 30,
             base_health = 150,
             viewport_zoom = 1.5,
             asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
@@ -1378,7 +1378,7 @@ local petConfig = {
             category = "heaven",
             realm = "heaven",
             rarity = "secret",
-            base_power = 34,
+            base_power = 45, -- Heaven apex: above the biome legendaries (42), below exclusive (50)
             base_health = 260,
             huge_base_power = 180,
             viewport_zoom = 1.5,
@@ -1932,7 +1932,7 @@ local petConfig = {
             description = "Heaven egg — hatches the radiant Fire pets (Emberling Cherub up to the Empyrean Dragon).",
             world_placeable = true,
             cost = 500,
-            currency = "coins",
+            currency = "lava_coins", -- Heaven_1 lava-area egg; priced in the lava biome currency
             huge = { chance = 0.00002, any_pet = true }, -- 1 in 50,000; tune freely
             -- Textured via the shared mesh combine (MeshAssembly) — same path as pets. mesh_asset +
             -- texture_asset build a textured egg Model at load (no more grey egg). asset_id kept as
@@ -1954,7 +1954,9 @@ local petConfig = {
                 radiant_salamander = 30,
                 sunmane_lion = 18,
                 solar_phoenix = 6,
-                empyrean_dragon = 1, -- SECRET chase; ~1% (tune down for production)
+                -- SECRET chase. 0.05 of a ~99 pool ≈ 1 in 2000 — matched to the earth/basic dragon
+                -- secret (was 1 of 100 = a 1% roll, way too common; two dragons in a row proved it).
+                empyrean_dragon = 0.05,
             },
             rarity_rates = {
                 golden_chance = 0.05,

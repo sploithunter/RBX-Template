@@ -3,6 +3,9 @@ local CollectionService = game:GetService("CollectionService")
 local EggWorldQuery = {}
 
 local EGGS_TAG = "EggStand"
+-- How often to re-scan tagged eggs after init, so eggs that stream in late (teleporting to a
+-- StreamingEnabled world) get registered once their attributes/anchor have replicated.
+local RESYNC_INTERVAL = 2
 
 local eggs = {}
 local eggsByInstance = {}
@@ -200,6 +203,19 @@ local function ensureInitialized()
     task.defer(resyncAll)
     task.delay(2, resyncAll)
     task.delay(5, resyncAll)
+
+    -- LATE STREAM-INS (StreamingEnabled world teleports): an egg in another world (e.g. the Heaven_1
+    -- solar egg) isn't replicated to the client at boot, so every resync above misses it. When the
+    -- player teleports up and it streams in, the tag/DescendantAdded signals can fire BEFORE its
+    -- EggId attribute or stand UIanchor have replicated — register() then bails (it needs both) and
+    -- never retries (the #eggs==0 guard in GetEggs stops firing once Home eggs are registered). A
+    -- light recurring resync self-heals: register() is idempotent and cheap for a handful of stands.
+    task.spawn(function()
+        while true do
+            task.wait(RESYNC_INTERVAL)
+            resyncAll()
+        end
+    end)
 end
 
 function EggWorldQuery.GetEggs()

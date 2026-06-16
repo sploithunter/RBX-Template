@@ -38,6 +38,12 @@ return {
         penguin = "support", -- Ice buffer (defense)
         emberimp = "support", -- Lava buffer (offense)
         meerkat = "support", -- Desert buffer (yield)
+        -- Heaven (solar egg) — a full archetype spread so the first realm egg fields a real team:
+        emberling_cherub = "support", -- Heaven buffer (HEAL — angelic healer; see support_auras)
+        radiant_salamander = "melee", -- ground bruiser
+        sunmane_lion = "tank", -- front-line soak/taunt
+        solar_phoenix = "ranged", -- flies + fires from range
+        empyrean_dragon = "ranged", -- the secret apex: flies + breathes fire (like the earth dragon)
     },
 
     -- Per-zone BUFFER auras (City-of-Heroes support). Resolved by SupportAura.forPet
@@ -74,6 +80,10 @@ return {
         -- REVERT to its Desert yield aura when done:
         --   meerkat = { kind = "yield", interval = 2.0, mult = 1.1667, duration = 6 }, -- Desert
         meerkat = { kind = "hold", interval = 30, duration = 10 }, -- Desert (TEMP control test)
+        -- Heaven (solar egg): the Emberling Cherub HEALS — an angelic healer, the realm's buffer.
+        -- A gentle continuous mend of the most-hurt ally (fraction of its pool every 2s); kept well
+        -- under Colorado's old 20%/1.5s that read as invulnerable. Tune freely.
+        emberling_cherub = { kind = "heal", interval = 2.0, fraction = 0.08, duration = 6 },
         -- Bear: RAGE — an inherent power the pet casts on ITSELF (Jason: per-SPECIES
         -- assignment like the zone buffers, NOT a tank-role trait — "I don't want all
         -- tanks to have rage"). The starter tank gets angry as it soaks: at or below
