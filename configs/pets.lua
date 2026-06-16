@@ -25,6 +25,8 @@ local petConfig = {
         ["BasicEmber"] = { egg = "ember_egg", scale = 3.5, offset_y = 0.5 },
         ["BasicIce"] = { egg = "ice_egg", scale = 3.5, offset_y = 0.5 },
         ["BasicSand"] = { egg = "sand_egg", scale = 3.5, offset_y = 0.5 },
+        -- Heaven 1, Fire origin: a stand named "HeavenSolarStand" in the Heaven_1 map's Lava area.
+        ["HeavenSolarStand"] = { egg = "solar_egg", scale = 3.5, offset_y = 0.5 },
     },
 
     -- Eternal pets scale to a percentage of the player's "eternal power base"
