@@ -68,7 +68,7 @@ return {
     -- light one, watch the pack catch fire. Sequential (not an instant splash) — that's what makes
     -- it a distinct targeting type vs targeted_aoe.
     pet_contagion = {
-        spread_radius = 16,
+        spread_radius = 8, -- center-to-center studs; ~bodies-touching (5-6 = literally touching, 16 = jumps across a gap)
         spread_interval = 1.5,
         max_spread = 4,
     },
