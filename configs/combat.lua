@@ -40,6 +40,16 @@ return {
         damage_mult = 1.0,
     },
 
+    -- AoE pets (PetTargeting attack_targeting = "aoe" / "targeted_aoe"): a pet whose attack hits an
+    -- AREA — its swing on the primary target also splashes to OTHER targets near it (nearby enemies
+    -- in a fight, nearby crystals when mining). Same SSOT field that rings the archetype badge.
+    -- splash_fraction of the primary hit, within splash_radius studs, capped at max_targets others.
+    pet_aoe = {
+        splash_radius = 14,
+        splash_fraction = 0.6,
+        max_targets = 5,
+    },
+
     -- Defensive stat (armor curve). Damage is reduced by armor/(armor+k): a pet's
     -- Defense attribute mitigates enemy hits, an enemy's Armor mitigates pet damage.
     -- At armor == k the hit is halved; diminishing returns, never full immunity.

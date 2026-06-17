@@ -629,6 +629,14 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                                 variantModel:SetAttribute("Variant", variant)
                                 variantModel:SetAttribute("Power", powerValue)
                                 variantModel:SetAttribute("BaseHealth", healthValue)
+                                -- DAMAGE targeting (PetTargeting SSOT): per-pet override carried as
+                                -- an attribute so both the squad badge ring AND the attack splash
+                                -- (PetFollowService) read one value. Defaults single (no splash);
+                                -- a role-default resolve folds in here once an AoE role exists.
+                                variantModel:SetAttribute(
+                                    "AttackTargeting",
+                                    petData.attack_targeting or "single"
+                                )
                                 self:ApplyPetTransformAttributes(variantModel, transformOptions)
                                 -- Also create NumberValues for scripts that expect Values on the model
                                 local powerNV = variantModel:FindFirstChild("Power")

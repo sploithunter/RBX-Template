@@ -3737,9 +3737,14 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
                 hAspect.AspectType = Enum.AspectType.FitWithinMaxSize
                 hAspect.Parent = holder
                 -- DAMAGE-targeting ring: the archetype badge wears the ring for HOW its attack hits
-                -- (PetTargeting.attackScope → power_icons.targeting_ring). Single today → inward ring;
-                -- a future AoE/aura-damage pet stands out with a different ring. SSOT, one field.
-                local atkScope = PetTargeting.attackScope(item.attack_targeting, role.id, PET_ROLES)
+                -- (PetTargeting.attackScope → power_icons.targeting_ring). Resolve the per-pet
+                -- override from the PETS CONFIG (pets.lua attack_targeting) — the SAME source spawn
+                -- reads onto the live pet's AttackTargeting attribute (which the squad HUD reads), so
+                -- the inventory card and the squad badge always agree. NOT item.attack_targeting
+                -- (unpopulated → wrongly fell back to single, diverging from the HUD — Jason's catch).
+                local petDef = PETS_CONFIG and PETS_CONFIG.pets and PETS_CONFIG.pets[item.petType]
+                local atkScope =
+                    PetTargeting.attackScope(petDef and petDef.attack_targeting, role.id, PET_ROLES)
                 local b = PetBadge.create(holder, {
                     element = element,
                     role = role.id,

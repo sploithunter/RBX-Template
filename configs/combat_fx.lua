@@ -42,6 +42,7 @@ return {
             kitty = "ice",
             dragon = "lava",
             colorado = "lava",
+            colorado_creator = "lava", -- the Creator apex is a FIRE blaster (bolt + AoE fire-ring)
             -- Ember family = lava origin (RPS / element stats / VFX).
             emberling = "lava",
             emberfox = "lava",

@@ -281,7 +281,18 @@ function PetFollowController.start()
         local center = data.center
         local element = data.element or "lava"
         if typeof(center) == "Vector3" then
-            pcall(AreaFX.Play, areaCfg, element, data.variant or "targeted", center, center)
+            -- data.radius (AoE pets pass their splash_radius) sizes the effect to the real damage
+            -- zone, so the fire circle lands exactly at the AoE edge — nil falls back to config.
+            pcall(
+                AreaFX.Play,
+                areaCfg,
+                element,
+                data.variant or "targeted",
+                center,
+                center,
+                nil,
+                { radius = data.radius }
+            )
             if data.pit then
                 pcall(AreaFX.Play, areaCfg, element, "pit", center)
             end
@@ -335,16 +346,21 @@ function PetFollowController.start()
         end
         -- Same attack-FX path the enemies use (CombatHitFX): resolve the kind + fire it via RangedFX.
         -- ranged -> the per-pet by_type override or the biome element bolt; melee -> impact look.
-        pcall(CombatHitFX.play, pet, target, {
-            boltCfg = boltCfg,
-            ranged = ranged,
-            byType = pet:GetAttribute("PetType"),
-            byTypeMap = boltCfg.by_type,
-            element = element,
-            elementKind = elementKind,
-            defaultKind = boltCfg.kind or "lightning",
-            crit = isCrit,
-        })
+        -- AoE SPLASH (data.splash): SKIP the per-target attack FX entirely — the fire-ring eruption
+        -- (Power_AreaFx, fired once at the cluster) is the AoE animation; the splashed neighbor only
+        -- floats its damage number below, no bolt/impact per target.
+        if not data.splash then
+            pcall(CombatHitFX.play, pet, target, {
+                boltCfg = boltCfg,
+                ranged = ranged,
+                byType = pet:GetAttribute("PetType"),
+                byTypeMap = boltCfg.by_type,
+                element = element,
+                elementKind = elementKind,
+                defaultKind = boltCfg.kind or "lightning",
+                crit = isCrit,
+            })
+        end
 
         -- CRIT ROAR: ANY pet's critical hit roars (Jason: a tank polar bear's crit must sound too),
         -- but the sound SPLITS by role to match the attack-VFX split: ranged -> the per-element crit

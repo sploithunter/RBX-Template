@@ -600,7 +600,10 @@ function AreaFX.Play(config, element, variant, originPos, targetPos, themeOverri
     local c2 = toColor(theme.color2, c1)
     local mat = materialOf(theme.material)
     local params = config[variant] or config.self or {}
-    local radius = tonumber(params.radius) or 10
+    -- opts.radius lets the CALLER size the effect to a real gameplay radius (e.g. an AoE pet's
+    -- splash_radius), so the fire circle visually matches the actual damage zone instead of the
+    -- config default. Falls back to the per-variant config radius.
+    local radius = (opts and tonumber(opts.radius)) or tonumber(params.radius) or 10
     local life = tonumber(params.duration) or 0.6
 
     -- opts.no_ring strips the encircling ground/radial ring from a "self" burst, keeping the

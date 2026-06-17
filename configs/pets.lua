@@ -1208,6 +1208,10 @@ local petConfig = {
             rarity = "exclusive",
             base_power = 100,
             base_health = 500,
+            -- AoE FIRE BLASTER (Jason): the dev-only Creator apex breathes fire over an AREA — its
+            -- attack splashes (PetTargeting targeted_aoe → fire-ring VFX + splash fan-out). Kept on
+            -- the untradeable Creator pet, NOT a starter, to preserve headroom. Element = lava (fire).
+            attack_targeting = "targeted_aoe",
             -- eternal via the EXCLUSIVE rarity default (no one-off block — Jason);
             -- the HUGE apex pins at eternal.creator_power_percent via its category
 

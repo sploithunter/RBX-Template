@@ -591,6 +591,96 @@ function PetFollowService:_mine(player, pet, breakable)
         nv.Value += applied.contributed
     end
 
+    -- PET AoE (PetTargeting attack_targeting = "aoe" / "targeted_aoe"): an AoE pet's swing splashes
+    -- x frac to OTHER targets near the primary — nearby enemies mid-fight, nearby crystals when
+    -- mining. Driven by the pet's damage-targeting SSOT (the same value that rings its archetype
+    -- badge), resolved into the AttackTargeting attribute at spawn. Candidate set = siblings in the
+    -- primary's container (enemies→enemies, crystals→crystals). Credited to the pet (Contrib) so
+    -- kills/payouts count; silent like the cleave (the HP drops are the AoE tell).
+    local atkScope = pet:GetAttribute("AttackTargeting") or "single"
+    if dmg > 0 and (atkScope == "aoe" or atkScope == "targeted_aoe") then
+        local aoeCfg = self._combatConfig.pet_aoe or {}
+        local frac = tonumber(aoeCfg.splash_fraction) or 0.5
+        local radius = tonumber(aoeCfg.splash_radius) or 12
+        local maxTargets = math.floor(tonumber(aoeCfg.max_targets) or 5)
+        local splash = math.floor(dmg * frac + 0.5)
+        local container = breakable.Parent
+        local origin = (breakable.PrimaryPart and breakable.PrimaryPart.Position)
+            or breakable:GetPivot().Position
+        -- AoE ATTACK VISUAL: a fire-ring eruption at the cluster — reuses the power AreaFX channel
+        -- (Power_AreaFx → AreaFX.Play lava_self = a ring of real Roblox fire + ember burst, "fire
+        -- burning everywhere"). Element defaults to lava/fire on the client (the dragon breathes
+        -- fire); a non-fire AoE pet would pass its element. Shared to the owner + nearby spectators.
+        Signals.Power_AreaFx:FireClient(
+            player,
+            { center = origin, variant = "self", radius = radius }
+        )
+        for _, sp in ipairs(Players:GetPlayers()) do
+            if sp ~= player then
+                local shrp = sp.Character and sp.Character:FindFirstChild("HumanoidRootPart")
+                if shrp and (shrp.Position - origin).Magnitude <= 80 then
+                    Signals.Power_AreaFx:FireClient(sp, { center = origin, variant = "self" })
+                end
+            end
+        end
+        if splash > 0 and container then
+            local hitN = 0
+            for _, other in ipairs(container:GetChildren()) do
+                if hitN >= maxTargets then
+                    break
+                end
+                if
+                    other ~= breakable
+                    and other:IsA("Model")
+                    and (other:GetAttribute("HP") or 0) > 0
+                then
+                    local op = other.PrimaryPart or other:FindFirstChildWhichIsA("BasePart")
+                    if op and (op.Position - origin).Magnitude <= radius then
+                        local ap = PetCombat.applyDamage(other:GetAttribute("HP") or 0, splash)
+                        other:SetAttribute("HP", ap.hp)
+                        local sc = other:FindFirstChild("Contrib")
+                        if sc and ap.contributed > 0 then
+                            local k = tostring(player.UserId)
+                            local nv3 = sc:FindFirstChild(k)
+                            if not nv3 then
+                                nv3 = Instance.new("NumberValue")
+                                nv3.Name = k
+                                nv3.Parent = sc
+                            end
+                            nv3.Value += ap.contributed
+                        end
+                        -- VISUALIZE the splash: an impact + floating number on each splashed target
+                        -- (splash = true tells the client to play the IMPACT look, not launch a fresh
+                        -- bolt from the pet — the primary keeps its bolt, the fire "spreads"). Shared
+                        -- to the owner + nearby spectators, like the primary hit.
+                        local splashHit = {
+                            pet = pet,
+                            target = other,
+                            crit = false,
+                            amount = splash,
+                            miss = false,
+                            splash = true,
+                        }
+                        Signals.Combat_PetHit:FireClient(player, splashHit)
+                        local shp = (op and op.Position) or origin
+                        for _, sp in ipairs(Players:GetPlayers()) do
+                            if sp ~= player then
+                                local shrp = sp.Character
+                                    and sp.Character:FindFirstChild("HumanoidRootPart")
+                                if shrp and (shrp.Position - shp).Magnitude <= 80 then
+                                    local foreignSplash = table.clone(splashHit)
+                                    foreignSplash.foreign = true
+                                    Signals.Combat_PetHit:FireClient(sp, foreignSplash)
+                                end
+                            end
+                        end
+                        hitN += 1
+                    end
+                end
+            end
+        end
+    end
+
     -- Firestorm (team_cleave): while the player's TeamCleave is active, a pet's swing on an enemy
     -- also splashes x frac to OTHER enemies within cleave_radius of the target (credited to pets).
     if
