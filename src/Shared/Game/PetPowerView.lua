@@ -15,6 +15,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PetPower = require(ReplicatedStorage.Shared.Game.PetPower)
+local PetSurvivability = require(ReplicatedStorage.Shared.Game.PetSurvivability)
 
 local function loadConfig(name)
     local configs = ReplicatedStorage:FindFirstChild("Configs")
@@ -29,13 +30,14 @@ end
 local PetPowerView = {}
 
 -- Lazily cached config tables (synced + immutable at runtime).
-local _power, _roles, _fx, _pets
+local _power, _roles, _fx, _pets, _combat
 local function configs()
     _power = _power or loadConfig("pet_power") or {}
     _roles = _roles or loadConfig("pet_roles") or {}
     _fx = _fx or loadConfig("combat_fx") or {}
     _pets = _pets or loadConfig("pets") or {}
-    return _power, _roles, _fx, _pets
+    _combat = _combat or loadConfig("combat") or {}
+    return _power, _roles, _fx, _pets, _combat
 end
 
 -- Role id for a pet: explicit override -> pet_roles.by_type[petType] -> default.
@@ -53,6 +55,15 @@ local function elementMult(fx, petType)
     local element = origin.pettype_element and origin.pettype_element[petType]
     local stats = origin.element_stats and element and origin.element_stats[element]
     return (stats and tonumber(stats.attack_mult)) or 1, element
+end
+
+-- Element DURABILITY (the survivability mirror of elementMult): combat_fx taken_mult for the pet's
+-- element. <1 = takes less = tankier. Currently 1.0 for every element; folds into EHP if tuned.
+local function elementTakenMult(fx, petType)
+    local origin = fx.origin or {}
+    local element = origin.pettype_element and origin.pettype_element[petType]
+    local stats = origin.element_stats and element and origin.element_stats[element]
+    return (stats and tonumber(stats.taken_mult)) or 1
 end
 
 -- input = { base, petType, variant, shiny?, role?, context? }
@@ -93,6 +104,23 @@ end
 function PetPowerView.displayRound(n)
     local power = configs()
     return PetPower.roundForDisplay(n, power.display_round)
+end
+
+-- Effective HP for the inventory card's ❤ number: the RAW enemy damage a pet absorbs before it is
+-- downed, off the SAME endurance ceiling (power * pet_down_threshold_factor) and armor curve
+-- (defense vs armor_curve_k) the server downs it with — so displayed survivability == real.
+--   `power` is the pet's resolved power (use the BASE/realized power, not the resonance-adjusted
+--   display number: cross-realm resonance scales OFFENSE only, never the endurance ceiling).
+-- Returns (ehp, defense, rid). Resilient: missing config -> sensible fallbacks.
+function PetPowerView.survivability(power, petType, explicit)
+    local _, roles, fx, _, combat = configs()
+    local rid = roleId(roles, petType, explicit)
+    local roleDef = (roles.roles and roles.roles[rid]) or {}
+    local defense = tonumber(roleDef.defense) or 0
+    local factor = tonumber(combat.pet_down_threshold_factor) or 1
+    local k = tonumber(combat.armor_curve_k) or 100
+    local takenMult = elementTakenMult(fx, petType)
+    return PetSurvivability.effectiveHp(power, defense, factor, k, takenMult), defense, rid
 end
 
 -- Archetype chip data for a pet card / squad tooltip: resolves the role (explicit override ->

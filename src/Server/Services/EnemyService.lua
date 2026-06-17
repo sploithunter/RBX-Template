@@ -46,6 +46,7 @@ local CombatMath = require(ReplicatedStorage.Shared.Game.CombatMath)
 local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local TargetPriority = require(ReplicatedStorage.Shared.Game.TargetPriority)
 local SupportAura = require(ReplicatedStorage.Shared.Game.SupportAura)
+local PetPowerView = require(ReplicatedStorage.Shared.Game.PetPowerView) -- effective combat power (empower carry pick)
 local OverheadBar = require(ReplicatedStorage.Shared.UI.OverheadBar) -- shared enemy HP / pet endurance bar
 local PetLockout = require(ReplicatedStorage.Shared.Game.PetLockout)
 local ZoneResolver = require(ReplicatedStorage.Shared.Game.ZoneResolver)
@@ -2004,6 +2005,56 @@ function EnemyService:_auraPlayerBuff(folder, attr, aura, count, weight)
     owner:SetAttribute(attr .. "Stacks", count or 1)
 end
 
+-- A pet's EFFECTIVE combat power — the ⚔ number on the card — resolved through the SAME
+-- PetPowerView the inventory/squad cards and the damage path use (so "the carry" == the pet showing
+-- the highest ⚔). It applies role combat_mult (tank ×0.6), element + variant + per-pet aptitude on
+-- top of the realized base. Falls back to the raw base if PetPowerView is unavailable. (Live zone/
+-- realm resonance isn't folded in — that's a small situational factor vs the archetype combat_mult.)
+function EnemyService:_petCombatPower(pet)
+    local base = self:_petPower(pet)
+    if not (PetPowerView and PetPowerView.profile) then
+        return base
+    end
+    local ok, profile = pcall(function()
+        return PetPowerView.profile({
+            base = base,
+            petType = pet:GetAttribute("PetType"),
+            variant = pet:GetAttribute("PetVariant"),
+            role = pet:GetAttribute("PetRole"),
+        })
+    end)
+    return (ok and profile and tonumber(profile.combatEffective)) or base
+end
+
+-- EMPOWER (single-target damage buffer — the "carry amplifier", pet_roles support_auras kind
+-- "empower"): instead of lifting the whole team like the offense aura, concentrate the damage buff
+-- on the squad's STRONGEST ally. Picks the top-`count` allies by power (SupportAura.rankTargets — so
+-- N empower buffers lift the top N carries) and stamps the per-PET EmpowerDamageBuff. That attribute
+-- rides the SAME additive pet_damage axis as RAGE + the player buffs (PetFollowService reads it
+-- per-pet), so it adds under the cap and boosts BOTH the carry's mining and combat.
+function EnemyService:_auraEmpower(folder, aura, count)
+    local candidates = {}
+    for _, ally in ipairs(folder:GetChildren()) do
+        if ally:IsA("Model") and ally.PrimaryPart and not ally:GetAttribute("CombatDowned") then
+            -- Rank by EFFECTIVE combat power (the ⚔ number), NOT raw base: a huge tank has the
+            -- biggest base but its ×0.6 combat_mult makes a blaster the real carry. Empower must
+            -- lift the actual damage dealer, so resolve combatEffective through PetPowerView.
+            candidates[#candidates + 1] = { key = ally, power = self:_petCombatPower(ally) }
+        end
+    end
+    local ranked = SupportAura.rankTargets(candidates, aura.target or "highest_power")
+    local mult = tonumber(aura.mult) or 1
+    local until_ = os.time() + (tonumber(aura.duration) or 3)
+    local lift = math.min(math.max(1, math.floor(tonumber(count) or 1)), #ranked)
+    for i = 1, lift do
+        local ally = ranked[i]
+        ally:SetAttribute("EmpowerDamageBuff", mult)
+        ally:SetAttribute("EmpowerDamageBuffUntil", until_)
+        ally:SetAttribute("EmpowerFxUntil", until_) -- squad-card badge (steady while buffed)
+        ally:SetAttribute("EmpowerFxUntilStacks", 1)
+    end
+end
+
 -- Stamp a per-pet DISPLAY marker on every ally so the squad cards can show the support buff
 -- icon (offense/yield ride the PLAYER attr, which the cards can't read per-pet). Display-only.
 function EnemyService:_stampAuraFx(folder, fxAttr, aura, count)
@@ -2069,6 +2120,10 @@ function EnemyService:_supportPass(now)
                 elseif kind == "offense" then
                     self:_auraPlayerBuff(folder, "PetTeamDamageBuff", aura, count, weight)
                     self:_stampAuraFx(folder, "OffenseFxUntil", aura, count)
+                elseif kind == "empower" then
+                    -- SINGLE-TARGET damage buffer (carry amplifier): N empower buffers lift the
+                    -- top-N strongest allies, not the whole team.
+                    self:_auraEmpower(folder, aura, count)
                 elseif kind == "yield" then
                     self:_auraPlayerBuff(folder, "CoinYieldBuff", aura, count, weight)
                     self:_stampAuraFx(folder, "YieldFxUntil", aura, count)

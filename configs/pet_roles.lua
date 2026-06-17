@@ -37,7 +37,8 @@ return {
         -- specific aura flavour lives in support_auras below.
         penguin = "support", -- Ice buffer (defense)
         emberimp = "support", -- Lava buffer (offense)
-        meerkat = "support", -- Desert buffer (yield)
+        meerkat = "control", -- Desert CONTROLLER — its support_aura is a full 10s hold (the fifth
+        -- archetype, graduated out of support: the hold mez IS its identity, see support_auras below)
         -- Heaven (solar egg) — a full archetype spread so the first realm egg fields a real team:
         emberling_cherub = "support", -- Heaven buffer (HEAL — angelic healer; see support_auras)
         -- Realm pets (Heaven Desert + Hell) — generated
@@ -102,12 +103,12 @@ return {
         bunny = { kind = "luck", interval = 2.0, mult = 1.1667, duration = 6 },
         penguin = { kind = "defense", interval = 2.0, amount = 53.3, duration = 6 }, -- Ice
         emberimp = { kind = "offense", interval = 2.0, mult = 1.1667, duration = 6 }, -- Lava
-        -- TEMP CONTROL EXPERIMENT (Jason): meerkat is the controller test vehicle — it HOLDS the
-        -- focused enemy (10s hold, fires every 30s = recharge) so we can prototype the CC feel vs
-        -- flyers. It targets the player's focus (assist target → most-targeted-by-pets → nearest).
-        -- REVERT to its Desert yield aura when done:
-        --   meerkat = { kind = "yield", interval = 2.0, mult = 1.1667, duration = 6 }, -- Desert
-        meerkat = { kind = "hold", interval = 30, duration = 10 }, -- Desert (TEMP control test)
+        -- CONTROLLER (Jason): the meerkat is the game's CONTROL archetype (by_type = "control"). It
+        -- HOLDS the focused enemy — a full mez (can't move OR attack), 10s hold firing every 30s
+        -- (recharge). Targets the player's focus (assist target → most-targeted-by-pets → nearest).
+        -- The hold IS its identity; CC is the fifth archetype the squad diversifies around (the old
+        -- Desert yield aura it replaced now lives on the Desert scarabs).
+        meerkat = { kind = "hold", interval = 30, duration = 10 }, -- Desert controller (full mez)
         -- Heaven (solar egg): the Emberling Cherub HEALS — an angelic healer, the realm's buffer.
         -- A gentle continuous mend of the most-hurt ally (fraction of its pool every 2s); kept well
         -- under Colorado's old 20%/1.5s that read as invulnerable. Tune freely.
@@ -115,7 +116,17 @@ return {
         -- Realm support pets — generated
         sun_scarab = { kind = "yield", interval = 2.0, mult = 1.1667, duration = 6 },
         cinderling_imp = { kind = "offense", interval = 2.0, mult = 1.1667, duration = 6 },
-        carrion_scarab = { kind = "yield", interval = 2.0, mult = 1.1667, duration = 6 },
+        -- SINGLE-TARGET damage buffer (the first "empower" pet): concentrates +50% damage on the
+        -- squad's STRONGEST ally instead of spreading like the team offense aura — the carry
+        -- amplifier. Hell's aggressive theme fits it; it also frees Desert from double-yield (the
+        -- sun_scarab still covers Heaven yield). Reassign freely.
+        carrion_scarab = {
+            kind = "empower",
+            target = "highest_power",
+            interval = 2.0,
+            mult = 1.5,
+            duration = 6,
+        },
         rimelight_hare = { kind = "heal", interval = 2.0, fraction = 0.08, duration = 6 },
         blightlamb = { kind = "defense", interval = 2.0, amount = 53.3, duration = 6 },
         -- Bear: RAGE — an inherent power the pet casts on ITSELF (Jason: per-SPECIES

@@ -178,6 +178,8 @@ local M = {
         yield = "coins_up",
         luck = "clover_lucky", -- bunny (Grass) — lucky-rabbit hatch-luck aura
         hold = "capacitor", -- controller HOLD glyph (capacitor IS the hold art; see discs map above)
+        empower = "chevrons_up", -- single-target damage buffer: SAME damage-up glyph as offense; the
+        -- single-target ring (SUPPORT_META.ring = "single") is what reads it apart from team offense
     },
     power_glyph_symbol = {
         debuff = "contagion",

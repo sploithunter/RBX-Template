@@ -304,6 +304,23 @@ local PET_EFFECTS = {
         label = "COIN",
         icon = POWER_ICONS.discFor("desert", "coins_up"),
     },
+    -- EMPOWER (single-target damage buffer — pet_roles kind "empower"): only the ONE buffed carry
+    -- wears it (the aura picks the squad's strongest ally), so unlike the team auras it marks a
+    -- single pet. Hotter red than the team ATK badge to read as "focused" damage.
+    {
+        key = "empower",
+        source = "pet",
+        untilAttr = "EmpowerFxUntil",
+        stacksAttr = "EmpowerFxUntilStacks",
+        steady = true,
+        color = Color3.fromRGB(245, 80, 70),
+        label = "EMP",
+        icon = POWER_ICONS.discFor("fire", "chevrons_up"),
+        -- single-target inward ring (target_in) frames the damage-up disc so the empowered carry
+        -- reads as ONE-target, distinct from the team offense badge (which wears no ring).
+        ringElement = "fire",
+        ringShape = "target_in",
+    },
     -- RAGE (inherent self power — bear, pet_roles support_auras kind "rage"): only the
     -- raging pet wears it, and only while hurt past its enrage threshold. Conditional,
     -- not permanent, so it pulses instead of sitting steady like the buffer auras.

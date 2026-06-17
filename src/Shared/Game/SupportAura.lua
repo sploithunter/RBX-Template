@@ -16,12 +16,16 @@
       rage     — SELF damage buff while hurt (bear). { enrage_below, mult, interval, duration }
       hold     — CONTROL: pin one enemy (no move/attack) for `duration`s; targets the player's focus
                  (assist → most-targeted-by-pets → nearest). { interval = recharge, duration } (experimental)
+      empower  — SINGLE-TARGET damage buffer (the "carry amplifier"): instead of lifting the whole
+                 team a little (offense), it stamps a per-pet damage buff on the squad's STRONGEST
+                 ally — concentrate, don't spread. { interval, mult, duration, target = "highest_power" }
 
     SupportAura.forPet(petType, rolesConfig) -> aura table (with .kind) | nil
     SupportAura.isBuffer(petType, rolesConfig) -> boolean
     SupportAura.isEnraged(aura, healthFraction) -> boolean
     SupportAura.rageMultiplier(aura, healthFraction, variantMult) -> mult >= 1 | nil
     SupportAura.rageFraction(auras, healthFraction, variantMult) -> additive fraction >= 0
+    SupportAura.rankTargets(candidates, rule) -> array of candidate keys, best-first
 ]]
 
 local SupportAura = {}
@@ -95,6 +99,37 @@ function SupportAura.rageFraction(auras, healthFraction, variantMult)
         end
     end
     return f
+end
+
+-- ── SINGLE-TARGET selection (kind = "empower" and any future single-target aura) ──
+-- Rank candidate allies for a single-target aura so the caller can lift the top-N. Pure +
+-- deterministic (no randomness — ties break by insertion order, so the same squad picks the same
+-- carry every tick and the buff doesn't flicker between equals).
+--   candidates : array of { key = <opaque, e.g. the pet model>, power = number }
+--   rule       : "highest_power" (default) | "lowest_power"
+-- Returns a NEW array of the candidate KEYS, best-first.
+function SupportAura.rankTargets(candidates, rule)
+    local list = {}
+    for i, c in ipairs(candidates or {}) do
+        if type(c) == "table" then
+            list[#list + 1] = { key = c.key, power = tonumber(c.power) or 0, order = i }
+        end
+    end
+    local lowest = rule == "lowest_power"
+    table.sort(list, function(a, b)
+        if a.power ~= b.power then
+            if lowest then
+                return a.power < b.power
+            end
+            return a.power > b.power
+        end
+        return a.order < b.order -- stable tiebreak: earlier candidate wins
+    end)
+    local out = {}
+    for i, c in ipairs(list) do
+        out[i] = c.key
+    end
+    return out
 end
 
 return SupportAura

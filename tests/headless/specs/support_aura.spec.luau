@@ -83,4 +83,40 @@ return function()
             expect(SupportAura.isEnraged({ kind = "rage", enrage_below = 7 }, 1)).to.equal(true)
         end)
     end)
+
+    describe("SupportAura.rankTargets (single-target empower selection)", function()
+        it("ranks highest_power first (the default carry rule)", function()
+            local ranked = SupportAura.rankTargets({
+                { key = "a", power = 10 },
+                { key = "b", power = 42 },
+                { key = "c", power = 25 },
+            })
+            expect(ranked[1]).to.equal("b")
+            expect(ranked[2]).to.equal("c")
+            expect(ranked[3]).to.equal("a")
+        end)
+
+        it("lowest_power reverses the order (mercy buff)", function()
+            local ranked = SupportAura.rankTargets({
+                { key = "a", power = 10 },
+                { key = "b", power = 42 },
+            }, "lowest_power")
+            expect(ranked[1]).to.equal("a")
+            expect(ranked[2]).to.equal("b")
+        end)
+
+        it("breaks power ties by insertion order (deterministic, no flicker)", function()
+            local ranked = SupportAura.rankTargets({
+                { key = "first", power = 30 },
+                { key = "second", power = 30 },
+            })
+            expect(ranked[1]).to.equal("first")
+            expect(ranked[2]).to.equal("second")
+        end)
+
+        it("returns an empty list for no candidates", function()
+            expect(#SupportAura.rankTargets({})).to.equal(0)
+            expect(#SupportAura.rankTargets(nil)).to.equal(0)
+        end)
+    end)
 end

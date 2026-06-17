@@ -204,7 +204,12 @@ local SUPPORT_META = {
     offense = { element = "fire", label = "Offense" },
     yield = { element = "desert", label = "Coin Yield" },
     luck = { element = "earth", label = "Luck" }, -- bunny's lucky-rabbit aura (Grass)
-    hold = { element = "ice", label = "Hold" }, -- controller CC (ice = Cryomancer/control theme)
+    -- single-target controller CC (ice = Cryomancer/control theme): ring = "single" frames the hold
+    -- glyph with the inward targeting ring — it pins ONE enemy, same scope language as empower.
+    hold = { element = "ice", label = "Hold", ring = "single" },
+    -- single-target damage buffer (carry amplifier): ring = "single" frames the damage-up disc with
+    -- the inward targeting ring so it reads as ONE-target, distinct from the team offense badge.
+    empower = { element = "fire", label = "Empower", ring = "single" },
 }
 local petVisualsOk, PetVariantVisuals = pcall(function()
     return require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
@@ -3674,12 +3679,15 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     powerLabel.Position =
         UDim2.new(0, 4, 1, -math.max(8, math.floor(self.cardSize.Y * powerBottomOffsetScale)))
     powerLabel.BackgroundTransparency = 1
-    -- Pet cards show the TWO numbers (⛏ mining / ⚔ combat) the pet ACTUALLY does right here — the
-    -- TRUE power (Jason's first principle). Resolved through the SAME resolvePetProfile the sort key
-    -- uses (single source of truth), with the full live context: biome RPS + cross-realm resonance.
-    -- So a light pet reads ⛏63/⚔63 in Hell, 34 in Heaven, 42 at home — recalculated as you cross
-    -- zones/realms. (Player-specific context like level/boosts is still excluded by PetPowerView, so
-    -- the number stays comparable between owners standing in the same place.)
+    -- Pet cards show ⚔ POWER + ❤ EFFECTIVE HP — the TRUE numbers the pet ACTUALLY has (Jason's
+    -- first principle). Mining and attack are one unified power now, so the old ⛏/⚔ pair printed the
+    -- same number twice; the second slot becomes survivability instead, the one stat that varies by
+    -- archetype. ⚔ resolves through resolvePetProfile (the sort key's SSOT) with the full live
+    -- context (biome RPS + cross-realm resonance) — a light pet reads ⚔63 in Hell, 34 in Heaven, 42
+    -- at home. ❤ = power * pet_down_threshold_factor * (1 + defense/k) via PetPowerView.survivability
+    -- — the SAME endurance ceiling + armor curve the server downs the pet with. ❤ uses the BASE power
+    -- (not the contextual ⚔), because cross-realm resonance scales offense only, never toughness:
+    -- a blaster reads ❤ = 10x power, a tank ❤ = 20x power (defense is the multiplier).
     local powerText = (item.power and (powerPrefix .. tostring(item.power))) or ""
     if item.folder_source == "enhancements" and item.origins_label then
         powerText = item.origins_label -- "Geo/Cryo" under the type name, in the rarity color
@@ -3687,10 +3695,13 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     if PetPowerView and item.category == "Pets" and item.petType and item.power then
         local profile = resolvePetProfile(item.power, item.petType, item.variant, item.creator)
         if profile then
+            local okEhp, ehp = pcall(function()
+                return PetPowerView.survivability(item.power, item.petType, item.role)
+            end)
             powerText = string.format(
-                "⛏ %d  ⚔ %d",
-                PetPowerView.displayRound(profile.miningEffective),
-                PetPowerView.displayRound(profile.combatEffective)
+                "⚔ %d  ❤ %d",
+                PetPowerView.displayRound(profile.combatEffective),
+                PetPowerView.displayRound((okEhp and ehp) or 0)
             )
         end
     end
@@ -3801,6 +3812,28 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
                 img.ScaleType = Enum.ScaleType.Fit
                 img.ZIndex = holder.ZIndex
                 img.Parent = holder
+                -- TARGETING RING (meta.ring = "single" | "aoe" | ...): frames the disc so a
+                -- single-target buffer (empower) reads apart from a team aura at a glance. The disc
+                -- shrinks to sit inside the ring; the ring tints to the aura's element (bright).
+                local ringImg = meta.ring and POWER_ICONS.ringFor and POWER_ICONS.ringFor(meta.ring)
+                if ringImg then
+                    img.AnchorPoint = Vector2.new(0.5, 0.5)
+                    img.Position = UDim2.fromScale(0.5, 0.5)
+                    img.Size = UDim2.fromScale(0.78, 0.78)
+                    local ring = Instance.new("ImageLabel")
+                    ring.Name = "Ring"
+                    ring.AnchorPoint = Vector2.new(0.5, 0.5)
+                    ring.Position = UDim2.fromScale(0.5, 0.5)
+                    ring.Size = UDim2.fromScale(1, 1)
+                    ring.BackgroundTransparency = 1
+                    ring.Image = ringImg
+                    ring.ScaleType = Enum.ScaleType.Fit
+                    ring.ImageColor3 = POWER_ICONS.elementColor3
+                            and POWER_ICONS.elementColor3(meta.element, "bright")
+                        or Color3.fromRGB(245, 120, 90)
+                    ring.ZIndex = holder.ZIndex + 1
+                    ring.Parent = holder
+                end
                 shown += 1
             end
         end

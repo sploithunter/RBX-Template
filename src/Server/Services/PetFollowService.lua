@@ -483,6 +483,14 @@ function PetFollowService:_mine(player, pet, breakable)
             fraction = (pet:GetAttribute("RageDamageBuff") or 1) - 1,
             expiry = pet:GetAttribute("RageDamageBuffUntil") or 0,
         },
+        {
+            -- EMPOWER (single-target damage buffer, e.g. carrion_scarab — pet_roles kind "empower"):
+            -- a per-PET stamp from EnemyService:_supportPass on the squad's strongest ally. Same
+            -- additive pet_damage axis as RAGE + the player buffs, so it ADDS under the cap, never
+            -- compounds — and lifts this pet's mining AND combat together (it's the dmg axis).
+            fraction = (pet:GetAttribute("EmpowerDamageBuff") or 1) - 1,
+            expiry = pet:GetAttribute("EmpowerDamageBuffUntil") or 0,
+        },
     }
     dmg = dmg
         * BuffStack.multiplier(
