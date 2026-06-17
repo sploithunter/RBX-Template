@@ -439,7 +439,10 @@ function PetFollowService:_mine(player, pet, breakable)
         petType = pet:GetAttribute("PetType"),
         variant = pet:GetAttribute("PetVariant"),
         role = pet:GetAttribute("PetRole"),
-        context = { zone = self:_zoneResonance(player, pet) },
+        context = {
+            zone = self:_zoneResonance(player, pet), -- biome RPS (pet element vs zone)
+            realm = self:_realmResonance(player, pet), -- light/shadow vs current realm (cross-realm)
+        },
     })
     local dmg = breakable:GetAttribute("EnemyId") and profile.combatEffective
         or profile.miningEffective
@@ -652,23 +655,29 @@ function PetFollowService:_mine(player, pet, breakable)
     end
 end
 
--- Zone-resonance multiplier for a pet right now (configs/elements.lua biome +
--- combat_fx pettype_element + areas zone element). Cached config reads.
-function PetFollowService:_zoneResonance(player, pet)
-    if self._elementsConfig == nil then
-        local ok1, elements = pcall(function()
-            return require(game:GetService("ReplicatedStorage").Configs:WaitForChild("elements"))
-        end)
-        local ok2, fx = pcall(function()
-            return require(game:GetService("ReplicatedStorage").Configs:WaitForChild("combat_fx"))
-        end)
-        local ok3, areas = pcall(function()
-            return require(game:GetService("ReplicatedStorage").Configs:WaitForChild("areas"))
-        end)
-        self._elementsConfig = (ok1 and elements) or false
-        self._petElementMap = (ok2 and fx and fx.origin and fx.origin.pettype_element) or {}
-        self._zonesConfig = (ok3 and areas and areas.zones) or {}
+-- Load + cache the resonance configs once (elements + combat_fx pettype_element + areas zones +
+-- pets). Both resonance helpers call this, so neither can partial-load and leave the other blind.
+function PetFollowService:_ensureResonanceConfigs()
+    if self._elementsConfig ~= nil then
+        return
     end
+    local function tryReq(name)
+        local ok, cfg = pcall(function()
+            return require(game:GetService("ReplicatedStorage").Configs:WaitForChild(name))
+        end)
+        return ok and cfg or nil
+    end
+    local elements, fx, areas, pets =
+        tryReq("elements"), tryReq("combat_fx"), tryReq("areas"), tryReq("pets")
+    self._elementsConfig = elements or false
+    self._petElementMap = (fx and fx.origin and fx.origin.pettype_element) or {}
+    self._zonesConfig = (areas and areas.zones) or {}
+    self._petsByType = (pets and pets.pets) or {}
+end
+
+-- Zone-resonance multiplier for a pet right now: biome RPS (its element vs the zone it stands in).
+function PetFollowService:_zoneResonance(player, pet)
+    self:_ensureResonanceConfigs()
     if not self._elementsConfig then
         return 1
     end
@@ -676,6 +685,23 @@ function PetFollowService:_zoneResonance(player, pet)
     local zone = self._zonesConfig[tostring(player:GetAttribute("CurrentArea"))]
     local zoneElement = zone and zone.element
     return ElementResonance.biomeMultiplier(petElement, zoneElement, self._elementsConfig)
+end
+
+-- Cross-realm resonance: a pet's ALIGNMENT (light = Heaven species, shadow = Hell species, else
+-- neutral — derived game-wide from the species' `realm`, no per-pet storage) vs the realm the
+-- player stands in (CurrentRealm). Heaven pets hit 1.5x in Hell / 0.8x at home and vice versa
+-- (configs/elements.lua resonance); homeworld/neutral pets stay 1.0x. This is the cross-realm
+-- value + trade driver — applied to BOTH mining and combat output via the resolver's contextMult.
+function PetFollowService:_realmResonance(player, pet)
+    self:_ensureResonanceConfigs()
+    if not self._elementsConfig then
+        return 1
+    end
+    local petDef = self._petsByType[pet:GetAttribute("PetType")]
+    local realm = petDef and petDef.realm
+    local alignment = (realm == "heaven" and "light") or (realm == "hell" and "shadow") or "neutral"
+    local playerRealm = player:GetAttribute("CurrentRealm") or "neutral"
+    return ElementResonance.multiplier(alignment, playerRealm, self._elementsConfig)
 end
 
 function PetFollowService:_tickPlayer(player)

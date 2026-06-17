@@ -40,17 +40,22 @@ return function()
             return ElementResonance.multiplier(element, realm, elementsConfig)
         end
 
-        it("light: home (heaven) 1.2, opposing (hell) 1.5, neutral 1.0", function()
-            expect(m("light", "heaven")).to.equal(1.2)
+        -- CROSS-REALM (Jason): a pet is weak in its OWN realm (0.8) and strong in the OPPOSITE one
+        -- (1.5) — Heaven pets are weapons in Hell and vice versa, which drives cross-realm trading.
+        it("light: weak at home (heaven) 0.8, strong opposing (hell) 1.5, neutral 1.0", function()
+            expect(m("light", "heaven")).to.equal(0.8)
             expect(m("light", "hell")).to.equal(1.5)
             expect(m("light", "neutral")).to.equal(1.0)
         end)
 
-        it("shadow mirrors light: opposing (heaven) 1.5, home (hell) 1.2, neutral 1.0", function()
-            expect(m("shadow", "heaven")).to.equal(1.5)
-            expect(m("shadow", "hell")).to.equal(1.2)
-            expect(m("shadow", "neutral")).to.equal(1.0)
-        end)
+        it(
+            "shadow mirrors light: strong opposing (heaven) 1.5, weak at home (hell) 0.8, neutral 1.0",
+            function()
+                expect(m("shadow", "heaven")).to.equal(1.5)
+                expect(m("shadow", "hell")).to.equal(0.8)
+                expect(m("shadow", "neutral")).to.equal(1.0)
+            end
+        )
 
         it("chaotic is flat 1.3 across realms", function()
             expect(m("chaotic", "heaven")).to.equal(1.3)

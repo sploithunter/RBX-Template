@@ -30,11 +30,15 @@ return {
         disadvantage = 0.8, -- standing in the zone that beats your element
     },
 
-    -- resonance[petElement][realmAlignment] -> multiplier
+    -- resonance[petElement][realmAlignment] -> multiplier. CROSS-REALM by design (Jason): a pet is
+    -- STRONGEST in the OPPOSITE realm and weak in its own, so a Heaven (light) pet is a weapon down
+    -- in Hell and a Hell (shadow) pet shines in Heaven — you want the other realm's pets, which
+    -- drives cross-realm trading. Homeworld pets are neutral (1.0 everywhere — never obsolete).
+    -- Realm pets are NOT a self-upgrade at home (0.8); their value is the opposite realm + trade.
     resonance = {
-        light = { heaven = 1.2, hell = 1.5, neutral = 1.0 },
-        shadow = { heaven = 1.5, hell = 1.2, neutral = 1.0 },
-        chaotic = { heaven = 1.3, hell = 1.3, neutral = 1.3 },
-        neutral = { heaven = 1.0, hell = 1.0, neutral = 1.0 },
+        light = { heaven = 0.8, hell = 1.5, neutral = 1.0 }, -- Heaven pets: weak at home, 1.5x in Hell
+        shadow = { heaven = 1.5, hell = 0.8, neutral = 1.0 }, -- Hell pets: 1.5x in Heaven, weak at home
+        chaotic = { heaven = 1.3, hell = 1.3, neutral = 1.3 }, -- fusion-only: strong everywhere
+        neutral = { heaven = 1.0, hell = 1.0, neutral = 1.0 }, -- homeworld: untagged, always 1.0
     },
 }
