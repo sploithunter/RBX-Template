@@ -50,6 +50,17 @@ return {
         max_targets = 5,
     },
 
+    -- AURA pets (PetTargeting attack_targeting = "aura"): a damage FIELD around the pet itself —
+    -- every `interval`s it deals `fraction` of its effective combat power to EVERY enemy within
+    -- `radius` studs, with no target needed (a "get close and everything burns" bruiser). Lower
+    -- fraction than a direct hit because it's constant + multi-target. A continuous fire-ring VFX
+    -- follows the pet (Power_AreaFx, sized to radius).
+    pet_aura = {
+        radius = 12,
+        fraction = 0.5,
+        interval = 1.0,
+    },
+
     -- Defensive stat (armor curve). Damage is reduced by armor/(armor+k): a pet's
     -- Defense attribute mitigates enemy hits, an enemy's Armor mitigates pet damage.
     -- At armor == k the hit is halved; diminishing returns, never full immunity.

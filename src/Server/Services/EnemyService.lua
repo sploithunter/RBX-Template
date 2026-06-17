@@ -2450,6 +2450,75 @@ function EnemyService:_enemyHealPass(now)
     end
 end
 
+-- AURA-damage pass: a pet with attack_targeting = "aura" deals a damage FIELD around ITSELF — every
+-- pet_aura.interval it hits every enemy within `radius` for `fraction` of its effective combat power,
+-- no target needed (the "get close and everything burns" bruiser). Interval-gated per pet (a steady
+-- cadence, not every combat tick); a fire-ring follows the pet (Power_AreaFx, sized to radius).
+-- Damage credits the owner's Contrib so aura kills count. Opt-in: only aura pets run this.
+function EnemyService:_auraDamagePass(now)
+    local cfg = (self._combatConfig and self._combatConfig.pet_aura) or {}
+    local radius = tonumber(cfg.radius) or 12
+    local fraction = tonumber(cfg.fraction) or 0.5
+    local interval = math.max(0.1, tonumber(cfg.interval) or 1)
+    local playerPets = Workspace:FindFirstChild("PlayerPets")
+    if not playerPets then
+        return
+    end
+    self._auraAt = self._auraAt or setmetatable({}, { __mode = "k" }) -- [pet]=next tick; weak so dead pets GC
+    local pfs = self:_petFollowService()
+    for _, folder in ipairs(playerPets:GetChildren()) do
+        local owner = Players:FindFirstChild(folder.Name)
+        local ownerKey = owner and tostring(owner.UserId)
+        for _, pet in ipairs(folder:GetChildren()) do
+            if
+                pet:IsA("Model")
+                and not pet:GetAttribute("CombatDowned")
+                and pet:GetAttribute("AttackTargeting") == "aura"
+            then
+                local nextAt = self._auraAt[pet]
+                if not nextAt or now >= nextAt then
+                    self._auraAt[pet] = now + interval
+                    local pos = self:_petPosition(pet, pfs)
+                    local dmg = math.floor(self:_petCombatPower(pet) * fraction + 0.5)
+                    if pos and dmg > 0 then
+                        for _, entry in pairs(self._enemies) do
+                            local model = entry.model
+                            if model and model.Parent and (model:GetAttribute("HP") or 0) > 0 then
+                                local ep = model.PrimaryPart
+                                    or model:FindFirstChildWhichIsA("BasePart")
+                                if ep and (ep.Position - pos).Magnitude <= radius then
+                                    local hp = tonumber(model:GetAttribute("HP")) or 0
+                                    local newHp = math.max(0, hp - dmg)
+                                    local dealt = hp - newHp
+                                    model:SetAttribute("HP", newHp)
+                                    local contrib = dealt > 0
+                                        and ownerKey
+                                        and model:FindFirstChild("Contrib")
+                                    if contrib then
+                                        local nv = contrib:FindFirstChild(ownerKey)
+                                        if not nv then
+                                            nv = Instance.new("NumberValue")
+                                            nv.Name = ownerKey
+                                            nv.Parent = contrib
+                                        end
+                                        nv.Value += dealt
+                                    end
+                                end
+                            end
+                        end
+                        if owner then -- the fire-ring field, centred on the pet, sized to the aura
+                            Signals.Power_AreaFx:FireClient(
+                                owner,
+                                { center = pos, variant = "self", radius = radius }
+                            )
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
 -- DoT pass: tick any burn (DamageOverTime) a pet attack stamped on an enemy. perTick is stored on
 -- the enemy (DotPerTick); apply the whole ticks due this step, credit the source player's Contrib so
 -- burn kills count toward rewards, and burn out at expiry. The HP drain is the visible tell (the
@@ -2502,6 +2571,7 @@ function EnemyService:_combatTick(dt)
     self:_enemyRegenPass(now, dt, eng)
     self:_supportPass(now)
     self:_dotPass(now) -- tick any burns (DoT) stamped on enemies by pet attacks
+    self:_auraDamagePass(now) -- AURA pets damage enemies in a radius around themselves
     self:_enemyHealPass(now)
     self:_enforceLockouts(nowTime) -- #179: hold re-teamed/locked pets down for their recovery
     self:_refreshGroundExclude() -- rebuild the ground-snap raycast filter once for the whole tick
