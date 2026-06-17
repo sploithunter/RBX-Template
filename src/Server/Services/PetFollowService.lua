@@ -395,16 +395,6 @@ function PetFollowService:_mine(player, pet, breakable)
         return
     end
 
-    -- AURA pets attack THROUGH the field, not a single-target hit: attack_targeting = "aura" means
-    -- the aura (EnemyService:_auraDamagePass) IS the attack. Skip the per-target ENEMY hit here so an
-    -- aura tank doesn't ALSO single-target — its damage is the field, and the card shows the aura
-    -- tick. Crystals still mine normally (aura is a combat identity, not a mining one). Light
-    -- reschedule so this doesn't re-enter every frame; the field tick runs independently.
-    if breakable:GetAttribute("EnemyId") and pet:GetAttribute("AttackTargeting") == "aura" then
-        self._nextHit[pet] = now + 0.25
-        return
-    end
-
     -- Mining gate: only mine once the pet has reached the target (within mining.range), so move
     -- speed affects mining throughput (DPS ramps as pets arrive). Distance comes from the position
     -- the owning client reports; a missing/stale report falls back to "allow" so the gate can
@@ -461,6 +451,16 @@ function PetFollowService:_mine(player, pet, breakable)
     })
     local dmg = breakable:GetAttribute("EnemyId") and profile.combatEffective
         or profile.miningEffective
+    -- AURA SPLIT (Jason "hit = hit - aura"): an aura pet's SINGLE-TARGET hit is reduced by the aura
+    -- fraction, because its focus ALSO sits in the field and takes the aura tick — so the focus nets
+    -- the full hit ((1-f) from the swing + f from the field), neighbors get the f as bonus AoE, and
+    -- the focus is never double-counted. The crit roll below applies to this reduced hit; the field
+    -- itself ticks flat (no crit). Only on ENEMY hits — mining is unaffected.
+    if breakable:GetAttribute("EnemyId") and pet:GetAttribute("AttackTargeting") == "aura" then
+        local f = tonumber(self._combatConfig.pet_aura and self._combatConfig.pet_aura.fraction)
+            or 0.5
+        dmg = dmg * math.max(0, 1 - f)
+    end
     -- Level scaling vs ENEMIES only (crystals have no Level): out-level it -> hit harder.
     if breakable:GetAttribute("EnemyId") then
         -- Attacker fights at the owner's EFFECTIVE level (the teaming seam) — same value the

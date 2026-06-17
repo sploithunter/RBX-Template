@@ -112,14 +112,6 @@ end)
 if not areasOk then
     AREAS_CONFIG = nil
 end
--- combat config: the aura per-tick fraction, so an aura pet's card shows the FIELD damage it
--- actually deals (combatEffective × fraction) rather than the single-target hit it no longer does.
-local combatCfgOk, COMBAT_CONFIG = pcall(function()
-    return require(ReplicatedStorage.Configs:WaitForChild("combat"))
-end)
-if not combatCfgOk then
-    COMBAT_CONFIG = nil
-end
 local ElementResonance = require(ReplicatedStorage.Shared.Game.ElementResonance)
 -- Pet defs (for the species realm -> light/shadow alignment used by the cross-realm resonance).
 local petsCfgOk, PETS_CONFIG = pcall(function()
@@ -3703,25 +3695,13 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
             local okEhp, ehp = pcall(function()
                 return PetPowerView.survivability(item.power, item.petType, item.role)
             end)
-            -- ⚔ = the damage the pet ACTUALLY deals per hit (Jason's first principle). For an AURA
-            -- pet the single-target hit is suppressed (the field IS its attack), so show the
-            -- per-tick FIELD damage (combatEffective × pet_aura.fraction) — what each enemy takes
-            -- per tick, matching the floating numbers — not the unused single-target number.
-            local petDef = PETS_CONFIG and PETS_CONFIG.pets and PETS_CONFIG.pets[item.petType]
-            local atkScope =
-                PetTargeting.attackScope(petDef and petDef.attack_targeting, item.role, PET_ROLES)
-            local combatShown = profile.combatEffective
-            if atkScope == "aura" then
-                local frac = (
-                    COMBAT_CONFIG
-                    and COMBAT_CONFIG.pet_aura
-                    and COMBAT_CONFIG.pet_aura.fraction
-                ) or 0.5
-                combatShown = combatShown * frac
-            end
+            -- ⚔ = the FULL hit the focus takes (Jason's first principle). An aura pet SPLITS its hit
+            -- ("hit = hit - aura"): the swing deals (1-f) and the field returns f to the focus, so the
+            -- focus still nets the full combatEffective — that's the number to show. (Neighbors take
+            -- the f as bonus AoE; the aura ring on the badge signals the field.)
             powerText = string.format(
                 "⚔ %d  ❤ %d",
-                PetPowerView.displayRound(combatShown),
+                PetPowerView.displayRound(profile.combatEffective),
                 PetPowerView.displayRound((okEhp and ehp) or 0)
             )
         end
