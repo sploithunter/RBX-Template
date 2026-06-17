@@ -148,11 +148,16 @@ function ZoneTrackerService:_resolveByRaycast(player)
     local origin = hrp.Position + Vector3.new(0, 5, 0)
     local hit = workspace:Raycast(origin, Vector3.new(0, -(self._raycastDepth + 5), 0), params)
     if hit and hit.Instance then
-        -- If the floor lives inside a realm world folder that is itself an area zone (Heaven_1/
-        -- Hell_1), the player is in that realm — return its zone id, NOT the shared biome name.
+        -- Realm worlds split into per-origin zones named "<World>_<FloorName>" (Heaven_1_Lava,
+        -- Heaven_1_Ice, …). The floor part name IS the origin biome, so a floor inside a realm world
+        -- resolves to that origin's zone — NOT the shared homeworld biome (which the part name alone
+        -- would give). Homeworld floors ("Home_Lava" etc.) aren't zones, so they fall through.
         local worldName = self:_worldFolderName(hit.Instance)
-        if worldName and self._areaZoneIds[worldName] then
-            return worldName
+        if worldName then
+            local perOrigin = worldName .. "_" .. hit.Instance.Name
+            if self._areaZoneIds[perOrigin] then
+                return perOrigin
+            end
         end
         return self._baseplateArea[hit.Instance.Name]
     end
