@@ -2506,10 +2506,15 @@ function EnemyService:_auraDamagePass(now)
                                 end
                             end
                         end
-                        if owner then -- the fire-ring field, centred on the pet, sized to the aura
+                        if owner then -- the field VFX: centred on the pet, sized to the aura, themed
+                            -- to the pet's ELEMENT (grass bear -> Bloom nova, lava -> fire ring) so
+                            -- it doesn't always read as fire. pettype_element returns the AreaFX
+                            -- theme key (grass/lava/ice/desert); nil -> client default.
+                            local petEl = self._originConfig.pettype_element
+                                and self._originConfig.pettype_element[pet:GetAttribute("PetType")]
                             Signals.Power_AreaFx:FireClient(
                                 owner,
-                                { center = pos, variant = "self", radius = radius }
+                                { center = pos, variant = "self", radius = radius, element = petEl }
                             )
                         end
                     end
