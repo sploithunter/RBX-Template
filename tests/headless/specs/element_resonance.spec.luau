@@ -74,4 +74,26 @@ return function()
             expect(m("light", "void")).to.equal(1.0)
         end)
     end)
+
+    -- The shared pet-by-species-realm helper (server damage path AND client card both call it, so
+    -- the displayed power equals the dealt power).
+    describe("ElementResonance.petRealmMultiplier", function()
+        local function p(petRealm, playerRealm)
+            return ElementResonance.petRealmMultiplier(petRealm, playerRealm, elementsConfig)
+        end
+        it("maps heaven pets -> light: 0.8 home, 1.5 in hell, 1.0 homeworld", function()
+            expect(p("heaven", "heaven")).to.equal(0.8)
+            expect(p("heaven", "hell")).to.equal(1.5)
+            expect(p("heaven", "neutral")).to.equal(1.0)
+        end)
+        it("maps hell pets -> shadow: 1.5 in heaven, 0.8 home, 1.0 homeworld", function()
+            expect(p("hell", "heaven")).to.equal(1.5)
+            expect(p("hell", "hell")).to.equal(0.8)
+            expect(p("hell", "neutral")).to.equal(1.0)
+        end)
+        it("homeworld pets (no/other realm) -> neutral 1.0 everywhere", function()
+            expect(p(nil, "hell")).to.equal(1.0)
+            expect(p("base", "heaven")).to.equal(1.0)
+        end)
+    end)
 end

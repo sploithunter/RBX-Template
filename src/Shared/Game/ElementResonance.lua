@@ -17,6 +17,18 @@ function ElementResonance.multiplier(element, realmAlignment, config)
     return row[realmAlignment] or 1.0
 end
 
+-- Cross-realm multiplier for a PET BY ITS SPECIES REALM standing in a realm. Maps the pet's realm
+-- to its alignment (heaven -> light, hell -> shadow, anything else -> neutral) then looks up the
+-- resonance. ONE source of truth shared by the server damage path (PetFollowService) and the client
+-- inventory card, so the displayed power == the dealt power (Jason: "the card is literally the
+-- power — always show the true number").
+function ElementResonance.petRealmMultiplier(petRealm, playerRealm, config)
+    local alignment = (petRealm == "heaven" and "light")
+        or (petRealm == "hell" and "shadow")
+        or "neutral"
+    return ElementResonance.multiplier(alignment, playerRealm or "neutral", config)
+end
+
 -- BIOME RPS (Jason): petElement vs the zone the player stands in.
 -- advantage in the zone your element beats, disadvantage in the zone that beats
 -- you, 1.0 everywhere else — including unknown/special zones (map miss = neutral).

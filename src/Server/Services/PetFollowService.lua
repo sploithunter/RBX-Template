@@ -702,10 +702,12 @@ function PetFollowService:_realmResonance(player, pet)
         return 1
     end
     local petDef = self._petsByType[pet:GetAttribute("PetType")]
-    local realm = petDef and petDef.realm
-    local alignment = (realm == "heaven" and "light") or (realm == "hell" and "shadow") or "neutral"
     local playerRealm = player:GetAttribute("CurrentRealm") or "neutral"
-    return ElementResonance.multiplier(alignment, playerRealm, self._elementsConfig)
+    return ElementResonance.petRealmMultiplier(
+        petDef and petDef.realm,
+        playerRealm,
+        self._elementsConfig
+    )
 end
 
 -- Team-composition bonus: scan the player's ACTIVE squad (deployed pets), tag each by archetype

@@ -112,6 +112,26 @@ if not areasOk then
     AREAS_CONFIG = nil
 end
 local ElementResonance = require(ReplicatedStorage.Shared.Game.ElementResonance)
+-- Pet defs (for the species realm -> light/shadow alignment used by the cross-realm resonance).
+local petsCfgOk, PETS_CONFIG = pcall(function()
+    return require(ReplicatedStorage.Configs:WaitForChild("pets"))
+end)
+if not petsCfgOk then
+    PETS_CONFIG = nil
+end
+
+-- Cross-realm resonance for a pet right now: its species realm (heaven->light / hell->shadow /
+-- else neutral) vs the realm the player is standing in. Uses the SAME shared function as the server
+-- damage path, so the card's number == the damage actually dealt (display = dealt, first principle).
+local function realmResonanceFor(petType)
+    if not ELEMENTS_CONFIG then
+        return 1
+    end
+    local def = PETS_CONFIG and PETS_CONFIG.pets and PETS_CONFIG.pets[petType]
+    local player = Players.LocalPlayer
+    local playerRealm = player and player:GetAttribute("CurrentRealm")
+    return ElementResonance.petRealmMultiplier(def and def.realm, playerRealm, ELEMENTS_CONFIG)
+end
 
 -- Current zone resonance multiplier for a pet type (1.0 when neutral/unknown).
 local function zoneResonanceFor(petType)
@@ -135,6 +155,7 @@ end
 -- displayed 15 but sorted as ~43, landing between 45s and 42s (Jason's catch).
 local function displaySortPower(power, petType, variant, isCreator)
     local mult = zoneResonanceFor(petType)
+    local realmMult = realmResonanceFor(petType)
     if petPowerViewOk and PetPowerView then
         local ok, profile = pcall(function()
             return PetPowerView.profile({
@@ -142,14 +163,16 @@ local function displaySortPower(power, petType, variant, isCreator)
                 petType = petType,
                 variant = variant,
                 creator = isCreator == true,
-                context = { zone = mult },
+                -- zone = biome RPS, realm = cross-realm light/shadow — both fold into contextMult,
+                -- exactly as the server resolves dealt damage. So the card reads the TRUE in-realm power.
+                context = { zone = mult, realm = realmMult },
             })
         end)
         if ok and profile then
             return math.max(profile.miningEffective or 0, profile.combatEffective or 0)
         end
     end
-    return (tonumber(power) or 0) * mult
+    return (tonumber(power) or 0) * mult * realmMult
 end
 
 -- Enchant display (metal ring tiers + per-effect %) for badges + readable tooltips.
