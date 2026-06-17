@@ -395,6 +395,16 @@ function PetFollowService:_mine(player, pet, breakable)
         return
     end
 
+    -- AURA pets attack THROUGH the field, not a single-target hit: attack_targeting = "aura" means
+    -- the aura (EnemyService:_auraDamagePass) IS the attack. Skip the per-target ENEMY hit here so an
+    -- aura tank doesn't ALSO single-target — its damage is the field, and the card shows the aura
+    -- tick. Crystals still mine normally (aura is a combat identity, not a mining one). Light
+    -- reschedule so this doesn't re-enter every frame; the field tick runs independently.
+    if breakable:GetAttribute("EnemyId") and pet:GetAttribute("AttackTargeting") == "aura" then
+        self._nextHit[pet] = now + 0.25
+        return
+    end
+
     -- Mining gate: only mine once the pet has reached the target (within mining.range), so move
     -- speed affects mining throughput (DPS ramps as pets arrive). Distance comes from the position
     -- the owning client reports; a missing/stale report falls back to "allow" so the gate can
