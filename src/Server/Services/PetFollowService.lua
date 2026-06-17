@@ -33,6 +33,7 @@ local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
 local PetPowerView = require(ReplicatedStorage.Shared.Game.PetPowerView)
 local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
+local SquadDiversity = require(ReplicatedStorage.Shared.Game.SquadDiversity)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local PetFollowService = {}
@@ -46,6 +47,8 @@ function PetFollowService:Init()
     self._petRoles = self._configLoader:LoadConfig("pet_roles")
     self._levelingConfig = self._configLoader:LoadConfig("leveling")
     self._buffsConfig = self._configLoader:LoadConfig("buffs") or {}
+    self._squadDiversityConfig = self._configLoader:LoadConfig("squad_diversity") or {}
+    self._diversityCache = setmetatable({}, { __mode = "k" }) -- [player]={mult,t}; weak so leavers GC
     self._nextHit = {} -- pet model -> os.clock() of next allowed mining hit
     self._petPos = setmetatable({}, { __mode = "k" }) -- pet model -> { pos, t } (weak: dead pets GC)
 
@@ -442,6 +445,7 @@ function PetFollowService:_mine(player, pet, breakable)
         context = {
             zone = self:_zoneResonance(player, pet), -- biome RPS (pet element vs zone)
             realm = self:_realmResonance(player, pet), -- light/shadow vs current realm (cross-realm)
+            diversity = self:_squadDiversity(player), -- team-comp bonus (distinct archetypes+origins)
         },
     })
     local dmg = breakable:GetAttribute("EnemyId") and profile.combatEffective
@@ -702,6 +706,43 @@ function PetFollowService:_realmResonance(player, pet)
     local alignment = (realm == "heaven" and "light") or (realm == "hell" and "shadow") or "neutral"
     local playerRealm = player:GetAttribute("CurrentRealm") or "neutral"
     return ElementResonance.multiplier(alignment, playerRealm, self._elementsConfig)
+end
+
+-- Team-composition bonus: scan the player's ACTIVE squad (deployed pets), tag each by archetype
+-- (pet_roles) + origin (biome element), and apply the SquadDiversity multiplier to the WHOLE team's
+-- output. It's squad-level (identical for every pet), so it's cached per player and recomputed when
+-- stale rather than per hit. Also published as SquadDiversityMult for the HUD readout.
+function PetFollowService:_squadDiversity(player)
+    local cfg = self._squadDiversityConfig
+    if not cfg or cfg.enabled == false then
+        return 1
+    end
+    local now = os.clock()
+    local cached = self._diversityCache[player]
+    if cached and (now - cached.t) < 0.5 then
+        return cached.mult
+    end
+    self:_ensureResonanceConfigs() -- ensures _petElementMap (origin tags) is loaded
+    local byType = (self._petRoles and self._petRoles.by_type) or {}
+    local defaultRole = (self._petRoles and self._petRoles.default) or "melee"
+    local members = {}
+    local folder = Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+    if folder then
+        for _, pet in ipairs(folder:GetChildren()) do
+            local pt = pet:GetAttribute("PetType")
+            if pt then
+                members[#members + 1] = {
+                    archetype = byType[pt] or defaultRole,
+                    origin = self._petElementMap[pt],
+                }
+            end
+        end
+    end
+    local result = SquadDiversity.evaluate(members, cfg)
+    self._diversityCache[player] = { mult = result.mult, t = now }
+    player:SetAttribute("SquadDiversityMult", result.mult)
+    return result.mult
 end
 
 function PetFollowService:_tickPlayer(player)
