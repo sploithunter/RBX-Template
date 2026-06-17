@@ -2503,6 +2503,19 @@ function EnemyService:_auraDamagePass(now)
                                         end
                                         nv.Value += dealt
                                     end
+                                    -- VISUALIZE: a floating number on each enemy the field ticks, so
+                                    -- the aura reads (splash = number-only, no per-target bolt). Without
+                                    -- this the aura is silent and looks like it's "not hitting".
+                                    if dealt > 0 and owner then
+                                        Signals.Combat_PetHit:FireClient(owner, {
+                                            pet = pet,
+                                            target = model,
+                                            crit = false,
+                                            amount = dealt,
+                                            miss = false,
+                                            splash = true,
+                                        })
+                                    end
                                 end
                             end
                         end
