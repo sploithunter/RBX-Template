@@ -372,6 +372,70 @@ local function zoneUnlockedFor(player, zoneId)
     return cache.set[zoneId] == true
 end
 
+-- Stamp a ticking burn (DoT) on an enemy, optionally CONTAGIOUS. One path for both the primary hit
+-- and each AoE-splash target, so "AoE contagion" (splash ignites a cluster, each then spreads) is
+-- just calling this per splashed enemy. Re-hit keeps the STRONGER per-tick and refreshes the window;
+-- contagion arms ONCE (re-arming every swing pushed the spread timer back so it never fired). The
+-- spread params (radius/interval/max) are carried onto the enemy as Contagion* so the spread pass —
+-- and every subsequent hop — propagates with the originating pet's tuning, not a global default.
+local function stampBurn(enemy, perTick, interval, duration, sourceUserId, spread, clk)
+    if perTick <= 0 or duration <= 0 then
+        return
+    end
+    enemy:SetAttribute(
+        "DotPerTick",
+        math.max(tonumber(enemy:GetAttribute("DotPerTick")) or 0, perTick)
+    )
+    enemy:SetAttribute("DotInterval", interval)
+    enemy:SetAttribute("DotNextTick", clk + interval)
+    enemy:SetAttribute("DotExpireAt", clk + duration)
+    enemy:SetAttribute("DotDuration", duration) -- window length, so contagion can re-arm the hop
+    enemy:SetAttribute("DotSourceUserId", sourceUserId)
+    enemy:SetAttribute("BurnFxUntil", os.time() + math.ceil(duration)) -- enemy "on fire" tell
+    if
+        spread
+        and (spread.max or 0) > 0
+        and (tonumber(enemy:GetAttribute("ContagionSpreadAt")) or 0) <= 0
+    then
+        enemy:SetAttribute("ContagionSpreadAt", clk + math.max(0.2, spread.interval or 1.5))
+        enemy:SetAttribute("ContagionLeft", math.floor(spread.max))
+        enemy:SetAttribute("ContagionRadius", spread.radius or 8)
+        enemy:SetAttribute("ContagionInterval", spread.interval or 1.5)
+        enemy:SetAttribute("ContagionMax", math.floor(spread.max))
+    end
+end
+
+-- Resolve a pet's burn+spread profile from its stamped attributes (per-pet, set at spawn from
+-- attack_dot/attack_dot.spread) with the global pet_contagion block as the fallback default. Returns
+-- nil when the pet has no burn. `spread` is present only when the burn is contagious — either an
+-- explicit attack_dot.spread (DotSpreadMax > 0) OR the back-compat AttackTargeting == "contagion"
+-- shorthand (= single geometry + global-default spread).
+local function burnProfile(pet, contagionDefaults)
+    local dotFrac = tonumber(pet:GetAttribute("DotFraction")) or 0
+    local duration = tonumber(pet:GetAttribute("DotDuration")) or 0
+    if dotFrac <= 0 or duration <= 0 then
+        return nil
+    end
+    local cc = contagionDefaults or {}
+    local profile = {
+        fraction = dotFrac,
+        interval = math.max(0.1, tonumber(pet:GetAttribute("DotTick")) or 1),
+        duration = duration,
+    }
+    local sMax = tonumber(pet:GetAttribute("DotSpreadMax")) or 0
+    local legacyContagion = pet:GetAttribute("AttackTargeting") == "contagion"
+    if sMax > 0 or legacyContagion then
+        local pr = tonumber(pet:GetAttribute("DotSpreadRadius")) or 0
+        local pi = tonumber(pet:GetAttribute("DotSpreadInterval")) or 0
+        profile.spread = {
+            radius = pr > 0 and pr or (tonumber(cc.spread_radius) or 8),
+            interval = pi > 0 and pi or (tonumber(cc.spread_interval) or 1.5),
+            max = sMax > 0 and sMax or math.floor(tonumber(cc.max_spread) or 4),
+        }
+    end
+    return profile
+end
+
 function PetFollowService:_mine(player, pet, breakable)
     if pet:GetAttribute("CombatDowned") then
         return -- downed pets are out healing; they neither mine nor fight
@@ -607,42 +671,24 @@ function PetFollowService:_mine(player, pet, breakable)
     -- hit (DamageOverTime.perTick); EnemyService:_dotPass applies the ticks. Re-hit refreshes the
     -- window and keeps the STRONGER per-tick (a fresh weak hit never weakens an existing burn).
     -- Crystals don't burn (no EnemyId). Stored as flat attributes the dot pass reads.
-    if breakable:GetAttribute("EnemyId") and dmg > 0 then
-        local dotFrac = pet:GetAttribute("DotFraction") or 0
-        local perTick = DamageOverTime.perTick(dmg, dotFrac)
-        local duration = tonumber(pet:GetAttribute("DotDuration")) or 0
-        if perTick > 0 and duration > 0 then
-            local interval = math.max(0.1, tonumber(pet:GetAttribute("DotTick")) or 1)
-            local clk = os.clock()
-            breakable:SetAttribute(
-                "DotPerTick",
-                math.max(tonumber(breakable:GetAttribute("DotPerTick")) or 0, perTick)
-            )
-            breakable:SetAttribute("DotInterval", interval)
-            breakable:SetAttribute("DotNextTick", clk + interval)
-            breakable:SetAttribute("DotExpireAt", clk + duration)
-            breakable:SetAttribute("DotDuration", duration) -- the window length, so contagion can re-arm it
-            breakable:SetAttribute("DotSourceUserId", player.UserId)
-            breakable:SetAttribute("BurnFxUntil", os.time() + math.ceil(duration)) -- enemy burn tell
-            -- CONTAGION (PetTargeting): a contagion pet's burn SPREADS. Arm the first hop; the spread
-            -- pass jumps the burn to the nearest un-burning enemy, chaining max_spread hops. Needs a
-            -- DoT to spread (this block), so contagion pets must also carry an attack_dot.
-            -- ARM ONCE: only (re)arm when NOT already armed. Re-stamping ContagionSpreadAt on every
-            -- swing pushed the spread timer back so a continuously-hit primary almost never reached it
-            -- (Jason: "1 in 20" — it only fired on a rare attack gap). The spread pass zeroes
-            -- ContagionSpreadAt after it fires, so a later hit re-arms it for the next hop.
-            if
-                pet:GetAttribute("AttackTargeting") == "contagion"
-                and (tonumber(breakable:GetAttribute("ContagionSpreadAt")) or 0) <= 0
-            then
-                local cc = self._combatConfig.pet_contagion or {}
-                breakable:SetAttribute(
-                    "ContagionSpreadAt",
-                    clk + math.max(0.2, tonumber(cc.spread_interval) or 1.5)
-                )
-                breakable:SetAttribute("ContagionLeft", math.floor(tonumber(cc.max_spread) or 4))
-            end
-        end
+    -- burnProfile resolves the pet's per-pet burn+spread tuning once; reused below to ignite the
+    -- whole AoE-splash cluster (so an AoE-contagion pet lights every splashed enemy, each of which
+    -- then spreads — the "AoE contagion" combo). spread present = contagious. CONTAGION arming is
+    -- arm-once inside stampBurn: re-stamping every swing pushed the spread timer back so a
+    -- continuously-hit primary almost never reached it (Jason: "1 in 20"); the spread pass zeroes
+    -- ContagionSpreadAt after it fires, so a later hit re-arms it for the next hop.
+    local burn = burnProfile(pet, self._combatConfig.pet_contagion)
+    if breakable:GetAttribute("EnemyId") and dmg > 0 and burn then
+        local perTick = DamageOverTime.perTick(dmg, burn.fraction)
+        stampBurn(
+            breakable,
+            perTick,
+            burn.interval,
+            burn.duration,
+            player.UserId,
+            burn.spread,
+            os.clock()
+        )
     end
 
     -- PET AoE (PetTargeting attack_targeting = "aoe" / "targeted_aoe"): an AoE pet's swing splashes
@@ -654,9 +700,15 @@ function PetFollowService:_mine(player, pet, breakable)
     local atkScope = pet:GetAttribute("AttackTargeting") or "single"
     if dmg > 0 and (atkScope == "aoe" or atkScope == "targeted_aoe") then
         local aoeCfg = self._combatConfig.pet_aoe or {}
-        local frac = tonumber(aoeCfg.splash_fraction) or 0.5
-        local radius = tonumber(aoeCfg.splash_radius) or 12
-        local maxTargets = math.floor(tonumber(aoeCfg.max_targets) or 5)
+        -- Per-pet AoE override (attack_aoe, stamped at spawn) wins over the global pet_aoe default —
+        -- the knob board for a wider/harder-splash pet. A stamped 0 means "unset → use the default".
+        local pFrac = tonumber(pet:GetAttribute("AoeSplashFraction")) or 0
+        local pRadius = tonumber(pet:GetAttribute("AoeSplashRadius")) or 0
+        local pTargets = tonumber(pet:GetAttribute("AoeMaxTargets")) or 0
+        local frac = pFrac > 0 and pFrac or (tonumber(aoeCfg.splash_fraction) or 0.5)
+        local radius = pRadius > 0 and pRadius or (tonumber(aoeCfg.splash_radius) or 12)
+        local maxTargets =
+            math.floor(pTargets > 0 and pTargets or (tonumber(aoeCfg.max_targets) or 5))
         local splash = math.floor(dmg * frac + 0.5)
         local container = breakable.Parent
         local origin = (breakable.PrimaryPart and breakable.PrimaryPart.Position)
@@ -702,6 +754,20 @@ function PetFollowService:_mine(player, pet, breakable)
                                 nv3.Parent = sc
                             end
                             nv3.Value += ap.contributed
+                        end
+                        -- AoE-CONTAGION: a splash target that's an enemy also catches the burn (scaled
+                        -- off the SPLASH damage), and — if the burn is contagious — arms its own hop.
+                        -- So the swing ignites the whole cluster and each ignited enemy then spreads.
+                        if burn and other:GetAttribute("EnemyId") then
+                            stampBurn(
+                                other,
+                                DamageOverTime.perTick(splash, burn.fraction),
+                                burn.interval,
+                                burn.duration,
+                                player.UserId,
+                                burn.spread,
+                                os.clock()
+                            )
                         end
                         -- VISUALIZE the splash: an impact + floating number on each splashed target
                         -- (splash = true tells the client to play the IMPACT look, not launch a fresh

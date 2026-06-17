@@ -20,11 +20,23 @@
 
       PetTargeting.attackScope(explicit, roleId, rolesConfig) -> scope
       PetTargeting.auraScope(aura, rolesConfig)               -> scope
+      PetTargeting.isContagious(attackDot, explicitTargeting) -> boolean
 ]]
 
 local PetTargeting = {}
 
 PetTargeting.DEFAULT = "single"
+
+-- CONTAGION is an orthogonal MODIFIER on the burn (attack_dot.spread), not a hit geometry — so it
+-- composes with any attackScope (single+spread = the plague; targeted_aoe+spread = AoE-contagion).
+-- This is the SSOT both surfaces use to decide whether to wear the spread marker over the geometry
+-- ring. `attack_targeting == "contagion"` stays a back-compat shorthand (= single + default spread).
+function PetTargeting.isContagious(attackDot, explicitTargeting)
+    if explicitTargeting == "contagion" then
+        return true
+    end
+    return type(attackDot) == "table" and type(attackDot.spread) == "table"
+end
 
 -- DAMAGE targeting: per-pet override (pets.lua `targeting` / a model attribute) -> role default
 -- (pet_roles.roles[id].targeting) -> "single". Mirrors how defense/combat_mult resolve.

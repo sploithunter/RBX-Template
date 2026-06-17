@@ -473,6 +473,23 @@ function SquadHud.start()
             card.roleChip, card.roleGlyph, card.roleIcon, card.roleRing
         local stroke, status = card.stroke, card.status
 
+        -- SPREAD MARKER (contagion): a small glyph on the role badge when the deployed pet's burn
+        -- spreads — so the HUD reads AoE-contagion apart from plain AoE, matching the inventory card.
+        -- Built hidden; the update loop sets its element-tinted image + visibility from the live pet.
+        local spreadMarker = Instance.new("ImageLabel")
+        spreadMarker.Name = "SpreadMarker"
+        spreadMarker.AnchorPoint = Vector2.new(1, 0)
+        spreadMarker.Position = UDim2.fromScale(1.05, -0.05)
+        spreadMarker.Size = UDim2.fromScale(0.5, 0.5)
+        spreadMarker.BackgroundTransparency = 1
+        spreadMarker.ScaleType = Enum.ScaleType.Fit
+        spreadMarker.Visible = false
+        spreadMarker.ZIndex = (roleIcon and roleIcon.ZIndex or 1) + 2
+        spreadMarker.Parent = roleChip
+        local spreadAspect = Instance.new("UIAspectRatioConstraint")
+        spreadAspect.AspectRatio = 1
+        spreadAspect.Parent = spreadMarker
+
         -- Thin secondary bar = shield absorption pool (blue), CoH endurance-bar style.
         -- Hidden when the pet has no shield; rounded (pill) corners.
         local shieldBg = Instance.new("Frame")
@@ -546,6 +563,7 @@ function SquadHud.start()
             roleGlyph = roleGlyph,
             roleIcon = roleIcon,
             roleRing = roleRing,
+            spreadMarker = spreadMarker,
             status = status,
             badges = {},
         }
@@ -762,6 +780,27 @@ function SquadHud.start()
                     card.roleChip.BackgroundTransparency = hasBadge and 1 or 0
                     card.roleGlyph.Visible = not hasBadge
                     card.roleGlyph.Text = role.glyph
+                    -- spread marker: contagious burn (DotSpreadMax stamped at spawn, or the legacy
+                    -- "contagion" scope) wears a contagion glyph over the geometry ring. SSOT with the
+                    -- combat loop (it arms spread from the same DotSpreadMax) and the inventory card.
+                    if card.spreadMarker then
+                        local contagious = hasBadge
+                            and PetTargeting.isContagious(
+                                nil,
+                                ((tonumber(pet:GetAttribute("DotSpreadMax")) or 0) > 0)
+                                        and "contagion"
+                                    or pet:GetAttribute("AttackTargeting")
+                            )
+                        local disc = contagious
+                            and POWER_ICONS.discFor
+                            and POWER_ICONS.discFor(element, "contagion")
+                        if disc then
+                            card.spreadMarker.Image = disc
+                            card.spreadMarker.Visible = true
+                        else
+                            card.spreadMarker.Visible = false
+                        end
+                    end
                     if s.downed then
                         -- TWO BARS (down-lockout). Main = THIS pet's recovery (drains as it heals; a
                         -- unique special scales to the 5-min lockout, a stack to the 1-min slot). The

@@ -653,6 +653,45 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                                         "DotDuration",
                                         tonumber(dot.duration) or 0
                                     )
+                                    -- SPREAD (contagion as an orthogonal burn modifier): presence of
+                                    -- attack_dot.spread makes THIS burn contagious regardless of the
+                                    -- hit geometry, so targeted_aoe + spread = AoE-contagion. Per-pet
+                                    -- radius/interval/max (studs/seconds/hops) override the global
+                                    -- pet_contagion defaults; DotSpreadMax > 0 is the "is contagious"
+                                    -- flag the combat loop reads.
+                                    local spread = dot.spread
+                                    if type(spread) == "table" then
+                                        variantModel:SetAttribute(
+                                            "DotSpreadRadius",
+                                            tonumber(spread.radius) or 0
+                                        )
+                                        variantModel:SetAttribute(
+                                            "DotSpreadInterval",
+                                            tonumber(spread.interval) or 0
+                                        )
+                                        variantModel:SetAttribute(
+                                            "DotSpreadMax",
+                                            math.floor(tonumber(spread.max) or 0)
+                                        )
+                                    end
+                                end
+                                -- AoE override (PetTargeting): an aoe/targeted_aoe pet can tune its
+                                -- own splash (radius/fraction/targets) instead of the global pet_aoe
+                                -- defaults — the knob board for a "wider/harder splash" pet.
+                                local aoe = petData.attack_aoe
+                                if type(aoe) == "table" then
+                                    variantModel:SetAttribute(
+                                        "AoeSplashRadius",
+                                        tonumber(aoe.splash_radius) or 0
+                                    )
+                                    variantModel:SetAttribute(
+                                        "AoeSplashFraction",
+                                        tonumber(aoe.splash_fraction) or 0
+                                    )
+                                    variantModel:SetAttribute(
+                                        "AoeMaxTargets",
+                                        math.floor(tonumber(aoe.max_targets) or 0)
+                                    )
                                 end
                                 self:ApplyPetTransformAttributes(variantModel, transformOptions)
                                 -- Also create NumberValues for scripts that expect Values on the model

@@ -2544,14 +2544,24 @@ end
 -- carries the chain. Needs an active DoT (the burn) to spread — set by the contagion stamp in _mine.
 function EnemyService:_contagionPass(now)
     local cc = (self._combatConfig and self._combatConfig.pet_contagion) or {}
-    local spreadRadius = tonumber(cc.spread_radius) or 16
-    local spreadInterval = math.max(0.2, tonumber(cc.spread_interval) or 1.5)
     for _, entry in pairs(self._enemies) do
         local src = entry.model
         if src and src.Parent and (src:GetAttribute("HP") or 0) > 0 then
             local spreadAt = tonumber(src:GetAttribute("ContagionSpreadAt")) or 0
             local left = tonumber(src:GetAttribute("ContagionLeft")) or 0
             local perTick = tonumber(src:GetAttribute("DotPerTick")) or 0
+            -- Per-BURN spread tuning carried on the enemy (originating pet's attack_dot.spread),
+            -- falling back to the global pet_contagion defaults. Lets one contagion pet creep tight
+            -- and slow while another wildfires wide and fast — and each hop carries the same tuning.
+            local spreadRadius = (tonumber(src:GetAttribute("ContagionRadius")) or 0) > 0
+                    and tonumber(src:GetAttribute("ContagionRadius"))
+                or (tonumber(cc.spread_radius) or 8)
+            local spreadInterval = math.max(
+                0.2,
+                (tonumber(src:GetAttribute("ContagionInterval")) or 0) > 0
+                        and tonumber(src:GetAttribute("ContagionInterval"))
+                    or (tonumber(cc.spread_interval) or 1.5)
+            )
             if
                 spreadAt > 0
                 and left > 0
@@ -2596,6 +2606,13 @@ function EnemyService:_contagionPass(now)
                     best:SetAttribute(
                         "ContagionSpreadAt",
                         nextLeft > 0 and (now + spreadInterval) or 0
+                    )
+                    -- carry the per-burn spread tuning to the next node so the chain stays consistent
+                    best:SetAttribute("ContagionRadius", spreadRadius)
+                    best:SetAttribute("ContagionInterval", spreadInterval)
+                    best:SetAttribute(
+                        "ContagionMax",
+                        tonumber(src:GetAttribute("ContagionMax")) or nextLeft
                     )
                     src:SetAttribute("ContagionLeft", 0) -- this node did its one hop; it's done
                     src:SetAttribute("ContagionSpreadAt", 0)

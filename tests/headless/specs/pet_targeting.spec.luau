@@ -53,4 +53,27 @@ return function()
             expect(PetTargeting.auraScope(nil, ROLES)).to.equal("single")
         end)
     end)
+
+    describe("PetTargeting.isContagious (orthogonal spread modifier on the burn)", function()
+        it("a burn with a spread block is contagious — composes with any geometry", function()
+            local burn = { fraction = 0.25, duration = 4, spread = { radius = 8, max = 4 } }
+            expect(PetTargeting.isContagious(burn, "single")).to.equal(true)
+            expect(PetTargeting.isContagious(burn, "targeted_aoe")).to.equal(true) -- AoE-contagion
+        end)
+
+        it("a plain burn (no spread) is not contagious", function()
+            expect(PetTargeting.isContagious({ fraction = 0.25, duration = 4 }, "targeted_aoe")).to.equal(
+                false
+            )
+            expect(PetTargeting.isContagious(nil, "single")).to.equal(false)
+        end)
+
+        it(
+            "back-compat: attack_targeting=='contagion' is contagious even without a spread block",
+            function()
+                expect(PetTargeting.isContagious(nil, "contagion")).to.equal(true)
+                expect(PetTargeting.isContagious({ fraction = 0.25 }, "contagion")).to.equal(true)
+            end
+        )
+    end)
 end

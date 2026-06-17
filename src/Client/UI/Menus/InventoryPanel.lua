@@ -3758,6 +3758,33 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
                 built = b and b.disc and b.disc.Visible == true
                 if not built then
                     holder:Destroy() -- no disc art for this (element, role) -> fall back to text chip
+                elseif
+                    PetTargeting.isContagious(
+                        petDef and petDef.attack_dot,
+                        petDef and petDef.attack_targeting
+                    )
+                then
+                    -- SPREAD MARKER (SSOT): the geometry ring alone can't tell AoE-contagion from a
+                    -- plain AoE, so a contagious burn wears a small contagion glyph on the badge — the
+                    -- card reads "this attack's burn spreads". Element-tinted to match. Same isContagious
+                    -- truth the combat loop arms from (attack_dot.spread / legacy "contagion").
+                    local spreadDisc = POWER_ICONS.discFor
+                        and POWER_ICONS.discFor(element, "contagion")
+                    if spreadDisc then
+                        local mk = Instance.new("ImageLabel")
+                        mk.Name = "SpreadMarker"
+                        mk.Size = UDim2.fromScale(0.52, 0.52)
+                        mk.AnchorPoint = Vector2.new(1, 0)
+                        mk.Position = UDim2.fromScale(1.08, -0.08) -- top-right nub on the badge
+                        mk.BackgroundTransparency = 1
+                        mk.Image = spreadDisc
+                        mk.ScaleType = Enum.ScaleType.Fit
+                        mk.ZIndex = 108
+                        mk.Parent = holder
+                        local mkAspect = Instance.new("UIAspectRatioConstraint")
+                        mkAspect.AspectRatio = 1
+                        mkAspect.Parent = mk
+                    end
                 end
             end
             -- Fallback: the original coloured text chip (Tank / Melee / ...).
