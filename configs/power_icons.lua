@@ -89,6 +89,9 @@ local M = {
         targeted_aoe = "target_aoe",
         aoe = "aoe",
         aura = "aura",
+        -- contagion = a target whose effect spreads outward; reuse the targeted-AoE ring until a
+        -- dedicated chain/spread ring is drawn (TODO art). Without this it silently falls back to aura.
+        contagion = "target_aoe",
     },
 
     -- Rock-paper-scissors element tints, RECOVERED from the hand-colored reference rings
