@@ -153,26 +153,37 @@ end
 -- SORT KEY = the displayed number, exactly: full profile chain (element x variant x
 -- aptitude x zone resonance). Sorting raw power missed aptitude — buffer pets (0.35)
 -- displayed 15 but sorted as ~43, landing between 45s and 42s (Jason's catch).
-local function displaySortPower(power, petType, variant, isCreator)
-    local mult = zoneResonanceFor(petType)
-    local realmMult = realmResonanceFor(petType)
-    if petPowerViewOk and PetPowerView then
-        local ok, profile = pcall(function()
-            return PetPowerView.profile({
-                base = power,
-                petType = petType,
-                variant = variant,
-                creator = isCreator == true,
-                -- zone = biome RPS, realm = cross-realm light/shadow — both fold into contextMult,
-                -- exactly as the server resolves dealt damage. So the card reads the TRUE in-realm power.
-                context = { zone = mult, realm = realmMult },
-            })
-        end)
-        if ok and profile then
-            return math.max(profile.miningEffective or 0, profile.combatEffective or 0)
-        end
+-- SINGLE source of truth for a pet's resolved power on a card. Builds the full LIVE context (biome
+-- RPS + cross-realm light/shadow resonance) and resolves through PetPowerView — exactly as the
+-- server resolves dealt damage. The displayed ⛏/⚔ text AND the sort key both call this, so they can
+-- never diverge (Jason: "they should have a single source of truth"). Returns the profile, or nil if
+-- PetPowerView is unavailable.
+local function resolvePetProfile(power, petType, variant, isCreator)
+    if not (petPowerViewOk and PetPowerView) then
+        return nil
     end
-    return (tonumber(power) or 0) * mult * realmMult
+    local ok, profile = pcall(function()
+        return PetPowerView.profile({
+            base = power,
+            petType = petType,
+            variant = variant,
+            creator = isCreator == true,
+            context = {
+                zone = zoneResonanceFor(petType), -- biome RPS (pet element vs zone)
+                realm = realmResonanceFor(petType), -- cross-realm light/shadow vs current realm
+            },
+        })
+    end)
+    return ok and profile or nil
+end
+
+local function displaySortPower(power, petType, variant, isCreator)
+    local profile = resolvePetProfile(power, petType, variant, isCreator)
+    if profile then
+        return math.max(profile.miningEffective or 0, profile.combatEffective or 0)
+    end
+    -- Fallback (PetPowerView missing): raw power x both context multipliers.
+    return (tonumber(power) or 0) * zoneResonanceFor(petType) * realmResonanceFor(petType)
 end
 
 -- Enchant display (metal ring tiers + per-effect %) for badges + readable tooltips.
@@ -3663,27 +3674,19 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     powerLabel.Position =
         UDim2.new(0, 4, 1, -math.max(8, math.floor(self.cardSize.Y * powerBottomOffsetScale)))
     powerLabel.BackgroundTransparency = 1
-    -- Pet cards show the TWO intrinsic numbers (⛏ mining / ⚔ combat) from PetPower so the card
-    -- matches what the pet actually does in-world. item.power is the player-independent base
-    -- (huge/level-aware); context multipliers (player level, boosts) are intentionally excluded so
-    -- the number is the same for everyone (fair trade comparison). Non-pets keep the single power.
+    -- Pet cards show the TWO numbers (⛏ mining / ⚔ combat) the pet ACTUALLY does right here — the
+    -- TRUE power (Jason's first principle). Resolved through the SAME resolvePetProfile the sort key
+    -- uses (single source of truth), with the full live context: biome RPS + cross-realm resonance.
+    -- So a light pet reads ⛏63/⚔63 in Hell, 34 in Heaven, 42 at home — recalculated as you cross
+    -- zones/realms. (Player-specific context like level/boosts is still excluded by PetPowerView, so
+    -- the number stays comparable between owners standing in the same place.)
     local powerText = (item.power and (powerPrefix .. tostring(item.power))) or ""
     if item.folder_source == "enhancements" and item.origins_label then
         powerText = item.origins_label -- "Geo/Cryo" under the type name, in the rarity color
     end
     if PetPowerView and item.category == "Pets" and item.petType and item.power then
-        local okProfile, profile = pcall(function()
-            return PetPowerView.profile({
-                base = item.power,
-                petType = item.petType,
-                variant = item.variant,
-                creator = item.creator == true, -- apex pins to max_pet_power
-                -- BIOME RPS: the card shows what the pet does HERE — numbers
-                -- recalculate when the player crosses a zone border.
-                context = { zone = zoneResonanceFor(item.petType) },
-            })
-        end)
-        if okProfile and profile then
+        local profile = resolvePetProfile(item.power, item.petType, item.variant, item.creator)
+        if profile then
             powerText = string.format(
                 "⛏ %d  ⚔ %d",
                 PetPowerView.displayRound(profile.miningEffective),
