@@ -151,6 +151,17 @@ do
     end
 end
 
+-- Burn fire: a per-enemy flame while a DoT/contagion burn is live (BurnFxUntil) — the "individual
+-- fires" that make a contagion read as spreading (each enemy ignites as it's infected).
+do
+    local ok, err = pcall(function()
+        require(script.Systems.EnemyBurnFx).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start EnemyBurnFx", { error = tostring(err) })
+    end
+end
+
 -- Squad HUD (Feature 10): right-side City-of-Heroes-style squad strip — per-pet state,
 -- health, recharge, click-to-select, recall/summon. Reads pet attributes; no server feed.
 do
