@@ -12,8 +12,13 @@
 ]]
 
 local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local PROMPT_NAME = "RealmPortalPrompt"
+local TOUCH_DEBOUNCE = 3 -- seconds between offers per player (walking the arch shouldn't spam)
+local OFFER_TTL = 20 -- a confirm must arrive within this many seconds of the offer
 
 local RealmPortalService = {}
 RealmPortalService.__index = RealmPortalService
@@ -23,6 +28,8 @@ function RealmPortalService.new()
     self._logger = nil
     self._configLoader = nil
     self._portalsConfig = nil
+    self._touchAt = {} -- [userId] = os.clock() of last offer (debounce)
+    self._pending = {} -- [userId] = { layer, expires } (the offer awaiting a confirm)
     return self
 end
 
@@ -122,36 +129,95 @@ function RealmPortalService:_onTriggered(player, destLayer)
     layers:UseLayer(player, target, { force = force })
 end
 
-function RealmPortalService:_ensurePrompt(part, def)
-    local prompt = part:FindFirstChild(PROMPT_NAME)
-    if prompt and not prompt:IsA("ProximityPrompt") then
+-- TOUCH system (replaces the press-E ProximityPrompt): a portal whose realm is BUILT is "open" —
+-- touching any of its surfaces sends the player a yes/no travel offer. A portal whose realm has no
+-- geometry yet keeps the "COMING SOON" badge and does nothing on touch.
+function RealmPortalService:_ensureTouch(part, def)
+    -- retire any legacy ProximityPrompt left on the part — touch is the trigger now.
+    local oldPrompt = part:FindFirstChild(PROMPT_NAME)
+    if oldPrompt then
+        oldPrompt:Destroy()
+    end
+
+    if not self:_layerHasGeometry(def.layer) then
+        self:_addLockBadge(part) -- realm not built yet → "COMING SOON", no travel
         return
     end
-    if not prompt then
-        prompt = Instance.new("ProximityPrompt")
-        prompt.Name = PROMPT_NAME
-        prompt.RequiresLineOfSight = false
-        prompt.Parent = part
-    end
-    prompt.ActionText = def.action or "Enter Realm"
-    prompt.ObjectText = "Realm Portal"
-    prompt.KeyboardKeyCode = Enum.KeyCode.E
-    prompt.HoldDuration = tonumber(self._portalsConfig.prompt_hold) or 0
-    prompt.MaxActivationDistance = tonumber(self._portalsConfig.max_distance) or 14
-    -- LOCKED gates (no realm content yet): the prompt is dead and the portal wears a big lock badge.
-    -- admin_unlock re-enables the prompt so ADMINS can test (the lock badge stays for everyone, and
-    -- _onTriggered still gates the action to admins). Config flip re-opens everything for real.
-    prompt.Enabled = (self._portalsConfig.locked ~= true)
-        or (self._portalsConfig.admin_unlock == true)
-    self:_ensureLockBadge(part)
+    self:_clearLockBadge(part) -- realm is live → open the gate (drop the badge)
 
-    if not prompt:GetAttribute("RealmPortalConnected") then
-        prompt:SetAttribute("RealmPortalConnected", true)
-        prompt.Triggered:Connect(function(player)
-            self:_onTriggered(player, def.layer)
-        end)
+    -- Bind Touched on every BasePart of the portal model so touching the surface anywhere offers
+    -- travel. Server-side touch = no client trust; the per-player debounce keeps it from spamming.
+    local model = part:FindFirstAncestorOfClass("Model")
+    local parts = {}
+    if model then
+        for _, d in ipairs(model:GetDescendants()) do
+            if d:IsA("BasePart") then
+                table.insert(parts, d)
+            end
+        end
+    else
+        parts = { part }
     end
-    return prompt
+    for _, p in ipairs(parts) do
+        if not p:GetAttribute("RealmPortalTouchBound") then
+            p:SetAttribute("RealmPortalTouchBound", true)
+            p.CanTouch = true -- anchored decor sometimes ships with CanTouch off → Touched never fires
+            p.Touched:Connect(function(hit)
+                self:_onTouched(hit, def)
+            end)
+        end
+    end
+end
+
+-- A character part touched a portal surface → offer travel (debounced per player).
+function RealmPortalService:_onTouched(hit, def)
+    local char = hit and hit.Parent
+    local player = char and Players:GetPlayerFromCharacter(char)
+    if not player then
+        return
+    end
+    local now = os.clock()
+    local last = self._touchAt[player.UserId]
+    if last and (now - last) < TOUCH_DEBOUNCE then
+        return
+    end
+    self._touchAt[player.UserId] = now
+    self:_offerTravel(player, def)
+end
+
+-- Send the client a yes/no travel offer. Records the pending offer so a spoofed confirm can't
+-- teleport without a real touch. Mirrors _onTriggered's base<->realm toggle for the label.
+function RealmPortalService:_offerTravel(player, def)
+    local layers = self:_layerService()
+    if not layers then
+        return
+    end
+    local current = layers:GetCurrentLayer(player)
+    local target = (current == def.layer) and "base" or def.layer
+    if target ~= "base" and not self:_layerHasGeometry(target) then
+        return
+    end
+    local label
+    if target == "base" then
+        label = "Return to Home?"
+    else
+        label = "Travel to "
+            .. ((def.action and def.action:gsub("^Enter ", "")) or "the realm")
+            .. "?"
+    end
+    self._pending[player.UserId] = { layer = def.layer, expires = os.clock() + OFFER_TTL }
+    Signals.RealmTravelOffer:FireClient(player, { layer = def.layer, label = label })
+end
+
+-- Client chose Yes. Honor it only if it matches a live offer we sent (anti-spoof), then travel.
+function RealmPortalService:_onConfirm(player, payload)
+    local layer = type(payload) == "table" and payload.layer
+    local pend = self._pending[player.UserId]
+    if not (pend and layer == pend.layer and os.clock() <= pend.expires) then
+        return
+    end
+    self._pending[player.UserId] = nil
+    self:_onTriggered(player, layer)
 end
 
 -- A big lock ON THE PORTAL FACE of a locked gate (programmatic — no 3D asset).
@@ -160,10 +226,9 @@ end
 -- gate's lock bleeding through the near one (Jason: "two sides to the gate so you
 -- get to see both locks"). Surface rendering occludes naturally — one lock per
 -- viewing side. Removed when the config unlocks.
-function RealmPortalService:_ensureLockBadge(part)
-    -- the prompt part is often a FOOT or frame chunk of the portal Model — the lock
-    -- belongs on the big glowing face. Pick the model's largest part, and the two
-    -- faces perpendicular to its thinnest axis (the flat plane of the oval).
+-- The lock belongs on the big glowing face, not the foot/frame chunk the prompt sat on. Pick the
+-- model's largest part and the two faces perpendicular to its thinnest axis (the flat oval plane).
+function RealmPortalService:_badgeHostAndFaces(part)
     local host = part
     local model = part:FindFirstAncestorOfClass("Model")
     if model then
@@ -188,18 +253,28 @@ function RealmPortalService:_ensureLockBadge(part)
     else
         faceA, faceB = Enum.NormalId.Top, Enum.NormalId.Bottom
     end
-    local names = { "RealmLockBadgeFront", "RealmLockBadgeBack", "RealmLockBadge" }
-    if self._portalsConfig.locked ~= true then
-        for _, holder in ipairs({ part, host }) do
-            for _, n in ipairs(names) do
-                local g = holder:FindFirstChild(n)
-                if g then
-                    g:Destroy()
-                end
+    return host, faceA, faceB
+end
+
+local BADGE_NAMES = { "RealmLockBadgeFront", "RealmLockBadgeBack", "RealmLockBadge" }
+
+-- Drop the "COMING SOON" badge — the realm is built, the gate is open.
+function RealmPortalService:_clearLockBadge(part)
+    local host = self:_badgeHostAndFaces(part)
+    for _, holder in ipairs({ part, host }) do
+        for _, n in ipairs(BADGE_NAMES) do
+            local g = holder:FindFirstChild(n)
+            if g then
+                g:Destroy()
             end
         end
-        return
     end
+end
+
+-- Wear the "COMING SOON" lock badge (realm not built yet). Front+back SurfaceGuis (the gates stand
+-- back-to-back in Halo/Horn pairs, so a billboard bled through — surface rendering occludes cleanly).
+function RealmPortalService:_addLockBadge(part)
+    local host, faceA, faceB = self:_badgeHostAndFaces(part)
     local function makeFace(face, name)
         if host:FindFirstChild(name) then
             return
@@ -304,6 +379,16 @@ end
 
 function RealmPortalService:Start()
     self:_preloadHellFace()
+
+    -- Yes/No travel confirmations come back here (anti-spoof checked against the pending offer).
+    Signals.RealmTravelConfirm.OnServerEvent:Connect(function(player, payload)
+        self:_onConfirm(player, payload)
+    end)
+    Players.PlayerRemoving:Connect(function(player)
+        self._touchAt[player.UserId] = nil
+        self._pending[player.UserId] = nil
+    end)
+
     local portals = self._portalsConfig.portals or {}
     if #portals == 0 then
         return
@@ -327,7 +412,7 @@ function RealmPortalService:Start()
                     local part = resolvePart(inst)
                     if part and not part:GetAttribute("RealmPortalBound") then
                         part:SetAttribute("RealmPortalBound", true)
-                        self:_ensurePrompt(part, def)
+                        self:_ensureTouch(part, def)
                         boundThisPass += 1
                         totalBound += 1
                         if self._logger then

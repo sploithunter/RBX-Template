@@ -96,6 +96,8 @@ local Signals = {
     UnlockZoneRequest = Net:RemoteEvent("UnlockZoneRequest"), -- c->s
     ZoneUnlockResult = Net:RemoteEvent("ZoneUnlockResult"), -- s->c
     ZoneTravelResult = Net:RemoteEvent("ZoneTravelResult"), -- s->c
+    RealmTravelOffer = Net:RemoteEvent("RealmTravelOffer"), -- s->c (touched a realm portal -> yes/no offer)
+    RealmTravelConfirm = Net:RemoteEvent("RealmTravelConfirm"), -- c->s (player chose Yes -> travel)
 
     -- Phase 3 stats-derived features
     PetIndexUpdated = Net:RemoteEvent("PetIndexUpdated"), -- s->c

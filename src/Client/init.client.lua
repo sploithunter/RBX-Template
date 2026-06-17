@@ -252,6 +252,16 @@ do
     end
 end
 
+-- Realm portals: touch a portal surface -> yes/no travel confirm (server validates + teleports).
+do
+    local ok, err = pcall(function()
+        require(script.Systems.RealmTravelPrompt).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start RealmTravelPrompt", { error = tostring(err) })
+    end
+end
+
 -- Level-up sequence: "LEVEL UP!" button on PendingLevels, claim -> reveal + power pick / slotting.
 do
     local ok, err = pcall(function()
