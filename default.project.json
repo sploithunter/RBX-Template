@@ -7,7 +7,10 @@
   "tree": {
     "$className": "DataModel",
     "Workspace": {
-      "$ignoreUnknownInstances": true
+      "$ignoreUnknownInstances": true,
+      "$properties": {
+        "FallenPartsDestroyHeight": -50000
+      }
     },
     "ServerScriptService": {
       "Server": {

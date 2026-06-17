@@ -16,10 +16,14 @@ local Workspace = game:GetService("Workspace")
 
 -- Stacked realms live FAR below the homeworld (Hell_1 at Y -2000, deeper layers lower). Roblox's
 -- default FallenPartsDestroyHeight (-500) sits ABOVE them, so a character/pet arriving in Hell is
--- instantly destroyed as a "fallen part" (its HumanoidRootPart vanishes -> frozen, can't move).
--- Drop the kill plane well below the deepest realm so the realms are habitable. (Heaven at +2000 is
--- above the default and was never affected — which is why only Hell broke.)
-Workspace.FallenPartsDestroyHeight = -50000
+-- instantly destroyed as a "fallen part" (HumanoidRootPart vanishes -> frozen). The AUTHORITATIVE
+-- value is baked into the place (Workspace $properties in default.project.json). Writing it from a
+-- Script can be capability-blocked in some run contexts (throws "lacking capability Plugin"), so
+-- this best-effort runtime set is pcall-guarded — it must NEVER halt boot (an uncaught error here
+-- aborts remote creation and breaks the whole client/server handshake).
+pcall(function()
+    Workspace.FallenPartsDestroyHeight = -50000
+end)
 
 -- Wait for packages to be available
 local Packages = ReplicatedStorage:WaitForChild("Packages", 10)
