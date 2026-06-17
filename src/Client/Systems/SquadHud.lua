@@ -73,6 +73,7 @@ local function applyVariantName(label, displayName, variant)
     end
 end
 local PetBadge = require(script.Parent.Parent.UI.PetBadge)
+local PetTargeting = require(ReplicatedStorage.Shared.Game.PetTargeting) -- damage scope → role-badge ring
 local HudCard = require(script.Parent.Parent.UI.HudCard)
 local StatusBadges = require(script.Parent.Parent.UI.StatusBadges)
 
@@ -742,7 +743,21 @@ function SquadHud.start()
                         or (PET_ROLES.by_type and PET_ROLES.by_type[pet:GetAttribute("PetType")])
                         or PET_ROLES.default
                     local element = PetBadge.elementForPetType(pet:GetAttribute("PetType"))
-                    local hasBadge = PetBadge.apply(card.roleIcon, card.roleRing, element, roleId)
+                    -- DAMAGE-targeting ring: the archetype badge wears the ring for how its attack
+                    -- hits (PetTargeting.attackScope → power_icons.targeting_ring). Per-pet override
+                    -- via the AttackTargeting attribute, else the role default. SSOT with the card.
+                    local atkScope = PetTargeting.attackScope(
+                        pet:GetAttribute("AttackTargeting"),
+                        roleId,
+                        PET_ROLES
+                    )
+                    local hasBadge = PetBadge.apply(
+                        card.roleIcon,
+                        card.roleRing,
+                        element,
+                        roleId,
+                        { ring = POWER_ICONS.targeting_ring[atkScope] }
+                    )
                     card.roleChip.BackgroundColor3 = role.color
                     card.roleChip.BackgroundTransparency = hasBadge and 1 or 0
                     card.roleGlyph.Visible = not hasBadge

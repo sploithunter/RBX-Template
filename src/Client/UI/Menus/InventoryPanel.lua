@@ -70,6 +70,7 @@ local ConfigLoader = require(ReplicatedStorage.Shared.ConfigLoader)
 -- Single source of truth for configured base power (huge-aware), shared with the
 -- server so the displayed power matches the power that mines/fights.
 local PetPower = require(ReplicatedStorage.Shared.Game.PetPower)
+local PetTargeting = require(ReplicatedStorage.Shared.Game.PetTargeting) -- damage/power scope → badge ring
 local PetBadge = require(script.Parent.Parent.PetBadge)
 -- Two-number card display (⛏ mining / ⚔ combat) — assembles the PetPower profile from config.
 local petPowerViewOk, PetPowerView = pcall(function()
@@ -204,12 +205,8 @@ local SUPPORT_META = {
     offense = { element = "fire", label = "Offense" },
     yield = { element = "desert", label = "Coin Yield" },
     luck = { element = "earth", label = "Luck" }, -- bunny's lucky-rabbit aura (Grass)
-    -- single-target controller CC (ice = Cryomancer/control theme): ring = "single" frames the hold
-    -- glyph with the inward targeting ring — it pins ONE enemy, same scope language as empower.
-    hold = { element = "ice", label = "Hold", ring = "single" },
-    -- single-target damage buffer (carry amplifier): ring = "single" frames the damage-up disc with
-    -- the inward targeting ring so it reads as ONE-target, distinct from the team offense badge.
-    empower = { element = "fire", label = "Empower", ring = "single" },
+    hold = { element = "ice", label = "Hold" }, -- single-target CC; ring derived via PetTargeting.auraScope
+    empower = { element = "fire", label = "Empower" }, -- single-target buffer; ring derived via PetTargeting.auraScope
 }
 local petVisualsOk, PetVariantVisuals = pcall(function()
     return require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
@@ -3739,8 +3736,16 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
                 hAspect.AspectRatio = 1
                 hAspect.AspectType = Enum.AspectType.FitWithinMaxSize
                 hAspect.Parent = holder
-                local b =
-                    PetBadge.create(holder, { element = element, role = role.id, zIndex = 106 })
+                -- DAMAGE-targeting ring: the archetype badge wears the ring for HOW its attack hits
+                -- (PetTargeting.attackScope → power_icons.targeting_ring). Single today → inward ring;
+                -- a future AoE/aura-damage pet stands out with a different ring. SSOT, one field.
+                local atkScope = PetTargeting.attackScope(item.attack_targeting, role.id, PET_ROLES)
+                local b = PetBadge.create(holder, {
+                    element = element,
+                    role = role.id,
+                    ring = POWER_ICONS.targeting_ring[atkScope],
+                    zIndex = 106,
+                })
                 built = b and b.disc and b.disc.Visible == true
                 if not built then
                     holder:Destroy() -- no disc art for this (element, role) -> fall back to text chip
@@ -3812,10 +3817,14 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
                 img.ScaleType = Enum.ScaleType.Fit
                 img.ZIndex = holder.ZIndex
                 img.Parent = holder
-                -- TARGETING RING (meta.ring = "single" | "aoe" | ...): frames the disc so a
-                -- single-target buffer (empower) reads apart from a team aura at a glance. The disc
-                -- shrinks to sit inside the ring; the ring tints to the aura's element (bright).
-                local ringImg = meta.ring and POWER_ICONS.ringFor and POWER_ICONS.ringFor(meta.ring)
+                -- TARGETING RING (POWER targeting SSOT): the ring frames the disc with the aura's
+                -- SCOPE — single-target (empower/hold → inward ring) vs team (offense/yield → aura
+                -- ring) — derived from PetTargeting.auraScope, not hand-set. Disc shrinks to sit
+                -- inside; ring tints to the aura's element (bright).
+                local auraScope = PetTargeting.auraScope(aura, PET_ROLES)
+                local ringShape = POWER_ICONS.targeting_ring
+                    and POWER_ICONS.targeting_ring[auraScope]
+                local ringImg = ringShape and POWER_ICONS.rings and POWER_ICONS.rings[ringShape]
                 if ringImg then
                     img.AnchorPoint = Vector2.new(0.5, 0.5)
                     img.Position = UDim2.fromScale(0.5, 0.5)

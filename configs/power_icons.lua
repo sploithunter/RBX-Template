@@ -84,6 +84,11 @@ local M = {
         team_aoe = "target_aoe",
         self = "aura",
         none = "aura",
+        -- PetTargeting scope vocabulary (damage + power targeting SSOT): same ring art, named for
+        -- the pet/aura `targeting` field so PetBadge can ring straight off the scope.
+        targeted_aoe = "target_aoe",
+        aoe = "aoe",
+        aura = "aura",
     },
 
     -- Rock-paper-scissors element tints, RECOVERED from the hand-colored reference rings

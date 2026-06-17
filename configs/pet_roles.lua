@@ -92,6 +92,23 @@ return {
     --              "pets"|"both", interval, duration }. Player target stacks on the bar
     --              (xN); pets target badges each ally. The attr needs a CONSUMER (BuffStack
     --              axis / EggService / movement) — that's the only per-buff code.
+    -- POWER/aura targeting SSOT (Jason): the scope an aura applies at, by kind — drives the ability
+    -- badge ring (PetTargeting.auraScope → power_icons.targeting_ring) AND how the effect lands
+    -- (one ally/enemy vs the whole team). single = empower carry / hold mez / heal most-hurt / self
+    -- rage; aura = the team buffers (offense/defense/yield/luck) that lift everyone in range. An
+    -- individual aura entry can override with its own `targeting`.
+    aura_targeting_by_kind = {
+        empower = "single",
+        hold = "single",
+        heal = "single",
+        rage = "single",
+        offense = "aura",
+        defense = "aura",
+        yield = "aura",
+        luck = "aura",
+        buff = "aura",
+    },
+
     support_auras = {
         -- Grass: LUCK (Jason: heal was off-theme — lucky rabbit's foot + clover fields).
         -- durations sit WELL above intervals so the continuously-refreshed buffs never
@@ -202,6 +219,8 @@ return {
             mining_mult = 0.6,
             combat_mult = 0.6,
             defense = 100,
+            targeting = "single", -- DAMAGE targeting (rings the archetype badge). A damage-aura
+            -- bruiser would set "aura" here; the attack fan-out reads it once we ship one.
         },
         melee = {
             label = "Melee",
@@ -214,6 +233,7 @@ return {
             mining_mult = 1.0,
             combat_mult = 1.0,
             defense = 20,
+            targeting = "single", -- DAMAGE targeting (rings the archetype badge)
         },
         -- kite = true: holds near the player and snipes instead of orbiting the enemy, so
         -- an enemy chasing it has to close the gap (the melee-closes / ranged-kites loop).
@@ -234,6 +254,7 @@ return {
             mining_mult = 1.0,
             combat_mult = 1.0,
             defense = 0,
+            targeting = "single", -- DAMAGE targeting (rings the archetype badge)
         },
         support = {
             label = "Buffer",
@@ -251,6 +272,8 @@ return {
             combat_mult = 0.45,
             auto_heal = { interval = 1.5, fraction = 0.3 },
             defense = 10,
+            targeting = "single", -- DAMAGE targeting (rings the archetype badge); the buffer's
+            -- AURA scope is separate (aura_targeting_by_kind) and rings its provides-badge.
         },
         control = {
             label = "Control",
@@ -262,6 +285,8 @@ return {
             mining_mult = 0.5,
             combat_mult = 0.5,
             defense = 40,
+            targeting = "single", -- DAMAGE targeting (rings the archetype badge); the controller's
+            -- POWER scope (e.g. the meerkat's single-target hold) rings its ability badge separately.
         },
     },
 }
