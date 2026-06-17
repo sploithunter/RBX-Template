@@ -47,6 +47,7 @@ local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local TargetPriority = require(ReplicatedStorage.Shared.Game.TargetPriority)
 local SupportAura = require(ReplicatedStorage.Shared.Game.SupportAura)
 local PetPowerView = require(ReplicatedStorage.Shared.Game.PetPowerView) -- effective combat power (empower carry pick)
+local DamageOverTime = require(ReplicatedStorage.Shared.Game.DamageOverTime) -- DoT burn ticks
 local OverheadBar = require(ReplicatedStorage.Shared.UI.OverheadBar) -- shared enemy HP / pet endurance bar
 local PetLockout = require(ReplicatedStorage.Shared.Game.PetLockout)
 local ZoneResolver = require(ReplicatedStorage.Shared.Game.ZoneResolver)
@@ -2449,6 +2450,50 @@ function EnemyService:_enemyHealPass(now)
     end
 end
 
+-- DoT pass: tick any burn (DamageOverTime) a pet attack stamped on an enemy. perTick is stored on
+-- the enemy (DotPerTick); apply the whole ticks due this step, credit the source player's Contrib so
+-- burn kills count toward rewards, and burn out at expiry. The HP drain is the visible tell (the
+-- enemy's overhead bar updates off the HP attribute). Pure tick math lives in DamageOverTime.
+function EnemyService:_dotPass(now)
+    for _, entry in pairs(self._enemies) do
+        local model = entry.model
+        if model and model.Parent and (model:GetAttribute("HP") or 0) > 0 then
+            local perTick = tonumber(model:GetAttribute("DotPerTick")) or 0
+            if perTick > 0 then
+                if DamageOverTime.isExpired(model:GetAttribute("DotExpireAt") or 0, now) then
+                    model:SetAttribute("DotPerTick", 0) -- burned out
+                else
+                    local count, nextAt = DamageOverTime.ticksDue(
+                        model:GetAttribute("DotNextTick") or 0,
+                        model:GetAttribute("DotInterval") or 1,
+                        model:GetAttribute("DotExpireAt") or 0,
+                        now
+                    )
+                    if count > 0 then
+                        model:SetAttribute("DotNextTick", nextAt)
+                        local hp = tonumber(model:GetAttribute("HP")) or 0
+                        local newHp = math.max(0, hp - perTick * count)
+                        local dealt = hp - newHp
+                        model:SetAttribute("HP", newHp)
+                        local contrib = dealt > 0 and model:FindFirstChild("Contrib")
+                        local uid = contrib and model:GetAttribute("DotSourceUserId")
+                        if uid then
+                            local key = tostring(uid)
+                            local nv = contrib:FindFirstChild(key)
+                            if not nv then
+                                nv = Instance.new("NumberValue")
+                                nv.Name = key
+                                nv.Parent = contrib
+                            end
+                            nv.Value += dealt
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
 function EnemyService:_combatTick(dt)
     local eng = self._combatConfig.engagement or {}
     local now = os.clock()
@@ -2456,6 +2501,7 @@ function EnemyService:_combatTick(dt)
     self:_regenPass(now, dt, eng)
     self:_enemyRegenPass(now, dt, eng)
     self:_supportPass(now)
+    self:_dotPass(now) -- tick any burns (DoT) stamped on enemies by pet attacks
     self:_enemyHealPass(now)
     self:_enforceLockouts(nowTime) -- #179: hold re-teamed/locked pets down for their recovery
     self:_refreshGroundExclude() -- rebuild the ground-snap raycast filter once for the whole tick

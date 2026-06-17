@@ -1212,6 +1212,10 @@ local petConfig = {
             -- attack splashes (PetTargeting targeted_aoe → fire-ring VFX + splash fan-out). Kept on
             -- the untradeable Creator pet, NOT a starter, to preserve headroom. Element = lava (fire).
             attack_targeting = "targeted_aoe",
+            -- DoT (orthogonal axis): the fire blaster's hits also BURN — 25% of the hit per second
+            -- for 4s, ticking via DamageOverTime. Composes with the targeted_aoe above, so the
+            -- splashed cluster catches fire too. Tune freely; remove the block for no burn.
+            attack_dot = { fraction = 0.25, tick = 1.0, duration = 4 },
             -- eternal via the EXCLUSIVE rarity default (no one-off block — Jason);
             -- the HUGE apex pins at eternal.creator_power_percent via its category
 

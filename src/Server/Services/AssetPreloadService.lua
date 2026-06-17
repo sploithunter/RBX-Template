@@ -637,6 +637,23 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                                     "AttackTargeting",
                                     petData.attack_targeting or "single"
                                 )
+                                -- DoT (burn/poison/bleed) — orthogonal to targeting. A pet with an
+                                -- attack_dot { fraction, tick, duration } stamps a ticking burn on
+                                -- whatever its attack hits (composes with single/targeted_aoe/etc).
+                                -- Carried as flat attributes (tables can't be attributes); 0 fraction
+                                -- = no DoT (the default for every pet).
+                                local dot = petData.attack_dot
+                                if type(dot) == "table" then
+                                    variantModel:SetAttribute(
+                                        "DotFraction",
+                                        tonumber(dot.fraction) or 0
+                                    )
+                                    variantModel:SetAttribute("DotTick", tonumber(dot.tick) or 1)
+                                    variantModel:SetAttribute(
+                                        "DotDuration",
+                                        tonumber(dot.duration) or 0
+                                    )
+                                end
                                 self:ApplyPetTransformAttributes(variantModel, transformOptions)
                                 -- Also create NumberValues for scripts that expect Values on the model
                                 local powerNV = variantModel:FindFirstChild("Power")

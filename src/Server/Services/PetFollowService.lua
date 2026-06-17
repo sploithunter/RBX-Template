@@ -33,6 +33,7 @@ local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
 local PetPowerView = require(ReplicatedStorage.Shared.Game.PetPowerView)
 local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
+local DamageOverTime = require(ReplicatedStorage.Shared.Game.DamageOverTime)
 local SquadDiversity = require(ReplicatedStorage.Shared.Game.SquadDiversity)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
@@ -589,6 +590,30 @@ function PetFollowService:_mine(player, pet, breakable)
             nv.Parent = contrib
         end
         nv.Value += applied.contributed
+    end
+
+    -- DoT (burn/poison/bleed): a pet with attack_dot stamps a ticking burn on the ENEMY it hit —
+    -- orthogonal to targeting, so it rides on top of single/aoe alike. perTick = a fraction of THIS
+    -- hit (DamageOverTime.perTick); EnemyService:_dotPass applies the ticks. Re-hit refreshes the
+    -- window and keeps the STRONGER per-tick (a fresh weak hit never weakens an existing burn).
+    -- Crystals don't burn (no EnemyId). Stored as flat attributes the dot pass reads.
+    if breakable:GetAttribute("EnemyId") and dmg > 0 then
+        local dotFrac = pet:GetAttribute("DotFraction") or 0
+        local perTick = DamageOverTime.perTick(dmg, dotFrac)
+        local duration = tonumber(pet:GetAttribute("DotDuration")) or 0
+        if perTick > 0 and duration > 0 then
+            local interval = math.max(0.1, tonumber(pet:GetAttribute("DotTick")) or 1)
+            local clk = os.clock()
+            breakable:SetAttribute(
+                "DotPerTick",
+                math.max(tonumber(breakable:GetAttribute("DotPerTick")) or 0, perTick)
+            )
+            breakable:SetAttribute("DotInterval", interval)
+            breakable:SetAttribute("DotNextTick", clk + interval)
+            breakable:SetAttribute("DotExpireAt", clk + duration)
+            breakable:SetAttribute("DotSourceUserId", player.UserId)
+            breakable:SetAttribute("BurnFxUntil", os.time() + math.ceil(duration)) -- enemy burn tell
+        end
     end
 
     -- PET AoE (PetTargeting attack_targeting = "aoe" / "targeted_aoe"): an AoE pet's swing splashes

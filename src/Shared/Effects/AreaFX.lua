@@ -296,10 +296,59 @@ local function ricochet(pos, c1, c2, mat, count, spread)
     end
 end
 
--- A ring of REAL Roblox Fire (not procedural) around the point — the lava look.
-local function fireRing(pos, count, radius, life, color, color2)
-    for i = 1, count do
-        local ang = (i / count) * math.pi * 2
+-- Variation knobs for the fire ring — so repeated lava casts don't look stamped. One central
+-- block of tunables (vs magic numbers per call site); all PURELY VISUAL, no gameplay effect.
+local FIRE_RING_VAR = {
+    rotation_jitter = true, -- random base rotation each cast (columns land at fresh angles)
+    count_jitter = 2, -- ± columns added/removed from the requested count (uneven count)
+    angle_jitter = 0.16, -- rad of per-column angular wobble (uneven spacing, not a clean clock)
+    radius_wobble = 0.16, -- fraction of radius each column is pushed in/out (circle isn't perfect)
+    height_jitter = 0.55, -- studs of per-column vertical offset (columns sit at varied heights)
+    size_jitter = 0.35, -- fraction of the fire size varied per column
+    heat_jitter = 6, -- ± Fire.Heat varied per column (flames flicker at different intensities)
+    spin = true, -- slow orbital drift of the whole ring across its lifetime
+    spin_max = 0.55, -- max radians the ring rotates over `life`
+}
+
+-- A ring of REAL Roblox Fire (not procedural) around the point — the lava look. Each cast is
+-- randomized (base rotation + per-fire jitter + count/radius wobble + a slow orbital drift) so
+-- firing it repeatedly never reads as the same stamped ring twice. Variation is tuned in
+-- FIRE_RING_VAR above; pass `v = {}`-style overrides via the optional `varOverride` table.
+local function fireRing(pos, count, radius, life, color, color2, varOverride)
+    local v = FIRE_RING_VAR
+    local function knob(name)
+        if varOverride and varOverride[name] ~= nil then
+            return varOverride[name]
+        end
+        return v[name]
+    end
+
+    -- Random base rotation so the fire columns don't sit at the same angles every cast.
+    local baseAng = knob("rotation_jitter") and (math.random() * math.pi * 2) or 0
+    -- Slight count variation so the circle isn't perfectly uniform run-to-run.
+    local n = count
+    local cj = knob("count_jitter") or 0
+    if cj > 0 then
+        n = math.max(4, count + math.random(-cj, cj))
+    end
+    -- One shared slow drift for this cast's ring (subtle orbital spin over its life), random sign.
+    local spinAmt = 0
+    if knob("spin") then
+        local sign = (math.random() < 0.5) and 1 or -1
+        spinAmt = (knob("spin_max") or 0) * sign * (0.55 + math.random() * 0.45)
+    end
+
+    local angJit = knob("angle_jitter") or 0
+    local radWob = knob("radius_wobble") or 0
+    local hJit = knob("height_jitter") or 0
+    local szJit = knob("size_jitter") or 0
+    local heatJit = knob("heat_jitter") or 0
+    local baseSize = math.max(4, radius * 0.7)
+
+    for i = 1, n do
+        local ang = baseAng + (i / n) * math.pi * 2 + (math.random() - 0.5) * 2 * angJit
+        local r = radius * (1 + (math.random() - 0.5) * 2 * radWob)
+        local yOff = 0.5 + (math.random() - 0.5) * 2 * hJit
         local holder = Instance.new("Part")
         holder.Transparency = 1
         holder.Size = Vector3.new(1, 1, 1)
@@ -307,12 +356,11 @@ local function fireRing(pos, count, radius, life, color, color2)
         holder.CanCollide = false
         holder.CanQuery = false
         holder.CastShadow = false
-        holder.CFrame =
-            CFrame.new(pos + Vector3.new(math.cos(ang) * radius, 0.5, math.sin(ang) * radius))
+        holder.CFrame = CFrame.new(pos + Vector3.new(math.cos(ang) * r, yOff, math.sin(ang) * r))
         holder.Parent = fxFolder()
         local fire = Instance.new("Fire")
-        fire.Size = math.max(4, radius * 0.7)
-        fire.Heat = 10
+        fire.Size = math.max(1, baseSize * (1 + (math.random() - 0.5) * 2 * szJit))
+        fire.Heat = 10 + (math.random() - 0.5) * 2 * heatJit
         fire.Color = color
         fire.SecondaryColor = color2
         fire.Parent = holder
@@ -323,6 +371,13 @@ local function fireRing(pos, count, radius, life, color, color2)
         light.Parent = holder
         TweenService:Create(fire, ti(life), { Size = 0 }):Play()
         TweenService:Create(light, ti(life), { Brightness = 0 }):Play()
+        -- Subtle orbital drift: slide the column a little around the centre over its life so the
+        -- ring breathes instead of standing dead-still.
+        if spinAmt ~= 0 then
+            local ang2 = ang + spinAmt
+            local dest = pos + Vector3.new(math.cos(ang2) * r, yOff, math.sin(ang2) * r)
+            TweenService:Create(holder, ti(life), { CFrame = CFrame.new(dest) }):Play()
+        end
         Debris:AddItem(holder, life + 0.4)
     end
 end
