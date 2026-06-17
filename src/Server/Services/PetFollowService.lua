@@ -627,7 +627,14 @@ function PetFollowService:_mine(player, pet, breakable)
             -- CONTAGION (PetTargeting): a contagion pet's burn SPREADS. Arm the first hop; the spread
             -- pass jumps the burn to the nearest un-burning enemy, chaining max_spread hops. Needs a
             -- DoT to spread (this block), so contagion pets must also carry an attack_dot.
-            if pet:GetAttribute("AttackTargeting") == "contagion" then
+            -- ARM ONCE: only (re)arm when NOT already armed. Re-stamping ContagionSpreadAt on every
+            -- swing pushed the spread timer back so a continuously-hit primary almost never reached it
+            -- (Jason: "1 in 20" — it only fired on a rare attack gap). The spread pass zeroes
+            -- ContagionSpreadAt after it fires, so a later hit re-arms it for the next hop.
+            if
+                pet:GetAttribute("AttackTargeting") == "contagion"
+                and (tonumber(breakable:GetAttribute("ContagionSpreadAt")) or 0) <= 0
+            then
                 local cc = self._combatConfig.pet_contagion or {}
                 breakable:SetAttribute(
                     "ContagionSpreadAt",

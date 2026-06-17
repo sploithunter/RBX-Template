@@ -2632,9 +2632,9 @@ function EnemyService:_dotPass(now)
                         local newHp = math.max(0, hp - perTick * count)
                         local dealt = hp - newHp
                         model:SetAttribute("HP", newHp)
+                        local uid = model:GetAttribute("DotSourceUserId")
                         local contrib = dealt > 0 and model:FindFirstChild("Contrib")
-                        local uid = contrib and model:GetAttribute("DotSourceUserId")
-                        if uid then
+                        if uid and contrib then
                             local key = tostring(uid)
                             local nv = contrib:FindFirstChild(key)
                             if not nv then
@@ -2643,6 +2643,28 @@ function EnemyService:_dotPass(now)
                                 nv.Parent = contrib
                             end
                             nv.Value += dealt
+                        end
+                        -- VISUALIZE the burn tick: float the number on the enemy so the DoT/contagion
+                        -- damage READS (the fire shows it's burning; this shows how much). The DoT pass
+                        -- has no source-pet ref, so use any of the owner's deployed pets purely as the
+                        -- Combat_PetHit ref; splash = true -> number-only (no bolt), so the ref's
+                        -- identity doesn't matter. Skipped if the owner/pets are gone.
+                        if dealt > 0 and uid then
+                            local owner = Players:GetPlayerByUserId(uid)
+                            local folder = owner
+                                and Workspace:FindFirstChild("PlayerPets")
+                                and Workspace.PlayerPets:FindFirstChild(owner.Name)
+                            local refPet = folder and folder:FindFirstChildWhichIsA("Model")
+                            if refPet then
+                                Signals.Combat_PetHit:FireClient(owner, {
+                                    pet = refPet,
+                                    target = model,
+                                    crit = false,
+                                    amount = dealt,
+                                    miss = false,
+                                    splash = true,
+                                })
+                            end
                         end
                     end
                 end
