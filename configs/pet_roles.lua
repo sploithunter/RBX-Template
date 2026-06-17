@@ -70,6 +70,8 @@ return {
         sunmane_lion = "tank", -- front-line soak/taunt
         solar_phoenix = "ranged", -- flies + fires from range
         empyrean_dragon = "ranged", -- the secret apex: flies + breathes fire (like the earth dragon)
+        aurora_leviathan = "ranged", -- Heaven ice apex: blaster (matches its twin black_ice_leviathan)
+        worldroot_ent = "tank", -- Heaven grass apex: tank (matches its twin gravewood_ent / the ent-stag line)
     },
 
     -- Per-zone BUFFER auras (City-of-Heroes support). Resolved by SupportAura.forPet
