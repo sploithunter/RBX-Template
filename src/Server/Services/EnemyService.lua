@@ -2519,6 +2519,76 @@ function EnemyService:_auraDamagePass(now)
     end
 end
 
+-- CONTAGION pass: a burning enemy marked by a contagion pet SPREADS its burn to the NEAREST
+-- un-burning enemy within spread_radius, every spread_interval, chaining up to max_spread hops (each
+-- hop carries one fewer + a fresh copy of the burn window). Sequential, not an instant splash —
+-- that's what makes it a distinct targeting type. A node spreads ONCE then stops; the new node
+-- carries the chain. Needs an active DoT (the burn) to spread — set by the contagion stamp in _mine.
+function EnemyService:_contagionPass(now)
+    local cc = (self._combatConfig and self._combatConfig.pet_contagion) or {}
+    local spreadRadius = tonumber(cc.spread_radius) or 16
+    local spreadInterval = math.max(0.2, tonumber(cc.spread_interval) or 1.5)
+    for _, entry in pairs(self._enemies) do
+        local src = entry.model
+        if src and src.Parent and (src:GetAttribute("HP") or 0) > 0 then
+            local spreadAt = tonumber(src:GetAttribute("ContagionSpreadAt")) or 0
+            local left = tonumber(src:GetAttribute("ContagionLeft")) or 0
+            local perTick = tonumber(src:GetAttribute("DotPerTick")) or 0
+            if
+                spreadAt > 0
+                and left > 0
+                and perTick > 0
+                and now >= spreadAt
+                and not DamageOverTime.isExpired(src:GetAttribute("DotExpireAt") or 0, now)
+            then
+                local sp = src.PrimaryPart or src:FindFirstChildWhichIsA("BasePart")
+                local best, bestD
+                if sp then
+                    for _, e2 in pairs(self._enemies) do
+                        local m2 = e2.model
+                        if
+                            m2
+                            and m2 ~= src
+                            and m2.Parent
+                            and (m2:GetAttribute("HP") or 0) > 0
+                            and (tonumber(m2:GetAttribute("DotPerTick")) or 0) <= 0 -- not already burning
+                        then
+                            local p2 = m2.PrimaryPart or m2:FindFirstChildWhichIsA("BasePart")
+                            if p2 then
+                                local d = (p2.Position - sp.Position).Magnitude
+                                if d <= spreadRadius and (not bestD or d < bestD) then
+                                    best, bestD = m2, d
+                                end
+                            end
+                        end
+                    end
+                end
+                if best then
+                    local interval = tonumber(src:GetAttribute("DotInterval")) or 1
+                    local duration = tonumber(src:GetAttribute("DotDuration")) or 0
+                    best:SetAttribute("DotPerTick", perTick) -- copy the burn (fresh window)
+                    best:SetAttribute("DotInterval", interval)
+                    best:SetAttribute("DotNextTick", now + interval)
+                    best:SetAttribute("DotExpireAt", now + duration)
+                    best:SetAttribute("DotDuration", duration)
+                    best:SetAttribute("DotSourceUserId", src:GetAttribute("DotSourceUserId"))
+                    best:SetAttribute("BurnFxUntil", os.time() + math.ceil(duration))
+                    local nextLeft = left - 1
+                    best:SetAttribute("ContagionLeft", nextLeft)
+                    best:SetAttribute(
+                        "ContagionSpreadAt",
+                        nextLeft > 0 and (now + spreadInterval) or 0
+                    )
+                    src:SetAttribute("ContagionLeft", 0) -- this node did its one hop; it's done
+                    src:SetAttribute("ContagionSpreadAt", 0)
+                else
+                    src:SetAttribute("ContagionSpreadAt", now + spreadInterval) -- none in range; retry
+                end
+            end
+        end
+    end
+end
+
 -- DoT pass: tick any burn (DamageOverTime) a pet attack stamped on an enemy. perTick is stored on
 -- the enemy (DotPerTick); apply the whole ticks due this step, credit the source player's Contrib so
 -- burn kills count toward rewards, and burn out at expiry. The HP drain is the visible tell (the
@@ -2571,6 +2641,7 @@ function EnemyService:_combatTick(dt)
     self:_enemyRegenPass(now, dt, eng)
     self:_supportPass(now)
     self:_dotPass(now) -- tick any burns (DoT) stamped on enemies by pet attacks
+    self:_contagionPass(now) -- spread contagion burns to the nearest un-burning enemy (the plague)
     self:_auraDamagePass(now) -- AURA pets damage enemies in a radius around themselves
     self:_enemyHealPass(now)
     self:_enforceLockouts(nowTime) -- #179: hold re-teamed/locked pets down for their recovery

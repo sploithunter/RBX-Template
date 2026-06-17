@@ -61,6 +61,18 @@ return {
         interval = 1.0,
     },
 
+    -- CONTAGION pets (PetTargeting attack_targeting = "contagion"): the burn SPREADS. Their hit
+    -- applies a DoT (so a contagion pet needs an attack_dot — the burn that propagates), and while
+    -- it ticks it jumps to the nearest un-burning enemy within `spread_radius` every
+    -- `spread_interval`, chaining up to `max_spread` hops (each hop carries one fewer). The plague:
+    -- light one, watch the pack catch fire. Sequential (not an instant splash) — that's what makes
+    -- it a distinct targeting type vs targeted_aoe.
+    pet_contagion = {
+        spread_radius = 16,
+        spread_interval = 1.5,
+        max_spread = 4,
+    },
+
     -- Defensive stat (armor curve). Damage is reduced by armor/(armor+k): a pet's
     -- Defense attribute mitigates enemy hits, an enemy's Armor mitigates pet damage.
     -- At armor == k the hit is halved; diminishing returns, never full immunity.

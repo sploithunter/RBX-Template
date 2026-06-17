@@ -611,8 +611,20 @@ function PetFollowService:_mine(player, pet, breakable)
             breakable:SetAttribute("DotInterval", interval)
             breakable:SetAttribute("DotNextTick", clk + interval)
             breakable:SetAttribute("DotExpireAt", clk + duration)
+            breakable:SetAttribute("DotDuration", duration) -- the window length, so contagion can re-arm it
             breakable:SetAttribute("DotSourceUserId", player.UserId)
             breakable:SetAttribute("BurnFxUntil", os.time() + math.ceil(duration)) -- enemy burn tell
+            -- CONTAGION (PetTargeting): a contagion pet's burn SPREADS. Arm the first hop; the spread
+            -- pass jumps the burn to the nearest un-burning enemy, chaining max_spread hops. Needs a
+            -- DoT to spread (this block), so contagion pets must also carry an attack_dot.
+            if pet:GetAttribute("AttackTargeting") == "contagion" then
+                local cc = self._combatConfig.pet_contagion or {}
+                breakable:SetAttribute(
+                    "ContagionSpreadAt",
+                    clk + math.max(0.2, tonumber(cc.spread_interval) or 1.5)
+                )
+                breakable:SetAttribute("ContagionLeft", math.floor(tonumber(cc.max_spread) or 4))
+            end
         end
     end
 

@@ -58,6 +58,8 @@ return {
         ice = { color = { 150, 220, 255 }, color2 = { 235, 250, 255 }, material = "Glass" },
         -- Lava eruption — orange/red molten glow.
         lava = { color = { 255, 110, 30 }, color2 = { 255, 200, 90 }, material = "Neon" },
+        -- Lightning storm — electric blue core + near-white accent (matches the grass pets' bolts).
+        lightning = { color = { 130, 170, 255 }, color2 = { 225, 245, 255 }, material = "Neon" },
         -- Heal — restorative green/gold (used by the heal category's nova + splash variants).
         heal = { color = { 120, 230, 120 }, color2 = { 220, 255, 200 }, material = "Neon" },
     },

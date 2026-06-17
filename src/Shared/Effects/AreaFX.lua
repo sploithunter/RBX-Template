@@ -382,6 +382,154 @@ local function fireRing(pos, count, radius, life, color, color2, varOverride)
     end
 end
 
+-- Variation knobs for the lightning storm — so repeated electric casts don't look stamped. The
+-- lightning sibling of FIRE_RING_VAR; one central block of tunables, all PURELY VISUAL.
+local LIGHTNING_VAR = {
+    count_jitter = 2, -- ± bolts vs the requested count (storm density varies cast-to-cast)
+    pos_jitter = 1.0, -- multiplier on the scatter radius of strike points
+    seg_jitter = 0.2, -- lateral zigzag per bolt segment, as a fraction of radius (jagged, varied)
+    segments_min = 5, -- fewest segments a bolt is broken into (more = more jagged)
+    segments_extra = 3, -- up to this many extra segments added at random
+    fork_chance = 0.55, -- chance a bolt sprouts a short branch fork off its middle
+    stagger = 0.26, -- seconds over which the bolts land (a rolling storm, not one snap)
+    bolt_life_min = 0.1, -- how long a single bolt flash lingers before snapping out
+    bolt_life_max = 0.2,
+    thickness_jitter = 0.4, -- ± per-bolt thickness (some bolts fat, some thin)
+    white_core = true, -- draw a bright white core inside each coloured segment (hot lightning)
+    white_bolt_chance = 0.3, -- chance a whole bolt flashes white-hot instead of the theme colour
+}
+
+local WHITE = Color3.fromRGB(255, 255, 255)
+
+-- One jagged neon segment from `a` to `b` (cylinder long-axis = X, same convention as `beam`),
+-- flashing at full brightness then snapping out. Optionally lays a thinner white core on top so
+-- the bolt reads hot-cored like real lightning.
+local function boltSegment(a, b, color, thickness, life, withCore)
+    local d = b - a
+    local len = d.Magnitude
+    if len < 0.05 then
+        return
+    end
+    local mid = a:Lerp(b, 0.5)
+    local cf = CFrame.lookAt(mid, b) * CFrame.Angles(0, math.rad(90), 0)
+    local seg = newPart(Enum.PartType.Cylinder, Enum.Material.Neon, color, 0)
+    seg.Size = Vector3.new(len, thickness, thickness)
+    seg.CFrame = cf
+    tween(seg, life, { Transparency = 1 })
+    if withCore then
+        local core = newPart(Enum.PartType.Cylinder, Enum.Material.Neon, WHITE, 0)
+        core.Size = Vector3.new(len, thickness * 0.4, thickness * 0.4)
+        core.CFrame = cf
+        tween(core, life, { Transparency = 1 })
+    end
+end
+
+-- A cluster of jagged lightning bolts crashing down within `radius` of `pos` — the reusable
+-- electric AoE motif (storm strike). Randomized every cast: bolt count, strike points, per-segment
+-- zigzag, fork branches, white-hot flashes, per-bolt thickness, and STAGGERED timing so the storm
+-- rolls in rather than stamping all at once. The first bolt always lands near the centre as a
+-- focal strike (+ a ground-flash disc and a light pulse under each impact). Pure tween/Debris (no
+-- Heartbeat loop), matching the rest of AreaFX. Tuned via LIGHTNING_VAR; pass `varOverride` to tweak.
+local function lightningStrikes(pos, count, radius, life, color, color2, varOverride)
+    local v = LIGHTNING_VAR
+    local function knob(name)
+        if varOverride and varOverride[name] ~= nil then
+            return varOverride[name]
+        end
+        return v[name]
+    end
+
+    local n = count
+    local cj = knob("count_jitter") or 0
+    if cj > 0 then
+        n = math.max(1, count + math.random(-cj, cj))
+    end
+    local height = radius * 1.8
+    local segMin = math.max(2, math.floor(knob("segments_min") or 5))
+    local segExtra = math.max(0, math.floor(knob("segments_extra") or 0))
+    local forkChance = knob("fork_chance") or 0
+    local withCore = knob("white_core")
+    local whiteChance = knob("white_bolt_chance") or 0
+    local thJit = knob("thickness_jitter") or 0
+    local zig = radius * (knob("seg_jitter") or 0)
+    local posJit = knob("pos_jitter") or 1
+
+    for i = 1, n do
+        -- Strike point: bolt #1 lands near the centre (focal strike); the rest scatter across the
+        -- disc (sqrt keeps them from clumping at the middle), so the storm fills the radius.
+        local rr
+        if i == 1 then
+            rr = radius * 0.12
+        else
+            rr = radius * math.sqrt(math.random()) * posJit
+        end
+        local ang = math.random() * math.pi * 2
+        local ground = pos + Vector3.new(math.cos(ang) * rr, 0.4, math.sin(ang) * rr)
+        local top = ground
+            + Vector3.new(
+                (math.random() - 0.5) * radius * 0.4,
+                height,
+                (math.random() - 0.5) * radius * 0.4
+            )
+        local white = math.random() < whiteChance
+        local col = white and WHITE or ((i % 2 == 0) and color2 or color)
+        local focal = (i == 1)
+        local thickness = radius
+            * (focal and 0.085 or 0.06)
+            * (1 + (math.random() - 0.5) * 2 * thJit)
+        local boltLife = (knob("bolt_life_min") or 0.1)
+            + math.random() * ((knob("bolt_life_max") or 0.2) - (knob("bolt_life_min") or 0.1))
+        local delay = math.random() * (knob("stagger") or 0)
+
+        task.delay(delay, function()
+            local segs = segMin + math.random(0, segExtra)
+            local prev = top
+            local forkAt = math.random(2, math.max(2, segs - 1))
+            for s = 1, segs do
+                local alpha = s / segs
+                local base = top:Lerp(ground, alpha)
+                -- zigzag tapers to nothing at the impact so the last segment hits the point clean
+                local off = (s < segs)
+                        and Vector3.new(
+                            (math.random() - 0.5) * 2,
+                            0,
+                            (math.random() - 0.5) * 2
+                        ) * zig * (1 - alpha)
+                    or Vector3.zero
+                local pt = base + off
+                boltSegment(prev, pt, col, thickness, boltLife, withCore)
+                -- a short branch fork veering off the middle of the bolt
+                if s == forkAt and math.random() < forkChance then
+                    local fdir = Vector3.new(
+                        (math.random() - 0.5) * 2,
+                        -0.5 - math.random() * 0.6,
+                        (math.random() - 0.5) * 2
+                    ).Unit
+                    local fork = pt + fdir * (radius * (0.25 + math.random() * 0.35))
+                    boltSegment(pt, fork, col, thickness * 0.6, boltLife, withCore)
+                end
+                prev = pt
+            end
+            -- impact: a quick ground-flash disc + a light pulse where the bolt lands
+            groundRing(ground, col, Enum.Material.Neon, radius * (focal and 0.9 or 0.5), 0.22, 0.15)
+            local flash = newPart(Enum.PartType.Ball, Enum.Material.Neon, col, 0.35)
+            local fs = focal and 2.4 or 1.4
+            flash.Size = Vector3.new(fs, fs, fs)
+            flash.CFrame = CFrame.new(ground + Vector3.new(0, 0.4, 0))
+            local lt = Instance.new("PointLight")
+            lt.Color = col
+            lt.Brightness = focal and 8 or 5
+            lt.Range = radius * (focal and 1.4 or 0.9)
+            lt.Parent = flash
+            tween(flash, boltLife + 0.05, {
+                Transparency = 1,
+                Size = Vector3.new(0.2, 0.2, 0.2),
+            })
+            TweenService:Create(lt, ti(boltLife + 0.05), { Brightness = 0 }):Play()
+        end)
+    end
+end
+
 -- One-shot ParticleEmitter burst (embers / sparks / smoke) via :Emit() — the proper Roblox way
 -- vs tweening dozens of parts. opts: color1/color2, count, speed_min/max, life_min/max, size,
 -- spread, accel_y, light_emission. Default (blank) texture = the soft round particle.
@@ -620,6 +768,52 @@ local EFFECTS = {
             groundRing(pos, c2, mat, radius * 3.6, life * 1.2)
             debris(pos, c1, c2, mat, 18, radius * 1.4, life)
         end)
+    end,
+    -- LIGHTNING self: Storm strike — jagged bolts crash down around the caster + an electric shock
+    -- ring + a spark burst. Reuses lightningStrikes (the electric sibling of the lava fire ring);
+    -- grass pets already throw lightning bolts, so a lightning-themed AoE pet passes element="lightning".
+    lightning_self = function(pos, c1, c2, mat, radius, life, opts)
+        if not (opts and opts.no_ring) then
+            groundRing(pos, c2, mat, radius * 1.9, life, 0.2)
+            lightningStrikes(pos, 7, radius * 0.85, life, c1, c2)
+        end
+        particleBurst(pos + Vector3.new(0, 1, 0), {
+            color1 = c1,
+            color2 = c2,
+            count = 22,
+            speed_min = 8,
+            speed_max = 22,
+            accel_y = -6,
+            size = 0.9,
+            life_min = 0.25,
+            life_max = 0.6,
+            light_emission = 1,
+        })
+    end,
+    -- LIGHTNING pit: an electrified patch — the lingering bubbling pool tinted electric (same
+    -- ground-hazard shape as the other element pits, reused via tarPit).
+    lightning_pit = function(pos, c1, c2, _mat, radius, life)
+        tarPit(pos, c1, c2, radius, life)
+    end,
+    -- LIGHTNING targeted: Thunderstrike — a focal bolt slams the point with satellite bolts + a
+    -- brief electric flash column + a double shock ring. Cast tell (beam + telegraph) handled upstream.
+    lightning_targeted = function(pos, c1, c2, mat, radius, life)
+        lightningStrikes(pos, 6, radius * 0.9, life, c1, c2)
+        column(pos, c2, mat, radius * 1.1, life * 0.45)
+        groundRing(pos, c1, mat, radius * 2.4, life, 0.2)
+        groundRing(pos, c2, mat, radius * 3.4, life * 1.2, 0.4)
+        particleBurst(pos + Vector3.new(0, 1, 0), {
+            color1 = c1,
+            color2 = c2,
+            count = 18,
+            speed_min = 8,
+            speed_max = 20,
+            accel_y = -6,
+            size = 0.8,
+            life_min = 0.2,
+            life_max = 0.5,
+            light_emission = 1,
+        })
     end,
 }
 
