@@ -12,6 +12,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+-- Stacked realms live FAR below the homeworld (Hell_1 at Y -2000, deeper layers lower). Roblox's
+-- default FallenPartsDestroyHeight (-500) sits ABOVE them, so a character/pet arriving in Hell is
+-- instantly destroyed as a "fallen part" (its HumanoidRootPart vanishes -> frozen, can't move).
+-- Drop the kill plane well below the deepest realm so the realms are habitable. (Heaven at +2000 is
+-- above the default and was never affected — which is why only Hell broke.)
+Workspace.FallenPartsDestroyHeight = -50000
 
 -- Wait for packages to be available
 local Packages = ReplicatedStorage:WaitForChild("Packages", 10)
