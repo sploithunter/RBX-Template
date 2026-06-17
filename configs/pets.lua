@@ -1421,6 +1421,11 @@ local petConfig = {
             rarity = "secret",
             base_power = 45, -- Heaven apex: above the biome legendaries (42), below exclusive (50)
             base_health = 260,
+            -- TEMP AoE WORKING VEHICLE (Jason): iterating the fire-breath AoE on this apex — it
+            -- breathes fire, so targeted_aoe + a burn. NOT a final home (it's tradeable; AoE in the
+            -- economy is still being decided) — likely reverts to single once dialed in.
+            attack_targeting = "targeted_aoe",
+            attack_dot = { fraction = 0.25, tick = 1.0, duration = 4 },
             huge_base_power = 180,
             viewport_zoom = 1.5,
             asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
