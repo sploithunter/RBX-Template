@@ -239,24 +239,29 @@ return {
         hell_5 = 3.5,
     },
 
-    -- CONTENT LEVEL offset per realm depth (World S3). Home biomes are levels 1-6, so a level-9
-    -- player out-levels home and is floored — INTENDED at home (play a while, then progress). But a
-    -- realm must RESCALE: entering heaven_1/hell_1 adds this to the effective target level of crystals
-    -- (and enemies) so the diminishing-XP floor lifts and leveling continues. +5 per depth = each
-    -- realm is a ~5-level band (heaven_1 ≈ levels 6-11, heaven_2 ≈ 11-16, …). Consumed via
+    -- CONTENT LEVEL offset per realm depth (World S3 — the 50-level / 6-realm progression plan).
+    -- Home content spans levels 1-6 (grass 1 -> desert 6, +0/1/2 for S/M/L). Because LevelDiffYield
+    -- pays FULL XP for any target at-or-above you and only diminishes content BELOW you, home gives
+    -- ~6 full + 2 effort levels then floors at ~9 (Jason: "home was perfect"). A REALM must replicate
+    -- that band shifted up, so leveling continues — each depth adds +9 (home's band width) to every
+    -- crystal/enemy's effective level. So heaven_1/hell_1 content = 10-15 (covers players ~8-17),
+    -- depth 2 = 19-24, … depth 5 = 46-51 — six bands tiling 1->50, each ~7 normal + 2 effort + floor.
+    -- "Any direction" is fine: a fresh realm's content is all ABOVE you, so every biome pays full XP
+    -- regardless of unlock order; the grass->desert staircase re-emerges as you out-level the low end.
+    -- heaven_N and hell_N share depth N's offset (parallel directions, same band). Consumed via
     -- LayerService:GetLevelOffset in the XP diminishing (BreakableSpawner / CombatService).
     level_offsets = {
         base = 0,
-        heaven_1 = 5,
-        heaven_2 = 10,
-        heaven_3 = 15,
-        heaven_4 = 20,
-        heaven_5 = 25,
-        hell_1 = 5,
-        hell_2 = 10,
-        hell_3 = 15,
-        hell_4 = 20,
-        hell_5 = 25,
+        heaven_1 = 9,
+        heaven_2 = 18,
+        heaven_3 = 27,
+        heaven_4 = 36,
+        heaven_5 = 45,
+        hell_1 = 9,
+        hell_2 = 18,
+        hell_3 = 27,
+        hell_4 = 36,
+        hell_5 = 45,
     },
 
     token_currency = {
