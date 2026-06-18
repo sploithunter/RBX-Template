@@ -2869,6 +2869,20 @@ function EnemyService:_caveAreaId(part)
     return folderName .. "_" .. suffix
 end
 
+-- The signature enemy a cave fields, keyed off its origin (the BaddieSpawner<Origin> suffix), so a
+-- band's model reads as its home zone (Jason: cinder_whelp = Lava, frost_fox = Ice, …) instead of one
+-- generic placeholder you can't place. Falls back to placeholder_enemy for any unmapped origin.
+function EnemyService:_patrolEnemyId(cfg, part)
+    local map = cfg.patrol_enemy_by_origin
+    if type(map) == "table" then
+        local suffix = part.Name:gsub("^BaddieSpawner", "")
+        if suffix ~= "" and map[suffix] then
+            return map[suffix]
+        end
+    end
+    return cfg.placeholder_enemy or "lava_imp"
+end
+
 -- How many crystals have spawned into a zone's ore folder. The patrol gates group spawning on this
 -- (Jason: "make sure the crystals respond into the environment prior to spawning any baddies") — no
 -- ore yet means no patrol route and no baddies, so bands follow the world in rather than precede it.
@@ -2963,11 +2977,12 @@ function EnemyService:_updateBand(part, player, cfg, now, dt)
             band.stops =
                 self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints, band.areaId)
             band.stopIdx = 1
+            local enemyId = self:_patrolEnemyId(cfg, part) -- per-origin signature (cinder_whelp = Lava)
             local scatter = tonumber(cfg.member_scatter) or 10
             for _ = 1, size do
                 local sx = band.anchor.X + (math.random() * 2 - 1) * scatter
                 local sz = band.anchor.Z + (math.random() * 2 - 1) * scatter
-                local res = self:SpawnEnemy(player, cfg.placeholder_enemy or "lava_imp", {
+                local res = self:SpawnEnemy(player, enemyId, {
                     position = Vector3.new(sx, band.anchor.Y + 3, sz),
                 })
                 if res and res.ok and res.targetId then

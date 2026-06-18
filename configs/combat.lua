@@ -82,7 +82,17 @@ return {
     -- one placeholder enemy model for every band (per-area heaven-pet factions = the content pass).
     enemy_patrol = {
         enabled = false, -- FLAG: ships dark; flip live (Studio) to test, then per-area content
-        placeholder_enemy = "lava_imp", -- slice 1: one model for all bands (faction routing = later)
+        placeholder_enemy = "lava_imp", -- fallback when a cave's origin isn't mapped below
+        -- PER-AREA FACTION (Jason: "lava-only models from lava, so I know where they came from").
+        -- Each cave fields a signature enemy keyed off its origin (the BaddieSpawner<Origin> suffix),
+        -- so a band's model tells you at a glance which zone it sortied from. Each id is that origin's
+        -- defined melee enemy (enemies.lua). Unmapped origins fall back to placeholder_enemy.
+        patrol_enemy_by_origin = {
+            Lava = "lava_imp", -- the lava melee (cinder_whelp is only a wave alias, not a real def)
+            Ice = "frost_fox",
+            Desert = "sand_jackal",
+            Grass = "rabid_dog",
+        },
         realm_layers_only = true, -- only in realm layers (heaven_/hell_), never home
         band_size = 4, -- members fielded per group (ONE batch, never trickle-refilled mid-fight)
         waypoints = 3, -- patrol-route stops sampled around the cave (A -> B -> C, then home)
