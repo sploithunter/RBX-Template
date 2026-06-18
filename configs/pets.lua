@@ -1421,20 +1421,9 @@ local petConfig = {
             rarity = "secret",
             base_power = 45, -- Heaven apex: above the biome legendaries (42), below exclusive (50)
             base_health = 260,
-            -- TEMP AoE-CONTAGION TEST VEHICLE (Jason): a fire pet, so the spreading-burn plague fits.
-            -- Orthogonal axes — the hit GEOMETRY is targeted_aoe (the swing splashes to a cluster and
-            -- ignites all of them), and the BURN is contagious (attack_dot.spread) so each ignited
-            -- enemy then HOPS the burn onward. Splash lights the pack, the plague keeps creeping.
-            -- spread is PER-PET here (radius/interval/max), overriding the global pet_contagion
-            -- defaults — this is the knob board for scaling up better/longer-plague pets later. Only
-            -- to prove the combo works; it'll move to a purpose-built later pet (revert when done).
-            attack_targeting = "targeted_aoe",
-            attack_dot = {
-                fraction = 0.25,
-                tick = 1.0,
-                duration = 4,
-                spread = { radius = 8, interval = 1.5, max = 4 }, -- contagious burn (per-pet tuning)
-            },
+            -- Plain single-target Heaven apex. (Was the AoE-contagion test vehicle while proving the
+            -- combo; reverted once verified — the spreading-burn power now waits for a purpose-built
+            -- pet. To reassign: attack_targeting = "targeted_aoe" + attack_dot{ ..., spread = {...} }.)
             huge_base_power = 180,
             viewport_zoom = 1.5,
             asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
