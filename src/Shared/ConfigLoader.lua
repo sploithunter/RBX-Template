@@ -1068,7 +1068,8 @@ function ConfigLoader:_validateBreakablesConfig(config)
         -- Realm worlds (Heaven_N / Hell_N) are not biome area zones; they are
         -- gated by the realm rule in BreakableSpawner._isWorldActive, not by an
         -- areas.lua zone unlock. Exempt them from the area-zone requirement.
-        local isRealmWorld = tostring(worldId):match("^Heaven_%d") or tostring(worldId):match("^Hell_%d")
+        local isRealmWorld = tostring(worldId):match("^Heaven_%d")
+            or tostring(worldId):match("^Hell_%d")
 
         if
             not isRealmWorld
@@ -1832,7 +1833,10 @@ function ConfigLoader:_validatePetsConfig(config)
             -- `texture_asset`], combined at load via AssetService:CreateMeshPartAsync — the same
             -- path enemies/gems use). FBX→Model uploads come out untextured, so meshy pets use
             -- the combine. Require at least one art source.
-            if type(petVariant.asset_id) ~= "string" and type(petVariant.mesh_asset) ~= "string" then
+            if
+                type(petVariant.asset_id) ~= "string"
+                and type(petVariant.mesh_asset) ~= "string"
+            then
                 return self:_configError(
                     "pets",
                     variantPath,
@@ -4293,6 +4297,11 @@ function ConfigLoader:_validateEnchantsConfig(config)
         if not ok then
             return ok, err
         end
+        -- strength roll now lives on the effect ({low,high,scale}, rarity-independent +5 cap).
+        ok, err = self:_validateEnchantStrength(effect.roll, path .. ".roll")
+        if not ok then
+            return ok, err
+        end
     end
 
     local pets = self:_rawConfig("pets")
@@ -4400,9 +4409,13 @@ function ConfigLoader:_validateEnchantsConfig(config)
             if not ok then
                 return ok, err
             end
-            ok, err = self:_validateEnchantStrength(chance.strength, path .. ".strength")
-            if not ok then
-                return ok, err
+            -- strength now lives on the EFFECT (effects[id].roll), not per chances entry — only
+            -- validate a legacy per-entry strength if one is still present.
+            if chance.strength ~= nil then
+                ok, err = self:_validateEnchantStrength(chance.strength, path .. ".strength")
+                if not ok then
+                    return ok, err
+                end
             end
         end
     end
