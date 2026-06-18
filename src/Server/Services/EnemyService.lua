@@ -48,6 +48,7 @@ local TargetPriority = require(ReplicatedStorage.Shared.Game.TargetPriority)
 local SupportAura = require(ReplicatedStorage.Shared.Game.SupportAura)
 local PetPowerView = require(ReplicatedStorage.Shared.Game.PetPowerView) -- effective combat power (empower carry pick)
 local DamageOverTime = require(ReplicatedStorage.Shared.Game.DamageOverTime) -- DoT burn ticks
+local OnHitEffects = require(ReplicatedStorage.Shared.Game.OnHitEffects) -- slow/shred on-hit math
 local OverheadBar = require(ReplicatedStorage.Shared.UI.OverheadBar) -- shared enemy HP / pet endurance bar
 local PetLockout = require(ReplicatedStorage.Shared.Game.PetLockout)
 local ZoneResolver = require(ReplicatedStorage.Shared.Game.ZoneResolver)
@@ -1411,6 +1412,12 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     local held = (model:GetAttribute("HeldUntil") or 0) > os.time()
     local rooted = held or (model:GetAttribute("RootedUntil") or 0) > os.time()
     local moveSpeed = rooted and 0 or ((def and def.move_speed) or eng.default_move_speed or 12)
+    -- SLOW (graded control, Anvil pets): SlowUntil/SlowFactor reduce move speed without a full root,
+    -- so a slowed pack still drifts toward the squad but stays parked in the AoE/plague. Stacks under
+    -- a real root (which already zeroed speed above).
+    if not rooted and (model:GetAttribute("SlowUntil") or 0) > os.time() then
+        moveSpeed = OnHitEffects.slowSpeed(moveSpeed, model:GetAttribute("SlowFactor"))
+    end
     -- Press inside attack_range so the enemy closes into bite range instead of stalling
     -- on its edge (where a kiting target floats just out of reach).
     local chaseStop = math.max(1, atk - (eng.attack_press or 3))
@@ -2502,6 +2509,40 @@ function EnemyService:_auraDamagePass(now)
                                             nv.Parent = contrib
                                         end
                                         nv.Value += dealt
+                                    end
+                                    -- BONFIRE (aura + DoT): if the aura pet carries an attack_dot, its
+                                    -- field also LEAVES A BURN on each enemy it ticks — a persistent
+                                    -- burning zone. Composes the aura geometry with the DoT axis; the
+                                    -- _dotPass + EnemyBurnFx render it like any other burn.
+                                    local dotFrac = tonumber(pet:GetAttribute("DotFraction")) or 0
+                                    local dotDur = tonumber(pet:GetAttribute("DotDuration")) or 0
+                                    if dotFrac > 0 and dotDur > 0 then
+                                        local perTick = DamageOverTime.perTick(dmg, dotFrac)
+                                        if perTick > 0 then
+                                            local tick = math.max(
+                                                0.1,
+                                                tonumber(pet:GetAttribute("DotTick")) or 1
+                                            )
+                                            model:SetAttribute(
+                                                "DotPerTick",
+                                                math.max(
+                                                    tonumber(model:GetAttribute("DotPerTick")) or 0,
+                                                    perTick
+                                                )
+                                            )
+                                            model:SetAttribute("DotInterval", tick)
+                                            model:SetAttribute("DotNextTick", now + tick)
+                                            model:SetAttribute("DotExpireAt", now + dotDur)
+                                            model:SetAttribute("DotDuration", dotDur)
+                                            model:SetAttribute(
+                                                "DotSourceUserId",
+                                                owner and owner.UserId or 0
+                                            )
+                                            model:SetAttribute(
+                                                "BurnFxUntil",
+                                                os.time() + math.ceil(dotDur)
+                                            )
+                                        end
                                     end
                                     -- VISUALIZE: a floating number on each enemy the field ticks, so
                                     -- the aura reads (splash = number-only, no per-target bolt). Without

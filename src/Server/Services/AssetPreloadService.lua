@@ -693,6 +693,38 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                                         math.floor(tonumber(aoe.max_targets) or 0)
                                     )
                                 end
+                                -- ON-HIT enemy effects (orthogonal — compose with any geometry; the
+                                -- combat loop applies them to each enemy the swing touches, so a
+                                -- targeted_aoe pet shreds/controls its whole splash). All opt-in.
+                                -- CONTROL (Anvil): slow/root/hold the enemy on hit.
+                                local control = petData.attack_control
+                                if type(control) == "table" then
+                                    variantModel:SetAttribute(
+                                        "HitControlKind",
+                                        tostring(control.kind or "")
+                                    )
+                                    variantModel:SetAttribute(
+                                        "HitControlFactor",
+                                        tonumber(control.factor) or 1
+                                    )
+                                    variantModel:SetAttribute(
+                                        "HitControlDuration",
+                                        tonumber(control.duration) or 0
+                                    )
+                                end
+                                -- SHRED (Amplifier): a vulnerability debuff — enemy takes +X% from
+                                -- EVERYONE (team multiplier), same VulnerableMult seam as the powers.
+                                local debuff = petData.attack_debuff
+                                if type(debuff) == "table" then
+                                    variantModel:SetAttribute(
+                                        "HitVulnerable",
+                                        tonumber(debuff.vulnerable) or 0
+                                    )
+                                    variantModel:SetAttribute(
+                                        "HitDebuffDuration",
+                                        tonumber(debuff.duration) or 0
+                                    )
+                                end
                                 self:ApplyPetTransformAttributes(variantModel, transformOptions)
                                 -- Also create NumberValues for scripts that expect Values on the model
                                 local powerNV = variantModel:FindFirstChild("Power")

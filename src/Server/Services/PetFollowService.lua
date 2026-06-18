@@ -34,6 +34,7 @@ local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
 local PetPowerView = require(ReplicatedStorage.Shared.Game.PetPowerView)
 local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
 local DamageOverTime = require(ReplicatedStorage.Shared.Game.DamageOverTime)
+local OnHitEffects = require(ReplicatedStorage.Shared.Game.OnHitEffects)
 local SquadDiversity = require(ReplicatedStorage.Shared.Game.SquadDiversity)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
@@ -436,6 +437,57 @@ local function burnProfile(pet, contagionDefaults)
     return profile
 end
 
+-- Apply a pet's ON-HIT enemy effects (control + shred) to one enemy. Orthogonal to geometry, so
+-- this runs for the primary target AND each AoE-splash enemy — a targeted_aoe controller roots the
+-- whole splash, an aoe shredder softens the cluster. Composes onto the SAME enemy attributes the
+-- powers use (RootedUntil/HeldUntil, SlowUntil/SlowFactor, VulnerableMult/Until), so a downstream
+-- consumer needs no special-casing. Refresh-to-longer / keep-stronger so a fresh weak hit never
+-- shortens a lock or weakens a shred. nowT is os.time() (matches every *Until seam).
+local function applyOnHit(enemy, pet, nowT)
+    -- CONTROL (Anvil): slow / root / hold on hit.
+    local ck = pet:GetAttribute("HitControlKind")
+    if type(ck) == "string" and ck ~= "" then
+        local dur = tonumber(pet:GetAttribute("HitControlDuration")) or 0
+        if dur > 0 then
+            local untilT = nowT + dur
+            if ck == "hold" then
+                enemy:SetAttribute(
+                    "HeldUntil",
+                    math.max(tonumber(enemy:GetAttribute("HeldUntil")) or 0, untilT)
+                )
+            elseif ck == "root" then
+                enemy:SetAttribute(
+                    "RootedUntil",
+                    math.max(tonumber(enemy:GetAttribute("RootedUntil")) or 0, untilT)
+                )
+            elseif ck == "slow" then
+                enemy:SetAttribute(
+                    "SlowUntil",
+                    math.max(tonumber(enemy:GetAttribute("SlowUntil")) or 0, untilT)
+                )
+                enemy:SetAttribute(
+                    "SlowFactor",
+                    tonumber(pet:GetAttribute("HitControlFactor")) or 1
+                )
+            end
+        end
+    end
+    -- SHRED (Amplifier): a vulnerability debuff — enemy takes +X% from EVERYONE. Keep the stronger
+    -- active mult (OnHitEffects.vulnerable) so it composes with a power shred without compounding.
+    local vuln = tonumber(pet:GetAttribute("HitVulnerable")) or 0
+    if vuln > 0 then
+        local dur = tonumber(pet:GetAttribute("HitDebuffDuration")) or 0
+        if dur > 0 then
+            local active = (tonumber(enemy:GetAttribute("VulnerableUntil")) or 0) > nowT
+            enemy:SetAttribute(
+                "VulnerableMult",
+                OnHitEffects.vulnerable(enemy:GetAttribute("VulnerableMult"), active, vuln)
+            )
+            enemy:SetAttribute("VulnerableUntil", nowT + dur)
+        end
+    end
+end
+
 function PetFollowService:_mine(player, pet, breakable)
     if pet:GetAttribute("CombatDowned") then
         return -- downed pets are out healing; they neither mine nor fight
@@ -690,6 +742,10 @@ function PetFollowService:_mine(player, pet, breakable)
             os.clock()
         )
     end
+    -- On-hit control/shred (orthogonal to the burn) on the primary target.
+    if breakable:GetAttribute("EnemyId") and dmg > 0 then
+        applyOnHit(breakable, pet, nowT)
+    end
 
     -- PET AoE (PetTargeting attack_targeting = "aoe" / "targeted_aoe"): an AoE pet's swing splashes
     -- x frac to OTHER targets near the primary — nearby enemies mid-fight, nearby crystals when
@@ -758,16 +814,21 @@ function PetFollowService:_mine(player, pet, breakable)
                         -- AoE-CONTAGION: a splash target that's an enemy also catches the burn (scaled
                         -- off the SPLASH damage), and — if the burn is contagious — arms its own hop.
                         -- So the swing ignites the whole cluster and each ignited enemy then spreads.
-                        if burn and other:GetAttribute("EnemyId") then
-                            stampBurn(
-                                other,
-                                DamageOverTime.perTick(splash, burn.fraction),
-                                burn.interval,
-                                burn.duration,
-                                player.UserId,
-                                burn.spread,
-                                os.clock()
-                            )
+                        if other:GetAttribute("EnemyId") then
+                            if burn then
+                                stampBurn(
+                                    other,
+                                    DamageOverTime.perTick(splash, burn.fraction),
+                                    burn.interval,
+                                    burn.duration,
+                                    player.UserId,
+                                    burn.spread,
+                                    os.clock()
+                                )
+                            end
+                            -- on-hit control/shred hits the whole splash cluster too (AoE control /
+                            -- AoE shred when the pet has targeted_aoe geometry).
+                            applyOnHit(other, pet, nowT)
                         end
                         -- VISUALIZE the splash: an impact + floating number on each splashed target
                         -- (splash = true tells the client to play the IMPACT look, not launch a fresh
