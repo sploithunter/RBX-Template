@@ -85,8 +85,8 @@ return {
         placeholder_enemy = "lava_imp", -- slice 1: one model for all bands (faction routing = later)
         realm_layers_only = true, -- only in realm layers (heaven_/hell_), never home
         band_size = 4, -- members kept alive per band while a player is in the realm
-        waypoints = 3, -- patrol-route stops sampled around the anchor (A -> B -> C -> A)
-        patrol_radius = 45, -- studs around the BaddieSpawner anchor the route spans
+        waypoints = 3, -- patrol-route stops sampled around the cave (A -> B -> C, then home)
+        patrol_radius = 100, -- studs around the cave to pick crystal stops from
         anchor_speed = 8, -- studs/sec the band's home anchor walks between waypoints
         arrive_dist = 6, -- anchor counts a waypoint "reached" within this
         dwell_min = 2.0, -- pause range at each crystal stop (seconds)

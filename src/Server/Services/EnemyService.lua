@@ -2803,7 +2803,7 @@ function EnemyService:_patrolWaypoints(center, radius, count)
     local want = math.max(1, math.floor(count or 3))
     local game = Workspace:FindFirstChild("Game")
     local breakables = game and game:FindFirstChild("Breakables")
-    local reach = (tonumber(radius) or 45) * 2 -- generous: crystals in/around this area
+    local reach = tonumber(radius) or 100 -- crystal stops within this many studs of the cave
     local candidates = {}
     if breakables then
         for _, inst in ipairs(breakables:GetDescendants()) do
