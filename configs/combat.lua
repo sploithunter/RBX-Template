@@ -81,7 +81,7 @@ return {
     -- sampled around the anchor (grounded raycast, like crystal spawn points). SLICE 1: flag off,
     -- one placeholder enemy model for every band (per-area heaven-pet factions = the content pass).
     enemy_patrol = {
-        enabled = false, -- FLAG: ships dark; flip live (Studio) to test, then per-area content
+        enabled = true, -- FLAG: ships dark; flip live (Studio) to test, then per-area content
         placeholder_enemy = "lava_imp", -- slice 1: one model for all bands (faction routing = later)
         realm_layers_only = true, -- only in realm layers (heaven_/hell_), never home
         band_size = 4, -- members kept alive per band while a player is in the realm
@@ -89,9 +89,11 @@ return {
         patrol_radius = 45, -- studs around the BaddieSpawner anchor the route spans
         anchor_speed = 8, -- studs/sec the band's home anchor walks between waypoints
         arrive_dist = 6, -- anchor counts a waypoint "reached" within this
-        dwell_min = 2.0, -- pause range at each waypoint (seconds)
+        dwell_min = 2.0, -- pause range at each crystal stop (seconds)
         dwell_max = 5.0,
-        member_scatter = 10, -- members spawn within this radius of the anchor
+        cave_rest_min = 5.0, -- longer rest back at the cave between sorties (seconds)
+        cave_rest_max = 10.0,
+        member_scatter = 10, -- members spawn within this radius of the cave
     },
 
     -- Defensive stat (armor curve). Damage is reduced by armor/(armor+k): a pet's

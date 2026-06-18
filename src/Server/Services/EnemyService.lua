@@ -2838,20 +2838,22 @@ function EnemyService:_updateBand(part, player, cfg, now, dt)
     local band = self._bands[part]
     if not band then
         band = {
+            cave = part.Position, -- home base (the spawner part): sorties start AND end here
             anchor = part.Position,
-            waypoints = self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints),
-            wp = 1,
+            stops = self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints),
+            stopIdx = 1, -- which outbound crystal stop we're heading to
+            returning = false, -- true = heading back to the cave
             dwellUntil = 0,
             members = {},
         }
         self._bands[part] = band
     end
 
-    -- self-heal: if the route is only the anchor fallback (no crystals existed when the band formed),
-    -- re-roll until real crystal waypoints are available — keeps the patrol on valid ground.
-    if #band.waypoints <= 1 then
-        band.waypoints = self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints)
-        band.wp = 1
+    -- self-heal: if no crystal stops were found yet (only the cave fallback), re-roll until real
+    -- crystal stops exist so the next sortie has valid ground to patrol.
+    if #band.stops <= 1 and not band.returning then
+        band.stops = self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints)
+        band.stopIdx = 1
     end
 
     -- prune dead/despawned members
@@ -2887,16 +2889,32 @@ function EnemyService:_updateBand(part, player, cfg, now, dt)
         band.members[#band.members + 1] = res.targetId
     end
 
-    -- walk the anchor along the route, pausing at each waypoint
-    if #band.waypoints > 0 and now >= (band.dwellUntil or 0) then
-        local target = band.waypoints[band.wp] or band.anchor
+    -- CAVE SORTIE: walk the anchor cave -> crystal stops -> back to the cave -> rest -> repeat (with
+    -- fresh stops each sortie). The cave is the bookend; "only one patrol at a time" per area = this
+    -- single band cycling out and back, never a second concurrent route.
+    if now >= (band.dwellUntil or 0) then
+        local target = band.returning and band.cave or (band.stops[band.stopIdx] or band.cave)
         local to = Vector3.new(target.X - band.anchor.X, 0, target.Z - band.anchor.Z)
         local distXZ = to.Magnitude
         if distXZ <= (cfg.arrive_dist or 6) then
-            local lo = tonumber(cfg.dwell_min) or 2
-            local hi = tonumber(cfg.dwell_max) or 5
-            band.dwellUntil = now + lo + math.random() * math.max(0, hi - lo)
-            band.wp = (band.wp % #band.waypoints) + 1
+            if band.returning then
+                -- home at the cave: rest, then plan a fresh sortie
+                local lo = tonumber(cfg.cave_rest_min) or 5
+                local hi = tonumber(cfg.cave_rest_max) or 10
+                band.dwellUntil = now + lo + math.random() * math.max(0, hi - lo)
+                band.stops = self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints)
+                band.stopIdx = 1
+                band.returning = false
+            else
+                -- reached a crystal stop: pause, then next stop (or turn back after the last)
+                local lo = tonumber(cfg.dwell_min) or 2
+                local hi = tonumber(cfg.dwell_max) or 5
+                band.dwellUntil = now + lo + math.random() * math.max(0, hi - lo)
+                band.stopIdx += 1
+                if band.stopIdx > #band.stops then
+                    band.returning = true -- patrolled the stops; head home to the cave
+                end
+            end
         else
             local step = math.min(distXZ, (cfg.anchor_speed or 8) * (dt or 0.15))
             local dir = to.Unit
