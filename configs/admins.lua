@@ -22,6 +22,7 @@ return {
         -3, -- Player3 (Studio test player)
         -4, -- Player4 (Studio test player)
 
+        864785140, -- jason alt (xp/s + balance testing)
         -- 987654321,  -- Add more admin User IDs here
     },
 
