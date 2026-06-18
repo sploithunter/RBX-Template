@@ -1238,7 +1238,8 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     -- smooth rendering (EnemyMotion). entry.pos drives all server-side combat math.
     local ePos = entry.pos or model:GetPivot().Position
     local perceptionRange = eng.perception_range or 70
-    local def = self._enemiesConfig.enemies and self._enemiesConfig.enemies[entry.enemyId]
+    local def = entry.def
+        or (self._enemiesConfig.enemies and self._enemiesConfig.enemies[entry.enemyId])
     -- Per-enemy attack range: RANGED foes (def.attack_range, e.g. 30+) hold at distance and fire,
     -- because the chase below stops at attack_range - attack_press. Melee/tank fall to the global
     -- default and close to bite range. This is what makes the "ranged" role read as ranged.
@@ -2393,8 +2394,11 @@ function EnemyService:_assignPetTargets(eng)
                         -- TERRITORIAL: pets only auto-pick foes in the player's own area (no
                         -- reaching across a wall into another biome's pack).
                         if d <= reach and self:_inTerritory(entry, player) then
-                            local edef = self._enemiesConfig.enemies
-                                and self._enemiesConfig.enemies[entry.enemyId]
+                            local edef = entry.def
+                                or (
+                                    self._enemiesConfig.enemies
+                                    and self._enemiesConfig.enemies[entry.enemyId]
+                                )
                             candidates[#candidates + 1] = {
                                 id = etid,
                                 distance = d,
@@ -2469,7 +2473,8 @@ function EnemyService:_enemyHealPass(now)
     for tid, entry in pairs(self._enemies) do
         local model = entry.model
         if model and model.Parent and (model:GetAttribute("HP") or 0) > 0 then
-            local def = self._enemiesConfig.enemies and self._enemiesConfig.enemies[entry.enemyId]
+            local def = entry.def
+                or (self._enemiesConfig.enemies and self._enemiesConfig.enemies[entry.enemyId])
             local heal = def and def.auto_heal
             if
                 heal
@@ -2919,15 +2924,109 @@ function EnemyService:_patrolEnemyId(cfg, part)
     return cfg.placeholder_enemy or "lava_imp"
 end
 
--- Roll a varied band composition for a sortie (Jason: "a random-ish mix like home; one band scary").
--- Weighted pick from the cave origin's pool in patrol_bands_by_origin (mirrors the home wave tables).
--- Returns (units, label, scary). Falls back to band_size copies of the single per-origin enemy when an
--- origin has no pool. The returned unit counts are clamped to max_band_units so no comp over-fields.
+-- Pets of a given realm ("heaven"/"hell"), sorted weakest->strongest by base_power, each entry
+-- { id, def, power }. The patrol fields these as INVADERS (Jason: "the pets from heaven attack hell
+-- and the pets from hell attack heaven — we just use the same models"). Cached per realm; only pets
+-- with a basic mesh are eligible (so the model actually renders).
+function EnemyService:_realmPetRoster(realm)
+    if not realm then
+        return {}
+    end
+    self._petsConfig = self._petsConfig or self._configLoader:LoadConfig("pets")
+    self._petRosterCache = self._petRosterCache or {}
+    if self._petRosterCache[realm] then
+        return self._petRosterCache[realm]
+    end
+    local list = {}
+    local pets = (self._petsConfig and self._petsConfig.pets) or {}
+    for id, def in pairs(pets) do
+        if type(def) == "table" and def.realm == realm then
+            local variant = def.variants and def.variants.basic
+            if variant and variant.mesh_asset then
+                list[#list + 1] = { id = id, def = def, power = tonumber(def.base_power) or 0 }
+            end
+        end
+    end
+    table.sort(list, function(a, b)
+        return a.power < b.power
+    end)
+    self._petRosterCache[realm] = list
+    return list
+end
+
+-- Synthesize an ENEMY def from a PET def — same model (mesh+texture+scale), HP from base_health and
+-- attack from base_power, so an opposing-realm pet can wear the enemy attack script unchanged. The
+-- pet is NOT acquirable; this is purely a model+stat wrapper (Jason: "exactly the same, just attached
+-- to the attack script"). Balance knobs (hp mult, cadence, move speed) live in combat.lua enemy_patrol.
+function EnemyService:_petEnemyDef(petId, petDef)
+    local cfg = (self._combatConfig and self._combatConfig.enemy_patrol) or {}
+    local variant = (petDef.variants and petDef.variants.basic) or {}
+    local scale = (petDef.asset_transform and tonumber(petDef.asset_transform.scale)) or 1.6
+    local hpMult = tonumber(cfg.pet_enemy_hp_mult) or 10
+    local hp = math.max(1, math.floor((tonumber(petDef.base_health) or 100) * hpMult))
+    local dmg = math.max(1, math.floor(tonumber(petDef.base_power) or 10))
+    local tierByRarity = {
+        common = "trash_mob",
+        uncommon = "trash_mob",
+        rare = "trash_mob",
+        epic = "lieutenant",
+        legendary = "lieutenant",
+        mythic = "boss",
+        secret = "boss",
+        exclusive = "boss",
+    }
+    return {
+        role = "melee",
+        hp = hp,
+        display_name = petDef.display_name or petId,
+        tier = tierByRarity[petDef.rarity] or "trash_mob",
+        move_speed = tonumber(cfg.pet_enemy_move_speed) or 15,
+        armor = 0,
+        mesh_asset = variant.mesh_asset,
+        texture_asset = variant.texture_asset,
+        model_scale = scale,
+        attack = { damage = dmg, cadence = tonumber(cfg.pet_enemy_cadence) or 1.5, sundering = 0 },
+        drop_table = {}, -- invaders aren't farmed for currency (tuning pass can add realm drops)
+        _petInvader = petId,
+    }
+end
+
+-- Roll a varied band for a sortie. Returns (specs, label, scary) — each spec is
+-- { id = <enemyId>, def = <synthesized pet-invader def or nil> }. Two modes:
+--   PET INVADERS (use_pet_invaders): the band IS opposing-realm PET models wearing the attack script
+--   (pets whose realm == this cave's allegiance). One rare SCARY slot = the strongest opposing pet.
+--   ELEMENT PACKS (default): weighted comp from patrol_bands_by_origin (the home-style wave tables).
 function EnemyService:_pickPatrolBand(cfg, part)
     local origin = self:_caveOrigin(part)
     local allegiance = self:_caveAllegiance(part)
-    -- Prefer the allegiance x element matrix (heaven/hell themed packs — the content-task seam);
-    -- fall back to the realm-neutral element-only pools that exist today.
+
+    -- PET INVADERS — opposing-realm pet models as the band.
+    if cfg.use_pet_invaders and allegiance then
+        local roster = self:_realmPetRoster(allegiance) -- weak -> strong
+        if #roster > 0 then
+            local size = math.min(
+                math.max(1, math.floor(cfg.band_size or 4)),
+                math.max(1, math.floor(tonumber(cfg.max_band_units) or 8))
+            )
+            local specs = {}
+            local scary = math.random() < (tonumber(cfg.pet_invader_scary_chance) or 0.18)
+            if scary then
+                local boss = roster[#roster] -- strongest opposing pet anchors the scary band
+                specs[#specs + 1] =
+                    { id = "petinv_" .. boss.id, def = self:_petEnemyDef(boss.id, boss.def) }
+            end
+            while #specs < size do
+                local pick = roster[math.random(1, #roster)]
+                specs[#specs + 1] =
+                    { id = "petinv_" .. pick.id, def = self:_petEnemyDef(pick.id, pick.def) }
+            end
+            return specs, scary and "scary invaders" or "invaders", scary
+        end
+        -- no opposing-realm pets eligible -> fall through to element packs
+    end
+
+    -- ELEMENT PACKS — prefer the allegiance x element matrix (themed-content seam), else the
+    -- realm-neutral element-only pools.
     local pool
     local byAlleg = cfg.patrol_bands_by_allegiance
     if type(byAlleg) == "table" and allegiance and type(byAlleg[allegiance]) == "table" then
@@ -2956,22 +3055,25 @@ function EnemyService:_pickPatrolBand(cfg, part)
         end
         units, label, scary = chosen.units, chosen.label, chosen.scary == true
     else
-        -- fallback: a flat pack of the origin's single enemy
-        local size = math.max(1, math.floor(cfg.band_size or 4))
-        units = { { enemy = self:_patrolEnemyId(cfg, part), count = size } }
+        units = {
+            {
+                enemy = self:_patrolEnemyId(cfg, part),
+                count = math.max(1, math.floor(cfg.band_size or 4)),
+            },
+        }
     end
-    -- clamp the comp's total head count so a mis-edited pool can't field a horde
+    -- clamp total head count so a mis-edited pool can't field a horde; emit { id } specs
     local cap = math.max(1, math.floor(tonumber(cfg.max_band_units) or 8))
-    local flat = {}
+    local specs = {}
     for _, u in ipairs(units) do
         for _ = 1, math.max(1, math.floor(tonumber(u.count) or 1)) do
-            if #flat >= cap then
+            if #specs >= cap then
                 break
             end
-            flat[#flat + 1] = u.enemy
+            specs[#specs + 1] = { id = u.enemy }
         end
     end
-    return flat, label, scary
+    return specs, label, scary
 end
 
 -- How many crystals have spawned into a zone's ore folder. The patrol gates group spawning on this
@@ -3073,11 +3175,12 @@ function EnemyService:_updateBand(part, player, cfg, now, dt)
             local allegiance = self:_caveAllegiance(part)
             band.label, band.scary, band.allegiance = label, scary, allegiance
             local scatter = tonumber(cfg.member_scatter) or 10
-            for _, enemyId in ipairs(roster) do
+            for _, spec in ipairs(roster) do
                 local sx = band.anchor.X + (math.random() * 2 - 1) * scatter
                 local sz = band.anchor.Z + (math.random() * 2 - 1) * scatter
-                local res = self:SpawnEnemy(player, enemyId, {
+                local res = self:SpawnEnemy(player, spec.id, {
                     position = Vector3.new(sx, band.anchor.Y + 3, sz),
+                    def = spec.def, -- synthesized pet-invader def (nil for normal element packs)
                 })
                 if res and res.ok and res.targetId then
                     local e = self._enemies[res.targetId]
@@ -3284,7 +3387,10 @@ end
 -- player's local frame, on top of the base spawn distance.
 function EnemyService:SpawnEnemy(player, enemyId, opts)
     enemyId = tostring(enemyId or "lava_imp")
-    local def = self._enemiesConfig.enemies and self._enemiesConfig.enemies[enemyId]
+    -- opts.def lets a caller field a SYNTHESIZED def (e.g. a pet-model invader, see _petEnemyDef)
+    -- instead of an enemies.lua entry — the rest of the spawn path is identical (mesh/scale/hp/attack).
+    local def = (opts and type(opts.def) == "table" and opts.def)
+        or (self._enemiesConfig.enemies and self._enemiesConfig.enemies[enemyId])
     if not def then
         return { ok = false, reason = "unknown_enemy" }
     end
@@ -3328,6 +3434,7 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
     self._enemies[targetId] = {
         model = model,
         enemyId = enemyId,
+        def = def, -- the resolved def (config OR a synthesized pet-invader def); combat reads this
         pos = position,
         aggro = AggroTable.new(),
         lastActiveAt = os.clock(), -- engagement timer seed (idle-despawn clock; refreshed while aggro'd)

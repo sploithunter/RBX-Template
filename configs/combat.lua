@@ -97,6 +97,18 @@ return {
         -- faction use "Grass" (the frozen element id). Bridge the cave suffix -> element id so the
         -- areaId (Heaven_1_Grass) and enemy (rabid_dog) both resolve. Don't rename the cave/folder.
         patrol_origin_alias = { Earth = "Grass" },
+        -- PET INVADERS (Jason: "heaven pets attack hell, hell pets attack heaven — same models, just
+        -- attached to the attack script"). When true, a realm patrol fields the OPPOSING realm's PET
+        -- models as the band (heaven realm -> hell pets, hell realm -> heaven pets) instead of the
+        -- realm-neutral element packs below. The pet's mesh/texture/scale render the model; hp =
+        -- base_health x pet_enemy_hp_mult, attack damage = base_power. They are NOT acquirable — pure
+        -- model+stat wrappers on the enemy AI. One sortie in pet_invader_scary_chance leads with the
+        -- strongest opposing pet (the "somewhat scary" band).
+        use_pet_invaders = true,
+        pet_enemy_hp_mult = 10, -- base_health -> enemy hp (matches the 10x world pool scaling)
+        pet_enemy_cadence = 1.5, -- seconds between an invader's attacks
+        pet_enemy_move_speed = 15, -- studs/sec chase speed
+        pet_invader_scary_chance = 0.18, -- chance a sortie leads with the strongest opposing pet
         -- VARIED BANDS (Jason: "a random-ish mix like home; one band somewhat scary"). Each sortie
         -- rolls a weighted composition from the cave origin's pool (mirrors the home wave tables:
         -- swarm / ranged-harass / healer-escort / scary warband). scary=true marks the rare tough
