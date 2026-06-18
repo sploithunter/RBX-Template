@@ -2869,6 +2869,25 @@ function EnemyService:_caveOrigin(part)
     return suffix
 end
 
+-- A band's ALLEGIANCE: which side is invading. Heaven realms are attacked by HELL forces and Hell
+-- realms by HEAVEN forces (Jason: "heaven attacks hell and hell attacks heaven"), so allegiance is the
+-- OPPOSITE of the realm folder the cave sits in — never the realm itself. Returns nil outside the two
+-- realm families (home never patrols). Stamped on each member so themed heaven/hell content can key off it.
+function EnemyService:_caveAllegiance(part)
+    local parent = part.Parent
+    local folderName = parent and parent.Name
+    if type(folderName) ~= "string" then
+        return nil
+    end
+    local lower = folderName:lower()
+    if lower:match("^heaven") then
+        return "hell" -- heaven is invaded BY hell
+    elseif lower:match("^hell") then
+        return "heaven" -- hell is invaded BY heaven
+    end
+    return nil
+end
+
 -- The crystal folder id for a cave's zone. Realm caves are BaddieSpawner<Origin> parts living in the
 -- realm map folder (Maps/Hell_1), and their ore is foldered as <RealmFolder>_<Origin> (Hell_1_Lava),
 -- so the areaId composes from the parent folder name + the normalized origin. Mirrors the suffix
@@ -2905,9 +2924,19 @@ end
 -- Returns (units, label, scary). Falls back to band_size copies of the single per-origin enemy when an
 -- origin has no pool. The returned unit counts are clamped to max_band_units so no comp over-fields.
 function EnemyService:_pickPatrolBand(cfg, part)
-    local pools = cfg.patrol_bands_by_origin
     local origin = self:_caveOrigin(part)
-    local pool = (type(pools) == "table" and origin) and pools[origin] or nil
+    local allegiance = self:_caveAllegiance(part)
+    -- Prefer the allegiance x element matrix (heaven/hell themed packs — the content-task seam);
+    -- fall back to the realm-neutral element-only pools that exist today.
+    local pool
+    local byAlleg = cfg.patrol_bands_by_allegiance
+    if type(byAlleg) == "table" and allegiance and type(byAlleg[allegiance]) == "table" then
+        pool = origin and byAlleg[allegiance][origin] or nil
+    end
+    if not pool then
+        local pools = cfg.patrol_bands_by_origin
+        pool = (type(pools) == "table" and origin) and pools[origin] or nil
+    end
     local units, label, scary
     if type(pool) == "table" and #pool > 0 then
         local total = 0
@@ -3040,7 +3069,9 @@ function EnemyService:_updateBand(part, player, cfg, now, dt)
                 self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints, band.areaId)
             band.stopIdx = 1
             local roster, label, scary = self:_pickPatrolBand(cfg, part) -- varied comp for this sortie
-            band.label, band.scary = label, scary
+            -- allegiance = the INVADING side (heaven realm -> hell troops, hell realm -> heaven troops)
+            local allegiance = self:_caveAllegiance(part)
+            band.label, band.scary, band.allegiance = label, scary, allegiance
             local scatter = tonumber(cfg.member_scatter) or 10
             for _, enemyId in ipairs(roster) do
                 local sx = band.anchor.X + (math.random() * 2 - 1) * scatter
@@ -3055,6 +3086,10 @@ function EnemyService:_updateBand(part, player, cfg, now, dt)
                         e.patrolBand = part
                         e.home = band.anchor
                         e.spawnedAt = now
+                        e.allegiance = allegiance -- which side this invader fights for (themed content keys off this)
+                        if e.model and allegiance then
+                            e.model:SetAttribute("PatrolAllegiance", allegiance)
+                        end
                         band.members[#band.members + 1] = res.targetId
                     end
                 end
