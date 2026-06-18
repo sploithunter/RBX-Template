@@ -198,8 +198,19 @@ function BuffStatsHud.start()
     self:_connect()
     -- PROMOTED from Studio-only dev overlay to a player panel (Jason: tap the badge
     -- pile -> "that opens up the whole buff panel"): hidden by default in production,
-    -- visible at boot in Studio (the original dev-readout behavior).
-    self.gui.Enabled = RunService:IsStudio()
+    -- visible at boot in Studio (the original dev-readout behavior). ADMINS also get it
+    -- open at boot on published servers (balance testing — Jason: "I have it in Studio but
+    -- not on the published instance"); regular players still open it via the badge pile.
+    local function showByDefault()
+        return RunService:IsStudio() or self.player:GetAttribute("IsAdmin") == true
+    end
+    self.gui.Enabled = showByDefault()
+    -- IsAdmin replicates after data load (post-boot), so re-evaluate when it arrives.
+    self.player:GetAttributeChangedSignal("IsAdmin"):Connect(function()
+        if showByDefault() then
+            self.gui.Enabled = true
+        end
+    end)
     _instance = self
     return self
 end
