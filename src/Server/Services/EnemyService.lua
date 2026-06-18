@@ -2869,6 +2869,44 @@ function EnemyService:_caveAreaId(part)
     return folderName .. "_" .. suffix
 end
 
+-- How many crystals have spawned into a zone's ore folder. The patrol gates group spawning on this
+-- (Jason: "make sure the crystals respond into the environment prior to spawning any baddies") — no
+-- ore yet means no patrol route and no baddies, so bands follow the world in rather than precede it.
+function EnemyService:_zoneCrystalCount(areaId)
+    if not areaId then
+        return 0
+    end
+    local game = Workspace:FindFirstChild("Game")
+    local breakables = game and game:FindFirstChild("Breakables")
+    local crystals = breakables and breakables:FindFirstChild("Crystals")
+    local folder = crystals and crystals:FindFirstChild(areaId)
+    if not folder then
+        return 0
+    end
+    local n = 0
+    for _, inst in ipairs(folder:GetDescendants()) do
+        if inst:IsA("Model") and inst:GetAttribute("MiningLevel") ~= nil then
+            n += 1
+        end
+    end
+    return n
+end
+
+-- Despawn any enemy tagged to this cave that the band is no longer tracking (a stray whose handle we
+-- lost). Called before fielding a fresh group so "only one group" holds even if tracking drifted.
+-- Never touches an enemy that is mid-fight (aggro'd).
+function EnemyService:_despawnOrphanBandMembers(part, band)
+    local tracked = {}
+    for _, id in ipairs(band.members) do
+        tracked[id] = true
+    end
+    for id, e in pairs(self._enemies) do
+        if e.patrolBand == part and not tracked[id] and not e.aggroPlayerName then
+            self:_despawnEnemy(id)
+        end
+    end
+end
+
 function EnemyService:_updateBand(part, player, cfg, now, dt)
     self._bands = self._bands or {}
     local band = self._bands[part]
@@ -2895,7 +2933,7 @@ function EnemyService:_updateBand(part, player, cfg, now, dt)
         band.stopIdx = 1
     end
 
-    -- prune dead/despawned members
+    -- prune dead/despawned members from tracking
     local alive = {}
     for _, id in ipairs(band.members) do
         local e = self._enemies[id]
@@ -2905,27 +2943,46 @@ function EnemyService:_updateBand(part, player, cfg, now, dt)
     end
     band.members = alive
 
-    -- top the band up (members scatter around the anchor; spawned NEUTRAL so they patrol until they
-    -- perceive a player — clear the auto-aggro SpawnEnemy stamps on the triggering player)
+    -- ONE GROUP AT A TIME (Jason: "despawn a group prior to spawning another so there's only one
+    -- group"). We do NOT trickle-refill losses — that read as a second group spawning from the cave
+    -- mid-fight. A fresh FULL group is fielded only once the previous one is entirely gone, after a
+    -- respawn beat, and only after the zone's crystals have populated (baddies follow ore, never
+    -- precede it). Spawned NEUTRAL so they patrol until they perceive a player.
     local size = math.max(1, math.floor(cfg.band_size or 4))
-    local scatter = tonumber(cfg.member_scatter) or 10
-    while #band.members < size do
-        local sx = band.anchor.X + (math.random() * 2 - 1) * scatter
-        local sz = band.anchor.Z + (math.random() * 2 - 1) * scatter
-        local res = self:SpawnEnemy(player, cfg.placeholder_enemy or "lava_imp", {
-            position = Vector3.new(sx, band.anchor.Y + 3, sz),
-        })
-        if not (res and res.ok and res.targetId) then
-            break
+    if #band.members == 0 then
+        if (band.respawnAt or 0) == 0 then
+            local lo = tonumber(cfg.group_respawn_min) or 6
+            local hi = tonumber(cfg.group_respawn_max) or 14
+            band.respawnAt = now + lo + math.random() * math.max(0, hi - lo)
         end
-        local e = self._enemies[res.targetId]
-        if not e then
-            break
+        if now >= band.respawnAt and self:_zoneCrystalCount(band.areaId) > 0 then
+            self:_despawnOrphanBandMembers(part, band) -- defensive: clear any untracked stragglers
+            -- reset to the cave for a clean sortie, then field the whole group at once
+            band.anchor = band.cave
+            band.returning = false
+            band.stops =
+                self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints, band.areaId)
+            band.stopIdx = 1
+            local scatter = tonumber(cfg.member_scatter) or 10
+            for _ = 1, size do
+                local sx = band.anchor.X + (math.random() * 2 - 1) * scatter
+                local sz = band.anchor.Z + (math.random() * 2 - 1) * scatter
+                local res = self:SpawnEnemy(player, cfg.placeholder_enemy or "lava_imp", {
+                    position = Vector3.new(sx, band.anchor.Y + 3, sz),
+                })
+                if res and res.ok and res.targetId then
+                    local e = self._enemies[res.targetId]
+                    if e then
+                        self:_setAggroOwner(e, nil) -- start unaware: patrol, don't beeline the cave
+                        e.patrolBand = part
+                        e.home = band.anchor
+                        e.spawnedAt = now
+                        band.members[#band.members + 1] = res.targetId
+                    end
+                end
+            end
+            band.respawnAt = 0 -- group fielded; clock re-arms when this group is wiped
         end
-        self:_setAggroOwner(e, nil) -- start unaware: patrol, don't beeline the spawner
-        e.patrolBand = part
-        e.home = band.anchor
-        band.members[#band.members + 1] = res.targetId
     end
 
     -- CAVE SORTIE: walk the anchor cave -> crystal stops -> back to the cave -> rest -> repeat (with
@@ -2981,6 +3038,23 @@ function EnemyService:_patrolTick(now, dt)
     if not cfg or cfg.enabled ~= true then
         return
     end
+
+    -- GLOBAL STRAY SWEEP (Jason's safety net): retire any patrol enemy whose cave is gone (map
+    -- reload / band torn down) or that has outlived member_max_age while not in a fight — even if its
+    -- band isn't ticking this frame (its realm emptied of players). Catches strays no live band would
+    -- prune. Runs before the per-band update so an aged member frees its band to field the next group.
+    local maxAge = tonumber(cfg.member_max_age) or 240
+    for id, e in pairs(self._enemies) do
+        if e.patrolBand ~= nil and not e.aggroPlayerName then
+            local cave = e.patrolBand
+            local orphaned = not (typeof(cave) == "Instance" and cave.Parent ~= nil)
+            local aged = maxAge > 0 and (now - (e.spawnedAt or now)) > maxAge
+            if orphaned or aged then
+                self:_despawnEnemy(id)
+            end
+        end
+    end
+
     local maps = Workspace:FindFirstChild("Maps")
     if not maps then
         return

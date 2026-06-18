@@ -84,7 +84,7 @@ return {
         enabled = false, -- FLAG: ships dark; flip live (Studio) to test, then per-area content
         placeholder_enemy = "lava_imp", -- slice 1: one model for all bands (faction routing = later)
         realm_layers_only = true, -- only in realm layers (heaven_/hell_), never home
-        band_size = 4, -- members kept alive per band while a player is in the realm
+        band_size = 4, -- members fielded per group (ONE batch, never trickle-refilled mid-fight)
         waypoints = 3, -- patrol-route stops sampled around the cave (A -> B -> C, then home)
         patrol_radius = 100, -- studs around the cave to pick crystal stops from
         anchor_speed = 8, -- studs/sec the band's home anchor walks between waypoints
@@ -94,6 +94,14 @@ return {
         cave_rest_min = 5.0, -- longer rest back at the cave between sorties (seconds)
         cave_rest_max = 10.0,
         member_scatter = 10, -- members spawn within this radius of the cave
+        -- ONE GROUP AT A TIME (Jason): the cave never fields a new group until the previous one is
+        -- entirely gone (killed or aged out), then waits this beat before the next sortie spawns. No
+        -- mid-combat reinforcement — a second group appearing while you fought the first was the bug.
+        group_respawn_min = 6.0,
+        group_respawn_max = 14.0,
+        -- STRAY SAFETY (Jason): a member that outlives this (a lost/abandoned straggler, never in an
+        -- active fight) despawns on its own so the field can't accrete ghosts we can't find.
+        member_max_age = 240,
     },
 
     -- Defensive stat (armor curve). Damage is reduced by armor/(armor+k): a pet's
