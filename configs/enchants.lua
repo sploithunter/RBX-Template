@@ -85,6 +85,23 @@ return {
         strength = 2, -- "Mythic Strength" — THE knob (mid of the old 1-3 ranges)
     },
 
+    -- TYPE (rarity/size) MULTIPLIER on enchant magnitude (Jason: "base * type multiplier — no
+    -- shift"). The rolled `strength` is the same +N for every pet; the pet's TIER multiplies the
+    -- per-strength base at READ time (never stored on the pet record, so a traded pet re-resolves on
+    -- the new owner — same principle as stack "Mythic Strength"). Tier = the huge/titanic/colossal
+    -- size trait if present, else the pet's rarity. Resolved in EnchantService:_typeMultiplier.
+    -- Coin Finder example (base 0.06 = 6%/strength): exclusive (x2.0) +5 = 60%, colossal (x4.0)
+    -- +5 = 120%. No cap on strength (Onyx ring = +5 and up); rarer just scales bigger + adds slots.
+    type_multipliers = {
+        legendary = 1.0,
+        mythic = 1.5,
+        secret = 2.0,
+        exclusive = 2.0,
+        huge = 2.5,
+        titanic = 3.0,
+        colossal = 4.0,
+    },
+
     reroll = {
         enabled = true,
         requires_station = true,
@@ -174,6 +191,8 @@ return {
         secret = "secret",
         exclusive = "exclusive",
         huge = "huge",
+        titanic = "titanic",
+        colossal = "colossal",
     },
 
     effects = {
@@ -256,7 +275,9 @@ return {
                 kind = "breakable_reward",
                 currency = "coins",
                 combine = "multiply",
-                amount_per_strength = 0.015,
+                -- BASE per strength (legendary tier). Scaled by type_multipliers at read time:
+                -- legendary 6%/str, exclusive 12%/str (+5 = 60%), colossal 24%/str (+5 = 120%).
+                amount_per_strength = 0.06,
             },
         },
         scholar = {
@@ -389,9 +410,34 @@ return {
                 },
             },
         },
-        colossal = {
+        titanic = {
             min_rolls = 2,
             max_rolls = 4,
+            initial_roll_chance = 1.0,
+            prevent_duplicate_effects = true,
+            chances = {
+                {
+                    effect = "crystal_finder",
+                    weight = 12,
+                    strength = { low = 1, high = 6, scale = 2 },
+                },
+                { effect = "coin_finder", weight = 8, strength = { low = 1, high = 6, scale = 2 } },
+                { effect = "home_world", weight = 10, strength = { low = 1, high = 6, scale = 2 } },
+                { effect = "efficiency", weight = 5, strength = { low = 1, high = 4, scale = 4 } },
+                { effect = "tactics", weight = 2, strength = { low = 1, high = 6, scale = 3 } },
+                { effect = "scholar", weight = 2, strength = { low = 1, high = 6, scale = 3 } },
+                { effect = "luck", weight = 1, strength = { low = 1, high = 11, scale = 3 } },
+                { effect = "leadership", weight = 1, strength = { low = 1, high = 6, scale = 3 } },
+                {
+                    effect = "secret_luck",
+                    weight = 0.1,
+                    strength = { low = 1, high = 11, scale = 4 },
+                },
+            },
+        },
+        colossal = {
+            min_rolls = 2,
+            max_rolls = 5,
             initial_roll_chance = 1.0,
             prevent_duplicate_effects = true,
             chances = {

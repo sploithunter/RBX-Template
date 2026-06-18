@@ -99,8 +99,9 @@ function EnchantService:_stampAggregates(player)
             local kind = modifier and modifier.kind
             if kind and STAMPED_KINDS[kind] then
                 local strength = tonumber(enchant.strength or enchant.value) or 0
+                local typeMult = self:_typeMultiplier(self:_petTierId(pet.data))
                 totals[kind] = (totals[kind] or 0)
-                    + strength * (tonumber(modifier.amount_per_strength) or 0)
+                    + strength * (tonumber(modifier.amount_per_strength) or 0) * typeMult
             end
         end
     end
@@ -114,7 +115,9 @@ function EnchantService:_stampAggregates(player)
         local kind = modifier and modifier.kind
         if kind and STAMPED_KINDS[kind] then
             totals[kind] = (totals[kind] or 0)
-                + stackStrength * (tonumber(modifier.amount_per_strength) or 0)
+                + stackStrength
+                    * (tonumber(modifier.amount_per_strength) or 0)
+                    * self:_typeMultiplier(s.rarity)
         end
     end
     for kind, attr in pairs(STAMPED_KINDS) do
@@ -204,6 +207,29 @@ function EnchantService:_chooseWeighted(entries)
     end
 
     return entries[#entries]
+end
+
+-- TYPE multiplier (Jason "base * type multiplier — no shift"): a pet's TIER scales every enchant's
+-- per-strength base at READ time. Tier = the huge/titanic/colossal size trait if present, else the
+-- pet's rarity (mirrors _getMaxEnchantmentsForRarity's huge-first resolution). Never stored on the
+-- record, so a traded pet re-resolves on the new owner. Unknown tier -> 1.0 (legendary-equivalent).
+function EnchantService:_petTierId(petData)
+    if type(petData) ~= "table" then
+        return nil
+    end
+    if petData.huge == true then
+        return "huge"
+    end
+    -- (titanic/colossal size traits resolve here too once those tiers ship)
+    return petData.rarity_id or petData.rarity_override
+end
+
+function EnchantService:_typeMultiplier(tier)
+    local mults = self._config and self._config.type_multipliers
+    if type(mults) ~= "table" or type(tier) ~= "string" then
+        return 1
+    end
+    return tonumber(mults[tier]) or 1
 end
 
 function EnchantService:_getRollProfileForRarity(rarityId)
@@ -1093,7 +1119,14 @@ function EnchantService:_getEquippedEnchantStacks(player)
         if desc and desc.kind == "stack" then
             local rec = items[desc.stackKey]
             if type(rec) == "table" and rec.enchant ~= nil then
-                table.insert(list, { key = desc.stackKey, effect = rec.enchant })
+                -- rarity drives the enchant type_multiplier (stacks are legendary/mythic); resolve
+                -- from the pet config by id, falling back to any stored rarity_id.
+                local petCfg = self._petsConfig
+                    and self._petsConfig.pets
+                    and rec.id
+                    and self._petsConfig.pets[rec.id]
+                local rarity = (petCfg and petCfg.rarity_id) or rec.rarity_id
+                table.insert(list, { key = desc.stackKey, effect = rec.enchant, rarity = rarity })
             end
         end
     end
@@ -1112,7 +1145,8 @@ function EnchantService:_getModifierContributions(context)
             local modifier = enchantConfig and enchantConfig.modifier
             if self:_matchesModifierContext(modifier, context) then
                 local strength = tonumber(enchant.strength or enchant.value) or 0
-                local value = strength * (tonumber(modifier.amount_per_strength) or 0)
+                local typeMult = self:_typeMultiplier(self:_petTierId(pet.data))
+                local value = strength * (tonumber(modifier.amount_per_strength) or 0) * typeMult
                 local combine = modifier.combine or "add"
                 local amount = value
                 if combine == "multiply" then
@@ -1135,7 +1169,9 @@ function EnchantService:_getModifierContributions(context)
         local enchantConfig = self._config.effects and self._config.effects[s.effect]
         local modifier = enchantConfig and enchantConfig.modifier
         if modifier and self:_matchesModifierContext(modifier, context) then
-            local value = stackStrength * (tonumber(modifier.amount_per_strength) or 0)
+            local value = stackStrength
+                * (tonumber(modifier.amount_per_strength) or 0)
+                * self:_typeMultiplier(s.rarity)
             local combine = modifier.combine or "add"
             table.insert(contributions, {
                 id = tostring(s.key) .. ":" .. tostring(s.effect),

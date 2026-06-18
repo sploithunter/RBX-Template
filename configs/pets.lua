@@ -138,6 +138,8 @@ local petConfig = {
             secret = 2,
             exclusive = 2,
             huge = 3,
+            titanic = 4, -- slots scale with type (pre-wired alongside enchants.type_multipliers)
+            colossal = 5,
         },
         default_max_enchantments = 0,
         hatch_rolls_enabled = true,
