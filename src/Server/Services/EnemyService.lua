@@ -2793,14 +2793,42 @@ end
 -- the patrol. Aggro/return ride the existing perception + leash. Slice 1: placeholder model, spawns
 -- only while a player is in the realm; per-area heaven-pet factions are the content pass.
 
--- Procedural route: `count` points within `radius` of center (flat — members re-ground each step).
+-- Procedural route from VALID crystal locations (Jason: "all waypoints should be valid crystal
+-- locations — a crystal could be spawned there"). A live crystal IS a valid, grounded, in-biome
+-- spot, so we sample the route from real crystal positions near the anchor instead of raw circle
+-- points (which landed on mountainsides and sent the band climbing). Crystals live in
+-- Workspace.Game.Breakables and carry a MiningLevel attribute. Falls back to the anchor when none
+-- are spawned yet; _updateBand re-rolls the route once crystals exist.
 function EnemyService:_patrolWaypoints(center, radius, count)
+    local want = math.max(1, math.floor(count or 3))
+    local game = Workspace:FindFirstChild("Game")
+    local breakables = game and game:FindFirstChild("Breakables")
+    local reach = (tonumber(radius) or 45) * 2 -- generous: crystals in/around this area
+    local candidates = {}
+    if breakables then
+        for _, inst in ipairs(breakables:GetDescendants()) do
+            if inst:IsA("Model") and inst:GetAttribute("MiningLevel") ~= nil then
+                local pp = inst.PrimaryPart or inst:FindFirstChildWhichIsA("BasePart")
+                if pp then
+                    local dx, dz = pp.Position.X - center.X, pp.Position.Z - center.Z
+                    if (dx * dx + dz * dz) <= (reach * reach) then
+                        candidates[#candidates + 1] = pp.Position
+                    end
+                end
+            end
+        end
+    end
+    -- shuffle, take `want`
+    for i = #candidates, 2, -1 do
+        local j = math.random(1, i)
+        candidates[i], candidates[j] = candidates[j], candidates[i]
+    end
     local pts = {}
-    for _ = 1, math.max(1, math.floor(count or 3)) do
-        local ang = math.random() * math.pi * 2
-        local dist = math.sqrt(math.random()) * (radius or 45) -- uniform area sampling
-        pts[#pts + 1] =
-            Vector3.new(center.X + math.cos(ang) * dist, center.Y, center.Z + math.sin(ang) * dist)
+    for i = 1, math.min(want, #candidates) do
+        pts[#pts + 1] = candidates[i]
+    end
+    if #pts == 0 then
+        pts[1] = center -- no crystals nearby yet: hold; route re-rolls once they spawn
     end
     return pts
 end
@@ -2817,6 +2845,13 @@ function EnemyService:_updateBand(part, player, cfg, now, dt)
             members = {},
         }
         self._bands[part] = band
+    end
+
+    -- self-heal: if the route is only the anchor fallback (no crystals existed when the band formed),
+    -- re-roll until real crystal waypoints are available — keeps the patrol on valid ground.
+    if #band.waypoints <= 1 then
+        band.waypoints = self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints)
+        band.wp = 1
     end
 
     -- prune dead/despawned members
