@@ -93,6 +93,10 @@ return {
             Desert = "sand_jackal",
             Grass = "rabid_dog",
         },
+        -- The grass cave is authored "BaddieSpawnerEarth" (player-facing), but its ore folders and
+        -- faction use "Grass" (the frozen element id). Bridge the cave suffix -> element id so the
+        -- areaId (Heaven_1_Grass) and enemy (rabid_dog) both resolve. Don't rename the cave/folder.
+        patrol_origin_alias = { Earth = "Grass" },
         realm_layers_only = true, -- only in realm layers (heaven_/hell_), never home
         band_size = 4, -- members fielded per group (ONE batch, never trickle-refilled mid-fight)
         waypoints = 3, -- patrol-route stops sampled around the cave (A -> B -> C, then home)

@@ -2852,9 +2852,26 @@ function EnemyService:_patrolWaypoints(center, radius, count, areaId)
     return pts
 end
 
+-- A cave's NORMALIZED origin: the BaddieSpawner<Origin> suffix, mapped through patrol_origin_alias so
+-- the player-facing cave name resolves to the element id used by crystal folders + factions. The grass
+-- cave is authored as "BaddieSpawnerEarth" (player-facing) but its ore folders + faction use "Grass"
+-- (the frozen element id), so alias { Earth = "Grass" } bridges them without renaming anything.
+function EnemyService:_caveOrigin(part)
+    local suffix = part.Name:gsub("^BaddieSpawner", "")
+    if suffix == "" then
+        return nil
+    end
+    local cfg = self._combatConfig and self._combatConfig.enemy_patrol
+    local alias = cfg and cfg.patrol_origin_alias
+    if type(alias) == "table" and alias[suffix] then
+        return alias[suffix]
+    end
+    return suffix
+end
+
 -- The crystal folder id for a cave's zone. Realm caves are BaddieSpawner<Origin> parts living in the
 -- realm map folder (Maps/Hell_1), and their ore is foldered as <RealmFolder>_<Origin> (Hell_1_Lava),
--- so the areaId composes from the parent folder name + the part-name suffix. Mirrors the suffix
+-- so the areaId composes from the parent folder name + the normalized origin. Mirrors the suffix
 -- routing BaddieSpawnerService uses for waves, so waves and patrol stops share one zone identity.
 function EnemyService:_caveAreaId(part)
     local parent = part.Parent
@@ -2862,22 +2879,22 @@ function EnemyService:_caveAreaId(part)
     if not folderName or folderName == "" then
         return nil
     end
-    local suffix = part.Name:gsub("^BaddieSpawner", "")
-    if suffix == "" then
+    local origin = self:_caveOrigin(part)
+    if not origin then
         return nil
     end
-    return folderName .. "_" .. suffix
+    return folderName .. "_" .. origin
 end
 
--- The signature enemy a cave fields, keyed off its origin (the BaddieSpawner<Origin> suffix), so a
--- band's model reads as its home zone (Jason: cinder_whelp = Lava, frost_fox = Ice, …) instead of one
--- generic placeholder you can't place. Falls back to placeholder_enemy for any unmapped origin.
+-- The signature enemy a cave fields, keyed off its normalized origin, so a band's model reads as its
+-- home zone (Jason: lava_imp = Lava, frost_fox = Ice, sand_jackal = Desert, rabid_dog = Grass)
+-- instead of one generic placeholder you can't place. Falls back to placeholder_enemy if unmapped.
 function EnemyService:_patrolEnemyId(cfg, part)
     local map = cfg.patrol_enemy_by_origin
     if type(map) == "table" then
-        local suffix = part.Name:gsub("^BaddieSpawner", "")
-        if suffix ~= "" and map[suffix] then
-            return map[suffix]
+        local origin = self:_caveOrigin(part)
+        if origin and map[origin] then
+            return map[origin]
         end
     end
     return cfg.placeholder_enemy or "lava_imp"
