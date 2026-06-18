@@ -97,6 +97,135 @@ return {
         -- faction use "Grass" (the frozen element id). Bridge the cave suffix -> element id so the
         -- areaId (Heaven_1_Grass) and enemy (rabid_dog) both resolve. Don't rename the cave/folder.
         patrol_origin_alias = { Earth = "Grass" },
+        -- VARIED BANDS (Jason: "a random-ish mix like home; one band somewhat scary"). Each sortie
+        -- rolls a weighted composition from the cave origin's pool (mirrors the home wave tables:
+        -- swarm / ranged-harass / healer-escort / scary warband). scary=true marks the rare tough
+        -- pack (a tank/boss anchor + escorts) — low weight so it shows up occasionally, not every
+        -- sortie. All ids are DEFINED enemies (enemies.lua). Origins with no pool fall back to
+        -- band_size copies of patrol_enemy_by_origin. max_band_units caps any one comp defensively.
+        max_band_units = 8,
+        patrol_bands_by_origin = {
+            Grass = {
+                { weight = 10, label = "Dog Pack", units = { { enemy = "rabid_dog", count = 3 } } },
+                {
+                    weight = 7,
+                    label = "Crow Harass",
+                    units = {
+                        { enemy = "murder_crow", count = 2 },
+                        { enemy = "rabid_dog", count = 1 },
+                    },
+                },
+                {
+                    weight = 6,
+                    label = "Healer Escort",
+                    units = {
+                        { enemy = "rabid_bunny", count = 1 },
+                        { enemy = "rabid_dog", count = 2 },
+                    },
+                },
+                {
+                    weight = 3,
+                    scary = true,
+                    label = "Bear Warband",
+                    units = {
+                        { enemy = "raging_bear", count = 1 },
+                        { enemy = "rabid_dog", count = 2 },
+                        { enemy = "murder_crow", count = 1 },
+                    },
+                },
+            },
+            Desert = {
+                {
+                    weight = 10,
+                    label = "Jackal Pack",
+                    units = { { enemy = "sand_jackal", count = 3 } },
+                },
+                {
+                    weight = 7,
+                    label = "Vulture Harass",
+                    units = {
+                        { enemy = "carrion_vulture", count = 2 },
+                        { enemy = "sand_jackal", count = 1 },
+                    },
+                },
+                {
+                    weight = 6,
+                    label = "Scarab Escort",
+                    units = {
+                        { enemy = "golden_scarab", count = 1 },
+                        { enemy = "sand_jackal", count = 2 },
+                    },
+                },
+                {
+                    weight = 3,
+                    scary = true,
+                    label = "Tortoise Warband",
+                    units = {
+                        { enemy = "dune_tortoise", count = 1 },
+                        { enemy = "sand_jackal", count = 2 },
+                        { enemy = "carrion_vulture", count = 1 },
+                    },
+                },
+            },
+            Ice = {
+                { weight = 10, label = "Fox Pack", units = { { enemy = "frost_fox", count = 3 } } },
+                {
+                    weight = 7,
+                    label = "Owl Harass",
+                    units = {
+                        { enemy = "snowy_owl", count = 2 },
+                        { enemy = "frost_fox", count = 1 },
+                    },
+                },
+                {
+                    weight = 6,
+                    label = "Seal Escort",
+                    units = {
+                        { enemy = "aurora_seal", count = 1 },
+                        { enemy = "frost_fox", count = 2 },
+                    },
+                },
+                {
+                    weight = 3,
+                    scary = true,
+                    label = "Mammoth Warband",
+                    units = {
+                        { enemy = "glacial_mammoth", count = 1 },
+                        { enemy = "frost_fox", count = 2 },
+                        { enemy = "snowy_owl", count = 1 },
+                    },
+                },
+            },
+            Lava = {
+                { weight = 10, label = "Imp Pack", units = { { enemy = "lava_imp", count = 3 } } },
+                {
+                    weight = 7,
+                    label = "Acolyte Escort",
+                    units = {
+                        { enemy = "ember_acolyte", count = 1 },
+                        { enemy = "lava_imp", count = 2 },
+                    },
+                },
+                {
+                    weight = 6,
+                    label = "Brute Duo",
+                    units = {
+                        { enemy = "ember_brute", count = 1 },
+                        { enemy = "lava_imp", count = 2 },
+                    },
+                },
+                {
+                    weight = 3,
+                    scary = true,
+                    label = "Infernal Warband",
+                    units = {
+                        { enemy = "infernal_boss", count = 1 },
+                        { enemy = "lava_imp", count = 2 },
+                        { enemy = "ember_acolyte", count = 1 },
+                    },
+                },
+            },
+        },
         realm_layers_only = true, -- only in realm layers (heaven_/hell_), never home
         band_size = 4, -- members fielded per group (ONE batch, never trickle-refilled mid-fight)
         waypoints = 3, -- patrol-route stops sampled around the cave (A -> B -> C, then home)

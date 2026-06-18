@@ -2900,6 +2900,51 @@ function EnemyService:_patrolEnemyId(cfg, part)
     return cfg.placeholder_enemy or "lava_imp"
 end
 
+-- Roll a varied band composition for a sortie (Jason: "a random-ish mix like home; one band scary").
+-- Weighted pick from the cave origin's pool in patrol_bands_by_origin (mirrors the home wave tables).
+-- Returns (units, label, scary). Falls back to band_size copies of the single per-origin enemy when an
+-- origin has no pool. The returned unit counts are clamped to max_band_units so no comp over-fields.
+function EnemyService:_pickPatrolBand(cfg, part)
+    local pools = cfg.patrol_bands_by_origin
+    local origin = self:_caveOrigin(part)
+    local pool = (type(pools) == "table" and origin) and pools[origin] or nil
+    local units, label, scary
+    if type(pool) == "table" and #pool > 0 then
+        local total = 0
+        for _, comp in ipairs(pool) do
+            total += tonumber(comp.weight) or 0
+        end
+        local chosen = pool[#pool]
+        if total > 0 then
+            local roll = math.random() * total
+            for _, comp in ipairs(pool) do
+                roll -= tonumber(comp.weight) or 0
+                if roll <= 0 then
+                    chosen = comp
+                    break
+                end
+            end
+        end
+        units, label, scary = chosen.units, chosen.label, chosen.scary == true
+    else
+        -- fallback: a flat pack of the origin's single enemy
+        local size = math.max(1, math.floor(cfg.band_size or 4))
+        units = { { enemy = self:_patrolEnemyId(cfg, part), count = size } }
+    end
+    -- clamp the comp's total head count so a mis-edited pool can't field a horde
+    local cap = math.max(1, math.floor(tonumber(cfg.max_band_units) or 8))
+    local flat = {}
+    for _, u in ipairs(units) do
+        for _ = 1, math.max(1, math.floor(tonumber(u.count) or 1)) do
+            if #flat >= cap then
+                break
+            end
+            flat[#flat + 1] = u.enemy
+        end
+    end
+    return flat, label, scary
+end
+
 -- How many crystals have spawned into a zone's ore folder. The patrol gates group spawning on this
 -- (Jason: "make sure the crystals respond into the environment prior to spawning any baddies") — no
 -- ore yet means no patrol route and no baddies, so bands follow the world in rather than precede it.
@@ -2978,8 +3023,8 @@ function EnemyService:_updateBand(part, player, cfg, now, dt)
     -- group"). We do NOT trickle-refill losses — that read as a second group spawning from the cave
     -- mid-fight. A fresh FULL group is fielded only once the previous one is entirely gone, after a
     -- respawn beat, and only after the zone's crystals have populated (baddies follow ore, never
-    -- precede it). Spawned NEUTRAL so they patrol until they perceive a player.
-    local size = math.max(1, math.floor(cfg.band_size or 4))
+    -- precede it). The composition is rolled fresh each sortie (varied mix; one rare scary pack).
+    -- Spawned NEUTRAL so they patrol until they perceive a player.
     if #band.members == 0 then
         if (band.respawnAt or 0) == 0 then
             local lo = tonumber(cfg.group_respawn_min) or 6
@@ -2994,9 +3039,10 @@ function EnemyService:_updateBand(part, player, cfg, now, dt)
             band.stops =
                 self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints, band.areaId)
             band.stopIdx = 1
-            local enemyId = self:_patrolEnemyId(cfg, part) -- per-origin signature (cinder_whelp = Lava)
+            local roster, label, scary = self:_pickPatrolBand(cfg, part) -- varied comp for this sortie
+            band.label, band.scary = label, scary
             local scatter = tonumber(cfg.member_scatter) or 10
-            for _ = 1, size do
+            for _, enemyId in ipairs(roster) do
                 local sx = band.anchor.X + (math.random() * 2 - 1) * scatter
                 local sz = band.anchor.Z + (math.random() * 2 - 1) * scatter
                 local res = self:SpawnEnemy(player, enemyId, {
