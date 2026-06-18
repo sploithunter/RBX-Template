@@ -185,14 +185,15 @@ return {
         },
     },
 
+    -- Maps a real pets.rarities entry -> a roll_profile. Keys MUST be defined rarities (ConfigLoader
+    -- validates). titanic/colossal are NOT rarities yet (size traits), so they're not mapped here —
+    -- their roll_profiles + type_multipliers are pre-wired below; add the mapping when those tiers ship.
     rarity_profiles = {
         legendary = "legendary",
         mythic = "mythical",
         secret = "secret",
         exclusive = "exclusive",
         huge = "huge",
-        titanic = "titanic",
-        colossal = "colossal",
     },
 
     -- Each effect owns its STRENGTH ROLL: `roll = { low, high, scale }`. Strength is +1..+5 (hard

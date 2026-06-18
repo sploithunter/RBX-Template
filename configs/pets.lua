@@ -134,12 +134,12 @@ local petConfig = {
         -- NOTE: a rarity here is FORCED unique (per-uid record) — mythic was removed
         -- by Storage v2 D1/D2: mythics are stackable with a hatch-rolled STACK enchant
         -- (configs/enchants.lua stack_enchants), not per-uid enchantable records.
+        -- Keys MUST be defined rarities (ConfigLoader validates). titanic/colossal aren't rarities
+        -- yet (size traits) — add their slot counts (4/5) here when those tiers ship as real rarities.
         max_enchantments_by_rarity = {
             secret = 2,
             exclusive = 2,
             huge = 3,
-            titanic = 4, -- slots scale with type (pre-wired alongside enchants.type_multipliers)
-            colossal = 5,
         },
         default_max_enchantments = 0,
         hatch_rolls_enabled = true,
