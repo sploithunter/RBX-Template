@@ -6,6 +6,7 @@
 ]]
 
 local enchants = loadModule("configs/enchants.lua")
+local pets = loadModule("configs/pets.lua")
 
 local function coinPct(strength, tier)
     local base = enchants.effects.coin_finder.modifier.amount_per_strength
@@ -71,6 +72,30 @@ return function()
             for _, profile in pairs(enchants.roll_profiles) do
                 for _, entry in ipairs(profile.chances or {}) do
                     expect(entry.strength).to.equal(nil)
+                end
+            end
+        end)
+    end)
+
+    -- These mirror ConfigLoader's runtime validation (which mise-run-ci does NOT execute) — the gap
+    -- that let two boot crashes through. Keys in the rarity-keyed maps MUST be real pets.rarities.
+    describe("enchant config matches ConfigLoader invariants (boot-crash guard)", function()
+        it("rarity_profiles keys are all real pets.rarities", function()
+            for rarityId in pairs(enchants.rarity_profiles) do
+                expect(pets.rarities[rarityId]).never.to.equal(nil)
+            end
+        end)
+
+        it("pets.enchanting.max_enchantments_by_rarity keys are all real pets.rarities", function()
+            for rarityId in pairs(pets.enchanting.max_enchantments_by_rarity) do
+                expect(pets.rarities[rarityId]).never.to.equal(nil)
+            end
+        end)
+
+        it("every chances entry references a defined effect", function()
+            for _, profile in pairs(enchants.roll_profiles) do
+                for _, entry in ipairs(profile.chances or {}) do
+                    expect(enchants.effects[entry.effect]).never.to.equal(nil)
                 end
             end
         end)
