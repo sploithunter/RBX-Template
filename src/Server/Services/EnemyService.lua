@@ -2796,51 +2796,89 @@ end
 -- Procedural route from VALID crystal locations (Jason: "all waypoints should be valid crystal
 -- locations — a crystal could be spawned there"). A live crystal IS a valid, grounded, in-biome
 -- spot, so we sample the route from real crystal positions near the anchor instead of raw circle
--- points (which landed on mountainsides and sent the band climbing). Crystals live in
--- Workspace.Game.Breakables and carry a MiningLevel attribute. Falls back to the anchor when none
--- are spawned yet; _updateBand re-rolls the route once crystals exist.
-function EnemyService:_patrolWaypoints(center, radius, count)
+-- points (which landed on mountainsides and sent the band climbing).
+--
+-- AREA BOUNDARY (Jason: "they should be bounded by the area-ID crystals"): a band patrols ONLY its
+-- own zone's crystals. Crystals are foldered by areaId under Workspace.Game.Breakables.Crystals.<areaId>
+-- (e.g. Hell_1_Lava), so we scan that ONE folder — never the whole map — so a Lava band can't wander
+-- onto Ice/Desert ore. No areaId folder yet (ore not spawned) = hold; _updateBand re-rolls once it
+-- fills. Prefer stops within `radius` of the cave; if none are that close (cave sits at the zone's
+-- edge), fall back to the NEAREST in-area crystals so the route stays inside the zone either way.
+function EnemyService:_patrolWaypoints(center, radius, count, areaId)
     local want = math.max(1, math.floor(count or 3))
+    local reach = tonumber(radius) or 100 -- preferred crystal stops within this many studs of the cave
     local game = Workspace:FindFirstChild("Game")
     local breakables = game and game:FindFirstChild("Breakables")
-    local reach = tonumber(radius) or 100 -- crystal stops within this many studs of the cave
-    local candidates = {}
-    if breakables then
-        for _, inst in ipairs(breakables:GetDescendants()) do
+    local crystals = breakables and breakables:FindFirstChild("Crystals")
+    local areaFolder = (areaId and crystals) and crystals:FindFirstChild(areaId) or nil
+    local within, all = {}, {}
+    if areaFolder then
+        for _, inst in ipairs(areaFolder:GetDescendants()) do
             if inst:IsA("Model") and inst:GetAttribute("MiningLevel") ~= nil then
                 local pp = inst.PrimaryPart or inst:FindFirstChildWhichIsA("BasePart")
                 if pp then
                     local dx, dz = pp.Position.X - center.X, pp.Position.Z - center.Z
-                    if (dx * dx + dz * dz) <= (reach * reach) then
-                        candidates[#candidates + 1] = pp.Position
+                    local d2 = dx * dx + dz * dz
+                    all[#all + 1] = { pos = pp.Position, d2 = d2 }
+                    if d2 <= (reach * reach) then
+                        within[#within + 1] = pp.Position
                     end
                 end
             end
         end
     end
-    -- shuffle, take `want`
-    for i = #candidates, 2, -1 do
-        local j = math.random(1, i)
-        candidates[i], candidates[j] = candidates[j], candidates[i]
-    end
     local pts = {}
-    for i = 1, math.min(want, #candidates) do
-        pts[#pts + 1] = candidates[i]
+    if #within > 0 then
+        -- shuffle the in-range crystals, take `want` (varied route each sortie)
+        for i = #within, 2, -1 do
+            local j = math.random(1, i)
+            within[i], within[j] = within[j], within[i]
+        end
+        for i = 1, math.min(want, #within) do
+            pts[#pts + 1] = within[i]
+        end
+    elseif #all > 0 then
+        -- none within reach but the zone has crystals: take the nearest in-area ones (stays bounded)
+        table.sort(all, function(a, b)
+            return a.d2 < b.d2
+        end)
+        for i = 1, math.min(want, #all) do
+            pts[#pts + 1] = all[i].pos
+        end
     end
     if #pts == 0 then
-        pts[1] = center -- no crystals nearby yet: hold; route re-rolls once they spawn
+        pts[1] = center -- no in-area crystals yet: hold at the cave; route re-rolls once they spawn
     end
     return pts
+end
+
+-- The crystal folder id for a cave's zone. Realm caves are BaddieSpawner<Origin> parts living in the
+-- realm map folder (Maps/Hell_1), and their ore is foldered as <RealmFolder>_<Origin> (Hell_1_Lava),
+-- so the areaId composes from the parent folder name + the part-name suffix. Mirrors the suffix
+-- routing BaddieSpawnerService uses for waves, so waves and patrol stops share one zone identity.
+function EnemyService:_caveAreaId(part)
+    local parent = part.Parent
+    local folderName = parent and parent.Name
+    if not folderName or folderName == "" then
+        return nil
+    end
+    local suffix = part.Name:gsub("^BaddieSpawner", "")
+    if suffix == "" then
+        return nil
+    end
+    return folderName .. "_" .. suffix
 end
 
 function EnemyService:_updateBand(part, player, cfg, now, dt)
     self._bands = self._bands or {}
     local band = self._bands[part]
     if not band then
+        local areaId = self:_caveAreaId(part) -- scope crystal stops to THIS zone's ore only
         band = {
             cave = part.Position, -- home base (the spawner part): sorties start AND end here
             anchor = part.Position,
-            stops = self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints),
+            areaId = areaId,
+            stops = self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints, areaId),
             stopIdx = 1, -- which outbound crystal stop we're heading to
             returning = false, -- true = heading back to the cave
             dwellUntil = 0,
@@ -2852,7 +2890,8 @@ function EnemyService:_updateBand(part, player, cfg, now, dt)
     -- self-heal: if no crystal stops were found yet (only the cave fallback), re-roll until real
     -- crystal stops exist so the next sortie has valid ground to patrol.
     if #band.stops <= 1 and not band.returning then
-        band.stops = self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints)
+        band.stops =
+            self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints, band.areaId)
         band.stopIdx = 1
     end
 
@@ -2902,7 +2941,12 @@ function EnemyService:_updateBand(part, player, cfg, now, dt)
                 local lo = tonumber(cfg.cave_rest_min) or 5
                 local hi = tonumber(cfg.cave_rest_max) or 10
                 band.dwellUntil = now + lo + math.random() * math.max(0, hi - lo)
-                band.stops = self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints)
+                band.stops = self:_patrolWaypoints(
+                    part.Position,
+                    cfg.patrol_radius,
+                    cfg.waypoints,
+                    band.areaId
+                )
                 band.stopIdx = 1
                 band.returning = false
             else
