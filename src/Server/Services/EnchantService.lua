@@ -271,10 +271,12 @@ function EnchantService:_buildEnchant(entry, profileId)
         return nil
     end
 
+    -- Strength rolls from the EFFECT's `roll` ({low,high,scale}, +1..+5, rarity-independent);
+    -- entry.strength is the legacy per-profile fallback (profiles no longer carry it).
     return {
         id = enchantId,
         display_name = enchantConfig.display_name or enchantId,
-        strength = self:_rollStrength(entry.strength),
+        strength = self:_rollStrength(enchantConfig.roll or entry.strength),
         roll_profile = profileId,
         rolled_at = tick(),
     }

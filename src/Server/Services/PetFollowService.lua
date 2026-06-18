@@ -901,8 +901,15 @@ function PetFollowService:_mine(player, pet, breakable)
         end
     end
 
-    self._nextHit[pet] = now
-        + combat:ResolvePetAttackInterval(player, ctx) * (tonumber(pacing.interval_mult) or 1)
+    local hitInterval = combat:ResolvePetAttackInterval(player, ctx)
+        * (tonumber(pacing.interval_mult) or 1)
+    -- HASTE aura (efficiency-as-aura, team-wide): PetHasteBuff is a player multiplier (1.25 = +25%
+    -- speed) that SHORTENS the interval. Bounded to <=2.5x so a stack can't drive attacks to instant.
+    if (player:GetAttribute("PetHasteBuffUntil") or 0) > os.time() then
+        local haste = math.clamp(tonumber(player:GetAttribute("PetHasteBuff")) or 1, 1, 2.5)
+        hitInterval = hitInterval / haste
+    end
+    self._nextHit[pet] = now + hitInterval
 
     -- Drive the attack VISUAL off the real hit: tell the owning client to play this pet's
     -- effect (bolt/projectile for ranged, impact for melee) at this exact moment + target, so

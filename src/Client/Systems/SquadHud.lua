@@ -296,6 +296,16 @@ local PET_EFFECTS = {
         icon = POWER_ICONS.discFor("fire", "chevrons_up"),
     },
     {
+        key = "haste",
+        source = "pet",
+        untilAttr = "HasteFxUntil", -- team attack-speed aura (efficiency-as-aura)
+        stacksAttr = "HasteFxUntilStacks",
+        steady = true,
+        color = Color3.fromRGB(255, 200, 90),
+        label = "SPD",
+        icon = POWER_ICONS.discFor("fire", "history"),
+    },
+    {
         key = "yield",
         source = "pet",
         untilAttr = "YieldFxUntil",

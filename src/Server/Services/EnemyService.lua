@@ -2128,6 +2128,11 @@ function EnemyService:_supportPass(now)
                 elseif kind == "offense" then
                     self:_auraPlayerBuff(folder, "PetTeamDamageBuff", aura, count, weight)
                     self:_stampAuraFx(folder, "OffenseFxUntil", aura, count)
+                elseif kind == "haste" then
+                    -- team ATTACK-SPEED buff (efficiency-as-aura): a player multiplier consumed in
+                    -- PetFollowService (shortens the attack interval, bounded). Same channel as offense.
+                    self:_auraPlayerBuff(folder, "PetHasteBuff", aura, count, weight)
+                    self:_stampAuraFx(folder, "HasteFxUntil", aura, count)
                 elseif kind == "empower" then
                     -- SINGLE-TARGET damage buffer (carry amplifier): N empower buffers lift the
                     -- top-N strongest allies, not the whole team.

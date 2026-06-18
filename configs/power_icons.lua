@@ -188,6 +188,7 @@ local M = {
         hold = "capacitor", -- controller HOLD glyph (capacitor IS the hold art; see discs map above)
         empower = "chevrons_up", -- single-target damage buffer: SAME damage-up glyph as offense; the
         -- single-target ring (SUPPORT_META.ring = "single") is what reads it apart from team offense
+        haste = "history", -- team attack-speed aura (efficiency-as-aura); reuse the clock/recharge glyph
     },
     power_glyph_symbol = {
         debuff = "contagion",

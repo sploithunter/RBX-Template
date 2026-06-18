@@ -103,6 +103,7 @@ return {
         heal = "single",
         rage = "single",
         offense = "aura",
+        haste = "aura", -- team attack-speed aura (efficiency-as-aura)
         defense = "aura",
         yield = "aura",
         luck = "aura",
@@ -132,7 +133,11 @@ return {
         emberling_cherub = { kind = "heal", interval = 2.0, fraction = 0.08, duration = 6 },
         -- Realm support pets — generated
         sun_scarab = { kind = "yield", interval = 2.0, mult = 1.1667, duration = 6 },
-        cinderling_imp = { kind = "offense", interval = 2.0, mult = 1.1667, duration = 6 },
+        -- HASTE (efficiency-as-aura): a team ATTACK-SPEED buff — the first cadence buffer. Reassigned
+        -- from a duplicate offense aura (emberimp already covers War-Cry) so Haste has a home. mult =
+        -- speedup factor (1.25 base = pets swing ~25% faster; bounded in PetFollowService so it can't
+        -- drive attacks to instant). Scales by variant like the other auras.
+        cinderling_imp = { kind = "haste", interval = 2.0, mult = 1.25, duration = 6 },
         -- SINGLE-TARGET damage buffer (the first "empower" pet): concentrates +50% damage on the
         -- squad's STRONGEST ally instead of spreading like the team offense aura — the carry
         -- amplifier. Hell's aggressive theme fits it; it also frees Desert from double-yield (the

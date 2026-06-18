@@ -202,11 +202,12 @@ local QuantitySelector = require(script.Parent.Parent.Components.QuantitySelecto
 local SUPPORT_META = {
     heal = { element = "earth", label = "Heal" },
     defense = { element = "ice", label = "Defense" },
-    offense = { element = "fire", label = "Offense" },
+    offense = { element = "fire", label = "War-Cry" }, -- team damage aura (renamed from "Offense")
     yield = { element = "desert", label = "Coin Yield" },
     luck = { element = "earth", label = "Luck" }, -- bunny's lucky-rabbit aura (Grass)
     hold = { element = "ice", label = "Hold" }, -- single-target CC; ring derived via PetTargeting.auraScope
     empower = { element = "fire", label = "Empower" }, -- single-target buffer; ring derived via PetTargeting.auraScope
+    haste = { element = "fire", label = "Haste" }, -- team attack-speed aura (efficiency-as-aura)
 }
 local petVisualsOk, PetVariantVisuals = pcall(function()
     return require(ReplicatedStorage.Shared.Services.PetVariantVisuals)

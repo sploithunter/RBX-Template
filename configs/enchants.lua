@@ -195,10 +195,17 @@ return {
         colossal = "colossal",
     },
 
+    -- Each effect owns its STRENGTH ROLL: `roll = { low, high, scale }`. Strength is +1..+5 (hard
+    -- cap, high = 5 for all — no 6+), rarity-INDEPENDENT, so "+5 odds" is one transparent number for
+    -- an effect on ANY pet that can roll it. `scale` is the climb steepness: each step toward +5 has
+    -- a 1/scale chance, so P(+5) = (1/scale)^4. Rarity's edge is the type_multiplier (value) + slots,
+    -- NOT the odds. The rarity profiles below only pick WHICH effects roll and their WEIGHTS.
+    --   scale 2 -> +5 = 6.25%  | 3 -> 1.2%  | 4 -> 0.39%  | 5 -> 0.16%  | 6 -> 0.08%
     effects = {
         home_world = {
             display_name = "Home World",
             description = "Increases breakable rewards while the pet is useful in the current world.",
+            roll = { low = 1, high = 5, scale = 2 },
             modifier = {
                 stage = "enchants",
                 kind = "breakable_reward",
@@ -208,7 +215,8 @@ return {
         },
         efficiency = {
             display_name = "Efficiency",
-            description = "Template effect for faster pet work or attack cadence.",
+            description = "Faster pet attack cadence (team-wide; pet_efficiency pipeline).",
+            roll = { low = 1, high = 5, scale = 4 },
             modifier = {
                 stage = "enchants",
                 kind = "pet_efficiency",
@@ -218,7 +226,8 @@ return {
         },
         tactics = {
             display_name = "Tactics",
-            description = "Template effect for pet damage or target efficiency.",
+            description = "More pet damage (team-wide; pet_damage pipeline).",
+            roll = { low = 1, high = 5, scale = 3 },
             modifier = {
                 stage = "enchants",
                 kind = "pet_damage",
@@ -229,6 +238,7 @@ return {
         leadership = {
             display_name = "Leadership",
             description = "Template effect for team-wide pet power bonuses.",
+            roll = { low = 1, high = 5, scale = 3 },
             modifier = {
                 stage = "enchants",
                 kind = "team_power",
@@ -239,6 +249,7 @@ return {
         luck = {
             display_name = "Luck",
             description = "Template effect for general hatch luck.",
+            roll = { low = 1, high = 5, scale = 5 },
             modifier = {
                 stage = "enchants",
                 kind = "hatch_luck",
@@ -249,6 +260,7 @@ return {
         secret_luck = {
             display_name = "Secret Luck",
             description = "Template effect for secret-pet hatch luck.",
+            roll = { low = 1, high = 5, scale = 6 },
             modifier = {
                 stage = "enchants",
                 kind = "secret_hatch_luck",
@@ -259,6 +271,7 @@ return {
         crystal_finder = {
             display_name = "Crystal Finder",
             description = "Increases crystal rewards from breakables.",
+            roll = { low = 1, high = 5, scale = 2 },
             modifier = {
                 stage = "enchants",
                 kind = "breakable_reward",
@@ -270,6 +283,7 @@ return {
         coin_finder = {
             display_name = "Coin Finder",
             description = "Increases coin rewards from breakables.",
+            roll = { low = 1, high = 5, scale = 2 },
             modifier = {
                 stage = "enchants",
                 kind = "breakable_reward",
@@ -283,6 +297,7 @@ return {
         scholar = {
             display_name = "Scholar",
             description = "Increases pet XP earned from breakables.",
+            roll = { low = 1, high = 5, scale = 3 },
             modifier = {
                 stage = "enchants",
                 kind = "pet_xp",
@@ -292,6 +307,9 @@ return {
         },
     },
 
+    -- Profiles pick WHICH effects can roll + their WEIGHTS only. Strength now lives on each effect
+    -- (effects[id].roll, +1..+5, rarity-independent) — so a profile no longer carries strength.
+    -- min/max_rolls = how many SLOTS roll at hatch; initial_roll_chance = per-slot gate.
     roll_profiles = {
         legendary = {
             min_rolls = 1,
@@ -299,16 +317,12 @@ return {
             initial_roll_chance = 1.0,
             prevent_duplicate_effects = true,
             chances = {
-                { effect = "home_world", weight = 10, strength = { low = 1, high = 3, scale = 3 } },
-                { effect = "efficiency", weight = 5, strength = { low = 1, high = 3, scale = 5 } },
-                { effect = "tactics", weight = 2, strength = { low = 1, high = 5, scale = 5 } },
-                { effect = "luck", weight = 1, strength = { low = 1, high = 10, scale = 30 } },
-                { effect = "leadership", weight = 1, strength = { low = 1, high = 5, scale = 5 } },
-                {
-                    effect = "secret_luck",
-                    weight = 0.1,
-                    strength = { low = 1, high = 10, scale = 30 },
-                },
+                { effect = "home_world", weight = 10 },
+                { effect = "efficiency", weight = 5 },
+                { effect = "tactics", weight = 2 },
+                { effect = "luck", weight = 1 },
+                { effect = "leadership", weight = 1 },
+                { effect = "secret_luck", weight = 0.1 },
             },
         },
         mythical = {
@@ -317,22 +331,14 @@ return {
             initial_roll_chance = 0.35,
             prevent_duplicate_effects = true,
             chances = {
-                {
-                    effect = "crystal_finder",
-                    weight = 12,
-                    strength = { low = 1, high = 3, scale = 3 },
-                },
-                { effect = "coin_finder", weight = 8, strength = { low = 1, high = 3, scale = 3 } },
-                { effect = "home_world", weight = 10, strength = { low = 1, high = 3, scale = 3 } },
-                { effect = "efficiency", weight = 5, strength = { low = 1, high = 3, scale = 5 } },
-                { effect = "tactics", weight = 2, strength = { low = 1, high = 5, scale = 5 } },
-                { effect = "scholar", weight = 2, strength = { low = 1, high = 4, scale = 5 } },
-                { effect = "luck", weight = 1, strength = { low = 1, high = 10, scale = 20 } },
-                {
-                    effect = "secret_luck",
-                    weight = 0.1,
-                    strength = { low = 1, high = 10, scale = 20 },
-                },
+                { effect = "crystal_finder", weight = 12 },
+                { effect = "coin_finder", weight = 8 },
+                { effect = "home_world", weight = 10 },
+                { effect = "efficiency", weight = 5 },
+                { effect = "tactics", weight = 2 },
+                { effect = "scholar", weight = 2 },
+                { effect = "luck", weight = 1 },
+                { effect = "secret_luck", weight = 0.1 },
             },
         },
         secret = {
@@ -341,23 +347,15 @@ return {
             initial_roll_chance = 0.65,
             prevent_duplicate_effects = true,
             chances = {
-                {
-                    effect = "crystal_finder",
-                    weight = 12,
-                    strength = { low = 1, high = 4, scale = 3 },
-                },
-                { effect = "coin_finder", weight = 8, strength = { low = 1, high = 4, scale = 3 } },
-                { effect = "home_world", weight = 10, strength = { low = 1, high = 3, scale = 3 } },
-                { effect = "efficiency", weight = 5, strength = { low = 1, high = 3, scale = 4 } },
-                { effect = "tactics", weight = 2, strength = { low = 1, high = 5, scale = 4 } },
-                { effect = "scholar", weight = 2, strength = { low = 1, high = 5, scale = 4 } },
-                { effect = "luck", weight = 1, strength = { low = 1, high = 10, scale = 6 } },
-                { effect = "leadership", weight = 1, strength = { low = 1, high = 5, scale = 4 } },
-                {
-                    effect = "secret_luck",
-                    weight = 0.1,
-                    strength = { low = 1, high = 10, scale = 6 },
-                },
+                { effect = "crystal_finder", weight = 12 },
+                { effect = "coin_finder", weight = 8 },
+                { effect = "home_world", weight = 10 },
+                { effect = "efficiency", weight = 5 },
+                { effect = "tactics", weight = 2 },
+                { effect = "scholar", weight = 2 },
+                { effect = "luck", weight = 1 },
+                { effect = "leadership", weight = 1 },
+                { effect = "secret_luck", weight = 0.1 },
             },
         },
         exclusive = {
@@ -366,23 +364,15 @@ return {
             initial_roll_chance = 1.0,
             prevent_duplicate_effects = true,
             chances = {
-                {
-                    effect = "crystal_finder",
-                    weight = 12,
-                    strength = { low = 1, high = 5, scale = 2 },
-                },
-                { effect = "coin_finder", weight = 8, strength = { low = 1, high = 5, scale = 2 } },
-                { effect = "home_world", weight = 10, strength = { low = 1, high = 5, scale = 2 } },
-                { effect = "efficiency", weight = 5, strength = { low = 1, high = 3, scale = 5 } },
-                { effect = "tactics", weight = 2, strength = { low = 1, high = 5, scale = 3 } },
-                { effect = "scholar", weight = 2, strength = { low = 1, high = 5, scale = 3 } },
-                { effect = "luck", weight = 1, strength = { low = 1, high = 10, scale = 3 } },
-                { effect = "leadership", weight = 1, strength = { low = 1, high = 5, scale = 3 } },
-                {
-                    effect = "secret_luck",
-                    weight = 0.1,
-                    strength = { low = 1, high = 10, scale = 4 },
-                },
+                { effect = "crystal_finder", weight = 12 },
+                { effect = "coin_finder", weight = 8 },
+                { effect = "home_world", weight = 10 },
+                { effect = "efficiency", weight = 5 },
+                { effect = "tactics", weight = 2 },
+                { effect = "scholar", weight = 2 },
+                { effect = "luck", weight = 1 },
+                { effect = "leadership", weight = 1 },
+                { effect = "secret_luck", weight = 0.1 },
             },
         },
         huge = {
@@ -391,23 +381,15 @@ return {
             initial_roll_chance = 1.0,
             prevent_duplicate_effects = true,
             chances = {
-                {
-                    effect = "crystal_finder",
-                    weight = 12,
-                    strength = { low = 1, high = 5, scale = 2 },
-                },
-                { effect = "coin_finder", weight = 8, strength = { low = 1, high = 5, scale = 2 } },
-                { effect = "home_world", weight = 10, strength = { low = 1, high = 5, scale = 2 } },
-                { effect = "efficiency", weight = 5, strength = { low = 1, high = 3, scale = 5 } },
-                { effect = "tactics", weight = 2, strength = { low = 1, high = 5, scale = 3 } },
-                { effect = "scholar", weight = 2, strength = { low = 1, high = 5, scale = 3 } },
-                { effect = "luck", weight = 1, strength = { low = 1, high = 10, scale = 3 } },
-                { effect = "leadership", weight = 1, strength = { low = 1, high = 5, scale = 3 } },
-                {
-                    effect = "secret_luck",
-                    weight = 0.1,
-                    strength = { low = 1, high = 10, scale = 4 },
-                },
+                { effect = "crystal_finder", weight = 12 },
+                { effect = "coin_finder", weight = 8 },
+                { effect = "home_world", weight = 10 },
+                { effect = "efficiency", weight = 5 },
+                { effect = "tactics", weight = 2 },
+                { effect = "scholar", weight = 2 },
+                { effect = "luck", weight = 1 },
+                { effect = "leadership", weight = 1 },
+                { effect = "secret_luck", weight = 0.1 },
             },
         },
         titanic = {
@@ -416,23 +398,15 @@ return {
             initial_roll_chance = 1.0,
             prevent_duplicate_effects = true,
             chances = {
-                {
-                    effect = "crystal_finder",
-                    weight = 12,
-                    strength = { low = 1, high = 6, scale = 2 },
-                },
-                { effect = "coin_finder", weight = 8, strength = { low = 1, high = 6, scale = 2 } },
-                { effect = "home_world", weight = 10, strength = { low = 1, high = 6, scale = 2 } },
-                { effect = "efficiency", weight = 5, strength = { low = 1, high = 4, scale = 4 } },
-                { effect = "tactics", weight = 2, strength = { low = 1, high = 6, scale = 3 } },
-                { effect = "scholar", weight = 2, strength = { low = 1, high = 6, scale = 3 } },
-                { effect = "luck", weight = 1, strength = { low = 1, high = 11, scale = 3 } },
-                { effect = "leadership", weight = 1, strength = { low = 1, high = 6, scale = 3 } },
-                {
-                    effect = "secret_luck",
-                    weight = 0.1,
-                    strength = { low = 1, high = 11, scale = 4 },
-                },
+                { effect = "crystal_finder", weight = 12 },
+                { effect = "coin_finder", weight = 8 },
+                { effect = "home_world", weight = 10 },
+                { effect = "efficiency", weight = 5 },
+                { effect = "tactics", weight = 2 },
+                { effect = "scholar", weight = 2 },
+                { effect = "luck", weight = 1 },
+                { effect = "leadership", weight = 1 },
+                { effect = "secret_luck", weight = 0.1 },
             },
         },
         colossal = {
@@ -441,23 +415,15 @@ return {
             initial_roll_chance = 1.0,
             prevent_duplicate_effects = true,
             chances = {
-                {
-                    effect = "crystal_finder",
-                    weight = 12,
-                    strength = { low = 2, high = 7, scale = 2 },
-                },
-                { effect = "coin_finder", weight = 8, strength = { low = 2, high = 7, scale = 2 } },
-                { effect = "home_world", weight = 10, strength = { low = 2, high = 7, scale = 2 } },
-                { effect = "efficiency", weight = 5, strength = { low = 1, high = 4, scale = 4 } },
-                { effect = "tactics", weight = 2, strength = { low = 2, high = 7, scale = 3 } },
-                { effect = "scholar", weight = 2, strength = { low = 2, high = 7, scale = 3 } },
-                { effect = "luck", weight = 1, strength = { low = 2, high = 12, scale = 3 } },
-                { effect = "leadership", weight = 1, strength = { low = 2, high = 7, scale = 3 } },
-                {
-                    effect = "secret_luck",
-                    weight = 0.1,
-                    strength = { low = 2, high = 12, scale = 4 },
-                },
+                { effect = "crystal_finder", weight = 12 },
+                { effect = "coin_finder", weight = 8 },
+                { effect = "home_world", weight = 10 },
+                { effect = "efficiency", weight = 5 },
+                { effect = "tactics", weight = 2 },
+                { effect = "scholar", weight = 2 },
+                { effect = "luck", weight = 1 },
+                { effect = "leadership", weight = 1 },
+                { effect = "secret_luck", weight = 0.1 },
             },
         },
     },

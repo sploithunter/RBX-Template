@@ -53,4 +53,26 @@ return function()
             end
         end)
     end)
+
+    describe("enchant strength roll (+5 hard cap, per-effect, rarity-independent)", function()
+        it("every effect rolls +1..+5 (high == 5, no 6+)", function()
+            for id, effect in pairs(enchants.effects) do
+                expect(type(effect.roll)).to.equal("table")
+                expect(effect.roll.low).to.equal(1)
+                expect(effect.roll.high).to.equal(5) -- HARD cap for all (was 6/7 on titanic/colossal)
+                expect(type(effect.roll.scale)).to.equal("number")
+                if id == "coin_finder" then
+                    expect(effect.roll.scale).to.equal(2)
+                end
+            end
+        end)
+
+        it("rarity profiles carry no strength (effect+weight only)", function()
+            for _, profile in pairs(enchants.roll_profiles) do
+                for _, entry in ipairs(profile.chances or {}) do
+                    expect(entry.strength).to.equal(nil)
+                end
+            end
+        end)
+    end)
 end
