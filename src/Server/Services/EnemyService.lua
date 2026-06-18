@@ -2975,8 +2975,26 @@ function EnemyService:_petEnemyDef(petId, petDef)
         secret = "boss",
         exclusive = "boss",
     }
+    -- SUPPORT INVADERS (Jason): a support pet doesn't melee — it either helps its team or stays
+    -- neutral. Easiest correct mapping: damage 0 (no attack), and if its aura is HEAL give it the
+    -- enemy-side auto_heal so it mends its band (the one support kind with an existing enemy hook).
+    -- Other auras (defense/offense/yield/luck/hold) have no enemy mechanic yet, so those are simply
+    -- neutral non-combatants.
+    local roles = self._petRoles or {}
+    local isSupport = (roles.roles and roles.roles[petId]) == "support"
+    local aura = roles.support_auras and roles.support_auras[petId]
+    local attack = { damage = dmg, cadence = tonumber(cfg.pet_enemy_cadence) or 1.5, sundering = 0 }
+    local autoHeal
+    if isSupport then
+        attack.damage = 0 -- support invaders don't attack
+        if type(aura) == "table" and aura.kind == "heal" then
+            local amount = tonumber(aura.amount)
+                or math.max(1, math.floor(hp * (tonumber(aura.fraction) or 0.08)))
+            autoHeal = { interval = tonumber(aura.interval) or 2.0, amount = amount, range = 45 }
+        end
+    end
     return {
-        role = "melee",
+        role = isSupport and "support" or "melee",
         hp = hp,
         display_name = petDef.display_name or petId,
         tier = tierByRarity[petDef.rarity] or "trash_mob",
@@ -2985,7 +3003,8 @@ function EnemyService:_petEnemyDef(petId, petDef)
         mesh_asset = variant.mesh_asset,
         texture_asset = variant.texture_asset,
         model_scale = scale,
-        attack = { damage = dmg, cadence = tonumber(cfg.pet_enemy_cadence) or 1.5, sundering = 0 },
+        attack = attack,
+        auto_heal = autoHeal, -- heal-support invaders mend their team; nil otherwise
         drop_table = {}, -- invaders aren't farmed for currency (tuning pass can add realm drops)
         _petInvader = petId,
     }
