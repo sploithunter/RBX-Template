@@ -239,6 +239,26 @@ return {
         hell_5 = 3.5,
     },
 
+    -- CONTENT LEVEL offset per realm depth (World S3). Home biomes are levels 1-6, so a level-9
+    -- player out-levels home and is floored — INTENDED at home (play a while, then progress). But a
+    -- realm must RESCALE: entering heaven_1/hell_1 adds this to the effective target level of crystals
+    -- (and enemies) so the diminishing-XP floor lifts and leveling continues. +5 per depth = each
+    -- realm is a ~5-level band (heaven_1 ≈ levels 6-11, heaven_2 ≈ 11-16, …). Consumed via
+    -- LayerService:GetLevelOffset in the XP diminishing (BreakableSpawner / CombatService).
+    level_offsets = {
+        base = 0,
+        heaven_1 = 5,
+        heaven_2 = 10,
+        heaven_3 = 15,
+        heaven_4 = 20,
+        heaven_5 = 25,
+        hell_1 = 5,
+        hell_2 = 10,
+        hell_3 = 15,
+        hell_4 = 20,
+        hell_5 = 25,
+    },
+
     token_currency = {
         heaven_1 = "light_tokens",
         heaven_2 = "light_tokens",

@@ -2116,12 +2116,22 @@ function BreakableSpawner:_trySpawnOne(
                                 if progression and progression.AddExperience then
                                     local xp = XpReward.fromValue(share, xpRewardsConfig.mining)
                                     -- DIMINISHING XP vs out-leveled crystals (Jason: no
-                                    -- overnight auto-click leveling; -3 levels ~ not worth it)
+                                    -- overnight auto-click leveling; -3 levels ~ not worth it).
+                                    -- REALM RESCALE: the player's current realm depth lifts the
+                                    -- crystal's effective level (layers.level_offsets) so heaven_1/
+                                    -- hell_1 keep paying real XP instead of flooring a high-level
+                                    -- player the moment they arrive (home is the only floor zone).
+                                    local realmLevelOffset = (
+                                        layerService
+                                        and layerService.GetLevelOffset
+                                        and layerService:GetLevelOffset(plr)
+                                    ) or 0
                                     xp = math.floor(
                                         xp
                                             * LevelDiffYield.xp(
                                                 plr:GetAttribute("Level"),
-                                                model:GetAttribute("MiningLevel"),
+                                                (model:GetAttribute("MiningLevel") or 1)
+                                                    + realmLevelOffset,
                                                 xpLevelScaleCfg
                                             )
                                     )

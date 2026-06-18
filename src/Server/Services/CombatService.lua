@@ -151,11 +151,19 @@ function CombatService:AwardLoot(player, enemyId, enemyLevel)
     local xp = XpReward.fromValue(lootTotal, self._xpRewards and self._xpRewards.combat)
     -- DIMINISHING XP vs out-leveled enemies (Jason: no overnight farm-leveling; same
     -- gate as mining). enemyLevel = the model's Level attribute (rank already baked).
+    -- REALM RESCALE: the player's realm depth lifts the target level (layers.level_offsets) so
+    -- realms keep paying XP instead of flooring a high-level player on arrival — parity with mining.
+    local layerService = self:_service("LayerService")
+    local realmLevelOffset = (
+        layerService
+        and layerService.GetLevelOffset
+        and layerService:GetLevelOffset(player)
+    ) or 0
     xp = math.floor(
         xp
             * LevelDiffYield.xp(
                 player:GetAttribute("Level"),
-                enemyLevel or def.level,
+                (enemyLevel or def.level or 1) + realmLevelOffset,
                 self._xpLevelScale
             )
     )

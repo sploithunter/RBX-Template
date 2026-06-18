@@ -111,6 +111,15 @@ function LayerService:GetRewardMultiplier(player)
     return tonumber(m) or 1
 end
 
+-- CONTENT LEVEL offset for the player's current layer (0 at base; layers.level_offsets). Added to
+-- a crystal/enemy's target level in the XP diminishing so a realm RESCALES — a high-level player
+-- isn't instantly floored on arrival the way they are at home.
+function LayerService:GetLevelOffset(player)
+    local layer = self:GetCurrentLayer(player)
+    local o = self._layersConfig.level_offsets and self._layersConfig.level_offsets[layer]
+    return tonumber(o) or 0
+end
+
 -- Depth-scaled hatch luck for the player's current layer (0 at base). Consumed by
 -- HatchEntitlementService via the published RealmHatchLuckBonus attribute.
 function LayerService:GetHatchLuckBonus(player)
