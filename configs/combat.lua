@@ -73,6 +73,27 @@ return {
         max_spread = 4,
     },
 
+    -- ROAMING PATROL BANDS (Hell realms — "heaven battling evil"): a persistent pack per origin area
+    -- that patrols a procedural route. Reuses everything — SpawnEnemy places members, the idle LOITER
+    -- (engagement.loiter) drifts them around entry.home, and we just walk that shared `home` anchor
+    -- through waypoints with dwell (Jason's "move the center of origin, pause, repeat"). Anchored to
+    -- the realm's BaddieSpawner<Area> parts (same per-area parts crystals/waves use); waypoints are
+    -- sampled around the anchor (grounded raycast, like crystal spawn points). SLICE 1: flag off,
+    -- one placeholder enemy model for every band (per-area heaven-pet factions = the content pass).
+    enemy_patrol = {
+        enabled = false, -- FLAG: ships dark; flip live (Studio) to test, then per-area content
+        placeholder_enemy = "lava_imp", -- slice 1: one model for all bands (faction routing = later)
+        realm_layers_only = true, -- only in realm layers (heaven_/hell_), never home
+        band_size = 4, -- members kept alive per band while a player is in the realm
+        waypoints = 3, -- patrol-route stops sampled around the anchor (A -> B -> C -> A)
+        patrol_radius = 45, -- studs around the BaddieSpawner anchor the route spans
+        anchor_speed = 8, -- studs/sec the band's home anchor walks between waypoints
+        arrive_dist = 6, -- anchor counts a waypoint "reached" within this
+        dwell_min = 2.0, -- pause range at each waypoint (seconds)
+        dwell_max = 5.0,
+        member_scatter = 10, -- members spawn within this radius of the anchor
+    },
+
     -- Defensive stat (armor curve). Damage is reduced by armor/(armor+k): a pet's
     -- Defense attribute mitigates enemy hits, an enemy's Armor mitigates pet damage.
     -- At armor == k the hit is halved; diminishing returns, never full immunity.

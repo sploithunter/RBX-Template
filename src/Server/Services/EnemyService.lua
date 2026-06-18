@@ -2787,6 +2787,132 @@ function EnemyService:_dotPass(now)
     end
 end
 
+-- ROAMING PATROL BANDS (combat.lua enemy_patrol; flag-gated). One band per realm BaddieSpawner<Area>
+-- part: a pack that walks a procedural route. The route is a moving `home` anchor — the existing idle
+-- LOITER drifts each unaware member around it, so moving the anchor through waypoints (with dwell) IS
+-- the patrol. Aggro/return ride the existing perception + leash. Slice 1: placeholder model, spawns
+-- only while a player is in the realm; per-area heaven-pet factions are the content pass.
+
+-- Procedural route: `count` points within `radius` of center (flat — members re-ground each step).
+function EnemyService:_patrolWaypoints(center, radius, count)
+    local pts = {}
+    for _ = 1, math.max(1, math.floor(count or 3)) do
+        local ang = math.random() * math.pi * 2
+        local dist = math.sqrt(math.random()) * (radius or 45) -- uniform area sampling
+        pts[#pts + 1] =
+            Vector3.new(center.X + math.cos(ang) * dist, center.Y, center.Z + math.sin(ang) * dist)
+    end
+    return pts
+end
+
+function EnemyService:_updateBand(part, player, cfg, now, dt)
+    self._bands = self._bands or {}
+    local band = self._bands[part]
+    if not band then
+        band = {
+            anchor = part.Position,
+            waypoints = self:_patrolWaypoints(part.Position, cfg.patrol_radius, cfg.waypoints),
+            wp = 1,
+            dwellUntil = 0,
+            members = {},
+        }
+        self._bands[part] = band
+    end
+
+    -- prune dead/despawned members
+    local alive = {}
+    for _, id in ipairs(band.members) do
+        local e = self._enemies[id]
+        if e and e.model and e.model.Parent and (e.model:GetAttribute("HP") or 0) > 0 then
+            alive[#alive + 1] = id
+        end
+    end
+    band.members = alive
+
+    -- top the band up (members scatter around the anchor; spawned NEUTRAL so they patrol until they
+    -- perceive a player — clear the auto-aggro SpawnEnemy stamps on the triggering player)
+    local size = math.max(1, math.floor(cfg.band_size or 4))
+    local scatter = tonumber(cfg.member_scatter) or 10
+    while #band.members < size do
+        local sx = band.anchor.X + (math.random() * 2 - 1) * scatter
+        local sz = band.anchor.Z + (math.random() * 2 - 1) * scatter
+        local res = self:SpawnEnemy(player, cfg.placeholder_enemy or "lava_imp", {
+            position = Vector3.new(sx, band.anchor.Y + 3, sz),
+        })
+        if not (res and res.ok and res.targetId) then
+            break
+        end
+        local e = self._enemies[res.targetId]
+        if not e then
+            break
+        end
+        self:_setAggroOwner(e, nil) -- start unaware: patrol, don't beeline the spawner
+        e.patrolBand = part
+        e.home = band.anchor
+        band.members[#band.members + 1] = res.targetId
+    end
+
+    -- walk the anchor along the route, pausing at each waypoint
+    if #band.waypoints > 0 and now >= (band.dwellUntil or 0) then
+        local target = band.waypoints[band.wp] or band.anchor
+        local to = Vector3.new(target.X - band.anchor.X, 0, target.Z - band.anchor.Z)
+        local distXZ = to.Magnitude
+        if distXZ <= (cfg.arrive_dist or 6) then
+            local lo = tonumber(cfg.dwell_min) or 2
+            local hi = tonumber(cfg.dwell_max) or 5
+            band.dwellUntil = now + lo + math.random() * math.max(0, hi - lo)
+            band.wp = (band.wp % #band.waypoints) + 1
+        else
+            local step = math.min(distXZ, (cfg.anchor_speed or 8) * (dt or 0.15))
+            local dir = to.Unit
+            band.anchor = band.anchor + Vector3.new(dir.X * step, 0, dir.Z * step)
+        end
+    end
+
+    -- the moving anchor IS each idle member's loiter home, so the band strolls the route together;
+    -- aggro'd members keep chasing (their home updates for when they disengage and return)
+    for _, id in ipairs(band.members) do
+        local e = self._enemies[id]
+        if e and not e.aggroPlayerName then
+            e.home = band.anchor
+        end
+    end
+end
+
+function EnemyService:_patrolTick(now, dt)
+    local cfg = self._combatConfig and self._combatConfig.enemy_patrol
+    if not cfg or cfg.enabled ~= true then
+        return
+    end
+    local maps = Workspace:FindFirstChild("Maps")
+    if not maps then
+        return
+    end
+    -- realm folders that currently hold a player (one representative player per folder = the
+    -- SpawnEnemy anchor; spawn-on-presence avoids the no-player spawn + bounds enemy count)
+    local activeFolders = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        local layer = player:GetAttribute("CurrentLayer")
+        if type(layer) == "string" and layer ~= "" and layer ~= "base" then
+            local isRealm = layer:match("^heaven_") or layer:match("^hell_")
+            if (not cfg.realm_layers_only) or isRealm then
+                local folderName = layer:sub(1, 1):upper() .. layer:sub(2) -- hell_1 -> Hell_1
+                local folder = maps:FindFirstChild(folderName)
+                if folder and player.Character then
+                    activeFolders[folder] = activeFolders[folder] or player
+                end
+            end
+        end
+    end
+    for folder, player in pairs(activeFolders) do
+        for _, part in ipairs(folder:GetChildren()) do
+            if part:IsA("BasePart") and part.Name:match("^BaddieSpawner") then
+                self:_updateBand(part, player, cfg, now, dt)
+            end
+        end
+    end
+end
+
 function EnemyService:_combatTick(dt)
     local eng = self._combatConfig.engagement or {}
     local now = os.clock()
@@ -2800,6 +2926,7 @@ function EnemyService:_combatTick(dt)
     self:_enemyHealPass(now)
     self:_enforceLockouts(nowTime) -- #179: hold re-teamed/locked pets down for their recovery
     self:_refreshGroundExclude() -- rebuild the ground-snap raycast filter once for the whole tick
+    self:_patrolTick(now, dt) -- roaming hell-realm patrol bands (flag-gated); updates member home anchors
     local idleDespawn = eng.despawn_idle_seconds or 0
     for targetId, entry in pairs(self._enemies) do
         local model = entry.model
