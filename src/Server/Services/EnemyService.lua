@@ -2063,6 +2063,42 @@ function EnemyService:_auraEmpower(folder, aura, count)
     end
 end
 
+-- SCOPED team buff (Jason: "aura targeting drives the application scope, not just the ring"). A
+-- combat buff (offense/haste) applies to a pet SET chosen by its `targeting`:
+--   "aura" (default)  -> TEAM: player-wide attribute, FX on every ally (the original behavior).
+--   "single"          -> the top-1 carry (by combat power) gets a PER-PET buff.
+--   "targeted_aoe"    -> the top-K carries (aura.max_targets, default 3) get the per-pet buff.
+-- The ring already follows targeting via PetTargeting.auraScope (so the card reads single/aoe/team);
+-- this makes the MECHANIC match. teamAttr = the player multiplier; petAttr = the per-pet multiplier
+-- the consumer also reads (PetFollowService: additive for damage, bounded-mult for haste).
+function EnemyService:_auraScopedBuff(folder, teamAttr, petAttr, fxAttr, aura, count, weight)
+    local scope = (type(aura.targeting) == "string" and aura.targeting) or "aura"
+    if scope ~= "single" and scope ~= "targeted_aoe" then
+        self:_auraPlayerBuff(folder, teamAttr, aura, count, weight)
+        self:_stampAuraFx(folder, fxAttr, aura, count)
+        return
+    end
+    local candidates = {}
+    for _, ally in ipairs(folder:GetChildren()) do
+        if ally:IsA("Model") and ally.PrimaryPart and not ally:GetAttribute("CombatDowned") then
+            candidates[#candidates + 1] = { key = ally, power = self:_petCombatPower(ally) }
+        end
+    end
+    local ranked = SupportAura.rankTargets(candidates, aura.target or "highest_power")
+    local k = (scope == "single") and 1 or math.max(1, math.floor(tonumber(aura.max_targets) or 3))
+    k = math.min(k, #ranked)
+    -- per-pet multiplier = same variant-scaled fraction the team path uses
+    local mult = 1 + ((tonumber(aura.mult) or 1) - 1) * (tonumber(weight) or tonumber(count) or 1)
+    local until_ = os.time() + (tonumber(aura.duration) or 3)
+    for i = 1, k do
+        local ally = ranked[i]
+        ally:SetAttribute(petAttr, mult)
+        ally:SetAttribute(petAttr .. "Until", until_)
+        ally:SetAttribute(fxAttr, until_) -- squad-card badge on the buffed carry(ies) only
+        ally:SetAttribute(fxAttr .. "Stacks", 1)
+    end
+end
+
 -- Stamp a per-pet DISPLAY marker on every ally so the squad cards can show the support buff
 -- icon (offense/yield ride the PLAYER attr, which the cards can't read per-pet). Display-only.
 function EnemyService:_stampAuraFx(folder, fxAttr, aura, count)
@@ -2126,13 +2162,28 @@ function EnemyService:_supportPass(now)
                 elseif kind == "defense" then
                     self:_auraDefense(folder, aura, count, weight)
                 elseif kind == "offense" then
-                    self:_auraPlayerBuff(folder, "PetTeamDamageBuff", aura, count, weight)
-                    self:_stampAuraFx(folder, "OffenseFxUntil", aura, count)
+                    -- War-Cry: team damage, OR single/targeted_aoe via aura.targeting (per-pet).
+                    self:_auraScopedBuff(
+                        folder,
+                        "PetTeamDamageBuff",
+                        "PetDamageBuffSelf",
+                        "OffenseFxUntil",
+                        aura,
+                        count,
+                        weight
+                    )
                 elseif kind == "haste" then
-                    -- team ATTACK-SPEED buff (efficiency-as-aura): a player multiplier consumed in
-                    -- PetFollowService (shortens the attack interval, bounded). Same channel as offense.
-                    self:_auraPlayerBuff(folder, "PetHasteBuff", aura, count, weight)
-                    self:_stampAuraFx(folder, "HasteFxUntil", aura, count)
+                    -- Haste: team ATTACK-SPEED, OR single/targeted_aoe via aura.targeting. Consumed in
+                    -- PetFollowService (shortens the attack interval, bounded).
+                    self:_auraScopedBuff(
+                        folder,
+                        "PetHasteBuff",
+                        "PetHasteBuffSelf",
+                        "HasteFxUntil",
+                        aura,
+                        count,
+                        weight
+                    )
                 elseif kind == "empower" then
                     -- SINGLE-TARGET damage buffer (carry amplifier): N empower buffers lift the
                     -- top-N strongest allies, not the whole team.

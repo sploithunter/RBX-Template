@@ -611,6 +611,14 @@ function PetFollowService:_mine(player, pet, breakable)
             expiry = pet:GetAttribute("RageDamageBuffUntil") or 0,
         },
         {
+            -- WAR-CRY single/targeted_aoe (offense aura with targeting != "aura"): a per-PET damage
+            -- buff stamped on the chosen carry(ies) by _auraScopedBuff. Same additive axis as the
+            -- team War-Cry (PetTeamDamageBuff) — so a single-target War-Cry and a team one add, never
+            -- compound. (The team variant rides PetTeamDamageBuff above.)
+            fraction = (pet:GetAttribute("PetDamageBuffSelf") or 1) - 1,
+            expiry = pet:GetAttribute("PetDamageBuffSelfUntil") or 0,
+        },
+        {
             -- EMPOWER (single-target damage buffer, e.g. carrion_scarab — pet_roles kind "empower"):
             -- a per-PET stamp from EnemyService:_supportPass on the squad's strongest ally. Same
             -- additive pet_damage axis as RAGE + the player buffs, so it ADDS under the cap, never
@@ -903,12 +911,19 @@ function PetFollowService:_mine(player, pet, breakable)
 
     local hitInterval = combat:ResolvePetAttackInterval(player, ctx)
         * (tonumber(pacing.interval_mult) or 1)
-    -- HASTE aura (efficiency-as-aura, team-wide): PetHasteBuff is a player multiplier (1.25 = +25%
-    -- speed) that SHORTENS the interval. Bounded to <=2.5x so a stack can't drive attacks to instant.
-    if (player:GetAttribute("PetHasteBuffUntil") or 0) > os.time() then
-        local haste = math.clamp(tonumber(player:GetAttribute("PetHasteBuff")) or 1, 1, 2.5)
-        hitInterval = hitInterval / haste
+    -- HASTE aura (efficiency-as-aura): a multiplier that SHORTENS the interval. Two channels — the
+    -- TEAM buff (PetHasteBuff, player attr) and a per-PET buff (PetHasteBuffSelf, single/targeted_aoe
+    -- variant from _auraScopedBuff) — combine, then the total is bounded to <=2.5x so a stack can't
+    -- drive attacks to instant.
+    local nowSec = os.time()
+    local hasteMult = 1
+    if (player:GetAttribute("PetHasteBuffUntil") or 0) > nowSec then
+        hasteMult = hasteMult * (tonumber(player:GetAttribute("PetHasteBuff")) or 1)
     end
+    if (pet:GetAttribute("PetHasteBuffSelfUntil") or 0) > nowSec then
+        hasteMult = hasteMult * (tonumber(pet:GetAttribute("PetHasteBuffSelf")) or 1)
+    end
+    hitInterval = hitInterval / math.clamp(hasteMult, 1, 2.5)
     self._nextHit[pet] = now + hitInterval
 
     -- Drive the attack VISUAL off the real hit: tell the owning client to play this pet's
