@@ -81,7 +81,7 @@ return {
     -- sampled around the anchor (grounded raycast, like crystal spawn points). SLICE 1: flag off,
     -- one placeholder enemy model for every band (per-area heaven-pet factions = the content pass).
     enemy_patrol = {
-        enabled = true, -- FLAG: ships dark; flip live (Studio) to test, then per-area content
+        enabled = false, -- FLAG: ships dark; flip live (Studio) to test, then per-area content
         placeholder_enemy = "lava_imp", -- slice 1: one model for all bands (faction routing = later)
         realm_layers_only = true, -- only in realm layers (heaven_/hell_), never home
         band_size = 4, -- members kept alive per band while a player is in the realm
