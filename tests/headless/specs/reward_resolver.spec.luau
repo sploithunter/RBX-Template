@@ -21,16 +21,16 @@ return function()
             expect(r.amount).to.equal(10)
         end)
 
-        it("earth breakable in Heaven 1 drops 15 of the SAME currency (1.5x)", function()
+        it("earth breakable in Heaven 1 drops 50 of the SAME currency (5x test boost)", function()
             local r = resolver:resolveReward(10, "earth", "heaven_1")
             expect(r.currency).to.equal("grass_coins")
-            expect(r.amount).to.equal(15)
+            expect(r.amount).to.equal(50) -- heaven_1 bumped 1.5x -> 5.0x for egg-testing income
         end)
 
-        it("earth breakable in Hell 1 drops 15 grass_coins (not a separate currency)", function()
+        it("earth breakable in Hell 1 drops 50 grass_coins (not a separate currency)", function()
             local r = resolver:resolveReward(10, "earth", "hell_1")
             expect(r.currency).to.equal("grass_coins")
-            expect(r.amount).to.equal(15)
+            expect(r.amount).to.equal(50) -- hell_1 bumped 1.5x -> 5.0x for egg-testing income
         end)
 
         it("heaven_2 / hell_2 scale at 2.0x", function()

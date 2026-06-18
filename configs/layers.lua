@@ -222,12 +222,17 @@ return {
 
     multipliers = {
         base = 1.0,
-        heaven_1 = 1.5,
+        -- heaven_1 / hell_1 bumped 1.5 -> 5.0 for balance testing: eggs were very slow to afford in
+        -- the entry realms. Scales crystal coin income (BreakableSpawner uses layers.multipliers).
+        -- NOTE: this temporarily inverts the "deeper = richer" curve (1 now pays more than 2-5) — fine
+        -- while only the _1 realms are built/reachable; restore to ~1.5 (or scale the whole curve) once
+        -- the deeper layers ship and we tune for real.
+        heaven_1 = 5.0,
         heaven_2 = 2.0,
         heaven_3 = 2.5,
         heaven_4 = 3.0,
         heaven_5 = 3.5,
-        hell_1 = 1.5,
+        hell_1 = 5.0,
         hell_2 = 2.0,
         hell_3 = 2.5,
         hell_4 = 3.0,
