@@ -25,7 +25,8 @@ local localPlayer = Players.LocalPlayer
 local BUFFS = {
     { attr = "PetDamageBuff", label = "DMG" }, -- Mountain's Strength
     { attr = "CritBuff", label = "CRIT" }, -- Critical Strike
-    { attr = "CoinYieldPower", label = "COIN" }, -- Prospector / Windfall
+    { attr = "CoinYieldPower", label = "COIN" }, -- Prospector (coin_yield axis)
+    { attr = "DropRateBuff", label = "DROP" }, -- Windfall (drop_rate axis — +loot-table chance)
     { attr = "LuckBuff", label = "LUCK" }, -- Fortune / Huge Fortune (purple clover)
     -- bunny support aura: GREEN clover (earth disc + clover_lucky — composed from
     -- existing assets, Jason's spec). Fixed badge: no PowerId to resolve.
