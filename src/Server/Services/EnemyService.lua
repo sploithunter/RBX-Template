@@ -2874,10 +2874,11 @@ function EnemyService:_caveOrigin(part)
     return suffix
 end
 
--- A band's ALLEGIANCE: which side is invading. Heaven realms are attacked by HELL forces and Hell
--- realms by HEAVEN forces (Jason: "heaven attacks hell and hell attacks heaven"), so allegiance is the
--- OPPOSITE of the realm folder the cave sits in — never the realm itself. Returns nil outside the two
--- realm families (home never patrols). Stamped on each member so themed heaven/hell content can key off it.
+-- A band's ALLEGIANCE: the realm's OWN side. Heaven realms spawn HEAVEN enemies, hell realms spawn
+-- HELL enemies (Jason: "in heaven we should only spawn heaven enemies; in hell, only hell"). The
+-- heaven/hell ASYMMETRY comes from the aggression rule layered on top (heaven enemies only attack hell
+-- pets, hell enemies attack all), NOT from which side spawns — "heaven attacks hell" is the targeting
+-- direction. Returns nil outside the two realm families (home never patrols). Stamped on each member.
 function EnemyService:_caveAllegiance(part)
     local parent = part.Parent
     local folderName = parent and parent.Name
@@ -2886,9 +2887,9 @@ function EnemyService:_caveAllegiance(part)
     end
     local lower = folderName:lower()
     if lower:match("^heaven") then
-        return "hell" -- heaven is invaded BY hell
+        return "heaven" -- heaven realm fields heaven enemies
     elseif lower:match("^hell") then
-        return "heaven" -- hell is invaded BY heaven
+        return "hell" -- hell realm fields hell enemies
     end
     return nil
 end

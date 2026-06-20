@@ -132,6 +132,20 @@ function BaddieSpawnerService:_trigger(part, player, rng)
     })
 end
 
+-- True if this spawner part lives inside a realm map folder (Maps/Heaven_N or Maps/Hell_N). Those
+-- caves are driven by the EnemyService roaming patrol, not this homeworld proximity-wave system.
+function BaddieSpawnerService:_isRealmCave(part)
+    local node = part.Parent
+    while node and node ~= game do
+        local name = node.Name
+        if type(name) == "string" and (name:match("^Heaven_%d") or name:match("^Hell_%d")) then
+            return true
+        end
+        node = node.Parent
+    end
+    return false
+end
+
 function BaddieSpawnerService:Start()
     if not self._config then
         self._logger:Warn("BaddieSpawnerService: no spawners config; idle")
@@ -161,6 +175,11 @@ function BaddieSpawnerService:Start()
                 end
                 if not part.Parent then
                     self._spawners[part] = nil
+                elseif self:_isRealmCave(part) then
+                    -- REALM CAVES belong to the roaming patrol (EnemyService), which fields
+                    -- realm-appropriate enemies (heaven enemies in heaven, hell in hell). The homeworld
+                    -- proximity-wave system stays OUT of realms so it never spawns neutral earth packs
+                    -- (raging_bear etc.) in heaven/hell (Jason: "in heaven only spawn heaven enemies").
                 elseif now >= state.cooldownUntil and #state.alive < cap then
                     for _, player in ipairs(Players:GetPlayers()) do
                         local hrp = player.Character
