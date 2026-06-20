@@ -172,6 +172,8 @@ function EnemyService:_setAggroOwner(entry, name)
     entry.aggroPlayerName = name
     if name then
         entry.everEngaged = true -- has fought at least once -> eligible for idle-despawn when abandoned
+        entry.stuckTime = 0 -- fresh engagement: reset the anti-hang no-progress timer
+        entry.lastTargetDist = nil
     end
     local model = entry.model
     if model and model.Parent then
@@ -1499,6 +1501,26 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     -- enemy visibly turns to whoever it's attacking (the client lerps toward MoveFace). Faces the
     -- TARGET (the pet), not the ring slot it's standing on, so a fanned-out pack still looks inward.
     model:SetAttribute("MoveFace", Vector3.new(targetPos.X, ePos.Y, targetPos.Z))
+
+    -- ANTI-HANG (Jason: "one got away ... is this a hung state?"): a LEASHED enemy whose target sits
+    -- beyond its leash boundary chases forever without ever closing — frozen at the wall, holding
+    -- aggro, which latches the player InCombat and PAUSES farming (the stray-despawn skips aggro'd
+    -- foes, so nothing clears it). If it can neither reach attack range nor make progress toward the
+    -- target for stuck_disengage_seconds, give up and fall back to patrol/loiter.
+    local distToTarget = (Vector3.new(targetPos.X, ePos.Y, targetPos.Z) - ePos).Magnitude
+    local closing = (entry.lastTargetDist == nil) or (distToTarget < entry.lastTargetDist - 0.5)
+    if distToTarget <= (atk + 1) or closing then
+        entry.stuckTime = 0 -- in bite range or still closing the gap = making progress
+    else
+        entry.stuckTime = (entry.stuckTime or 0) + (dt or 0.15)
+        if entry.stuckTime >= (eng.stuck_disengage_seconds or 8) then
+            entry.stuckTime = 0
+            self:_releasePets(targetId)
+            self:_setAggroOwner(entry, nil) -- can't reach it: disengage so the player can farm again
+            return
+        end
+    end
+    entry.lastTargetDist = distToTarget
 
     -- 5) ATTACK: bite the highest-aggro pet that is CURRENTLY within attack range — not
     -- only the chase target. The enemy may be pursuing an unreachable top-aggro pet (a
