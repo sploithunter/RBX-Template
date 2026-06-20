@@ -35,6 +35,7 @@ local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
 local PetMeander = require(ReplicatedStorage.Shared.Game.PetMeander)
 local RingSeparate = require(ReplicatedStorage.Shared.Game.RingSeparate)
 local AggroTable = require(ReplicatedStorage.Shared.Game.AggroTable)
+local Allegiance = require(ReplicatedStorage.Shared.Game.Allegiance)
 local AggroLeash = require(ReplicatedStorage.Shared.Game.AggroLeash)
 local PowerIcons = require(ReplicatedStorage.Configs:WaitForChild("power_icons")) -- world debuff disc
 local Sounds = require(ReplicatedStorage.Configs:WaitForChild("sounds")) -- positional hold/freeze SFX
@@ -1265,7 +1266,14 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
                 local live = false
                 if folder then
                     for _, pet in ipairs(folder:GetChildren()) do
-                        if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
+                        -- ALLEGIANCE GATE: only a HOSTILE live pet makes the player a target. A heaven
+                        -- enemy ignores a heaven/neutral squad entirely (no aggro -> peaceful farming);
+                        -- bring a hell pet and it perceives + engages. Hell enemies are hostile to all.
+                        if
+                            pet:IsA("Model")
+                            and not pet:GetAttribute("CombatDowned")
+                            and self:_enemyHostileToPet(entry, pet, player)
+                        then
                             live = true
                             break
                         end
@@ -1342,7 +1350,12 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     local proxRange = aggroCfg.proximity_range or 30
     local proxFloor = aggroCfg.proximity_floor or 6
     for _, pet in ipairs(petsFolder:GetChildren()) do
-        if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
+        if
+            pet:IsA("Model")
+            and pet.PrimaryPart
+            and not pet:GetAttribute("CombatDowned")
+            and self:_enemyHostileToPet(entry, pet, player) -- only attack pets it's hostile to
+        then
             -- (pets self-select their target in _assignPetTargets; the enemy no longer
             -- force-claims them — it just builds its aggro on the nearby squad here.)
             valid[pet] = true
@@ -2392,8 +2405,14 @@ function EnemyService:_assignPetTargets(eng)
                             d = (entry.pos - petPos).Magnitude
                         end
                         -- TERRITORIAL: pets only auto-pick foes in the player's own area (no
-                        -- reaching across a wall into another biome's pack).
-                        if d <= reach and self:_inTerritory(entry, player) then
+                        -- reaching across a wall into another biome's pack). ALLEGIANCE GATE: a pet
+                        -- only auto-targets an enemy it's hostile to (heaven/neutral pets ignore heaven
+                        -- enemies -> peaceful farming in heaven; hell pets engage everything).
+                        if
+                            d <= reach
+                            and self:_inTerritory(entry, player)
+                            and self:_petHostileToEnemy(pet, entry, player)
+                        then
                             local edef = entry.def
                                 or (
                                     self._enemiesConfig.enemies
@@ -2892,6 +2911,56 @@ function EnemyService:_caveAllegiance(part)
         return "hell" -- hell realm fields hell enemies
     end
     return nil
+end
+
+-- The realm a player currently stands in ("heaven"/"hell"/"neutral"), derived from CurrentLayer so it
+-- matches _caveAllegiance (folder-name based) rather than relying on a separately-set attribute.
+function EnemyService:_currentRealm(player)
+    local layer = player and player:GetAttribute("CurrentLayer")
+    if type(layer) == "string" then
+        if layer:match("^heaven") then
+            return "heaven"
+        elseif layer:match("^hell") then
+            return "hell"
+        end
+    end
+    return "neutral"
+end
+
+-- A pet species' side ("heaven"/"hell"/"neutral") from its pets.lua `realm`. Cached by PetType.
+function EnemyService:_petRealmOf(petType)
+    if type(petType) ~= "string" then
+        return "neutral"
+    end
+    self._petsConfig = self._petsConfig or self._configLoader:LoadConfig("pets")
+    self._petRealmCache = self._petRealmCache or {}
+    local cached = self._petRealmCache[petType]
+    if cached ~= nil then
+        return cached
+    end
+    local def = self._petsConfig and self._petsConfig.pets and self._petsConfig.pets[petType]
+    local realm = Allegiance.normalize(def and def.realm)
+    self._petRealmCache[petType] = realm
+    return realm
+end
+
+-- The allegiance targeting gate (Jason's farming-vs-combat asymmetry): heaven attacks only hell, hell
+-- attacks all, neutral takes the current realm's side; off-realm (homeworld) everyone attacks all.
+-- Enemy side = entry.allegiance (set for realm pet-invaders, nil/neutral elsewhere); pet side = species.
+function EnemyService:_enemyHostileToPet(entry, pet, player)
+    return Allegiance.hostile(
+        entry.allegiance,
+        self:_petRealmOf(pet:GetAttribute("PetType")),
+        self:_currentRealm(player)
+    )
+end
+
+function EnemyService:_petHostileToEnemy(pet, entry, player)
+    return Allegiance.hostile(
+        self:_petRealmOf(pet:GetAttribute("PetType")),
+        entry.allegiance,
+        self:_currentRealm(player)
+    )
 end
 
 -- The crystal folder id for a cave's zone. Realm caves are BaddieSpawner<Origin> parts living in the
