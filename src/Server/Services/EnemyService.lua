@@ -1505,8 +1505,9 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     -- ANTI-HANG (Jason: "one got away ... is this a hung state?"): a LEASHED enemy whose target sits
     -- beyond its leash boundary chases forever without ever closing — frozen at the wall, holding
     -- aggro, which latches the player InCombat and PAUSES farming (the stray-despawn skips aggro'd
-    -- foes, so nothing clears it). If it can neither reach attack range nor make progress toward the
-    -- target for stuck_disengage_seconds, give up and fall back to patrol/loiter.
+    -- foes, so nothing clears it). If it can neither reach attack range nor close the gap for
+    -- stuck_disengage_seconds, DESPAWN it outright — just disengaging sends it back to patrol where it
+    -- flees and re-aggros into the same loop (Jason). A fresh patrol fills in shortly anyway.
     local distToTarget = (Vector3.new(targetPos.X, ePos.Y, targetPos.Z) - ePos).Magnitude
     local closing = (entry.lastTargetDist == nil) or (distToTarget < entry.lastTargetDist - 0.5)
     if distToTarget <= (atk + 1) or closing then
@@ -1514,9 +1515,7 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     else
         entry.stuckTime = (entry.stuckTime or 0) + (dt or 0.15)
         if entry.stuckTime >= (eng.stuck_disengage_seconds or 8) then
-            entry.stuckTime = 0
-            self:_releasePets(targetId)
-            self:_setAggroOwner(entry, nil) -- can't reach it: disengage so the player can farm again
+            self:_despawnEnemy(targetId) -- can't reach it + would just re-loop: remove it (frees InCombat)
             return
         end
     end

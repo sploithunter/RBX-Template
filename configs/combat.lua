@@ -317,7 +317,8 @@ return {
         perception_interval = 0.75,
         -- ANTI-HANG: an aggro'd enemy that can neither reach attack range nor close the gap toward its
         -- target for this many seconds (e.g. leashed at its boundary while the squad sits beyond it)
-        -- disengages, so a fled straggler can't latch the player InCombat and freeze farming forever.
+        -- DESPAWNS — disengaging just sends it back to patrol where it flees + re-aggros into the same
+        -- loop, so we remove it outright (frees the player's InCombat); a fresh patrol fills in shortly.
         stuck_disengage_seconds = 20,
         -- (leash_range removed: persistence is now the aggro block's decay_start_range/give_up_range)
         -- COMBAT STANCE (Jason): while a player has >=1 enemy aggroed on them ("in combat"), AUTO-FARM
