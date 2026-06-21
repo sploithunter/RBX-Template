@@ -256,23 +256,33 @@ function EffectsPanel:_updateEffectsDisplay()
     self.effectDisplays = {}
 
     local layoutOrder = 1
+    local globals = self.effectsData.globalEffects or {}
+    local players = self.effectsData.playerEffects or {}
 
-    -- Player Effects Section
-    self:_createSectionHeader("Player Effects", layoutOrder)
-    layoutOrder = layoutOrder + 1
-
-    for _, effect in ipairs(self.effectsData.playerEffects) do
-        self:_createEffectDisplay(effect, "player", layoutOrder)
+    -- Active global EVENTS lead — this is the "Events" button's surface. Only render the
+    -- header when the section actually has entries (an empty section header looked like a
+    -- broken placeholder row).
+    if #globals > 0 then
+        self:_createSectionHeader("Active Events", layoutOrder)
         layoutOrder = layoutOrder + 1
+        for _, effect in ipairs(globals) do
+            self:_createEffectDisplay(effect, "global", layoutOrder)
+            layoutOrder = layoutOrder + 1
+        end
     end
 
-    -- Global Effects Section
-    self:_createSectionHeader("Global Effects", layoutOrder)
-    layoutOrder = layoutOrder + 1
-
-    for _, effect in ipairs(self.effectsData.globalEffects) do
-        self:_createEffectDisplay(effect, "global", layoutOrder)
+    -- The player's own active effects, if any.
+    if #players > 0 then
+        self:_createSectionHeader("Your Effects", layoutOrder)
         layoutOrder = layoutOrder + 1
+        for _, effect in ipairs(players) do
+            self:_createEffectDisplay(effect, "player", layoutOrder)
+            layoutOrder = layoutOrder + 1
+        end
+    end
+
+    if #globals == 0 and #players == 0 then
+        self:_createSectionHeader("No active effects right now", layoutOrder)
     end
 end
 
@@ -301,6 +311,10 @@ function EffectsPanel:_createSectionHeader(title, layoutOrder)
     label.Font = Enum.Font.GothamBold
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = header
+
+    -- track it so the next refresh DESTROYS it (headers used to leak: only effect rows were
+    -- tracked, so every ActiveEffects payload stacked another "Player Effects"/"Global Effects")
+    table.insert(self.effectDisplays, header)
 end
 
 function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
