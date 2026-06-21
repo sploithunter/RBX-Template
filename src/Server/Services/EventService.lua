@@ -3,6 +3,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+-- Events are scheduled in MOUNTAIN time ("ColoradoPlays"), not UTC. This converts the UTC
+-- server clock to America/Denver (DST-aware) for every weekday/hour decision below.
+local MountainTime = require(ReplicatedStorage.Shared.Game.MountainTime)
 
 local EventService = {}
 EventService.__index = EventService
@@ -133,8 +136,9 @@ end
 
 function EventService:_updateClockValues()
     local now = self._serverClock:GetServerTime()
-    local current = os.date("!*t", now)
-    local yesterday = os.date("!*t", now - 86400)
+    -- Mountain-local calendar (the clock folder + UI read these; events are Mountain-scheduled).
+    local current = MountainTime.fromUtc(now)
+    local yesterday = MountainTime.fromUtc(now - 86400)
 
     self:_setValue(self._clockFolder, "IntValue", "UnixTime", now)
     self:_setValue(self._clockFolder, "IntValue", "Today", current.day)
@@ -154,11 +158,13 @@ function EventService:_updateClockValues()
 end
 
 function EventService:_weekdayMatches(schedule, weekday)
-    if type(schedule.weekdays_utc) ~= "table" then
+    -- weekdays = MOUNTAIN weekdays (1=Sun..7=Sat). weekdays_utc kept as a legacy fallback.
+    local list = schedule.weekdays or schedule.weekdays_utc
+    if type(list) ~= "table" then
         return true
     end
 
-    for _, configuredWeekday in ipairs(schedule.weekdays_utc) do
+    for _, configuredWeekday in ipairs(list) do
         if tonumber(configuredWeekday) == weekday then
             return true
         end
@@ -168,8 +174,9 @@ function EventService:_weekdayMatches(schedule, weekday)
 end
 
 function EventService:_hourMatches(schedule, hour)
-    local startHour = tonumber(schedule.start_hour_utc)
-    local endHour = tonumber(schedule.end_hour_utc)
+    -- start_hour/end_hour are MOUNTAIN hours; *_utc names kept as a legacy fallback.
+    local startHour = tonumber(schedule.start_hour or schedule.start_hour_utc)
+    local endHour = tonumber(schedule.end_hour or schedule.end_hour_utc)
     if not startHour and not endHour then
         return true
     end
@@ -191,7 +198,7 @@ function EventService:_isScheduleActive(schedule, now)
         return false
     end
 
-    local current = os.date("!*t", now)
+    local current = MountainTime.fromUtc(now)
     return self:_weekdayMatches(schedule, current.wday)
         and self:_hourMatches(schedule, current.hour)
 end

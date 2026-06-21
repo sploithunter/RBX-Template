@@ -389,6 +389,14 @@ function DropService:TrySpawnEnhancementDrop(player, source, position)
     if (player:GetAttribute("DropRateBuffUntil") or 0) > os.time() then
         chance = chance * (1 + (tonumber(player:GetAttribute("DropRateBuff")) or 0))
     end
+    -- Showering Saturday (drop_rate global event): same axis, server-wide.
+    local eventService = self._moduleLoader and self._moduleLoader:Get("EventService")
+    if eventService then
+        local m = tonumber(eventService:GetModifier("drop_rate", 0)) or 0
+        if m > 0 then
+            chance = chance * (1 + m)
+        end
+    end
     if math.random() >= chance then
         return false
     end

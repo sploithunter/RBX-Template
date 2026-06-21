@@ -229,6 +229,18 @@ function PlayerProgressionService:AddExperience(player, amount)
     if (player:GetAttribute("XpBuffUntil") or 0) > os.time() then
         amount = math.floor(amount * (1 + (player:GetAttribute("XpBuff") or 0)) + 0.5)
     end
+    -- Thriving Thursday (xp_multiplier global event): same choke point, additive fraction.
+    local eventService = self._eventService
+    if eventService == nil and self._modules then
+        eventService = self._modules.EventService
+        self._eventService = eventService
+    end
+    if eventService then
+        local m = tonumber(eventService:GetModifier("xp_multiplier", 0)) or 0
+        if m > 0 then
+            amount = math.floor(amount * (1 + m) + 0.5)
+        end
+    end
     local newXp = self:GetExperience(player) + amount
     self._dataService:SetStat(player, "Experience", newXp)
     self:_publish(player)
