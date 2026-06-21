@@ -87,13 +87,13 @@ return {
         },
 
         secret_luck_day = {
-            display_name = "Secret Luck Day",
-            description = "Scheduled daily secret luck boost.",
+            display_name = "Secret Sunday",
+            description = "Sunday secret-pet luck boost — secret hatch odds get a lift all day.",
             duration_seconds = -1,
             stacking = "reset",
             icon = "SECRET",
             modifiers = {
-                secret_luck = 0.05,
+                secret_luck = 0.5, -- +0.5 secret-tier reweight (was 0.05; Jason wants it more felt)
             },
         },
     },
@@ -105,10 +105,11 @@ return {
             reason = "Scheduled lucky day",
         },
 
-        secret_luck_friday = {
+        -- Sunday = weekday 1 (os.date !*t.wday convention: Sun=1 .. Sat=7).
+        secret_luck_sunday = {
             event_id = "secret_luck_day",
-            weekdays_utc = { 6 },
-            reason = "Scheduled secret luck day",
+            weekdays_utc = { 1 },
+            reason = "Scheduled Secret Sunday",
         },
     },
 }
