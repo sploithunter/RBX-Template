@@ -1091,11 +1091,21 @@ function DataService:SetCurrency(player, currencyType, amount, source)
     -- GEMDIAG (temporary): prove whether the legit profile-writing path is reached for gems, and
     -- by whom. If the Gems attribute climbs WITHOUT this firing, the writer bypasses SetCurrency.
     if currencyType == "gems" then
+        -- dump every Currencies key+value so a duplicate/case-variant gem key (legacy "Gems"=80
+        -- vs canonical "gems" climbing) is visible — that's what the watchdog reads stale.
+        local keysDump = {}
+        local dd = self:GetData(player)
+        if dd and dd.Currencies then
+            for k, v in pairs(dd.Currencies) do
+                keysDump[#keysDump + 1] = tostring(k) .. "=" .. tostring(v)
+            end
+            table.sort(keysDump)
+        end
         self._logger:Warn("💎 GEMDIAG SetCurrency(gems) reached", {
             player = player.Name,
             amount = amount,
             source = source,
-            by = debug.traceback("", 2),
+            currencyKeys = table.concat(keysDump, ", "),
         })
     end
     local currencyIcon = currencyType == "coins" and "🪙"
