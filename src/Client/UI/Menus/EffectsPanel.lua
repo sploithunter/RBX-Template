@@ -21,6 +21,24 @@ local Locations = require(ReplicatedStorage.Shared.Locations)
 local CloseButton = require(script.Parent.Parent.Components.CloseButton)
 local FillBar = require(script.Parent.Parent.FillBar)
 
+-- Per-event skin (glyph + accent), keyed by the event's icon code (events.lua `icon`). Covers the
+-- weekday calendar + the manual hourly events; anything unknown falls back to the bolt.
+local EVENT_SKINS = {
+    SECRET = { glyph = "✨", accent = Color3.fromRGB(170, 90, 220) },
+    CRYS = { glyph = "💎", accent = Color3.fromRGB(46, 204, 113) },
+    COIN = { glyph = "🪙", accent = Color3.fromRGB(241, 196, 15) },
+    LUCK = { glyph = "🍀", accent = Color3.fromRGB(39, 174, 96) },
+    XP = { glyph = "⭐", accent = Color3.fromRGB(52, 152, 219) },
+    ["2X"] = { glyph = "💰", accent = Color3.fromRGB(231, 76, 60) },
+    DROP = { glyph = "🎁", accent = Color3.fromRGB(155, 89, 182) },
+    DAY = { glyph = "🍀", accent = Color3.fromRGB(39, 174, 96) },
+}
+local DEFAULT_SKIN = { glyph = "⚡", accent = Color3.fromRGB(90, 160, 220) }
+
+local function skinFor(effect)
+    return EVENT_SKINS[tostring(effect.icon or ""):upper()] or DEFAULT_SKIN
+end
+
 -- Load Logger with wrapper (following the established pattern)
 local LoggerWrapper
 local loggerSuccess, loggerResult = pcall(function()
@@ -196,7 +214,7 @@ function EffectsPanel:_createUI(parent)
     titleLabel.Size = UDim2.new(1, 0, 0, 50)
     titleLabel.Position = UDim2.new(0, 0, 0, 0)
     titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = "⚡ Effects Manager"
+    titleLabel.Text = "⚡ Events"
     titleLabel.TextColor3 = theme.text.primary
     titleLabel.TextSize = 24
     titleLabel.Font = uiConfig.fonts and uiConfig.fonts.primary or Enum.Font.Gotham
@@ -287,27 +305,31 @@ function EffectsPanel:_updateEffectsDisplay()
 end
 
 function EffectsPanel:_createSectionHeader(title, layoutOrder)
-    local theme = uiConfig.helpers.get_theme(uiConfig)
-
+    -- Slim, left-aligned section header with an accent underline (replaces the big flat blue bar).
     local header = Instance.new("Frame")
     header.Name = title .. "Header"
-    header.Size = UDim2.new(1, 0, 0, 40)
-    header.BackgroundColor3 = theme.primary.accent or Color3.fromRGB(0, 120, 180)
-    header.BorderSizePixel = 0
+    header.Size = UDim2.new(1, 0, 0, 30)
+    header.BackgroundTransparency = 1
     header.LayoutOrder = layoutOrder
     header.Parent = self.scrollFrame
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = header
+    local accentDot = Instance.new("Frame")
+    accentDot.Size = UDim2.fromOffset(4, 16)
+    accentDot.Position = UDim2.new(0, 4, 0.5, -8)
+    accentDot.BackgroundColor3 = Color3.fromRGB(241, 196, 15)
+    accentDot.BorderSizePixel = 0
+    accentDot.Parent = header
+    local dotCorner = Instance.new("UICorner")
+    dotCorner.CornerRadius = UDim.new(1, 0)
+    dotCorner.Parent = accentDot
 
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -20, 1, 0)
-    label.Position = UDim2.new(0, 10, 0, 0)
+    label.Size = UDim2.new(1, -24, 1, 0)
+    label.Position = UDim2.new(0, 16, 0, 0)
     label.BackgroundTransparency = 1
-    label.Text = title
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextSize = 16
+    label.Text = string.upper(title)
+    label.TextColor3 = Color3.fromRGB(215, 220, 230)
+    label.TextSize = 14
     label.Font = Enum.Font.GothamBold
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = header
@@ -319,77 +341,130 @@ end
 
 function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     local theme = uiConfig.helpers.get_theme(uiConfig)
+    local skin = skinFor(effect)
+    local DARK = Color3.fromRGB(22, 24, 31)
 
-    local effectFrame = Instance.new("Frame")
-    effectFrame.Name = tostring(effect.id or effect.name or "effect") .. "Display"
-    effectFrame.Size = UDim2.new(1, 0, 0, 60)
-    effectFrame.BackgroundColor3 = theme.primary.card or Color3.fromRGB(50, 50, 55)
-    effectFrame.BorderSizePixel = 0
-    effectFrame.LayoutOrder = layoutOrder
-    effectFrame.Parent = self.scrollFrame
+    local card = Instance.new("Frame")
+    card.Name = tostring(effect.id or effect.name or "effect") .. "Display"
+    card.Size = UDim2.new(1, 0, 0, 80)
+    card.BackgroundColor3 = theme.primary.card or Color3.fromRGB(38, 40, 48)
+    card.BorderSizePixel = 0
+    card.LayoutOrder = layoutOrder
+    card.Parent = self.scrollFrame
+    table.insert(self.effectDisplays, card)
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = effectFrame
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = card
 
-    -- Icon
-    local iconLabel = Instance.new("TextLabel")
-    iconLabel.Size = UDim2.new(0, 40, 0, 40)
-    iconLabel.Position = UDim2.new(0, 10, 0.5, -20)
-    iconLabel.BackgroundTransparency = 1
-    iconLabel.Text = tostring(effect.icon or "EVENT")
-    iconLabel.TextSize = 24
-    iconLabel.Parent = effectFrame
+    -- subtle top->bottom sheen for depth
+    local grad = Instance.new("UIGradient")
+    grad.Rotation = 90
+    grad.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.88),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    grad.Parent = card
 
-    -- Effect name
+    -- accent border in the event's colour
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = skin.accent
+    stroke.Thickness = 1.5
+    stroke.Transparency = 0.45
+    stroke.Parent = card
+
+    -- accent stripe down the left edge
+    local stripe = Instance.new("Frame")
+    stripe.Size = UDim2.new(0, 5, 1, -20)
+    stripe.Position = UDim2.new(0, 8, 0, 10)
+    stripe.BackgroundColor3 = skin.accent
+    stripe.BorderSizePixel = 0
+    stripe.Parent = card
+    local stripeCorner = Instance.new("UICorner")
+    stripeCorner.CornerRadius = UDim.new(1, 0)
+    stripeCorner.Parent = stripe
+
+    -- icon disc (accent-tinted, ringed)
+    local disc = Instance.new("Frame")
+    disc.Size = UDim2.fromOffset(54, 54)
+    disc.Position = UDim2.new(0, 24, 0.5, -27)
+    disc.BackgroundColor3 = skin.accent:Lerp(DARK, 0.4)
+    disc.BorderSizePixel = 0
+    disc.Parent = card
+    local discCorner = Instance.new("UICorner")
+    discCorner.CornerRadius = UDim.new(1, 0)
+    discCorner.Parent = disc
+    local discRing = Instance.new("UIStroke")
+    discRing.Color = skin.accent
+    discRing.Thickness = 2
+    discRing.Transparency = 0.1
+    discRing.Parent = disc
+
+    local glyph = Instance.new("TextLabel")
+    glyph.Size = UDim2.fromScale(1, 1)
+    glyph.BackgroundTransparency = 1
+    glyph.Text = skin.glyph
+    glyph.TextSize = 28
+    glyph.Parent = disc
+
+    -- title
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(0, 200, 0, 20)
-    nameLabel.Position = UDim2.new(0, 60, 0, 10)
+    nameLabel.Size = UDim2.new(1, -210, 0, 22)
+    nameLabel.Position = UDim2.new(0, 92, 0, 14)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = tostring(effect.name or effect.displayName or effect.id or "Event")
-    nameLabel.TextColor3 = theme.text.primary
-    nameLabel.TextSize = 14
-    nameLabel.Font = Enum.Font.GothamMedium
+    nameLabel.TextColor3 = theme.text.primary or Color3.fromRGB(245, 245, 250)
+    nameLabel.TextSize = 19
+    nameLabel.Font = Enum.Font.GothamBold
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.Parent = effectFrame
+    nameLabel.Parent = card
 
-    -- Duration/Timer
-    local timeLabel = Instance.new("TextLabel")
-    timeLabel.Size = UDim2.new(0, 200, 0, 16)
-    timeLabel.Position = UDim2.new(0, 60, 0, 32)
-    timeLabel.BackgroundTransparency = 1
-    timeLabel.TextColor3 = theme.text.secondary or Color3.fromRGB(200, 200, 200)
-    timeLabel.TextSize = 12
-    timeLabel.Font = Enum.Font.Gotham
-    timeLabel.TextXAlignment = Enum.TextXAlignment.Left
-    timeLabel.Parent = effectFrame
+    -- effect / description line (what it does)
+    local descLabel = Instance.new("TextLabel")
+    descLabel.Size = UDim2.new(1, -210, 0, 34)
+    descLabel.Position = UDim2.new(0, 92, 0, 38)
+    descLabel.BackgroundTransparency = 1
+    descLabel.Text = (effect.description ~= nil and effect.description ~= "")
+            and tostring(effect.description)
+        or "Active event"
+    descLabel.TextColor3 = theme.text.secondary or Color3.fromRGB(178, 184, 196)
+    descLabel.TextSize = 13
+    descLabel.Font = Enum.Font.Gotham
+    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+    descLabel.TextYAlignment = Enum.TextYAlignment.Top
+    descLabel.TextWrapped = true
+    descLabel.Parent = card
 
+    -- status pill (right): Permanent or a live countdown
     local remaining = tonumber(effect.remaining or effect.timeRemaining or 0) or 0
     local duration = tonumber(effect.duration or remaining) or remaining
+    local pill = Instance.new("TextLabel")
+    pill.Size = UDim2.fromOffset(96, 26)
+    pill.Position = UDim2.new(1, -110, 0, 14)
+    pill.BackgroundColor3 = skin.accent:Lerp(DARK, 0.15)
+    pill.Text = remaining == -1 and "Permanent"
+        or string.format("%02d:%02d", math.floor(remaining / 60), remaining % 60)
+    pill.TextColor3 = Color3.fromRGB(255, 255, 255)
+    pill.TextSize = 12
+    pill.Font = Enum.Font.GothamMedium
+    pill.Parent = card
+    local pillCorner = Instance.new("UICorner")
+    pillCorner.CornerRadius = UDim.new(1, 0)
+    pillCorner.Parent = pill
 
-    if remaining == -1 then
-        timeLabel.Text = "Permanent"
-    else
-        local minutes = math.floor(remaining / 60)
-        local seconds = remaining % 60
-        timeLabel.Text = string.format("%02d:%02d remaining", minutes, seconds)
-    end
-
-    -- Progress bar (for timed effects)
+    -- progress bar for timed events (accent-filled)
     if remaining ~= -1 then
         local progress = duration > 0 and math.clamp(remaining / duration, 0, 1) or 0
         FillBar.create({
-            parent = effectFrame,
-            size = UDim2.new(0, 150, 0, 4),
-            position = UDim2.new(1, -160, 1, -8),
+            parent = card,
+            size = UDim2.new(1, -112, 0, 4),
+            position = UDim2.new(0, 92, 1, -14),
             cornerRadius = UDim.new(0, 2),
-            bgColor = Color3.fromRGB(60, 60, 60),
-            fillColor = Color3.fromRGB(0, 180, 0),
+            bgColor = Color3.fromRGB(55, 58, 68),
+            fillColor = skin.accent,
             fraction = progress,
         })
     end
-
-    table.insert(self.effectDisplays, effectFrame)
 end
 
 -- Update effects data (call this periodically)
