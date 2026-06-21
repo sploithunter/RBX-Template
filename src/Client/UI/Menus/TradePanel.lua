@@ -37,6 +37,13 @@ local COLORS = {
     close = Color3.fromRGB(231, 76, 60),
     text = Color3.fromRGB(255, 255, 255),
     subtext = Color3.fromRGB(200, 205, 215),
+    -- multi-bucket trade additions
+    gem = Color3.fromRGB(120, 70, 200),
+    gemStroke = Color3.fromRGB(170, 120, 240),
+    enh = Color3.fromRGB(60, 64, 78),
+    barBg = Color3.fromRGB(28, 30, 40),
+    tabOn = Color3.fromRGB(56, 161, 178),
+    tabOff = Color3.fromRGB(45, 48, 60),
 }
 
 local TradePanel = {}
@@ -491,6 +498,7 @@ end
 -- left = YOUR tradeable pets (inventory-style cards, click to offer), middle = your
 -- offer (click to pull back), right = their offer (read-only). Mirrored per client.
 local PetCardStyle = require(script.Parent.Parent.PetCardStyle)
+local PetBadge = require(script.Parent.Parent.PetBadge) -- shared enhancement-badge renderer (unified w/ inventory)
 local VARIANT_COLORS = { -- tooltip stroke accents only; cards use PetCardStyle chrome
     basic = Color3.fromRGB(120, 125, 140),
     golden = Color3.fromRGB(255, 200, 60),
@@ -523,11 +531,15 @@ function TradePanel:_renderWindow(state)
         self:_callBus("trade.cancel", {})
     end)
 
-    -- what's already in my offer: specials by uid; stack COPIES counted by kind
-    -- (each escrowed copy has its own offer-uid — the count is the display truth)
-    local offered = {} -- [uid] = true (specials)
-    local offeredCount = {} -- [id|variant|huge] = n (stack copies)
+    -- offered chips (pets): which kinds are partially escrowed. Currencies/enhancements key by id.
+    local offered, offeredCount = {}, {}
     local function kindKey(it)
+        local cat = it.category or "pets"
+        if cat == "currencies" then
+            return "cur|" .. tostring(it.id)
+        elseif cat == "enhancements" then
+            return "enh|" .. tostring(it.id)
+        end
         return tostring(it.id)
             .. "|"
             .. tostring(it.variant or "basic")
@@ -536,14 +548,33 @@ function TradePanel:_renderWindow(state)
     end
     for _, item in ipairs(state.you.items or {}) do
         offered[item.uid] = true
-        local k = kindKey(item)
-        offeredCount[k] = (offeredCount[k] or 0) + 1
+        offeredCount[kindKey(item)] = (offeredCount[kindKey(item)] or 0) + 1
     end
 
-    -- aggregate same-kind offer items into ONE card xN (click removes one copy)
+    -- gems show as a numeric bar (not a card): sum the currency descriptors per side.
+    local function gemTotal(items)
+        local n = 0
+        for _, it in ipairs(items or {}) do
+            if it.category == "currencies" then
+                n += tonumber(it.amount) or 0
+            end
+        end
+        return n
+    end
+    -- cards = pets + enhancements only (currencies ride the gem bar)
+    local function cardsOf(items)
+        local out = {}
+        for _, it in ipairs(items or {}) do
+            if (it.category or "pets") ~= "currencies" then
+                out[#out + 1] = it
+            end
+        end
+        return out
+    end
+    -- aggregate same-kind cards into ONE ×N card (click removes one copy)
     local function aggregate(items)
         local groups, order = {}, {}
-        for _, item in ipairs(items or {}) do
+        for _, item in ipairs(cardsOf(items)) do
             local k = kindKey(item)
             local g = groups[k]
             if not g then
@@ -559,41 +590,81 @@ function TradePanel:_renderWindow(state)
         return order
     end
 
-    local result = self:_callBus("trade.myPets", {})
-    local myPets = (result and result.pets) or {}
-    table.sort(myPets, function(a, b)
-        return tostring(a.id) .. tostring(a.variant) < tostring(b.id) .. tostring(b.variant)
-    end)
+    self._sourceTab = self._sourceTab or "pets"
+    self._lastState = state
+    local function reRender()
+        if self._lastState then
+            self:_renderWindow(self._lastState)
+        end
+    end
+
+    -- LEFT "Your Stuff" source: Pets/Enhancements tabs + the gem INPUT bar
+    local sourceItems
+    if self._sourceTab == "enhancements" then
+        local r = self:_callBus("trade.myEnhancements", {})
+        sourceItems = (r and r.enhancements) or {}
+    else
+        local r = self:_callBus("trade.myPets", {})
+        sourceItems = (r and r.pets) or {}
+        table.sort(sourceItems, function(a, b)
+            return tostring(a.id) .. tostring(a.variant) < tostring(b.id) .. tostring(b.variant)
+        end)
+    end
 
     local colW = 1 / 3
-    self:_petColumn(win, "Your Pets", myPets, {
+    self:_petColumn(win, "Your Stuff", sourceItems, {
         pos = UDim2.new(0, 14, 0, 84),
         size = UDim2.new(colW, -20, 1, -156),
         tint = COLORS.row,
         offered = offered,
         offeredCount = offeredCount,
         kindKey = kindKey,
-        onClick = function(pet)
-            -- A stack (>1 remaining) opens the slider so you can offer many at once
-            -- (Jason: "trade 50-100 at a time, not a window full of cards"). A single
-            -- copy / special goes straight in via the one-shot add.
-            local qty = tonumber(pet.quantity) or 1
+        tabs = {
+            {
+                label = "Pets",
+                active = self._sourceTab == "pets",
+                onClick = function()
+                    self._sourceTab = "pets"
+                    reRender()
+                end,
+            },
+            {
+                label = "Enhancements",
+                active = self._sourceTab == "enhancements",
+                onClick = function()
+                    self._sourceTab = "enhancements"
+                    reRender()
+                end,
+            },
+        },
+        gemBar = {
+            mode = "input",
+            onSet = function(amount)
+                self:_callBus("trade.setGems", { amount = amount })
+            end,
+        },
+        onClick = function(item)
+            if item.category == "enhancements" then
+                self:_callBus("trade.addEnhancement", { uid = item.uid })
+                return
+            end
+            -- A stack (>1) opens the slider; a single copy / special goes straight in.
+            local qty = tonumber(item.quantity) or 1
             if qty <= 1 then
-                self:_callBus("trade.add", { uid = pet.uid })
+                self:_callBus("trade.add", { uid = item.uid })
                 return
             end
             QuantitySelector.prompt({
                 parent = self:_ensureLiveGui(),
                 title = "Offer how many?",
-                subtitle = petText(pet),
+                subtitle = petText(item),
                 accent = COLORS.accept,
                 min = 1,
                 max = qty,
                 default = self:_offerPickerDefault(qty),
                 confirmText = "Offer",
                 onConfirm = function(amount)
-                    -- server clamps to the offer headroom; toast if it couldn't take all
-                    local res = self:_callBus("trade.addMany", { uid = pet.uid, count = amount })
+                    local res = self:_callBus("trade.addMany", { uid = item.uid, count = amount })
                     if type(res) == "table" and res.added and res.added < amount then
                         self:_toast(("Offered %d of %d (offer full)"):format(res.added, amount))
                     end
@@ -601,26 +672,30 @@ function TradePanel:_renderWindow(state)
             })
         end,
     })
+
+    -- MIDDLE "Your Offer": pet/enhancement cards + gem READOUT bar
     self:_petColumn(
         win,
-        ("Your Offer (%d)"):format(#(state.you.items or {})),
+        ("Your Offer (%d)"):format(#cardsOf(state.you.items)),
         aggregate(state.you.items),
         {
             pos = UDim2.new(colW, 8, 0, 84),
             size = UDim2.new(colW, -16, 1, -156),
             tint = COLORS.you,
             confirmed = state.you.confirmed,
-            emptyText = "Click your pets to offer them",
-            onClick = function(pet)
-                -- aggregated card: pull ONE copy back (last escrowed uid in the group)
-                local uid = pet.uids and pet.uids[#pet.uids] or pet.uid
+            emptyText = "Add pets, enhancements, or gems",
+            gemBar = { mode = "readout", amount = gemTotal(state.you.items) },
+            onClick = function(item)
+                local uid = item.uids and item.uids[#item.uids] or item.uid
                 self:_callBus("trade.remove", { uid = uid })
             end,
         }
     )
+
+    -- RIGHT "Their Offer": read-only cards + gem READOUT bar
     self:_petColumn(
         win,
-        (state.them.name or "Them") .. ("'s Offer (%d)"):format(#(state.them.items or {})),
+        (state.them.name or "Them") .. ("'s Offer (%d)"):format(#cardsOf(state.them.items)),
         aggregate(state.them.items),
         {
             pos = UDim2.new(2 * colW, 2, 0, 84),
@@ -628,6 +703,7 @@ function TradePanel:_renderWindow(state)
             tint = COLORS.them,
             confirmed = state.them.confirmed,
             emptyText = "Nothing offered yet",
+            gemBar = { mode = "readout", amount = gemTotal(state.them.items) },
         }
     )
 
@@ -697,9 +773,41 @@ function TradePanel:_petColumn(parent, titleText, items, opts)
     hc.MaxTextSize = 17
     hc.Parent = head
 
+    -- optional Pets/Enhancements source tabs under the title
+    local gridTop = 34
+    if opts.tabs then
+        gridTop = 64
+        local tx = 8
+        for _, t in ipairs(opts.tabs) do
+            local tb = Instance.new("TextButton")
+            tb.Size = UDim2.fromOffset(t.label == "Pets" and 64 or 116, 26)
+            tb.Position = UDim2.fromOffset(tx, 32)
+            tb.BackgroundColor3 = t.active and COLORS.tabOn or COLORS.tabOff
+            tb.Text = t.label
+            tb.TextColor3 = COLORS.text
+            tb.TextScaled = true
+            tb.Font = Enum.Font.GothamBold
+            tb.ZIndex = 104
+            tb.Parent = col
+            corner(tb, 8)
+            local tc = Instance.new("UITextSizeConstraint")
+            tc.MaxTextSize = 13
+            tc.Parent = tb
+            tx += tb.Size.X.Offset + 6
+            tb.Activated:Connect(t.onClick)
+        end
+    end
+
+    -- optional gem bar pinned at the bottom (input = "Your Stuff", readout = the offer columns)
+    local gridBottomInset = 0
+    if opts.gemBar then
+        gridBottomInset = 52
+        self:_gemBar(col, opts.gemBar)
+    end
+
     local grid = Instance.new("ScrollingFrame")
-    grid.Size = UDim2.new(1, -12, 1, -40)
-    grid.Position = UDim2.new(0, 6, 0, 34)
+    grid.Size = UDim2.new(1, -12, 1, -(gridTop + 6 + gridBottomInset))
+    grid.Position = UDim2.new(0, 6, 0, gridTop)
     grid.BackgroundTransparency = 1
     grid.BorderSizePixel = 0
     grid.ScrollBarThickness = 4
@@ -730,7 +838,151 @@ function TradePanel:_petColumn(parent, titleText, items, opts)
     end
 
     for i, pet in ipairs(items or {}) do
-        self:_petCard(grid, pet, i, opts)
+        if pet.category == "enhancements" then
+            self:_enhCard(grid, pet, i, opts)
+        else
+            self:_petCard(grid, pet, i, opts) -- UNCHANGED unified pet card (PetCardStyle chrome)
+        end
+    end
+end
+
+-- Enhancement offer card: renders the SAME PetBadge enhancement badge the inventory uses
+-- (disc = origin element + type symbol + ring), so enhancement cards stay unified. Offer
+-- descriptors nest the record under `.enh`; source-list items are flat.
+function TradePanel:_enhCard(parent, item, order, opts)
+    local enh = item.enh or item
+    local record = { type = enh.type, origins = enh.origins or {}, level = enh.level }
+    local clickable = opts.onClick ~= nil
+
+    local card = Instance.new("TextButton")
+    card.Text = ""
+    card.Size = UDim2.fromOffset(88, 96)
+    card.LayoutOrder = order
+    card.BackgroundColor3 = COLORS.enh
+    card.AutoButtonColor = clickable
+    card.Active = clickable
+    card.ZIndex = 103
+    card.Parent = parent
+    corner(card, 12)
+    local s = Instance.new("UIStroke")
+    s.Color = COLORS.rowStroke
+    s.Thickness = 2
+    s.Parent = card
+
+    PetBadge.createEnhancementBadge(card, {
+        record = record,
+        size = UDim2.fromOffset(56, 56),
+        position = UDim2.new(0.5, 0, 0, 6),
+        anchor = Vector2.new(0.5, 0),
+        zindex = 104,
+    })
+    local name = label(
+        card,
+        tostring(item.name or enh.name or "Enhancement"),
+        UDim2.new(1, -4, 0, 24),
+        UDim2.new(0, 2, 1, -26),
+        COLORS.text,
+        Enum.Font.GothamMedium
+    )
+    name.ZIndex = 105
+    local nc = Instance.new("UITextSizeConstraint")
+    nc.MaxTextSize = 12
+    nc.Parent = name
+
+    local n = tonumber(item.count) or 1
+    if n > 1 then
+        local b = Instance.new("TextLabel")
+        b.Size = UDim2.fromOffset(28, 18)
+        b.Position = UDim2.new(1, -30, 0, 3)
+        b.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+        b.BackgroundTransparency = 0.25
+        b.Text = "×" .. tostring(n)
+        b.TextColor3 = COLORS.text
+        b.TextScaled = true
+        b.Font = Enum.Font.GothamBold
+        b.ZIndex = 106
+        b.Parent = card
+        corner(b, 6)
+    end
+    if clickable then
+        card.Activated:Connect(function()
+            opts.onClick(item)
+        end)
+    end
+end
+
+-- Symmetric gem bar pinned at a column's bottom. mode "input" (TextBox + Set) on "Your Stuff",
+-- "readout" (💎 N Gems) on the two offer columns.
+function TradePanel:_gemBar(col, spec)
+    local bar = Instance.new("Frame")
+    bar.Size = UDim2.new(1, -16, 0, 40)
+    bar.Position = UDim2.new(0, 8, 1, -46)
+    bar.BackgroundColor3 = COLORS.barBg
+    bar.ZIndex = 104
+    bar.Parent = col
+    corner(bar, 10)
+    local s = Instance.new("UIStroke")
+    s.Color = COLORS.gemStroke
+    s.Thickness = 1
+    s.Transparency = 0.2
+    s.Parent = bar
+    local gem = label(bar, "💎", UDim2.fromOffset(28, 40), UDim2.new(0, 8, 0, 0), COLORS.text)
+    gem.ZIndex = 105
+
+    if spec.mode == "input" then
+        local box = Instance.new("TextBox")
+        box.Size = UDim2.fromOffset(110, 30)
+        box.Position = UDim2.new(0, 40, 0.5, -15)
+        box.BackgroundColor3 = Color3.fromRGB(15, 16, 22)
+        box.Text = ""
+        box.PlaceholderText = "amount"
+        box.ClearTextOnFocus = false
+        box.TextColor3 = COLORS.text
+        box.TextScaled = true
+        box.Font = Enum.Font.GothamBold
+        box.ZIndex = 106
+        box.Parent = bar
+        corner(box, 8)
+        local bc = Instance.new("UITextSizeConstraint")
+        bc.MaxTextSize = 16
+        bc.Parent = box
+        local set = Instance.new("TextButton")
+        set.Size = UDim2.fromOffset(70, 30)
+        set.Position = UDim2.new(1, -78, 0.5, -15)
+        set.BackgroundColor3 = COLORS.gem
+        set.Text = "Set"
+        set.TextColor3 = COLORS.text
+        set.TextScaled = true
+        set.Font = Enum.Font.GothamBold
+        set.ZIndex = 106
+        set.Parent = bar
+        corner(set, 8)
+        local sc = Instance.new("UITextSizeConstraint")
+        sc.MaxTextSize = 14
+        sc.Parent = set
+        local function commit()
+            local amount = math.max(0, math.floor(tonumber(box.Text) or 0))
+            if spec.onSet then
+                spec.onSet(amount)
+            end
+        end
+        set.Activated:Connect(commit)
+        box.FocusLost:Connect(function(enterPressed)
+            if enterPressed then
+                commit()
+            end
+        end)
+    else
+        local r = label(
+            bar,
+            ("%s  Gems"):format(tostring(spec.amount or 0)),
+            UDim2.new(1, -50, 1, 0),
+            UDim2.new(0, 42, 0, 0),
+            COLORS.text,
+            Enum.Font.GothamBold
+        )
+        r.TextXAlignment = Enum.TextXAlignment.Left
+        r.ZIndex = 105
     end
 end
 

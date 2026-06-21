@@ -1282,6 +1282,15 @@ function GameAPIService:_registerCommands()
             return s:AddGems(player, args.amount)
         end),
     })
+    bus:register("trade.setGems", {
+        description = "Set your offered gems to an exact total (escrows the delta; 0 pulls them back).",
+        validate = function(args)
+            return Validators.fields(args, { amount = { type = "int", min = 0 } })
+        end,
+        handler = tradeAction(function(s, player, args)
+            return s:SetGems(player, args.amount)
+        end),
+    })
     bus:register("trade.addEnhancement", {
         description = "Offer an enhancement (moves one copy into escrow).",
         validate = function(args)
@@ -1322,6 +1331,12 @@ function GameAPIService:_registerCommands()
         description = "The player's tradeable pets (for the offer picker).",
         handler = tradeAction(function(s, player)
             return s:ListMyPets(player)
+        end),
+    })
+    bus:register("trade.myEnhancements", {
+        description = "The player's tradeable enhancements (for the offer picker).",
+        handler = tradeAction(function(s, player)
+            return s:ListMyEnhancements(player)
         end),
     })
 

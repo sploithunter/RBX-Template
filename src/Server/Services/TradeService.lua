@@ -458,6 +458,76 @@ function TradeService:AddGems(player, amount)
     return { ok = true, count = #offer.items }
 end
 
+-- Set the player's offered gems to an EXACT total (the trade UI's "Set" button). Keeps a single
+-- gem escrow entry and moves currency by the DELTA: putting up more escrows the difference;
+-- lowering it refunds the difference; 0 pulls them all back. The readout always equals what you set.
+function TradeService:SetGems(player, amount)
+    amount = math.max(0, math.floor(tonumber(amount) or 0))
+    local session = self:_sessionOf(player.UserId)
+    if not session then
+        return { ok = false, reason = "no_trade" }
+    end
+    if not self._dataService then
+        return { ok = false, reason = "service_unavailable" }
+    end
+    local verdict = TradeLogic.canAddItem("currencies", { id = GEM_CURRENCY }, self._config)
+    if not verdict.ok then
+        return verdict
+    end
+
+    local escrow = session.escrow[player.UserId]
+    local gemUid, current
+    for uid, d in pairs(escrow) do
+        if d.category == "currencies" and d.id == GEM_CURRENCY then
+            gemUid, current = uid, tonumber(d.amount) or 0
+            break
+        end
+    end
+    current = current or 0
+    if amount == current then
+        return { ok = true, gems = amount }
+    end
+
+    if amount > current then
+        local diff = amount - current
+        if (tonumber(self._dataService:GetCurrency(player, GEM_CURRENCY)) or 0) < diff then
+            return { ok = false, reason = "insufficient_gems" }
+        end
+        self._dataService:RemoveCurrency(player, GEM_CURRENCY, diff, "trade_escrow")
+    else
+        self._dataService:AddCurrency(player, GEM_CURRENCY, current - amount, "trade_refund")
+    end
+
+    local offer = session.offers[player.UserId]
+    if amount > 0 then
+        if gemUid then
+            escrow[gemUid].amount = amount
+            for _, it in ipairs(offer.items) do
+                if it.uid == gemUid then
+                    it.amount = amount
+                end
+            end
+        else
+            local d =
+                { uid = nextOfferId(), category = "currencies", id = GEM_CURRENCY, amount = amount }
+            escrow[d.uid] = d
+            table.insert(offer.items, d)
+        end
+    elseif gemUid then
+        escrow[gemUid] = nil
+        for i = #offer.items, 1, -1 do
+            if offer.items[i].uid == gemUid then
+                table.remove(offer.items, i)
+            end
+        end
+    end
+
+    session.offers[session.a].confirmed = false
+    session.offers[session.b].confirmed = false
+    self:_push(session, "updated")
+    return { ok = true, gems = amount }
+end
+
 -- Add an enhancement to the offer. `uid` is the inventory uid from EnhancementService:GetState().
 -- Moves ONE copy out of the (stacked) enhancements bucket into escrow.
 function TradeService:AddEnhancement(player, uid)
@@ -710,6 +780,30 @@ function TradeService:ListMyPets(player)
         })
     end
     return { ok = true, pets = out }
+end
+
+-- The player's tradeable enhancements (source list for the trade picker). Each entry is tagged
+-- category="enhancements" so the offer columns render it through the simple-card path.
+function TradeService:ListMyEnhancements(player)
+    local enh = self:_service("EnhancementService")
+    if not (enh and enh.GetState) then
+        return { ok = false, reason = "service_unavailable" }
+    end
+    local state = enh:GetState(player)
+    local out = {}
+    for _, item in ipairs((state and state.inventory) or {}) do
+        out[#out + 1] = {
+            uid = item.uid,
+            category = "enhancements",
+            id = item.uid, -- the inventory uid IS what trade.addEnhancement takes
+            type = item.type,
+            origins = item.origins, -- the trade card renders PetBadge.createEnhancementBadge
+            level = item.level,
+            name = item.name,
+            count = item.count,
+        }
+    end
+    return { ok = true, enhancements = out }
 end
 
 function TradeService:GetState(player)
