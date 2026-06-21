@@ -2155,14 +2155,17 @@ function ConfigLoader:_validateEventsConfig(config)
                     "must reference global_events"
                 )
             end
-            if not isArray(schedule.weekdays_utc) then
-                return self:_configError("events", path .. ".weekdays_utc", "expected array")
+            -- weekdays = MOUNTAIN weekdays (1=Sun..7=Sat); weekdays_utc kept as a legacy alias.
+            local weekdays = schedule.weekdays or schedule.weekdays_utc
+            local field = schedule.weekdays ~= nil and "weekdays" or "weekdays_utc"
+            if not isArray(weekdays) then
+                return self:_configError("events", path .. "." .. field, "expected array")
             end
-            for index, weekday in ipairs(schedule.weekdays_utc) do
+            for index, weekday in ipairs(weekdays) do
                 if type(weekday) ~= "number" or weekday < 1 or weekday > 7 or weekday % 1 ~= 0 then
                     return self:_configError(
                         "events",
-                        path .. ".weekdays_utc[" .. index .. "]",
+                        path .. "." .. field .. "[" .. index .. "]",
                         "must be integer 1..7"
                     )
                 end
