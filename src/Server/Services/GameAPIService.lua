@@ -1354,6 +1354,51 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    -- POTIONS (brew-charge consumables; one meter per axis) ----------------
+    bus:register("potion.drink", {
+        description = "Drink one potion: consume it, sip its brew meter (diminishing).",
+        validate = function(args)
+            return Validators.fields(args, { potionId = "string" })
+        end,
+        handler = function(context, args)
+            local s = self:_service("PotionService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Drink(context.player, args.potionId)
+        end,
+    })
+    bus:register("potion.state", {
+        description = "The player's owned potions + live brew meters (for the hotbar strip).",
+        handler = function(context)
+            local s = self:_service("PotionService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:GetState(context.player)
+        end,
+    })
+    bus:register("potion.grant", {
+        description = "ADMIN/TEST: grant N of a potion into your inventory.",
+        validate = function(args)
+            return Validators.fields(
+                args,
+                { potionId = "string", count = { type = "int", min = 1 } }
+            )
+        end,
+        handler = function(context, args)
+            local admin = self:_service("AdminService")
+            if not (admin and admin.IsAuthorized and admin:IsAuthorized(context.player)) then
+                return { ok = false, reason = "not_authorized" }
+            end
+            local s = self:_service("PotionService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Grant(context.player, args.potionId, args.count)
+        end,
+    })
+
     -- REWARD SPINE (Quests / Daily / Shop / Rewards) ----------------------
     bus:register("quest.list", {
         description = "List quests with progress + claimable state.",

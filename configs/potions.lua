@@ -27,6 +27,7 @@ return {
             drain_seconds = 60,
             full_threshold = 0.98,
             buff_axis = "pet_damage",
+            color = { 220, 70, 70 }, -- damage = red
             buff_attr = "PetDamageBuff",
             icon = "⚔️",
             target = "player",
@@ -37,6 +38,7 @@ return {
             drain_seconds = 45,
             full_threshold = 0.98,
             buff_axis = "luck",
+            color = { 70, 200, 110 }, -- luck = green
             buff_attr = "LuckBuff",
             icon = "🍀",
             target = "player",
@@ -47,6 +49,7 @@ return {
             drain_seconds = 30,
             full_threshold = 0.98,
             buff_axis = "move_speed",
+            color = { 80, 160, 240 }, -- speed = blue
             buff_attr = "MoveSpeedBuff",
             icon = "💨",
             target = "player",
@@ -58,6 +61,7 @@ return {
             drain_seconds = 20,
             full_threshold = 0.98,
             buff_attr = "VulnerableMult",
+            color = { 200, 50, 90 }, -- weaken = crimson
             icon = "🩸",
             target = "enemy",
         },

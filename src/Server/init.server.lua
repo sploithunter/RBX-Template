@@ -404,6 +404,12 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.EnhancementService,
     { "Logger", "ConfigLoader", "DataService" }
 )
+-- PotionService: "brew charge" potions (drink->sip->drain) feeding BuffStack axis attributes.
+loader:RegisterModule(
+    "PotionService",
+    ServerScriptService.Server.Services.PotionService,
+    { "Logger", "ConfigLoader", "DataService" }
+)
 -- TutorialService: event-driven new-player tutorial (taps the GameEvents bus; configs/tutorial).
 loader:RegisterModule(
     "TutorialService",
@@ -663,6 +669,7 @@ table.insert(requiredModules, "ArchetypeService")
 table.insert(requiredModules, "PowerService")
 table.insert(requiredModules, "AugmentationService")
 table.insert(requiredModules, "EnhancementService")
+table.insert(requiredModules, "PotionService")
 table.insert(requiredModules, "TutorialService")
 table.insert(requiredModules, "HotbarService")
 table.insert(requiredModules, "RosterService")
