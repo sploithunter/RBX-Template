@@ -243,6 +243,16 @@ do
     end
 end
 
+-- Potion hotbar strip: bottle-slots beside the power bar (liquid fill drains, tap to drink).
+do
+    local ok, err = pcall(function()
+        require(script.Systems.PotionStrip).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start PotionStrip", { error = tostring(err) })
+    end
+end
+
 -- Studio-only: bridge that lets AutomationService disable/enable local controls
 -- during automated movement (see AutomationControlBridge).
 if RunService:IsStudio() then
