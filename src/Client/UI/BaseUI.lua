@@ -333,6 +333,19 @@ else
                             admin_only = true,
                         },
                     },
+                    -- Events: opens the Effects panel (global events list). Re-added now that real
+                    -- content (scheduled events) lands. MenuTrayStyle auto-skins "EffectsButton"
+                    -- (already in its TRAY_BUTTONS), so it matches Settings/Daily/Quest. The label +
+                    -- a glow are driven live by EventLiveLabel from Signals.ActiveEffects.
+                    {
+                        type = "menu_button",
+                        config = {
+                            name = "Effects",
+                            icon = "📅",
+                            text = "Events",
+                            color = Color3.fromRGB(241, 196, 15),
+                        },
+                    },
                 },
             },
             pets_button_pane = {
