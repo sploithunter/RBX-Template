@@ -236,13 +236,6 @@ function HotbarService:Activate(player, payload)
     if not bind then
         return { ok = false, reason = "empty_slot" }
     end
-    -- TEMP DIAG (potion-in-bar): confirms a slot click reaches the server + the resolved bind type.
-    if self._logger then
-        self._logger:Info(
-            "🔘 Hotbar activate",
-            { slot = slot, type = bind.type, target = bind.target }
-        )
-    end
 
     if bind.type == "tactical" then
         local enemy = self:_service("EnemyService")
@@ -271,19 +264,9 @@ function HotbarService:Activate(player, payload)
         local potionSvc = self:_service("PotionService")
         if potionSvc and potionSvc.Drink then
             local result = potionSvc:Drink(player, bind.target)
-            if self._logger then -- TEMP DIAG: shows WHY a drink no-ops (meter_full / too_fast / none_left)
-                self._logger:Info("🧪 Hotbar drink", {
-                    potion = bind.target,
-                    ok = result and result.ok,
-                    reason = result and result.reason,
-                })
-            end
             -- echo so the slot's count badge updates immediately (Drink already pushed PotionUpdate)
             self:_pushState(player)
             return result
-        end
-        if self._logger then
-            self._logger:Warn("🧪 Hotbar drink — PotionService unavailable")
         end
         return { ok = false, reason = "potion_unavailable" }
     end

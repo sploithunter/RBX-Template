@@ -381,7 +381,9 @@ function HotbarBar.start()
             return
         end
         locked[slot] = not locked[slot] or nil
-        card.lock.Visible = locked[slot] == true
+        if card.lock then
+            card.lock.Visible = locked[slot] == true
+        end
     end
 
     -- Hover tooltip: after a short hover on a power slot, a popup shows the power's NAME + what it
@@ -635,6 +637,7 @@ function HotbarBar.start()
                 bindObj = nil,
                 icon = iconImg,
                 ring = ringImg,
+                lock = lockBadge, -- the auto-cast "⟳" badge; toggleAutoLock toggles its .Visible
             }
         end
     end
@@ -778,10 +781,19 @@ function HotbarBar.start()
             applyState(lastHotbarState)
         end
     end
+    -- Seed the potion state, RETRYING: at join GameAPICommand/PotionService may not be up yet, so a
+    -- single pull can come back empty and a bound potion slot would show the emoji fallback until the
+    -- first drink pushes PotionUpdate. Retry until owned potions land (or give up after a few tries).
     task.spawn(function()
-        local st = callBus("potion.state", {})
-        if st then
-            onPotionState(st)
+        for _ = 1, 12 do
+            local st = callBus("potion.state", {})
+            if st then
+                onPotionState(st)
+                if st.potions and #st.potions > 0 then
+                    break -- owned potions resolved -> bound slots can render the unified disc
+                end
+            end
+            task.wait(1)
         end
     end)
     task.spawn(function()
