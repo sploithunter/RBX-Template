@@ -2,7 +2,7 @@
     MountainTime — pure UTC -> America/Denver (Mountain) conversion with US DST.
 
     Roblox servers run in UTC (os.date("!*t")). Pet Realm's recurring events are scheduled
-    in MOUNTAIN time ("ColoradoPlays" — Money Monday at midnight Mountain, not UTC), so any
+    in MOUNTAIN time ("ColoradoPlays" — Mineral Monday at midnight Mountain, not UTC), so any
     weekday/hour decision must convert first.
 
     US Mountain DST (since 2007):

@@ -98,8 +98,8 @@ return {
         -- ── Weekday calendar (all MOUNTAIN time — see scheduled_global_events) ────────────
         -- One all-day event per weekday, each boosting a DISTINCT axis so every day feels
         -- different. duration -1 = all day; "reset" so it just stays on while scheduled.
-        money_monday = {
-            display_name = "Money Monday",
+        mineral_monday = {
+            display_name = "Mineral Monday",
             description = "Double crystals from everything you break, all day.",
             duration_seconds = -1,
             stacking = "reset",
@@ -179,7 +179,11 @@ return {
     -- All schedules are MOUNTAIN time (America/Denver, DST-aware) — EventService converts the
     -- UTC server clock via Shared/Game/MountainTime. weekdays: 1=Sun .. 7=Sat.
     scheduled_global_events = {
-        money_monday = { event_id = "money_monday", weekdays = { 2 }, reason = "Money Monday" },
+        mineral_monday = {
+            event_id = "mineral_monday",
+            weekdays = { 2 },
+            reason = "Mineral Monday",
+        },
         tycoon_tuesday = {
             event_id = "tycoon_tuesday",
             weekdays = { 3 },
