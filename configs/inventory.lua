@@ -10,6 +10,7 @@ return {
         pets = true,
         eggs = true, -- held egg ITEMS (Meet-The-Creator etc.) — hatched on demand
         enhancements = true, -- CoH-style power enhancements (drops; slot via Power Choice)
+        potions = true, -- brew-charge potions (drink from the hotbar strip; tradeable)
         weapons = false, -- Disabled for pet simulator
         tools = true, -- Enabled for pickaxes and mining tools
         consumables = true,
@@ -369,6 +370,23 @@ return {
             },
             limit_extensions = {},
         },
+        potions = {
+            display_name = "Potions",
+            icon = "🧪",
+            -- Same stackable model as enhancements: same potion id merges into ONE quantity stack
+            -- (no save explosion), stacks are free (only uniques count toward the 500 cap; potions
+            -- have no unique tier). Drink decrements the stack; trade-ready (the potions bucket).
+            base_limit = 500,
+            stack_size = 1000000000000,
+            stacks_count_toward_limit = false,
+            allow_duplicates = true,
+            storage_type = "stackable",
+            item_schema = {
+                required = { "id" }, -- the potion id (e.g. "berserk_brew")
+                optional = { "category", "name", "quantity", "obtained_at" },
+            },
+            limit_extensions = {},
+        },
         consumables = {
             display_name = "Consumables",
             icon = "🧪",
@@ -575,7 +593,15 @@ return {
             name = "All",
             icon = "📦",
             description = "All items across all categories",
-            folders = { "pets", "consumables", "tools", "eggs", "resources", "enhancements" }, -- All enabled buckets
+            folders = {
+                "pets",
+                "consumables",
+                "tools",
+                "eggs",
+                "resources",
+                "enhancements",
+                "potions",
+            }, -- All enabled buckets
             display_order = 1,
             always_visible = true, -- Show even if no items
         },
