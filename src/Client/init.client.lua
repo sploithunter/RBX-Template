@@ -232,6 +232,17 @@ do
     end
 end
 
+-- In-world buff AURAS (the badge row's twin): a themed sparkle+glow on any player whose timed buff
+-- is active (Windfall = gold). SSOT-driven from configs/buff_auras.lua; potions slot in as new rows.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.BuffAuraController).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start BuffAuraController", { error = tostring(err) })
+    end
+end
+
 -- Lower-left live label for the active global event (glows + names the running event,
 -- click opens the Effects/events panel). Reads Signals.ActiveEffects.
 do
@@ -240,16 +251,6 @@ do
     end)
     if not ok then
         Logger:Warn("Failed to start EventLiveLabel", { error = tostring(err) })
-    end
-end
-
--- Potion hotbar strip: bottle-slots beside the power bar (liquid fill drains, tap to drink).
-do
-    local ok, err = pcall(function()
-        require(script.Systems.PotionStrip).start()
-    end)
-    if not ok then
-        Logger:Warn("Failed to start PotionStrip", { error = tostring(err) })
     end
 end
 

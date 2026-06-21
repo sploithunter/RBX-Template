@@ -60,6 +60,7 @@ local TYPE_COLOR = {
     tactical = Color3.fromRGB(230, 170, 60),
     roster = Color3.fromRGB(70, 170, 230),
     pet = Color3.fromRGB(90, 200, 120),
+    potion = Color3.fromRGB(150, 80, 200), -- potion slot tint (overridden per-meter axis colour)
 }
 -- Authored disc icons for tactical commands (rendered like a power disc but with NO targeting ring).
 -- element = disc colour tier (neutral = the purple "generic command" disc). Add rows as art lands.
@@ -219,9 +220,94 @@ function HotbarBar.start()
 
     -- Assignment (edit) state: the palette pushed by the server + a forward-declared
     -- picker opener so a slot click can open it while in edit mode.
-    local available = { powers = {}, tacticals = {} }
+    local available = { powers = {}, tacticals = {}, potions = {} }
     local editMode = false
     local openPicker
+
+    -- ===== Potions: live brew-meter state for any slot bound to a potion =====
+    -- PotionService is the SSOT; it pushes PotionUpdate (charge + owned counts) and answers
+    -- potion.state for the initial pull. We keep the charge interpolating between 1s pushes so a
+    -- potion slot's draining radial-clock reads smoothly (reusing the power-cooldown edge clock).
+    local potionMeters = {} -- meterId -> { charge, drain_seconds, color }
+    local potionByPotion = {} -- potionId -> { meter, icon, count, name }
+    local potionPushClock = os.clock()
+    local function potionLiveCharge(meterId)
+        local m = potionMeters[meterId]
+        if not m then
+            return 0
+        end
+        local c = (m.charge or 0)
+            - (os.clock() - potionPushClock) / math.max(1, m.drain_seconds or 1)
+        return math.clamp(c, 0, 1)
+    end
+    local function ingestPotionState(state)
+        if type(state) ~= "table" then
+            return
+        end
+        potionMeters = state.meters or {}
+        potionPushClock = os.clock()
+        potionByPotion = {}
+        for _, p in ipairs(state.potions or {}) do
+            potionByPotion[p.id] = p
+        end
+    end
+    local function callBus(name, args)
+        local remote = ReplicatedStorage:FindFirstChild("GameAPICommand")
+        if not remote then
+            return nil
+        end
+        local ok, envelope = pcall(function()
+            return remote:InvokeServer(name, args or {})
+        end)
+        if ok and type(envelope) == "table" then
+            return envelope.result
+        end
+        return nil
+    end
+    local function color3(c)
+        if type(c) == "table" then
+            return Color3.fromRGB(c[1] or 200, c[2] or 200, c[3] or 200)
+        end
+        return Color3.fromRGB(200, 200, 200)
+    end
+    -- Lazily attach the potion-only chrome to a card: a big centred glyph + a top-right count badge.
+    -- (Powers use the disc/ring art; potions are emoji-glyph + "×N", so this lives separate.)
+    local function ensurePotionChrome(card)
+        if card.potGlyph then
+            return
+        end
+        local glyph = Instance.new("TextLabel")
+        glyph.Name = "PotionGlyph"
+        glyph.BackgroundTransparency = 1
+        glyph.Size = UDim2.fromScale(0.7, 0.7)
+        glyph.Position = UDim2.fromScale(0.5, 0.5)
+        glyph.AnchorPoint = Vector2.new(0.5, 0.5)
+        glyph.Font = Enum.Font.GothamBold
+        glyph.TextScaled = true
+        glyph.Text = "🧪"
+        glyph.ZIndex = 3
+        glyph.Visible = false
+        glyph.Parent = card.frame
+        local count = Instance.new("TextLabel")
+        count.Name = "PotionCount"
+        count.AnchorPoint = Vector2.new(1, 0)
+        count.Position = UDim2.new(1, -2, 0, 1)
+        count.Size = UDim2.fromOffset(20, 14)
+        count.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+        count.BackgroundTransparency = 0.2
+        count.Font = Enum.Font.GothamBold
+        count.TextScaled = true
+        count.TextColor3 = Color3.fromRGB(255, 255, 255)
+        count.Text = "×0"
+        count.ZIndex = 4
+        count.Visible = false
+        count.Parent = card.frame
+        local cc = Instance.new("UICorner")
+        cc.CornerRadius = UDim.new(0, 4)
+        cc.Parent = count
+        card.potGlyph = glyph
+        card.potCount = count
+    end
 
     -- Cooldown overlay on a (circular) slot, reusing the golden/rainbow-pet shimmer:
     -- while recharging the icon dims, a rainbow UIGradient ring spins around it (same
@@ -563,10 +649,12 @@ function HotbarBar.start()
 
     -- Render bindings pushed from the server.
     local stateApplied = false -- true once a non-empty hotbar has landed (stops join-retry)
+    local lastHotbarState -- kept so a PotionUpdate can re-render bound potion slots (fresh glyph/count)
     local function applyState(state)
         if type(state) ~= "table" or type(state.hotbar) ~= "table" then
             return
         end
+        lastHotbarState = state
         if next(state.hotbar) ~= nil then
             stateApplied = true
         end
@@ -585,6 +673,31 @@ function HotbarBar.start()
                 if card.lock then
                     card.lock.Visible = locked[slot] == true
                 end
+                if bind and bind.type == "potion" then
+                    -- Potion slot: a glyph + "×count" badge. Its draining "duration" rides the radial
+                    -- edge-clock (driven in the Heartbeat below from the live brew-meter charge), so a
+                    -- potion reuses the same countdown chrome a power's cooldown does.
+                    local p = potionByPotion[bind.target]
+                    local meterId = p and p.meter
+                    local mc = meterId and potionMeters[meterId]
+                    ensurePotionChrome(card)
+                    card.potGlyph.Text = tostring((p and p.icon) or "🧪")
+                    card.potGlyph.Visible = true
+                    card.potCount.Visible = true
+                    card.potCount.Text = "×" .. tostring((p and p.count) or 0)
+                    card.potMeter = meterId
+                    card.icon.Image = ""
+                    card.ring.Visible = false
+                    card.bind.Visible = false
+                    card.frame.BackgroundColor3 = mc and color3(mc.color) or TYPE_COLOR.potion
+                    card.frame.BackgroundTransparency = 0.05
+                    continue
+                end
+                card.potMeter = nil
+                if card.potGlyph then
+                    card.potGlyph.Visible = false
+                    card.potCount.Visible = false
+                end
                 -- Power slots render the universal badge: element disc + tinted directional ring
                 -- (the ring's SHAPE = targeting). Falls back to the old flat icon, then to text.
                 local badge = bind and bind.type == "power" and PetBadge.forPower(bind.target)
@@ -592,10 +705,10 @@ function HotbarBar.start()
                 local discImg = badge and POWER_ICONS.discFor(badge.element, badge.symbol) or nil
                 -- Tactical commands can carry an authored disc (e.g. rally -> flag) — same disc art as
                 -- powers, but NO targeting ring (a command isn't aimed).
-                local tacBadge = (not discImg)
-                    and bind
-                    and bind.type == "tactical"
-                    and TACTICAL_BADGE[bind.target]
+                local tacBadge = not discImg
+                        and bind
+                        and bind.type == "tactical"
+                        and TACTICAL_BADGE[bind.target]
                     or nil
                 local tacDisc = tacBadge and POWER_ICONS.discFor(tacBadge.element, tacBadge.symbol)
                     or nil
@@ -645,6 +758,28 @@ function HotbarBar.start()
     Signals.Hotbar_State.OnClientEvent:Connect(applyState)
     Signals.Hotbar_RequestState:FireServer()
 
+    -- Potions: seed the brew-meter state + subscribe to live pushes. On each push we re-apply the
+    -- last hotbar state so a bound potion slot's glyph/colour refresh (counts already tick in the
+    -- Heartbeat). The slot's draining duration is driven from these meters by the Heartbeat above.
+    local function onPotionState(state)
+        ingestPotionState(state)
+        if lastHotbarState then
+            applyState(lastHotbarState)
+        end
+    end
+    task.spawn(function()
+        local st = callBus("potion.state", {})
+        if st then
+            onPotionState(st)
+        end
+    end)
+    task.spawn(function()
+        local remote = ReplicatedStorage:WaitForChild("PotionUpdate", 30)
+        if remote then
+            remote.OnClientEvent:Connect(onPotionState)
+        end
+    end)
+
     -- Power cooldowns -> the per-slot radial edge-clock. Stamp the local clock when the
     -- push arrives so the sweep is smooth (server untilTime is only 1s-granular).
     local powerCooldowns = {} -- powerId -> { startClock, cooldown }
@@ -665,6 +800,21 @@ function HotbarBar.start()
                     local since = nowC - cd.startClock
                     card.cool(since / cd.cooldown, cd.cooldown - since)
                     ready = since >= cd.cooldown
+                elseif b and b.type == "potion" and card.potMeter then
+                    -- A potion's draining buff rides the same radial: progress = 1-charge (full meter =
+                    -- full overlay), countdown = charge×drain. Hides when the meter empties.
+                    local charge = potionLiveCharge(card.potMeter)
+                    local m = potionMeters[card.potMeter]
+                    if charge > 0 and m then
+                        card.cool(1 - charge, charge * (m.drain_seconds or 0))
+                    else
+                        card.cool(1)
+                    end
+                    if card.potCount then -- keep the count live as you drink / as pushes land
+                        local p = potionByPotion[b.target]
+                        card.potCount.Text = "×" .. tostring((p and p.count) or 0)
+                    end
+                    ready = false -- never auto-fire potions (locking a slot won't auto-drink)
                 else
                     card.cool(1) -- ready / not a power -> hide the clock
                 end
@@ -904,6 +1054,18 @@ function HotbarBar.start()
                 TYPE_COLOR.tactical,
                 { type = "tactical", target = cmd }
             )
+        end
+        -- Potions you OWN (drink on tap, like a power). Server palette carries id + count + icon.
+        if available.potions and #available.potions > 0 then
+            header("Potions")
+            for _, pot in ipairs(available.potions) do
+                local label = tostring(pot.icon or "🧪")
+                    .. " "
+                    .. tostring(pot.name or pot.id)
+                    .. " ×"
+                    .. tostring(pot.count or 0)
+                entry(label, TYPE_COLOR.potion, { type = "potion", target = pot.id })
+            end
         end
         header("")
         entry("✖ Clear slot", Color3.fromRGB(70, 50, 50), nil)

@@ -9,7 +9,7 @@
 
 return {
     slot_count = 20,
-    bind_types = { "power", "roster", "pet", "tactical" },
+    bind_types = { "power", "roster", "pet", "tactical", "potion" },
     tactical_commands = { "scatter", "focus_fire", "regroup", "retreat", "rally" },
 
     -- Default layout for a new player. Power slots fill from the player's OWNED powers (picked via

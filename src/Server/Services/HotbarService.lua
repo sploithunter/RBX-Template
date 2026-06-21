@@ -121,9 +121,23 @@ function HotbarService:_assignablePalette(player)
     for _, id in ipairs((data and data.Powers) or {}) do
         powers[#powers + 1] = id -- owned powers only — you can't bind what you haven't picked
     end
+    -- Potions the player OWNS (drinkable consumables you can bind to a slot like a power).
+    -- PotionService is the SSOT for owned counts; an empty list if it's not up yet.
+    local potions = {}
+    local potionSvc = self:_service("PotionService")
+    if potionSvc and potionSvc.GetState then
+        local ok, st = pcall(function()
+            return potionSvc:GetState(player)
+        end)
+        if ok and type(st) == "table" and type(st.potions) == "table" then
+            potions = st.potions -- { { id, count, meter, icon, name } }
+        end
+    end
+
     return {
         powers = powers,
         tacticals = self._config.tactical_commands or {},
+        potions = potions,
     }
 end
 
@@ -244,6 +258,17 @@ function HotbarService:Activate(player, payload)
             return power:Cast(player, bind.target)
         end
         return { ok = false, reason = "power_unavailable" }
+    elseif bind.type == "potion" then
+        -- Drink one from the bound potion (consumes from inventory + sips the meter). A slot can
+        -- stay bound to a potion you've run out of — Drink just no-ops with reason "none_left".
+        local potionSvc = self:_service("PotionService")
+        if potionSvc and potionSvc.Drink then
+            local result = potionSvc:Drink(player, bind.target)
+            -- echo so the slot's count badge updates immediately (Drink already pushed PotionUpdate)
+            self:_pushState(player)
+            return result
+        end
+        return { ok = false, reason = "potion_unavailable" }
     end
 
     -- roster: deploy effects not wired yet.
