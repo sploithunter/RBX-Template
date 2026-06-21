@@ -1088,6 +1088,16 @@ function DataService:GetCurrency(player, currencyType)
 end
 
 function DataService:SetCurrency(player, currencyType, amount, source)
+    -- GEMDIAG (temporary): prove whether the legit profile-writing path is reached for gems, and
+    -- by whom. If the Gems attribute climbs WITHOUT this firing, the writer bypasses SetCurrency.
+    if currencyType == "gems" then
+        self._logger:Warn("💎 GEMDIAG SetCurrency(gems) reached", {
+            player = player.Name,
+            amount = amount,
+            source = source,
+            by = debug.traceback("", 2),
+        })
+    end
     local currencyIcon = currencyType == "coins" and "🪙"
         or (currencyType == "gems" and "💎" or "💰")
     self._logger:Info(currencyIcon .. " CURRENCY TRACE - SetCurrency called", {
