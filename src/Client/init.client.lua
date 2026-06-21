@@ -232,6 +232,17 @@ do
     end
 end
 
+-- Lower-left live label for the active global event (glows + names the running event,
+-- click opens the Effects/events panel). Reads Signals.ActiveEffects.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.EventLiveLabel).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start EventLiveLabel", { error = tostring(err) })
+    end
+end
+
 -- Studio-only: bridge that lets AutomationService disable/enable local controls
 -- during automated movement (see AutomationControlBridge).
 if RunService:IsStudio() then
