@@ -136,38 +136,10 @@ function MenuTrayStyle.start()
             end
         end)
 
-        -- ADMIN floats just above the tray (Jason: "sort of special... only shows up
-        -- for admins, so maybe it should be out a little bit") — same pill, its own spot
-        task.spawn(function()
-            local adminBtn = pane and pane:WaitForChild("AdminButton", 15)
-            if not (adminBtn and pane) then
-                return
-            end
-            local mcParent = pane.Parent
-            adminBtn.Parent = mcParent
-            adminBtn.AnchorPoint = Vector2.new(0, 1)
-            adminBtn.Size = UDim2.fromOffset(62, 62)
-            -- leaving the pane also left its UIViewportScale (Jason: "admin is not
-            -- scaling") — own scale, anchored bottom-left so it shrinks in place
-            require(script.Parent.Parent.UI.UIViewportScale).attach(adminBtn)
-            -- dock to the TOP of the VISIBLE button block (the pane's 200px box is
-            -- taller than its content — position math off the pane floated too high;
-            -- live-tuned against the top-row button's absolute edge)
-            local function dock()
-                local topBtn = pane:FindFirstChild("DailyButton")
-                    or pane:FindFirstChildWhichIsA("GuiButton")
-                if not topBtn then
-                    return
-                end
-                adminBtn.Position = UDim2.fromOffset(
-                    pane.AbsolutePosition.X - mcParent.AbsolutePosition.X + 2,
-                    topBtn.AbsolutePosition.Y - mcParent.AbsolutePosition.Y - 8
-                )
-            end
-            task.defer(dock)
-            pane:GetPropertyChangedSignal("AbsoluteSize"):Connect(dock)
-            pane:GetPropertyChangedSignal("AbsolutePosition"):Connect(dock)
-        end)
+        -- ADMIN now stays IN the grid as the last cell (Jason: "just make the admin button last in
+        -- the grid"). The grid fills bottom-to-top / left-to-right, so its high LayoutOrder lands it
+        -- in the final slot — no floating/docking (that overlapped the new Events button) and it
+        -- inherits the pane's pill skin + UIViewportScale like every other tray button.
 
         -- re-tint the tray on area change
         Theme.bind(player, function(p)

@@ -1094,19 +1094,6 @@ local uiConfig = {
                     },
                 },
 
-                -- 🟣 MINIMAL WITH OVERRIDE: Custom icon but inherits everything else
-                {
-                    type = "menu_button",
-                    config = {
-                        name = "Admin",
-                        icon = "6031068421",
-                        text = "Admin",
-                        action = "admin_action",
-                        admin_only = true,
-                        -- 🎨 Automatically gets: teal background, default text styling, default layout!
-                    },
-                },
-
                 -- ⭐ NOTIFICATION EXAMPLE: Simple notification that inherits default styling
                 {
                     type = "menu_button",
@@ -1145,6 +1132,21 @@ local uiConfig = {
                         icon = "📅",
                         text = "Events",
                         text_top = "",
+                    },
+                },
+
+                -- ADMIN is LAST in the grid (Jason): the grid fills bottom-to-top / left-to-right, so
+                -- the highest LayoutOrder lands in the final cell — no floating/docking needed (that
+                -- overlapped the new Events button). admin_only hides it for non-admins, leaving the
+                -- grid clean.
+                {
+                    type = "menu_button",
+                    config = {
+                        name = "Admin",
+                        icon = "6031068421",
+                        text = "Admin",
+                        action = "admin_action",
+                        admin_only = true,
                     },
                 },
 
