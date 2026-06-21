@@ -1134,6 +1134,20 @@ local uiConfig = {
                     },
                 },
 
+                -- EVENTS: opens the Effects panel (global events). Stacked label (text_top) so it reads
+                -- "<top> / 📅 / <bottom>"; EventLiveLabel fills both lines live with the active event
+                -- name + a glow (e.g. "Secret" / 📅 / "Sunday"). No action -> opens the "Effects" panel
+                -- by name. Inherits the default tray theme like Settings/Daily/Quest.
+                {
+                    type = "menu_button",
+                    config = {
+                        name = "Effects",
+                        icon = "📅",
+                        text = "Events",
+                        text_top = "",
+                    },
+                },
+
                 -- (Rewards button removed — it opened the SAME Quest panel; the claim
                 -- badge lives on the Quest button now. rewards_action stays defined for
                 -- anything else that routes through it.)
