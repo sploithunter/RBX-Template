@@ -110,24 +110,41 @@ function EventLiveLabel.start()
             end
         end
 
-        if label and label:IsA("TextLabel") then
-            label.TextWrapped = true -- let "Secret Sunday" stack within the small cell
+        local topLabel = button:FindFirstChild("LabelTop", true) -- stacked layout (text_top in config)
+
+        -- Split "Secret Sunday" -> ("Secret", "Sunday") so it reads top / icon / bottom. One word ->
+        -- all on the bottom (top blank). Trailing "+N" (extra events) rides the bottom line.
+        local function splitName(name)
+            local words = {}
+            for w in tostring(name):gmatch("%S+") do
+                words[#words + 1] = w
+            end
+            if #words <= 1 then
+                return "", tostring(name)
+            end
+            return words[1], table.concat(words, " ", 2)
         end
 
         local headline, count = nil, 0
         local function render()
-            if label and label:IsA("TextLabel") then
-                if headline then
-                    local title = tostring(headline.displayName or headline.name or "Event")
-                    if count > 1 then
-                        title = title .. " +" .. (count - 1)
-                    end
-                    label.Text = title
-                    label.TextColor3 = LIVE_COLOR
-                else
-                    label.Text = IDLE_TEXT
-                    label.TextColor3 = IDLE_COLOR
+            local top, bottom, color
+            if headline then
+                local name = tostring(headline.displayName or headline.name or "Event")
+                top, bottom = splitName(name)
+                if count > 1 then
+                    bottom = bottom .. " +" .. (count - 1)
                 end
+                color = LIVE_COLOR
+            else
+                top, bottom, color = "", IDLE_TEXT, IDLE_COLOR
+            end
+            if topLabel and topLabel:IsA("TextLabel") then
+                topLabel.Text = top
+                topLabel.TextColor3 = color
+            end
+            if label and label:IsA("TextLabel") then
+                label.Text = bottom
+                label.TextColor3 = color
             end
             setGlow(headline ~= nil)
         end

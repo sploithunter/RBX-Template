@@ -343,6 +343,7 @@ else
                             name = "Effects",
                             icon = "📅",
                             text = "Events",
+                            text_top = "", -- stacked layout: "<top> / 📅 / <bottom>" (EventLiveLabel fills it)
                             color = Color3.fromRGB(241, 196, 15),
                         },
                     },
@@ -1578,6 +1579,19 @@ function BaseUI:_createButtonLabel(config, parent)
         shadow.Thickness = shadowConfig.thickness
         shadow.Transparency = shadowConfig.transparency
         shadow.Parent = label
+    end
+
+    -- TOP LABEL option (Jason): a stacked button reads "<top> / icon / <bottom>" (e.g. the Events
+    -- tile: "Secret" / 📅 / "Sunday"). Created whenever the config declares text_top (even "") — a
+    -- second label cloned from the bottom one (so font/color/shadow match), anchored to the TOP. A
+    -- caller or controller can then drive both labels (the bottom stays the existing "Label").
+    if config.text_top ~= nil then
+        local top = label:Clone()
+        top.Name = "LabelTop"
+        top.Text = tostring(config.text_top)
+        top.Position = UDim2.new(0.5, 0, 0, (textPosition.top_offset or 4))
+        top.AnchorPoint = Vector2.new(0.5, 0)
+        top.Parent = parent
     end
 
     return label
