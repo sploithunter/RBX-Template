@@ -953,6 +953,15 @@ function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
     playerData.secretLuckBoost = (tonumber(playerData.secretLuckBoost) or 0)
         + (tonumber(hatchOptions.secretLuckBonus) or 0)
 
+    -- EVENT secret luck (e.g. "Secret Luck Day", Fridays): the event modifier is named "secret_luck".
+    -- General luck reads its event up front (egg_luck, ~line 840) but secret luck never did, so a
+    -- scheduled secret-luck event activated yet never reached the hatch. Fold it in the same way —
+    -- additive with enchant/shop secret luck (kind secret_hatch_luck).
+    if self._eventService then
+        playerData.secretLuckBoost = (tonumber(playerData.secretLuckBoost) or 0)
+            + (tonumber(self._eventService:GetModifier("secret_luck", 0)) or 0)
+    end
+
     return playerData
 end
 

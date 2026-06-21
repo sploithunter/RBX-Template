@@ -101,4 +101,35 @@ return function()
             expect(withPass.luckMultiplier > without.luckMultiplier).to.equal(true)
         end)
     end)
+
+    -- SECRET LUCK (Jason): a SEPARATE, secret-tier-only reweight (secretLuckBoost), orthogonal to the
+    -- general luck axis. Sources: enchant + shop stub + the "Secret Luck Day" event (the event read
+    -- was the bug — EggService now folds it in). These lock the CONSUMPTION side in pets.lua so the
+    -- reweight can't silently regress. Seeded -> deterministic, not flaky.
+    describe("secret luck reweights only the secret tier", function()
+        local function secretRate(playerData, n)
+            local hits = 0
+            for _ = 1, n do
+                local r = pets.simulateHatch("infernal_egg", table.clone(playerData))
+                if r and r.pet == "abyssal_wyrm" then -- the infernal egg's secret
+                    hits += 1
+                end
+            end
+            return hits
+        end
+
+        it("a big secretLuckBoost makes the secret far more common", function()
+            math.randomseed(20260618)
+            local n = 8000
+            local base = secretRate({}, n)
+            local boosted = secretRate({ secretLuckBoost = 100 }, n) -- ~101x the secret's weight
+            expect(boosted > base * 10).to.equal(true)
+        end)
+
+        it("secret luck is ORTHOGONAL — it never touches the general luckMultiplier", function()
+            local a = pets.simulateHatch("infernal_egg", { secretLuckBoost = 0 }).luckMultiplier
+            local b = pets.simulateHatch("infernal_egg", { secretLuckBoost = 100 }).luckMultiplier
+            expect(a == b).to.equal(true) -- both = base_luck; secret luck rides its own channel
+        end)
+    end)
 end
