@@ -126,10 +126,14 @@ function PotionService:_applyMeter(player, meterId, charge)
             attr .. "Until",
             os.time() + BrewMeter.remainingSeconds(charge, m.drain_seconds)
         )
+        -- Tag the buff with a potion power-id so the unified badge (PetBadge.forPotion) resolves on
+        -- every surface that keys off "<attr>PowerId" — i.e. each squad card wears the same disc+ring.
+        player:SetAttribute(attr .. "PowerId", "potion_" .. meterId)
         player:SetAttribute("Brew_" .. meterId, charge) -- live pie source for the hotbar
     else
         player:SetAttribute(attr, nil)
         player:SetAttribute(attr .. "Until", 0)
+        player:SetAttribute(attr .. "PowerId", nil)
         player:SetAttribute("Brew_" .. meterId, nil)
     end
 end

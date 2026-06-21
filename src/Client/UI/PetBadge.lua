@@ -50,7 +50,7 @@ function PetBadge.biomeElementForPetType(petType)
 end
 
 -- Lazy power/archetype configs (for power-slot badges in the hotbar).
-local _powers, _archetypes
+local _powers, _archetypes, _potions
 local function powersCfg()
     if _powers == nil then
         local ok, p = pcall(function()
@@ -68,6 +68,34 @@ local function archetypesCfg()
         _archetypes = (ok and a and a.archetypes) or {}
     end
     return _archetypes
+end
+local function potionsCfg()
+    if _potions == nil then
+        local ok, p = pcall(function()
+            return require(Configs:WaitForChild("potions"))
+        end)
+        _potions = (ok and p) or {}
+    end
+    return _potions
+end
+
+-- Resolve a potion METER -> the same { element, symbol, ring } shape powers use, from the meter's
+-- `badge` spec in configs/potions.lua (element + symbol + targeting `target`). So a potion buff wears
+-- the unified disc + targeting ring everywhere a power does (hotbar slot, squad cards). Returns nil if
+-- the meter / its badge isn't configured.
+function PetBadge.forPotion(meterId)
+    local meters = potionsCfg().meters
+    local m = meters and meters[meterId]
+    local badge = m and m.badge
+    if not badge or not badge.symbol then
+        return nil
+    end
+    local shape = POWER_ICONS.targeting_ring[badge.target or "none"] or "aura"
+    return {
+        element = POWER_ICONS.elementKey(badge.element),
+        symbol = badge.symbol,
+        ring = shape,
+    }
 end
 
 -- Lazy enhancement deps (config + pure core + origin->element map for tints).
@@ -227,6 +255,11 @@ end
 -- or its effect/glyph has no mapped symbol. Element = the power's element, else its archetype
 -- theme. Symbol + targeting come from power_icons.power_effect_badge / glyph / signature maps.
 function PetBadge.forPower(powerId)
+    -- Potion buffs tag their attribute with "potion_<meter>" so every surface that resolves a badge
+    -- by power id (squad cards via <attr>PowerId, the hotbar slot) renders the same unified disc+ring.
+    if type(powerId) == "string" and powerId:sub(1, 7) == "potion_" then
+        return PetBadge.forPotion(powerId:sub(8))
+    end
     local cfg = powersCfg()
     local def = cfg.powers and cfg.powers[powerId]
     if not def then

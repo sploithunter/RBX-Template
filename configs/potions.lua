@@ -31,6 +31,10 @@ return {
             buff_attr = "PetDamageBuff",
             icon = "⚔️",
             target = "player",
+            -- Unified badge (same disc+ring system powers use; see PetBadge.forPotion). Buffs ALL your
+            -- pets' damage -> team-AoE ring; red = fire element; fist = the damage-buff symbol. Shows
+            -- on the hotbar slot AND every squad card (the buff is tagged PetDamageBuffPowerId).
+            badge = { element = "fire", symbol = "fist", target = "team_aoe" },
         },
         luck = {
             display_name = "Fortune",
@@ -42,6 +46,9 @@ return {
             buff_attr = "LuckBuff",
             icon = "🍀",
             target = "player",
+            -- Luck is a PLAYER buff (hatching/rarity), not a per-pet one -> self/aura ring; it shows on
+            -- the hotbar slot only (no squad-card entry reads LuckBuff). Green = earth; clover = luck.
+            badge = { element = "earth", symbol = "clover_lucky", target = "self" },
         },
         speed = {
             display_name = "Swiftness",
@@ -53,6 +60,9 @@ return {
             buff_attr = "MoveSpeedBuff",
             icon = "💨",
             target = "player",
+            -- Move speed badges every pet card (the follow loop wears it), so it reads as a team buff
+            -- -> team-AoE ring; blue = ice; arrow = speed. Tagged MoveSpeedBuffPowerId on the squad.
+            badge = { element = "ice", symbol = "arrow_right", target = "team_aoe" },
         },
         -- DEBUFF meter: same math, but the charge lives on the THROWN enemy (vulnerability up).
         weaken = {
@@ -64,6 +74,8 @@ return {
             color = { 200, 50, 90 }, -- weaken = crimson
             icon = "🩸",
             target = "enemy",
+            -- Thrown at ONE enemy (S2b) -> single-target ring; red = fire; chevrons-down = debuff.
+            badge = { element = "fire", symbol = "chevrons_down", target = "single" },
         },
     },
 

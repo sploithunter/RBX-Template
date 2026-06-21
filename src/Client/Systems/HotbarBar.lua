@@ -264,12 +264,6 @@ function HotbarBar.start()
         end
         return nil
     end
-    local function color3(c)
-        if type(c) == "table" then
-            return Color3.fromRGB(c[1] or 200, c[2] or 200, c[3] or 200)
-        end
-        return Color3.fromRGB(200, 200, 200)
-    end
     -- Lazily attach the potion-only chrome to a card: a big centred glyph + a top-right count badge.
     -- (Powers use the disc/ring art; potions are emoji-glyph + "×N", so this lives separate.)
     local function ensurePotionChrome(card)
@@ -674,23 +668,40 @@ function HotbarBar.start()
                     card.lock.Visible = locked[slot] == true
                 end
                 if bind and bind.type == "potion" then
-                    -- Potion slot: a glyph + "×count" badge. Its draining "duration" rides the radial
-                    -- edge-clock (driven in the Heartbeat below from the live brew-meter charge), so a
-                    -- potion reuses the same countdown chrome a power's cooldown does.
+                    -- Potion slot: the SAME unified badge a power uses — element disc + a directional
+                    -- targeting ring (who the buff hits: team-AoE for all-pet buffs, aura for self/luck,
+                    -- single for the enemy throw), resolved via PetBadge.forPower("potion_<meter>"). Plus
+                    -- a "×count" badge (potions are countable). Its draining buff duration rides the radial
+                    -- edge-clock (Heartbeat below). No emoji one-off when the disc art resolves.
                     local p = potionByPotion[bind.target]
                     local meterId = p and p.meter
-                    local mc = meterId and potionMeters[meterId]
+                    local badge = meterId and PetBadge.forPower("potion_" .. meterId) or nil
+                    local discImg = badge and POWER_ICONS.discFor(badge.element, badge.symbol)
+                        or nil
                     ensurePotionChrome(card)
-                    card.potGlyph.Text = tostring((p and p.icon) or "🧪")
-                    card.potGlyph.Visible = true
+                    if discImg then
+                        card.icon.Image = discImg
+                        card.icon.Size = UDim2.fromScale(0.82, 0.82) -- inset so the ring frames it
+                        card.ring.Image = POWER_ICONS.rings[badge.ring] or POWER_ICONS.rings.aura
+                        card.ring.ImageColor3 = POWER_ICONS.elementColor3(badge.element, "dark")
+                        local off = POWER_ICONS.ringCentering(badge.ring)
+                        card.ring.Position = UDim2.new(0.5 + (off.x or 0), 0, 0.5 + (off.y or 0), 0)
+                        card.ring.Size = UDim2.fromScale(off.scale or 1, off.scale or 1)
+                        card.ring.Visible = true
+                        card.potGlyph.Visible = false
+                    else -- no disc art for this meter: fall back to the emoji glyph
+                        card.icon.Image = ""
+                        card.ring.Visible = false
+                        card.potGlyph.Text = tostring((p and p.icon) or "🧪")
+                        card.potGlyph.Visible = true
+                    end
+                    card.bind.Visible = false
                     card.potCount.Visible = true
                     card.potCount.Text = "×" .. tostring((p and p.count) or 0)
                     card.potMeter = meterId
-                    card.icon.Image = ""
-                    card.ring.Visible = false
-                    card.bind.Visible = false
-                    card.frame.BackgroundColor3 = mc and color3(mc.color) or TYPE_COLOR.potion
-                    card.frame.BackgroundTransparency = 0.05
+                    -- art stands on a clear slot, exactly like a power; tinted only on the emoji fallback
+                    card.frame.BackgroundColor3 = Color3.fromRGB(26, 28, 38)
+                    card.frame.BackgroundTransparency = discImg and 1 or 0.05
                     continue
                 end
                 card.potMeter = nil
