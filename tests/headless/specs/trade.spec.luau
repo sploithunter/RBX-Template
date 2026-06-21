@@ -40,6 +40,11 @@ return function()
             local r = TradeLogic.canAddItem("cosmetics", { id = "halo_skin" }, config)
             expect(r.ok).to.equal(true)
         end)
+
+        it("allows enhancements (all are tradeable)", function()
+            local r = TradeLogic.canAddItem("enhancements", { id = "enh_anvil_fire_L1" }, config)
+            expect(r.ok).to.equal(true)
+        end)
     end)
 
     describe("TradeLogic.canExecute (both-confirm gate)", function()

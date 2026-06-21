@@ -28,6 +28,8 @@ TradeService.__index = TradeService
 
 local UPDATE_REMOTE = "TradeUpdate"
 local PETS_BUCKET = "pets"
+local ENH_BUCKET = "enhancements" -- matches EnhancementService's InventoryService bucket
+local GEM_CURRENCY = "gems" -- the only tradeable currency (configs/trade.lua tradeable_currencies)
 
 function TradeService:Init()
     self._logger = self._modules and self._modules.Logger
@@ -219,6 +221,7 @@ end
 local function descriptorFromRecord(uid, rec)
     local copy = deepCopy(rec)
     copy.uid = uid
+    copy.category = "pets"
     copy.equipped_slot = nil
     return copy
 end
@@ -317,6 +320,7 @@ function TradeService:Add(player, uid)
         inventory:RemoveItem(player, PETS_BUCKET, target.stackKey, 1)
         descriptor = {
             uid = nextOfferId(),
+            category = "pets",
             id = stack.id,
             variant = stack.variant or "basic",
             quantity = 1,
@@ -395,6 +399,7 @@ function TradeService:AddMany(player, uid, count)
     for _ = 1, toAdd do
         local descriptor = {
             uid = nextOfferId(),
+            category = "pets",
             id = stack.id,
             variant = stack.variant or "basic",
             quantity = 1,
@@ -413,6 +418,93 @@ function TradeService:AddMany(player, uid, count)
     return { ok = true, count = #offer.items, added = toAdd }
 end
 
+-- Add gems to the offer. Validates the amount + balance, then MOVES the gems out of the player's
+-- balance into escrow (anti-dup, exactly like a pet): refunded on remove/cancel, delivered on
+-- confirm. Each call is one offer card; the UI aggregates same-currency cards into a running total.
+function TradeService:AddGems(player, amount)
+    amount = math.floor(tonumber(amount) or 0)
+    if amount <= 0 then
+        return { ok = false, reason = "bad_amount" }
+    end
+    local session = self:_sessionOf(player.UserId)
+    if not session then
+        return { ok = false, reason = "no_trade" }
+    end
+    local verdict = TradeLogic.canAddItem("currencies", { id = GEM_CURRENCY }, self._config)
+    if not verdict.ok then
+        return verdict
+    end
+    if not self._dataService then
+        return { ok = false, reason = "service_unavailable" }
+    end
+    local offer = session.offers[player.UserId]
+    if #offer.items >= (self._config.max_offer_items or 10) then
+        return { ok = false, reason = "offer_full" }
+    end
+    if (tonumber(self._dataService:GetCurrency(player, GEM_CURRENCY)) or 0) < amount then
+        return { ok = false, reason = "insufficient_gems" }
+    end
+    if self._dataService:RemoveCurrency(player, GEM_CURRENCY, amount, "trade_escrow") == false then
+        return { ok = false, reason = "insufficient_gems" }
+    end
+
+    local descriptor =
+        { uid = nextOfferId(), category = "currencies", id = GEM_CURRENCY, amount = amount }
+    session.escrow[player.UserId][descriptor.uid] = descriptor
+    table.insert(offer.items, descriptor)
+    session.offers[session.a].confirmed = false
+    session.offers[session.b].confirmed = false
+    self:_push(session, "updated")
+    return { ok = true, count = #offer.items }
+end
+
+-- Add an enhancement to the offer. `uid` is the inventory uid from EnhancementService:GetState().
+-- Moves ONE copy out of the (stacked) enhancements bucket into escrow.
+function TradeService:AddEnhancement(player, uid)
+    local session = self:_sessionOf(player.UserId)
+    if not session then
+        return { ok = false, reason = "no_trade" }
+    end
+    local inventory = self:_service("InventoryService")
+    if not inventory then
+        return { ok = false, reason = "service_unavailable" }
+    end
+    local bucket = inventory:GetInventory(player, ENH_BUCKET)
+    local rec = bucket and bucket.items and bucket.items[uid]
+    if not rec then
+        return { ok = false, reason = "enhancement_not_found" }
+    end
+    local verdict = TradeLogic.canAddItem("enhancements", { id = rec.id }, self._config)
+    if not verdict.ok then
+        return verdict
+    end
+    local offer = session.offers[player.UserId]
+    if #offer.items >= (self._config.max_offer_items or 10) then
+        return { ok = false, reason = "offer_full" }
+    end
+
+    inventory:RemoveItem(player, ENH_BUCKET, uid, 1)
+    local descriptor = {
+        uid = nextOfferId(),
+        category = "enhancements",
+        id = rec.id,
+        enh = {
+            id = rec.id,
+            type = rec.type,
+            origins = deepCopy(rec.origins),
+            origins_csv = rec.origins_csv,
+            level = rec.level,
+            name = rec.name,
+        },
+    }
+    session.escrow[player.UserId][descriptor.uid] = descriptor
+    table.insert(offer.items, descriptor)
+    session.offers[session.a].confirmed = false
+    session.offers[session.b].confirmed = false
+    self:_push(session, "updated")
+    return { ok = true, count = #offer.items }
+end
+
 -- Pull a pet back out of the offer and return it to the owner's inventory.
 function TradeService:Remove(player, uid)
     local session = self:_sessionOf(player.UserId)
@@ -423,10 +515,7 @@ function TradeService:Remove(player, uid)
     if not descriptor then
         return { ok = false, reason = "not_offered" }
     end
-    local inventory = self:_service("InventoryService")
-    if inventory then
-        grantDescriptor(inventory, player, descriptor)
-    end
+    self:_grantDescriptor(player, descriptor) -- back to owner (pet / gems / enhancement)
     session.escrow[player.UserId][uid] = nil
     local offer = session.offers[player.UserId]
     for i = #offer.items, 1, -1 do
@@ -458,22 +547,46 @@ function TradeService:Confirm(player)
     return { ok = true, waiting = true }
 end
 
-local function giveAll(inventory, player, escrowForOwner)
-    if not (inventory and player) then
+-- Grant ONE escrowed descriptor to a player, dispatched by category. Pets fold into the pets
+-- bucket (fresh uid); gems credit the gem currency; enhancements re-enter the enhancements bucket.
+-- This is the single seam that makes _deliver / _refund / Remove bucket-agnostic.
+function TradeService:_grantDescriptor(player, descriptor)
+    if not (player and descriptor) then
         return
     end
-    for _, descriptor in pairs(escrowForOwner) do
-        grantDescriptor(inventory, player, descriptor)
+    local category = descriptor.category or "pets"
+    if category == "currencies" then
+        local amount = math.floor(tonumber(descriptor.amount) or 0)
+        if amount > 0 and self._dataService then
+            self._dataService:AddCurrency(player, descriptor.id or GEM_CURRENCY, amount, "trade")
+        end
+        return
+    end
+    local inventory = self:_service("InventoryService")
+    if not inventory then
+        return
+    end
+    if category == "enhancements" then
+        if descriptor.enh then
+            inventory:AddItem(player, ENH_BUCKET, deepCopy(descriptor.enh))
+        end
+        return
+    end
+    grantDescriptor(inventory, player, descriptor) -- pets (default)
+end
+
+function TradeService:_giveAll(player, escrowForOwner)
+    for _, descriptor in pairs(escrowForOwner or {}) do
+        self:_grantDescriptor(player, descriptor)
     end
 end
 
 -- Both confirmed: deliver A's escrow to B and B's escrow to A. All-or-nothing —
 -- the items are already escrowed, so neither side can be left holding both/none.
 function TradeService:_deliver(session)
-    local inventory = self:_service("InventoryService")
     local pa, pb = playerById(session.a), playerById(session.b)
-    giveAll(inventory, pb, session.escrow[session.a])
-    giveAll(inventory, pa, session.escrow[session.b])
+    self:_giveAll(pb, session.escrow[session.a])
+    self:_giveAll(pa, session.escrow[session.b])
 
     local rec = TradeLogic.auditRecord(
         session.a,
@@ -487,15 +600,16 @@ function TradeService:_deliver(session)
     -- trader-track stats (Jason: capture the data now, leaderboard later) —
     -- trades_completed rides the trade_complete event via StatEventCounters;
     -- the per-pet counts vary per trade so they increment here.
-    local function countEscrow(escrow)
+    local function countPets(escrow)
         local n = 0
-        for _ in pairs(escrow or {}) do
-            n += 1
+        for _, d in pairs(escrow or {}) do
+            if (d.category or "pets") == "pets" then
+                n += 1 -- pets_traded counters: gems/enhancements ride their own paths
+            end
         end
         return n
     end
-    local gaveA, gaveB =
-        countEscrow(session.escrow[session.a]), countEscrow(session.escrow[session.b])
+    local gaveA, gaveB = countPets(session.escrow[session.a]), countPets(session.escrow[session.b])
     local stats = self:_service("StatsService")
     if stats then
         if pa then
@@ -527,9 +641,8 @@ end
 
 -- Return every escrowed pet to its owner (cancel / decline / disconnect).
 function TradeService:_refund(session)
-    local inventory = self:_service("InventoryService")
     for _, userId in ipairs({ session.a, session.b }) do
-        giveAll(inventory, playerById(userId), session.escrow[userId])
+        self:_giveAll(playerById(userId), session.escrow[userId])
         session.escrow[userId] = {}
     end
 end

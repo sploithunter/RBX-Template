@@ -10,8 +10,9 @@
 return {
     tradeable = {
         pets = true,
-        currencies = false,
+        currencies = false, -- gems are the exception, via tradeable_currencies below
         cosmetics = true,
+        enhancements = true, -- all enhancements are tradeable (Jason)
     },
     -- Per-currency trade allowlist (Pet Realm): the four biome coins are soulbound;
     -- gems are the only tradeable currency. Anything not listed here is non-tradeable.

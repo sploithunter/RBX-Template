@@ -1273,6 +1273,24 @@ function GameAPIService:_registerCommands()
             return s:AddMany(player, args.uid, args.count)
         end),
     })
+    bus:register("trade.addGems", {
+        description = "Offer gems (moves them from your balance into escrow).",
+        validate = function(args)
+            return Validators.fields(args, { amount = { type = "int", min = 1 } })
+        end,
+        handler = tradeAction(function(s, player, args)
+            return s:AddGems(player, args.amount)
+        end),
+    })
+    bus:register("trade.addEnhancement", {
+        description = "Offer an enhancement (moves one copy into escrow).",
+        validate = function(args)
+            return Validators.fields(args, { uid = "string" })
+        end,
+        handler = tradeAction(function(s, player, args)
+            return s:AddEnhancement(player, args.uid)
+        end),
+    })
     bus:register("trade.remove", {
         description = "Pull a pet back out of your offer (returns it from escrow).",
         validate = function(args)
@@ -1343,6 +1361,19 @@ function GameAPIService:_registerCommands()
                 return { ok = false, reason = "service_unavailable" }
             end
             return s:Claim(context.player, args.questId)
+        end,
+    })
+    bus:register("quest.setActiveTrack", {
+        description = "Switch the active (focused) quest track; grind quests only count while focused.",
+        validate = function(args)
+            return Validators.fields(args, { track = { type = "string", optional = true } })
+        end,
+        handler = function(context, args)
+            local s = self:_service("QuestService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:SetActiveTrack(context.player, args.track)
         end,
     })
     bus:register("daily.status", {
