@@ -682,16 +682,21 @@ function EnemyService:_onDefeated(targetId)
                         :Get("StatsService")
                         :Increment(player, "enemies_defeated", 1)
                 end)
-                -- rare ENHANCEMENT drop at the kill site (identity revealed at pickup)
+                -- rare ENHANCEMENT drop at the DOWN site (identity revealed at pickup). Use entry.pos,
+                -- NOT model.PrimaryPart.Position: the server never re-pivots the anchored enemy model
+                -- (only the client interpolates it toward MoveTarget), so the model sits at its SPAWN
+                -- CFrame server-side. entry.pos is the authoritative current position — the spot the
+                -- enemy actually went down (Jason: drops were landing back at the spawn, not the kill).
                 local pp = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
-                if pp then
+                local dropPos = entry.pos or (pp and pp.Position)
+                if dropPos then
                     local locator = _G.RBXTemplateServices
                     local okSvc, drops = pcall(function()
                         return locator and locator:Get("DropService")
                     end)
                     if okSvc and drops and drops.TrySpawnEnhancementDrop then
                         pcall(function()
-                            drops:TrySpawnEnhancementDrop(player, "enemy", pp.Position)
+                            drops:TrySpawnEnhancementDrop(player, "enemy", dropPos)
                         end)
                     end
                 end
