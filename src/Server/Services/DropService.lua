@@ -523,25 +523,9 @@ function DropService:_collect(rec, _force)
     elseif plr and rec.amount and rec.amount > 0 then
         local economy = self._moduleLoader and self._moduleLoader:Get("EconomyService")
         if economy and economy.AddCurrency then
-            local ok, err = pcall(function()
+            pcall(function()
                 economy:AddCurrency(plr, rec.currency, rec.amount, "drop_collect")
             end)
-            -- GEMDIAG (temporary): the pcall here was silently swallowing errors — surface any
-            -- failure to credit gems, so a broken EconomyService->DataService chain can't hide.
-            if rec.currency == "gems" and self._logger then
-                self._logger:Warn("💎 GEMDIAG drop _collect credit(gems)", {
-                    player = plr.Name,
-                    amount = rec.amount,
-                    economyFound = true,
-                    pcallOk = ok,
-                    err = not ok and tostring(err) or nil,
-                })
-            end
-        elseif rec.currency == "gems" and self._logger then
-            self._logger:Warn("💎 GEMDIAG drop _collect(gems) — NO EconomyService", {
-                player = plr.Name,
-                amount = rec.amount,
-            })
         end
     end
     for i, r in ipairs(self._active) do

@@ -1982,18 +1982,12 @@ function BreakableSpawner:_trySpawnOne(
                 return
             end
             local amount = math.random(tonumber(cfg.min) or 1, tonumber(cfg.max) or 1)
-            local spawnedDrop = dropService.SpawnCoinDrop
-                and dropService:SpawnCoinDrop(plr, "gems", amount, dropPos)
-            -- GEMDIAG (temporary): which branch credits the gem bonus — a physical drop (credited on
-            -- pickup) or instant economy credit. Pinpoints where the mining gem income flows.
-            if self._logger then
-                self._logger:Warn("💎 GEMDIAG breakable gem-bonus", {
-                    player = plr.Name,
-                    amount = amount,
-                    branch = spawnedDrop and "drop(pickup-credit)" or "instant(economy)",
-                })
-            end
-            if not spawnedDrop then
+            if
+                not (
+                    dropService.SpawnCoinDrop
+                    and dropService:SpawnCoinDrop(plr, "gems", amount, dropPos)
+                )
+            then
                 economy:AddCurrency(plr, "gems", amount, "breakable_gem_bonus")
             end
         end

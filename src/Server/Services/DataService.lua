@@ -27,6 +27,7 @@ local PetMigrationV5 = require(ReplicatedStorage.Shared.Inventory.PetMigrationV5
 local PetCompaction = require(ReplicatedStorage.Shared.Inventory.PetCompaction)
 local PetEquipMigration = require(ReplicatedStorage.Shared.Inventory.PetEquipMigration)
 local LevelCurve = require(ReplicatedStorage.Shared.Game.LevelCurve)
+local CurrencyKeys = require(ReplicatedStorage.Shared.Game.CurrencyKeys)
 
 local DataService = {}
 DataService.__index = DataService
@@ -838,6 +839,12 @@ function DataService:LoadProfile(player)
             data.LastLogin = os.time()
             data.Analytics.SessionCount = data.Analytics.SessionCount + 1
 
+            -- Normalize currency keys to canonical lowercase BEFORE attributes + the watchdog read
+            -- them. Legacy saves carried a case-variant duplicate (e.g. "Gems"=80 left over from the
+            -- lowercase rename) that shadowed the real "gems" and made the watchdog cry wolf forever.
+            -- Merge-by-max so the real balance wins; the deduped map is what saves from here on.
+            data.Currencies = CurrencyKeys.normalize(data.Currencies)
+
             -- Store profile
             self.Profiles[player] = profile
 
@@ -1088,26 +1095,6 @@ function DataService:GetCurrency(player, currencyType)
 end
 
 function DataService:SetCurrency(player, currencyType, amount, source)
-    -- GEMDIAG (temporary): prove whether the legit profile-writing path is reached for gems, and
-    -- by whom. If the Gems attribute climbs WITHOUT this firing, the writer bypasses SetCurrency.
-    if currencyType == "gems" then
-        -- dump every Currencies key+value so a duplicate/case-variant gem key (legacy "Gems"=80
-        -- vs canonical "gems" climbing) is visible — that's what the watchdog reads stale.
-        local keysDump = {}
-        local dd = self:GetData(player)
-        if dd and dd.Currencies then
-            for k, v in pairs(dd.Currencies) do
-                keysDump[#keysDump + 1] = tostring(k) .. "=" .. tostring(v)
-            end
-            table.sort(keysDump)
-        end
-        self._logger:Warn("💎 GEMDIAG SetCurrency(gems) reached", {
-            player = player.Name,
-            amount = amount,
-            source = source,
-            currencyKeys = table.concat(keysDump, ", "),
-        })
-    end
     local currencyIcon = currencyType == "coins" and "🪙"
         or (currencyType == "gems" and "💎" or "💰")
     self._logger:Info(currencyIcon .. " CURRENCY TRACE - SetCurrency called", {
