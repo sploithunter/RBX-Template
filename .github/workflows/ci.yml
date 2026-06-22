@@ -41,3 +41,42 @@ jobs:
 
       - name: Fast gate (selene + stylua + rojo build + headless tests)
         run: mise run ci
+
+  # After the fast gate PASSES on a push to main, refresh configs/build_info.lua to that exact
+  # green commit + the current Mountain time, and commit it back. Keeps the load-screen stamp (the
+  # committed value dev/Rojo shows) always matching the latest passing main commit — no more stale
+  # "updated <old date>". The stamp commit carries [skip ci] so it doesn't re-trigger this workflow
+  # (no loop); the concurrency group serialises overlapping main pushes.
+  stamp-build-info:
+    name: Stamp build_info on main
+    needs: fast-gate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: stamp-build-info
+      cancel-in-progress: false
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Re-stamp build_info.lua from the green commit
+        run: bash scripts/stamp_build.sh
+
+      - name: Commit + push the stamp (skip ci to avoid a loop)
+        run: |
+          if git diff --quiet -- configs/build_info.lua; then
+            echo "build_info.lua unchanged — nothing to stamp."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add configs/build_info.lua
+          git commit -m "chore(build-stamp): refresh build_info to ${GITHUB_SHA:0:7} [skip ci]"
+          # tolerate a race if main advanced while the gate ran
+          git pull --rebase --autostash origin main || true
+          git push origin HEAD:main
