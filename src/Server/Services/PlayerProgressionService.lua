@@ -378,6 +378,18 @@ function PlayerProgressionService:_applyLevel(player, newLevel, auto, silent)
     self._dataService:SetStat(player, "ClaimedLevel", newLevel)
     local entry = LevelTrack.entryForLevel(newLevel, self._levelTrack)
     self:_grantLevelRewards(player, entry)
+    -- Equipped-pet slots are derived from LEVEL (GetEquippedPetSlotBonus, read in
+    -- InventoryService:_getMaxEquippedSlots → the PetEquipSlots attribute the Pets window draws).
+    -- Re-run the projection so a milestone slot appears LIVE — without this it only refreshed on the
+    -- next relog (Jason: "ascended to 8, no new pet slot until I logged out and back in").
+    do
+        local inventory = self:_service("InventoryService")
+        if inventory and inventory.RebuildPetProjections then
+            pcall(function()
+                inventory:RebuildPetProjections(player)
+            end)
+        end
+    end
     self:_publish(player)
     local payload = {
         level = newLevel,
