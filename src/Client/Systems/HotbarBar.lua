@@ -833,11 +833,17 @@ function HotbarBar.start()
                     else
                         card.cool(1)
                     end
+                    local owned = 0
                     if card.potCount then -- keep the count live as you drink / as pushes land
                         local p = potionByPotion[b.target]
-                        card.potCount.Text = "×" .. tostring((p and p.count) or 0)
+                        owned = (p and p.count) or 0
+                        card.potCount.Text = "×" .. tostring(owned)
                     end
-                    ready = false -- never auto-fire potions (locking a slot won't auto-drink)
+                    -- LOCK = auto-maintain: a locked potion auto-drinks when the meter drains below the
+                    -- meter's maintain_at AND you still own one. Refills in chunks toward full; the
+                    -- diminishing sip keeps it from pinning at 100%. nil maintain_at = no auto-drink.
+                    local threshold = m and m.maintain_at
+                    ready = threshold ~= nil and charge < threshold and owned > 0
                 else
                     card.cool(1) -- ready / not a power -> hide the clock
                 end

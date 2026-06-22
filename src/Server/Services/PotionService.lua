@@ -183,7 +183,9 @@ function PotionService:Drink(player, potionId)
     inv:RemoveItem(player, BUCKET, targetUid, 1)
 
     self._lastDrink[uid][potionId] = os.clock()
-    charge = BrewMeter.sip(charge, m.sip_fraction)
+    -- sip_fraction lives on the POTION (pcfg), not the meter — m.sip_fraction was nil, so the sip
+    -- returned 0 and the buff was written at zero magnitude (drink consumed, nothing happened).
+    charge = BrewMeter.sip(charge, pcfg.sip_fraction)
     self._meters[uid][meterId] = charge
     self:_applyMeter(player, meterId, charge)
     self:_push(player)
@@ -250,6 +252,7 @@ function PotionService:GetState(player)
             icon = m.icon,
             display_name = m.display_name,
             target = m.target,
+            maintain_at = m.maintain_at, -- lock auto-drink threshold (nil = no auto-maintain)
         }
     end
     return { ok = true, potions = potions, meters = meters, serverTime = os.time() }

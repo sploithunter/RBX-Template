@@ -26,6 +26,10 @@ return {
             cap = 1.5, -- +150% pet damage at full (axis backstop: pet_damage 5.0)
             drain_seconds = 60,
             full_threshold = 0.98,
+            -- LOCK (auto-cast) threshold: a locked potion slot auto-drinks one whenever the meter
+            -- drains BELOW this (and you still own one). Refills in chunks toward full, so it holds a
+            -- solid buff floor without burning a potion every tick. nil = no auto-maintain.
+            maintain_at = 0.6,
             buff_axis = "pet_damage",
             color = { 220, 70, 70 }, -- damage = red
             buff_attr = "PetDamageBuff",
@@ -41,6 +45,7 @@ return {
             cap = 1.0, -- +100% luck at full (axis backstop: luck 3.0 — luck is precious, keep it low)
             drain_seconds = 45,
             full_threshold = 0.98,
+            maintain_at = 0.6, -- locked = auto-drink below 60% (see damage meter note)
             buff_axis = "luck",
             color = { 70, 200, 110 }, -- luck = green
             buff_attr = "LuckBuff",
@@ -55,6 +60,7 @@ return {
             cap = 0.5, -- +50% move speed at full (axis backstop: move_speed 1.0)
             drain_seconds = 30,
             full_threshold = 0.98,
+            maintain_at = 0.6, -- locked = auto-drink below 60% (see damage meter note)
             buff_axis = "move_speed",
             color = { 80, 160, 240 }, -- speed = blue
             buff_attr = "MoveSpeedBuff",
