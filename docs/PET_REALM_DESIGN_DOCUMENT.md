@@ -2132,7 +2132,7 @@ capped by two pure apexes (Seraph at Heaven 5, Void at Hell 5).
 | 2  | Heaven 1     | Empyrean Dragon       | Fire (solar)      | first ascended     |
 | 3  | Heaven 2     | Aurora Dragon         | Ice               |                    |
 | 4  | Heaven 3     | Verdant Dragon        | Grass (bloom)     |                    |
-| 5  | Heaven 4     | Gilded Dragon         | Desert            |                    |
+| 5  | Heaven 4     | Alabaster Dragon      | Desert            | was "Gilded" (no-gold rule) |
 | 6  | Heaven 5     | Seraph Dragon         | radiant apex      | grandest ascended  |
 | 7  | Hell 1       | Abyssal Wyrm          | Fire (infernal)   | Empyrean's mirror  |
 | 8  | Hell 2       | Rimewraith Dragon     | Ice (black-ice)   |                    |

@@ -268,10 +268,196 @@ odds, same as every other egg.
 - **The other three eggs — fire / grass / desert:** Common + Uncommon ×2 + Rare + **Mythic apex
   (0.3)** → top prize is the Mythic apex at ~1 in 320. No secret in these pools.
 
-## Deeper realms (3–5)
+## Dragon archetype spread
 
-Heaven 3–5 / Hell 3–5 reuse this per-origin skeleton with grander forms and depth-scaled stats
-(`WorldContext.difficultyFor`), continuing the de-materialize gradient (toward pure radiance up,
-pure void down) and the dragon rotation: **Grass** at tier 3 (Verdant / Blight Dragon),
-**Desert** at tier 4 (Gilded / Glass Dragon), and the two **pure apex dragons** at the ends —
-**Seraph Dragon** (Heaven 5) and **Void Dragon** (Hell 5), the grandest of the 11.
+Every dragon takes its origin's lean, so the 11 cover all four archetypes (dragons are *not*
+always ranged — see the Design Document's dragon rules):
+
+| Realm origin | Dragon(s) | Archetype |
+|--------------|-----------|-----------|
+| Fire (H1 / Hell1) | Empyrean / Abyssal | **Blaster** — breath volleys at range |
+| Ice (H2 / Hell2) | Aurora / Rimewraith | **Melee / control** — wades in, freezes |
+| Grass (H3 / Hell3) | Verdant / Blight | **Tank** — colossal HP + heal (heaven) / drain (hell) aura |
+| Desert (H4 / Hell4) | Alabaster / Glass | **Durable bruiser** — evasive, razor-tough, wades in |
+| Apex (H5 / Hell5) | Seraph / Void | **Hybrid** — the all-rounder grand finale |
+
+Odds & base power for layers 3–5 follow the same table as layer 2 (Common 12 / Uncommon 16 /
+Rare 22 / Mythic apex 44 @ 1-in-320 / Secret dragon 46 @ ~1-in-2000); only the depth multiplier
+climbs (`WorldContext.difficultyFor`).
+
+## Heaven 3 — "The Empyrean Bloom" — full pool (Grass dragon)
+
+The cosmic garden — radiance deepens toward pure light; living emerald-light blooms float in a
+white sky. **Palette: white / pearl / living emerald-light** (no gold). Dragon rotates to
+**Grass → Verdant Dragon** (rebirth #4), a colossal living-light **tank** dragon (huge HP +
+radiant regen aura).
+
+### 🔥 Fire — damage
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Gloryspark Cherub | Melee | Common | mote of white flame |
+| Seraph Lion | Bruiser | Uncommon | haloed light-lion |
+| Radiant Lance | Blaster | Rare | white sunfire lances |
+| Gloryscale Salamander | Offense buff | Uncommon | sheathes squad in glory-light |
+| Empyrean Phoenix | Blaster apex | Mythic | reborn in pure radiance |
+
+### ❄️ Ice — control
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Lumen Doe | Melee | Common | light-deer |
+| Halo Fox | Control | Uncommon | ringing light slows & binds |
+| Celestial Owl | Blaster | Uncommon | starfall shards |
+| Radiant Archon | Shield | Rare | prismatic frost-light shield |
+| Empyrean Leviathan | Tank / control apex | Mythic | vast light-serpent |
+
+### 🌿 Grass — sustain — **dragon origin**
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Gloryleaf Lamb | Heal | Common | lamb of green light |
+| Halo Hart | Melee | Common | radiant stag-fawn |
+| Lightroot Stag | Tank | Uncommon | light-antlered guardian |
+| Bloomlight Sprite | Yield / luck | Uncommon | harvest-spirit |
+| **★ Verdant Dragon** | **Tank / heal (capstone)** | **SECRET** | colossal living-light tree-dragon, huge HP + radiant regen aura. Rebirth #4 of 11 |
+
+### 🏜️ Desert — durable
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Lightglass Scarab | Coin yield | Common | radiant glass beetle |
+| Radiant Lynx | Evasion | Uncommon | light-blur cat |
+| Alabaster Sphinx | Tank | Rare | white-stone guardian |
+| Glowwell Camel | Regen | Uncommon | light-spring heal aura |
+| Empyrean Roc | Blaster apex | Mythic | great radiant bird |
+
+## Hell 3 — "The Blightmire" — full pool (Grass dragon)
+
+The rotting deep — decay, bile, bone, and drowned light. **Palette: rot-green / black / bruise-
+violet.** Give→take inversion holds. Dragon rotates to **Grass → Blight Dragon** (rebirth #9), a
+rotting bog **tank** dragon (huge HP + life-leech aura).
+
+### 🔥 Fire — damage (plague-fire)
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Blightcinder Imp | Melee | Common | sickly green-fire imp |
+| Plaguemane Lion | Bruiser | Uncommon | boil-maned lion |
+| Pyreblight Phoenix | Blaster | Rare | green pyre-bolts |
+| Rotbrand Salamander | Curse | Uncommon | brands foes with rot |
+| Pestilence Phoenix | Blaster apex | Mythic | rises from plague-ash |
+
+### ❄️ Ice — control (rot-frost)
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Murkfrost Hare | Melee | Common | bog-frost hare |
+| Plague Fox | Control | Uncommon | miasma slows & fears |
+| Carrion Owl | Blaster | Uncommon | rot-shards |
+| Rot Archon | Armor-shred | Rare | strips enemy armor |
+| Blight Leviathan | Tank / control apex | Mythic | drowned bog-serpent |
+
+### 🌿 Grass — drain — **dragon origin**
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Blightleaf Lamb | Life-drain heal | Common | rotted lamb, leech-heals |
+| Murk Hart | Melee | Common | gaunt bog-stag |
+| Rotroot Stag | Tank | Uncommon | decaying thorned guardian |
+| Plaguebloom Sprite | Wither-curse | Uncommon | saps foes' output |
+| **★ Blight Dragon** | **Tank / drain (capstone)** | **SECRET** | rotting bog-dragon, huge HP + life-leech aura. Rebirth #9 of 11 |
+
+### 🏜️ Desert — durable (rot-glass)
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Carrionglass Scarab | Coin-from-kills | Common | feeds on the fallen |
+| Murk Jackal | Evasion | Uncommon | bog-mirage jackal |
+| Bonewaste Sphinx | Tank | Rare | bone-and-glass guardian |
+| Plaguedust Camel | Regen-denial | Uncommon | stops enemy healing |
+| Pestilent Roc | Blaster apex | Mythic | rot-feathered bird |
+
+## Heaven 4 — "The Sunspire Reaches" — full pool (Desert dragon)
+
+Near-blinding radiant desert — salt-flat white, alabaster, sun-fused quartz. **Palette: white /
+alabaster / sun-white / quartz** (no gold — the Heaven-4 dragon was renamed off "Gilded" for
+exactly this reason). Dragon rotates to **Desert → Alabaster Dragon** (rebirth #5), an evasive,
+razor-tough **durable bruiser** that wades in.
+
+### 🔥 Fire — damage
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Sunspark Cherub | Melee | Common | white sun-mote |
+| Blaze Lion | Bruiser | Uncommon | sun-charged lion |
+| Sunlance Seraph | Blaster | Rare | sun-white lances |
+| Sunscale Salamander | Offense buff | Uncommon | sun-glare +damage |
+| Solaris Phoenix | Blaster apex | Mythic | white-sun phoenix |
+
+### ❄️ Ice — control
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Sunfrost Doe | Melee | Common | sun-glazed frost deer |
+| Glare Fox | Control | Uncommon | blinding glare slows |
+| Sunbeam Owl | Blaster | Uncommon | beam shards |
+| Quartz Archon | Shield | Rare | quartz-light shield |
+| Sunspire Leviathan | Tank / control apex | Mythic | glass-scaled serpent |
+
+### 🌿 Grass — sustain
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Sunbloom Lamb | Heal | Common | sun-flower lamb |
+| Sunleaf Hare | Melee | Common | bright desert hare |
+| Quartzbark Stag | Tank | Uncommon | crystal-bark guardian |
+| Sunmote Sprite | Yield / luck | Uncommon | sun-spirit |
+| Sunroot Ent | Tank / heal apex | Mythic | sun-tree guardian |
+
+### 🏜️ Desert — durable — **dragon origin**
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Sandglass Scarab | Coin yield | Common | sun-fused glass beetle |
+| Sunmirage Lynx | Evasion | Uncommon | heat-mirage cat |
+| Sunstone Sphinx | Tank | Rare | white-stone guardian |
+| Sunspring Camel | Regen | Uncommon | oasis heal aura |
+| **★ Alabaster Dragon** | **Durable bruiser (capstone)** | **SECRET** | colossal white-glass desert dragon — evasive + razor-tough, wades in. Rebirth #5 of 11 |
+
+## Hell 4 — "The Scorchglass" — full pool (Desert dragon)
+
+Blackened glass desert — obsidian shards, ember-on-black, ash dunes. **Palette: black-glass /
+obsidian / ember.** Dragon rotates to **Desert → Glass Dragon** (rebirth #10), a fractured
+black-glass **durable bruiser**, razor-sharp and tough.
+
+### 🔥 Fire — damage
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Scorchcinder Imp | Melee | Common | obsidian ember-imp |
+| Cindermane Lion | Bruiser | Uncommon | molten-cracked black lion |
+| Magmaglass Phoenix | Blaster | Rare | molten-glass bolts |
+| Scorchbrand Salamander | Curse | Uncommon | brands foes with scorch |
+| Inferno Phoenix | Blaster apex | Mythic | black-fire phoenix |
+
+### ❄️ Ice — control
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Blackfrost Hare | Melee | Common | obsidian-frost hare |
+| Shatter Fox | Control | Uncommon | shatter-glass slows |
+| Obsidian Owl | Blaster | Uncommon | glass-shard volleys |
+| Scorch Archon | Armor-shred | Rare | strips enemy armor |
+| Scorchglass Leviathan | Tank / control apex | Mythic | molten-glass serpent |
+
+### 🌿 Grass — drain
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Scorchleaf Lamb | Life-drain heal | Common | charred lamb, leech-heals |
+| Cinder Hare | Melee | Common | ember-singed hare |
+| Glassroot Stag | Tank | Uncommon | obsidian-thorn guardian |
+| Scorchbloom Sprite | Wither-curse | Uncommon | scorches foes' output |
+| Scorchroot Ent | Tank / drain apex | Mythic | burnt-glass tree |
+
+### 🏜️ Desert — durable — **dragon origin**
+| Pet | Role | Rarity | Hook |
+|-----|------|--------|------|
+| Obsidianglass Scarab | Coin-from-kills | Common | feeds on the fallen |
+| Shatter Jackal | Evasion | Uncommon | glass-mirage jackal |
+| Blackglass Sphinx | Tank | Rare | obsidian guardian |
+| Scorchdust Camel | Regen-denial | Uncommon | stops enemy healing |
+| **★ Glass Dragon** | **Durable bruiser (capstone)** | **SECRET** | fractured black-glass desert dragon — razor-sharp + tough, wades in. Rebirth #10 of 11 |
+
+## Layer 5 — the apex dragons (stub)
+
+Heaven 5 and Hell 5 are the two **pure-apex** ends of the stack — the grandest of the 11,
+**hybrid** all-rounders, not bound to a single origin: **Seraph Dragon** (Heaven 5, blinding
+pure radiance) and **Void Dragon** (Hell 5, pure void-black). Full per-origin pools TBD; they
+follow the same skeleton + odds, at the deepest depth multiplier.
