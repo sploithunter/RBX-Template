@@ -91,8 +91,17 @@ return {
         range = {
             symbol = "range",
             axis = "radius",
-            families = "*",
-            requires_aoe = true, -- blocked on melee / single-target powers
+            -- Only families with a REAL radius the game reads: Magnet (collect reach, via the
+            -- radius_families magnitude fold), Cataclysm's burst, Firestorm's cleave, Wildfire's
+            -- spread. The other "AoE" debuffs hit ALL engaged enemies (no radius to widen), so range
+            -- was a dead slot there — excluded. (Gives a power a `radius` to bring it back in.)
+            families = {
+                magnet = true,
+                amplified_burst = true,
+                team_cleave = true,
+                burn_spread = true,
+            },
+            requires_aoe = true, -- still blocked on melee / single-target powers
         },
         duration = {
             symbol = "hourglass",

@@ -225,11 +225,18 @@ return {
             magnitude = 1.6,
             duration = 8,
             spread_radius = 14,
+            radius = 14, -- radiusBase so a `range` enhancement widens the spread (scales spread_radius)
             spread_interval = 1.5,
             -- the fire actually burns as it spreads: AoE DoT, 1 HP/sec across every enemy
             dot = { per_tick = 10, interval = 1, aoe = true },
         },
-        firestorm = { family = "team_cleave", magnitude = 0.5, duration = 6, cleave_radius = 8 },
+        firestorm = {
+            family = "team_cleave",
+            magnitude = 0.5,
+            duration = 6,
+            cleave_radius = 8,
+            radius = 8, -- radiusBase so a `range` enhancement widens the cleave (scales cleave_radius)
+        },
         cataclysm = {
             family = "amplified_burst",
             magnitude = 3.0,

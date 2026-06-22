@@ -1217,6 +1217,22 @@ function PowerService:_effectiveKind(rawKind, effective)
     end
     out.magnitude = effective.magnitude
     out.duration = effective.duration
+    -- carry the enhanced radius so a `range` enhancement actually widens the area at cast (the
+    -- preview already resolves this). Powers whose area knob is cleave_radius/spread_radius scale
+    -- by the SAME range factor (effective.radius / radiusBase) so range widens those AoEs too.
+    if effective.radius and effective.radius > 0 then
+        out.radius = effective.radius
+        local base = tonumber(rawKind.radius)
+        local factor = (base and base > 0) and (effective.radius / base) or 1
+        if factor ~= 1 then
+            if rawKind.cleave_radius then
+                out.cleave_radius = rawKind.cleave_radius * factor
+            end
+            if rawKind.spread_radius then
+                out.spread_radius = rawKind.spread_radius * factor
+            end
+        end
+    end
     if rawKind.dot then
         out.dot = {
             per_tick = effective.damage,

@@ -88,11 +88,17 @@ return function()
             expect(reason).to.equal("wrong_family")
         end)
 
-        it("range is BLOCKED on single-target powers (melee rule)", function()
-            local singleTarget = powersCfg.powers.dune_shield -- target = single_pet
+        it("range is BLOCKED on a single-target shield (not a radius family)", function()
+            -- range now lists only radius-consuming families (magnet/burst/cleave/spread); a
+            -- single-target shield isn't one, so it's gated out (was the melee/AoE rule before).
+            local singleTarget = powersCfg.powers.dune_shield -- absorb family, target = single_pet
             local ok, reason = Enhancements.compatibleWith(cfg, "range", singleTarget, kinds)
             expect(ok).to.equal(false)
-            expect(reason).to.equal("not_aoe")
+            expect(reason).to.equal("wrong_family")
+        end)
+        it("range fits a radius family (Wildfire's spread)", function()
+            local wildfire = powersCfg.powers.wildfire -- burn_spread, AoE
+            expect((Enhancements.compatibleWith(cfg, "range", wildfire, kinds))).to.equal(true)
         end)
 
         it("recharge fits anything (families = *)", function()
@@ -109,6 +115,15 @@ return function()
                     )
                 )
             ).to.equal(true)
+        end)
+
+        it("Windfall (drop_rate) accepts recharge, duration AND potency", function()
+            -- Jason: Windfall has magnitude=2.0 + duration=10, so all three axes should apply,
+            -- not just recharge. Guards the drop_rate family staying in duration/potency.families.
+            local windfall = powersCfg.powers.windfall
+            expect((Enhancements.compatibleWith(cfg, "recharge", windfall, kinds))).to.equal(true)
+            expect((Enhancements.compatibleWith(cfg, "duration", windfall, kinds))).to.equal(true)
+            expect((Enhancements.compatibleWith(cfg, "potency", windfall, kinds))).to.equal(true)
         end)
     end)
 
