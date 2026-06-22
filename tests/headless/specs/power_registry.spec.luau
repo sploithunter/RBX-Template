@@ -77,10 +77,14 @@ return function()
     end)
 
     describe("PowerRegistry — new fields default safely", function()
-        it("accuracyBase defaults to 1, critBase to 0", function()
-            local r = PowerRegistry.record("strike", cfg)
+        it("accuracyBase defaults to 1 for families with no roll, critBase to 0", function()
+            local r = PowerRegistry.record("mountains_strength", cfg) -- buff family: auto-lands
             expect(r.accuracyBase).to.equal(1)
             expect(r.critBase).to.equal(0)
+        end)
+        it("debuff/control families take the sub-1 accuracy_family_base (can miss)", function()
+            local r = PowerRegistry.record("strike", cfg) -- vulnerable family -> 0.9 default
+            expect(r.accuracyBase).to.equal(cfg.accuracy_family_base.vulnerable)
         end)
         it("returns nil for an unknown id", function()
             expect(PowerRegistry.record("nope_not_real", cfg)).to.equal(nil)

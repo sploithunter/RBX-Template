@@ -110,6 +110,16 @@ return {
     -- absorb effect_kind with evade=true -> dodge; defense_buff -> reskin; heal -> aura). So a NEW
     -- power just declares its family (or an explicit combat_vfx.look) and the renderer obeys — no
     -- per-power branches in the controller.
+    -- Default to-hit base per effect FAMILY (a power's own `accuracy_base` overrides). Debuff/control
+    -- powers land below 100% so they CAN miss (and so an `accuracy` enhancement has room to help —
+    -- a base of 1 clamps the boost away). Families with NO entry auto-land at 1.0 (buffs/heals/etc.).
+    -- Only families whose powers actually roll to-hit (`_accuracyHit`: vulnerable marks, root holds)
+    -- belong here. Tune freely.
+    accuracy_family_base = {
+        vulnerable = 0.9, -- marks/debuffs: ~10% base miss before the level curve
+        root = 0.9, -- holds/slows
+    },
+
     effect_kinds = {
         -- shields = ABSORPTION pools (soak `magnitude` damage before endurance), not heals.
         -- duration > 0 = the shield also EXPIRES after that many seconds even if not fully soaked

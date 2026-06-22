@@ -139,7 +139,9 @@ function PowerRegistry.record(id, cfg)
         damageBase = dot and dot.per_tick or nil,
         tickBase = dot and dot.interval or nil,
         radiusBase = ek.radius,
-        accuracyBase = power.accuracy_base or 1, -- not in legacy config; default always-hit
+        -- per-power override, else the family default (debuff/control land <1 so they can miss +
+        -- an accuracy enhancement has room), else always-hit.
+        accuracyBase = power.accuracy_base or (cfg.accuracy_family_base or {})[ek.family] or 1,
         critBase = power.crit_base or 0,
 
         -- mechanics passthrough — the raw effect_kind, so the router loses nothing during migration

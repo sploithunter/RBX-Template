@@ -57,15 +57,12 @@ return {
         accuracy = {
             symbol = "target",
             axis = "accuracy",
+            -- Only families that ROLL to-hit (_accuracyHit: vulnerable marks, root holds) AND land
+            -- below 1.0 (accuracy_family_base) — there a +accuracy enhancement actually improves the
+            -- chance the debuff lands. Other families auto-land (no roll) → accuracy was a dead slot.
             families = {
                 vulnerable = true,
                 root = true,
-                root_guard = true,
-                fear = true,
-                taunt = true,
-                amplified_burst = true,
-                burn_spread = true,
-                team_cleave = true,
             },
         },
         recharge = {

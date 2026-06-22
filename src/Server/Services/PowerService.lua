@@ -1293,8 +1293,10 @@ function PowerService:Cast(player, powerId)
                 == true,
         })
         kind = self:_effectiveKind(rawKind, effective)
-        -- carry the accuracy inputs so the per-enemy to-hit roll (P4) can resolve in _applyEffect
-        kind._accuracyBase = record.accuracyBase
+        -- carry the accuracy inputs so the per-enemy to-hit roll (P4) can resolve in _applyEffect.
+        -- Use the RESOLVED accuracy (record.accuracyBase × the slotted `accuracy` enhancement boost,
+        -- clamped) — NOT the raw base — so an accuracy enhancement actually improves the to-hit roll.
+        kind._accuracyBase = effective.accuracy
         kind._casterLevel = casterLevel
         kind._critBase = record.critBase -- P5: per-power crit chance for DoT ticks
     end

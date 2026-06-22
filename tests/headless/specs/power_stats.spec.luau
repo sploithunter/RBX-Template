@@ -127,6 +127,30 @@ return function()
         end)
     end)
 
+    describe("PowerStats — accuracy enhancement lifts a sub-1 base (debuff to-hit)", function()
+        it("a +accuracy enhancement raises the pre-toHit accuracy (clamped at 1)", function()
+            local mark = { kind = { "target" }, accuracyBase = 0.9 } -- a vulnerable mark, lands <1
+            local eff = PowerStats.resolveEffective(
+                mark,
+                { casterLevel = 9, enhancements = { accuracy = 0.2 } }
+            )
+            expect(approx(eff.accuracy, 1.0)).to.equal(true) -- 0.9 × 1.2 = 1.08 → clamp 1
+        end)
+        it("the lift is visible below the clamp with a lower base", function()
+            local low = { kind = { "target" }, accuracyBase = 0.6 }
+            local eff = PowerStats.resolveEffective(
+                low,
+                { casterLevel = 9, enhancements = { accuracy = 0.2 } }
+            )
+            expect(approx(eff.accuracy, 0.72)).to.equal(true) -- 0.6 × 1.2
+        end)
+        it("no accuracy enhancement leaves the base unchanged", function()
+            local mark = { kind = { "target" }, accuracyBase = 0.9 }
+            local eff = PowerStats.resolveEffective(mark, { casterLevel = 9 })
+            expect(approx(eff.accuracy, 0.9)).to.equal(true)
+        end)
+    end)
+
     describe("PowerStats — radius-magnitude fold (Magnet: range == reach)", function()
         -- a Magnet-like passive: reach lives on magnitudeBase, no radiusBase
         local magnet = { kind = { "self" }, magnitudeBase = 30 }
