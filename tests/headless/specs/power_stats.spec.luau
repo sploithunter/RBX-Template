@@ -155,6 +155,32 @@ return function()
         end)
     end)
 
+    describe(
+        "PowerStats — damage-magnitude fold (Sandstorm: damage == vulnerability mag)",
+        function()
+            -- a vulnerability debuff: its potency lives on magnitudeBase, no damageBase
+            local sandstorm = { kind = { "targeted_aoe" }, magnitudeBase = 1.5 }
+            it("folds a damage enhancement INTO magnitude when flagged", function()
+                local eff = PowerStats.resolveEffective(sandstorm, {
+                    casterLevel = 9,
+                    enhancements = { damage = 0.33 },
+                    damageIsMagnitude = true,
+                })
+                expect(approx(eff.magnitude, 1.995)).to.equal(true) -- 1.5 × (1 + 0.33)
+            end)
+            it(
+                "WITHOUT the flag, a damage boost does nothing to magnitude (no damageBase)",
+                function()
+                    local eff = PowerStats.resolveEffective(sandstorm, {
+                        casterLevel = 9,
+                        enhancements = { damage = 0.33 },
+                    })
+                    expect(eff.magnitude).to.equal(1.5) -- damage lands on damageBase (0) = no change
+                end
+            )
+        end
+    )
+
     describe("PowerStats — crit is additive (power + buff/aura)", function()
         it("sums critBase and the injected critBonus", function()
             local power = { kind = { "target" }, critBase = 0.1 }

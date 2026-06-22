@@ -87,6 +87,13 @@ function PowerStats.resolveEffective(power, ctx)
     if ctx.radiusMagnitude then
         magBoost += num(enh.radius, 0)
     end
+    -- damage-magnitude families (vulnerability debuffs like Sandstorm): the power has no damage of
+    -- its own — its `magnitude` IS the bonus-damage it makes enemies take. So a `damage` enhancement
+    -- folds INTO the magnitude boost (otherwise it scales a 0 damageBase = no change). Same fold home
+    -- as radiusMagnitude, so the ENHANCE preview and the live cast agree.
+    if ctx.damageIsMagnitude then
+        magBoost += num(enh.damage, 0)
+    end
 
     local eff = {
         cost = num(power.costBase, 0), -- focus cost (unscaled by default)

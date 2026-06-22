@@ -546,12 +546,14 @@ function PowerChoiceMenu:_previewDiff(powerId, slots, staged)
     -- radius-magnitude families (Magnet): range folds into magnitude, exactly as the cast
     -- stamp does — record.effect IS the effect-kind family (PowerRegistry sets it).
     local radiusMagnitude = (enhCfg.radius_families or {})[record.effect] == true
+    local damageIsMagnitude = (enhCfg.damage_as_magnitude_families or {})[record.effect] == true
     local function resolve(slotList)
         return PowerStats.resolveEffective(record, {
             casterLevel = lvl,
             scaling = powersCfg.scaling, -- nil today ⇒ identity; matches PowerService
             enhancements = Enhancements.aggregate(enhCfg, slotList, lvl),
             radiusMagnitude = radiusMagnitude,
+            damageIsMagnitude = damageIsMagnitude,
         })
     end
     return PowerStatsDiff.diff(resolve(slots), resolve(projected))

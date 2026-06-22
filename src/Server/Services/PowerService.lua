@@ -168,6 +168,8 @@ function PowerService:_applyOwnedPassives(player)
                 scaling = self._powersConfig.scaling,
                 enhancements = enhAxes,
                 radiusMagnitude = (self._enhConfig.radius_families or {})[kind.family] == true,
+                damageIsMagnitude = (self._enhConfig.damage_as_magnitude_families or {})[kind.family]
+                    == true,
             })
             player:SetAttribute(attr, eff.magnitude)
             player:SetAttribute(attr .. "Until", PASSIVE_UNTIL)
@@ -1283,6 +1285,8 @@ function PowerService:Cast(player, powerId)
             -- radius-magnitude families fold range INTO magnitude (only Magnet today, and it's
             -- passive — harmless here, but keeps every cast path on the one rule)
             radiusMagnitude = (self._enhConfig.radius_families or {})[rawKind.family] == true,
+            damageIsMagnitude = (self._enhConfig.damage_as_magnitude_families or {})[rawKind.family]
+                == true,
         })
         kind = self:_effectiveKind(rawKind, effective)
         -- carry the accuracy inputs so the per-enemy to-hit roll (P4) can resolve in _applyEffect

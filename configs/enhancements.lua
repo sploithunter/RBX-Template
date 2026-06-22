@@ -113,6 +113,7 @@ return {
                 taunt = true,
                 luck = true,
                 rage = true,
+                drop_rate = true, -- Windfall: extend the loot-chance window (it has duration=10)
             },
         },
         -- POTENCY (Jason): +% to the power's own magnitude — the universal "makes the
@@ -125,6 +126,7 @@ return {
                 buff = true,
                 coin_yield = true,
                 crit = true,
+                drop_rate = true, -- Windfall: boost the +drop-chance magnitude (it has magnitude=2.0)
                 luck = true,
                 magnet = true,
                 move_speed = true,
@@ -169,6 +171,13 @@ return {
     -- without an AoE target (Jason: Magnet's only sensible enhancement is range).
     radius_families = {
         magnet = true,
+    },
+
+    -- Effect FAMILIES whose magnitude IS their "damage" — vulnerability debuffs (Sandstorm) have no
+    -- damage of their own; their magnitude is the +bonus-damage enemies take. A `damage` enhancement
+    -- folds into magnitude here (else it scales a 0 damageBase → "no change at your level").
+    damage_as_magnitude_families = {
+        vulnerable = true,
     },
 
     -- DROPS: rolled when a breakable/enemy dies (DropService). The MODEL is semi-generic — the
