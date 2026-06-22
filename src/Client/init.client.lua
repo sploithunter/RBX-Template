@@ -835,11 +835,17 @@ UserInputService.InputBegan:Connect(onInputBegan)
 -- buff is live. Pets already read MoveSpeedBuff (PetFollowController); this applies it to the PLAYER
 -- too, so Swift speeds self AND squad.
 local function activeMoveBuff()
-    local untilT = localPlayer:GetAttribute("MoveSpeedBuffUntil") or 0
-    if untilT > os.time() then
-        return localPlayer:GetAttribute("MoveSpeedBuff") or 0
+    -- move_speed axis = power (MoveSpeedBuff) + potion (MoveSpeedBuffPotion), each gated by its own
+    -- Until and ADDED (a Swift potion stacks with the Swift power instead of clobbering it).
+    local now = os.time()
+    local total = 0
+    if (localPlayer:GetAttribute("MoveSpeedBuffUntil") or 0) > now then
+        total += localPlayer:GetAttribute("MoveSpeedBuff") or 0
     end
-    return 0
+    if (localPlayer:GetAttribute("MoveSpeedBuffPotionUntil") or 0) > now then
+        total += localPlayer:GetAttribute("MoveSpeedBuffPotion") or 0
+    end
+    return total
 end
 
 local function applyWalkSpeed()
@@ -882,6 +888,8 @@ localPlayer.CharacterAdded:Connect(onCharacterAdded)
 -- expires) so player speed tracks the buff live, not just on spawn.
 localPlayer:GetAttributeChangedSignal("MoveSpeedBuff"):Connect(applyWalkSpeed)
 localPlayer:GetAttributeChangedSignal("MoveSpeedBuffUntil"):Connect(applyWalkSpeed)
+localPlayer:GetAttributeChangedSignal("MoveSpeedBuffPotion"):Connect(applyWalkSpeed)
+localPlayer:GetAttributeChangedSignal("MoveSpeedBuffPotionUntil"):Connect(applyWalkSpeed)
 
 -- Wait for data to load
 local function waitForDataLoaded()

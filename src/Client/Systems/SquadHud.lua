@@ -248,6 +248,26 @@ local PET_EFFECTS = {
         label = "SPD",
         icon = POWER_ICONS.discFor("neutral", "arrow_right"),
     },
+    -- Potion buffs are their OWN source (PotionService writes <axis>Potion so they ADD to the power
+    -- instead of clobbering it), so they need their own card entries — same disc/ring via PowerId.
+    {
+        key = "damage_potion",
+        source = "player",
+        untilAttr = "PetDamageBuffPotionUntil",
+        powerIdAttr = "PetDamageBuffPotionPowerId",
+        color = Color3.fromRGB(235, 90, 90),
+        label = "DMG",
+        icon = POWER_ICONS.status.damage,
+    },
+    {
+        key = "speed_potion",
+        source = "player",
+        untilAttr = "MoveSpeedBuffPotionUntil",
+        powerIdAttr = "MoveSpeedBuffPotionPowerId",
+        color = Color3.fromRGB(95, 180, 235),
+        label = "SPD",
+        icon = POWER_ICONS.discFor("neutral", "arrow_right"),
+    },
     -- Instant effects flash a blinking pulse badge (no countdown) for their FX window so
     -- you can see what just happened. heal = the support/heal-power tell (HealFxUntil).
     {

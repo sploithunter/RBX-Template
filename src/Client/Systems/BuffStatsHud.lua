@@ -440,14 +440,18 @@ function BuffStatsHud:_refresh()
             fraction = (p:GetAttribute("PetTeamDamageBuff") or 1) - 1,
             expiry = p:GetAttribute("PetTeamDamageBuffUntil") or 0,
         },
+        {
+            fraction = p:GetAttribute("PetDamageBuffPotion") or 0, -- Berserk potion (raw fraction)
+            expiry = p:GetAttribute("PetDamageBuffPotionUntil") or 0,
+        },
     }, now, axis("pet_damage"))
-    -- Timer counts down only the TIMED power (PetDamageBuff); the offense AURA
+    -- Timer counts down the TIMED sources (PetDamageBuff / the potion); the offense AURA
     -- (PetTeamDamageBuff) is permanent while the pet is deployed -> no countdown (shows ∞).
     self:_setMult(
         "attack",
         atk,
         axis("pet_damage").cap,
-        soonestRemaining(p, { "PetDamageBuffUntil" }, now)
+        soonestRemaining(p, { "PetDamageBuffUntil", "PetDamageBuffPotionUntil" }, now)
     )
 
     -- 🛡 Defense (per-pet flat -> armor-curve mitigation %).
@@ -502,6 +506,10 @@ function BuffStatsHud:_refresh()
             expiry = p:GetAttribute("LuckBuffUntil") or 0,
         },
         {
+            fraction = p:GetAttribute("LuckBuffPotion") or 0, -- Fortune potion (raw fraction)
+            expiry = p:GetAttribute("LuckBuffPotionUntil") or 0,
+        },
+        {
             fraction = math.max(0, (p:GetAttribute("HatchLuckBuff") or 1) - 1),
             expiry = p:GetAttribute("HatchLuckBuffUntil") or 0,
         },
@@ -510,7 +518,7 @@ function BuffStatsHud:_refresh()
         "luck",
         luck,
         axis("luck").cap,
-        soonestRemaining(p, { "LuckBuffUntil", "HatchLuckBuffUntil" }, now)
+        soonestRemaining(p, { "LuckBuffUntil", "LuckBuffPotionUntil", "HatchLuckBuffUntil" }, now)
     )
 
     -- targeted channels (events/powers set <X>LuckBuff multiplier attrs + Until):
@@ -535,18 +543,22 @@ function BuffStatsHud:_refresh()
         end
     end
 
-    -- 🐾 Speed.
+    -- 🐾 Speed (power + potion ADD on the axis).
     local speed = BuffStack.multiplier({
         {
             fraction = p:GetAttribute("MoveSpeedBuff") or 0,
             expiry = p:GetAttribute("MoveSpeedBuffUntil") or 0,
+        },
+        {
+            fraction = p:GetAttribute("MoveSpeedBuffPotion") or 0,
+            expiry = p:GetAttribute("MoveSpeedBuffPotionUntil") or 0,
         },
     }, now, axis("move_speed"))
     self:_setMult(
         "speed",
         speed,
         axis("move_speed").cap,
-        soonestRemaining(p, { "MoveSpeedBuffUntil" }, now)
+        soonestRemaining(p, { "MoveSpeedBuffUntil", "MoveSpeedBuffPotionUntil" }, now)
     )
 
     -- ⚡ Recharge (cooldown reduction, clamped — shown as -N% CD).

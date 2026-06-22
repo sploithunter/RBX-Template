@@ -902,6 +902,12 @@ function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
         playerData.luckBoost = (tonumber(playerData.luckBoost) or 0)
             + (player:GetAttribute("LuckBuff") or 0)
     end
+    -- Fortune POTION (luck axis): its own source (LuckBuffPotion), so it ADDS to the luck power
+    -- instead of clobbering it. Raw fraction, same convention as LuckBuff above.
+    if (player:GetAttribute("LuckBuffPotionUntil") or 0) > os.time() then
+        playerData.luckBoost = (tonumber(playerData.luckBoost) or 0)
+            + (player:GetAttribute("LuckBuffPotion") or 0)
+    end
 
     -- Bunny support aura (lucky rabbit): HatchLuckBuff is a multiplier attribute
     -- (1.25 = +0.25); contributes its fraction while the buffer is deployed.

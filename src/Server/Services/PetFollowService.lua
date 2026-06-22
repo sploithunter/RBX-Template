@@ -599,6 +599,12 @@ function PetFollowService:_mine(player, pet, breakable)
             expiry = player:GetAttribute("PetDamageBuffUntil") or 0,
         },
         {
+            -- Berserk POTION (its own source, so it ADDS to the damage power instead of clobbering
+            -- it). Stored as a RAW fraction (magnitude), so no -1 here — see PotionService._applyMeter.
+            fraction = player:GetAttribute("PetDamageBuffPotion") or 0,
+            expiry = player:GetAttribute("PetDamageBuffPotionUntil") or 0,
+        },
+        {
             fraction = (player:GetAttribute("PetTeamDamageBuff") or 1) - 1,
             expiry = player:GetAttribute("PetTeamDamageBuffUntil") or 0,
         },

@@ -110,24 +110,32 @@ function PotionService:Grant(player, potionId, count)
     return { ok = true, count = self:_count(player, potionId) }
 end
 
--- Write (or clear) a meter's BuffStack axis attribute — same shape PowerService uses.
+-- Write (or clear) a meter's buff contribution.
+--
+-- A potion is its OWN buff source — it writes "<buff_attr>Potion" (NOT the power's "<buff_attr>"),
+-- so a permanent power and a draining potion ADD on the axis instead of clobbering each other
+-- (single attr + single Until can't hold both). Consumers sum the power attr + the Potion attr:
+-- move_speed (init.client + PetFollowController), pet_damage (PetFollowService BuffStack list),
+-- luck (EggService). The value is a RAW FRACTION (magnitude = charge × cap) for every axis — the
+-- consumers add it directly (no -1), so it's correct on fraction- AND multiplier-convention axes.
 function PotionService:_applyMeter(player, meterId, charge)
     local m = self:_meterCfg(meterId)
     if not m or m.target == "enemy" then
         return -- enemy debuffs apply at throw time (S2b)
     end
-    local attr = m.buff_attr
-    if not attr then
+    local base = m.buff_attr
+    if not base then
         return
     end
+    local attr = base .. "Potion" -- potion's own source, summed alongside the power's <base>
     if charge and charge > 0 then
         player:SetAttribute(attr, BrewMeter.magnitude(charge, m.cap))
         player:SetAttribute(
             attr .. "Until",
             os.time() + BrewMeter.remainingSeconds(charge, m.drain_seconds)
         )
-        -- Tag the buff with a potion power-id so the unified badge (PetBadge.forPotion) resolves on
-        -- every surface that keys off "<attr>PowerId" — i.e. each squad card wears the same disc+ring.
+        -- Tag with a potion power-id so the unified badge (PetBadge.forPotion) resolves on the
+        -- squad cards / player bar that key off "<attr>PowerId".
         player:SetAttribute(attr .. "PowerId", "potion_" .. meterId)
         player:SetAttribute("Brew_" .. meterId, charge) -- live pie source for the hotbar
     else
