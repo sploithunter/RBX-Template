@@ -170,6 +170,8 @@ function PowerService:_applyOwnedPassives(player)
                 radiusMagnitude = (self._enhConfig.radius_families or {})[kind.family] == true,
                 damageIsMagnitude = (self._enhConfig.damage_as_magnitude_families or {})[kind.family]
                     == true,
+                healIsMagnitude = (self._enhConfig.heal_as_magnitude_families or {})[kind.family]
+                    == true,
             })
             player:SetAttribute(attr, eff.magnitude)
             player:SetAttribute(attr .. "Until", PASSIVE_UNTIL)
@@ -1286,6 +1288,8 @@ function PowerService:Cast(player, powerId)
             -- passive — harmless here, but keeps every cast path on the one rule)
             radiusMagnitude = (self._enhConfig.radius_families or {})[rawKind.family] == true,
             damageIsMagnitude = (self._enhConfig.damage_as_magnitude_families or {})[rawKind.family]
+                == true,
+            healIsMagnitude = (self._enhConfig.heal_as_magnitude_families or {})[rawKind.family]
                 == true,
         })
         kind = self:_effectiveKind(rawKind, effective)

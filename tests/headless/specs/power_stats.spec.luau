@@ -169,6 +169,19 @@ return function()
                 expect(approx(eff.magnitude, 1.995)).to.equal(true) -- 1.5 × (1 + 0.33)
             end)
             it(
+                "folds a healing enhancement INTO magnitude when flagged (heal == magnitude)",
+                function()
+                    -- heal powers store the heal amount in magnitude (no healBase), so `healing` folds
+                    local heal = { kind = { "team" }, magnitudeBase = 600 }
+                    local eff = PowerStats.resolveEffective(heal, {
+                        casterLevel = 9,
+                        enhancements = { heal = 0.2 },
+                        healIsMagnitude = true,
+                    })
+                    expect(approx(eff.magnitude, 720)).to.equal(true) -- 600 × (1 + 0.2)
+                end
+            )
+            it(
                 "WITHOUT the flag, a damage boost does nothing to magnitude (no damageBase)",
                 function()
                     local eff = PowerStats.resolveEffective(sandstorm, {

@@ -94,6 +94,11 @@ function PowerStats.resolveEffective(power, ctx)
     if ctx.damageIsMagnitude then
         magBoost += num(enh.damage, 0)
     end
+    -- heal-magnitude families: heal powers store the heal amount in magnitude (no healBase), so a
+    -- `healing` enhancement folds into magnitude too (same reason as damageIsMagnitude).
+    if ctx.healIsMagnitude then
+        magBoost += num(enh.heal, 0)
+    end
 
     local eff = {
         cost = num(power.costBase, 0), -- focus cost (unscaled by default)

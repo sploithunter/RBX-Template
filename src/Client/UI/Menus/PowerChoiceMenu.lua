@@ -547,6 +547,7 @@ function PowerChoiceMenu:_previewDiff(powerId, slots, staged)
     -- stamp does — record.effect IS the effect-kind family (PowerRegistry sets it).
     local radiusMagnitude = (enhCfg.radius_families or {})[record.effect] == true
     local damageIsMagnitude = (enhCfg.damage_as_magnitude_families or {})[record.effect] == true
+    local healIsMagnitude = (enhCfg.heal_as_magnitude_families or {})[record.effect] == true
     local function resolve(slotList)
         return PowerStats.resolveEffective(record, {
             casterLevel = lvl,
@@ -554,6 +555,7 @@ function PowerChoiceMenu:_previewDiff(powerId, slots, staged)
             enhancements = Enhancements.aggregate(enhCfg, slotList, lvl),
             radiusMagnitude = radiusMagnitude,
             damageIsMagnitude = damageIsMagnitude,
+            healIsMagnitude = healIsMagnitude,
         })
     end
     return PowerStatsDiff.diff(resolve(slots), resolve(projected))

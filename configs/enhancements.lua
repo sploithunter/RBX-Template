@@ -112,7 +112,7 @@ return {
                 fear = true,
                 taunt = true,
                 luck = true,
-                rage = true,
+                -- rage is a TOGGLE (no duration to extend) — dropped (was a no-op slot)
                 drop_rate = true, -- Windfall: extend the loot-chance window (it has duration=10)
             },
         },
@@ -173,11 +173,25 @@ return {
         magnet = true,
     },
 
-    -- Effect FAMILIES whose magnitude IS their "damage" — vulnerability debuffs (Sandstorm) have no
-    -- damage of their own; their magnitude is the +bonus-damage enemies take. A `damage` enhancement
-    -- folds into magnitude here (else it scales a 0 damageBase → "no change at your level").
+    -- Effect FAMILIES whose magnitude IS their "damage" — these player powers deal no direct damage
+    -- (firewall): their POTENCY lives in `magnitude` (vulnerability %, pet-damage buff, burst/cleave
+    -- mult). A `damage` enhancement folds into magnitude here (else it scales a 0 damageBase → "no
+    -- change"). burn_spread (Wildfire) is INTENTIONALLY excluded — it has a real DoT damageBase, so
+    -- its `damage` enhancement scales the burn directly.
     damage_as_magnitude_families = {
-        vulnerable = true,
+        vulnerable = true, -- Sandstorm / Mark of Flame / Sunder / … (+% enemies take)
+        buff = true, -- Mountain's Strength (+% pet damage)
+        rage = true, -- Rage (HP-inverse pet damage)
+        amplified_burst = true, -- Cataclysm (burst = squad-attack × magnitude)
+        team_cleave = true, -- Firestorm (cleave splash × magnitude)
+    },
+
+    -- Effect FAMILIES whose magnitude IS their "heal" — heal powers store the heal amount in
+    -- `magnitude` (no healBase is ever set), so a `healing` enhancement folds into magnitude (else
+    -- it scales a 0 healBase → "no change"). Same fold home as the damage/radius folds.
+    heal_as_magnitude_families = {
+        heal = true,
+        heal_blind = true,
     },
 
     -- DROPS: rolled when a breakable/enemy dies (DropService). The MODEL is semi-generic — the
