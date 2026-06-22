@@ -307,7 +307,7 @@ radiant regen aura).
 | Seraph Lion | Bruiser | Uncommon | haloed light-lion |
 | Radiant Lance | Blaster | Rare | white sunfire lances |
 | Gloryscale Salamander | Offense buff | Uncommon | sheathes squad in glory-light |
-| Empyrean Phoenix | Blaster apex | Mythic | reborn in pure radiance |
+| Empyrean Firehawk | Blaster apex | Mythic | great radiant fire-hawk, white-flame dives |
 
 ### ❄️ Ice — control
 | Pet | Role | Rarity | Hook |
@@ -323,7 +323,7 @@ radiant regen aura).
 |-----|------|--------|------|
 | Gloryleaf Lamb | Heal | Common | lamb of green light |
 | Halo Hart | Melee | Common | radiant stag-fawn |
-| Lightroot Stag | Tank | Uncommon | light-antlered guardian |
+| Lightbark Rhino | Tank | Uncommon | light-plated rhino, charges & holds |
 | Bloomlight Sprite | Yield / luck | Uncommon | harvest-spirit |
 | **★ Verdant Dragon** | **Tank / heal (capstone)** | **SECRET** | colossal living-light tree-dragon, huge HP + radiant regen aura. Rebirth #4 of 11 |
 
@@ -349,7 +349,7 @@ rotting bog **tank** dragon (huge HP + life-leech aura).
 | Plaguemane Lion | Bruiser | Uncommon | boil-maned lion |
 | Pyreblight Phoenix | Blaster | Rare | green pyre-bolts |
 | Rotbrand Salamander | Curse | Uncommon | brands foes with rot |
-| Pestilence Phoenix | Blaster apex | Mythic | rises from plague-ash |
+| Pestilence Harpy | Blaster apex | Mythic | rot-winged harpy, plague-screech volleys |
 
 ### ❄️ Ice — control (rot-frost)
 | Pet | Role | Rarity | Hook |
@@ -365,7 +365,7 @@ rotting bog **tank** dragon (huge HP + life-leech aura).
 |-----|------|--------|------|
 | Blightleaf Lamb | Life-drain heal | Common | rotted lamb, leech-heals |
 | Murk Hart | Melee | Common | gaunt bog-stag |
-| Rotroot Stag | Tank | Uncommon | decaying thorned guardian |
+| Rothide Rhino | Tank | Uncommon | rotting armored rhino, charges & holds |
 | Plaguebloom Sprite | Wither-curse | Uncommon | saps foes' output |
 | **★ Blight Dragon** | **Tank / drain (capstone)** | **SECRET** | rotting bog-dragon, huge HP + life-leech aura. Rebirth #9 of 11 |
 
@@ -392,7 +392,7 @@ exactly this reason). Dragon rotates to **Desert → Alabaster Dragon** (rebirth
 | Blaze Lion | Bruiser | Uncommon | sun-charged lion |
 | Sunlance Seraph | Blaster | Rare | sun-white lances |
 | Sunscale Salamander | Offense buff | Uncommon | sun-glare +damage |
-| Solaris Phoenix | Blaster apex | Mythic | white-sun phoenix |
+| Solaris Ifrit | Blaster apex | Mythic | radiant sun-fire genie, hurls sun-bolts |
 
 ### ❄️ Ice — control
 | Pet | Role | Rarity | Hook |
@@ -408,7 +408,7 @@ exactly this reason). Dragon rotates to **Desert → Alabaster Dragon** (rebirth
 |-----|------|--------|------|
 | Sunbloom Lamb | Heal | Common | sun-flower lamb |
 | Sunleaf Hare | Melee | Common | bright desert hare |
-| Quartzbark Stag | Tank | Uncommon | crystal-bark guardian |
+| Quartzshell Beetle | Tank | Uncommon | crystal-shelled rhino-beetle, soaks hits |
 | Sunmote Sprite | Yield / luck | Uncommon | sun-spirit |
 | Sunroot Ent | Tank / heal apex | Mythic | sun-tree guardian |
 
@@ -434,7 +434,7 @@ dragon — Alabaster's dark mirror: it curses and shreds every foe and drains li
 | Cindermane Lion | Bruiser | Uncommon | molten-cracked black lion |
 | Magmaglass Phoenix | Blaster | Rare | molten-glass bolts |
 | Scorchbrand Salamander | Curse | Uncommon | brands foes with scorch |
-| Inferno Phoenix | Blaster apex | Mythic | black-fire phoenix |
+| Inferno Ifrit | Blaster apex | Mythic | dark fire-genie, hurls black-fire bolts |
 
 ### ❄️ Ice — control
 | Pet | Role | Rarity | Hook |
@@ -450,7 +450,7 @@ dragon — Alabaster's dark mirror: it curses and shreds every foe and drains li
 |-----|------|--------|------|
 | Scorchleaf Lamb | Life-drain heal | Common | charred lamb, leech-heals |
 | Cinder Hare | Melee | Common | ember-singed hare |
-| Glassroot Stag | Tank | Uncommon | obsidian-thorn guardian |
+| Glassback Beetle | Tank | Uncommon | obsidian-shelled rhino-beetle, soaks hits |
 | Scorchbloom Sprite | Wither-curse | Uncommon | scorches foes' output |
 | Scorchroot Ent | Tank / drain apex | Mythic | burnt-glass tree |
 

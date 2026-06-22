@@ -111,7 +111,7 @@ per-pet gold list: append it to any base below.
 - **Seraph Lion** — regal lion with a glowing white halo-mane edged in emerald light, pearl coat.
 - **Radiant Lance** — graceful light-bird wielding a white sunfire lance, emerald-tipped wings.
 - **Gloryscale Salamander** — salamander of glowing white light with emerald scale-sheen and a radiant aura.
-- **Empyrean Phoenix** *(mythic apex)* — glorious phoenix of pure white radiance with emerald-light flame, near-blinding plumage.
+- **Empyrean Firehawk** *(mythic apex)* — great radiant fire-hawk of white-and-emerald flame, sweeping dive-attacks.
 
 **Ice**
 - **Lumen Seal** — glowing white-light seal pup, soft emerald sheen.
@@ -123,7 +123,7 @@ per-pet gold list: append it to any base below.
 **Grass** *(dragon origin)*
 - **Gloryleaf Lamb** — lamb of green-white light with glowing leaf-wool, tiny bloom halo.
 - **Halo Hart** — radiant young stag with a halo and glowing emerald antlers, pearl pelt.
-- **Lightroot Stag** — sturdy stag with glowing root-and-light antlers, mossy radiant pelt.
+- **Lightbark Rhino** — sturdy light-plated rhino with glowing root-bark armor, emerald glow.
 - **Bloomlight Sprite** — floating harvest-spirit of glowing pollen and petals, emerald-white light.
 - **★ Verdant Dragon** *(secret)* — colossal benevolent tree-dragon of living light, bark-and-leaf scales, a blossoming canopy crest, glowing emerald veins; massive heavy tank build.
 
@@ -141,7 +141,7 @@ per-pet gold list: append it to any base below.
 - **Plaguemane Lion** — boil-maned lion with rotting green-black hide and a pustule glow.
 - **Pyreblight Phoenix** — diseased phoenix wreathed in green pyre-flame, rotting feathers.
 - **Rotbrand Salamander** — black salamander oozing green rot, glowing plague brands.
-- **Pestilence Phoenix** *(mythic apex)* — gaunt plague-phoenix rising from green rot-ash, bile-dripping wings.
+- **Pestilence Harpy** *(mythic apex)* — gaunt rot-winged harpy, bile-dripping feathers, plague-screech.
 
 **Ice**
 - **Murkfrost Seal** — bog-frost seal, matted green-black hide, sick eyes.
@@ -153,7 +153,7 @@ per-pet gold list: append it to any base below.
 **Grass** *(dragon origin)*
 - **Blightleaf Lamb** — rotted lamb with green-black decayed wool, life-leech glow, hollow eyes.
 - **Murk Hart** — gaunt bog-stag dripping moss, dead pale eyes.
-- **Rotroot Stag** — decaying stag with rotting thorned antlers and oozing green veins.
+- **Rothide Rhino** — rotting armored rhino with thorned green-black hide, oozing veins.
 - **Plaguebloom Sprite** — withered spirit shedding diseased green spores, bruise-violet glow.
 - **★ Blight Dragon** *(secret)* — colossal rotting bog-dragon, decayed bark-and-bone scales, dripping bile, green-glow veins; massive heavy tank build, faint swarm of flies.
 
@@ -175,7 +175,7 @@ per-pet gold list: append it to any base below.
 - **Blaze Lion** — powerful lion blazing with white-sun light, alabaster mane, glowing eyes.
 - **Sunlance Seraph** — sleek light-bird hurling brilliant white sun-lances, quartz-tipped wings.
 - **Sunscale Salamander** — salamander with faceted quartz scales glowing sun-white, radiant aura.
-- **Solaris Phoenix** *(mythic apex)* — blinding white-sun phoenix with faceted light feathers and a radiant corona.
+- **Solaris Ifrit** *(mythic apex)* — towering radiant sun-fire genie wreathed in white flame, hurls sun-bolts.
 
 **Ice**
 - **Sunfrost Marten** — sleek sun-glazed frost marten, quartz sheen.
@@ -187,7 +187,7 @@ per-pet gold list: append it to any base below.
 **Grass**
 - **Sunbloom Lamb** — lamb with glowing white sun-flower wool, faceted-light halo.
 - **Sunleaf Hare** — bright hare with translucent quartz-leaf ears, sun-white coat.
-- **Quartzbark Stag** — stag with faceted crystal-bark antlers glowing white, pale pelt.
+- **Quartzshell Beetle** — hulking crystal-shelled rhino-beetle, faceted quartz plates, sun-white glow.
 - **Sunmote Sprite** — floating spirit of glowing sun-pollen with faceted light wings.
 - **Sunroot Ent** *(mythic apex)* — towering sun-tree guardian of white light and quartz bark, radiant canopy.
 
@@ -205,7 +205,7 @@ per-pet gold list: append it to any base below.
 - **Cindermane Lion** — black lion with molten-cracked obsidian hide and an ember-glow mane.
 - **Magmaglass Phoenix** — dark phoenix of molten black glass with glowing ember-cracked feathers.
 - **Scorchbrand Salamander** — obsidian salamander with glowing ember brands, cracked molten skin.
-- **Inferno Phoenix** *(mythic apex)* — black-fire phoenix wreathed in ember-glow, fractured glass plumage.
+- **Inferno Ifrit** *(mythic apex)* — towering dark fire-genie of black flame and ember cracks, hurls black-fire bolts.
 
 **Ice**
 - **Blackfrost Marten** — obsidian-frost marten, ember-flecked black coat, cold glow.
@@ -217,7 +217,7 @@ per-pet gold list: append it to any base below.
 **Grass**
 - **Scorchleaf Lamb** — charred lamb with burnt-glass wool, ember-glow, leech aura.
 - **Cinder Hare** — ember-singed hare, blackened fur, glowing cracks.
-- **Glassroot Stag** — stag with obsidian-thorn antlers and ember-veined black bark.
+- **Glassback Beetle** — hulking obsidian-shelled rhino-beetle, ember-veined black plates.
 - **Scorchbloom Sprite** — withered spirit shedding ember-sparks, black-glass petals.
 - **Scorchroot Ent** *(mythic apex)* — burnt-glass tree-guardian, obsidian bark with molten-ember cracks, glowing core.
 
