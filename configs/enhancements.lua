@@ -142,13 +142,13 @@ return {
         spark = {
             symbol = "proc", -- Jason's batch-4 art (was capacitor placeholder)
             proc = { trigger = "hit", chance = 0.15, bonus = 1.0 },
+            -- Gated to families that deal/credit REAL damage (the proc surges a hit's damage by
+            -- `bonus`). Pure buffs/debuffs (vulnerable/buff/rage) have no hit to proc on, so they're
+            -- excluded — spark there was a dead slot.
             families = {
-                vulnerable = true,
-                buff = true,
-                rage = true,
-                amplified_burst = true,
-                burn_spread = true,
-                team_cleave = true,
+                amplified_burst = true, -- Cataclysm (burst credited to pets)
+                burn_spread = true, -- Wildfire (DoT)
+                team_cleave = true, -- Firestorm (cleave splash)
             },
         },
         healing = {
