@@ -1084,10 +1084,27 @@ function HotbarBar.start()
                 { type = "tactical", target = cmd }
             )
         end
-        -- Potions you OWN (drink on tap, like a power). Server palette carries id + count + icon.
-        if available.potions and #available.potions > 0 then
+        -- Potions you OWN (drink on tap, like a power). Prefer the LIVE map (potionByPotion, refreshed
+        -- on every grant / PotionUpdate) so a mid-session grant appears immediately; the boot palette
+        -- (available.potions) is only a fallback (it goes stale between Hotbar_State pushes).
+        local potionList, seenPotion = {}, {}
+        for _, p in pairs(potionByPotion) do
+            if p.id and (tonumber(p.count) or 0) > 0 then
+                potionList[#potionList + 1] = p
+                seenPotion[p.id] = true
+            end
+        end
+        for _, p in ipairs(available.potions or {}) do
+            if p.id and not seenPotion[p.id] and (tonumber(p.count) or 0) > 0 then
+                potionList[#potionList + 1] = p
+            end
+        end
+        table.sort(potionList, function(a, b)
+            return tostring(a.id) < tostring(b.id)
+        end)
+        if #potionList > 0 then
             header("Potions")
-            for _, pot in ipairs(available.potions) do
+            for _, pot in ipairs(potionList) do
                 local label = tostring(pot.icon or "🧪")
                     .. " "
                     .. tostring(pot.name or pot.id)
