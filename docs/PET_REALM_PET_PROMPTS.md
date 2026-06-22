@@ -300,6 +300,70 @@ per-pet gold list: append it to any base below.
 
 ---
 
+## Egg prompts (layers 2–5)
+
+Each realm has **4 per-origin eggs** (fire / ice / grass / desert). Layer 1's eggs already exist
+(`solar_egg`, `aurora_egg`, `bloom_egg`, `gilded_egg` + the hell set). Eggs use the same mesh
+combine path as pets (mesh + IMAGE texture). Build each as `EGG STYLE` + the descriptor.
+
+### EGG STYLE — prepend to every egg prompt
+> Stylized collectible game egg, a single smooth rounded ovoid standing upright, centered, clean
+> low-poly-friendly form, soft even shading, decorative themed shell, no base or platform, plain
+> neutral background.
+
+The shell = **realm palette + origin motif** (fire = flame swirls · ice = frost crystals ·
+grass = leaves/blossom · desert = glass/sand facets).
+
+**Heaven 2 — Aurora Reaches** (white / pearl / prismatic / aurora)
+- Fire — pearl-white egg with cool white-flame swirls, faint prismatic sheen, soft cyan glow.
+- Ice — translucent frost-crystal egg with an aurora shimmer and prismatic refraction.
+- Grass — pearl egg wrapped in glowing white-light vines and tiny blossoms.
+- Desert — sun-fused translucent glass egg with a faint prismatic glint, smooth.
+
+**Hell 2 — Frozen Dark** (black / obsidian / black-ice / violet)
+- Fire — black egg veined with cold blue-violet flame cracks, frost-rimed.
+- Ice — jagged black-ice egg with a violet inner glow, frostbitten surface.
+- Grass — black rotted egg bound in frozen black vines, violet glow.
+- Desert — black obsidian-glass egg, sharp facets, violet glint.
+
+**Heaven 3 — Empyrean Bloom** (white / pearl / emerald-light)
+- Fire — pearl egg with white-and-emerald flame swirls, soft halo.
+- Ice — white egg studded with emerald-glow frost crystals, luminous.
+- Grass — radiant egg sprouting glowing emerald-light leaves and blossoms.
+- Desert — glowing radiant-glass egg with an emerald glint.
+
+**Hell 3 — Blightmire** (rot-green / black / bruise-violet)
+- Fire — black egg oozing green rot-fire cracks, sickly glow.
+- Ice — bog-frosted black egg trailing green miasma, sick glow.
+- Grass — rotting bark egg dripping bile, green-black, fungal.
+- Desert — rot-streaked dark-glass egg with a green glint and bone fragments.
+
+**Heaven 4 — Sunspire Reaches** (white / alabaster / sun-white / quartz)
+- Fire — brilliant white egg with sun-white flame facets, near-blinding.
+- Ice — sun-glazed frost-quartz egg, faceted, white glow.
+- Grass — white egg with quartz-leaf accents, sun glow.
+- Desert — smooth alabaster/sunstone egg, faceted, brilliant white.
+
+**Hell 4 — Scorchglass** (black-glass / obsidian / ember)
+- Fire — obsidian egg veined with glowing ember cracks, molten.
+- Ice — black-glass egg flecked with embers, cold-and-hot contrast.
+- Grass — burnt-glass egg of obsidian bark, ember-veined.
+- Desert — polished black-glass egg, sharp facets, ember glint.
+
+**Heaven 5 — The Radiance** (pure white / blinding light / halo)
+- Fire — egg of pure white light, a faint flame-corona within, prismatic halo.
+- Ice — egg of pure white light, a faint frost-crystal within, prismatic halo.
+- Grass — egg of pure white light, a faint blossom within, prismatic halo.
+- Desert — egg of pure white light, faint glass facets within, prismatic halo.
+
+**Hell 5 — The Void** (pure black / void / violet-red edge)
+- Fire — egg of pure void-black, a violet-red ember rim, light-devouring.
+- Ice — egg of pure void-black, a violet-red frost rim.
+- Grass — egg of pure void-black, a violet-red rot rim.
+- Desert — egg of pure void-black, a violet-red glass-shard rim.
+
+(Golden egg variants, if wanted, use the same GOLDEN suffix as pets. Rainbow eggs = runtime effect.)
+
 ## Not covered here (yet)
 
-- **Layer 1** (Heaven 1 / Hell 1): art largely exists / in progress in `configs/pets.lua`.
+- **Layer 1** (Heaven 1 / Hell 1): pet + egg art largely exists / in progress in `configs/pets.lua`.

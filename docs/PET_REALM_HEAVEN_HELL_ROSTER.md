@@ -462,8 +462,13 @@ dragons are **origin-less hybrids** (all-rounders, high stats across damage/tank
 layer 5 breaks the per-origin-dragon pattern in one way: **all four apex-realm eggs share the
 same secret apex dragon** (it isn't anchored to one origin). That means each layer-5 egg tops
 at its origin's **Mythic apex**, and the **Secret** slot in every egg is the *same* dragon —
-Seraph (Heaven 5) or Void (Hell 5). Odds + base power unchanged (Mythic @ 1-in-320, Secret @
-~1-in-2000); only the depth multiplier is highest here.
+Seraph (Heaven 5) or Void (Hell 5).
+
+**Odds:** the Mythic apex is unchanged (weight 0.3 ≈ 1-in-320 per egg). The shared apex dragon
+is made **4× harder per egg** to compensate for having four delivery eggs — weight **0.0125
+(≈ 1-in-8,000 in any single egg)** — so the **aggregate** chance across the realm's four eggs
+lands back at **~1-in-2,000**, matching the other ten single-source dragons. base power
+unchanged; only the depth multiplier is highest here.
 
 ### Heaven 5 — "The Radiance" — full pool (apex)
 
