@@ -230,8 +230,76 @@ per-pet gold list: append it to any base below.
 
 ---
 
+## Layer 5
+
+### Heaven 5 — The Radiance  ·  palette: pure white / blinding light / prismatic halo; near-formless radiance (NO gold)
+
+**Fire**
+- **Seraph Cherub** — cherub-mote of pure blinding white light, faint halo, near-formless radiance.
+- **Sol Lion** — powerful lion of brilliant white light, radiant mane, glowing form.
+- **Empyrean Lance** — light-bird wielding a lance of pure white radiance, halo-glow wings.
+- **Glory Salamander** — salamander of glowing white light with a radiant aura and prismatic halo sheen.
+- **Sol Phoenix** *(mythic apex)* — supreme phoenix of pure white sun-radiance, blinding corona, near-formless light feathers.
+
+**Ice**
+- **Astral Doe** — deer of pure white starlight, glowing halo antlers, luminous near-translucent form.
+- **Sol Fox** — white fox of radiant light, halo glow, serene bright eyes.
+- **Astral Owl** — owl of pure starlight, constellation-speckled glow, radiant eyes.
+- **Seraph Archon** — radiant angelic guardian of pure white light, halo, shield-wings.
+- **Astral Leviathan** *(mythic apex)* — vast serpent of pure white starlight with halo-glow fins, luminous.
+
+**Grass**
+- **Eden Lamb** — lamb of pure white light with a radiant bloom halo, glowing wool.
+- **Sol Hart** — radiant stag of white light, halo, glowing antlers.
+- **Edenbark Stag** — stag with radiant white-light bark antlers, luminous pelt.
+- **Eden Sprite** — floating spirit of pure light-pollen, radiant petal halo.
+- **Edenroot Ent** *(mythic apex)* — towering tree-guardian of pure white light, radiant blossoming crown, glowing.
+
+**Desert**
+- **Sol Scarab** — beetle of glowing radiant white light, halo glint.
+- **Astral Lynx** — cat of pure light, radiant blur, glowing wisps.
+- **Eden Sphinx** — seated guardian of pure white light, serene halo, glowing eyes.
+- **Sol Camel** — camel with a radiant white-light hump, glowing form.
+- **Sol Roc** *(mythic apex)* — vast majestic bird of pure white radiance, halo-glow wings, blinding talons.
+
+**Apex dragon (shared secret)**
+- **★ Seraph Dragon** *(secret · hybrid)* — grand six-winged seraphic dragon of near-pure blinding white light, halo crown, radiant near-formless body; large, heroic, majestic apex build.
+
+### Hell 5 — The Void  ·  palette: pure black / void / violet-red edge; light-devouring silhouettes
+
+**Fire**
+- **Umbral Imp** — imp of pure void-black, faint violet-red edge glow, light-devouring silhouette.
+- **Void Lion** — black lion of pure void with a violet-red rim light, hollow form.
+- **Abyss Phoenix** — phoenix of void-black with a violet-red ember edge, light-swallowing wings.
+- **Null Salamander** — void-black salamander with violet-red brand glow, event-horizon skin.
+- **Oblivion Phoenix** *(mythic apex)* — supreme void-black phoenix with a violet-red corona edge, devours surrounding light.
+
+**Ice**
+- **Umbral Hare** — void-black hare, violet-red rim, hollow eyes.
+- **Void Fox** — fox of pure void, violet-red edge, light-swallowing form.
+- **Abyss Owl** — owl of void-black, violet-red eye-glow, light-devouring feathers.
+- **Null Archon** — fallen guardian of void-black with violet-red cracked armor.
+- **Abyss Leviathan** *(mythic apex)* — vast serpent of pure void, violet-red rim, light-devouring scales.
+
+**Grass**
+- **Umbral Lamb** — void-black lamb, violet-red glow, hollow eyes (life-leech).
+- **Void Hart** — gaunt void-black stag, violet-red rim.
+- **Nullbark Stag** — stag of void-black bark with violet-red thorn glow.
+- **Void Sprite** — withered void-spirit shedding black motes, violet-red glow.
+- **Oblivionroot Ent** *(mythic apex)* — towering void-black tree-guardian, violet-red heart-glow, light-devouring.
+
+**Desert**
+- **Void Scarab** — beetle of pure void-black, violet-red glint.
+- **Umbral Jackal** — void-black jackal, violet-red rim mirage, hollow eyes.
+- **Abyss Sphinx** — guardian of void-black, violet-red edge, light-swallowing.
+- **Null Camel** — gaunt void camel, violet-red breath, event-horizon hump.
+- **Oblivion Roc** *(mythic apex)* — vast void-black bird, violet-red rim wings, light-devouring talons.
+
+**Apex dragon (shared secret)**
+- **★ Void Dragon** *(secret · hybrid)* — colossal dragon of pure void-black, an event-horizon silhouette edged in violet-red that devours surrounding light; large, heroic, menacing apex build.
+
+---
+
 ## Not covered here (yet)
 
 - **Layer 1** (Heaven 1 / Hell 1): art largely exists / in progress in `configs/pets.lua`.
-- **Layer 5**: the two pure-apex hybrid dragons — **Seraph Dragon** (Heaven 5, blinding pure
-  radiance) and **Void Dragon** (Hell 5, pure void-black) — plus their per-origin pools, are TBD.

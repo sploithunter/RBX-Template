@@ -455,9 +455,47 @@ black-glass **durable bruiser**, razor-sharp and tough.
 | Scorchdust Camel | Regen-denial | Uncommon | stops enemy healing |
 | **★ Glass Dragon** | **Durable bruiser (capstone)** | **SECRET** | fractured black-glass desert dragon — razor-sharp + tough, wades in. Rebirth #10 of 11 |
 
-## Layer 5 — the apex dragons (stub)
+## Layer 5 — the apex ends
 
-Heaven 5 and Hell 5 are the two **pure-apex** ends of the stack — the grandest of the 11,
-**hybrid** all-rounders, not bound to a single origin: **Seraph Dragon** (Heaven 5, blinding
-pure radiance) and **Void Dragon** (Hell 5, pure void-black). Full per-origin pools TBD; they
-follow the same skeleton + odds, at the deepest depth multiplier.
+Heaven 5 and Hell 5 are the **pure-apex** ends of the stack — the grandest of the 11. Their
+dragons are **origin-less hybrids** (all-rounders, high stats across damage/tank/control), so
+layer 5 breaks the per-origin-dragon pattern in one way: **all four apex-realm eggs share the
+same secret apex dragon** (it isn't anchored to one origin). That means each layer-5 egg tops
+at its origin's **Mythic apex**, and the **Secret** slot in every egg is the *same* dragon —
+Seraph (Heaven 5) or Void (Hell 5). Odds + base power unchanged (Mythic @ 1-in-320, Secret @
+~1-in-2000); only the depth multiplier is highest here.
+
+### Heaven 5 — "The Radiance" — full pool (apex)
+
+The grandest ascended — the element has all but dissolved into **pure blinding white light**;
+bodies are barely-there radiance with faint prismatic halos. **Palette: pure white / blinding
+light / prismatic halo** (no gold).
+
+| Origin | Common | Uncommon | Uncommon/Rare | Uncommon | Mythic apex |
+|--------|--------|----------|---------------|----------|-------------|
+| 🔥 Fire (damage) | Seraph Cherub (melee) | Sol Lion (bruiser) | Empyrean Lance (blaster, R) | Glory Salamander (offense) | **Sol Phoenix** (blaster) |
+| ❄️ Ice (control) | Astral Doe (melee) | Sol Fox (control) | Astral Owl (blaster) | Seraph Archon (shield, R) | **Astral Leviathan** (tank/ctrl) |
+| 🌿 Grass (sustain) | Eden Lamb (heal) | Sol Hart (melee) | Edenbark Stag (tank) | Eden Sprite (yield) | **Edenroot Ent** (tank/heal) |
+| 🏜️ Desert (durable) | Sol Scarab (coin) | Astral Lynx (evasion) | Eden Sphinx (tank, R) | Sol Camel (regen) | **Sol Roc** (blaster) |
+
+**★ Seraph Dragon** *(SECRET, shared across all four eggs)* — rebirth dragon **#6 of 11**. The
+grandest ascended: a six-winged seraphic dragon of near-pure blinding white light, halo-crowned,
+**hybrid** all-rounder (high across damage/tank/control). Pure radiance.
+
+### Hell 5 — "The Void" — full pool (apex)
+
+The grandest fallen — form collapses into **pure void-black**; light-devouring silhouettes edged
+in faint violet-red, like walking event horizons. **Palette: pure black / void / violet-red edge.**
+
+| Origin | Common | Uncommon | Uncommon/Rare | Uncommon | Mythic apex |
+|--------|--------|----------|---------------|----------|-------------|
+| 🔥 Fire (damage) | Umbral Imp (melee) | Void Lion (bruiser) | Abyss Phoenix (blaster, R) | Null Salamander (curse) | **Oblivion Phoenix** (blaster) |
+| ❄️ Ice (control) | Umbral Hare (melee) | Void Fox (control) | Abyss Owl (blaster) | Null Archon (shred, R) | **Abyss Leviathan** (tank/ctrl) |
+| 🌿 Grass (drain) | Umbral Lamb (drain) | Void Hart (melee) | Nullbark Stag (tank) | Void Sprite (wither) | **Oblivionroot Ent** (tank/drain) |
+| 🏜️ Desert (durable) | Void Scarab (coin) | Umbral Jackal (evasion) | Abyss Sphinx (tank, R) | Null Camel (regen-denial) | **Oblivion Roc** (blaster) |
+
+**★ Void Dragon** *(SECRET, shared across all four eggs)* — rebirth dragon **#11 of 11**. The
+grandest fallen: a dragon of pure void-black, an event-horizon silhouette edged in violet-red
+that devours light; **hybrid** all-rounder. Pure void.
+
+This completes the **11-dragon rebirth collection** (Base + Heaven 1–5 + Hell 1–5).
