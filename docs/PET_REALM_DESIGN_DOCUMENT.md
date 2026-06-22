@@ -2144,6 +2144,49 @@ Names are working titles; the **structure (one dragon per realm, 11 total)** is 
 part. Full per-realm pet rosters (the farmable supporting cast around each dragon) live in
 [PET_REALM_HEAVEN_HELL_ROSTER.md](PET_REALM_HEAVEN_HELL_ROSTER.md).
 
+### Dragon design rules (locked)
+
+- **Always SECRET — forever.** Every dragon is secret-tier, with no exceptions; no dragon is
+  ever common/rare/epic. This is load-bearing, not flavor: "dragon ⇒ secret" is what makes each
+  a per-instance uid record carrying `player_class`/`hatched_by`, which is the only thing that
+  makes the rebirth gate and its anti-shortcut rule work.
+- **One per realm, origin rotates.** Exactly 11 (table above); the origin marches Grass (base)
+  → Fire → Ice → Grass → Desert → apex up each side of the stack.
+- **Dragons need NOT be ranged.** Every dragon shipped so far happens to be ranged (the
+  Empyrean / Abyssal wyrms), but that is *incidental, not a rule*. A dragon takes whatever
+  role/archetype its realm's origin leans. The **Ice tier-2 pair — Aurora Dragon (Heaven 2) /
+  Rimewraith Dragon (Hell 2) — are deliberately MELEE / CONTROL**: they wade *in* and their
+  frost-breath roots and freezes, claws in melee. They are the first non-ranged dragons, on
+  purpose, to make this concrete. Future dragons may be tanks, melee, or support as the origin
+  dictates.
+
+### Realm aesthetic gradient & palette (locked)
+
+Each tier pushes the **same four origins one step further from base reality**, along the
+light/dark axis — the element stops being a *place* and becomes the *idea*:
+
+- **Earth (base):** the literal element.
+- **Heaven 1 / Hell 1:** the *idealized* (gilded paradise) / *corrupted* (ash & rot) element —
+  still recognizably a place.
+- **Heaven 2+ / Hell 2+:** the element **de-materializes** — heaven into prismatic/auroral and
+  then pure radiant light; hell into black-ice, then ash, then void. Ground gives way to
+  cloud-sea/cosmos going up, or a crumbling abyss going down.
+
+Per-tier "farther from reality" levers (the checklist you crank each step): lighting (soft →
+blooming radiance vs lit → near-black), physics (grounded → floating vs grounded → sinking),
+palette saturation (real → pure white vs real → pure black), skybox, ambient.
+
+**Palette rule — gold & rainbow are RESERVED for the shiny VARIANT tiers.** Golden and rainbow
+are cross-cutting shiny variants that apply to *every* pet (a golden Aurora Dragon, a rainbow
+bunny exist). So **no realm uses gold or rainbow as its dominant/signature palette** — otherwise
+a realm-native pet reads as "the gold/rainbow variant" and the rarity signal blurs. Consequences:
+
+- **Heaven** leans **white / silver / pearl / prismatic / aurora** — radiance, not metal.
+  (Heaven 1's *gilded* accents are grandfathered as "earthly-paradise gold leaf"; from Heaven 2
+  up, the gradient deliberately moves *off* gold into pure light — which also makes a gold shiny
+  *pop* harder against a white realm.)
+- **Hell** leans **black / obsidian / ash / ember-on-black / sickly-violet.**
+
 ### The all-11 self-hatch gate
 
 The class-N climb requires hatching **all 11 dragon species yourself, at your current class**,
