@@ -18,12 +18,18 @@ has a 1:1 hell mirror, so you model the **pair**, not two unrelated sets.
 
 Origins lean a playstyle (loosely, not strictly):
 
-| Origin | Lean |
-|--------|------|
-| Fire/Lava | **Damage** |
-| Ice | **Control** (slow / hold / freeze) |
-| Grass/Earth | **Sustain / heal / tank** |
-| Desert | **Durable / utility** (evasion, yield, regen) |
+| Origin | Lean | Role |
+|--------|------|------|
+| Fire/Lava | **Damage** | melee + blaster DPS |
+| Ice | **Control** | slow / hold / freeze |
+| Grass/Earth | **Tank** | durable front-line + self-sustain |
+| Desert | **Support** | team heal / shield / buff / yield (heaven) · drain / curse (hell) |
+
+This is the canonical four-role quad — **every origin owns exactly one role**. But an origin
+*leans* a role, it isn't a straitjacket: each 5-pet pool still spans roles for squad coverage.
+Ice leans control yet fields a sturdy **polar-bear tank** as its durable body; Fire carries a
+support offense-buffer; etc. The **lean + the dragon's archetype** define an origin's identity;
+the supporting cast fills the gaps so a mono-origin squad still functions.
 
 A **complete realm roster = 4–5 pets per origin** covering the role spread, plus that realm's
 **one secret dragon** (the chase pet + rebirth token).
@@ -141,7 +147,7 @@ the **first melee dragon** — Ice leans *control*, so the Aurora Dragon wades *
 rather than firing from range. Dragons are always SECRET, but they are *not* always ranged.
 
 **Rarity escalation — first Mythic apexes.** Heaven/Hell 1 topped out at Epic for the non-dragon
-apexes; from layer 2 the three non-dragon apexes per realm (phoenix / ent / roc) are **Mythic** —
+apexes; from layer 2 the three non-dragon apexes per realm (e.g. phoenix / ent / couatl) are **Mythic** —
 one rung under the Secret dragon (`…epic → legendary → mythic → secret`). Note the storage
 consequence (Storage v2): a Mythic apex is an **enchant-keyed stack** (its hatch-rolled effect
 splits it into its own pile), whereas the **Secret dragon is a per-uid unique** carrying
@@ -162,8 +168,8 @@ chase per realm; the Mythic apexes are grand but farmable/stackable.
 |-----|------|--------|------|
 | Frostlight Doe | Melee | Common | crystalline frost-deer |
 | Prism Fox | Control | Uncommon | refracted light that slows & binds |
-| Starlight Owl | Ranged | Uncommon | aurora-arrows from the dark |
-| Glacial Archon | Support (shield) | Rare | wreathes the squad in prismatic frost-light |
+| Starlight Owl | Blaster | Uncommon | aurora-arrows from the dark |
+| **Glacial Bear** | **Tank** | Rare | prismatic-furred polar bear — Ice's durable body (a control origin still wants a wall) |
 | **★ Aurora Dragon** | **Melee / Control (capstone)** | **SECRET** | prism-scaled dragon that wades IN — frost-breath roots & slows, claws in melee. **The first non-ranged dragon.** Heaven 2's chase + rebirth dragon #3 of 11 |
 
 ### 🌿 Grass — leans sustain/heal (bloom-light)
@@ -175,18 +181,18 @@ chase per realm; the Mythic apexes are grand but farmable/stackable.
 | Radiant Sprite | Support (yield/luck) | Uncommon | bloom-spirit, boosts harvest |
 | Worldbloom Ent | Tank / Heal apex | Mythic | towering light-tree, big HP + regen aura (grander Worldroot) |
 
-### 🏜️ Desert — leans durable/utility (glass / radiant)
+### 🏜️ Desert — leans support (oasis / radiant light)
 | Pet | Role | Rarity | Hook |
 |-----|------|--------|------|
-| Glassling Scarab | Support (coin/yield) | Common | sun-fused glass beetle |
-| Mirage Lynx | Melee (evasion) | Uncommon | light-mirage cat that dodges |
-| Radiant Glass Sphinx | Tank | Rare | clear-glass guardian, refracts hits |
-| Sunwell Camel | Support (regen) | Uncommon | radiant slow-heal aura |
-| Empyreal Roc | Blaster (ranged apex) | Mythic | vast light-feathered bird, prism-talon dives |
+| Aurora Dove | Heal | Common | radiant dove, soft heal pulse on the squad |
+| Prism Scarab | Shield / buff | Uncommon | refracts a protective light-barrier onto allies |
+| Mirage Meerkat | Coin yield | Uncommon | lookout that boosts the squad's haul |
+| Sunwell Camel | Regen | Rare | radiant oasis aura, slow team heal-over-time |
+| Empyreal Couatl | Support apex | Mythic | feathered light-serpent that blesses the whole team |
 
-**Role coverage** mirrors Heaven 1 (Tank ×4 · Melee ×5 · Ranged ×3 · Support ×6 · Control ×1–2)
-+ the secret dragon. Apexes: Dawnfire Phoenix (fire), **Aurora Dragon (ice = SECRET)**,
-Worldbloom Ent (grass), Empyreal Roc (desert).
+**Role coverage** now reads as the clean quad — Fire damage, Ice control (with the Glacial Bear
+as its wall), Grass tank, Desert support — plus the secret dragon. Apexes: Dawnfire Phoenix
+(fire), **Aurora Dragon (ice = SECRET)**, Worldbloom Ent (grass), Empyreal Couatl (desert).
 
 ## Hell 2 — "The Frozen Dark" — full pool (5 per origin, 20 + the dragon)
 
@@ -213,8 +219,8 @@ and every entry is a 1:1 mirror of the Heaven 2 pet in the same slot (rig re-ski
 |-----|------|--------|------|
 | Rimegloom Hare | Melee | Common | frostbitten dark hare |
 | Dread Fox | Control | Uncommon | spectral chill — fear/root |
-| Gravefrost Owl | Ranged | Uncommon | black shards from the dark |
-| Black Archon | Support (armor-shred) | Rare | fallen frost-angel strips enemy armor |
+| Gravefrost Owl | Blaster | Uncommon | black shards from the dark |
+| **Rimeguard Bear** | **Tank** | Rare | black-ice polar bear — Ice's frostbitten wall |
 | **★ Rimewraith Dragon** | **Melee / Control (capstone)** | **SECRET** | black-ice revenant dragon — wades IN, frostbite-breath holds & freezes, claws in melee. Mirror of the Aurora Dragon (also non-ranged). Hell 2's chase + rebirth dragon #8 of 11 |
 
 ### 🌿 Grass — leans sustain (frostrot / drain)
@@ -226,17 +232,18 @@ and every entry is a 1:1 mirror of the Heaven 2 pet in the same slot (rig re-ski
 | Rimewither Sprite | Support (wither-curse) | Uncommon | frost-blight saps foes' output |
 | Frostgrave Ent | Tank / Drain apex | Mythic | frozen dead-tree, big HP + life-leech aura |
 
-### 🏜️ Desert — leans durable/utility (black glass / frost-carrion)
+### 🏜️ Desert — leans support (frost-carrion / give→take)
 | Pet | Role | Rarity | Hook |
 |-----|------|--------|------|
-| Frostcarrion Scarab | Support (coin-from-kills) | Common | feeds on the frozen-fallen |
-| Wraithfrost Jackal | Melee (evasion) | Uncommon | black-ice mirage jackal, dodges + flanks |
-| Obsidian Sphinx | Tank | Rare | black-glass guardian, sharp + durable |
-| Frostdust Camel | Support (regen-denial) | Uncommon | frost-wraith stops enemy healing |
-| Rime Roc | Blaster (ranged apex) | Mythic | black-frost bird, ice-talon dives |
+| Wraith Dove | Drain-heal | Common | black dove, heals the squad by leeching the fallen |
+| Rime Scarab | Armor-shred | Uncommon | strips enemy armor for the team |
+| Gloom Jackal | Coin-from-kills | Uncommon | scavenger, yield on enemy death |
+| Frostdust Camel | Regen-denial | Rare | frost-wraith aura stops enemy healing |
+| Dread Couatl | Support apex (curse) | Mythic | black frost-serpent that curses every foe for the team |
 
-**Role coverage** mirrors Heaven 2. Apexes: Deadfire Phoenix (fire), **Rimewraith Dragon
-(ice = SECRET)**, Frostgrave Ent (grass), Rime Roc (desert).
+**Role coverage** mirrors Heaven 2, give→take inverted (support = drain/shred/curse). Apexes:
+Deadfire Phoenix (fire), **Rimewraith Dragon (ice = SECRET)**, Frostgrave Ent (grass),
+Dread Couatl (desert support).
 
 ## Layer-2 odds & base power
 
@@ -270,15 +277,16 @@ odds, same as every other egg.
 
 ## Dragon archetype spread
 
-Every dragon takes its origin's lean, so the 11 cover all four archetypes (dragons are *not*
-always ranged — see the Design Document's dragon rules):
+Every dragon takes its origin's lean, so the 11 cover the **full archetype set** — tank · damage
+· control · support · hybrid (dragons are *not* always ranged — see the Design Document's dragon
+rules):
 
 | Realm origin | Dragon(s) | Archetype |
 |--------------|-----------|-----------|
 | Fire (H1 / Hell1) | Empyrean / Abyssal | **Blaster** — breath volleys at range |
 | Ice (H2 / Hell2) | Aurora / Rimewraith | **Melee / control** — wades in, freezes |
 | Grass (H3 / Hell3) | Verdant / Blight | **Tank** — colossal HP + heal (heaven) / drain (hell) aura |
-| Desert (H4 / Hell4) | Alabaster / Glass | **Durable bruiser** — evasive, razor-tough, wades in |
+| Desert (H4 / Hell4) | Alabaster / Glass | **Support** — heal/shield/buff aura (heaven) · curse/drain (hell): the buffer-dragon |
 | Apex (H5 / Hell5) | Seraph / Void | **Hybrid** — the all-rounder grand finale |
 
 Odds & base power for layers 3–5 follow the same table as layer 2 (Common 12 / Uncommon 16 /
@@ -304,11 +312,11 @@ radiant regen aura).
 ### ❄️ Ice — control
 | Pet | Role | Rarity | Hook |
 |-----|------|--------|------|
-| Lumen Doe | Melee | Common | light-deer |
-| Halo Fox | Control | Uncommon | ringing light slows & binds |
-| Celestial Owl | Blaster | Uncommon | starfall shards |
-| Radiant Archon | Shield | Rare | prismatic frost-light shield |
-| Empyrean Leviathan | Tank / control apex | Mythic | vast light-serpent |
+| Lumen Seal | Melee | Common | glowing light-seal pup |
+| Halo Wisp | Control | Uncommon | ringing will-o-light slows & binds |
+| Celestial Moth | Blaster | Uncommon | starfall wing-scales |
+| **Halo Bear** | **Tank** | Rare | haloed polar bear — Ice's wall |
+| Empyrean Mammoth | Tank / control apex | Mythic | vast radiant-tusked mammoth — stomps & slows |
 
 ### 🌿 Grass — sustain — **dragon origin**
 | Pet | Role | Rarity | Hook |
@@ -319,14 +327,14 @@ radiant regen aura).
 | Bloomlight Sprite | Yield / luck | Uncommon | harvest-spirit |
 | **★ Verdant Dragon** | **Tank / heal (capstone)** | **SECRET** | colossal living-light tree-dragon, huge HP + radiant regen aura. Rebirth #4 of 11 |
 
-### 🏜️ Desert — durable
+### 🏜️ Desert — support (oasis / radiant)
 | Pet | Role | Rarity | Hook |
 |-----|------|--------|------|
-| Lightglass Scarab | Coin yield | Common | radiant glass beetle |
-| Radiant Lynx | Evasion | Uncommon | light-blur cat |
-| Alabaster Sphinx | Tank | Rare | white-stone guardian |
-| Glowwell Camel | Regen | Uncommon | light-spring heal aura |
-| Empyrean Roc | Blaster apex | Mythic | great radiant bird |
+| Bloom Ibis | Heal | Common | radiant ibis, gentle heal pulse |
+| Radiant Totem | Shield / buff | Uncommon | living light-totem, team barrier |
+| Glory Mongoose | Offense buff | Uncommon | desert scout that rallies squad damage |
+| Light Tortoise | Regen | Rare | sun-spring shell, team heal-over-time |
+| Empyrean Sphinx | Support apex | Mythic | benevolent oracle-sphinx, blesses the team |
 
 ## Hell 3 — "The Blightmire" — full pool (Grass dragon)
 
@@ -346,11 +354,11 @@ rotting bog **tank** dragon (huge HP + life-leech aura).
 ### ❄️ Ice — control (rot-frost)
 | Pet | Role | Rarity | Hook |
 |-----|------|--------|------|
-| Murkfrost Hare | Melee | Common | bog-frost hare |
-| Plague Fox | Control | Uncommon | miasma slows & fears |
-| Carrion Owl | Blaster | Uncommon | rot-shards |
-| Rot Archon | Armor-shred | Rare | strips enemy armor |
-| Blight Leviathan | Tank / control apex | Mythic | drowned bog-serpent |
+| Murkfrost Seal | Melee | Common | bog-frost seal |
+| Plague Wisp | Control | Uncommon | miasma slows & fears |
+| Carrion Moth | Blaster | Uncommon | rot-spore wings |
+| **Murk Bear** | **Tank** | Rare | bog-frost polar bear — Ice's rotted wall |
+| Blight Mammoth | Tank / control apex | Mythic | drowned bog-mammoth — stomps & slows |
 
 ### 🌿 Grass — drain — **dragon origin**
 | Pet | Role | Rarity | Hook |
@@ -361,21 +369,21 @@ rotting bog **tank** dragon (huge HP + life-leech aura).
 | Plaguebloom Sprite | Wither-curse | Uncommon | saps foes' output |
 | **★ Blight Dragon** | **Tank / drain (capstone)** | **SECRET** | rotting bog-dragon, huge HP + life-leech aura. Rebirth #9 of 11 |
 
-### 🏜️ Desert — durable (rot-glass)
+### 🏜️ Desert — support (rot-carrion / give→take)
 | Pet | Role | Rarity | Hook |
 |-----|------|--------|------|
-| Carrionglass Scarab | Coin-from-kills | Common | feeds on the fallen |
-| Murk Jackal | Evasion | Uncommon | bog-mirage jackal |
-| Bonewaste Sphinx | Tank | Rare | bone-and-glass guardian |
-| Plaguedust Camel | Regen-denial | Uncommon | stops enemy healing |
-| Pestilent Roc | Blaster apex | Mythic | rot-feathered bird |
+| Carrion Ibis | Drain-heal | Common | rot-ibis, heals the squad off the fallen |
+| Plague Totem | Curse | Uncommon | rotting totem that weakens nearby foes |
+| Murk Mongoose | Debuff | Uncommon | saps enemy damage for the team |
+| Plaguedust Camel | Regen-denial | Rare | stops enemy healing |
+| Pestilent Sphinx | Support apex (curse) | Mythic | cursed oracle-sphinx, blights every foe |
 
 ## Heaven 4 — "The Sunspire Reaches" — full pool (Desert dragon)
 
 Near-blinding radiant desert — salt-flat white, alabaster, sun-fused quartz. **Palette: white /
 alabaster / sun-white / quartz** (no gold — the Heaven-4 dragon was renamed off "Gilded" for
-exactly this reason). Dragon rotates to **Desert → Alabaster Dragon** (rebirth #5), an evasive,
-razor-tough **durable bruiser** that wades in.
+exactly this reason). Dragon rotates to **Desert → Alabaster Dragon** (rebirth #5), the
+**Support** dragon — a sun-disk-crowned buffer whose oasis-breath heals and shields the team.
 
 ### 🔥 Fire — damage
 | Pet | Role | Rarity | Hook |
@@ -389,11 +397,11 @@ razor-tough **durable bruiser** that wades in.
 ### ❄️ Ice — control
 | Pet | Role | Rarity | Hook |
 |-----|------|--------|------|
-| Sunfrost Doe | Melee | Common | sun-glazed frost deer |
-| Glare Fox | Control | Uncommon | blinding glare slows |
-| Sunbeam Owl | Blaster | Uncommon | beam shards |
-| Quartz Archon | Shield | Rare | quartz-light shield |
-| Sunspire Leviathan | Tank / control apex | Mythic | glass-scaled serpent |
+| Sunfrost Marten | Melee | Common | sun-glazed frost marten |
+| Glare Jelly | Control | Uncommon | blinding glare-jelly that slows |
+| Sunbeam Petrel | Blaster | Uncommon | sun-beam dives |
+| **Quartz Bear** | **Tank** | Rare | quartz-furred polar bear — Ice's wall |
+| Sunspire Yeti | Tank / control apex | Mythic | towering glass-furred yeti |
 
 ### 🌿 Grass — sustain
 | Pet | Role | Rarity | Hook |
@@ -404,20 +412,20 @@ razor-tough **durable bruiser** that wades in.
 | Sunmote Sprite | Yield / luck | Uncommon | sun-spirit |
 | Sunroot Ent | Tank / heal apex | Mythic | sun-tree guardian |
 
-### 🏜️ Desert — durable — **dragon origin**
+### 🏜️ Desert — support — **dragon origin**
 | Pet | Role | Rarity | Hook |
 |-----|------|--------|------|
-| Sandglass Scarab | Coin yield | Common | sun-fused glass beetle |
-| Sunmirage Lynx | Evasion | Uncommon | heat-mirage cat |
-| Sunstone Sphinx | Tank | Rare | white-stone guardian |
-| Sunspring Camel | Regen | Uncommon | oasis heal aura |
-| **★ Alabaster Dragon** | **Durable bruiser (capstone)** | **SECRET** | colossal white-glass desert dragon — evasive + razor-tough, wades in. Rebirth #5 of 11 |
+| Sun Lark | Heal | Common | radiant lark, gentle heal pulse |
+| Quartz Idol | Shield / buff | Uncommon | living idol, team light-barrier |
+| Sunmote Vulture | Offense buff | Uncommon | circles high, rallies squad damage |
+| Sunspring Camel | Regen | Rare | oasis aura, team heal-over-time |
+| **★ Alabaster Dragon** | **Support (capstone)** | **SECRET** | colossal radiant desert dragon crowned with a halo'd sun-disk — its oasis-breath **heals and shields the whole team** (the buffer-dragon, no gold). Rebirth #5 of 11 |
 
 ## Hell 4 — "The Scorchglass" — full pool (Desert dragon)
 
 Blackened glass desert — obsidian shards, ember-on-black, ash dunes. **Palette: black-glass /
-obsidian / ember.** Dragon rotates to **Desert → Glass Dragon** (rebirth #10), a fractured
-black-glass **durable bruiser**, razor-sharp and tough.
+obsidian / ember.** Dragon rotates to **Desert → Glass Dragon** (rebirth #10), the **Support**
+dragon — Alabaster's dark mirror: it curses and shreds every foe and drains life for the team.
 
 ### 🔥 Fire — damage
 | Pet | Role | Rarity | Hook |
@@ -431,11 +439,11 @@ black-glass **durable bruiser**, razor-sharp and tough.
 ### ❄️ Ice — control
 | Pet | Role | Rarity | Hook |
 |-----|------|--------|------|
-| Blackfrost Hare | Melee | Common | obsidian-frost hare |
-| Shatter Fox | Control | Uncommon | shatter-glass slows |
-| Obsidian Owl | Blaster | Uncommon | glass-shard volleys |
-| Scorch Archon | Armor-shred | Rare | strips enemy armor |
-| Scorchglass Leviathan | Tank / control apex | Mythic | molten-glass serpent |
+| Blackfrost Marten | Melee | Common | obsidian-frost marten |
+| Shatter Jelly | Control | Uncommon | shatter-glass jelly slows |
+| Obsidian Petrel | Blaster | Uncommon | glass-shard dives |
+| **Obsidian Bear** | **Tank** | Rare | black-glass polar bear — Ice's wall |
+| Scorchglass Yeti | Tank / control apex | Mythic | molten-glass yeti |
 
 ### 🌿 Grass — drain
 | Pet | Role | Rarity | Hook |
@@ -446,14 +454,14 @@ black-glass **durable bruiser**, razor-sharp and tough.
 | Scorchbloom Sprite | Wither-curse | Uncommon | scorches foes' output |
 | Scorchroot Ent | Tank / drain apex | Mythic | burnt-glass tree |
 
-### 🏜️ Desert — durable — **dragon origin**
+### 🏜️ Desert — support — **dragon origin**
 | Pet | Role | Rarity | Hook |
 |-----|------|--------|------|
-| Obsidianglass Scarab | Coin-from-kills | Common | feeds on the fallen |
-| Shatter Jackal | Evasion | Uncommon | glass-mirage jackal |
-| Blackglass Sphinx | Tank | Rare | obsidian guardian |
-| Scorchdust Camel | Regen-denial | Uncommon | stops enemy healing |
-| **★ Glass Dragon** | **Durable bruiser (capstone)** | **SECRET** | fractured black-glass desert dragon — razor-sharp + tough, wades in. Rebirth #10 of 11 |
+| Scorch Vulture | Drain-heal | Common | circles the fallen, heals the squad off them |
+| Obsidian Idol | Curse | Uncommon | dark idol, weakens nearby foes |
+| Cinder Jackal | Debuff | Uncommon | saps enemy damage for the team |
+| Scorchdust Camel | Regen-denial | Rare | stops enemy healing |
+| **★ Glass Dragon** | **Support (capstone)** | **SECRET** | fractured black-glass desert dragon — Alabaster's dark mirror: it **curses and shreds every foe** and drains life for the team. Rebirth #10 of 11 |
 
 ## Layer 5 — the apex ends
 
@@ -479,9 +487,9 @@ light / prismatic halo** (no gold).
 | Origin | Common | Uncommon | Uncommon/Rare | Uncommon | Mythic apex |
 |--------|--------|----------|---------------|----------|-------------|
 | 🔥 Fire (damage) | Seraph Cherub (melee) | Sol Lion (bruiser) | Empyrean Lance (blaster, R) | Glory Salamander (offense) | **Sol Phoenix** (blaster) |
-| ❄️ Ice (control) | Astral Doe (melee) | Sol Fox (control) | Astral Owl (blaster) | Seraph Archon (shield, R) | **Astral Leviathan** (tank/ctrl) |
-| 🌿 Grass (sustain) | Eden Lamb (heal) | Sol Hart (melee) | Edenbark Stag (tank) | Eden Sprite (yield) | **Edenroot Ent** (tank/heal) |
-| 🏜️ Desert (durable) | Sol Scarab (coin) | Astral Lynx (evasion) | Eden Sphinx (tank, R) | Sol Camel (regen) | **Sol Roc** (blaster) |
+| ❄️ Ice (control) | Astral Ermine (melee) | Sol Wisp (control) | Astral Petrel (blaster) | **Astral Bear** (tank, R) | **Astral Leviathan** (tank/ctrl) |
+| 🌿 Grass (tank) | Eden Lamb (self-heal) | Sol Hart (melee) | Edenshell Tortoise (tank) | Eden Badger (bruiser) | **Eden Colossus** (tank apex) |
+| 🏜️ Desert (support) | Sol Dove (heal) | Astral Idol (shield) | Sol Mongoose (buff) | Sol Camel (regen, R) | **Astral Lammasu** (support apex) |
 
 **★ Seraph Dragon** *(SECRET, shared across all four eggs)* — rebirth dragon **#6 of 11**. The
 grandest ascended: a six-winged seraphic dragon of near-pure blinding white light, halo-crowned,
@@ -495,9 +503,9 @@ in faint violet-red, like walking event horizons. **Palette: pure black / void /
 | Origin | Common | Uncommon | Uncommon/Rare | Uncommon | Mythic apex |
 |--------|--------|----------|---------------|----------|-------------|
 | 🔥 Fire (damage) | Umbral Imp (melee) | Void Lion (bruiser) | Abyss Phoenix (blaster, R) | Null Salamander (curse) | **Oblivion Phoenix** (blaster) |
-| ❄️ Ice (control) | Umbral Hare (melee) | Void Fox (control) | Abyss Owl (blaster) | Null Archon (shred, R) | **Abyss Leviathan** (tank/ctrl) |
-| 🌿 Grass (drain) | Umbral Lamb (drain) | Void Hart (melee) | Nullbark Stag (tank) | Void Sprite (wither) | **Oblivionroot Ent** (tank/drain) |
-| 🏜️ Desert (durable) | Void Scarab (coin) | Umbral Jackal (evasion) | Abyss Sphinx (tank, R) | Null Camel (regen-denial) | **Oblivion Roc** (blaster) |
+| ❄️ Ice (control) | Umbral Ermine (melee) | Void Wisp (control) | Abyss Petrel (blaster) | **Void Bear** (tank, R) | **Abyss Leviathan** (tank/ctrl) |
+| 🌿 Grass (tank) | Umbral Lamb (drain) | Void Hart (melee) | Nullshell Tortoise (tank) | Void Badger (bruiser) | **Oblivion Colossus** (tank apex) |
+| 🏜️ Desert (support) | Void Dove (drain) | Null Idol (curse) | Umbral Jackal (debuff) | Null Camel (regen-denial, R) | **Void Anubis** (support/curse apex) |
 
 **★ Void Dragon** *(SECRET, shared across all four eggs)* — rebirth dragon **#11 of 11**. The
 grandest fallen: a dragon of pure void-black, an event-horizon silhouette edged in violet-red
