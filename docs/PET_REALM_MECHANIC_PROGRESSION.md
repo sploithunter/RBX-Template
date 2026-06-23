@@ -43,6 +43,48 @@ That's ~20 recurring slots, each appearing ~5× down the stack. The design job i
 **signature mechanic**, decide **which layer it debuts**, and **escalate it with depth** — so the
 5th instance of a slot is mechanically richer than the 1st, not just numerically.
 
+## Designated powers — the variety that's already in the system
+
+The cleanest unit of differentiation isn't an abstract "mechanic" — it's a **designated power**, the
+exact mechanism the support and control pets already carry:
+
+- **Support pets** ship with a designated power *by nature*: the heal / shield / buff / yield / regen
+  (heaven) or drain / curse / shred (hell) aura. That's a **significant** effect, not flavor — a
+  yield aura measurably changes income, a shield aura changes survivability. So **support pets are
+  differentiated from Common up**: two power-30 supports with different auras play completely
+  differently. Not reskins, ever.
+- **Control pets** likewise carry a designated power — slow / root / freeze / fear. Also significant
+  (kiting flyers, holding a pull). So **control pets are already differentiated too**.
+
+So the reskin risk is concentrated on the archetypes that **don't yet carry a designated power: the
+pure damage line (melee / bruiser / blaster) and the plain tank.** Those are the stat-sticks.
+
+**The precedent and the lever:** support + control prove that *"a pet = its number + its designated
+power"* produces real variety at equal power. So the anti-reskin move for the damage/tank line is
+simply **to give them designated powers too** — a blaster's splash volley, a bruiser's lifesteal, a
+tank's taunt/thorns are all just *designated powers* sitting in the same slot the support aura
+occupies. The **16 signature powers (4 per origin)** are the ready library to draw from. We don't
+need a new system — we extend the one support/control already use. (This is what the per-slot table
+below is really listing: which designated power each non-support/non-control slot earns, and when.)
+
+### The power doesn't have to be combat — and that's the strongest knob
+
+A designated power can be **any** power, not just AoE / contagion / control. The **economy &
+utility** powers — coin yield, luck, XP, magnet radius, drop-rate (Windfall) — work on **any pet of
+any archetype**. That makes them a uniquely powerful anti-reskin lever:
+
+> Drop a **+coins** power onto an otherwise-identical mid-tier melee pet and it becomes a **keeper** —
+> hugely valuable late-game even though its combat stats match a hundred other melee pets. The pet is
+> differentiated *and* chase-worthy purely by the grafted utility power.
+
+This is the escape hatch if we ever hit a reskin wall at higher layers: we don't have to invent new
+combat mechanics for every slot. We can **plop a boosting power onto a plain pet** — a fire-melee
+that also boosts coins, a tank that also widens the magnet, a blaster that also bumps luck. It costs
+nothing mechanically (the powers exist), reads instantly to the player ("oh, this one earns more"),
+and creates the "same body, different *value*" variety that keeps deep pools from feeling samey. So
+the toolbox is really: **combat signatures (AoE/contagion/on-hit/control)** *plus* **graftable
+economy/utility powers** — and the latter can rescue any slot, any layer, cheaply.
+
 ## Design rules
 
 1. **Filler stays filler.** Commons + Uncommons (the bulk of every pool) are **vanilla single-target
