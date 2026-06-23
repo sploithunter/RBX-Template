@@ -73,6 +73,50 @@ return {
         empyrean_dragon = "ranged", -- the secret apex: flies + breathes fire (like the earth dragon)
         aurora_leviathan = "ranged", -- Heaven ice apex: blaster (matches its twin black_ice_leviathan)
         worldroot_ent = "tank", -- Heaven grass apex: tank (matches its twin gravewood_ent / the ent-stag line)
+        -- ===== Layer 2 (Heaven 2 / Hell 2) — roles per PET_REALM_HEAVEN_HELL_ROSTER.md =====
+        -- (blaster→"ranged", bruiser→"tank", per the established mapping above.)
+        -- Heaven 2
+        coronal_cherub = "melee",
+        prism_lion = "tank", -- bruiser
+        lance_seraph = "ranged", -- blaster
+        lumen_salamander = "support", -- offense buff
+        dawnfire_phoenix = "ranged", -- blaster apex
+        frostlight_doe = "melee",
+        prism_fox = "control",
+        starlight_owl = "ranged", -- blaster
+        glacial_bear = "tank",
+        aurora_dragon = "melee", -- secret; wades in (control comes from its freeze-AoE power)
+        bloomspirit_lamb = "support", -- heal
+        lightleaf_hare = "melee",
+        crystalbark_stag = "tank",
+        radiant_sprite = "support", -- yield/luck
+        worldbloom_ent = "tank", -- tank/heal apex
+        aurora_dove = "support", -- heal
+        prism_scarab = "support", -- shield
+        mirage_meerkat = "support", -- yield (NB: distinct from base `meerkat` = control)
+        sunwell_camel = "support", -- regen
+        empyreal_couatl = "support", -- apex
+        -- Hell 2 (mirror)
+        frostcinder_imp = "melee",
+        rimemane_lion = "tank", -- bruiser
+        hoarfrost_phoenix = "ranged", -- blaster
+        frostbrand_salamander = "support", -- curse (combat aura pending build)
+        deadfire_phoenix = "ranged", -- blaster apex
+        rimegloom_hare = "melee",
+        dread_fox = "control",
+        gravefrost_owl = "ranged", -- blaster
+        rimeguard_bear = "tank",
+        rimewraith_dragon = "melee", -- secret; freeze-AoE power pending build
+        frostblight_lamb = "support", -- drain-heal (pending build)
+        gloom_hare = "melee",
+        icerot_stag = "tank",
+        rimewither_sprite = "support", -- wither-curse (pending build)
+        frostgrave_ent = "tank", -- tank/drain apex
+        wraith_dove = "support", -- drain-heal (pending build)
+        rime_scarab = "support", -- armor-shred (pending build)
+        gloom_jackal = "support", -- debuff (pending build)
+        frostdust_camel = "support", -- regen-denial (pending build)
+        dread_couatl = "support", -- apex curse (pending build)
     },
 
     -- Per-zone BUFFER auras (City-of-Heroes support). Resolved by SupportAura.forPet
@@ -151,6 +195,19 @@ return {
         },
         rimelight_hare = { kind = "heal", interval = 2.0, fraction = 0.08, duration = 6 },
         blightlamb = { kind = "defense", interval = 2.0, amount = 53.3, duration = 6 },
+        -- ===== Heaven 2 supports — FARMING lean (heal / shield / yield / luck / offense). =====
+        -- Hell 2 supports are COMBAT lean (drain / shred / curse) — their aura kinds don't exist
+        -- yet, so they're role-tagged support but wired in the combat-aura build pass, not here.
+        bloomspirit_lamb = { kind = "heal", interval = 2.0, fraction = 0.08, duration = 6 }, -- grass heal
+        radiant_sprite = { kind = "luck", interval = 2.0, mult = 1.1667, duration = 6 }, -- grass luck
+        lumen_salamander = { kind = "offense", interval = 2.0, mult = 1.1667, duration = 6 }, -- fire +dmg
+        aurora_dove = { kind = "heal", interval = 2.0, fraction = 0.08, duration = 6 }, -- desert heal
+        prism_scarab = { kind = "defense", interval = 2.0, amount = 53.3, duration = 6 }, -- desert shield
+        mirage_meerkat = { kind = "yield", interval = 2.0, mult = 1.1667, duration = 6 }, -- desert coin yield
+        sunwell_camel = { kind = "heal", interval = 2.0, fraction = 0.05, duration = 6 }, -- desert regen (gentle HoT)
+        -- Empyreal Couatl (apex): a team +damage aura — doubles as Heaven's combat-mix piece (the
+        -- roster needs combat reachable in heaven for the invader fights). Strongest support aura.
+        empyreal_couatl = { kind = "offense", interval = 2.0, mult = 1.25, duration = 6 },
         -- Bear: RAGE — an inherent power the pet casts on ITSELF (Jason: per-SPECIES
         -- assignment like the zone buffers, NOT a tank-role trait — "I don't want all
         -- tanks to have rage"). The starter tank gets angry as it soaks: at or below
