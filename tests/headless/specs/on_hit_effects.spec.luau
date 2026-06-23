@@ -37,6 +37,26 @@ return function()
         end)
     end)
 
+    describe("OnHitEffects.weaken (curse)", function()
+        it("applies a curse mult as-is when no curse is active", function()
+            expect(OnHitEffects.weaken(1, false, 0.7)).to.equal(0.7) -- enemy deals -30%
+        end)
+
+        it("keeps the STRONGER (lower) of the active mult and the incoming curse", function()
+            expect(OnHitEffects.weaken(0.6, true, 0.8)).to.equal(0.6) -- existing harder -> kept
+            expect(OnHitEffects.weaken(0.9, true, 0.5)).to.equal(0.5) -- incoming harder -> wins
+        end)
+
+        it("ignores a stale (inactive) current mult", function()
+            expect(OnHitEffects.weaken(0.2, false, 0.7)).to.equal(0.7) -- expired -> treat as 1x
+        end)
+
+        it("clamps into [0,1] — a curse can't buff the enemy", function()
+            expect(OnHitEffects.weaken(1, false, 1.5)).to.equal(1) -- >1 clamped (no buff)
+            expect(OnHitEffects.weaken(1, false, -0.2)).to.equal(0) -- <0 clamped
+        end)
+    end)
+
     describe("OnHitEffects.executeBonus (reaper)", function()
         it("finishes an enemy at or below the threshold", function()
             expect(OnHitEffects.executeBonus(15, 100, 0.15)).to.equal(15) -- 15% -> reap the rest

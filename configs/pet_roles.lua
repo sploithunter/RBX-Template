@@ -146,6 +146,8 @@ return {
         hold = "single",
         heal = "single",
         drain = "single", -- Hell's life-drain heal (routes through the heal path)
+        shred = "single", -- Hell combat debuff — stamps the squad's focus enemy (VulnerableMult)
+        curse = "single", -- Hell combat debuff — stamps the squad's focus enemy (WeakenMult)
         rage = "single",
         offense = "aura",
         haste = "aura", -- team attack-speed aura (efficiency-as-aura)
@@ -215,6 +217,15 @@ return {
         -- enemy-debuff-aura build (new aura kinds + combat-path consumers) — role-tagged, not wired.
         frostblight_lamb = { kind = "drain", interval = 2.0, fraction = 0.08, duration = 6 }, -- grass leech-heal
         wraith_dove = { kind = "drain", interval = 2.0, fraction = 0.08, duration = 6 }, -- desert leech-heal
+        -- ===== Hell 2 — COMBAT debuff supports (the give→take inversion; enemy-targeting). =====
+        -- shred = focus enemy takes +X% from everyone (amount = fraction). curse = focus enemy DEALS
+        -- ×mult (mult < 1 weakens). Keep-stronger so multiple buffers refresh, never compound.
+        rime_scarab = { kind = "shred", amount = 0.25, interval = 2.0, duration = 6 }, -- desert armor-shred
+        rimewither_sprite = { kind = "curse", mult = 0.8, interval = 2.0, duration = 6 }, -- grass wither-curse
+        frostbrand_salamander = { kind = "curse", mult = 0.8, interval = 2.0, duration = 6 }, -- fire frostbite-curse
+        gloom_jackal = { kind = "curse", mult = 0.8, interval = 2.0, duration = 6 }, -- desert debuff
+        frostdust_camel = { kind = "curse", mult = 0.85, interval = 2.0, duration = 6 }, -- desert regen-denial (light curse; no enemy regen yet)
+        dread_couatl = { kind = "curse", mult = 0.7, interval = 2.0, duration = 6 }, -- desert apex curse (strongest)
         -- Bear: RAGE — an inherent power the pet casts on ITSELF (Jason: per-SPECIES
         -- assignment like the zone buffers, NOT a tank-role trait — "I don't want all
         -- tanks to have rage"). The starter tank gets angry as it soaks: at or below

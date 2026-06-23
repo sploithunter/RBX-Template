@@ -53,6 +53,22 @@ function OnHitEffects.vulnerable(curMult, curActive, addFrac)
     return math.max(current, incoming)
 end
 
+-- Weaken multiplier after a CURSE (Hell's combat-debuff supports): a cursed enemy DEALS ×mult of its
+-- damage (mult < 1 weakens). Mirror of `vulnerable` but for a REDUCING debuff, so "keep the stronger"
+-- means keep the LOWER mult — a small curse never overwrites a big one, and re-cursing refreshes
+-- without compounding. curActive=false means no live curse (treat current as 1×). mult is the absolute
+-- factor (0.7 = enemy deals -30%), clamped to [0,1] (a curse can't buff the enemy).
+function OnHitEffects.weaken(curMult, curActive, mult)
+    local m = tonumber(mult) or 1
+    if m < 0 then
+        m = 0
+    elseif m > 1 then
+        m = 1
+    end
+    local current = (curActive and tonumber(curMult)) or 1
+    return math.min(current, m)
+end
+
 -- Execute finisher: if an enemy is at or below `threshold` of its max HP (and still alive), return
 -- the HP needed to drop it — an instant reap of the wounded. Returns 0 when it's above the threshold,
 -- already dead, or maxHp is unknown (never executes from bad data).

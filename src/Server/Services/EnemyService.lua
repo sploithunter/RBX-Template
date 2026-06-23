@@ -1003,10 +1003,15 @@ function EnemyService:_revivePet(pet)
 end
 
 -- One enemy hit on a pet (accumulate damage; down it if it crosses the ceiling).
-function EnemyService:_hitPet(pet, def, now, eng, enemyLevel, petLevel)
+function EnemyService:_hitPet(pet, def, now, eng, enemyLevel, petLevel, enemyModel)
     local power = self:_petPower(pet)
     local factor = self._combatConfig.pet_down_threshold_factor or 1
     local dmg = (def.attack and def.attack.damage) or 0
+    -- CURSE (Hell combat-debuff supports): a cursed enemy DEALS less. WeakenMult is stamped on the
+    -- enemy by the curse aura (_auraEnemyDebuff); consume it here on its own WeakenUntil/os.time seam.
+    if enemyModel and (tonumber(enemyModel:GetAttribute("WeakenUntil")) or 0) > os.time() then
+        dmg = dmg * (tonumber(enemyModel:GetAttribute("WeakenMult")) or 1)
+    end
     -- Hit / crit roll. Hit chance from the level-diff Accuracy curve (a higher-level enemy lands
     -- more reliably on a lower pet, and vice versa) — same module the pets use. CombatRoll still
     -- owns the crit (chances from enemy_attack config).
@@ -1545,7 +1550,7 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         local petLevel = player:GetAttribute("EffectiveLevel")
             or biteTarget:GetAttribute("Level")
             or (player:GetAttribute("Level") or 1)
-        self:_hitPet(biteTarget, def, now, eng, enemyLevel, petLevel)
+        self:_hitPet(biteTarget, def, now, eng, enemyLevel, petLevel, model)
         entry.nextAttack = now + ((def and def.attack and def.attack.cadence) or 1.5)
         -- Broadcast the swing's VISUAL (damage is already applied above; the FX is just the swing,
         -- exactly like the pets' Combat_PetHit). Fired on EVERY attack so enemies attack the same
@@ -1945,13 +1950,10 @@ end
 -- the player's focus = CombatAssistTarget if set (clicking the enemy HUD), else the enemy the most
 -- pets are currently attacking, else the nearest engaged enemy. So the controller pins what you're
 -- already fighting, and you steer it the same way you steer the squad. Experimental (meerkat test).
-function EnemyService:_auraHold(folder, aura)
-    local player = Players:FindFirstChild(folder.Name)
-    if not player then
-        return
-    end
-    local now = os.time()
-
+-- Focus enemy of a player's squad (shared by hold / shred / curse auras): the same INDIRECT steering
+-- the player already uses — CombatAssistTarget (clicked HUD) -> the enemy most of the squad is hitting
+-- -> the nearest enemy aggro'd on the squad. Returns the live enemy model (or nil).
+function EnemyService:_focusEnemy(player)
     local function liveEnemy(targetId)
         local entry = targetId and self._enemies[targetId]
         local model = entry and entry.model
@@ -2015,6 +2017,56 @@ function EnemyService:_auraHold(folder, aura)
         end
     end
 
+    return model
+end
+
+-- Hell COMBAT-debuff aura: stamp a debuff on the squad's focus enemy.
+--   shred = VulnerableMult (enemy takes more from EVERYONE — the same seam the shred power/on-hit use).
+--   curse = WeakenMult (enemy DEALS less — consumed in _hitPet). Refresh-to-stronger / longer so a
+-- small buffer never overwrites a big one and re-stamping just refreshes (never compounds).
+function EnemyService:_auraEnemyDebuff(folder, aura)
+    local player = Players:FindFirstChild(folder.Name)
+    if not player then
+        return
+    end
+    local model = self:_focusEnemy(player)
+    if not model then
+        return
+    end
+    local now = os.time()
+    local untilT = now + (tonumber(aura.duration) or 6)
+    if aura.kind == "shred" then
+        local active = (tonumber(model:GetAttribute("VulnerableUntil")) or 0) > now
+        model:SetAttribute(
+            "VulnerableMult",
+            OnHitEffects.vulnerable(
+                model:GetAttribute("VulnerableMult"),
+                active,
+                tonumber(aura.amount) or 0.25
+            )
+        )
+        model:SetAttribute("VulnerableUntil", untilT)
+    elseif aura.kind == "curse" then
+        local active = (tonumber(model:GetAttribute("WeakenUntil")) or 0) > now
+        model:SetAttribute(
+            "WeakenMult",
+            OnHitEffects.weaken(
+                model:GetAttribute("WeakenMult"),
+                active,
+                tonumber(aura.mult) or 0.7
+            )
+        )
+        model:SetAttribute("WeakenUntil", untilT)
+    end
+end
+
+function EnemyService:_auraHold(folder, aura)
+    local player = Players:FindFirstChild(folder.Name)
+    if not player then
+        return
+    end
+    local now = os.time()
+    local model = self:_focusEnemy(player)
     if not model then
         return
     end
@@ -2206,6 +2258,13 @@ function EnemyService:_supportPass(now)
                 elseif kind == "hold" then
                     for _ = 1, count do -- N controllers => N enemies pinned (each picks a fresh one)
                         self:_auraHold(folder, aura)
+                    end
+                elseif kind == "shred" or kind == "curse" then
+                    -- Hell combat-debuff auras (enemy-targeting): each buffer stamps the squad's
+                    -- focus enemy. shred = +damage-taken, curse = -enemy-damage. Keep-stronger so
+                    -- multiple buffers refresh rather than compound.
+                    for _ = 1, count do
+                        self:_auraEnemyDebuff(folder, aura)
                     end
                 elseif kind == "defense" then
                     self:_auraDefense(folder, aura, count, weight)
