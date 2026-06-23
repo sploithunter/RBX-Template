@@ -299,7 +299,7 @@ function EggSpawner:Initialize()
     Logger:Info("Initializing", { context = "EggSpawner" })
 
     -- Check workspace first
-    Logger:Info("Searching for spawn points...", { context = "EggSpawner" })
+    Logger:Debug("Searching for spawn points...", { context = "EggSpawner" })
     local spawnPoints = self:GetSpawnPoints()
     local waited = 0
     while #spawnPoints == 0 and waited < 5 do
@@ -307,17 +307,15 @@ function EggSpawner:Initialize()
         waited += 0.5
         spawnPoints = self:GetSpawnPoints()
     end
-    Logger:Info("Found spawn points", { context = "EggSpawner", count = #spawnPoints })
+    Logger:Debug("Found spawn points", { context = "EggSpawner", count = #spawnPoints })
 
     if #spawnPoints == 0 then
-        Logger:Warn(
-            "No spawn points found",
-            { context = "EggSpawner", name = eggSystemConfig.spawning.spawn_point_name }
-        )
-        Logger:Warn(
-            "Create a part with required name and 'EggType' attribute",
-            { context = "EggSpawner" }
-        )
+        -- Normal for authored-stand maps: EggStandPlacement places + tags (EggStand) its eggs
+        -- after this scan (it gates on Assets.ModelsReady). The EggSpawnPoint path here is only a
+        -- fallback for legacy template maps, so an empty result is not a problem worth warning.
+        Logger:Debug("No EggSpawnPoint parts; EggStandPlacement owns egg placement", {
+            context = "EggSpawner",
+        })
         return
     end
 
