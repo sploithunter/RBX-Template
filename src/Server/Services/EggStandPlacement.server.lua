@@ -108,26 +108,17 @@ local function placeEgg(stand, eggTemplate, eggId)
     return egg
 end
 
-local eggsFolder =
-    ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Models"):WaitForChild("Eggs", 30)
-if not eggsFolder then
-    print("[EggStandPlacement] ABORT: Eggs folder not found")
-    return
+-- Dependency gate: the egg model TEMPLATES (Assets.Models.Eggs.*) are built by AssetPreloadService
+-- AFTER this script first runs. Rather than race that build, await its readiness signal —
+-- AssetPreloadService flips Assets.ModelsReady -> true once every template is built. This is an
+-- event wait (no timed polling): we only scan once the dependency is actually resolved.
+local assets = ReplicatedStorage:WaitForChild("Assets")
+while assets:GetAttribute("ModelsReady") ~= true do
+    assets:GetAttributeChangedSignal("ModelsReady"):Wait()
 end
-local maps = Workspace:WaitForChild("Maps", 30)
-if not maps then
-    return
-end
--- Egg model templates are BUILT ASYNCHRONOUSLY (after this script runs), so the Eggs folder is
--- typically empty at this point. Wait until it's populated before scanning — otherwise every
--- placement races the build via a per-egg WaitForChild grace window, and a slow/degraded asset
--- load (seen as "Asset prewarm timed out") can exceed it and silently leave worlds egg-less.
-do
-    local elapsed = 0
-    while #eggsFolder:GetChildren() == 0 and elapsed < 120 do
-        elapsed += task.wait(0.5)
-    end
-end
+
+local eggsFolder = assets:WaitForChild("Models"):WaitForChild("Eggs")
+local maps = Workspace:WaitForChild("Maps")
 
 -- Discover authored stands per world and place their resolved egg.
 local _standCount, _queued = 0, 0
@@ -147,19 +138,20 @@ for _, world in ipairs(maps:GetChildren()) do
                 _standCount += 1
                 local eggId = EggStandResolver.eggFor(realmKey, inst.Name, matrix)
                 if eggId then
-                    _queued += 1
-                    task.spawn(function()
-                        local template = eggsFolder:WaitForChild(tostring(eggId), 30)
-                        if template then
-                            placeEgg(inst, template, eggId)
-                        else
-                            print(
-                                ("[EggStandPlacement] TIMEOUT waiting for template %s"):format(
-                                    tostring(eggId)
-                                )
+                    -- ModelsReady guarantees every template is built, so a miss here is a real
+                    -- config error (egg id with no model), not a load race.
+                    local template = eggsFolder:FindFirstChild(tostring(eggId))
+                    if template then
+                        _queued += 1
+                        placeEgg(inst, template, eggId)
+                    else
+                        warn(
+                            ("[EggStandPlacement] no egg template '%s' for stand %s"):format(
+                                tostring(eggId),
+                                inst:GetFullName()
                             )
-                        end
-                    end)
+                        )
+                    end
                 end
             end
         end

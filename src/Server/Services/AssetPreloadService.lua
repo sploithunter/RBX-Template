@@ -63,6 +63,10 @@ function AssetPreloadService:Start()
     -- Create folder structure for assets
     logger:Info("📁 AssetPreloadService: Creating asset folders...")
     self:CreateAssetFolders()
+    -- Readiness gate: flipped true at the end of LoadAllModelsIntoAssets, once every model
+    -- template (pets/eggs/breakables) is built. Downstream consumers (e.g. EggStandPlacement)
+    -- await this instead of racing the async build. Initialized false from the earliest boot.
+    ReplicatedStorage.Assets:SetAttribute("ModelsReady", false)
     ReplicatedStorage.Assets:SetAttribute("PetThumbnailsReady", false)
     ReplicatedStorage.Assets:SetAttribute("PetThumbnailCount", 0)
     ReplicatedStorage.Assets:SetAttribute("PetThumbnailFailures", 0)
@@ -456,6 +460,7 @@ end
 -- Load all pet models and generate images into ReplicatedStorage.Assets
 function AssetPreloadService:LoadAllModelsIntoAssets()
     logger:Info("🔄 LoadAllModelsIntoAssets: Starting...")
+    ReplicatedStorage.Assets:SetAttribute("ModelsReady", false)
     ReplicatedStorage.Assets:SetAttribute("PetThumbnailsReady", false)
     ReplicatedStorage.Assets:SetAttribute("PetThumbnailCount", 0)
     ReplicatedStorage.Assets:SetAttribute("PetThumbnailFailures", 0)
@@ -873,6 +878,8 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
         duration = tick() - startTime,
     })
 
+    -- All model templates (pets/eggs/breakables) are built by this point; open the gate.
+    ReplicatedStorage.Assets:SetAttribute("ModelsReady", true)
     ReplicatedStorage.Assets:SetAttribute("PetThumbnailsReady", true)
     ReplicatedStorage.Assets:SetAttribute("PetThumbnailCount", imageSuccessCount)
     ReplicatedStorage.Assets:SetAttribute("PetThumbnailFailures", imageFailureCount)
