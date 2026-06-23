@@ -747,6 +747,12 @@ local petConfig = {
             base_power = 46,
             base_health = 240,
             viewport_zoom = 2,
+            -- Ice secret dragon: wades IN and FREEZES A CLUSTER — targeted_aoe breath + on-hit root
+            -- on the primary AND every splashed enemy (an AoE freeze). The melee/control capstone
+            -- (docs/lines/PET_LINE_DRAGON.md). attack_control composes onto RootedUntil (same seam
+            -- powers use); refresh-to-longer keeps the cluster frozen while it breathes.
+            attack_targeting = "targeted_aoe",
+            attack_control = { kind = "root", duration = 2 },
             asset_transform = { scale = 4, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
@@ -1515,6 +1521,10 @@ local petConfig = {
             base_power = 46,
             base_health = 240,
             viewport_zoom = 2,
+            -- Black-ice secret dragon (Aurora's mirror): wades IN and FREEZES A CLUSTER —
+            -- targeted_aoe breath + on-hit root on the primary AND every splashed enemy.
+            attack_targeting = "targeted_aoe",
+            attack_control = { kind = "root", duration = 2 },
             asset_transform = { scale = 4, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
