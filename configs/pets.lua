@@ -2608,8 +2608,8 @@ local petConfig = {
             display_name = "Dragon",
             category = "mythical",
             rarity = "secret",
-            base_power = 25,
-            base_health = 200,
+            base_power = 46, -- reconciled to the secret-dragon tier (Empyrean 45 / Aurora 46); was 25
+            base_health = 240,
             -- eternal via the SECRET rarity default (eternal.default_percent_by_rarity)
 
             -- Camera configuration for image generation
