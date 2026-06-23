@@ -122,10 +122,17 @@ end
 for _, world in ipairs(maps:GetChildren()) do
     local parsed = WorldContext.parseName(world.Name)
     local realm = parsed and parsed.realm
-    if realm and type(matrix[realm]) == "table" then
+    -- Layer-aware: prefer the depth-specific matrix ("heaven_2") when it exists, else fall back to
+    -- the bare realm ("heaven") so Heaven_1/Hell_1 keep resolving exactly as before.
+    local depth = parsed and parsed.depth
+    local realmKey = realm
+    if realm and depth and type(matrix[realm .. "_" .. depth]) == "table" then
+        realmKey = realm .. "_" .. depth
+    end
+    if realmKey and type(matrix[realmKey]) == "table" then
         for _, inst in ipairs(world:GetDescendants()) do
             if isStand(inst) then
-                local eggId = EggStandResolver.eggFor(realm, inst.Name, matrix)
+                local eggId = EggStandResolver.eggFor(realmKey, inst.Name, matrix)
                 if eggId then
                     task.spawn(function()
                         local template = eggsFolder:WaitForChild(tostring(eggId), 30)

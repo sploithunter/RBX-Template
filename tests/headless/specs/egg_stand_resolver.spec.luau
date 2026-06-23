@@ -49,6 +49,40 @@ return function()
             end
         )
 
+        -- Layer 2 (Heaven_2 / Hell_2). EggStandPlacement composes the layered key "<realm>_<depth>"
+        -- and the matrix now has heaven_2/hell_2 → the layer-2 eggs. Resolves both the normalized
+        -- area names (Lava/Ice/Grass/Desert) AND the theme/Basic aliases (so it works before a
+        -- Studio rename is published).
+        it("resolves Heaven_2 area + theme stands to the layer-2 eggs", function()
+            expect(EggStandResolver.eggFor("heaven_2", "Lava", MATRIX)).to.equal("heaven2_fire_egg")
+            expect(EggStandResolver.eggFor("heaven_2", "Ice", MATRIX)).to.equal("heaven2_ice_egg")
+            expect(EggStandResolver.eggFor("heaven_2", "Grass", MATRIX)).to.equal(
+                "heaven2_grass_egg"
+            )
+            expect(EggStandResolver.eggFor("heaven_2", "Desert", MATRIX)).to.equal(
+                "heaven2_desert_egg"
+            )
+            -- un-renamed theme clones still resolve
+            expect(EggStandResolver.eggFor("heaven_2", "Aurora", MATRIX)).to.equal(
+                "heaven2_ice_egg"
+            )
+            expect(EggStandResolver.eggFor("heaven_2", "Solar", MATRIX)).to.equal(
+                "heaven2_fire_egg"
+            )
+        end)
+
+        it("resolves Hell_2 area + Basic stands to the layer-2 eggs", function()
+            expect(EggStandResolver.eggFor("hell_2", "Ice", MATRIX)).to.equal("hell2_ice_egg")
+            expect(EggStandResolver.eggFor("hell_2", "Lava", MATRIX)).to.equal("hell2_fire_egg")
+            expect(EggStandResolver.eggFor("hell_2", "Grass", MATRIX)).to.equal("hell2_grass_egg")
+            expect(EggStandResolver.eggFor("hell_2", "Desert", MATRIX)).to.equal("hell2_desert_egg")
+            -- un-renamed Basic clones (ember beats stray "ice")
+            expect(EggStandResolver.eggFor("hell_2", "BasicEmber", MATRIX)).to.equal(
+                "hell2_fire_egg"
+            )
+            expect(EggStandResolver.eggFor("hell_2", "BasicIce", MATRIX)).to.equal("hell2_ice_egg")
+        end)
+
         it("is case-insensitive and returns the matched area", function()
             local egg, area = EggStandResolver.eggFor("base", "myICEpedestal", MATRIX)
             expect(egg).to.equal("ice_egg")

@@ -63,6 +63,38 @@ local petConfig = {
             gilded = "ash_egg",
             guilded = "ash_egg",
         },
+        -- Layer 2 (Heaven_2 / Hell_2). EggStandPlacement composes the layered key
+        -- "<realm>_<depth>" (heaven_2) and falls back to the bare realm, so these apply only at
+        -- depth 2. Stands are normalized to bare area names (Lava/Ice/Grass/Desert); the theme/Basic
+        -- aliases are kept so eggs still resolve even before a Studio stand-rename is published.
+        heaven_2 = {
+            lava = "heaven2_fire_egg",
+            solar = "heaven2_fire_egg",
+            ember = "heaven2_fire_egg",
+            ice = "heaven2_ice_egg",
+            aurora = "heaven2_ice_egg",
+            grass = "heaven2_grass_egg",
+            earth = "heaven2_grass_egg",
+            bloom = "heaven2_grass_egg",
+            desert = "heaven2_desert_egg",
+            sand = "heaven2_desert_egg",
+            gilded = "heaven2_desert_egg",
+            guilded = "heaven2_desert_egg",
+        },
+        hell_2 = {
+            lava = "hell2_fire_egg",
+            fire = "hell2_fire_egg",
+            ember = "hell2_fire_egg",
+            ice = "hell2_ice_egg",
+            aurora = "hell2_ice_egg",
+            grass = "hell2_grass_egg",
+            earth = "hell2_grass_egg",
+            bloom = "hell2_grass_egg",
+            desert = "hell2_desert_egg",
+            sand = "hell2_desert_egg",
+            gilded = "hell2_desert_egg",
+            guilded = "hell2_desert_egg",
+        },
     },
 
     -- Eternal pets scale to a percentage of the player's "eternal power base"
