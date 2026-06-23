@@ -120,13 +120,17 @@ async function uploadAsset(file, displayName, assetType, contentType, fileMime) 
   throw new Error(`poll ${displayName}: timed out`);
 }
 
-// Find the recommended upload files in assets/exports/pets/<stem>/: the *_5k.fbx mesh + the texture png.
+// Find the recommended upload files in assets/exports/pets/<stem>/: the mesh fbx + the texture png.
+// Prefer the _10k.fbx (native when source <= 10k, decimated to the Roblox 10k limit otherwise),
+// then _5k, then any fbx. The 2026-06-23 realm batch ships only _10k.
 function filesFor(stem) {
   const dir = path.join(EXPORTS, stem);
   if (!fs.existsSync(dir)) return null;
   const entries = fs.readdirSync(dir);
   const fbx =
-    entries.find((f) => /_5k\.fbx$/i.test(f)) || entries.find((f) => /\.fbx$/i.test(f));
+    entries.find((f) => /_10k\.fbx$/i.test(f)) ||
+    entries.find((f) => /_5k\.fbx$/i.test(f)) ||
+    entries.find((f) => /\.fbx$/i.test(f));
   const png = entries.find((f) => /\.png$/i.test(f) && !/contact/i.test(f));
   if (!fbx || !png) return null;
   return { fbx: path.join(dir, fbx), png: path.join(dir, png) };
@@ -138,6 +142,10 @@ async function doUpload() {
   const realm = arg("realm", null);
   const origin = arg("origin", null);
   const force = argv.includes("--force");
+  // --shared-mesh: non-basic variants (e.g. gold) reuse the basic stem's uploaded Model
+  // (identical geometry, texture reskin only) and upload ONLY their own texture Decal.
+  // Requires the basic stem to be uploaded first (variants order: basic before gold).
+  const sharedMesh = argv.includes("--shared-mesh");
   if (!pets.length) throw new Error("--pets a,b,c required");
 
   const reg = readRegistry();
@@ -151,12 +159,21 @@ async function doUpload() {
       }
       const files = filesFor(stem);
       if (!files) {
-        console.error(`FAIL ${key}: no _5k.fbx + .png in ${path.join("assets/exports/pets", stem)}`);
+        console.error(`FAIL ${key}: no fbx + .png in ${path.join("assets/exports/pets", stem)}`);
         continue;
       }
       try {
-        console.log(`Uploading ${key} mesh ...`);
-        const modelId = await uploadAsset(files.fbx, stem, "Model", null, "model/fbx");
+        const basicKey = `${pet}_basic`;
+        const reuse =
+          sharedMesh && variant !== "basic" && reg[basicKey] && reg[basicKey].modelAssetId;
+        let modelId;
+        if (reuse) {
+          modelId = reg[basicKey].modelAssetId;
+          console.log(`Reusing ${basicKey} mesh for ${key} (shared-mesh, model=${modelId}) ...`);
+        } else {
+          console.log(`Uploading ${key} mesh ...`);
+          modelId = await uploadAsset(files.fbx, stem, "Model", null, "model/fbx");
+        }
         console.log(`Uploading ${key} texture ...`);
         const decalId = await uploadAsset(files.png, stem + "_tex", "Decal", null, "image/png");
         reg[key] = {
@@ -167,6 +184,7 @@ async function doUpload() {
           realm: realm || (reg[key] && reg[key].realm) || undefined,
           origin: origin || (reg[key] && reg[key].origin) || undefined,
           variant,
+          sharedMeshFrom: reuse ? basicKey : undefined,
           uploadedBy: "upload_pets.js " + new Date().toISOString().slice(0, 10),
         };
         writeRegistry(reg);
