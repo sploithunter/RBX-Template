@@ -36,6 +36,32 @@ return {
         -- Tune freely; missing/unknown types fall back to default_element. (Swap to a true
         -- hatch-biome OriginElement attribute later without touching the resolver.)
         pettype_element = {
+            -- Hell 1 + Heaven-1 desert (were missing -> defaulted grass). origin = biome RPS element.
+            sun_scarab = "desert",
+            mirage_jackal = "desert",
+            dawn_camel = "desert",
+            gilded_sphinx = "desert",
+            solar_roc = "desert",
+            carrion_scarab = "desert",
+            phantom_jackal = "desert",
+            dust_camel = "desert",
+            glass_sphinx = "desert",
+            ash_roc = "desert",
+            cinderling_imp = "lava",
+            brimstone_salamander = "lava",
+            ashmane_lion = "lava",
+            ashfeather_phoenix = "lava",
+            abyssal_wyrm = "lava",
+            rimelight_hare = "ice",
+            rimewraith_fox = "ice",
+            dread_owl = "ice",
+            black_seraph = "ice",
+            black_ice_leviathan = "ice",
+            blightlamb = "grass",
+            dread_hare = "grass",
+            rotleaf_stag = "grass",
+            wither_sprite = "grass",
+            gravewood_ent = "grass",
             -- Layer 2 (Heaven 2 / Hell 2) — origin = biome RPS element (mirrors pet config .origin).
             coronal_cherub = "lava",
             prism_lion = "lava",
