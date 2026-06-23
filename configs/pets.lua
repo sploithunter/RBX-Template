@@ -747,7 +747,7 @@ local petConfig = {
             base_power = 46,
             base_health = 240,
             viewport_zoom = 2,
-            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            asset_transform = { scale = 4, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
                 angle_y = 0,
@@ -1515,7 +1515,7 @@ local petConfig = {
             base_power = 46,
             base_health = 240,
             viewport_zoom = 2,
-            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            asset_transform = { scale = 4, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
                 angle_y = 0,
@@ -2998,7 +2998,7 @@ local petConfig = {
             -- pet. To reassign: attack_targeting = "targeted_aoe" + attack_dot{ ..., spread = {...} }.)
             huge_base_power = 180,
             viewport_zoom = 1.5,
-            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            asset_transform = { scale = 3.2, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
                 angle_y = 0,
@@ -3746,7 +3746,7 @@ local petConfig = {
             base_power = 45,
             base_health = 170,
             viewport_zoom = 1.5,
-            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            asset_transform = { scale = 3.2, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
                 angle_y = 0,
