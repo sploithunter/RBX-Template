@@ -126,7 +126,10 @@ function filesFor(egg) {
   const dir = path.join(EGG_EXPORTS, egg);
   if (!fs.existsSync(dir)) return null;
   const entries = fs.readdirSync(dir);
-  const fbx = entries.find((f) => /_5k\.fbx$/i.test(f)) || entries.find((f) => /\.fbx$/i.test(f));
+  const fbx =
+    entries.find((f) => /_10k\.fbx$/i.test(f)) ||
+    entries.find((f) => /_5k\.fbx$/i.test(f)) ||
+    entries.find((f) => /\.fbx$/i.test(f));
   const tex = entries.find((f) => /\.png$/i.test(f) && !/contact/i.test(f));
   if (!fbx || !tex || !fs.existsSync(icon)) return null;
   return { icon, fbx: path.join(dir, fbx), tex: path.join(dir, tex) };
