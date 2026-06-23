@@ -391,13 +391,7 @@ return {
                 size = { x = 361, y = 4, z = 458 },
                 floor_y = 4000.5,
                 spawn_position = { x = -206, y = 4006, z = 67 },
-                egg_stands = {
-                    {
-                        egg_id = "heaven2_fire_egg",
-                        spawn_id = "Heaven2Lava",
-                        position = { x = -206, y = 4000.5, z = 87 },
-                    },
-                },
+                egg_stands = {},
             },
         },
         Heaven_2_Ice = {
@@ -420,13 +414,7 @@ return {
                 size = { x = 321, y = 4, z = 338 },
                 floor_y = 4000.5,
                 spawn_position = { x = -374, y = 4006, z = 377 },
-                egg_stands = {
-                    {
-                        egg_id = "heaven2_ice_egg",
-                        spawn_id = "Heaven2Ice",
-                        position = { x = -374, y = 4000.5, z = 397 },
-                    },
-                },
+                egg_stands = {},
             },
         },
         Heaven_2_Desert = {
@@ -449,13 +437,7 @@ return {
                 size = { x = 331, y = 4, z = 318 },
                 floor_y = 4000.5,
                 spawn_position = { x = -126, y = 4006, z = 474 },
-                egg_stands = {
-                    {
-                        egg_id = "heaven2_desert_egg",
-                        spawn_id = "Heaven2Desert",
-                        position = { x = -126, y = 4000.5, z = 494 },
-                    },
-                },
+                egg_stands = {},
             },
         },
         Heaven_2_Grass = {
@@ -478,13 +460,7 @@ return {
                 size = { x = 351, y = 4, z = 278 },
                 floor_y = 4000.5,
                 spawn_position = { x = -150, y = 4006, z = 266 },
-                egg_stands = {
-                    {
-                        egg_id = "heaven2_grass_egg",
-                        spawn_id = "Heaven2Grass",
-                        position = { x = -150, y = 4000.5, z = 286 },
-                    },
-                },
+                egg_stands = {},
             },
         },
         Hell_2_Lava = {
@@ -507,13 +483,7 @@ return {
                 size = { x = 361, y = 4, z = 458 },
                 floor_y = -3998.5,
                 spawn_position = { x = -206, y = -3993, z = 67 },
-                egg_stands = {
-                    {
-                        egg_id = "hell2_fire_egg",
-                        spawn_id = "Hell2Lava",
-                        position = { x = -206, y = -3998.5, z = 87 },
-                    },
-                },
+                egg_stands = {},
             },
         },
         Hell_2_Ice = {
@@ -536,13 +506,7 @@ return {
                 size = { x = 321, y = 4, z = 338 },
                 floor_y = -3998.5,
                 spawn_position = { x = -374, y = -3993, z = 377 },
-                egg_stands = {
-                    {
-                        egg_id = "hell2_ice_egg",
-                        spawn_id = "Hell2Ice",
-                        position = { x = -374, y = -3998.5, z = 397 },
-                    },
-                },
+                egg_stands = {},
             },
         },
         Hell_2_Desert = {
@@ -565,13 +529,7 @@ return {
                 size = { x = 331, y = 4, z = 318 },
                 floor_y = -3998.5,
                 spawn_position = { x = -126, y = -3993, z = 474 },
-                egg_stands = {
-                    {
-                        egg_id = "hell2_desert_egg",
-                        spawn_id = "Hell2Desert",
-                        position = { x = -126, y = -3998.5, z = 494 },
-                    },
-                },
+                egg_stands = {},
             },
         },
         Hell_2_Grass = {
@@ -594,13 +552,7 @@ return {
                 size = { x = 351, y = 4, z = 278 },
                 floor_y = -3998.5,
                 spawn_position = { x = -150, y = -3993, z = 266 },
-                egg_stands = {
-                    {
-                        egg_id = "hell2_grass_egg",
-                        spawn_id = "Hell2Grass",
-                        position = { x = -150, y = -3998.5, z = 286 },
-                    },
-                },
+                egg_stands = {},
             },
         },
     },
