@@ -145,6 +145,7 @@ return {
         empower = "single",
         hold = "single",
         heal = "single",
+        drain = "single", -- Hell's life-drain heal (routes through the heal path)
         rage = "single",
         offense = "aura",
         haste = "aura", -- team attack-speed aura (efficiency-as-aura)
@@ -208,6 +209,12 @@ return {
         -- Empyreal Couatl (apex): a team +damage aura — doubles as Heaven's combat-mix piece (the
         -- roster needs combat reachable in heaven for the invader fights). Strongest support aura.
         empyreal_couatl = { kind = "offense", interval = 2.0, mult = 1.25, duration = 6 },
+        -- ===== Hell 2 — drain-heal supports (COMBAT realm's sustain; give→take flavor). =====
+        -- The COMBAT debuff supports (shred/curse on rime_scarab, rimewither_sprite,
+        -- frostbrand_salamander, gloom_jackal, frostdust_camel, dread_couatl) await the
+        -- enemy-debuff-aura build (new aura kinds + combat-path consumers) — role-tagged, not wired.
+        frostblight_lamb = { kind = "drain", interval = 2.0, fraction = 0.08, duration = 6 }, -- grass leech-heal
+        wraith_dove = { kind = "drain", interval = 2.0, fraction = 0.08, duration = 6 }, -- desert leech-heal
         -- Bear: RAGE — an inherent power the pet casts on ITSELF (Jason: per-SPECIES
         -- assignment like the zone buffers, NOT a tank-role trait — "I don't want all
         -- tanks to have rage"). The starter tank gets angry as it soaks: at or below

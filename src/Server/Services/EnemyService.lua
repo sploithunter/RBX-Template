@@ -698,6 +698,12 @@ function EnemyService:_onDefeated(targetId)
                         pcall(function()
                             drops:TrySpawnEnhancementDrop(player, "enemy", dropPos)
                         end)
+                        -- POTION drop (same odds as enhancements; independent roll)
+                        if drops.TrySpawnPotionDrop then
+                            pcall(function()
+                                drops:TrySpawnPotionDrop(player, "enemy", dropPos)
+                            end)
+                        end
                     end
                 end
             end
@@ -1866,7 +1872,7 @@ end
 -- still recovers it, and a player-cast heal power can deliberately top it up.
 function EnemyService:_isHealer(pet)
     for _, aura in ipairs(self:_petAuras(pet) or {}) do
-        if aura.kind == "heal" then
+        if aura.kind == "heal" or aura.kind == "drain" then -- drain = Hell's life-drain heal
             return true
         end
     end
@@ -2191,7 +2197,9 @@ function EnemyService:_supportPass(now)
             local weight = weights[kind] or count
             if not gate[kind] or now >= gate[kind] then
                 gate[kind] = now + (aura.interval or 1.5)
-                if kind == "heal" then
+                if kind == "heal" or kind == "drain" then
+                    -- "drain" = Hell's life-drain heal (give→take flavor): mechanically a team mend,
+                    -- so it routes through the same _auraHeal path as Heaven's heal.
                     for _ = 1, count do -- N healers => N mends (variant scales each mend)
                         self:_auraHeal(folder, aura, weight / count)
                     end
@@ -3083,7 +3091,7 @@ function EnemyService:_petEnemyDef(petId, petDef)
     local autoHeal
     if isSupport then
         attack.damage = 0 -- support invaders don't attack
-        if type(aura) == "table" and aura.kind == "heal" then
+        if type(aura) == "table" and (aura.kind == "heal" or aura.kind == "drain") then
             local amount = tonumber(aura.amount)
                 or math.max(1, math.floor(hp * (tonumber(aura.fraction) or 0.08)))
             autoHeal = { interval = tonumber(aura.interval) or 2.0, amount = amount, range = 45 }
