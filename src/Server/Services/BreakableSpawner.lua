@@ -1650,8 +1650,14 @@ function BreakableSpawner:_trySpawnOne(
 
     -- Set gameplay attributes if present in config
     if type(crystalCfg) == "table" then
-        local maxhp = tonumber(resolveStat("health", 0)) or 0
-        local value = tonumber(resolveStat("value", 0)) or 0
+        -- Per-world balance multipliers (default 1): scale a whole world's crystal toughness
+        -- (health) and payout (value) without touching the shared per-family stats — e.g.
+        -- Heaven_2/Hell_2 run tougher, higher-paying ore than the layer-1 worlds they clone.
+        local worldDef = breakablesConfig.worlds and breakablesConfig.worlds[worldFolder.Name]
+        local healthMult = (type(worldDef) == "table" and tonumber(worldDef.health_mult)) or 1
+        local valueMult = (type(worldDef) == "table" and tonumber(worldDef.value_mult)) or 1
+        local maxhp = math.floor((tonumber(resolveStat("health", 0)) or 0) * healthMult)
+        local value = math.floor((tonumber(resolveStat("value", 0)) or 0) * valueMult)
         model:SetAttribute("MaxHP", maxhp)
         model:SetAttribute("HP", maxhp)
         model:SetAttribute("Value", value)
@@ -1962,6 +1968,12 @@ function BreakableSpawner:_trySpawnOne(
                 pcall(function()
                     dropService:TrySpawnEnhancementDrop(plr, "breakable", dropPos)
                 end)
+                -- POTION drop (same odds as enhancements; independent roll alongside it)
+                if dropService.TrySpawnPotionDrop then
+                    pcall(function()
+                        dropService:TrySpawnPotionDrop(plr, "breakable", dropPos)
+                    end)
+                end
             end
         end
         -- PREMIUM GEM bonus (configs/drops.lua gem_bonus): rare extra roll per

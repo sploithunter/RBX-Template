@@ -551,6 +551,8 @@ local M = {
         },
         -- Layer 2 (Heaven_2 +4000 / Hell_2 -3999) — clones of layer-1 ore, Y-shifted.
         Heaven_2_Lava = {
+            health_mult = 2, -- 2x crystal toughness (layer-2 balance)
+            value_mult = 4, -- 4x coin payout (layer-2 balance)
             max = 100,
             interval = 8,
             spawn_area = {
@@ -589,6 +591,8 @@ local M = {
             },
         },
         Heaven_2_Ice = {
+            health_mult = 2, -- 2x crystal toughness (layer-2 balance)
+            value_mult = 4, -- 4x coin payout (layer-2 balance)
             max = 100,
             interval = 8,
             spawn_area = {
@@ -627,6 +631,8 @@ local M = {
             },
         },
         Heaven_2_Desert = {
+            health_mult = 2, -- 2x crystal toughness (layer-2 balance)
+            value_mult = 4, -- 4x coin payout (layer-2 balance)
             max = 100,
             interval = 8,
             spawn_area = {
@@ -665,6 +671,8 @@ local M = {
             },
         },
         Heaven_2_Grass = {
+            health_mult = 2, -- 2x crystal toughness (layer-2 balance)
+            value_mult = 4, -- 4x coin payout (layer-2 balance)
             max = 100,
             interval = 8,
             spawn_area = {
@@ -703,6 +711,8 @@ local M = {
             },
         },
         Hell_2_Lava = {
+            health_mult = 2, -- 2x crystal toughness (layer-2 balance)
+            value_mult = 4, -- 4x coin payout (layer-2 balance)
             max = 100,
             interval = 8,
             spawn_area = {
@@ -741,6 +751,8 @@ local M = {
             },
         },
         Hell_2_Ice = {
+            health_mult = 2, -- 2x crystal toughness (layer-2 balance)
+            value_mult = 4, -- 4x coin payout (layer-2 balance)
             max = 100,
             interval = 8,
             spawn_area = {
@@ -779,6 +791,8 @@ local M = {
             },
         },
         Hell_2_Desert = {
+            health_mult = 2, -- 2x crystal toughness (layer-2 balance)
+            value_mult = 4, -- 4x coin payout (layer-2 balance)
             max = 100,
             interval = 8,
             spawn_area = {
@@ -817,6 +831,8 @@ local M = {
             },
         },
         Hell_2_Grass = {
+            health_mult = 2, -- 2x crystal toughness (layer-2 balance)
+            value_mult = 4, -- 4x coin payout (layer-2 balance)
             max = 100,
             interval = 8,
             spawn_area = {
