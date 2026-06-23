@@ -222,21 +222,23 @@ return {
 
     multipliers = {
         base = 1.0,
-        -- heaven_1 / hell_1 bumped 1.5 -> 5.0 for balance testing: eggs were very slow to afford in
-        -- the entry realms. Scales crystal coin income (BreakableSpawner uses layers.multipliers).
-        -- NOTE: this temporarily inverts the "deeper = richer" curve (1 now pays more than 2-5) — fine
-        -- while only the _1 realms are built/reachable; restore to ~1.5 (or scale the whole curve) once
-        -- the deeper layers ship and we tune for real.
+        -- SINGLE SOURCE OF TRUTH for per-layer coin income. Crystals pay their base `value`
+        -- everywhere (no per-world value_mult); this multiplier is the only income-by-depth lever
+        -- (crystal `health_mult` is a SEPARATE toughness/feel lever, not income). Curve is monotonic
+        -- "deeper = richer". L1 stays 5.0 (entry eggs must be affordable). L2 = 8.0 holds the layer-2
+        -- realms at their current income while removing the crystal value_mult (8.0 = the 2.0 it had
+        -- × the 4x value_mult that's now gone), so this change is income-neutral for L2 and the
+        -- magnitude is tuned via egg cost. L3-5 ramp +3/layer (untuned placeholders).
         heaven_1 = 5.0,
-        heaven_2 = 2.0,
-        heaven_3 = 2.5,
-        heaven_4 = 3.0,
-        heaven_5 = 3.5,
+        heaven_2 = 8.0,
+        heaven_3 = 11.0,
+        heaven_4 = 14.0,
+        heaven_5 = 17.0,
         hell_1 = 5.0,
-        hell_2 = 2.0,
-        hell_3 = 2.5,
-        hell_4 = 3.0,
-        hell_5 = 3.5,
+        hell_2 = 8.0,
+        hell_3 = 11.0,
+        hell_4 = 14.0,
+        hell_5 = 17.0,
     },
 
     -- CONTENT LEVEL offset per realm depth (World S3 — the 50-level / 6-realm progression plan).
