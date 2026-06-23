@@ -268,12 +268,28 @@ odds, same as every other egg.
 
 **Two egg archetypes per layer** (only the dragon-origin egg carries a Secret):
 
-- **Dragon egg — Ice / aurora_2:** Common + Uncommon ×2 + Rare + **Secret dragon (0.05)** → the
-  Aurora / Rimewraith chase sits at ~1 in 2,000 (same difficulty knob as Empyrean). Per-realm
-  rarity is held constant across all 11 dragons on purpose — the **all-11 self-hatch collection**
-  is the real wall, not making each dragon individually rarer.
+- **Dragon egg — Ice (`heaven2_ice_egg` / `hell2_ice_egg`):** Common + Uncommon ×2 + Rare +
+  **Secret dragon (0.05)** → the Aurora / Rimewraith chase sits at ~1 in 2,000 (same difficulty
+  knob as Empyrean). Per-realm rarity is held constant across all 11 dragons on purpose — the
+  **all-11 self-hatch collection** is the real wall, not making each dragon individually rarer.
 - **The other three eggs — fire / grass / desert:** Common + Uncommon ×2 + Rare + **Mythic apex
   (0.3)** → top prize is the Mythic apex at ~1 in 320. No secret in these pools.
+
+### Layer-2 egg keys (config)
+
+Systematic keys (scale to all layers), themed display names. Each egg's pool = the 5 pets of
+that origin (★ = also carries the Secret dragon). 2D icon → `assets/source/eggs/<key>.png`.
+
+| Config key | Display name | Origin | Pool |
+|---|---|---|---|
+| `heaven2_fire_egg` | Coronal Egg | Fire | Heaven 2 Fire ×5 |
+| `heaven2_ice_egg` ★ | Prism Egg | Ice | Heaven 2 Ice ×5 + Aurora Dragon |
+| `heaven2_grass_egg` | Bloomlight Egg | Grass | Heaven 2 Grass ×5 |
+| `heaven2_desert_egg` | Mirage Egg | Desert | Heaven 2 Desert ×5 |
+| `hell2_fire_egg` | Frostcinder Egg | Fire | Hell 2 Fire ×5 |
+| `hell2_ice_egg` ★ | Black-Ice Egg | Ice | Hell 2 Ice ×5 + Rimewraith Dragon |
+| `hell2_grass_egg` | Frostblight Egg | Grass | Hell 2 Grass ×5 |
+| `hell2_desert_egg` | Frostcarrion Egg | Desert | Hell 2 Desert ×5 |
 
 ## Dragon archetype spread
 
