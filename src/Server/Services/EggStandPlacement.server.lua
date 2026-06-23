@@ -17,9 +17,11 @@ local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+print("[EggStandPlacement] START (script entered)")
 local petConfig = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("pets"))
 local WorldContext = require(ReplicatedStorage.Shared.Game.WorldContext)
 local EggStandResolver = require(ReplicatedStorage.Shared.Game.EggStandResolver)
+print("[EggStandPlacement] requires loaded")
 
 local matrix = petConfig.realm_area_eggs
 if type(matrix) ~= "table" or next(matrix) == nil then
@@ -111,14 +113,23 @@ end
 local eggsFolder =
     ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Models"):WaitForChild("Eggs", 30)
 if not eggsFolder then
+    print("[EggStandPlacement] ABORT: Eggs folder not found")
     return
 end
 local maps = Workspace:WaitForChild("Maps", 30)
 if not maps then
+    print("[EggStandPlacement] ABORT: Maps not found")
     return
 end
+print(
+    ("[EggStandPlacement] scanning %d worlds; %d egg templates"):format(
+        #maps:GetChildren(),
+        #eggsFolder:GetChildren()
+    )
+)
 
 -- Discover authored stands per world and place their resolved egg.
+local _standCount, _queued = 0, 0
 for _, world in ipairs(maps:GetChildren()) do
     local parsed = WorldContext.parseName(world.Name)
     local realm = parsed and parsed.realm
@@ -130,18 +141,38 @@ for _, world in ipairs(maps:GetChildren()) do
         realmKey = realm .. "_" .. depth
     end
     if realmKey and type(matrix[realmKey]) == "table" then
+        local _worldStands = 0
         for _, inst in ipairs(world:GetDescendants()) do
             if isStand(inst) then
+                _standCount += 1
+                _worldStands += 1
                 local eggId = EggStandResolver.eggFor(realmKey, inst.Name, matrix)
                 if eggId then
+                    _queued += 1
                     task.spawn(function()
                         local template = eggsFolder:WaitForChild(tostring(eggId), 30)
                         if template then
                             placeEgg(inst, template, eggId)
+                        else
+                            print(
+                                ("[EggStandPlacement] TIMEOUT waiting for template %s"):format(
+                                    tostring(eggId)
+                                )
+                            )
                         end
                     end)
                 end
             end
         end
+        if _worldStands > 0 then
+            print(
+                ("[EggStandPlacement] %s [%s]: %d stands"):format(
+                    world.Name,
+                    realmKey,
+                    _worldStands
+                )
+            )
+        end
     end
 end
+print(("[EggStandPlacement] DONE: %d stands, %d eggs queued"):format(_standCount, _queued))
