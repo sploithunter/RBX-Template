@@ -14,6 +14,44 @@ curse / armor-shred / regen-denial). **This is the line that is ALREADY least re
 support carries a *designated power by nature*, so two power-30 supports with different auras play
 completely differently from Common up.
 
+## Realm orientation — heaven farms, hell fights (the deeper lean)
+
+Beneath give→take is a **purpose lean** that colors the whole realm, not just supports:
+
+- **🕊️ Heaven pets lean FARMING** — their designated powers point at the economy: **coins, drops/
+  Windfall, luck, yield**, plus the survival glue (heal/shield) that *keeps you farming*. Heaven is
+  the place you go to *earn*.
+- **🔥 Hell pets lean COMBAT** — their designated powers point at killing: **team damage, target
+  debuffs (shred/curse), drain**. Hell is the place you go to *fight*.
+
+This is **loose, not a straitjacket** — the same "lean ≠ law" rule as the origin roles. And there's a
+hard reason it can't be fully aligned: **there is combat in BOTH realms.** Hell is combat-heavy;
+heaven has *some* (it's invaded by the opposing faction — heaven-vs-hell cross-attack), **less of it,
+and avoidable to near-zero if you pick your team well.** So:
+
+- **The roster needs a deliberate MIX, especially combat reaching into heaven.** A player farming
+  heaven still has to handle invaders, so heaven pets/squads must be *able* to fight — don't make
+  heaven a pure-economy dead end with no teeth. Keep at least some combat-capable bodies (the Fire
+  blaster, the melee, the offense-buff) viable in a heaven squad, and let a few heaven supports carry
+  a light combat tool.
+- **Some farming reaches into hell too** (a hell squad still wants *some* yield), but the asymmetry is
+  fine: hell is mostly combat, heaven is mostly farming.
+
+### How this maps to the powers (the graft library, by lean)
+
+This lean is exactly the **designated-power escape hatch** sorted by realm — when we graft a power to
+differentiate a pet (or build a support's native aura), default to the realm's lean:
+
+| | Heaven lean (farming) | Hell lean (combat) |
+|---|---|---|
+| **Economy** | +coins · +yield · +luck · Windfall/drop-rate · magnet | (some yield, lighter) |
+| **Survival** | heal · shield · regen | drain-heal (life-leech) |
+| **Offense** | *(the needed mix — a few combat tools)* | team +damage · armor-shred · curse · regen-denial |
+
+So Heaven's "+coins on a plain melee" keeper (the melee-line escape hatch) is *on-theme*; Hell's
+equivalent keeper is "a debuff or +team-damage on a plain melee." The differentiation lever and the
+realm identity are the same knob pointed two directions.
+
 ## Where support lives (Desert owns it; Fire & Grass each lend one)
 
 - **🏜️ Desert** — the origin's lean; **the whole egg is support** from L2 up (heal / shield / yield /

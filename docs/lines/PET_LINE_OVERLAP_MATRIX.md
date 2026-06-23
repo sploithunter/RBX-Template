@@ -78,7 +78,25 @@ A mono-origin squad naturally pairs lines — useful for the "lots of overlap be
 - **Grass egg** = Heal-**Support** + Melee + **Tank** + yield-**Support** → durable sustain.
 - **Desert egg** = pure **Support** stack → the buff/economy squad.
 
-## 6. Takeaways for build order
+## 6. Realm-orientation overlay — heaven farms, hell fights
+
+Cutting *across* all six lines is a realm lean (loose, not strict — see
+[support doc](PET_LINE_SUPPORT.md)):
+
+- **🕊️ Heaven pets lean FARMING** — designated powers point at the economy (coins / drops / luck /
+  yield) + survival glue (heal/shield). Heaven is where you *earn*.
+- **🔥 Hell pets lean COMBAT** — designated powers point at killing (team damage / debuff-shred-curse
+  / drain). Hell is where you *fight*.
+
+**The required mix:** there's combat in *both* realms (hell heavy; heaven light but real — the
+cross-faction invasion, avoidable to ~zero with a good team). So the roster must keep **combat
+reachable inside heaven** — don't let heaven become a teeth-less economy dead end. When grafting
+differentiation powers (esp. onto the melee reskin-line), default to the realm's lean: heaven gets
+"+coins/+luck", hell gets "+team-damage/debuff" — same knob, two directions. This overlay rides on
+top of the origin×archetype grid above; e.g. a heaven Fire-blaster still fights (the heaven combat
+mix), while a hell Desert-support curses (hell's combat-flavored support).
+
+## 7. Takeaways for build order
 
 - **Author where mechanics are scarce, skip where they're rich.** Priority = the L2 **Ice dragon**
   freeze-AoE (overlaps 3 lines, showcase), then Fire **blaster** splash. Support/control pets mostly
