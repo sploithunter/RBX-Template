@@ -523,15 +523,15 @@ When any non-fusion action is taken (level up, enchant, equip, trade)
 Then pet.element should remain "light"
 ```
 
-### Scenario: Stacked pets inherit current hatch-layer element [integration] [required]
+### Scenario: Realm eggs use distinct pet ids instead of element-split stacks [integration] [required]
 
 ```gherkin
-Given a player owns a stack: { pet_id: "frost_drake", element: "light", count: 10 }
-And the player is currently in a Hell layer (would normally hatch shadow)
-When the player hatches another "frost_drake" type
-Then the new pet does NOT merge into the existing stack
-And the new pet starts a new stack with element = "shadow"
-And the player now has two stacks: { ...light, count:10 } and { ...shadow, count:1 }
+Given a player owns a Heaven pet stack: { pet_id: "frostlight_hare", element: "light", count: 10 }
+And the player is currently in a Hell layer
+When the player hatches from the matching Hell egg
+Then the new pet uses its Hell catalog id, such as "rimelight_hare"
+And the new pet has element = "shadow"
+And it never merges into the Heaven pet stack because the pet ids are different
 ```
 
 ### Scenario: Variant remains independent of element [unit] [required]

@@ -11,6 +11,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Condition = require(ReplicatedStorage.Shared.Game.Condition)
 local ClaimLogic = require(ReplicatedStorage.Shared.Game.ClaimLogic)
+local QuestChain = require(ReplicatedStorage.Shared.Game.QuestChain)
+local QuestActivation = require(ReplicatedStorage.Shared.Game.QuestActivation)
 local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 
 local QuestService = {}
@@ -57,6 +59,8 @@ local function claims(data)
     return data.QuestClaims
 end
 
+-- QuestBaselines[id] = the counter value at the start of the quest's CURRENT open window (the
+-- moment its track was activated / it became the active head). nil = paused / never started.
 local function baselines(data)
     if type(data.QuestBaselines) ~= "table" then
         data.QuestBaselines = {}
@@ -64,72 +68,189 @@ local function baselines(data)
     return data.QuestBaselines
 end
 
--- since_start missions measure FORWARD progress (Jason: "hatch 100 MORE eggs, not
--- your current total"): evaluate against counter MINUS the baseline stamped when the
--- mission became active. Unstamped (locked / not yet reached) shows zero progress.
-local function adjustedSnapshot(def, snapshot, base)
-    local cond = def.condition
-    if not (cond and cond.since_start and cond.counter) then
+-- QuestBanked[id] = forward progress folded in from PRIOR active windows (so switching away and
+-- back doesn't lose what you'd already earned). See Shared/Game/QuestActivation.
+local function banked(data)
+    if type(data.QuestBanked) ~= "table" then
+        data.QuestBanked = {}
+    end
+    return data.QuestBanked
+end
+
+-- A quest is ACTIVATION-GATED iff it measures forward progress (since_start + a counter). Those
+-- only accrue while their track is the active focus. Everything else (level/rebirth/visit/own-N)
+-- is a milestone that always reads the lifetime total.
+local function isGrind(def)
+    local c = def and def.condition
+    return (c and c.since_start == true and c.counter ~= nil) == true
+end
+
+-- Snapshot adjusted for one quest: grind quests read FORWARD progress (banked + open window);
+-- milestones read the real lifetime snapshot unchanged.
+local function forwardAdjusted(def, questId, snapshot, bases, bank)
+    if not isGrind(def) then
         return snapshot
     end
-    local cur = (snapshot.counters and snapshot.counters[cond.counter]) or 0
+    local counter = def.condition.counter
+    local cur = (snapshot.counters and snapshot.counters[counter]) or 0
     local counters = table.clone(snapshot.counters or {})
-    counters[cond.counter] = math.max(0, cur - (base or cur))
+    counters[counter] = QuestActivation.forward(bank[questId], bases[questId], cur)
     return { counters = counters, level = snapshot.level, currencies = snapshot.currencies }
 end
 
+-- The active HEAD of each track (first unlocked, unclaimed mission), as { track -> questId }.
+-- Built from QuestChain over the live claim ledger.
+function QuestService:_trackHeads(player)
+    local ledger = claims(self._dataService:GetData(player))
+    local entries = {}
+    for id, def in pairs(self._config.defs or {}) do
+        table.insert(entries, {
+            id = id,
+            track = def.track or "origin",
+            order = tonumber(def.order) or math.huge,
+            claimedCount = ledger[id] or 0,
+            repeatable = def.repeatable == true,
+        })
+    end
+    local _, heads = QuestChain.annotate(entries)
+    local byTrack = {}
+    for id in pairs(heads) do
+        local def = self._config.defs[id]
+        if def then
+            byTrack[def.track or "origin"] = id
+        end
+    end
+    return byTrack
+end
+
+-- Enforce the single-focus invariant: EXACTLY one window is open — the active track's grind head.
+-- (1) any OTHER open window (a track you switched away from, or stale auto-baselines) gets BANKED so
+--     its progress is preserved but frozen; and
+-- (2) the active track's grind head gets its window OPENED if it isn't already — the safety net that
+--     guarantees the focused branch always accrues, even if the head arrived by a path other than
+--     SetActiveTrack/Claim (migration, a missed claim hook, etc.). Without this a focused head could
+--     sit stuck at 0 forever (Jason: "earning crystals but the counter's not changing").
+-- Idempotent; only saves when state actually changed. `forceAll = true` banks even the active head
+-- and skips the open (used by SetActiveTrack, which re-opens the new head itself).
+function QuestService:_reconcile(player, forceAll)
+    local data = self._dataService:GetData(player)
+    local bases = baselines(data)
+    local bank = banked(data)
+    local heads = self:_trackHeads(player)
+    local activeHead = (not forceAll) and data.QuestActiveTrack and heads[data.QuestActiveTrack]
+        or nil
+    local snapshot = self:_snapshot(player)
+    local function counterValue(id)
+        local def = self._config.defs[id]
+        local counter = def and def.condition and def.condition.counter
+        return counter and ((snapshot.counters and snapshot.counters[counter]) or 0) or 0
+    end
+
+    local changed = false
+    -- (1) bank every open window that isn't the active head
+    local toBank = {}
+    for id, base in pairs(bases) do
+        if base ~= nil and id ~= activeHead then
+            table.insert(toBank, id)
+        end
+    end
+    for _, id in ipairs(toBank) do
+        bank[id] = QuestActivation.bank(bank[id], bases[id], counterValue(id))
+        bases[id] = nil
+        changed = true
+    end
+
+    -- (2) ensure the active grind head has an OPEN window so it accrues going forward
+    if activeHead and bases[activeHead] == nil and isGrind(self._config.defs[activeHead]) then
+        bases[activeHead] = counterValue(activeHead)
+        changed = true
+    end
+
+    if changed then
+        self._dataService:RequestSave(player, "quest_reconcile")
+    end
+end
+
+-- Switch the player's focus to `trackId` (nil clears it). Banks whatever was open, then OPENS the
+-- new track's grind head window from NOW (so "Hatch 1,000" counts forward from this moment). Free
+-- to switch back and forth — banked progress is never lost.
+function QuestService:SetActiveTrack(player, trackId)
+    if trackId ~= nil and not (self._config.tracks and self._config.tracks[trackId]) then
+        return { ok = false, reason = "unknown_track" }
+    end
+    local data = self._dataService:GetData(player)
+    self:_reconcile(player, true) -- bank ALL open windows (the outgoing focus included)
+    data.QuestActiveTrack = trackId
+    if trackId then
+        local headId = self:_trackHeads(player)[trackId]
+        local def = headId and self._config.defs[headId]
+        if isGrind(def) and baselines(data)[headId] == nil then
+            local snapshot = self:_snapshot(player)
+            baselines(data)[headId] = (
+                snapshot.counters and snapshot.counters[def.condition.counter]
+            ) or 0
+        end
+    end
+    self._dataService:RequestSave(player, "quest_active_track", { critical = true })
+    return { ok = true, activeTrack = trackId }
+end
+
 function QuestService:List(player)
+    self:_reconcile(player) -- keep the single open window honest before reading
     local snapshot = self:_snapshot(player)
     local data = self._dataService:GetData(player)
     local ledger = claims(data)
     local bases = baselines(data)
+    local bank = banked(data)
+    local activeTrack = data.QuestActiveTrack
+    local tracks = self._config.tracks or {}
     local out = {}
     for id, def in pairs(self._config.defs or {}) do
         local count = ledger[id] or 0
+        local track = def.track or "origin"
+        local meta = tracks[track]
         table.insert(out, {
             id = id,
             def = def,
+            track = track,
+            trackTitle = (meta and meta.title) or track,
+            trackOrder = (meta and tonumber(meta.order)) or math.huge,
             order = tonumber(def.order) or math.huge,
             name = def.name,
             description = def.description,
+            reward = def.reward, -- so the panel can summarize the prize (read-only)
             claimedCount = count,
             repeatable = def.repeatable == true,
         })
     end
-    -- MISSION CHAIN (Jason): quests are an ordered chain — sort by `order`, and LOCK a
-    -- mission until every lower-order non-repeatable one has been claimed. Locked
-    -- missions stay listed (the panel shows what's coming) but can't be claimed and
-    -- the tracker skips them.
+    -- PARALLEL TRACKS, SINGLE FOCUS (Jason): QuestChain locks a mission until every lower-order one
+    -- IN ITS TRACK is claimed. Grind quests only accrue while their track is the ACTIVE focus
+    -- (activation-gated, forward-from-activation); milestones always read the lifetime total.
+    local _, heads = QuestChain.annotate(out)
     table.sort(out, function(a, b)
-        return a.order < b.order
+        if a.trackOrder ~= b.trackOrder then
+            return a.trackOrder < b.trackOrder
+        end
+        if a.order ~= b.order then
+            return a.order < b.order
+        end
+        return a.id < b.id
     end)
-    local blocked = false
     for _, q in ipairs(out) do
-        q.locked = blocked
-        if not q.repeatable and q.claimedCount == 0 then
-            blocked = true
-        end
-    end
-    -- stamp the ACTIVE mission's baseline the first time it surfaces (since_start
-    -- progress counts from here)
-    for _, q in ipairs(out) do
-        if not q.locked and q.claimedCount == 0 then
-            local cond = q.def.condition
-            if cond and cond.since_start and cond.counter and bases[q.id] == nil then
-                bases[q.id] = (snapshot.counters and snapshot.counters[cond.counter]) or 0
-                self._dataService:RequestSave(player, "quest_baseline")
-            end
-            break -- only the first unclaimed unlocked mission is active
-        end
-    end
-    for _, q in ipairs(out) do
+        local def = q.def
+        local grind = isGrind(def)
+        local trackActive = (q.track == activeTrack)
         local progress =
-            Condition.progress(q.def.condition, adjustedSnapshot(q.def, snapshot, bases[q.id]))
+            Condition.progress(def.condition, forwardAdjusted(def, q.id, snapshot, bases, bank))
         q.progress = progress
-        q.claimable = not q.locked and ClaimLogic.canClaim(progress.met, q.claimedCount, q.def).ok
+        q.claimable = not q.locked and ClaimLogic.canClaim(progress.met, q.claimedCount, def).ok
+        q.activationGated = grind -- needs an active track to make progress
+        q.trackActive = trackActive
+        -- a grind quest you could be working, but its track isn't the current focus
+        q.paused = grind and not trackActive and not q.locked and q.claimedCount == 0
         q.def = nil -- not for the wire
     end
-    return { ok = true, quests = out }
+    return { ok = true, quests = out, activeTrack = activeTrack }
 end
 
 function QuestService:_isLocked(player, questId)
@@ -147,11 +268,14 @@ function QuestService:Claim(player, questId)
     if not def then
         return { ok = false, reason = "unknown_quest" }
     end
+    self:_reconcile(player) -- keep the open window honest before scoring
     local snapshot = self:_snapshot(player)
     local data = self._dataService:GetData(player)
     local ledger = claims(data)
-    local met =
-        Condition.isMet(def.condition, adjustedSnapshot(def, snapshot, baselines(data)[questId]))
+    local met = Condition.isMet(
+        def.condition,
+        forwardAdjusted(def, questId, snapshot, baselines(data), banked(data))
+    )
     local verdict = ClaimLogic.canClaim(met, ledger[questId] or 0, def)
     if not verdict.ok then
         return verdict
@@ -166,12 +290,21 @@ function QuestService:Claim(player, questId)
         granted = rewards:Grant(player, def.reward, "quest:" .. questId)
     end
     ledger[questId] = (ledger[questId] or 0) + 1
+    -- The claimed quest's window is done; close it. If its track is still the active focus, OPEN the
+    -- next head's window NOW so the chain keeps counting without re-activating (and no kills/hatches
+    -- between this claim and the next poll leak into a late baseline).
+    baselines(data)[questId] = nil
+    if data.QuestActiveTrack == (def.track or "origin") then
+        local nextHead = self:_trackHeads(player)[def.track or "origin"]
+        local nd = nextHead and self._config.defs[nextHead]
+        if isGrind(nd) and baselines(data)[nextHead] == nil then
+            baselines(data)[nextHead] = (
+                snapshot.counters and snapshot.counters[nd.condition.counter]
+            ) or 0
+        end
+    end
     self._dataService:RequestSave(player, "quest_claim", { critical = true })
     fireGameEvent(player, "quest_complete", { quest = questId }) -- config-driven fanfare
-    -- Stamp the NEXT mission's since_start baseline NOW (List does the stamping). Lazily
-    -- waiting for the next UI poll left a gap where kills/hatches between this claim and
-    -- the next quest.list got absorbed into the baseline and never counted.
-    self:List(player)
     return { ok = true, quest = questId, reward = granted and granted.granted }
 end
 

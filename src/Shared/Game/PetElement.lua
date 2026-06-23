@@ -3,8 +3,9 @@
 
     Element assignment at hatch is determined by the layer the hatch happened on
     (base → neutral, Heaven → light, Hell → shadow; chaotic is fusion-only, never
-    at hatch), and the element is part of a stack's identity (a pet of a different
-    element starts a new stack). Mappings are config-driven (configs/layers.lua).
+    at hatch). Realm eggs hatch distinct pet IDs/species, so element is metadata
+    on the owned record rather than a stack-key axis. Mappings are config-driven
+    (configs/layers.lua).
 ]]
 
 local PetElement = {}
@@ -21,9 +22,11 @@ function PetElement.realmAlignmentForLayer(layer, layersConfig)
     return (map and map[layer]) or "neutral"
 end
 
--- Stack identity key: a different element (or variant) starts a new stack.
+-- Legacy helper retained for pure tests and callers that need a species key. Element is
+-- intentionally ignored: base/Heaven/Hell content uses different pet ids instead.
 function PetElement.stackKey(petId, variant, element)
-    return table.concat({ petId, variant or "basic", element or "neutral" }, ":")
+    local _ = element
+    return table.concat({ petId, variant or "basic" }, ":")
 end
 
 return PetElement

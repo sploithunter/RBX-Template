@@ -1,5 +1,5 @@
 --[[
-    Feature 5: Pet element assignment + stack identity — [unit] scenarios.
+    Feature 5: Pet element assignment — [unit] scenarios.
     Run: mise run test-headless
 ]]
 
@@ -33,20 +33,16 @@ return function()
             expect(PetElement.realmAlignmentForLayer("hell_2", layersConfig)).to.equal("hell")
         end)
 
-        it("element is part of stack identity (different element -> different stack)", function()
+        it("element is metadata, not a stack identity axis", function()
             local lightKey = PetElement.stackKey("frost_drake", "basic", "light")
             local shadowKey = PetElement.stackKey("frost_drake", "basic", "shadow")
-            expect(lightKey).never.to.equal(shadowKey)
+            expect(lightKey).to.equal(shadowKey)
         end)
 
-        it("variant is independent of element in the stack key", function()
-            -- changing variant changes the key but the element segment is preserved
+        it("variant remains part of the species key", function()
             local basicLight = PetElement.stackKey("frost_drake", "basic", "light")
             local goldLight = PetElement.stackKey("frost_drake", "gold", "light")
             expect(basicLight).never.to.equal(goldLight)
-            -- same element on both
-            expect(string.find(basicLight, "light", 1, true) ~= nil).to.equal(true)
-            expect(string.find(goldLight, "light", 1, true) ~= nil).to.equal(true)
         end)
     end)
 end

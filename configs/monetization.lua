@@ -49,7 +49,7 @@ return {
         {
             id = "starter_pack",
             name = "🎁 Starter Pack",
-            description = "Perfect for new players! Gems, Coins, and exclusive items!",
+            description = "Perfect for new players! Gems, Crystals, and exclusive items!",
             price_robux = 199,
             rewards = {
                 gems = 150,

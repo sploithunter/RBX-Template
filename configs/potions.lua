@@ -122,4 +122,24 @@ return {
             icon = "🩸",
         },
     },
+
+    -- DROPS: potions fall from broken crystals / defeated enemies at the SAME odds as enhancements
+    -- (Jason: "start out with the same odds as enhancements" — kept in sync with
+    -- configs/enhancements.lua drops.breakable_chance/enemy_chance). The drop is colour-hinted by its
+    -- meter and reveals its name on pickup. Windfall (drop_rate) + the drop_rate event multiply the
+    -- chance, same as enhancements (DropService applies it). `model_name` (optional) = an authored
+    -- Assets.Models template; otherwise a tinted neon flask placeholder is used.
+    drops = {
+        enabled = true,
+        breakable_chance = 0.04, -- == enhancements.drops.breakable_chance
+        enemy_chance = 0.16, -- == enhancements.drops.enemy_chance
+        despawn_seconds = 45,
+        -- weighted pool of which potion a drop yields (equal to start — tune freely)
+        weights = {
+            berserk_brew = 1,
+            fortune_flask = 1,
+            swift_tonic = 1,
+            weakening_vial = 1,
+        },
+    },
 }

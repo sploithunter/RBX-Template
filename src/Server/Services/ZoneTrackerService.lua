@@ -19,6 +19,8 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ZoneResolver = require(ReplicatedStorage.Shared.Game.ZoneResolver)
+local WorldContext = require(ReplicatedStorage.Shared.Game.WorldContext)
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 
 local ZoneTrackerService = {}
 ZoneTrackerService.__index = ZoneTrackerService
@@ -206,6 +208,19 @@ function ZoneTrackerService:_resolveFor(player)
                 from = current or "(none)",
                 to = resolved,
             })
+        end
+        -- Realm ENTRY: when the area change crosses into Heaven/Hell (from a different realm),
+        -- fire entered_heaven/entered_hell once. Feeds the event-counter bridge (heaven_visits /
+        -- hell_visits) that backs the "Go to Heaven/Hell" quests. Crossing within a realm
+        -- (Heaven_1_Lava -> Heaven_1_Ice) doesn't refire — the realm didn't change.
+        local fromRealm = WorldContext.realmOfZoneId(current)
+        local toRealm = WorldContext.realmOfZoneId(resolved)
+        if toRealm ~= fromRealm then
+            if toRealm == "heaven" then
+                fireGameEvent(player, "entered_heaven", { area = resolved })
+            elseif toRealm == "hell" then
+                fireGameEvent(player, "entered_hell", { area = resolved })
+            end
         end
     end
 end

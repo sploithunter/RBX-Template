@@ -2244,22 +2244,27 @@ function BaseUI:_bindQuestTracker()
     self._questTrackerBound = true
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-    -- The list arrives CHAIN-ORDERED with locked flags (QuestService). Track the first
-    -- claimable, else the ACTIVE mission (first unlocked unmet) — never a locked one.
-    local function pick(quests)
-        local claimable, active
+    -- Single-focus model: track the first CLAIMABLE (anywhere — collect it), else the head of the
+    -- player's ACTIVE (focused) branch — the quest actually counting. Never a locked one, and never
+    -- a paused grind from an unfocused branch (that would imply progress that isn't happening).
+    local function pick(quests, activeTrack)
+        local claimable, focusHead
         for _, q in ipairs(quests) do
-            -- (claimed missions fall through both branches; an exhausted chain
-            -- returns nil -> the "stay tuned" state, NOT quests[1] — that fallback
-            -- made the tracker loop back to "Hatch 10 Eggs" forever, Jason)
             if q.claimable and not claimable then
                 claimable = q
             end
-            if not active and not q.locked and not (q.progress and q.progress.met) then
-                active = q
+            if
+                not focusHead
+                and activeTrack
+                and q.track == activeTrack
+                and not q.locked
+                and q.claimedCount == 0
+                and not (q.progress and q.progress.met)
+            then
+                focusHead = q
             end
         end
-        return claimable or active
+        return claimable or focusHead
     end
 
     local function refresh()
@@ -2283,18 +2288,21 @@ function BaseUI:_bindQuestTracker()
         end
         self:_setRewardsBadge(claimables)
 
-        local q = pick(res.quests)
+        local q = pick(res.quests, res.activeTrack)
         if not q then
-            -- chain exhausted (Jason: "after we've exhausted the list — stay tuned")
+            -- nothing claimable and no active focus -> nudge the player to pick a branch (or all
+            -- branches done). Opening the Quests panel and hitting "Activate" sets the focus.
             self._trackedQuestId = nil
             if self._questClaimBtn then
                 self._questClaimBtn.Visible = false
             end
             if self._questDesc then
-                self._questDesc.Text = "Stay tuned for new adventures!"
+                self._questDesc.Text = res.activeTrack and "Stay tuned for new adventures!"
+                    or "Open Quests → activate a branch to begin!"
             end
             if self._questText then
-                self._questText.Text = "★ Origin Story complete ★"
+                self._questText.Text = res.activeTrack and "★ All caught up ★"
+                    or "No active branch"
             end
             if self._questFill then
                 self._questFill.Size = UDim2.new(1, 0, 1, 0)
@@ -3221,100 +3229,180 @@ function BaseUI:_playCoinGainSound()
     Debris:AddItem(s, 5)
 end
 
--- Animate currency updates with visual feedback for floating cards
+-- How long the climbing "+N" gain indicator stays open. While it's open, each new gain ADDS into
+-- it instead of spawning a fresh pop-up; once gains go quiet for this long it floats up and fades.
+local CURRENCY_GAIN_WINDOW = 1.0
+
+local GAIN_COLOR = Color3.fromRGB(0, 255, 100)
+local SPEND_COLOR = Color3.fromRGB(255, 100, 100)
+local AMOUNT_COLOR = Color3.fromRGB(255, 255, 255)
+
+-- Animate a currency change. GAINS coalesce into one climbing indicator (see _accumulateCurrencyGain);
+-- SPENDS keep the original one-shot floating "-N". At higher levels a single break drops several
+-- currency chunks in quick succession — firing a fresh "+200" pop-up for each made the HUD flicker
+-- (Jason). Coalescing makes the number climb (+200, +400, +600, +800) so the last value shown is the
+-- total acquired in the burst.
 function BaseUI:_animateCurrencyUpdate(display, changeAmount)
     if not display or not display.amount or not display.frame then
         return
     end
+    if changeAmount > 0 then
+        self:_accumulateCurrencyGain(display, changeAmount)
+    elseif changeAmount < 0 then
+        self:_showCurrencyChange(display, changeAmount, SPEND_COLOR)
+    end
+end
 
-    local isPositive = changeAmount > 0
-    local color = isPositive and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 100, 100)
-    local originalColor = Color3.fromRGB(255, 255, 255)
+-- A subtle elastic "pop" on the currency card, then settle back — the per-gain juice.
+function BaseUI:_popCurrencyCard(display)
+    local cardTween = TweenService:Create(
+        display.frame,
+        TweenInfo.new(0.2, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out),
+        { Size = UDim2.new(1.05, 0, 1.05, 0) }
+    )
+    cardTween:Play()
+    cardTween.Completed:Connect(function()
+        TweenService:Create(
+            display.frame,
+            TweenInfo.new(0.4, Enum.EasingStyle.Quad),
+            { Size = UDim2.new(1, 0, 1, 0) }
+        ):Play()
+    end)
+end
 
-    -- Create floating text for change amount (outside the card)
+-- Add this gain into the currency's live "+N" indicator (creating it if the window is closed),
+-- so rapid drops read as one climbing total instead of a stack of overlapping pop-ups. Each gain
+-- re-arms a quiet timer; when no new gain arrives for CURRENCY_GAIN_WINDOW seconds the indicator
+-- floats up and fades (handled by _flushCurrencyGain).
+function BaseUI:_accumulateCurrencyGain(display, amount)
+    display._gainTotal = (display._gainTotal or 0) + amount
+
+    -- Reuse the indicator while the window is open; otherwise spawn a fresh one parked at rest.
+    local indicator = display._gainIndicator
+    if not indicator or not indicator.Parent then
+        indicator = Instance.new("TextLabel")
+        indicator.Name = "ChangeIndicator"
+        indicator.Size = UDim2.new(0, 50, 0, 20)
+        indicator.BackgroundTransparency = 1
+        indicator.TextColor3 = GAIN_COLOR
+        indicator.TextScaled = true
+        indicator.Font = Enum.Font.GothamBold
+        indicator.ZIndex = 20
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromRGB(0, 0, 0)
+        stroke.Thickness = 1
+        stroke.Transparency = 0.5
+        stroke.Parent = indicator
+        indicator.Parent = display.frame
+        display._gainIndicator = indicator
+        display._gainStroke = stroke
+    end
+
+    -- Park it at the resting spot, fully visible, and refresh the climbing total.
+    indicator.Position = UDim2.new(1, 5, 0.5, -10)
+    indicator.TextTransparency = 0
+    if display._gainStroke then
+        display._gainStroke.Transparency = 0.5
+    end
+    indicator.Text = "+" .. self:_formatNumber(display._gainTotal)
+
+    -- Per-drop feedback: flash the main amount green + a small pop, without spawning a new label.
+    display.amount.TextColor3 = GAIN_COLOR
+    if display.shadow then
+        display.shadow.Text = display.amount.Text
+    end
+    self:_popCurrencyCard(display)
+
+    -- Re-arm the quiet window; only the latest scheduled flush actually fires.
+    display._gainGen = (display._gainGen or 0) + 1
+    local gen = display._gainGen
+    task.delay(CURRENCY_GAIN_WINDOW, function()
+        if display._gainGen == gen then
+            self:_flushCurrencyGain(display)
+        end
+    end)
+end
+
+-- Close out a gain window: reset the amount colour and float the accumulated "+N" up + away.
+function BaseUI:_flushCurrencyGain(display)
+    local indicator = display._gainIndicator
+    local stroke = display._gainStroke
+    display._gainTotal = nil
+    display._gainIndicator = nil
+    display._gainStroke = nil
+
+    TweenService:Create(
+        display.amount,
+        TweenInfo.new(0.8, Enum.EasingStyle.Quad),
+        { TextColor3 = AMOUNT_COLOR }
+    ):Play()
+
+    if not indicator or not indicator.Parent then
+        return
+    end
+    local floatTween = TweenService:Create(
+        indicator,
+        TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { Position = UDim2.new(1, 15, -0.3, 0), TextTransparency = 1 }
+    )
+    if stroke then
+        TweenService:Create(
+            stroke,
+            TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            { Transparency = 1 }
+        ):Play()
+    end
+    floatTween:Play()
+    floatTween.Completed:Connect(function()
+        indicator:Destroy()
+    end)
+end
+
+-- One-shot floating change indicator (used for spends): a "-N" that floats up + fades, with a brief
+-- colour flash + card pop. (Gains take the coalescing path in _accumulateCurrencyGain instead.)
+function BaseUI:_showCurrencyChange(display, changeAmount, color)
     local changeText = Instance.new("TextLabel")
     changeText.Name = "ChangeIndicator"
     changeText.Size = UDim2.new(0, 50, 0, 20)
     changeText.Position = UDim2.new(1, 5, 0.5, -10)
     changeText.BackgroundTransparency = 1
-    changeText.Text = (isPositive and "+" or "") .. self:_formatNumber(changeAmount)
+    changeText.Text = self:_formatNumber(changeAmount)
     changeText.TextColor3 = color
     changeText.TextScaled = true
     changeText.Font = Enum.Font.GothamBold
-    changeText.TextTransparency = 0 -- Start visible
+    changeText.TextTransparency = 0
     changeText.ZIndex = 20
     changeText.Parent = display.frame
 
-    -- Add stroke for better visibility
     local stroke = Instance.new("UIStroke")
     stroke.Color = Color3.fromRGB(0, 0, 0)
     stroke.Thickness = 1
     stroke.Transparency = 0.5
     stroke.Parent = changeText
 
-    -- Animate the main amount text with color change
-    local mainTween = TweenService:Create(
-        display.amount,
-        TweenInfo.new(0.3, Enum.EasingStyle.Bounce),
-        { TextColor3 = color }
-    )
-
-    -- Update shadow text directly (don't tween Text property)
+    display.amount.TextColor3 = color
     if display.shadow then
         display.shadow.Text = display.amount.Text
     end
+    self:_popCurrencyCard(display)
 
-    -- Animate floating card effect (subtle scale)
-    local cardTween = TweenService:Create(
-        display.frame,
-        TweenInfo.new(0.2, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out),
-        { Size = UDim2.new(1.05, 0, 1.05, 0) } -- Slight scale up
-    )
+    TweenService:Create(
+        display.amount,
+        TweenInfo.new(0.8, Enum.EasingStyle.Quad),
+        { TextColor3 = AMOUNT_COLOR }
+    ):Play()
 
-    -- Animate the floating change text with fade and float
     local floatTween = TweenService:Create(
         changeText,
         TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        {
-            Position = UDim2.new(1, 15, -0.3, 0),
-            TextTransparency = 1,
-        }
+        { Position = UDim2.new(1, 15, -0.3, 0), TextTransparency = 1 }
     )
-
-    -- Animate the stroke fade separately
-    local strokeTween = TweenService:Create(
+    TweenService:Create(
         stroke,
         TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
         { Transparency = 1 }
-    )
-
-    -- Start animations
-    mainTween:Play()
-    cardTween:Play()
+    ):Play()
     floatTween:Play()
-    strokeTween:Play()
-
-    -- Reset color animation
-    mainTween.Completed:Connect(function()
-        local resetTween = TweenService:Create(
-            display.amount,
-            TweenInfo.new(0.8, Enum.EasingStyle.Quad),
-            { TextColor3 = originalColor }
-        )
-        resetTween:Play()
-    end)
-
-    -- Reset card scale
-    cardTween.Completed:Connect(function()
-        local resetCardTween = TweenService:Create(
-            display.frame,
-            TweenInfo.new(0.4, Enum.EasingStyle.Quad),
-            { Size = UDim2.new(1, 0, 1, 0) } -- Back to normal
-        )
-        resetCardTween:Play()
-    end)
-
-    -- Clean up floating text
     floatTween.Completed:Connect(function()
         changeText:Destroy()
     end)

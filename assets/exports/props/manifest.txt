@@ -5,7 +5,9 @@
 
 prop_id	biome	source_tris	export_dir	5k	7500tris	10k	texture	preview
 joshua_tree	desert	18851	assets/exports/props/joshua_tree/	5000 tris	7500 tris	10000 tris	joshua_tree.png	joshua_tree_preview.png
+world_tree	world	1186198	assets/exports/props/world_tree/	5000 tris	7500 tris	10000 tris	world_tree.png	-
 
 source_manifest: assets/source/props/manifest.txt
 download:
   joshua_tree: ~/Downloads/Meshy_AI_Desert_Bloom_Tree_0616211659_texture_obj.zip + Joshua Tree.png (preview)
+  world_tree: ~/Downloads/Meshy_AI_World_Tree_0618034829_texture_obj.zip

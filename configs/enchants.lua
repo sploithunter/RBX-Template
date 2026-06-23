@@ -282,8 +282,8 @@ return {
             },
         },
         coin_finder = {
-            display_name = "Coin Finder",
-            description = "Increases coin rewards from breakables.",
+            display_name = "Crystal Finder",
+            description = "Increases crystal rewards from breakables.",
             roll = { low = 1, high = 5, scale = 2 },
             modifier = {
                 stage = "enchants",

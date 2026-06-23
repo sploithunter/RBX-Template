@@ -81,7 +81,7 @@ return {
     -- sampled around the anchor (grounded raycast, like crystal spawn points). SLICE 1: flag off,
     -- one placeholder enemy model for every band (per-area heaven-pet factions = the content pass).
     enemy_patrol = {
-        enabled = false, -- FLAG: ships dark; flip live (Studio) to test, then per-area content
+        enabled = true, -- FLAG: ships dark; flip live (Studio) to test, then per-area content
         placeholder_enemy = "lava_imp", -- fallback when a cave's origin isn't mapped below
         -- PER-AREA FACTION (Jason: "lava-only models from lava, so I know where they came from").
         -- Each cave fields a signature enemy keyed off its origin (the BaddieSpawner<Origin> suffix),

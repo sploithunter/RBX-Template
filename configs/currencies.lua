@@ -4,7 +4,7 @@
 return {
     {
         id = "coins",
-        name = "Coins",
+        name = "Crystals",
         description = "Primary currency earned through gameplay",
         maxAmount = 999999999,
         defaultAmount = 100,
@@ -21,8 +21,11 @@ return {
     },
 
     {
+        -- NOTE: id stays "crystals" (frozen save key), but the MINED biome currencies are now the
+        -- player-facing "Crystals" — so this rare/unused currency is displayed as "Relics" to avoid
+        -- a name clash. (Jason: confirm/rename.)
         id = "crystals",
-        name = "Crystals",
+        name = "Relics",
         description = "Rare currency found in dungeons and special events",
         maxAmount = 50000,
         defaultAmount = 0,
@@ -33,7 +36,7 @@ return {
     -- tokens. All non-tradeable (see configs/biomes.lua + configs/layers.lua).
     {
         id = "grass_coins",
-        name = "Grass Coins",
+        name = "Grass Crystals",
         description = "Grass (earth) biome currency",
         maxAmount = 999999999,
         defaultAmount = 100,
@@ -42,7 +45,7 @@ return {
     }, -- 100 starter grant: funds the first EarthEgg hatch before mining
     {
         id = "ice_coins",
-        name = "Ice Coins",
+        name = "Ice Crystals",
         description = "Ice biome currency",
         maxAmount = 999999999,
         defaultAmount = 0,
@@ -51,7 +54,7 @@ return {
     },
     {
         id = "lava_coins",
-        name = "Lava Coins",
+        name = "Lava Crystals",
         description = "Lava biome currency",
         maxAmount = 999999999,
         defaultAmount = 0,
@@ -60,7 +63,7 @@ return {
     },
     {
         id = "desert_coins",
-        name = "Desert Coins",
+        name = "Desert Crystals",
         description = "Desert biome currency",
         maxAmount = 999999999,
         defaultAmount = 0,
@@ -69,7 +72,7 @@ return {
     },
     {
         id = "beach_coins",
-        name = "Beach Coins",
+        name = "Beach Crystals",
         description = "Beach biome currency",
         maxAmount = 999999999,
         defaultAmount = 0,

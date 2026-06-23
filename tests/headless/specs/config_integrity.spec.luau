@@ -39,23 +39,46 @@ return function()
         local quests = loadModule("configs/quests.lua")
         local stats = loadModule("configs/stats.lua")
 
-        it("every def has a UNIQUE order (the chain is total)", function()
-            local seen = {}
+        it("every def names a track that the tracks table declares", function()
+            for id, def in pairs(quests.defs) do
+                if type(def.track) ~= "string" then
+                    error("quest '" .. id .. "' has no track — every mission belongs to one")
+                end
+                if not (quests.tracks and quests.tracks[def.track]) then
+                    error(
+                        "quest '"
+                            .. id
+                            .. "' names track '"
+                            .. def.track
+                            .. "' that quests.tracks "
+                            .. "does not declare"
+                    )
+                end
+            end
+        end)
+
+        it("orders are UNIQUE WITHIN EACH track (each track is a total chain)", function()
+            local seen = {} -- track -> { order -> id }
             for id, def in pairs(quests.defs) do
                 if type(def.order) ~= "number" then
                     error("quest '" .. id .. "' has no numeric order — the chain needs one")
                 end
-                if seen[def.order] then
+                local track = def.track
+                seen[track] = seen[track] or {}
+                if seen[track][def.order] then
                     error(
                         "quests '"
                             .. id
                             .. "' and '"
-                            .. seen[def.order]
+                            .. seen[track][def.order]
                             .. "' share order "
                             .. def.order
+                            .. " in track '"
+                            .. track
+                            .. "'"
                     )
                 end
-                seen[def.order] = id
+                seen[track][def.order] = id
             end
         end)
 
@@ -83,6 +106,20 @@ return function()
                 end
                 if type(def.description) ~= "string" then
                     error("quest '" .. id .. "' has no description")
+                end
+            end
+        end)
+
+        it("every event_counters mapping targets a DECLARED counter", function()
+            for event, counter in pairs(stats.event_counters or {}) do
+                if not stats.counters[counter] then
+                    error(
+                        "stats.event_counters['"
+                            .. event
+                            .. "'] -> '"
+                            .. tostring(counter)
+                            .. "' which configs/stats.lua does not declare"
+                    )
                 end
             end
         end)

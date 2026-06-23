@@ -35,6 +35,30 @@ function WorldContext.parseName(name)
     return nil
 end
 
+-- Realm of a ZONE/AREA id. Homeworld zones are bare biome names ("Lava", "Ice", "Desert",
+-- "Grass", "Spawn") -> base. Realm zones are "<World>_<Floor>" (e.g. "Heaven_1_Lava",
+-- "Hell_1_Ice") per configs/areas.lua, so the leading "<World>" parses to heaven/hell. Pure;
+-- returns "base" / "heaven" / "hell". Used to credit realm-scoped quests (visit/unlock a realm).
+function WorldContext.realmOfZoneId(zoneId)
+    if type(zoneId) ~= "string" then
+        return "base"
+    end
+    -- Try the whole id, then drop trailing "_<segment>" pieces until a world name parses.
+    local name = zoneId
+    while name ~= "" do
+        local parsed = WorldContext.parseName(name)
+        if parsed then
+            return parsed.realm
+        end
+        local trimmed = name:match("^(.*)_[^_]*$")
+        if not trimmed or trimmed == name then
+            break
+        end
+        name = trimmed
+    end
+    return "base"
+end
+
 -- Difficulty multiplier for a realm+depth. Pure; config-driven so balance lives in one place.
 --   cfg.realm_base[realm] = starting multiplier for that realm (default 1.0)
 --   cfg.step              = per-depth increment (default 0.5)

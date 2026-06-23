@@ -127,8 +127,8 @@ A **playable vertical slice** exists at the end of Phase 2: walk the ring → co
 **1.1 Element-at-hatch (Feature 5)** — *fold into in-flight egg work.*
 - Pet record: add `element` field (`neutral|light|shadow|chaotic`).
 - `EggService`/`PetGrantService`: assign element from current layer at hatch (base→neutral, Heaven→light, Hell→shadow; chaotic only via fusion).
-- Stacking: element is part of stack identity — different element starts a new stack.
-- Tests (`[integration]`): hatch in base/Heaven/Hell → correct element; element immutable except fusion (`[unit]`); stacked pets don't merge across elements; variant independent of element (`[unit]`).
+- Stacking: element is **not** a stack-key axis in the realized content model. Realm eggs hatch distinct pet IDs/species (base, Heaven, and Hell pets are separate catalog entries), so stack identity remains pet id + variant (+ stack enchant where configured).
+- Tests (`[integration]`): hatch in base/Heaven/Hell → correct element; element immutable except fusion (`[unit]`); realm eggs resolve to their realm-specific pet IDs; variant remains independent of element (`[unit]`).
 
 **1.2 Power Calc Providers (Feature 6)**
 - Module: `PowerFormula` (pure) composing base × variant × level × enchant × element × theme-utility × stack × buffs (execution order per design §10).

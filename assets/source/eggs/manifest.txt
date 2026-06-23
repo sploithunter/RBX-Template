@@ -39,3 +39,19 @@ colorado_egg/colorado_egg_{metallic,normal,roughness,pbr,shaded_preview}.png	<- 
 description: Low-poly faceted egg with Colorado state flag pattern (blue/white/red/gold)
 egg_id: colorado_egg
 download_mesh: ~/Downloads/38d24117-8933-4786-84e0-5ea8b7344869.zip
+
+# 2026-06-23 realm2 batch (green-screen 2D + native 3D mesh)
+import_manifest: assets/ui/imports/manifest_2026-06-23_realm2_eggs.txt
+icon_contact_sheet: assets/source/eggs/realm2_eggs_2026-06-23_icons_contact_sheet.png
+pipeline_2d: scripts/normalize_icons.py --background-mode green
+pipeline_3d: decimate_mesh.sh --targets 10000 (native kept)
+
+egg_id	display	realm	origin	2d_icon	3d_tris	download_zip
+heaven2_fire_egg	Coronal Egg	heaven	fire	heaven2_fire_egg.png	4400	Heaven2-Fire.zip
+heaven2_grass_egg	Bloomlight Egg	heaven	grass	heaven2_grass_egg.png	6199	Heaven2-Grass.zip
+heaven2_ice_egg	Prism Egg	heaven	ice	heaven2_ice_egg.png	4400	Heaven2-Ice.zip
+heaven2_desert_egg	Mirage Egg	heaven	desert	heaven2_desert_egg.png	4400	Heaven2-Desert.zip
+hell2_fire_egg	Frostcinder Egg	hell	fire	hell2_fire_egg.png	4400	Hell2-Fire.zip
+hell2_grass_egg	Frostblight Egg	hell	grass	hell2_grass_egg.png	6586	Hell2-Grass.zip
+hell2_ice_egg	Black-Ice Egg	hell	ice	hell2_ice_egg.png	4140	Hell2-Ice.zip
+hell2_desert_egg	Frostcarrion Egg	hell	desert	hell2_desert_egg.png	3336	Hell2-Desert.zip

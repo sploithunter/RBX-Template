@@ -301,8 +301,9 @@ Verification:
   Heaven 12; golden 15).
 
 Deferred (with reasons):
-- Element-in-stack-key (different element → new stack) — mechanism built + tested;
-  only matters once Heaven/Hell hatches produce non-neutral elements (Phase 2).
+- Element-in-stack-key — intentionally **not** used in the realized content model.
+  Realm eggs hatch separate pet IDs/species (base/Heaven/Hell catalog entries), so
+  stacks split naturally by pet id; element remains record metadata and power context.
 - Theme-utility on live pets — needs pets to carry a biome `theme` (content/Phase 2).
 - Power recalc on live biome/layer travel ([studio]) — needs the world (Phase 2);
   dynamic recalc is already shown via `pet.power` varying by realm with no save.

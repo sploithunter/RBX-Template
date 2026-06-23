@@ -93,6 +93,36 @@ function PotionService:_count(player, potionId)
     return n
 end
 
+-- Weighted-random pick of which potion a world drop yields (configs/potions.lua drops.weights).
+-- Returns a potionId, or nil when drops are disabled / no valid weights. DropService calls this.
+function PotionService:RollDrop()
+    local drops = self._config and self._config.drops
+    if not (drops and drops.enabled) then
+        return nil
+    end
+    local weights = drops.weights or {}
+    local total = 0
+    for id, w in pairs(weights) do
+        if self:_potionCfg(id) and (tonumber(w) or 0) > 0 then
+            total += tonumber(w)
+        end
+    end
+    if total <= 0 then
+        return nil
+    end
+    local roll = math.random() * total
+    local acc = 0
+    for id, w in pairs(weights) do
+        if self:_potionCfg(id) and (tonumber(w) or 0) > 0 then
+            acc += tonumber(w)
+            if roll <= acc then
+                return id
+            end
+        end
+    end
+    return nil
+end
+
 -- Grant N of a potion into the bucket (drops / admin / test). Returns the new owned count.
 function PotionService:Grant(player, potionId, count)
     count = math.max(1, math.floor(tonumber(count) or 1))

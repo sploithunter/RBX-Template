@@ -17,7 +17,7 @@ return {
             discount_percent = 25,
         },
         coin_cache = {
-            name = "Coin Cache",
+            name = "Crystal Cache",
             cost = { currencies = { gems = 5 } },
             reward = { currencies = { coins = 5000 } },
             -- repeatable (no limit)

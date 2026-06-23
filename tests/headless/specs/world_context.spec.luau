@@ -41,6 +41,25 @@ return function()
         end)
     end)
 
+    describe("WorldContext.realmOfZoneId", function()
+        it("maps realm zone ids (<World>_<Floor>) to their realm", function()
+            expect(WorldContext.realmOfZoneId("Heaven_1_Lava")).to.equal("heaven")
+            expect(WorldContext.realmOfZoneId("Hell_1_Ice")).to.equal("hell")
+            expect(WorldContext.realmOfZoneId("Heaven_3_Grass")).to.equal("heaven")
+        end)
+
+        it("treats bare homeworld biome zones as base", function()
+            expect(WorldContext.realmOfZoneId("Lava")).to.equal("base")
+            expect(WorldContext.realmOfZoneId("Desert")).to.equal("base")
+            expect(WorldContext.realmOfZoneId("Spawn")).to.equal("base")
+        end)
+
+        it("is safe on nil / non-string", function()
+            expect(WorldContext.realmOfZoneId(nil)).to.equal("base")
+            expect(WorldContext.realmOfZoneId(123)).to.equal("base")
+        end)
+    end)
+
     describe("WorldContext.difficultyFor", function()
         local CFG = { step = 0.5, realm_base = { base = 1.0, heaven = 1.0, hell = 1.0 } }
 

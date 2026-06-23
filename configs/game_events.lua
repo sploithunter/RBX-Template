@@ -212,6 +212,13 @@ return {
         sound = "power_up_stronger",
     },
 
+    -- A potion drop was picked up (server: DropService _collect). Float TEXT = the potion's name
+    -- from ctx; config only styles it. Mirrors enhancement_pickup.
+    potion_pickup = {
+        float = { color = { 190, 130, 240 } },
+        sound = "power_up_stronger",
+    },
+
     -- A mined crystal paid out (server: BreakableSpawner, per contributor, at the NODE's
     -- position — #172). FREQUENT during farming: small silent gold float, no sound.
     coin_payout = {

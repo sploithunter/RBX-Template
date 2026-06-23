@@ -254,3 +254,10 @@ current class to rebirth. New doc `docs/PET_REALM_HEAVEN_HELL_ROSTER.md`; extend
 Document's Rebirth section with the 11-dragon ladder + all-11 gate; DECISIONS + INDEX updated.
 Also live this session: Heaven_1 world cloned (+2000 Y, admin portal), crystal proto world for
 Heaven_1, OverheadBar unify, rounded health bars, WorldContext resolver, streaming enabled.
+
+## 2026-06-23 — Realm pet element stack-key clarification
+
+Aligned the Feature 5 docs/tests with the realized content model: realm eggs hatch distinct pet
+IDs/species, so `element` (`neutral`/`light`/`shadow`) is record metadata and power context, not a
+stack-key axis. Stack identity remains pet id + variant (+ configured stack enchant); no inventory
+migration is needed for the abandoned "element splits stacks" spec.

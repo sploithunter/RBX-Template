@@ -34,6 +34,7 @@ local COLORS = {
     close = Color3.fromRGB(231, 76, 60),
     text = Color3.fromRGB(255, 255, 255),
     subtext = Color3.fromRGB(200, 205, 215),
+    focus = Color3.fromRGB(241, 196, 15), -- gold accent for the ACTIVE (focused) track
 }
 
 local QuestPanel = {}
@@ -45,6 +46,15 @@ function QuestPanel.new()
     self.frame = nil
     self.listFrame = nil
     self.rows = {}
+    -- Branch TABS: quests are grouped into tracks (configs/quests.lua); the tab bar filters the
+    -- list to one branch. "all" = the cross-branch overview (claimable surfaced first).
+    self.tabBar = nil
+    self.tabButtons = {}
+    self.viewedTab = "all"
+    -- focusTrack = the server's ACTIVE track (the one whose grind quests are counting). Distinct
+    -- from viewedTab (which branch you're browsing). Set from quest.list's `activeTrack`.
+    self.focusTrack = nil
+    self.quests = {}
     return self
 end
 
@@ -129,12 +139,13 @@ function QuestPanel:_createUI(parent)
     gradient.Parent = frame
 
     self:_createHeader()
+    self:_createTabBar()
 
-    -- Scrolling list of quest rows.
+    -- Scrolling list of quest rows (sits below the header + branch tab bar).
     local list = Instance.new("ScrollingFrame")
     list.Name = "QuestList"
-    list.Size = UDim2.new(1, -24, 1, -100)
-    list.Position = UDim2.new(0, 12, 0, 92)
+    list.Size = UDim2.new(1, -24, 1, -144)
+    list.Position = UDim2.new(0, 12, 0, 136)
     list.BackgroundTransparency = 1
     list.BorderSizePixel = 0
     list.ScrollBarThickness = 6
@@ -205,8 +216,163 @@ function QuestPanel:_createHeader()
     })
 end
 
--- Rebuild the list from a fresh quest.list call.
-function QuestPanel:_refresh()
+-- Sort rank for the cross-branch "All" view: claimable first, then in-progress, then done.
+local function claimRank(q)
+    if q.claimable then
+        return 0
+    elseif not q.progress or not q.progress.met then
+        return 1
+    end
+    return 2
+end
+
+-- Horizontal, scrollable strip of branch tabs (sits between the header and the list). Tabs
+-- themselves are filled in by _buildTabs once quest.list reveals which branches exist.
+local TAB_BAR_Y = 84
+local TAB_BAR_H = 44
+
+function QuestPanel:_createTabBar()
+    local bar = Instance.new("ScrollingFrame")
+    bar.Name = "TabBar"
+    bar.Size = UDim2.new(1, -24, 0, TAB_BAR_H)
+    bar.Position = UDim2.new(0, 12, 0, TAB_BAR_Y)
+    bar.BackgroundTransparency = 1
+    bar.BorderSizePixel = 0
+    bar.ScrollBarThickness = 4
+    bar.ScrollingDirection = Enum.ScrollingDirection.X
+    bar.CanvasSize = UDim2.new(0, 0, 0, 0)
+    bar.AutomaticCanvasSize = Enum.AutomaticSize.X
+    bar.ZIndex = 101
+    bar.Parent = self.frame
+    self.tabBar = bar
+
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.VerticalAlignment = Enum.VerticalAlignment.Center
+    layout.Padding = UDim.new(0, 6)
+    layout.Parent = bar
+end
+
+-- One tab button. `key` = "all" or a track id; `hasClaimable` adds a green dot so you can see
+-- which branch has something waiting without opening it.
+function QuestPanel:_makeTab(key, label, order, hasClaimable)
+    local active = self.viewedTab == key
+    local btn = Instance.new("TextButton")
+    btn.Name = "Tab_" .. key
+    btn.AutomaticSize = Enum.AutomaticSize.X
+    btn.Size = UDim2.new(0, 0, 1, -8)
+    local focused = self.focusTrack ~= nil and key == self.focusTrack
+    btn.Text = (focused and "▶ " or "") .. label
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 16
+    btn.TextColor3 = active and COLORS.text or COLORS.subtext
+    btn.BackgroundColor3 = active and COLORS.header or COLORS.row
+    btn.AutoButtonColor = true
+    btn.LayoutOrder = order
+    btn.ZIndex = 102
+    btn.Parent = self.tabBar
+
+    local pad = Instance.new("UIPadding")
+    pad.PaddingLeft = UDim.new(0, 16)
+    pad.PaddingRight = UDim.new(0, 16)
+    pad.Parent = btn
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = btn
+
+    -- Gold outline on the ACTIVE (focused) track so you can tell it apart from the one you're viewing.
+    if focused then
+        local fstroke = Instance.new("UIStroke")
+        fstroke.Color = COLORS.focus
+        fstroke.Thickness = 2
+        fstroke.Parent = btn
+    end
+
+    if hasClaimable then
+        local dot = Instance.new("Frame")
+        dot.Name = "ClaimDot"
+        dot.Size = UDim2.fromOffset(10, 10)
+        dot.AnchorPoint = Vector2.new(1, 0)
+        dot.Position = UDim2.new(1, -2, 0, 3)
+        dot.BackgroundColor3 = COLORS.claimable
+        dot.BorderSizePixel = 0
+        dot.ZIndex = 103
+        dot.Parent = btn
+        local dc = Instance.new("UICorner")
+        dc.CornerRadius = UDim.new(1, 0)
+        dc.Parent = dot
+    end
+
+    btn.Activated:Connect(function()
+        if self.viewedTab ~= key then
+            self.viewedTab = key
+            self:_restyleTabs()
+            self:_renderRows()
+        end
+    end)
+    self.tabButtons[key] = btn
+end
+
+-- Recolor tabs to reflect the active branch (cheap; no rebuild).
+function QuestPanel:_restyleTabs()
+    for key, btn in pairs(self.tabButtons) do
+        local active = key == self.viewedTab
+        btn.BackgroundColor3 = active and COLORS.header or COLORS.row
+        btn.TextColor3 = active and COLORS.text or COLORS.subtext
+    end
+end
+
+-- (Re)build the tab strip from the branches present in the quest list. Keeps the current
+-- selection if it still exists, else falls back to "All".
+function QuestPanel:_buildTabs(quests)
+    for _, btn in pairs(self.tabButtons) do
+        btn:Destroy()
+    end
+    self.tabButtons = {}
+
+    local seen, tracks, claimableByTrack = {}, {}, {}
+    for _, q in ipairs(quests) do
+        local t = q.track or "misc"
+        if not seen[t] then
+            seen[t] = true
+            table.insert(
+                tracks,
+                { key = t, title = q.trackTitle or t, order = q.trackOrder or math.huge }
+            )
+        end
+        if q.claimable then
+            claimableByTrack[t] = true
+        end
+    end
+    table.sort(tracks, function(a, b)
+        if a.order ~= b.order then
+            return a.order < b.order
+        end
+        return a.title < b.title
+    end)
+
+    -- Drop a stale selection (e.g. a branch that no longer appears).
+    local stillValid = self.viewedTab == "all"
+    for _, t in ipairs(tracks) do
+        if t.key == self.viewedTab then
+            stillValid = true
+        end
+    end
+    if not stillValid then
+        self.viewedTab = "all"
+    end
+
+    self:_makeTab("all", "All", 0, false)
+    for i, t in ipairs(tracks) do
+        self:_makeTab(t.key, t.title, i, claimableByTrack[t.key] == true)
+    end
+end
+
+-- Render the quest rows for the active branch. "All" surfaces claimable first (an actionable
+-- overview); a single branch shows its ladder in order (head first, then what's coming).
+function QuestPanel:_renderRows()
     if not self.listFrame then
         return
     end
@@ -215,37 +381,149 @@ function QuestPanel:_refresh()
     end
     self.rows = {}
 
+    local filtered = {}
+    for _, q in ipairs(self.quests or {}) do
+        if self.viewedTab == "all" or q.track == self.viewedTab then
+            table.insert(filtered, q)
+        end
+    end
+    if #filtered == 0 then
+        self:_emptyState("No quests in this branch yet.")
+        return
+    end
+
+    if self.viewedTab == "all" then
+        table.sort(filtered, function(a, b)
+            local ra, rb = claimRank(a), claimRank(b)
+            if ra ~= rb then
+                return ra < rb
+            end
+            return (a.name or a.id) < (b.name or b.id)
+        end)
+    else
+        table.sort(filtered, function(a, b)
+            return (a.order or 0) < (b.order or 0)
+        end)
+    end
+
+    -- On a single branch, lead with the activation banner (Activate / Active / Always tracked).
+    if self.viewedTab ~= "all" then
+        local hasGrind = false
+        for _, q in ipairs(filtered) do
+            if q.activationGated then
+                hasGrind = true
+                break
+            end
+        end
+        local banner = self:_activationControl(self.viewedTab, hasGrind)
+        if banner then
+            table.insert(self.rows, banner)
+        end
+    end
+
+    for i, quest in ipairs(filtered) do
+        table.insert(self.rows, self:_createQuestRow(quest, i))
+    end
+end
+
+-- The per-branch activation control shown atop a single-branch view:
+--   • this branch is the focus  -> a green "Active — counting" banner
+--   • has grind quests, not focus -> a gold "▶ Activate this branch" button (switches focus here)
+--   • only milestones           -> a subtle "Always tracked" note (no activation needed)
+function QuestPanel:_activationControl(track, hasGrind)
+    local isFocus = self.focusTrack ~= nil and track == self.focusTrack
+
+    local row = Instance.new("Frame")
+    row.Name = "ActivationBanner"
+    row.Size = UDim2.new(1, 0, 0, 44)
+    row.BackgroundColor3 = isFocus and COLORS.fill or (hasGrind and COLORS.row or COLORS.track)
+    row.BackgroundTransparency = isFocus and 0.15 or 0
+    row.BorderSizePixel = 0
+    row.LayoutOrder = 0 -- always first
+    row.ZIndex = 102
+    row.Parent = self.listFrame
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = row
+
+    if isFocus then
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -24, 1, 0)
+        label.Position = UDim2.new(0, 12, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = "▶ Active branch — quests are counting"
+        label.TextColor3 = COLORS.text
+        label.Font = Enum.Font.GothamBold
+        label.TextScaled = true
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 103
+        label.Parent = row
+        local c = Instance.new("UITextSizeConstraint")
+        c.MaxTextSize = 18
+        c.Parent = label
+    elseif hasGrind then
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = COLORS.focus
+        stroke.Thickness = 2
+        stroke.Parent = row
+
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 1, 0)
+        btn.BackgroundTransparency = 1
+        btn.Text = "▶ Activate this branch (start its quests counting)"
+        btn.TextColor3 = COLORS.focus
+        btn.Font = Enum.Font.GothamBold
+        btn.TextScaled = true
+        btn.AutoButtonColor = false
+        btn.ZIndex = 103
+        btn.Parent = row
+        local c = Instance.new("UITextSizeConstraint")
+        c.MaxTextSize = 18
+        c.Parent = btn
+        btn.Activated:Connect(function()
+            self:_callBus("quest.setActiveTrack", { track = track })
+            self:_refresh()
+        end)
+    else
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -24, 1, 0)
+        label.Position = UDim2.new(0, 12, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = "Always tracked — no activation needed"
+        label.TextColor3 = COLORS.subtext
+        label.Font = Enum.Font.Gotham
+        label.TextScaled = true
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 103
+        label.Parent = row
+        local c = Instance.new("UITextSizeConstraint")
+        c.MaxTextSize = 16
+        c.Parent = label
+    end
+
+    return row
+end
+
+-- Rebuild from a fresh quest.list call: cache the data, refresh the tabs, render the branch.
+function QuestPanel:_refresh()
+    if not self.listFrame then
+        return
+    end
     local result = self:_callBus("quest.list", {})
     local quests = result and result.quests
     if type(quests) ~= "table" then
+        for _, row in ipairs(self.rows) do
+            row:Destroy()
+        end
+        self.rows = {}
         self:_emptyState("Couldn't load quests.")
         return
     end
-    if #quests == 0 then
-        self:_emptyState("No quests available yet.")
-        return
-    end
-
-    -- Claimable first, then in-progress, then claimed/done.
-    table.sort(quests, function(a, b)
-        local function rank(q)
-            if q.claimable then
-                return 0
-            elseif not q.progress or not q.progress.met then
-                return 1
-            end
-            return 2
-        end
-        local ra, rb = rank(a), rank(b)
-        if ra ~= rb then
-            return ra < rb
-        end
-        return (a.name or a.id) < (b.name or b.id)
-    end)
-
-    for i, quest in ipairs(quests) do
-        table.insert(self.rows, self:_createQuestRow(quest, i))
-    end
+    self.quests = quests
+    self.focusTrack = result.activeTrack -- which branch is currently counting (may be nil)
+    self:_buildTabs(quests)
+    self:_renderRows()
 end
 
 function QuestPanel:_emptyState(text)
@@ -329,7 +607,9 @@ function QuestPanel:_createQuestRow(quest, order)
     desc.Position = UDim2.new(0, 16, 0, 36)
     desc.BackgroundTransparency = 1
     local rewardText = rewardSummary(quest.reward)
-    desc.Text = (quest.description or "")
+    local trackTag = quest.trackTitle and ("[" .. quest.trackTitle .. "]  ") or ""
+    desc.Text = trackTag
+        .. (quest.description or "")
         .. (rewardText ~= "" and ("   •   " .. rewardText) or "")
     desc.TextColor3 = COLORS.subtext
     desc.TextScaled = true
@@ -342,14 +622,15 @@ function QuestPanel:_createQuestRow(quest, order)
     descConstraint.MaxTextSize = 14
     descConstraint.Parent = desc
 
-    -- Progress bar track (shared FillBar)
+    -- Progress bar track (shared FillBar). A paused grind quest (its branch isn't the focus) shows
+    -- a muted fill so it reads as "not currently counting".
     local fraction = math.clamp(progress.fraction or 0, 0, 1)
     local track = FillBar.create({
         parent = row,
         size = UDim2.new(1, -150, 0, 14),
         position = UDim2.new(0, 16, 1, -26),
         bgColor = COLORS.track,
-        fillColor = COLORS.fill,
+        fillColor = quest.paused and COLORS.locked or COLORS.fill,
         fraction = fraction,
         zIndex = 103,
     })
@@ -358,6 +639,7 @@ function QuestPanel:_createQuestRow(quest, order)
     progressText.Size = UDim2.new(1, 0, 1, 0)
     progressText.BackgroundTransparency = 1
     progressText.Text = string.format("%d / %d", progress.current or 0, progress.target or 0)
+        .. (quest.paused and "  ⏸" or "")
     progressText.TextColor3 = COLORS.text
     progressText.TextScaled = true
     progressText.Font = Enum.Font.GothamMedium

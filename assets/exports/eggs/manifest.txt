@@ -51,3 +51,16 @@ download_mesh:
   aurora_egg: ~/Downloads/AuroraEgg.zip
   solar_egg: ~/Downloads/SolarEgg.zip
   colorado_egg: ~/Downloads/38d24117-8933-4786-84e0-5ea8b7344869.zip
+
+# 2026-06-23 realm2 egg batch (8 meshes, native <= 10k)
+import_manifest: assets/ui/imports/manifest_2026-06-23_realm2_eggs.txt
+
+egg_id	source_tris	export_dir	10k	texture	2d_icon
+heaven2_fire_egg	4400	assets/exports/eggs/heaven2_fire_egg/	4400 tris*	heaven2_fire_egg.png	assets/source/eggs/heaven2_fire_egg.png
+heaven2_grass_egg	6199	assets/exports/eggs/heaven2_grass_egg/	6199 tris*	heaven2_grass_egg.png	assets/source/eggs/heaven2_grass_egg.png
+heaven2_ice_egg	4400	assets/exports/eggs/heaven2_ice_egg/	4400 tris*	heaven2_ice_egg.png	assets/source/eggs/heaven2_ice_egg.png
+heaven2_desert_egg	4400	assets/exports/eggs/heaven2_desert_egg/	4400 tris*	heaven2_desert_egg.png	assets/source/eggs/heaven2_desert_egg.png
+hell2_fire_egg	4400	assets/exports/eggs/hell2_fire_egg/	4400 tris*	hell2_fire_egg.png	assets/source/eggs/hell2_fire_egg.png
+hell2_grass_egg	6586	assets/exports/eggs/hell2_grass_egg/	6586 tris*	hell2_grass_egg.png	assets/source/eggs/hell2_grass_egg.png
+hell2_ice_egg	4140	assets/exports/eggs/hell2_ice_egg/	4140 tris*	hell2_ice_egg.png	assets/source/eggs/hell2_ice_egg.png
+hell2_desert_egg	3336	assets/exports/eggs/hell2_desert_egg/	3336 tris*	hell2_desert_egg.png	assets/source/eggs/hell2_desert_egg.png

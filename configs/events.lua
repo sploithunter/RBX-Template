@@ -17,7 +17,7 @@ return {
             base = 1,
         },
         coin_reward_multiplier = {
-            display_name = "Coin Reward Multiplier",
+            display_name = "Crystal Reward Multiplier",
             base = 1,
         },
         crystal_reward_multiplier = {
@@ -74,8 +74,8 @@ return {
         },
 
         coin_shower = {
-            display_name = "Coin Shower",
-            description = "Boosts coin rewards from breakables.",
+            display_name = "Crystal Shower",
+            description = "Boosts crystal rewards from breakables.",
             duration_seconds = 1800,
             stacking = "extend_duration",
             icon = "COIN",
@@ -111,7 +111,7 @@ return {
 
         tycoon_tuesday = {
             display_name = "Tycoon Tuesday",
-            description = "Double coins from everything you break, all day.",
+            description = "Double crystals from everything you break, all day.",
             duration_seconds = -1,
             stacking = "reset",
             icon = "COIN",

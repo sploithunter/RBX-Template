@@ -484,6 +484,117 @@ function DropService:TrySpawnEnhancementDrop(player, source, position)
     return true
 end
 
+-- Try to spawn a POTION drop (Jason: same odds as enhancements). source = "breakable" | "enemy".
+-- The drop is colour-hinted by its meter and reveals its name on pickup (DropService:_collect →
+-- PotionService:Grant). Windfall (drop_rate) + the drop_rate event scale the chance, same as the
+-- enhancement path. Returns true when a drop spawned.
+function DropService:TrySpawnPotionDrop(player, source, position)
+    if not (player and typeof(position) == "Vector3") then
+        return false
+    end
+    local potions = self._moduleLoader and self._moduleLoader:Get("PotionService")
+    if not (potions and potions.RollDrop and potions.Grant) then
+        return false
+    end
+    local cfg = self._potionConfig
+    if not cfg then
+        local ok, c = pcall(function()
+            return (self._configLoader and self._configLoader:LoadConfig("potions"))
+                or require(ReplicatedStorage.Configs:WaitForChild("potions"))
+        end)
+        cfg = ok and c or nil
+        self._potionConfig = cfg
+    end
+    local drops = cfg and cfg.drops
+    if not (drops and drops.enabled) then
+        return false
+    end
+    local chance = (source == "enemy" and drops.enemy_chance) or drops.breakable_chance or 0
+    -- Windfall (drop_rate axis): an active drop-rate buff multiplies the loot chance.
+    if (player:GetAttribute("DropRateBuffUntil") or 0) > os.time() then
+        chance = chance * (1 + (tonumber(player:GetAttribute("DropRateBuff")) or 0))
+    end
+    -- drop_rate global event (e.g. Showering Saturday): same axis, server-wide.
+    local eventService = self._moduleLoader and self._moduleLoader:Get("EventService")
+    if eventService then
+        local m = tonumber(eventService:GetModifier("drop_rate", 0)) or 0
+        if m > 0 then
+            chance = chance * (1 + m)
+        end
+    end
+    if math.random() >= chance then
+        return false
+    end
+    local potionId = potions:RollDrop()
+    if not potionId then
+        return false
+    end
+
+    -- colour the drop by the potion's meter (a hint); the name is revealed on pickup
+    local potCfg = cfg.potions and cfg.potions[potionId]
+    local meterCfg = potCfg and cfg.meters and cfg.meters[potCfg.meter]
+    local rgb = (meterCfg and meterCfg.color) or { 190, 130, 240 }
+    local color = Color3.fromRGB(rgb[1] or 190, rgb[2] or 130, rgb[3] or 240)
+
+    -- model: authored Assets model (override) > tinted neon flask placeholder
+    local model
+    if drops.model_name then
+        local assets = ReplicatedStorage:FindFirstChild("Assets")
+        local models = assets and assets:FindFirstChild("Models")
+        local tpl = models and models:FindFirstChild(drops.model_name)
+        if tpl then
+            model = tpl:Clone()
+        end
+    end
+    local part = model and (model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart"))
+    if not part then
+        model = Instance.new("Model")
+        model.Name = "PotionDrop"
+        part = Instance.new("Part")
+        part.Shape = Enum.PartType.Ball
+        part.Size = Vector3.new(1.5, 1.5, 1.5)
+        part.Material = Enum.Material.Neon
+        part.Color = color
+        part.CanCollide = false
+        part.CanQuery = false
+        part.Anchored = true
+        part.Parent = model
+        model.PrimaryPart = part
+        local bb = Instance.new("BillboardGui")
+        bb.Size = UDim2.fromOffset(28, 28)
+        bb.StudsOffset = Vector3.new(0, 1.6, 0)
+        bb.AlwaysOnTop = true
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.fromScale(1, 1)
+        lbl.BackgroundTransparency = 1
+        lbl.Font = Enum.Font.GothamBlack
+        lbl.TextScaled = true
+        lbl.Text = "🧪"
+        lbl.Parent = bb
+        bb.Parent = part
+    end
+    part.Anchored = true
+    local groundY = self:_groundY(position.X, position.Z, position.Y, position.Y - 1)
+    part.CFrame = CFrame.new(position.X, groundY + part.Size.Y * 0.5 + 0.2, position.Z)
+
+    -- OWNER-ONLY VISIBLE (same as enhancement/gem drops): DropOwner before parenting so the client
+    -- DropVisibility filter hides it for non-owners.
+    model:SetAttribute("DropOwner", player.UserId)
+    model.Parent = self._folder or Workspace
+    self._active[#self._active + 1] = {
+        kind = "potion",
+        potionId = potionId,
+        model = model,
+        part = part,
+        noPool = true,
+        owner = player.UserId,
+        spawnAt = os.clock(),
+        despawnSeconds = drops.despawn_seconds or 45,
+        settling = false,
+    }
+    return true
+end
+
 -- ---- collect loop ------------------------------------------------------
 
 local function ownerRoot(userId)
@@ -517,6 +628,27 @@ function DropService:_collect(rec, _force)
                         name = res.name,
                         origins = rec.record.origins,
                     })
+                end)
+            end
+        end
+    elseif plr and rec.kind == "potion" then
+        -- grant the potion to the bucket + float its name (revealed at pickup, like enhancements)
+        local potions = self._moduleLoader and self._moduleLoader:Get("PotionService")
+        if potions and potions.Grant then
+            local res
+            pcall(function()
+                res = potions:Grant(plr, rec.potionId, 1)
+            end)
+            if res and res.ok then
+                pcall(function()
+                    local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+                    local cfg = self._potionConfig
+                    local pc = cfg and cfg.potions and cfg.potions[rec.potionId]
+                    Signals.GameEvent:FireClient(
+                        plr,
+                        "potion_pickup",
+                        { name = (pc and pc.display_name) or "Potion" }
+                    )
                 end)
             end
         end

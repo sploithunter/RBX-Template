@@ -203,7 +203,7 @@ local SUPPORT_META = {
     heal = { element = "earth", label = "Heal" },
     defense = { element = "ice", label = "Defense" },
     offense = { element = "fire", label = "War-Cry" }, -- team damage aura (renamed from "Offense")
-    yield = { element = "desert", label = "Coin Yield" },
+    yield = { element = "desert", label = "Crystal Yield" },
     luck = { element = "earth", label = "Luck" }, -- bunny's lucky-rabbit aura (Grass)
     hold = { element = "ice", label = "Hold" }, -- single-target CC; ring derived via PetTargeting.auraScope
     empower = { element = "fire", label = "Empower" }, -- single-target buffer; ring derived via PetTargeting.auraScope

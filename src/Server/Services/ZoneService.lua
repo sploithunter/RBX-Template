@@ -10,6 +10,8 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local WorldContext = require(ReplicatedStorage.Shared.Game.WorldContext)
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 
 local ZoneService = {}
 ZoneService.__index = ZoneService
@@ -433,6 +435,17 @@ function ZoneService:UnlockZone(player, zoneId, options)
         zoneId = zoneId,
         areaId = areaId,
     })
+
+    -- Feed the event-counter bridge (StatEventCounters): "area_unlocked" -> areas_unlocked, and the
+    -- per-realm variants -> heaven/hell_areas_unlocked. These back the exploration/realm quests
+    -- (configs/stats.lua event_counters). Fire AFTER the unlock is committed; purely observational.
+    local realm = WorldContext.realmOfZoneId(areaId)
+    fireGameEvent(player, "area_unlocked", { zoneId = zoneId, areaId = areaId, realm = realm })
+    if realm == "heaven" then
+        fireGameEvent(player, "heaven_area_unlocked", { zoneId = zoneId, areaId = areaId })
+    elseif realm == "hell" then
+        fireGameEvent(player, "hell_area_unlocked", { zoneId = zoneId, areaId = areaId })
+    end
 
     return {
         ok = true,

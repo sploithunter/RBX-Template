@@ -945,7 +945,11 @@ local petConfig = {
             base_power = 40,
             base_health = 290,
             viewport_zoom = 1.6,
-            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            asset_transform = {
+                scale = 2.4,
+                huge_scale = 4.5,
+                orientation = { x = 0, y = 0, z = 0 },
+            },
             camera = {
                 distance = 3.5,
                 angle_y = 0,
@@ -1717,7 +1721,11 @@ local petConfig = {
             base_power = 40,
             base_health = 290,
             viewport_zoom = 1.6,
-            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            asset_transform = {
+                scale = 2.4,
+                huge_scale = 4.5,
+                orientation = { x = 0, y = 0, z = 0 },
+            },
             camera = {
                 distance = 3.5,
                 angle_y = 0,
@@ -3382,7 +3390,11 @@ local petConfig = {
             base_power = 42,
             base_health = 220,
             viewport_zoom = 1.5,
-            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            asset_transform = {
+                scale = 2.4,
+                huge_scale = 4.5,
+                orientation = { x = 0, y = 0, z = 0 },
+            },
             camera = {
                 distance = 3.5,
                 angle_y = 0,
@@ -4314,7 +4326,11 @@ local petConfig = {
             base_power = 22,
             base_health = 160,
             viewport_zoom = 1.5,
-            asset_transform = { scale = 1.6, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
+            asset_transform = {
+                scale = 2.4,
+                huge_scale = 4.5,
+                orientation = { x = 0, y = 0, z = 0 },
+            },
             camera = {
                 distance = 3.5,
                 angle_y = 0,

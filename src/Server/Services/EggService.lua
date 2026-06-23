@@ -916,12 +916,13 @@ function EggService:BuildPlayerHatchData(player, eggType, eggData, hatchOptions)
         playerData.luckBoost = (tonumber(playerData.luckBoost) or 0) + math.max(0, auraMult - 1)
     end
 
-    -- LUCKY SERVER (configs/creators.lua server_luck): a registered creator is in the
-    -- server, so everyone EXCEPT creators hatches luckier (MeetCreatorService stamps
-    -- ServerLuckBuff). Same additive-fraction fold as the bunny aura.
+    -- LUCKY SERVER (configs/creators.lua server_luck): a registered creator is in the server, so
+    -- everyone EXCEPT creators hatches luckier (MeetCreatorService stamps ServerLuckBuff). DEVLUCK is
+    -- MULTIPLICATIVE (Jason): instead of folding into the additive luck, pass the multiplier through
+    -- as playerData.devLuck — simulateHatch rolls the whole hatch that many times (fractional: 2.5 =
+    -- 2 rolls + a 50% chance of a 3rd) and keeps the rarest.
     if (player:GetAttribute("ServerLuckBuffUntil") or 0) > os.time() then
-        local serverMult = tonumber(player:GetAttribute("ServerLuckBuff")) or 1
-        playerData.luckBoost = (tonumber(playerData.luckBoost) or 0) + math.max(0, serverMult - 1)
+        playerData.devLuck = tonumber(player:GetAttribute("ServerLuckBuff")) or 1
     end
 
     -- FIRST EGG EVER: arm the one-roll mega-luck (configs/egg_system.lua

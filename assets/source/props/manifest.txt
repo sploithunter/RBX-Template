@@ -4,3 +4,4 @@
 
 stem	prop_id	biome	download_zip	display_name	original_tris	note
 joshua_tree	joshua_tree	desert	Meshy_AI_Desert_Bloom_Tree_0616211659_texture_obj.zip	Joshua Tree	18851	Meshy export says Desert Bloom Tree
+world_tree	world_tree	world	Meshy_AI_World_Tree_0618034829_texture_obj.zip	World Tree	1186198	

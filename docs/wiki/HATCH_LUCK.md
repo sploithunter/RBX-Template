@@ -24,6 +24,11 @@ huge           : hugeLuckBoost only                  -- fractional attempts, sep
 Every term is additive into `earned`; **nothing multiplies over the player's grind**
 (the only multiplicative path left is the dev-only `test_mode.super_luck`).
 
+The **lucky-server / creator-presence "devluck"** (`ServerLuckBuff`) is the exception that DOES
+multiply: it's not folded into `earned` — `simulateHatch` rolls the whole hatch `devLuck` times
+(fractional attempts: 2.5 = 2 rolls + a 50% chance of a 3rd) and keeps the rarest. Skips fixed-odds
+eggs.
+
 ## Why the index bonus is curved (exponent 2.5)
 
 Jason: "20% of an index is super easy... 90% is much more difficult than 80% — we need

@@ -99,4 +99,84 @@ dread_owl_gold	dread_owl	gold	Dread Owl Gold.zip	11278
 rimewraith_fox_basic	rimewraith_fox	basic	Rimewraith Fox.zip	10823	
 rimewraith_fox_gold	rimewraith_fox	gold	Rimewraith Fox Gold.zip	10821	
 cinderling_imp_basic	cinderling_imp	basic	Cinderling Imp.zip	11848	
-cinderling_imp_gold	cinderling_imp	gold	Cinderling Imp Gold.zip	11848	
+cinderling_imp_gold	cinderling_imp	gold	Cinderling Imp Gold.zip	11848
+coronal_cherub_basic	coronal_cherub	basic	Coronal Cherub.zip	8300	
+coronal_cherub_gold	coronal_cherub	gold	Coronal Cherub Gold.zip	8300	
+dawnfire_phoenix_basic	dawnfire_phoenix	basic	Dawnfire Phoenix.zip	7738	
+dawnfire_phoenix_gold	dawnfire_phoenix	gold	Dawnfire Phoenix Gold.zip	7738	
+aurora_dragon_basic	aurora_dragon	basic	Aurora Dragon.zip	7012	
+aurora_dragon_gold	aurora_dragon	gold	Aurora Dragon Gold.zip	7012	
+glacial_bear_basic	glacial_bear	basic	Glacial Bear.zip	7909	
+glacial_bear_gold	glacial_bear	gold	Glacial Bear Gold.zip	7909	
+starlight_owl_basic	starlight_owl	basic	Starlight Owl.zip	8186	
+starlight_owl_gold	starlight_owl	gold	Starlight Owl Gold.zip	8186	
+prism_fox_basic	prism_fox	basic	Prism Fox.zip	5083	
+prism_fox_gold	prism_fox	gold	Prism Fox Gold.zip	5083	
+frostlight_doe_basic	frostlight_doe	basic	Frostlight Doe.zip	7880	
+frostlight_doe_gold	frostlight_doe	gold	Frostlight Doe Gold.zip	7880	
+lance_seraph_basic	lance_seraph	basic	Lance Seraph.zip	6719	
+lance_seraph_gold	lance_seraph	gold	Lance Seraph Gold.zip	6719	
+lumen_salamander_basic	lumen_salamander	basic	Lumen Salamander.zip	6678	
+lumen_salamander_gold	lumen_salamander	gold	Lumen Salamander Gold.zip	6678	
+prism_lion_basic	prism_lion	basic	Prism Lion.zip	5909	
+prism_lion_gold	prism_lion	gold	Prism Lion Gold.zip	5909	
+bloomspirit_lamb_basic	bloomspirit_lamb	basic	Bloomspirit Lamb.zip	8648	
+bloomspirit_lamb_gold	bloomspirit_lamb	gold	Bloomspirit Lamb Gold.zip	8648	
+lightleaf_hare_basic	lightleaf_hare	basic	Lightleaf Hare.zip	5260	
+lightleaf_hare_gold	lightleaf_hare	gold	Lightleaf Hare Gold.zip	5260	
+crystalbark_stag_basic	crystalbark_stag	basic	Crystalbark Stag.zip	6693	
+crystalbark_stag_gold	crystalbark_stag	gold	Crystalbark Stag Gold.zip	6693	
+radiant_sprite_basic	radiant_sprite	basic	Radiant Sprite.zip	6503	
+radiant_sprite_gold	radiant_sprite	gold	Radiant Sprite Gold.zip	6503	
+worldbloom_ent_basic	worldbloom_ent	basic	Worldbloom Ent.zip	11949	
+worldbloom_ent_gold	worldbloom_ent	gold	Worldbloom Ent Gold.zip	11949	
+aurora_dove_basic	aurora_dove	basic	Aurora Dove.zip	4888	
+aurora_dove_gold	aurora_dove	gold	Aurora Dove Gold.zip	4888	
+prism_scarab_basic	prism_scarab	basic	Prism Scarab.zip	5705	
+prism_scarab_gold	prism_scarab	gold	Prism Scarab Gold.zip	5705	
+mirage_meerkat_basic	mirage_meerkat	basic	Mirage Meerkat.zip	7348	
+mirage_meerkat_gold	mirage_meerkat	gold	Mirage Meerkat Gold.zip	7348	
+sunwell_camel_basic	sunwell_camel	basic	Sunwell Camel.zip	8708	
+sunwell_camel_gold	sunwell_camel	gold	Sunwell Camel Gold.zip	8708	
+empyreal_couatl_basic	empyreal_couatl	basic	Empyreal Couatl.zip	7969	
+empyreal_couatl_gold	empyreal_couatl	gold	Empyreal Couatl Gold.zip	7969	
+frostcinder_imp_basic	frostcinder_imp	basic	Frostcinder Imp.zip	6833	
+frostcinder_imp_gold	frostcinder_imp	gold	Frostcinder Imp Gold.zip	6833	
+rimemane_lion_basic	rimemane_lion	basic	Rimemane Lion.zip	5840	
+rimemane_lion_gold	rimemane_lion	gold	Rimemane Lion Gold.zip	5840	
+hoarfrost_phoenix_basic	hoarfrost_phoenix	basic	Hoarfrost Phoenix.zip	7755	
+hoarfrost_phoenix_gold	hoarfrost_phoenix	gold	Hoarfrost Phoenix Gold.zip	7755	
+frostbrand_salamander_basic	frostbrand_salamander	basic	Frostbrand Salamander.zip	8442	
+frostbrand_salamander_gold	frostbrand_salamander	gold	Frostbrand Salamander Gold.zip	8442	
+deadfire_phoenix_basic	deadfire_phoenix	basic	Deadfire Phoenix.zip	5870	
+deadfire_phoenix_gold	deadfire_phoenix	gold	Deadfire Phoenix Gold.zip	5870	
+frostblight_lamb_basic	frostblight_lamb	basic	Frostblight Lamb.zip	8579	
+frostblight_lamb_gold	frostblight_lamb	gold	Frostblight Lamb Gold.zip	8579	
+gloom_hare_basic	gloom_hare	basic	Gloom Hare.zip	5735	
+gloom_hare_gold	gloom_hare	gold	Gloom Hare Gold.zip	5735	
+icerot_stag_basic	icerot_stag	basic	Icerot Stag.zip	6715	
+icerot_stag_gold	icerot_stag	gold	Icerot Stag Gold.zip	6715	
+rimewither_sprite_basic	rimewither_sprite	basic	Rimewither Sprite.zip	9609	
+rimewither_sprite_gold	rimewither_sprite	gold	Rimewither Sprite Gold.zip	9609	
+wraith_dove_basic	wraith_dove	basic	Wraith Dove.zip	6715	
+wraith_dove_gold	wraith_dove	gold	Wraith Dove Gold.zip	6715	
+rime_scarab_basic	rime_scarab	basic	Rime Scarab.zip	6287	
+rime_scarab_gold	rime_scarab	gold	Rime Scarab Gold.zip	6287	
+gloom_jackal_basic	gloom_jackal	basic	Gloom Jackal.zip	7773	
+gloom_jackal_gold	gloom_jackal	gold	Gloom Jackal Gold.zip	7773	
+frostdust_camel_basic	frostdust_camel	basic	Frostdust Camel.zip	6524	
+frostdust_camel_gold	frostdust_camel	gold	Frostdust Camel Gold.zip	6524	
+dread_couatl_basic	dread_couatl	basic	Dread Couatl.zip	8640	
+dread_couatl_gold	dread_couatl	gold	Dread Couatl Gold.zip	8640
+rimegloom_hare_basic	rimegloom_hare	basic	Rimegloom Hare.zip	5645	
+rimegloom_hare_gold	rimegloom_hare	gold	Rimegloom Hare Gold.zip	5645	
+dread_fox_basic	dread_fox	basic	Dread Fox.zip	6880	
+dread_fox_gold	dread_fox	gold	Dread Fox Gold.zip	6880	
+gravefrost_owl_basic	gravefrost_owl	basic	Gravefrost Owl.zip	6607	
+gravefrost_owl_gold	gravefrost_owl	gold	Gravefrost Owl Gold.zip	6607	
+rimeguard_bear_basic	rimeguard_bear	basic	Rimeguard Bear.zip	6742	
+rimeguard_bear_gold	rimeguard_bear	gold	Rimeguard Bear Gold.zip	6742	
+rimewraith_dragon_basic	rimewraith_dragon	basic	Rimewraith Dragon.zip	7337	
+rimewraith_dragon_gold	rimewraith_dragon	gold	Rimewraith Dragon Gold.zip	7337	
+frostgrave_ent_basic	frostgrave_ent	basic	Frostgrave Ent.zip	7639	
+frostgrave_ent_gold	frostgrave_ent	gold	Frostgrave Ent Gold.zip	7639	

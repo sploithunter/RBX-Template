@@ -61,8 +61,8 @@ return {
     inferno_brand = "Signature: a ramping burning brand.",
 
     -- Generic (white) — farming / luck / utility, any archetype
-    prospector = "+coin yield for a duration.",
-    windfall = "A burst of bonus coins / doubled pickups.",
+    prospector = "+crystal yield for a duration.",
+    windfall = "A burst of bonus crystals / doubled pickups.",
     fortune = "+luck: better egg-hatch odds for a while.",
     huge_fortune = "Huge luck spike: big egg-hatch odds boost.",
     swift = "Toggle: +move speed for you and your pets.",
@@ -71,5 +71,5 @@ return {
     recall = "Teleports you to your saved / last-egg spot.",
     world_travel = "Teleports you to a world / zone hub.",
     xp_surge = "+XP gain for a duration.",
-    magnet = "Widens the radius that auto-collects coins/ore.",
+    magnet = "Widens the radius that auto-collects crystals/ore.",
 }

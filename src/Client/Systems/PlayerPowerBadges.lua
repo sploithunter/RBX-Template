@@ -25,7 +25,7 @@ local localPlayer = Players.LocalPlayer
 local BUFFS = {
     { attr = "PetDamageBuff", label = "DMG" }, -- Mountain's Strength
     { attr = "CritBuff", label = "CRIT" }, -- Critical Strike
-    { attr = "CoinYieldPower", label = "COIN" }, -- Prospector (coin_yield axis)
+    { attr = "CoinYieldPower", label = "CRYS" }, -- Prospector (coin_yield axis) — "Crystals" display
     { attr = "DropRateBuff", label = "DROP" }, -- Windfall (drop_rate axis — +loot-table chance)
     { attr = "LuckBuff", label = "LUCK" }, -- Fortune / Huge Fortune (purple clover)
     { attr = "LuckBuffPotion", label = "LUCK" }, -- Fortune potion (own source; adds to the power)

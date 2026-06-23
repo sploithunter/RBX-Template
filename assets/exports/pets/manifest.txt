@@ -41,6 +41,13 @@
 #   assets/exports/pets/blight_pets_2026-06-16_gold_contact_sheet.png
 #   import manifest: assets/ui/imports/manifest_2026-06-16_blight_pets.txt
 
+#
+# 2026-06-23 realm pets batch (basic + gold, 10k budget) — COMPLETE 40 species / 80 meshes:
+#   assets/exports/pets/realm_pets_2026-06-23_basic_contact_sheet.png
+#   assets/exports/pets/realm_pets_2026-06-23_gold_contact_sheet.png
+#   import manifest: assets/ui/imports/manifest_2026-06-23_realm_pets.txt
+#   Upload: {stem}_10k.fbx + {stem}.png (native kept when source <= 10k; worldbloom_ent decimated)
+#
 pet	variant	source_tris	export_dir	5k	7500tris	10k	texture
 grumpy_cat	basic	7500	assets/exports/pets/grumpy_cat_basic/	5000 tris	7500 tris	7500 tris*	grumpy_cat_basic.png
 cube_dog	basic	7004	assets/exports/pets/cube_dog_basic/	5000 tris	7004 tris*	7004 tris*	cube_dog_basic.png
@@ -141,6 +148,74 @@ rimewraith_fox	gold	10821	assets/exports/pets/rimewraith_fox_gold/	5000 tris	750
 cinderling_imp	basic	11848	assets/exports/pets/cinderling_imp_basic/	5000 tris	7500 tris	10000 tris	cinderling_imp_basic.png
 cinderling_imp	gold	11848	assets/exports/pets/cinderling_imp_gold/	5000 tris	7500 tris	10000 tris	cinderling_imp_gold.png
 
+coronal_cherub	basic	8300	assets/exports/pets/coronal_cherub_basic/	-	-	8300 tris*	coronal_cherub_basic.png
+coronal_cherub	gold	8300	assets/exports/pets/coronal_cherub_gold/	-	-	8300 tris*	coronal_cherub_gold.png
+dawnfire_phoenix	basic	7738	assets/exports/pets/dawnfire_phoenix_basic/	-	-	7738 tris*	dawnfire_phoenix_basic.png
+dawnfire_phoenix	gold	7738	assets/exports/pets/dawnfire_phoenix_gold/	-	-	7738 tris*	dawnfire_phoenix_gold.png
+aurora_dragon	basic	7012	assets/exports/pets/aurora_dragon_basic/	-	-	7012 tris*	aurora_dragon_basic.png
+aurora_dragon	gold	7012	assets/exports/pets/aurora_dragon_gold/	-	-	7012 tris*	aurora_dragon_gold.png
+glacial_bear	basic	7909	assets/exports/pets/glacial_bear_basic/	-	-	7909 tris*	glacial_bear_basic.png
+glacial_bear	gold	7909	assets/exports/pets/glacial_bear_gold/	-	-	7909 tris*	glacial_bear_gold.png
+starlight_owl	basic	8186	assets/exports/pets/starlight_owl_basic/	-	-	8186 tris*	starlight_owl_basic.png
+starlight_owl	gold	8186	assets/exports/pets/starlight_owl_gold/	-	-	8186 tris*	starlight_owl_gold.png
+prism_fox	basic	5083	assets/exports/pets/prism_fox_basic/	-	-	5083 tris*	prism_fox_basic.png
+prism_fox	gold	5083	assets/exports/pets/prism_fox_gold/	-	-	5083 tris*	prism_fox_gold.png
+frostlight_doe	basic	7880	assets/exports/pets/frostlight_doe_basic/	-	-	7880 tris*	frostlight_doe_basic.png
+frostlight_doe	gold	7880	assets/exports/pets/frostlight_doe_gold/	-	-	7880 tris*	frostlight_doe_gold.png
+lance_seraph	basic	6719	assets/exports/pets/lance_seraph_basic/	-	-	6719 tris*	lance_seraph_basic.png
+lance_seraph	gold	6719	assets/exports/pets/lance_seraph_gold/	-	-	6719 tris*	lance_seraph_gold.png
+lumen_salamander	basic	6678	assets/exports/pets/lumen_salamander_basic/	-	-	6678 tris*	lumen_salamander_basic.png
+lumen_salamander	gold	6678	assets/exports/pets/lumen_salamander_gold/	-	-	6678 tris*	lumen_salamander_gold.png
+prism_lion	basic	5909	assets/exports/pets/prism_lion_basic/	-	-	5909 tris*	prism_lion_basic.png
+prism_lion	gold	5909	assets/exports/pets/prism_lion_gold/	-	-	5909 tris*	prism_lion_gold.png
+bloomspirit_lamb	basic	8648	assets/exports/pets/bloomspirit_lamb_basic/	-	-	8648 tris*	bloomspirit_lamb_basic.png
+bloomspirit_lamb	gold	8648	assets/exports/pets/bloomspirit_lamb_gold/	-	-	8648 tris*	bloomspirit_lamb_gold.png
+lightleaf_hare	basic	5260	assets/exports/pets/lightleaf_hare_basic/	-	-	5260 tris*	lightleaf_hare_basic.png
+lightleaf_hare	gold	5260	assets/exports/pets/lightleaf_hare_gold/	-	-	5260 tris*	lightleaf_hare_gold.png
+crystalbark_stag	basic	6693	assets/exports/pets/crystalbark_stag_basic/	-	-	6693 tris*	crystalbark_stag_basic.png
+crystalbark_stag	gold	6693	assets/exports/pets/crystalbark_stag_gold/	-	-	6693 tris*	crystalbark_stag_gold.png
+radiant_sprite	basic	6503	assets/exports/pets/radiant_sprite_basic/	-	-	6503 tris*	radiant_sprite_basic.png
+radiant_sprite	gold	6503	assets/exports/pets/radiant_sprite_gold/	-	-	6503 tris*	radiant_sprite_gold.png
+worldbloom_ent	basic	11949	assets/exports/pets/worldbloom_ent_basic/	-	-	10000 tris	worldbloom_ent_basic.png
+worldbloom_ent	gold	11949	assets/exports/pets/worldbloom_ent_gold/	-	-	10000 tris	worldbloom_ent_gold.png
+aurora_dove	basic	4888	assets/exports/pets/aurora_dove_basic/	-	-	4888 tris*	aurora_dove_basic.png
+aurora_dove	gold	4888	assets/exports/pets/aurora_dove_gold/	-	-	4888 tris*	aurora_dove_gold.png
+prism_scarab	basic	5705	assets/exports/pets/prism_scarab_basic/	-	-	5705 tris*	prism_scarab_basic.png
+prism_scarab	gold	5705	assets/exports/pets/prism_scarab_gold/	-	-	5705 tris*	prism_scarab_gold.png
+mirage_meerkat	basic	7348	assets/exports/pets/mirage_meerkat_basic/	-	-	7348 tris*	mirage_meerkat_basic.png
+mirage_meerkat	gold	7348	assets/exports/pets/mirage_meerkat_gold/	-	-	7348 tris*	mirage_meerkat_gold.png
+sunwell_camel	basic	8708	assets/exports/pets/sunwell_camel_basic/	-	-	8708 tris*	sunwell_camel_basic.png
+sunwell_camel	gold	8708	assets/exports/pets/sunwell_camel_gold/	-	-	8708 tris*	sunwell_camel_gold.png
+empyreal_couatl	basic	7969	assets/exports/pets/empyreal_couatl_basic/	-	-	7969 tris*	empyreal_couatl_basic.png
+empyreal_couatl	gold	7969	assets/exports/pets/empyreal_couatl_gold/	-	-	7969 tris*	empyreal_couatl_gold.png
+frostcinder_imp	basic	6833	assets/exports/pets/frostcinder_imp_basic/	-	-	6833 tris*	frostcinder_imp_basic.png
+frostcinder_imp	gold	6833	assets/exports/pets/frostcinder_imp_gold/	-	-	6833 tris*	frostcinder_imp_gold.png
+rimemane_lion	basic	5840	assets/exports/pets/rimemane_lion_basic/	-	-	5840 tris*	rimemane_lion_basic.png
+rimemane_lion	gold	5840	assets/exports/pets/rimemane_lion_gold/	-	-	5840 tris*	rimemane_lion_gold.png
+hoarfrost_phoenix	basic	7755	assets/exports/pets/hoarfrost_phoenix_basic/	-	-	7755 tris*	hoarfrost_phoenix_basic.png
+hoarfrost_phoenix	gold	7755	assets/exports/pets/hoarfrost_phoenix_gold/	-	-	7755 tris*	hoarfrost_phoenix_gold.png
+frostbrand_salamander	basic	8442	assets/exports/pets/frostbrand_salamander_basic/	-	-	8442 tris*	frostbrand_salamander_basic.png
+frostbrand_salamander	gold	8442	assets/exports/pets/frostbrand_salamander_gold/	-	-	8442 tris*	frostbrand_salamander_gold.png
+deadfire_phoenix	basic	5870	assets/exports/pets/deadfire_phoenix_basic/	-	-	5870 tris*	deadfire_phoenix_basic.png
+deadfire_phoenix	gold	5870	assets/exports/pets/deadfire_phoenix_gold/	-	-	5870 tris*	deadfire_phoenix_gold.png
+frostblight_lamb	basic	8579	assets/exports/pets/frostblight_lamb_basic/	-	-	8579 tris*	frostblight_lamb_basic.png
+frostblight_lamb	gold	8579	assets/exports/pets/frostblight_lamb_gold/	-	-	8579 tris*	frostblight_lamb_gold.png
+gloom_hare	basic	5735	assets/exports/pets/gloom_hare_basic/	-	-	5735 tris*	gloom_hare_basic.png
+gloom_hare	gold	5735	assets/exports/pets/gloom_hare_gold/	-	-	5735 tris*	gloom_hare_gold.png
+icerot_stag	basic	6715	assets/exports/pets/icerot_stag_basic/	-	-	6715 tris*	icerot_stag_basic.png
+icerot_stag	gold	6715	assets/exports/pets/icerot_stag_gold/	-	-	6715 tris*	icerot_stag_gold.png
+rimewither_sprite	basic	9609	assets/exports/pets/rimewither_sprite_basic/	-	-	9609 tris*	rimewither_sprite_basic.png
+rimewither_sprite	gold	9609	assets/exports/pets/rimewither_sprite_gold/	-	-	9609 tris*	rimewither_sprite_gold.png
+wraith_dove	basic	6715	assets/exports/pets/wraith_dove_basic/	-	-	6715 tris*	wraith_dove_basic.png
+wraith_dove	gold	6715	assets/exports/pets/wraith_dove_gold/	-	-	6715 tris*	wraith_dove_gold.png
+rime_scarab	basic	6287	assets/exports/pets/rime_scarab_basic/	-	-	6287 tris*	rime_scarab_basic.png
+rime_scarab	gold	6287	assets/exports/pets/rime_scarab_gold/	-	-	6287 tris*	rime_scarab_gold.png
+gloom_jackal	basic	7773	assets/exports/pets/gloom_jackal_basic/	-	-	7773 tris*	gloom_jackal_basic.png
+gloom_jackal	gold	7773	assets/exports/pets/gloom_jackal_gold/	-	-	7773 tris*	gloom_jackal_gold.png
+frostdust_camel	basic	6524	assets/exports/pets/frostdust_camel_basic/	-	-	6524 tris*	frostdust_camel_basic.png
+frostdust_camel	gold	6524	assets/exports/pets/frostdust_camel_gold/	-	-	6524 tris*	frostdust_camel_gold.png
+dread_couatl	basic	8640	assets/exports/pets/dread_couatl_basic/	-	-	8640 tris*	dread_couatl_basic.png
+dread_couatl	gold	8640	assets/exports/pets/dread_couatl_gold/	-	-	8640 tris*	dread_couatl_gold.png
 * below target — source mesh already under budget; export kept at native count
 
 source_manifest: assets/source/pets/manifest.txt
@@ -203,3 +278,49 @@ download:
   dread_owl: ~/Downloads/Dread Owl.zip + Dread Owl.png / Dread Owl Gold.zip + Dread Owl Gold.png
   rimewraith_fox: ~/Downloads/Rimewraith Fox.zip + Rimewraith Fox.png / Rimewraith Fox Gold.zip + Rimewraith Fox Gold.png
   cinderling_imp: ~/Downloads/Cinderling Imp.zip + Cinderling Imp.png / Cinderling Imp Gold.zip + Cinderling Imp Gold.png
+  coronal_cherub: ~/Downloads/Coronal Cherub.zip + Coronal Cherub.png / Coronal Cherub Gold.zip + Coronal Cherub Gold.png
+  dawnfire_phoenix: ~/Downloads/Dawnfire Phoenix.zip + Dawnfire Phoenix.png / Dawnfire Phoenix Gold.zip + Dawnfire Phoenix Gold.png
+  aurora_dragon: ~/Downloads/Aurora Dragon.zip + Aurora Dragon.png / Aurora Dragon Gold.zip + Aurora Dragon Gold.png
+  glacial_bear: ~/Downloads/Glacial Bear.zip + Glacial Bear.png / Glacial Bear Gold.zip + Glacial Bear Gold.png
+  starlight_owl: ~/Downloads/Starlight Owl.zip + Starlight Owl.png / Starlight Owl Gold.zip + Starlight Owl Gold.png
+  prism_fox: ~/Downloads/Prism Fox.zip + Prism Fox.png / Prism Fox Gold.zip + Prism Fox Gold.png
+  frostlight_doe: ~/Downloads/Frostlight Doe.zip + Frostlight Doe.png / Frostlight Doe Gold.zip + Frostlight Doe Gold.png
+  lance_seraph: ~/Downloads/Lance Seraph.zip + Lance Seraph.png / Lance Seraph Gold.zip + Lance Seraph Gold.png
+  lumen_salamander: ~/Downloads/Lumen Salamander.zip + Lumen Salamander.png / Lumen Salamander Gold.zip + Lumen Salamander Gold.png
+  prism_lion: ~/Downloads/Prism Lion.zip + Prism Lion.png / Prism Lion Gold.zip + Prism Lion Gold.png
+  bloomspirit_lamb: ~/Downloads/Bloomspirit Lamb.zip + Bloomspirit Lamb.png / Bloomspirit Lamb Gold.zip + Bloomspirit Lamb Gold.png
+  lightleaf_hare: ~/Downloads/Lightleaf Hare.zip + Lightleaf Hare.png / Lightleaf Hare Gold.zip + Lightleaf Hare Gold.png
+  crystalbark_stag: ~/Downloads/Crystalbark Stag.zip + Crystalbark Stag.png / Crystalbark Stag Gold.zip + Crystalbark Stag Gold.png
+  radiant_sprite: ~/Downloads/Radiant Sprite.zip + Radiant Sprite.png / Radiant Sprite Gold.zip + Radiant Sprite Gold.png
+  worldbloom_ent: ~/Downloads/Worldbloom Ent.zip + Worldbloom Ent.png / Worldbloom Ent Gold.zip + Worldbloom Ent Gold.png
+  aurora_dove: ~/Downloads/Aurora Dove.zip + Aurora Dove.png / Aurora Dove Gold.zip + Aurora Dove Gold.png
+  prism_scarab: ~/Downloads/Prism Scarab.zip + Prism Scarab.png / Prism Scarab Gold.zip + Prism Scarab Gold.png
+  mirage_meerkat: ~/Downloads/Mirage Meerkat.zip + Mirage Meerkat.png / Mirage Meerkat Gold.zip + Mirage Meerkat Gold.png
+  sunwell_camel: ~/Downloads/Sunwell Camel.zip + Sunwell Camel.png / Sunwell Camel Gold.zip + Sunwell Camel Gold.png
+  empyreal_couatl: ~/Downloads/Empyreal Couatl.zip + Empyreal Couatl.png / Empyreal Couatl Gold.zip + Empyreal Couatl Gold.png
+  frostcinder_imp: ~/Downloads/Frostcinder Imp.zip + Frostcinder Imp.png / Frostcinder Imp Gold.zip + Frostcinder Imp Gold.png
+  rimemane_lion: ~/Downloads/Rimemane Lion.zip + Rimemane Lion.png / Rimemane Lion Gold.zip + Rimemane Lion Gold.png
+  hoarfrost_phoenix: ~/Downloads/Hoarfrost Phoenix.zip + Hoarfrost Phoenix.png / Hoarfrost Phoenix Gold.zip + Hoarfrost Phoenix Gold.png
+  frostbrand_salamander: ~/Downloads/Frostbrand Salamander.zip + Frostbrand Salamander.png / Frostbrand Salamander Gold.zip + Frostbrand Salamander Gold.png
+  deadfire_phoenix: ~/Downloads/Deadfire Phoenix.zip + Deadfire Phoenix.png / Deadfire Phoenix Gold.zip + Deadfire Phoenix Gold.png
+  frostblight_lamb: ~/Downloads/Frostblight Lamb.zip + Frostblight Lamb.png / Frostblight Lamb Gold.zip + Frostblight Lamb Gold.png
+  gloom_hare: ~/Downloads/Gloom Hare.zip + Gloom Hare.png / Gloom Hare Gold.zip + Gloom Hare Gold.png
+  icerot_stag: ~/Downloads/Icerot Stag.zip + Icerot Stag.png / Icerot Stag Gold.zip + Icerot Stag Gold.png
+  rimewither_sprite: ~/Downloads/Rimewither Sprite.zip + Rimewither Sprite.png / Rimewither Sprite Gold.zip + Rimewither Sprite Gold.png
+  wraith_dove: ~/Downloads/Wraith Dove.zip + Wraith Dove.png / Wraith Dove Gold.zip + Wraith Dove Gold.png
+  rime_scarab: ~/Downloads/Rime Scarab.zip + Rime Scarab.png / Rime Scarab Gold.zip + Rime Scarab Gold.png
+  gloom_jackal: ~/Downloads/Gloom Jackal.zip + Gloom Jackal.png / Gloom Jackal Gold.zip + Gloom Jackal Gold.png
+  frostdust_camel: ~/Downloads/Frostdust Camel.zip + Frostdust Camel.png / Frostdust Camel Gold.zip + Frostdust Camel Gold.png
+  dread_couatl: ~/Downloads/Dread Couatl.zip + Dread Couatl.png / Dread Couatl Gold.zip + Dread Couatl Gold.png
+rimegloom_hare	basic	5645	assets/exports/pets/rimegloom_hare_basic/	-	-	5645 tris*	rimegloom_hare_basic.png
+rimegloom_hare	gold	5645	assets/exports/pets/rimegloom_hare_gold/	-	-	5645 tris*	rimegloom_hare_gold.png
+dread_fox	basic	6880	assets/exports/pets/dread_fox_basic/	-	-	6880 tris*	dread_fox_basic.png
+dread_fox	gold	6880	assets/exports/pets/dread_fox_gold/	-	-	6880 tris*	dread_fox_gold.png
+gravefrost_owl	basic	6607	assets/exports/pets/gravefrost_owl_basic/	-	-	6607 tris*	gravefrost_owl_basic.png
+gravefrost_owl	gold	6607	assets/exports/pets/gravefrost_owl_gold/	-	-	6607 tris*	gravefrost_owl_gold.png
+rimeguard_bear	basic	6742	assets/exports/pets/rimeguard_bear_basic/	-	-	6742 tris*	rimeguard_bear_basic.png
+rimeguard_bear	gold	6742	assets/exports/pets/rimeguard_bear_gold/	-	-	6742 tris*	rimeguard_bear_gold.png
+rimewraith_dragon	basic	7337	assets/exports/pets/rimewraith_dragon_basic/	-	-	7337 tris*	rimewraith_dragon_basic.png
+rimewraith_dragon	gold	7337	assets/exports/pets/rimewraith_dragon_gold/	-	-	7337 tris*	rimewraith_dragon_gold.png
+frostgrave_ent	basic	7639	assets/exports/pets/frostgrave_ent_basic/	-	-	7639 tris*	frostgrave_ent_basic.png
+frostgrave_ent	gold	7639	assets/exports/pets/frostgrave_ent_gold/	-	-	7639 tris*	frostgrave_ent_gold.png
