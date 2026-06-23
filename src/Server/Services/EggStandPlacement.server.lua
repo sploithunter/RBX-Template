@@ -17,11 +17,9 @@ local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-print("[EggStandPlacement] START (script entered)")
 local petConfig = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("pets"))
 local WorldContext = require(ReplicatedStorage.Shared.Game.WorldContext)
 local EggStandResolver = require(ReplicatedStorage.Shared.Game.EggStandResolver)
-print("[EggStandPlacement] requires loaded")
 
 local matrix = petConfig.realm_area_eggs
 if type(matrix) ~= "table" or next(matrix) == nil then
@@ -118,15 +116,18 @@ if not eggsFolder then
 end
 local maps = Workspace:WaitForChild("Maps", 30)
 if not maps then
-    print("[EggStandPlacement] ABORT: Maps not found")
     return
 end
-print(
-    ("[EggStandPlacement] scanning %d worlds; %d egg templates"):format(
-        #maps:GetChildren(),
-        #eggsFolder:GetChildren()
-    )
-)
+-- Egg model templates are BUILT ASYNCHRONOUSLY (after this script runs), so the Eggs folder is
+-- typically empty at this point. Wait until it's populated before scanning — otherwise every
+-- placement races the build via a per-egg WaitForChild grace window, and a slow/degraded asset
+-- load (seen as "Asset prewarm timed out") can exceed it and silently leave worlds egg-less.
+do
+    local elapsed = 0
+    while #eggsFolder:GetChildren() == 0 and elapsed < 120 do
+        elapsed += task.wait(0.5)
+    end
+end
 
 -- Discover authored stands per world and place their resolved egg.
 local _standCount, _queued = 0, 0
@@ -141,11 +142,9 @@ for _, world in ipairs(maps:GetChildren()) do
         realmKey = realm .. "_" .. depth
     end
     if realmKey and type(matrix[realmKey]) == "table" then
-        local _worldStands = 0
         for _, inst in ipairs(world:GetDescendants()) do
             if isStand(inst) then
                 _standCount += 1
-                _worldStands += 1
                 local eggId = EggStandResolver.eggFor(realmKey, inst.Name, matrix)
                 if eggId then
                     _queued += 1
@@ -164,15 +163,11 @@ for _, world in ipairs(maps:GetChildren()) do
                 end
             end
         end
-        if _worldStands > 0 then
-            print(
-                ("[EggStandPlacement] %s [%s]: %d stands"):format(
-                    world.Name,
-                    realmKey,
-                    _worldStands
-                )
-            )
-        end
     end
 end
-print(("[EggStandPlacement] DONE: %d stands, %d eggs queued"):format(_standCount, _queued))
+print(
+    ("[EggStandPlacement] placed eggs on %d/%d authored stands across the worlds"):format(
+        _queued,
+        _standCount
+    )
+)
