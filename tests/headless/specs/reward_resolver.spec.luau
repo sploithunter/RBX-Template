@@ -33,10 +33,13 @@ return function()
             expect(r.amount).to.equal(50) -- hell_1 bumped 1.5x -> 5.0x for egg-testing income
         end)
 
-        it("heaven_2 / hell_2 scale at 2.0x", function()
-            expect(resolver:resolveReward(10, "earth", "heaven_2").amount).to.equal(20)
-            expect(resolver:resolveReward(10, "ice", "hell_2").amount).to.equal(20)
-        end)
+        it(
+            "heaven_2 / hell_2 scale at 8.0x (monotonic deeper=richer; absorbs old value_mult)",
+            function()
+                expect(resolver:resolveReward(10, "earth", "heaven_2").amount).to.equal(80)
+                expect(resolver:resolveReward(10, "ice", "hell_2").amount).to.equal(80)
+            end
+        )
 
         it("currency drops vary by biome", function()
             expect(resolver:resolveReward(10, "earth", "base").currency).to.equal("grass_coins")
