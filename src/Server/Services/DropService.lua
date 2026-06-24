@@ -58,10 +58,12 @@ function DropService:Init()
     self._templateHolder.Name = "_GemTemplates"
     self._templateHolder.Parent = self._folder
 
-    -- pre-build the gem templates off the hot path (CreateMeshPartAsync yields)
+    -- pre-build the gem templates off the hot path (CreateMeshPartAsync yields). Each colour+form is
+    -- its OWN mesh+texture pair (every Meshy gem gen has its own UV layout — there is no shared mesh),
+    -- so forms come from the per-colour texture table.
     task.spawn(function()
-        for color in pairs(self._gems.textures or {}) do
-            for form in pairs(self._gems.meshes or {}) do
+        for color, forms in pairs(self._gems.textures or {}) do
+            for form in pairs(forms) do
                 self:_ensureTemplate(color, form)
             end
         end
@@ -94,7 +96,9 @@ function DropService:_ensureTemplate(color, form)
     if self._templates[key] then
         return self._templates[key]
     end
-    local meshId = self._gems.meshes and self._gems.meshes[form]
+    local meshId = self._gems.meshes
+        and self._gems.meshes[color]
+        and self._gems.meshes[color][form]
     local texId = self._gems.textures
         and self._gems.textures[color]
         and self._gems.textures[color][form]

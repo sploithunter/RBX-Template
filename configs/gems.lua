@@ -1,45 +1,71 @@
 --[[
     Gem drop assets + mapping (#177) — Halo & Horns.
 
-    Mined coins drop as physical GEMS (DropService). Per Jason, the 4 colors share the SAME 3 form
-    meshes (single / pile / bag) and differ only by texture — so this is 3 meshes + 12 textures, not
-    12 meshes. Color is chosen by the biome currency; gem FORM steps up with the chunk a gem carries
-    (single = small, pile = medium, bag = big). A large award SPLITS into several gems (payout by
-    count), so a fat node bursts a fistful of gems instead of one. All ids are real, uploaded assets.
+    Mined coins drop as physical GEMS (DropService). 3 form SHAPES (single / pile / bag) recolored
+    per origin — but each colour+form is its OWN mesh+texture PAIR (every Meshy gem generation has a
+    distinct UV unwrap, so the shape-shared "one mesh, swap texture" idea does NOT hold: a colour's
+    texture only maps onto its own mesh). Color is chosen by the biome currency; gem FORM steps up
+    with the chunk a gem carries (single = small, pile = medium, bag = big). A large award SPLITS into
+    several gems (payout by count), so a fat node bursts a fistful instead of one. All ids are real,
+    uploaded assets (meshes+textures are GROUP-owned so the group place can load them).
 ]]
 
 return {
-    -- 3 shared form meshes (colors reuse these; geometry is identical across colors).
+    -- Meshes keyed [color][form]. NOTE: despite identical bag/pile/single SHAPES, each Meshy gem
+    -- generation has its OWN UV layout, so a colour's texture only maps correctly onto ITS OWN mesh
+    -- (no shared mesh — applying emerald's texture to sapphire's mesh produces UV-garble). Re-uploaded
+    -- from assets/exports/gems to GROUP 15872767 (a group-owned place can't LoadAsset user-owned
+    -- assets). Mesh ids resolved from scripts/gem_model_ids.json model uploads.
     meshes = {
-        single = "rbxassetid://120847768657487",
-        pile = "rbxassetid://118620301664836",
-        bag = "rbxassetid://140667375594889",
-    },
-
-    -- 12 textures keyed [color][form].
-    textures = {
         sapphire = {
-            single = "rbxassetid://85476193238451",
-            pile = "rbxassetid://106895217994427",
-            bag = "rbxassetid://103860519092179",
+            single = "rbxassetid://119448447976045",
+            pile = "rbxassetid://138947095989808",
+            bag = "rbxassetid://103222091262127",
         },
         emerald = {
-            single = "rbxassetid://95635117262920",
-            pile = "rbxassetid://110028734760296",
-            bag = "rbxassetid://123355196999439",
+            single = "rbxassetid://121524530289303",
+            pile = "rbxassetid://123279435186787",
+            bag = "rbxassetid://110828032637100",
         },
         ruby = {
-            single = "rbxassetid://138551458441135",
-            pile = "rbxassetid://74868057637890",
-            bag = "rbxassetid://83118221453427",
+            single = "rbxassetid://97487158573784",
+            pile = "rbxassetid://140222025908512",
+            bag = "rbxassetid://125117518808413",
         },
         citrine = {
-            single = "rbxassetid://134350323528645",
-            pile = "rbxassetid://106846660303472",
-            bag = "rbxassetid://96892408129617",
+            single = "rbxassetid://92909442829259",
+            pile = "rbxassetid://137953217640306",
+            bag = "rbxassetid://121787443101874",
         },
-        -- PREMIUM gems (the `gems` currency — bonus drops, not biome coins): Jason's
-        -- amethyst art (Jun 11), purple = premium/generic.
+    },
+
+    -- 12 UV-atlas textures keyed [color][form] (the real Meshy map_Kd images — NOT the flat UI gem
+    -- icons that were wired here before, which garbled when wrapped on the mesh). Resolved from the
+    -- gem_decals.json decals -> Image ids.
+    textures = {
+        sapphire = {
+            single = "rbxassetid://92087344212010",
+            pile = "rbxassetid://140074573067134",
+            bag = "rbxassetid://111577083207352",
+        },
+        emerald = {
+            single = "rbxassetid://89849279170806",
+            pile = "rbxassetid://110721051431892",
+            bag = "rbxassetid://91612068059535",
+        },
+        ruby = {
+            single = "rbxassetid://106984872505048",
+            pile = "rbxassetid://89319434061596",
+            bag = "rbxassetid://80309644035251",
+        },
+        citrine = {
+            single = "rbxassetid://88555005076540",
+            pile = "rbxassetid://130117829099103",
+            bag = "rbxassetid://115145476379087",
+        },
+        -- PREMIUM amethyst (the `gems` currency): mesh not uploaded yet (OBJ-only in exports, no FBX),
+        -- so amethyst has NO meshes[] entry and falls back to a tinted purple ball in DropService.
+        -- Textures kept for when its mesh is uploaded. TODO: upload amethyst mesh -> add meshes.amethyst.
         amethyst = {
             single = "rbxassetid://97110236926395",
             pile = "rbxassetid://115584169887230",
