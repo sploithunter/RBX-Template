@@ -14,8 +14,14 @@ Buy/sell enhancements for **gems**. v1 scope and decisions locked with Jason.
   currently SLOT** — the nearest multiple of 5, which is always within the ±2 slot window.
   `band = round(playerLevel / 5) × 5` → L16-17 see **L15**, L18-22 see **L20**, L23-27 see **L25**, …
   Clamped to `[min_level, max_level]` (5..50). `spark` (rare proc tier) is excluded — found, not bought.
-- **Sell-back: YES** (the junk sink). `sell = floor(buy × fraction)` gems, **un-slotted stacks only**,
-  fraction clamped to ≤1 so a sell never beats the buy (no arbitrage). Start at 30%.
+- **Sell-back: YES** (the junk sink). `sell = floor(value × fraction)` gems, **un-slotted stacks only**,
+  fraction clamped to ≤1 so a sell never beats the buy (no arbitrage). Start at 30%. Unlike buy, sell
+  uses the item's **actual level** (smooth 1–50, so L14 > L13), and works for **any grade** the player
+  owns — single/dual have a real buyback even though they aren't sold.
+- **Grade scaling (rarity-derived):** `grade_mult` from drop odds (rarer drop = pricier). Drops are
+  natural 50% / dual 32.5% / single 17.5% → inverse, normalized to natural=1 → **dual ×1.54, single
+  ×2.86**. One `grade_mult` table drives both buy and sell. `buyable_grades` (v1 = naturals only) gates
+  *buying*; selling accepts all grades.
 - **Tracking: free** — the gem ledger already records every move by `source`
   (`enh_buy:<type>_L<level>`, `enh_sell:…`). Add lifetime `enhancements_bought` / `enhancements_sold`
   stats to mirror `enhancements_found`; OpsAlert can flag anomalies.

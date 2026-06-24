@@ -316,19 +316,28 @@ return {
     shop = {
         enabled = true,
         currency = "gems",
-        grades = { natural = true }, -- v1: only naturals are buyable (single/dual reserved for later)
-        level_step = 5, -- sold in increments of 5 (L5, L10, L15, ...)
+        -- BUY is offered only for these grades (v1 = naturals only; add "dual" after testing, "single"
+        -- later). SELL accepts ANY owned grade — single/dual get a buyback even though they aren't sold.
+        buyable_grades = { "natural" },
+        level_step = 5, -- BUY is sold in increments of 5 (L5, L10, L15, ...)
         min_level = 5, -- lowest band sold (L1-2 players see L5)
         max_level = 50, -- highest band sold (= player level cap)
         -- types NOT sold (spark is the rare proc tier — found, not bought). Everything else is fair game.
         exclude_types = { spark = true },
+        -- Price scale per GRADE, derived from DROP ODDS (rarer drop = pricier). From the drops block:
+        -- natural = 50%, single = 0.5*0.35 = 17.5%, dual = 0.5*0.65 = 32.5% of drops. Inverse, normalized
+        -- to natural=1 -> dual 0.5/0.325 ~= 1.54, single 0.5/0.175 ~= 2.86. Used for BOTH buy and sell,
+        -- so single/dual carry a real buyback value. (Cross-check: magnitudes 0.15/0.20/0.33 ~= 1/1.33/2.2
+        -- — rarity is the steeper, chosen scale.)
+        grade_mult = { natural = 1.0, dual = 1.54, single = 2.86 },
         buy = {
             base = 20,
-            per_level = 10, -- gems = base + per_level * bandLevel (L5=70, L10=120, L20=220) — TUNE vs gem income
-            grade_mult = { natural = 1.0 }, -- room to price single/dual higher when they're added
+            per_level = 10, -- buy = (base + per_level*level) * grade_mult; natural L5=70, L10=120, L20=220 — TUNE vs gem income
         },
         sell = {
-            fraction = 0.30, -- buyback = floor(buyPrice * fraction); un-slotted stacks only
+            -- buyback = floor(value * fraction) at the item's ACTUAL level (smooth per-level), any grade,
+            -- un-slotted stacks only. Always < buy (no arbitrage). e.g. natural L13 -> 45, L14 -> 48.
+            fraction = 0.30,
         },
     },
 

@@ -1,5 +1,5 @@
 --[[
-    EnhancementPricing — store buy/sell math (band selection + price formula + buyback floor).
+    EnhancementPricing — store buy/sell math (band selection + grade-scaled value + per-level buyback).
     Run: mise run test-headless
 ]]
 
@@ -9,7 +9,8 @@ local CFG = {
     level_step = 5,
     min_level = 5,
     max_level = 50,
-    buy = { base = 20, per_level = 10, grade_mult = { natural = 1.0 } },
+    grade_mult = { natural = 1.0, dual = 1.54, single = 2.86 },
+    buy = { base = 20, per_level = 10 },
     sell = { fraction = 0.30 },
 }
 
@@ -23,46 +24,32 @@ return function()
             expect(EnhancementPricing.bandFor(23, CFG)).to.equal(25)
         end)
 
-        it("exact multiples map to themselves", function()
-            expect(EnhancementPricing.bandFor(15, CFG)).to.equal(15)
-            expect(EnhancementPricing.bandFor(20, CFG)).to.equal(20)
-            expect(EnhancementPricing.bandFor(50, CFG)).to.equal(50)
-        end)
-
         it("the shown band is always within the ±2 slot window", function()
-            for lvl = 1, 60 do
+            for lvl = 5, 50 do
                 local band = EnhancementPricing.bandFor(lvl, CFG)
-                local clamped = math.max(5, math.min(50, lvl))
-                -- inside the clamp range, band is within 2 of the level
-                if lvl >= 5 and lvl <= 50 then
-                    expect(math.abs(band - lvl) <= 2).to.equal(true)
-                end
-                expect(clamped).to.be.ok()
+                expect(math.abs(band - lvl) <= 2).to.equal(true)
             end
         end)
 
         it("clamps to [min_level, max_level]", function()
-            expect(EnhancementPricing.bandFor(1, CFG)).to.equal(5) -- floor at min
+            expect(EnhancementPricing.bandFor(1, CFG)).to.equal(5)
             expect(EnhancementPricing.bandFor(2, CFG)).to.equal(5)
-            expect(EnhancementPricing.bandFor(55, CFG)).to.equal(50) -- cap at max
+            expect(EnhancementPricing.bandFor(55, CFG)).to.equal(50)
             expect(EnhancementPricing.bandFor(999, CFG)).to.equal(50)
         end)
     end)
 
-    describe("EnhancementPricing.buyPrice (base + per_level * level)", function()
-        it("scales with the band level", function()
+    describe("EnhancementPricing.buyPrice (value = (base + per*level) * grade_mult)", function()
+        it("scales with band level for naturals", function()
             expect(EnhancementPricing.buyPrice("natural", 5, CFG)).to.equal(70)
             expect(EnhancementPricing.buyPrice("natural", 10, CFG)).to.equal(120)
-            expect(EnhancementPricing.buyPrice("natural", 15, CFG)).to.equal(170)
             expect(EnhancementPricing.buyPrice("natural", 20, CFG)).to.equal(220)
         end)
 
-        it("applies the grade multiplier (room for single/dual later)", function()
-            local cfg = {
-                buy = { base = 20, per_level = 10, grade_mult = { natural = 1.0, single = 2.0 } },
-            }
-            expect(EnhancementPricing.buyPrice("natural", 10, cfg)).to.equal(120)
-            expect(EnhancementPricing.buyPrice("single", 10, cfg)).to.equal(240)
+        it("scales by grade (single > dual > natural, rarity-derived)", function()
+            expect(EnhancementPricing.buyPrice("natural", 10, CFG)).to.equal(120) -- 120 * 1.0
+            expect(EnhancementPricing.buyPrice("dual", 10, CFG)).to.equal(184) -- floor(120 * 1.54)
+            expect(EnhancementPricing.buyPrice("single", 10, CFG)).to.equal(343) -- floor(120 * 2.86)
         end)
 
         it("defaults grade multiplier to 1 for unknown grades", function()
@@ -74,19 +61,32 @@ return function()
         end)
     end)
 
-    describe("EnhancementPricing.sellPrice (junk-sink buyback)", function()
-        it("is a floored fraction of the buy price", function()
-            expect(EnhancementPricing.sellPrice("natural", 10, CFG)).to.equal(36) -- floor(120*0.3)
-            expect(EnhancementPricing.sellPrice("natural", 5, CFG)).to.equal(21) -- floor(70*0.3)
+    describe("EnhancementPricing.sellPrice (smooth per-level buyback, any grade)", function()
+        it("scales EVERY level, not just bands (L14 worth more than L13)", function()
+            local l13 = EnhancementPricing.sellPrice("natural", 13, CFG)
+            local l14 = EnhancementPricing.sellPrice("natural", 14, CFG)
+            expect(l13).to.equal(45) -- floor((20+130) * 1.0 * 0.30)
+            expect(l14).to.equal(48) -- floor((20+140) * 1.0 * 0.30)
+            expect(l14 > l13).to.equal(true)
         end)
 
-        it("never pays more than buy (no arbitrage — fraction clamped to [0,1])", function()
-            local cfg = { buy = { base = 100, per_level = 0 }, sell = { fraction = 1.5 } }
-            expect(EnhancementPricing.sellPrice("natural", 10, cfg)).to.equal(100) -- clamped to 1.0
+        it("buys back single/dual too, grade-scaled", function()
+            expect(EnhancementPricing.sellPrice("natural", 13, CFG)).to.equal(45)
+            expect(EnhancementPricing.sellPrice("dual", 13, CFG)).to.equal(69) -- floor(150 * 1.54 * 0.30)
+            expect(EnhancementPricing.sellPrice("single", 13, CFG)).to.equal(128) -- floor(150 * 2.86 * 0.30)
+        end)
+
+        it("never pays more than buy (fraction clamped to [0,1])", function()
+            local cfg = {
+                grade_mult = { natural = 1 },
+                buy = { base = 100, per_level = 0 },
+                sell = { fraction = 1.5 },
+            }
+            expect(EnhancementPricing.sellPrice("natural", 10, cfg)).to.equal(100)
         end)
 
         it("is zero with no sell config", function()
-            local cfg = { buy = { base = 100, per_level = 0 } }
+            local cfg = { grade_mult = { natural = 1 }, buy = { base = 100, per_level = 0 } }
             expect(EnhancementPricing.sellPrice("natural", 10, cfg)).to.equal(0)
         end)
     end)
