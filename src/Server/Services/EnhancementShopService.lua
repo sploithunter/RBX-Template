@@ -15,6 +15,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local EnhancementPricing = require(ReplicatedStorage.Shared.Game.EnhancementPricing)
+local Enhancements = require(ReplicatedStorage.Shared.Game.Enhancements)
 
 local BUCKET = "enhancements"
 local CURRENCY_FALLBACK = "gems"
@@ -193,7 +194,8 @@ function EnhancementShopService:Sell(player, args)
     }
 end
 
--- The player's enhancement stacks as a flat array (for the bulk junk sweep). uid = stack identity.
+-- The player's enhancement stacks as a flat array (for the sell panel + bulk junk sweep). uid = stack
+-- identity; carries type/origins/level/quantity for display + pricing.
 function EnhancementShopService:_stacks(player)
     local inv = self._inventoryService:GetInventory(player, BUCKET)
     local items = inv and inv.items
@@ -202,6 +204,7 @@ function EnhancementShopService:_stacks(player)
         for uid, rec in pairs(items) do
             stacks[#stacks + 1] = {
                 uid = uid,
+                type = rec.type,
                 origins = rec.origins,
                 level = rec.level,
                 quantity = rec.quantity,
@@ -211,35 +214,104 @@ function EnhancementShopService:_stacks(player)
     return stacks
 end
 
--- Preview the bulk "Sell Junk" sweep (count + gems) WITHOUT selling — for the confirm dialog.
+-- The player's chosen origin (data.Archetype) — drives dual usability (a dual is slottable only if one
+-- of its origins is this). nil for pre-origin players (then every dual reads as wrong-origin junk).
+function EnhancementShopService:_archetype(player)
+    local data = self._dataService and self._dataService:GetData(player)
+    return data and data.Archetype
+end
+
+-- The owned enhancement stacks for the sell panel: per-stack sell price + flags (dead / usable / junk
+-- bucket) so the client can render + group without re-deriving the rules.
+function EnhancementShopService:ListOwned(player)
+    local shop = self:_shop()
+    if not (shop and shop.enabled) then
+        return { ok = false, reason = "shop_disabled" }
+    end
+    local archetype = self:_archetype(player)
+    local lvl = playerLevel(player)
+    local window = (shop.bulk and tonumber(shop.bulk.dead_window)) or 2
+    local currency = shop.currency or CURRENCY_FALLBACK
+    local items = {}
+    for _, s in ipairs(self:_stacks(player)) do
+        local grade = EnhancementPricing.gradeFromOrigins(s.origins)
+        local lev = tonumber(s.level) or 0
+        local dead = lev < (lvl - window)
+        local usable = Enhancements.usableBy({ origins = s.origins }, archetype)
+        local junk = (grade ~= "single")
+            and ((grade == "natural" and dead) or (grade == "dual" and (dead or not usable)))
+        items[#items + 1] = {
+            uid = s.uid,
+            type = s.type,
+            origins = s.origins or {},
+            level = lev,
+            quantity = math.max(0, math.floor(tonumber(s.quantity) or 0)),
+            grade = grade,
+            sellUnit = EnhancementPricing.sellPrice(grade, lev, shop),
+            dead = dead,
+            usable = usable,
+            junk = junk and true or false,
+        }
+    end
+    return {
+        ok = true,
+        currency = currency,
+        balance = self._dataService:GetCurrency(player, currency),
+        items = items,
+    }
+end
+
+-- Preview the bulk "Sell Junk" sweep WITHOUT selling — returns the two buckets (naturals always;
+-- duals = dead-or-wrong-origin, gated behind the client's "include duals" checkbox) so the UI can
+-- show totals live as the box is toggled.
 function EnhancementShopService:JunkPreview(player)
     local shop = self:_shop()
     if not (shop and shop.enabled) then
         return { ok = false, reason = "shop_disabled" }
     end
-    local plan = EnhancementPricing.junkSweep(self:_stacks(player), playerLevel(player), shop)
+    local plan = EnhancementPricing.junkSweep(
+        self:_stacks(player),
+        playerLevel(player),
+        shop,
+        { playerArchetype = self:_archetype(player) }
+    )
     return {
         ok = true,
-        count = plan.count,
-        gems = plan.gems,
         currency = shop.currency or CURRENCY_FALLBACK,
+        naturals = { count = plan.naturals.count, gems = plan.naturals.gems },
+        duals = { count = plan.duals.count, gems = plan.duals.gems },
     }
 end
 
--- BULK sell: clear every DEAD allowed-grade stack (naturals + duals, > dead_window below the player;
--- singles protected) in one pass. Removes each stack fully, then credits the summed gems once.
-function EnhancementShopService:SellJunk(player)
+-- BULK sell: clear DEAD naturals (always) + the duals bucket when `includeDuals`. One pass, removes
+-- each stack fully, then credits the summed gems once. Singles never sold.
+function EnhancementShopService:SellJunk(player, args)
     local shop = self:_shop()
     if not (shop and shop.enabled) then
         return { ok = false, reason = "shop_disabled" }
     end
-    local plan = EnhancementPricing.junkSweep(self:_stacks(player), playerLevel(player), shop)
-    if plan.count <= 0 then
+    local includeDuals = args and args.includeDuals and true or false
+    local plan = EnhancementPricing.junkSweep(
+        self:_stacks(player),
+        playerLevel(player),
+        shop,
+        { playerArchetype = self:_archetype(player) }
+    )
+    local toSell = {}
+    for _, it in ipairs(plan.naturals.items) do
+        toSell[#toSell + 1] = it
+    end
+    if includeDuals then
+        for _, it in ipairs(plan.duals.items) do
+            toSell[#toSell + 1] = it
+        end
+    end
+    if #toSell == 0 then
         return { ok = false, reason = "nothing_to_sell" }
     end
     local currency = shop.currency or CURRENCY_FALLBACK
     local soldQty, gems = 0, 0
-    for _, it in ipairs(plan.items) do
+    for _, it in ipairs(toSell) do
         if self._inventoryService:RemoveItem(player, BUCKET, it.uid, it.quantity) then
             soldQty += it.quantity
             gems += it.gems
@@ -252,8 +324,9 @@ function EnhancementShopService:SellJunk(player)
     return {
         ok = true,
         sold = soldQty,
-        stacks = #plan.items,
+        stacks = #toSell,
         gems = gems,
+        includedDuals = includeDuals,
         balance = self._dataService:GetCurrency(player, currency),
     }
 end

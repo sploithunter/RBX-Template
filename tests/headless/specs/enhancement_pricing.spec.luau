@@ -106,45 +106,42 @@ return function()
         end)
     end)
 
-    describe("EnhancementPricing.isBulkJunk (Sell Junk eligibility)", function()
+    describe("EnhancementPricing.junkSweep (dual-aware bulk buckets)", function()
         local BCFG = {
             grade_mult = { natural = 1.0, dual = 1.54, single = 2.86 },
             buy = { base = 20, per_level = 10 },
             sell = { fraction = 0.30 },
             bulk = { grades = { natural = true, dual = true }, dead_window = 2 },
         }
-        it("sweeps DEAD allowed grades (naturals + duals > window below)", function()
-            expect(EnhancementPricing.isBulkJunk("natural", 10, 17, BCFG)).to.equal(true) -- 10 < 15
-            expect(EnhancementPricing.isBulkJunk("dual", 12, 17, BCFG)).to.equal(true) -- 12 < 15
-        end)
-        it("protects singles even when dead", function()
-            expect(EnhancementPricing.isBulkJunk("single", 5, 17, BCFG)).to.equal(false)
-        end)
-        it("leaves alive ones (within the window or above)", function()
-            expect(EnhancementPricing.isBulkJunk("natural", 15, 17, BCFG)).to.equal(false) -- 15 = 17-2
-            expect(EnhancementPricing.isBulkJunk("natural", 20, 17, BCFG)).to.equal(false) -- above
-        end)
-    end)
+        -- Player: geomancer, L17 -> dead = level < 15.
+        local stacks = {
+            { uid = "a", origins = {}, level = 10, quantity = 3 }, -- dead natural -> naturals
+            { uid = "b", origins = {}, level = 16, quantity = 9 }, -- alive natural -> skip
+            { uid = "c", origins = { "geomancer", "pyromancer" }, level = 12, quantity = 2 }, -- dead dual -> duals
+            { uid = "d", origins = { "geomancer", "pyromancer" }, level = 16, quantity = 1 }, -- alive + usable -> KEEP
+            { uid = "e", origins = { "pyromancer", "cryomancer" }, level = 16, quantity = 4 }, -- alive but WRONG-origin -> duals
+            { uid = "f", origins = { "geomancer" }, level = 5, quantity = 1 }, -- single -> protected
+        }
+        local plan =
+            EnhancementPricing.junkSweep(stacks, 17, BCFG, { playerArchetype = "geomancer" })
 
-    describe("EnhancementPricing.junkSweep (bulk plan + totals)", function()
-        local BCFG = {
-            grade_mult = { natural = 1.0, dual = 1.54, single = 2.86 },
-            buy = { base = 20, per_level = 10 },
-            sell = { fraction = 0.30 },
-            bulk = { grades = { natural = true, dual = true }, dead_window = 2 },
-        }
-        it("collects dead allowed-grade stacks with totals; skips alive + protected", function()
-            local stacks = {
-                { uid = "a", origins = {}, level = 10, quantity = 3 }, -- dead natural -> in
-                { uid = "b", origins = { "geomancer", "pyromancer" }, level = 12, quantity = 2 }, -- dead dual -> in
-                { uid = "c", origins = { "geomancer" }, level = 5, quantity = 1 }, -- dead SINGLE -> protected
-                { uid = "d", origins = {}, level = 16, quantity = 9 }, -- alive natural -> skip
-            }
-            local plan = EnhancementPricing.junkSweep(stacks, 17, BCFG)
-            expect(plan.count).to.equal(5) -- 3 + 2
-            -- a: natural L10 sell 36 ×3 = 108 ; b: dual L12 sell floor(140*1.54*0.3)=64 ×2 = 128
-            expect(plan.gems).to.equal(108 + 128)
-            expect(#plan.items).to.equal(2)
+        it("naturals bucket = dead naturals only", function()
+            expect(plan.naturals.count).to.equal(3)
+            expect(plan.naturals.gems).to.equal(108) -- natural L10 sell 36 ×3
+            expect(#plan.naturals.items).to.equal(1)
+        end)
+        it("duals bucket = dead OR wrong-origin duals; keeps usable+alive", function()
+            -- c: dual L12 sell floor(140*1.54*0.3)=64 ×2 = 128 ; e: dual L16 sell floor(180*1.54*0.3)=83 ×4 = 332
+            expect(plan.duals.count).to.equal(6) -- 2 + 4
+            expect(plan.duals.gems).to.equal(128 + 332)
+            expect(#plan.duals.items).to.equal(2)
+        end)
+        it("never sweeps singles (protected)", function()
+            for _, b in ipairs({ plan.naturals.items, plan.duals.items }) do
+                for _, it in ipairs(b) do
+                    expect(it.grade ~= "single").to.equal(true)
+                end
+            end
         end)
     end)
 

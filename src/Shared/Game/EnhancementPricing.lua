@@ -120,46 +120,64 @@ function EnhancementPricing.catalog(playerLevel, typeKeys, cfg)
     return { band = band, offers = offers }
 end
 
--- Is this enhancement eligible for the bulk "Sell Junk" sweep? True only for an allowed grade
--- (cfg.bulk.grades — Jason: naturals + duals, singles protected) AND a DEAD level: more than
--- `dead_window` levels below the player (so it contributes nothing and never will at this level).
-function EnhancementPricing.isBulkJunk(grade, level, playerLevel, cfg)
-    cfg = cfg or {}
-    local bulk = cfg.bulk or {}
-    if not (bulk.grades and bulk.grades[grade]) then
-        return false
+-- Does the player's origin match one of this enhancement's origins? Inlined here so the pricing core
+-- stays dependency-free (mirrors Enhancements.usableBy for the dual case — a dual is slottable only if
+-- one of its two origins is the player's archetype).
+local function originMatches(origins, archetype)
+    for _, o in ipairs(origins or {}) do
+        if o == archetype then
+            return true
+        end
     end
-    local window = tonumber(bulk.dead_window) or 2
-    return (tonumber(level) or 0) < ((tonumber(playerLevel) or 1) - window)
+    return false
 end
 
--- Plan the bulk junk sweep over a player's enhancement STACKS. `stacks` = array of
--- { uid, origins, level, quantity }. Returns { items = { {uid, grade, level, quantity, unit, gems} },
--- count, gems } — the full set of dead allowed-grade stacks to sell + the total. Pure: the service
--- executes the plan (RemoveItem + AddCurrency), but the totals/preview come from here.
-function EnhancementPricing.junkSweep(stacks, playerLevel, cfg)
+-- Categorize a player's enhancement STACKS for the bulk "Sell Junk" sweep. `stacks` = array of
+-- { uid, origins, level, quantity }. Returns:
+--   { naturals = {items, count, gems}, duals = {items, count, gems} }
+-- where each item = {uid, grade, level, quantity, unit, gems}. Buckets:
+--   • naturals — DEAD naturals (more than `dead_window` below the player; contribute nothing).
+--   • duals    — duals that are junk TO THIS PLAYER: DEAD (outgrown) OR WRONG-ORIGIN (neither origin
+--                is the player's archetype, so it can NEVER be slotted — Jason). Usable+alive duals are
+--                kept. This whole bucket is gated behind the player's "include duals" checkbox.
+--   • singles  — never swept (protected: rare + tradeable).
+-- `opts.playerArchetype` = the player's origin (data.Archetype). Pure: the service executes the plan.
+function EnhancementPricing.junkSweep(stacks, playerLevel, cfg, opts)
     cfg = cfg or {}
-    local items, count, gems = {}, 0, 0
+    opts = opts or {}
+    local archetype = opts.playerArchetype
+    local window = (cfg.bulk and tonumber(cfg.bulk.dead_window)) or 2
+    local nat = { items = {}, count = 0, gems = 0 }
+    local dual = { items = {}, count = 0, gems = 0 }
     for _, s in ipairs(stacks or {}) do
         local grade = EnhancementPricing.gradeFromOrigins(s.origins)
         local level = tonumber(s.level) or 0
         local qty = math.max(0, math.floor(tonumber(s.quantity) or 0))
-        if qty > 0 and EnhancementPricing.isBulkJunk(grade, level, playerLevel, cfg) then
-            local unit = EnhancementPricing.sellPrice(grade, level, cfg)
-            local g = unit * qty
-            items[#items + 1] = {
-                uid = s.uid,
-                grade = grade,
-                level = level,
-                quantity = qty,
-                unit = unit,
-                gems = g,
-            }
-            count += qty
-            gems += g
+        if qty > 0 and grade ~= "single" then
+            local dead = level < ((tonumber(playerLevel) or 1) - window)
+            local bucket, include
+            if grade == "natural" then
+                bucket, include = nat, dead
+            else -- dual: dead OR wrong-origin (never slottable by this player)
+                bucket, include = dual, (dead or not originMatches(s.origins, archetype))
+            end
+            if include then
+                local unit = EnhancementPricing.sellPrice(grade, level, cfg)
+                local g = unit * qty
+                bucket.items[#bucket.items + 1] = {
+                    uid = s.uid,
+                    grade = grade,
+                    level = level,
+                    quantity = qty,
+                    unit = unit,
+                    gems = g,
+                }
+                bucket.count += qty
+                bucket.gems += g
+            end
         end
     end
-    return { items = items, count = count, gems = gems }
+    return { naturals = nat, duals = dual }
 end
 
 return EnhancementPricing

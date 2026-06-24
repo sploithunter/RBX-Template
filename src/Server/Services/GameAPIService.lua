@@ -1527,8 +1527,18 @@ function GameAPIService:_registerCommands()
             return s:Sell(context.player, args)
         end,
     })
+    bus:register("enhancement.shop.list_owned", {
+        description = "List the player's enhancement stacks with per-stack sell price + junk flags.",
+        handler = function(context)
+            local s = self:_service("EnhancementShopService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:ListOwned(context.player)
+        end,
+    })
     bus:register("enhancement.shop.junk_preview", {
-        description = "Preview the bulk Sell-Junk sweep (count + gems) for the confirm dialog.",
+        description = "Preview the bulk Sell-Junk sweep (naturals + duals buckets) for the confirm dialog.",
         handler = function(context)
             local s = self:_service("EnhancementShopService")
             if not s then
@@ -1538,13 +1548,18 @@ function GameAPIService:_registerCommands()
         end,
     })
     bus:register("enhancement.shop.sell_junk", {
-        description = "Bulk-sell all DEAD naturals + duals (singles protected) for gems.",
-        handler = function(context)
+        description = "Bulk-sell DEAD naturals (always) + duals when includeDuals (singles protected).",
+        validate = function(args)
+            return Validators.fields(args, {
+                includeDuals = { type = "boolean", optional = true },
+            })
+        end,
+        handler = function(context, args)
             local s = self:_service("EnhancementShopService")
             if not s then
                 return { ok = false, reason = "service_unavailable" }
             end
-            return s:SellJunk(context.player)
+            return s:SellJunk(context.player, args)
         end,
     })
     bus:register("rewards.summary", {
