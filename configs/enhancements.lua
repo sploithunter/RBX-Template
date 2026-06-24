@@ -120,6 +120,11 @@ return {
                 luck = true,
                 -- rage is a TOGGLE (no duration to extend) — dropped (was a no-op slot)
                 drop_rate = true, -- Windfall: extend the loot-chance window (it has duration=10)
+                -- SUMMON capstones (Gaia's Colossus / Genie of the Dunes): kind.duration is the
+                -- guardian's lifetime AND its standing-buff window, and the cast hands the EFFECTIVE
+                -- (enhancement-scaled) duration to SummonService — so a duration enhancement gives a
+                -- genuinely longer-lived guardian. Both summons have duration=20.
+                summon = true,
             },
         },
         -- POTENCY (Jason): +% to the power's own magnitude — the universal "makes the
@@ -341,8 +346,13 @@ return {
         },
     },
 
-    -- Max enhancements held in the inventory (oldest beyond the cap are refused, not deleted).
-    inventory_cap = 60,
+    -- NO hard inventory cap. Enhancements auto-expand (the bucket is stacks_count_toward_limit
+    -- = false, so drops never fail on space — Macros runs ~500 stacks live and that's fine).
+    -- The old `inventory_cap = 60` was a dead, never-enforced previous iteration; removed so
+    -- it can't read as a real limit. Runaway-growth protection is now a SOFT dev alert, not a
+    -- block: see buckets.enhancements.storage_alert in configs/inventory.lua, which fires an
+    -- OpsAlert ("bucket_storage_high") at load when stack count / serialized size approaches the
+    -- ~4MB DataStore key limit.
 
     -- Replacing an occupied slot DESTROYS the old enhancement (CoH-style commitment).
     replace_destroys = true,
