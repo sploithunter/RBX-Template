@@ -1373,9 +1373,30 @@ function InventoryPanel:_createCategoryTab(category, parent, layoutOrder)
         self:_selectCategory(category.name)
     end)
 
-    if not isSelected then
-        self:_addButtonHoverEffect(tab, Color3.fromRGB(40, 40, 50))
+    -- Selection-aware hover: the tab rests at the SELECTED blue while it's the active category,
+    -- gray otherwise. (The old generic hover captured a static gray and its MouseLeave reset the
+    -- selected tab back to gray on mouse-out — Jason: returning to a category didn't re-highlight
+    -- its tab, "in a lot of places".)
+    local SELECTED_BG = Color3.fromRGB(52, 152, 219)
+    local UNSELECTED_BG = Color3.fromRGB(40, 40, 50)
+    local function tabRestColor()
+        return (category.name == self.selectedCategory) and SELECTED_BG or UNSELECTED_BG
     end
+    tab.MouseEnter:Connect(function()
+        local c = tabRestColor()
+        TweenService:Create(tab, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+            BackgroundColor3 = Color3.new(
+                math.min(1, c.R + 0.1),
+                math.min(1, c.G + 0.1),
+                math.min(1, c.B + 0.1)
+            ),
+        }):Play()
+    end)
+    tab.MouseLeave:Connect(function()
+        TweenService:Create(tab, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+            BackgroundColor3 = tabRestColor(),
+        }):Play()
+    end)
 end
 
 function InventoryPanel:_createSearchSection()
@@ -3291,13 +3312,19 @@ function InventoryPanel:_updateItemsDisplay()
     -- Filter items
     local filteredItems = {}
     for _, item in ipairs(self.inventoryData) do
+        local isStackItem = typeof(item.id) == "string" and string.sub(item.id, 1, 6) == "stack|"
         local matchesCategory =
             self:_itemMatchesCategory(item, self.selectedCategory, categoryFolders)
+        -- Equipped pets are your active squad — show them in the Equipped row on EVERY category
+        -- tab, not just Pets/All (Jason: equipped pets vanished on Enhancements). Stack-equipped
+        -- pets already show on every tab via the ghost-card pass below, so this just makes the
+        -- non-stack (unique) equipped pets consistent with them. Routes to the equipped grid.
+        local equippedBypass = (not isStackItem) and self:_isItemEquipped(item)
         local matchesSearch = (
             self.searchTerm == "" or item.name:lower():find(self.searchTerm, 1, true)
         )
 
-        if matchesCategory and matchesSearch then
+        if (matchesCategory or equippedBypass) and matchesSearch then
             table.insert(filteredItems, item)
         end
     end
@@ -4039,7 +4066,8 @@ function InventoryPanel:_selectCategory(categoryName)
     if categoryContainer then
         for _, tab in ipairs(categoryContainer:GetChildren()) do
             if tab:IsA("TextButton") then
-                local isSelected = tab.Name:find(categoryName)
+                -- exact match (tabs are named "<category>Tab") — substring :find was fragile
+                local isSelected = (tab.Name == categoryName .. "Tab")
                 tab.BackgroundColor3 = isSelected and Color3.fromRGB(52, 152, 219)
                     or Color3.fromRGB(40, 40, 50)
             end
