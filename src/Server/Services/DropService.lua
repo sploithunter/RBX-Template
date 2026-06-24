@@ -286,7 +286,10 @@ function DropService:SpawnCoinDrop(player, currencyType, amount, position)
         local rest = Vector3.new(hx, groundY + radius, hz)
         local apex = position
             + Vector3.new(math.cos(ang) * out * 0.5, pop, math.sin(ang) * out * 0.5)
-        part.CFrame = CFrame.new(apex)
+        -- random resting yaw so gems don't all turn in lockstep (they settle facing
+        -- random directions; the _step spin then carries each from its own phase)
+        local yaw = math.random() * (2 * math.pi)
+        part.CFrame = CFrame.new(apex) * CFrame.Angles(0, yaw, 0)
 
         -- visibility filter: gems are owner-only pickups, so they're owner-only
         -- VISIBLE too (DropVisibility hides foreign gems client-side — Jason: "it
@@ -312,7 +315,7 @@ function DropService:SpawnCoinDrop(player, currencyType, amount, position)
                 Enum.EasingStyle.Quad,
                 Enum.EasingDirection.Out
             ),
-            { CFrame = CFrame.new(rest) }
+            { CFrame = CFrame.new(rest) * CFrame.Angles(0, yaw, 0) }
         ):Play()
         task.delay(self._config.pop_time or 0.35, function()
             rec.settling = false
