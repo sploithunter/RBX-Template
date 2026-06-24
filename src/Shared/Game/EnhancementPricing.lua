@@ -120,4 +120,46 @@ function EnhancementPricing.catalog(playerLevel, typeKeys, cfg)
     return { band = band, offers = offers }
 end
 
+-- Is this enhancement eligible for the bulk "Sell Junk" sweep? True only for an allowed grade
+-- (cfg.bulk.grades — Jason: naturals + duals, singles protected) AND a DEAD level: more than
+-- `dead_window` levels below the player (so it contributes nothing and never will at this level).
+function EnhancementPricing.isBulkJunk(grade, level, playerLevel, cfg)
+    cfg = cfg or {}
+    local bulk = cfg.bulk or {}
+    if not (bulk.grades and bulk.grades[grade]) then
+        return false
+    end
+    local window = tonumber(bulk.dead_window) or 2
+    return (tonumber(level) or 0) < ((tonumber(playerLevel) or 1) - window)
+end
+
+-- Plan the bulk junk sweep over a player's enhancement STACKS. `stacks` = array of
+-- { uid, origins, level, quantity }. Returns { items = { {uid, grade, level, quantity, unit, gems} },
+-- count, gems } — the full set of dead allowed-grade stacks to sell + the total. Pure: the service
+-- executes the plan (RemoveItem + AddCurrency), but the totals/preview come from here.
+function EnhancementPricing.junkSweep(stacks, playerLevel, cfg)
+    cfg = cfg or {}
+    local items, count, gems = {}, 0, 0
+    for _, s in ipairs(stacks or {}) do
+        local grade = EnhancementPricing.gradeFromOrigins(s.origins)
+        local level = tonumber(s.level) or 0
+        local qty = math.max(0, math.floor(tonumber(s.quantity) or 0))
+        if qty > 0 and EnhancementPricing.isBulkJunk(grade, level, playerLevel, cfg) then
+            local unit = EnhancementPricing.sellPrice(grade, level, cfg)
+            local g = unit * qty
+            items[#items + 1] = {
+                uid = s.uid,
+                grade = grade,
+                level = level,
+                quantity = qty,
+                unit = unit,
+                gems = g,
+            }
+            count += qty
+            gems += g
+        end
+    end
+    return { items = items, count = count, gems = gems }
+end
+
 return EnhancementPricing

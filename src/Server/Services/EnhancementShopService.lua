@@ -193,4 +193,69 @@ function EnhancementShopService:Sell(player, args)
     }
 end
 
+-- The player's enhancement stacks as a flat array (for the bulk junk sweep). uid = stack identity.
+function EnhancementShopService:_stacks(player)
+    local inv = self._inventoryService:GetInventory(player, BUCKET)
+    local items = inv and inv.items
+    local stacks = {}
+    if type(items) == "table" then
+        for uid, rec in pairs(items) do
+            stacks[#stacks + 1] = {
+                uid = uid,
+                origins = rec.origins,
+                level = rec.level,
+                quantity = rec.quantity,
+            }
+        end
+    end
+    return stacks
+end
+
+-- Preview the bulk "Sell Junk" sweep (count + gems) WITHOUT selling — for the confirm dialog.
+function EnhancementShopService:JunkPreview(player)
+    local shop = self:_shop()
+    if not (shop and shop.enabled) then
+        return { ok = false, reason = "shop_disabled" }
+    end
+    local plan = EnhancementPricing.junkSweep(self:_stacks(player), playerLevel(player), shop)
+    return {
+        ok = true,
+        count = plan.count,
+        gems = plan.gems,
+        currency = shop.currency or CURRENCY_FALLBACK,
+    }
+end
+
+-- BULK sell: clear every DEAD allowed-grade stack (naturals + duals, > dead_window below the player;
+-- singles protected) in one pass. Removes each stack fully, then credits the summed gems once.
+function EnhancementShopService:SellJunk(player)
+    local shop = self:_shop()
+    if not (shop and shop.enabled) then
+        return { ok = false, reason = "shop_disabled" }
+    end
+    local plan = EnhancementPricing.junkSweep(self:_stacks(player), playerLevel(player), shop)
+    if plan.count <= 0 then
+        return { ok = false, reason = "nothing_to_sell" }
+    end
+    local currency = shop.currency or CURRENCY_FALLBACK
+    local soldQty, gems = 0, 0
+    for _, it in ipairs(plan.items) do
+        if self._inventoryService:RemoveItem(player, BUCKET, it.uid, it.quantity) then
+            soldQty += it.quantity
+            gems += it.gems
+        end
+    end
+    if gems > 0 then
+        self._dataService:AddCurrency(player, currency, gems, "enh_sell_junk")
+        self._dataService:RequestSave(player, "enh_shop_sell_junk", { critical = true })
+    end
+    return {
+        ok = true,
+        sold = soldQty,
+        stacks = #plan.items,
+        gems = gems,
+        balance = self._dataService:GetCurrency(player, currency),
+    }
+end
+
 return EnhancementShopService

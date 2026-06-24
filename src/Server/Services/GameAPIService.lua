@@ -1527,6 +1527,26 @@ function GameAPIService:_registerCommands()
             return s:Sell(context.player, args)
         end,
     })
+    bus:register("enhancement.shop.junk_preview", {
+        description = "Preview the bulk Sell-Junk sweep (count + gems) for the confirm dialog.",
+        handler = function(context)
+            local s = self:_service("EnhancementShopService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:JunkPreview(context.player)
+        end,
+    })
+    bus:register("enhancement.shop.sell_junk", {
+        description = "Bulk-sell all DEAD naturals + duals (singles protected) for gems.",
+        handler = function(context)
+            local s = self:_service("EnhancementShopService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:SellJunk(context.player)
+        end,
+    })
     bus:register("rewards.summary", {
         description = "Aggregate claimable count across quests + daily (the menu badges).",
         handler = function(context)

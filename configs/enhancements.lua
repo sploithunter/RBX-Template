@@ -359,6 +359,15 @@ return {
             -- un-slotted stacks only. Always < buy (no arbitrage). e.g. natural L13 -> 45, L14 -> 48.
             fraction = 0.30,
         },
+        -- BULK "Sell Junk" sweep (one-click clear of outgrown drops). Per-stack sell (1 / N) works on
+        -- ANY grade; this bulk button is conservative: only DEAD stacks (more than `dead_window` levels
+        -- below the player — contributing nothing) of the allowed GRADES. Jason: naturals + duals;
+        -- singles are protected (rare + tradeable, sell those by hand). dead_window mirrors the slot
+        -- scaling window (drops.levels.scaling.window).
+        bulk = {
+            grades = { natural = true, dual = true },
+            dead_window = 2,
+        },
     },
 
     -- NO hard inventory cap. Enhancements auto-expand (the bucket is stacks_count_toward_limit

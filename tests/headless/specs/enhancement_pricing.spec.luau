@@ -106,6 +106,48 @@ return function()
         end)
     end)
 
+    describe("EnhancementPricing.isBulkJunk (Sell Junk eligibility)", function()
+        local BCFG = {
+            grade_mult = { natural = 1.0, dual = 1.54, single = 2.86 },
+            buy = { base = 20, per_level = 10 },
+            sell = { fraction = 0.30 },
+            bulk = { grades = { natural = true, dual = true }, dead_window = 2 },
+        }
+        it("sweeps DEAD allowed grades (naturals + duals > window below)", function()
+            expect(EnhancementPricing.isBulkJunk("natural", 10, 17, BCFG)).to.equal(true) -- 10 < 15
+            expect(EnhancementPricing.isBulkJunk("dual", 12, 17, BCFG)).to.equal(true) -- 12 < 15
+        end)
+        it("protects singles even when dead", function()
+            expect(EnhancementPricing.isBulkJunk("single", 5, 17, BCFG)).to.equal(false)
+        end)
+        it("leaves alive ones (within the window or above)", function()
+            expect(EnhancementPricing.isBulkJunk("natural", 15, 17, BCFG)).to.equal(false) -- 15 = 17-2
+            expect(EnhancementPricing.isBulkJunk("natural", 20, 17, BCFG)).to.equal(false) -- above
+        end)
+    end)
+
+    describe("EnhancementPricing.junkSweep (bulk plan + totals)", function()
+        local BCFG = {
+            grade_mult = { natural = 1.0, dual = 1.54, single = 2.86 },
+            buy = { base = 20, per_level = 10 },
+            sell = { fraction = 0.30 },
+            bulk = { grades = { natural = true, dual = true }, dead_window = 2 },
+        }
+        it("collects dead allowed-grade stacks with totals; skips alive + protected", function()
+            local stacks = {
+                { uid = "a", origins = {}, level = 10, quantity = 3 }, -- dead natural -> in
+                { uid = "b", origins = { "geomancer", "pyromancer" }, level = 12, quantity = 2 }, -- dead dual -> in
+                { uid = "c", origins = { "geomancer" }, level = 5, quantity = 1 }, -- dead SINGLE -> protected
+                { uid = "d", origins = {}, level = 16, quantity = 9 }, -- alive natural -> skip
+            }
+            local plan = EnhancementPricing.junkSweep(stacks, 17, BCFG)
+            expect(plan.count).to.equal(5) -- 3 + 2
+            -- a: natural L10 sell 36 ×3 = 108 ; b: dual L12 sell floor(140*1.54*0.3)=64 ×2 = 128
+            expect(plan.gems).to.equal(108 + 128)
+            expect(#plan.items).to.equal(2)
+        end)
+    end)
+
     describe("EnhancementPricing.catalog", function()
         local TYPES = { "damage", "accuracy", "spark", "healing" }
 
