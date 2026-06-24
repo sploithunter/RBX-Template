@@ -874,37 +874,10 @@ function PowerChoiceMenu:_renderEnhanceStrip()
             hidden += 1
         end
     end
-    -- BUY-TO-FILL: gem-priced band-natural offers for every compatible, sellable type. They flow
-    -- through the SAME grid (naturals sort LAST — low value), each clickable to buy (gems) + stage
-    -- for APPLY. Naturals only for v1; band = the one multiple-of-5 the player can slot.
+    -- BUY offers render in their OWN labeled section below (Jason: don't jumble buy + owned in one
+    -- stack). `shop`/`gemBalance` are declared here so the BUY section + click handlers can read them.
     local shop = enhCfg.shop
     local gemBalance = (game:GetService("Players").LocalPlayer:GetAttribute("Gems")) or 0
-    if shop and shop.enabled then
-        local band = EnhancementPricing.bandFor(self.level, shop)
-        local exclude = shop.exclude_types or {}
-        for _, grade in ipairs(shop.buyable_grades or { "natural" }) do
-            if grade == "natural" then
-                for t in pairs(enhCfg.types or {}) do
-                    if
-                        not exclude[t]
-                        and Enhancements.compatibleWith(enhCfg, t, def, powersCfg.effect_kinds)
-                    then
-                        local price = EnhancementPricing.buyPrice(grade, band, shop)
-                        local key = "buy|" .. t
-                        groups[key] = {
-                            item = { type = t, origins = {}, level = band },
-                            count = 0,
-                            uids = {},
-                            buy = true,
-                            price = price,
-                            affordable = gemBalance >= price,
-                        }
-                        order[#order + 1] = key
-                    end
-                end
-            end
-        end
-    end
     -- strongest first (Jason): GRADE is the strength order — single (0.33) > dual (0.20)
     -- > natural (0.15) — then the more potent LEVEL within a grade (above you scales up),
     -- then type for a stable read. This mixes types together, which is fine: a power takes
@@ -933,8 +906,8 @@ function PowerChoiceMenu:_renderEnhanceStrip()
         local col = (gi - 1) % perRow
         local gx = gx0 + col * (G_W + G_GAPX)
         local gy = gy0 + row * (G_H + G_GAPY)
-        if gy + G_H > 0.98 then
-            hidden += (g.count or 0) -- honest overflow (no silent caps); buy offers count 0
+        if gy + G_H > 0.74 then -- reserve the bottom band for the separate BUY section
+            hidden += (g.count or 0) -- honest overflow (no silent caps)
         else
             shown += 1
             local item = g.item
@@ -993,32 +966,6 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                 cc.Parent = chip
                 chip.Parent = btn
             end
-            -- BUY offer: gem price chip (top-left); dim the badge when unaffordable
-            if g.buy then
-                local pchip = Instance.new("TextLabel")
-                pchip.AnchorPoint = Vector2.new(0, 0)
-                pchip.Size = UDim2.fromScale(0.85, 0.34)
-                pchip.Position = UDim2.fromScale(-0.12, -0.12)
-                pchip.BackgroundColor3 = g.affordable and Color3.fromRGB(58, 46, 78)
-                    or Color3.fromRGB(78, 46, 46)
-                pchip.TextColor3 = g.affordable and Color3.fromRGB(190, 140, 255)
-                    or Color3.fromRGB(200, 150, 150)
-                pchip.Font = Enum.Font.GothamBold
-                pchip.TextScaled = true
-                pchip.Text = "\u{1F48E}" .. tostring(g.price)
-                pchip.ZIndex = 10
-                local pcc = Instance.new("UICorner")
-                pcc.CornerRadius = UDim.new(0.4, 0)
-                pcc.Parent = pchip
-                pchip.Parent = btn
-                if not g.affordable then
-                    for _, d in ipairs(btn:GetDescendants()) do
-                        if d:IsA("ImageLabel") then
-                            d.ImageTransparency = 0.55
-                        end
-                    end
-                end
-            end
             btn.MouseEnter:Connect(function()
                 self:_showEnhTooltip(
                     btn,
@@ -1035,38 +982,6 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                     self:_render()
                     return
                 end
-                if g.buy then
-                    -- buy-to-fill: spend gems for a fresh band natural, then stage it for APPLY
-                    -- (CANCEL keeps the bought enhancement in inventory — gems aren't refunded)
-                    if not g.affordable then
-                        self.notice = ("Not enough gems — %s L%d costs %d (you have %d)"):format(
-                            tostring(item.type),
-                            item.level or 0,
-                            g.price,
-                            gemBalance
-                        )
-                        self:_render()
-                        return
-                    end
-                    local buyRes = callBus("enhancement.shop.buy", { type = item.type })
-                    if buyRes and buyRes.ok then
-                        self._enhStaged = {
-                            slotIndex = target,
-                            uid = buyRes.uid,
-                            item = { type = item.type, origins = {}, level = buyRes.level },
-                            groupKey = key,
-                        }
-                        self.notice = ("Bought %s — press APPLY to slot %d (CANCEL keeps it in inventory)"):format(
-                            buyRes.name or tostring(item.type),
-                            target
-                        )
-                    else
-                        self.notice = "Buy failed: " .. tostring(buyRes and buyRes.reason)
-                    end
-                    self:_render()
-                    self:_renderEnhanceStrip()
-                    return
-                end
                 local replacing = slots[target] and slots[target].enh ~= nil
                 self._enhStaged =
                     { slotIndex = target, uid = g.uids[1], item = item, groupKey = key }
@@ -1080,24 +995,154 @@ function PowerChoiceMenu:_renderEnhanceStrip()
             end)
         end
     end
-    label.Text = shown > 0 and "AVAILABLE:"
+    label.Text = (
+        shown > 0 and "AVAILABLE:"
         or (
             hidden > 0 and "No usable enhancements at your level"
             or "No enhancements — find drops!"
         )
-    if hidden > 0 and shown > 0 then
-        local more = Instance.new("TextLabel")
-        more.Size = UDim2.fromScale(0.4, 0.045)
-        more.AnchorPoint = Vector2.new(0, 1)
-        more.Position = UDim2.fromScale(0.03, 0.99)
-        more.BackgroundTransparency = 1
-        more.TextXAlignment = Enum.TextXAlignment.Left
-        more.Font = Enum.Font.Gotham
-        more.TextScaled = true
-        more.TextColor3 = Color3.fromRGB(140, 140, 160)
-        more.Text = ("+%d more (out of level range or overflow)"):format(hidden)
-        more.ZIndex = 7
-        more.Parent = strip
+    )
+        .. (
+            (hidden > 0 and shown > 0)
+                and ("    +%d more (level range / overflow)"):format(hidden)
+            or ""
+        )
+
+    -- ===== BUY: gem-priced band naturals in their OWN section (Jason: separate from AVAILABLE) =====
+    if shop and shop.enabled then
+        local band = EnhancementPricing.bandFor(self.level, shop)
+        local exclude = shop.exclude_types or {}
+        local buyTypes = {}
+        for _, grade in ipairs(shop.buyable_grades or { "natural" }) do
+            if grade == "natural" then
+                for t in pairs(enhCfg.types or {}) do
+                    if
+                        not exclude[t]
+                        and Enhancements.compatibleWith(enhCfg, t, def, powersCfg.effect_kinds)
+                    then
+                        buyTypes[#buyTypes + 1] = t
+                    end
+                end
+            end
+        end
+        table.sort(buyTypes)
+        if #buyTypes > 0 then
+            local price = EnhancementPricing.buyPrice("natural", band, shop)
+            local affordable = gemBalance >= price
+            local buyLabel = Instance.new("TextLabel")
+            buyLabel.Size = UDim2.fromScale(0.7, 0.045)
+            buyLabel.Position = UDim2.fromScale(0.03, 0.765)
+            buyLabel.BackgroundTransparency = 1
+            buyLabel.TextXAlignment = Enum.TextXAlignment.Left
+            buyLabel.Font = Enum.Font.GothamMedium
+            buyLabel.TextScaled = true
+            buyLabel.TextColor3 = Color3.fromRGB(190, 140, 255)
+            buyLabel.Text = ("BUY — natural L%d  (\u{1F48E}%d each)"):format(band, price)
+            buyLabel.ZIndex = 7
+            buyLabel.Parent = strip
+            local byy = 0.82
+            for bi, t in ipairs(buyTypes) do
+                local col = (bi - 1) % perRow
+                local row = math.floor((bi - 1) / perRow)
+                local gx = gx0 + col * (G_W + G_GAPX)
+                local gy = byy + row * (G_H + G_GAPY)
+                local btn = Instance.new("TextButton")
+                btn.Size = UDim2.fromScale(G_W, G_H)
+                btn.Position = UDim2.fromScale(gx, gy)
+                btn.BackgroundTransparency = 1
+                btn.Text = ""
+                btn.ZIndex = 7
+                btn.Parent = strip
+                enhBadge(
+                    btn,
+                    UDim2.fromScale(1, 1),
+                    UDim2.fromScale(0, 0),
+                    { type = t, origins = {} }
+                ).ZIndex =
+                    7
+                if self._enhStaged and self._enhStaged.groupKey == ("buy|" .. t) then
+                    local halo = Instance.new("Frame")
+                    halo.AnchorPoint = Vector2.new(0.5, 0.5)
+                    halo.Position = UDim2.fromScale(0.5, 0.5)
+                    halo.Size = UDim2.fromScale(1.18, 1.18)
+                    halo.BackgroundTransparency = 1
+                    halo.ZIndex = 10
+                    local hcorner = Instance.new("UICorner")
+                    hcorner.CornerRadius = UDim.new(1, 0)
+                    hcorner.Parent = halo
+                    local ring = Instance.new("UIStroke")
+                    ring.Color = Color3.fromRGB(235, 200, 90)
+                    ring.Thickness = 3
+                    ring.Parent = halo
+                    halo.Parent = btn
+                end
+                -- gem price chip (top-left); dim the badge when unaffordable
+                local pchip = Instance.new("TextLabel")
+                pchip.AnchorPoint = Vector2.new(0, 0)
+                pchip.Size = UDim2.fromScale(0.9, 0.34)
+                pchip.Position = UDim2.fromScale(-0.12, -0.14)
+                pchip.BackgroundColor3 = affordable and Color3.fromRGB(58, 46, 78)
+                    or Color3.fromRGB(78, 46, 46)
+                pchip.TextColor3 = affordable and Color3.fromRGB(200, 150, 255)
+                    or Color3.fromRGB(200, 150, 150)
+                pchip.Font = Enum.Font.GothamBold
+                pchip.TextScaled = true
+                pchip.Text = "\u{1F48E}" .. tostring(price)
+                pchip.ZIndex = 10
+                local pcc = Instance.new("UICorner")
+                pcc.CornerRadius = UDim.new(0.4, 0)
+                pcc.Parent = pchip
+                pchip.Parent = btn
+                if not affordable then
+                    for _, d in ipairs(btn:GetDescendants()) do
+                        if d:IsA("ImageLabel") then
+                            d.ImageTransparency = 0.55
+                        end
+                    end
+                end
+                btn.MouseEnter:Connect(function()
+                    self:_showEnhTooltip(btn, { type = t, origins = {}, level = band })
+                end)
+                btn.MouseLeave:Connect(function()
+                    self:_hideTooltip()
+                end)
+                btn.Activated:Connect(function()
+                    local target = self._enhTargetSlot or firstEmpty
+                    if not target then
+                        self.notice = "No empty slot — click a filled slot to replace it"
+                        self:_render()
+                        return
+                    end
+                    if not affordable then
+                        self.notice = ("Not enough gems — %s L%d costs %d (you have %d)"):format(
+                            t,
+                            band,
+                            price,
+                            gemBalance
+                        )
+                        self:_render()
+                        return
+                    end
+                    local buyRes = callBus("enhancement.shop.buy", { type = t })
+                    if buyRes and buyRes.ok then
+                        self._enhStaged = {
+                            slotIndex = target,
+                            uid = buyRes.uid,
+                            item = { type = t, origins = {}, level = buyRes.level },
+                            groupKey = "buy|" .. t,
+                        }
+                        self.notice = ("Bought %s — press APPLY to slot %d (CANCEL keeps it)"):format(
+                            buyRes.name or t,
+                            target
+                        )
+                    else
+                        self.notice = "Buy failed: " .. tostring(buyRes and buyRes.reason)
+                    end
+                    self:_render()
+                    self:_renderEnhanceStrip()
+                end)
+            end
+        end
     end
 
     -- ===== STAGED: ghost over the destination slot + APPLY / CANCEL =====
