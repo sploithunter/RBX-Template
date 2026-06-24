@@ -43,11 +43,16 @@ base 20, per_level 10, sell 0.30:
 
 1. **DONE — pricing core.** `configs/enhancements.lua` `shop` block + `src/Shared/Game/EnhancementPricing.lua`
    (`bandFor` / `buyPrice` / `sellPrice`) + `tests/headless/specs/enhancement_pricing.spec.luau`.
-2. **Service + bus.** `EnhancementShopService`: `Catalog(player)` (one band × natural types × price),
-   `Buy(player, type)` (validate gems → `DataService:RemoveCurrency("gems", price, "enh_buy:…")` →
-   `EnhancementService:Grant(natural record)` → stat → save), `Sell(player, uid)` (own + un-slotted →
-   `AddCurrency` refund → remove 1 → stat). Register `enhancement.shop.{catalog,buy,sell}` in
-   `GameAPIService` (mirror `shop.purchase`). Live E2E via the bus.
+2. **DONE — service + bus.** `EnhancementShopService` (`Catalog`/`Buy`/`Sell`) +
+   `enhancement.shop.{catalog,buy,sell}` bus commands + boot registration.
+   - **Stacks:** Buy routes through `EnhancementService:Grant` (increments the matching stack's
+     quantity — no dup uids); Sell decrements by `quantity` via `InventoryService:RemoveItem` (deletes
+     the stack at 0) and refunds `sellPrice × quantity`.
+   - Buy: validate type/grade → deduct gems (`enh_buy:<type>_L<band>`) → Grant → **refund on grant
+     fail** → critical save. Sell: read grade off the owned stack (single/dual buy back too) → remove
+     N → `AddCurrency` (`enh_sell:<uid>`) → save.
+   - Band uses `player:GetAttribute("Level")` (same source slotting uses → shown band always slottable).
+   - Pending: live E2E via the bus (needs a Play session); lifetime `enhancements_bought/sold` stats.
 3. **Sell-back polish + junk-sink event.** Wire a GameEvents reaction on sell (closes pending E9), add
    the lifetime stats.
 4. **Store UI.** Reuse the `RewardShopPanel` grid driven by the `catalog` command (one band's worth of

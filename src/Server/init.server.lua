@@ -404,6 +404,12 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.EnhancementService,
     { "Logger", "ConfigLoader", "DataService" }
 )
+-- EnhancementShopService: buy/sell enhancements for gems (configs/enhancements.lua shop).
+loader:RegisterModule(
+    "EnhancementShopService",
+    ServerScriptService.Server.Services.EnhancementShopService,
+    { "Logger", "ConfigLoader", "DataService", "InventoryService", "EnhancementService" }
+)
 -- PotionService: "brew charge" potions (drink->sip->drain) feeding BuffStack axis attributes.
 loader:RegisterModule(
     "PotionService",
@@ -669,6 +675,7 @@ table.insert(requiredModules, "ArchetypeService")
 table.insert(requiredModules, "PowerService")
 table.insert(requiredModules, "AugmentationService")
 table.insert(requiredModules, "EnhancementService")
+table.insert(requiredModules, "EnhancementShopService")
 table.insert(requiredModules, "PotionService")
 table.insert(requiredModules, "TutorialService")
 table.insert(requiredModules, "HotbarService")

@@ -1485,6 +1485,48 @@ function GameAPIService:_registerCommands()
             return s:Purchase(context.player, args.offerId)
         end,
     })
+    bus:register("enhancement.shop.catalog", {
+        description = "List the buyable enhancement offers (one slottable band) + the player's balance.",
+        handler = function(context)
+            local s = self:_service("EnhancementShopService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Catalog(context.player)
+        end,
+    })
+    bus:register("enhancement.shop.buy", {
+        description = "Buy one enhancement of a type (gems; naturals at the player's band).",
+        validate = function(args)
+            return Validators.fields(args, {
+                type = "string",
+                grade = { type = "string", optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local s = self:_service("EnhancementShopService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Buy(context.player, args)
+        end,
+    })
+    bus:register("enhancement.shop.sell", {
+        description = "Sell N from an enhancement stack back for gems (any grade, un-slotted).",
+        validate = function(args)
+            return Validators.fields(args, {
+                uid = "string",
+                quantity = { type = "int", min = 1, optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local s = self:_service("EnhancementShopService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Sell(context.player, args)
+        end,
+    })
     bus:register("rewards.summary", {
         description = "Aggregate claimable count across quests + daily (the menu badges).",
         handler = function(context)

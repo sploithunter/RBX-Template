@@ -84,4 +84,40 @@ function EnhancementPricing.sellPrice(grade, level, cfg)
     return math.floor(EnhancementPricing.value(grade, level, cfg) * frac)
 end
 
+-- Grade from an enhancement's origins list: 0 origins = natural, 1 = single, 2+ = dual. This is the
+-- grade key into grade_mult — the SELL path reads it off the owned stack so single/dual buy back too.
+function EnhancementPricing.gradeFromOrigins(origins)
+    local n = (type(origins) == "table") and #origins or 0
+    if n <= 0 then
+        return "natural"
+    elseif n == 1 then
+        return "single"
+    end
+    return "dual"
+end
+
+-- The buyable catalog for a player: ONE band (their slottable multiple-of-step) × each buyable grade
+-- × each non-excluded type. `typeKeys` is an array of type-name strings (configs/enhancements.lua
+-- types keys). Returns { band = number, offers = { {type, grade, level, price}, ... } }.
+function EnhancementPricing.catalog(playerLevel, typeKeys, cfg)
+    cfg = cfg or {}
+    local band = EnhancementPricing.bandFor(playerLevel, cfg)
+    local exclude = cfg.exclude_types or {}
+    local grades = cfg.buyable_grades or { "natural" }
+    local offers = {}
+    for _, grade in ipairs(grades) do
+        for _, t in ipairs(typeKeys or {}) do
+            if not exclude[t] then
+                offers[#offers + 1] = {
+                    type = t,
+                    grade = grade,
+                    level = band,
+                    price = EnhancementPricing.buyPrice(grade, band, cfg),
+                }
+            end
+        end
+    end
+    return { band = band, offers = offers }
+end
+
 return EnhancementPricing

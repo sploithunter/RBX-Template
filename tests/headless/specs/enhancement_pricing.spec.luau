@@ -90,4 +90,44 @@ return function()
             expect(EnhancementPricing.sellPrice("natural", 10, cfg)).to.equal(0)
         end)
     end)
+
+    describe("EnhancementPricing.gradeFromOrigins", function()
+        it("maps origin count to grade", function()
+            expect(EnhancementPricing.gradeFromOrigins({})).to.equal("natural")
+            expect(EnhancementPricing.gradeFromOrigins({ "geomancer" })).to.equal("single")
+            expect(EnhancementPricing.gradeFromOrigins({ "geomancer", "pyromancer" })).to.equal(
+                "dual"
+            )
+        end)
+
+        it("treats nil/garbage as natural", function()
+            expect(EnhancementPricing.gradeFromOrigins(nil)).to.equal("natural")
+            expect(EnhancementPricing.gradeFromOrigins("nope")).to.equal("natural")
+        end)
+    end)
+
+    describe("EnhancementPricing.catalog", function()
+        local TYPES = { "damage", "accuracy", "spark", "healing" }
+
+        it("offers buyable grades x non-excluded types at the player's band", function()
+            local cfg = {
+                level_step = 5,
+                min_level = 5,
+                max_level = 50,
+                buyable_grades = { "natural" },
+                exclude_types = { spark = true },
+                grade_mult = { natural = 1.0 },
+                buy = { base = 20, per_level = 10 },
+            }
+            local cat = EnhancementPricing.catalog(17, TYPES, cfg)
+            expect(cat.band).to.equal(15) -- L17 -> L15
+            expect(#cat.offers).to.equal(3) -- damage/accuracy/healing (spark excluded)
+            for _, o in ipairs(cat.offers) do
+                expect(o.level).to.equal(15)
+                expect(o.grade).to.equal("natural")
+                expect(o.price).to.equal(170) -- (20 + 10*15) * 1.0
+                expect(o.type ~= "spark").to.equal(true)
+            end
+        end)
+    end)
 end
