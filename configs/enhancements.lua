@@ -307,6 +307,31 @@ return {
         pickup_radius = 8,
     },
 
+    -- STORE: buy/sell enhancements for GEMS. v1 = NATURALS ONLY (origin enhancements stay drop-only /
+    -- field-earned, preserving their value). Price is a STATIC function of LEVEL — flat across types
+    -- (natural magnitude 0.15 is identical on every axis), so EnhancementPricing keys price off the
+    -- band alone. Sold in `level_step` increments, and only the ONE band the player can currently SLOT
+    -- is shown (nearest multiple of step → always inside the ±2 slot window; L17→L15, L18→L20).
+    -- Sell-back is a junk SINK: a fraction of buy, gems, un-slotted only, always < buy (no arbitrage).
+    shop = {
+        enabled = true,
+        currency = "gems",
+        grades = { natural = true }, -- v1: only naturals are buyable (single/dual reserved for later)
+        level_step = 5, -- sold in increments of 5 (L5, L10, L15, ...)
+        min_level = 5, -- lowest band sold (L1-2 players see L5)
+        max_level = 50, -- highest band sold (= player level cap)
+        -- types NOT sold (spark is the rare proc tier — found, not bought). Everything else is fair game.
+        exclude_types = { spark = true },
+        buy = {
+            base = 20,
+            per_level = 10, -- gems = base + per_level * bandLevel (L5=70, L10=120, L20=220) — TUNE vs gem income
+            grade_mult = { natural = 1.0 }, -- room to price single/dual higher when they're added
+        },
+        sell = {
+            fraction = 0.30, -- buyback = floor(buyPrice * fraction); un-slotted stacks only
+        },
+    },
+
     -- Max enhancements held in the inventory (oldest beyond the cap are refused, not deleted).
     inventory_cap = 60,
 

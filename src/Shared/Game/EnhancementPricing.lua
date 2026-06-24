@@ -1,0 +1,73 @@
+--[[
+    EnhancementPricing — pure price math for the enhancement STORE (buy/sell naturals for gems).
+
+    Naturals all share one magnitude (configs/enhancements.lua values.natural), so price is a pure
+    function of LEVEL (flat across types). The store sells in fixed increments (level_step) and shows
+    only the ONE band the player can currently SLOT — the nearest multiple of level_step, which is
+    always within the slot window (±2), so e.g. L17 → L15, L18 → L20.
+
+      EnhancementPricing.bandFor(playerLevel, cfg)        -> number   (the buyable band)
+      EnhancementPricing.buyPrice(grade, level, cfg)      -> number   (gems)
+      EnhancementPricing.sellPrice(grade, level, cfg)     -> number   (gems; fraction of buy, floored)
+
+    cfg = configs/enhancements.lua `shop` block. Pure (no Roblox APIs) → headless-testable.
+]]
+
+local EnhancementPricing = {}
+
+local function clamp(x, lo, hi)
+    if x < lo then
+        return lo
+    elseif x > hi then
+        return hi
+    end
+    return x
+end
+
+-- The single slottable band shown to a player: the nearest multiple of `level_step`, clamped to
+-- [min_level, max_level]. Every integer is <= step/2 from its nearest multiple, and with step 5 that
+-- is <= 2 — i.e. always inside the ±2 slot window, so the shown band is always slottable.
+function EnhancementPricing.bandFor(playerLevel, cfg)
+    cfg = cfg or {}
+    local step = tonumber(cfg.level_step) or 5
+    if step < 1 then
+        step = 1
+    end
+    local lvl = math.floor(tonumber(playerLevel) or 1)
+    if lvl < 1 then
+        lvl = 1
+    end
+    local band = math.floor(lvl / step + 0.5) * step
+    local minL = tonumber(cfg.min_level) or step
+    local maxL = tonumber(cfg.max_level) or 50
+    return clamp(band, minL, maxL)
+end
+
+-- Gems to BUY one enhancement of `grade` at `level`: (base + per_level * level) * grade_mult, floored.
+function EnhancementPricing.buyPrice(grade, level, cfg)
+    cfg = cfg or {}
+    local buy = cfg.buy or {}
+    local base = tonumber(buy.base) or 0
+    local per = tonumber(buy.per_level) or 0
+    local mult = (buy.grade_mult and tonumber(buy.grade_mult[grade])) or 1
+    local lvl = math.floor(tonumber(level) or 0)
+    if lvl < 0 then
+        lvl = 0
+    end
+    local price = math.floor((base + per * lvl) * mult)
+    if price < 0 then
+        price = 0
+    end
+    return price
+end
+
+-- Gems refunded when SELLING one back: a fraction of buy price, floored. The fraction is clamped to
+-- [0,1] so a sell can never pay more than the buy (no buy→sell arbitrage — it is a junk sink).
+function EnhancementPricing.sellPrice(grade, level, cfg)
+    cfg = cfg or {}
+    local frac = (cfg.sell and tonumber(cfg.sell.fraction)) or 0
+    frac = clamp(frac, 0, 1)
+    return math.floor(EnhancementPricing.buyPrice(grade, level, cfg) * frac)
+end
+
+return EnhancementPricing
