@@ -64,6 +64,29 @@ base 20, per_level 10, sell 0.30:
    **Pending: live visual pass** (layout/price-chip placement; can't verify without a Play session).
    Sell-from-inventory UI + lifetime stats still to come.
 
+## Endgame vision — signature powers afford 6 enhancement types → drop-only SETS (CoH invention sets)
+
+Target (Jason): each **signature / last-choice power** (the capstones) should offer **6 different
+enhancement types**, so the 6 slots can each take a distinct axis — which opens the design space for
+**named, drop-only "set" enhancements** (à la CoH invention sets): a set is several special pieces
+(one per aspect), and slotting N pieces of the same set grants escalating **set bonuses**.
+`configs/augmentation.lua` already has a `set_bonuses` scaffold (by matching-type count) to build on.
+
+Current gap (per-power compatible-type count, measured): 47/55 powers already offer ≥2; the capstones
+offer the FEWEST. To reach 6 on a signature we must "invent some" axes and wire each to a real knob:
+
+- **Have, wired**: `recharge`, `duration` (summons now), `potency` (genie heal; colossus needs the
+  SummonService strength-mult — the "stronger guardian" slice), `damage`/`accuracy`/`range` (attack
+  signatures).
+- **Invent / wire to reach 6**: a `move_speed`/`haste` type (faster guardian; also applies to Swift et
+  al.) — a NEW type (symbol + icon + family wiring); `health`/`armor` applied to a guardian's own HP
+  (tankier guardian); possibly a control-strength or crit axis. Per-signature the 6 differ.
+
+Phased path: (1) finish wiring EXISTING axes onto capstones (stronger = potency, tankier = health);
+(2) invent the missing types so each signature can field 6; (3) build the named drop-only SET layer on
+the `set_bonuses` scaffold (set id on the enhancement record → count pieces slotted on a power → apply
+the set's bonuses). This is a multi-slice endgame project, not a config line.
+
 ## Anti-exploit invariants
 
 - Buy price > sell price always (fraction ≤ 1).
