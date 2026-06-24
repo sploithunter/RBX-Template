@@ -171,6 +171,17 @@ return {
             axis = "heal",
             families = { heal = true, heal_blind = true },
         },
+        -- SPEED (Jason's batch-5 "speed" art): boosts a move-speed power's magnitude. Swift's 2nd
+        -- choice alongside potency (both scale its speed % — Swift's only knob; two ways to go faster).
+        -- axis=magnitude so it folds into the move_speed family's speed value. Future homes: a faster
+        -- guardian / cryo enemy-slows would need their own speed knobs (see docs/ENHANCEMENT_STORE.md).
+        speed = {
+            symbol = "speed",
+            axis = "magnitude",
+            families = {
+                move_speed = true, -- Swift (always-on self+pet speed buff)
+            },
+        },
     },
 
     -- Power `target` values that count as AoE for `requires_aoe` types.

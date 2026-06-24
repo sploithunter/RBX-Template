@@ -79,9 +79,13 @@ offer the FEWEST. To reach 6 on a signature we must "invent some" axes and wire 
   kind.magnitude; Colossus's squad defense/damage + Djinn HoT scale by the potency factor
   `kind._strengthMult` in SummonService), `damage`/`accuracy`/`range` (attack signatures). Summons now
   afford 3 (recharge + duration + potency).
-- **Invent / wire to reach 6**: a `move_speed`/`haste` type (faster guardian; also applies to Swift et
-  al.) — a NEW type (symbol + icon + family wiring); `health`/`armor` applied to a guardian's own HP
-  (tankier guardian); possibly a control-strength or crit axis. Per-signature the 6 differ.
+- **Invented**: `speed` type (Jason's "speed" art, 6 colors uploaded to the group + resolved + codegen'd
+  into power_icons_assets; axis=magnitude, families={move_speed}). DONE for **Swift** (2nd choice
+  alongside potency). Faster GUARDIAN still pending — it needs its own speed knob/axis (the summon has no
+  locomotion stat; axis=magnitude on a summon would conflate with potency-strength), so it's a separate
+  slice. The cryo enemy-slows are another future home (slow factor is `0` in config today).
+- **Still to invent for 6**: `health`/`armor` applied to a guardian's own HP (tankier guardian);
+  a control-strength or crit axis. Per-signature the 6 differ.
 
 Phased path: (1) finish wiring EXISTING axes onto capstones (stronger = potency, tankier = health);
 (2) invent the missing types so each signature can field 6; (3) build the named drop-only SET layer on

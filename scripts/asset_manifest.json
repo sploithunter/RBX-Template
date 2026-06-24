@@ -1,5 +1,5 @@
 {
-  "_README": "SINGLE SOURCE OF TRUTH for every icon uploaded to Roblox via scripts/upload_icons.js (Open Cloud, creator userId 3200870803 / coloradoplays). Each asset has BOTH ids: 'decal' (what Open Cloud returns; does NOT render in ImageLabel.Image) and 'image' (the wrapped Texture id resolved via InsertService:LoadAsset in Studio EDIT mode — this is what configs use). The 'image' ids are wired into configs/power_icons.lua. Element colors: earth=green, fire=red, desert=yellow, ice=blue. Last updated 2026-06-05.",
+  "_README": "SINGLE SOURCE OF TRUTH for every icon uploaded to Roblox via scripts/upload_icons.js (Open Cloud, creator userId 3200870803 / coloradoplays). Each asset has BOTH ids: 'decal' (what Open Cloud returns; does NOT render in ImageLabel.Image) and 'image' (the wrapped Texture id resolved via InsertService:LoadAsset in Studio EDIT mode \u2014 this is what configs use). The 'image' ids are wired into configs/power_icons.lua. Element colors: earth=green, fire=red, desert=yellow, ice=blue. Last updated 2026-06-05.",
   "rings": {
     "_note": "5 grayscale targeting rings (tinted per element via ImageColor3). Source: assets/ui/ring_frames_white/.",
     "ring_target_in": {
@@ -241,6 +241,10 @@
       "flag": {
         "decal": "135885506907886",
         "image": "87879742956998"
+      },
+      "speed": {
+        "decal": "79965075657308",
+        "image": "124343420866364"
       }
     },
     "red": {
@@ -455,6 +459,10 @@
       "flag": {
         "decal": "116249670514268",
         "image": "110899188947167"
+      },
+      "speed": {
+        "decal": "83787262267400",
+        "image": "89365570350735"
       }
     },
     "yellow": {
@@ -669,6 +677,10 @@
       "flag": {
         "decal": "87331328108112",
         "image": "82108689171605"
+      },
+      "speed": {
+        "decal": "80849606687189",
+        "image": "119441822348983"
       }
     },
     "blue": {
@@ -883,6 +895,10 @@
       "flag": {
         "decal": "103795080619680",
         "image": "96121634200596"
+      },
+      "speed": {
+        "decal": "75562363928591",
+        "image": "137025739372485"
       }
     },
     "white": {
@@ -1097,6 +1113,10 @@
       "flag": {
         "decal": "73365876903073",
         "image": "117320586903351"
+      },
+      "speed": {
+        "decal": "90601750140321",
+        "image": "104711615794632"
       }
     },
     "purple": {
@@ -1311,6 +1331,10 @@
       "flag": {
         "decal": "127499868817039",
         "image": "124601374495298"
+      },
+      "speed": {
+        "decal": "126707443773548",
+        "image": "93800877299029"
       }
     }
   },
