@@ -40,6 +40,12 @@ do
     PetBadge = ok and mod or nil
 end
 
+-- PetCardStyle — the SHARED card chrome (rounded frame + rarity/variant rings +
+-- background gradient). The inventory enhancement card is assembled from this exact
+-- renderer; we reuse it so the sell cards are visually identical (project unification
+-- rule: never hand-roll a parallel card).
+local PetCardStyle = require(script.Parent.Parent.PetCardStyle)
+
 local REMOTE_NAME = "GameAPICommand"
 
 -- Palette: matches QuestPanel's card aesthetic so the panel reads as part of the same
@@ -50,9 +56,6 @@ local COLORS = {
     header = Color3.fromRGB(56, 161, 178),
     headerGradient = Color3.fromRGB(43, 134, 148),
     toolbar = Color3.fromRGB(28, 30, 38),
-    row = Color3.fromRGB(40, 42, 52),
-    rowJunk = Color3.fromRGB(52, 44, 44), -- subtle warm tint for dead/unusable stacks
-    rowStroke = Color3.fromRGB(70, 74, 88),
     sell = Color3.fromRGB(46, 204, 113),
     sellHover = Color3.fromRGB(39, 174, 96),
     junk = Color3.fromRGB(230, 126, 34), -- "Sell Junk" salvage action (amber)
@@ -66,7 +69,28 @@ local COLORS = {
     checkOff = Color3.fromRGB(60, 62, 72),
 }
 
-local GRADE_LABEL = { natural = "Natural", single = "Single", dual = "Dual" }
+-- Card chrome accent color, mirroring InventoryPanel:_loadEnhancementsFromFolder so the
+-- ring tints identically: single = its origin's color, dual = chaotic purple, natural =
+-- neutral grey. The DISC carries the real per-origin color via PetBadge; this only tints
+-- the card frame's rarity stroke (applyChrome's colorOverride).
+local ORIGIN_COLOR = {
+    geomancer = Color3.fromRGB(150, 230, 150),
+    pyromancer = Color3.fromRGB(255, 150, 120),
+    cryomancer = Color3.fromRGB(140, 200, 255),
+    sandwalker = Color3.fromRGB(240, 215, 130),
+}
+local DUAL_COLOR = Color3.fromRGB(196, 156, 255)
+local NATURAL_COLOR = Color3.fromRGB(205, 205, 215)
+
+local function enhancementCardColor(item)
+    local origins = type(item.origins) == "table" and item.origins or {}
+    if #origins == 0 then
+        return NATURAL_COLOR
+    elseif #origins == 1 then
+        return ORIGIN_COLOR[origins[1]] or NATURAL_COLOR
+    end
+    return DUAL_COLOR
+end
 
 local EnhancementSellPanel = {}
 EnhancementSellPanel.__index = EnhancementSellPanel
@@ -146,6 +170,7 @@ end
 
 local HEADER_H = 76
 local TOOLBAR_H = 96
+local CARD_SIZE = 140 -- square card footprint, in the inventory grid's size range
 
 function EnhancementSellPanel:_createUI(parent)
     local frame = Instance.new("Frame")
@@ -194,14 +219,18 @@ function EnhancementSellPanel:_createUI(parent)
     list.Parent = frame
     self.listFrame = list
 
-    local layout = Instance.new("UIListLayout")
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 10)
-    layout.Parent = list
+    -- Responsive GRID of square cards (same square footprint as the inventory grid).
+    local grid = Instance.new("UIGridLayout")
+    grid.CellSize = UDim2.new(0, CARD_SIZE, 0, CARD_SIZE)
+    grid.CellPadding = UDim2.new(0, 12, 0, 12)
+    grid.SortOrder = Enum.SortOrder.LayoutOrder
+    grid.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    grid.Parent = list
 
     local pad = Instance.new("UIPadding")
-    pad.PaddingTop = UDim.new(0, 4)
-    pad.PaddingBottom = UDim.new(0, 4)
+    pad.PaddingTop = UDim.new(0, 6)
+    pad.PaddingBottom = UDim.new(0, 6)
+    pad.PaddingLeft = UDim.new(0, 4)
     pad.PaddingRight = UDim.new(0, 4)
     pad.Parent = list
 
@@ -562,6 +591,11 @@ function EnhancementSellPanel:_renderList()
             child:Destroy()
         end
     end
+    -- empty-state label lives on the panel frame (not in the grid, which would size it)
+    if self._emptyLabel then
+        self._emptyLabel:Destroy()
+        self._emptyLabel = nil
+    end
     self.rows = {}
 
     local items = {}
@@ -571,61 +605,71 @@ function EnhancementSellPanel:_renderList()
     table.sort(items, sortItems)
 
     if #items == 0 then
-        local empty = Instance.new("Frame")
-        empty.Name = "Empty"
-        empty.Size = UDim2.new(1, 0, 0, 80)
-        empty.BackgroundTransparency = 1
-        empty.LayoutOrder = 1
-        empty.Parent = self.listFrame
         local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(1, 0, 1, 0)
+        lbl.Name = "EmptyLabel"
+        lbl.Size = UDim2.new(1, -24, 0, 60)
+        lbl.Position = UDim2.new(0, 12, 0, HEADER_H + TOOLBAR_H + 20)
         lbl.BackgroundTransparency = 1
         lbl.Text = "No enhancements to sell."
         lbl.TextColor3 = COLORS.dim
         lbl.TextSize = 18
         lbl.Font = Enum.Font.GothamMedium
-        lbl.Parent = empty
+        lbl.ZIndex = 102
+        lbl.Parent = self.frame
+        self._emptyLabel = lbl
         return
     end
 
     for i, item in ipairs(items) do
-        self:_buildRow(item, i)
+        self:_buildCard(item, i)
     end
 end
 
--- One stack card: disc + type/level/grade + price + Sell. Junk stacks get a warm tint
--- and a small "dead"/"can't slot" marker.
-function EnhancementSellPanel:_buildRow(item, order)
-    local row = Instance.new("Frame")
-    row.Name = "Row_" .. tostring(item.uid)
-    row.Size = UDim2.new(1, 0, 0, 72)
-    row.BackgroundColor3 = item.junk and COLORS.rowJunk or COLORS.row
-    row.BorderSizePixel = 0
-    row.LayoutOrder = order
-    row.ZIndex = 102
-    row.Parent = self.listFrame
-    local rc = Instance.new("UICorner")
-    rc.CornerRadius = UDim.new(0, 12)
-    rc.Parent = row
-    local rs = Instance.new("UIStroke")
-    rs.Color = item.junk and COLORS.junk or COLORS.rowStroke
-    rs.Thickness = item.junk and 2 or 1
-    rs.Transparency = item.junk and 0.2 or 0.5
-    rs.Parent = row
+-- One SQUARE stack card, visually IDENTICAL to the inventory enhancement card: shared
+-- PetCardStyle.applyChrome chrome + a centered iconBG holding PetBadge's enhancement
+-- disc + an L## chip (top-left) + ×N badge (top-right). The card's BOTTOM corners carry
+-- the sell affordances (price bottom-left, Sell button bottom-right) — the same bottom-
+-- corner real estate pet cards use for power chips. Junk stacks get an amber stroke + a
+-- tiny corner tag.
+function EnhancementSellPanel:_buildCard(item, order)
+    local card = Instance.new("Frame")
+    card.Name = "Card_" .. tostring(item.uid)
+    card.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    card.BorderSizePixel = 0
+    card.LayoutOrder = order
+    card.ZIndex = 102
+    card.Parent = self.listFrame
 
-    -- Disc (reuse the SAME enhancement badge as the inventory cards).
-    local discHolder = Instance.new("Frame")
-    discHolder.Name = "Disc"
-    discHolder.Size = UDim2.new(0, 56, 0, 56)
-    discHolder.Position = UDim2.new(0, 8, 0.5, 0)
-    discHolder.AnchorPoint = Vector2.new(0, 0.5)
-    discHolder.BackgroundTransparency = 1
-    discHolder.ZIndex = 103
-    discHolder.Parent = row
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = card
+
+    -- SHARED card chrome (rarity ring + variant ring + background gradient). The grade
+    -- accent color tints the ring; rarityId/variant are nil for enhancements (applyChrome
+    -- defaults), exactly as the inventory enhancement card passes them.
+    local accent = enhancementCardColor(item)
+    PetCardStyle.applyChrome(card, nil, nil, nil, accent)
+
+    -- centered icon background holding the disc (mirrors InventoryPanel's iconBG)
+    local iconSize = math.floor(CARD_SIZE * 0.5)
+    local iconBG = Instance.new("Frame")
+    iconBG.Name = "IconBG"
+    iconBG.Size = UDim2.new(0, iconSize, 0, iconSize)
+    iconBG.Position = UDim2.new(0.5, -math.floor(iconSize / 2), 0, math.floor(CARD_SIZE * 0.1))
+    iconBG.BackgroundColor3 = accent
+    iconBG.BackgroundTransparency = 0.8
+    iconBG.BorderSizePixel = 0
+    iconBG.ZIndex = 103
+    iconBG.Parent = card
+    local iconCorner = Instance.new("UICorner")
+    iconCorner.CornerRadius = UDim.new(0, math.floor(CARD_SIZE * 0.3))
+    iconCorner.Parent = iconBG
+
+    -- the SAME enhancement disc the inventory cards render
     local origins = type(item.origins) == "table" and item.origins or {}
     if PetBadge and PetBadge.createEnhancementBadge then
-        PetBadge.createEnhancementBadge(discHolder, {
-            size = UDim2.fromScale(1, 1),
+        PetBadge.createEnhancementBadge(iconBG, {
+            size = UDim2.fromScale(0.92, 0.92),
             position = UDim2.fromScale(0.5, 0.5),
             anchor = Vector2.new(0.5, 0.5),
             record = { type = item.type, origins = origins },
@@ -634,90 +678,121 @@ function EnhancementSellPanel:_buildRow(item, order)
         })
     else
         local fallback = Instance.new("TextLabel")
-        fallback.Size = UDim2.fromScale(1, 1)
+        fallback.Size = UDim2.fromScale(0.92, 0.92)
+        fallback.AnchorPoint = Vector2.new(0.5, 0.5)
+        fallback.Position = UDim2.fromScale(0.5, 0.5)
         fallback.BackgroundTransparency = 1
         fallback.Text = "⚙️"
         fallback.TextScaled = true
         fallback.ZIndex = 104
-        fallback.Parent = discHolder
+        fallback.Parent = iconBG
     end
 
-    -- Name line: "Type  L7"
+    -- L## chip, TOP-LEFT (same spot/shape as the inventory enhancement card)
+    local lW = math.max(16, math.floor(CARD_SIZE * 0.3))
+    local lH = math.max(12, math.floor(CARD_SIZE * 0.18))
+    local lM = math.max(2, math.floor(CARD_SIZE * 0.05))
+    local lvl = Instance.new("TextLabel")
+    lvl.Name = "EnhLevel"
+    lvl.Size = UDim2.fromOffset(lW, lH)
+    lvl.Position = UDim2.fromOffset(lM, lM)
+    lvl.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    lvl.BackgroundTransparency = 0.25
+    lvl.Text = "L" .. tostring(item.level or "?")
+    lvl.TextColor3 = accent
+    lvl.TextScaled = true
+    lvl.Font = Enum.Font.GothamBold
+    lvl.ZIndex = 105
+    lvl.Parent = card
+    local lc = Instance.new("UICorner")
+    lc.CornerRadius = UDim.new(0, 5)
+    lc.Parent = lvl
+
+    -- ×N badge, TOP-RIGHT (only when quantity > 1)
+    local qty = math.max(1, tonumber(item.quantity) or 1)
+    if qty > 1 then
+        local qW = math.max(16, math.floor(CARD_SIZE * 0.3))
+        local qH = math.max(12, math.floor(CARD_SIZE * 0.18))
+        local qM = math.max(2, math.floor(CARD_SIZE * 0.05))
+        local qtyLabel = Instance.new("TextLabel")
+        qtyLabel.Name = "QtyLabel"
+        qtyLabel.Size = UDim2.fromOffset(qW, qH)
+        qtyLabel.Position = UDim2.new(1, -qW - qM, 0, qM)
+        qtyLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        qtyLabel.BackgroundTransparency = 0.25
+        qtyLabel.Text = "×" .. tostring(qty)
+        qtyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        qtyLabel.TextScaled = true
+        qtyLabel.Font = Enum.Font.GothamBold
+        qtyLabel.ZIndex = 105
+        qtyLabel.Parent = card
+        local qc = Instance.new("UICorner")
+        qc.CornerRadius = UDim.new(0, 5)
+        qc.Parent = qtyLabel
+    end
+
+    -- type name, centered under the disc (the card's identity line)
     local typeName = tostring(item.type or "Enhancement")
     typeName = typeName:sub(1, 1):upper() .. typeName:sub(2)
-    local name = Instance.new("TextLabel")
-    name.Name = "Name"
-    name.Size = UDim2.new(1, -300, 0, 26)
-    name.Position = UDim2.new(0, 74, 0, 10)
-    name.BackgroundTransparency = 1
-    name.Text = ("%s   L%s"):format(typeName, tostring(item.level or "?"))
-    name.TextColor3 = COLORS.text
-    name.TextXAlignment = Enum.TextXAlignment.Left
-    name.TextSize = 18
-    name.Font = Enum.Font.GothamBold
-    name.ZIndex = 103
-    name.Parent = row
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "TypeName"
+    nameLabel.Size = UDim2.new(1, -10, 0, math.floor(CARD_SIZE * 0.16))
+    nameLabel.Position = UDim2.new(0, 5, 0, math.floor(CARD_SIZE * 0.6))
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = typeName
+    nameLabel.TextColor3 = COLORS.text
+    nameLabel.TextScaled = true
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.ZIndex = 103
+    nameLabel.Parent = card
+    local nameC = Instance.new("UITextSizeConstraint")
+    nameC.MaxTextSize = 15
+    nameC.Parent = nameLabel
 
-    -- Sub line: grade + quantity + junk marker.
-    local grade = GRADE_LABEL[tostring(item.grade)] or tostring(item.grade or "")
-    local subParts = { grade }
-    if (tonumber(item.quantity) or 1) > 1 then
-        subParts[#subParts + 1] = ("×%d"):format(item.quantity)
-    end
-    if item.junk then
-        if item.dead then
-            subParts[#subParts + 1] = "• dead"
-        elseif item.grade == "dual" and item.usable == false then
-            subParts[#subParts + 1] = "• can't slot"
-        else
-            subParts[#subParts + 1] = "• junk"
-        end
-    end
-    local sub = Instance.new("TextLabel")
-    sub.Name = "Sub"
-    sub.Size = UDim2.new(1, -300, 0, 20)
-    sub.Position = UDim2.new(0, 74, 0, 38)
-    sub.BackgroundTransparency = 1
-    sub.Text = table.concat(subParts, "  ")
-    sub.TextColor3 = item.junk and COLORS.junk or COLORS.subtext
-    sub.TextXAlignment = Enum.TextXAlignment.Left
-    sub.TextSize = 14
-    sub.Font = Enum.Font.GothamMedium
-    sub.ZIndex = 103
-    sub.Parent = row
-
-    -- Per-unit price, right of the row (left of the Sell button).
+    -- BOTTOM-LEFT corner: per-unit gem price pill (gem-green accent)
+    local priceW = math.floor(CARD_SIZE * 0.46)
+    local priceH = math.floor(CARD_SIZE * 0.2)
+    local priceM = math.max(3, math.floor(CARD_SIZE * 0.05))
     local price = Instance.new("TextLabel")
     price.Name = "Price"
-    price.Size = UDim2.new(0, 110, 1, 0)
-    price.Position = UDim2.new(1, -126, 0, 0)
-    price.AnchorPoint = Vector2.new(1, 0)
-    price.BackgroundTransparency = 1
+    price.Size = UDim2.fromOffset(priceW, priceH)
+    price.Position = UDim2.new(0, priceM, 1, -priceH - priceM)
+    price.BackgroundColor3 = Color3.fromRGB(24, 40, 32)
+    price.BackgroundTransparency = 0.15
     price.Text = ("💎%d"):format(tonumber(item.sellUnit) or 0)
-    price.TextColor3 = COLORS.gem
-    price.TextXAlignment = Enum.TextXAlignment.Right
-    price.TextSize = 18
+    price.TextColor3 = COLORS.sell
+    price.TextScaled = true
     price.Font = Enum.Font.GothamBold
-    price.ZIndex = 103
-    price.Parent = row
+    price.ZIndex = 105
+    price.Parent = card
+    local priceC = Instance.new("UICorner")
+    priceC.CornerRadius = UDim.new(0, 6)
+    priceC.Parent = price
+    local priceCon = Instance.new("UITextSizeConstraint")
+    priceCon.MaxTextSize = 14
+    priceCon.Parent = price
 
-    -- Sell button.
+    -- BOTTOM-RIGHT corner: compact Sell button (gem-green)
+    local sellW = math.floor(CARD_SIZE * 0.4)
+    local sellH = math.floor(CARD_SIZE * 0.22)
     local sellBtn = Instance.new("TextButton")
     sellBtn.Name = "Sell"
-    sellBtn.Size = UDim2.new(0, 96, 0, 40)
-    sellBtn.Position = UDim2.new(1, -10, 0.5, 0)
-    sellBtn.AnchorPoint = Vector2.new(1, 0.5)
+    sellBtn.Size = UDim2.fromOffset(sellW, sellH)
+    sellBtn.Position = UDim2.new(1, -sellW - priceM, 1, -sellH - priceM)
     sellBtn.BackgroundColor3 = COLORS.sell
     sellBtn.Text = "Sell"
     sellBtn.TextColor3 = COLORS.text
-    sellBtn.TextSize = 17
+    sellBtn.TextScaled = true
     sellBtn.Font = Enum.Font.GothamBold
     sellBtn.AutoButtonColor = true
-    sellBtn.ZIndex = 104
-    sellBtn.Parent = row
+    sellBtn.ZIndex = 105
+    sellBtn.Parent = card
     local sbc = Instance.new("UICorner")
-    sbc.CornerRadius = UDim.new(0, 10)
+    sbc.CornerRadius = UDim.new(0, 8)
     sbc.Parent = sellBtn
+    local sellCon = Instance.new("UITextSizeConstraint")
+    sellCon.MaxTextSize = 15
+    sellCon.Parent = sellBtn
     sellBtn.MouseEnter:Connect(function()
         sellBtn.BackgroundColor3 = COLORS.sellHover
     end)
@@ -728,7 +803,40 @@ function EnhancementSellPanel:_buildRow(item, order)
         self:_onSellStack(item)
     end)
 
-    self.rows[#self.rows + 1] = row
+    -- JUNK flag: thin amber stroke around the card + a tiny corner tag
+    -- ("dead" / "can't slot") so salvage-worthy stacks read at a glance.
+    if item.junk then
+        local js = Instance.new("UIStroke")
+        js.Name = "JunkStroke"
+        js.Color = COLORS.junk
+        js.Thickness = 2
+        js.Transparency = 0.1
+        js.Parent = card
+        local tagText = item.dead and "dead"
+            or ((item.grade == "dual" and item.usable == false) and "can't slot")
+            or "junk"
+        local tag = Instance.new("TextLabel")
+        tag.Name = "JunkTag"
+        tag.Size = UDim2.new(0, math.floor(CARD_SIZE * 0.5), 0, math.floor(CARD_SIZE * 0.14))
+        tag.AnchorPoint = Vector2.new(0.5, 0)
+        tag.Position = UDim2.new(0.5, 0, 0, math.floor(CARD_SIZE * 0.02))
+        tag.BackgroundColor3 = COLORS.junk
+        tag.BackgroundTransparency = 0.1
+        tag.Text = tagText
+        tag.TextColor3 = Color3.fromRGB(20, 20, 24)
+        tag.TextScaled = true
+        tag.Font = Enum.Font.GothamBold
+        tag.ZIndex = 106
+        tag.Parent = card
+        local tc = Instance.new("UICorner")
+        tc.CornerRadius = UDim.new(0, 5)
+        tc.Parent = tag
+        local tcon = Instance.new("UITextSizeConstraint")
+        tcon.MaxTextSize = 12
+        tcon.Parent = tag
+    end
+
+    self.rows[#self.rows + 1] = card
 end
 
 ----------------------------------------------------------------------------------------
