@@ -1076,11 +1076,12 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                     ring.Parent = halo
                     halo.Parent = btn
                 end
-                -- gem price chip (top-left); dim the badge when unaffordable
+                -- gem price chip UNDERNEATH the icon (Jason: above looked weird); per-item so dual/
+                -- single can carry different prices later. Dim the badge when unaffordable.
                 local pchip = Instance.new("TextLabel")
-                pchip.AnchorPoint = Vector2.new(0, 0)
-                pchip.Size = UDim2.fromScale(0.9, 0.34)
-                pchip.Position = UDim2.fromScale(-0.12, -0.14)
+                pchip.AnchorPoint = Vector2.new(0.5, 0)
+                pchip.Size = UDim2.fromScale(1.15, 0.3)
+                pchip.Position = UDim2.fromScale(0.5, 1.02)
                 pchip.BackgroundColor3 = affordable and Color3.fromRGB(58, 46, 78)
                     or Color3.fromRGB(78, 46, 46)
                 pchip.TextColor3 = affordable and Color3.fromRGB(200, 150, 255)
@@ -1113,31 +1114,21 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                         self:_render()
                         return
                     end
-                    if not affordable then
-                        self.notice = ("Not enough gems — %s L%d costs %d (you have %d)"):format(
-                            t,
-                            band,
-                            price,
-                            gemBalance
-                        )
-                        self:_render()
-                        return
-                    end
-                    local buyRes = callBus("enhancement.shop.buy", { type = t })
-                    if buyRes and buyRes.ok then
-                        self._enhStaged = {
-                            slotIndex = target,
-                            uid = buyRes.uid,
-                            item = { type = t, origins = {}, level = buyRes.level },
-                            groupKey = "buy|" .. t,
-                        }
-                        self.notice = ("Bought %s — press APPLY to slot %d (CANCEL keeps it)"):format(
-                            buyRes.name or t,
-                            target
-                        )
-                    else
-                        self.notice = "Buy failed: " .. tostring(buyRes and buyRes.reason)
-                    end
+                    -- STAGE for preview only — the actual purchase happens on APPLY (so you can
+                    -- evaluate the result first, and CANCEL costs nothing). needsBuy + price ride along.
+                    self._enhStaged = {
+                        slotIndex = target,
+                        item = { type = t, origins = {}, level = band },
+                        groupKey = "buy|" .. t,
+                        needsBuy = true,
+                        buyType = t,
+                        price = price,
+                    }
+                    self.notice = ("Preview %s L%d — APPLY buys (\u{1F48E}%d) + slots it; CANCEL is free"):format(
+                        t,
+                        band,
+                        price
+                    )
                     self:_render()
                     self:_renderEnhanceStrip()
                 end)
@@ -1198,10 +1189,23 @@ function PowerChoiceMenu:_renderEnhanceStrip()
         cancelBtn.Position = UDim2.fromScale(0.97, 0.98)
         cancelBtn.Parent = strip
         applyBtn.Activated:Connect(function()
+            local uid = staged.uid
+            -- A staged BUY isn't purchased until APPLY (so you can evaluate the preview first and
+            -- CANCEL costs nothing) — buy it now, then slot the resulting stack.
+            if staged.needsBuy then
+                local buyRes = callBus("enhancement.shop.buy", { type = staged.buyType })
+                if not (buyRes and buyRes.ok) then
+                    self.notice = "Buy failed: " .. tostring(buyRes and buyRes.reason)
+                    self:_render()
+                    self:_renderEnhanceStrip() -- keep it staged; CANCEL still costs nothing
+                    return
+                end
+                uid = buyRes.uid
+            end
             local res = callBus("enh.slot", {
                 powerId = powerId,
                 slotIndex = staged.slotIndex,
-                uid = staged.uid,
+                uid = uid,
             })
             self._enhStaged = nil
             if res and res.ok then
