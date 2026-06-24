@@ -1193,11 +1193,23 @@ function AssetPreloadService:GenerateImageFromModel(
         local angleYRad = math.rad(cameraConfig.angle_y) -- Horizontal rotation (around Y-axis)
         local angleXRad = math.rad(cameraConfig.angle_x) -- Vertical rotation (elevation)
 
+        -- NORMALIZE distance by model size so apparent card size is consistent regardless of mesh/scale.
+        -- cameraConfig.distance was tuned for the standard ~3-stud pet, but the camera previously sat at
+        -- a FIXED distance — so big meshes (dragons measure 6-7.6 studs vs the 3.04 norm) overfilled the
+        -- card (fill 1.6-2.2 vs the normal 0.87), reading as "Huge" (Jason). Scaling the distance by
+        -- extent/REF lands every pet at the same fill: a 3.04 pet is unchanged, a 6.08 dragon doubles
+        -- its distance. The per-pet camera.distance still applies as the base (preserves intended framing).
+        local REF_EXTENT = 3.04 -- the standard pet max-extent (most pets normalize to ~3 studs; measured live)
+        local maxExtent = math.max(modelSize.X, modelSize.Y, modelSize.Z)
+        local extentFactor = (maxExtent > 0.05) and (maxExtent / REF_EXTENT) or 1
+        extentFactor = math.clamp(extentFactor, 0.5, 3.5) -- guard against degenerate/stray-part extents
+        local effectiveDistance = cameraConfig.distance * extentFactor
+
         -- Use spherical coordinates: distance, horizontal angle, vertical angle
         local cameraOffset = Vector3.new(
-            math.sin(angleYRad) * math.cos(angleXRad) * cameraConfig.distance, -- X: affected by both angles
-            math.sin(angleXRad) * cameraConfig.distance, -- Y: vertical elevation
-            math.cos(angleYRad) * math.cos(angleXRad) * cameraConfig.distance -- Z: affected by both angles
+            math.sin(angleYRad) * math.cos(angleXRad) * effectiveDistance, -- X: affected by both angles
+            math.sin(angleXRad) * effectiveDistance, -- Y: vertical elevation
+            math.cos(angleYRad) * math.cos(angleXRad) * effectiveDistance -- Z: affected by both angles
         )
 
         local cameraPosition = cameraOffset + cameraConfig.offset

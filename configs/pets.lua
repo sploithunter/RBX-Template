@@ -746,7 +746,7 @@ local petConfig = {
             rarity = "secret",
             base_power = 46,
             base_health = 240,
-            viewport_zoom = 1.2, -- dragon card framing: models frame large, kept below the 1.5 fleet (Jason: looked huge)
+            viewport_zoom = 1.5, -- fleet default (inventory card size is normalized in AssetPreloadService, not here)
             -- Ice secret dragon: wades IN and FREEZES A CLUSTER — targeted_aoe breath + on-hit root
             -- on the primary AND every splashed enemy (an AoE freeze). The melee/control capstone
             -- (docs/lines/PET_LINE_DRAGON.md). attack_control composes onto RootedUntil (same seam
@@ -1524,7 +1524,7 @@ local petConfig = {
             rarity = "secret",
             base_power = 46,
             base_health = 240,
-            viewport_zoom = 1.2, -- dragon card framing: models frame large, kept below the 1.5 fleet (Jason: looked huge)
+            viewport_zoom = 1.5, -- fleet default (inventory card size is normalized in AssetPreloadService, not here)
             -- Black-ice secret dragon (Aurora's mirror): wades IN and FREEZES A CLUSTER —
             -- targeted_aoe breath + on-hit root on the primary AND every splashed enemy.
             attack_targeting = "targeted_aoe",
@@ -2677,21 +2677,21 @@ local petConfig = {
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Dragon",
                     abilities = { "fire_breath" },
-                    viewport_zoom = 1.2, -- dragon card framing: models frame large, kept below the 1.5 fleet
+                    viewport_zoom = 1.5, -- fleet default (inventory card size is normalized in AssetPreloadService, not here)
                 },
                 golden = {
                     asset_id = "rbxassetid://91261941530299",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Golden Dragon",
                     abilities = { "golden_flame", "treasure_sense" },
-                    viewport_zoom = 1.2, -- Golden dragon card framing (kept below the 1.5 fleet)
+                    viewport_zoom = 1.5, -- fleet default (inventory card size is normalized in AssetPreloadService, not here)
                 },
                 rainbow = {
                     asset_id = "rbxassetid://120821607721730",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Rainbow Dragon",
                     abilities = { "prismatic_breath", "reality_burn", "cosmic_flight" },
-                    viewport_zoom = 1.2, -- Rainbow dragon card framing (kept below the 1.5 fleet)
+                    viewport_zoom = 1.5, -- fleet default (inventory card size is normalized in AssetPreloadService, not here)
 
                     -- Display overrides (optional - overrides viewport defaults)
                     display_container_bg = Color3.fromRGB(255, 0, 255), -- Magenta bg for Rainbow Dragon
@@ -3015,7 +3015,7 @@ local petConfig = {
             -- combo; reverted once verified — the spreading-burn power now waits for a purpose-built
             -- pet. To reassign: attack_targeting = "targeted_aoe" + attack_dot{ ..., spread = {...} }.)
             huge_base_power = 180,
-            viewport_zoom = 1.2, -- dragon card framing: models frame large, kept below the 1.5 fleet
+            viewport_zoom = 1.5, -- fleet default (inventory card size is normalized in AssetPreloadService, not here)
             asset_transform = { scale = 3.2, huge_scale = 3, orientation = { x = 0, y = 0, z = 0 } },
             camera = {
                 distance = 3.5,
