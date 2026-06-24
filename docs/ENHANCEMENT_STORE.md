@@ -55,8 +55,14 @@ base 20, per_level 10, sell 0.30:
    - Pending: live E2E via the bus (needs a Play session); lifetime `enhancements_bought/sold` stats.
 3. **Sell-back polish + junk-sink event.** Wire a GameEvents reaction on sell (closes pending E9), add
    the lifetime stats.
-4. **Store UI.** Reuse the `RewardShopPanel` grid driven by the `catalog` command (one band's worth of
-   natural types + buy/sell buttons).
+4. **DONE (needs live tuning) — buy-to-fill UI.** Integrated into the `PowerChoiceMenu` slotting flow
+   (Jason's pick) rather than a standalone shop: band-natural **buy offers appear as gem-priced entries
+   in the existing AVAILABLE grid** (compatible types, sorted last since naturals are low value), with
+   affordability dimming + the gem balance in the strip header. Clicking a buy offer →
+   `enhancement.shop.buy` → stages the bought enhancement for the targeted slot → existing APPLY path
+   slots it (CANCEL keeps it in inventory). Reuses the tested grid layout, so structurally low-risk.
+   **Pending: live visual pass** (layout/price-chip placement; can't verify without a Play session).
+   Sell-from-inventory UI + lifetime stats still to come.
 
 ## Anti-exploit invariants
 
