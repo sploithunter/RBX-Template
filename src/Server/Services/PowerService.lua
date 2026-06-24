@@ -1315,6 +1315,10 @@ function PowerService:Cast(player, powerId)
         kind._accuracyBase = effective.accuracy
         kind._casterLevel = casterLevel
         kind._critBase = record.critBase -- P5: per-power crit chance for DoT ticks
+        -- STRONGER GUARDIAN: the potency (magnitude axis) boost FRACTION, so SummonService can scale a
+        -- summon's gcfg-sourced strength (Colossus squad defense/damage, Djinn HoT) — those don't live
+        -- in kind.magnitude, so effective.magnitude can't carry them (Colossus magnitudeBase = 0).
+        kind._strengthMult = 1 + (enhAxes.magnitude or 0)
     end
 
     -- Target gate: an offensive power reaches the enemy THROUGH the pets, so it can't fire unless

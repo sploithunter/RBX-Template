@@ -75,9 +75,10 @@ enhancement types**, so the 6 slots can each take a distinct axis — which open
 Current gap (per-power compatible-type count, measured): 47/55 powers already offer ≥2; the capstones
 offer the FEWEST. To reach 6 on a signature we must "invent some" axes and wire each to a real knob:
 
-- **Have, wired**: `recharge`, `duration` (summons now), `potency` (genie heal; colossus needs the
-  SummonService strength-mult — the "stronger guardian" slice), `damage`/`accuracy`/`range` (attack
-  signatures).
+- **Have, wired**: `recharge`, `duration` (summons), `potency` (summons — DONE: Genie's heal scales via
+  kind.magnitude; Colossus's squad defense/damage + Djinn HoT scale by the potency factor
+  `kind._strengthMult` in SummonService), `damage`/`accuracy`/`range` (attack signatures). Summons now
+  afford 3 (recharge + duration + potency).
 - **Invent / wire to reach 6**: a `move_speed`/`haste` type (faster guardian; also applies to Swift et
   al.) — a NEW type (symbol + icon + family wiring); `health`/`armor` applied to a guardian's own HP
   (tankier guardian); possibly a control-strength or crit axis. Per-signature the 6 differ.

@@ -183,6 +183,10 @@ function SummonService:Summon(player, kind, now, powerId)
         return
     end
     local dur = tonumber(kind.duration) or 20
+    -- STRONGER GUARDIAN: a `potency` enhancement on the summon power scales the guardian's strength.
+    -- Genie's arrival burst is kind.magnitude (already enhancement-scaled at cast), but the gcfg-sourced
+    -- strength (Colossus squad defense/damage, Djinn HoT) is NOT — so apply the potency factor here.
+    local strengthMult = tonumber(kind._strengthMult) or 1
     local pets = squadFolder(player)
 
     -- immediate payoff: revive + heal (Genie's never-wipe)
@@ -202,14 +206,18 @@ function SummonService:Summon(player, kind, now, powerId)
         end
         -- Colossus standing buffs: the WALL (squad +Defense) + the FIST (x pet-damage)
         if gkind == "colossus" then
+            -- WALL: +Defense scales straight by potency. FIST: squad_damage is a MULTIPLIER (1.0 = no
+            -- buff), so scale its BONUS above 1 (1 + (mult-1)*potency) — not the whole multiplier.
+            local defense = (gcfg.squad_defense or 200) * strengthMult
+            local dmgBonus = ((gcfg.squad_damage or 1.5) - 1) * strengthMult
             for _, pet in ipairs(pets:GetChildren()) do
                 if pet:IsA("Model") then
-                    pet:SetAttribute("DefenseBuff", gcfg.squad_defense or 200)
+                    pet:SetAttribute("DefenseBuff", defense)
                     pet:SetAttribute("DefenseBuffUntil", now + dur)
                     pet:SetAttribute("DefenseBuffPowerId", powerId)
                 end
             end
-            player:SetAttribute("PetDamageBuff", gcfg.squad_damage or 1.5)
+            player:SetAttribute("PetDamageBuff", 1 + dmgBonus)
             player:SetAttribute("PetDamageBuffUntil", now + dur)
             player:SetAttribute("PetDamageBuffPowerId", powerId)
         end
@@ -235,7 +243,8 @@ function SummonService:Summon(player, kind, now, powerId)
         halfHeight = halfHeight,
         expireAt = os.clock() + dur,
         healEvery = gcfg.tick_seconds,
-        healAmt = gcfg.heal_per_tick,
+        -- Djinn HoT scales with potency (the arrival burst = kind.magnitude is already scaled at cast)
+        healAmt = gcfg.heal_per_tick and (gcfg.heal_per_tick * strengthMult) or nil,
         lastHeal = os.clock(),
     }
 

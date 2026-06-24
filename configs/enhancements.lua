@@ -145,6 +145,10 @@ return {
                 xp = true,
                 rage = true,
                 vulnerable = true,
+                -- SUMMON capstones: scales the guardian's strength — Genie's heal burst (kind.magnitude,
+                -- scaled at cast) + the gcfg-sourced strength SummonService scales by the potency factor
+                -- (Colossus squad defense/damage, Djinn HoT). The "stronger guardian" axis.
+                summon = true,
             },
         },
         -- SPARK (the FIRST proc — Jason: ship one now to prove the mechanics; rare
