@@ -1169,6 +1169,11 @@ do
         local tradePanel = TradePanel.new()
         menuManager:RegisterPanel("Trade", tradePanel)
 
+        -- Enhancement SELL / salvage panel: opened from the Inventory panel's
+        -- Enhancements category entry button. Bus-driven (enhancement.shop.*).
+        local EnhancementSellPanel = require(script.UI.Menus.EnhancementSellPanel)
+        menuManager:RegisterPanel("EnhancementSell", EnhancementSellPanel.new())
+
         local EffectsPanel = require(script.UI.Menus.EffectsPanel)
         local effectsPanel = EffectsPanel.new()
         menuManager:RegisterPanel("Effects", effectsPanel)

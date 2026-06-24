@@ -1155,6 +1155,38 @@ function InventoryPanel:_createUI(parent)
             self:_updateDeleteActionButton()
         end
 
+        -- SELL / SALVAGE entry button — floats bottom-center, ONLY visible while the
+        -- Enhancements category is selected. Opens the dedicated EnhancementSellPanel
+        -- (registered on MenuManager); the manager switches panels inside the overlay.
+        do
+            local sell = Instance.new("TextButton")
+            sell.Name = "EnhancementSellButton"
+            sell.Size = UDim2.new(0, 200, 0, 44)
+            sell.AnchorPoint = Vector2.new(0.5, 1)
+            sell.Position = UDim2.new(0.5, 0, 1, -14)
+            sell.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+            sell.Text = "💎 Sell / Salvage"
+            sell.TextColor3 = Color3.fromRGB(245, 255, 248)
+            sell.TextScaled = true
+            sell.Font = Enum.Font.GothamBold
+            sell.ZIndex = 260
+            sell.Visible = false
+            local sc = Instance.new("UICorner")
+            sc.CornerRadius = UDim.new(0, 10)
+            sc.Parent = sell
+            local scon = Instance.new("UITextSizeConstraint")
+            scon.MaxTextSize = 18
+            scon.Parent = sell
+            sell.Parent = self.frame
+            self._enhancementSellButton = sell
+            sell.Activated:Connect(function()
+                if _G.MenuManager then
+                    _G.MenuManager:OpenPanel("EnhancementSell", "bounce_in")
+                end
+            end)
+            self:_updateEnhancementSellButton()
+        end
+
         local closeButton = Instance.new("ImageButton")
         closeButton.Name = "CloseButton"
         closeButton.Size = UDim2.new(0, config.size.width, 0, config.size.height)
@@ -4017,8 +4049,19 @@ function InventoryPanel:_selectCategory(categoryName)
     -- Update items display
     self:_updateItemsDisplay()
 
+    -- Show the Sell/Salvage entry button only on the Enhancements category.
+    self:_updateEnhancementSellButton()
+
     -- Re-scope the live bucket listeners to the newly-selected category's folders
     self:_setupBucketListeners()
+end
+
+-- The "💎 Sell / Salvage" entry button is visible ONLY while the Enhancements category
+-- is selected; clicking it opens the dedicated EnhancementSellPanel.
+function InventoryPanel:_updateEnhancementSellButton()
+    if self._enhancementSellButton then
+        self._enhancementSellButton.Visible = (self.selectedCategory == "Enhancements")
+    end
 end
 
 function InventoryPanel:_addButtonHoverEffect(button, originalColor)
