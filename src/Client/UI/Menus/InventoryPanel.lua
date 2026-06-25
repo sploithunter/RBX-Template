@@ -2519,11 +2519,22 @@ function InventoryPanel:_loadPotionsFromFolder(potionsFolder)
             local count = (qtyVal and tonumber(qtyVal.Value)) or 1
             if count > 0 then
                 local def = potionsCfg and potionsCfg[potionId]
+                -- Real per-potion icon: the SAME disc the hotbar uses, via meter -> badge
+                -- (PetBadge.forPotion + POWER_ICONS.discFor). item.image routes to the flat-image
+                -- card path; the 🧪 emoji stays only as the fallback if the disc can't resolve.
+                local discImage
+                if PetBadge and POWER_ICONS and def and def.meter then
+                    local badge = PetBadge.forPotion(def.meter)
+                    if badge then
+                        discImage = POWER_ICONS.discFor(badge.element, badge.symbol)
+                    end
+                end
                 table.insert(self.inventoryData, {
                     id = potionId,
                     name = (def and (def.display_name or def.name))
                         or (potionId:gsub("_", " "):gsub("^%l", string.upper)),
                     icon = "🧪",
+                    image = discImage,
                     rarity = "Potion",
                     color = Color3.fromRGB(160, 110, 220),
                     category = "Items",
