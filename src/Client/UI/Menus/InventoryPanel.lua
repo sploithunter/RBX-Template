@@ -209,6 +209,34 @@ local SUPPORT_META = {
     empower = { element = "fire", label = "Empower" }, -- single-target buffer; ring derived via PetTargeting.auraScope
     haste = { element = "fire", label = "Haste" }, -- team attack-speed aura (efficiency-as-aura)
 }
+-- Hatcher display: the pet stores the hatcher's STABLE UserId (hatcher_user_id) as the SSOT —
+-- players rename, so we resolve the id to the CURRENT username for display (Jason). Cached +
+-- async (GetNameFromUserIdAsync yields); false = in-flight sentinel so we never double-request.
+local _hatcherNameCache = {}
+local function requestHatcherName(userId, onResolved)
+    userId = tonumber(userId)
+    if not userId or userId <= 0 then
+        return
+    end
+    local cached = _hatcherNameCache[userId]
+    if cached ~= nil then
+        if type(cached) == "string" and onResolved then
+            onResolved(cached)
+        end
+        return
+    end
+    _hatcherNameCache[userId] = false
+    task.spawn(function()
+        local ok, name = pcall(function()
+            return Players:GetNameFromUserIdAsync(userId)
+        end)
+        _hatcherNameCache[userId] = (ok and type(name) == "string" and name) or nil
+        if ok and type(name) == "string" and onResolved then
+            onResolved(name)
+        end
+    end)
+end
+
 local petVisualsOk, PetVariantVisuals = pcall(function()
     return require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
 end)
@@ -4232,6 +4260,7 @@ function InventoryPanel:_hideItemTooltip()
         self.itemTooltip:Destroy()
         self.itemTooltip = nil
     end
+    self._tooltipItem = nil -- stop any pending hatcher-name re-render from firing
 end
 
 function InventoryPanel:_formatTooltipFieldLabel(fieldName)
@@ -4518,6 +4547,7 @@ function InventoryPanel:_showItemTooltip(item)
 
     self:_hideItemTooltip()
     item = self:_refreshPetTooltipFromReplicatedState(item)
+    self._tooltipItem = item -- tracked so an async hatcher-name resolve can re-render this same card
 
     -- Enhancements get their OWN tooltip — the pet fields (Type/Variant/Power/Enchants)
     -- are meaningless for them (Jason: "it's not distinguishing... we need to give
@@ -4747,6 +4777,31 @@ function InventoryPanel:_showItemTooltip(item)
     end
     if item.serialSource and item.serialSource ~= "" then
         table.insert(lines, { label = "Serial Source", value = tostring(item.serialSource) })
+    end
+    -- Hatched By: resolve the stable UserId -> the CURRENT username (Jason: keep the id since
+    -- players rename, but show a name). Falls back to the name-at-hatch, then "Player <id>".
+    local tf = item.tooltipFields
+    if type(tf) == "table" then
+        local rawName = tf.hatcher_name
+        local uid = tonumber(tf.hatcher_user_id)
+        if not uid and type(rawName) == "string" and rawName:match("^%d+$") then
+            uid = tonumber(rawName) -- legacy: an id ended up in the name field
+        end
+        if uid then
+            local resolved = _hatcherNameCache[uid]
+            local display = (type(resolved) == "string" and resolved)
+                or (type(rawName) == "string" and not rawName:match("^%d+$") and rawName)
+                or ("Player " .. tostring(uid))
+            table.insert(lines, { label = "Hatched By", value = display })
+            tf.hatcher_name = nil -- claimed; keep the configured path from re-adding it
+            if type(resolved) ~= "string" then
+                requestHatcherName(uid, function()
+                    if self._tooltipItem == item then
+                        self:_showItemTooltip(item) -- re-render once the username resolves
+                    end
+                end)
+            end
+        end
     end
     self:_appendConfiguredTooltipFields(lines, item)
     if item.count and item.count > 1 then
