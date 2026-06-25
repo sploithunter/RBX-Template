@@ -640,9 +640,17 @@ return {
             name = "Items",
             icon = "⚡",
             description = "Consumable items and potions",
-            folders = { "consumables" }, -- Could be ["consumables", "potions"] if you had separate folders
+            folders = { "consumables" }, -- potions get their own first-class tab below (trade bucket)
             display_order = 3,
             always_visible = false, -- Hide if no items
+        },
+        {
+            name = "Potions",
+            icon = "🧪",
+            description = "Brew-charge potions — drink from the hotbar; tradeable",
+            folders = { "potions" },
+            display_order = 4,
+            always_visible = false, -- Hide if none owned
         },
         {
             name = "Eggs",
