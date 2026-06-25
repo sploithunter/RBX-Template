@@ -625,6 +625,23 @@ end
 
 local loadOrder = loadOrderOrError
 
+-- Heap-leak tracer (Studio only): crawls the live service graph each interval and prints which Lua
+-- tables GREW, to localize the ~841MB LuaHeap leak that GC-pauses the server. Filter Output on
+-- "[HeapTrace]". Safe no-op in production (IsStudio gate).
+if RunService:IsStudio() then
+    local okHeap, HeapTrace = pcall(function()
+        return require(ServerScriptService.Server.Diagnostics.HeapTrace)
+    end)
+    if okHeap and HeapTrace then
+        HeapTrace.start({
+            interval = 15,
+            roots = { _G = _G, services = loader:GetLoadedModules() },
+        })
+    elseif not okHeap then
+        warn("[HeapTrace] failed to load: " .. tostring(HeapTrace))
+    end
+end
+
 -- Start services that need to be started
 -- Service startup logs will be handled via Logger
 local AssetPreloadService = loader:Get("AssetPreloadService")
