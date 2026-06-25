@@ -56,7 +56,8 @@ end
 -- RAW biome element (grass/lava/ice/desert) for a pet type — the combat_fx id the
 -- biome-RPS math (ElementResonance.biomeMultiplier) and the server damage path use.
 function PetBadge.biomeElementForPetType(petType)
-    return pettypeElement()[petType or ""]
+    local pet = originMaps()
+    return pet[petType or ""]
 end
 
 -- Lazy power/archetype configs (for power-slot badges in the hotbar).
