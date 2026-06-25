@@ -3319,6 +3319,9 @@ function InventoryPanel:_compareInventoryItems(a, b)
 end
 
 function InventoryPanel:_updateItemsDisplay()
+    -- Cards get destroyed + rebuilt here; hide any open tooltip first so a card destroyed under the
+    -- cursor (its MouseLeave never fires) can't leave the popup stuck on screen (Jason: intermittent).
+    self:_hideItemTooltip()
     -- Cleanup old right-click connections to prevent memory leaks
     if self._rightClickConnections then
         for itemId, connection in pairs(self._rightClickConnections) do
@@ -4261,6 +4264,7 @@ function InventoryPanel:_hideItemTooltip()
         self.itemTooltip = nil
     end
     self._tooltipItem = nil -- stop any pending hatcher-name re-render from firing
+    self._tooltipSourceFrame = nil
 end
 
 function InventoryPanel:_formatTooltipFieldLabel(fieldName)
@@ -4540,12 +4544,15 @@ function InventoryPanel:_appendConfiguredTooltipFields(lines, item)
     end
 end
 
-function InventoryPanel:_showItemTooltip(item)
+function InventoryPanel:_showItemTooltip(item, sourceFrame)
     if not self.frame or not item then
         return
     end
 
     self:_hideItemTooltip()
+    if sourceFrame then
+        self._tooltipSourceFrame = sourceFrame -- the hovered card; popup flips to its opposite side
+    end
     item = self:_refreshPetTooltipFromReplicatedState(item)
     self._tooltipItem = item -- tracked so an async hatcher-name resolve can re-render this same card
 
@@ -4797,7 +4804,8 @@ function InventoryPanel:_showItemTooltip(item)
             if type(resolved) ~= "string" then
                 requestHatcherName(uid, function()
                     if self._tooltipItem == item then
-                        self:_showItemTooltip(item) -- re-render once the username resolves
+                        -- re-render once the username resolves (keep the same side via the source)
+                        self:_showItemTooltip(item, self._tooltipSourceFrame)
                     end
                 end)
             end
@@ -4815,8 +4823,22 @@ end
 function InventoryPanel:_renderItemTooltip(item, lines)
     local tooltip = Instance.new("Frame")
     tooltip.Name = "ItemTooltip"
-    tooltip.Size = UDim2.new(0, 250, 0, 52 + (#lines * 22))
-    tooltip.Position = UDim2.new(1, -270, 0, 72)
+    local tooltipHeight = 52 + (#lines * 22)
+    tooltip.Size = UDim2.new(0, 250, 0, tooltipHeight)
+    -- Flip to the OPPOSITE side of the hovered card so the popup never covers it (Jason): card on
+    -- the right half -> popup on the LEFT, card on the left -> popup on the RIGHT. Y tracks the card,
+    -- clamped inside the panel. Falls back to the old top-right anchor if the source is unknown.
+    local src = self._tooltipSourceFrame
+    if src and src.Parent and self.frame then
+        local cardCenterX = src.AbsolutePosition.X + src.AbsoluteSize.X * 0.5
+        local panelMidX = self.frame.AbsolutePosition.X + self.frame.AbsoluteSize.X * 0.5
+        local relY = src.AbsolutePosition.Y - self.frame.AbsolutePosition.Y
+        local posY = math.clamp(relY, 8, math.max(8, self.frame.AbsoluteSize.Y - tooltipHeight - 8))
+        tooltip.Position = (cardCenterX > panelMidX) and UDim2.new(0, 16, 0, posY)
+            or UDim2.new(1, -270, 0, posY)
+    else
+        tooltip.Position = UDim2.new(1, -270, 0, 72)
+    end
     tooltip.BackgroundColor3 = Color3.fromRGB(24, 25, 32)
     tooltip.BorderSizePixel = 0
     tooltip.ZIndex = 300
@@ -4908,7 +4930,7 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
 
     leftClickDetection.MouseEnter:Connect(function()
         isMouseOverFrame = true
-        self:_showItemTooltip(item)
+        self:_showItemTooltip(item, itemFrame)
     end)
 
     leftClickDetection.MouseLeave:Connect(function()
@@ -4962,7 +4984,7 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
     -- UPDATED MouseEnter to include BOTH tracking AND hover effects
     itemFrame.MouseEnter:Connect(function()
         isMouseOverFrame = true
-        self:_showItemTooltip(item)
+        self:_showItemTooltip(item, itemFrame)
         -- DEBUG SPAM SUPPRESSED
 
         -- Background color change

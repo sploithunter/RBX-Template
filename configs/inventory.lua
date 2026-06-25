@@ -129,6 +129,10 @@ return {
                     "source",
                     "grant_source",
                     "hatcher_user_id",
+                    "hatched_by", -- raw UserId — shown via the resolved "Hatched By" line
+                    "element", -- shown explicitly (correct biome element); hide the raw stored attr
+                    "variant", -- already shown as "Variant" up top
+                    "player_class", -- internal rebirth class (audit)
                     "enchantable",
                     "max_enchantments",
                     "unlocked_enchant_slots",
@@ -369,6 +373,17 @@ return {
                 },
             },
             limit_extensions = {},
+            -- SOFT storage telemetry — NOT a cap. Stacks are free + auto-expand, so the
+            -- usual used/total uniques alarm is blind to stack growth. DataService measures
+            -- this bucket's live stack count and estimated serialized size at load and fires
+            -- OpsAlert("bucket_storage_high") when EITHER crosses, so devs can catch runaway
+            -- growth before it risks the ~4MB DataStore key limit (replaces the dead
+            -- enhancements inventory_cap=60). Tuned above live worst-case (Macros ~504 stacks
+            -- / ~884 items) so it only fires on genuinely abnormal growth.
+            storage_alert = {
+                stack_count = 1500, -- distinct identity stacks (type|origins|level)
+                serialized_bytes = 350000, -- ~350KB of this bucket's JSON (~9% of the 4MB key)
+            },
         },
         potions = {
             display_name = "Potions",
