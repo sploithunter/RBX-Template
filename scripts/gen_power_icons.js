@@ -30,9 +30,12 @@ const COLOR_TO_ELEMENT = {
   // Innate / generic / universal tier -> PURPLE discs (was white). The white set is still
   // uploaded + in the manifest; it's just no longer emitted. Re-add white here to restore it.
   purple: "neutral",
+  // Colorado flag-themed role discs for creator-egg-origin pets (partial set: the 5 role symbols
+  // only). White ring (configs/power_icons.lua elements.creator).
+  colorado: "creator",
 };
 // Emit elements in a stable order.
-const ELEMENT_ORDER = ["earth", "fire", "desert", "ice", "neutral"];
+const ELEMENT_ORDER = ["earth", "fire", "desert", "ice", "neutral", "creator"];
 
 const manifest = JSON.parse(fs.readFileSync(MANIFEST, "utf8"));
 

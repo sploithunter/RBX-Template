@@ -292,6 +292,13 @@ return {
             winter_hold = id(95073901146868),
             xp_up = id(78500070554940),
         },
+        creator = {
+            armor_chest = id(125066432035408),
+            arrow_right = id(122676390780260),
+            fist_impact = id(89479242875943),
+            hand_stop = id(117833182868473),
+            star_sparkle = id(88490504043931),
+        },
     },
     rings = {
         aoe = id(128177741420839),

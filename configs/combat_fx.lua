@@ -31,6 +31,14 @@ return {
             sandwalker = "desert",
         },
 
+        -- DISC-ONLY override (PetBadge.elementForPetType): creator-egg-origin pets wear the Colorado
+        -- flag disc + white ring, independent of their COMBAT element (pettype_element below stays
+        -- lava so their VFX/resonance are unchanged — Colorado is a fire blaster).
+        badge_element = {
+            colorado = "creator",
+            colorado_creator = "creator",
+        },
+
         -- Interim pet-element source: until the hatch biome is persisted onto the pet record,
         -- the pet's combat element is read from its PetType (the model already carries this attr).
         -- Tune freely; missing/unknown types fall back to default_element. (Swap to a true

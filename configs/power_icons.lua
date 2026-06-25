@@ -104,6 +104,9 @@ local M = {
         desert = { bright = { 255, 209, 79 }, dark = { 92, 75, 28 } }, -- yellow (sand)
         ice = { bright = { 81, 136, 255 }, dark = { 29, 49, 92 } }, -- blue (frost)
         neutral = { bright = { 220, 220, 225 }, dark = { 70, 70, 78 } }, -- mixed / archetype-only
+        -- creator (Colorado exclusive / creator-egg origin): the disc art is the flag-themed colorado
+        -- role icon; the RING is WHITE (Jason) — so both tints are near-white.
+        creator = { bright = { 255, 255, 255 }, dark = { 240, 240, 245 } },
     },
 
     -- Canonical combat element (grass/lava/ice/desert, from CombatOrigin / combat_fx) -> the
@@ -115,6 +118,7 @@ local M = {
         ice = "ice",
         earth = "earth",
         fire = "fire",
+        creator = "creator", -- Colorado / creator-egg origin: flag disc + white ring (passes through)
     },
 
     -- Archetype/role id (pet_roles / PetPowerView.roleInfo .id) -> the white SYMBOL to stamp on

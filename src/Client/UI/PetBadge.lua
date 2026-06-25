@@ -23,24 +23,34 @@ local POWER_ICONS = require(Configs:WaitForChild("power_icons"))
 
 local PetBadge = {}
 
--- Lazily pull the petType -> origin-element map (grass/lava/ice/desert) from combat_fx.
-local _pettypeElement
-local function pettypeElement()
+-- Lazily pull the petType -> origin-element map (grass/lava/ice/desert) + the disc-only
+-- badge_element override (creator-egg pets) from combat_fx.
+local _pettypeElement, _badgeElement
+local function originMaps()
     if _pettypeElement == nil then
         local ok, cfx = pcall(function()
             return require(Configs:WaitForChild("combat_fx"))
         end)
-        _pettypeElement = (ok and cfx and cfx.origin and cfx.origin.pettype_element) or {}
+        local origin = (ok and cfx and cfx.origin) or {}
+        _pettypeElement = origin.pettype_element or {}
+        _badgeElement = origin.badge_element or {}
     end
-    return _pettypeElement
+    return _pettypeElement, _badgeElement
 end
 
--- Badge element key (earth/fire/desert/ice, else "neutral") for a pet type.
+-- Badge element key (earth/fire/desert/ice/creator, else "neutral") for a pet type.
 -- DISPLAY ONLY (disc colors): this is the power_icons ALIAS (lava->fire, grass->earth),
 -- NOT the biome id — never feed it into ElementResonance (the alias silently reads
 -- neutral for lava/grass pets; ice/desert alias to themselves, which hid the bug).
+-- badge_element is a disc-only override (creator-egg pets show the flag disc + white ring
+-- while their combat element stays unchanged).
 function PetBadge.elementForPetType(petType)
-    return POWER_ICONS.elementKey(pettypeElement()[petType or ""])
+    local pet, badge = originMaps()
+    local override = badge[petType or ""]
+    if override then
+        return POWER_ICONS.elementKey(override)
+    end
+    return POWER_ICONS.elementKey(pet[petType or ""])
 end
 
 -- RAW biome element (grass/lava/ice/desert) for a pet type — the combat_fx id the
