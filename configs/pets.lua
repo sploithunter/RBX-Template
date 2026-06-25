@@ -26,19 +26,19 @@ local petConfig = {
     egg_stand_defaults = { scale = 3.5, offset_y = 0.5 },
     realm_area_eggs = {
         base = { -- the Home island (Earth realm, depth 0)
-            earth = "earth_egg",
-            ember = "ember_egg",
+            grass = "grass_egg",
+            lava = "lava_egg",
             ice = "ice_egg",
-            sand = "sand_egg",
+            desert = "desert_egg",
         },
         -- Keys are matched as a substring of the authored stand NAME (longest wins). Heaven stands
         -- are authored with EGG-themed names (Solar/Aurora/Bloom/Guilded), Home/Hell stands use
-        -- area names (BasicEmber/BasicIce/BasicSand/BasicEarth) — so both naming styles get keys.
+        -- area names (BasicLava/BasicIce/BasicDesert/BasicGrass) — so both naming styles get keys.
         -- NB: "ember" (5) must beat the accidental "ice" inside "bas-ICE-mber" (3); hence the ember key.
         heaven = { -- Heaven_1+ — Fire/lava starter is the solar egg; the other three origins below
             lava = "solar_egg",
             solar = "solar_egg", -- authored stand "Solar"
-            ember = "solar_egg", -- area-named "BasicEmber" stand → Fire origin
+            ember = "solar_egg", -- area-named "BasicLava" stand → Fire origin
             ice = "aurora_egg", -- Ice origin (Frostlight Hare → Aurora Leviathan)
             aurora = "aurora_egg", -- authored stand "Aurora"
             grass = "bloom_egg", -- Earth/grass origin (Bloomlamb → Worldroot Ent)
@@ -52,7 +52,7 @@ local petConfig = {
         hell = { -- Hell_1+ — fallen mirror of Heaven; same four origins, Blight pets
             lava = "infernal_egg", -- Fire/lava origin (Cinderling Imp → secret Abyssal Wyrm)
             fire = "infernal_egg",
-            ember = "infernal_egg", -- area-named "BasicEmber" stand → Fire origin (beats stray "ice")
+            ember = "infernal_egg", -- area-named "BasicLava" stand → Fire origin (beats stray "ice")
             ice = "black_ice_egg", -- Ice origin (Rimelight Hare → Black-Ice Leviathan)
             aurora = "black_ice_egg", -- accept an egg-named stand too
             grass = "blight_egg", -- Earth/grass origin (Blightlamb → Gravewood Ent)
@@ -2394,7 +2394,7 @@ local petConfig = {
             },
         },
 
-        -- SAND FAMILY (BasicSand egg). Desert-biome pets; same scale/framing as ember/ice.
+        -- SAND FAMILY (BasicDesert egg). Desert-biome pets; same scale/framing as ember/ice.
         fennec = {
             origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Fennec",
@@ -5388,8 +5388,8 @@ local petConfig = {
         },
 
         -- EmberEgg (lava biome). Place a "Egg hatcher" / EggStand part in the Lava 1 zone with
-        -- attribute EggId = "ember_egg" (markers.lua) to spawn it there. Hatches the Ember family.
-        ember_egg = {
+        -- attribute EggId = "lava_egg" (markers.lua) to spawn it there. Hatches the Ember family.
+        lava_egg = {
             name = "Ember Egg",
             description = "Lava-biome egg — hatches the Ember pets (Emberling up to Ember Lion).",
             world_placeable = true,
@@ -5497,8 +5497,8 @@ local petConfig = {
         },
 
         -- SandEgg (desert biome). Place an EggStand part in the Desert zone with attribute
-        -- EggId = "sand_egg" (resolved onto an authored "Sand" stand via realm_area_eggs). Hatches the Sand family.
-        sand_egg = {
+        -- EggId = "desert_egg" (resolved onto an authored "Sand" stand via realm_area_eggs). Hatches the Sand family.
+        desert_egg = {
             name = "Sand Egg",
             description = "Desert-biome egg — hatches the Sand pets (Fennec up to Scorpion).",
             world_placeable = true,
@@ -5548,12 +5548,12 @@ local petConfig = {
             bonus_xp = 0,
         },
 
-        -- EarthEgg (grass biome) — the STARTER egg on the Spawn island (BasicEarth stand).
+        -- EarthEgg (grass biome) — the STARTER egg on the Spawn island (BasicGrass stand).
         -- Costs grass_coins, but new players receive a 100 grass_coins starter grant (see
         -- configs/currencies.lua defaultAmount) so the first hatch is affordable before mining.
         -- Hatches the existing grass/earth pets (same roster as basic_egg); their meshes will be
         -- re-pointed to new earth asset IDs later — keep the pet entries as-is for now.
-        earth_egg = {
+        grass_egg = {
             name = "Earth Egg",
             description = "Grass-biome starter egg — hatches the Earth pets (Bunny, Doggy, Bear...).",
             world_placeable = true,

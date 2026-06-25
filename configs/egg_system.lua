@@ -447,7 +447,7 @@ return {
             --     pet_container_transparency = 1.0,  -- Make containers fully transparent
             --     pet_container_bg = Color3.fromRGB(50, 50, 50),  -- Custom bg color (overrides rarity)
             -- },
-            -- ["earth_egg"] = {
+            -- ["grass_egg"] = {
             --     pet_container_bg = Color3.fromRGB(120, 200, 120), -- Custom bg for this egg
             --     pet_container_transparency = 0.3,                -- More opaque
             --     min_chance_to_show = 0.00001,                   -- Show even rarer pets (0.001%)

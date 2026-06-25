@@ -13,7 +13,7 @@ local pets = loadModule("configs/pets.lua")
 
 -- simulateHatch rolls randomly but returns the DETERMINISTIC luckMultiplier it used.
 local function luckFor(playerData)
-    local result = pets.simulateHatch("earth_egg", playerData)
+    local result = pets.simulateHatch("grass_egg", playerData)
     assert(result, "simulateHatch returned nil")
     return result.luckMultiplier
 end
@@ -90,9 +90,9 @@ return function()
 
         it("the luck gamepass never moves golden/rainbow chances (species-only)", function()
             local state = { level = 10, indexCompletion = 0.9, luckBoost = 2.5 }
-            local without = pets.simulateHatch("earth_egg", table.clone(state))
+            local without = pets.simulateHatch("grass_egg", table.clone(state))
             state.hasLuckGamepass = true
-            local withPass = pets.simulateHatch("earth_egg", state)
+            local withPass = pets.simulateHatch("grass_egg", state)
             expect(near(withPass.finalGoldenChance, without.finalGoldenChance, 1e-9)).to.equal(true)
             expect(near(withPass.finalRainbowChance, without.finalRainbowChance, 1e-9)).to.equal(
                 true

@@ -149,7 +149,7 @@ local function clearGuidance()
     end
 end
 
--- prefer: optional hatcher-name match (e.g. "BasicEarth") — the tutorial steers new
+-- prefer: optional hatcher-name match (e.g. "BasicGrass") — the tutorial steers new
 -- players to the STARTER egg, not just whatever egg is geometrically nearest (Jason:
 -- "pointing over to the lava egg and not the actual earth egg"). Falls back to
 -- any egg when no candidate matches.
@@ -165,7 +165,7 @@ local function nearestEgg(prefer)
             return false
         end
         local node = model
-        for _ = 1, 4 do -- the hatcher folder is a near ancestor (BasicEarth/PlacedEgg)
+        for _ = 1, 4 do -- the hatcher folder is a near ancestor (BasicGrass/PlacedEgg)
             if node and node.Name:find(prefer) then
                 return true
             end

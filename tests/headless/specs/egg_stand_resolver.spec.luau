@@ -12,9 +12,9 @@ return function()
     describe("EggStandResolver.eggFor (matrix lookup)", function()
         it("migrates the Basic stands by name substring (base realm)", function()
             expect(EggStandResolver.eggFor("base", "BasicIce", MATRIX)).to.equal("ice_egg")
-            expect(EggStandResolver.eggFor("base", "BasicSand", MATRIX)).to.equal("sand_egg")
-            expect(EggStandResolver.eggFor("base", "BasicEmber", MATRIX)).to.equal("ember_egg")
-            expect(EggStandResolver.eggFor("base", "BasicEarth", MATRIX)).to.equal("earth_egg")
+            expect(EggStandResolver.eggFor("base", "BasicDesert", MATRIX)).to.equal("desert_egg")
+            expect(EggStandResolver.eggFor("base", "BasicLava", MATRIX)).to.equal("lava_egg")
+            expect(EggStandResolver.eggFor("base", "BasicGrass", MATRIX)).to.equal("grass_egg")
         end)
 
         it("resolves a Heaven lava-area stand to the solar egg", function()
@@ -91,7 +91,7 @@ return function()
 
         it("returns nil for an unknown realm, unknown area, or a name matching nothing", function()
             expect(EggStandResolver.eggFor("limbo", "Lava", MATRIX)).never.to.be.ok() -- no such realm
-            expect(EggStandResolver.eggFor("base", "Lava", MATRIX)).never.to.be.ok() -- lava is heaven/hell-only
+            expect(EggStandResolver.eggFor("base", "Solar", MATRIX)).never.to.be.ok() -- solar is a heaven egg-name, not a base area
             expect(EggStandResolver.eggFor("base", "Pedestal", MATRIX)).never.to.be.ok()
         end)
 
