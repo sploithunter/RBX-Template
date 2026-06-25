@@ -10,11 +10,11 @@ local MATRIX = petsConfig.realm_area_eggs
 
 return function()
     describe("EggStandResolver.eggFor (matrix lookup)", function()
-        it("migrates the Basic stands by name substring (base realm)", function()
-            expect(EggStandResolver.eggFor("base", "BasicIce", MATRIX)).to.equal("ice_egg")
-            expect(EggStandResolver.eggFor("base", "BasicDesert", MATRIX)).to.equal("desert_egg")
-            expect(EggStandResolver.eggFor("base", "BasicLava", MATRIX)).to.equal("lava_egg")
-            expect(EggStandResolver.eggFor("base", "BasicGrass", MATRIX)).to.equal("grass_egg")
+        it("resolves the bare Home stands by name substring (base realm)", function()
+            expect(EggStandResolver.eggFor("base", "Ice", MATRIX)).to.equal("ice_egg")
+            expect(EggStandResolver.eggFor("base", "Desert", MATRIX)).to.equal("desert_egg")
+            expect(EggStandResolver.eggFor("base", "Lava", MATRIX)).to.equal("lava_egg")
+            expect(EggStandResolver.eggFor("base", "Grass", MATRIX)).to.equal("grass_egg")
         end)
 
         it("resolves a Heaven lava-area stand to the solar egg", function()
@@ -41,9 +41,7 @@ return function()
                 expect(EggStandResolver.eggFor("hell", "BasicEmber", MATRIX)).to.equal(
                     "infernal_egg"
                 )
-                expect(EggStandResolver.eggFor("hell", "BasicIce", MATRIX)).to.equal(
-                    "black_ice_egg"
-                )
+                expect(EggStandResolver.eggFor("hell", "Ice", MATRIX)).to.equal("black_ice_egg")
                 expect(EggStandResolver.eggFor("hell", "BasicSand", MATRIX)).to.equal("ash_egg")
                 expect(EggStandResolver.eggFor("hell", "BasicEarth", MATRIX)).to.equal("blight_egg")
             end
@@ -80,7 +78,7 @@ return function()
             expect(EggStandResolver.eggFor("hell_2", "BasicEmber", MATRIX)).to.equal(
                 "hell2_fire_egg"
             )
-            expect(EggStandResolver.eggFor("hell_2", "BasicIce", MATRIX)).to.equal("hell2_ice_egg")
+            expect(EggStandResolver.eggFor("hell_2", "Ice", MATRIX)).to.equal("hell2_ice_egg")
         end)
 
         it("is case-insensitive and returns the matched area", function()
@@ -96,9 +94,9 @@ return function()
         end)
 
         it("guards bad input", function()
-            expect(EggStandResolver.eggFor(nil, "BasicIce", MATRIX)).never.to.be.ok()
+            expect(EggStandResolver.eggFor(nil, "Ice", MATRIX)).never.to.be.ok()
             expect(EggStandResolver.eggFor("base", nil, MATRIX)).never.to.be.ok()
-            expect(EggStandResolver.eggFor("base", "BasicIce", nil)).never.to.be.ok()
+            expect(EggStandResolver.eggFor("base", "Ice", nil)).never.to.be.ok()
         end)
     end)
 end

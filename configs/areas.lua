@@ -46,7 +46,7 @@ return {
                 egg_stands = {
                     {
                         egg_id = "grass_egg",
-                        spawn_id = "BasicGrass",
+                        spawn_id = "Grass",
                         position = { x = 0, y = 0.5, z = -22 },
                     },
                 },

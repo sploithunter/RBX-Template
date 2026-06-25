@@ -1043,7 +1043,7 @@ local M = {
         },
         egg_spawn_points = {
             {
-                spawn_id = "BasicGrass",
+                spawn_id = "Grass",
                 egg_type = "grass_egg",
                 name = "EggSpawnPoint",
                 size = { x = 3, y = 1, z = 3 },

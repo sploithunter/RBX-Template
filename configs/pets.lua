@@ -19,7 +19,7 @@ local petConfig = {
     --   • REALM comes from the world folder path (WorldContext.parseName: Home -> base,
     --     Heaven_1 -> heaven, Hell_1 -> hell).
     --   • AREA comes from the stand's NAME (the first matrix area key the name contains, e.g.
-    --     "BasicIce" -> ice, a stand named "Lava" -> lava). Name stands by their area.
+    --     "Ice" -> ice, a stand named "Lava" -> lava). Name stands by their area.
     --   • EGG = realm_area_eggs[realm][area].
     -- So you just drop an authored stand in the right area of a world — no names-to-eggs table, no
     -- fabricated stands. See EggStandResolver + docs/wiki/AREA_BOUNDS_LEASH sibling notes.
@@ -33,12 +33,12 @@ local petConfig = {
         },
         -- Keys are matched as a substring of the authored stand NAME (longest wins). Heaven stands
         -- are authored with EGG-themed names (Solar/Aurora/Bloom/Guilded), Home/Hell stands use
-        -- area names (BasicLava/BasicIce/BasicDesert/BasicGrass) — so both naming styles get keys.
+        -- area names (Lava/Ice/Desert/Grass) — so both naming styles get keys.
         -- NB: "ember" (5) must beat the accidental "ice" inside "bas-ICE-mber" (3); hence the ember key.
         heaven = { -- Heaven_1+ — Fire/lava starter is the solar egg; the other three origins below
             lava = "solar_egg",
             solar = "solar_egg", -- authored stand "Solar"
-            ember = "solar_egg", -- area-named "BasicLava" stand → Fire origin
+            ember = "solar_egg", -- area-named "Lava" stand → Fire origin
             ice = "aurora_egg", -- Ice origin (Frostlight Hare → Aurora Leviathan)
             aurora = "aurora_egg", -- authored stand "Aurora"
             grass = "bloom_egg", -- Earth/grass origin (Bloomlamb → Worldroot Ent)
@@ -52,7 +52,7 @@ local petConfig = {
         hell = { -- Hell_1+ — fallen mirror of Heaven; same four origins, Blight pets
             lava = "infernal_egg", -- Fire/lava origin (Cinderling Imp → secret Abyssal Wyrm)
             fire = "infernal_egg",
-            ember = "infernal_egg", -- area-named "BasicLava" stand → Fire origin (beats stray "ice")
+            ember = "infernal_egg", -- area-named "Lava" stand → Fire origin (beats stray "ice")
             ice = "black_ice_egg", -- Ice origin (Rimelight Hare → Black-Ice Leviathan)
             aurora = "black_ice_egg", -- accept an egg-named stand too
             grass = "blight_egg", -- Earth/grass origin (Blightlamb → Gravewood Ent)
@@ -2201,7 +2201,7 @@ local petConfig = {
             },
         },
 
-        -- ICE FAMILY (BasicIce egg). Ice-biome pets; same scale/framing as the ember family.
+        -- ICE FAMILY (Ice egg). Ice-biome pets; same scale/framing as the ember family.
         snowflakeowl = {
             origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Snowflake Owl",
@@ -2394,7 +2394,7 @@ local petConfig = {
             },
         },
 
-        -- SAND FAMILY (BasicDesert egg). Desert-biome pets; same scale/framing as ember/ice.
+        -- SAND FAMILY (Desert egg). Desert-biome pets; same scale/framing as ember/ice.
         fennec = {
             origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Fennec",
@@ -5548,7 +5548,7 @@ local petConfig = {
             bonus_xp = 0,
         },
 
-        -- EarthEgg (grass biome) — the STARTER egg on the Spawn island (BasicGrass stand).
+        -- EarthEgg (grass biome) — the STARTER egg on the Spawn island (Grass stand).
         -- Costs grass_coins, but new players receive a 100 grass_coins starter grant (see
         -- configs/currencies.lua defaultAmount) so the first hatch is affordable before mining.
         -- Hatches the existing grass/earth pets (same roster as basic_egg); their meshes will be

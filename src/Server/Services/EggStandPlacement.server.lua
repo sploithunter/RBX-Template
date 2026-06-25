@@ -6,7 +6,7 @@
     under `Workspace.Maps`, and for each stand inside it:
         • realm = WorldContext.parseName(world folder).realm   (Home -> base, Heaven_1 -> heaven…)
         • egg   = EggStandResolver.eggFor(realm, stand.Name, pets.realm_area_eggs)   (name carries
-                  the area: "BasicIce" -> ice, "Lava" -> lava)
+                  the area: "Lava" -> lava, "Ice" -> ice)
     then clones the loaded egg model (ReplicatedStorage.Assets.Models.Eggs[eggId]) and centers it
     UPRIGHT on the stand's anchor (yaw only — never inherit the stand's pitch/roll, which is what
     put the old fabricated stand's egg on its side). Purely visual placement; the placed egg is
