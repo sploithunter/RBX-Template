@@ -701,6 +701,7 @@ local petConfig = {
             },
         },
         glacial_bear = {
+            huge_face = { y = 0.16, dist = 0.82 }, -- HUGE inventory close-up (dialed live via viewport capture)
             display_name = "Glacial Bear",
             category = "heaven",
             realm = "heaven",
@@ -1479,6 +1480,7 @@ local petConfig = {
             },
         },
         rimeguard_bear = {
+            huge_face = { y = 0.16, dist = 0.82 }, -- HUGE inventory close-up (dialed live via viewport capture)
             display_name = "Rimeguard Bear",
             category = "hell",
             realm = "hell",
@@ -2357,6 +2359,7 @@ local petConfig = {
             },
         },
         polarbear = {
+            huge_face = { y = 0.11, dist = 0.92 }, -- HUGE inventory close-up (dialed live via viewport capture)
             origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Polar Bear",
             category = "ice",
@@ -2402,6 +2405,7 @@ local petConfig = {
 
         -- SAND FAMILY (Desert egg). Desert-biome pets; same scale/framing as ember/ice.
         fennec = {
+            huge_face = { y = 0.12, dist = 1.05 }, -- HUGE inventory close-up (dialed live via viewport capture)
             origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Fennec",
             category = "desert",
@@ -2439,6 +2443,7 @@ local petConfig = {
             },
         },
         camel = {
+            huge_face = { y = 0.18, dist = 0.95 }, -- HUGE inventory close-up (dialed live via viewport capture)
             origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Camel",
             category = "desert",
@@ -2476,6 +2481,7 @@ local petConfig = {
             },
         },
         meerkat = {
+            huge_face = { y = 0.28, dist = 1.0 }, -- HUGE inventory close-up (dialed live via viewport capture)
             origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Meerkat",
             category = "desert",
@@ -2634,6 +2640,7 @@ local petConfig = {
 
         -- DOGGY FAMILY
         doggy = {
+            huge_face = { y = 0.06, dist = 0.95 }, -- HUGE inventory close-up (dialed live via viewport capture)
             origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Doggy",
             category = "domestic",
@@ -2728,6 +2735,7 @@ local petConfig = {
 
         -- KITTY FAMILY
         kitty = {
+            huge_face = { y = 0.1, dist = 1.3 }, -- HUGE inventory close-up (dialed live via viewport capture)
             origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Kitty",
             category = "domestic",
