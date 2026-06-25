@@ -1984,10 +1984,11 @@ local petConfig = {
                 lighting = "default",
             },
 
-            -- huge_face: aim the up-close HUGE inventory shot at the bear's face. Quadruped — the
-            -- head sits high/forward, so the default 0.22 lands on the back/belly. y raises the
-            -- look-at toward the head (fraction of bounding height above center). Tune live.
-            huge_face = { y = 0.4 },
+            -- huge_face: up-close HUGE inventory portrait. Aimed at eye/snout level (y just below
+            -- center) and pulled back (dist 1.2 vs the 0.7 default, which was a too-tight brown-blob
+            -- zoom) to frame the whole face — ears kissing the top, feet just out. Dialed in live via
+            -- viewport capture. The shared template for the other quadrupeds.
+            huge_face = { y = -0.05, dist = 1.2 },
 
             variants = {
                 basic = {
