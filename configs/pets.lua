@@ -5652,6 +5652,10 @@ function petConfig.getPet(petType, variant)
             -- asset_transform.scale). The card auto-fits the model bbox; distance = bbox/viewport_zoom,
             -- so a LOWER value pushes the camera back and shrinks the art. Defaults to 1.5 in the panel.
             viewport_zoom = petVariant.viewport_zoom or pet.viewport_zoom,
+            -- Up-close HUGE-shot aim/zoom (variant override then pet-level). Pet-level fields aren't
+            -- otherwise copied (the loop below only pulls extras from the variant), so it must be
+            -- listed explicitly like camera/viewport_zoom or it never reaches the renderer.
+            huge_face = petVariant.huge_face or pet.huge_face,
 
             -- Stats
             power = power,
