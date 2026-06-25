@@ -3049,10 +3049,22 @@ function InventoryPanel:_load3DPetModel(viewport, camera, item)
 
             if item.huge == true then
                 local _, boundingSize = modelClone:GetBoundingBox()
-                local target = modelPosition + Vector3.new(0, boundingSize.Y * 0.22, 0)
-                local closeDistance = math.max(0.8, math.max(boundingSize.X, boundingSize.Z) * 0.7)
+                -- huge_face: per-pet aim/zoom for the up-close huge shot. Defaults reproduce the old
+                -- framing (y 0.22, dist 0.7, fov 58 = aimed mid-body, fine for humanoids like Colorado).
+                -- Quadrupeds (bears) carry the face higher/forward, so they set y (and optionally x/z)
+                -- to raise the look-at onto the face instead of the belly. All fractions of the model's
+                -- bounding extent; offset added relative to the bounding-box CENTER.
+                local face = petData.huge_face or {}
+                local target = modelPosition
+                    + Vector3.new(
+                        boundingSize.X * (face.x or 0),
+                        boundingSize.Y * (face.y or 0.22),
+                        boundingSize.Z * (face.z or 0)
+                    )
+                local closeDistance =
+                    math.max(0.8, math.max(boundingSize.X, boundingSize.Z) * (face.dist or 0.7))
                 local cameraDirection = getCameraDirection(petData.camera)
-                camera.FieldOfView = 58
+                camera.FieldOfView = face.fov or 58
                 camera.CFrame = CFrame.new(target + cameraDirection * closeDistance, target)
 
                 self.logger:info("Huge pet close-up loaded in inventory", {

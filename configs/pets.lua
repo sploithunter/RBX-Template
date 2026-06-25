@@ -1984,6 +1984,11 @@ local petConfig = {
                 lighting = "default",
             },
 
+            -- huge_face: aim the up-close HUGE inventory shot at the bear's face. Quadruped — the
+            -- head sits high/forward, so the default 0.22 lands on the back/belly. y raises the
+            -- look-at toward the head (fraction of bounding height above center). Tune live.
+            huge_face = { y = 0.4 },
+
             variants = {
                 basic = {
                     asset_id = "rbxassetid://102676279378350",
