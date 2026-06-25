@@ -29,6 +29,10 @@ function OverheadBar.create(opts)
     bb.Size = UDim2.new(opts.width or DEFAULT_WIDTH, 0, opts.height or DEFAULT_HEIGHT, 0)
     bb.StudsOffset = opts.studsOffset or Vector3.new(0, 3.5, 0)
     bb.AlwaysOnTop = true
+    -- Distance cull: stop rendering past MaxDistance so enemy HP bars don't show across the whole map
+    -- (Jason: "why can I see enemy health bars at any distance?"). Pets cluster on the player so their
+    -- endurance bars stay well within this; callers can override via opts.maxDistance (0 = unlimited).
+    bb.MaxDistance = opts.maxDistance ~= nil and tonumber(opts.maxDistance) or 150
     bb.Adornee = adornee
 
     local bg = Instance.new("Frame")
