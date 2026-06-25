@@ -1948,6 +1948,7 @@ local petConfig = {
         },
         -- BEAR FAMILY
         bear = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Bear",
             category = "forest",
             rarity = "common",
@@ -2013,6 +2014,7 @@ local petConfig = {
         -- EMBER FAMILY (lava biome — EmberEgg). One asset per pet for now; golden/rainbow reuse
         -- the basic model until dedicated art exists (so variant-dependent systems don't break).
         emberling = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Emberling",
             category = "lava",
             rarity = "common",
@@ -2051,6 +2053,7 @@ local petConfig = {
             },
         },
         emberfox = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Emberfox",
             category = "lava",
             rarity = "uncommon",
@@ -2087,6 +2090,7 @@ local petConfig = {
             },
         },
         emberimp = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Ember Imp",
             category = "lava",
             rarity = "rare",
@@ -2123,6 +2127,7 @@ local petConfig = {
             },
         },
         emberowl = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Ember Owl",
             category = "lava",
             rarity = "epic",
@@ -2159,6 +2164,7 @@ local petConfig = {
             },
         },
         emberlion = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Ember Lion",
             category = "lava",
             rarity = "legendary",
@@ -2197,6 +2203,7 @@ local petConfig = {
 
         -- ICE FAMILY (BasicIce egg). Ice-biome pets; same scale/framing as the ember family.
         snowflakeowl = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Snowflake Owl",
             category = "ice",
             rarity = "common",
@@ -2233,6 +2240,7 @@ local petConfig = {
             },
         },
         snowfox = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Snow Fox",
             category = "ice",
             rarity = "uncommon",
@@ -2269,6 +2277,7 @@ local petConfig = {
             },
         },
         penguin = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Penguin",
             category = "ice",
             rarity = "rare",
@@ -2305,6 +2314,7 @@ local petConfig = {
             },
         },
         snowleopard = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Snow Leopard",
             category = "ice",
             rarity = "epic",
@@ -2341,6 +2351,7 @@ local petConfig = {
             },
         },
         polarbear = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Polar Bear",
             category = "ice",
             rarity = "legendary",
@@ -2385,6 +2396,7 @@ local petConfig = {
 
         -- SAND FAMILY (BasicSand egg). Desert-biome pets; same scale/framing as ember/ice.
         fennec = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Fennec",
             category = "desert",
             rarity = "common",
@@ -2421,6 +2433,7 @@ local petConfig = {
             },
         },
         camel = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Camel",
             category = "desert",
             rarity = "uncommon",
@@ -2457,6 +2470,7 @@ local petConfig = {
             },
         },
         meerkat = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Meerkat",
             category = "desert",
             rarity = "rare",
@@ -2493,6 +2507,7 @@ local petConfig = {
             },
         },
         desertiguana = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Desert Iguana",
             category = "desert",
             rarity = "epic",
@@ -2529,6 +2544,7 @@ local petConfig = {
             },
         },
         scorpion = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Scorpion",
             category = "desert",
             rarity = "legendary",
@@ -2567,6 +2583,7 @@ local petConfig = {
 
         -- BUNNY FAMILY
         bunny = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Bunny",
             category = "meadow",
             rarity = "common",
@@ -2611,6 +2628,7 @@ local petConfig = {
 
         -- DOGGY FAMILY
         doggy = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Doggy",
             category = "domestic",
             rarity = "common",
@@ -2655,6 +2673,7 @@ local petConfig = {
 
         -- DRAGON FAMILY
         dragon = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Dragon",
             category = "mythical",
             rarity = "secret",
@@ -2703,6 +2722,7 @@ local petConfig = {
 
         -- KITTY FAMILY
         kitty = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Kitty",
             category = "domestic",
             rarity = "legendary", -- was mislabeled common (10/75k odds); luck must boost it,
@@ -2857,6 +2877,7 @@ local petConfig = {
 
         -- --- HEAVEN FIRE (solar) ---
         emberling_cherub = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Emberling Cherub",
             category = "heaven",
             realm = "heaven",
@@ -2894,6 +2915,7 @@ local petConfig = {
             },
         },
         sunmane_lion = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Sunmane Lion",
             category = "heaven",
             realm = "heaven",
@@ -2931,6 +2953,7 @@ local petConfig = {
             },
         },
         solar_phoenix = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Solar Phoenix",
             category = "heaven",
             realm = "heaven",
@@ -2968,6 +2991,7 @@ local petConfig = {
             },
         },
         radiant_salamander = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Radiant Salamander",
             category = "heaven",
             realm = "heaven",
@@ -3005,6 +3029,7 @@ local petConfig = {
             },
         },
         empyrean_dragon = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Empyrean Dragon",
             category = "heaven",
             realm = "heaven",
@@ -3048,6 +3073,7 @@ local petConfig = {
 
         -- --- HEAVEN ICE (aurora) ---
         frostlight_hare = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Frostlight Hare",
             category = "heaven",
             realm = "heaven",
@@ -3085,6 +3111,7 @@ local petConfig = {
             },
         },
         aurora_fox = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Aurora Fox",
             category = "heaven",
             realm = "heaven",
@@ -3122,6 +3149,7 @@ local petConfig = {
             },
         },
         seraph_owl = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Seraph Owl",
             category = "heaven",
             realm = "heaven",
@@ -3159,6 +3187,7 @@ local petConfig = {
             },
         },
         glacial_seraph = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Glacial Seraph",
             category = "heaven",
             realm = "heaven",
@@ -3196,6 +3225,7 @@ local petConfig = {
             },
         },
         aurora_leviathan = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Aurora Leviathan",
             category = "heaven",
             realm = "heaven",
@@ -3235,6 +3265,7 @@ local petConfig = {
 
         -- --- HEAVEN GRASS (bloom) ---
         bloomlamb = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Bloomlamb",
             category = "heaven",
             realm = "heaven",
@@ -3272,6 +3303,7 @@ local petConfig = {
             },
         },
         halo_hare = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Halo Hare",
             category = "heaven",
             realm = "heaven",
@@ -3309,6 +3341,7 @@ local petConfig = {
             },
         },
         goldleaf_stag = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Goldleaf Stag",
             category = "heaven",
             realm = "heaven",
@@ -3346,6 +3379,7 @@ local petConfig = {
             },
         },
         verdant_sprite = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Verdant Sprite",
             category = "heaven",
             realm = "heaven",
@@ -3383,6 +3417,7 @@ local petConfig = {
             },
         },
         worldroot_ent = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Worldroot Ent",
             category = "heaven",
             realm = "heaven",
@@ -3427,6 +3462,7 @@ local petConfig = {
         -- ===== REALM PETS (Heaven Desert + Hell) — generated, scripts/gen_realm_content.py =====
         -- Heaven Desert origin (heaven)
         sun_scarab = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Sun Scarab",
             category = "heaven",
             realm = "heaven",
@@ -3464,6 +3500,7 @@ local petConfig = {
             },
         },
         mirage_jackal = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Mirage Jackal",
             category = "heaven",
             realm = "heaven",
@@ -3501,6 +3538,7 @@ local petConfig = {
             },
         },
         dawn_camel = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Dawn Camel",
             category = "heaven",
             realm = "heaven",
@@ -3538,6 +3576,7 @@ local petConfig = {
             },
         },
         gilded_sphinx = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Gilded Sphinx",
             category = "heaven",
             realm = "heaven",
@@ -3575,6 +3614,7 @@ local petConfig = {
             },
         },
         solar_roc = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Solar Roc",
             category = "heaven",
             realm = "heaven",
@@ -3613,6 +3653,7 @@ local petConfig = {
         },
         -- Hell Fire origin (hell)
         cinderling_imp = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Cinderling Imp",
             category = "hell",
             realm = "hell",
@@ -3650,6 +3691,7 @@ local petConfig = {
             },
         },
         brimstone_salamander = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Brimstone Salamander",
             category = "hell",
             realm = "hell",
@@ -3687,6 +3729,7 @@ local petConfig = {
             },
         },
         ashmane_lion = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Ashmane Lion",
             category = "hell",
             realm = "hell",
@@ -3724,6 +3767,7 @@ local petConfig = {
             },
         },
         ashfeather_phoenix = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Ashfeather Phoenix",
             category = "hell",
             realm = "hell",
@@ -3761,6 +3805,7 @@ local petConfig = {
             },
         },
         abyssal_wyrm = {
+            origin = "lava", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Abyssal Wyrm",
             category = "hell",
             realm = "hell",
@@ -3799,6 +3844,7 @@ local petConfig = {
         },
         -- Hell Desert origin (hell)
         carrion_scarab = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Carrion Scarab",
             category = "hell",
             realm = "hell",
@@ -3836,6 +3882,7 @@ local petConfig = {
             },
         },
         phantom_jackal = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Phantom Jackal",
             category = "hell",
             realm = "hell",
@@ -3873,6 +3920,7 @@ local petConfig = {
             },
         },
         dust_camel = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Dust Camel",
             category = "hell",
             realm = "hell",
@@ -3910,6 +3958,7 @@ local petConfig = {
             },
         },
         glass_sphinx = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Glass Sphinx",
             category = "hell",
             realm = "hell",
@@ -3947,6 +3996,7 @@ local petConfig = {
             },
         },
         ash_roc = {
+            origin = "desert", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Ash Roc",
             category = "hell",
             realm = "hell",
@@ -3985,6 +4035,7 @@ local petConfig = {
         },
         -- Hell Ice origin (hell)
         rimelight_hare = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Rimelight Hare",
             category = "hell",
             realm = "hell",
@@ -4022,6 +4073,7 @@ local petConfig = {
             },
         },
         rimewraith_fox = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Rimewraith Fox",
             category = "hell",
             realm = "hell",
@@ -4059,6 +4111,7 @@ local petConfig = {
             },
         },
         dread_owl = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Dread Owl",
             category = "hell",
             realm = "hell",
@@ -4096,6 +4149,7 @@ local petConfig = {
             },
         },
         black_seraph = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Black Seraph",
             category = "hell",
             realm = "hell",
@@ -4133,6 +4187,7 @@ local petConfig = {
             },
         },
         black_ice_leviathan = {
+            origin = "ice", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Black-Ice Leviathan",
             category = "hell",
             realm = "hell",
@@ -4171,6 +4226,7 @@ local petConfig = {
         },
         -- Hell Earth origin (hell)
         blightlamb = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Blightlamb",
             category = "hell",
             realm = "hell",
@@ -4208,6 +4264,7 @@ local petConfig = {
             },
         },
         dread_hare = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Dread Hare",
             category = "hell",
             realm = "hell",
@@ -4245,6 +4302,7 @@ local petConfig = {
             },
         },
         rotleaf_stag = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Rotleaf Stag",
             category = "hell",
             realm = "hell",
@@ -4282,6 +4340,7 @@ local petConfig = {
             },
         },
         wither_sprite = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Wither Sprite",
             category = "hell",
             realm = "hell",
@@ -4319,6 +4378,7 @@ local petConfig = {
             },
         },
         gravewood_ent = {
+            origin = "grass", -- backfilled from egg SSOT (egg_sources.pet_weights + realm_area_eggs)
             display_name = "Gravewood Ent",
             category = "hell",
             realm = "hell",

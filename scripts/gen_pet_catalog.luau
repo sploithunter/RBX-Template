@@ -147,6 +147,47 @@ end
 local cfg = loadModule("configs/pets.lua")
 local pets = cfg.pets or {}
 
+-- ---- egg SSOT: pet -> {realm, area} via egg_sources.pet_weights + realm_area_eggs ----
+local AREA_ALIAS = {
+    grass = "grass",
+    earth = "grass",
+    bloom = "grass",
+    blight = "grass",
+    lava = "lava",
+    ember = "lava",
+    fire = "lava",
+    solar = "lava",
+    infernal = "lava",
+    ice = "ice",
+    aurora = "ice",
+    black_ice = "ice",
+    desert = "desert",
+    sand = "desert",
+    gilded = "desert",
+    guilded = "desert",
+    ash = "desert",
+}
+local eggToRealmArea = {}
+for realm, areas in pairs(cfg.realm_area_eggs or {}) do
+    for areaKey, eggName in pairs(areas) do
+        local canon = AREA_ALIAS[areaKey]
+        if canon then
+            eggToRealmArea[eggName] = { realm = realm, area = canon }
+        end
+    end
+end
+local petRealmArea = {}
+for eggName, egg in pairs(cfg.egg_sources or {}) do
+    if type(egg) == "table" and type(egg.pet_weights) == "table" then
+        local ra = eggToRealmArea[eggName]
+        if ra then
+            for petKey in pairs(egg.pet_weights) do
+                petRealmArea[petKey] = ra
+            end
+        end
+    end
+end
+
 -- ---- on-disk art lookup: assets/source/pets/<key>_<suffix>.<ext>; exports/pets/<key>_<suffix>/ ----
 local SOURCE_DIR = "assets/source/pets"
 local EXPORT_DIR = "assets/exports/pets"
@@ -221,15 +262,16 @@ for _, key in ipairs(sortedKeys) do
         repo_assets = disk,
         has_repo_art = next(disk) ~= nil,
     }
-    if pet.realm then
-        -- realm pets group by sub-area (origin). Layer-2 imports may have a realm but no origin wired
-        -- yet (pending pets.lua wiring) — nest them under "(unassigned)" so all realm pets still show
-        -- under their realm rather than looking non-realm.
-        local areaKey = pet.origin or "(unassigned)"
-        realms[pet.realm] = realms[pet.realm] or {}
-        local area = realms[pet.realm][areaKey] or {}
+    -- Prefer the egg SSOT (pet -> realm+area via egg_sources.pet_weights + realm_area_eggs); fall
+    -- back to the static realm/origin fields. Pets in no area-mapped egg (Creator) -> other.
+    local ra = petRealmArea[key]
+    local realm = (ra and ra.realm) or pet.realm
+    local areaKey = (ra and ra.area) or pet.origin
+    if realm and areaKey then
+        realms[realm] = realms[realm] or {}
+        local area = realms[realm][areaKey] or {}
         area[#area + 1] = entry
-        realms[pet.realm][areaKey] = area
+        realms[realm][areaKey] = area
         counts.realm += 1
     else
         local bucket = pet.category or "uncategorized"
@@ -262,7 +304,7 @@ line(
     `_Generated from configs/pets.lua — {counts.realm} realm pets + {counts.other} other. repo art under assets/source/pets/ (gitignored)._`
 )
 line("")
-local realmOrder = { "heaven", "hell" }
+local realmOrder = { "base", "heaven", "hell" }
 local areaOrder = { "grass", "lava", "ice", "desert", "(unassigned)" }
 for _, realm in ipairs(realmOrder) do
     if realms[realm] then
