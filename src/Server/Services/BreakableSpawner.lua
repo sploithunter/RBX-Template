@@ -723,6 +723,11 @@ function BreakableSpawner:Start()
             local interval = tonumber(breakablesConfig and breakablesConfig.topup_interval_seconds)
                 or 30
             task.wait(math.max(5, interval))
+            -- Despawn worlds that went inactive BEFORE topping up — a player leaving a realm area
+            -- (presence-gated) must drop its idle crystals, or they linger forever (the 32k-instance
+            -- leak). The unlock-watch handler already despawns on unlock changes; this catches
+            -- PRESENCE changes (no unlock event fires when you simply walk out of a realm).
+            self:_despawnInactiveWorlds()
             local crystalsAssets = self._crystalsAssets
             if crystalsAssets then
                 self:_fillAllWorlds(crystalsAssets)
@@ -749,16 +754,30 @@ function BreakableSpawner:_isWorldActive(worldName)
         return true
     end
 
-    -- Realm worlds (Heaven_n / Hell_n): if the realm area is a REGISTERED unlock zone (areas.lua),
-    -- gate it on its unlock exactly like a homeworld biome (fall through to the IsZoneUnlocked
-    -- check below). A bare proto realm world with no zone yet stays always-active so it's testable.
-    if worldName:match("^Heaven_%d+$") or worldName:match("^Hell_%d+$") then
-        local zs = self:_zoneService()
-        local registered = zs and zs._getZone and zs:_getZone(worldName)
-        if not registered then
+    -- Realm areas (Heaven_n* / Hell_n*) are far-off worlds (Home ±2000 Y). Pre-filling ALL of them
+    -- for any player who'd merely UNLOCKED them spawned ~1600 idle crystals (~32k instances) the
+    -- player never visits — the server-perf / memory leak. Gate realm areas on actual PRESENCE: a
+    -- player must be IN the area (the same active-area signal that drives music/unlock). Multiple
+    -- signals OR'd so it's robust to which one is populated; despawn of now-empty realms is handled
+    -- by the top-up loop's _despawnInactiveWorlds pass.
+    if worldName:match("^Heaven_%d") or worldName:match("^Hell_%d") then
+        if
+            worldBindingService
+            and worldBindingService.IsAreaActive
+            and worldBindingService:IsAreaActive(worldName)
+        then
             return true
         end
-        -- else: registered realm zone -> gate via the unlock check below.
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player:GetAttribute("CurrentArea") == worldName then
+                return true
+            end
+            local cw = player:FindFirstChild("CurrentWorld")
+            if cw and cw.Value == worldName then
+                return true
+            end
+        end
+        return false
     end
 
     -- A biome spawns ore only if at least one CURRENTLY-PRESENT player has it unlocked. This is
