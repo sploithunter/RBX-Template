@@ -1200,9 +1200,13 @@ function AssetPreloadService:GenerateImageFromModel(
         -- extent/REF lands every pet at the same fill: a 3.04 pet is unchanged, a 6.08 dragon doubles
         -- its distance. The per-pet camera.distance still applies as the base (preserves intended framing).
         local REF_EXTENT = 3.04 -- the standard pet max-extent (most pets normalize to ~3 studs; measured live)
+        -- SOFTENING exponent (<1): a pet at the reference extent is unchanged (1^p = 1), but bigger
+        -- models (dragons, ratio ~2-2.5) get pulled back LESS than a pure ratio would, so they read a
+        -- touch larger in the card (Jason: dragons were a tiny bit small after the first normalize).
+        local NORMALIZE_POWER = 0.85
         local maxExtent = math.max(modelSize.X, modelSize.Y, modelSize.Z)
-        local extentFactor = (maxExtent > 0.05) and (maxExtent / REF_EXTENT) or 1
-        extentFactor = math.clamp(extentFactor, 0.5, 3.5) -- guard against degenerate/stray-part extents
+        local ratio = (maxExtent > 0.05) and (maxExtent / REF_EXTENT) or 1
+        local extentFactor = math.clamp(ratio ^ NORMALIZE_POWER, 0.5, 3.5) -- guard degenerate/stray extents
         local effectiveDistance = cameraConfig.distance * extentFactor
 
         -- Use spherical coordinates: distance, horizontal angle, vertical angle
