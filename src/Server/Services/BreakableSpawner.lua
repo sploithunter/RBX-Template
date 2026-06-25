@@ -710,6 +710,28 @@ function BreakableSpawner:Start()
     end
     Players.PlayerAdded:Connect(watchUnlocks)
 
+    -- Fill an area the MOMENT a player enters it. CurrentArea is the ZoneTracker SSOT and matches the
+    -- crystal world-folder name exactly (e.g. "Hell_2_Ice" — verified live). The old
+    -- WorldBindingService.AreaEntered hook does NOT fire for realm areas (and CurrentWorld goes stale
+    -- there), so without this realms only filled on the 30s top-up tick — the walk-in delay. Slots
+    -- are pre-warmed at boot, so this fill is instant (and amortized in _fillWorld).
+    local function watchArea(player)
+        player:GetAttributeChangedSignal("CurrentArea"):Connect(function()
+            local area = player:GetAttribute("CurrentArea")
+            if area and area ~= "" then
+                self:_fillAreaWorld(area)
+            end
+        end)
+        local now = player:GetAttribute("CurrentArea")
+        if now and now ~= "" then
+            self:_fillAreaWorld(now)
+        end
+    end
+    for _, player in ipairs(Players:GetPlayers()) do
+        watchArea(player)
+    end
+    Players.PlayerAdded:Connect(watchArea)
+
     task.spawn(function()
         self:_spawnLoop()
     end)
