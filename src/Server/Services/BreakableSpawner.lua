@@ -894,10 +894,36 @@ function BreakableSpawner:_spawnLoop()
         end
     end
 
+    -- Pre-build EVERY world's spawn-slot table ONCE at boot — the static "where could a crystal go"
+    -- lookup (Jason's design). The heavy scan (_ensureSlots: grid + surface raycasts + O(n²) spacing)
+    -- is cached per world and shared across all players, so a player walking into a presence-gated
+    -- realm gets an INSTANT fill from the table instead of waiting on the scan. Background + amortized;
+    -- only builds the worlds the active-fill above didn't already cache. Spawns NO crystals.
+    task.spawn(function()
+        for _, worldFolder in ipairs(crystalsWorlds:GetChildren()) do
+            if
+                worldFolder:IsA("Folder")
+                and not (self._worldSlots and self._worldSlots[worldFolder])
+            then
+                pcall(function()
+                    self:_ensureSlots(worldFolder)
+                end)
+                task.wait() -- breathe between worlds (the scan also yields internally)
+            end
+        end
+        logger:Info("BreakableSpawner: slot-table pre-warm complete (all worlds cached)")
+    end)
+
     -- Watch for new worlds added dynamically
     crystalsWorlds.ChildAdded:Connect(function(child)
         if child:IsA("Folder") then
             self:_setupWorld(child)
+            -- Pre-warm a dynamically-added world's slot table too, so its first fill is instant.
+            task.spawn(function()
+                pcall(function()
+                    self:_ensureSlots(child)
+                end)
+            end)
             if self:_isWorldActive(child.Name) then
                 self:_fillWorld(child)
             end
@@ -1074,6 +1100,14 @@ function BreakableSpawner:_fillWorld(worldFolder)
         return
     end
 
+    -- Re-entrancy guard: a freshly-entered world fills its whole Max amortized (yields below), and the
+    -- top-up loop / unlock-watch may also call _fillWorld for it meanwhile. Skip if one's in flight so
+    -- two concurrent fills can't over-spawn past Max.
+    self._fillInProgress = self._fillInProgress or {}
+    if self._fillInProgress[worldFolder] then
+        return
+    end
+
     local current = worldFolder:FindFirstChild("CurrentItems")
     local max = worldFolder:FindFirstChild("Max")
     if not (current and max) then
@@ -1090,8 +1124,28 @@ function BreakableSpawner:_fillWorld(worldFolder)
     end
 
     local deficit = math.max(0, (max.Value or 0) - (current.Value or 0))
-    for _ = 1, deficit do
-        self:_trySpawnOne(worldFolder)
+    if deficit <= 0 then
+        return
+    end
+
+    self._fillInProgress[worldFolder] = true
+    local ok = pcall(function()
+        for i = 1, deficit do
+            self:_trySpawnOne(worldFolder)
+            -- Amortize the batch (slots are pre-cached, so spawning is the only cost) across frames so
+            -- a full-Max fill neither hitches the server nor pops in all at once — crystals trickle in.
+            -- Re-check active each chunk so a player leaving mid-fill stops it cleanly.
+            if i % 10 == 0 then
+                task.wait()
+                if not self:_isWorldActive(worldFolder.Name) then
+                    break
+                end
+            end
+        end
+    end)
+    self._fillInProgress[worldFolder] = false
+    if not ok then
+        self._fillInProgress[worldFolder] = nil
     end
 end
 
