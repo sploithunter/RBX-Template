@@ -2770,6 +2770,7 @@ local petConfig = {
         colorado = {
             display_name = "Colorado",
             category = "creator",
+            origin = "creator", -- exclusive (colorado_egg): own identity, matchup-neutral (no resonance row)
             rarity = "exclusive",
             -- Premium exclusive, ~1.2x the normal ceiling (42) — the best ROLLABLE pet, not a god.
             -- Was 100 (~7x a starter): power feeds damage AND the endurance pool, so a too-high
@@ -2820,6 +2821,7 @@ local petConfig = {
         colorado_creator = {
             display_name = "Creator Colorado",
             category = "creator",
+            origin = "creator", -- dev-only Creator apex; matchup-neutral creator origin
             rarity = "exclusive",
             base_power = 100,
             base_health = 500,

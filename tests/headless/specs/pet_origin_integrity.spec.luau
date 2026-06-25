@@ -59,34 +59,26 @@ return function()
             end
         end
 
-        -- Creator Colorado is the one hatch pet without an area: it has its own area-less
-        -- colorado_egg (Jason: "the one exception"). Everything else in any egg must have an origin.
-        local ORIGIN_EXEMPT = { colorado = true }
-
-        it(
-            "every pet that appears in ANY egg pool has an origin (except Creator Colorado)",
-            function()
-                local missing = {}
-                for eggName, egg in pairs(eggs) do
-                    if type(egg) == "table" and type(egg.pet_weights) == "table" then
-                        for petKey in pairs(egg.pet_weights) do
-                            local pet = petDefs[petKey]
-                            if
-                                type(pet) == "table"
-                                and pet.origin == nil
-                                and not ORIGIN_EXEMPT[petKey]
-                            then
-                                missing[#missing + 1] = `{petKey} (egg={eggName})`
-                            end
+        -- Every pet in an egg pool must have an origin. Exclusive/non-area eggs (e.g. colorado_egg)
+        -- use the "creator" origin (own identity, matchup-neutral — no resonance row), so there's no
+        -- per-pet exemption: a new exclusive without an origin SHOULD fail here and force the decision.
+        it("every pet that appears in ANY egg pool has an origin", function()
+            local missing = {}
+            for eggName, egg in pairs(eggs) do
+                if type(egg) == "table" and type(egg.pet_weights) == "table" then
+                    for petKey in pairs(egg.pet_weights) do
+                        local pet = petDefs[petKey]
+                        if type(pet) == "table" and pet.origin == nil then
+                            missing[#missing + 1] = `{petKey} (egg={eggName})`
                         end
                     end
                 end
-                if #missing > 0 then
-                    error(`hatch pets missing origin: {table.concat(missing, ", ")}`)
-                end
-                expect(#missing).to.equal(0)
             end
-        )
+            if #missing > 0 then
+                error(`hatch pets missing origin: {table.concat(missing, ", ")}`)
+            end
+            expect(#missing).to.equal(0)
+        end)
 
         it("every pet in an area-mapped egg carries origin == its egg's area", function()
             local missing, wrong = {}, {}
