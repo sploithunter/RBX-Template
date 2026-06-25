@@ -259,14 +259,14 @@ end
 line("# Pet Catalog by Area")
 line("")
 line(
-    `_Generated from configs/pets.lua — ${counts.realm} realm pets + ${counts.other} other. repo art under assets/source/pets/ (gitignored)._`
+    `_Generated from configs/pets.lua — {counts.realm} realm pets + {counts.other} other. repo art under assets/source/pets/ (gitignored)._`
 )
 line("")
 local realmOrder = { "heaven", "hell" }
 local areaOrder = { "grass", "lava", "ice", "desert", "(unassigned)" }
 for _, realm in ipairs(realmOrder) do
     if realms[realm] then
-        line(`## ${realm:gsub("^%l", string.upper)}`)
+        line(`## {realm:gsub("^%l", string.upper)}`)
         line("")
         for _, area in ipairs(areaOrder) do
             local list = realms[realm][area]
@@ -274,7 +274,7 @@ for _, realm in ipairs(realmOrder) do
                 table.sort(list, function(a, b)
                     return tostring(a.key) < tostring(b.key)
                 end)
-                line(`### ${area} (${#list})`)
+                line(`### {area} ({#list})`)
                 line("")
                 line("| Pet | Rarity | Repo art (basic) | Roblox mesh (basic) |")
                 line("| --- | --- | --- | --- |")
@@ -285,7 +285,7 @@ for _, realm in ipairs(realmOrder) do
                         or (p.roblox_assets.basic and p.roblox_assets.basic.asset_id)
                         or "—"
                     line(
-                        `| ${p.display_name or p.key} (\`${p.key}\`) | ${p.rarity or "—"} | ${art} | ${mesh} |`
+                        `| {p.display_name or p.key} (\`{p.key}\`) | {p.rarity or "—"} | {art} | {mesh} |`
                     )
                 end
                 line("")
@@ -302,10 +302,10 @@ if next(other) then
     end
     table.sort(obkeys)
     for _, cat in ipairs(obkeys) do
-        line(`### ${cat} (${#other[cat]})`)
+        line(`### {cat} ({#other[cat]})`)
         for _, p in ipairs(other[cat]) do
             line(
-                `- ${p.display_name or p.key} (\`${p.key}\`)${p.has_repo_art and "" or " — no repo art"}`
+                `- {p.display_name or p.key} (\`{p.key}\`){p.has_repo_art and "" or " — no repo art"}`
             )
         end
         line("")
