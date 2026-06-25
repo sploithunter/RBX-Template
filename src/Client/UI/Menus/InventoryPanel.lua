@@ -1857,6 +1857,12 @@ function InventoryPanel:_loadRealInventoryData()
         self.logger:info("📦 CONSUMABLES DEBUG - No consumables folder found")
     end
 
+    -- Load brew-charge potions (shown in the Items tab; trade-ready stackable bucket)
+    local potionsFolder = inventoryFolder:FindFirstChild("potions")
+    if potionsFolder then
+        self:_loadPotionsFromFolder(potionsFolder)
+    end
+
     -- Load tools from tools folder
     local toolsFolder = inventoryFolder:FindFirstChild("tools")
     if toolsFolder then
@@ -2490,6 +2496,40 @@ function InventoryPanel:_loadConsumablesFromFolder(consumablesFolder)
                     folder_source = displayData.folder_source,
                     category = displayData.category,
                     count = displayData.count,
+                })
+            end
+        end
+    end
+end
+
+-- Brew-charge potions (PotionService's "potions" bucket). Stack folder NAME is the potion id
+-- (the `id` Value isn't always set); quantity Value holds the count. Pretty name from
+-- configs/potions.lua when available. Shown in the Items tab; folder_source = "potions".
+function InventoryPanel:_loadPotionsFromFolder(potionsFolder)
+    local potionsCfg
+    pcall(function()
+        local c = require(ReplicatedStorage.Configs:WaitForChild("potions"))
+        potionsCfg = c and c.potions
+    end)
+    for _, itemFolder in pairs(potionsFolder:GetChildren()) do
+        if itemFolder:IsA("Folder") and itemFolder.Name ~= "Info" then
+            local potionId = itemFolder.Name
+            local qtyVal = itemFolder:FindFirstChild("quantity")
+                or itemFolder:FindFirstChild("Quantity")
+            local count = (qtyVal and tonumber(qtyVal.Value)) or 1
+            if count > 0 then
+                local def = potionsCfg and potionsCfg[potionId]
+                table.insert(self.inventoryData, {
+                    id = potionId,
+                    name = (def and (def.display_name or def.name))
+                        or (potionId:gsub("_", " "):gsub("^%l", string.upper)),
+                    icon = "🧪",
+                    rarity = "Potion",
+                    color = Color3.fromRGB(160, 110, 220),
+                    category = "Items",
+                    count = count,
+                    uid = potionId,
+                    folder_source = "potions",
                 })
             end
         end
@@ -3318,6 +3358,55 @@ function InventoryPanel:_compareInventoryItems(a, b)
     return tostring(a.name) < tostring(b.name)
 end
 
+-- Build a lowercased, cached search haystack so the inventory search matches more than the display
+-- name (Jason: search "luck" -> luck pets, "tank" -> tanks). Includes name/type/rarity/variant and,
+-- for pets, Role / Element / support-Aura — from the same sources the card + tooltip use. Cached on
+-- the item (each inventory reload makes fresh item tables, so the cache never goes stale).
+function InventoryPanel:_itemSearchText(item)
+    if item._searchText then
+        return item._searchText
+    end
+    local parts = {}
+    local function add(v)
+        if v ~= nil and v ~= "" then
+            parts[#parts + 1] = tostring(v)
+        end
+    end
+    add(item.name)
+    add(item.petType)
+    add(item.rarity)
+    add(item.variant)
+    if item.category == "Pets" and item.petType then
+        if PetPowerView then
+            local ok, role = pcall(function()
+                return PetPowerView.roleInfo(item.petType, item.role)
+            end)
+            if ok and role then
+                add(role.label)
+                add(role.id)
+            end
+        end
+        if PetBadge then
+            add(item.creator and "creator" or PetBadge.biomeElementForPetType(item.petType))
+        end
+        if PET_ROLES and PET_ROLES.support_auras then
+            local entry = PET_ROLES.support_auras[item.petType]
+            local auras = (type(entry) == "table") and (entry.kind and { entry } or entry) or nil
+            for _, a in ipairs(auras or {}) do
+                add(a.kind)
+                local meta = SUPPORT_META[a.kind]
+                if meta then
+                    add(meta.label)
+                end
+            end
+        end
+    end
+    add(item.enhancement_type)
+    add(item.origins_label)
+    item._searchText = string.lower(table.concat(parts, " "))
+    return item._searchText
+end
+
 function InventoryPanel:_updateItemsDisplay()
     -- Cards get destroyed + rebuilt here; hide any open tooltip first so a card destroyed under the
     -- cursor (its MouseLeave never fires) can't leave the popup stuck on screen (Jason: intermittent).
@@ -3364,7 +3453,7 @@ function InventoryPanel:_updateItemsDisplay()
         -- non-stack (unique) equipped pets consistent with them. Routes to the equipped grid.
         local equippedBypass = (not isStackItem) and self:_isItemEquipped(item)
         local matchesSearch = (
-            self.searchTerm == "" or item.name:lower():find(self.searchTerm, 1, true)
+            self.searchTerm == "" or self:_itemSearchText(item):find(self.searchTerm, 1, true)
         )
 
         if (matchesCategory or equippedBypass) and matchesSearch then
