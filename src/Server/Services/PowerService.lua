@@ -586,6 +586,11 @@ function PowerService:_damageOverTime(
     if perTick <= 0 or totalSeconds <= 0 then
         return
     end
+    -- Bound the AoE DoT (aoe=true "hits every alive enemy") to enemies near the caster, not every
+    -- enemy in every realm. Shadows the file-global for the tick loop's enemiesAlive() calls.
+    local enemiesAlive = function()
+        return self:_enemiesInRange(player, tonumber(self._powersConfig.engage_radius))
+    end
     local critMult = (
         self._combatConfig
         and self._combatConfig.rolls
@@ -708,10 +713,43 @@ function PowerService:_creditDot(enemy, player, amount)
     nv.Value = nv.Value + amount
 end
 
+-- Enemies within `radius` studs (HORIZONTAL) of the caster's character. The bound that makes AoE /
+-- control / debuff families hit the fight AROUND you, not every enemy in every realm: the unbounded
+-- enemiesAlive() loop reached enemies 2000+ studs away in other realm worlds (Home ±2000 Y) — Jason:
+-- "I can bomb them from very far away / my powers work in hell 2 while I'm in hell 1". radius defaults
+-- to powers.engage_radius. Empty when the player has no character (nothing to anchor the AoE on).
+function PowerService:_enemiesInRange(player, radius)
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        return {}
+    end
+    radius = tonumber(radius) or (tonumber(self._powersConfig.engage_radius) or 60)
+    local r2 = radius * radius
+    local cx, cz = hrp.Position.X, hrp.Position.Z
+    local out = {}
+    for _, e in ipairs(enemiesAlive()) do
+        local pp = e.PrimaryPart or e:FindFirstChildWhichIsA("BasePart")
+        if pp then
+            local dx, dz = pp.Position.X - cx, pp.Position.Z - cz
+            if dx * dx + dz * dz <= r2 then
+                out[#out + 1] = e
+            end
+        end
+    end
+    return out
+end
+
 function PowerService:_applyEffect(player, kind, now, powerId)
     local family = kind.family
     local mag = kind.magnitude or 0
     local dur = kind.duration or 0
+    -- Shadow the file-global enemiesAlive() with a CASTER-BOUNDED version for the whole family
+    -- if/elseif below, so every enemy-targeting family (root / vulnerable / root_guard / heal_blind /
+    -- …) hits enemies near the caster instead of globally. radius = the power's own `radius` or
+    -- engage_radius. (_burnSpread / _amplifiedBurst already distance-filter inline, so they're fine.)
+    local enemiesAlive = function()
+        return self:_enemiesInRange(player, tonumber(kind.radius))
+    end
     -- A `dot` block layers damage-over-time on top of whatever the family does (a vulnerable MARK
     -- that also burns, an ice HOLD that chips). Generic — any power opts in via config. aoe=true
     -- hits every alive enemy; aoe=false the single primary target. Fires alongside the family below.
