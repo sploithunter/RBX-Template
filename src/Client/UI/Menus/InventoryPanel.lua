@@ -4581,6 +4581,51 @@ function InventoryPanel:_showItemTooltip(item)
         { label = "Power", value = self:_formatNumber(item.effectivePower or item.power) },
     }
 
+    -- Consistent identity baseline for EVERY pet (Jason: thin cards need Role + Element + the two
+    -- stats). All derived client-side from the same sources the card uses — single source of truth.
+    if item.category == "Pets" and item.petType then
+        if PetPowerView then
+            local okRole, role = pcall(function()
+                return PetPowerView.roleInfo(item.petType, item.role)
+            end)
+            if okRole and role and role.label then
+                table.insert(lines, { label = "Role", value = role.label })
+            end
+        end
+        if PetBadge then
+            local elem = item.creator and "creator" or PetBadge.biomeElementForPetType(item.petType)
+            if elem and elem ~= "" then
+                table.insert(
+                    lines,
+                    { label = "Element", value = (tostring(elem):gsub("^%l", string.upper)) }
+                )
+            end
+        end
+        -- Damage (⚔ zone-calculated attack) + Endurance (❤ toughness) — the two stats the card shows.
+        local basePower = item.power or item.basePower
+        if PetPowerView and basePower then
+            local profile = resolvePetProfile(basePower, item.petType, item.variant, item.creator)
+            if profile then
+                table.insert(lines, {
+                    label = "Damage",
+                    value = "⚔ "
+                        .. self:_formatNumber(
+                            PetPowerView.displayRound(profile.combatEffective or 0)
+                        ),
+                })
+                local okEhp, ehp = pcall(function()
+                    return PetPowerView.survivability(basePower, item.petType, item.role)
+                end)
+                if okEhp and ehp then
+                    table.insert(lines, {
+                        label = "Endurance",
+                        value = "❤ " .. self:_formatNumber(PetPowerView.displayRound(ehp)),
+                    })
+                end
+            end
+        end
+    end
+
     if item.basePower and item.effectivePower and item.basePower ~= item.effectivePower then
         table.insert(lines, { label = "Base", value = self:_formatNumber(item.basePower) })
     end
@@ -4666,17 +4711,35 @@ function InventoryPanel:_showItemTooltip(item)
         table.insert(lines, { label = "Enchants", value = "None" })
     end
     if item.category == "Pets" and item.petType then
+        -- Zone ALWAYS shows now (Jason: it blinked in/out before) — Neutral when no resonance.
         local mult = zoneResonanceFor(item.petType)
-        if mult > 1 then
-            table.insert(
-                lines,
-                { label = "Zone", value = ("Strong here (+%d%%)"):format((mult - 1) * 100 + 0.5) }
-            )
-        elseif mult < 1 then
-            table.insert(
-                lines,
-                { label = "Zone", value = ("Weak here (-%d%%)"):format((1 - mult) * 100 + 0.5) }
-            )
+        local zoneVal
+        if mult > 1.001 then
+            zoneVal = ("Strong here (+%d%%)"):format((mult - 1) * 100 + 0.5)
+        elseif mult < 0.999 then
+            zoneVal = ("Weak here (-%d%%)"):format((1 - mult) * 100 + 0.5)
+        else
+            zoneVal = "Neutral here"
+        end
+        table.insert(lines, { label = "Zone", value = zoneVal })
+
+        -- Support pets: surface the team aura they provide (Jason). Reuse SUPPORT_META labels +
+        -- a readable magnitude; fall back to the capitalized kind for combat debuffs not in the map.
+        local aura = PET_ROLES and PET_ROLES.support_auras and PET_ROLES.support_auras[item.petType]
+        if aura and aura.kind then
+            local meta = SUPPORT_META[aura.kind]
+            local label = (meta and meta.label) or (tostring(aura.kind):gsub("^%l", string.upper))
+            local mag = ""
+            if aura.mult then
+                mag = (" +%d%%"):format((aura.mult - 1) * 100 + 0.5)
+            elseif aura.amount then
+                mag = (" +%d"):format(aura.amount + 0.5)
+            elseif aura.fraction then
+                mag = (" %d%%/%ds"):format(aura.fraction * 100 + 0.5, aura.interval or 2)
+            elseif aura.duration then
+                mag = (" %ds"):format(aura.duration)
+            end
+            table.insert(lines, { label = "Aura", value = label .. mag })
         end
     end
     if item.locked ~= nil then
