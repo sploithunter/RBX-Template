@@ -144,7 +144,7 @@ return {
         root = { family = "root", magnitude = 0, duration = 5 },
         aoe_slow = { family = "root", magnitude = 0, duration = 5 },
         blizzard = { family = "root", magnitude = 0, duration = 6 },
-        aoe_blind = { family = "vulnerable", magnitude = 1.5, duration = 6 },
+        aoe_blind = { family = "blind", magnitude = 0.5, duration = 6 }, -- Sandstorm: cut enemy to-hit (magnitude = accuracy reduction)
         -- Targeted DoT: Mark of Flame (the only power using this key) burns its single target
         -- ~20 HP/sec (10x world) on top of the +50% damage debuff for 6s.
         damage_over_time = {
@@ -200,11 +200,9 @@ return {
             family = "heal",
             field = true, -- a STATIONARY heal ZONE dropped at the player's feet (not a squad-wide heal)
             field_radius = 28, -- studs; pets standing within this of the cast spot get healed each tick
-            magnitude = 0, -- no upfront burst — it's a positioned sustain zone, all healing is the tick
-            duration = 8,
-            hot = 110, -- per tick to each pet currently IN the zone
-            hot_tick = 2,
-            hot_seconds = 8,
+            magnitude = 110, -- per-tick heal to each pet IN the zone (scaled by health/healing enhancements)
+            duration = 8, -- zone lifetime (the heal is the per-tick magnitude, not an upfront burst)
+            hot_tick = 2, -- seconds between heal ticks (cadence only)
         }, -- Healing Field: drop-a-zone-at-your-feet, hold-the-ground sustain (Sandwalker)
         quicksand = { family = "root", magnitude = 0, duration = 12, radius = 34 }, -- Quicksand: AoE root the pack (desert)
         fear = { family = "fear", magnitude = 0, duration = 5 }, -- TBD: flee (AI state)

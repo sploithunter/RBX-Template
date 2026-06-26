@@ -63,6 +63,7 @@ return {
             families = {
                 vulnerable = true,
                 root = true,
+                blind = true, -- Sandstorm: a to-hit roll lands the blind, so +accuracy helps it stick
             },
         },
         recharge = {
@@ -118,6 +119,7 @@ return {
                 fear = true,
                 taunt = true,
                 evade = true, -- Mirage Step: extend the avoidance window
+                blind = true, -- Sandstorm: extend the blind window
                 luck = true,
                 -- rage is a TOGGLE (no duration to extend) — dropped (was a no-op slot)
                 drop_rate = true, -- Windfall: extend the loot-chance window (it has duration=10)
@@ -140,6 +142,7 @@ return {
                 crit = true,
                 drop_rate = true, -- Windfall: boost the +drop-chance magnitude (it has magnitude=2.0)
                 evade = true, -- Mirage Step: raise the avoidance chance (clamped <100% at roll time)
+                blind = true, -- Sandstorm: deepen the accuracy cut (clamped <0.95 at roll time)
                 luck = true,
                 magnet = true,
                 move_speed = true,

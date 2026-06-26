@@ -1326,13 +1326,26 @@ function EnemyService:_hitPet(pet, def, now, eng, enemyLevel, petLevel, enemyMod
     -- more reliably on a lower pet, and vice versa) — same module the pets use. CombatRoll still
     -- owns the crit (chances from enemy_attack config).
     local enemyAtkRoll = eng.rolls and eng.rolls.enemy_attack
+    local hitChance = Accuracy.combatToHit(enemyLevel, petLevel, self._combatConfig.accuracy)
+    -- BLIND (Sandstorm): a blinded enemy's to-hit is cut so it WHIFFS on the squad — the attacker-side
+    -- mirror of pet evasion (which dodges on the defender side). BlindMagnitude is the accuracy
+    -- REDUCTION fraction, stamped per enemy by the blind power on its own BlindUntil/os.time seam.
+    local blinded = enemyModel
+        and (tonumber(enemyModel:GetAttribute("BlindUntil")) or 0) > os.time()
+    if blinded then
+        local cut = math.clamp(tonumber(enemyModel:GetAttribute("BlindMagnitude")) or 0, 0, 0.95)
+        hitChance = hitChance * (1 - cut)
+    end
     local roll = CombatRoll.resolve({
-        hit_chance = Accuracy.combatToHit(enemyLevel, petLevel, self._combatConfig.accuracy),
+        hit_chance = hitChance,
         crit_chance = enemyAtkRoll and enemyAtkRoll.crit_chance,
         crit_mult = enemyAtkRoll and enemyAtkRoll.crit_mult,
     }, math.random(), math.random())
     if roll.multiplier <= 0 then
-        return -- missed
+        -- Whiff -> the caller floats a "MISS" over the pet via Combat_EnemyHit (same FloatingText path
+        -- the pets use). `blinded` recolours it orange so a Sandstorm whiff reads distinct from a
+        -- plain accuracy miss.
+        return true, blinded == true -- missed, wasBlinded
     end
     dmg = dmg * roll.multiplier
     -- Level scaling: a higher-level enemy hits harder; out-level it and it softens.
@@ -2009,7 +2022,8 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         local petLevel = player:GetAttribute("EffectiveLevel")
             or biteTarget:GetAttribute("Level")
             or (player:GetAttribute("Level") or 1)
-        self:_hitPet(biteTarget, def, now, eng, enemyLevel, petLevel, model)
+        local missed, wasBlinded =
+            self:_hitPet(biteTarget, def, now, eng, enemyLevel, petLevel, model)
         entry.nextAttack = now + ((def and def.attack and def.attack.cadence) or 1.5)
         -- Broadcast the swing's VISUAL (damage is already applied above; the FX is just the swing,
         -- exactly like the pets' Combat_PetHit). Fired on EVERY attack so enemies attack the same
@@ -2023,6 +2037,8 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
                 ranged = isRanged,
                 kind = def and def.bolt_kind,
                 crit = biteTarget:GetAttribute("LastHitCrit") == true,
+                miss = missed == true, -- enemy whiffed -> float "MISS" over the pet (EnemyMotion)
+                blind = wasBlinded == true, -- whiff was a Sandstorm blind -> orange, not grey
             })
         end)
     end

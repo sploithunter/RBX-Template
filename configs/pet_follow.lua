@@ -280,6 +280,7 @@ return {
                 normal = { 255, 255, 255 },
                 crit = { 255, 200, 60 },
                 miss = { 175, 175, 175 },
+                blind_miss = { 255, 150, 40 }, -- orange MISS: a BLINDED enemy whiffed (Sandstorm), vs grey for a plain miss
                 heal = { 90, 230, 110 }, -- green "+N" on heals
             },
         },

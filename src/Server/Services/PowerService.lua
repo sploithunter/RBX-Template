@@ -701,16 +701,19 @@ end
 -- `field_radius` of that fixed spot, each `hot_tick` for `hot_seconds`. You position the zone by
 -- WALKING your (invulnerable spirit) onto the squad — no aim reticle, identical on desktop/mobile.
 -- A shared-world ground disc marks it so every nearby client sees where the sustain is.
-function PowerService:_healZone(player, kind, powerId)
+-- perTick + totalSeconds are the EFFECTIVE (enhancement-scaled) magnitude + duration from the cast,
+-- so a `health`/`healing` enhancement raises the per-tick heal and (if ever slotted) duration extends
+-- the zone — the same numbers the ENHANCE preview shows.
+function PowerService:_healZone(player, kind, perTick, totalSeconds, powerId)
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then
         return
     end
     local center = hrp.Position
     local radius = tonumber(kind.field_radius) or 28
-    local perTick = tonumber(kind.hot) or tonumber(kind.magnitude) or 0
+    perTick = tonumber(perTick) or 0
     local tickSeconds = tonumber(kind.hot_tick) or 2
-    local totalSeconds = tonumber(kind.hot_seconds) or tonumber(kind.duration) or 8
+    totalSeconds = tonumber(totalSeconds) or 8
     if perTick <= 0 or totalSeconds <= 0 then
         return
     end
@@ -1078,7 +1081,7 @@ function PowerService:_applyEffect(player, kind, now, powerId)
             -- position is server-reliable (only PETS are client-driven/stale), so we anchor the
             -- zone there and heal pets standing within `field_radius` of the cast spot each tick.
             -- You position by WALKING the (invulnerable spirit) onto your squad — no aim reticle.
-            self:_healZone(player, kind, powerId)
+            self:_healZone(player, kind, mag, dur, powerId)
         else
             -- Respect the power's targeting RING (like absorb): single_pet -> the selected squad
             -- card only (the pet you AIMED at, not the most-hurt); otherwise squad-wide
@@ -1230,6 +1233,19 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                 enemy:SetAttribute("RootedUntil", now + dur)
                 -- stamp WHICH power debuffed it, so the client can show the matching badge above it
                 -- (alongside the aura) instead of leaving you to decode the particle colour.
+                enemy:SetAttribute("DebuffPowerId", powerId)
+                enemy:SetAttribute("DebuffUntil", now + dur)
+            end
+        end
+    elseif family == "blind" then
+        -- BLIND (Sandstorm): cut the enemies' to-hit so they WHIFF on the squad — pet protection by
+        -- denying the attacker, the mirror of pet evasion. `mag` is the accuracy REDUCTION fraction;
+        -- stamped on BlindUntil/BlindMagnitude and read in EnemyService:_hitPet's to-hit roll. Rolls
+        -- to land per target (like the other debuffs) so accuracy enhancements help it stick.
+        for _, enemy in ipairs(enemiesAlive()) do
+            if self:_accuracyHit(player, enemy, kind) then
+                enemy:SetAttribute("BlindUntil", now + dur)
+                enemy:SetAttribute("BlindMagnitude", mag)
                 enemy:SetAttribute("DebuffPowerId", powerId)
                 enemy:SetAttribute("DebuffUntil", now + dur)
             end

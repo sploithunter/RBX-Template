@@ -366,7 +366,7 @@ local function popDodge(pet)
     lbl.BackgroundTransparency = 1
     lbl.Font = Enum.Font.GothamBlack
     lbl.TextScaled = true
-    lbl.Text = "Dodge!"
+    lbl.Text = "DODGE" -- all-caps to match the combat_text "MISS" float (consistent word-float style)
     lbl.TextColor3 = Color3.fromRGB(255, 221, 64) -- yellow (Jason) — reads as a lucky avoid, distinct from damage
     lbl.TextStrokeTransparency = 0.3
     lbl.Parent = bb

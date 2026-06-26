@@ -78,6 +78,13 @@ local FAMILY_TEXT = {
     root = function(_, target)
         return ("Holds %s in place."):format(target)
     end,
+    blind = function(kind, target)
+        -- magnitude is the to-hit REDUCTION (fraction): a blinded enemy misses that much more.
+        return ("Blinds %s — they miss %s more of their attacks on your squad."):format(
+            target,
+            pct(kind.magnitude)
+        )
+    end,
     root_guard = function(kind, target)
         return ("Roots %s AND hardens your squad (+%d Defense)."):format(target, kind.magnitude)
     end,
@@ -116,11 +123,12 @@ local FAMILY_TEXT = {
     end,
     heal = function(kind, target)
         if kind.field then
-            -- Healing Field: a stationary zone at your feet; the heal is the per-tick `hot`.
+            -- Healing Field: a stationary zone at your feet; the per-tick heal IS the magnitude
+            -- (so health/healing enhancements scale it), ticking every hot_tick for the duration.
             return ("Drops a heal zone at your feet — pets standing in it recover %d endurance every %s for %s."):format(
-                tonumber(kind.hot) or 0,
+                tonumber(kind.magnitude) or 0,
                 span(kind.hot_tick or 2),
-                span(kind.hot_seconds or kind.duration or 8)
+                span(kind.duration or 8)
             )
         end
         local amount = kind.magnitude <= 1 and pct(kind.magnitude) .. " endurance"
