@@ -65,6 +65,23 @@ function FocusService:Start()
         hookPlayer(player)
     end
     Players.PlayerAdded:Connect(hookPlayer)
+
+    -- FOCUS REGEN LOOP: refill every player's Focus once a second (regen_per_second, clamped to
+    -- focus_max). RegenTick existed but NOTHING drove it — harmless while casting was free (Focus sat
+    -- at max forever), but now that PowerService:Cast charges focus_cost, a missing regen loop drained
+    -- the pool to 0 and it never refilled, silently blocking EVERY cast. Skip players already at max so
+    -- we don't spam non-critical saves.
+    task.spawn(function()
+        while true do
+            task.wait(1)
+            for _, player in ipairs(Players:GetPlayers()) do
+                local st = self:Get(player)
+                if st and st.ok and (st.focus or 0) < (st.max or 0) then
+                    self:RegenTick(player, 1)
+                end
+            end
+        end
+    end)
 end
 
 local function focusOf(self, data)
