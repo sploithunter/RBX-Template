@@ -117,6 +117,7 @@ return {
                 root_guard = true,
                 fear = true,
                 taunt = true,
+                evade = true, -- Mirage Step: extend the avoidance window
                 luck = true,
                 -- rage is a TOGGLE (no duration to extend) — dropped (was a no-op slot)
                 drop_rate = true, -- Windfall: extend the loot-chance window (it has duration=10)
@@ -138,6 +139,7 @@ return {
                 coin_yield = true,
                 crit = true,
                 drop_rate = true, -- Windfall: boost the +drop-chance magnitude (it has magnitude=2.0)
+                evade = true, -- Mirage Step: raise the avoidance chance (clamped <100% at roll time)
                 luck = true,
                 magnet = true,
                 move_speed = true,

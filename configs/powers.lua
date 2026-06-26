@@ -131,9 +131,12 @@ return {
         armor = { family = "defense_buff", magnitude = 80, duration = 12 },
         -- Bulwark = squad DAMAGE REDUCTION for `duration`s (temp +Defense armor), per design
         team_shield = { family = "defense_buff", magnitude = 120, duration = 15 },
-        -- `evade=true`: an absorb pool that reads as DODGE (no shield bubble; pops "Dodge!" per hit
-        -- it turns aside) rather than a shield. See PowerService EvasionUntil + CombatAuraController.
-        dodge = { family = "absorb", magnitude = 300, duration = 8, evade = true },
+        -- TRUE EVASION — the 3rd defensive pillar, distinct from absorb (a depleting HP pool) and armor
+        -- (% mitigation): a CHANCE to negate each incoming hit ENTIRELY (take zero). magnitude = base
+        -- avoidance fraction (0.5 = 50%). EnemyService rolls it per hit (Shared/Game/Evasion) and pops
+        -- "Dodge!" only when it actually avoids. potency raises the chance (capped <100%), duration
+        -- extends the window, recharge perma's it. combat_vfx.look="dodge" keeps the no-bubble skin.
+        dodge = { family = "evade", magnitude = 0.5, duration = 8 },
         damage_buff = { family = "buff", magnitude = 1.5, duration = 8 },
         -- Critical Strike (Pyromancer): +crit CHANCE (fraction, additive) on the squad's hits for a
         -- duration — boosts crit on both combat AND mining. Crit damage stays at the roll's crit_mult.

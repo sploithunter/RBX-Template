@@ -1071,6 +1071,24 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                 end)
             end
         end
+    elseif family == "evade" then
+        -- TRUE EVASION (Mirage Step): grant the target pet a CHANCE to negate each incoming hit — NO
+        -- absorb pool. EnemyService rolls EvadeChance per hit while EvadeUntil is live. Reuse the
+        -- CombatShield* BADGE channel (CombatShieldPowerId + CombatShieldUntil) so the squad card shows
+        -- the dodge badge + countdown, but DON'T set CombatShield → the absorb path soaks nothing (no
+        -- double-dip). Single-ally unless the power targets the squad. mag = the avoidance fraction.
+        for _, pet in ipairs(self:_targetPets(player, powerId)) do
+            pet:SetAttribute("CombatShieldPowerId", powerId) -- dodge badge/look resolves from this
+            pet:SetAttribute("EvadeChance", mag)
+            pet:SetAttribute("EvadeUntil", now + dur)
+            pet:SetAttribute("CombatShieldUntil", now + dur) -- card badge timing only (no pool)
+            task.delay(dur, function()
+                if pet.Parent and (pet:GetAttribute("EvadeUntil") or 0) <= os.time() then
+                    pet:SetAttribute("EvadeChance", 0)
+                    pet:SetAttribute("EvadeUntil", 0)
+                end
+            end)
+        end
     elseif family == "defense_buff" then
         -- armor: temporary +Defense (damage reduction on the armor curve). Squad-wide (Bulwark)
         -- unless the power is single_pet (-> the selected pet only).

@@ -56,6 +56,13 @@ local FAMILY_TEXT = {
         return ("Shields %s — soaks %d damage before it hurts."):format(target, kind.magnitude)
             .. extra
     end,
+    evade = function(kind, target)
+        -- TRUE evasion: magnitude is the avoidance CHANCE (fraction), not a damage pool.
+        return ("Lets %s dodge — %s chance to avoid each hit entirely."):format(
+            target,
+            pct(kind.magnitude)
+        )
+    end,
     defense_buff = function(kind, target)
         return ("Hardens %s: +%d Defense."):format(target, kind.magnitude)
     end,

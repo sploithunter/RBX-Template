@@ -30,6 +30,7 @@ local Debris = game:GetService("Debris")
 local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
 
 local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance)
+local Evasion = require(ReplicatedStorage.Shared.Game.Evasion)
 local MeshAssembly = require(ReplicatedStorage.Shared.Assets.MeshAssembly)
 local EnemyAI = require(ReplicatedStorage.Shared.Game.EnemyAI)
 local PetMeander = require(ReplicatedStorage.Shared.Game.PetMeander)
@@ -1348,6 +1349,16 @@ function EnemyService:_hitPet(pet, def, now, eng, enemyLevel, petLevel, enemyMod
         end
     end
     pet:SetAttribute("LastHitCrit", roll.crit) -- for floating-text feedback (later)
+    -- TRUE EVASION (Mirage Step) — the 3rd defensive pillar, distinct from absorb-pool shields and
+    -- %-mitigation armor: while EvadeUntil is live, roll EvadeChance to AVOID this hit ENTIRELY. Placed
+    -- AFTER threat is credited (above) so a dodging tank still holds aggro, but BEFORE any damage. On a
+    -- successful roll: zero damage + pop a floating "Dodge!" (DodgeTick, same VFX the absorb-skin used).
+    if (pet:GetAttribute("EvadeUntil") or 0) > os.time() then
+        if Evasion.evaded(pet:GetAttribute("EvadeChance"), math.random()) then
+            pet:SetAttribute("DodgeTick", (pet:GetAttribute("DodgeTick") or 0) + 1)
+            return -- avoided the hit entirely
+        end
+    end
     -- Defensive stat: the pet's Defense (its own + any active DefenseBuff from a power
     -- like Bulwark) mitigates the hit on the armor curve. A real tank survives longer.
     local nowT = os.time()
