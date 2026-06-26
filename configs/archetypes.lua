@@ -59,13 +59,14 @@ return {
             display_name = "Sandwalker",
             theme = "desert",
             power_pool = {
-                -- cores (7)
+                -- cores (8)
                 "mirage_step",
                 "sandstorm",
                 "dune_shield",
                 "expose",
                 "restoring_sands",
                 "fear",
+                "quicksand", -- AoE root: lock the pack so pets pile on + stay in Healing Field
                 "healing_field",
                 -- signatures (genie_dunes = summon+revive capstone)
                 "oasis",

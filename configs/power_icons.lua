@@ -143,6 +143,7 @@ local M = {
         damage_buff = { symbol = "fist", target = "self" }, -- Mountain's Strength (fist = damage BUFF)
         crit_up = { symbol = "critical_hit", target = "self" }, -- Critical Strike (+crit chance, squad) -> crit reticle
         root = { symbol = "user_desk", target = "enemy_aoe" }, -- frost_bind (user_desk = ROOT)
+        quicksand = { symbol = "user_desk", target = "enemy_aoe" }, -- Quicksand (desert root; generic root icon for now)
         aoe_slow = { symbol = "chevrons_down", target = "enemy_aoe" }, -- blizzard
         aoe_blind = { symbol = "sand_storm", target = "enemy_aoe" }, -- sandstorm (dedicated storm art)
         damage_over_time = { symbol = "contagion", target = "single" }, -- mark_of_flame

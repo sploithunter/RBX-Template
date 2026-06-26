@@ -115,6 +115,14 @@ local FAMILY_TEXT = {
         return ("Pulls in drops from %d studs further away."):format(kind.magnitude)
     end,
     heal = function(kind, target)
+        if kind.field then
+            -- Healing Field: a stationary zone at your feet; the heal is the per-tick `hot`.
+            return ("Drops a heal zone at your feet — pets standing in it recover %d endurance every %s for %s."):format(
+                tonumber(kind.hot) or 0,
+                span(kind.hot_tick or 2),
+                span(kind.hot_seconds or kind.duration or 8)
+            )
+        end
         local amount = kind.magnitude <= 1 and pct(kind.magnitude) .. " endurance"
             or ("%d endurance"):format(kind.magnitude)
         if (tonumber(kind.duration) or 0) > 0 then

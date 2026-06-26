@@ -198,12 +198,15 @@ return {
         restoring_sands = { family = "heal", magnitude = 600, duration = 0 }, -- single-pet instant heal
         healing_field = {
             family = "heal",
-            magnitude = 200,
+            field = true, -- a STATIONARY heal ZONE dropped at the player's feet (not a squad-wide heal)
+            field_radius = 28, -- studs; pets standing within this of the cast spot get healed each tick
+            magnitude = 0, -- no upfront burst — it's a positioned sustain zone, all healing is the tick
             duration = 8,
-            hot = 120,
+            hot = 110, -- per tick to each pet currently IN the zone
             hot_tick = 2,
             hot_seconds = 8,
-        }, -- player_field heal + tail
+        }, -- Healing Field: drop-a-zone-at-your-feet, hold-the-ground sustain (Sandwalker)
+        quicksand = { family = "root", magnitude = 0, duration = 12, radius = 34 }, -- Quicksand: AoE root the pack (desert)
         fear = { family = "fear", magnitude = 0, duration = 5 }, -- TBD: flee (AI state)
         ice_shard = { family = "vulnerable", magnitude = 1.4, duration = 4 }, -- targeted damage (via pets)
         deep_freeze = { family = "root", magnitude = 0, duration = 4 }, -- TBD: full hold (Capacitor)
@@ -621,13 +624,26 @@ return {
             glyph = "control",
             unlock_level = 12,
         },
+        quicksand = {
+            archetype = "sandwalker",
+            focus_cost = 30,
+            cooldown_seconds = 40,
+            effect = "quicksand",
+            display_name = "Quicksand",
+            subtitle = "AoE Root",
+            role = "control",
+            element = "desert",
+            target = "targeted_aoe",
+            glyph = "control",
+            unlock_level = 16,
+        },
         healing_field = {
             archetype = "sandwalker",
             focus_cost = 35,
             cooldown_seconds = 45,
             effect = "healing_field",
             display_name = "Healing Field",
-            subtitle = "Self-AoE Heal",
+            subtitle = "Heal Zone (at your feet)",
             role = "heal",
             element = "desert",
             target = "player_field",

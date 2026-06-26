@@ -696,6 +696,65 @@ end
 
 -- Heal-over-time: heal the WHOLE squad `perTick` every `tickSeconds` for `totalSeconds`. Re-resolves
 -- the squad each tick so it heals whoever is alive (Living Mountain's standing aura, Oasis's tail).
+-- Healing Field — a STATIONARY heal zone dropped at the player's feet (kind.field). Unlike the
+-- squad-wide heal, this anchors at the cast position and only heals pets standing within
+-- `field_radius` of that fixed spot, each `hot_tick` for `hot_seconds`. You position the zone by
+-- WALKING your (invulnerable spirit) onto the squad — no aim reticle, identical on desktop/mobile.
+-- A shared-world ground disc marks it so every nearby client sees where the sustain is.
+function PowerService:_healZone(player, kind, powerId)
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        return
+    end
+    local center = hrp.Position
+    local radius = tonumber(kind.field_radius) or 28
+    local perTick = tonumber(kind.hot) or tonumber(kind.magnitude) or 0
+    local tickSeconds = tonumber(kind.hot_tick) or 2
+    local totalSeconds = tonumber(kind.hot_seconds) or tonumber(kind.duration) or 8
+    if perTick <= 0 or totalSeconds <= 0 then
+        return
+    end
+
+    -- Ground disc (flat cylinder): circular faces sit on the part's X axis, so rotate X to vertical.
+    local marker = Instance.new("Part")
+    marker.Name = "HealZone"
+    marker.Anchored = true
+    marker.CanCollide = false
+    marker.CanQuery = false
+    marker.CastShadow = false
+    marker.Shape = Enum.PartType.Cylinder
+    marker.Size = Vector3.new(1.5, radius * 2, radius * 2)
+    marker.CFrame = CFrame.new(center.X, center.Y - 2.4, center.Z)
+        * CFrame.Angles(0, 0, math.rad(90))
+    marker.Material = Enum.Material.Neon
+    marker.Color = Color3.fromRGB(120, 230, 140) -- heal green
+    marker.Transparency = 0.72
+    marker.Parent = Workspace
+    Debris:AddItem(marker, totalSeconds)
+
+    task.spawn(function()
+        local pfs = self._moduleLoader and self._moduleLoader:Get("PetFollowService")
+        local elapsed = 0
+        while elapsed < totalSeconds do
+            task.wait(tickSeconds)
+            elapsed += tickSeconds
+            if not player.Parent then
+                return
+            end
+            -- Re-resolve the squad each tick (heal whoever is alive), then radius-gate against the
+            -- FIXED zone centre. Pet positions come from the replicated report the aggro system
+            -- trusts (server pivots are stale for client-driven pets); fall back to the pivot.
+            for _, pet in ipairs(self:_targetPets(player, powerId)) do
+                local reported = pfs and pfs.GetReportedPosition and pfs:GetReportedPosition(pet)
+                local pos = (reported and reported.Position) or pet:GetPivot().Position
+                if (pos - center).Magnitude <= radius then
+                    self:_healPet(player, pet, perTick, os.time())
+                end
+            end
+        end
+    end)
+end
+
 function PowerService:_healOverTime(player, perTick, tickSeconds, totalSeconds)
     perTick = tonumber(perTick) or 0
     tickSeconds = tonumber(tickSeconds) or 2
@@ -1014,29 +1073,37 @@ function PowerService:_applyEffect(player, kind, now, powerId)
         )
     end
     if family == "heal" then
-        -- Respect the power's targeting RING (like absorb): single_pet -> the selected squad
-        -- card only (the pet you AIMED at, not the most-hurt); otherwise squad-wide
-        -- (player_field / team_aoe — pets cluster on the player, so squad-wide reads as the
-        -- around-you AoE). _targetPets already drops downed pets.
-        for _, pet in ipairs(self:_targetPets(player, powerId)) do
-            local taken = pet:GetAttribute("CombatDamageTaken") or 0
-            if taken > 0 then
-                local healed = math.min(taken, mag)
-                pet:SetAttribute("CombatDamageTaken", math.max(0, taken - mag))
-                -- Instant-effect tell: blinking heal badge on the card (3s, mirrors
-                -- combat.engagement.instant_fx_seconds) — same feedback as auto-heal.
-                pet:SetAttribute("HealFxUntil", now + 3)
-                if healed >= 1 then
-                    Signals.Combat_Heal:FireAllClients({
-                        target = pet,
-                        amount = math.floor(healed + 0.5),
-                    })
+        if kind.field then
+            -- Healing Field: a STATIONARY heal zone dropped at the player's feet. Your player's
+            -- position is server-reliable (only PETS are client-driven/stale), so we anchor the
+            -- zone there and heal pets standing within `field_radius` of the cast spot each tick.
+            -- You position by WALKING the (invulnerable spirit) onto your squad — no aim reticle.
+            self:_healZone(player, kind, powerId)
+        else
+            -- Respect the power's targeting RING (like absorb): single_pet -> the selected squad
+            -- card only (the pet you AIMED at, not the most-hurt); otherwise squad-wide
+            -- (team_aoe — pets cluster, so squad-wide reads as the around-you AoE).
+            -- _targetPets already drops downed pets.
+            for _, pet in ipairs(self:_targetPets(player, powerId)) do
+                local taken = pet:GetAttribute("CombatDamageTaken") or 0
+                if taken > 0 then
+                    local healed = math.min(taken, mag)
+                    pet:SetAttribute("CombatDamageTaken", math.max(0, taken - mag))
+                    -- Instant-effect tell: blinking heal badge on the card (3s, mirrors
+                    -- combat.engagement.instant_fx_seconds) — same feedback as auto-heal.
+                    pet:SetAttribute("HealFxUntil", now + 3)
+                    if healed >= 1 then
+                        Signals.Combat_Heal:FireAllClients({
+                            target = pet,
+                            amount = math.floor(healed + 0.5),
+                        })
+                    end
                 end
             end
-        end
-        -- Oasis: a heal-over-time tail follows the big upfront pulse (`hot`/tick for `hot_seconds`).
-        if tonumber(kind.hot) then
-            self:_healOverTime(player, kind.hot, kind.hot_tick or 2, kind.hot_seconds or dur)
+            -- Oasis: a heal-over-time tail follows the big upfront pulse (`hot`/tick for `hot_seconds`).
+            if tonumber(kind.hot) then
+                self:_healOverTime(player, kind.hot, kind.hot_tick or 2, kind.hot_seconds or dur)
+            end
         end
     elseif family == "buff" then
         player:SetAttribute("PetDamageBuff", mag)

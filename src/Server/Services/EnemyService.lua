@@ -1539,6 +1539,16 @@ function EnemyService:_loiter(entry, model, ePos, dt)
     if not cfg or cfg.enabled == false then
         return
     end
+    -- CONTROL: loiter is a SEPARATE mover from the chase path, so it needs the same root gate or a
+    -- controlled enemy that disengages (target moved away) wanders out of the snare while RootedUntil
+    -- is still ticking — the root looks broken. HeldUntil = full mez, RootedUntil = snare; both freeze
+    -- position (a held/rooted enemy can still bite, but it does not move OR wander).
+    if
+        (model:GetAttribute("HeldUntil") or 0) > os.time()
+        or (model:GetAttribute("RootedUntil") or 0) > os.time()
+    then
+        return
+    end
     entry.home = entry.home or ePos
     entry.meander = entry.meander or PetMeander.newState(cfg, math.random)
     local ox, oz = PetMeander.step(entry.meander, dt or 0, cfg, math.random)
