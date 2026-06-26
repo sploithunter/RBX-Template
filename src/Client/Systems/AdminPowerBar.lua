@@ -1,0 +1,298 @@
+--[[
+    AdminPowerBar — admin-only power test surface (server backend: PowerService AdminCast /
+    AdminTogglePassive, gated by IsAdmin/Studio).
+
+    While ADMIN mode is ON (the AdminController chip → `AdminOverlaysOn` attribute) this REPLACES the
+    normal hotbar with: origin TABS across the top, a MIN/MAX slotting switch, and every power in the
+    selected origin —
+      • CASTABLE → a cast button; fires Admin_CastPower { powerId, mode } (the real pipeline: focus +
+        cooldown respected, ownership bypassed, nothing granted/saved).
+      • ALWAYS-ON → an on/off toggle; fires Admin_TogglePassive { powerId, on, mode } (transient stamp;
+        e.g. flip Hasten ON at MAX, then cast another origin's power and watch its cooldown shrink).
+
+    Powers are grouped by AdminPowerPalette (the shared, tested classifier) and iconned by PetBadge —
+    so the bar dogfoods the one icon path (an unwired badge trips the StatusBadges/CombatAura warning).
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local PetBadge = require(script.Parent.Parent.UI.PetBadge)
+local AdminPowerPalette = require(ReplicatedStorage.Shared.Game.AdminPowerPalette)
+local powersConfig = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("powers"))
+
+local localPlayer = Players.LocalPlayer
+
+local AdminPowerBar = {}
+
+-- Tab order + friendly labels (archetype = origin).
+local TAB_ORDER = { "geomancer", "pyromancer", "cryomancer", "sandwalker" }
+local TAB_LABEL = {
+    geomancer = "Earth",
+    pyromancer = "Lava",
+    cryomancer = "Ice",
+    sandwalker = "Desert",
+    [AdminPowerPalette.GENERIC] = "Utility",
+}
+local TAB_TINT = {
+    geomancer = Color3.fromRGB(90, 190, 110),
+    pyromancer = Color3.fromRGB(230, 120, 70),
+    cryomancer = Color3.fromRGB(110, 190, 235),
+    sandwalker = Color3.fromRGB(235, 205, 90),
+    [AdminPowerPalette.GENERIC] = Color3.fromRGB(200, 200, 210),
+}
+
+local function isAdmin()
+    return RunService:IsStudio() or localPlayer:GetAttribute("IsAdmin") == true
+end
+
+local function displayName(powerId)
+    local def = powersConfig.powers[powerId]
+    return (def and def.display_name) or powerId
+end
+
+function AdminPowerBar.start()
+    -- Wait for the IsAdmin attribute to replicate (data loads after boot); bail for non-admins.
+    if not isAdmin() then
+        local deadline = os.clock() + 12
+        while os.clock() < deadline and localPlayer:GetAttribute("IsAdmin") == nil do
+            task.wait(0.5)
+        end
+        if not isAdmin() then
+            return
+        end
+    end
+
+    local playerGui = localPlayer:WaitForChild("PlayerGui")
+    local palette = AdminPowerPalette.group(powersConfig, TAB_ORDER)
+
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "AdminPowerBar"
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    gui.DisplayOrder = 6
+    gui.Enabled = false
+    gui.Parent = playerGui
+
+    local root = Instance.new("Frame")
+    root.Name = "Root"
+    root.AnchorPoint = Vector2.new(0.5, 1)
+    root.Position = UDim2.new(0.5, 0, 1, -6)
+    root.Size = UDim2.fromOffset(720, 196)
+    root.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+    root.BackgroundTransparency = 0.08
+    root.BorderSizePixel = 0
+    root.Parent = gui
+    local rc = Instance.new("UICorner")
+    rc.CornerRadius = UDim.new(0, 10)
+    rc.Parent = root
+    local rstroke = Instance.new("UIStroke")
+    rstroke.Color = Color3.fromRGB(120, 90, 220)
+    rstroke.Thickness = 1.5
+    rstroke.Parent = root
+
+    local title = Instance.new("TextLabel")
+    title.BackgroundTransparency = 1
+    title.Position = UDim2.fromOffset(12, 4)
+    title.Size = UDim2.fromOffset(260, 18)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 12
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.TextColor3 = Color3.fromRGB(200, 180, 255)
+    title.Text = "🛠 ADMIN POWER TEST"
+    title.Parent = root
+
+    -- MIN/MAX slotting switch (top-right). state.mode = "min" | "max".
+    local state = { tab = TAB_ORDER[1], mode = "min", toggled = {} }
+    local modeBtn = Instance.new("TextButton")
+    modeBtn.AnchorPoint = Vector2.new(1, 0)
+    modeBtn.Position = UDim2.new(1, -10, 0, 4)
+    modeBtn.Size = UDim2.fromOffset(150, 22)
+    modeBtn.Font = Enum.Font.GothamBold
+    modeBtn.TextSize = 12
+    modeBtn.AutoButtonColor = true
+    modeBtn.Parent = root
+    local mc = Instance.new("UICorner")
+    mc.CornerRadius = UDim.new(0, 6)
+    mc.Parent = modeBtn
+    local function refreshModeBtn()
+        local max = state.mode == "max"
+        modeBtn.Text = max and "SLOTTING: MAX ⚙⚙" or "SLOTTING: MIN (bare)"
+        modeBtn.BackgroundColor3 = max and Color3.fromRGB(120, 80, 200)
+            or Color3.fromRGB(55, 58, 70)
+        modeBtn.TextColor3 = Color3.fromRGB(245, 245, 255)
+    end
+
+    -- Tab strip.
+    local tabStrip = Instance.new("Frame")
+    tabStrip.BackgroundTransparency = 1
+    tabStrip.Position = UDim2.fromOffset(10, 28)
+    tabStrip.Size = UDim2.new(1, -20, 0, 26)
+    tabStrip.Parent = root
+    local tabLayout = Instance.new("UIListLayout")
+    tabLayout.FillDirection = Enum.FillDirection.Horizontal
+    tabLayout.Padding = UDim.new(0, 6)
+    tabLayout.Parent = tabStrip
+
+    -- Power grid (current tab).
+    local grid = Instance.new("ScrollingFrame")
+    grid.BackgroundTransparency = 1
+    grid.BorderSizePixel = 0
+    grid.Position = UDim2.fromOffset(10, 58)
+    grid.Size = UDim2.new(1, -20, 1, -66)
+    grid.ScrollBarThickness = 4
+    grid.CanvasSize = UDim2.new()
+    grid.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    grid.Parent = root
+    local gridLayout = Instance.new("UIGridLayout")
+    gridLayout.CellSize = UDim2.fromOffset(96, 92)
+    gridLayout.CellPadding = UDim2.fromOffset(8, 8)
+    gridLayout.Parent = grid
+
+    -- Build ONE power cell (castable cast button OR always-on toggle).
+    local function makeCell(powerId, alwaysOn)
+        local cell = Instance.new("TextButton")
+        cell.Name = powerId
+        cell.AutoButtonColor = true
+        cell.BackgroundColor3 = Color3.fromRGB(34, 37, 46)
+        cell.Text = ""
+        local cc = Instance.new("UICorner")
+        cc.CornerRadius = UDim.new(0, 8)
+        cc.Parent = cell
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromRGB(70, 74, 92)
+        stroke.Thickness = 1
+        stroke.Parent = cell
+
+        local iconHolder = Instance.new("Frame")
+        iconHolder.BackgroundTransparency = 1
+        iconHolder.Position = UDim2.fromOffset(28, 6)
+        iconHolder.Size = UDim2.fromOffset(40, 40)
+        iconHolder.Parent = cell
+        local badge = PetBadge.forPower(powerId)
+        if badge then
+            PetBadge.create(
+                iconHolder,
+                { element = badge.element, symbol = badge.symbol, ring = badge.ring }
+            )
+        end
+
+        local nameLbl = Instance.new("TextLabel")
+        nameLbl.BackgroundTransparency = 1
+        nameLbl.Position = UDim2.fromOffset(2, 48)
+        nameLbl.Size = UDim2.fromOffset(92, 22)
+        nameLbl.Font = Enum.Font.GothamMedium
+        nameLbl.TextSize = 11
+        nameLbl.TextWrapped = true
+        nameLbl.TextColor3 = Color3.fromRGB(225, 228, 238)
+        nameLbl.Text = displayName(powerId)
+        nameLbl.Parent = cell
+
+        local tag = Instance.new("TextLabel")
+        tag.BackgroundTransparency = 1
+        tag.Position = UDim2.fromOffset(2, 70)
+        tag.Size = UDim2.fromOffset(92, 16)
+        tag.Font = Enum.Font.GothamBold
+        tag.TextSize = 10
+        tag.Parent = cell
+
+        local function refreshTag()
+            if alwaysOn then
+                local on = state.toggled[powerId] == true
+                tag.Text = on and "● ON" or "○ OFF"
+                tag.TextColor3 = on and Color3.fromRGB(110, 230, 130)
+                    or Color3.fromRGB(150, 155, 168)
+                stroke.Color = on and Color3.fromRGB(110, 230, 130) or Color3.fromRGB(70, 74, 92)
+            else
+                tag.Text = "▶ CAST"
+                tag.TextColor3 = Color3.fromRGB(150, 200, 255)
+            end
+        end
+        refreshTag()
+
+        cell.Activated:Connect(function()
+            if alwaysOn then
+                local on = not (state.toggled[powerId] == true)
+                state.toggled[powerId] = on
+                Signals.Admin_TogglePassive:FireServer({
+                    powerId = powerId,
+                    on = on,
+                    mode = state.mode,
+                })
+                refreshTag()
+            else
+                Signals.Admin_CastPower:FireServer({ powerId = powerId, mode = state.mode })
+            end
+        end)
+        return cell
+    end
+
+    local function renderTab()
+        for _, c in ipairs(grid:GetChildren()) do
+            if c:IsA("TextButton") then
+                c:Destroy()
+            end
+        end
+        local g = palette.groups[state.tab] or { castable = {}, always_on = {} }
+        for _, powerId in ipairs(g.castable) do
+            makeCell(powerId, false).Parent = grid
+        end
+        for _, powerId in ipairs(g.always_on) do
+            makeCell(powerId, true).Parent = grid
+        end
+    end
+
+    -- Tab buttons.
+    local tabButtons = {}
+    local function refreshTabs()
+        for origin, btn in pairs(tabButtons) do
+            local active = origin == state.tab
+            btn.BackgroundColor3 = active and TAB_TINT[origin] or Color3.fromRGB(40, 43, 52)
+            btn.TextColor3 = active and Color3.fromRGB(20, 22, 28) or Color3.fromRGB(220, 224, 235)
+        end
+    end
+    for _, origin in ipairs(palette.order) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.fromOffset(96, 26)
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 12
+        btn.AutoButtonColor = true
+        btn.Text = TAB_LABEL[origin] or origin
+        btn.Parent = tabStrip
+        local bc = Instance.new("UICorner")
+        bc.CornerRadius = UDim.new(0, 6)
+        bc.Parent = btn
+        tabButtons[origin] = btn
+        btn.Activated:Connect(function()
+            state.tab = origin
+            refreshTabs()
+            renderTab()
+        end)
+    end
+
+    modeBtn.Activated:Connect(function()
+        state.mode = state.mode == "max" and "min" or "max"
+        refreshModeBtn()
+    end)
+
+    refreshModeBtn()
+    refreshTabs()
+    renderTab()
+
+    -- Show with ADMIN mode; hide + restore the normal hotbar otherwise.
+    local function setShown(on)
+        gui.Enabled = on
+        local hb = playerGui:FindFirstChild("HotbarBar")
+        if hb then
+            hb.Enabled = not on
+        end
+    end
+    setShown(localPlayer:GetAttribute("AdminOverlaysOn") == true)
+    localPlayer:GetAttributeChangedSignal("AdminOverlaysOn"):Connect(function()
+        setShown(localPlayer:GetAttribute("AdminOverlaysOn") == true)
+    end)
+end
+
+return AdminPowerBar

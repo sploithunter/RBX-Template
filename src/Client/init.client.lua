@@ -208,6 +208,16 @@ do
     end
 end
 
+-- Admin-only power test bar (replaces the hotbar while ADMIN mode is on). Self-gates to admins.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.AdminPowerBar).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start AdminPowerBar", { error = tostring(err) })
+    end
+end
+
 -- Reactive combat auras: watches the combat attributes PowerService sets (CombatShield,
 -- DefenseBuffUntil, HealFxUntil, player PetDamageBuffUntil, enemy Vulnerable/RootedUntil) and
 -- attaches CombatFX so powers read on the battlefield (shield bubble + armor reskin, buff/heal
