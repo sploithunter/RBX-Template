@@ -1073,23 +1073,52 @@ function PowerChoiceMenu:_renderEnhanceStrip()
     if shop and shop.enabled then
         local band = EnhancementPricing.bandFor(self.level, shop)
         local exclude = shop.exclude_types or {}
-        local buyTypes = {}
+        -- BUY offers across EVERY buyable grade (config: buyable_grades). natural is origin-less;
+        -- single/dual carry the player's OWN origin so the bought enhancement is usable + slottable for
+        -- them (no origin chosen → skip those grades). Each offer has its own grade price + colour.
+        local arch = game:GetService("Players").LocalPlayer:GetAttribute("Archetype")
+        local function buyOrigins(grade)
+            if grade == "single" then
+                return arch and { arch } or nil
+            elseif grade == "dual" then
+                if not arch then
+                    return nil
+                end
+                for _, o in ipairs(enhCfg.origins or {}) do
+                    if o ~= arch then
+                        return { arch, o }
+                    end
+                end
+                return { arch }
+            end
+            return {} -- natural
+        end
+        local offers = {}
         for _, grade in ipairs(shop.buyable_grades or { "natural" }) do
-            if grade == "natural" then
+            local gradeOrigins = buyOrigins(grade)
+            if gradeOrigins then
+                local gradePrice = EnhancementPricing.buyPrice(grade, band, shop)
                 for t in pairs(enhCfg.types or {}) do
                     if
                         not exclude[t]
                         and Enhancements.compatibleWith(enhCfg, t, def, powersCfg.effect_kinds)
                     then
-                        buyTypes[#buyTypes + 1] = t
+                        offers[#offers + 1] =
+                            { type = t, grade = grade, origins = gradeOrigins, price = gradePrice }
                     end
                 end
             end
         end
-        table.sort(buyTypes)
-        if #buyTypes > 0 then
-            local price = EnhancementPricing.buyPrice("natural", band, shop)
-            local affordable = gemBalance >= price
+        -- strongest grade first (single 0.33 > dual 0.20 > natural 0.15), then type for a stable read
+        table.sort(offers, function(a, b)
+            local va = Enhancements.value(enhCfg, { type = a.type, origins = a.origins })
+            local vb = Enhancements.value(enhCfg, { type = b.type, origins = b.origins })
+            if va ~= vb then
+                return va > vb
+            end
+            return tostring(a.type) < tostring(b.type)
+        end)
+        if #offers > 0 then
             local buyLabel = Instance.new("TextLabel")
             buyLabel.Size = UDim2.fromScale(0.7, 0.045)
             buyLabel.Position = UDim2.fromScale(0.03, 0.765)
@@ -1098,11 +1127,14 @@ function PowerChoiceMenu:_renderEnhanceStrip()
             buyLabel.Font = Enum.Font.GothamMedium
             buyLabel.TextScaled = true
             buyLabel.TextColor3 = Color3.fromRGB(190, 140, 255)
-            buyLabel.Text = ("BUY — natural L%d  (\u{1F48E}%d each)"):format(band, price)
+            buyLabel.Text = ("BUY — L%d  (natural / dual / single \u{1F48E})"):format(band)
             buyLabel.ZIndex = 7
             buyLabel.Parent = strip
             local byy = 0.82
-            for bi, t in ipairs(buyTypes) do
+            for bi, offer in ipairs(offers) do
+                local t = offer.type
+                local price = offer.price
+                local affordable = gemBalance >= price
                 local col = (bi - 1) % perRow
                 local row = math.floor((bi - 1) / perRow)
                 local gx = gx0 + col * (G_W + G_GAPX)
@@ -1118,10 +1150,13 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                     btn,
                     UDim2.fromScale(1, 1),
                     UDim2.fromScale(0, 0),
-                    { type = t, origins = {} }
+                    { type = t, origins = offer.origins }
                 ).ZIndex =
                     7
-                if self._enhStaged and self._enhStaged.groupKey == ("buy|" .. t) then
+                if
+                    self._enhStaged
+                    and self._enhStaged.groupKey == ("buy|" .. offer.grade .. "|" .. t)
+                then
                     local halo = Instance.new("Frame")
                     halo.AnchorPoint = Vector2.new(0.5, 0.5)
                     halo.Position = UDim2.fromScale(0.5, 0.5)
@@ -1163,7 +1198,7 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                     end
                 end
                 btn.MouseEnter:Connect(function()
-                    self:_showEnhTooltip(btn, { type = t, origins = {}, level = band })
+                    self:_showEnhTooltip(btn, { type = t, origins = offer.origins, level = band })
                 end)
                 btn.MouseLeave:Connect(function()
                     self:_hideTooltip()
@@ -1179,10 +1214,11 @@ function PowerChoiceMenu:_renderEnhanceStrip()
                     -- evaluate the result first, and CANCEL costs nothing). needsBuy + price ride along.
                     self._enhStaged = {
                         slotIndex = target,
-                        item = { type = t, origins = {}, level = band },
-                        groupKey = "buy|" .. t,
+                        item = { type = t, origins = offer.origins, level = band },
+                        groupKey = "buy|" .. offer.grade .. "|" .. t,
                         needsBuy = true,
                         buyType = t,
+                        buyGrade = offer.grade,
                         price = price,
                     }
                     self.notice = ("Preview %s L%d — APPLY buys (\u{1F48E}%d) + slots it; CANCEL is free"):format(
@@ -1254,7 +1290,10 @@ function PowerChoiceMenu:_renderEnhanceStrip()
             -- A staged BUY isn't purchased until APPLY (so you can evaluate the preview first and
             -- CANCEL costs nothing) — buy it now, then slot the resulting stack.
             if staged.needsBuy then
-                local buyRes = callBus("enhancement.shop.buy", { type = staged.buyType })
+                local buyRes = callBus("enhancement.shop.buy", {
+                    type = staged.buyType,
+                    grade = staged.buyGrade, -- natural / dual / single (nil = natural)
+                })
                 if not (buyRes and buyRes.ok) then
                     self.notice = "Buy failed: " .. tostring(buyRes and buyRes.reason)
                     self:_render()

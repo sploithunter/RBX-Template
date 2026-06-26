@@ -96,6 +96,29 @@ function EnhancementShopService:Buy(player, args)
         return { ok = false, reason = "grade_not_buyable" }
     end
 
+    -- ORIGINS by grade (validated BEFORE spending): natural is origin-less; single/dual carry the
+    -- player's OWN origin so the bought enhancement is usable + slottable for them. No origin chosen
+    -- yet → single/dual can't be made usable, so refuse (no spend).
+    local origins = {}
+    if grade == "single" or grade == "dual" then
+        local arch = player:GetAttribute("Archetype")
+        if type(arch) ~= "string" or arch == "" then
+            return { ok = false, reason = "no_origin" }
+        end
+        if grade == "single" then
+            origins = { arch }
+        else
+            local other
+            for _, o in ipairs(self._config.origins or {}) do
+                if o ~= arch then
+                    other = o
+                    break
+                end
+            end
+            origins = other and { arch, other } or { arch }
+        end
+    end
+
     local level = EnhancementPricing.bandFor(playerLevel(player), shop)
     local price = EnhancementPricing.buyPrice(grade, level, shop)
     local currency = shop.currency or CURRENCY_FALLBACK
@@ -111,11 +134,9 @@ function EnhancementShopService:Buy(player, args)
         return { ok = false, reason = "spend_failed" }
     end
 
-    -- v1 buys naturals only (origins = {}); the grade list gates which grades are buyable, but BUY
-    -- always grants the origin-less record for now (single/dual sale is a later phase).
     local granted = self._enhancementService:Grant(player, {
         type = etype,
-        origins = {},
+        origins = origins, -- {} natural, {arch} single, {arch,other} dual — usable by the buyer
         level = level,
     })
     if not (granted and granted.ok) then

@@ -350,7 +350,7 @@ return {
         currency = "gems",
         -- BUY is offered only for these grades (v1 = naturals only; add "dual" after testing, "single"
         -- later). SELL accepts ANY owned grade — single/dual get a buyback even though they aren't sold.
-        buyable_grades = { "natural" },
+        buyable_grades = { "natural", "dual", "single" },
         level_step = 5, -- BUY is sold in increments of 5 (L5, L10, L15, ...)
         min_level = 5, -- lowest band sold (L1-2 players see L5)
         max_level = 50, -- highest band sold (= player level cap)
