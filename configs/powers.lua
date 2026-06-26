@@ -381,10 +381,11 @@ return {
             -- Hasten is a TIMED CLICK (CoH-style), not a toggle: cast → 120s +50% recharge → cooldown.
             -- CoH-faithful (no one-off): its own +50% buff is active when its cooldown is stamped (set
             -- before the cd calc), so it counts toward perma-ing ITSELF and speeds every OTHER power.
-            -- EFFECTIVE cd = cooldown_seconds * 0.5 / (1 + Σrecharge); PERMA when that <= 120. At 600:
-            -- 300/(1+Σ) <= 120 → Σrecharge >= 1.5 (~3-4 recharge now; fewer once global set recharge
-            -- exists — the endgame chase). cooldown_seconds is the dial.
-            cooldown_seconds = 600,
+            -- EFFECTIVE cd = cooldown_seconds * 0.5 / (1 + Σrecharge); PERMA when that <= 120. At 700:
+            -- 350/(1+Σ) <= 120 → Σrecharge >= ~1.9, i.e. ALL SIX recharge slots perma it (single 0.33:
+            -- 5 → ~132s close, 6 → ~117s perma). Once global set recharge exists it'll perma on fewer
+            -- local slots — the endgame chase. cooldown_seconds is the dial (Jason: tune so 6 = perma).
+            cooldown_seconds = 700,
             effect = "recharge",
             unlock_level = 14,
             subtitle = "Timed — perma via recharge",
