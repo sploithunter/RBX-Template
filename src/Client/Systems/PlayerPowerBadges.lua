@@ -17,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local POWER_ICONS = require(ReplicatedStorage.Configs:WaitForChild("power_icons"))
 local PetBadge = require(script.Parent.Parent.UI.PetBadge)
+local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 
 local PlayerPowerBadges = {}
 local localPlayer = Players.LocalPlayer
@@ -56,11 +57,14 @@ local BUFFS = {
             return Color3.fromRGB(c[1], c[2], c[3])
         end)(),
     },
-    { attr = "MoveSpeedBuff", label = "SPD" }, -- Swift
+    -- toggleable: always-on powers the player turns on/off (drain focus_upkeep). The badge persists
+    -- while OWNED (greyed "OFF" when off / crashed) and clicking it toggles the power — the player's
+    -- on/off control, no hotbar slot needed.
+    { attr = "MoveSpeedBuff", label = "SPD", toggleable = true }, -- Swift
     { attr = "MoveSpeedBuffPotion", label = "SPD" }, -- Swift potion (own source; adds to the power)
-    { attr = "RechargeBuff", label = "RCH" }, -- Hasten
-    { attr = "XpBuff", label = "XP" }, -- XP Surge
-    { attr = "MagnetBuff", label = "MAG" }, -- Magnet (drop pull radius, #167)
+    { attr = "RechargeBuff", label = "RCH", toggleable = true }, -- Hasten
+    { attr = "XpBuff", label = "XP", toggleable = true }, -- XP Surge
+    { attr = "MagnetBuff", label = "MAG", toggleable = true }, -- Magnet (drop pull radius, #167)
     -- ENCHANT aggregates (Jason: "I do have the buff... [but] not buffed visually on my
     -- player bar"): EnchantService stamps <Attr>+Until while any equipped pet carries the
     -- matching enchant. Neutral (purple) disc = the enchant system's color, same as the
@@ -98,7 +102,20 @@ local function toggleBuffPanel()
     end
 end
 
-local function makeBadge(parent, order)
+-- Clicking a toggleable badge flips its always-on power on/off (the player's HUD control). Reads live
+-- state at click time: `<attr>Owned` carries the powerId; the buff being present = currently ON.
+local function makeToggleClick(def)
+    return function()
+        local owned = localPlayer:GetAttribute(def.attr .. "Owned")
+        if not owned then
+            return
+        end
+        local on = (localPlayer:GetAttribute(def.attr .. "Until") or 0) > os.time()
+        Signals.Power_ToggleActive:FireServer({ powerId = owned, on = not on })
+    end
+end
+
+local function makeBadge(parent, order, onClick)
     local holder = Instance.new("Frame")
     holder.Name = "PBadge"
     holder.Size = UDim2.fromOffset(38, 50)
@@ -116,7 +133,7 @@ local function makeBadge(parent, order)
     hit.Size = UDim2.fromScale(1, 1)
     hit.ZIndex = 20
     hit.Parent = holder
-    hit.Activated:Connect(toggleBuffPanel)
+    hit.Activated:Connect(onClick or toggleBuffPanel)
 
     local disc = Instance.new("ImageLabel")
     disc.Name = "Disc"
@@ -190,65 +207,87 @@ function PlayerPowerBadges.start()
         for i, def in ipairs(BUFFS) do
             local untilT = localPlayer:GetAttribute(def.attr .. "Until") or 0
             local active = untilT > now
+            -- toggleable always-on powers keep a (greyed) badge while OWNED but off, so the player can
+            -- click to turn them back on. `<attr>Owned` carries the powerId; it persists across on/off.
+            local owned = def.toggleable and localPlayer:GetAttribute(def.attr .. "Owned") or nil
             local b = badges[def.attr]
-            if active then
+            if active or owned then
                 if not b then
-                    b = makeBadge(row, i)
+                    b = makeBadge(row, i, def.toggleable and makeToggleClick(def) or nil)
                     badges[def.attr] = b
                 end
                 local disc
                 if def.fixed then
                     disc = POWER_ICONS.discFor(def.fixed.element, def.fixed.symbol)
                 else
-                    local powerId = localPlayer:GetAttribute(def.attr .. "PowerId")
+                    local powerId = localPlayer:GetAttribute(def.attr .. "PowerId") or owned
                     local badge = powerId and PetBadge.forPower(powerId)
                     disc = badge and POWER_ICONS.discFor(badge.element, badge.symbol)
                 end
                 b.disc.Image = disc or ""
-                b.disc.ImageColor3 = def.tint or Color3.fromRGB(255, 255, 255)
-                local remaining = untilT - now
-                -- PASSIVE / TOGGLE buffs (Magnet/Swift/Hasten/XP) are always-on: their `Until` is a
-                -- far-future sentinel. Show "ON", not a ~73-year countdown.
-                local permanent = def.steady == true
-                    or (localPlayer:GetAttribute(def.attr .. "Toggle") == true)
-                    or remaining > PERMANENT_THRESHOLD
-                if permanent then
-                    -- stacked sources render as a coin-stack PILE of discs (Jason: "the
-                    -- stacking makes it more powerful... rather than just having numbers"),
-                    -- matching the squad-card pile. Half-overlap; capped so it can't sprawl.
-                    local stacks =
-                        math.min(tonumber(localPlayer:GetAttribute(def.attr .. "Stacks")) or 1, 5)
-                    b.extra = b.extra or {}
-                    for n = 1, stacks - 1 do
-                        if not b.extra[n] then
-                            local d = b.disc:Clone()
-                            d.Name = "Stack" .. n
-                            d.ZIndex = b.disc.ZIndex - n -- behind the front disc
-                            d.Parent = b.holder
-                            b.extra[n] = d
-                        end
-                        b.extra[n].Image = b.disc.Image
-                        b.extra[n].Position = UDim2.new(1, -n * 18, 0, 0) -- fan LEFT, half-overlap
-                        b.extra[n].ImageTransparency = 0
-                    end
-                    for n = stacks, #b.extra do -- prune dropped stacks
-                        if b.extra[n] then
-                            b.extra[n]:Destroy()
-                            b.extra[n] = nil
+                if def.toggleable and not active then
+                    -- OWNED but toggled OFF (or upkeep-crashed): grey out + "OFF"; click re-enables it.
+                    if b.extra then -- drop any stack pile left over from when it was on
+                        for n = 1, #b.extra do
+                            if b.extra[n] then
+                                b.extra[n]:Destroy()
+                                b.extra[n] = nil
+                            end
                         end
                     end
-                    b.holder.Size = UDim2.fromOffset(38 + (stacks - 1) * 18, 50)
-                    b.timer.Text = "ON"
-                    b.timer.TextColor3 = Color3.fromRGB(150, 230, 150)
-                    b.disc.ImageTransparency = 0
+                    b.holder.Size = UDim2.fromOffset(38, 50)
+                    b.disc.ImageColor3 = Color3.fromRGB(120, 120, 120)
+                    b.disc.ImageTransparency = 0.4
+                    b.timer.Text = "OFF"
+                    b.timer.TextColor3 = Color3.fromRGB(165, 165, 165)
                 else
-                    b.timer.Text = math.ceil(remaining) .. "s"
-                    -- near-expiry blink (timed powers)
-                    local blink = remaining <= BLINK_LEAD
-                    local hidden = blink and (os.clock() % BLINK_PERIOD) >= (BLINK_PERIOD * 0.5)
-                    b.disc.ImageTransparency = hidden and 0.6 or 0
-                    b.timer.TextColor3 = blink and Color3.fromRGB(255, 180, 120)
-                        or Color3.fromRGB(255, 255, 255)
+                    b.disc.ImageColor3 = def.tint or Color3.fromRGB(255, 255, 255)
+                    local remaining = untilT - now
+                    -- PASSIVE / TOGGLE buffs (Magnet/Swift/Hasten/XP) are always-on: their `Until` is a
+                    -- far-future sentinel. Show "ON", not a ~73-year countdown.
+                    local permanent = def.steady == true
+                        or (localPlayer:GetAttribute(def.attr .. "Toggle") == true)
+                        or remaining > PERMANENT_THRESHOLD
+                    if permanent then
+                        -- stacked sources render as a coin-stack PILE of discs (Jason: "the
+                        -- stacking makes it more powerful... rather than just having numbers"),
+                        -- matching the squad-card pile. Half-overlap; capped so it can't sprawl.
+                        local stacks = math.min(
+                            tonumber(localPlayer:GetAttribute(def.attr .. "Stacks")) or 1,
+                            5
+                        )
+                        b.extra = b.extra or {}
+                        for n = 1, stacks - 1 do
+                            if not b.extra[n] then
+                                local d = b.disc:Clone()
+                                d.Name = "Stack" .. n
+                                d.ZIndex = b.disc.ZIndex - n -- behind the front disc
+                                d.Parent = b.holder
+                                b.extra[n] = d
+                            end
+                            b.extra[n].Image = b.disc.Image
+                            b.extra[n].Position = UDim2.new(1, -n * 18, 0, 0) -- fan LEFT, half-overlap
+                            b.extra[n].ImageTransparency = 0
+                        end
+                        for n = stacks, #b.extra do -- prune dropped stacks
+                            if b.extra[n] then
+                                b.extra[n]:Destroy()
+                                b.extra[n] = nil
+                            end
+                        end
+                        b.holder.Size = UDim2.fromOffset(38 + (stacks - 1) * 18, 50)
+                        b.timer.Text = "ON"
+                        b.timer.TextColor3 = Color3.fromRGB(150, 230, 150)
+                        b.disc.ImageTransparency = 0
+                    else
+                        b.timer.Text = math.ceil(remaining) .. "s"
+                        -- near-expiry blink (timed powers)
+                        local blink = remaining <= BLINK_LEAD
+                        local hidden = blink and (os.clock() % BLINK_PERIOD) >= (BLINK_PERIOD * 0.5)
+                        b.disc.ImageTransparency = hidden and 0.6 or 0
+                        b.timer.TextColor3 = blink and Color3.fromRGB(255, 180, 120)
+                            or Color3.fromRGB(255, 255, 255)
+                    end
                 end
             elseif b then
                 b.holder:Destroy()

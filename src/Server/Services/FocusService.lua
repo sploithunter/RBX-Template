@@ -128,6 +128,18 @@ function FocusService:Sunder(player, amount)
     return { ok = true, focus = self._focus[player], drained = before - self._focus[player] }
 end
 
+-- Drain `amount` Focus (never below 0), then mirror to the HUD. Generic spend used by the always-on
+-- toggle UPKEEP loop (PowerService) and the seam for a future focus-steal/transfer power. Returns the
+-- new pool + how much was actually removed (less than asked if the pool ran dry).
+function FocusService:Drain(player, amount)
+    local before = focusOf(self, player)
+    local want = math.max(0, tonumber(amount) or 0)
+    local after = math.max(0, before - want)
+    self._focus[player] = after
+    self:_push(player)
+    return { ok = true, focus = after, drained = before - after }
+end
+
 -- Regenerate Focus over `elapsed` seconds (clamped to focus_max), then mirror to the HUD.
 function FocusService:RegenTick(player, elapsed)
     self._focus[player] = FocusMath.regen(focusOf(self, player), elapsed, self._config)

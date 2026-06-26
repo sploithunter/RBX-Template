@@ -25,6 +25,7 @@ local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
 local AdminPowerPalette = require(ReplicatedStorage.Shared.Game.AdminPowerPalette)
+local FocusUpkeep = require(ReplicatedStorage.Shared.Game.FocusUpkeep)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local RunService = game:GetService("RunService")
 
@@ -94,6 +95,10 @@ function PowerService:Init()
     self._enhConfig = self._configLoader:LoadConfig("enhancements") -- slotted-enhancement boosts
 
     self._cooldowns = setmetatable({}, { __mode = "k" }) -- player -> { powerId -> expiry (os.time) }
+    -- player -> { [powerId]=true }: the always-on toggles currently RUNNING (draining focus_upkeep).
+    -- The upkeep loop sums their rates against the Focus pool and crashes (detoggles) them when it
+    -- can't pay the tick. Owned passives default ON (re-stamped in _applyOwnedPassives).
+    self._activeToggles = setmetatable({}, { __mode = "k" })
 
     -- Re-stamp PASSIVE (always-on) buffs whenever a player joins / respawns, since their buff
     -- attributes don't survive a rejoin. (In-session picks re-stamp via Select.)
@@ -119,6 +124,17 @@ function PowerService:Init()
         end
         self:AdminTogglePassive(player, payload.powerId, payload.on == true, payload.mode)
     end)
+
+    -- PLAYER HUD toggle badge — turn an OWNED always-on power on/off. Owned-gated (no admin bypass);
+    -- ON re-stamps the buff + starts its upkeep drain, OFF clears it (the badge greys out).
+    Signals.Power_ToggleActive.OnServerEvent:Connect(function(player, payload)
+        if type(payload) ~= "table" then
+            return
+        end
+        self:ToggleActive(player, payload.powerId, payload.on == true)
+    end)
+
+    self:_startUpkeepLoop()
 end
 
 -- Families whose `passive = true` powers apply permanently by OWNERSHIP. Each maps to its single
@@ -163,6 +179,10 @@ function PowerService:_applyOwnedPassives(player)
         player:SetAttribute(attr .. "Until", 0)
         player:SetAttribute(attr .. "Toggle", nil)
         player:SetAttribute(attr .. "PowerId", nil)
+        player:SetAttribute(attr .. "Owned", nil) -- forget the owned-toggle marker; re-stamp re-sets it
+    end
+    if self._activeToggles then
+        self._activeToggles[player] = {} -- reset the running set; owned passives re-activate (default ON) below
     end
     local data = self._dataService and self._dataService:GetData(player)
     if not data or type(data.Powers) ~= "table" then
@@ -208,11 +228,22 @@ function PowerService:_stampPassive(player, powerId, slots)
     player:SetAttribute(attr .. "Until", PASSIVE_UNTIL)
     player:SetAttribute(attr .. "Toggle", true) -- permanent: HUDs show no countdown
     player:SetAttribute(attr .. "PowerId", powerId)
+    -- Owned marker: persists across on/off so the HUD keeps a (greyed) toggle badge when this is
+    -- turned off. Carries the powerId so the badge knows what to re-toggle. Mark it RUNNING so the
+    -- upkeep loop drains its focus_upkeep.
+    player:SetAttribute(attr .. "Owned", tostring(powerId))
+    local active = self._activeToggles and self._activeToggles[player]
+    if active then
+        active[tostring(powerId)] = true
+    end
     return attr
 end
 
--- Clear ONE passive power's buff attribute (the admin toggle OFF). No-op for a non-passive power.
-function PowerService:_clearPassive(player, powerId)
+-- Turn ONE always-on power OFF: clear its buff attribute + stop its upkeep drain. By default this is a
+-- TOGGLE-OFF — the `Owned` marker stays so the HUD keeps a greyed badge to re-toggle (player toggle OFF
+-- and the upkeep CRASH both use this). Pass `forget = true` to also drop the owned marker (respec /
+-- non-owned cleanup / admin test off → no lingering badge). No-op for a non-passive power.
+function PowerService:_clearPassive(player, powerId, forget)
     local kinds = self._powersConfig.effect_kinds or {}
     local def = self._powersConfig.powers[tostring(powerId)]
     local kind = def and def.effect and kinds[def.effect]
@@ -224,6 +255,13 @@ function PowerService:_clearPassive(player, powerId)
     player:SetAttribute(attr .. "Until", 0)
     player:SetAttribute(attr .. "Toggle", nil)
     player:SetAttribute(attr .. "PowerId", nil)
+    if forget then
+        player:SetAttribute(attr .. "Owned", nil)
+    end
+    local active = self._activeToggles and self._activeToggles[player]
+    if active then
+        active[tostring(powerId)] = nil
+    end
 end
 
 -- Public re-stamp (called after respec / admin grant from other services).
@@ -258,8 +296,103 @@ function PowerService:AdminTogglePassive(player, powerId, on, mode)
         local attr = self:_stampPassive(player, powerId, slots)
         return { ok = attr ~= nil, attr = attr }
     end
-    self:_clearPassive(player, powerId)
+    self:_clearPassive(player, powerId, true) -- forget: a transient admin test leaves no greyed badge
     return { ok = true }
+end
+
+-- PLAYER HUD toggle — turn an OWNED always-on power on/off. Owned + always-on only (no admin bypass):
+-- this is the player's control, so it can't be used to run a power they don't have. ON re-stamps at the
+-- player's real slotting and starts the upkeep drain; OFF clears the buff but KEEPS the owned marker so
+-- the HUD shows a greyed badge to flip back on.
+function PowerService:ToggleActive(player, powerId, on)
+    local data = self._dataService and self._dataService:GetData(player)
+    local owns = false
+    if data and type(data.Powers) == "table" then
+        for _, p in ipairs(data.Powers) do
+            if tostring(p) == tostring(powerId) then
+                owns = true
+                break
+            end
+        end
+    end
+    if not owns then
+        return { ok = false, reason = "not_owned" }
+    end
+    local kinds = self._powersConfig.effect_kinds or {}
+    local def = self._powersConfig.powers[tostring(powerId)]
+    local kind = def and def.effect and kinds[def.effect]
+    if not (kind and kind.passive and PASSIVE_ATTR[kind.family]) then
+        return { ok = false, reason = "not_toggle" }
+    end
+    if on then
+        local slots = (type(data.Slots) == "table" and data.Slots[tostring(powerId)]) or {}
+        local attr = self:_stampPassive(player, powerId, slots)
+        return { ok = attr ~= nil, on = true }
+    end
+    self:_clearPassive(player, powerId) -- keep the owned marker → badge greys to OFF
+    return { ok = true, on = false }
+end
+
+-- Sum the per-second focus_upkeep of a player's RUNNING toggles. `reduction` is the seam for a future
+-- efficiency enhancement that lowers a power's drain (0 today = no reduction).
+function PowerService:_activeUpkeepRate(player, active)
+    local rates = {}
+    for powerId in pairs(active or {}) do
+        local def = self._powersConfig.powers[tostring(powerId)]
+        local base = def and tonumber(def.focus_upkeep)
+        if base and base > 0 then
+            local reduction = 0 -- TODO: efficiency enhancement aggregate → lowers upkeep
+            rates[#rates + 1] = FocusUpkeep.effectiveRate(base, reduction)
+        end
+    end
+    return FocusUpkeep.total(rates)
+end
+
+-- CoH crash: the pool couldn't pay this tick → drop EVERY running toggle. They stay off (no auto-
+-- resume) until the player re-toggles from the HUD; the owned markers persist so the badges grey out.
+function PowerService:_detoggleAll(player)
+    local active = self._activeToggles and self._activeToggles[player]
+    if not active then
+        return
+    end
+    local ids = {}
+    for powerId in pairs(active) do
+        ids[#ids + 1] = powerId
+    end
+    for _, powerId in ipairs(ids) do
+        self:_clearPassive(player, powerId) -- keep owned marker → greyed badge
+    end
+end
+
+-- The always-on UPKEEP loop: every tick, drain each player's running toggles' focus_upkeep from their
+-- Focus pool; if the pool can't cover the tick, crash (detoggle) them. Pure in-memory + the Focus
+-- attribute — no datastore. Runs forever (mirrors FocusService's regen loop).
+function PowerService:_startUpkeepLoop()
+    local TICK = 0.5
+    task.spawn(function()
+        while true do
+            task.wait(TICK)
+            local focusSvc = self._moduleLoader and self._moduleLoader:Get("FocusService")
+            if focusSvc then
+                for player, active in pairs(self._activeToggles) do
+                    if player.Parent and next(active) ~= nil then
+                        local rate = self:_activeUpkeepRate(player, active)
+                        if rate > 0 then
+                            local st = focusSvc:Get(player)
+                            local focus = (st and st.focus) or 0
+                            local res = FocusUpkeep.step(focus, rate, TICK)
+                            if res.drained > 0 then
+                                focusSvc:Drain(player, res.drained)
+                            end
+                            if res.crashed then
+                                self:_detoggleAll(player)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
 end
 
 local function enemiesAlive()
