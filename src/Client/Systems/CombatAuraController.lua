@@ -367,7 +367,7 @@ local function popDodge(pet)
     lbl.Font = Enum.Font.GothamBlack
     lbl.TextScaled = true
     lbl.Text = "Dodge!"
-    lbl.TextColor3 = Color3.fromRGB(150, 230, 255)
+    lbl.TextColor3 = Color3.fromRGB(255, 221, 64) -- yellow (Jason) — reads as a lucky avoid, distinct from damage
     lbl.TextStrokeTransparency = 0.3
     lbl.Parent = bb
     TweenService
