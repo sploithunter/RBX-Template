@@ -24,8 +24,14 @@ local PowerStats = require(ReplicatedStorage.Shared.Game.PowerStats)
 local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
+local AdminPowerPalette = require(ReplicatedStorage.Shared.Game.AdminPowerPalette)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local RunService = game:GetService("RunService")
+
+-- Admin gate for the power-bar test remotes: the server-set IsAdmin attribute, or Studio.
+local function adminAllowed(player)
+    return player:GetAttribute("IsAdmin") == true or RunService:IsStudio()
+end
 
 -- Placeholder cast VFX colour per effect family (swap for real art later).
 local FAMILY_COLOR = {
@@ -97,6 +103,22 @@ function PowerService:Init()
     for _, plr in ipairs(Players:GetPlayers()) do
         self:_watchPlayer(plr)
     end
+
+    -- ADMIN POWER BAR (test surface). Both remotes are IsAdmin/Studio gated and route through the
+    -- normal pipelines — Cast respects focus + cooldown; the passive stamp is transient — granting and
+    -- saving NOTHING. The client renders the tabbed bar; these just execute the cast / toggle.
+    Signals.Admin_CastPower.OnServerEvent:Connect(function(player, payload)
+        if not adminAllowed(player) or type(payload) ~= "table" then
+            return
+        end
+        self:AdminCast(player, payload.powerId, payload.mode)
+    end)
+    Signals.Admin_TogglePassive.OnServerEvent:Connect(function(player, payload)
+        if not adminAllowed(player) or type(payload) ~= "table" then
+            return
+        end
+        self:AdminTogglePassive(player, payload.powerId, payload.on == true, payload.mode)
+    end)
 end
 
 -- Families whose `passive = true` powers apply permanently by OWNERSHIP. Each maps to its single
@@ -146,45 +168,98 @@ function PowerService:_applyOwnedPassives(player)
     if not data or type(data.Powers) ~= "table" then
         return
     end
-    local kinds = self._powersConfig.effect_kinds or {}
     for _, powerId in ipairs(data.Powers) do
-        local def = self._powersConfig.powers[powerId]
-        local kind = def and def.effect and kinds[def.effect]
-        local attr = kind and kind.passive and PASSIVE_ATTR[kind.family]
-        if attr then
-            -- POTENCY enhancements scale a passive's magnitude (this stamp IS the
-            -- passive's "cast", so the slot fold happens here — Swift runs faster)
-            local enhAxes = Enhancements.aggregate(
-                self._enhConfig,
-                type(data.Slots) == "table" and data.Slots[tostring(powerId)] or {},
-                tonumber(player:GetAttribute("Level")) or 1
-            )
-            -- ONE resolver for the effective magnitude (PowerStats), shared with the ENHANCE
-            -- preview so the two can't drift. radius-magnitude passives like Magnet fold range
-            -- (radius) INTO magnitude there — both axes do the same job (Jason). magnitudeBase
-            -- IS kind.magnitude, scaling is identity today, so this matches the old inline math.
-            local record = PowerRegistry.record(tostring(powerId), self._powersConfig)
-            local eff = PowerStats.resolveEffective(record, {
-                casterLevel = tonumber(player:GetAttribute("Level")) or 1,
-                scaling = self._powersConfig.scaling,
-                enhancements = enhAxes,
-                radiusMagnitude = (self._enhConfig.radius_families or {})[kind.family] == true,
-                damageIsMagnitude = (self._enhConfig.damage_as_magnitude_families or {})[kind.family]
-                    == true,
-                healIsMagnitude = (self._enhConfig.heal_as_magnitude_families or {})[kind.family]
-                    == true,
-            })
-            player:SetAttribute(attr, eff.magnitude)
-            player:SetAttribute(attr .. "Until", PASSIVE_UNTIL)
-            player:SetAttribute(attr .. "Toggle", true) -- permanent: HUDs show no countdown
-            player:SetAttribute(attr .. "PowerId", powerId)
-        end
+        local slots = (type(data.Slots) == "table" and data.Slots[tostring(powerId)]) or {}
+        self:_stampPassive(player, powerId, slots)
     end
+end
+
+-- Stamp ONE passive power's buff attribute at a given enhancement slotting. The per-power body shared
+-- by _applyOwnedPassives AND the admin passive toggle — ONE resolver, no drift. `slots` = the slot
+-- list to fold (the player's real Slots, or an admin MIN/MAX override). No-op (returns nil) for a
+-- non-passive power.
+function PowerService:_stampPassive(player, powerId, slots)
+    local kinds = self._powersConfig.effect_kinds or {}
+    local def = self._powersConfig.powers[tostring(powerId)]
+    local kind = def and def.effect and kinds[def.effect]
+    local attr = kind and kind.passive and PASSIVE_ATTR[kind.family]
+    if not attr then
+        return nil
+    end
+    -- POTENCY enhancements scale a passive's magnitude (this stamp IS the passive's "cast", so the slot
+    -- fold happens here — Swift runs faster). ONE resolver (PowerStats), shared with the ENHANCE
+    -- preview so the two can't drift; radius/damage/heal-as-magnitude families fold their axis in.
+    local enhAxes = Enhancements.aggregate(
+        self._enhConfig,
+        slots or {},
+        tonumber(player:GetAttribute("Level")) or 1
+    )
+    local record = PowerRegistry.record(tostring(powerId), self._powersConfig)
+    local eff = PowerStats.resolveEffective(record, {
+        casterLevel = tonumber(player:GetAttribute("Level")) or 1,
+        scaling = self._powersConfig.scaling,
+        enhancements = enhAxes,
+        radiusMagnitude = (self._enhConfig.radius_families or {})[kind.family] == true,
+        damageIsMagnitude = (self._enhConfig.damage_as_magnitude_families or {})[kind.family]
+            == true,
+        healIsMagnitude = (self._enhConfig.heal_as_magnitude_families or {})[kind.family] == true,
+    })
+    player:SetAttribute(attr, eff.magnitude)
+    player:SetAttribute(attr .. "Until", PASSIVE_UNTIL)
+    player:SetAttribute(attr .. "Toggle", true) -- permanent: HUDs show no countdown
+    player:SetAttribute(attr .. "PowerId", powerId)
+    return attr
+end
+
+-- Clear ONE passive power's buff attribute (the admin toggle OFF). No-op for a non-passive power.
+function PowerService:_clearPassive(player, powerId)
+    local kinds = self._powersConfig.effect_kinds or {}
+    local def = self._powersConfig.powers[tostring(powerId)]
+    local kind = def and def.effect and kinds[def.effect]
+    local attr = kind and kind.passive and PASSIVE_ATTR[kind.family]
+    if not attr then
+        return
+    end
+    player:SetAttribute(attr, nil)
+    player:SetAttribute(attr .. "Until", 0)
+    player:SetAttribute(attr .. "Toggle", nil)
+    player:SetAttribute(attr .. "PowerId", nil)
 end
 
 -- Public re-stamp (called after respec / admin grant from other services).
 function PowerService:ReapplyPassives(player)
     self:_applyOwnedPassives(player)
+end
+
+-- ADMIN POWER BAR — cast any power at MIN (bare) or MAX (single-origin full slotting), through the
+-- REAL pipeline (adminBypass skips ownership; focus + cooldown still apply). Grants/saves nothing.
+function PowerService:AdminCast(player, powerId, mode)
+    if not adminAllowed(player) then
+        return { ok = false, reason = "not_admin" }
+    end
+    local slots = {}
+    if mode == "max" then
+        slots = AdminPowerPalette.maxSlots(self._powersConfig, self._enhConfig, powerId)
+    end
+    return self:Cast(player, powerId, { adminBypass = true, slotsOverride = slots })
+end
+
+-- ADMIN POWER BAR — transiently stamp (on) or clear (off) an always-on power's buff at MIN/MAX
+-- slotting, so its effect on OTHER powers (e.g. Hasten → every cooldown) can be balanced without
+-- owning or saving it. No-op for a non-passive power (returns ok=false).
+function PowerService:AdminTogglePassive(player, powerId, on, mode)
+    if not adminAllowed(player) then
+        return { ok = false, reason = "not_admin" }
+    end
+    if on then
+        local slots = (mode == "max")
+                and AdminPowerPalette.maxSlots(self._powersConfig, self._enhConfig, powerId)
+            or {}
+        local attr = self:_stampPassive(player, powerId, slots)
+        return { ok = attr ~= nil, attr = attr }
+    end
+    self:_clearPassive(player, powerId)
+    return { ok = true }
 end
 
 local function enemiesAlive()

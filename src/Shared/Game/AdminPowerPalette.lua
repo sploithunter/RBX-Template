@@ -88,4 +88,64 @@ function AdminPowerPalette.group(powersConfig, originOrder)
     return { groups = groups, order = order }
 end
 
+-- Priority when more than one enhancement type applies to a power: potency axes first (the ceiling
+-- a balancer cares about), utility axes last.
+local TYPE_PRIORITY =
+    { "damage", "armor", "shield", "health", "accuracy", "range", "duration", "recharge" }
+
+-- Build a MIN/MAX enhancement slot list for `Cast`'s slotsOverride — lets the admin bar test a power
+-- at its slotting floor/ceiling WITHOUT touching the player's saved Slots.
+--   MIN  → {} (bare, no enhancements) — just call with mode ~= "max".
+--   MAX  → every slot (max_slots, default 6) filled with the strongest APPLICABLE single-origin
+--          enhancement: matching the power's archetype, or origin-less "natural" for generic powers.
+-- Returns {} when NO type applies to the power's family (e.g. an always-on with no enhanceable axis) —
+-- that empty result is itself useful signal: "this power can't be enhanced today."
+function AdminPowerPalette.maxSlots(powersConfig, enhConfig, powerId, opts)
+    opts = opts or {}
+    local maxSlots = tonumber(opts.maxSlots) or 6
+    local def = powersConfig and powersConfig.powers and powersConfig.powers[tostring(powerId)]
+    if not def then
+        return {}
+    end
+    local kinds = powersConfig.effect_kinds or {}
+    local kind = def.effect and kinds[def.effect]
+    local family = kind and kind.family
+    if not family then
+        return {}
+    end
+    local isPassive = kind ~= nil and (kind.passive == true or kind.toggle == true)
+    local isAoe = def.target == "targeted_aoe" or def.target == "team_aoe"
+
+    local types = (enhConfig and enhConfig.types) or {}
+    local chosen
+    for _, t in ipairs(TYPE_PRIORITY) do
+        local td = types[t]
+        if td then
+            local fams = td.families
+            local applies = (fams == "*") or (type(fams) == "table" and fams[family] == true)
+            if applies and td.excludes_passive == true and isPassive then
+                applies = false -- a passive has no cooldown to shorten, etc.
+            end
+            if applies and td.requires_aoe == true and not isAoe then
+                applies = false -- range only matters on a power with a real radius
+            end
+            if applies then
+                chosen = t
+                break
+            end
+        end
+    end
+    if not chosen then
+        return {}
+    end
+
+    -- single-origin matching the power's archetype; generic powers have no origin → natural (origin-less).
+    local origins = def.archetype and { def.archetype } or {}
+    local slots = {}
+    for i = 1, maxSlots do
+        slots[i] = { type = chosen, origins = origins }
+    end
+    return slots
+end
+
 return AdminPowerPalette

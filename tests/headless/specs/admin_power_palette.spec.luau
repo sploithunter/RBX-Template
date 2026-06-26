@@ -25,6 +25,14 @@ local CFG = {
     },
 }
 
+-- Minimal enhancement config: a potency type (damage) + a passive-excluded type (recharge).
+local ENH = {
+    types = {
+        damage = { axis = "damage", families = { vulnerable = true, burn_spread = true } },
+        recharge = { axis = "recharge", families = "*", excludes_passive = true },
+    },
+}
+
 return function()
     describe("AdminPowerPalette.originOf", function()
         it("uses the archetype as the origin", function()
@@ -72,6 +80,31 @@ return function()
             expect(order[1]).to.equal("sandwalker")
             expect(order[2]).to.equal("pyromancer")
             expect(order[#order]).to.equal(Palette.GENERIC)
+        end)
+    end)
+
+    describe("AdminPowerPalette.maxSlots", function()
+        it("fills every slot with the power's single-origin potency enhancement", function()
+            local slots = Palette.maxSlots(CFG, ENH, "sandstorm", { maxSlots = 6 })
+            expect(#slots).to.equal(6)
+            expect(slots[1].type).to.equal("damage")
+            expect(slots[1].origins[1]).to.equal("sandwalker") -- the power's archetype
+            expect(#slots[1].origins).to.equal(1) -- SINGLE-origin (strongest grade)
+        end)
+
+        it("uses the right archetype per power", function()
+            local slots = Palette.maxSlots(CFG, ENH, "cataclysm", { maxSlots = 3 })
+            expect(#slots).to.equal(3)
+            expect(slots[1].origins[1]).to.equal("pyromancer")
+        end)
+
+        it("returns {} when no enhancement type applies (always-on Hasten)", function()
+            -- recharge excludes_passive, and no potency type lists the recharge family → un-enhanceable.
+            expect(#Palette.maxSlots(CFG, ENH, "hasten")).to.equal(0)
+        end)
+
+        it("returns {} for an unknown power", function()
+            expect(#Palette.maxSlots(CFG, ENH, "nope")).to.equal(0)
         end)
     end)
 end
