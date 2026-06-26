@@ -125,6 +125,14 @@ return function()
             expect((Enhancements.compatibleWith(cfg, "duration", windfall, kinds))).to.equal(true)
             expect((Enhancements.compatibleWith(cfg, "potency", windfall, kinds))).to.equal(true)
         end)
+
+        it("focus fits always-on toggles (the opposite of recharge)", function()
+            -- recharge EXCLUDES passives (nothing to shorten); focus is exactly FOR them — their
+            -- per-second upkeep is the drain a Focus enhancement lowers.
+            local hasten = powersCfg.powers.hasten
+            expect((Enhancements.compatibleWith(cfg, "recharge", hasten, kinds))).to.equal(false)
+            expect((Enhancements.compatibleWith(cfg, "focus", hasten, kinds))).to.equal(true)
+        end)
     end)
 
     describe("Aggregation (per-axis additive)", function()
@@ -146,6 +154,13 @@ return function()
 
         it("returns empty for no slots", function()
             expect(next(Enhancements.aggregate(cfg, {}))).to.equal(nil)
+        end)
+
+        it("focus aggregates on its own axis (drives upkeep + cast-cost reduction)", function()
+            local slots = { { enh = { type = "focus", origins = { "geomancer" } } } }
+            expect(math.abs(Enhancements.aggregate(cfg, slots).focus - cfg.values.single) < 1e-9).to.equal(
+                true
+            )
         end)
     end)
 
@@ -307,12 +322,13 @@ return function()
             local axes = {
                 damage = true,
                 accuracy = true,
-                recharge = true,
+                recharge = true, -- applied in PowerService (cooldown), not PowerStats
                 duration = true,
                 radius = true,
                 magnitude = true,
                 heal = true,
                 shield = true,
+                focus = true, -- applied in PowerService (toggle upkeep + cast-cost reduction)
             }
             for name, def in pairs(cfg.types) do
                 expect(type(def.symbol)).to.equal("string")

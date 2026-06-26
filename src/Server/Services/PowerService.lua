@@ -333,15 +333,20 @@ function PowerService:ToggleActive(player, powerId, on)
     return { ok = true, on = false }
 end
 
--- Sum the per-second focus_upkeep of a player's RUNNING toggles. `reduction` is the seam for a future
--- efficiency enhancement that lowers a power's drain (0 today = no reduction).
+-- Sum the per-second focus_upkeep of a player's RUNNING toggles, each lowered by its own slotted
+-- `focus` enhancements (the `focus` axis = drain reduction). A toggle with Focus enhancements drains
+-- less; enough of them make it free (effectiveRate clamps reduction to 1).
 function PowerService:_activeUpkeepRate(player, active)
+    local data = self._dataService and self._dataService:GetData(player)
+    local level = tonumber(player:GetAttribute("Level")) or 1
     local rates = {}
     for powerId in pairs(active or {}) do
         local def = self._powersConfig.powers[tostring(powerId)]
         local base = def and tonumber(def.focus_upkeep)
         if base and base > 0 then
-            local reduction = 0 -- TODO: efficiency enhancement aggregate → lowers upkeep
+            local slots = (data and type(data.Slots) == "table" and data.Slots[tostring(powerId)])
+                or {}
+            local reduction = Enhancements.aggregate(self._enhConfig, slots, level).focus or 0
             rates[#rates + 1] = FocusUpkeep.effectiveRate(base, reduction)
         end
     end
@@ -1666,6 +1671,11 @@ function PowerService:Cast(player, powerId, opts)
     -- cooldown stamp). `focus_cost` is per-power in configs/powers.lua — it was configured but never
     -- charged until now (the gate was never wired into the cast path). Cost 0 (most powers) = no-op.
     local focusCost = tonumber(def.focus_cost) or 0
+    if focusCost > 0 then
+        -- a slotted `focus` enhancement makes the power cheaper to cast (same axis that lowers toggle
+        -- upkeep) — enhAxes.focus is the summed reduction fraction, clamped inside effectiveRate.
+        focusCost = FocusUpkeep.effectiveRate(focusCost, enhAxes.focus)
+    end
     if focusCost > 0 then
         local focusSvc = self._moduleLoader and self._moduleLoader:Get("FocusService")
         if focusSvc and focusSvc.Cast then

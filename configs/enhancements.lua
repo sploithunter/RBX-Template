@@ -182,6 +182,17 @@ return {
                 move_speed = true, -- Swift (always-on self+pet speed buff)
             },
         },
+        -- FOCUS ("you have Focus; we enhanced it" — Jason): makes the slotted power spend LESS Focus.
+        -- For always-on TOGGLES it lowers their per-second focus_upkeep (the drain); for active casts
+        -- it lowers focus_cost. The ONLY type that wants passives (it's the opposite of recharge) — so
+        -- families="*" and NO excludes_passive. axis="focus" is read by the upkeep loop + the cast-cost
+        -- gate (PowerService), not by PowerStats — same pattern as recharge's cooldown axis. Standard
+        -- per-power model; global "set bonus" focus reduction comes later (set powers, in planning).
+        focus = {
+            symbol = "focus",
+            axis = "focus",
+            families = "*", -- every power spends Focus (toggle upkeep or cast cost); reduce it
+        },
     },
 
     -- Power `target` values that count as AoE for `requires_aoe` types.
@@ -295,6 +306,7 @@ return {
             range = 1,
             duration = 1,
             healing = 1,
+            focus = 1, -- focus-reduction drops at the standard rate (tune if it floods)
         },
         despawn_seconds = 45,
         -- Authored COGWHEEL drop model (Jason, 2026-06-09): ONE shared 3500-tri mesh + 6 color
