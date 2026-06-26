@@ -45,6 +45,14 @@ function HotbarService:Init()
     end)
     -- Admin testing: grant + bind the CURRENT area's full power set to the hotbar.
     Signals.Admin_GrantAreaPowers.OnServerEvent:Connect(function(player)
+        -- SECURITY: this GRANTS + persists a whole area's power set (bypassing the pick-10), so it
+        -- must be admin-only. It was ungated — any client could fire it and grant themselves every
+        -- power permanently. Server-set IsAdmin attribute / Studio only.
+        if
+            not (player:GetAttribute("IsAdmin") == true or game:GetService("RunService"):IsStudio())
+        then
+            return
+        end
         pcall(function()
             self:AdminGrantArea(player)
         end)

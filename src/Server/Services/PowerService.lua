@@ -25,6 +25,7 @@ local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
 local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local RunService = game:GetService("RunService")
 
 -- Placeholder cast VFX colour per effect family (swap for real art later).
 local FAMILY_COLOR = {
@@ -1341,10 +1342,34 @@ function PowerService:_accuracyHit(player, enemy, kind)
     return true
 end
 
-function PowerService:Cast(player, powerId)
+function PowerService:Cast(player, powerId, opts)
     local def = self._powersConfig.powers and self._powersConfig.powers[tostring(powerId)]
     if not def then
         return { ok = false, reason = "unknown_power" }
+    end
+    -- OWNERSHIP GATE: a player may only cast a power they OWN (data.Powers). This is the chokepoint
+    -- that closes the exploit surface — Hotbar_Rebind never validates ownership, and the `power.cast`
+    -- bus command takes a client-supplied powerId; BOTH funnel through here, so one check covers them.
+    -- ADMINS bypass entirely: the admin power-bar passes opts.adminBypass, and the server-set IsAdmin
+    -- attribute / Studio also bypass (test surface — if an admin is exploiting, ownership is the least
+    -- of it, per Jason). Bound-but-unowned powers (the rebind exploit) are NOT in data.Powers, so they
+    -- get refused here even though the slot "exists".
+    local adminBypass = (opts and opts.adminBypass == true)
+        or player:GetAttribute("IsAdmin") == true
+        or RunService:IsStudio()
+    if not adminBypass then
+        local data = self._dataService and self._dataService:GetData(player)
+        local owned = (data and type(data.Powers) == "table") and data.Powers or {}
+        local has = false
+        for _, id in ipairs(owned) do
+            if tostring(id) == tostring(powerId) then
+                has = true
+                break
+            end
+        end
+        if not has then
+            return { ok = false, reason = "not_owned" }
+        end
     end
     local now = os.time()
     local cds = self._cooldowns[player]
@@ -1369,9 +1394,15 @@ function PowerService:Cast(player, powerId)
     -- Slotted ENHANCEMENTS on the cast power -> per-axis bonus fractions (additive within an
     -- axis; single > dual). Feeds resolveEffective + the cooldown stamp below.
     local data = self._dataService and self._dataService:GetData(player)
+    -- Enhancement slots feeding the cast: the admin power-bar passes opts.slotsOverride to test a
+    -- power at a fixed slotting (MIN = {} bare, MAX = a full single-origin set) WITHOUT touching the
+    -- player's saved Slots; everyone else reads their real slotted enhancements.
+    local castSlots = (opts and opts.slotsOverride)
+        or (data and type(data.Slots) == "table" and data.Slots[tostring(powerId)])
+        or {}
     local enhAxes = Enhancements.aggregate(
         self._enhConfig,
-        (data and type(data.Slots) == "table" and data.Slots[tostring(powerId)]) or {},
+        castSlots,
         tonumber(player:GetAttribute("Level")) or 1 -- CoH scaling: +2 stronger, -3 dead
     )
     if record then
@@ -1413,6 +1444,22 @@ function PowerService:Cast(player, powerId)
             and self._powersConfig.farm_targeted_families[kind.family]
         if not (farmTargeted and self:_hasEngagedFarmTarget(player)) then
             return { ok = false, reason = "no_target" }
+        end
+    end
+
+    -- FOCUS COST: the cast COMMITS here — every refusal gate above (cooldown / no_target) has passed,
+    -- so spending focus now means a refused cast never charges it. FocusService:Cast checks
+    -- affordability AND deducts atomically; an empty pool refuses the whole cast (no effect, no
+    -- cooldown stamp). `focus_cost` is per-power in configs/powers.lua — it was configured but never
+    -- charged until now (the gate was never wired into the cast path). Cost 0 (most powers) = no-op.
+    local focusCost = tonumber(def.focus_cost) or 0
+    if focusCost > 0 then
+        local focusSvc = self._moduleLoader and self._moduleLoader:Get("FocusService")
+        if focusSvc and focusSvc.Cast then
+            local fres = focusSvc:Cast(player, focusCost)
+            if not (fres and fres.ok) then
+                return { ok = false, reason = "not_enough_focus", focus = fres and fres.focus }
+            end
         end
     end
 
