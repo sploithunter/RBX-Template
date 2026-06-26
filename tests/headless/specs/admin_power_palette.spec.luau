@@ -25,9 +25,14 @@ local CFG = {
     },
 }
 
--- Minimal enhancement config: a potency type (damage) + a passive-excluded type (recharge).
+-- Minimal enhancement config: potency (universal magnitude, covers passives), damage (an AoE-only
+-- fallthrough family), and recharge (passive-excluded).
 local ENH = {
     types = {
+        potency = {
+            axis = "magnitude",
+            families = { vulnerable = true, recharge = true, move_speed = true },
+        },
         damage = { axis = "damage", families = { vulnerable = true, burn_spread = true } },
         recharge = { axis = "recharge", families = "*", excludes_passive = true },
     },
@@ -84,23 +89,28 @@ return function()
     end)
 
     describe("AdminPowerPalette.maxSlots", function()
-        it("fills every slot with the power's single-origin potency enhancement", function()
+        it("fills every slot with the power's single-origin POTENCY enhancement", function()
             local slots = Palette.maxSlots(CFG, ENH, "sandstorm", { maxSlots = 6 })
             expect(#slots).to.equal(6)
-            expect(slots[1].type).to.equal("damage")
+            expect(slots[1].type).to.equal("potency") -- potency leads (covers vulnerable)
             expect(slots[1].origins[1]).to.equal("sandwalker") -- the power's archetype
             expect(#slots[1].origins).to.equal(1) -- SINGLE-origin (strongest grade)
         end)
 
-        it("uses the right archetype per power", function()
-            local slots = Palette.maxSlots(CFG, ENH, "cataclysm", { maxSlots = 3 })
-            expect(#slots).to.equal(3)
-            expect(slots[1].origins[1]).to.equal("pyromancer")
+        it("enhances always-on Hasten via potency (it scales the recharge buff)", function()
+            -- potency covers the recharge family with no excludes_passive → Hasten IS enhanceable.
+            local slots = Palette.maxSlots(CFG, ENH, "hasten")
+            expect(#slots).to.equal(6)
+            expect(slots[1].type).to.equal("potency")
+            expect(#slots[1].origins).to.equal(0) -- generic power → origin-less (natural) single
         end)
 
-        it("returns {} when no enhancement type applies (always-on Hasten)", function()
-            -- recharge excludes_passive, and no potency type lists the recharge family → un-enhanceable.
-            expect(#Palette.maxSlots(CFG, ENH, "hasten")).to.equal(0)
+        it("falls through to a specific type when potency doesn't cover the family", function()
+            -- cataclysm is burn_spread (not in potency) → damage; right archetype.
+            local slots = Palette.maxSlots(CFG, ENH, "cataclysm", { maxSlots = 3 })
+            expect(#slots).to.equal(3)
+            expect(slots[1].type).to.equal("damage")
+            expect(slots[1].origins[1]).to.equal("pyromancer")
         end)
 
         it("returns {} for an unknown power", function()

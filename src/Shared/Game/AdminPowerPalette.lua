@@ -88,10 +88,23 @@ function AdminPowerPalette.group(powersConfig, originOrder)
     return { groups = groups, order = order }
 end
 
--- Priority when more than one enhancement type applies to a power: potency axes first (the ceiling
--- a balancer cares about), utility axes last.
-local TYPE_PRIORITY =
-    { "damage", "armor", "shield", "health", "accuracy", "range", "duration", "recharge" }
+-- Priority when more than one enhancement type applies to a power. `potency` is the universal
+-- magnitude lever (it covers Hasten's recharge buff, Swift's speed, luck, yield, vulnerable, …) so it
+-- leads; the AoE/defensive signatures it doesn't cover fall through to their specific type.
+local TYPE_PRIORITY = {
+    "potency",
+    "damage",
+    "armor",
+    "shield",
+    "health",
+    "healing",
+    "speed",
+    "accuracy",
+    "range",
+    "duration",
+    "recharge",
+    "spark",
+}
 
 -- Build a MIN/MAX enhancement slot list for `Cast`'s slotsOverride — lets the admin bar test a power
 -- at its slotting floor/ceiling WITHOUT touching the player's saved Slots.

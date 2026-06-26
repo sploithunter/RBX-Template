@@ -106,6 +106,8 @@ function AdminPowerBar.start()
 
     -- MIN/MAX slotting switch (top-right). state.mode = "min" | "max".
     local state = { tab = TAB_ORDER[1], mode = "min", toggled = {} }
+    local castCells = {} -- powerId -> { overlay, label } for the live cooldown sweep
+    local cooldownEnd = {} -- powerId -> os.clock() expiry (from the Power_Cooldown echo)
     local modeBtn = Instance.new("TextButton")
     modeBtn.AnchorPoint = Vector2.new(1, 0)
     modeBtn.Position = UDim2.new(1, -10, 0, 4)
@@ -226,10 +228,37 @@ function AdminPowerBar.start()
                 Signals.Admin_CastPower:FireServer({ powerId = powerId, mode = state.mode })
             end
         end)
+
+        -- Cooldown sweep (castables only): a dark cover + countdown number while the power recharges,
+        -- so the cooldown is VISIBLE for balancing (it's enforced server-side regardless of this).
+        if not alwaysOn then
+            local cdOverlay = Instance.new("Frame")
+            cdOverlay.BackgroundColor3 = Color3.fromRGB(8, 9, 12)
+            cdOverlay.BackgroundTransparency = 0.35
+            cdOverlay.Size = UDim2.fromScale(1, 1)
+            cdOverlay.Visible = false
+            cdOverlay.ZIndex = 5
+            local oc = Instance.new("UICorner")
+            oc.CornerRadius = UDim.new(0, 8)
+            oc.Parent = cdOverlay
+            local cdLbl = Instance.new("TextLabel")
+            cdLbl.BackgroundTransparency = 1
+            cdLbl.Size = UDim2.fromScale(1, 1)
+            cdLbl.Font = Enum.Font.GothamBlack
+            cdLbl.TextSize = 22
+            cdLbl.TextColor3 = Color3.fromRGB(255, 230, 140)
+            cdLbl.ZIndex = 6
+            cdLbl.Parent = cdOverlay
+            cdOverlay.Parent = cell
+            castCells[powerId] = { overlay = cdOverlay, label = cdLbl }
+        end
         return cell
     end
 
     local function renderTab()
+        for k in pairs(castCells) do -- drop stale refs before destroying the old cells
+            castCells[k] = nil
+        end
         for _, c in ipairs(grid:GetChildren()) do
             if c:IsA("TextButton") then
                 c:Destroy()
@@ -280,6 +309,26 @@ function AdminPowerBar.start()
     refreshModeBtn()
     refreshTabs()
     renderTab()
+
+    -- Live cooldown: the server echoes Power_Cooldown on every cast; sweep the matching cast cell so
+    -- you can read each power's recharge while balancing.
+    Signals.Power_Cooldown.OnClientEvent:Connect(function(p)
+        if type(p) == "table" and p.power then
+            cooldownEnd[tostring(p.power)] = os.clock() + (tonumber(p.cooldown) or 0)
+        end
+    end)
+    RunService.Heartbeat:Connect(function()
+        local now = os.clock()
+        for powerId, refs in pairs(castCells) do
+            local remaining = (cooldownEnd[powerId] or 0) - now
+            if remaining > 0 then
+                refs.overlay.Visible = true
+                refs.label.Text = tostring(math.ceil(remaining))
+            elseif refs.overlay.Visible then
+                refs.overlay.Visible = false
+            end
+        end
+    end)
 
     -- Show with ADMIN mode; hide + restore the normal hotbar otherwise.
     local function setShown(on)
