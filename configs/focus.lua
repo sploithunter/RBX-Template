@@ -13,7 +13,10 @@
 
 return {
     focus_max = 100,
-    regen_per_second = 5,
+    -- HALVED 5 -> 2.5 (Jason, first tuning pass): regen at 5/s moved the bar too fast (jittery). Half
+    -- the recovery + half every toggle's focus_upkeep keeps the toggle-vs-recovery balance identical
+    -- while the bar animates at half speed. Tune up once the live feel is dialled.
+    regen_per_second = 2.5,
     -- false: Focus regenerates normally even from 0 (the resolved default).
     -- true: Focus stays at 0 for one tick of "stun" before regen resumes.
     regen_pauses_at_zero = false,

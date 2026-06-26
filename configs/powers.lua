@@ -365,10 +365,10 @@ return {
             display_name = "Swift",
             focus_cost = 15,
             -- focus_upkeep: Focus DRAINED PER SECOND while this always-on power is active (the CoH
-            -- toggle economy). Regen is 5/s, so the sum of your running toggles' upkeep competes with
-            -- it; bottom out and they auto-detoggle. A future efficiency enhancement multiplies this
-            -- down. (Only `passive`/`toggle`-effect powers use it.)
-            focus_upkeep = 1.5,
+            -- toggle economy). Regen is 2.5/s, so the sum of your running toggles' upkeep competes with
+            -- it; bottom out and they auto-detoggle. A `focus` enhancement slotted in lowers this.
+            -- (Only `passive`/`toggle`-effect powers use it.) Values HALVED with regen (first pass).
+            focus_upkeep = 0.75,
             cooldown_seconds = 25,
             effect = "move_speed",
             unlock_level = 2,
@@ -378,7 +378,7 @@ return {
             generic = true,
             display_name = "Hasten",
             focus_cost = 20,
-            focus_upkeep = 2.5, -- the strongest always-on (global recharge) → the priciest upkeep
+            focus_upkeep = 1.25, -- the strongest always-on (global recharge) → the priciest upkeep
             cooldown_seconds = 60,
             effect = "recharge",
             unlock_level = 14,
@@ -388,7 +388,7 @@ return {
             generic = true,
             display_name = "XP Surge",
             focus_cost = 25,
-            focus_upkeep = 1.5,
+            focus_upkeep = 0.75,
             cooldown_seconds = 60,
             effect = "xp_boost",
             unlock_level = 4,
@@ -416,7 +416,7 @@ return {
             generic = true,
             display_name = "Magnet",
             focus_cost = 15,
-            focus_upkeep = 1.0, -- a utility convenience → cheapest upkeep
+            focus_upkeep = 0.5, -- a utility convenience → cheapest upkeep
             cooldown_seconds = 30,
             effect = "magnet",
             unlock_level = 2,

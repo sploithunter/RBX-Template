@@ -39,17 +39,17 @@ return function()
 
     describe("FocusMath.regen", function()
         it("regenerates at the configured rate over elapsed seconds", function()
-            -- focus 50, regen 5/s, 5s -> 75
-            expect(FocusMath.regen(50, 5, config)).to.equal(75)
+            -- derived from config so a regen tuning pass doesn't break the test
+            expect(FocusMath.regen(50, 5, config)).to.equal(50 + config.regen_per_second * 5)
         end)
 
         it("never exceeds focus_max", function()
-            -- focus 90, +5/s * 5s = 115 -> clamped to 100
-            expect(FocusMath.regen(90, 5, config)).to.equal(config.focus_max)
+            -- a big elapsed window always saturates the pool to focus_max
+            expect(FocusMath.regen(config.focus_max - 1, 1000, config)).to.equal(config.focus_max)
         end)
 
         it("regenerates from zero by default (no stun)", function()
-            expect(FocusMath.regen(0, 1, config)).to.equal(5)
+            expect(FocusMath.regen(0, 1, config)).to.equal(config.regen_per_second)
         end)
 
         it("honors regen_pauses_at_zero when a game opts in", function()
