@@ -166,7 +166,7 @@ return {
         -- with a SOLE-OCCUPANT axis are passive today; coin_yield (Prospector) + luck (Fortune) share
         -- their axis with Windfall / Huge Fortune bursts and need additive BuffStack (#169) first.
         move_speed = { family = "move_speed", magnitude = 0.4, passive = true }, -- Swift: always-on speed
-        recharge = { family = "recharge", magnitude = 0.5, passive = true }, -- Hasten: always-on recharge
+        recharge = { family = "recharge", magnitude = 0.5, duration = 120 }, -- Hasten: TIMED self-buff (cast → 120s +50% recharge), perma'd by slotting recharge (no longer an always-on toggle)
         xp_boost = { family = "xp", magnitude = 0.5, passive = true }, -- XP Surge: always-on XP
         revive = { family = "revive", magnitude = 0, duration = 0 }, -- instant re-summon (mechanic)
         recall = { family = "recall", magnitude = 0, duration = 0 }, -- teleport to saved spot
@@ -377,12 +377,17 @@ return {
         hasten = {
             generic = true,
             display_name = "Hasten",
-            focus_cost = 20,
-            focus_upkeep = 1.25, -- the strongest always-on (global recharge) → the priciest upkeep
-            cooldown_seconds = 60,
+            focus_cost = 20, -- per CAST now (~once per duration), not a continuous toggle drain
+            -- Hasten is a TIMED CLICK (CoH-style), not a toggle: cast → 120s +50% recharge → long
+            -- cooldown. PERMA-HASTEN is the endgame chase — slot `recharge` (+ global set recharge) to
+            -- bring its cooldown <= its 120s duration so it's always up. While active it shortens its
+            -- OWN cooldown (RechargeBuff → PowerService cd*(1-r)) — the self-bootstrap — and every other
+            -- power's. Auto-fire keeps it perma hands-free. Perma threshold ~ +88% recharge: recast cd =
+            -- 450*0.5/(1+Σ) <= 120. cooldown_seconds + the kind's duration are the perma-tuning dials.
+            cooldown_seconds = 450,
             effect = "recharge",
             unlock_level = 14,
-            subtitle = "Always-On",
+            subtitle = "Timed — perma via recharge",
         },
         xp_surge = {
             generic = true,

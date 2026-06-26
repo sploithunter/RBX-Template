@@ -63,7 +63,7 @@ local BUFFS = {
     -- on/off control, no hotbar slot needed.
     { attr = "MoveSpeedBuff", label = "SPD", toggleable = true }, -- Swift
     { attr = "MoveSpeedBuffPotion", label = "SPD" }, -- Swift potion (own source; adds to the power)
-    { attr = "RechargeBuff", label = "RCH", toggleable = true }, -- Hasten
+    { attr = "RechargeBuff", label = "RCH" }, -- Hasten (TIMED self-buff now → countdown, not a toggle)
     { attr = "XpBuff", label = "XP", toggleable = true }, -- XP Surge
     { attr = "MagnetBuff", label = "MAG", toggleable = true }, -- Magnet (drop pull radius, #167)
     -- ENCHANT aggregates (Jason: "I do have the buff... [but] not buffed visually on my

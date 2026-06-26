@@ -128,10 +128,11 @@ return function()
 
         it("focus fits always-on toggles (the opposite of recharge)", function()
             -- recharge EXCLUDES passives (nothing to shorten); focus is exactly FOR them — their
-            -- per-second upkeep is the drain a Focus enhancement lowers.
-            local hasten = powersCfg.powers.hasten
-            expect((Enhancements.compatibleWith(cfg, "recharge", hasten, kinds))).to.equal(false)
-            expect((Enhancements.compatibleWith(cfg, "focus", hasten, kinds))).to.equal(true)
+            -- per-second upkeep is the drain a Focus enhancement lowers. (Swift = an always-on toggle;
+            -- Hasten is no longer one — it's a timed click now, so recharge DOES apply to it.)
+            local swift = powersCfg.powers.swift
+            expect((Enhancements.compatibleWith(cfg, "recharge", swift, kinds))).to.equal(false)
+            expect((Enhancements.compatibleWith(cfg, "focus", swift, kinds))).to.equal(true)
         end)
     end)
 

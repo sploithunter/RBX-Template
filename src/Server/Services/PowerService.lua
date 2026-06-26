@@ -140,10 +140,12 @@ end
 -- Families whose `passive = true` powers apply permanently by OWNERSHIP. Each maps to its single
 -- axis attribute (sole-occupant — no overwrite). Shared-axis families (coin_yield/luck) wait for
 -- additive BuffStack (#169).
+-- recharge (Hasten) is NO LONGER here — it's a TIMED click now, applied via _setAxisBuff with a
+-- duration, not stamped permanently by ownership. Leaving it would let _applyOwnedPassives' reset loop
+-- wipe an ACTIVE Hasten on respawn/respec, and would keep the recharge enhancement excluded from it.
 local PASSIVE_ATTR = {
     magnet = "MagnetBuff",
     move_speed = "MoveSpeedBuff",
-    recharge = "RechargeBuff",
     xp = "XpBuff",
 }
 local PASSIVE_UNTIL = 4102444800 -- year 2100 — "always on" (same sentinel as the toggle buffs)
