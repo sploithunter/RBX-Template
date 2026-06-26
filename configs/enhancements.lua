@@ -141,7 +141,12 @@ return {
                 luck = true,
                 magnet = true,
                 move_speed = true,
-                recharge = true, -- Hasten's recharge-BUFF magnitude
+                -- recharge (Hasten) is DELIBERATELY excluded: it's recharge-only, like CoH (its +50%
+                -- buff is fixed). Potency boosting the buff magnitude let it out-perform recharge for
+                -- perma-ing Hasten (the buff is applied multiplicatively cd*(1-mag), so pumping mag
+                -- toward the 0.9 clamp is a 3x lever vs recharge's division) — degenerate. Old saves
+                -- with potency already in Hasten keep it harmlessly (slots aren't re-validated on load,
+                -- only at slot time) until re-slotted; nothing crashes.
                 xp = true,
                 rage = true,
                 vulnerable = true,
