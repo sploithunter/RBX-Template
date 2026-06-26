@@ -305,6 +305,8 @@ function PlayerBar.start()
     Theme.bind(player, applyTheme)
 
     local blinkOn = true
+    -- Focus bar is smoothed every frame toward these (the server value updates in 1s / +5 steps).
+    local fxShown, fxTarget, fxMaxV = 0, 0, 0
     local function refresh()
         local level = tonumber(player:GetAttribute("Level"))
             or tonumber(player:GetAttribute("ClaimedLevel"))
@@ -342,15 +344,13 @@ function PlayerBar.start()
         levelText.TextColor3 = ready and READY or Color3.fromRGB(245, 248, 255)
 
         -- Focus pool (mana spent to cast) — replicated by FocusService via Focus / FocusMax.
+        -- Stash the server value; the Heartbeat below glides the bar toward it so the +5/sec regen
+        -- steps don't jump.
         local fx = tonumber(player:GetAttribute("Focus"))
         local fxMax = tonumber(player:GetAttribute("FocusMax")) or 0
-        if fx and fxMax > 0 then
-            fxTrack.Visible = true
-            fxFill.Size = UDim2.new(math.clamp(fx / fxMax, 0, 1), 0, 1, 0)
-            fxText.Text = string.format("⚡ %d / %d", math.floor(fx), fxMax)
-        else
-            fxTrack.Visible = false
-        end
+        fxTrack.Visible = fx ~= nil and fxMax > 0
+        fxTarget = fx or 0
+        fxMaxV = fxMax
     end
 
     applyTheme(palette)
@@ -367,6 +367,16 @@ function PlayerBar.start()
         if accum >= 0.2 then
             accum = 0
             refresh()
+        end
+        -- Glide the Focus bar toward the server value every frame (the server pushes Focus on spend +
+        -- once a second on regen), so it animates smoothly instead of stepping in 5s.
+        if fxMaxV > 0 then
+            fxShown += (fxTarget - fxShown) * math.min(1, dt * 9)
+            if math.abs(fxTarget - fxShown) < 0.5 then
+                fxShown = fxTarget
+            end
+            fxFill.Size = UDim2.new(math.clamp(fxShown / fxMaxV, 0, 1), 0, 1, 0)
+            fxText.Text = string.format("⚡ %d / %d", math.floor(fxShown + 0.5), fxMaxV)
         end
     end)
 end
