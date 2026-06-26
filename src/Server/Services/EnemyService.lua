@@ -1120,6 +1120,15 @@ end
 function EnemyService:_downPet(pet, _now, _eng, reason)
     pet:SetAttribute("CombatDowned", true)
     pet:SetAttribute("DownedReason", reason or "down")
+    -- Leaving the fight CLEARS this pet's threat + engagement (spec: threat clears on down). Without
+    -- this its `engaged` flag freezes — the _petAggroPass recompute SKIPS downed pets — which latches
+    -- the owner InCombat and pauses farming until the pet is re-summoned (the bug Jason hit). The slot
+    -- is empty while down; the other pets must be free to farm.
+    local downPc = self._petCombat[pet]
+    if downPc then
+        downPc.engaged = false
+        downPc.aggro = AggroTable.new()
+    end
     -- pet folders are named after the owner (Workspace.PlayerPets.<name>)
     local owner = pet.Parent and Players:FindFirstChild(pet.Parent.Name)
     if owner then
@@ -4050,7 +4059,10 @@ function EnemyService:_combatTick(dt)
                 for _, folder in ipairs(pf:GetChildren()) do
                     for _, pet in ipairs(folder:GetChildren()) do
                         local pc = pet:IsA("Model") and self._petCombat[pet]
-                        if pc and pc.engaged then
+                        -- a DOWNED pet never counts toward InCombat (its engaged flag freezes while
+                        -- down — the recompute skips it), so one pet downing can't latch the squad in
+                        -- combat and pause farming.
+                        if pc and pc.engaged and not pet:GetAttribute("CombatDowned") then
                             fighting[folder.Name] = true
                             break
                         end
