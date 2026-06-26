@@ -562,6 +562,50 @@ function PowerChoiceMenu:_previewDiff(powerId, slots, staged)
     return PowerStatsDiff.diff(resolve(slots), resolve(projected))
 end
 
+-- The staged enhancement's FOCUS impact. `focus` is NOT a PowerStats axis (PowerService reads it for
+-- a toggle's per-second upkeep / an active power's cast cost), so it never shows in the diff rows — a
+-- Focus enhancement otherwise looks like it only LOWERS potency (the slot it replaced). Surface the
+-- real benefit here. Returns { label, from, to, unit, deltaPct } or nil (power spends no Focus / no change).
+function PowerChoiceMenu:_previewFocus(powerId, slots, staged)
+    if not (staged and staged.item) then
+        return nil
+    end
+    local def = powersCfg.powers[powerId]
+    if not def then
+        return nil
+    end
+    local kind = def.effect and (powersCfg.effect_kinds or {})[def.effect]
+    local isToggle = kind ~= nil and (kind.passive == true or kind.toggle == true)
+    local base = isToggle and tonumber(def.focus_upkeep) or tonumber(def.focus_cost)
+    if not (base and base > 0) then
+        return nil -- this power doesn't spend Focus → nothing to show
+    end
+    local lvl = self.level
+    local projected = table.clone(slots)
+    projected[staged.slotIndex] = {
+        enh = {
+            type = staged.item.type,
+            origins = staged.item.origins,
+            level = staged.item.level,
+        },
+    }
+    local function rate(list)
+        local r = Enhancements.aggregate(enhCfg, list, lvl).focus or 0
+        return base * (1 - math.clamp(r, 0, 1))
+    end
+    local from, to = rate(slots), rate(projected)
+    if math.abs(from - to) < 1e-6 then
+        return nil
+    end
+    return {
+        label = isToggle and "Focus drain" or "Focus cost",
+        unit = isToggle and "/s" or "",
+        from = from,
+        to = to,
+        deltaPct = (to - from) / from, -- negative = cheaper to run (an improvement)
+    }
+end
+
 -- For a radius-magnitude power (Magnet), the `magnitude` axis IS the reach, so the preview
 -- labels that line "Range" rather than the generic "Potency".
 function PowerChoiceMenu:_isRadiusMagnitude(powerId)
@@ -641,9 +685,26 @@ function PowerChoiceMenu:_renderResultPreview(parent, powerId, slots, staged)
         11
     )
 
-    if #rows == 0 then
+    -- FOCUS impact (upkeep/cost) — not a PowerStats axis, so render it explicitly. Lower = green.
+    local focusInfo = self:_previewFocus(powerId, slots, staged)
+    if #rows == 0 and not focusInfo then
         line("No change at your level", Color3.fromRGB(170, 170, 190), 12, Enum.Font.GothamMedium)
         return
+    end
+    if focusInfo then
+        line(
+            ("%s   %.2f%s → %.2f%s  (%+d%%)"):format(
+                focusInfo.label,
+                focusInfo.from,
+                focusInfo.unit,
+                focusInfo.to,
+                focusInfo.unit,
+                math.floor(focusInfo.deltaPct * 100 + 0.5)
+            ),
+            PREVIEW_UP,
+            13,
+            Enum.Font.GothamMedium
+        )
     end
     local radiusMagnitude = self:_isRadiusMagnitude(powerId)
     for _, r in ipairs(rows) do
