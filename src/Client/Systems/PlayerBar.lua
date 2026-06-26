@@ -92,7 +92,7 @@ function PlayerBar.start()
     cap.Name = "Capsule"
     cap.AnchorPoint = Vector2.new(0.5, 0)
     cap.Position = UDim2.new(0.5, 0, 0, 14)
-    cap.Size = UDim2.fromOffset(520, 74) -- taller: name + XP bar + the Focus bar below
+    cap.Size = UDim2.fromOffset(520, 64) -- name + matched-height XP + Focus bars, compact
     -- pixel-designed: shrink on small viewports (UIViewportScale, anchored — stays docked)
     require(script.Parent.Parent.UI.UIViewportScale).attach(cap)
     cap.BackgroundColor3 = Color3.fromRGB(120, 124, 132)
@@ -104,7 +104,7 @@ function PlayerBar.start()
     -- player name (top)
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Size = UDim2.new(1, -150, 0, 22)
-    nameLabel.Position = UDim2.fromOffset(75, 4)
+    nameLabel.Position = UDim2.fromOffset(75, 1)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Font = Enum.Font.GothamBlack
     nameLabel.TextSize = 18
@@ -115,10 +115,10 @@ function PlayerBar.start()
 
     -- xp bar (recessed track + glossy fill + unfilled remainder)
     local track = Instance.new("Frame")
-    track.Size = UDim2.fromOffset(360, 18)
-    track.Position = UDim2.fromOffset(70, 29)
+    track.Size = UDim2.fromOffset(360, 13) -- match the Focus bar height
+    track.Position = UDim2.fromOffset(70, 27)
     track.BackgroundColor3 = Color3.fromRGB(30, 32, 38)
-    corner(track, 9)
+    corner(track, 6) -- match the Focus bar's rounding
     stroke(track, Color3.fromRGB(20, 22, 26), 1.5)
     track.Parent = cap
     local holder = Instance.new("Frame")
@@ -138,7 +138,7 @@ function PlayerBar.start()
     xpText.Size = UDim2.fromScale(1, 1)
     xpText.BackgroundTransparency = 1
     xpText.Font = Enum.Font.GothamBold
-    xpText.TextSize = 11
+    xpText.TextSize = 10 -- fit the thinner bar (matches the Focus bar text)
     xpText.Text = ""
     xpText.TextColor3 = Color3.fromRGB(245, 248, 255)
     xpText.ZIndex = 4
@@ -151,7 +151,7 @@ function PlayerBar.start()
     local fxTrack = Instance.new("Frame")
     fxTrack.Name = "FocusTrack"
     fxTrack.Size = UDim2.fromOffset(360, 13)
-    fxTrack.Position = UDim2.fromOffset(70, 50)
+    fxTrack.Position = UDim2.fromOffset(70, 43) -- directly under the XP bar
     fxTrack.BackgroundColor3 = Color3.fromRGB(26, 30, 40)
     corner(fxTrack, 6)
     stroke(fxTrack, Color3.fromRGB(18, 20, 26), 1.5)
