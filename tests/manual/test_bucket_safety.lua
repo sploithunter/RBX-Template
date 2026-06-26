@@ -25,10 +25,14 @@ end
 local Locations = require(Shared.Locations)
 local ConfigLoader = require(Locations.ConfigLoader)
 
-print("🛡️ ═══════════════════════════════════════════════════════════")
+print(
+    "🛡️ ═══════════════════════════════════════════════════════════"
+)
 print("🛡️ BUCKET SAFETY SYSTEM TEST")
 print("🛡️ Testing the principle: 'Never delete buckets from profiles'")
-print("🛡️ ═══════════════════════════════════════════════════════════")
+print(
+    "🛡️ ═══════════════════════════════════════════════════════════"
+)
 
 -- Simulate the scenario you described
 print("\n📋 SCENARIO: Event Bucket Safety")
@@ -44,28 +48,28 @@ local mockLegacyProfile = {
             -- Standard items (numbers = old format)
             sword = 1,
             potion = 5,
-            
+
             -- Event currency that might be accidentally removed from config
-            shamrock_coins = 150,  -- Player earned 150 shamrock coins during event
-            
+            shamrock_coins = 150, -- Player earned 150 shamrock coins during event
+
             -- Some items might already be in new bucket format
             pets = {
                 items = {
                     ["pet_12345_abc"] = {
                         id = "bear",
                         variant = "golden",
-                        level = 5
-                    }
+                        level = 5,
+                    },
                 },
                 total_slots = 50,
-                used_slots = 1
-            }
+                used_slots = 1,
+            },
         },
-        
+
         -- Other profile data...
-        Currencies = {coins = 1000, gems = 50},
-        Stats = {Level = 10}
-    }
+        Currencies = { coins = 1000, gems = 50 },
+        Stats = { Level = 10 },
+    },
 }
 
 print("\n📊 MOCK LEGACY PROFILE (Before Migration):")
@@ -87,60 +91,65 @@ local mockCurrentConfig = {
             display_name = "Pets",
             base_limit = 50,
             stack_size = 1,
-            item_schema = {required = {"id", "variant"}, optional = {"level"}}
+            item_schema = { required = { "id", "variant" }, optional = { "level" } },
         },
         consumables = {
-            display_name = "Consumables", 
+            display_name = "Consumables",
             base_limit = 100,
             stack_size = 99,
-            item_schema = {required = {"id", "quantity"}, optional = {}}
-        }
+            item_schema = { required = { "id", "quantity" }, optional = {} },
+        },
         -- ❌ shamrock_coins bucket definition removed!
     },
     equipped = {
-        pets = {slots = 3, display_name = "Active Pets"}
+        pets = { slots = 3, display_name = "Active Pets" },
     },
-    settings = {}
+    settings = {},
 }
 
 print("\n⚠️ CURRENT CONFIG (Shamrock Coins accidentally removed):")
 print("  • pets: ✅ enabled")
-print("  • consumables: ✅ enabled") 
+print("  • consumables: ✅ enabled")
 print("  • shamrock_coins: ❌ MISSING (accidentally removed)")
 
 -- Function to simulate our migration logic
 local function simulateSafeMigration(profileData, config)
     print("\n🔄 SIMULATING SAFE MIGRATION...")
-    
+
     local migrations = 0
     local preservedBuckets = {}
     local migratedBuckets = {}
     local orphanedBuckets = {}
-    
+
     -- Safety Rule 1: Preserve ALL existing buckets regardless of config
     for bucketName, bucketData in pairs(profileData.Inventory) do
         if type(bucketData) == "number" then
             -- Legacy format - convert to bucket format but preserve data
-            print(string.format("📦 Converting legacy bucket: %s (%d → bucket format)", bucketName, bucketData))
-            
+            print(
+                string.format(
+                    "📦 Converting legacy bucket: %s (%d → bucket format)",
+                    bucketName,
+                    bucketData
+                )
+            )
+
             profileData.Inventory[bucketName] = {
                 items = {},
                 total_slots = 50,
                 used_slots = 0,
                 _migrated_from_legacy = true,
-                _legacy_item_count = bucketData  -- 🛡️ PRESERVE original data
+                _legacy_item_count = bucketData, -- 🛡️ PRESERVE original data
             }
-            
+
             table.insert(migratedBuckets, bucketName)
             migrations = migrations + 1
-            
         elseif type(bucketData) == "table" then
             -- Modern format - ensure structure is complete
             print(string.format("📦 Preserving modern bucket: %s", bucketName))
             table.insert(preservedBuckets, bucketName)
         end
     end
-    
+
     -- Safety Rule 2: Add new buckets from config (never remove existing ones)
     for bucketName, enabled in pairs(config.enabled_buckets or {}) do
         if enabled and config.buckets[bucketName] then
@@ -149,26 +158,31 @@ local function simulateSafeMigration(profileData, config)
                 profileData.Inventory[bucketName] = {
                     items = {},
                     total_slots = config.buckets[bucketName].base_limit,
-                    used_slots = 0
+                    used_slots = 0,
                 }
                 migrations = migrations + 1
             end
         end
     end
-    
+
     -- Safety Rule 3: Detect orphaned buckets (exist in profile but not in config)
     for bucketName in pairs(profileData.Inventory) do
         if not config.enabled_buckets[bucketName] then
-            print(string.format("⚠️ ORPHANED BUCKET DETECTED: %s (exists in profile but not in config)", bucketName))
+            print(
+                string.format(
+                    "⚠️ ORPHANED BUCKET DETECTED: %s (exists in profile but not in config)",
+                    bucketName
+                )
+            )
             table.insert(orphanedBuckets, bucketName)
         end
     end
-    
+
     return {
         migrations = migrations,
         preserved = preservedBuckets,
         migrated = migratedBuckets,
-        orphaned = orphanedBuckets
+        orphaned = orphanedBuckets,
     }
 end
 
@@ -184,8 +198,13 @@ print(string.format("  • Orphaned buckets: %s", table.concat(results.orphaned,
 print("\n📊 FINAL PROFILE STATE (After Migration):")
 for bucketName, bucket in pairs(mockLegacyProfile.Data.Inventory) do
     if bucket._migrated_from_legacy then
-        print(string.format("  • %s: migrated from legacy (%d preserved as reference)", 
-            bucketName, bucket._legacy_item_count))
+        print(
+            string.format(
+                "  • %s: migrated from legacy (%d preserved as reference)",
+                bucketName,
+                bucket._legacy_item_count
+            )
+        )
     else
         local itemCount = 0
         if bucket.items then
@@ -193,8 +212,15 @@ for bucketName, bucket in pairs(mockLegacyProfile.Data.Inventory) do
                 itemCount = itemCount + 1
             end
         end
-        print(string.format("  • %s: %d/%d slots, %d items", 
-            bucketName, bucket.used_slots, bucket.total_slots, itemCount))
+        print(
+            string.format(
+                "  • %s: %d/%d slots, %d items",
+                bucketName,
+                bucket.used_slots,
+                bucket.total_slots,
+                itemCount
+            )
+        )
     end
 end
 
@@ -204,10 +230,15 @@ print("\n🎉 SAFETY PRINCIPLE VERIFICATION:")
 local shamrockData = mockLegacyProfile.Data.Inventory.shamrock_coins
 if shamrockData and shamrockData._migrated_from_legacy then
     print("✅ SHAMROCK COINS PRESERVED!")
-    print(string.format("  • Original value: %d (still accessible)", shamrockData._legacy_item_count))
+    print(
+        string.format(
+            "  • Original value: %d (still accessible)",
+            shamrockData._legacy_item_count
+        )
+    )
     print("  • New structure: bucket format ready for future use")
     print("  • Data loss: NONE")
-    
+
     if table.find(results.orphaned, "shamrock_coins") then
         print("  • Status: Orphaned (config missing) but PRESERVED")
         print("  • Recommendation: Re-enable in config or create explicit deletion process")

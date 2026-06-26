@@ -8,10 +8,14 @@
     Demonstrates the "8 different bears" scenario you described.
 ]]
 
-print("🧪 ═══════════════════════════════════════════════════════════")
-print("🧪 STORAGE TYPES DEMONSTRATION")  
+print(
+    "🧪 ═══════════════════════════════════════════════════════════"
+)
+print("🧪 STORAGE TYPES DEMONSTRATION")
 print("🧪 Stackable vs Unique Item Storage")
-print("🧪 ═══════════════════════════════════════════════════════════")
+print(
+    "🧪 ═══════════════════════════════════════════════════════════"
+)
 
 -- Simulate a player's inventory with both storage types
 local playerInventory = {
@@ -20,7 +24,7 @@ local playerInventory = {
         storage_type = "unique",
         base_limit = 50,
         total_slots = 50,
-        used_slots = 8,  -- 8 different bears = 8 slots
+        used_slots = 8, -- 8 different bears = 8 slots
         items = {
             ["pet_1701234567_001"] = {
                 id = "bear",
@@ -28,44 +32,44 @@ local playerInventory = {
                 level = 10,
                 exp = 1250,
                 nickname = "Goldie",
-                stats = {power = 95, health = 850, speed = 1.3},
+                stats = { power = 95, health = 850, speed = 1.3 },
                 enchantments = {
-                    {type = "power_boost", tier = 2, value = 15}
+                    { type = "power_boost", tier = 2, value = 15 },
                 },
-                obtained_at = 1701234567
+                obtained_at = 1701234567,
             },
             ["pet_1701234568_002"] = {
-                id = "bear", 
+                id = "bear",
                 variant = "basic",
                 level = 5,
                 exp = 320,
                 nickname = "Bruno",
-                stats = {power = 65, health = 720, speed = 1.1},
+                stats = { power = 65, health = 720, speed = 1.1 },
                 enchantments = {},
-                obtained_at = 1701234568
+                obtained_at = 1701234568,
             },
             ["pet_1701234569_003"] = {
                 id = "bear",
-                variant = "rainbow", 
+                variant = "rainbow",
                 level = 15,
                 exp = 2800,
                 nickname = "Sparkles",
-                stats = {power = 180, health = 1200, speed = 1.8},
+                stats = { power = 180, health = 1200, speed = 1.8 },
                 enchantments = {
-                    {type = "rainbow_boost", tier = 3, value = 25},
-                    {type = "speed_boost", tier = 1, value = 8}
+                    { type = "rainbow_boost", tier = 3, value = 25 },
+                    { type = "speed_boost", tier = 1, value = 8 },
                 },
-                obtained_at = 1701234569
+                obtained_at = 1701234569,
             },
             ["pet_1701234570_004"] = {
                 id = "bear",
                 variant = "basic",
                 level = 1,
-                exp = 0, 
-                nickname = "",  -- No nickname yet
-                stats = {power = 50, health = 600, speed = 1.0},
+                exp = 0,
+                nickname = "", -- No nickname yet
+                stats = { power = 50, health = 600, speed = 1.0 },
                 enchantments = {},
-                obtained_at = 1701234570
+                obtained_at = 1701234570,
             },
             ["pet_1701234571_005"] = {
                 id = "bear",
@@ -73,11 +77,11 @@ local playerInventory = {
                 level = 7,
                 exp = 680,
                 nickname = "Honey",
-                stats = {power = 78, health = 780, speed = 1.2},
+                stats = { power = 78, health = 780, speed = 1.2 },
                 enchantments = {
-                    {type = "luck_boost", tier = 1, value = 5}
+                    { type = "luck_boost", tier = 1, value = 5 },
                 },
-                obtained_at = 1701234571
+                obtained_at = 1701234571,
             },
             ["pet_1701234572_006"] = {
                 id = "bear",
@@ -85,9 +89,9 @@ local playerInventory = {
                 level = 3,
                 exp = 150,
                 nickname = "Teddy",
-                stats = {power = 58, health = 650, speed = 1.05},
+                stats = { power = 58, health = 650, speed = 1.05 },
                 enchantments = {},
-                obtained_at = 1701234572
+                obtained_at = 1701234572,
             },
             ["pet_1701234573_007"] = {
                 id = "bear",
@@ -95,11 +99,11 @@ local playerInventory = {
                 level = 12,
                 exp = 1850,
                 nickname = "Midnight",
-                stats = {power = 145, health = 950, speed = 1.6},
+                stats = { power = 145, health = 950, speed = 1.6 },
                 enchantments = {
-                    {type = "shadow_boost", tier = 2, value = 20}
+                    { type = "shadow_boost", tier = 2, value = 20 },
                 },
-                obtained_at = 1701234573
+                obtained_at = 1701234573,
             },
             ["pet_1701234574_008"] = {
                 id = "bear",
@@ -107,79 +111,79 @@ local playerInventory = {
                 level = 8,
                 exp = 920,
                 nickname = "Blaze",
-                stats = {power = 85, health = 800, speed = 1.25},
+                stats = { power = 85, health = 800, speed = 1.25 },
                 enchantments = {
-                    {type = "fire_boost", tier = 1, value = 10}
+                    { type = "fire_boost", tier = 1, value = 10 },
                 },
-                obtained_at = 1701234574
-            }
-        }
+                obtained_at = 1701234574,
+            },
+        },
     },
-    
+
     -- STACKABLE STORAGE: Consumables (identical items)
     consumables = {
         storage_type = "stackable",
         base_limit = 100,
         total_slots = 100,
-        used_slots = 4,  -- 4 different potion types = 4 slots (regardless of quantities)
+        used_slots = 4, -- 4 different potion types = 4 slots (regardless of quantities)
         items = {
             ["health_potion"] = {
                 id = "health_potion",
-                quantity = 47,  -- 47 identical health potions
-                obtained_at = 1701234500
+                quantity = 47, -- 47 identical health potions
+                obtained_at = 1701234500,
             },
             ["speed_potion"] = {
-                id = "speed_potion", 
-                quantity = 23,  -- 23 identical speed potions
-                obtained_at = 1701234501
+                id = "speed_potion",
+                quantity = 23, -- 23 identical speed potions
+                obtained_at = 1701234501,
             },
             ["luck_potion"] = {
                 id = "luck_potion",
-                quantity = 12,  -- 12 identical luck potions
-                obtained_at = 1701234502
+                quantity = 12, -- 12 identical luck potions
+                obtained_at = 1701234502,
             },
             ["power_potion"] = {
                 id = "power_potion",
-                quantity = 8,   -- 8 identical power potions
-                obtained_at = 1701234503
-            }
-        }
+                quantity = 8, -- 8 identical power potions
+                obtained_at = 1701234503,
+            },
+        },
     },
-    
+
     -- STACKABLE STORAGE: Resources (identical materials)
     resources = {
         storage_type = "stackable",
         base_limit = 50,
         total_slots = 50,
-        used_slots = 5,  -- 5 different resource types = 5 slots
+        used_slots = 5, -- 5 different resource types = 5 slots
         items = {
             ["wood"] = {
                 id = "wood",
-                quantity = 1250,  -- 1250 identical wood pieces
-                obtained_at = 1701234400
+                quantity = 1250, -- 1250 identical wood pieces
+                obtained_at = 1701234400,
             },
             ["stone"] = {
                 id = "stone",
-                quantity = 800,   -- 800 identical stones
-                obtained_at = 1701234401
+                quantity = 800, -- 800 identical stones
+                obtained_at = 1701234401,
             },
             ["iron"] = {
-                id = "iron", 
-                quantity = 150,   -- 150 identical iron ingots
-                obtained_at = 1701234402
+                id = "iron",
+                quantity = 150, -- 150 identical iron ingots
+                obtained_at = 1701234402,
             },
             ["gold"] = {
                 id = "gold",
-                quantity = 45,    -- 45 identical gold pieces
-                obtained_at = 1701234403
+                quantity = 45, -- 45 identical gold pieces
+                obtained_at = 1701234403,
             },
             ["diamond"] = {
                 id = "diamond",
-                quantity = 8,     -- 8 identical diamonds
-                obtained_at = 1701234404
-            }
-        }
-    }
+                quantity = 8, -- 8 identical diamonds
+                obtained_at = 1701234404,
+            },
+        },
+    },
 }
 
 print("\n🐻 UNIQUE STORAGE EXAMPLE: Pet Bears")
@@ -188,10 +192,11 @@ print("🎯 Key point: All bears are same TYPE but have unique properties")
 
 for uid, bear in pairs(playerInventory.pets.items) do
     local enchantCount = #bear.enchantments
-    print(string.format("  • %s (%s) - Level %d, Power %d, %d enchants - '%s'", 
-        bear.variant:upper(), 
-        uid:sub(-3),  -- Last 3 chars of UID
-        bear.level, 
+    print(string.format(
+        "  • %s (%s) - Level %d, Power %d, %d enchants - '%s'",
+        bear.variant:upper(),
+        uid:sub(-3), -- Last 3 chars of UID
+        bear.level,
         bear.stats.power,
         enchantCount,
         bear.nickname ~= "" and bear.nickname or "No nickname"
@@ -203,31 +208,37 @@ print("📊 Total potion items: 90 | Slots used: 4 (each type takes 1 slot)")
 print("🎯 Key point: All potions of same type are identical")
 
 for itemId, item in pairs(playerInventory.consumables.items) do
-    print(string.format("  • %s: %d potions (all identical)", 
-        item.id:gsub("_", " "):upper(), 
-        item.quantity
-    ))
+    print(
+        string.format(
+            "  • %s: %d potions (all identical)",
+            item.id:gsub("_", " "):upper(),
+            item.quantity
+        )
+    )
 end
 
-print("\n🪨 STACKABLE STORAGE EXAMPLE: Resources") 
+print("\n🪨 STACKABLE STORAGE EXAMPLE: Resources")
 print("📊 Total resource items: 2,253 | Slots used: 5 (each type takes 1 slot)")
 print("🎯 Key point: Massive quantities don't consume extra slots")
 
 for itemId, item in pairs(playerInventory.resources.items) do
-    print(string.format("  • %s: %d pieces (all identical)",
-        item.id:upper(),
-        item.quantity
-    ))
+    print(string.format("  • %s: %d pieces (all identical)", item.id:upper(), item.quantity))
 end
 
 print("\n📈 STORAGE EFFICIENCY COMPARISON:")
-print("┌─────────────────┬──────────────┬──────────────┬─────────────────┐")
+print(
+    "┌─────────────────┬──────────────┬──────────────┬─────────────────┐"
+)
 print("│ Storage Type    │ Total Items  │ Slots Used   │ Efficiency      │")
-print("├─────────────────┼──────────────┼──────────────┼─────────────────┤")
+print(
+    "├─────────────────┼──────────────┼──────────────┼─────────────────┤"
+)
 print("│ Unique (Bears)  │      8       │      8       │ 1 item/slot     │")
 print("│ Stack (Potions) │     90       │      4       │ 22.5 items/slot │")
 print("│ Stack (Resources)│   2,253      │      5       │ 450.6 items/slot│")
-print("└─────────────────┴──────────────┴──────────────┴─────────────────┘")
+print(
+    "└─────────────────┴──────────────┴──────────────┴─────────────────┘"
+)
 
 print("\n🎮 GAMEPLAY IMPLICATIONS:")
 

@@ -48,17 +48,17 @@ profile.Data.Inventory.test_legacy_bucket = {
             id = "test_item",
             name = "Legacy Test Item",
             count = 5,
-            created_at = tick()
+            created_at = tick(),
         },
         ["debug_tool_001"] = {
-            id = "debug_tool", 
+            id = "debug_tool",
             name = "Debug Tool",
             count = 1,
-            created_at = tick()
-        }
+            created_at = tick(),
+        },
     },
     total_slots = 50,
-    used_slots = 2
+    used_slots = 2,
 }
 print("✅ Created: test_legacy_bucket (2 items)")
 
@@ -69,11 +69,11 @@ profile.Data.Inventory.health_potion = {
             id = "health_potion",
             name = "Health Potion",
             count = 15,
-            created_at = tick()
-        }
+            created_at = tick(),
+        },
     },
     total_slots = 100,
-    used_slots = 1
+    used_slots = 1,
 }
 print("✅ Created: health_potion bucket (should be in consumables - mishandled)")
 
@@ -81,20 +81,20 @@ print("✅ Created: health_potion bucket (should be in consumables - mishandled)
 profile.Data.Inventory.speed_potion = {
     items = {
         ["speed_potion_001"] = {
-            id = "speed_potion", 
+            id = "speed_potion",
             name = "Speed Potion",
             count = 8,
-            created_at = tick()
+            created_at = tick(),
         },
         ["speed_potion_002"] = {
             id = "speed_potion",
-            name = "Speed Potion", 
+            name = "Speed Potion",
             count = 12,
-            created_at = tick()
-        }
+            created_at = tick(),
+        },
     },
     total_slots = 100,
-    used_slots = 2  
+    used_slots = 2,
 }
 print("✅ Created: speed_potion bucket (legacy system - 20 total potions)")
 
@@ -107,11 +107,11 @@ profile.Data.Inventory.premium_boosts = {
             duration = 3600, -- 1 hour
             multiplier = 2.0,
             count = 3,
-            created_at = tick()
-        }
+            created_at = tick(),
+        },
     },
     total_slots = 20,
-    used_slots = 1
+    used_slots = 1,
 }
 print("✅ Created: premium_boosts bucket (old monetization system)")
 
@@ -119,15 +119,15 @@ print("✅ Created: premium_boosts bucket (old monetization system)")
 profile.Data.Inventory.alamantic_aluminum = {
     items = {
         ["alamantic_aluminum_001"] = {
-            id = "alamantic_aluminum", 
+            id = "alamantic_aluminum",
             name = "Alamantic Aluminum", -- Should be "Atlantic Aluminum"
             rarity = "legendary",
             count = 50,
-            created_at = tick()
-        }
+            created_at = tick(),
+        },
     },
     total_slots = 200,
-    used_slots = 1
+    used_slots = 1,
 }
 print("✅ Created: alamantic_aluminum bucket (typo in development)")
 
@@ -139,11 +139,11 @@ profile.Data.Inventory.trader_scrolls = {
             name = "Merchant Summon Scroll",
             uses_remaining = 5,
             count = 2,
-            created_at = tick()
-        }
+            created_at = tick(),
+        },
     },
     total_slots = 10,
-    used_slots = 1
+    used_slots = 1,
 }
 print("✅ Created: trader_scrolls bucket (removed trading feature)")
 
@@ -159,11 +159,11 @@ if InventoryService then
     if InventoryService._playerEquippedFolders[player] then
         InventoryService._playerEquippedFolders[player]:Destroy()
     end
-    
+
     InventoryService._playerInventoryFolders[player] = nil
     InventoryService._playerEquippedFolders[player] = nil
     InventoryService:_createInventoryFolders(player)
-    
+
     print("🔄 Inventory folders recreated to show orphaned buckets")
 end
 

@@ -51,4 +51,11 @@ pickup body; DropService anchors, spins, and magnet-pulls it like coin drops.
 
 ## Tuning levers (config-only)
 `values.single/dual` · `drops.breakable_chance/enemy_chance/single_chance/type_weights` ·
-per-type `families`/`requires_aoe` · `inventory_cap` · `replace_destroys`.
+per-type `families`/`requires_aoe` · `replace_destroys`.
+
+There is **no inventory cap** — enhancements stack by identity and auto-expand (the bucket is
+`stacks_count_toward_limit = false`, so drops never fail on space). The old `inventory_cap = 60`
+was a dead, never-enforced field and has been removed. Runaway-growth protection is a SOFT dev
+alert, not a block: `configs/inventory.lua → buckets.enhancements.storage_alert` (`stack_count`,
+`serialized_bytes`) makes DataService fire `OpsAlert("bucket_storage_high")` at load when the
+bucket's stack count or estimated serialized size approaches the ~4MB DataStore key limit.

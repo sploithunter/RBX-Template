@@ -20,9 +20,13 @@ end
 local Locations = require(Shared.Locations)
 local ConfigLoader = require(Locations.ConfigLoader)
 
-print("🧪 ═══════════════════════════════════════════════════════════")
+print(
+    "🧪 ═══════════════════════════════════════════════════════════"
+)
 print("🧪 INVENTORY SYSTEM PHASE 1 VERIFICATION")
-print("🧪 ═══════════════════════════════════════════════════════════")
+print(
+    "🧪 ═══════════════════════════════════════════════════════════"
+)
 
 -- Test 1: ConfigLoader can load inventory configuration
 print("\n📋 TEST 1: Loading inventory configuration...")
@@ -33,27 +37,32 @@ end)
 
 if inventoryConfigSuccess then
     print("✅ TEST 1 PASSED: Inventory configuration loaded successfully")
-    
+
     -- Verify structure
     print("📦 Configuration Details:")
     print("  • Version:", inventoryConfig.version)
     print("  • Enabled Buckets:")
-    
+
     local enabledCount = 0
     for bucketName, enabled in pairs(inventoryConfig.enabled_buckets) do
         local status = enabled and "✓ ENABLED" or "✗ disabled"
         print(string.format("    - %s: %s", bucketName, status))
-        
+
         if enabled then
             enabledCount = enabledCount + 1
             local bucketConfig = inventoryConfig.buckets[bucketName]
             if bucketConfig then
-                print(string.format("      └─ %d slots, %s", 
-                    bucketConfig.base_limit, bucketConfig.display_name))
+                print(
+                    string.format(
+                        "      └─ %d slots, %s",
+                        bucketConfig.base_limit,
+                        bucketConfig.display_name
+                    )
+                )
             end
         end
     end
-    
+
     print("  • Equipped Categories:")
     for equipCategory, equipConfig in pairs(inventoryConfig.equipped or {}) do
         local slotInfo = ""
@@ -64,7 +73,7 @@ if inventoryConfigSuccess then
         end
         print(string.format("    - %s: %s (%s)", equipCategory, equipConfig.display_name, slotInfo))
     end
-    
+
     print(string.format("  • Total enabled buckets: %d", enabledCount))
 else
     print("❌ TEST 1 FAILED: Could not load inventory configuration")
@@ -107,12 +116,12 @@ end
 
 if dataServicePath then
     print("✅ TEST 3a PASSED: DataService module found")
-    
+
     -- Check if the module can be required (basic syntax check)
     local dataServiceSuccess, dataServiceModule = pcall(function()
         return require(dataServicePath)
     end)
-    
+
     if dataServiceSuccess then
         print("✅ TEST 3b PASSED: DataService module can be required (no syntax errors)")
     else
@@ -145,12 +154,16 @@ else
 end
 
 -- Summary
-print("\n🎉 ═══════════════════════════════════════════════════════════")
+print(
+    "\n🎉 ═══════════════════════════════════════════════════════════"
+)
 print("🎉 PHASE 1 VERIFICATION COMPLETE - ALL TESTS PASSED!")
-print("🎉 ═══════════════════════════════════════════════════════════")
+print(
+    "🎉 ═══════════════════════════════════════════════════════════"
+)
 print("\n📊 PHASE 1 ACHIEVEMENTS:")
 print("  ✅ Inventory configuration system ready")
-print("  ✅ Profile template generation updated") 
+print("  ✅ Profile template generation updated")
 print("  ✅ Configuration validation implemented")
 print("  ✅ Debug logging added for tracing")
 print("\n🚀 READY FOR PHASE 2:")

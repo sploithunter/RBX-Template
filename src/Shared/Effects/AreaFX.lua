@@ -490,11 +490,7 @@ local function lightningStrikes(pos, count, radius, life, color, color2, varOver
                 local base = top:Lerp(ground, alpha)
                 -- zigzag tapers to nothing at the impact so the last segment hits the point clean
                 local off = (s < segs)
-                        and Vector3.new(
-                            (math.random() - 0.5) * 2,
-                            0,
-                            (math.random() - 0.5) * 2
-                        ) * zig * (1 - alpha)
+                        and Vector3.new((math.random() - 0.5) * 2, 0, (math.random() - 0.5) * 2) * zig * (1 - alpha)
                     or Vector3.zero
                 local pt = base + off
                 boltSegment(prev, pt, col, thickness, boltLife, withCore)

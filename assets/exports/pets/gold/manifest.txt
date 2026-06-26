@@ -5,12 +5,12 @@ pet	source	kind	file
 bear	missing	-	-
 bunny	missing	-	-
 doggy	missing	-	-
-dragon	imported	download	dragon_gold.png
+dragon	missing	-	-
 kitty	missing	-	-
 colorado	missing	-	-
 emberling	imported	download	emberling_gold.png
 emberfox	imported	download	emberfox_gold.png
-emberimp	missing	-	-
+emberimp	imported	download	emberimp_gold.png
 emberowl	imported	download	emberowl_gold.png
 emberlion	imported	download	emberlion_gold.png
 snowflakeowl	imported	download	snowflakeowl_gold.png
@@ -36,11 +36,11 @@ colossus	missing	-	-
 djinn	missing	-	-
 
 # Missing gold model images:
+#   dragon  (was mislabeled emberling art — see _mislabeled_previews/)
 #   bear
 #   bunny
 #   doggy
 #   kitty
-#   colorado
 #   emberimp
 #   cobra
 #   elephant

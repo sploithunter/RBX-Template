@@ -9,91 +9,98 @@
 -- 3. Press Enter to execute
 
 -- Get the service
-local EggHatchingService = require(game:GetService("ReplicatedStorage").Shared.Services.EggHatchingService)
+local EggHatchingService =
+    require(game:GetService("ReplicatedStorage").Shared.Services.EggHatchingService)
 
 -- Quick test functions for command bar use:
 
 -- Test single egg
 function testEgg1()
     local testEggs = {
-        {eggType = "basic_egg", petType = "bear", variant = "basic", imageId = "generated_image", petImageId = "generated_image"}
+        {
+            eggType = "basic_egg",
+            petType = "bear",
+            variant = "basic",
+            imageId = "generated_image",
+            petImageId = "generated_image",
+        },
     }
     EggHatchingService:StartHatchingAnimation(testEggs)
 end
 
 -- Test 3 eggs with random pets
 function testEgg3()
-    local petTypes = {"bear", "bunny", "doggy", "dragon", "kitty"}
-    local variants = {"basic", "golden", "rainbow"}
+    local petTypes = { "bear", "bunny", "doggy", "dragon", "kitty" }
+    local variants = { "basic", "golden", "rainbow" }
     local testEggs = {}
-    
+
     for i = 1, 3 do
         table.insert(testEggs, {
             eggType = "basic_egg",
             petType = petTypes[math.random(1, #petTypes)],
             variant = variants[math.random(1, #variants)],
             imageId = "generated_image",
-            petImageId = "generated_image"
+            petImageId = "generated_image",
         })
     end
-    
+
     EggHatchingService:StartHatchingAnimation(testEggs)
 end
 
 -- Test 5 eggs with random pets
 function testEgg5()
-    local petTypes = {"bear", "bunny", "doggy", "dragon", "kitty"}
-    local variants = {"basic", "golden", "rainbow"}
+    local petTypes = { "bear", "bunny", "doggy", "dragon", "kitty" }
+    local variants = { "basic", "golden", "rainbow" }
     local testEggs = {}
-    
+
     for i = 1, 5 do
         table.insert(testEggs, {
             eggType = "basic_egg",
             petType = petTypes[math.random(1, #petTypes)],
             variant = variants[math.random(1, #variants)],
             imageId = "generated_image",
-            petImageId = "generated_image"
+            petImageId = "generated_image",
         })
     end
-    
+
     EggHatchingService:StartHatchingAnimation(testEggs)
 end
 
 -- Test 10 eggs with random pets
 function testEgg10()
-    local petTypes = {"bear", "bunny", "doggy", "dragon", "kitty"}
-    local variants = {"basic", "golden", "rainbow"}
+    local petTypes = { "bear", "bunny", "doggy", "dragon", "kitty" }
+    local variants = { "basic", "golden", "rainbow" }
     local testEggs = {}
-    
+
     for i = 1, 10 do
         table.insert(testEggs, {
             eggType = "basic_egg",
             petType = petTypes[math.random(1, #petTypes)],
             variant = variants[math.random(1, #variants)],
             imageId = "generated_image",
-            petImageId = "generated_image"
+            petImageId = "generated_image",
         })
     end
-    
+
     EggHatchingService:StartHatchingAnimation(testEggs)
 end
 
 -- Test 42 eggs (stress test)
 function testEgg42()
-    local petTypes = {"bear", "bunny", "doggy", "dragon", "kitty"}
-    local variants = {"basic", "golden", "rainbow"}
+    local petTypes = { "bear", "bunny", "doggy", "dragon", "kitty" }
+    local variants = { "basic", "golden", "rainbow" }
     local testEggs = {}
-    
+
     for i = 1, 42 do
         table.insert(testEggs, {
             eggType = "basic_egg",
             petType = petTypes[math.random(1, #petTypes)],
             variant = variants[math.random(1, #variants)],
             imageId = "generated_image",
-            petImageId = "generated_image"
+            petImageId = "generated_image",
         })
     end
-    
+
     EggHatchingService:StartHatchingAnimation(testEggs)
 end
 
@@ -101,32 +108,38 @@ end
 function testSpecificPet(petType, variant)
     petType = petType or "bear"
     variant = variant or "basic"
-    
+
     local testEggs = {
-        {eggType = "basic_egg", petType = petType, variant = variant, imageId = "generated_image", petImageId = "generated_image"}
+        {
+            eggType = "basic_egg",
+            petType = petType,
+            variant = variant,
+            imageId = "generated_image",
+            petImageId = "generated_image",
+        },
     }
-    
+
     EggHatchingService:StartHatchingAnimation(testEggs)
 end
 
 -- Test custom egg count
 function testCustomEggs(count)
     count = count or 5
-    
-    local petTypes = {"bear", "bunny", "doggy", "dragon", "kitty"}
-    local variants = {"basic", "golden", "rainbow"}
+
+    local petTypes = { "bear", "bunny", "doggy", "dragon", "kitty" }
+    local variants = { "basic", "golden", "rainbow" }
     local testEggs = {}
-    
+
     for i = 1, count do
         table.insert(testEggs, {
             eggType = "basic_egg",
             petType = petTypes[math.random(1, #petTypes)],
             variant = variants[math.random(1, #variants)],
             imageId = "generated_image",
-            petImageId = "generated_image"
+            petImageId = "generated_image",
         })
     end
-    
+
     EggHatchingService:StartHatchingAnimation(testEggs)
 end
 
@@ -163,5 +176,5 @@ return {
     testEgg42 = testEgg42,
     testSpecificPet = testSpecificPet,
     testCustomEggs = testCustomEggs,
-    showEggCommands = showEggCommands
-} 
+    showEggCommands = showEggCommands,
+}

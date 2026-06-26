@@ -21,7 +21,9 @@ local Players = game:GetService("Players")
 local player = Players.coloradoplays
 
 -- Wait for data to be loaded
-repeat wait() until player:FindFirstChild("Inventory")
+repeat
+    wait()
+until player:FindFirstChild("Inventory")
 
 -- Get the existing profile through the folders
 local inventoryFolder = player.Inventory
@@ -31,12 +33,12 @@ local healthPotionFolder = Instance.new("Folder")
 healthPotionFolder.Name = "health_potion"
 healthPotionFolder.Parent = inventoryFolder
 
-local speedPotionFolder = Instance.new("Folder") 
+local speedPotionFolder = Instance.new("Folder")
 speedPotionFolder.Name = "speed_potion"
 speedPotionFolder.Parent = inventoryFolder
 
 local testFolder = Instance.new("Folder")
-testFolder.Name = "test_legacy" 
+testFolder.Name = "test_legacy"
 testFolder.Parent = inventoryFolder
 
 -- Optional: Add some items to make it more realistic
@@ -44,7 +46,7 @@ local function addTestItem(folder, itemName, count)
     local itemFolder = Instance.new("Folder")
     itemFolder.Name = itemName
     itemFolder.Parent = folder
-    
+
     local countValue = Instance.new("IntValue")
     countValue.Name = "count"
     countValue.Value = count or 1
@@ -58,7 +60,7 @@ addTestItem(testFolder, "test_item_001", 5)
 
 print("✅ Created 3 orphaned bucket folders with test items:")
 print("  - health_potion (15 items)")
-print("  - speed_potion (8 items)")  
+print("  - speed_potion (8 items)")
 print("  - test_legacy (5 items)")
 print("")
 print("🎯 Now test admin cleanup!")

@@ -156,7 +156,8 @@ REACTIONS.fanfare = function(spec)
     light.Brightness = 0
     light.Shadows = false
     light.Parent = att
-    TweenService:Create(light, TweenInfo.new(0.6, Enum.EasingStyle.Quad), { Brightness = 3.5 }):Play()
+    TweenService:Create(light, TweenInfo.new(0.6, Enum.EasingStyle.Quad), { Brightness = 3.5 })
+        :Play()
 
     -- wind down: stop spawning a beat early (stragglers fade), drop the glow, then clean up
     task.delay(math.max(0.1, dur - 1.0), function()
@@ -164,7 +165,8 @@ REACTIONS.fanfare = function(spec)
             sparks.Enabled = false
         end
         if light.Parent then
-            TweenService:Create(light, TweenInfo.new(1.0, Enum.EasingStyle.Quad), { Brightness = 0 })
+            TweenService
+                :Create(light, TweenInfo.new(1.0, Enum.EasingStyle.Quad), { Brightness = 0 })
                 :Play()
         end
     end)

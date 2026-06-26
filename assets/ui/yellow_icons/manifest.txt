@@ -1,5 +1,5 @@
 assets_dir: /Users/jason/Documents/RBX-Template/assets/ui/yellow_icons
-icon_count: 53
+icon_count: 54
 
 armor_chest.png
 arrow_right.png
@@ -47,6 +47,7 @@ sand_storm.png
 scorch.png
 shield.png
 shield_broken.png
+speed.png
 star_sparkle.png
 target.png
 target_down.png

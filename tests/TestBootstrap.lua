@@ -29,13 +29,13 @@ print("🧪 Starting Game Template Tests...")
 local testLocations = {
     -- Test shared modules
     ReplicatedStorage.Shared,
-    
-    -- Test server modules  
+
+    -- Test server modules
     ServerScriptService.Server,
-    
+
     -- Test specific test files
     script.Parent.unit,
-    script.Parent.integration
+    script.Parent.integration,
 }
 
 -- Custom test reporter for better output
@@ -48,18 +48,18 @@ function TestReporter.new()
         passCount = 0,
         failCount = 0,
         skipCount = 0,
-        startTime = tick()
+        startTime = tick(),
     }, TestReporter)
 end
 
 function TestReporter:report(results)
     local endTime = tick()
     local duration = endTime - self.startTime
-    
+
     print("\n" .. ("="):rep(50))
     print("🧪 TEST RESULTS")
     print(("="):rep(50))
-    
+
     -- Count results
     for _, result in pairs(results) do
         if result.status == "Success" then
@@ -71,30 +71,43 @@ function TestReporter:report(results)
         end
         self.testCount = self.testCount + 1
     end
-    
+
     -- Print summary
     if self.failCount == 0 then
         print("✅ ALL TESTS PASSED!")
     else
         print("❌ SOME TESTS FAILED!")
     end
-    
-    print(string.format("📊 Total: %d | Passed: %d | Failed: %d | Skipped: %d", 
-        self.testCount, self.passCount, self.failCount, self.skipCount))
+
+    print(
+        string.format(
+            "📊 Total: %d | Passed: %d | Failed: %d | Skipped: %d",
+            self.testCount,
+            self.passCount,
+            self.failCount,
+            self.skipCount
+        )
+    )
     print(string.format("⏱️  Duration: %.3f seconds", duration))
-    
+
     -- Print failures
     if self.failCount > 0 then
         print("\n❌ FAILURES:")
         for _, result in pairs(results) do
             if result.status == "Failure" then
-                print(string.format("  • %s: %s", result.test or "Unknown", result.message or "No message"))
+                print(
+                    string.format(
+                        "  • %s: %s",
+                        result.test or "Unknown",
+                        result.message or "No message"
+                    )
+                )
             end
         end
     end
-    
+
     print(("="):rep(50))
-    
+
     return self.failCount == 0
 end
 
@@ -113,4 +126,4 @@ else
     else
         warn("💥 Tests completed with failures!")
     end
-end 
+end

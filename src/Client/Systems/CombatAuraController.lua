@@ -111,6 +111,9 @@ local function hideDebuffIcon(target)
         end)
     end
 end
+-- DEV GUARD (Jason): dedupe so an unresolved debuff badge warns ONCE per power id (the overhead
+-- twin of the StatusBadges guard), not every refresh.
+local warnedDebuff = {}
 local function showDebuffIcon(target, secs)
     -- `secs` = the debuff's remaining time (from refreshEnemyDebuff's Vulnerable/Root read), so the
     -- badge doesn't depend on DebuffUntil having replicated yet. `pid` may lag VulnerableUntil by a
@@ -128,6 +131,17 @@ local function showDebuffIcon(target, secs)
     else
         local badge = PetBadge.forPower(pid)
         if not badge then
+            -- A debuff is firing but its power resolves no badge: warn ONCE per power so an unwired
+            -- power / missing effect→symbol map is caught in the console instead of silently showing
+            -- just the aura with no overhead disc.
+            if not warnedDebuff[pid] then
+                warnedDebuff[pid] = true
+                warn(
+                    "[CombatAuraController] debuff badge for power '"
+                        .. tostring(pid)
+                        .. "' did not resolve (PetBadge.forPower nil — missing power or effect→symbol map); showing the aura only."
+                )
+            end
             hideDebuffIcon(target)
             return -- unknown power -> rely on the aura alone
         end

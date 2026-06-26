@@ -26,15 +26,15 @@ local DataService = require(game.ServerScriptService.Server.Services.DataService
 
 -- Known orphaned buckets to clean up
 local ORPHANED_BUCKETS = {
-    "alamantic_aluminum",  -- Development test bucket
-    "health_potion",       -- Old potion system
-    "speed_potion",        -- Old potion system
+    "alamantic_aluminum", -- Development test bucket
+    "health_potion", -- Old potion system
+    "speed_potion", -- Old potion system
 }
 
 -- Additional buckets that might be orphaned (review these)
 local REVIEW_BUCKETS = {
     "test_item",
-    "debug_tool", 
+    "debug_tool",
     "placeholder_item",
     "temp_bucket",
 }
@@ -45,21 +45,24 @@ print("==================================")
 -- Function to clean a player's orphaned buckets
 local function cleanupPlayerOrphanedBuckets(player)
     print("\n👤 CLEANING PLAYER:", player.Name)
-    
+
     -- Get player's ProfileStore profile
     local profile = DataService:GetProfile(player)
     if not profile then
         print("❌ No profile found for", player.Name)
         return
     end
-    
+
     local cleaned = false
     local bucketsCleaned = {}
-    
+
     -- Check inventory data
     if profile.Data and profile.Data.inventory then
-        print("📦 Current inventory buckets:", table.concat(getTableKeys(profile.Data.inventory), ", "))
-        
+        print(
+            "📦 Current inventory buckets:",
+            table.concat(getTableKeys(profile.Data.inventory), ", ")
+        )
+
         -- Clean known orphaned buckets
         for _, bucketName in ipairs(ORPHANED_BUCKETS) do
             if profile.Data.inventory[bucketName] then
@@ -69,17 +72,17 @@ local function cleanupPlayerOrphanedBuckets(player)
                         itemCount = itemCount + 1
                     end
                 end
-                
+
                 print("🗑️ FOUND ORPHANED BUCKET:", bucketName, "with", itemCount, "items")
                 table.insert(bucketsCleaned, bucketName .. " (" .. itemCount .. " items)")
-                
+
                 -- 🚨 UNCOMMENT THE NEXT LINE TO ACTUALLY DELETE
                 -- profile.Data.inventory[bucketName] = nil
-                
+
                 cleaned = true
             end
         end
-        
+
         -- List buckets for review
         for _, bucketName in ipairs(REVIEW_BUCKETS) do
             if profile.Data.inventory[bucketName] then
@@ -89,11 +92,17 @@ local function cleanupPlayerOrphanedBuckets(player)
                         itemCount = itemCount + 1
                     end
                 end
-                print("❓ REVIEW BUCKET:", bucketName, "with", itemCount, "items (manual review needed)")
+                print(
+                    "❓ REVIEW BUCKET:",
+                    bucketName,
+                    "with",
+                    itemCount,
+                    "items (manual review needed)"
+                )
             end
         end
     end
-    
+
     if cleaned then
         print("✅ WOULD CLEAN:", table.concat(bucketsCleaned, ", "))
         print("🚨 TO ACTUALLY DELETE: Uncomment the deletion line in the script")

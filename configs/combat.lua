@@ -445,6 +445,13 @@ return {
         -- chunk a taunt/provoke power adds (player or tank drawing aggro; wired later).
         aggro = {
             passive_per_second = 1.5,
+            -- passive threat (a tank's Threat stat holding aggro) only builds while the pet is within
+            -- this many studs of the enemy. A pet idling farther away — even inside give_up_range —
+            -- adds nothing, so the always-on decay WINS and the enemy bleeds out → disengages →
+            -- patrols. Without this, a non-fighting pet loitering across the area refilled aggro as
+            -- fast as it decayed and pinned the enemy "in combat" forever (never despawned). Keep
+            -- above attack/proximity range so an actively-fighting tank never starves mid-bite.
+            passive_range = 60,
             damage_factor = 1.0,
             decay_per_second = 4,
             disengage_threshold = 0.5,

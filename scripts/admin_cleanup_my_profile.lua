@@ -56,9 +56,9 @@ for bucketName, bucketData in pairs(profile.Data.Inventory) do
                 itemCount = itemCount + 1
             end
         end
-        
+
         print("🗑️ REMOVING INVALID BUCKET:", bucketName, "(" .. itemCount .. " items)")
-        profile.Data.Inventory[bucketName] = nil  -- 🚨 ACTUAL DELETION
+        profile.Data.Inventory[bucketName] = nil -- 🚨 ACTUAL DELETION
         table.insert(cleaned, bucketName)
     end
 end
@@ -66,7 +66,7 @@ end
 if #cleaned > 0 then
     print("✅ CLEANED BUCKETS:", table.concat(cleaned, ", "))
     print("💾 Profile will be saved automatically")
-    
+
     -- Force update the inventory folders
     local InventoryService = require(game.ServerScriptService.Server.Services.InventoryService)
     if InventoryService and InventoryService._updateBucketFolders then

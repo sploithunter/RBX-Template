@@ -17,6 +17,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 
 local Locations = require(game.ReplicatedStorage.Shared.Locations)
 local ProfileStore = Locations.getPackage("ProfileStore")
@@ -1487,17 +1488,64 @@ function DataService:MigrateProfile(profile)
     -- are free), so this is the "approaching the unique limit" alarm Jason described,
     -- now across pets/enhancements/eggs/potions/... not just pets.
     if data.Inventory then
+        -- Per-bucket SOFT storage thresholds (configs/inventory.lua buckets.*.storage_alert).
+        -- Optional: only buckets that opt in get the stack/size alarm below.
+        local bucketsCfg = {}
+        if self._configLoader then
+            local okCfg, invCfg = pcall(function()
+                return self._configLoader:LoadConfig("inventory")
+            end)
+            if okCfg and type(invCfg) == "table" and type(invCfg.buckets) == "table" then
+                bucketsCfg = invCfg.buckets
+            end
+        end
+        local who = tostring(data.PlayerName or data.UserId or "?")
         for bucketName, bucket in pairs(data.Inventory) do
             if type(bucket) == "table" then
                 local used = tonumber(bucket.used_slots) or 0
                 local total = tonumber(bucket.total_slots) or 0
                 if total > 0 and used / total >= 0.8 then
                     OpsAlert.send("unique_storage_high", {
-                        player = tostring(data.PlayerName or data.UserId or "?"),
+                        player = who,
                         bucket = bucketName,
                         used = used,
                         total = total,
                     })
+                end
+
+                -- STACK / SIZE alarm — catches stacks-free buckets (enhancements/potions/...)
+                -- whose used_slots stays 0 while their stack count + serialized size grow.
+                -- NOT a cap: drops still auto-expand; this only tells US it's getting big.
+                local alertCfg = bucketsCfg[bucketName] and bucketsCfg[bucketName].storage_alert
+                if type(alertCfg) == "table" and type(bucket.items) == "table" then
+                    local stackCount = 0
+                    for _ in pairs(bucket.items) do
+                        stackCount = stackCount + 1
+                    end
+                    -- Estimated serialized size of just this bucket's stacks (guarded — a
+                    -- JSONEncode failure must never block a load).
+                    local bytes = nil
+                    local okEnc, encoded = pcall(function()
+                        return HttpService:JSONEncode(bucket.items)
+                    end)
+                    if okEnc and type(encoded) == "string" then
+                        bytes = #encoded
+                    end
+
+                    local stackCap = tonumber(alertCfg.stack_count)
+                    local byteCap = tonumber(alertCfg.serialized_bytes)
+                    local overStacks = stackCap and stackCount >= stackCap
+                    local overBytes = byteCap and bytes and bytes >= byteCap
+                    if overStacks or overBytes then
+                        OpsAlert.send("bucket_storage_high", {
+                            player = who,
+                            bucket = bucketName,
+                            stacks = stackCount,
+                            stackCap = stackCap,
+                            bytes = bytes,
+                            byteCap = byteCap,
+                        })
+                    end
                 end
             end
         end

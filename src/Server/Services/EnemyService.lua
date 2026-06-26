@@ -37,6 +37,7 @@ local RingSeparate = require(ReplicatedStorage.Shared.Game.RingSeparate)
 local AggroTable = require(ReplicatedStorage.Shared.Game.AggroTable)
 local Allegiance = require(ReplicatedStorage.Shared.Game.Allegiance)
 local AggroLeash = require(ReplicatedStorage.Shared.Game.AggroLeash)
+local AggroModel = require(ReplicatedStorage.Shared.Game.AggroModel) -- unified aggro game (configs/aggro.lua)
 local PowerIcons = require(ReplicatedStorage.Configs:WaitForChild("power_icons")) -- world debuff disc
 local Sounds = require(ReplicatedStorage.Configs:WaitForChild("sounds")) -- positional hold/freeze SFX
 local CombatRoll = require(ReplicatedStorage.Shared.Game.CombatRoll)
@@ -59,6 +60,89 @@ local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local EnemyService = {}
 EnemyService.__index = EnemyService
 
+-- ── COMBAT TRACING (debug) ──────────────────────────────────────────────────────────
+-- Kept-in-tree diagnostics for combat: per-enemy leash/threat/chase state ([EnemyTrace] +
+-- CHASE-STUCK) and per-pet target reasoning ([PetTrace]). DEFAULT OFF — flip on at runtime
+-- from the server command bar when debugging:
+--     _G.EnemyTrace = true            -- enable all combat traces
+--     _G.EnemyTraceFilter = "imp"     -- focus on one EnemyId substring
+local TRACE_DEFAULT = false
+local TRACE_STATUS_INTERVAL = 0.5 -- seconds between per-enemy status lines (throttle the spam)
+
+local function traceEnabled()
+    if _G.EnemyTrace ~= nil then
+        return _G.EnemyTrace == true
+    end
+    return TRACE_DEFAULT
+end
+
+local function traceMatches(enemyId)
+    local f = _G.EnemyTraceFilter
+    if type(f) ~= "string" or f == "" then
+        return true
+    end
+    return type(enemyId) == "string" and string.find(enemyId, f, 1, true) ~= nil
+end
+
+local function countSet(t)
+    local n = 0
+    for _ in pairs(t) do
+        n = n + 1
+    end
+    return n
+end
+
+-- Pet-side trace ([PetTrace]): why each pet picked / held / released its target. Gated by the same
+-- _G.EnemyTrace flag; not filtered by _G.EnemyTraceFilter (that matches enemyIds, not pets).
+local function petTrace(pet, msg)
+    if not traceEnabled() then
+        return
+    end
+    print(string.format("[PetTrace] %-16s %s", pet.Name, msg or ""))
+end
+
+-- ── SPAWN ISOLATION (debug) ─────────────────────────────────────────────────────────
+-- Temporarily restrict where enemies spawn so a trace isn't polluted by other packs.
+-- Set from the server command bar to a space-separated set of tokens; a spawn is allowed
+-- only if its context (layer + area, e.g. "Hell_2 Grass") contains ALL tokens (case-
+-- insensitive). Unset/"" = no restriction (normal spawning). Example:
+--     _G.EnemySpawnOnly = "hell_2 grass"   -- only the Hell-2 grass cave fields enemies
+--     _G.EnemySpawnOnly = nil              -- back to normal
+-- Note: this gates NEW spawns only; enemies already in other areas age out on their own.
+local function spawnGateAllows(context)
+    local only = _G.EnemySpawnOnly
+    if type(only) ~= "string" or only == "" then
+        return true
+    end
+    local hay = string.lower(tostring(context or ""))
+    for token in string.gmatch(string.lower(only), "%S+") do
+        if not string.find(hay, token, 1, true) then
+            return false
+        end
+    end
+    return true
+end
+
+-- Emit a trace line for an enemy entry. `tag` is the event ("STATUS" / "DISENGAGE …"),
+-- `msg` the formatted detail. No-op unless tracing is enabled and the filter matches.
+local function trace(entry, tag, msg)
+    if not traceEnabled() then
+        return
+    end
+    local enemyId = entry and entry.enemyId or "?"
+    if not traceMatches(enemyId) then
+        return
+    end
+    print(
+        string.format(
+            "[EnemyTrace] %-22s %-16s %s",
+            tostring(enemyId) .. "#" .. tostring(entry and entry.targetId or "?"),
+            tag,
+            msg or ""
+        )
+    )
+end
+
 function EnemyService:Init()
     self._logger = self._modules and self._modules.Logger
     self._configLoader = self._modules and self._modules.ConfigLoader
@@ -70,6 +154,7 @@ function EnemyService:Init()
     self._levelingConfig = self._configLoader:LoadConfig("leveling")
     self._originConfig = (self._configLoader:LoadConfig("combat_fx") or {}).origin or {}
     self._powersConfig = self._configLoader:LoadConfig("powers") -- combat_vfx.on_hit (e.g. dodge pops)
+    self._aggroConfig = self._configLoader:LoadConfig("aggro") -- unified aggro model (flag-gated v2)
     -- Territorial engagement: the SAME area bounds ZoneTrackerService uses for the player's
     -- CurrentArea SSOT, so an enemy's home area (resolved from where it spawned) and a player's
     -- CurrentArea are compared in one id space (Spawn/Meadow/Lava/Ice/Desert).
@@ -169,6 +254,9 @@ end
 -- stays the server SoT; AggroOwner is its replicated read-only shadow so the client EnemyHud can
 -- list only the foes engaged with ITS squad (every aggro mutation goes through here).
 function EnemyService:_setAggroOwner(entry, name)
+    if name and entry.aggroPlayerName ~= name then
+        trace(entry, "ENGAGE", "acquired aggro on " .. tostring(name))
+    end
     entry.aggroPlayerName = name
     if name then
         entry.everEngaged = true -- has fought at least once -> eligible for idle-despawn when abandoned
@@ -250,12 +338,27 @@ function EnemyService:_buildLeashRegions(cfg)
             local part = resolvePart(def.part)
             if part and part:IsA("BasePart") then
                 local p, s = part.Position, part.Size
+                -- cy = the part's world Y. The footprint match is X/Z-only, but worlds STACK on the
+                -- same X/Z (Home at ~0, realms at ±2000/±4000), so without a Y gate a realm enemy
+                -- directly under Home's Desert would inherit Home's leash and get pinned to the wrong
+                -- box. _leashRegionAt uses cy to reject matches from a different world layer.
                 if def.shape == "circle" then
-                    shapes[#shapes + 1] =
-                        { kind = "circle", cx = p.X, cz = p.Z, r = math.max(s.X, s.Z) / 2 }
+                    shapes[#shapes + 1] = {
+                        kind = "circle",
+                        cx = p.X,
+                        cz = p.Z,
+                        cy = p.Y,
+                        r = math.max(s.X, s.Z) / 2,
+                    }
                 else
-                    shapes[#shapes + 1] =
-                        { kind = "box", cx = p.X, cz = p.Z, halfX = s.X / 2, halfZ = s.Z / 2 }
+                    shapes[#shapes + 1] = {
+                        kind = "box",
+                        cx = p.X,
+                        cz = p.Z,
+                        cy = p.Y,
+                        halfX = s.X / 2,
+                        halfZ = s.Z / 2,
+                    }
                 end
             elseif self._logger then
                 self._logger:Warn("Leash part not found", { region = name, part = def.part })
@@ -269,13 +372,21 @@ function EnemyService:_buildLeashRegions(cfg)
 end
 
 -- The leash region (name) whose shape-union contains a spawn position, or nil if none. Stamped on
--- the enemy at spawn so the chase step can be clamped to the SAME pen it spawned in.
+-- the enemy at spawn so the chase step can be clamped to the SAME pen it spawned in. Y-GATED: the
+-- regions are Home-world parts, and worlds stack on the same X/Z, so a match only counts when the
+-- position is on the SAME layer (within LEASH_Y_BAND of the region's Y). This stops realm enemies
+-- (heaven/hell, Y ≈ ±2000/±4000) from inheriting Home's footprints and parking on a phantom leash.
+local LEASH_Y_BAND = 800 -- < the ~2000-stud world spacing, > any single world's vertical extent
 function EnemyService:_leashRegionAt(pos)
     if not pos then
         return nil
     end
     for name, shapes in pairs(self._leashRegions) do
-        if EnemyLeash.inside(pos.X, pos.Z, shapes) then
+        local regionY = shapes[1] and shapes[1].cy
+        if
+            (regionY == nil or math.abs(pos.Y - regionY) <= LEASH_Y_BAND)
+            and EnemyLeash.inside(pos.X, pos.Z, shapes)
+        then
             return name
         end
     end
@@ -315,20 +426,196 @@ function EnemyService:AddAggro(model, key, amount)
     local idVal = model and model:FindFirstChild("BreakableID")
     local entry = idVal and self._enemies[idVal.Value]
     if entry and entry.aggro then
+        -- AGGRO MODEL v2: scale the enemy's threat by the enemy-side dial, and splash a fraction to
+        -- its co-located band (hit one, the team notices). Flag-off = unchanged.
+        local v2 = self:_aggroV2()
+        if v2 then
+            amount = amount * AggroModel.threatMult(v2, "enemy")
+            self:_splashEnemyBand(entry, key, amount, v2)
+        end
         AggroTable.add(entry.aggro, key, amount)
-        -- BEING ATTACKED ACQUIRES AGGRO (Jason: bunny fought imps from beyond the
-        -- owner's perception range and "they don't care" — perception watched the
-        -- PLAYER only). Damage is its own acquisition path: an unaware enemy that
-        -- takes a hit wakes on the attacking pet's OWNER, regardless of how far
-        -- away that player is standing. Perception stays the ambient path.
-        if not entry.aggroPlayerName and typeof(key) == "Instance" and key.Parent then
-            local owner = game:GetService("Players"):FindFirstChild(key.Parent.Name)
-            -- ONRAMP + TERRITORIAL: only retaliate if the attacking pet's owner is at/above
-            -- min_engage_level AND standing in this enemy's area.
-            if owner and self:_engagesCombat(owner) and self:_inTerritory(entry, owner) then
-                self:_setAggroOwner(entry, owner.Name)
-                entry.meander = nil
-                entry.home = nil -- re-home wherever this fight leaves it
+        -- BEING ATTACKED ACQUIRES AGGRO (Jason: bunny fought imps from beyond the owner's perception
+        -- range and "they don't care" — perception watched the PLAYER only). Damage is its own
+        -- acquisition path: a hit wakes the enemy on the attacking pet's OWNER. Perception stays ambient.
+        self:_acquireFromAttacker(entry, key)
+    end
+end
+
+-- Wake an enemy onto the attacking pet's OWNER (set aggroPlayerName) if it isn't already engaged and
+-- the owner is combat-eligible + in this enemy's territory. Used by a direct hit AND by band splash,
+-- so attacking one patrol member pulls the whole pack into the fight (not just a silent threat number).
+function EnemyService:_acquireFromAttacker(entry, key)
+    if entry.aggroPlayerName or typeof(key) ~= "Instance" or not key.Parent then
+        return
+    end
+    local owner = Players:FindFirstChild(key.Parent.Name)
+    if owner and self:_engagesCombat(owner) and self:_inTerritory(entry, owner) then
+        self:_setAggroOwner(entry, owner.Name)
+        entry.meander = nil
+        entry.home = nil -- re-home wherever this fight leaves it
+    end
+end
+
+-- ── UNIFIED AGGRO MODEL (configs/aggro.lua · docs/AGGRO_MODEL.md) ─────────────────────
+-- Phase 1: pet-side threat tables (keyed by enemy targetId) drive pet targeting + a per-pet
+-- InCombat stance; damage on BOTH sides feeds threat with team splash + a proximity seed, all via
+-- the pure AggroModel math. Flag-gated by aggro.enabled — off = the legacy aggroPlayerName path.
+
+-- Returns the aggro config IFF v2 is enabled, else nil (the single gate every hook checks).
+-- `_G.AggroV2` (set in the server command bar) overrides configs/aggro.lua `enabled` for live A/B:
+--   _G.AggroV2 = true   -- model on    _G.AggroV2 = false  -- off    _G.AggroV2 = nil  -- use config
+function EnemyService:_aggroV2()
+    local cfg = self._aggroConfig
+    if not cfg then
+        return nil
+    end
+    local override = _G.AggroV2
+    local on
+    if override ~= nil then
+        on = override == true
+    else
+        on = cfg.enabled == true
+    end
+    return on and cfg or nil
+end
+
+-- A pet's threat table toward enemies, parked on its weak-keyed _petCombat record so it GCs with
+-- the pet. Keyed by enemy targetId (matches _assignPetTargets candidate ids + TargetID values).
+function EnemyService:_petAggroTable(pet)
+    local pc = self._petCombat[pet]
+    if not pc then
+        pc = {}
+        self._petCombat[pet] = pc
+    end
+    if not pc.aggro then
+        pc.aggro = AggroTable.new()
+    end
+    return pc.aggro
+end
+
+-- Attacking one enemy rouses its OWN patrol band (never a second group), and only the members that
+-- can NOTICE it — within notice_radius AND (notice_los) with a clear line of sight to the victim. A
+-- band-mate behind cover / over a hill / too far stays asleep, so you can pick off isolated enemies.
+function EnemyService:_splashEnemyBand(entry, key, directAmount, cfg)
+    if not entry.pos or not entry.patrolBand then
+        return -- lone / non-band enemy has no team to notice
+    end
+    local frac = AggroModel.splashThreat(cfg, "enemy", directAmount)
+    if frac <= 0 then
+        return
+    end
+    local radius = (cfg.base and cfg.base.notice_radius) or 50
+    local los = (cfg.base and cfg.base.notice_los) ~= false
+    for _, other in pairs(self._enemies) do
+        if
+            other ~= entry
+            and other.patrolBand == entry.patrolBand -- SAME band only — the hard group boundary
+            and other.aggro
+            and other.pos
+            and not other.aggroPlayerName -- already in the fight: skip (and skip the raycast)
+            and (other.pos - entry.pos).Magnitude <= radius
+            and (not los or self:_canNotice(other, entry))
+        then
+            AggroTable.add(other.aggro, key, frac)
+            self:_acquireFromAttacker(other, key) -- the pack turns
+        end
+    end
+end
+
+-- Can `observer` see the attack on `victim`? A raycast victim→observer that hits world geometry first
+-- means cover is between them → no notice. Enemies/pets/characters are excluded so only the map blocks.
+-- Throttled per observer (raycasts are the cost; AddAggro is hot) — re-checks LoS at most ~4×/sec.
+function EnemyService:_canNotice(observer, victim)
+    local origin, target = observer.pos, victim and victim.pos
+    if not (origin and target) then
+        return false
+    end
+    local t = os.clock()
+    if observer._noticeAt and (t - observer._noticeAt) < 0.25 then
+        return observer._noticed == true
+    end
+    observer._noticeAt = t
+    local exclude = { self:_enemiesFolder() }
+    local pets = Workspace:FindFirstChild("PlayerPets")
+    if pets then
+        exclude[#exclude + 1] = pets
+    end
+    for _, pl in ipairs(Players:GetPlayers()) do
+        if pl.Character then
+            exclude[#exclude + 1] = pl.Character
+        end
+    end
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = exclude
+    observer._noticed = Workspace:Raycast(origin, target - origin, params) == nil
+    return observer._noticed
+end
+
+-- Splash a fraction of a hit onto the struck PET's nearby squad-mates' tables (toward the enemy).
+function EnemyService:_splashPetSquad(pet, folder, enemyId, directAmount, cfg)
+    local frac = AggroModel.splashThreat(cfg, "pet", directAmount)
+    if frac <= 0 or not folder then
+        return
+    end
+    local radius = (cfg.base and cfg.base.splash_radius) or 40
+    local pfs = self:_petFollowService()
+    local pp = self:_petPosition(pet, pfs)
+    for _, mate in ipairs(folder:GetChildren()) do
+        if
+            mate ~= pet
+            and mate:IsA("Model")
+            and mate.PrimaryPart
+            and not mate:GetAttribute("CombatDowned")
+            and (self:_petPosition(mate, pfs) - pp).Magnitude <= radius
+        then
+            AggroTable.add(self:_petAggroTable(mate), enemyId, frac)
+        end
+    end
+end
+
+-- Per-tick pet-aggro upkeep (v2): decay each pet's table, add a proximity seed for nearby hostile
+-- enemies (so a fight starts before first hit + a parked/leaving foe decays off → farming resumes),
+-- and recompute each pet's hysteresis `engaged` flag that the InCombat stance reads.
+function EnemyService:_petAggroPass(now, dt, cfg)
+    local pf = Workspace:FindFirstChild("PlayerPets")
+    if not pf then
+        return
+    end
+    local pfs = self:_petFollowService()
+    local seedRadius = (cfg.base and cfg.base.seed_radius) or 60
+    local decayRate = AggroModel.decayRate(cfg, "pet", 1)
+    local seed = AggroModel.seedThreat(cfg, "pet", dt)
+    for _, folder in ipairs(pf:GetChildren()) do
+        local player = Players:FindFirstChild(folder.Name)
+        for _, pet in ipairs(folder:GetChildren()) do
+            if pet:IsA("Model") and pet.PrimaryPart and not pet:GetAttribute("CombatDowned") then
+                local tbl = self:_petAggroTable(pet)
+                AggroTable.decay(tbl, dt, decayRate)
+                if seed > 0 then
+                    local pp = self:_petPosition(pet, pfs)
+                    for tid, entry in pairs(self._enemies) do
+                        if
+                            entry.pos
+                            and entry.model
+                            and entry.model.Parent
+                            and (entry.model:GetAttribute("HP") or 0) > 0
+                            and self:_petHostileToEnemy(pet, entry, player)
+                            and (entry.pos - pp).Magnitude <= seedRadius
+                        then
+                            AggroTable.add(tbl, tid, seed)
+                        end
+                    end
+                end
+                -- engaged = does this pet hold threat on a LIVE enemy? Filtering to live targetIds
+                -- means stale threat toward a dead/despawned enemy can't keep the pet "in combat" —
+                -- so the instant the last foe dies, InCombat clears and farming/music resume (no
+                -- waiting for the dead-enemy threat to slowly decay off).
+                local pc = self._petCombat[pet]
+                local _, top = AggroTable.top(tbl, 0, function(k)
+                    return self._enemies[k] ~= nil
+                end)
+                pc.engaged = AggroModel.engaged(top or 0, pc.engaged, cfg)
             end
         end
     end
@@ -645,12 +932,24 @@ end
 
 -- Quietly retire an enemy that's been idle too long (engagement timer expired) — NO loot, no death
 -- FX, it just leaves the field. Releases any pets still pointed at it and untracks it.
+-- Zero a dead/despawned enemy out of every pet's threat table the instant it's gone, so no pet stays
+-- "engaged" on a target that no longer exists (no waiting for stale threat to decay). v2-only in
+-- effect: pc.aggro is nil unless v2 populated it, so this is a no-op under the legacy path.
+function EnemyService:_clearEnemyFromPetThreat(targetId)
+    for _, pc in pairs(self._petCombat) do
+        if pc.aggro then
+            AggroTable.clear(pc.aggro, targetId)
+        end
+    end
+end
+
 function EnemyService:_despawnEnemy(targetId)
     local entry = self._enemies[targetId]
     if not entry then
         return
     end
     self._enemies[targetId] = nil
+    self:_clearEnemyFromPetThreat(targetId)
     self:_releasePets(targetId)
     if entry.model then
         entry.model:Destroy()
@@ -663,6 +962,7 @@ function EnemyService:_onDefeated(targetId)
         return
     end
     self._enemies[targetId] = nil
+    self:_clearEnemyFromPetThreat(targetId)
     local model = entry.model
 
     -- Award loot to every contributor (the pet damage tick records UserId -> amount in Contrib).
@@ -1027,6 +1327,17 @@ function EnemyService:_hitPet(pet, def, now, eng, enemyLevel, petLevel, enemyMod
     dmg = dmg * roll.multiplier
     -- Level scaling: a higher-level enemy hits harder; out-level it and it softens.
     dmg = dmg * LevelScale.factor(enemyLevel or 1, petLevel or 1, self._levelingConfig.scale)
+    -- AGGRO MODEL v2: a landed hit builds the PET's threat toward this enemy (pre-mitigation, so a
+    -- shielded tank still aggros its attacker), splashing a little to nearby squad-mates. Flag-off = skip.
+    local v2 = self:_aggroV2()
+    if v2 and enemyModel then
+        local eid = enemyModel:FindFirstChild("BreakableID")
+        if eid then
+            local direct = AggroModel.threatFromDamage(v2, "pet", dmg)
+            AggroTable.add(self:_petAggroTable(pet), eid.Value, direct)
+            self:_splashPetSquad(pet, pet.Parent, eid.Value, direct, v2)
+        end
+    end
     pet:SetAttribute("LastHitCrit", roll.crit) -- for floating-text feedback (later)
     -- Defensive stat: the pet's Defense (its own + any active DefenseBuff from a power
     -- like Bulwark) mitigates the hit on the armor curve. A real tank survives longer.
@@ -1331,6 +1642,9 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         and Workspace:FindFirstChild("PlayerPets")
         and Workspace.PlayerPets:FindFirstChild(player.Name)
     if not player or not petsFolder then
+        if entry.aggroPlayerName then
+            trace(entry, "DISENGAGE", "squad_gone (player left or pets folder missing)")
+        end
         self:_releasePets(targetId)
         self:_setAggroOwner(entry, nil) -- player/squad gone: back to loitering
         return
@@ -1350,6 +1664,15 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         end
     end
     if nearestDist > (aggroCfg.give_up_range or 300) then
+        trace(
+            entry,
+            "DISENGAGE",
+            string.format(
+                "give_up_range  nearDist=%.0f > give_up=%d (hard teleport/world-hop cutoff)",
+                nearestDist,
+                aggroCfg.give_up_range or 300
+            )
+        )
         self:_releasePets(targetId)
         self:_setAggroOwner(entry, nil)
         return
@@ -1377,18 +1700,27 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
             -- (pets self-select their target in _assignPetTargets; the enemy no longer
             -- force-claims them — it just builds its aggro on the nearby squad here.)
             valid[pet] = true
-            AggroTable.add(
-                entry.aggro,
-                pet,
-                self:_petThreat(pet) * (aggroCfg.passive_per_second or 1.5) * (dt or 0.15)
-            )
+            -- Distance to this pet (server-truth positions) gates BOTH the passive build and the
+            -- proximity floor below — compute it once.
+            local d = (self:_petPosition(pet, pfs) - ePos).Magnitude
+            -- PASSIVE THREAT (the tank's Threat stat holding aggro) only builds while the pet is
+            -- genuinely NEAR. A pet idling across the area — still inside give_up_range but not
+            -- actually fighting — must NOT keep refilling aggro as fast as it decays; that is what
+            -- pinned abandoned enemies "in combat" forever (AggroOwner never cleared → never
+            -- disengaged, never despawned). Past passive_range only decay runs, so the table bleeds
+            -- to zero → targetPet nil → the disengage below fires → patrol. (Jason: the always-on
+            -- decay must WIN whenever nothing is actually engaging the enemy.)
+            if d <= (aggroCfg.passive_range or 60) then
+                AggroTable.add(
+                    entry.aggro,
+                    pet,
+                    self:_petThreat(pet) * (aggroCfg.passive_per_second or 1.5) * (dt or 0.15)
+                )
+            end
             -- Proximity floor: a pet within range (and not stealthed) keeps a baseline
             -- aggro so the enemy never disengages from something right next to it.
-            if not pet:GetAttribute("Stealth") then
-                local d = (self:_petPosition(pet, pfs) - ePos).Magnitude
-                if d <= proxRange then
-                    AggroTable.reinforce(entry.aggro, pet, proxFloor)
-                end
+            if not pet:GetAttribute("Stealth") and d <= proxRange then
+                AggroTable.reinforce(entry.aggro, pet, proxFloor)
             end
         end
     end
@@ -1424,10 +1756,67 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     -- valid target left). Within range the enemy keeps chasing as long as ANY threat remains, and the
     -- distance-scaled decay above is what eventually bleeds it to zero if you keep your distance —
     -- pure decay, no hard "locked on" zone.
-    local targetPet = AggroTable.top(entry.aggro, aggroCfg.disengage_threshold or 0.5, function(k)
+    local validTop = function(k)
         return valid[k] == true
-    end)
+    end
+    local targetPet = AggroTable.top(entry.aggro, aggroCfg.disengage_threshold or 0.5, validTop)
+
+    -- TRACE: throttled snapshot of the leash state so you can watch threat bleed toward the
+    -- disengage threshold in real time (the usual cause of a mid-fight retreat). topThreat is
+    -- the REAL current top (minValue 0), so you see it cross below disengage_threshold.
+    if traceEnabled() then
+        entry.nextTrace = entry.nextTrace or 0
+        if now >= entry.nextTrace then
+            entry.nextTrace = now + TRACE_STATUS_INTERVAL
+            local _, topAny = AggroTable.top(entry.aggro, 0, validTop)
+            local decayMult = AggroLeash.decayMult(nearestDist, inTerritory, aggroCfg)
+            local disengage = aggroCfg.disengage_threshold or 0.5
+            local stuckT = entry.stuckTime or 0
+            -- Only print STATUS for enemies actually AT RISK of leaving — otherwise a healthy pack
+            -- (threat ballooning, decay 1×) floods the log and buries the DISENGAGE/DESPAWN lines.
+            -- At risk = bleeding faster than base, threat near the disengage floor, out of its home
+            -- area, or NOT closing on its target (stuck timer ticking → heading for stuck-despawn).
+            local atRisk = decayMult > 1
+                or (topAny or 0) < disengage * 20
+                or not inTerritory
+                or stuckT > 1
+            if atRisk then
+                trace(
+                    entry,
+                    "STATUS",
+                    string.format(
+                        "nearDist=%.0f  topThreat=%.2f (disengage<%.2f)  decay=%gx (per-s=%g)  %s  stuck=%.1fs  validPets=%d",
+                        nearestDist,
+                        topAny or 0,
+                        disengage,
+                        decayMult,
+                        (aggroCfg.decay_per_second or 4) * decayMult,
+                        inTerritory and "inHomeArea" or "LEFT-home-area",
+                        stuckT,
+                        countSet(valid)
+                    )
+                )
+            end
+        end
+    end
+
     if AggroLeash.shouldDrop(nearestDist, targetPet ~= nil, aggroCfg) then
+        if traceEnabled() then
+            local _, topAny = AggroTable.top(entry.aggro, 0, validTop)
+            trace(
+                entry,
+                "DISENGAGE",
+                string.format(
+                    "threat_bled  topThreat=%.2f <= disengage=%.2f  nearDist=%.0f  decay=%gx  %s  validPets=%d",
+                    topAny or 0,
+                    aggroCfg.disengage_threshold or 0.5,
+                    nearestDist,
+                    AggroLeash.decayMult(nearestDist, inTerritory, aggroCfg),
+                    inTerritory and "inHomeArea" or "LEFT-home-area",
+                    countSet(valid)
+                )
+            )
+        end
         self:_releasePets(targetId)
         self:_setAggroOwner(entry, nil)
         return
@@ -1492,7 +1881,9 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         wallAhead = true
         groundedY = ePos.Y -- too tall to scale: hold at the base (still faces + attacks below)
     end
+    local moved = false
     if not wallAhead and (math.abs(np.x - ePos.X) > 1e-3 or math.abs(np.z - ePos.Z) > 1e-3) then
+        moved = true
         local newPos = Vector3.new(np.x, groundedY, np.z)
         -- LEASH: an enemy can chase up to the edge of the area it spawned in, but no further — a
         -- hard wall at the area footprint. Stops desert foes from trailing the player across the
@@ -1530,7 +1921,45 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
         entry.stuckTime = 0 -- in bite range or still closing the gap = making progress
     else
         entry.stuckTime = (entry.stuckTime or 0) + (dt or 0.15)
+        -- CHASE-STUCK diagnostic: an engaged enemy that isn't closing. Dumps WHY (throttled): a wall it
+        -- can't climb (wallAhead/rise), zero move speed (rooted/held CC), a leash clamp, or it stepped
+        -- but the target out-ran it (moved=true yet not closing).
+        if traceEnabled() then
+            entry._chaseTraceAt = entry._chaseTraceAt or 0
+            if now >= entry._chaseTraceAt then
+                entry._chaseTraceAt = now + 0.5
+                trace(
+                    entry,
+                    "CHASE-STUCK",
+                    string.format(
+                        "distToTarget=%.0f atk=%.0f move=%.0f moved=%s wallAhead=%s rise=%.1f (climb=%d jump=%d) flyer=%s leash=%s stuck=%.1f",
+                        distToTarget,
+                        atk,
+                        moveSpeed,
+                        tostring(moved),
+                        tostring(wallAhead),
+                        rise,
+                        eng.ground_climb_max or 10,
+                        eng.ground_jump_max or 28,
+                        tostring(flyer),
+                        tostring(entry.leashRegion),
+                        entry.stuckTime
+                    )
+                )
+            end
+        end
         if entry.stuckTime >= (eng.stuck_disengage_seconds or 8) then
+            trace(
+                entry,
+                "DESPAWN",
+                string.format(
+                    "stuck  distToTarget=%.0f (atk=%.0f) not closing for %.1fs >= %.0fs — likely leash-walled (target past home-area edge)",
+                    distToTarget,
+                    atk,
+                    entry.stuckTime,
+                    eng.stuck_disengage_seconds or 8
+                )
+            )
             self:_despawnEnemy(targetId) -- can't reach it + would just re-loop: remove it (frees InCombat)
             return
         end
@@ -2461,8 +2890,10 @@ function EnemyService:_assignPetTargets(eng)
                 and tt
             then
                 local chosen
+                local branch = "none" -- [PetTrace] why this pet ends up where it does
                 if assist and assist ~= 0 and live[assist] then
                     chosen = assist -- player-directed (assist target always wins)
+                    branch = "assist"
                 else
                     -- per-pet target priority (TargetPriority): build the in-range candidates with
                     -- the data the modes need, then pick by the pet's mode (attr -> config default).
@@ -2546,12 +2977,38 @@ function EnemyService:_assignPetTargets(eng)
                             candidates = ground
                         end
                     end
-                    local mode = pet:GetAttribute("TargetPriority")
-                    if not TargetPriority.isMode(mode) then
-                        mode = (eng.target_priority and eng.target_priority.default)
-                            or TargetPriority.DEFAULT
+                    -- AGGRO MODEL v2: this pet attacks the enemy it has the most THREAT on (its own
+                    -- decaying table), among the reachable candidates and above exit_floor. Only when
+                    -- it has no real threat yet do we fall back to the priority modes — so a fresh pet
+                    -- still initiates on the nearest, then threat takes over.
+                    local v2 = self:_aggroV2()
+                    if v2 then
+                        local idset = {}
+                        for _, cand in ipairs(candidates) do
+                            idset[cand.id] = true
+                        end
+                        chosen = AggroTable.top(
+                            self:_petAggroTable(pet),
+                            (v2.base and v2.base.exit_floor) or 1,
+                            function(k)
+                                return idset[k] == true
+                            end
+                        )
+                        if chosen then
+                            branch = "threat"
+                        end
                     end
-                    chosen = TargetPriority.pick(candidates, mode)
+                    if not chosen then
+                        local mode = pet:GetAttribute("TargetPriority")
+                        if not TargetPriority.isMode(mode) then
+                            mode = (eng.target_priority and eng.target_priority.default)
+                                or TargetPriority.DEFAULT
+                        end
+                        chosen = TargetPriority.pick(candidates, mode)
+                        if chosen then
+                            branch = "fallback"
+                        end
+                    end
                 end
                 if chosen then
                     if tt.Value ~= "Enemy" or tid.Value ~= chosen then
@@ -2568,8 +3025,45 @@ function EnemyService:_assignPetTargets(eng)
                     -- hanging back, or a melee with no enemy in range) -> COMBAT STANCE: stop mining
                     -- and hold formation. Auto-farm assignment is paused too, so it stays put until
                     -- the fight ends (InCombat clears -> farming resumes).
+                    branch = (player and player:GetAttribute("InCombat")) and "hold" or "release"
                     if tid.Value ~= 0 then
                         tid.Value = 0
+                    end
+                end
+                -- [PetTrace] (throttled): why this pet is doing what it's doing. The key diagnostic for
+                -- "they won't close" is branch=hold with topThreat>0 on an enemy at d > its reach — it
+                -- HAS aggro on a foe but the reach gate (kiters cap at attack_range) excluded it.
+                if
+                    traceEnabled()
+                    and (branch ~= "none" or (player and player:GetAttribute("InCombat")))
+                then
+                    local tbl = self:_petAggroTable(pet)
+                    local pc = self._petCombat[pet]
+                    pc._petTraceAt = pc._petTraceAt or 0
+                    local tnow = os.clock()
+                    if tnow >= pc._petTraceAt then
+                        pc._petTraceAt = tnow + 0.5
+                        local pp2 = self:_petPosition(pet, pfs)
+                        local topId, topV = AggroTable.top(tbl, 0, function(k)
+                            return live[k] ~= nil
+                        end)
+                        local function distTo(id)
+                            local e = id and live[id]
+                            return (e and e.pos) and (e.pos - pp2).Magnitude or -1
+                        end
+                        petTrace(
+                            pet,
+                            string.format(
+                                "branch=%-8s target=%s d=%.0f | topThreat=%.1f on=%s d=%.0f | role=%s",
+                                branch,
+                                tostring(chosen or 0),
+                                distTo(chosen),
+                                topV or 0,
+                                tostring(topId or 0),
+                                distTo(topId),
+                                tostring(pet:GetAttribute("PetRole") or pet:GetAttribute("PetType"))
+                            )
+                        )
                     end
                 end
             end
@@ -3363,6 +3857,7 @@ function EnemyService:_updateBand(part, player, cfg, now, dt)
                 local res = self:SpawnEnemy(player, spec.id, {
                     position = Vector3.new(sx, band.anchor.Y + 3, sz),
                     def = spec.def, -- synthesized pet-invader def (nil for normal element packs)
+                    area = self:_caveOrigin(part), -- reliable area token for the debug spawn gate
                 })
                 if res and res.ok and res.targetId then
                     local e = self._enemies[res.targetId]
@@ -3476,7 +3971,12 @@ function EnemyService:_patrolTick(now, dt)
     for folder, player in pairs(activeFolders) do
         for _, part in ipairs(folder:GetChildren()) do
             if part:IsA("BasePart") and part.Name:match("^BaddieSpawner") then
-                self:_updateBand(part, player, cfg, now, dt)
+                -- DEBUG spawn isolation: skip caves outside _G.EnemySpawnOnly (layer + cave origin,
+                -- e.g. "Hell_2 Grass"). No-op unless the flag is set.
+                local ctx = folder.Name .. " " .. (self:_caveOrigin(part) or part.Name)
+                if spawnGateAllows(ctx) then
+                    self:_updateBand(part, player, cfg, now, dt)
+                end
             end
         end
     end
@@ -3512,6 +4012,15 @@ function EnemyService:_combatTick(dt)
             then
                 -- never-engaged loiterers persist as ambiance (the combat-onramp preview for
                 -- low-level players); the spawner's max_alive still caps how many can pile up.
+                trace(
+                    entry,
+                    "DESPAWN",
+                    string.format(
+                        "idle  fought-then-abandoned %.0fs > %.0fs (post-retreat cleanup, not the retreat itself)",
+                        now - (entry.lastActiveAt or now),
+                        idleDespawn
+                    )
+                )
                 self:_despawnEnemy(targetId)
             end
             if self._enemies[targetId] then -- still alive (not just despawned)
@@ -3520,15 +4029,39 @@ function EnemyService:_combatTick(dt)
             end
         end
     end
+    -- AGGRO MODEL v2: refresh per-pet threat tables (decay + proximity seed + engaged flag) before
+    -- deriving the stance below. Runs after the enemy loop so entry.pos is current this tick.
+    local v2 = self:_aggroV2()
+    if v2 then
+        self:_petAggroPass(now, dt, v2)
+    end
     -- COMBAT STANCE: mark each player whose squad has >=1 enemy aggroed on it as InCombat, so
     -- auto-farm pauses (AutoTargetService) and non-engaged pets hold formation instead of mining
     -- (below). Computed AFTER the enemy loop so aggroPlayerName is current; cleared the moment no
     -- enemy is angry at them, so farming auto-resumes.
     if eng.pause_farm_in_combat ~= false then
         local fighting = {}
-        for _, entry in pairs(self._enemies) do
-            if entry.aggroPlayerName then
-                fighting[entry.aggroPlayerName] = true
+        if v2 then
+            -- v2: InCombat is DERIVED from real per-pet threat — a player fights only if one of their
+            -- pets actually holds an enemy above engage_floor. A parked, non-damaging invader decays
+            -- off and farming resumes on its own (the farm-lock fix), no sticky player flag.
+            local pf = Workspace:FindFirstChild("PlayerPets")
+            if pf then
+                for _, folder in ipairs(pf:GetChildren()) do
+                    for _, pet in ipairs(folder:GetChildren()) do
+                        local pc = pet:IsA("Model") and self._petCombat[pet]
+                        if pc and pc.engaged then
+                            fighting[folder.Name] = true
+                            break
+                        end
+                    end
+                end
+            end
+        else
+            for _, entry in pairs(self._enemies) do
+                if entry.aggroPlayerName then
+                    fighting[entry.aggroPlayerName] = true
+                end
             end
         end
         for _, pl in ipairs(Players:GetPlayers()) do
@@ -3595,6 +4128,17 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
         position = opts.position -- absolute placement (map spawners), not player-relative
     end
 
+    -- DEBUG spawn isolation (universal backstop for ALL spawn paths — bands, waves, admin):
+    -- block spawns outside _G.EnemySpawnOnly. Context = player's layer + area (opts.area is the
+    -- reliable cave origin when a band supplied it; else resolved from the spawn position).
+    local gateArea = (opts and opts.area) or self:_areaAt(position)
+    local gateCtx = tostring(player:GetAttribute("CurrentLayer") or "")
+        .. " "
+        .. tostring(gateArea or "")
+    if not spawnGateAllows(gateCtx) then
+        return { ok = false, reason = "spawn_gated" }
+    end
+
     self._nextId += 1
     local targetId = self._nextId
     local model = self:_buildModel(enemyId, def, position, targetId)
@@ -3615,6 +4159,7 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
     end
     self._enemies[targetId] = {
         model = model,
+        targetId = targetId, -- own id back-ref (combat/trace identify the enemy without a reverse lookup)
         enemyId = enemyId,
         def = def, -- the resolved def (config OR a synthesized pet-invader def); combat reads this
         pos = position,

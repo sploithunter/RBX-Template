@@ -7,30 +7,30 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local function testSpeedPreset(presetName, eggCount)
     print("\n🚀 TESTING SPEED PRESET:", presetName:upper())
     print("=" .. string.rep("=", 50))
-    
+
     -- Load and modify the configuration
     local hatchingConfig = require(ReplicatedStorage.Configs.egg_hatching)
     hatchingConfig.current_preset = presetName
-    
+
     print("⚡ Speed multiplier:", hatchingConfig.helpers:get_speed_multiplier())
     print("📊 Adjusted timings:")
     print("  🔄 Shake:", hatchingConfig.helpers:get_adjusted_timing("shake_duration") .. "s")
     print("  💥 Flash:", hatchingConfig.helpers:get_adjusted_timing("flash_duration") .. "s")
     print("  🎭 Reveal:", hatchingConfig.helpers:get_adjusted_timing("reveal_duration") .. "s")
     print("  ⏳ Stagger:", hatchingConfig.helpers:get_adjusted_timing("stagger_delay") .. "s")
-    
+
     -- Create test eggs
     local testEggs = {}
     for i = 1, eggCount do
         table.insert(testEggs, {
             eggType = "basic_egg",
-            petType = "bear", 
+            petType = "bear",
             variant = "basic",
             imageId = "generated_image",
-            petImageId = "generated_image"
+            petImageId = "generated_image",
         })
     end
-    
+
     -- Start the animation
     local EggHatchingService = require(ReplicatedStorage.Shared.Services.EggHatchingService)
     EggHatchingService:StartHatchingAnimation(testEggs)

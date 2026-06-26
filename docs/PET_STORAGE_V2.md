@@ -73,6 +73,9 @@ serial census, the rest static from egg defs).
 - Transport v2 (later, same API): push (Discord webhook / external sink).
 - Wired alerts:
   - `unique_storage_high` — on profile load when uniqueCount ≥ 80% of cap.
+  - `bucket_storage_high` — on profile load when a stacks-free bucket's stack count or
+    estimated serialized size crosses its `buckets.*.storage_alert` threshold (catches
+    enhancements/potions growth that `used_slots` is blind to; soft alert, never a cap).
   - `storage_truncated` — whenever a hatch batch is cut by the unique cap.
 
 ## Explicitly unchanged

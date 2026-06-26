@@ -3116,7 +3116,7 @@ function InventoryPanel:_load3DPetModel(viewport, camera, item)
             -- Calculate camera position
             local modelSize = modelClone:GetExtentsSize()
             local zoomMultiplier = petData.viewport_zoom or 1.5
-            local baseDistance = math.max(modelSize.X, modelSize.Y, modelSize.Z) * 1.2 -- Slightly closer for inventory
+            local baseDistance = math.max(modelSize.X, modelSize.Y, modelSize.Z) * 1.45 -- card framing margin (Jason: 1.2 crowded beefy pets)
             local distance = baseDistance / zoomMultiplier
 
             -- Safety clamp

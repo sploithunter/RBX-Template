@@ -39,6 +39,10 @@ local PetBadge = require(script.Parent.PetBadge)
 
 local StatusBadges = {}
 
+-- DEV GUARD (Jason): dedupe so a misconfigured badge warns ONCE per descriptor key per session
+-- (see the warn in resolveEffects) instead of every 0.2s reconcile.
+local warnedBadge = {}
+
 -- One badge cell. Same dimensions for every strip so pet + enemy rows read identically.
 local BADGE_PX = 30
 local BADGE_GAP = 3
@@ -56,8 +60,10 @@ function StatusBadges.resolveEffects(EFFECTS, sources, now)
             -- icon (no ring) when nothing tagged it.
             local icon = e.icon
             local ringImg, ringColor
+            local pid
             if e.powerIdAttr then
-                local badge = PetBadge.forPower(src:GetAttribute(e.powerIdAttr))
+                pid = src:GetAttribute(e.powerIdAttr)
+                local badge = PetBadge.forPower(pid)
                 local disc = badge and POWER_ICONS.discFor(badge.element, badge.symbol)
                 if disc then
                     icon = disc
@@ -71,6 +77,35 @@ function StatusBadges.resolveEffects(EFFECTS, sources, now)
             if not ringImg and e.ringElement then
                 ringImg = POWER_ICONS.rings[e.ringShape or "aura"] or POWER_ICONS.rings.aura
                 ringColor = POWER_ICONS.elementColor3(e.ringElement, "dark")
+            end
+            -- DEV GUARD (Jason): the instant a badge actually FIRES with no resolved disc — and it
+            -- isn't a deliberate text chip (`labelOnly`) — warn ONCE naming the descriptor + power id.
+            -- An unwired descriptor (missing powerIdAttr, like the old enemy "hex") or a missing/bad
+            -- badge asset is caught immediately in the console instead of silently drawing a
+            -- placeholder. Skips the powerId-lag frame (pid stamped a frame after the until attr).
+            local firing = (e.untilAttr and (src:GetAttribute(e.untilAttr) or 0) > now)
+                or (e.poolAttr and (src:GetAttribute(e.poolAttr) or 0) > 0)
+            if
+                firing
+                and not e.labelOnly
+                and not (icon and icon ~= "")
+                and not warnedBadge[e.key]
+                and not (e.powerIdAttr and (pid == nil or pid == "")) -- not just a replication-lag frame
+            then
+                warnedBadge[e.key] = true
+                warn(
+                    string.format(
+                        "[StatusBadges] badge '%s' fired with NO icon disc — %s. Fix: set the descriptor's powerIdAttr, give it a static icon, or mark labelOnly=true.",
+                        tostring(e.key),
+                        e.powerIdAttr
+                                and string.format(
+                                    "powerIdAttr='%s' powerId='%s' did not resolve (PetBadge.forPower/discFor returned nil — missing symbol map or asset)",
+                                    tostring(e.powerIdAttr),
+                                    tostring(pid)
+                                )
+                            or "descriptor has no powerIdAttr and no static icon"
+                    )
+                )
             end
             if e.untilAttr then
                 local until_ = src:GetAttribute(e.untilAttr) or 0

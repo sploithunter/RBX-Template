@@ -696,9 +696,28 @@ function ConfigLoader:ValidateConfig(configName, config)
         return self:_validateAchievementsConfig(config)
     elseif configName == "leaderboards" then
         return self:_validateLeaderboardsConfig(config)
+    elseif configName == "aggro" then
+        return self:_validateAggroConfig(config)
     end
 
     -- Default validation for other configs
+    return true
+end
+
+-- Unified aggro model (configs/aggro.lua): a symmetric `base` block × per-side multipliers.
+-- Permissive (checks shape, not every field) so adding a knob never breaks Studio boot.
+function ConfigLoader:_validateAggroConfig(config)
+    if type(config) ~= "table" then
+        return false, "Aggro config must be a table"
+    end
+    if type(config.base) ~= "table" then
+        return false, "Aggro config missing required 'base' table"
+    end
+    for _, side in ipairs({ "pet", "enemy" }) do
+        if config[side] ~= nil and type(config[side]) ~= "table" then
+            return false, "Aggro config '" .. side .. "' must be a table when present"
+        end
+    end
     return true
 end
 

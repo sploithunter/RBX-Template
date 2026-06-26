@@ -42,11 +42,11 @@ end
 -- List orphaned buckets to delete
 local orphanedBuckets = {
     "health_potion",
-    "speed_potion", 
+    "speed_potion",
     "test_item",
     "premium_boost",
     "trader_scroll",
-    "alamantic_aluminum"
+    "alamantic_aluminum",
 }
 
 print("🗑️ Deleting orphaned buckets...")

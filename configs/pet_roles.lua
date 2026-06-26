@@ -343,6 +343,11 @@ return {
             icon = "",
             attack_range = 16,
             standoff = 9,
+            -- ACQUIRE range — same fix as the `ranged` role: a support is a kiter (standoff > 0), so
+            -- without engage_range target selection caps it at attack_range (16) and it just stands in
+            -- formation when the fight is dragged a few studs out. Set > attack_range so it joins a
+            -- nearby fight and advances to its standoff to contribute damage (its aura is separate).
+            engage_range = 60,
             -- 0.35 -> 0.45 (Jason, 2026-06-12): the rainbow-imp buffer team only beat the
             -- three-strongest team 202 vs 194 (~4%) — "a little weak". The BODY aptitude is
             -- the safe lever to sweeten buffers: it's per-pet and linear. The AURA fractions
@@ -362,6 +367,10 @@ return {
             icon = "",
             attack_range = 20,
             standoff = 12,
+            -- ACQUIRE range — same fix as `ranged`/`support`: a controller kites (standoff > 0), so
+            -- without engage_range it caps at attack_range (20) and won't join a fight pulled out of
+            -- reach. Set > attack_range so it engages from range and advances to its standoff.
+            engage_range = 60,
             mining_mult = 0.5,
             combat_mult = 0.5,
             defense = 40,

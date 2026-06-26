@@ -5,12 +5,12 @@ pet	source	kind	file
 bear	imported	download	bear_basic.png
 bunny	imported	download	bunny_basic.png
 doggy	missing	-	-
-dragon	imported	download	dragon_basic.png
+dragon	missing	-	-
 kitty	missing	-	-
 colorado	missing	-	-
 emberling	imported	download	emberling_basic.png
 emberfox	imported	download	emberfox_basic.png
-emberimp	missing	-	-
+emberimp	imported	download	emberimp_basic.png
 emberowl	imported	download	emberowl_basic.png
 emberlion	imported	download	emberlion_basic.png
 snowflakeowl	imported	download	snowflakeowl_basic.png
@@ -35,8 +35,14 @@ zebra	imported	preview	zebra_basic.png
 colossus	imported	download	colossus_basic.png
 djinn	imported	download	djinn_basic.png
 
+# Earth-faction enemy viewport previews (mesh stems; wired in configs/enemies.lua):
+cube_dog	imported	download	cube_dog_basic.png
+raven	imported	download	raven_basic.png
+grumpy_cat	imported	download	grumpy_cat_basic.png
+jackalope	imported	download	jackalope_basic.png
+
 # Missing basic model images:
+#   dragon  (was mislabeled emberling art — see _mislabeled_previews/)
 #   doggy
 #   kitty
 #   colorado
-#   emberimp

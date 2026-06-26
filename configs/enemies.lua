@@ -119,7 +119,11 @@ return {
             -- jackal swarm: a fast pack hunt
             { weight = 6, faction = "desert", units = { { enemy = "sand_jackal", count = 3 } } },
             -- a wake of vultures: ranged harass, fragile (focus them)
-            { weight = 5, faction = "desert", units = { { enemy = "carrion_vulture", count = 3 } } },
+            {
+                weight = 5,
+                faction = "desert",
+                units = { { enemy = "carrion_vulture", count = 3 } },
+            },
             -- caravan ambush: tortoise wall + jackals + a scarab healer (kill the scarab first)
             {
                 weight = 4,

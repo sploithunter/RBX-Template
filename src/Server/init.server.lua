@@ -625,10 +625,11 @@ end
 
 local loadOrder = loadOrderOrError
 
--- Heap-leak tracer (Studio only): crawls the live service graph each interval and prints which Lua
--- tables GREW, to localize the ~841MB LuaHeap leak that GC-pauses the server. Filter Output on
--- "[HeapTrace]". Safe no-op in production (IsStudio gate).
-if RunService:IsStudio() then
+-- Heap-leak tracer: crawls the live service graph each interval and prints which Lua tables GREW.
+-- It did its job (proved there's NO Lua leak — the instance bloat was the culprit), so it's now
+-- OFF by default — it's very chatty. To re-arm for a future leak hunt, set `_G.HeapTrace = true`
+-- in the server command bar BEFORE boot (or flip this gate). Filter Output on "[HeapTrace]".
+if RunService:IsStudio() and _G.HeapTrace == true then
     local okHeap, HeapTrace = pcall(function()
         return require(ServerScriptService.Server.Diagnostics.HeapTrace)
     end)

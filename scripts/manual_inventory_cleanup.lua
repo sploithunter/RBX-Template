@@ -6,7 +6,7 @@ local Players = game:GetService("Players")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 -- Get the target player (change this to the player you want to clean)
-local targetPlayer = Players.coloradoplays  -- Change this username as needed
+local targetPlayer = Players.coloradoplays -- Change this username as needed
 if not targetPlayer then
     error("Player not found! Update the username in the script.")
 end
@@ -23,7 +23,7 @@ local function cleanupInventory(player)
     if not profile then
         error("❌ Could not get profile for player: " .. player.Name)
     end
-    
+
     print("📊 Current inventory state:")
     for bucket, data in pairs(profile.Data.Inventory or {}) do
         if data.items then
@@ -34,7 +34,7 @@ local function cleanupInventory(player)
             print("  " .. bucket .. ": " .. itemCount .. " items")
         end
     end
-    
+
     -- Option 1: Clear specific bucket (e.g., consumables with miscategorized items)
     print("🗑️ Clearing consumables bucket...")
     if profile.Data.Inventory.consumables then
@@ -42,7 +42,7 @@ local function cleanupInventory(player)
         profile.Data.Inventory.consumables.used_slots = 0
         print("✅ Consumables bucket cleared")
     end
-    
+
     -- Option 2: Clear all misplaced tools from consumables
     -- (Uncomment if you want to be more selective)
     --[[
@@ -67,11 +67,11 @@ local function cleanupInventory(player)
         profile.Data.Inventory.consumables.used_slots = newCount
     end
     --]]
-    
+
     -- Force save the profile
     profile:Save()
     print("💾 Profile saved successfully!")
-    
+
     print("📊 Updated inventory state:")
     for bucket, data in pairs(profile.Data.Inventory or {}) do
         if data.items then

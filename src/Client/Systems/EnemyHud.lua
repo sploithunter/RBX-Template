@@ -66,6 +66,11 @@ local ENEMY_EFFECTS = {
         key = "hex",
         source = "enemy",
         untilAttr = "DebuffUntil",
+        -- Resolve the ACTUAL power's disc + tinted ring via PetBadge (the one canonical path —
+        -- identical to the overhead badge, the hotbar, and the pet cards). The server stamps
+        -- DebuffPowerId alongside DebuffUntil, so Sandstorm reads as the desert sand_storm disc, not a
+        -- generic chip. The "HEX" label below is only the fallback for an untagged/unresolvable debuff.
+        powerIdAttr = "DebuffPowerId",
         color = Color3.fromRGB(175, 110, 215),
         label = "HEX",
     },

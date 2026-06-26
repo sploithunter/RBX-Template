@@ -33,19 +33,19 @@ local petConfig = Locations.getConfig("pets")
 
 local function generateTestEggData(count)
     local eggsData = {}
-    
+
     -- Cycle through available pets for variety
-    local petTypes = {"bear", "cat", "dog", "dragon", "phoenix"}
-    local variants = {"normal", "golden", "rainbow"}
-    
+    local petTypes = { "bear", "cat", "dog", "dragon", "phoenix" }
+    local variants = { "normal", "golden", "rainbow" }
+
     for i = 1, count do
         local petType = petTypes[((i - 1) % #petTypes) + 1]
         local variant = variants[((i - 1) % #variants) + 1]
-        
+
         -- Use generated images from AssetPreloadService
         local eggImageId = "rbxasset://textures/face.png" -- Placeholder
         local petImageId = "rbxasset://textures/face.png" -- Placeholder
-        
+
         -- Try to get actual images from assets if available
         pcall(function()
             local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
@@ -63,7 +63,7 @@ local function generateTestEggData(count)
                             end
                         end
                     end
-                    
+
                     -- Get egg image
                     local eggsFolder = imagesFolder:FindFirstChild("Eggs")
                     if eggsFolder then
@@ -75,16 +75,16 @@ local function generateTestEggData(count)
                 end
             end
         end)
-        
+
         table.insert(eggsData, {
             petType = petType,
             variant = variant,
             imageId = eggImageId,
             petImageId = petImageId,
-            rarity = "common" -- Could be dynamic
+            rarity = "common", -- Could be dynamic
         })
     end
-    
+
     return eggsData
 end
 
@@ -97,7 +97,7 @@ local function createTestGui()
     screenGui.Name = "EggHatchingTestGui"
     screenGui.ResetOnSpawn = false
     screenGui.Parent = player:WaitForChild("PlayerGui")
-    
+
     -- Main panel
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainPanel"
@@ -107,7 +107,7 @@ local function createTestGui()
     mainFrame.BorderSizePixel = 1
     mainFrame.BorderColor3 = Color3.fromRGB(100, 100, 100)
     mainFrame.Parent = screenGui
-    
+
     -- Title
     local title = Instance.new("TextLabel")
     title.Name = "Title"
@@ -120,7 +120,7 @@ local function createTestGui()
     title.TextScaled = true
     title.Font = Enum.Font.SourceSansBold
     title.Parent = mainFrame
-    
+
     -- Test buttons container
     local buttonContainer = Instance.new("ScrollingFrame")
     buttonContainer.Name = "ButtonContainer"
@@ -130,25 +130,29 @@ local function createTestGui()
     buttonContainer.BorderSizePixel = 0
     buttonContainer.ScrollBarThickness = 8
     buttonContainer.Parent = mainFrame
-    
+
     -- Test scenarios
     local testScenarios = {
-        {name = "1 Egg (Center)", count = 1, description = "Single egg in center"},
-        {name = "2 Eggs (Side by Side)", count = 2, description = "Two eggs horizontal"},
-        {name = "4 Eggs (2x2 Grid)", count = 4, description = "Small square grid"},
-        {name = "9 Eggs (3x3 Grid)", count = 9, description = "Medium grid"},
-        {name = "16 Eggs (4x4 Grid)", count = 16, description = "Large grid"},
-        {name = "25 Eggs (5x5 Grid)", count = 25, description = "Very large grid"},
-        {name = "50 Eggs (Stress Test)", count = 50, description = "High count test"},
-        {name = "99 Eggs (Maximum)", count = 99, description = "Maximum capacity test"},
-        {name = "Random (1-10)", count = math.random(1, 10), description = "Random small batch"},
-        {name = "Random (10-30)", count = math.random(10, 30), description = "Random medium batch"},
+        { name = "1 Egg (Center)", count = 1, description = "Single egg in center" },
+        { name = "2 Eggs (Side by Side)", count = 2, description = "Two eggs horizontal" },
+        { name = "4 Eggs (2x2 Grid)", count = 4, description = "Small square grid" },
+        { name = "9 Eggs (3x3 Grid)", count = 9, description = "Medium grid" },
+        { name = "16 Eggs (4x4 Grid)", count = 16, description = "Large grid" },
+        { name = "25 Eggs (5x5 Grid)", count = 25, description = "Very large grid" },
+        { name = "50 Eggs (Stress Test)", count = 50, description = "High count test" },
+        { name = "99 Eggs (Maximum)", count = 99, description = "Maximum capacity test" },
+        { name = "Random (1-10)", count = math.random(1, 10), description = "Random small batch" },
+        {
+            name = "Random (10-30)",
+            count = math.random(10, 30),
+            description = "Random medium batch",
+        },
     }
-    
+
     -- Create buttons
     local buttonHeight = 50
     local buttonSpacing = 10
-    
+
     for i, scenario in ipairs(testScenarios) do
         local button = Instance.new("TextButton")
         button.Name = "TestButton_" .. i
@@ -162,26 +166,26 @@ local function createTestGui()
         button.TextScaled = true
         button.Font = Enum.Font.SourceSans
         button.Parent = buttonContainer
-        
+
         -- Button hover effects
         button.MouseEnter:Connect(function()
             button.BackgroundColor3 = Color3.fromRGB(100, 140, 180)
         end)
-        
+
         button.MouseLeave:Connect(function()
             button.BackgroundColor3 = Color3.fromRGB(80, 120, 160)
         end)
-        
+
         -- Button click handler
         button.Activated:Connect(function()
             print("🧪 Testing scenario:", scenario.name, "with", scenario.count, "eggs")
-            
+
             -- Generate test data
             local eggsData = generateTestEggData(scenario.count)
-            
+
             -- Start animation
             local animationResult = EggHatchingService:StartHatchingAnimation(eggsData)
-            
+
             -- Auto-cleanup after 10 seconds
             task.spawn(function()
                 task.wait(10)
@@ -192,10 +196,10 @@ local function createTestGui()
             end)
         end)
     end
-    
+
     -- Update canvas size
     buttonContainer.CanvasSize = UDim2.new(0, 0, 0, #testScenarios * (buttonHeight + buttonSpacing))
-    
+
     return screenGui
 end
 
@@ -205,21 +209,23 @@ end
 
 local function testGridLayoutCalculations()
     print("🧮 Testing grid layout calculations...")
-    
-    local testCases = {1, 2, 4, 9, 16, 25, 36, 49, 64, 81, 99}
-    
+
+    local testCases = { 1, 2, 4, 9, 16, 25, 36, 49, 64, 81, 99 }
+
     for _, eggCount in ipairs(testCases) do
         local gridInfo = EggHatchingService:CalculateGridLayout(eggCount, 800, 600)
         local positions = EggHatchingService:GenerateEggPositions(eggCount, gridInfo)
-        
-        print(string.format(
-            "📊 %d eggs -> %s grid (%.0fx%.0f) -> %d positions", 
-            eggCount, 
-            gridInfo.layout.name, 
-            gridInfo.totalWidth, 
-            gridInfo.totalHeight,
-            #positions
-        ))
+
+        print(
+            string.format(
+                "📊 %d eggs -> %s grid (%.0fx%.0f) -> %d positions",
+                eggCount,
+                gridInfo.layout.name,
+                gridInfo.totalWidth,
+                gridInfo.totalHeight,
+                #positions
+            )
+        )
     end
 end
 

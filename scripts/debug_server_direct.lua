@@ -14,7 +14,7 @@ local InventoryService = ModuleLoader:Get("InventoryService")
 local DataService = ModuleLoader:Get("DataService")
 
 -- Test player (replace with actual player name)
-local testPlayerName = "coloradoplays"  -- Change this to your username
+local testPlayerName = "coloradoplays" -- Change this to your username
 local testPlayer = Players:FindFirstChild(testPlayerName)
 
 if not testPlayer then
@@ -43,7 +43,7 @@ local profile = DataService:GetProfile(testPlayer)
 if profile then
     print("  Profile found: ✅")
     print("  Coins:", profile.Data.Currencies and profile.Data.Currencies.coins or "NOT SET")
-    
+
     -- Show inventory structure
     if profile.Data.Inventory then
         print("  Inventory buckets:")
@@ -67,7 +67,7 @@ print("\n🧪 DIRECT PURCHASE TEST:")
 print("  Attempting to purchase health_potion...")
 
 local purchaseData = {
-    itemId = "health_potion"
+    itemId = "health_potion",
 }
 
 print("  Purchase data:", game:GetService("HttpService"):JSONEncode(purchaseData))

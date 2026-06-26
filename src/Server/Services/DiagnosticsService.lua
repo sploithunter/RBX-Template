@@ -75,15 +75,12 @@ function DiagnosticsService:_runDiagnostics(player)
 
     Signals.RunDiagnostics:FireClient(player, summary)
 
-    self._logger:Info(
-        "Diagnostics (TestEZ) completed",
-        {
-            player = player.Name,
-            passed = summary.passed,
-            failed = summary.failed,
-            duration = summary.duration,
-        }
-    )
+    self._logger:Info("Diagnostics (TestEZ) completed", {
+        player = player.Name,
+        passed = summary.passed,
+        failed = summary.failed,
+        duration = summary.duration,
+    })
 end
 
 return DiagnosticsService

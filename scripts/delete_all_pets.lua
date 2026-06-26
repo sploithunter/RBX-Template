@@ -86,7 +86,7 @@ for petUid, petData in pairs(petsBucket.items) do
     table.insert(deletedPets, {
         uid = petUid,
         name = petData.name or "Unknown Pet",
-        type = petData.type or "Unknown Type"
+        type = petData.type or "Unknown Type",
     })
     petsBucket.items[petUid] = nil
 end
@@ -116,7 +116,7 @@ if equippedFolder then
     if petsFolder then
         for _, slot in pairs(petsFolder:GetChildren()) do
             if slot:IsA("StringValue") then
-                slot.Value = ""  -- Clear the slot
+                slot.Value = "" -- Clear the slot
                 print("🔓 Cleared equipped pet slot:", slot.Name)
             end
         end

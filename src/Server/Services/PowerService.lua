@@ -713,27 +713,38 @@ function PowerService:_creditDot(enemy, player, amount)
     nv.Value = nv.Value + amount
 end
 
--- Enemies within `radius` studs (HORIZONTAL) of the caster's character. The bound that makes AoE /
--- control / debuff families hit the fight AROUND you, not every enemy in every realm: the unbounded
--- enemiesAlive() loop reached enemies 2000+ studs away in other realm worlds (Home ±2000 Y) — Jason:
--- "I can bomb them from very far away / my powers work in hell 2 while I'm in hell 1". radius defaults
--- to powers.engage_radius. Empty when the player has no character (nothing to anchor the AoE on).
+-- THIS PLAYER'S COMBAT SET — the enemies a player-cast AoE / control / debuff should hit: the fight
+-- the squad is actually in, NOT every enemy in every realm (the unbounded enemiesAlive() loop reached
+-- enemies 2000+ studs away in other realm worlds, Home ±2000 Y — Jason: "I can bomb them from very far
+-- away / my powers work in hell 2 while I'm in hell 1"). Two inclusion paths, both bounded to this
+-- player + realm:
+--   (1) AggroOwner == player.Name — enemies ENGAGED with this player's squad, wherever they are. This
+--       is the PRIMARY path: pets fight at range while the player stands back, so the enemies under
+--       attack are routinely well past a body-centered radius. An enemy in another realm can't be
+--       aggro'd to this player, so this never leaks cross-realm. (Reliable: an attribute, not a
+--       client-driven model pivot — enemy/pet model positions read stale server-side.)
+--   (2) within `radius` studs of the caster — a proximity fallback for an OPENER on enemies not yet
+--       aggro'd but standing near you (their model pivot is ~accurate while they're not mid-chase).
+-- radius defaults to powers.engage_radius.
 function PowerService:_enemiesInRange(player, radius)
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then
-        return {}
-    end
     radius = tonumber(radius) or (tonumber(self._powersConfig.engage_radius) or 60)
     local r2 = radius * radius
-    local cx, cz = hrp.Position.X, hrp.Position.Z
-    local out = {}
+    local name = player.Name
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    local cx, cz = hrp and hrp.Position.X, hrp and hrp.Position.Z
+    local out, seen = {}, {}
     for _, e in ipairs(enemiesAlive()) do
-        local pp = e.PrimaryPart or e:FindFirstChildWhichIsA("BasePart")
-        if pp then
-            local dx, dz = pp.Position.X - cx, pp.Position.Z - cz
-            if dx * dx + dz * dz <= r2 then
-                out[#out + 1] = e
+        local include = e:GetAttribute("AggroOwner") == name
+        if not include and hrp then
+            local pp = e.PrimaryPart or e:FindFirstChildWhichIsA("BasePart")
+            if pp then
+                local dx, dz = pp.Position.X - cx, pp.Position.Z - cz
+                include = dx * dx + dz * dz <= r2
             end
+        end
+        if include and not seen[e] then
+            seen[e] = true
+            out[#out + 1] = e
         end
     end
     return out
@@ -750,6 +761,21 @@ function PowerService:_applyEffect(player, kind, now, powerId)
     local enemiesAlive = function()
         return self:_enemiesInRange(player, tonumber(kind.radius))
     end
+    -- INSTRUMENTATION ([PowerCast]): one line per cast — proves the cast REACHED _applyEffect, names
+    -- the family, and reports how many enemies the combat-set gate (AggroOwner / in-range) resolved.
+    -- The usual "nothing happened" culprit is targets=0 (gate found nobody). TEMPORARY debug — remove
+    -- once player-power targeting is settled.
+    print(
+        string.format(
+            "[PowerCast] %s cast %s family=%s targets=%d dur=%.1f mag=%.2f",
+            player.Name,
+            tostring(powerId),
+            tostring(family),
+            #enemiesAlive(),
+            dur,
+            mag
+        )
+    )
     -- A `dot` block layers damage-over-time on top of whatever the family does (a vulnerable MARK
     -- that also burns, an ice HOLD that chips). Generic — any power opts in via config. aoe=true
     -- hits every alive enemy; aoe=false the single primary target. Fires alongside the family below.
@@ -905,6 +931,7 @@ function PowerService:_applyEffect(player, kind, now, powerId)
     elseif family == "vulnerable" then
         -- Shatter: x`frozen_bonus` again on FROZEN (rooted) targets — the freeze->shatter payoff.
         local frozenBonus = tonumber(kind.frozen_bonus)
+        local applied, missed = 0, 0
         for _, enemy in ipairs(enemiesAlive()) do
             if self:_accuracyHit(player, enemy, kind) then -- P4: the mark can miss (per target)
                 local m = mag
@@ -915,8 +942,23 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                 enemy:SetAttribute("VulnerableUntil", now + dur)
                 enemy:SetAttribute("DebuffPowerId", powerId)
                 enemy:SetAttribute("DebuffUntil", now + dur)
+                applied += 1
+            else
+                missed += 1
             end
         end
+        -- INSTRUMENTATION ([PowerCast]): vulnerable outcome — applied vs accuracy-missed. targets=0 on
+        -- the cast line above + 0/0 here = gate found nobody; >0 missed = accuracy rolls. TEMP debug.
+        print(
+            string.format(
+                "[PowerCast]   %s vulnerable → %d applied, %d missed (mag=%.2f dur=%.1f)",
+                tostring(powerId),
+                applied,
+                missed,
+                mag,
+                dur
+            )
+        )
         -- Inferno Brand: ramp the mark upward over its lifetime (1.9 -> ramp_to).
         if tonumber(kind.ramp_to) then
             self:_rampVulnerable(player, mag, kind.ramp_to, dur, powerId)

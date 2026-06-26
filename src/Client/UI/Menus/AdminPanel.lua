@@ -261,7 +261,10 @@ local TEST_CATEGORIES = {
             { name = "🐻 Spawn Raging Bear (tank)", action = "spawn_enemy_raging_bear" },
             -- Desert faction.
             { name = "🦊 Spawn Sand Jackal (melee)", action = "spawn_enemy_sand_jackal" },
-            { name = "🦅 Spawn Carrion Vulture (ranged)", action = "spawn_enemy_carrion_vulture" },
+            {
+                name = "🦅 Spawn Carrion Vulture (ranged)",
+                action = "spawn_enemy_carrion_vulture",
+            },
             { name = "🪲 Spawn Golden Scarab (healer)", action = "spawn_enemy_golden_scarab" },
             { name = "🐢 Spawn Dune Tortoise (tank)", action = "spawn_enemy_dune_tortoise" },
             { name = "🦂 Spawn Sand Scorpion (boss)", action = "spawn_enemy_sand_scorpion" },
@@ -270,7 +273,10 @@ local TEST_CATEGORIES = {
             { name = "🦉 Spawn Snowy Owl (ranged)", action = "spawn_enemy_snowy_owl" },
             { name = "🦭 Spawn Aurora Seal (healer)", action = "spawn_enemy_aurora_seal" },
             { name = "🐘 Spawn Glacial Mammoth (tank)", action = "spawn_enemy_glacial_mammoth" },
-            { name = "🐲 Spawn Glacial Leviathan (boss)", action = "spawn_enemy_glacial_leviathan" },
+            {
+                name = "🐲 Spawn Glacial Leviathan (boss)",
+                action = "spawn_enemy_glacial_leviathan",
+            },
             -- Lava faction.
             { name = "🦎 Spawn Cinder Whelp (melee)", action = "spawn_enemy_lava_imp" },
             { name = "🦏 Spawn Ember Brute (tank)", action = "spawn_enemy_ember_brute" },

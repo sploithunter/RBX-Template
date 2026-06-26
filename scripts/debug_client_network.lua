@@ -43,11 +43,14 @@ if success and packets then
         table.insert(packetNames, name)
     end
     print("  Available packet types:", table.concat(packetNames, ", "))
-    
+
     -- Check if purchase_item exists
     if packets.purchase_item then
         print("  purchase_item packet: ✅ FOUND")
-        print("  purchase_item config:", game:GetService("HttpService"):JSONEncode(packets.purchase_item))
+        print(
+            "  purchase_item config:",
+            game:GetService("HttpService"):JSONEncode(packets.purchase_item)
+        )
     else
         print("  purchase_item packet: ❌ NOT FOUND")
     end
@@ -58,7 +61,7 @@ end
 -- Test 4: Test Fire method directly
 print("\n🧪 DIRECT FIRE TEST:")
 local testData = {
-    itemId = "health_potion"
+    itemId = "health_potion",
 }
 
 print("  Test data:", game:GetService("HttpService"):JSONEncode(testData))
@@ -103,9 +106,12 @@ end
 print("\n🧪 RAPID FIRE TEST:")
 for i = 1, 3 do
     local rapidSuccess, rapidError = pcall(function()
-        economyBridge:Fire("purchase_item", {itemId = "health_potion_" .. i})
+        economyBridge:Fire("purchase_item", { itemId = "health_potion_" .. i })
     end)
-    print("  Call " .. i .. ":", rapidSuccess and "✅ SUCCESS" or ("❌ FAILED: " .. tostring(rapidError)))
+    print(
+        "  Call " .. i .. ":",
+        rapidSuccess and "✅ SUCCESS" or ("❌ FAILED: " .. tostring(rapidError))
+    )
     wait(0.1)
 end
 

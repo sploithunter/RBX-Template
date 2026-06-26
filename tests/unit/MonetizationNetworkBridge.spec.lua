@@ -40,7 +40,9 @@ return function()
     end)
 
     -- Guard in case the module isn't found; remaining tests would fail anyway.
-    if not ok then return end
+    if not ok then
+        return
+    end
 
     local bridgeName = "Monetization"
     local packetName = "PurchaseSuccess"

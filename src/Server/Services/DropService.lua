@@ -96,9 +96,7 @@ function DropService:_ensureTemplate(color, form)
     if self._templates[key] then
         return self._templates[key]
     end
-    local meshId = self._gems.meshes
-        and self._gems.meshes[color]
-        and self._gems.meshes[color][form]
+    local meshId = self._gems.meshes and self._gems.meshes[color] and self._gems.meshes[color][form]
     local texId = self._gems.textures
         and self._gems.textures[color]
         and self._gems.textures[color][form]
