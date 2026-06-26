@@ -8,8 +8,9 @@
     FocusMath core does the arithmetic; this service owns the profile state and
     the runtime invulnerability hook.
 
-    Power casting here only manages the Focus economy (cost/cooldown live with the
-    Power system, Phase 6); `Cast(player, cost)` proves the Focus gate.
+    The Focus economy lives here. PowerService:Cast now CHARGES a power's focus_cost via
+    FocusService:Cast at the commit point (an empty pool refuses the cast with not_enough_focus);
+    cooldown lives with the Power system. `Cast(player, cost)` is the spend/affordability gate.
 ]]
 
 local Players = game:GetService("Players")

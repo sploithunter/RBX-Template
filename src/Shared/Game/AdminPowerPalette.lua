@@ -111,8 +111,9 @@ local TYPE_PRIORITY = {
 --   MIN  → {} (bare, no enhancements) — just call with mode ~= "max".
 --   MAX  → every slot (max_slots, default 6) filled with the strongest APPLICABLE single-origin
 --          enhancement: matching the power's archetype, or origin-less "natural" for generic powers.
--- Returns {} when NO type applies to the power's family (e.g. an always-on with no enhanceable axis) —
--- that empty result is itself useful signal: "this power can't be enhanced today."
+-- Returns {} only when NO enhancement type covers the power's family — rare, because `potency`
+-- (magnitude) covers most families INCLUDING always-on passives like Hasten (its recharge-buff
+-- magnitude) and Swift (speed). So {} genuinely means "un-enhanceable", not "always-on".
 function AdminPowerPalette.maxSlots(powersConfig, enhConfig, powerId, opts)
     opts = opts or {}
     local maxSlots = tonumber(opts.maxSlots) or 6
