@@ -51,6 +51,7 @@ local enhCfg = require(Configs:WaitForChild("enhancements"))
 local PowerRegistry = require(ReplicatedStorage.Shared.Game.PowerRegistry)
 local PowerStats = require(ReplicatedStorage.Shared.Game.PowerStats)
 local PowerStatsDiff = require(ReplicatedStorage.Shared.Game.PowerStatsDiff)
+local FocusUpkeep = require(ReplicatedStorage.Shared.Game.FocusUpkeep)
 local CloseButton = require(script.Parent.Parent.Components.CloseButton)
 -- The level a new player chooses their origin (NATURAL picks come before this; ORIGIN powers after).
 local ORIGIN_CHOICE_LEVEL = levelTrackCfg.origin_choice_level or 5
@@ -591,7 +592,8 @@ function PowerChoiceMenu:_previewFocus(powerId, slots, staged)
     }
     local function rate(list)
         local r = Enhancements.aggregate(enhCfg, list, lvl).focus or 0
-        return base * (1 - math.clamp(r, 0, 1))
+        -- SSOT: the exact division the live upkeep/cost path uses, so the preview can't diverge
+        return FocusUpkeep.effectiveRate(base, r)
     end
     local from, to = rate(slots), rate(projected)
     if math.abs(from - to) < 1e-6 then

@@ -12,13 +12,17 @@ return function()
             expect(FocusUpkeep.effectiveRate(2.5, nil)).to.equal(2.5)
         end)
 
-        it("lowers the rate by an efficiency reduction fraction", function()
-            -- 40% efficiency reduction on a 2.5/s toggle -> 1.5/s
-            expect(FocusUpkeep.effectiveRate(2.5, 0.4)).to.equal(1.5)
+        it("divides the rate by (1 + reduction) — reductive axis, same as recharge", function()
+            -- 0.4 reduction on a 2.5/s toggle -> 2.5 / 1.4 (NOT 2.5*0.6)
+            expect(math.abs(FocusUpkeep.effectiveRate(2.5, 0.4) - 2.5 / 1.4) < 1e-9).to.equal(true)
         end)
 
-        it("clamps reduction to [0,1] (>=1 is free, <0 is none)", function()
-            expect(FocusUpkeep.effectiveRate(2.5, 1.5)).to.equal(0)
+        it("NEVER reaches zero, even fully slotted (asymptote, no clamp)", function()
+            expect(FocusUpkeep.effectiveRate(2.5, 1.5)).to.equal(2.5 / 2.5) -- 1.0/s, not 0
+            expect(FocusUpkeep.effectiveRate(2.5, 1000) > 0).to.equal(true) -- tiny but positive
+        end)
+
+        it("floors negative reduction at none", function()
             expect(FocusUpkeep.effectiveRate(2.5, -1)).to.equal(2.5)
         end)
 

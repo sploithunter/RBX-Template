@@ -19,8 +19,12 @@
 
 local FocusUpkeep = {}
 
--- A power's effective per-second upkeep after `reduction` (0..1 fraction, e.g. from an efficiency
--- enhancement). reduction >= 1 → free. Negative/absent reduction → the base rate unchanged.
+-- A power's effective per-second upkeep after `reduction` (the summed `focus` enhancement fraction).
+-- REDUCTIVE axis → DIVISION, the same form recharge uses (cd / (1 + Σr)): it asymptotes toward zero
+-- but NEVER reaches it, so a slotted toggle always costs SOMETHING (Jason: never actually zero) and
+-- stacking focus has natural diminishing returns (the 3rd slot is worth far less than the 1st — the
+-- CoH "diversify after 2" curve). No clamp needed: any reduction >= 0 stays positive. Negative/absent
+-- reduction → the base rate unchanged.
 function FocusUpkeep.effectiveRate(base, reduction)
     local b = tonumber(base) or 0
     if b <= 0 then
@@ -29,10 +33,8 @@ function FocusUpkeep.effectiveRate(base, reduction)
     local r = tonumber(reduction) or 0
     if r < 0 then
         r = 0
-    elseif r > 1 then
-        r = 1
     end
-    return b * (1 - r)
+    return b / (1 + r)
 end
 
 -- Sum a list of per-second rates (the active toggles' effective upkeep).
