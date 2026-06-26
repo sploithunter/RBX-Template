@@ -241,6 +241,25 @@ function PlayerBar.start()
     refreshOrigin()
     player:GetAttributeChangedSignal("OriginIcon"):Connect(refreshOrigin)
 
+    -- The portrait IS the Active Buffs panel button now: the top-left HUD buff badges became on/off
+    -- toggle controls (clicking one toggles its power), so they can't double as the panel opener
+    -- anymore (Jason). A transparent button over the emblem toggles BuffStatsHud.
+    local buffsBtn = Instance.new("TextButton")
+    buffsBtn.Name = "BuffsPanelButton"
+    buffsBtn.BackgroundTransparency = 1
+    buffsBtn.Text = ""
+    buffsBtn.Size = UDim2.fromScale(1, 1)
+    buffsBtn.ZIndex = 8
+    buffsBtn.Parent = emblem
+    buffsBtn.Activated:Connect(function()
+        local ok, BuffStatsHud = pcall(function()
+            return require(script.Parent.BuffStatsHud)
+        end)
+        if ok and BuffStatsHud and BuffStatsHud.toggle then
+            BuffStatsHud.toggle()
+        end
+    end)
+
     -- level disc (overhangs right) + 10 glowing segments + inner + number
     local disc = Instance.new("Frame")
     disc.Size = UDim2.fromOffset(66, 66)

@@ -362,6 +362,11 @@ function PowerService:_detoggleAll(player)
     for _, powerId in ipairs(ids) do
         self:_clearPassive(player, powerId) -- keep owned marker → greyed badge
     end
+    if #ids > 0 then
+        -- Route the crash through the GameEvents bus so a sound / VFX can hook it config-only
+        -- (configs/game_events.lua → toggle_crash). No-op if no row is configured.
+        fireGameEvent(player, "toggle_crash", { count = #ids })
+    end
 end
 
 -- The always-on UPKEEP loop: every tick, drain each player's running toggles' focus_upkeep from their

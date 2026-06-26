@@ -37,6 +37,7 @@ local BUFFS = {
         label = "LUCK",
         fixed = { element = "earth", symbol = "clover_lucky" },
         steady = true, -- continuously refreshed aura: solid badge, no countdown/blink
+        petSource = true, -- a PET grants this (free, not a toggle) -> labelled "PET" not "ON"
     },
     -- LUCKY SERVER (creator presence): purple-tinted clover — color from
     -- configs/creators.lua server_luck.display so the styling stays one-sourced
@@ -68,39 +69,33 @@ local BUFFS = {
     -- ENCHANT aggregates (Jason: "I do have the buff... [but] not buffed visually on my
     -- player bar"): EnchantService stamps <Attr>+Until while any equipped pet carries the
     -- matching enchant. Neutral (purple) disc = the enchant system's color, same as the
-    -- card badges. Permanent while equipped -> renders as "ON".
+    -- card badges. Provided by an equipped PET (the enchant lives on it) -> "PET", not "ON".
     {
         attr = "EnchantCoinBonus",
         label = "COIN",
         fixed = { element = "neutral", symbol = "coins_up" },
         steady = true,
+        petSource = true,
     },
     {
         attr = "EnchantPetXpBonus",
         label = "XP",
         fixed = { element = "neutral", symbol = "xp_up" },
         steady = true,
+        petSource = true,
     },
     {
         attr = "EnchantHatchLuck",
         label = "LUCK",
         fixed = { element = "neutral", symbol = "clover_lucky" },
         steady = true,
+        petSource = true,
     },
 }
 
 local BLINK_LEAD = 5 -- seconds: blink in the final stretch
 local BLINK_PERIOD = 0.5
 local PERMANENT_THRESHOLD = 86400 * 30 -- >30 days remaining = always-on (passive/toggle) -> "ON"
-
-local function toggleBuffPanel()
-    local ok, BuffStatsHud = pcall(function()
-        return require(script.Parent.BuffStatsHud)
-    end)
-    if ok and BuffStatsHud and BuffStatsHud.toggle then
-        BuffStatsHud.toggle()
-    end
-end
 
 -- Clicking a toggleable badge flips its always-on power on/off (the player's HUD control). Reads live
 -- state at click time: `<attr>Owned` carries the powerId; the buff being present = currently ON.
@@ -123,17 +118,20 @@ local function makeBadge(parent, order, onClick)
     holder.LayoutOrder = order
     holder.Parent = parent
 
-    -- tap target INSIDE the holder (a row-level button joined the UIListLayout and
-    -- shoved the pile left — Jason: "clickable off to the left... scooted the icons").
-    -- Every badge toggles the Active Buffs panel; the pile is one affordance.
-    local hit = Instance.new("TextButton")
-    hit.Name = "BuffPanelToggle"
-    hit.BackgroundTransparency = 1
-    hit.Text = ""
-    hit.Size = UDim2.fromScale(1, 1)
-    hit.ZIndex = 20
-    hit.Parent = holder
-    hit.Activated:Connect(onClick or toggleBuffPanel)
+    -- tap target INSIDE the holder (a row-level button joined the UIListLayout and shoved the pile
+    -- left). ONLY toggleable badges are clickable now (onClick = flip the power on/off); status
+    -- badges (pet auras, timed buffs) are display-only — the Active Buffs panel moved to the player
+    -- portrait (PlayerBar), so the badges are free to be on/off controls (Jason).
+    if onClick then
+        local hit = Instance.new("TextButton")
+        hit.Name = "ToggleHit"
+        hit.BackgroundTransparency = 1
+        hit.Text = ""
+        hit.Size = UDim2.fromScale(1, 1)
+        hit.ZIndex = 20
+        hit.Parent = holder
+        hit.Activated:Connect(onClick)
+    end
 
     local disc = Instance.new("ImageLabel")
     disc.Name = "Disc"
@@ -276,8 +274,14 @@ function PlayerPowerBadges.start()
                             end
                         end
                         b.holder.Size = UDim2.fromOffset(38 + (stacks - 1) * 18, 50)
-                        b.timer.Text = "ON"
-                        b.timer.TextColor3 = Color3.fromRGB(150, 230, 150)
+                        if def.petSource then
+                            -- a PET grants this for free (not a toggle the player owns/spends on)
+                            b.timer.Text = "PET"
+                            b.timer.TextColor3 = Color3.fromRGB(120, 200, 255)
+                        else
+                            b.timer.Text = "ON"
+                            b.timer.TextColor3 = Color3.fromRGB(150, 230, 150)
+                        end
                         b.disc.ImageTransparency = 0
                     else
                         b.timer.Text = math.ceil(remaining) .. "s"

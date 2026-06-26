@@ -26,6 +26,14 @@
 ]]
 
 return {
+    -- TOGGLE CRASH: a player's always-on toggles dropped because Focus couldn't pay their upkeep
+    -- (the CoH "detoggle"). Fired server-side from PowerService:_detoggleAll. A dim power-down burst
+    -- for now; drop a `sound` (personal) or `world_sound` key in here once the SFX is picked — the
+    -- event already fires, so it's a config-only add.
+    toggle_crash = {
+        vfx = { kind = "burst", color = { 130, 130, 160 } }, -- dim slate "power down" at the player
+    },
+
     -- level_up (client-fired) keeps the VISUAL juice; the SOUND moved to the
     -- server-fired level_claimed row as a world_sound, so EVERYONE nearby hears a
     -- level-up, not just the leveler (Jason: "it should be server-wide... everybody
