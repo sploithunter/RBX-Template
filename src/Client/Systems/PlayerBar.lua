@@ -92,7 +92,7 @@ function PlayerBar.start()
     cap.Name = "Capsule"
     cap.AnchorPoint = Vector2.new(0.5, 0)
     cap.Position = UDim2.new(0.5, 0, 0, 14)
-    cap.Size = UDim2.fromOffset(520, 56)
+    cap.Size = UDim2.fromOffset(520, 74) -- taller: name + XP bar + the Focus bar below
     -- pixel-designed: shrink on small viewports (UIViewportScale, anchored — stays docked)
     require(script.Parent.Parent.UI.UIViewportScale).attach(cap)
     cap.BackgroundColor3 = Color3.fromRGB(120, 124, 132)
@@ -144,6 +144,42 @@ function PlayerBar.start()
     xpText.ZIndex = 4
     stroke(xpText, Color3.fromRGB(0, 0, 0), 1)
     xpText.Parent = track
+
+    -- FOCUS bar (the mana pool spent to cast; sits just below XP). CYAN — deliberately NOT the
+    -- area-themed XP colour, so the two read as different resources at a glance. Driven by the
+    -- Focus / FocusMax attributes FocusService replicates.
+    local fxTrack = Instance.new("Frame")
+    fxTrack.Name = "FocusTrack"
+    fxTrack.Size = UDim2.fromOffset(360, 13)
+    fxTrack.Position = UDim2.fromOffset(70, 50)
+    fxTrack.BackgroundColor3 = Color3.fromRGB(26, 30, 40)
+    corner(fxTrack, 6)
+    stroke(fxTrack, Color3.fromRGB(18, 20, 26), 1.5)
+    fxTrack.Visible = false -- shown once Focus replicates
+    fxTrack.Parent = cap
+    local fxHolder = Instance.new("Frame")
+    fxHolder.Size = UDim2.new(1, -4, 1, -4)
+    fxHolder.Position = UDim2.fromOffset(2, 2)
+    fxHolder.BackgroundTransparency = 1
+    fxHolder.ClipsDescendants = true
+    corner(fxHolder, 5)
+    fxHolder.Parent = fxTrack
+    local fxFill = Instance.new("Frame")
+    fxFill.Size = UDim2.new(1, 0, 1, 0)
+    fxFill.BackgroundColor3 = Color3.fromRGB(70, 200, 235)
+    corner(fxFill, 5)
+    grad(fxFill, Color3.fromRGB(150, 235, 255), Color3.fromRGB(40, 160, 220))
+    fxFill.Parent = fxHolder
+    local fxText = Instance.new("TextLabel")
+    fxText.Size = UDim2.fromScale(1, 1)
+    fxText.BackgroundTransparency = 1
+    fxText.Font = Enum.Font.GothamBold
+    fxText.TextSize = 10
+    fxText.Text = ""
+    fxText.TextColor3 = Color3.fromRGB(245, 252, 255)
+    fxText.ZIndex = 4
+    stroke(fxText, Color3.fromRGB(0, 0, 0), 1)
+    fxText.Parent = fxTrack
 
     -- emblem circle (overhangs left)
     local emblem = Instance.new("Frame")
@@ -304,6 +340,17 @@ function PlayerBar.start()
         xpText.Text = need > 0 and string.format("%d / %d XP", math.floor(xp), need) or ""
         levelText.Text = (ready and not blinkOn) and "▲" or tostring(level)
         levelText.TextColor3 = ready and READY or Color3.fromRGB(245, 248, 255)
+
+        -- Focus pool (mana spent to cast) — replicated by FocusService via Focus / FocusMax.
+        local fx = tonumber(player:GetAttribute("Focus"))
+        local fxMax = tonumber(player:GetAttribute("FocusMax")) or 0
+        if fx and fxMax > 0 then
+            fxTrack.Visible = true
+            fxFill.Size = UDim2.new(math.clamp(fx / fxMax, 0, 1), 0, 1, 0)
+            fxText.Text = string.format("⚡ %d / %d", math.floor(fx), fxMax)
+        else
+            fxTrack.Visible = false
+        end
     end
 
     applyTheme(palette)

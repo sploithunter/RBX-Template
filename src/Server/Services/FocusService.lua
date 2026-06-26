@@ -76,8 +76,11 @@ function FocusService:Start()
             task.wait(1)
             for _, player in ipairs(Players:GetPlayers()) do
                 local st = self:Get(player)
-                if st and st.ok and (st.focus or 0) < (st.max or 0) then
-                    self:RegenTick(player, 1)
+                if st and st.ok then
+                    if (st.focus or 0) < (st.max or 0) then
+                        self:RegenTick(player, 1)
+                    end
+                    self:_push(player) -- keep the HUD bar fresh (regen rise / join / sunder)
                 end
             end
         end
@@ -99,6 +102,17 @@ function FocusService:Get(player)
     return { ok = true, focus = focusOf(self, data), max = self._config.focus_max }
 end
 
+-- Replicate the live pool to the client via `Focus` / `FocusMax` player attributes so the HUD bar
+-- (PlayerBar) can read + animate it the same way it reads Level/XP. Pure UI mirror — no save.
+function FocusService:_push(player)
+    local data = self._dataService and self._dataService:GetData(player)
+    if not data then
+        return
+    end
+    player:SetAttribute("Focus", focusOf(self, data))
+    player:SetAttribute("FocusMax", self._config.focus_max)
+end
+
 -- Spend Focus to cast a power. Rejects (no spend) if the pool can't cover it.
 function FocusService:Cast(player, cost)
     local data = self._dataService:GetData(player)
@@ -111,6 +125,7 @@ function FocusService:Cast(player, cost)
     end
     data.Focus = result.focus
     self._dataService:RequestSave(player, "focus_cast", { critical = false })
+    self:_push(player) -- HUD drops the instant you spend
     return { ok = true, focus = result.focus, spent = cost }
 end
 
