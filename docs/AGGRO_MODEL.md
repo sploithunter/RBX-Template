@@ -1,9 +1,15 @@
 # Aggro Model — one symmetric "aggro game" for pets and enemies
 
-Status: **design spec (pre-implementation)**. Source of truth for the combat-targeting refactor.
-Replaces the current split where the enemy has a real pet-keyed threat table but engagement +
-`InCombat` run off a coarse per-enemy **player flag** (`entry.aggroPlayerName`) — the bypass that
-causes the farm-lock, parking, and despawn-churn.
+Status: **Phase 1 SHIPPED & live-verified** (the v2 threat-table model is permanent —
+`configs/aggro.lua` `enabled = true`). Source of truth for the combat-targeting refactor.
+
+The legacy split this replaced — enemy had a real pet-keyed threat table, but engagement + `InCombat`
+ran off a coarse per-enemy **player flag** (`entry.aggroPlayerName`), which caused the farm-lock,
+parking, and despawn-churn — **is fixed and tested:** `InCombat` is now DERIVED per-pet from real
+threat (a parked, non-damaging invader decays off and farming resumes on its own), and the enemy-side
+disengage/despawn rides the always-on decay — passive threat is gated to `passive_range`, so an
+abandoned enemy bleeds below the floor → disengages → patrols → idle-despawns instead of hanging
+"in combat" forever. Remaining for Phase 2: taunt / fear / rage and enemy movement polish (below).
 
 ## Premise
 Combat is **one aggro game, played symmetrically by both sides.** Every combat unit — pet *or*
