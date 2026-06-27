@@ -4359,6 +4359,10 @@ function InventoryPanel:_formatNumber(value)
 end
 
 function InventoryPanel:_hideItemTooltip()
+    if self._tooltipHoverGuard then
+        self._tooltipHoverGuard:Disconnect()
+        self._tooltipHoverGuard = nil
+    end
     if self.itemTooltip then
         self.itemTooltip:Destroy()
         self.itemTooltip = nil
@@ -4944,6 +4948,38 @@ function InventoryPanel:_renderItemTooltip(item, lines)
     tooltip.ZIndex = 300
     tooltip.Parent = self.frame
     self.itemTooltip = tooltip
+
+    -- Hover guard: MouseLeave is unreliable when a child element swallows the hover — a HUGE pet's
+    -- card is a full-size 3D ViewportFrame, so leaving it never fires the card's MouseLeave and the
+    -- popup sticks (Jason: "still sticks, and only ever a Huge"). Card-destroyed-under-cursor has the
+    -- same effect. Rather than chase the quirk, poll while the tooltip is up: if the source card is
+    -- gone or no longer actually under the cursor, hide. Only runs while a tooltip is shown.
+    if self._tooltipHoverGuard then
+        self._tooltipHoverGuard:Disconnect()
+        self._tooltipHoverGuard = nil
+    end
+    do
+        local UserInputService = game:GetService("UserInputService")
+        local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+        self._tooltipHoverGuard = game:GetService("RunService").Heartbeat:Connect(function()
+            local srcFrame = self._tooltipSourceFrame
+            if not srcFrame or not srcFrame.Parent or not playerGui then
+                self:_hideItemTooltip()
+                return
+            end
+            local pos = UserInputService:GetMouseLocation()
+            local stillOver = false
+            for _, obj in ipairs(playerGui:GetGuiObjectsAtPosition(pos.X, pos.Y)) do
+                if obj == srcFrame or obj:IsDescendantOf(srcFrame) then
+                    stillOver = true
+                    break
+                end
+            end
+            if not stillOver then
+                self:_hideItemTooltip()
+            end
+        end)
+    end
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
