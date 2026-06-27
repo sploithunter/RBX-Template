@@ -40,11 +40,10 @@ if (!KEY) {
   process.exit(1);
 }
 const CREATOR_USER = arg("creator-user", null);
-const CREATOR_GROUP = arg("creator-group", null);
-if (!CREATOR_USER && !CREATOR_GROUP) {
-  console.error("Need --creator-user <userId> or --creator-group <groupId>.");
-  process.exit(1);
-}
+// Default to the PROJECT GROUP (15872767) so an omitted creator NEVER uploads to a personal
+// account — that was the recurring asset-ownership leak. Pass --creator-user <id> only to
+// deliberately override (rare).
+const CREATOR_GROUP = arg("creator-group", "15872767");
 const creator = CREATOR_USER ? { userId: String(CREATOR_USER) } : { groupId: String(CREATOR_GROUP) };
 
 const ASSETS = "https://apis.roblox.com/assets/v1/assets";

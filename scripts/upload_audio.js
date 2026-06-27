@@ -37,15 +37,14 @@ const DIR = arg("dir", "assets/audio/sfx");
 const ONLY = arg("only", null);
 const OUT = arg("out", "scripts/audio_ids.json");
 const CREATOR_USER = arg("creator-user", null);
-const CREATOR_GROUP = arg("creator-group", null);
+// Default to the PROJECT GROUP (15872767) so an omitted creator NEVER uploads to a personal
+// account — that was the recurring asset-ownership leak. Pass --creator-user <id> only to
+// deliberately override (rare).
+const CREATOR_GROUP = arg("creator-group", "15872767");
 
 const KEY = process.env.ROBLOX_OPEN_CLOUD_KEY;
 if (!KEY) {
   console.error("ROBLOX_OPEN_CLOUD_KEY not set (env or .env.local).");
-  process.exit(1);
-}
-if (!CREATOR_USER && !CREATOR_GROUP) {
-  console.error("Need --creator-user <userId> or --creator-group <groupId>.");
   process.exit(1);
 }
 const creator = CREATOR_USER ? { userId: String(CREATOR_USER) } : { groupId: String(CREATOR_GROUP) };
