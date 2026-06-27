@@ -760,17 +760,27 @@ function DataService:_saveProfileNow(player, reason)
         dataStoreState = dataStoreState,
     })
 
-    -- PERF INSTRUMENTATION (temporary): print every save's wall-clock duration so the lag spikes can
-    -- be correlated with saves. If [SAVEPERF] consistently shows ~0.9s and lands next to a [SLOWFRAME]
-    -- line, the profile serialize is the stall → move to debounced event-driven saves + trim profile.
+    -- PERF INSTRUMENTATION (temporary): print every save's SERIALIZE cost + SIZE, not just duration.
+    -- `encode` (the synchronous JSON-encode of the profile) is the part that blocks a frame — the real
+    -- stall candidate; `bytes` lets us project to a full 500-pet profile and watch the 4MB key ceiling.
+    -- If [SAVEPERF] encode is big and lands next to a [SLOWFRAME], serialize is the stall.
+    local _encT0 = os.clock()
+    local _saveBytes = 0
+    pcall(function()
+        _saveBytes = #game:GetService("HttpService"):JSONEncode(profile.Data)
+    end)
+    local _encMs = (os.clock() - _encT0) * 1000
     local _savePerfT0 = os.clock()
     local saveCallSuccess, saveCallError = pcall(function()
         profile:Save()
     end)
     print(
         string.format(
-            "[SAVEPERF] %s  save=%.3fs  reason=%s",
+            "[SAVEPERF] %s  encode=%.0fms (%d bytes / %.1f%% of 4MB)  save=%.3fs  reason=%s",
             player.Name,
+            _encMs,
+            _saveBytes,
+            (_saveBytes / (4 * 1024 * 1024)) * 100,
             os.clock() - _savePerfT0,
             tostring(reason)
         )
