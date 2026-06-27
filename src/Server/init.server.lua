@@ -94,6 +94,14 @@ loader:RegisterModule(
     ServerScriptService.Server.Services.ServerClockService,
     { "Logger" }
 )
+-- Event-driven boot: validates the configs/boot.lua milestone graph, mirrors readiness to
+-- ReplicatedStorage.BootStatus, and logs each milestone. Registered early so its observer is
+-- attached (and the mirror exists) before any producer signals. See docs/BOOT_ORCHESTRATION.md.
+loader:RegisterModule(
+    "BootOrchestrator",
+    ServerScriptService.Server.Services.BootOrchestrator,
+    { "Logger", "ConfigLoader" }
+)
 -- NetworkConfig removed - using Signals instead
 
 -- Register server services
