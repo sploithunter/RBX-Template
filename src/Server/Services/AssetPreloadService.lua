@@ -989,11 +989,8 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
         })
     end)
 
-    -- Signal that asset loading is complete
-    _G.AssetsLoadingComplete = true
-    if _G.AssetsLoadedEvent then
-        _G.AssetsLoadedEvent:Fire()
-    end
+    -- (Asset readiness is now the BootReadiness "models_ready" milestone signalled above; the old
+    -- _G.AssetsLoadingComplete flag + _G.AssetsLoadedEvent BindableEvent are retired.)
 end
 
 -- Preload all configured sounds into ReplicatedStorage.Assets.Sounds

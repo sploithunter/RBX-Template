@@ -14,6 +14,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local PetVariantVisuals = require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
+local BootReadiness = require(ReplicatedStorage.Shared.Boot.BootReadiness)
 print("✅ PetHandler: Loaded and waiting for bridge registration")
 
 -- Suppress verbose debug prints in this script unless explicitly enabled
@@ -60,11 +61,9 @@ end
 -- Prevent concurrent loadEquipped runs per-player (which can destroy freshly spawned models)
 local activeLoads: { [Player]: boolean } = {}
 
--- Create event for asset loading completion
-if not _G.AssetsLoadedEvent then
-    _G.AssetsLoadedEvent = Instance.new("BindableEvent")
-end
-_G.AssetsLoadingComplete = false
+-- Asset readiness is now the "models_ready" boot milestone (BootReadiness), awaited in loadEquipped.
+-- The old _G.AssetsLoadedEvent BindableEvent / _G.AssetsLoadingComplete flag are gone — a fire-once
+-- event could be missed on a fast boot (the regression that hung pet deploy). See docs/BOOT_ORCHESTRATION.md.
 
 -- Create workspace folders if they don't exist
 if not workspace:FindFirstChild("PlayerPets") then
@@ -1105,28 +1104,12 @@ function loadEquipped(Player)
     local ok, result = pcall(function()
         print("🔄 PetHandler: Loading equipped pets for", Player.Name)
 
-        -- Wait for assets to finish loading. Gate on the RELIABLE ModelsReady attribute and POLL —
-        -- not _G.AssetsLoadedEvent:Wait(). A fast boot fires that BindableEvent before this pcall
-        -- starts waiting, and a missed BindableEvent fire hangs the wait forever, so the pcall never
-        -- returns, cleanup() never clears __PetLoadInProgress, and equipped pets never deploy. (This
-        -- was the regression the pre-bake boot-speed work exposed.) Polling an attribute can't miss
-        -- an edge; the _G flag stays as a fast-path.
-        local assetsRoot = ReplicatedStorage:FindFirstChild("Assets")
-        local function assetsReady()
-            return _G.AssetsLoadingComplete == true
-                or (assetsRoot ~= nil and assetsRoot:GetAttribute("ModelsReady") == true)
-        end
-        if not assetsReady() then
-            print("⏳ PetHandler: Waiting for asset loading to complete...")
-            local deadline = os.clock() + 30
-            while not assetsReady() and os.clock() < deadline do
-                task.wait(0.1)
-            end
-            print(
-                "✅ PetHandler: Assets ready (ModelsReady="
-                    .. tostring(assetsRoot and assetsRoot:GetAttribute("ModelsReady"))
-                    .. "), proceeding with pet spawn"
-            )
+        -- Await the model TEMPLATES (event-driven, race-free even if the signal already fired —
+        -- the fast-boot fire-once race that hung pet deploy is gone). See docs/BOOT_ORCHESTRATION.md.
+        if not BootReadiness.isReady("models_ready") then
+            print("⏳ PetHandler: awaiting models_ready before pet spawn...")
+            BootReadiness.await("models_ready", 30)
+            print("✅ PetHandler: models_ready — proceeding with pet spawn")
         end
 
         -- Create player folders if they don't exist
@@ -1704,6 +1687,12 @@ function loadEquipped(Player)
     end)
     cleanup()
     if ok then
+        -- Per-player boot gate: this player's equipped pets are now deployed (or there were none).
+        -- The loading screen's "Walking your pets" phase reads this attribute. Idempotent across
+        -- re-equips. See docs/BOOT_ORCHESTRATION.md (player_gates.pets_spawned).
+        if Player and Player.Parent then
+            Player:SetAttribute("PetsSpawned", true)
+        end
         return result
     else
         warn("PetHandler: loadEquipped error for", Player and Player.Name, result)

@@ -37,6 +37,7 @@ local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local buffsConfig = require(ReplicatedStorage.Configs:WaitForChild("buffs"))
 local SpawnSlots = require(ReplicatedStorage.Shared.Game.SpawnSlots)
 local OverheadBar = require(ReplicatedStorage.Shared.UI.OverheadBar)
+local BootReadiness = require(ReplicatedStorage.Shared.Boot.BootReadiness)
 
 -- Injected services
 local logger
@@ -847,69 +848,37 @@ function BreakableSpawner:_fillAreaWorld(areaId)
 end
 
 function BreakableSpawner:_spawnLoop()
-    -- Wait for assets folder
-    local assets = ReplicatedStorage:WaitForChild("Assets", 10)
-    if not assets then
-        logger:Error("BreakableSpawner: Assets folder not found; aborting spawn loop")
-        return
-    end
-    local models = assets:WaitForChild("Models", 10)
-    if not models then
-        return
-    end
-    local breakables = models:WaitForChild("Breakables", 30)
-    if not breakables then
-        logger:Error("BreakableSpawner: Assets.Models.Breakables missing; aborting")
-        return
-    end
-    local crystalsAssets = breakables:WaitForChild("Crystals", 30)
-    if not crystalsAssets then
-        logger:Warn(
-            "BreakableSpawner: Crystal assets folder missing after wait; will retry when assets load"
-        )
-        breakables.ChildAdded:Connect(function(child)
-            if child.Name == "Crystals" and child:IsA("Folder") then
-                self:_fillAllWorlds(child)
-            end
-        end)
-    else
-        local start = tick()
-        while #crystalsAssets:GetChildren() == 0 and tick() - start < 30 do
-            task.wait(0.5)
+    -- Await the model TEMPLATES milestone, then the world structure. Both are race-free (return
+    -- instantly if already signalled). This REPLACES the old WaitForChild + poll dance and the
+    -- FindFirstChild-then-abort that, on a fast boot, ran before GameStructureService created
+    -- workspace.Game.Breakables — aborting _spawnLoop entirely so the primary fill + ChildAdded
+    -- listener never installed and worlds only filled on the 30s safety-net (the walk-in delay).
+    -- See docs/BOOT_ORCHESTRATION.md.
+    BootReadiness.await("models_ready")
+    local crystalsAssets = ReplicatedStorage:WaitForChild("Assets")
+        :WaitForChild("Models")
+        :WaitForChild("Breakables")
+        :WaitForChild("Crystals")
+    self._crystalsAssets = crystalsAssets
+    do
+        local names = {}
+        for _, child in ipairs(crystalsAssets:GetChildren()) do
+            table.insert(names, child.Name)
         end
-        self._crystalsAssets = crystalsAssets
-        if #crystalsAssets:GetChildren() == 0 then
-            logger:Warn(
-                "BreakableSpawner: Crystals folder has no children after waits; will keep retrying"
-            )
-        else
-            local names = {}
-            for _, child in ipairs(crystalsAssets:GetChildren()) do
-                table.insert(names, child.Name)
-            end
-            logger:Info("BreakableSpawner: Crystal assets ready", { count = #names, names = names })
-        end
+        logger:Info("BreakableSpawner: Crystal assets ready", { count = #names, names = names })
     end
 
-    -- Locate worlds structure
-    local gameFolder = workspace:WaitForChild("Game", 10)
-    if not gameFolder then
-        logger:Error("BreakableSpawner: workspace.Game missing; cannot spawn")
-        return
-    end
-    -- Build the Breakables/Crystals/<world> folder tree from config FIRST, then locate it. On a fast
-    -- boot (pre-baked assets) _spawnLoop reaches here before the authored map / GameStructureService
-    -- has created workspace.Game.Breakables — and the OLD order did FindFirstChild("Breakables") ->
-    -- abort BEFORE calling ensureConfiguredFolderTree, the very function that creates it. That abort
-    -- skipped the initial fill AND the ChildAdded listener below, so nothing event-drove the fill and
-    -- worlds only ever filled on the 30s safety-net sweep = the ~30s walk-in delay. The function is
-    -- idempotent (creates only missing folders) and authored-map worlds added later still arrive via
-    -- the ChildAdded watcher, so this is safe regardless of who wins the boot race.
+    BootReadiness.await("world_structure")
+    local gameFolder = workspace:WaitForChild("Game")
+    -- Idempotently ensure the per-world Crystals subtree from config exists (authored-map worlds also
+    -- arrive via the ChildAdded watcher below) before locating it.
     ensureConfiguredFolderTree(gameFolder)
 
     local breakablesWorlds = gameFolder:FindFirstChild("Breakables")
     if not breakablesWorlds then
-        logger:Error("BreakableSpawner: workspace.Game.Breakables missing; cannot spawn")
+        logger:Error(
+            "BreakableSpawner: workspace.Game.Breakables missing after world_structure; cannot spawn"
+        )
         return
     end
 
@@ -964,6 +933,9 @@ function BreakableSpawner:_spawnLoop()
             end
         end
     end)
+
+    -- Initial fill done + event-driven machinery (per-crystal respawn, ChildAdded) installed.
+    BootReadiness.signal("crystals_ready")
 end
 
 -- Clear ore from worlds that are no longer active (locked again). Used when unlock state changes

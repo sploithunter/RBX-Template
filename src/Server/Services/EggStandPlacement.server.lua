@@ -20,6 +20,7 @@ local Workspace = game:GetService("Workspace")
 local petConfig = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("pets"))
 local WorldContext = require(ReplicatedStorage.Shared.Game.WorldContext)
 local EggStandResolver = require(ReplicatedStorage.Shared.Game.EggStandResolver)
+local BootReadiness = require(ReplicatedStorage.Shared.Boot.BootReadiness)
 
 local matrix = petConfig.realm_area_eggs
 if type(matrix) ~= "table" or next(matrix) == nil then
@@ -109,14 +110,11 @@ local function placeEgg(stand, eggTemplate, eggId)
 end
 
 -- Dependency gate: the egg model TEMPLATES (Assets.Models.Eggs.*) are built by AssetPreloadService
--- AFTER this script first runs. Rather than race that build, await its readiness signal —
--- AssetPreloadService flips Assets.ModelsReady -> true once every template is built. This is an
--- event wait (no timed polling): we only scan once the dependency is actually resolved.
-local assets = ReplicatedStorage:WaitForChild("Assets")
-while assets:GetAttribute("ModelsReady") ~= true do
-    assets:GetAttributeChangedSignal("ModelsReady"):Wait()
-end
+-- AFTER this script first runs. Await its milestone (event-driven, race-free even if the signal
+-- already fired) rather than polling an attribute. See docs/BOOT_ORCHESTRATION.md.
+BootReadiness.await("models_ready")
 
+local assets = ReplicatedStorage:WaitForChild("Assets")
 local eggsFolder = assets:WaitForChild("Models"):WaitForChild("Eggs")
 local maps = Workspace:WaitForChild("Maps")
 
@@ -163,3 +161,4 @@ print(
         _standCount
     )
 )
+BootReadiness.signal("eggs_placed")
