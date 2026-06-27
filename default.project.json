@@ -19,7 +19,10 @@
     },
     "ReplicatedStorage": {
       "Assets": {
-        "$className": "Folder"
+        "$className": "Folder",
+        "Models": {
+          "$path": "assets/place/Models.rbxm"
+        }
       },
       "Shared": {
         "$path": "src/Shared"
@@ -35,12 +38,6 @@
       },
       "PlaceAssets": {
         "$path": "assets/place/PlaceAssets"
-      },
-      "Assets": {
-        "$className": "Folder",
-        "Models": {
-          "$path": "assets/place/Models.rbxm"
-        }
       }
     },
     "StarterPlayer": {
