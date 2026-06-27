@@ -319,11 +319,12 @@ return {
         },
 
         -- Sounds played by RangedFX: `delivery` at launch (the firing pet), `impact` at the hit.
-        -- An empty id = silent (so sounds can be added as we get them). impact uses the egg-pop
-        -- placeholder for now; swap to a crystal-crack/whoosh when available.
+        -- An empty id = silent (so sounds can be added as we get them). impact was the egg-pop
+        -- placeholder (annoying on every hit) — now a punch (single_target_punch, group-owned);
+        -- swap to a crystal-crack/whoosh later if a better one is sourced.
         sounds = {
             delivery = { id = "", volume = 0.5 },
-            impact = { id = "rbxassetid://86006129075096", volume = 0.55 },
+            impact = { id = "rbxassetid://70478220013693", volume = 0.45 },
         },
 
         -- Gap-close counter: after firing, the ranged pet is movement-locked this long
