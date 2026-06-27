@@ -1151,14 +1151,22 @@ function BreakableSpawner:_fillWorld(worldFolder)
     end
 
     self._fillInProgress[worldFolder] = true
+    local _fillT0 = os.clock()
+    local _spawnCpu = 0
     local ok = pcall(function()
+        -- Amortize by TIME, not count. The old "yield every 10" hitched ~0.9s on entry because a single
+        -- crystal's setup (clone + weld + OreGlow light + 2 billboards + placement) is not free, so 10 in
+        -- one frame blew the budget. Yield the moment this frame's spawn work crosses ~6ms (a third of a
+        -- 60fps frame) — that adapts to whatever a crystal costs and never lets a fill stall the frame.
+        local frameStart = os.clock()
         for i = 1, deficit do
+            local _c0 = os.clock()
             self:_trySpawnOne(worldFolder)
-            -- Amortize the batch (slots are pre-cached, so spawning is the only cost) across frames so
-            -- a full-Max fill neither hitches the server nor pops in all at once — crystals trickle in.
-            -- Re-check active each chunk so a player leaving mid-fill stops it cleanly.
-            if i % 10 == 0 then
+            _spawnCpu = _spawnCpu + (os.clock() - _c0)
+            if os.clock() - frameStart > 0.006 then
                 task.wait()
+                frameStart = os.clock()
+                -- Re-check active each chunk so a player leaving mid-fill stops it cleanly.
                 if not self:_isWorldActive(worldFolder.Name) then
                     break
                 end
@@ -1168,6 +1176,20 @@ function BreakableSpawner:_fillWorld(worldFolder)
     self._fillInProgress[worldFolder] = false
     if not ok then
         self._fillInProgress[worldFolder] = nil
+    end
+    -- TEMPORARY: per-crystal cost. If perCrystal is small, the time-budget fully smooths the fill; if
+    -- it's >16ms, even one crystal hitches a frame → the crystal setup itself needs trimming.
+    if deficit > 0 then
+        print(
+            string.format(
+                "[FILLPERF] %s  deficit=%d  cpu=%.0fms  wall=%.2fs  perCrystal=%.1fms",
+                worldFolder.Name,
+                deficit,
+                _spawnCpu * 1000,
+                os.clock() - _fillT0,
+                (_spawnCpu / deficit) * 1000
+            )
+        )
     end
 end
 
