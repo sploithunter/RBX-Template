@@ -11,11 +11,11 @@
 
 return {
     -- Geomancer (earth) — tank / shields
-    stone_skin = "Hardens the squad's skin: +Defense for 12s.",
+    stone_skin = "Hardens one pet's skin: +160 Defense for 10s. Cheap, short cooldown — keep it on your carry.",
     bulwark = "Squad bulwark: big +Defense for 15s.",
     mountains_strength = "+50% pet damage to the squad for 8s.",
     aegis = "Absorb shield on one selected pet (soaks 40) for 12s.",
-    ironclad = "+80 Defense on one selected pet for 12s.",
+    ironclad = "+80 Defense to the whole squad for 12s. Expensive, long cooldown — pop it for a dangerous wave.",
     sunder = "Armor break: enemies take more damage.",
     bastion = "Signature: raises a defensive bastion over the squad.",
     seismic_hold = "Signature: roots enemies in place.",

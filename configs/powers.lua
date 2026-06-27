@@ -129,6 +129,9 @@ return {
         -- the pet's own material HARDENS (Stone Skin, Ice Armor). Sustained mitigation vs. shield's
         -- burst soak. Applies to the squad and expires after `duration`s (no permanent armor).
         armor = { family = "defense_buff", magnitude = 80, duration = 12 },
+        -- Single-pet armor (Stone Skin): concentration premium — a bigger +Defense on ONE pet
+        -- than the team `armor`, paired with cheap/low-cooldown casting (babysit your carry).
+        armor_single = { family = "defense_buff", magnitude = 160, duration = 10 },
         -- Bulwark = squad DAMAGE REDUCTION for `duration`s (temp +Defense armor), per design
         team_shield = { family = "defense_buff", magnitude = 120, duration = 15 },
         -- TRUE EVASION — the 3rd defensive pillar, distinct from absorb (a depleting HP pool) and armor
@@ -451,9 +454,9 @@ return {
         -- Geomancer (earth · tank): targeted+team armor, buff, debuff, Taunt, Rage, Armor Field
         stone_skin = {
             archetype = "geomancer",
-            focus_cost = 20,
-            cooldown_seconds = 30,
-            effect = "armor",
+            focus_cost = 10,
+            cooldown_seconds = 12,
+            effect = "armor_single",
             display_name = "Stone Skin",
             subtitle = "Single-Pet Armor",
             role = "armor",
@@ -464,8 +467,8 @@ return {
         },
         ironclad = {
             archetype = "geomancer",
-            focus_cost = 16,
-            cooldown_seconds = 24,
+            focus_cost = 30,
+            cooldown_seconds = 40,
             effect = "armor",
             display_name = "Ironclad",
             subtitle = "Team Armor",
