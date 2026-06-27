@@ -4,13 +4,15 @@
 return {
     -- Named sounds
     egg_hatch_pop = {
-        id = "rbxassetid://86006129075096",
+        -- betterpop.wav (Jason's improved egg-open pop), group-uploaded via scripts/upload_audio.js.
+        id = "rbxassetid://114572398311789",
         volume = 0.8,
         playback_speed = 1.0,
     },
 
     egg_roll_snare = {
-        id = "rbxassetid://140087722093345",
+        -- BetterSnare.wav (Jason's improved egg-rattle snare roll), group-uploaded.
+        id = "rbxassetid://112745556256821",
         volume = 0.6,
         playback_speed = 1.0,
     },
