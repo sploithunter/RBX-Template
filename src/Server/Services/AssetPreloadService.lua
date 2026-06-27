@@ -601,12 +601,26 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                     local existingVariant = petTypeFolder:FindFirstChild(variant)
                     local modelSuccess
 
-                    if hasMeshAsset then
+                    if
+                        existingVariant
+                        and existingVariant:IsA("Model")
+                        and existingVariant:FindFirstChildWhichIsA("BasePart", true)
+                    then
+                        -- PRE-BAKED FAST PATH (mesh-combine AND asset_id pets alike): a valid model is
+                        -- already present (the Rojo-synced ReplicatedStorage.Assets.Models, captured from
+                        -- a fully-loaded runtime). Adopt it as-is — no fetch, no mesh-combine, no
+                        -- weld/normalize (it's the already-processed runtime output). MUST be the FIRST
+                        -- branch: otherwise meshy pets fall into the combine branch below and rebuild
+                        -- every model (the actual ~25s boot cost — the bug Jason caught).
+                        adoptedCount = adoptedCount + 1
+                        modelSuccess = true
+                    elseif hasMeshAsset then
                         -- Combine path: textured MeshPart from a separately-uploaded mesh + texture
                         -- (FBX->Model uploads come out untextured). Mirrors the enemy/gem combine.
                         if existingVariant then
                             existingVariant:Destroy()
                         end
+                        fetchedCount = fetchedCount + 1
                         modelSuccess = self:BuildMeshPartModelIntoFolder(
                             variantData.mesh_asset,
                             variantData.texture_asset,
@@ -637,19 +651,6 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                             })
                             modelSuccess = false
                         end
-                    elseif
-                        existingVariant
-                        and existingVariant:IsA("Model")
-                        and existingVariant:FindFirstChildWhichIsA("BasePart", true)
-                    then
-                        -- PRE-BAKED FAST PATH: a valid model is already present (the Rojo-synced
-                        -- ReplicatedStorage.Assets.Models, captured from a fully-loaded runtime). Adopt
-                        -- it as-is instead of destroying + re-fetching over the network — it's the
-                        -- already-processed runtime output, so no weld/normalize/components needed. This
-                        -- is what makes the boot fast; without it the caller destroyed the pre-bake here
-                        -- and the skip-guard in LoadModelIntoFolder never got a chance.
-                        adoptedCount = adoptedCount + 1
-                        modelSuccess = true
                     else
                         -- No usable pre-bake — replace any empty placeholder and fetch normally.
                         if existingVariant then
@@ -924,6 +925,15 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
         duration = tick() - startTime,
     })
     ReplicatedStorage.Assets:SetAttribute("ModelsReady", true)
+    -- Unmissable boot-speed readout (this service's Logger output is suppressed in Studio).
+    print(
+        string.format(
+            "[PREBAKE] model pass done in %.1fs — adopted=%d fetched=%d (adopted≈total = fast)",
+            tick() - startTime,
+            adoptedCount,
+            fetchedCount
+        )
+    )
 
     -- Deferred, yielding thumbnail pass. Generates the inventory-card ViewportFrames off the boot
     -- critical path, yielding every few so it never monopolizes the server thread, and bumping
