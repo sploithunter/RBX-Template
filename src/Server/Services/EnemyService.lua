@@ -4229,7 +4229,11 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
     local rankOff = (
         self._levelingConfig.rank_offset and self._levelingConfig.rank_offset[def.tier]
     ) or 0
-    model:SetAttribute("Level", LevelScale.effectiveLevel(def.level or playerLevel, rankOff))
+    -- Per-player difficulty knob (SettingsService EnemyLevelOffset, -3..+3): scoots the
+    -- spawn level easier/harder vs the player. Clamped here as a guard; floored at 1.
+    local lvlOffset = math.clamp(tonumber(player:GetAttribute("EnemyLevelOffset")) or 0, -3, 3)
+    local baseLevel = math.max(1, (def.level or playerLevel) + lvlOffset)
+    model:SetAttribute("Level", LevelScale.effectiveLevel(baseLevel, rankOff))
 
     -- Watch HP -> death; also drive the HP bar.
     model:GetAttributeChangedSignal("HP"):Connect(function()

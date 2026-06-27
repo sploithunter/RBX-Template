@@ -122,6 +122,7 @@ local Signals = {
     Settings_SetPetFormation = Net:RemoteEvent("Settings_SetPetFormation"), -- c->s persist equipped-pet formation layout
     Settings_SetPetAttackStyle = Net:RemoteEvent("Settings_SetPetAttackStyle"), -- c->s persist pet attack/mining formation
     Settings_SetInventoryCardScale = Net:RemoteEvent("Settings_SetInventoryCardScale"), -- c->s persist inventory pet-card grid size (small/medium/large)
+    Settings_SetEnemyLevelOffset = Net:RemoteEvent("Settings_SetEnemyLevelOffset"), -- c->s persist enemy spawn-level offset vs player (-3..+3 difficulty knob)
     PetReportPositions = Net:RemoteEvent("PetReportPositions"), -- c->s throttled local pet positions (mining gate + multiplayer)
     PetPositionsRelay = Net:RemoteEvent("PetPositionsRelay"), -- s->c relay OTHER players' pet positions (owner renders its own locally)
     AutoTarget_Status = Net:RemoteEvent("AutoTarget_Status"), -- s->c push current auto-target status

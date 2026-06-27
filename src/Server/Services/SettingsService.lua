@@ -130,6 +130,7 @@ function SettingsService:_createSettingsFolders(player)
             PetFormation = self:_defaultPetFormation(),
             PetAttackStyle = self:_defaultPetAttackStyle(),
             InventoryCardScale = "small",
+            EnemyLevelOffset = 0,
         }
     end
 
@@ -170,6 +171,7 @@ function SettingsService:_createSettingsFolders(player)
     self:_applyPetFormation(player)
     self:_applyPetAttackStyle(player)
     self:_applyInventoryCardScale(player)
+    self:_applyEnemyLevelOffset(player)
 
     self._logger:Info("✅ SETTINGS - Settings folders created successfully", {
         player = player.Name,
@@ -641,6 +643,52 @@ function SettingsService:_setInventoryCardScale(player, value)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
+-- ENEMY LEVEL OFFSET (per-player difficulty knob — shifts enemy spawn level vs the
+-- player by -3..+3; applied as the EnemyLevelOffset attribute EnemyService reads on spawn)
+-- ═══════════════════════════════════════════════════════════════════════════════════
+
+local ENEMY_LEVEL_OFFSET_MIN = -3
+local ENEMY_LEVEL_OFFSET_MAX = 3
+
+function SettingsService:_sanitizeEnemyLevelOffset(value)
+    if type(value) == "table" then
+        value = value.offset or value.value or value.level
+    end
+    value = tonumber(value)
+    if not value then
+        return 0
+    end
+    value = math.floor(value + 0.5)
+    return math.clamp(value, ENEMY_LEVEL_OFFSET_MIN, ENEMY_LEVEL_OFFSET_MAX)
+end
+
+-- Push the saved offset onto the player as a (replicated) attribute EnemyService reads.
+function SettingsService:_applyEnemyLevelOffset(player)
+    local data = self._dataService:GetData(player)
+    local offset = 0
+    if data and data.Settings and data.Settings.EnemyLevelOffset ~= nil then
+        offset = self:_sanitizeEnemyLevelOffset(data.Settings.EnemyLevelOffset)
+    end
+    player:SetAttribute("EnemyLevelOffset", offset)
+    return offset
+end
+
+function SettingsService:_setEnemyLevelOffset(player, value)
+    local data = self._dataService:GetData(player)
+    if not data then
+        return false
+    end
+
+    data.Settings = data.Settings or {}
+    local offset = self:_sanitizeEnemyLevelOffset(value)
+    data.Settings.EnemyLevelOffset = offset
+    player:SetAttribute("EnemyLevelOffset", offset)
+
+    self._logger:Info("Updated enemy level offset", { player = player.Name, offset = offset })
+    return true
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════════
 -- NETWORK SIGNALS (following InventoryService pattern)
 -- ═══════════════════════════════════════════════════════════════════════════════════
 
@@ -688,6 +736,10 @@ function SettingsService:_setupNetworkSignals()
 
     Signals.Settings_SetInventoryCardScale.OnServerEvent:Connect(function(player, payload)
         self:_setInventoryCardScale(player, payload)
+    end)
+
+    Signals.Settings_SetEnemyLevelOffset.OnServerEvent:Connect(function(player, payload)
+        self:_setEnemyLevelOffset(player, payload)
     end)
 
     self._logger:Info("📡 Settings network signals configured")
@@ -743,6 +795,14 @@ end
 
 function SettingsService:GetInventoryCardScale(player)
     return self:_applyInventoryCardScale(player)
+end
+
+function SettingsService:SetEnemyLevelOffset(player, value)
+    return self:_setEnemyLevelOffset(player, value)
+end
+
+function SettingsService:GetEnemyLevelOffset(player)
+    return self:_applyEnemyLevelOffset(player)
 end
 
 return SettingsService

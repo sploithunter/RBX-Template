@@ -324,6 +324,7 @@ function SettingsPanel:_createUI(parent)
     self:_createUISettings()
     self:_createPetSettings()
     self:_createHatchSettings()
+    self:_createCombatSettings()
 
     -- Admin section (only for admin users)
     if self.isAdmin then
@@ -1003,19 +1004,50 @@ function SettingsPanel:_createPetSettings()
     )
 end
 
-function SettingsPanel:_createAdminSettings()
-    self:_createSectionHeader("🛠️ Admin Tools", 30)
+-- Current enemy spawn-level offset vs the player, read from the replicated
+-- EnemyLevelOffset attribute the server sets from the saved setting. String value so
+-- the dropdown can key on it ("-3".."3").
+function SettingsPanel:_getEnemyLevelOffset()
+    local offset = tonumber(Players.LocalPlayer:GetAttribute("EnemyLevelOffset")) or 0
+    offset = math.clamp(math.floor(offset + 0.5), -3, 3)
+    return tostring(offset)
+end
 
-    self:_createButtonSetting("Test Menu Access", "Open Admin Panel", 31, function()
+function SettingsPanel:_createCombatSettings()
+    self:_createSectionHeader("⚔️ Combat", 29)
+
+    self:_createDropdownSetting(
+        "Enemy Level",
+        self:_getEnemyLevelOffset(),
+        {
+            { value = "-3", display = "3 Below You" },
+            { value = "-2", display = "2 Below You" },
+            { value = "-1", display = "1 Below You" },
+            { value = "0", display = "Same As You" },
+            { value = "1", display = "1 Above You" },
+            { value = "2", display = "2 Above You" },
+            { value = "3", display = "3 Above You" },
+        },
+        30,
+        function(value)
+            Signals.Settings_SetEnemyLevelOffset:FireServer({ offset = tonumber(value) or 0 })
+        end
+    )
+end
+
+function SettingsPanel:_createAdminSettings()
+    self:_createSectionHeader("🛠️ Admin Tools", 35)
+
+    self:_createButtonSetting("Test Menu Access", "Open Admin Panel", 36, function()
         self:_openAdminPanel()
     end)
 
-    self:_createButtonSetting("Debug Mode", "Toggle Debug UI", 32, function()
+    self:_createButtonSetting("Debug Mode", "Toggle Debug UI", 37, function()
         -- Toggle debug overlays
         self.logger:info("Debug mode toggled")
     end)
 
-    self:_createButtonSetting("Performance Monitor", "Show Stats", 33, function()
+    self:_createButtonSetting("Performance Monitor", "Show Stats", 38, function()
         -- Show performance statistics
         self.logger:info("Performance monitor toggled")
     end)
