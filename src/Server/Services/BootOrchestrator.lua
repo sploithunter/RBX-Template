@@ -41,17 +41,18 @@ function BootOrchestrator:Init()
         self._milestones = bootConfig.milestones or {}
     end
     self._config = bootConfig
+    self._bootT0 = os.clock() -- reference for the elapsed-since-boot stamp on each milestone line
 
     -- Validate the dependency graph LOUDLY at boot.
     local valid, errors = BootGraph.validate(self._milestones)
     if not valid then
         for _, msg in ipairs(errors) do
             self._logger:Error("BootOrchestrator: invalid boot graph", { problem = msg })
+            print("[BOOT] INVALID GRAPH: " .. tostring(msg))
         end
     else
-        self._logger:Info("BootOrchestrator: boot graph valid", {
-            order = table.concat(BootGraph.order(self._milestones), " -> "),
-        })
+        -- print (not just logger) so the expected milestone order is visible in Studio Output.
+        print("[BOOT] graph: " .. table.concat(BootGraph.order(self._milestones), " -> "))
     end
 
     -- Create the client-facing mirror with one (false) attribute per server milestone.
@@ -88,14 +89,16 @@ function BootOrchestrator:_onMilestone(name)
     if self._statusFolder and self._statusFolder:GetAttribute(name) ~= true then
         self._statusFolder:SetAttribute(name, true)
     end
+    -- Raw print(), NOT the Logger: the structured Logger output is SUPPRESSED in Studio (same reason
+    -- [PREBAKE] prints), so a print is the only way these per-stage lines actually show in the Studio
+    -- Output during boot. Each carries elapsed-since-boot so a slow stage is obvious at a glance.
+    local elapsed = os.clock() - (self._bootT0 or os.clock())
     if self._milestones[name] then
-        self._logger:Info("[BOOT] milestone ready", {
-            milestone = name,
-            background = self._milestones[name].background == true,
-        })
+        local tag = self._milestones[name].background and "  (background)" or ""
+        print(string.format("[BOOT] %s ready  +%.1fs%s", name, elapsed, tag))
     else
         -- A BootReadiness signal with no matching declaration — almost certainly a typo.
-        self._logger:Warn("[BOOT] signalled an undeclared milestone", { milestone = name })
+        print(string.format("[BOOT] WARNING: undeclared milestone '%s' signalled", name))
         if self._statusFolder then
             self._statusFolder:SetAttribute(name, true)
         end
