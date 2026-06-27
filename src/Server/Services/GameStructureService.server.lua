@@ -544,6 +544,7 @@ end
 
 function GameStructureService:Initialize()
     print("GameStructureService: Initializing...")
+    BootReadiness.begin("world_structure") -- boot stage start (paired with signal below)
     if shouldGenerateFallbackStructure() then
         local breakablesConfig = loadBreakablesConfig()
         ensureSpawnIsland(breakablesConfig.structure or {})

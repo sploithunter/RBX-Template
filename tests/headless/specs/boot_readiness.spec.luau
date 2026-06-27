@@ -104,5 +104,33 @@ return function()
             coroutine.resume(co)
             expect(Boot.snapshot().models_ready.ready).to.equal(false)
         end)
+
+        it("begin then signal: observer sees started then ready with a numeric duration", function()
+            local phases = {}
+            local readyDuration = "none"
+            Boot.observe(function(name, info)
+                table.insert(phases, info and info.phase or "?")
+                if info and info.phase == "ready" then
+                    readyDuration = info.duration
+                end
+            end)
+            Boot.begin("models_ready")
+            Boot.signal("models_ready")
+            expect(phases[1]).to.equal("started")
+            expect(phases[2]).to.equal("ready")
+            expect(type(readyDuration)).to.equal("number")
+        end)
+
+        it("begin is idempotent and ignored once ready", function()
+            expect(Boot.begin("eggs_placed")).to.equal(true)
+            expect(Boot.begin("eggs_placed")).to.equal(false) -- already started
+            Boot.signal("eggs_placed")
+            expect(Boot.begin("eggs_placed")).to.equal(false) -- already ready
+        end)
+
+        it("snapshot exposes startedAt after begin", function()
+            Boot.begin("crystals_ready")
+            expect(type(Boot.snapshot().crystals_ready.startedAt)).to.equal("number")
+        end)
     end)
 end

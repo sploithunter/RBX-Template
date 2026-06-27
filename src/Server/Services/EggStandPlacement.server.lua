@@ -113,6 +113,7 @@ end
 -- AFTER this script first runs. Await its milestone (event-driven, race-free even if the signal
 -- already fired) rather than polling an attribute. See docs/BOOT_ORCHESTRATION.md.
 BootReadiness.await("models_ready")
+BootReadiness.begin("eggs_placed") -- boot stage start (paired with signal below)
 
 local assets = ReplicatedStorage:WaitForChild("Assets")
 local eggsFolder = assets:WaitForChild("Models"):WaitForChild("Eggs")

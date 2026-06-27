@@ -51,6 +51,21 @@ local function resumeThread(thread)
     end
 end
 
+-- Mark a milestone's work as STARTED (optional — enables a start log + a duration on signal).
+-- Idempotent; ignored once already started or ready. Notifies observers with phase = "started".
+function BootReadiness.begin(name)
+    assert(type(name) == "string", "BootReadiness.begin: name must be a string")
+    local m = getMilestone(name)
+    if m.startedAt ~= nil or m.ready then
+        return false
+    end
+    m.startedAt = clock()
+    for _, cb in ipairs(observers) do
+        pcall(cb, name, { phase = "started", at = m.startedAt })
+    end
+    return true
+end
+
 -- Mark a milestone done. Idempotent: a second signal is a no-op and returns false.
 function BootReadiness.signal(name)
     assert(type(name) == "string", "BootReadiness.signal: name must be a string")
@@ -60,10 +75,15 @@ function BootReadiness.signal(name)
     end
     m.ready = true
     m.at = clock()
+    local duration = m.startedAt and (m.at - m.startedAt) or nil
 
     -- Notify observers (mirror/log). Observers must not yield; isolate failures.
     for _, cb in ipairs(observers) do
-        pcall(cb, name, { at = m.at })
+        pcall(
+            cb,
+            name,
+            { phase = "ready", at = m.at, startedAt = m.startedAt, duration = duration }
+        )
     end
 
     -- Release all waiters. Swap the list out first so a waiter that re-awaits doesn't mutate
@@ -120,7 +140,7 @@ end
 function BootReadiness.snapshot()
     local out = {}
     for name, m in pairs(milestones) do
-        out[name] = { ready = m.ready, at = m.at }
+        out[name] = { ready = m.ready, at = m.at, startedAt = m.startedAt }
     end
     return out
 end

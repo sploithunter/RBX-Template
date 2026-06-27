@@ -499,6 +499,7 @@ end
 -- Load all pet models and generate images into ReplicatedStorage.Assets
 function AssetPreloadService:LoadAllModelsIntoAssets()
     logger:Info("🔄 LoadAllModelsIntoAssets: Starting...")
+    BootReadiness.begin("models_ready") -- boot stage start (paired with signal below)
     ReplicatedStorage.Assets:SetAttribute("ModelsReady", false)
     ReplicatedStorage.Assets:SetAttribute("PetThumbnailsReady", false)
     ReplicatedStorage.Assets:SetAttribute("PetThumbnailCount", 0)
@@ -953,6 +954,7 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
     -- critical path, yielding every few so it never monopolizes the server thread, and bumping
     -- PetThumbnailCount incrementally so the client prewarm can release as soon as enough exist.
     task.spawn(function()
+        BootReadiness.begin("icons_ready") -- background boot stage start (paired with signal below)
         local thumbStart = tick()
         for i, job in ipairs(thumbnailJobs) do
             if job.model then

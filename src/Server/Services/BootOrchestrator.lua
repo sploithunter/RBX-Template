@@ -71,31 +71,48 @@ function BootOrchestrator:Init()
 end
 
 function BootOrchestrator:Start()
-    -- Seed the mirror from any milestone already signalled before this observer attaches
-    -- (a producer with no dependencies may signal during its own Init/Start).
+    -- Seed from anything that already started/finished before this observer attaches (a producer
+    -- with no dependencies may begin/signal during its own Init/Start).
     for name, info in pairs(BootReadiness.snapshot()) do
+        if info.startedAt then
+            self:_markStarted(name)
+        end
         if info.ready then
-            self:_onMilestone(name)
+            self:_markReady(name, info.duration)
         end
     end
 
-    -- Mirror + log every future signal.
-    BootReadiness.observe(function(name)
-        self:_onMilestone(name)
+    -- Mirror + log every future begin/signal.
+    BootReadiness.observe(function(name, info)
+        if info and info.phase == "started" then
+            self:_markStarted(name)
+        else
+            self:_markReady(name, info and info.duration)
+        end
     end)
 end
 
-function BootOrchestrator:_onMilestone(name)
+-- Raw print(), NOT the Logger: the structured Logger output is SUPPRESSED in Studio (same reason
+-- [PREBAKE] prints), so a print is the only way these per-stage lines actually show in Studio Output
+-- during boot. Each carries elapsed-since-boot so the running/slow stage is obvious at a glance.
+function BootOrchestrator:_elapsed()
+    return os.clock() - (self._bootT0 or os.clock())
+end
+
+function BootOrchestrator:_markStarted(name)
+    if self._milestones[name] then
+        print(string.format("[BOOT] %s started  +%.1fs", name, self:_elapsed()))
+    end
+end
+
+function BootOrchestrator:_markReady(name, duration)
     if self._statusFolder and self._statusFolder:GetAttribute(name) ~= true then
         self._statusFolder:SetAttribute(name, true)
     end
-    -- Raw print(), NOT the Logger: the structured Logger output is SUPPRESSED in Studio (same reason
-    -- [PREBAKE] prints), so a print is the only way these per-stage lines actually show in the Studio
-    -- Output during boot. Each carries elapsed-since-boot so a slow stage is obvious at a glance.
-    local elapsed = os.clock() - (self._bootT0 or os.clock())
     if self._milestones[name] then
         local tag = self._milestones[name].background and "  (background)" or ""
-        print(string.format("[BOOT] %s ready  +%.1fs%s", name, elapsed, tag))
+        local took = duration and string.format("  (took %.1fs)", duration) or ""
+        print(string.format("[BOOT] %s ready  +%.1fs%s%s", name, self:_elapsed(), took, tag))
     else
         -- A BootReadiness signal with no matching declaration — almost certainly a typo.
         print(string.format("[BOOT] WARNING: undeclared milestone '%s' signalled", name))

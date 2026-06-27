@@ -884,6 +884,10 @@ function BreakableSpawner:_spawnLoop()
         return
     end
 
+    -- Boot stage start: the initial fill (every active world's slot-gen + time-budgeted spawn)
+    -- begins now and ends at the crystals_ready signal — the (took Xs) shows how long that takes.
+    BootReadiness.begin("crystals_ready")
+
     -- Attach listeners and do initial fill for each world
     for _, worldFolder in ipairs(crystalsWorlds:GetChildren()) do
         if worldFolder:IsA("Folder") then
