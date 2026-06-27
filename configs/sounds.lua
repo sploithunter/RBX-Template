@@ -4,13 +4,13 @@
 return {
     -- Named sounds
     egg_hatch_pop = {
-        id = "rbxassetid://98548849463653",
+        id = "rbxassetid://86006129075096",
         volume = 0.8,
         playback_speed = 1.0,
     },
 
     egg_roll_snare = {
-        id = "rbxassetid://79256976981602",
+        id = "rbxassetid://140087722093345",
         volume = 0.6,
         playback_speed = 1.0,
     },
@@ -40,7 +40,7 @@ return {
     -- time itself to the track (LevelUpController reads it). Uploaded via scripts/upload_audio.js
     -- (assets/audio/sfx/level_up_epic.mp3 -> id below). New uploads moderate before they play.
     level_up_epic = {
-        id = "rbxassetid://71989899201509",
+        id = "rbxassetid://71208785111265",
         volume = 0.5, -- starting point; tune like the jingle if it's hot
         playback_speed = 1.0,
         duration_seconds = 7.5, -- track length; the level-up animation runs to this
@@ -51,7 +51,7 @@ return {
     -- positionally at an enemy the instant a HOLD lands on it (EnemyService:_auraHold). The same
     -- track also skins ice shields (power_fx sounds.shield.ice). Server-created -> everyone hears it.
     freeze_hold = {
-        id = "rbxassetid://115983199480080",
+        id = "rbxassetid://93258219658109",
         volume = 0.5,
         playback_speed = 1.0,
         bus = "effects",
@@ -61,7 +61,7 @@ return {
     -- power/effect isn't built yet — when it lands, play this positionally on the dazed target the
     -- same way _auraHold plays freeze_hold. Uploaded + ready.
     daze_hit = {
-        id = "rbxassetid://99863232608134",
+        id = "rbxassetid://94200687927271",
         volume = 0.5,
         playback_speed = 1.0,
         bus = "effects",
@@ -70,7 +70,7 @@ return {
     -- PARKED (Jason: "very good whoosh with loud impact, not sure where to use this"). Uploaded +
     -- recorded; pick a slot later — best fits a heavy AoE/slam power impact or a big cast.
     boom_swoosh = {
-        id = "rbxassetid://139898524491568",
+        id = "rbxassetid://88708868978364",
         volume = 0.5,
         playback_speed = 1.0,
         bus = "effects",
@@ -79,7 +79,7 @@ return {
     -- Fireworks for a SECRET-and-above hatch (Jason) — the unique tiers (secret/exclusive/huge/
     -- creator). Personal (hatching stays owner-only). NOTE: ~15s track; trim if it feels long.
     hatch_fireworks = {
-        id = "rbxassetid://114557545020062",
+        id = "rbxassetid://135447759304480",
         volume = 0.5,
         playback_speed = 1.0,
         bus = "effects",
@@ -91,7 +91,7 @@ return {
     -- ROOT family (PowerService RootedUntil) — play it positionally on the rooted target the way
     -- _auraHold plays freeze_hold. Uploaded + ready; not yet wired (confirm root vs hold first).
     root_whoosh = {
-        id = "rbxassetid://131412280596753",
+        id = "rbxassetid://125336332308951",
         volume = 0.5,
         playback_speed = 1.0,
         bus = "effects",
@@ -101,7 +101,7 @@ return {
     -- ticks UP (BaseUI currency-update path). Personal UI sound on the effects bus. Debounced by
     -- coin_collect_min_gap so a farming burst doesn't machine-gun the clip.
     coin_collect = {
-        id = "rbxassetid://118665363889363",
+        id = "rbxassetid://133263123825856",
         volume = 0.5,
         playback_speed = 1.0,
         bus = "effects",
@@ -137,16 +137,16 @@ return {
     -- change. New uploads play once Roblox moderation approves them.
     music = {
         awe = { id = "rbxassetid://137816344186500", volume = 0.45 }, -- LoopingAweMusic (now Desert)
-        spa = { id = "rbxassetid://110546405983160", volume = 0.45 }, -- gentle spa loop (Spawn/Grass, Jason)
+        spa = { id = "rbxassetid://102792461632018", volume = 0.45 }, -- gentle spa loop (Spawn/Grass, Jason)
         viking_drum = { id = "rbxassetid://92543861599965", volume = 0.45 }, -- VikingDrumLooping
         epic_drum = { id = "rbxassetid://131000740431597", volume = 0.45 }, -- DrumEpicLooping
-        arctic_hunt = { id = "rbxassetid://138050990766154", volume = 0.45 }, -- Arctic Hunt (Ice, Jason)
-        desert_hunt = { id = "rbxassetid://107638957982907", volume = 0.45 }, -- Desert Hunt (Desert, Jason)
+        arctic_hunt = { id = "rbxassetid://99187284116833", volume = 0.45 }, -- Arctic Hunt (Ice, Jason)
+        desert_hunt = { id = "rbxassetid://103598343626981", volume = 0.45 }, -- Desert Hunt (Desert, Jason)
         -- COMBAT loops (~30s drum instrumentals, Jason). Chosen at RANDOM from combat_music below
         -- whenever the player is InCombat; same looping "music" bus as the area tracks.
-        combat_1 = { id = "rbxassetid://116560838965766", volume = 0.5 },
-        combat_2 = { id = "rbxassetid://123517410314080", volume = 0.5 },
-        combat_3 = { id = "rbxassetid://109435606276359", volume = 0.5 },
+        combat_1 = { id = "rbxassetid://94019382405359", volume = 0.5 },
+        combat_2 = { id = "rbxassetid://80895188313881", volume = 0.5 },
+        combat_3 = { id = "rbxassetid://84419590288422", volume = 0.5 },
     },
 
     -- COMBAT MUSIC: while the local player is InCombat (server-set Player attribute), AreaMusicController

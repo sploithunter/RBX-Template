@@ -323,7 +323,7 @@ return {
         -- placeholder for now; swap to a crystal-crack/whoosh when available.
         sounds = {
             delivery = { id = "", volume = 0.5 },
-            impact = { id = "rbxassetid://98548849463653", volume = 0.55 },
+            impact = { id = "rbxassetid://86006129075096", volume = 0.55 },
         },
 
         -- Gap-close counter: after firing, the ranged pet is movement-locked this long

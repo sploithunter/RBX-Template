@@ -7,7 +7,7 @@ local config = {
     -- Global sound settings for egg open (prefer named asset preloads)
     sound = {
         sound_name = "egg_hatch_pop", -- references configs/sounds.lua and Assets.Sounds
-        sound_id = "rbxassetid://98548849463653", -- fallback if not preloaded
+        sound_id = "rbxassetid://86006129075096", -- fallback if not preloaded
         volume = 0.8,
         playback_speed = 1.0,
     },

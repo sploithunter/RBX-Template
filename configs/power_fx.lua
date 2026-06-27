@@ -217,18 +217,18 @@ return {
         -- silent) until they get their own. Pairs with the existing bigger crit-impact VFX.
         crit = {
             grass = {
-                { id = "rbxassetid://140491649982510", seconds = 3.0 }, -- grass_crit_landslide
+                { id = "rbxassetid://113388600729509", seconds = 3.0 }, -- grass_crit_landslide
             },
             lava = {
                 -- Jason: the whoosh didn't fit the fire crit — swapped to the heavy boom_swoosh
                 -- (same slam sound used for AoE impacts below). The whoosh is freed for root/hold.
-                { id = "rbxassetid://139898524491568", seconds = 4.0 }, -- boom_swoosh
+                { id = "rbxassetid://88708868978364", seconds = 4.0 }, -- boom_swoosh
             },
             ice = {
-                { id = "rbxassetid://91568270674401", seconds = 1.7 }, -- ice_crit_sudden_blast (Jason)
+                { id = "rbxassetid://134092591115476", seconds = 1.7 }, -- ice_crit_sudden_blast (Jason)
             },
             desert = {
-                { id = "rbxassetid://105787180419764", seconds = 6.0 }, -- desert_crit_boom
+                { id = "rbxassetid://113394845550674", seconds = 6.0 }, -- desert_crit_boom
             },
         },
         -- MELEE/TANK CRIT (Jason): a non-ranged pet's crit is a heavy CONCUSSION, not a ranged
@@ -237,7 +237,7 @@ return {
         -- entry here later would override it for that element.
         crit_melee = {
             neutral = {
-                { id = "rbxassetid://139898524491568", seconds = 4.0 }, -- boom_swoosh
+                { id = "rbxassetid://88708868978364", seconds = 4.0 }, -- boom_swoosh
             },
         },
         cast = {
@@ -285,10 +285,10 @@ return {
         -- buff activation (rides the `aura` primitive; neutral ⇒ plays under any origin)
         buff = {
             grass = {
-                { id = "rbxassetid://86957589418529", seconds = 4.0 }, -- grass_buff_lion_roar
+                { id = "rbxassetid://85355971301069", seconds = 4.0 }, -- grass_buff_lion_roar
             },
             ice = {
-                { id = "rbxassetid://121252019063530", seconds = 2.3 }, -- ice_buff_storm_wind
+                { id = "rbxassetid://138731814463789", seconds = 2.3 }, -- ice_buff_storm_wind
             },
             neutral = {
                 { id = "rbxassetid://105379088796995", seconds = 1.0 }, -- power_up_stronger
@@ -298,15 +298,15 @@ return {
         shield = {
             -- Per-element shield/armor raise; remaining elements fall through to the neutral force-field.
             grass = {
-                { id = "rbxassetid://103081443898093", seconds = 6.0 }, -- grass_shield_dark
+                { id = "rbxassetid://96887340708437", seconds = 6.0 }, -- grass_shield_dark
             },
             ice = {
-                { id = "rbxassetid://115983199480080", seconds = 6.8 }, -- ice_crystals_freeze
+                { id = "rbxassetid://93258219658109", seconds = 6.8 }, -- ice_crystals_freeze
             },
             desert = {
                 -- volume 1.0 (2x the 0.5 default): the snake-slither clip was barely audible on cast
                 -- (Jason, via Mirage Step). Shared by all desert shield-raises (Mirage Step, Dune Shield).
-                { id = "rbxassetid://100882476598763", seconds = 4.6, volume = 1.0 }, -- desert_shield_snake
+                { id = "rbxassetid://97446414419976", seconds = 4.6, volume = 1.0 }, -- desert_shield_snake
             },
             neutral = {
                 { id = "rbxassetid://124911631879452", seconds = 1.0 }, -- force_field_raise
@@ -317,15 +317,15 @@ return {
         -- element impact is the flavor). neutral-only ⇒ every element's AoE gets the same slam.
         slam = {
             neutral = {
-                { id = "rbxassetid://139898524491568", seconds = 4.0 }, -- boom_swoosh
+                { id = "rbxassetid://88708868978364", seconds = 4.0 }, -- boom_swoosh
             },
         },
         -- ambient LOOPS — registered for zone ambience / sustained holds; NOT one-shot. A looping
         -- player (zone or persistent-effect driven) would use these; the FX-probe doesn't.
         ambient = {
-            neutral = {
-                { id = "rbxassetid://81826046653344", seconds = 3.0 }, -- machine_hum
-            },
+            -- neutral ambient (machine_hum) removed — source lost, dormant anyway (Jason 2026-06-27).
+            -- Re-add { id = ..., seconds = ... } here + upload to the group if it's ever wanted.
+            neutral = {},
             ice = {
                 { id = "rbxassetid://85365931736854", seconds = 3.0 }, -- deep_winter_wind
             },
