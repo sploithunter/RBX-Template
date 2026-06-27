@@ -4,8 +4,8 @@
     See docs/BOOT_ORCHESTRATION.md. Responsibilities:
       1. Validate the configs/boot.lua dependency graph at boot (loud error if cyclic / a
          required milestone has no declared producer) — the next race caught at startup.
-      2. Observe every BootReadiness.signal and LOG it with timing (the permanent replacement
-         for the temporary [PREBAKE]/[FILLPERF] perf tags), warning on any undeclared milestone.
+      2. Observe every BootReadiness.signal and LOG it ([BOOT] milestone ready), warning on any
+         undeclared milestone — the permanent, structured replacement for the lag-hunt perf tags.
       3. Mirror milestone state to ReplicatedStorage.BootStatus (one bool attribute per server
          milestone) so clients gate the loading screen on REAL server readiness, not workspace
          symptom-polls.

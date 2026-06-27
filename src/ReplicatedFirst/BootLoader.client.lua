@@ -1,28 +1,47 @@
 --[[
-    BootLoader (ReplicatedFirst) — gates play behind a loading screen until the client is ready.
+    BootLoader (ReplicatedFirst) — gates play behind a loading screen until the game is ready.
 
     ReplicatedFirst runs FIRST, before StarterPlayerScripts. We cover the screen immediately, lock
-    the player's controls, and only reveal the game once all readiness gates pass:
-      1. game:IsLoaded()                       — assets/instances replicated
-      2. LocalPlayer:GetAttribute("DataLoaded")  — server profile replicated (set by DataService)
-      3. LocalPlayer:GetAttribute("ClientUIReady") — MenuManager + panels + BaseUI up (set by
-         src/Client/init.client at the end of UI init)
+    the player's controls, and reveal the game once each boot PHASE is ready. The phases, their
+    user-facing text, and where each reads its readiness are the SSOT in configs/boot.lua; this
+    screen just renders them (see docs/BOOT_ORCHESTRATION.md). A phase reads from one of:
+      - "engine" — game:IsLoaded() (asset replication)
+      - "server" — ReplicatedStorage.BootStatus:GetAttribute(<milestone>), the real server-side
+        readiness mirror set by BootOrchestrator as each producer signals (world_structure,
+        models_ready, crystals_ready, eggs_placed, icons_ready) — NOT a workspace symptom-poll
+      - "player" — a LocalPlayer attribute (DataLoaded / PetsSpawned / ClientUIReady)
 
-    A hard timeout reveals anyway, so a stuck/never-sent signal can never trap the player on the
-    loading screen. This closes the class of "I interacted before the game finished loading" bugs
-    (e.g. triggering the Ascension Altar before MenuManager existed -> legacy fallback modal).
+    A hard timeout reveals anyway, so a stuck/never-sent signal can never trap the player. Background
+    phases (e.g. icon baking) are shown but never hold play hostage.
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local TweenService = game:GetService("TweenService")
-
-local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local localPlayer = Players.LocalPlayer
 local ACCENT = Color3.fromRGB(150, 85, 225) -- purple, matches the level-up / ascend accent
-local HARD_TIMEOUT = 25 -- seconds: reveal regardless, so a missing signal never hangs the boot
-local MIN_DISPLAY = 2 -- seconds: never blink past the screen even on instant loads
+
+-- Boot phases + text + readiness sources come from configs/boot.lua (the SSOT). Fall back to a
+-- minimal gate set if it can't load, so the boot can never hard-break on a config error.
+local bootConfig
+do
+    local ok, cfg = pcall(function()
+        local configs = ReplicatedStorage:WaitForChild("Configs", 10)
+        return require(configs:WaitForChild("boot", 5))
+    end)
+    bootConfig = (ok and type(cfg) == "table") and cfg or nil
+end
+local PHASES = (bootConfig and bootConfig.phases)
+    or {
+        { key = "engine", source = "engine", blocking = true, text = "Loading world" },
+        { key = "data_loaded", source = "player", blocking = true, text = "Syncing your data" },
+        { key = "client_ui", source = "player", blocking = true, text = "Preparing the HUD" },
+    }
+local PLAYER_GATES = (bootConfig and bootConfig.player_gates) or {}
+local HARD_TIMEOUT = (bootConfig and bootConfig.reveal_timeout_seconds) or 25 -- never hang the boot
+local MIN_DISPLAY = (bootConfig and bootConfig.min_display_seconds) or 2 -- never blink past it
 local SETTLE = 0.75 -- seconds after the last gate: restyle passes (tray/currency/quest) land
 
 ReplicatedFirst:RemoveDefaultLoadingScreen()
@@ -133,96 +152,23 @@ local function setControls(enabled)
     end)
 end
 
--- ---- gates -------------------------------------------------------------
--- Ordered: each label shows while its check is pending. "Completely loaded" means the
--- replicated WORLD CONTENT and the player's own state, not just the engine IsLoaded bit.
-local gates = {
-    {
-        label = "Loading world…",
-        check = function()
-            return game:IsLoaded()
-        end,
-    },
-    {
-        label = "Building the realm…",
-        check = function()
-            -- authored map content replicated: the Game tree exists and the farmables are in
-            local gameFolder = Workspace:FindFirstChild("Game")
-            local breakables = gameFolder and gameFolder:FindFirstChild("Breakables")
-            return breakables ~= nil and #breakables:GetDescendants() > 0
-        end,
-    },
-    {
-        label = "Syncing your data…",
-        check = function()
-            return localPlayer:GetAttribute("DataLoaded") == true
-        end,
-    },
-    {
-        label = "Placing eggs…",
-        check = function()
-            -- world eggs exist: authored stands (Maps/**/PlacedEgg, EggStandPlacement)
-            -- or legacy spawner eggs (workspace children carrying EggInfo)
-            local maps = Workspace:FindFirstChild("Maps")
-            if maps then
-                for _, d in ipairs(maps:GetDescendants()) do
-                    if d:IsA("Model") and d.Name == "PlacedEgg" then
-                        return true
-                    end
-                end
-            end
-            for _, child in ipairs(Workspace:GetChildren()) do
-                if child:IsA("Model") and child:FindFirstChild("EggInfo") then
-                    return true
-                end
-            end
-            return false
-        end,
-    },
-    {
-        label = "Waking your pets…",
-        check = function()
-            -- character spawned + EVERY equipped pet actually spawned into the world.
-            -- Equipped count comes from the replicated Equipped.pets slot values; a player
-            -- with nothing equipped passes immediately.
-            if not localPlayer.Character then
-                return false
-            end
-            local petsRoot = Workspace:FindFirstChild("PlayerPets")
-            local mine = petsRoot and petsRoot:FindFirstChild(localPlayer.Name)
-            if not mine then
-                return false
-            end
-            local expected = 0
-            local equipped = localPlayer:FindFirstChild("Equipped")
-            local petSlots = equipped and equipped:FindFirstChild("pets")
-            if petSlots then
-                for _, slot in ipairs(petSlots:GetChildren()) do
-                    if slot:IsA("StringValue") and slot.Value ~= "" then
-                        expected += 1
-                    end
-                end
-            end
-            return #mine:GetChildren() >= expected
-        end,
-    },
-    {
-        label = "Preparing UI…",
-        check = function()
-            return localPlayer:GetAttribute("ClientUIReady") == true
-        end,
-    },
-    {
-        label = "Polishing…",
-        check = function()
-            -- the HUD actually exists on screen (BaseUI + hotbar guis parented)
-            local pg = localPlayer:FindFirstChild("PlayerGui")
-            return pg ~= nil
-                and pg:FindFirstChild("ProfessionalBaseUI") ~= nil
-                and pg:FindFirstChild("PlayerBar") ~= nil
-        end,
-    },
-}
+-- ---- readiness ---------------------------------------------------------
+-- A phase is ready per its config `source`: the engine bit, the server milestone mirror
+-- (ReplicatedStorage.BootStatus, set by BootOrchestrator as producers signal), or a per-player
+-- attribute. No workspace symptom-polling — these are the real readiness signals.
+local function phaseReady(phase)
+    if phase.source == "engine" then
+        return game:IsLoaded()
+    elseif phase.source == "server" then
+        local folder = ReplicatedStorage:FindFirstChild("BootStatus")
+        return folder ~= nil and folder:GetAttribute(phase.key) == true
+    elseif phase.source == "player" then
+        local gate = PLAYER_GATES[phase.key]
+        local attr = (gate and gate.attribute) or phase.key
+        return localPlayer:GetAttribute(attr) == true
+    end
+    return true
+end
 
 task.spawn(function()
     local start = os.clock()
@@ -237,15 +183,22 @@ task.spawn(function()
         end
     end)
 
-    for i, gate in ipairs(gates) do
-        status.Text = gate.label
-        while not gate.check() do
+    for i, phase in ipairs(PHASES) do
+        status.Text = phase.text .. "…"
+        local blocking = phase.blocking ~= false
+        -- Background phases (e.g. icon baking) are shown but never hold play hostage: wait only a
+        -- brief beat so the label is visible, then advance regardless.
+        local phaseStart = os.clock()
+        while not phaseReady(phase) do
             if os.clock() - start > HARD_TIMEOUT then
+                break
+            end
+            if not blocking and os.clock() - phaseStart > 0.8 then
                 break
             end
             task.wait(0.1)
         end
-        TweenService:Create(fill, TweenInfo.new(0.25), { Size = UDim2.fromScale(i / #gates, 1) })
+        TweenService:Create(fill, TweenInfo.new(0.25), { Size = UDim2.fromScale(i / #PHASES, 1) })
             :Play()
     end
 
