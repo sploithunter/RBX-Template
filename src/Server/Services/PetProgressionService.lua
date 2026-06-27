@@ -241,9 +241,12 @@ function PetProgressionService:AddPetExperience(player, petUid, amount, reason)
     elseif self._inventoryService and self._inventoryService._updateBucketFolders then
         self._inventoryService:_updateBucketFolders(player, "pets")
     end
-    self._dataService:RequestSave(player, "pet_progression_" .. tostring(reason or "xp"), {
-        critical = true,
-    })
+    -- Pet XP is awarded per-equipped-pet on EVERY breakable destroyed (the hottest
+    -- mutation in the game), so a `critical` save here pins the datastore at ~1 write/sec
+    -- per farming player. XP is not must-not-lose data -- losing <=15s on a crash is
+    -- invisible -- so use the default debounce, which coalesces a farming burst into one
+    -- save per window (the periodic autosave + logout flush still guarantee durability).
+    self._dataService:RequestSave(player, "pet_progression_" .. tostring(reason or "xp"))
 
     self._logger:Info("Pet XP applied", {
         context = "PetProgressionService",
