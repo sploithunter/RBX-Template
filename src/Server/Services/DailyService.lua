@@ -41,6 +41,11 @@ function DailyService:_today()
 end
 
 local function state(data)
+    if type(data) ~= "table" then
+        -- Fresh-join race: a GameAPI daily.status/claim can land before the profile loads. Return a
+        -- transient day-0 state rather than nil-indexing (don't mutate; the real profile loads next).
+        return { lastDay = nil, streak = 0 }
+    end
     if type(data.Daily) ~= "table" then
         data.Daily = { lastDay = nil, streak = 0 }
     end

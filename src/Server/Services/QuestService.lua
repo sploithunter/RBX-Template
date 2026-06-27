@@ -199,6 +199,11 @@ function QuestService:List(player)
     self:_reconcile(player) -- keep the single open window honest before reading
     local snapshot = self:_snapshot(player)
     local data = self._dataService:GetData(player)
+    if type(data) ~= "table" then
+        -- Fresh-join race: a GameAPI quest.list can land before the profile loads. No data yet ->
+        -- report no quests rather than nil-indexing (the panel just shows an empty list briefly).
+        return { ok = true, quests = {}, activeTrack = nil }
+    end
     local ledger = claims(data)
     local bases = baselines(data)
     local bank = banked(data)
