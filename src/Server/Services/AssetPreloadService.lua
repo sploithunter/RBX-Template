@@ -23,6 +23,30 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
 local PetVariantVisuals = require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
 local MeshAssembly = require(ReplicatedStorage.Shared.Assets.MeshAssembly)
+local AssetReport = require(ReplicatedStorage.Shared.Game.AssetReport)
+
+-- Record one model/mesh load attempt into the consolidated boot AssetReport. `kind` is inferred
+-- from the target folder (Pets -> pet_model, etc.) so failures read as "what + where" in one log.
+local function reportAsset(assetId, parentFolder, folderName, debugName, ok, err)
+    local target = parentFolder and (parentFolder:GetFullName() .. "." .. tostring(folderName))
+        or tostring(folderName)
+    local kind = "model"
+    if parentFolder then
+        local pn = parentFolder.Name
+        kind = (pn == "Pets" and "pet_model")
+            or (pn == "Crystals" and "crystal_model")
+            or (pn == "Eggs" and "egg_model")
+            or pn
+    end
+    AssetReport.record({
+        id = assetId,
+        kind = kind,
+        name = debugName or folderName,
+        target = target,
+        ok = ok,
+        err = err,
+    })
+end
 
 -- Service dependencies (injected)
 local logger
@@ -75,10 +99,14 @@ function AssetPreloadService:Start()
     logger:Info("🔄 AssetPreloadService: Spawning LoadAllModelsIntoAssets task...")
     task.spawn(function()
         logger:Info("🔄 AssetPreloadService: LoadAllModelsIntoAssets task started")
+        AssetReport.reset()
         self:LoadAllModelsIntoAssets()
         -- Load breakable models (e.g., crystals)
         self:LoadAllBreakableModelsIntoAssets()
         self:LoadAllSoundsIntoAssets()
+        -- ONE consolidated boot report: every asset id that failed to load, what it is, and where
+        -- it was being placed. Read this single block instead of scraping scattered warnings.
+        AssetReport.flush(logger)
         logger:Info("✅ AssetPreloadService: LoadAllModelsIntoAssets task completed")
     end)
 
@@ -472,6 +500,12 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
     local imageFailureCount = 0
     local totalAssets = 0
 
+    -- Pet/egg card thumbnails (ViewportFrames) are COSMETIC (inventory cards) and each costs a second
+    -- clone of the model — they don't gate gameplay. We collect them here and generate them in a
+    -- deferred, yielding pass AFTER ModelsReady flips, so world population (egg placement waits on
+    -- ModelsReady) isn't stuck behind ~all-pet thumbnail rendering. Job = { model, parent, name, … }.
+    local thumbnailJobs = {}
+
     logger:Info("🔄 LoadAllModelsIntoAssets: Checking dependencies...")
     logger:Info("🔄 LoadAllModelsIntoAssets: petConfig", {
         exists = petConfig ~= nil,
@@ -762,23 +796,16 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                             end
                         end
 
-                        -- Generate image from the loaded model
-                        local imageSuccess = self:GenerateImageFromModel(
-                            petTypeFolder:FindFirstChild(variant),
-                            petImageTypeFolder,
-                            variant,
-                            petType,
-                            variant
-                        )
-
-                        if imageSuccess then
-                            imageSuccessCount = imageSuccessCount + 1
-                        else
-                            imageFailureCount = imageFailureCount + 1
-                        end
+                        -- Defer the thumbnail (cosmetic) — see thumbnailJobs note above.
+                        table.insert(thumbnailJobs, {
+                            model = petTypeFolder:FindFirstChild(variant),
+                            parent = petImageTypeFolder,
+                            name = variant,
+                            petType = petType,
+                            variant = variant,
+                        })
                     else
                         modelFailureCount = modelFailureCount + 1
-                        imageFailureCount = imageFailureCount + 1 -- Can't generate image without model
                     end
                 else
                     logger:Warn("Pet has no valid asset ID", {
@@ -838,23 +865,16 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
             if modelSuccess then
                 modelSuccessCount = modelSuccessCount + 1
 
-                -- Generate image from the loaded egg model (same as pets)
-                local imageSuccess = self:GenerateImageFromModel(
-                    eggsFolder:FindFirstChild(eggType),
-                    eggImagesFolder,
-                    eggType,
-                    eggType, -- petType parameter (for eggs, use eggType)
-                    "egg" -- variant parameter (all eggs are "egg" variant)
-                )
-
-                if imageSuccess then
-                    imageSuccessCount = imageSuccessCount + 1
-                else
-                    imageFailureCount = imageFailureCount + 1
-                end
+                -- Defer the egg-card thumbnail (cosmetic) — see thumbnailJobs note above.
+                table.insert(thumbnailJobs, {
+                    model = eggsFolder:FindFirstChild(eggType),
+                    parent = eggImagesFolder,
+                    name = eggType,
+                    petType = eggType, -- petType parameter (for eggs, use eggType)
+                    variant = "egg", -- variant parameter (all eggs are "egg" variant)
+                })
             else
                 modelFailureCount = modelFailureCount + 1
-                imageFailureCount = imageFailureCount + 1 -- Can't generate image without model
             end
         else
             logger:Warn("Egg has no valid asset ID", {
@@ -865,24 +885,53 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
         end
     end
 
-    logger:Info("Asset loading completed", {
-        models = {
-            successful = modelSuccessCount,
-            failed = modelFailureCount,
-        },
-        images = {
-            successful = imageSuccessCount,
-            failed = imageFailureCount,
-        },
+    -- All model TEMPLATES (pets/eggs/breakables) are built by this point — open the gameplay gate
+    -- NOW, before the cosmetic thumbnail pass. Egg placement (and anything else waiting on
+    -- ModelsReady) no longer sits behind ~all-pet ViewportFrame rendering.
+    logger:Info("Asset model templates loaded (gate open)", {
+        models = { successful = modelSuccessCount, failed = modelFailureCount },
+        thumbnailJobs = #thumbnailJobs,
         total = totalAssets,
         duration = tick() - startTime,
     })
-
-    -- All model templates (pets/eggs/breakables) are built by this point; open the gate.
     ReplicatedStorage.Assets:SetAttribute("ModelsReady", true)
-    ReplicatedStorage.Assets:SetAttribute("PetThumbnailsReady", true)
-    ReplicatedStorage.Assets:SetAttribute("PetThumbnailCount", imageSuccessCount)
-    ReplicatedStorage.Assets:SetAttribute("PetThumbnailFailures", imageFailureCount)
+
+    -- Deferred, yielding thumbnail pass. Generates the inventory-card ViewportFrames off the boot
+    -- critical path, yielding every few so it never monopolizes the server thread, and bumping
+    -- PetThumbnailCount incrementally so the client prewarm can release as soon as enough exist.
+    task.spawn(function()
+        local thumbStart = tick()
+        for i, job in ipairs(thumbnailJobs) do
+            if job.model then
+                local okThumb = self:GenerateImageFromModel(
+                    job.model,
+                    job.parent,
+                    job.name,
+                    job.petType,
+                    job.variant
+                )
+                if okThumb then
+                    imageSuccessCount = imageSuccessCount + 1
+                else
+                    imageFailureCount = imageFailureCount + 1
+                end
+            else
+                imageFailureCount = imageFailureCount + 1
+            end
+            if i % 8 == 0 then
+                ReplicatedStorage.Assets:SetAttribute("PetThumbnailCount", imageSuccessCount)
+                task.wait()
+            end
+        end
+        ReplicatedStorage.Assets:SetAttribute("PetThumbnailCount", imageSuccessCount)
+        ReplicatedStorage.Assets:SetAttribute("PetThumbnailFailures", imageFailureCount)
+        ReplicatedStorage.Assets:SetAttribute("PetThumbnailsReady", true)
+        logger:Info("Pet/egg card thumbnails generated (deferred)", {
+            successful = imageSuccessCount,
+            failed = imageFailureCount,
+            duration = tick() - thumbStart,
+        })
+    end)
 
     -- Signal that asset loading is complete
     _G.AssetsLoadingComplete = true
@@ -901,6 +950,8 @@ function AssetPreloadService:LoadAllSoundsIntoAssets()
     end
 
     local count = 0
+    local soundInstances = {}
+    local idToName = {}
     for name, soundData in pairs(soundsConfig or {}) do
         if type(soundData) == "table" and soundData.id then
             local sound = soundsFolder:FindFirstChild(name)
@@ -918,8 +969,35 @@ function AssetPreloadService:LoadAllSoundsIntoAssets()
             end
             s.Parent = soundsFolder
             count += 1
+            soundInstances[#soundInstances + 1] = s
+            local digits = tostring(soundData.id):match("%d+")
+            if digits then
+                idToName[digits] = name
+            end
         end
     end
+
+    -- Verify the sounds actually LOAD and record each into the boot AssetReport. Audio is
+    -- permission-locked to its owner, so personal-owned sounds fail to load for a non-owner
+    -- account in Studio (or a fork) — PreloadAsync surfaces that per-asset status so a silent
+    -- "no sound" becomes a named entry in the one consolidated report.
+    pcall(function()
+        local ContentProvider = game:GetService("ContentProvider")
+        ContentProvider:PreloadAsync(soundInstances, function(contentId, status)
+            local digits = tostring(contentId):match("%d+")
+            local name = (digits and idToName[digits]) or tostring(contentId)
+            local ok = (status == Enum.AssetFetchStatus.Success)
+            AssetReport.record({
+                id = digits or contentId,
+                kind = "sound",
+                name = name,
+                target = "Assets.Sounds." .. name,
+                ok = ok,
+                err = (not ok) and ("preload status: " .. tostring(status)) or nil,
+            })
+        end)
+    end)
+
     logger:Info("🔊 LoadAllSoundsIntoAssets: Completed", { count = count })
 end
 
@@ -972,6 +1050,14 @@ function AssetPreloadService:BuildMeshPartModelIntoFolder(
             debugName = debugName,
             error = tostring(result),
         })
+        AssetReport.record({
+            id = meshId,
+            kind = "pet_mesh",
+            name = debugName or folderName,
+            target = parentFolder:GetFullName() .. "." .. tostring(folderName),
+            ok = false,
+            err = tostring(result),
+        })
         return false
     end
 
@@ -979,6 +1065,13 @@ function AssetPreloadService:BuildMeshPartModelIntoFolder(
         meshId = tostring(meshId),
         debugName = debugName,
         path = parentFolder:GetFullName() .. "." .. tostring(folderName),
+    })
+    AssetReport.record({
+        id = meshId,
+        kind = "pet_mesh",
+        name = debugName or folderName,
+        target = parentFolder:GetFullName() .. "." .. tostring(folderName),
+        ok = true,
     })
     return true
 end
@@ -1003,6 +1096,7 @@ function AssetPreloadService:LoadModelIntoFolder(
             assetId = assetId,
             debugName = debugName,
         })
+        reportAsset(assetId, parentFolder, folderName, debugName, false, "invalid asset id format")
         return false
     end
 
@@ -1112,9 +1206,11 @@ function AssetPreloadService:LoadModelIntoFolder(
             debugName = debugName,
             error = tostring(result),
         })
+        reportAsset(assetId, parentFolder, folderName, debugName, false, tostring(result))
         return false
     end
 
+    reportAsset(assetId, parentFolder, folderName, debugName, true)
     return true
 end
 
