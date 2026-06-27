@@ -1105,11 +1105,28 @@ function loadEquipped(Player)
     local ok, result = pcall(function()
         print("🔄 PetHandler: Loading equipped pets for", Player.Name)
 
-        -- Wait for assets to finish loading if they haven't already
-        if not _G.AssetsLoadingComplete then
+        -- Wait for assets to finish loading. Gate on the RELIABLE ModelsReady attribute and POLL —
+        -- not _G.AssetsLoadedEvent:Wait(). A fast boot fires that BindableEvent before this pcall
+        -- starts waiting, and a missed BindableEvent fire hangs the wait forever, so the pcall never
+        -- returns, cleanup() never clears __PetLoadInProgress, and equipped pets never deploy. (This
+        -- was the regression the pre-bake boot-speed work exposed.) Polling an attribute can't miss
+        -- an edge; the _G flag stays as a fast-path.
+        local assetsRoot = ReplicatedStorage:FindFirstChild("Assets")
+        local function assetsReady()
+            return _G.AssetsLoadingComplete == true
+                or (assetsRoot ~= nil and assetsRoot:GetAttribute("ModelsReady") == true)
+        end
+        if not assetsReady() then
             print("⏳ PetHandler: Waiting for asset loading to complete...")
-            _G.AssetsLoadedEvent.Event:Wait()
-            print("✅ PetHandler: Assets loaded, proceeding with pet spawn")
+            local deadline = os.clock() + 30
+            while not assetsReady() and os.clock() < deadline do
+                task.wait(0.1)
+            end
+            print(
+                "✅ PetHandler: Assets ready (ModelsReady="
+                    .. tostring(assetsRoot and assetsRoot:GetAttribute("ModelsReady"))
+                    .. "), proceeding with pet spawn"
+            )
         end
 
         -- Create player folders if they don't exist
