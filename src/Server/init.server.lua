@@ -1027,6 +1027,21 @@ task.spawn(function()
         return
     end
 
+    -- TEMPORARY per-spike logger: print every frame over 0.3s so lag spikes get a timestamp and can
+    -- be lined up against [SAVEPERF]. The 30s sampler below only catches one frame per 30s, so most
+    -- "here and there" spikes slip past it.
+    do
+        local last = os.clock()
+        game:GetService("RunService").Heartbeat:Connect(function()
+            local now = os.clock()
+            local dt = now - last
+            last = now
+            if dt > 0.3 then
+                print(string.format("[SLOWFRAME] %.3fs", dt))
+            end
+        end)
+    end
+
     while true do
         task.wait(perfCfg.interval_seconds or 30)
 

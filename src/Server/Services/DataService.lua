@@ -760,9 +760,21 @@ function DataService:_saveProfileNow(player, reason)
         dataStoreState = dataStoreState,
     })
 
+    -- PERF INSTRUMENTATION (temporary): print every save's wall-clock duration so the lag spikes can
+    -- be correlated with saves. If [SAVEPERF] consistently shows ~0.9s and lands next to a [SLOWFRAME]
+    -- line, the profile serialize is the stall → move to debounced event-driven saves + trim profile.
+    local _savePerfT0 = os.clock()
     local saveCallSuccess, saveCallError = pcall(function()
         profile:Save()
     end)
+    print(
+        string.format(
+            "[SAVEPERF] %s  save=%.3fs  reason=%s",
+            player.Name,
+            os.clock() - _savePerfT0,
+            tostring(reason)
+        )
+    )
 
     if not saveCallSuccess then
         connected = false
