@@ -897,12 +897,21 @@ function BreakableSpawner:_spawnLoop()
         logger:Error("BreakableSpawner: workspace.Game missing; cannot spawn")
         return
     end
+    -- Build the Breakables/Crystals/<world> folder tree from config FIRST, then locate it. On a fast
+    -- boot (pre-baked assets) _spawnLoop reaches here before the authored map / GameStructureService
+    -- has created workspace.Game.Breakables — and the OLD order did FindFirstChild("Breakables") ->
+    -- abort BEFORE calling ensureConfiguredFolderTree, the very function that creates it. That abort
+    -- skipped the initial fill AND the ChildAdded listener below, so nothing event-drove the fill and
+    -- worlds only ever filled on the 30s safety-net sweep = the ~30s walk-in delay. The function is
+    -- idempotent (creates only missing folders) and authored-map worlds added later still arrive via
+    -- the ChildAdded watcher, so this is safe regardless of who wins the boot race.
+    ensureConfiguredFolderTree(gameFolder)
+
     local breakablesWorlds = gameFolder:FindFirstChild("Breakables")
     if not breakablesWorlds then
         logger:Error("BreakableSpawner: workspace.Game.Breakables missing; cannot spawn")
         return
     end
-    ensureConfiguredFolderTree(gameFolder)
 
     local crystalsWorlds = breakablesWorlds:FindFirstChild("Crystals")
     if not crystalsWorlds then
