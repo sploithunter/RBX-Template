@@ -24,6 +24,7 @@ local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
 local PetVariantVisuals = require(ReplicatedStorage.Shared.Services.PetVariantVisuals)
 local MeshAssembly = require(ReplicatedStorage.Shared.Assets.MeshAssembly)
 local AssetReport = require(ReplicatedStorage.Shared.Game.AssetReport)
+local BootReadiness = require(ReplicatedStorage.Shared.Boot.BootReadiness)
 
 -- Record one model/mesh load attempt into the consolidated boot AssetReport. `kind` is inferred
 -- from the target folder (Pets -> pet_model, etc.) so failures read as "what + where" in one log.
@@ -935,6 +936,9 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
         duration = tick() - startTime,
     })
     ReplicatedStorage.Assets:SetAttribute("ModelsReady", true)
+    -- Event-driven boot gate: every consumer (pets, crystals, eggs) awaits this milestone instead
+    -- of polling the attribute / waiting on a fire-once event. See docs/BOOT_ORCHESTRATION.md.
+    BootReadiness.signal("models_ready")
     -- Unmissable boot-speed readout (this service's Logger output is suppressed in Studio).
     print(
         string.format(
@@ -975,6 +979,9 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
         ReplicatedStorage.Assets:SetAttribute("PetThumbnailCount", imageSuccessCount)
         ReplicatedStorage.Assets:SetAttribute("PetThumbnailFailures", imageFailureCount)
         ReplicatedStorage.Assets:SetAttribute("PetThumbnailsReady", true)
+        -- Background milestone (off the critical path): the loading screen shows "Baking the icons"
+        -- but does not gate play on it.
+        BootReadiness.signal("icons_ready")
         logger:Info("Pet/egg card thumbnails generated (deferred)", {
             successful = imageSuccessCount,
             failed = imageFailureCount,

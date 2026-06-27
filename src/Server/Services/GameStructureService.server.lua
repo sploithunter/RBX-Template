@@ -9,6 +9,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 
+local BootReadiness = require(ReplicatedStorage.Shared.Boot.BootReadiness)
+
 local GameStructureService = {}
 
 local CONTRACT_TAGS = {
@@ -549,6 +551,9 @@ function GameStructureService:Initialize()
     task.wait(1)
     self:CreateGameStructure()
     print("GameStructureService: Initialized.")
+    -- Event-driven boot: workspace.Game (incl. the Breakables folder) now exists. BreakableSpawner
+    -- awaits this milestone instead of FindFirstChild-then-aborting. See docs/BOOT_ORCHESTRATION.md.
+    BootReadiness.signal("world_structure")
 end
 
 GameStructureService:Initialize()
