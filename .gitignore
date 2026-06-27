@@ -9,6 +9,9 @@
 # ...EXCEPT the place geometry, which IS source: default.project.json maps
 # assets/place/PlaceAssets, so a clean checkout (CI) needs these to `rojo build`.
 !assets/place/PlaceAssets/**/*.rbxm
+# ...and the pre-baked pet/egg model folder (captured from a fully-loaded runtime), which
+# default.project.json maps to ReplicatedStorage.Assets.Models so the boot skips slow LoadAsset.
+!assets/place/Models.rbxm
 
 # Temporary files
 *.tmp

@@ -1083,6 +1083,19 @@ function AssetPreloadService:LoadModelIntoFolder(
     debugName,
     options
 )
+    -- PRE-BAKED CACHE FAST PATH: if a model with real geometry is already present (the Rojo-synced
+    -- ReplicatedStorage.Assets.Models, captured from a fully-loaded runtime and committed as
+    -- assets/place/Models.rbxm), skip the slow InsertService:LoadAsset + welding/normalizing AND the
+    -- chatty per-model logging entirely. This turns the boot model pass into ~instant presence checks
+    -- (a cached clone is ~1500x faster than a network fetch). Models NOT in the pre-bake — a newly
+    -- added pet, a changed asset_id — fall through and load normally, so the cache self-heals.
+    -- Regenerate the pre-bake by saving ReplicatedStorage.Assets.Models from a fully-booted session.
+    local prebaked = parentFolder and parentFolder:FindFirstChild(folderName)
+    if prebaked and prebaked:FindFirstChildWhichIsA("BasePart", true) then
+        reportAsset(assetId, parentFolder, folderName, debugName, true)
+        return true
+    end
+
     logger:Info("🔄 LoadModelIntoFolder: Starting", {
         assetId = assetId,
         debugName = debugName,

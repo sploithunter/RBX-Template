@@ -35,6 +35,12 @@
       },
       "PlaceAssets": {
         "$path": "assets/place/PlaceAssets"
+      },
+      "Assets": {
+        "$className": "Folder",
+        "Models": {
+          "$path": "assets/place/Models.rbxm"
+        }
       }
     },
     "StarterPlayer": {
