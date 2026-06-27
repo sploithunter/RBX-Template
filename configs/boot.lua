@@ -24,6 +24,10 @@ return {
         crystals_ready = {
             produced_by = "BreakableSpawner",
             requires = { "world_structure", "models_ready" },
+            -- Background: the initial fill of every active world is time-budgeted (anti-hitch) and
+            -- can take ~20s for 4 unlocked worlds. Crystals grow in-world progressively and aren't
+            -- needed to START playing, so this is shown but never gates play. (Was the boot stall.)
+            background = true,
         },
         icons_ready = {
             produced_by = "AssetPreloadService",
@@ -54,7 +58,7 @@ return {
             text = "Building the realm",
         },
         { key = "models_ready", source = "server", blocking = true, text = "Loading creatures" },
-        { key = "crystals_ready", source = "server", blocking = true, text = "Growing crystals" },
+        { key = "crystals_ready", source = "server", blocking = false, text = "Growing crystals" },
         { key = "eggs_placed", source = "server", blocking = true, text = "Placing the eggs" },
         { key = "data_loaded", source = "player", blocking = true, text = "Syncing your data" },
         { key = "pets_spawned", source = "player", blocking = true, text = "Walking your pets" },
