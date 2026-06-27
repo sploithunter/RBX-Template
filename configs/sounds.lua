@@ -13,7 +13,7 @@ return {
     egg_roll_snare = {
         -- BetterSnare.wav (Jason's improved egg-rattle snare roll), group-uploaded.
         id = "rbxassetid://112745556256821",
-        volume = 0.6,
+        volume = 0.78, -- 0.6 +30% (Jason: louder egg-hatch snare)
         playback_speed = 1.0,
     },
 
