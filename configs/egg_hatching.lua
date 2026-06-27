@@ -99,9 +99,9 @@ local config = {
         -- Audio cues
         egg_roll_sound_name = "egg_roll_snare", -- optional rolling snare while eggs appear
         -- THE effective snare volume: the hatch clone sets Volume = egg_roll_volume (this), which
-        -- OVERRIDES configs/sounds.lua egg_roll_snare.volume. Bumped 0.85 -> 2.0 because the new
+        -- OVERRIDES configs/sounds.lua egg_roll_snare.volume. Bumped to 3.0 because the new
         -- BetterSnare audio file is quiet (inaudible at 0.85). Tune here, not in sounds.lua.
-        egg_roll_volume = 2.0,
+        egg_roll_volume = 3.0,
         egg_roll_fade_out = 0.15, -- seconds fade-out when first pop happens
 
         -- Debug options
