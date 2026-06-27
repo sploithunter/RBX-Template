@@ -1153,76 +1153,96 @@ do
         -- Make MenuManager globally accessible for network updates
         _G.MenuManager = menuManager
 
-        -- Create and register menu panels.
-        -- Shop is now the reward-spine grid (shop.list/shop.purchase via the bus),
-        -- replacing the old mock ShopPanel stub.
-        local RewardShopPanel = require(script.UI.Menus.RewardShopPanel)
-        local shopPanel = RewardShopPanel.new()
-        menuManager:RegisterPanel("Shop", shopPanel)
+        -- Build BaseUI FIRST and on its own, BEFORE the panels. The HUD (ProfessionalBaseUI) must
+        -- not depend on any panel constructor succeeding. Previously panels were built first, so a
+        -- single panel ctor that hung or errored (e.g. on a NON-OWNER account whose assets fail to
+        -- load in Studio) stopped the boot before BaseUI was created -> ProfessionalBaseUI never
+        -- appeared -> every HUD styler infinite-yielded waiting for it -> the "old HUD". BaseUI's
+        -- _createUI is synchronous with no asset waits, so building it here always produces the HUD.
+        do
+            local ok, err = pcall(function()
+                local baseUI = require(script.UI.BaseUI).new()
+                baseUI:SetMenuManager(menuManager)
+                baseUI:Show()
+            end)
+            if not ok then
+                Logger:Error("UI boot: BaseUI failed to build", { error = tostring(err) })
+            end
+        end
 
-        local InventoryPanel = require(script.UI.Menus.InventoryPanel)
-        local inventoryPanel = InventoryPanel.new()
-        menuManager:RegisterPanel("Inventory", inventoryPanel)
+        -- Release the loading-screen gate as soon as the HUD exists, so a slow or broken panel can
+        -- never strand the player on the boot screen. Panels register below; opening one before it
+        -- finishes is a brief, self-correcting window — far better than a frozen client.
+        localPlayer:SetAttribute("ClientUIReady", true)
 
-        -- Quest panel: reward-spine quests, live from the GameAPICommand bus bridge.
-        local QuestPanel = require(script.UI.Menus.QuestPanel)
-        local questPanel = QuestPanel.new()
-        menuManager:RegisterPanel("Quest", questPanel)
+        -- Build + register every panel in ITS OWN isolated task. A panel that ERRORS is caught by
+        -- pcall; a panel that YIELDS FOREVER (an asset/data dependency that never resolves for this
+        -- account) hangs only its own task. Neither can block the HUD or the other panels. The
+        -- per-panel building/ready logs mean any hang is NAMED in the console: a "building X" with
+        -- no matching "ready X" is the culprit panel.
+        local function buildPanel(name, builder)
+            task.spawn(function()
+                Logger:Info("UI boot: building panel", { panel = name })
+                local ok, err = pcall(function()
+                    menuManager:RegisterPanel(name, builder())
+                end)
+                if ok then
+                    Logger:Info("UI boot: panel ready", { panel = name })
+                else
+                    Logger:Warn("UI boot: panel FAILED", { panel = name, error = tostring(err) })
+                end
+            end)
+        end
 
-        -- Daily panel: reward-spine login streak calendar.
-        local DailyPanel = require(script.UI.Menus.DailyPanel)
-        local dailyPanel = DailyPanel.new()
-        menuManager:RegisterPanel("Daily", dailyPanel)
-
-        -- Trade panel: escrow two-player trade (online-player list + live window).
-        local TradePanel = require(script.UI.Menus.TradePanel)
-        local tradePanel = TradePanel.new()
-        menuManager:RegisterPanel("Trade", tradePanel)
-
-        -- Enhancement SELL / salvage panel: opened from the Inventory panel's
-        -- Enhancements category entry button. Bus-driven (enhancement.shop.*).
-        local EnhancementSellPanel = require(script.UI.Menus.EnhancementSellPanel)
-        menuManager:RegisterPanel("EnhancementSell", EnhancementSellPanel.new())
-
-        local EffectsPanel = require(script.UI.Menus.EffectsPanel)
-        local effectsPanel = EffectsPanel.new()
-        menuManager:RegisterPanel("Effects", effectsPanel)
-
-        local EnchantPanel = require(script.UI.Menus.EnchantPanel)
-        local enchantPanel = EnchantPanel.new()
-        menuManager:RegisterPanel("Enchant", enchantPanel)
-
-        local SettingsPanel = require(script.UI.Menus.SettingsPanel)
-        local settingsPanel = SettingsPanel.new()
-        menuManager:RegisterPanel("Settings", settingsPanel)
-
-        -- Admin panel is registered client-side so late admin attribute replication cannot strand the UI.
-        -- Server-side AdminService remains the authority for privileged actions.
-        local AdminPanel = require(script.UI.Menus.AdminPanel)
-        local adminPanel = AdminPanel.new()
-        menuManager:RegisterPanel("Admin", adminPanel)
-
-        -- Power Choice menu (dual-column NEUTRAL + origin roster). Opened by the admin
-        -- "POWER CHOICE" button as a live inspector; basis for the real level-up pick.
-        local PowerChoiceMenu = require(script.UI.Menus.PowerChoiceMenu)
-        menuManager:RegisterPanel("PowerChoice", PowerChoiceMenu.new())
-
-        settingsPanel:SetAdminPanelCallback(function()
-            menuManager:OpenAdminPanel("bounce_in")
+        buildPanel("Shop", function()
+            return require(script.UI.Menus.RewardShopPanel).new()
+        end)
+        buildPanel("Inventory", function()
+            return require(script.UI.Menus.InventoryPanel).new()
+        end)
+        buildPanel("Quest", function()
+            return require(script.UI.Menus.QuestPanel).new()
+        end)
+        buildPanel("Daily", function()
+            return require(script.UI.Menus.DailyPanel).new()
+        end)
+        buildPanel("Trade", function()
+            return require(script.UI.Menus.TradePanel).new()
+        end)
+        buildPanel("EnhancementSell", function()
+            return require(script.UI.Menus.EnhancementSellPanel).new()
+        end)
+        buildPanel("Effects", function()
+            return require(script.UI.Menus.EffectsPanel).new()
+        end)
+        buildPanel("Enchant", function()
+            return require(script.UI.Menus.EnchantPanel).new()
+        end)
+        buildPanel("PowerChoice", function()
+            return require(script.UI.Menus.PowerChoiceMenu).new()
+        end)
+        -- Admin panel is registered client-side so late admin attribute replication cannot strand
+        -- the UI. Server-side AdminService remains the authority for privileged actions.
+        buildPanel("Admin", function()
+            return require(script.UI.Menus.AdminPanel).new()
         end)
 
-        -- Initialize and show BaseUI
-        local BaseUI = require(script.UI.BaseUI)
-        local baseUI = BaseUI.new()
-
-        -- Connect BaseUI with MenuManager
-        baseUI:SetMenuManager(menuManager)
-
-        baseUI:Show()
-
-        -- Tell the boot loader the client UI is ready (gates the ReplicatedFirst loading screen so
-        -- the player can't act — e.g. trigger the altar — before MenuManager/panels exist).
-        localPlayer:SetAttribute("ClientUIReady", true)
+        -- Settings keeps a direct ref to wire the admin-open callback after registration.
+        task.spawn(function()
+            Logger:Info("UI boot: building panel", { panel = "Settings" })
+            local ok, err = pcall(function()
+                local settingsPanel = require(script.UI.Menus.SettingsPanel).new()
+                menuManager:RegisterPanel("Settings", settingsPanel)
+                settingsPanel:SetAdminPanelCallback(function()
+                    menuManager:OpenAdminPanel("bounce_in")
+                end)
+            end)
+            if ok then
+                Logger:Info("UI boot: panel ready", { panel = "Settings" })
+            else
+                Logger:Warn("UI boot: panel FAILED", { panel = "Settings", error = tostring(err) })
+            end
+        end)
 
         -- Pet-thumbnail prewarm is cosmetic; run it in the BACKGROUND so it never delays the UI/boot.
         -- (It can block ~12s on a timeout, which used to leave MenuManager unavailable early.)

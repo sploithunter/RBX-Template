@@ -1994,7 +1994,11 @@ local petConfig = {
 
             variants = {
                 basic = {
-                    asset_id = "rbxassetid://102676279378350",
+                    -- Repointed from the uncached personal-owned upload 102676279378350 (the only
+                    -- model not in ReplicatedStorage.PlaceAssets -> failed AssetFetch for non-owner
+                    -- accounts in Studio) to 92437511216136, the cached "Bear" model the rainbow
+                    -- variant already uses. Same established "variants reuse one model" pattern.
+                    asset_id = "rbxassetid://92437511216136",
                     image_id = "rbxassetid://0", -- TODO: Generate from 3D model
                     display_name = "Bear",
                     abilities = { "scratch" },

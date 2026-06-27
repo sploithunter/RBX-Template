@@ -35,7 +35,9 @@ function CurrencyStack.start()
     local pg = player:WaitForChild("PlayerGui")
 
     task.spawn(function()
-        local base = pg:WaitForChild("ProfessionalBaseUI", 20)
+        -- No give-up timeout (see MenuTrayStyle): a non-owner's late/stalled BaseUI boot used to
+        -- outlast the old 20s window, leaving the currency boxes un-stacked/unstyled.
+        local base = pg:WaitForChild("ProfessionalBaseUI")
         local mc = base and base:WaitForChild("MainContainer", 10)
         if not mc then
             return

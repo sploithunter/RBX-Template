@@ -70,7 +70,9 @@ function TopHudStack.start()
 
         -- 1. quest tracker capsule (BaseUI pane, restyled by QuestTrackerStyle)
         adopt(1, function()
-            local base = pg:WaitForChild("ProfessionalBaseUI", 20)
+            -- No give-up timeout (see MenuTrayStyle): a non-owner's late/stalled BaseUI boot used to
+            -- outlast the old 20s window, so the top-HUD panes were never adopted into the stack.
+            local base = pg:WaitForChild("ProfessionalBaseUI")
             local mc = base and base:WaitForChild("MainContainer", 10)
             return mc and mc:WaitForChild("quest_tracker_pane", 15)
         end)

@@ -111,7 +111,11 @@ function MenuTrayStyle.start()
     local Theme = require(script.Parent.Parent.UI.UITheme)
 
     task.spawn(function()
-        local base = pg:WaitForChild("ProfessionalBaseUI", 20)
+        -- No give-up timeout: BaseUI boots LATE (behind panel construction + asset prewarm), and on
+        -- a non-owner account that boot stalls on failing asset loads past any short window. A fixed
+        -- 20s timeout here meant the styler gave up and left the raw, unstyled tray ("old HUD" on
+        -- non-owner Studio sessions). ProfessionalBaseUI is guaranteed to appear — wait for it.
+        local base = pg:WaitForChild("ProfessionalBaseUI")
         local mc = base and base:WaitForChild("MainContainer", 10)
         if not mc then
             return

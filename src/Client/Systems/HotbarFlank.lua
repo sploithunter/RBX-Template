@@ -31,9 +31,13 @@ function HotbarFlank.start()
     local pg = Players.LocalPlayer:WaitForChild("PlayerGui")
 
     task.spawn(function()
-        local hotbarGui = pg:WaitForChild("HotbarBar", 30)
+        -- No give-up timeouts (see MenuTrayStyle): BaseUI + HotbarBar boot LATE, and on a non-owner
+        -- account that boot stalls on failing asset loads past the old 20/30s windows. When this
+        -- task gave up, Pets/Powers were never adopted out to flank the bar — they stayed in the raw
+        -- vertical tray ("old HUD" on non-owner Studio sessions). Both guis are guaranteed to appear.
+        local hotbarGui = pg:WaitForChild("HotbarBar")
         local bar = hotbarGui and hotbarGui:WaitForChild("Bar", 10)
-        local base = pg:WaitForChild("ProfessionalBaseUI", 20)
+        local base = pg:WaitForChild("ProfessionalBaseUI")
         local mc = base and base:WaitForChild("MainContainer", 10)
         local pane = mc and mc:WaitForChild("menu_buttons_pane", 15)
         if not (bar and pane) then
