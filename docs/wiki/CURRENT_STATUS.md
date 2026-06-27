@@ -848,6 +848,47 @@ Template-baseline polish (parked): richer auto-target UI controls; replace the l
 follow/mining clone with a service-owned loop (template issue #4); enchanter UI polish; authored-map
 gate art on the `TeleportPad`/`Portal` hooks; clean up warning-level placeholder/test data.
 
+## Pet Realm — Combat & Power (shipped 2026-06-17 → 06-26)
+
+- **Pet combat orthogonal axes** — targeting (single / targeted_aoe / aura / contagion) × effects
+  (DoT burn, on-hit Control, on-hit Shred), all config-declared; aura targeting drives buff scope
+  (team / top-1 carry / top-K carries). S-tier kits (Control/Shred/Bonfire) + the Trinity kill-box.
+  Pure `OnHitEffects.lua`.
+- **Realm resonance live** — light/shadow species multiplier (own 0.8 / opposite 1.5 / neutral 1.0)
+  wired into real mining & combat; inventory card shows the true dealt power. Squad diversity bonus
+  (distinct archetypes + origins).
+- **Layer-2 realms (Heaven 2 / Hell 2)** — playable: 8 zones (±4000 Y), 40 pets on a 6-tier ladder
+  (new LEGENDARY tier), 8 egg pools, layer-aware egg-stand resolution gated on `Assets.ModelsReady`.
+  Hell support auras are give→take (`drain`/`shred`/`curse`); L2 ice dragons have a freeze-AoE root.
+- **Allegiance aggression** — heaven farms (no aggro vs heaven/neutral squads), hell fights; fielding
+  a hell pet flips heaven enemies hostile. Realm patrol bands are the opposing faction invading
+  (flag-gated, ships dark).
+- **Mountain-time weekday event calendar** — seven daily events via `Shared/Game/MountainTime`,
+  surfaced on a live HUD label + Effects panel cards.
+- **Potions (BrewMeter)** — runtime per-axis draining meters (anti-runaway), drink from an assignable
+  power-bar slot, LOCK=auto-maintain, stack additively with powers; first-class inventory tab.
+- **Multi-bucket trade escrow** — pets + gems + enhancements (potions pending) through a
+  category-dispatched escrow; three-column Trade UI.
+- **Enhancement store** — buy/sell for gems; static rarity-scaled pricing (`EnhancementPricing` SSOT),
+  naturals-only buying + single/dual grades, sell/salvage as the gem sink; buy-to-fill in the slotting
+  UI. Enhancements affect player powers end-to-end (damage/healing fold to magnitude; range/accuracy/
+  spark gated). New `speed`/`focus` axes; summon duration+potency.
+- **Focus resource + CoH toggle economy** — runtime-only Focus pool, per-second toggle upkeep, toggles
+  crash on empty; HUD Focus bar + top-left toggle badge. Hasten is a timed perma-click (recharge-only)
+  that self-bootstraps and cascades cooldown reduction. Admin tabbed power bar with MIN/MAX potency.
+- **Three defensive pillars** — absorb-shields, armor-curve mitigation, and **true evasion** (Mirage
+  Step avoidance roll, yellow DODGE float). Sandwalker is the pet-protection origin (dodge + Quicksand
+  root + Sandstorm blind + at-feet Healing Field zone); blinded enemies whiff with orange MISS floats.
+- **Realm breakable presence-gating** — realm crystals spawn only where a player is present (gated on
+  presence, not unlock): ~32k→~9.5k workspace instances at Spawn. (Resolves the "memory leak" — it was
+  instance count, not a Lua leak.) Power range bounded to enemies near the caster; overhead HP bars
+  distance-culled at 150 studs.
+- **Aggro Phase 1** — farm-lock / despawn-churn fixed and live-verified; downed pets no longer latch
+  the owner InCombat.
+- **Currency-key normalization on load** — dedupes legacy duplicate currency keys (merge by MAX),
+  killing the stale-key "CHANGED EXTERNALLY" watchdog false alarm. Per-color gem-drop rendering +
+  size-invariant inventory card framing.
+
 ## Links
 
 - [Decisions](DECISIONS.md)

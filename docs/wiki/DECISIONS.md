@@ -244,3 +244,128 @@ heaven pet has a 1:1 hell mirror, so the rig/skeleton re-skins across the pair (
 of the 11 dragons), keeping 2 realms ≈ 1 set of work. Full rosters + the 11-dragon ladder:
 [PET_REALM_HEAVEN_HELL_ROSTER.md](../PET_REALM_HEAVEN_HELL_ROSTER.md) and the Design Document's
 "Dragons, Secrets, and Player Class (Rebirth)" section.
+
+## Pet Combat: Orthogonal Axes Toolbox (2026-06-17)
+
+Pet attacks are built from independent, composable axes, not bespoke abilities: **targeting**
+(`single` / `targeted_aoe` / `aura` / `contagion`) selects WHO a swing/buff touches, and orthogonal
+**effect** axes (DoT burn, on-hit Control, on-hit Shred/vulnerable) ride on top. Every axis is inert
+until a pet declares it, so combos emerge from config (`targeted_aoe` + Control = AoE lockdown; the
+Control + Shred + contagion "Trinity" kill-box). Effects live in a pure core (`OnHitEffects.lua`)
+with keep-stronger composition so team multipliers refresh, never compound. SoT:
+`docs/PET_REALM_STIER_POWER_COMBOS.md`.
+
+## The Card Is the Power — displayed == dealt (2026-06-17)
+
+The inventory card must always show the TRUE in-realm number a pet deals. Realm light/shadow resonance
+and biome RPS fold into the displayed power via ONE shared helper (`ElementResonance.petRealmMultiplier`)
+that both the server damage path and the client card call, so displayed and dealt are equal by
+construction. Resonance is **weak-at-home / strong-abroad** (own-realm 0.8, opposite 1.5, neutral 1.0),
+deliberately pushing cross-realm trading; alignment is derived from the pet's SPECIES realm, no per-pet
+storage.
+
+## Designated Powers Are the Differentiation Unit (2026-06-17)
+
+A pet stops being a reskin when it carries a designated power, not just different stats. Archetype lines
+(Blaster/Melee/Tank/Support/Controller/Dragon — `docs/lines/`) define each line's mechanical identity.
+Role resolution depends on `pet_roles.by_type` membership — a pet absent from that map silently defaults
+to melee (tanks aren't tanky, controllers/supports mis-resolve), so every new pet must be role-tagged.
+
+## Realm Orientation — Heaven Farms, Hell Fights (2026-06-20)
+
+The realms are mechanically asymmetric, resolved through a pure `Allegiance` core: a **heaven** attacker
+is hostile only to **hell**, **hell** is hostile to **all**, neutral takes the current realm's side,
+off-realm preserves attack-all. So a heaven enemy never aggros a heaven/neutral squad (peaceful farming)
+but combat starts the instant you field a hell pet. Hell's supports express this via **give→take
+inversion**: a `drain` aura is mechanically a team heal, and `shred` (`VulnerableMult` on the enemy) /
+`curse` (`WeakenMult`, enemy deals less) weaken the foe instead of buffing the squad. Heaven supports use
+the direct buff kinds.
+
+## Enchant Strength: Hard +5 Cap, Per-Effect Odds, Read-Time Magnitude (2026-06-18)
+
+Enchant level is hard-capped at +5 (no opaque value clamps). The strength roll lives on each EFFECT
+(`effects[id].roll = {low,high,scale}`), rarity-INDEPENDENT, so "+5 odds" is one transparent number per
+effect. A rarity's edge is its `type_multiplier` (magnitude) + slot count, NOT better odds. Magnitude is
+resolved at READ time (base × pet-type multiplier), never stored, so a traded pet re-resolves on its new
+owner. (Lesson: `mise run ci` does not run runtime ConfigLoader validation — config-shape refactors need
+a matching validator/CI guard or they crash only at Studio boot. See `feedback_config_schema_not_in_ci`.)
+
+## Player-Power Potency Lives in `magnitude` — enhancement-fold rule (2026-06-22)
+
+Because of the no-direct-damage firewall, player-power potency lives in the `magnitude` axis, not in
+`damage`/`healing`. An enhancement is only meaningful on a power whose offered axis has a real base;
+otherwise it's a "lying" no-op. The rule: fold the offered axis INTO `magnitude` when that's where the
+potency lives (damage→magnitude for buffs/vulnerability, healing→magnitude for heals), and otherwise GATE
+the family to only the powers that genuinely read that axis (range→radius families, accuracy→roll-to-hit
+families, spark→damage-crediting families).
+
+## Per-Layer Income Is One Monotonic Lever; Depth Rescales Content Level (2026-06-23)
+
+Income per realm layer lives in a single SSOT — `layers.lua` multipliers, monotonic so deeper is always
+richer (base 1 / L1 5 / L2 8 / … / L5 17). Income must not be split across a second lever (the per-world
+crystal `value_mult` was removed). Node toughness is a *separate* additive-by-depth lever (`health_mult`)
+that absorbs the rising pet-DPS curve as squads grow; coins/sec ≈ `layer_mult / health_mult`, tuned
+together but never conflated. Separately, `layers.level_offsets` (+9/depth) lifts the effective TARGET
+level in the LevelDiffYield diminishing for mining + combat, tiling six ~9-wide bands across L1→50 so XP
+keeps flowing in realms; a fresh realm's content is all above the player, so "any direction" unlock is
+preserved.
+
+## Enhancement Store: Static Pricing, Naturals-Only Buying, Sell Is the Gem Sink (2026-06-24)
+
+Enhancements are bought/sold for **gems** with STATIC pricing (`buy = base + per_level × level`, flat
+across types) — no dynamic market (exploit-prone, deferred). Buying is **naturals-only** so drop-earned
+single/dual origins keep value; selling accepts all grades and is the intended gem sink (selling
+enhancements is the dominant gem faucet). `grade_mult` is rarity-derived (dual ×1.54, single ×2.86) and
+drives both buy and sell; `EnhancementPricing` is the headless SSOT. Buy-to-fill is surfaced inside the
+slotting flow (purchase deferred to APPLY, CANCEL free), not a standalone shop; sell/salvage is its own
+MenuManager panel. North star: signature powers afford 6 enhancement types → drop-only SET enhancements
+(CoH invention sets) on the `augmentation.lua` set_bonuses scaffold.
+
+## Reductive Axes Use Division — soft-cap by construction (2026-06-26)
+
+Reductive enhancement axes (Focus reduction, recharge) use `base / (1 + Σ)`, never additive-with-clamp.
+Division asymptotes toward zero but never reaches it, so a slotted power always costs something / has a
+cooldown, and the `1/(1+Σ)` diminishing returns are themselves an ED-style soft-cap: local slots can't
+zero a stat out, forcing accumulation of *global* set-bonus reduction to push further. This preserves
+slot demand and the endgame perma-build chase. (Productive axes are ADDITIVE — `mag × (1 + Σpotency)` —
+so same-axis sources don't compound.)
+
+## Focus Is a Runtime-Only Resource (2026-06-26)
+
+Focus is a runtime-only pool powering cast costs and per-second toggle upkeep (the CoH toggle economy).
+It is **never persisted** — it refills to max in ~20s, far shorter than any logout gap, so saving it is
+pure datastore thrash; a returning player is always effectively full. The pool lives in weak-keyed
+in-memory server state. Endurance stays the pet resource; Focus is the player's. The "Focus" enhancement
+(the only type that wants passives, `families="*"`) reduces upkeep/cost, read in `PowerService` not
+`PowerStats`.
+
+## Hasten Is a Timed Perma-Click, Not a Toggle (2026-06-26)
+
+Hasten is the keystone of the perma-build chase, so it must be a TIMED click reachable by the recharge
+axis (a toggle can't be touched by recharge). It self-bootstraps (shortens its own cooldown while active)
+and cascades (shortens every other timed power's), so perma-Hasten perma's the rest of your timed buffs.
+It accepts **recharge only** — potency is removed from the recharge family because potency's
+multiplicative `cd*(1-mag)` lever would out-perform recharge at perma-ing a recharge power (degenerate).
+Perma threshold is tuned to the full 6-slot recharge investment.
+
+## Potion Anti-Runaway Model — BrewMeter (2026-06-21)
+
+Potions are consumables modeled as one draining meter per axis where a normalized charge `[0,1]` does
+triple duty so no vector runs away: **magnitude tapers with charge** (cap shown), a **sip closes a
+diminishing fraction of the gap to full** (stockpiling wasted), and **duration is the drain**. This
+structurally prevents 1000× magnitude or 1000× duration. Potions write their own `<axis>Potion` BuffStack
+source so they stack additively with powers; `LOCK` = auto-maintain (auto-drink below a threshold). Pure
+core `Shared/Game/BrewMeter`.
+
+## Event Scheduling Is Mountain Time (2026-06-21)
+
+Live-ops events schedule in Mountain time (America/Denver, DST-aware) via the pure
+`Shared/Game/MountainTime`, not UTC. The seven-day weekday calendar (Mineral Monday … Secret Sunday)
+gives each day one distinct economy axis; new event modifiers fold in at the same additive choke points
+the Windfall/XP-Surge powers already use (`weekdays_utc` kept as a fallback).
+
+## Exclusive Egg Origin Is 'creator' (2026-06-25)
+
+Exclusive eggs (e.g. Colorado) use the matchup-neutral `creator` origin so an exclusive pet doesn't bias
+the Heaven/Hell realm matchup. (A pet's area/origin SSOT remains its egg pool, not the static
+`pets.lua` origin field; CI `pet_origin_integrity` enforces it.)
