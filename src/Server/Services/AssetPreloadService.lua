@@ -499,6 +499,10 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
     local imageSuccessCount = 0
     local imageFailureCount = 0
     local totalAssets = 0
+    -- Boot-speed instrumentation: how many models were adopted from the pre-bake (instant) vs
+    -- fetched over the network (slow). adopted≈total → fast boot; high fetched → stale/missing bake.
+    local adoptedCount = 0
+    local fetchedCount = 0
 
     -- Pet/egg card thumbnails (ViewportFrames) are COSMETIC (inventory cards) and each costs a second
     -- clone of the model — they don't gate gameplay. We collect them here and generate them in a
@@ -633,11 +637,25 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                             })
                             modelSuccess = false
                         end
+                    elseif
+                        existingVariant
+                        and existingVariant:IsA("Model")
+                        and existingVariant:FindFirstChildWhichIsA("BasePart", true)
+                    then
+                        -- PRE-BAKED FAST PATH: a valid model is already present (the Rojo-synced
+                        -- ReplicatedStorage.Assets.Models, captured from a fully-loaded runtime). Adopt
+                        -- it as-is instead of destroying + re-fetching over the network — it's the
+                        -- already-processed runtime output, so no weld/normalize/components needed. This
+                        -- is what makes the boot fast; without it the caller destroyed the pre-bake here
+                        -- and the skip-guard in LoadModelIntoFolder never got a chance.
+                        adoptedCount = adoptedCount + 1
+                        modelSuccess = true
                     else
-                        -- Replace existing variant model to avoid duplicates
+                        -- No usable pre-bake — replace any empty placeholder and fetch normally.
                         if existingVariant then
                             existingVariant:Destroy()
                         end
+                        fetchedCount = fetchedCount + 1
                         -- Load 3D model
                         modelSuccess = self:LoadModelIntoFolder(
                             variantData.asset_id,
@@ -829,14 +847,24 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
         local hasEggModel = eggData.asset_id and eggData.asset_id ~= "rbxassetid://0"
 
         if hasEggMesh or hasEggModel then
-            -- Replace existing egg model to avoid duplicates
+            -- Adopt a valid pre-baked egg (Rojo-synced Assets.Models.Eggs) as-is; otherwise replace
+            -- any empty placeholder and build/fetch it. Same fast path as pets — see the note above.
             local existingEgg = eggsFolder:FindFirstChild(eggType)
-            if existingEgg then
+            local prebakedEgg = existingEgg ~= nil
+                and existingEgg:IsA("Model")
+                and existingEgg:FindFirstChildWhichIsA("BasePart", true) ~= nil
+            if existingEgg and not prebakedEgg then
                 existingEgg:Destroy()
             end
 
-            local modelSuccess
-            if hasEggMesh then
+            local modelSuccess = nil
+            if prebakedEgg then
+                adoptedCount = adoptedCount + 1
+                modelSuccess = true
+            else
+                fetchedCount = fetchedCount + 1
+            end
+            if not prebakedEgg and hasEggMesh then
                 -- THE single combine path: FBX->Model egg uploads import untextured (grey), so an
                 -- egg ships mesh_asset (+ texture_asset) and we build the textured Model here, the
                 -- same way pets/enemies/gems do, then store it in Assets.Models.Eggs like any model.
@@ -890,6 +918,7 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
     -- ModelsReady) no longer sits behind ~all-pet ViewportFrame rendering.
     logger:Info("Asset model templates loaded (gate open)", {
         models = { successful = modelSuccessCount, failed = modelFailureCount },
+        prebake = { adopted = adoptedCount, fetched = fetchedCount },
         thumbnailJobs = #thumbnailJobs,
         total = totalAssets,
         duration = tick() - startTime,
