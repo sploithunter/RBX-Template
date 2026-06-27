@@ -1485,6 +1485,159 @@ function InventoryPanel:_createSearchSection()
         self.searchTerm = self.searchBox.Text:lower()
         self:_updateItemsDisplay()
     end)
+
+    -- Team loadout bar (Team 1-4 + Activate), to the right of the search box. Surfaces the existing
+    -- Rosters backend: build a team here (draft, persisted via roster.create, NOT deployed); Activate
+    -- = roster.invoke swaps the live squad. Draft editing on the Equipped strip is Stage 2. (task #240)
+    self:_createTeamBar(searchContainer)
+end
+
+local TEAM_COUNT = 4
+
+-- Style a team-bar TextButton: rounded, themed, with a (hidden) selection stroke.
+local function styleTeamButton(btn, baseColor)
+    btn.BackgroundColor3 = baseColor
+    btn.BorderSizePixel = 0
+    btn.AutoButtonColor = true
+    btn.Font = Enum.Font.GothamBold
+    btn.TextScaled = true
+    btn.TextColor3 = Color3.fromRGB(235, 238, 245)
+    btn.ZIndex = 103
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
+    local sizeCap = Instance.new("UITextSizeConstraint")
+    sizeCap.MaxTextSize = 15
+    sizeCap.Parent = btn
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 2
+    stroke.Transparency = 1 -- shown only when selected
+    stroke.Color = Color3.fromRGB(150, 85, 225)
+    stroke.Parent = btn
+    return stroke
+end
+
+function InventoryPanel:_createTeamBar(searchContainer)
+    self._teamButtons = {}
+
+    local bar = Instance.new("Frame")
+    bar.Name = "TeamBar"
+    bar.Size = UDim2.new(1, -320, 1, -10)
+    bar.Position = UDim2.new(0, 315, 0, 5)
+    bar.BackgroundTransparency = 1
+    bar.ZIndex = 102
+    bar.Parent = searchContainer
+
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    layout.VerticalAlignment = Enum.VerticalAlignment.Center
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 8)
+    layout.Parent = bar
+
+    for n = 1, TEAM_COUNT do
+        local btn = Instance.new("TextButton")
+        btn.Name = "Team" .. n
+        btn.Size = UDim2.new(0, 92, 1, -2)
+        btn.LayoutOrder = n
+        btn.Text = "Team " .. n
+        local stroke = styleTeamButton(btn, Color3.fromRGB(40, 40, 50))
+        btn.Parent = bar
+        btn.Activated:Connect(function()
+            self:_selectTeam(n)
+        end)
+        self._teamButtons[n] = { button = btn, stroke = stroke }
+    end
+
+    local activate = Instance.new("TextButton")
+    activate.Name = "ActivateTeam"
+    activate.Size = UDim2.new(0, 108, 1, -2)
+    activate.LayoutOrder = TEAM_COUNT + 1
+    activate.Text = "✓ Activate"
+    styleTeamButton(activate, Color3.fromRGB(46, 160, 87))
+    activate.Parent = bar
+    self._activateButton = activate
+    activate.Activated:Connect(function()
+        self:_activateSelectedTeam()
+    end)
+
+    self:_refreshTeams()
+    self:_renderTeamSelection()
+end
+
+-- Toggle which team is selected for editing (Stage 2 wires the Equipped-strip draft).
+function InventoryPanel:_selectTeam(n)
+    self._selectedTeam = (self._selectedTeam == n) and nil or n
+    self:_renderTeamSelection()
+end
+
+-- Paint selection (purple stroke + lift) on the chosen team; mark the deployed team with a green tint.
+function InventoryPanel:_renderTeamSelection()
+    for n, entry in pairs(self._teamButtons or {}) do
+        local selected = (self._selectedTeam == n)
+        local live = (self._activeTeam == n)
+        entry.stroke.Transparency = selected and 0 or 1
+        if selected then
+            entry.button.BackgroundColor3 = Color3.fromRGB(60, 50, 80)
+        elseif live then
+            entry.button.BackgroundColor3 = Color3.fromRGB(34, 70, 46)
+        else
+            entry.button.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+        end
+    end
+end
+
+-- Load saved rosters and label each team button with its pet count (●LIVE on the deployed one).
+function InventoryPanel:_refreshTeams()
+    task.spawn(function()
+        local remote = ReplicatedStorage:FindFirstChild("GameAPICommand")
+        if not remote then
+            return
+        end
+        local ok, res = pcall(function()
+            return remote:InvokeServer("roster.list")
+        end)
+        if not ok or type(res) ~= "table" then
+            return
+        end
+        local rosters = res.rosters or res.data or res.list or res
+        self._teamRosters = type(rosters) == "table" and rosters or {}
+        for n, entry in pairs(self._teamButtons or {}) do
+            local name = "Team " .. n
+            local r = self._teamRosters[name]
+            local count = (
+                type(r) == "table"
+                and type(r.ordered_pets) == "table"
+                and #r.ordered_pets
+            ) or 0
+            local live = (self._activeTeam == n) and "  ●" or ""
+            entry.button.Text = (count > 0) and (name .. "  " .. count .. live) or (name .. live)
+        end
+    end)
+end
+
+-- Activate (deploy) the selected team via roster.invoke — the ONLY action that touches the field.
+function InventoryPanel:_activateSelectedTeam()
+    local n = self._selectedTeam
+    if not n then
+        return
+    end
+    local name = "Team " .. n
+    task.spawn(function()
+        local remote = ReplicatedStorage:FindFirstChild("GameAPICommand")
+        if not remote then
+            return
+        end
+        local ok, res = pcall(function()
+            return remote:InvokeServer("roster.invoke", { name = name })
+        end)
+        if ok and (type(res) ~= "table" or res.ok ~= false) then
+            self._activeTeam = n
+            self:_renderTeamSelection()
+            self:_refreshTeams()
+        end
+    end)
 end
 
 function InventoryPanel:_createItemsGrid()
