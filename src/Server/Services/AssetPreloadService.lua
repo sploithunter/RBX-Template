@@ -418,8 +418,19 @@ function AssetPreloadService:LoadAllBreakableModelsIntoAssets()
 
     -- Iterate crystals/breakables in config
     for crystalName, crystalData in pairs(breakablesConfig.crystals or {}) do
-        if type(crystalData) == "table" and crystalData.procedural_asset then
-            local existing = crystalsFolder:FindFirstChild(crystalName)
+        local existing = crystalsFolder:FindFirstChild(crystalName)
+        local prebaked = existing ~= nil
+            and existing:IsA("Model")
+            and existing:FindFirstChildWhichIsA("BasePart", true) ~= nil
+        if prebaked then
+            -- PRE-BAKED FAST PATH: a valid crystal model is already present (the Rojo-synced
+            -- ReplicatedStorage.Assets.Models.Breakables.Crystals). Adopt it as-is — do NOT destroy +
+            -- regenerate / re-fetch. Without this the boot wipes + RE-PULLS every crystal asset, and
+            -- until that finishes the on-entry fill has no templates, so crystals only appear on the 30s
+            -- safety-net sweep — the "30s window" walk-in delay that came back after the model pre-bake.
+            -- (Pets + eggs got this fix; breakables were missed.)
+            successCount += 1
+        elseif type(crystalData) == "table" and crystalData.procedural_asset then
             if existing then
                 existing:Destroy()
             end
@@ -441,8 +452,7 @@ function AssetPreloadService:LoadAllBreakableModelsIntoAssets()
             and crystalData.asset_id
             and crystalData.asset_id ~= "rbxassetid://0"
         then
-            -- Replace any existing model with same name
-            local existing = crystalsFolder:FindFirstChild(crystalName)
+            -- Replace any existing (empty/invalid) model with same name
             if existing then
                 existing:Destroy()
             end
