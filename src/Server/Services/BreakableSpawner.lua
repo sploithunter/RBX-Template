@@ -749,11 +749,15 @@ function BreakableSpawner:Start()
             -- (presence-gated) must drop its idle crystals, or they linger forever (the 32k-instance
             -- leak). The unlock-watch handler already despawns on unlock changes; this catches
             -- PRESENCE changes (no unlock event fires when you simply walk out of a realm).
+            local _netT0 = os.clock() -- [perf trace] the 30s safety-net sweep
             self:_despawnInactiveWorlds()
             local crystalsAssets = self._crystalsAssets
             if crystalsAssets then
                 self:_fillAllWorlds(crystalsAssets)
             end
+            print(
+                string.format("[SAFETYNET] 30s topup+despawn swept in %.2fs", os.clock() - _netT0)
+            )
         end
     end)
 end
@@ -1404,6 +1408,8 @@ function BreakableSpawner:_ensureSlots(worldFolder)
         return nil
     end
 
+    local _slotGenT0 = os.clock() -- [perf trace] one-time slot-grid gen (first entry to a world)
+
     local placeCfg = getSpawnSettings(worldFolder.Name)
     local minDist = math.max(4, tonumber(placeCfg.min_distance or 12))
     local margin = tonumber(placeCfg.spawn_area_margin or 0)
@@ -1481,6 +1487,18 @@ function BreakableSpawner:_ensureSlots(worldFolder)
 
     local registry = SpawnSlots.new(slots)
     self._worldSlots[worldFolder] = registry
+    local _slotN = "?"
+    pcall(function()
+        _slotN = registry:total()
+    end)
+    print(
+        string.format(
+            "[SLOTGEN] %s  slots=%s  gen=%.0fms (one-time, on first entry)",
+            worldFolder.Name,
+            tostring(_slotN),
+            (os.clock() - _slotGenT0) * 1000
+        )
+    )
     logger:Info("BreakableSpawner: generated spawn slots", {
         world = worldFolder.Name,
         common = registry:capacity(nil),
@@ -1576,6 +1594,9 @@ function BreakableSpawner:_trySpawnOne(
         end
     end
 
+    local _spawnT0 = os.clock() -- [perf trace] per-crystal phase timing
+    local _tPlace, _tClone = 0, 0
+
     -- Placement. SLOT PATH (default): claim a precomputed free slot — O(free), no raycasts. A
     -- forced spawn may target a fixed-anchor kind (forcedSpawnOverrides.slot_kind). LEGACY PATH
     -- (flag off / no slots): the original per-spawn raycast + clearance search.
@@ -1610,8 +1631,12 @@ function BreakableSpawner:_trySpawnOne(
         end
     end
 
+    _tPlace = (os.clock() - _spawnT0) * 1000 -- [perf trace] placement (slot claim / raycast)
+
     -- Clone and prepare model
+    local _cloneT0 = os.clock()
     local model = assetModel:Clone()
+    _tClone = (os.clock() - _cloneT0) * 1000 -- [perf trace] crystal model clone (heavy if mesh embedded)
     model.Name = crystalName
 
     local crystalCfg = breakablesConfig.crystals and breakablesConfig.crystals[crystalName]
@@ -1662,6 +1687,26 @@ function BreakableSpawner:_trySpawnOne(
             if physicsCfg.can_query ~= nil then
                 d.CanQuery = physicsCfg.can_query == true
             end
+        end
+    end
+
+    -- [perf trace] log a slow spawn's phase breakdown: placement vs clone vs the rest (billboards +
+    -- OreGlow light + welds come AFTER this point). If total (per [FILLPERF]) >> place+clone, the cost
+    -- is the tail; if clone is big, the pre-baked crystal model is heavy (embedded mesh).
+    do
+        local _soFar = (os.clock() - _spawnT0) * 1000
+        if _soFar > 6 then
+            print(
+                string.format(
+                    "[SPAWNSLOW] %s  %s  place=%.1fms clone=%.1fms preSetup=%.1fms  crystal=%s",
+                    worldFolder.Name,
+                    self:_useSlots() and "slot" or "raycast",
+                    _tPlace,
+                    _tClone,
+                    _soFar,
+                    tostring(crystalName)
+                )
+            )
         end
     end
 
