@@ -53,6 +53,10 @@ run = ["bash scripts/stamp_build.sh", "bash scripts/studio_publish.sh"]
 description = "Generate configs/power_icons_assets.lua from scripts/asset_manifest.json (icon registry)"
 run = "node scripts/gen_power_icons.js && mise exec -- stylua configs/power_icons_assets.lua"
 
+[tasks.gen-pet-thumbnails]
+description = "Generate configs/pet_thumbnail_assets.lua from scripts/pet_thumbnail_ids.json (card thumbnail registry)"
+run = "node scripts/gen_pet_thumbnails.js && mise exec -- stylua configs/pet_thumbnail_assets.lua"
+
 [tasks.asset-report]
 description = "Report tracked pet assets and source-file gaps"
 run = "node scripts/assets_report.js"
