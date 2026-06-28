@@ -1570,6 +1570,7 @@ end
 function InventoryPanel:_selectTeam(n)
     self._selectedTeam = (self._selectedTeam == n) and nil or n
     self:_renderTeamSelection()
+    self:_updateItemsDisplay() -- repaint the strip as the team draft (or back to live Equipped)
 end
 
 -- Paint selection (purple stroke + lift) on the chosen team; mark the deployed team with a green tint.
@@ -1658,10 +1659,11 @@ function InventoryPanel:_toggleTeamMember(item)
         table.insert(list, ref)
     end
 
-    -- Optimistic local update + relabel, then persist.
+    -- Optimistic local update + relabel + repaint the draft strip, then persist.
     self._teamRosters[name] = self._teamRosters[name] or { name = name }
     self._teamRosters[name].ordered_pets = list
     self:_refreshTeamButtonLabels()
+    self:_updateItemsDisplay()
 
     task.spawn(function()
         local remote = ReplicatedStorage:FindFirstChild("GameAPICommand")
@@ -1757,6 +1759,7 @@ function InventoryPanel:_createItemsGrid()
     eqLabel.TextScaled = true
     eqLabel.LayoutOrder = 1
     eqLabel.Parent = scrollFrame
+    self.equippedLabel = eqLabel -- retitled to "Team N (draft)" while editing a team (task #240)
 
     local eqGridContainer = Instance.new("Frame")
     eqGridContainer.Name = "EquippedContainer"
@@ -3672,6 +3675,23 @@ function InventoryPanel:_updateItemsDisplay()
     clearChildren(self.inventoryGrid)
     self.itemFrames = {}
 
+    -- Team-draft mode: while a team is selected, the Equipped strip becomes that team's DRAFT (the
+    -- slots you fill). Clicking pets only stages into the roster — nothing deploys until Activate.
+    -- (task #240 Stage 2b)
+    local teamMode = self._selectedTeam ~= nil
+    local draftRefs
+    if teamMode then
+        local roster = self._teamRosters and self._teamRosters["Team " .. self._selectedTeam]
+        draftRefs = (roster and type(roster.ordered_pets) == "table") and roster.ordered_pets or {}
+    end
+    if self.equippedLabel then
+        self.equippedLabel.Text = teamMode
+                and ("Team " .. self._selectedTeam .. " (draft)  —  " .. #draftRefs .. "/10")
+            or "Equipped"
+        self.equippedLabel.TextColor3 = teamMode and Color3.fromRGB(185, 150, 255)
+            or Color3.fromRGB(255, 215, 0)
+    end
+
     -- Get current category folders for filtering
     local categoryFolders = self:_getCategoryFolders(self.selectedCategory)
 
@@ -3709,6 +3729,9 @@ function InventoryPanel:_updateItemsDisplay()
         if isStack then
             isEquipped = false
         end -- keep the stack in inventory
+        if teamMode then
+            isEquipped = false -- in team mode the strip shows the DRAFT (rendered below), not live
+        end
         local container = isEquipped and self.equippedGrid or self.inventoryGrid
         self:_createItemFrameInto(item, isEquipped and eqIndex or invIndex, container)
         if isEquipped then
@@ -3718,8 +3741,30 @@ function InventoryPanel:_updateItemsDisplay()
         end
     end
 
+    -- Render the team DRAFT into the Equipped strip (one card per roster ref, in order). Clicking a
+    -- draft card toggles it back out (via the team-edit hijack). Nothing here touches the live field.
+    if teamMode and draftRefs then
+        local byRef = {}
+        for _, item in ipairs(self.inventoryData) do
+            if item.folder_source == "pets" then
+                local ref = self:_getPetStackKey(item) or item.uid
+                if type(ref) == "string" and byRef[ref] == nil then
+                    byRef[ref] = item
+                end
+            end
+        end
+        local idx = 1
+        for _, ref in ipairs(draftRefs) do
+            local item = byRef[ref]
+            if item then
+                self:_createItemFrameInto(item, idx, self.equippedGrid)
+                idx += 1
+            end
+        end
+    end
+
     -- Add ghost cards for equipped instances drawn from stacks (one per equipped UID)
-    if self.equippedItems and self.equippedItems.pets then
+    if not teamMode and self.equippedItems and self.equippedItems.pets then
         for equippedUid, _ in pairs(self.equippedItems.pets) do
             if typeof(equippedUid) == "string" then
                 local parts = string.split(equippedUid, "|")
