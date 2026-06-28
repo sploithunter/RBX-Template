@@ -1,5 +1,9 @@
 {
-  "_comment": "SSOT for pre-uploaded pet/egg inventory-card THUMBNAILS (flat image asset ids). Written by scripts/upload_pet_thumbnails.js (apply-resolve), consumed by scripts/gen_pet_thumbnails.js -> configs/pet_thumbnail_assets.lua. A numeric id means an uploaded flat texture exists for that card; absent/null means the card falls back to the baked ViewportFrame at runtime (zero regression). Keys starting with _ are ignored by the generator. Pet keys: pets.<petType>.<variant> and pets.<petType>.<variant>__huge (the up-close HUGE shot). Egg keys: eggs.<eggType>.",
-  "pets": {},
+  "_comment": "SSOT for pre-uploaded pet/egg inventory-card THUMBNAILS (flat IMAGE asset ids). Consumed by scripts/gen_pet_thumbnails.js -> configs/pet_thumbnail_assets.lua, which the inventory card (InventoryPanel) renders as a flat ImageLabel when present (else the baked ViewportFrame). Keys are the CONFIG petType + variant (configs/pets.lua is authoritative); render filenames map basic->basic and gold->golden. Keys starting with _ are ignored by the generator. Pet keys: pets.<petType>.<variant> and pets.<petType>.<variant>__huge. Egg keys: eggs.<eggType>.",
+  "pets": {
+    "abyssal_wyrm": { "basic": 76852321722613 },
+    "ashmane_lion": { "basic": 121145811914516 },
+    "ash_roc": { "basic": 96778214828749 }
+  },
   "eggs": {}
 }
