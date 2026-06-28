@@ -1613,8 +1613,9 @@ function InventoryPanel:_isItemInDraft(item)
     return false
 end
 
--- Toggle a pet in/out of the working draft. PURE UI — no server, nothing deploys until Activate.
-function InventoryPanel:_toggleDraftMember(item)
+-- Edit the working draft. PURE UI — no server, nothing deploys until Activate. Clicking an inventory
+-- pet ADDS one (commons up to the owned quantity, uniques once); clicking a draft slot REMOVES one.
+function InventoryPanel:_toggleDraftMember(item, isDraftCard)
     if self._draftRefs == nil then
         self:_seedDraftFromEquipped()
     end
@@ -1623,20 +1624,44 @@ function InventoryPanel:_toggleDraftMember(item)
         return
     end
     local list = self._draftRefs
-    local removeAt
-    for i, v in ipairs(list) do
-        if v == ref then
-            removeAt = i
-            break
+    local isStack = string.sub(ref, 1, 6) == "stack|"
+
+    if isDraftCard then
+        -- Clicking a draft slot pulls ONE copy back out.
+        for i = #list, 1, -1 do
+            if list[i] == ref then
+                table.remove(list, i)
+                break
+            end
         end
+        self:_updateItemsDisplay()
+        return
     end
-    if removeAt then
-        table.remove(list, removeAt)
-    elseif #list >= SQUAD_CAP then
+
+    -- Clicking an inventory pet adds one.
+    if #list >= SQUAD_CAP then
         self:_flashActivateFull()
         return
-    else
+    end
+    local drafted = 0
+    for _, v in ipairs(list) do
+        if v == ref then
+            drafted += 1
+        end
+    end
+    if isStack then
+        -- _ownedTotal survives the count-reduced inventory clone; fall back to the live count.
+        local owned = tonumber(item._ownedTotal)
+            or tonumber(item.count)
+            or tonumber(item.quantity)
+            or 1
+        if drafted >= owned then
+            self:_flashActivateFull() -- none of this stack left to draft
+            return
+        end
         table.insert(list, ref)
+    elseif drafted == 0 then
+        table.insert(list, ref) -- a unique can be drafted once (remove via its draft slot)
     end
     self:_updateItemsDisplay()
 end
@@ -3678,7 +3703,29 @@ function InventoryPanel:_updateItemsDisplay()
             isEquipped = false -- in team mode the strip shows the DRAFT (rendered below), not live
         end
         local container = isEquipped and self.equippedGrid or self.inventoryGrid
-        self:_createItemFrameInto(item, isEquipped and eqIndex or invIndex, container)
+        -- In draft mode, an inventory stack shows REMAINING availability (owned − drafted) so you can
+        -- see how many of a common you can still field. Clone for display, but stamp _ownedTotal so the
+        -- add-cap still uses the true owned count.
+        local renderItem = item
+        if teamMode and item.folder_source == "pets" then
+            local ref = self:_draftRefForItem(item)
+            if ref and string.sub(ref, 1, 6) == "stack|" then
+                local owned = tonumber(item.count) or tonumber(item.quantity) or 0
+                local drafted = 0
+                for _, v in ipairs(draftRefs or {}) do
+                    if v == ref then
+                        drafted += 1
+                    end
+                end
+                if drafted > 0 then
+                    renderItem = table.clone(item)
+                    renderItem._ownedTotal = owned
+                    renderItem.count = math.max(0, owned - drafted)
+                    renderItem.quantity = renderItem.count
+                end
+            end
+        end
+        self:_createItemFrameInto(renderItem, isEquipped and eqIndex or invIndex, container)
         if isEquipped then
             eqIndex += 1
         else
@@ -5267,10 +5314,11 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
             self:_toggleDeleteSelection(item, itemFrame)
             return
         end
-        -- Deploy is draft-based: a pet click only toggles it in the working draft (no live equip).
+        -- Deploy is draft-based: a pet click only edits the working draft (no live equip). A click on a
+        -- draft slot (in the equipped grid) removes one; a click in the inventory grid adds one.
         -- Non-pets (eggs etc.) keep their normal primary action. Activate commits the draft. (task #240)
         if item.folder_source == "pets" then
-            self:_toggleDraftMember(item)
+            self:_toggleDraftMember(item, itemFrame.Parent == self.equippedGrid)
             return
         end
         self:_handlePrimaryAction(item)
