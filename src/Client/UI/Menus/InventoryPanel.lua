@@ -3698,12 +3698,13 @@ function InventoryPanel:_updateItemsDisplay()
                 end
             end
         end
-        local idx = 1
+        -- Use eqIndex (not a local) so _renderEmptySlotRings(eqIndex - 1) below pads the RIGHT number
+        -- of empty slots — otherwise it padded a full 10 on top of the draft cards and they piled up.
         for _, ref in ipairs(draftRefs) do
             local item = byRef[ref]
             if item then
-                self:_createItemFrameInto(item, idx, self.equippedGrid)
-                idx += 1
+                self:_createItemFrameInto(item, eqIndex, self.equippedGrid)
+                eqIndex += 1
             end
         end
     end
