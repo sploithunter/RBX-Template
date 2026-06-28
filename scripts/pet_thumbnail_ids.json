@@ -1,0 +1,5 @@
+{
+  "_comment": "SSOT for pre-uploaded pet/egg inventory-card THUMBNAILS (flat image asset ids). Written by scripts/upload_pet_thumbnails.js (apply-resolve), consumed by scripts/gen_pet_thumbnails.js -> configs/pet_thumbnail_assets.lua. A numeric id means an uploaded flat texture exists for that card; absent/null means the card falls back to the baked ViewportFrame at runtime (zero regression). Keys starting with _ are ignored by the generator. Pet keys: pets.<petType>.<variant> and pets.<petType>.<variant>__huge (the up-close HUGE shot). Egg keys: eggs.<eggType>.",
+  "pets": {},
+  "eggs": {}
+}
