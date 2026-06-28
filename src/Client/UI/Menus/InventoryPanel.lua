@@ -3276,6 +3276,12 @@ local function resolveThumbnailId(petType, variant, huge)
     return (huge and byVariant[variant .. "__huge"]) or byVariant[variant]
 end
 
+-- Dedupe the "no flat thumbnail → using viewport" warning to once per petType/variant/huge, so a new
+-- pet (or one greyed out by an asset-ownership mismatch) surfaces ONE clear dev warning instead of
+-- spamming per card. Everything still works (the card renders its baked ViewportFrame); the warning
+-- just means "this pet has no uploaded flat texture yet" so nobody is surprised it's a live viewport.
+local warnedNoFlatThumb = {}
+
 -- 🔍 GET PET IMAGE FROM ASSETS (Helper function)
 -- ONE card path: returns a flat ImageLabel when a pre-uploaded thumbnail exists (a texture, no
 -- per-frame render), otherwise a clone of the baked ViewportFrame (the live 3D fallback). The caller
@@ -3337,6 +3343,21 @@ function InventoryPanel:_getPetImageFromAssets(petType, variant, quiet, huge)
     end)
 
     if success and imageViewport then
+        -- We're here because resolveThumbnailId returned nil (no uploaded flat texture for this
+        -- pet/variant) — so the card uses the live baked ViewportFrame. Warn ONCE per pet/variant so
+        -- a missing/greyed-out (ownership mismatch) thumbnail is visible to devs, never silent.
+        local warnKey = petType .. "/" .. tostring(variant) .. (huge and "/huge" or "")
+        if not quiet and not warnedNoFlatThumb[warnKey] then
+            warnedNoFlatThumb[warnKey] = true
+            self.logger:warn(
+                "🖼️ No flat thumbnail — using live viewport (upload/register a texture)",
+                {
+                    petType = petType,
+                    variant = variant,
+                    huge = huge == true,
+                }
+            )
+        end
         self.logger:info("🎯 PET IMAGE FOUND", {
             petType = petType,
             variant = variant,
