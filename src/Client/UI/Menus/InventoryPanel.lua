@@ -1864,6 +1864,9 @@ function InventoryPanel:_createItemsGrid()
         -- Recompute scroll canvas
         local total = eqH + invH + eqLabel.AbsoluteSize.Y + invLabel.AbsoluteSize.Y + 60
         scrollFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(0, total))
+
+        -- Layout settled (card AbsolutePositions are now valid) — re-cull off-screen viewports.
+        self:_requestCull()
     end
 
     local function recomputeCanvas()
@@ -1878,9 +1881,75 @@ function InventoryPanel:_createItemsGrid()
     task.defer(updateSectionHeights)
 
     -- Store references
+    self.scrollFrame = scrollFrame
     self.equippedGrid = eqGridContainer
     self.inventoryGrid = invGridContainer
     self.itemsGrid = invGridContainer -- backward compat for any code referencing itemsGrid
+
+    -- Pause off-screen card ViewportFrames (perf): re-cull whenever the user scrolls or the visible
+    -- window resizes. A big inventory otherwise renders every card's live 3D thumbnail every frame.
+    if self._cullConn then
+        self._cullConn:Disconnect()
+    end
+    self._cullConn = scrollFrame:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+        self:_requestCull()
+    end)
+    if self._cullSizeConn then
+        self._cullSizeConn:Disconnect()
+    end
+    self._cullSizeConn = scrollFrame
+        :GetPropertyChangedSignal("AbsoluteWindowSize")
+        :Connect(function()
+            self:_requestCull()
+        end)
+end
+
+-- Pause off-screen card ViewportFrames so a big inventory isn't rendering N live 3D scenes at once.
+-- Each pet card's 3D thumbnail (named "PetImage"/"PetViewport") is a ViewportFrame that re-renders
+-- every frame WHILE VISIBLE; toggling its .Visible off while the card sits outside the scroll window
+-- (plus a margin so it's already drawn by the time it scrolls in) drops the cost to ~the on-screen
+-- cards. We gate the VIEWPORT, never the card frame — UIGridLayout skips Visible=false children and
+-- would reflow the grid. Flat ImageLabel thumbnails (the texture path) are cheap, so only viewports
+-- are gated; cards whose thumbnail is already a texture are left untouched.
+function InventoryPanel:_cullCardViewports()
+    local scroll = self.scrollFrame
+    if not scroll or not scroll.Parent then
+        return
+    end
+    local winTop = scroll.AbsolutePosition.Y
+    local winH = scroll.AbsoluteWindowSize.Y
+    if winH <= 0 then
+        winH = scroll.AbsoluteSize.Y
+    end
+    local margin = (self.cardSize and self.cardSize.Y or 120) * 2 -- ~two rows of look-ahead
+    local lo, hi = winTop - margin, winTop + winH + margin
+    for _, container in ipairs({ self.equippedGrid, self.inventoryGrid }) do
+        if container then
+            for _, card in ipairs(container:GetChildren()) do
+                if card:IsA("GuiObject") then
+                    local vp = card:FindFirstChild("PetImage", true)
+                        or card:FindFirstChild("PetViewport", true)
+                    if vp and vp:IsA("ViewportFrame") then
+                        local top = card.AbsolutePosition.Y
+                        local bottom = top + card.AbsoluteSize.Y
+                        vp.Visible = (bottom >= lo) and (top <= hi)
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Debounce CanvasPosition spam (it fires many times per scroll): mark dirty, cull once next frame.
+function InventoryPanel:_requestCull()
+    if self._cullScheduled then
+        return
+    end
+    self._cullScheduled = true
+    task.defer(function()
+        self._cullScheduled = false
+        self:_cullCardViewports()
+    end)
 end
 
 function InventoryPanel:_generateSampleData()
@@ -3934,6 +4003,10 @@ function InventoryPanel:_updateItemsDisplay()
 
     -- Pad the equipped row with blank rings for the remaining open slots (eqIndex-1 = # filled).
     self:_renderEmptySlotRings(eqIndex - 1)
+
+    -- Grid just (re)built — pause every off-screen card's viewport. Deferred so card AbsolutePositions
+    -- are laid out first; the scroll/resize signals keep it current after that.
+    self:_requestCull()
 end
 
 function InventoryPanel:_getCategoryFolders(categoryName)
