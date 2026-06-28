@@ -1588,7 +1588,19 @@ function InventoryPanel:_renderTeamSelection()
     end
 end
 
--- Load saved rosters and label each team button with its pet count (●LIVE on the deployed one).
+-- Relabel each team button from the locally-cached rosters (pet count + ● on the deployed team).
+function InventoryPanel:_refreshTeamButtonLabels()
+    for n, entry in pairs(self._teamButtons or {}) do
+        local name = "Team " .. n
+        local r = self._teamRosters and self._teamRosters[name]
+        local count = (type(r) == "table" and type(r.ordered_pets) == "table" and #r.ordered_pets)
+            or 0
+        local live = (self._activeTeam == n) and "  ●" or ""
+        entry.button.Text = (count > 0) and (name .. "  " .. count .. live) or (name .. live)
+    end
+end
+
+-- Load saved rosters from the server, then relabel the team buttons.
 function InventoryPanel:_refreshTeams()
     task.spawn(function()
         local remote = ReplicatedStorage:FindFirstChild("GameAPICommand")
@@ -1603,17 +1615,75 @@ function InventoryPanel:_refreshTeams()
         end
         local rosters = res.rosters or res.data or res.list or res
         self._teamRosters = type(rosters) == "table" and rosters or {}
-        for n, entry in pairs(self._teamButtons or {}) do
-            local name = "Team " .. n
-            local r = self._teamRosters[name]
-            local count = (
-                type(r) == "table"
-                and type(r.ordered_pets) == "table"
-                and #r.ordered_pets
-            ) or 0
-            local live = (self._activeTeam == n) and "  ●" or ""
-            entry.button.Text = (count > 0) and (name .. "  " .. count .. live) or (name .. live)
+        self:_refreshTeamButtonLabels()
+    end)
+end
+
+-- Toggle a pet into/out of the selected team's roster. Saved via roster.create (persisted, NOT
+-- deployed). ref = the canonical squad ref (stack key for stacks, uid for uniques) that ActiveSquad
+-- and roster.invoke consume. Cap 10 (active squad). task #240 Stage 2a.
+function InventoryPanel:_toggleTeamMember(item)
+    local n = self._selectedTeam
+    if not n then
+        return
+    end
+    local ref = self:_getPetStackKey(item) or item.uid
+    if type(ref) ~= "string" or ref == "" then
+        return
+    end
+    local name = "Team " .. n
+    self._teamRosters = self._teamRosters or {}
+
+    local list = {}
+    local existing = self._teamRosters[name]
+    if existing and type(existing.ordered_pets) == "table" then
+        for _, v in ipairs(existing.ordered_pets) do
+            table.insert(list, v)
         end
+    end
+
+    local removeAt
+    for i, v in ipairs(list) do
+        if v == ref then
+            removeAt = i
+            break
+        end
+    end
+    if removeAt then
+        table.remove(list, removeAt)
+    elseif #list >= 10 then
+        self:_flashTeamButtonFull(n) -- squad cap reached
+        return
+    else
+        table.insert(list, ref)
+    end
+
+    -- Optimistic local update + relabel, then persist.
+    self._teamRosters[name] = self._teamRosters[name] or { name = name }
+    self._teamRosters[name].ordered_pets = list
+    self:_refreshTeamButtonLabels()
+
+    task.spawn(function()
+        local remote = ReplicatedStorage:FindFirstChild("GameAPICommand")
+        if not remote then
+            return
+        end
+        pcall(function()
+            return remote:InvokeServer("roster.create", { name = name, orderedPets = list })
+        end)
+        self:_refreshTeams()
+    end)
+end
+
+-- Brief red flash on a team button when it's already at the 10-pet cap.
+function InventoryPanel:_flashTeamButtonFull(n)
+    local entry = self._teamButtons and self._teamButtons[n]
+    if not entry then
+        return
+    end
+    entry.button.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+    task.delay(0.25, function()
+        self:_renderTeamSelection()
     end)
 end
 
@@ -5196,6 +5266,12 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
         -- of equipping/consuming/hatching (uniques refuse + flash a "protected" tell).
         if self._deleteMode then
             self:_toggleDeleteSelection(item, itemFrame)
+            return
+        end
+        -- Team-edit mode hijacks the click (like delete mode): toggle this pet into the selected
+        -- team's roster (saved via roster.create, NOT deployed) instead of the normal equip action.
+        if self._selectedTeam and item.folder_source == "pets" then
+            self:_toggleTeamMember(item)
             return
         end
         self:_handlePrimaryAction(item)
