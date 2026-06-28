@@ -5322,22 +5322,25 @@ function InventoryPanel:_renderItemTooltip(item, lines)
     end
     do
         local UserInputService = game:GetService("UserInputService")
-        local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+        local GuiService = game:GetService("GuiService")
         self._tooltipHoverGuard = game:GetService("RunService").Heartbeat:Connect(function()
             local srcFrame = self._tooltipSourceFrame
-            if not srcFrame or not srcFrame.Parent or not playerGui then
+            if not srcFrame or not srcFrame.Parent then
                 self:_hideItemTooltip()
                 return
             end
+            -- Is the cursor still within the hovered card's rectangle? Pure geometry against the
+            -- card's own AbsolutePosition/Size — robust for both small cards and the full-size HUGE
+            -- ViewportFrame card (which swallows MouseLeave), with no z-order/popup interference.
+            -- GetMouseLocation EXCLUDES the topbar inset while AbsolutePosition includes it, so add
+            -- the inset to convert the mouse into AbsolutePosition space (the bug that made every
+            -- small card dismiss instantly while the tall Huge Bear card stuck).
+            local inset = GuiService:GetGuiInset()
             local pos = UserInputService:GetMouseLocation()
-            local stillOver = false
-            for _, obj in ipairs(playerGui:GetGuiObjectsAtPosition(pos.X, pos.Y)) do
-                if obj == srcFrame or obj:IsDescendantOf(srcFrame) then
-                    stillOver = true
-                    break
-                end
-            end
-            if not stillOver then
+            local mx, my = pos.X + inset.X, pos.Y + inset.Y
+            local ap, asz = srcFrame.AbsolutePosition, srcFrame.AbsoluteSize
+            local over = mx >= ap.X and mx <= ap.X + asz.X and my >= ap.Y and my <= ap.Y + asz.Y
+            if not over then
                 self:_hideItemTooltip()
             end
         end)
