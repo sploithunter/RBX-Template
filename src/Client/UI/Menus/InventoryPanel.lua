@@ -3074,9 +3074,12 @@ function InventoryPanel:_createPetImageIcon(parent, item)
         { itemId = item.id, petType = item.petType, variant = item.variant }
     )
 
-    if item.huge == true then
-        return self:_create3DPetIcon(parent, item)
-    end
+    -- Huge pets are ONLY a resized base pet (same petType/variant), so they take the exact SAME
+    -- pre-baked image path as every other pet — no special live-ViewportFrame card. That one-off
+    -- (_create3DPetIcon) is what swallowed the mouse and broke tooltip hover; it now survives only
+    -- behind the config-gated "viewports" display method, not as a per-pet branch. (Jason: one
+    -- elegant card path — a huge is just a resize, the Creator Colorado is huge-sized and frames
+    -- fine through this same path.)
 
     -- Try to get pre-generated image from AssetPreloadService
     local imageViewport = self:_getPetImageFromAssets(item.petType, item.variant)
@@ -5320,29 +5323,17 @@ function InventoryPanel:_renderItemTooltip(item, lines)
         self._tooltipHoverGuard:Disconnect()
         self._tooltipHoverGuard = nil
     end
-    do
-        local UserInputService = game:GetService("UserInputService")
-        self._tooltipHoverGuard = game:GetService("RunService").Heartbeat:Connect(function()
-            local srcFrame = self._tooltipSourceFrame
-            if not srcFrame or not srcFrame.Parent then
-                self:_hideItemTooltip()
-                return
-            end
-            -- Is the cursor still within the hovered card's rectangle? Pure geometry against the
-            -- card's own AbsolutePosition/Size — robust for both small cards and the full-size HUGE
-            -- ViewportFrame card (which swallows MouseLeave), with no z-order/popup interference.
-            -- GetMouseLocation() is already in AbsolutePosition space here, so compare directly — do
-            -- NOT add the GUI inset (doing so shifted the hit-test ~36px below the cursor, so the
-            -- bottom of every card dismissed and only the top edge / tall cards stayed up).
-            local pos = UserInputService:GetMouseLocation()
-            local ap, asz = srcFrame.AbsolutePosition, srcFrame.AbsoluteSize
-            local over = pos.X >= ap.X
-                and pos.X <= ap.X + asz.X
-                and pos.Y >= ap.Y
-                and pos.Y <= ap.Y + asz.Y
-            if not over then
-                self:_hideItemTooltip()
-            end
+    -- Every card is a static baked image now (no live ViewportFrame to swallow the hover), so the
+    -- card's native MouseEnter/MouseLeave drive show/hide — same as every non-huge card already does.
+    -- The only case native hover misses is a card destroyed under the cursor during a re-render (no
+    -- MouseLeave fires), so hide on that one event. No per-frame polling, no mouse-position math.
+    if self._tooltipHoverGuard then
+        self._tooltipHoverGuard:Disconnect()
+        self._tooltipHoverGuard = nil
+    end
+    if self._tooltipSourceFrame then
+        self._tooltipHoverGuard = self._tooltipSourceFrame.Destroying:Connect(function()
+            self:_hideItemTooltip()
         end)
     end
 
