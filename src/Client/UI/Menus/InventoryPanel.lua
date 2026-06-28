@@ -3802,6 +3802,20 @@ function InventoryPanel:_updateItemsDisplay()
                     renderItem.count = remaining
                     renderItem.quantity = remaining
                 end
+            elseif ref then
+                -- A unique is one-of: if it's in the draft it's fully deployed, so drop it from the
+                -- inventory grid (else the deployed unique shows in BOTH the strip and inventory and
+                -- looks like you own two). Mirrors the stack remaining==0 case above.
+                local inDraft = false
+                for _, v in ipairs(draftRefs or {}) do
+                    if v == ref then
+                        inDraft = true
+                        break
+                    end
+                end
+                if inDraft then
+                    continue
+                end
             end
         end
         self:_createItemFrameInto(renderItem, isEquipped and eqIndex or invIndex, container)
