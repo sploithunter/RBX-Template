@@ -3703,7 +3703,15 @@ function InventoryPanel:_updateItemsDisplay()
         for _, ref in ipairs(draftRefs) do
             local item = byRef[ref]
             if item then
-                self:_createItemFrameInto(item, eqIndex, self.equippedGrid)
+                -- A draft SLOT is one pet, not the whole stack: clone + count 1 so the card shows a
+                -- single pet (no "x5" stack badge), like the live equipped ghost cards do.
+                local card = item
+                if string.sub(ref, 1, 6) == "stack|" then
+                    card = table.clone(item)
+                    card.count = 1
+                    card.quantity = 1
+                end
+                self:_createItemFrameInto(card, eqIndex, self.equippedGrid)
                 eqIndex += 1
             end
         end
