@@ -835,6 +835,18 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                             petType = petType,
                             variant = variant,
                         })
+                        -- A second, HUGE-framed thumbnail (any pet can roll huge — orthogonal). Stored
+                        -- under "<variant>__huge" in the same type folder; the card picks it when the
+                        -- pet record is huge, else falls back to the normal one. Same baked path, no
+                        -- live-viewport huge card.
+                        table.insert(thumbnailJobs, {
+                            model = petTypeFolder:FindFirstChild(variant),
+                            parent = petImageTypeFolder,
+                            name = variant .. "__huge",
+                            petType = petType,
+                            variant = variant,
+                            huge = true,
+                        })
                     else
                         modelFailureCount = modelFailureCount + 1
                     end
@@ -963,7 +975,8 @@ function AssetPreloadService:LoadAllModelsIntoAssets()
                     job.parent,
                     job.name,
                     job.petType,
-                    job.variant
+                    job.variant,
+                    job.huge
                 )
                 if okThumb then
                     imageSuccessCount = imageSuccessCount + 1
@@ -1311,7 +1324,8 @@ function AssetPreloadService:GenerateImageFromModel(
     parentFolder,
     folderName,
     itemType,
-    variant
+    variant,
+    huge -- when true, frame an up-close HUGE shot via configs/pets.lua huge_face (zoom + per-model aim)
 )
     if not model or not model:IsA("Model") then
         logger:Warn("Invalid model for image generation", {
@@ -1395,9 +1409,36 @@ function AssetPreloadService:GenerateImageFromModel(
         viewport.BackgroundTransparency = 1
         viewport.Parent = parentFolder
 
+        -- Default framing: look at the model centre from the normalized spherical position.
+        local camCFrame = CFrame.lookAt(cameraPosition, Vector3.new(0, 0, 0))
+        local camFov = nil
+
+        -- HUGE framing: an up-close shot aimed at the pet's face. `huge_face` (configs/pets.lua) is the
+        -- per-pet aim/zoom — y raises the look-at toward the face (quadrupeds), dist is the zoom, fov
+        -- the lens. Same math the old live-viewport huge card used, now baked into the static thumbnail
+        -- so huges keep the one shared card path. Defaults reproduce the old framing.
+        if huge then
+            local petData = petConfig.pets[itemType]
+            local face = (petData and petData.huge_face) or {}
+            local bbCFrame, bbSize = modelClone:GetBoundingBox()
+            local target = bbCFrame.Position
+                + Vector3.new(
+                    bbSize.X * (face.x or 0),
+                    bbSize.Y * (face.y or 0.22),
+                    bbSize.Z * (face.z or 0)
+                )
+            local closeDistance = math.max(0.8, math.max(bbSize.X, bbSize.Z) * (face.dist or 0.7))
+            local dir = (cameraOffset.Magnitude > 0) and cameraOffset.Unit or Vector3.new(0, 0, 1)
+            camCFrame = CFrame.lookAt(target + dir * closeDistance, target)
+            camFov = face.fov or 58
+        end
+
         -- Create and configure camera
         local camera = Instance.new("Camera")
-        camera.CFrame = CFrame.lookAt(cameraPosition, Vector3.new(0, 0, 0))
+        camera.CFrame = camCFrame
+        if camFov then
+            camera.FieldOfView = camFov
+        end
         camera.Parent = viewport
         viewport.CurrentCamera = camera
 

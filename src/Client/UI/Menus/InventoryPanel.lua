@@ -3081,8 +3081,9 @@ function InventoryPanel:_createPetImageIcon(parent, item)
     -- elegant card path — a huge is just a resize, the Creator Colorado is huge-sized and frames
     -- fine through this same path.)
 
-    -- Try to get pre-generated image from AssetPreloadService
-    local imageViewport = self:_getPetImageFromAssets(item.petType, item.variant)
+    -- Try to get pre-generated image from AssetPreloadService (huge pets get the up-close baked shot)
+    local imageViewport =
+        self:_getPetImageFromAssets(item.petType, item.variant, false, item.huge == true)
 
     if imageViewport then
         -- Use the pre-generated ViewportFrame
@@ -3181,7 +3182,7 @@ function InventoryPanel:_getDisplayMethod(context)
 end
 
 -- 🔍 GET PET IMAGE FROM ASSETS (Helper function)
-function InventoryPanel:_getPetImageFromAssets(petType, variant, quiet)
+function InventoryPanel:_getPetImageFromAssets(petType, variant, quiet, huge)
     -- Try to get image from ReplicatedStorage.Assets.Images.Pets
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -3206,7 +3207,10 @@ function InventoryPanel:_getPetImageFromAssets(petType, variant, quiet)
             return nil
         end
 
-        local petImageViewport = petTypeFolder:FindFirstChild(variant)
+        -- HUGE pets prefer the up-close "<variant>__huge" thumbnail (baked with the huge_face camera);
+        -- fall back to the normal one if it isn't generated yet (same one card path either way).
+        local petImageViewport = (huge and petTypeFolder:FindFirstChild(variant .. "__huge"))
+            or petTypeFolder:FindFirstChild(variant)
         if not petImageViewport then
             return nil
         end
