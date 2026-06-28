@@ -8,21 +8,7 @@
     when an id is absent. pets[petType][variant] / pets[petType][variant__huge] / eggs[eggType].
 ]]
 
-local function id(n)
-    return "rbxassetid://" .. n
-end
-
 return {
-    pets = {
-        ["abyssal_wyrm"] = {
-            ["basic"] = id(76852321722613),
-        },
-        ["ash_roc"] = {
-            ["basic"] = id(96778214828749),
-        },
-        ["ashmane_lion"] = {
-            ["basic"] = id(121145811914516),
-        },
-    },
+    pets = {},
     eggs = {},
 }
