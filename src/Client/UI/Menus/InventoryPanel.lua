@@ -1559,18 +1559,46 @@ end
 
 -- Seed the working draft from the currently-deployed squad (player.Equipped.pets, in slot order).
 -- Refs are "stack|<stackKey>" (common copies) or a unique uid — the format the server stores/expects.
+-- Equipped.pets stores commons as "stack|<stackKey>|<slot>" (trailing slot index); the draft uses the
+-- slot-less "stack|<stackKey>" that _draftRefForItem produces. Strip the slot so the seed matches the
+-- rendered cards (otherwise the strip shows phantom-empty and the cap locks the panel).
+function InventoryPanel:_normalizeEquippedRef(value)
+    if type(value) ~= "string" then
+        return nil
+    end
+    if string.sub(value, 1, 6) == "stack|" then
+        return (string.gsub(value, "|%d+$", ""))
+    end
+    return value
+end
+
 function InventoryPanel:_seedDraftFromEquipped()
     local refs = {}
     local player = self.player or Players.LocalPlayer
     local eq = player and player:FindFirstChild("Equipped")
     local pets = eq and eq:FindFirstChild("pets")
+
+    -- Refs the strip can actually render right now, so a stale equipped value (e.g. a traded pet)
+    -- can't seed an invisible card that fills the cap and locks the panel.
+    local renderable = {}
+    local haveInventory = false
+    for _, item in ipairs(self.inventoryData or {}) do
+        if item.folder_source == "pets" then
+            haveInventory = true
+            local r = self:_draftRefForItem(item)
+            if r then
+                renderable[r] = true
+            end
+        end
+    end
+
     if pets then
         local bySlot = {}
         for _, sv in ipairs(pets:GetChildren()) do
             if sv:IsA("StringValue") and sv.Value ~= "" then
                 local n = tonumber(string.match(sv.Name, "slot_(%d+)"))
                 if n then
-                    bySlot[#bySlot + 1] = { n = n, ref = sv.Value }
+                    bySlot[#bySlot + 1] = { n = n, ref = self:_normalizeEquippedRef(sv.Value) }
                 end
             end
         end
@@ -1578,7 +1606,11 @@ function InventoryPanel:_seedDraftFromEquipped()
             return a.n < b.n
         end)
         for _, e in ipairs(bySlot) do
-            table.insert(refs, e.ref)
+            -- Keep the ref if it maps to a real inventory card; if inventory hasn't populated yet,
+            -- keep it anyway rather than dropping the whole deployed squad.
+            if e.ref and (renderable[e.ref] or not haveInventory) then
+                table.insert(refs, e.ref)
+            end
         end
     end
     self._draftRefs = refs
