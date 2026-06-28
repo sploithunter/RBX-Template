@@ -2685,10 +2685,6 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                         effectivePower = math.max(power, eternalPower)
                     end
                     power = effectivePower
-                    -- Apex/creator status (same config check the eternal-% pin uses). Drives the
-                    -- creator power profile — without it the apex resolves as a normal pet and its
-                    -- sort power collapses below commons (Creator Colorado sorting under Huge Bears).
-                    local isCreator = (pdata and pdata.category == "creator") == true
                     local petName = (pdata and (pdata.family_display_name or pdata.name))
                         or petType:gsub("^%l", string.upper)
                     local item = {
@@ -2703,10 +2699,9 @@ function InventoryPanel:_loadPetsFromMixedFolders(stacksFolder, specialFolder)
                         category = "Pets",
                         count = 1,
                         power = power,
-                        zonePower = displaySortPower(power, petType, variant, isCreator),
+                        zonePower = displaySortPower(power, petType, variant),
                         basePower = basePower,
                         effectivePower = effectivePower,
-                        creator = isCreator,
                         eternalBaselinePower = eternalBaselinePower,
                         eternalPercent = eternalPercent,
                         level = level,
