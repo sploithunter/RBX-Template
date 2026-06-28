@@ -111,3 +111,40 @@ Steps 1–2 are pure CLI (loop over a manifest). Steps 3/5 are a single `execute
 **array** of {model,decal} and return a map of {meshId,imageId} in one round-trip — so the Studio
 touch is O(1) calls, not O(pets). The only human-in-the-loop bit is pointing the loop at the export
 list. See `scripts/pet_mesh_ids.json` for the recorded ids.
+
+## Viewport preview PNGs from the actual FBX (Blender)
+
+Meshy concept art in `assets/exports/pets/basic/` and `gold/` often predates the final mesh.
+To regenerate contact-sheet previews from the **textured decimated FBX** in each export folder:
+
+```
+# dry-run: list what would render
+python3 scripts/render_pet_previews.py --dry-run
+
+# render all (uses *_5k.fbx + sibling texture PNG; ~6s/model)
+python3 scripts/render_pet_previews.py --crop --size 1024
+
+# or via mise
+mise run render-pet-previews
+```
+
+Gameplay viewport renders go to `assets/exports/pets/model_renders/` (separate from concept
+art in `basic/` and `gold/`). Two camera views, separate folders:
+
+| View | Folder | Camera |
+|------|--------|--------|
+| **front** | `model_renders/front/{basic\|gold}/` | Face-on (azimuth 0°) |
+| **hero** | `model_renders/hero/{basic\|gold}/` | 3/4 angle (azimuth 35°) |
+
+```
+# both views (default)
+python3 scripts/render_pet_previews.py --views front,hero --crop --size 1024
+
+# one view only
+python3 scripts/render_pet_previews.py --views hero --only bear_basic --crop
+
+# mise task runs front + hero for all exports
+mise run render-pet-previews
+```
+
+Requires Blender (macOS default: `/Applications/Blender.app`). Override with `--blender`.

@@ -73,6 +73,10 @@ run = "node scripts/meshy_asset.js"
 description = "Decimate OBJ/FBX/GLB meshes to Roblox triangle budgets via Blender (needs Blender.app on macOS)"
 run = "bash scripts/decimate_mesh.sh"
 
+[tasks.render-pet-previews]
+description = "Render front + hero viewport PNGs from pet FBX into model_renders/ (via Blender)"
+run = "python3 scripts/render_pet_previews.py --views front,hero --crop"
+
 [tasks.skybox-from-panorama]
 description = "Convert a 2:1 equirectangular panorama PNG into Roblox Sky face images (needs py360convert)"
 run = "python3 scripts/panorama_to_roblox_skybox.py"
