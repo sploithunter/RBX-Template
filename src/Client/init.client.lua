@@ -1132,6 +1132,32 @@ local function prewarmPetThumbnailViewports()
         ready = assets:GetAttribute("PetThumbnailsReady"),
         failures = assets:GetAttribute("PetThumbnailFailures"),
     })
+
+    -- Also prewarm the FLAT thumbnail textures — the uploaded image ids the cards render as
+    -- ImageLabels (configs/pet_thumbnail_assets). PreloadAsync pulls them into the client cache so a
+    -- big inventory's cards are instant on first open instead of streaming in one by one.
+    pcall(function()
+        local reg = require(ReplicatedStorage.Configs:WaitForChild("pet_thumbnail_assets"))
+        local ids, seen = {}, {}
+        local function add(id)
+            if id and not seen[id] then
+                seen[id] = true
+                ids[#ids + 1] = id
+            end
+        end
+        for _, byVariant in pairs(reg.pets or {}) do
+            for _, id in pairs(byVariant) do
+                add(id)
+            end
+        end
+        for _, id in pairs(reg.eggs or {}) do
+            add(id)
+        end
+        if #ids > 0 then
+            ContentProvider:PreloadAsync(ids)
+            Logger:Info("Prewarmed flat pet thumbnail textures", { count = #ids })
+        end
+    end)
 end
 
 -- The REAL game UI boot: MenuManager + every panel + BaseUI + the ClientUIReady gate.
