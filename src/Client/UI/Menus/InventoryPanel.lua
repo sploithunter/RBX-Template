@@ -1492,9 +1492,9 @@ function InventoryPanel:_createSearchSection()
     self:_createTeamBar(searchContainer)
 end
 
-local TEAM_COUNT = 4
+local SQUAD_CAP = 10 -- active squad slots (the server enforces the real max)
 
--- Style a team-bar TextButton: rounded, themed, with a (hidden) selection stroke.
+-- Style a draft-bar TextButton: rounded, themed.
 local function styleTeamButton(btn, baseColor)
     btn.BackgroundColor3 = baseColor
     btn.BorderSizePixel = 0
@@ -1509,19 +1509,15 @@ local function styleTeamButton(btn, baseColor)
     local sizeCap = Instance.new("UITextSizeConstraint")
     sizeCap.MaxTextSize = 15
     sizeCap.Parent = btn
-    local stroke = Instance.new("UIStroke")
-    stroke.Thickness = 2
-    stroke.Transparency = 1 -- shown only when selected
-    stroke.Color = Color3.fromRGB(150, 85, 225)
-    stroke.Parent = btn
-    return stroke
+    return btn
 end
 
+-- Draft-squad bar (Reset + Activate). The Equipped strip IS the draft; clicking pets edits it
+-- locally with NO deploy. Reset reverts the draft to the deployed squad; Activate commits it via one
+-- atomic server call (SetEquippedPets). This is the deploy model — there is no click-to-equip-live.
 function InventoryPanel:_createTeamBar(searchContainer)
-    self._teamButtons = {}
-
     local bar = Instance.new("Frame")
-    bar.Name = "TeamBar"
+    bar.Name = "DraftBar"
     bar.Size = UDim2.new(1, -320, 1, -10)
     bar.Position = UDim2.new(0, 315, 0, 5)
     bar.BackgroundTransparency = 1
@@ -1536,113 +1532,97 @@ function InventoryPanel:_createTeamBar(searchContainer)
     layout.Padding = UDim.new(0, 8)
     layout.Parent = bar
 
-    for n = 1, TEAM_COUNT do
-        local btn = Instance.new("TextButton")
-        btn.Name = "Team" .. n
-        btn.Size = UDim2.new(0, 92, 1, -2)
-        btn.LayoutOrder = n
-        btn.Text = "Team " .. n
-        local stroke = styleTeamButton(btn, Color3.fromRGB(40, 40, 50))
-        btn.Parent = bar
-        btn.Activated:Connect(function()
-            self:_selectTeam(n)
-        end)
-        self._teamButtons[n] = { button = btn, stroke = stroke }
-    end
+    local reset = Instance.new("TextButton")
+    reset.Name = "ResetDraft"
+    reset.Size = UDim2.new(0, 92, 1, -2)
+    reset.LayoutOrder = 1
+    reset.Text = "↺ Reset"
+    styleTeamButton(reset, Color3.fromRGB(56, 56, 68))
+    reset.Parent = bar
+    reset.Activated:Connect(function()
+        self:_seedDraftFromEquipped()
+        self:_updateItemsDisplay()
+    end)
 
     local activate = Instance.new("TextButton")
-    activate.Name = "ActivateTeam"
-    activate.Size = UDim2.new(0, 108, 1, -2)
-    activate.LayoutOrder = TEAM_COUNT + 1
+    activate.Name = "ActivateDraft"
+    activate.Size = UDim2.new(0, 120, 1, -2)
+    activate.LayoutOrder = 2
     activate.Text = "✓ Activate"
     styleTeamButton(activate, Color3.fromRGB(46, 160, 87))
     activate.Parent = bar
     self._activateButton = activate
     activate.Activated:Connect(function()
-        self:_activateSelectedTeam()
+        self:_commitDraft()
     end)
-
-    self:_refreshTeams()
-    self:_renderTeamSelection()
 end
 
--- Toggle which team is selected for editing (Stage 2 wires the Equipped-strip draft).
-function InventoryPanel:_selectTeam(n)
-    self._selectedTeam = (self._selectedTeam == n) and nil or n
-    self:_renderTeamSelection()
-    self:_updateItemsDisplay() -- repaint the strip as the team draft (or back to live Equipped)
-end
-
--- Paint selection (purple stroke + lift) on the chosen team; mark the deployed team with a green tint.
-function InventoryPanel:_renderTeamSelection()
-    for n, entry in pairs(self._teamButtons or {}) do
-        local selected = (self._selectedTeam == n)
-        local live = (self._activeTeam == n)
-        entry.stroke.Transparency = selected and 0 or 1
-        if selected then
-            entry.button.BackgroundColor3 = Color3.fromRGB(60, 50, 80)
-        elseif live then
-            entry.button.BackgroundColor3 = Color3.fromRGB(34, 70, 46)
-        else
-            entry.button.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+-- Seed the working draft from the currently-deployed squad (player.Equipped.pets, in slot order).
+-- Refs are "stack|<stackKey>" (common copies) or a unique uid — the format the server stores/expects.
+function InventoryPanel:_seedDraftFromEquipped()
+    local refs = {}
+    local player = self.player or Players.LocalPlayer
+    local eq = player and player:FindFirstChild("Equipped")
+    local pets = eq and eq:FindFirstChild("pets")
+    if pets then
+        local bySlot = {}
+        for _, sv in ipairs(pets:GetChildren()) do
+            if sv:IsA("StringValue") and sv.Value ~= "" then
+                local n = tonumber(string.match(sv.Name, "slot_(%d+)"))
+                if n then
+                    bySlot[#bySlot + 1] = { n = n, ref = sv.Value }
+                end
+            end
         end
-    end
-end
-
--- Relabel each team button from the locally-cached rosters (pet count + ● on the deployed team).
-function InventoryPanel:_refreshTeamButtonLabels()
-    for n, entry in pairs(self._teamButtons or {}) do
-        local name = "Team " .. n
-        local r = self._teamRosters and self._teamRosters[name]
-        local count = (type(r) == "table" and type(r.ordered_pets) == "table" and #r.ordered_pets)
-            or 0
-        local live = (self._activeTeam == n) and "  ●" or ""
-        entry.button.Text = (count > 0) and (name .. "  " .. count .. live) or (name .. live)
-    end
-end
-
--- Load saved rosters from the server, then relabel the team buttons.
-function InventoryPanel:_refreshTeams()
-    task.spawn(function()
-        local remote = ReplicatedStorage:FindFirstChild("GameAPICommand")
-        if not remote then
-            return
-        end
-        local ok, res = pcall(function()
-            return remote:InvokeServer("roster.list")
+        table.sort(bySlot, function(a, b)
+            return a.n < b.n
         end)
-        if not ok or type(res) ~= "table" then
-            return
+        for _, e in ipairs(bySlot) do
+            table.insert(refs, e.ref)
         end
-        local rosters = res.rosters or res.data or res.list or res
-        self._teamRosters = type(rosters) == "table" and rosters or {}
-        self:_refreshTeamButtonLabels()
-    end)
+    end
+    self._draftRefs = refs
 end
 
--- Toggle a pet into/out of the selected team's roster. Saved via roster.create (persisted, NOT
--- deployed). ref = the canonical squad ref (stack key for stacks, uid for uniques) that ActiveSquad
--- and roster.invoke consume. Cap 10 (active squad). task #240 Stage 2a.
-function InventoryPanel:_toggleTeamMember(item)
-    local n = self._selectedTeam
-    if not n then
-        return
+-- The equipped-layer ref for an inventory pet item ("stack|<stackKey>" or a unique uid).
+function InventoryPanel:_draftRefForItem(item)
+    local stackKey = self:_getPetStackKey(item)
+    if stackKey then
+        return "stack|" .. stackKey
     end
-    local ref = self:_getPetStackKey(item) or item.uid
-    if type(ref) ~= "string" or ref == "" then
-        return
+    if typeof(item.uid) == "string" then
+        return item.uid
     end
-    local name = "Team " .. n
-    self._teamRosters = self._teamRosters or {}
+    return nil
+end
 
-    local list = {}
-    local existing = self._teamRosters[name]
-    if existing and type(existing.ordered_pets) == "table" then
-        for _, v in ipairs(existing.ordered_pets) do
-            table.insert(list, v)
+-- True if this pet item is currently in the working draft.
+function InventoryPanel:_isItemInDraft(item)
+    if type(self._draftRefs) ~= "table" then
+        return false
+    end
+    local ref = self:_draftRefForItem(item)
+    if not ref then
+        return false
+    end
+    for _, v in ipairs(self._draftRefs) do
+        if v == ref then
+            return true
         end
     end
+    return false
+end
 
+-- Toggle a pet in/out of the working draft. PURE UI — no server, nothing deploys until Activate.
+function InventoryPanel:_toggleDraftMember(item)
+    if self._draftRefs == nil then
+        self:_seedDraftFromEquipped()
+    end
+    local ref = self:_draftRefForItem(item)
+    if not ref then
+        return
+    end
+    local list = self._draftRefs
     local removeAt
     for i, v in ipairs(list) do
         if v == ref then
@@ -1652,64 +1632,34 @@ function InventoryPanel:_toggleTeamMember(item)
     end
     if removeAt then
         table.remove(list, removeAt)
-    elseif #list >= 10 then
-        self:_flashTeamButtonFull(n) -- squad cap reached
+    elseif #list >= SQUAD_CAP then
+        self:_flashActivateFull()
         return
     else
         table.insert(list, ref)
     end
-
-    -- Optimistic local update + relabel + repaint the draft strip, then persist.
-    self._teamRosters[name] = self._teamRosters[name] or { name = name }
-    self._teamRosters[name].ordered_pets = list
-    self:_refreshTeamButtonLabels()
     self:_updateItemsDisplay()
-
-    task.spawn(function()
-        local remote = ReplicatedStorage:FindFirstChild("GameAPICommand")
-        if not remote then
-            return
-        end
-        pcall(function()
-            return remote:InvokeServer("roster.create", { name = name, orderedPets = list })
-        end)
-        self:_refreshTeams()
-    end)
 end
 
--- Brief red flash on a team button when it's already at the 10-pet cap.
-function InventoryPanel:_flashTeamButtonFull(n)
-    local entry = self._teamButtons and self._teamButtons[n]
-    if not entry then
+-- Brief red flash on Activate when the draft is at the squad cap.
+function InventoryPanel:_flashActivateFull()
+    local btn = self._activateButton
+    if not btn then
         return
     end
-    entry.button.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+    btn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
     task.delay(0.25, function()
-        self:_renderTeamSelection()
+        if btn and btn.Parent then
+            btn.BackgroundColor3 = Color3.fromRGB(46, 160, 87)
+        end
     end)
 end
 
--- Activate (deploy) the selected team via roster.invoke — the ONLY action that touches the field.
-function InventoryPanel:_activateSelectedTeam()
-    local n = self._selectedTeam
-    if not n then
-        return
+-- Commit the working draft to the field: one atomic server call (clear + set Equipped.pets).
+function InventoryPanel:_commitDraft()
+    if self.signals and self.signals.SetEquippedPets then
+        self.signals.SetEquippedPets:FireServer({ refs = self._draftRefs or {} })
     end
-    local name = "Team " .. n
-    task.spawn(function()
-        local remote = ReplicatedStorage:FindFirstChild("GameAPICommand")
-        if not remote then
-            return
-        end
-        local ok, res = pcall(function()
-            return remote:InvokeServer("roster.invoke", { name = name })
-        end)
-        if ok and (type(res) ~= "table" or res.ok ~= false) then
-            self._activeTeam = n
-            self:_renderTeamSelection()
-            self:_refreshTeams()
-        end
-    end)
 end
 
 function InventoryPanel:_createItemsGrid()
@@ -3675,21 +3625,16 @@ function InventoryPanel:_updateItemsDisplay()
     clearChildren(self.inventoryGrid)
     self.itemFrames = {}
 
-    -- Team-draft mode: while a team is selected, the Equipped strip becomes that team's DRAFT (the
-    -- slots you fill). Clicking pets only stages into the roster — nothing deploys until Activate.
-    -- (task #240 Stage 2b)
-    local teamMode = self._selectedTeam ~= nil
-    local draftRefs
-    if teamMode then
-        local roster = self._teamRosters and self._teamRosters["Team " .. self._selectedTeam]
-        draftRefs = (roster and type(roster.ordered_pets) == "table") and roster.ordered_pets or {}
+    -- Draft mode is ALWAYS on: the Equipped strip is the working draft squad (deploy is draft +
+    -- Activate, there is no live equip). Seed it from the deployed squad on first render. (task #240)
+    if self._draftRefs == nil then
+        self:_seedDraftFromEquipped()
     end
+    local teamMode = true
+    local draftRefs = self._draftRefs
     if self.equippedLabel then
-        self.equippedLabel.Text = teamMode
-                and ("Team " .. self._selectedTeam .. " (draft)  —  " .. #draftRefs .. "/10")
-            or "Equipped"
-        self.equippedLabel.TextColor3 = teamMode and Color3.fromRGB(185, 150, 255)
-            or Color3.fromRGB(255, 215, 0)
+        self.equippedLabel.Text = "Squad (draft)  —  " .. #draftRefs .. "/" .. SQUAD_CAP
+        self.equippedLabel.TextColor3 = Color3.fromRGB(185, 150, 255)
     end
 
     -- Get current category folders for filtering
@@ -3741,13 +3686,13 @@ function InventoryPanel:_updateItemsDisplay()
         end
     end
 
-    -- Render the team DRAFT into the Equipped strip (one card per roster ref, in order). Clicking a
-    -- draft card toggles it back out (via the team-edit hijack). Nothing here touches the live field.
+    -- Render the working DRAFT into the Equipped strip (one card per ref, in order). Clicking a draft
+    -- card toggles it back out (the draft hijack). Nothing here touches the live field until Activate.
     if teamMode and draftRefs then
         local byRef = {}
         for _, item in ipairs(self.inventoryData) do
             if item.folder_source == "pets" then
-                local ref = self:_getPetStackKey(item) or item.uid
+                local ref = self:_draftRefForItem(item)
                 if type(ref) == "string" and byRef[ref] == nil then
                     byRef[ref] = item
                 end
@@ -5313,10 +5258,10 @@ function InventoryPanel:_addItemInteractions(itemFrame, item)
             self:_toggleDeleteSelection(item, itemFrame)
             return
         end
-        -- Team-edit mode hijacks the click (like delete mode): toggle this pet into the selected
-        -- team's roster (saved via roster.create, NOT deployed) instead of the normal equip action.
-        if self._selectedTeam and item.folder_source == "pets" then
-            self:_toggleTeamMember(item)
+        -- Deploy is draft-based: a pet click only toggles it in the working draft (no live equip).
+        -- Non-pets (eggs etc.) keep their normal primary action. Activate commits the draft. (task #240)
+        if item.folder_source == "pets" then
+            self:_toggleDraftMember(item)
             return
         end
         self:_handlePrimaryAction(item)

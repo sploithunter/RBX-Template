@@ -83,6 +83,7 @@ local Signals = {
     InventoryUpdate = Net:RemoteEvent("InventoryUpdate"), -- s->c inventory changed
     ConsumeItem = Net:RemoteEvent("ConsumeItem"), -- c->s consume consumable
     TogglePetEquipped = Net:RemoteEvent("TogglePetEquipped"), -- c->s equip/unequip pet
+    SetEquippedPets = Net:RemoteEvent("SetEquippedPets"), -- c->s commit a draft squad (clear + set Equipped.pets)
     ToggleToolEquipped = Net:RemoteEvent("ToggleToolEquipped"), -- c->s equip/unequip tool
     EnchantPetRequest = Net:RemoteEvent("EnchantPetRequest"), -- c->s reroll/apply pet enchant
     EnchantPetResult = Net:RemoteEvent("EnchantPetResult"), -- s->c enchant action result

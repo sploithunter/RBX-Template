@@ -1519,6 +1519,12 @@ function InventoryService:_setupNetworkSignals()
         self:_handleTogglePetEquipped(player, data)
     end)
 
+    -- Draft commit: replace the whole equipped squad at once (the team-draft Activate). One
+    -- RebuildPetProjections → one deploy, atomic — no per-pet toggle race. See task #240.
+    Signals.SetEquippedPets.OnServerEvent:Connect(function(player, data)
+        self:_handleSetEquippedPets(player, data)
+    end)
+
     -- Tool equipping
     Signals.ToggleToolEquipped.OnServerEvent:Connect(function(player, data)
         self:_handleToggleToolEquipped(player, data)
@@ -1969,6 +1975,56 @@ function InventoryService:_handleTogglePetEquipped(player, data)
             maxSlots = result and result.maxSlots or nil,
         })
     end
+end
+
+-- Commit a draft squad: replace Equipped.pets with `data.refs` (clear + set) in one shot, then ONE
+-- RebuildPetProjections → one atomic deploy (no per-pet toggle race). Each ref is the equipped-layer
+-- format: "stack|<stackKey>" for a common copy, or a unique uid for a special. Ownership, stack
+-- quantity, and the slot cap are validated via _resolvePetTarget; unknown/over-quantity refs drop.
+function InventoryService:_handleSetEquippedPets(player, data)
+    local refs = data and data.refs
+    if type(refs) ~= "table" then
+        return
+    end
+    local playerData = self._dataService:GetData(player)
+    if not playerData or not playerData.Inventory or not playerData.Inventory.pets then
+        return
+    end
+    local items = playerData.Inventory.pets.items
+    local petSlots = self._inventoryConfig.equipped.pets
+    local maxSlots = self:_getMaxEquippedSlots(player, "pets", petSlots.slots)
+    playerData.Equipped = playerData.Equipped or {}
+
+    local newEquipped = {}
+    local slot = 1
+    local usedByKey = {}
+    for _, ref in ipairs(refs) do
+        if slot > maxSlots then
+            break
+        end
+        local target = self:_resolvePetTarget(player, ref)
+        if target then
+            if target.kind == "special" then
+                newEquipped["slot_" .. slot] = target.uid
+                slot += 1
+            else
+                local stack = items[target.stackKey]
+                local owned = stack and (tonumber(stack.quantity) or 0) or 0
+                local used = usedByKey[target.stackKey] or 0
+                if used < owned then
+                    newEquipped["slot_" .. slot] = "stack|" .. target.stackKey
+                    usedByKey[target.stackKey] = used + 1
+                    slot += 1
+                end
+            end
+        end
+    end
+
+    playerData.Equipped.pets = newEquipped
+    self:RebuildPetProjections(player)
+    fireGameEvent(player, "pet_equipped", { action = "equipped" })
+    self._dataService:RequestSave(player, "squad_set", { critical = true })
+    self._logger:Info("✅ Draft squad committed", { player = player.Name, count = slot - 1 })
 end
 
 function InventoryService:_handleToggleToolEquipped(player, data)
