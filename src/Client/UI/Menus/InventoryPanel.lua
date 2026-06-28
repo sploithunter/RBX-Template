@@ -1582,6 +1582,7 @@ function InventoryPanel:_seedDraftFromEquipped()
         end
     end
     self._draftRefs = refs
+    self._draftDirty = false -- a fresh seed matches what's deployed
 end
 
 -- The equipped-layer ref for an inventory pet item ("stack|<stackKey>" or a unique uid).
@@ -1637,6 +1638,7 @@ function InventoryPanel:_toggleDraftMember(item, isDraftCard)
         for i = #list, 1, -1 do
             if list[i] == ref then
                 table.remove(list, i)
+                self._draftDirty = true -- diverges from deployed until Activate
                 break
             end
         end
@@ -1666,8 +1668,10 @@ function InventoryPanel:_toggleDraftMember(item, isDraftCard)
             return
         end
         table.insert(list, ref)
+        self._draftDirty = true
     elseif drafted == 0 then
         table.insert(list, ref) -- a unique can be drafted once (remove via its draft slot)
+        self._draftDirty = true
     end
     self:_updateItemsDisplay()
 end
@@ -1691,6 +1695,9 @@ function InventoryPanel:_commitDraft()
     if self.signals and self.signals.SetEquippedPets then
         self.signals.SetEquippedPets:FireServer({ refs = self._draftRefs or {} })
     end
+    -- The draft now matches what's being deployed — flip the label to "deployed/live".
+    self._draftDirty = false
+    self:_updateItemsDisplay()
 end
 
 function InventoryPanel:_createItemsGrid()
@@ -3664,11 +3671,15 @@ function InventoryPanel:_updateItemsDisplay()
     local teamMode = true
     local draftRefs = self._draftRefs
     if self.equippedLabel then
-        self.equippedLabel.Text = "Squad (draft)  —  "
+        -- Clean (matches what's deployed) reads "deployed" in green; an edited draft reads "draft" in
+        -- purple until Activate commits it. self._draftDirty is set on every draft edit. (task #240)
+        local deployed = not self._draftDirty
+        self.equippedLabel.Text = (deployed and "Squad (deployed)  —  " or "Squad (draft)  —  ")
             .. #draftRefs
             .. "/"
             .. self:_squadSlotCount()
-        self.equippedLabel.TextColor3 = Color3.fromRGB(185, 150, 255)
+        self.equippedLabel.TextColor3 = deployed and Color3.fromRGB(120, 230, 140)
+            or Color3.fromRGB(185, 150, 255)
     end
 
     -- Get current category folders for filtering
