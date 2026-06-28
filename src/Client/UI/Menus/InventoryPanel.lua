@@ -1613,6 +1613,12 @@ function InventoryPanel:_isItemInDraft(item)
     return false
 end
 
+-- How many pets the squad can actually field — the SAME PetEquipSlots the equipped strip pads its
+-- empty rings to, so the draft can never overflow past the visible slots. SQUAD_CAP is only a fallback.
+function InventoryPanel:_squadSlotCount()
+    return tonumber(self.player and self.player:GetAttribute("PetEquipSlots")) or SQUAD_CAP
+end
+
 -- Edit the working draft. PURE UI — no server, nothing deploys until Activate. Clicking an inventory
 -- pet ADDS one (commons up to the owned quantity, uniques once); clicking a draft slot REMOVES one.
 function InventoryPanel:_toggleDraftMember(item, isDraftCard)
@@ -1639,7 +1645,7 @@ function InventoryPanel:_toggleDraftMember(item, isDraftCard)
     end
 
     -- Clicking an inventory pet adds one.
-    if #list >= SQUAD_CAP then
+    if #list >= self:_squadSlotCount() then
         self:_flashActivateFull()
         return
     end
@@ -3658,7 +3664,10 @@ function InventoryPanel:_updateItemsDisplay()
     local teamMode = true
     local draftRefs = self._draftRefs
     if self.equippedLabel then
-        self.equippedLabel.Text = "Squad (draft)  —  " .. #draftRefs .. "/" .. SQUAD_CAP
+        self.equippedLabel.Text = "Squad (draft)  —  "
+            .. #draftRefs
+            .. "/"
+            .. self:_squadSlotCount()
         self.equippedLabel.TextColor3 = Color3.fromRGB(185, 150, 255)
     end
 
@@ -3718,10 +3727,16 @@ function InventoryPanel:_updateItemsDisplay()
                     end
                 end
                 if drafted > 0 then
+                    local remaining = math.max(0, owned - drafted)
+                    if remaining <= 0 then
+                        -- The whole stack is in the draft: drop it from inventory so it isn't a
+                        -- phantom "+1" card that looks like another copy you can still add.
+                        continue
+                    end
                     renderItem = table.clone(item)
                     renderItem._ownedTotal = owned
-                    renderItem.count = math.max(0, owned - drafted)
-                    renderItem.quantity = renderItem.count
+                    renderItem.count = remaining
+                    renderItem.quantity = remaining
                 end
             end
         end
