@@ -3306,7 +3306,24 @@ function InventoryPanel:_getPetImageFromAssets(petType, variant, quiet, huge)
             huge = huge == true,
             image = thumbId,
         })
-        return label
+        if not huge then
+            return label
+        end
+        -- HUGE: an up-close shot of the face, mirroring the viewport "__huge" framing. There's no
+        -- separate huge texture, so we zoom the flat one: scale it up inside a clipped frame and lift
+        -- it so the face fills the card. Scale-based, so it's resolution-independent and needs no extra
+        -- asset. (HUGE_RAISE shifts the image DOWN so the upper-body/face rises to the card centre.)
+        local HUGE_ZOOM, HUGE_RAISE = 1.4, 0.1
+        label.AnchorPoint = Vector2.new(0.5, 0.5)
+        label.Size = UDim2.fromScale(HUGE_ZOOM, HUGE_ZOOM)
+        label.Position = UDim2.new(0.5, 0, 0.5 + HUGE_RAISE, 0)
+        label.ZIndex = 104
+        local clip = Instance.new("Frame")
+        clip.BackgroundTransparency = 1
+        clip.ClipsDescendants = true
+        clip.Size = UDim2.new(1, 0, 1, 0)
+        label.Parent = clip
+        return clip
     end
 
     local success, imageViewport = pcall(function()
