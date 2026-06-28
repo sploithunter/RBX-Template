@@ -1572,22 +1572,42 @@ function InventoryPanel:_normalizeEquippedRef(value)
     return value
 end
 
+-- The area-insensitive identity of a stack ref: "stack|pet:enchant:area" -> "pet:enchant". Lets a
+-- deployed pet match its inventory card even when the Equipped value's area segment has drifted.
+function InventoryPanel:_stackPrefix(ref)
+    if type(ref) ~= "string" or string.sub(ref, 1, 6) ~= "stack|" then
+        return nil
+    end
+    local key = string.sub(ref, 7)
+    local a, b = string.match(key, "^([^:]*):([^:]*)")
+    if a and a ~= "" and b then
+        return a .. ":" .. b
+    end
+    return nil
+end
+
 function InventoryPanel:_seedDraftFromEquipped()
     local refs = {}
     local player = self.player or Players.LocalPlayer
     local eq = player and player:FindFirstChild("Equipped")
     local pets = eq and eq:FindFirstChild("pets")
 
-    -- Refs the strip can actually render right now, so a stale equipped value (e.g. a traded pet)
-    -- can't seed an invisible card that fills the cap and locks the panel.
-    local renderable = {}
+    -- Resolve each deployed ref to the inventory's OWN draft ref so the strip can render it and the cap
+    -- stays honest. Equipped values drift from the inventory key (slot suffix + area), so match exactly
+    -- first, then by the area-insensitive pet:enchant prefix. Only a ref that matches NEITHER (a
+    -- traded/stale pet) is dropped — never a pet you still own (that was the "5 deployed, 3 shown" bug).
+    local byExact, byPrefix = {}, {}
     local haveInventory = false
     for _, item in ipairs(self.inventoryData or {}) do
         if item.folder_source == "pets" then
             haveInventory = true
             local r = self:_draftRefForItem(item)
             if r then
-                renderable[r] = true
+                byExact[r] = r
+                local p = self:_stackPrefix(r)
+                if p and byPrefix[p] == nil then
+                    byPrefix[p] = r
+                end
             end
         end
     end
@@ -1606,10 +1626,11 @@ function InventoryPanel:_seedDraftFromEquipped()
             return a.n < b.n
         end)
         for _, e in ipairs(bySlot) do
-            -- Keep the ref if it maps to a real inventory card; if inventory hasn't populated yet,
-            -- keep it anyway rather than dropping the whole deployed squad.
-            if e.ref and (renderable[e.ref] or not haveInventory) then
-                table.insert(refs, e.ref)
+            local resolved = e.ref and (byExact[e.ref] or byPrefix[self:_stackPrefix(e.ref)])
+            if resolved then
+                table.insert(refs, resolved)
+            elseif e.ref and not haveInventory then
+                table.insert(refs, e.ref) -- inventory not loaded yet; don't lose the squad
             end
         end
     end
