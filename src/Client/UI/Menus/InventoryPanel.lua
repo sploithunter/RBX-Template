@@ -3591,12 +3591,11 @@ end
 --   • eggs: by name
 --   • pets / other: power desc → count desc → name (the original rule)
 function InventoryPanel:_compareInventoryItems(a, b)
-    local aEq = self:_isItemEquipped(a)
-    local bEq = self:_isItemEquipped(b)
-    if aEq ~= bEq then
-        return aEq -- equipped before non-equipped
-    end
-
+    -- NO equipped-first rule: deployment now lives in the draft strip, and the inventory grid renders
+    -- EVERY pet (deployed included). The old "equipped before non-equipped" sort was harmless when
+    -- equipped pets siphoned off to the separate equipped strip — but with the always-on draft they
+    -- render in the grid, so it shoved deployed pets ahead of higher-power ones (Huge Bears above the
+    -- Creator Colorado). The grid is pure section + power again. (task #240)
     local cfg = self:_sortConfig()
     local as = cfg.section_order[a.folder_source] or 50
     local bs = cfg.section_order[b.folder_source] or 50
