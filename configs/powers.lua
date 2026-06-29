@@ -179,6 +179,13 @@ return {
         world_travel = { family = "world_travel", magnitude = 0, duration = 0 }, -- teleport to a hub
         magnet = { family = "magnet", magnitude = 30, passive = true }, -- always-on +30 studs collect radius (#167)
 
+        -- INNATE farming cast (Resonance, docs/INNATE_RESONANCE_POWER.md): an AoE boost-pulse. On
+        -- cast, every breakable within `radius` of the player gets its Boost attribute bumped toward
+        -- max — reusing the configs/breakables.lua M.boost SSOT + its pet-damage amplification (no new
+        -- effect). `farm_boost` is a bespoke family handled directly in PowerService:_applyEffect.
+        -- magnitude = Boost added per cast; radius = AoE (range-enhanceable via radiusBase).
+        resonance = { family = "farm_boost", magnitude = 100, radius = 25 },
+
         -- ===== Attack-fill (origin-coloured) — reuse the enemy-debuff families (firewall-safe:
         -- player powers don't deal direct damage; they make pets hit harder / lock enemies). =====
         sunder = { family = "vulnerable", magnitude = 1.6, duration = 6 }, -- armor break (AoE)
@@ -324,6 +331,19 @@ return {
     },
 
     powers = {
+        -- INNATE: every player owns Resonance from spawn — granted outside the level-pick pool, NOT
+        -- selectable in the picker, and it does NOT consume one of the 6 power slots (innate = true).
+        -- Auto-binds to hotbar slot 1. The tutorial's "cast your power" lesson fires off it. An active
+        -- farming cast (no toggle) so that lesson can't soft-lock. See docs/INNATE_RESONANCE_POWER.md.
+        resonance = {
+            innate = true,
+            display_name = "Resonance",
+            focus_cost = 20,
+            cooldown_seconds = 6,
+            effect = "resonance",
+            subtitle = "Innate · Farming",
+        },
+
         -- GENERIC powers (generic = true): any archetype can pick them; white disc (no element).
         -- Farming + luck + utility — see configs/archetypes.lua generic_pool.
         -- `unlock_level` = the level at which a generic power becomes SELECTABLE in the neutral pool
