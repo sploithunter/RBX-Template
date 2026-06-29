@@ -1755,6 +1755,35 @@ function InventoryPanel:_flashActivateFull()
     end)
 end
 
+-- Pulse (or stop pulsing) the Activate button. ON while the draft has un-deployed edits — a looping
+-- brighten/scale tween that reads "press me". Idempotent: re-calling with the same state is a no-op,
+-- so the per-render driver in _updateItemsDisplay can call it freely.
+function InventoryPanel:_setActivatePulse(on)
+    local btn = self._activateButton
+    if not btn then
+        return
+    end
+    if on == self._activatePulsing then
+        return
+    end
+    self._activatePulsing = on
+    if self._activatePulseTween then
+        self._activatePulseTween:Cancel()
+        self._activatePulseTween = nil
+    end
+    if on then
+        local tween = TweenService:Create(
+            btn,
+            TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+            { BackgroundColor3 = Color3.fromRGB(120, 235, 150) } -- brighten from the resting green
+        )
+        self._activatePulseTween = tween
+        tween:Play()
+    else
+        btn.BackgroundColor3 = Color3.fromRGB(46, 160, 87) -- back to the resting green
+    end
+end
+
 -- Commit the working draft to the field: one atomic server call (clear + set Equipped.pets).
 function InventoryPanel:_commitDraft()
     if self.signals and self.signals.SetEquippedPets then
@@ -3895,6 +3924,10 @@ function InventoryPanel:_updateItemsDisplay()
         self.equippedLabel.TextColor3 = deployed and Color3.fromRGB(120, 230, 140)
             or Color3.fromRGB(185, 150, 255)
     end
+    -- Pulse Activate while the draft is un-deployed: clicking a pet only EDITS the draft (nothing
+    -- deploys until Activate), so a new player can stage a squad and stall. The pulse says "you're
+    -- not done — press this". Stops the instant the draft matches the field. (Jason: don't-get-stuck)
+    self:_setActivatePulse(self._draftDirty == true)
 
     -- Get current category folders for filtering
     local categoryFolders = self:_getCategoryFolders(self.selectedCategory)

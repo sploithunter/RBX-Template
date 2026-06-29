@@ -60,14 +60,13 @@ return function()
 
         it("runs the full path to done", function()
             local p = feed(nil, {
-                "egg_hatch",
-                "pet_equipped",
+                "egg_hatch", -- hatch_first_egg
+                "pet_equipped", -- equip_pet (Activate commit)
                 { "coin_payout", { amount = 60 } },
-                { "coin_payout", { amount = 60 } },
-                "egg_hatch",
-                "level_claimed",
-                "power_selected",
-                "power_cast",
+                { "coin_payout", { amount = 60 } }, -- farm_crystals (100 coins)
+                "egg_hatch", -- hatch_another
+                "power_bound", -- bind_power (Resonance onto the bar)
+                "power_cast", -- cast_power → done
             })
             expect(p.done).to.equal(true)
             expect(TutorialFlow.current(cfg, p)).to.equal(nil)

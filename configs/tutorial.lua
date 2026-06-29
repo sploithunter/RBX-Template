@@ -32,8 +32,12 @@ return {
         },
         {
             id = "equip_pet",
-            title = "Equip your pet",
-            body = "Open the Pets menu and click your new pet to equip it — equipped pets follow you and mine. New players can equip 3!",
+            title = "Deploy your pet",
+            -- DRAFT-DEPLOY: clicking a pet only stages it; the squad isn't live until ✓ Activate. New
+            -- players stall here, so the copy spells out Activate and the panel pulses the button while
+            -- the draft is un-deployed (InventoryPanel:_setActivatePulse). Step completes on the commit
+            -- (pet_equipped fires from the Activate path, not the draft edit).
+            body = "Open the Pets menu, click your new pet to add it to your squad — then press ✓ Activate to send it out! Squad pets follow you and mine. New players can run 3.",
             target = { kind = "ui", name = "PetsButton" },
             complete_on = { event = "pet_equipped" },
         },
@@ -55,6 +59,23 @@ return {
             body = "Spend those coins on another egg — more pets means faster mining.",
             target = { kind = "egg", prefer = "Grass" },
             complete_on = { event = "egg_hatch" },
+        },
+        -- POWERS come AFTER the familiar pet-game rhythm (Jason: hook them with what they know first,
+        -- THEN introduce what makes this game different). Every player is born with Resonance (innate);
+        -- these two steps teach the bind flow (reused for every future power) + the cast.
+        {
+            id = "bind_power",
+            title = "Set your power",
+            body = "You were born with a power — Resonance! Open POWERS, hit Edit on your bar, and drop Resonance onto a slot. You'll do this for every power you unlock.",
+            target = { kind = "ui", name = "PowersButton" },
+            complete_on = { event = "power_bound" },
+        },
+        {
+            id = "cast_power",
+            title = "Use Resonance",
+            body = "Now press that slot (or its number key) to pulse Resonance near some crystals — it super-charges them so your pets mine way harder.",
+            target = { kind = "none" },
+            complete_on = { event = "power_cast" },
         },
     },
 
