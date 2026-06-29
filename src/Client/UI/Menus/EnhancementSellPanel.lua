@@ -29,6 +29,22 @@ local TweenService = game:GetService("TweenService")
 
 local CloseButton = require(script.Parent.Parent.Components.CloseButton)
 local QuantitySelector = require(script.Parent.Parent.Components.QuantitySelector)
+local PanelChrome = require(script.Parent.Parent.Components.PanelChrome)
+
+-- Lay the game pill BORDER ring (area-themed, hollow) over a full-corner button so it reads as a
+-- pill while keeping its own fill color + intrinsic text. Same treatment the inventory buttons use.
+local function pillify(btn)
+    for _, c in ipairs(btn:GetChildren()) do
+        if c:IsA("UICorner") or c.Name == "PillBorder" then
+            c:Destroy()
+        end
+    end
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = btn
+    PanelChrome.pillBorder(btn, PanelChrome.areaPill(), (btn.ZIndex or 1) + 1, 0, 0.18)
+    return btn
+end
 
 -- PetBadge is optional-required so a load failure degrades to a text chip rather than
 -- erroring the whole panel (same defensive pattern InventoryPanel uses for PetBadge).
@@ -188,11 +204,9 @@ function EnhancementSellPanel:_createUI(parent)
     corner.CornerRadius = UDim.new(0, 20)
     corner.Parent = frame
 
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = COLORS.header
-    stroke.Thickness = 3
-    stroke.Transparency = 0.3
-    stroke.Parent = frame
+    -- Standard area-themed game pill around the whole menu, same as the inventory/pets shell
+    -- (Jason: "same treatment as the pets menu outside border").
+    PanelChrome.pillBorder(frame, PanelChrome.areaPill(), 130, 0, 0.10)
 
     local gradient = Instance.new("UIGradient")
     gradient.Color = ColorSequence.new({
@@ -294,8 +308,10 @@ function EnhancementSellPanel:_createHeader()
     balC.Parent = bal
     self.balanceLabel = bal
 
-    CloseButton.attach(header, {
-        zindex = 102,
+    -- Parent the X to the panel frame at Z146 so it sits ABOVE the outer pill border (an X nested in
+    -- the header would render under the 130 ring under Sibling z-order).
+    CloseButton.attach(self.frame, {
+        zindex = 146,
         onClick = function()
             self:Hide()
         end,
@@ -336,9 +352,7 @@ function EnhancementSellPanel:_createToolbar()
     sellJunkBtn.AutoButtonColor = true
     sellJunkBtn.ZIndex = 103
     sellJunkBtn.Parent = bar
-    local sjCorner = Instance.new("UICorner")
-    sjCorner.CornerRadius = UDim.new(0, 10)
-    sjCorner.Parent = sellJunkBtn
+    pillify(sellJunkBtn) -- pill around the Sell Junk action (Jason)
     sellJunkBtn.MouseEnter:Connect(function()
         sellJunkBtn.BackgroundColor3 = COLORS.junkHover
     end)
