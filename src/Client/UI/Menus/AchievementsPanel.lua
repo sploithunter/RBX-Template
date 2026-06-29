@@ -13,8 +13,26 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local CloseButton = require(script.Parent.Parent.Components.CloseButton)
+local PILL = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
 
 local REMOTE_NAME = "GameAPICommand"
+
+-- Game-standard pill BORDER (neon hollow ring) on a wide element. 9-sliced like HotbarBar so the
+-- corners stay crisp at any width (SliceCenter from the pill art). Sits over the element edge.
+local function pillBorder(parent, key, zindex)
+    local img = Instance.new("ImageLabel")
+    img.Name = "PillBorder"
+    img.BackgroundTransparency = 1
+    img.Image = PILL.frames[key] or PILL.frames.sapphire
+    img.ScaleType = Enum.ScaleType.Slice
+    img.SliceCenter = Rect.new(180, 180, 330, 330)
+    img.AnchorPoint = Vector2.new(0.5, 0.5)
+    img.Position = UDim2.fromScale(0.5, 0.5)
+    img.Size = UDim2.new(1, 8, 1, 8) -- slight bleed so the ring frames the edge cleanly
+    img.ZIndex = zindex or 105
+    img.Parent = parent
+    return img
+end
 
 local COLORS = {
     panel = Color3.fromRGB(20, 20, 25),
@@ -113,11 +131,8 @@ function AchievementsPanel:_createUI(parent)
     corner.CornerRadius = UDim.new(0, 20)
     corner.Parent = frame
 
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = COLORS.header
-    stroke.Thickness = 3
-    stroke.Transparency = 0.3
-    stroke.Parent = frame
+    -- Game-standard pill frame around the whole panel (sapphire, matching the HUD/tray chrome).
+    pillBorder(frame, "sapphire", 130)
 
     local gradient = Instance.new("UIGradient")
     gradient.Color = ColorSequence.new({
@@ -281,11 +296,15 @@ function AchievementsPanel:_makeRow(entry, order)
     local c = Instance.new("UICorner")
     c.CornerRadius = UDim.new(0, 12)
     c.Parent = row
-    local rs = Instance.new("UIStroke")
-    rs.Color = tier and (entry.value >= tier.goal and COLORS.claimable or COLORS.rowStroke)
-        or COLORS.claimed
-    rs.Thickness = 2
-    rs.Parent = row
+    -- Pill-frame border per row: emerald = claimable (pops like the green Claim button), neutral =
+    -- maxed/done, sapphire = in progress (matches the game's pill chrome).
+    local rowKey = "sapphire"
+    if not tier then
+        rowKey = "neutral"
+    elseif entry.value >= tier.goal then
+        rowKey = "emerald"
+    end
+    pillBorder(row, rowKey, 105)
 
     local name = Instance.new("TextLabel")
     name.Size = UDim2.new(1, -150, 0, 26)
