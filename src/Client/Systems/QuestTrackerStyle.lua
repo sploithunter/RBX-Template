@@ -55,7 +55,6 @@ function QuestTrackerStyle.start()
     started = true
     local player = Players.LocalPlayer
     local pg = player:WaitForChild("PlayerGui")
-    local Theme = require(script.Parent.Parent.UI.UITheme)
 
     task.spawn(function()
         local base = pg:WaitForChild("ProfessionalBaseUI", 20)
@@ -76,10 +75,10 @@ function QuestTrackerStyle.start()
         end
         pane:SetAttribute("Restyled", true)
 
-        -- dock below the player bar (bar capsule = center, y14, h52 -> bottom ~66)
+        -- dock TIGHT below the player bar (Jason: as close as possible) — compact pane.
         pane.AnchorPoint = Vector2.new(0.5, 0)
-        pane.Position = UDim2.new(0.5, 0, 0, 74)
-        pane.Size = UDim2.fromOffset(380, 58)
+        pane.Position = UDim2.new(0.5, 0, 0, 68)
+        pane.Size = UDim2.fromOffset(380, 48)
         pane.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
         pane.BackgroundTransparency = 0
         corner(pane, 16)
@@ -93,15 +92,15 @@ function QuestTrackerStyle.start()
 
         -- progress bar on TOP
         local pbg = pane:FindFirstChild("ProgressBackground")
-        local fill = pbg and pbg:FindFirstChild("ProgressFill")
+        local fill = pbg and pbg:FindFirstChild("Fill") -- FillBar names its fill child "Fill"
         local ptext = pbg and pbg:FindFirstChild("ProgressText")
         if pbg then
             pbg.AnchorPoint = Vector2.new(0.5, 0)
-            pbg.Position = UDim2.new(0.5, 0, 0, 8)
-            pbg.Size = UDim2.fromOffset(346, 16)
-            pbg.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+            pbg.Position = UDim2.new(0.5, 0, 0, 6)
+            pbg.Size = UDim2.fromOffset(346, 13) -- match the player bar's Focus/XP bar height
+            pbg.BackgroundColor3 = Color3.fromRGB(30, 32, 38) -- player-bar track gray
             pbg.ZIndex = 2
-            stroke(pbg, Color3.fromRGB(70, 110, 180), 1.5)
+            stroke(pbg, Color3.fromRGB(90, 94, 102), 1.5)
         end
 
         -- quest name on the BOTTOM
@@ -122,18 +121,18 @@ function QuestTrackerStyle.start()
             outline(ptext)
         end
 
-        local function applyTheme(p)
-            if fill then
-                fill.BackgroundColor3 = p.fill
-                local g = fill:FindFirstChildOfClass("UIGradient")
-                if not g then
-                    g = grad(fill, lighten(p.fill, 80), p.fill)
-                else
-                    g.Color = ColorSequence.new(lighten(p.fill, 80), p.fill)
-                end
+        -- The quest bar is a NEUTRAL gray matching the player-bar capsule (Jason — it shouldn't read
+        -- as a loud green/area bar tucked under the player bar). Not area-themed.
+        local QUEST_GRAY = Color3.fromRGB(120, 124, 132)
+        if fill then
+            fill.BackgroundColor3 = QUEST_GRAY
+            local g = fill:FindFirstChildOfClass("UIGradient")
+            if not g then
+                grad(fill, lighten(QUEST_GRAY, 30), QUEST_GRAY)
+            else
+                g.Color = ColorSequence.new(lighten(QUEST_GRAY, 30), QUEST_GRAY)
             end
         end
-        Theme.bind(player, applyTheme)
     end)
 end
 

@@ -963,12 +963,10 @@ function EnhancementSellPanel:_confirm(opts)
     card.ZIndex = 601
     card.Parent = scrim
     local cc = Instance.new("UICorner")
-    cc.CornerRadius = UDim.new(0, 14)
+    cc.CornerRadius = UDim.new(0, 18)
     cc.Parent = card
-    local cs = Instance.new("UIStroke")
-    cs.Color = accent
-    cs.Thickness = 2
-    cs.Parent = card
+    -- Area pill border around the confirm card, same as the panel shell (Jason).
+    PanelChrome.pillBorder(card, PanelChrome.areaPill(), 605, 0, 0.12)
 
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, -28, 0, 70)
@@ -1024,9 +1022,7 @@ function EnhancementSellPanel:_confirm(opts)
     cancelBtn.LayoutOrder = 1
     cancelBtn.ZIndex = 603
     cancelBtn.Parent = buttons
-    local cancelC = Instance.new("UICorner")
-    cancelC.CornerRadius = UDim.new(0, 8)
-    cancelC.Parent = cancelBtn
+    pillify(cancelBtn)
     cancelBtn.Activated:Connect(destroy)
 
     local okBtn = Instance.new("TextButton")
@@ -1039,9 +1035,7 @@ function EnhancementSellPanel:_confirm(opts)
     okBtn.LayoutOrder = 2
     okBtn.ZIndex = 603
     okBtn.Parent = buttons
-    local okC = Instance.new("UICorner")
-    okC.CornerRadius = UDim.new(0, 8)
-    okC.Parent = okBtn
+    pillify(okBtn)
     okBtn.Activated:Connect(function()
         destroy()
         if opts.onConfirm then
