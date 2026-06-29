@@ -232,6 +232,14 @@ function QuestService:List(player)
     -- IN ITS TRACK is claimed. Grind quests only accrue while their track is the ACTIVE focus
     -- (activation-gated, forward-from-activation); milestones always read the lifetime total.
     local _, heads = QuestChain.annotate(out)
+    -- ONRAMP DEFAULT (Jason): a player with no chosen focus FALLS INTO "First Steps" — the guided
+    -- post-tutorial routine — until it's done, instead of landing on nothing (or a stale Warpath
+    -- focus). heads[track] exists only while that track has an unclaimed head, so this clears itself
+    -- once the onramp is complete; the player then picks their own branch. Display-only (its quests are
+    -- absolute so they accrue regardless); a real SetActiveTrack still overrides it.
+    if not activeTrack and heads and heads["first_steps"] then
+        activeTrack = "first_steps"
+    end
     table.sort(out, function(a, b)
         if a.trackOrder ~= b.trackOrder then
             return a.trackOrder < b.trackOrder

@@ -68,8 +68,8 @@ return {
             track = "first_steps",
             order = 3,
             name = "Welcome to the Realm",
-            description = "Smash 100 crystals to fund your first area unlock — then claim your reward.",
-            condition = { type = "counter_at_least", counter = "breakables_broken", value = 100 },
+            description = "Smash 25 crystals to fund your first area unlock — then claim your reward.",
+            condition = { type = "counter_at_least", counter = "breakables_broken", value = 25 },
             -- The onramp capstone: a guaranteed jump to Level 2 (700 XP = the full L2 bar) + a head start
             -- on the first area gate (Meadow = 2000 grass_coins; this leaves a short mine) + gems.
             reward = {
