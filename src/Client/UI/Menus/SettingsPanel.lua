@@ -212,111 +212,30 @@ function SettingsPanel:Hide()
 end
 
 function SettingsPanel:_createUI(parent)
-    -- Create image-based panel using BaseUI system
-    local BaseUI = require(script.Parent.Parent.BaseUI)
-    local baseUI = BaseUI.new()
-
-    -- Create professional image-based settings panel
-    local panelResult = baseUI:CreateImagePanel("settings_panel", {
-        size = UDim2.new(0.7, 0, 0.85, 0),
-        position = UDim2.new(0.5, 0, 0.5, 0),
-        anchor_point = Vector2.new(0.5, 0.5),
-    }, parent)
-
-    self.frame = panelResult.panel
-    self.frame.Name = "SettingsPanel"
-    self.frame.Size = UDim2.new(0.7, 0, 0.85, 0)
-    self.frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    self.frame.AnchorPoint = Vector2.new(0.5, 0.5)
-
-    -- Store references
-    self.header = panelResult.header
-    self.content = panelResult.content
-    self.baseUI = baseUI
-
-    -- Add close button to header if it exists
-    if self.header then
-        -- Get close button config from global defaults with safety checks
-        local config = nil
-        if
-            uiConfig
-            and uiConfig.defaults
-            and uiConfig.defaults.panel
-            and uiConfig.defaults.panel.header
-            and uiConfig.defaults.panel.header.close_button
-        then
-            config = uiConfig.defaults.panel.header.close_button
-        else
-            -- Fallback configuration if config not found
-            config = {
-                icon = "89257673063270",
-                size = { width = 30, height = 30 },
-                offset = { x = 10, y = -10 },
-                background_color = Color3.fromRGB(220, 60, 60),
-                hover_color = Color3.fromRGB(180, 40, 40),
-                corner_radius = 8,
-            }
-            self.logger:warn("Close button config not found, using fallback")
-        end
-
-        local closeButton = Instance.new("ImageButton")
-        closeButton.Name = "CloseButton"
-        closeButton.Size = UDim2.new(0, config.size.width, 0, config.size.height)
-
-        -- Position in top-right-corner with offset (extends outside bounds)
-        closeButton.Position = UDim2.new(1, config.offset.x, 0, config.offset.y)
-        closeButton.AnchorPoint = Vector2.new(1, 0) -- Anchor to top-right
-
-        closeButton.BackgroundColor3 = config.background_color
-        closeButton.BorderSizePixel = 0
-        closeButton.Image = "rbxassetid://" .. config.icon
-        closeButton.ScaleType = Enum.ScaleType.Fit
-        closeButton.ZIndex = 17
-        closeButton.Parent = self.header
-
-        local closeCorner = Instance.new("UICorner")
-        closeCorner.CornerRadius = UDim.new(0, config.corner_radius)
-        closeCorner.Parent = closeButton
-
-        -- Add hover effect
-        closeButton.MouseEnter:Connect(function()
-            closeButton.BackgroundColor3 = config.hover_color
-        end)
-
-        closeButton.MouseLeave:Connect(function()
-            closeButton.BackgroundColor3 = config.background_color
-        end)
-
-        closeButton.Activated:Connect(function()
+    -- Shared window shell (outer pill + area-themed header + close X) — one code path (Jason).
+    local PanelChrome = require(script.Parent.Parent.Components.PanelChrome)
+    local shell = PanelChrome.build(parent, {
+        name = "SettingsPanel",
+        title = "⚙️ Settings",
+        onClose = function()
             self:Hide()
-        end)
-    end
+        end,
+    })
+    self.frame = shell.frame
+    self._areaKey = shell.areaKey
+    self._areaColor = shell.areaColor
 
-    -- Scroll frame for settings (use content area)
-    local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Name = "SettingsScroll"
-    scrollFrame.Size = UDim2.new(1, -10, 1, -10)
-    scrollFrame.Position = UDim2.new(0, 5, 0, 5)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.BorderSizePixel = 0
-    scrollFrame.ScrollBarThickness = 8
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    scrollFrame.ZIndex = 15
-    scrollFrame.Parent = self.content or self.frame -- Use content if available, fallback to frame
+    -- BaseUI instance kept ONLY for its image control helpers (toggles), not the panel shell.
+    local BaseUI = require(script.Parent.Parent.BaseUI)
+    self.baseUI = BaseUI.new()
 
-    -- Layout for settings
-    local layout = Instance.new("UIListLayout")
-    layout.FillDirection = Enum.FillDirection.Vertical
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 15)
-    layout.Parent = scrollFrame
-
-    -- Update canvas size when layout changes
-    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
-    end)
-
-    self.scrollFrame = scrollFrame
+    -- Settings list: full width, starts just under the header (content-heavy → tall pane).
+    self.scrollFrame = PanelChrome.scrollPane(shell.frame, {
+        name = "SettingsScroll",
+        position = UDim2.new(0.5, 0, 0.13, 0),
+        size = UDim2.new(1, 0, 0.85, 0),
+        padding = 12,
+    })
 
     -- Create settings sections
     self:_createAudioSettings()
@@ -339,12 +258,11 @@ function SettingsPanel:_createUI(parent)
 end
 
 function SettingsPanel:_createSectionHeader(title, layoutOrder)
-    local theme = uiConfig.helpers.get_theme(uiConfig)
-
     local header = Instance.new("Frame")
     header.Name = title .. "Header"
     header.Size = UDim2.new(1, 0, 0, 40)
-    header.BackgroundColor3 = theme.primary.accent or Color3.fromRGB(0, 120, 180)
+    -- Area/origin-themed section bands (match the shell) instead of a hardcoded blue.
+    header.BackgroundColor3 = self._areaColor or Color3.fromRGB(0, 120, 180)
     header.BorderSizePixel = 0
     header.LayoutOrder = layoutOrder
     header.Parent = self.scrollFrame
