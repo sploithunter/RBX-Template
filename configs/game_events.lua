@@ -62,22 +62,18 @@ return {
         vfx = { kind = "burst", color = { 120, 230, 150 } }, -- green "new ground" burst
     },
 
-    -- ENHANCEMENT SLOTTED (server: EnhancementService:Slot) — a personal lightning zap when an
-    -- enhancement drops into a power slot. Paired with an electric-blue burst (the rule: never a sound
-    -- without a visual; the menu slot-fill is the close-up cue, this is the world flourish).
-    enhancement_slotted = {
-        sound = "enhancement_slot_zap",
-        vfx = { kind = "burst", color = { 120, 200, 255 } }, -- electric blue
-    },
-
     -- ===== Batch 1: server-fired celebrations (FireGameEvent at each success spot). All reuse the
     -- celebratory jingle for now (swap per-event sounds here later, config-only); burst colors
     -- differentiate them visually. =====
 
     -- An achievement tier completed (server: AchievementsService alongside AchievementCompleted).
-    -- an enhancement was slotted into a power (EnhancementService:Slot). No reactions
-    -- yet — the UI gives its own feedback; add sound+visual here together when sourced.
-    enhancement_slotted = {},
+    -- an enhancement was slotted into a power (EnhancementService:Slot). A personal lightning zap +
+    -- electric-blue burst (the rule: never a sound without a visual; the menu slot-fill is the close-up
+    -- cue, this burst is the world flourish).
+    enhancement_slotted = {
+        sound = "enhancement_slot_zap",
+        vfx = { kind = "burst", color = { 120, 200, 255 } }, -- electric blue
+    },
 
     -- A player met a registered CREATOR for the first time (MeetCreatorService) —
     -- once ever per creator; the reward egg rides the event payload.
