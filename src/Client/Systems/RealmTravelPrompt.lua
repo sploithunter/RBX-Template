@@ -107,6 +107,9 @@ function RealmTravelPrompt.start()
         end
         activeLayer = payload.layer
         body.Text = tostring(payload.label or "Travel here?")
+        -- A `locked` offer (level too low) is informational — hide the Travel button so it's a
+        -- dismiss-only "Reach Level N" notice, not a Yes/No the server would just reject.
+        yesBtn.Visible = payload.locked ~= true
         gui.Enabled = true
     end)
 

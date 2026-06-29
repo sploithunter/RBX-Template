@@ -103,6 +103,24 @@ local function resolvePart(inst)
     return nil
 end
 
+-- LEVEL GATE (Jason): realm travel requires the target layer's `requires_level`, even though
+-- `bypass_access` still skips the soul/token economy (not grind-ready yet). Heaven/Hell 1 = Lv 7,
+-- 2 = 14, … (+7 per layer, configs/layers.lua access). Returns ok, required. base / unset layers are
+-- always allowed; reads the published Level attribute. NOTE: no admin bypass — Jason wants the gate
+-- enforced for everyone (the realms were open only because bypass_access skipped this entirely).
+function RealmPortalService:_levelGate(player, target)
+    if not target or target == "base" then
+        return true, 0
+    end
+    local access = self._layersConfig.access and self._layersConfig.access[target]
+    local required = access and tonumber(access.requires_level)
+    if not required or required <= 1 then
+        return true, 0
+    end
+    local level = tonumber(player:GetAttribute("Level")) or 1
+    return level >= required, required
+end
+
 -- Direct jump: enter this portal's exact layer; if already standing on it, return to base.
 -- (Per-layer toggle lets you hop base -> Halo3 -> Halo5 to test any depth, and step out anywhere.)
 function RealmPortalService:_onTriggered(player, destLayer)
@@ -122,6 +140,17 @@ function RealmPortalService:_onTriggered(player, destLayer)
     if target ~= "base" and not self:_layerHasGeometry(target) then
         if self._logger then
             self._logger:Info("Realm portal blocked: layer has no geometry", { layer = target })
+        end
+        return
+    end
+    -- LEVEL GATE: enforced even though bypass_access skips the soul/token economy.
+    local lvlOk, requiredLevel = self:_levelGate(player, target)
+    if not lvlOk then
+        if self._logger then
+            self._logger:Info(
+                "Realm portal blocked: level too low",
+                { layer = target, required = requiredLevel }
+            )
         end
         return
     end
@@ -197,7 +226,21 @@ function RealmPortalService:_offerTravel(player, def)
     if target ~= "base" and not self:_layerHasGeometry(target) then
         return
     end
+    -- LEVEL GATE: too-low players get a denial offer (no Travel button) naming the requirement, instead
+    -- of a Yes/No they'd be blocked on at confirm. (Stage 2 adds the same Lv on the portal face.)
+    local lvlOk, requiredLevel = self:_levelGate(player, target)
     local label
+    if target ~= "base" and not lvlOk then
+        label = ("🔒 Reach Level %d to enter %s"):format(
+            requiredLevel,
+            ((def.action and def.action:gsub("^Enter ", "")) or "this realm")
+        )
+        Signals.RealmTravelOffer:FireClient(
+            player,
+            { layer = def.layer, label = label, locked = true }
+        )
+        return
+    end
     if target == "base" then
         label = "Return to Home?"
     else

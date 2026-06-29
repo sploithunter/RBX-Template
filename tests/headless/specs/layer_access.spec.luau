@@ -65,7 +65,7 @@ return function()
             local r = access(25, 150, "heaven_1", { playerLevel = 5 })
             expect(r.ok).to.equal(false)
             expect(r.reason).to.equal("level_too_low")
-            expect(r.requiresLevel).to.equal(10)
+            expect(r.requiresLevel).to.equal(7) -- Jason: Heaven/Hell 1 = Lv 7 (+7 per layer)
         end)
 
         it("allows Heaven 1 once Soul, tokens, AND level all clear", function()
@@ -77,22 +77,22 @@ return function()
             expect(access(25, 150, "heaven_1").ok).to.equal(true)
         end)
 
-        -- World S3: the new deepest layers (5/side) with soul ±100 / level 50 / 2000 tokens.
-        it("Heaven 5 is the deepest gate (soul 100 + level 50 + 2000 light tokens)", function()
-            expect(access(100, 2000, "heaven_5", { playerLevel = 50 }).ok).to.equal(true)
-            expect(access(80, 2000, "heaven_5", { playerLevel = 50 }).reason).to.equal(
+        -- World S3: the new deepest layers (5/side) with soul ±100 / level 35 / 2000 tokens.
+        it("Heaven 5 is the deepest gate (soul 100 + level 35 + 2000 light tokens)", function()
+            expect(access(100, 2000, "heaven_5", { playerLevel = 35 }).ok).to.equal(true)
+            expect(access(80, 2000, "heaven_5", { playerLevel = 35 }).reason).to.equal(
                 "soul_too_low"
             )
-            expect(access(100, 2000, "heaven_5", { playerLevel = 49 }).reason).to.equal(
+            expect(access(100, 2000, "heaven_5", { playerLevel = 34 }).reason).to.equal(
                 "level_too_low"
             )
-            expect(access(100, 100, "heaven_5", { playerLevel = 50 }).reason).to.equal(
+            expect(access(100, 100, "heaven_5", { playerLevel = 35 }).reason).to.equal(
                 "insufficient_tokens"
             )
         end)
 
         it("Hell 5 mirrors with negative soul", function()
-            expect(access(-100, 2000, "hell_5", { playerLevel = 50 }).ok).to.equal(true)
+            expect(access(-100, 2000, "hell_5", { playerLevel = 35 }).ok).to.equal(true)
             expect(access(-100, 2000, "hell_5", { playerLevel = 50 }).currency).to.equal(
                 "shadow_tokens"
             )
