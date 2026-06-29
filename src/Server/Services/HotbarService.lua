@@ -191,13 +191,22 @@ function HotbarService:_ensureDefaults(data)
     if type(data.Hotbar) ~= "table" then
         data.Hotbar = {}
     end
-    if not data.HotbarInitialized and isEmptyMap(data.Hotbar) and data.Archetype then
-        -- Bind only the powers the player actually OWNS (picked via level-up) — a clean character
-        -- owns none, so the power slots stay EMPTY until they pick. No auto-granted default powers.
-        -- (Roster/tactical command defaults still populate from defaultBindings.)
-        local owned = (type(data.Powers) == "table") and data.Powers or {}
-        for index, bind in pairs(HotbarLogic.defaultBindings(owned, self._config)) do
-            data.Hotbar[tostring(index)] = bind
+    if not data.HotbarInitialized then
+        if isEmptyMap(data.Hotbar) and data.Archetype then
+            -- Bind only the powers the player actually OWNS (picked via level-up) — a clean character
+            -- owns none, so the power slots stay EMPTY until they pick. No auto-granted default powers.
+            -- (Roster/tactical command defaults still populate from defaultBindings.)
+            local owned = (type(data.Powers) == "table") and data.Powers or {}
+            for index, bind in pairs(HotbarLogic.defaultBindings(owned, self._config)) do
+                data.Hotbar[tostring(index)] = bind
+            end
+        end
+        -- INNATE slot-1 (Resonance): everyone owns it from spawn, so seed it to slot 1 regardless of
+        -- archetype or picks (wins slot 1 over any owned-power fill). One-time like the rest of the
+        -- seed — clearing it later sticks. See docs/INNATE_RESONANCE_POWER.md.
+        local innate = self._config.innate_slot1
+        if innate then
+            data.Hotbar["1"] = { type = "power", target = innate }
         end
     end
     data.HotbarInitialized = true -- defaults are a one-time seed; never auto-repopulate again

@@ -1862,7 +1862,10 @@ function BreakableSpawner:_trySpawnOne(
         local ppNow = model.PrimaryPart
         local boostBB = ppNow and ppNow:FindFirstChild("BoostBillboardGui")
         if boostBB then
-            boostBB.Enabled = engaged
+            -- Boost bar also shows whenever there's Boost (Resonance pulses raise Boost without
+            -- attacking the node), not just while mining; decay back to 0 hides it again.
+            local boost = tonumber(model:GetAttribute("Boost")) or 0
+            boostBB.Enabled = engaged or boost > 0
         end
     end
     updateHealthBar()
@@ -1882,11 +1885,20 @@ function BreakableSpawner:_trySpawnOne(
 
     -- Boost bar hookup (shared OverheadBar fill).
     local function updateBoostBar()
-        setOverheadBar(
+        local bb = setOverheadBar(
             "BoostBillboardGui",
             model:GetAttribute("Boost"),
             model:GetAttribute("MaxBoost") or 100
         )
+        -- Toggle visibility off Boost too (the HP path only fires on HP change). A Resonance pulse
+        -- raises Boost with HP untouched, so show the bar while Boost > 0; decay to 0 hides it.
+        if bb then
+            local boost = tonumber(model:GetAttribute("Boost")) or 0
+            local hp = tonumber(model:GetAttribute("HP")) or 0
+            local maxHp = tonumber(model:GetAttribute("MaxHP")) or 0
+            local engaged = maxHp > 0 and hp < maxHp and hp > 0
+            bb.Enabled = engaged or boost > 0
+        end
     end
     updateBoostBar()
     model:GetAttributeChangedSignal("Boost"):Connect(updateBoostBar)

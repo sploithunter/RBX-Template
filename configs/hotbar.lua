@@ -37,4 +37,9 @@ return {
     --     {slot=7,type="roster",target="Roster 1"}, {slot=8,type="tactical",target="scatter"},
     --     {slot=9,type="tactical",target="focus_fire"}, {slot=10,type="tactical",target="regroup"} }
     default_binds = nil,
+
+    -- INNATE slot-1: every player owns Resonance from spawn (configs/powers.lua innate=true), so the
+    -- one-time hotbar seed binds it to slot 1 — archetype-independent, so even a brand-new pre-pick
+    -- player has it on the bar. Part of the seed, so clearing it later sticks like any other slot.
+    innate_slot1 = "resonance",
 }

@@ -1362,6 +1362,28 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                 hits = {},
             })
         end
+    elseif family == "farm_boost" then
+        -- Resonance (innate, docs/INNATE_RESONANCE_POWER.md): an AoE boost-pulse around the player.
+        -- Bump the Boost attribute on every alive breakable within `radius` toward its MaxBoost,
+        -- reusing the configs/breakables.lua M.boost SSOT — pet-damage amplification + Boost decay
+        -- already live there, and BreakableSpawner shows the boost bar while Boost > 0. `mag` = Boost
+        -- added per cast (full = slams to max); `radius` = the AoE (range-enhanceable via radiusBase).
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local center = (hrp and hrp.Position) or self:_squadCenter(player)
+        local radius = tonumber(kind.radius) or 25
+        if center then
+            for _, crystal in ipairs(breakablesAlive()) do
+                local ok, pos = pcall(function()
+                    return crystal:GetPivot().Position
+                end)
+                if ok and (pos - center).Magnitude <= radius then
+                    local maxBoost = tonumber(crystal:GetAttribute("MaxBoost")) or 100
+                    local cur = tonumber(crystal:GetAttribute("Boost")) or 0
+                    crystal:SetAttribute("Boost", math.min(maxBoost, cur + mag))
+                end
+            end
+        end
     end
 end
 
@@ -1678,7 +1700,10 @@ function PowerService:Cast(player, powerId, opts)
     local adminBypass = (opts and opts.adminBypass == true)
         or player:GetAttribute("IsAdmin") == true
         or RunService:IsStudio()
-    if not adminBypass then
+    -- INNATE powers (e.g. Resonance) are owned by EVERYONE by default — they're never written to
+    -- data.Powers (so they don't consume a level-grant slot or appear in the picker), so the
+    -- owned-list gate would wrongly refuse them. Skip the gate for innate; cooldown/focus still apply.
+    if not adminBypass and not def.innate then
         local data = self._dataService and self._dataService:GetData(player)
         local owned = (data and type(data.Powers) == "table") and data.Powers or {}
         local has = false
