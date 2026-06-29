@@ -14,26 +14,71 @@
     MenuManager:RegisterPanel("Effects", effects)
 ]]
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
 local CloseButton = require(script.Parent.Parent.Components.CloseButton)
 local FillBar = require(script.Parent.Parent.FillBar)
+local PILL = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
+local UITheme = require(script.Parent.Parent.UITheme)
+
+-- Game-standard panel chrome, patterned 1:1 on AchievementsPanel (Jason: panels share one styling
+-- path — area-themed pill border, relative scaling, close-X on top). See AchievementsPanel for the
+-- canonical version; TODO extract a shared PanelChrome module to dedupe these three helpers.
+local function areaPill()
+    local pal = UITheme.palette(Players.LocalPlayer)
+    local key = pal.color
+    if key == nil or key == "neutral" or not PILL.panels[key] then
+        key = "sapphire"
+    end
+    return key, pal.primary
+end
+
+-- Neon hollow pill ring (9-sliced) over an element edge. bleed = px to extend (panel) or inset
+-- (rows, +small) the ring; sliceScale lower = thinner + pushed outward (0.10 panel, 0.18 rows).
+local function pillBorder(parent, key, zindex, bleed, sliceScale)
+    bleed = bleed or 8
+    local img = Instance.new("ImageLabel")
+    img.Name = "PillBorder"
+    img.BackgroundTransparency = 1
+    img.Image = PILL.frames[key] or PILL.frames.sapphire
+    img.ScaleType = Enum.ScaleType.Slice
+    img.SliceCenter = Rect.new(180, 180, 330, 330)
+    img.SliceScale = sliceScale or 0.18
+    img.AnchorPoint = Vector2.new(0.5, 0.5)
+    img.Position = UDim2.fromScale(0.5, 0.5)
+    img.Size = UDim2.new(1, bleed, 1, bleed)
+    img.ZIndex = zindex or 105
+    img.Parent = parent
+    return img
+end
+
+local COLORS = {
+    panel = Color3.fromRGB(20, 20, 25),
+    panelGradientTop = Color3.fromRGB(30, 30, 40),
+    row = Color3.fromRGB(40, 42, 52),
+    text = Color3.fromRGB(255, 255, 255),
+    subtext = Color3.fromRGB(200, 205, 215),
+}
 
 -- Per-event skin (glyph + accent), keyed by the event's icon code (events.lua `icon`). Covers the
 -- weekday calendar + the manual hourly events; anything unknown falls back to the bolt.
+-- pillKey maps the event color to a game pill ring key (emerald/citrine/ruby/sapphire/amethyst), so
+-- each event row's pill matches its identity color (Mineral Monday's gem → emerald), same pill art
+-- the rest of the HUD uses.
 local EVENT_SKINS = {
-    SECRET = { glyph = "✨", accent = Color3.fromRGB(170, 90, 220) },
-    CRYS = { glyph = "💎", accent = Color3.fromRGB(46, 204, 113) },
-    COIN = { glyph = "🪙", accent = Color3.fromRGB(241, 196, 15) },
-    LUCK = { glyph = "🍀", accent = Color3.fromRGB(39, 174, 96) },
-    XP = { glyph = "⭐", accent = Color3.fromRGB(52, 152, 219) },
-    ["2X"] = { glyph = "💰", accent = Color3.fromRGB(231, 76, 60) },
-    DROP = { glyph = "🎁", accent = Color3.fromRGB(155, 89, 182) },
-    DAY = { glyph = "🍀", accent = Color3.fromRGB(39, 174, 96) },
+    SECRET = { glyph = "✨", accent = Color3.fromRGB(170, 90, 220), pillKey = "amethyst" },
+    CRYS = { glyph = "💎", accent = Color3.fromRGB(46, 204, 113), pillKey = "emerald" },
+    COIN = { glyph = "🪙", accent = Color3.fromRGB(241, 196, 15), pillKey = "citrine" },
+    LUCK = { glyph = "🍀", accent = Color3.fromRGB(39, 174, 96), pillKey = "emerald" },
+    XP = { glyph = "⭐", accent = Color3.fromRGB(52, 152, 219), pillKey = "sapphire" },
+    ["2X"] = { glyph = "💰", accent = Color3.fromRGB(231, 76, 60), pillKey = "ruby" },
+    DROP = { glyph = "🎁", accent = Color3.fromRGB(155, 89, 182), pillKey = "amethyst" },
+    DAY = { glyph = "🍀", accent = Color3.fromRGB(39, 174, 96), pillKey = "emerald" },
 }
-local DEFAULT_SKIN = { glyph = "⚡", accent = Color3.fromRGB(90, 160, 220) }
+local DEFAULT_SKIN = { glyph = "⚡", accent = Color3.fromRGB(90, 160, 220), pillKey = "sapphire" }
 
 local function skinFor(effect)
     return EVENT_SKINS[tostring(effect.icon or ""):upper()] or DEFAULT_SKIN
@@ -181,76 +226,106 @@ function EffectsPanel:Hide()
 end
 
 function EffectsPanel:_createUI(parent)
-    local theme = uiConfig.helpers.get_theme(uiConfig)
+    -- AREA/ORIGIN-THEMED panel chrome, patterned on AchievementsPanel: pill border + header take the
+    -- player's home-area color; relative sizing scales with the panel; close-X on top.
+    self._areaKey = areaPill()
+    local _, areaColor = areaPill()
+    local headerColor = areaColor or Color3.fromRGB(90, 160, 220)
+    local headerDim = headerColor:Lerp(Color3.fromRGB(0, 0, 0), 0.35)
 
-    -- Create main panel using template
-    self.frame = self.templateManager:CreatePanel("panel_scroll", {
-        size = UDim2.new(0.6, 0, 0.8, 0),
-        position = UDim2.new(0.5, 0, 0.5, 0),
-        anchor_point = Vector2.new(0.5, 0.5),
-        parent = parent,
+    local frame = Instance.new("Frame")
+    frame.Name = "EffectsPanel"
+    frame.Size = UDim2.new(0.7, 0, 0.85, 0)
+    frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.BackgroundColor3 = COLORS.panel
+    frame.BorderSizePixel = 0
+    frame.ZIndex = 100
+    frame.Parent = parent
+    self.frame = frame
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 20)
+    corner.Parent = frame
+
+    -- Game-standard pill ring around the whole panel (bleed 0 + SliceScale 0.10 — Jason's tune).
+    pillBorder(frame, self._areaKey, 130, 0, 0.10)
+
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, COLORS.panelGradientTop),
+        ColorSequenceKeypoint.new(1, COLORS.panel),
     })
+    gradient.Rotation = 45
+    gradient.Parent = frame
 
-    if not self.frame then
-        -- Fallback frame creation
-        self.frame = Instance.new("Frame")
-        self.frame.Size = UDim2.new(0.6, 0, 0.8, 0)
-        self.frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-        self.frame.AnchorPoint = Vector2.new(0.5, 0.5)
-        self.frame.BackgroundColor3 = theme.primary.surface
-        self.frame.BorderSizePixel = 0
-        self.frame.Parent = parent
+    -- Header (relative height, area-themed gradient)
+    local header = Instance.new("Frame")
+    header.Name = "Header"
+    header.Size = UDim2.new(0.99, 0, 0.1, 0)
+    header.Position = UDim2.new(0.5, 0, 0, 0)
+    header.AnchorPoint = Vector2.new(0.5, 0)
+    header.BackgroundColor3 = headerColor
+    header.BorderSizePixel = 0
+    header.ZIndex = 101
+    header.Parent = frame
+    local hc = Instance.new("UICorner")
+    hc.CornerRadius = UDim.new(0, 20)
+    hc.Parent = header
+    local hg = Instance.new("UIGradient")
+    hg.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, headerColor),
+        ColorSequenceKeypoint.new(1, headerDim),
+    })
+    hg.Rotation = 90
+    hg.Parent = header
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -180, 1, 0)
+    title.Position = UDim2.new(0, 24, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "⚡ Events"
+    title.TextColor3 = COLORS.text
+    title.TextScaled = true
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.ZIndex = 102
+    title.Parent = header
+    local tc = Instance.new("UITextSizeConstraint")
+    tc.MaxTextSize = 34
+    tc.Parent = title
 
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 16)
-        corner.Parent = self.frame
-    end
-
-    self.frame.Name = "EffectsPanel"
-
-    -- Title
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Name = "Title"
-    titleLabel.Size = UDim2.new(1, 0, 0, 50)
-    titleLabel.Position = UDim2.new(0, 0, 0, 0)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = "⚡ Events"
-    titleLabel.TextColor3 = theme.text.primary
-    titleLabel.TextSize = 24
-    titleLabel.Font = uiConfig.fonts and uiConfig.fonts.primary or Enum.Font.Gotham
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Center
-    titleLabel.Parent = self.frame
-
-    -- Close button
-    -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham)
-    CloseButton.attach(self.frame, {
+    -- Close X — sibling of the pill border at Z146 so it's on top (see AchievementsPanel note).
+    CloseButton.attach(frame, {
+        zindex = 146,
         onClick = function()
             self:Hide()
         end,
     })
 
-    -- Scroll frame for effects
+    -- Scrolling list of event rows (relative — scales with the panel)
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Name = "EffectsScroll"
-    scrollFrame.Size = UDim2.new(1, -20, 1, -70)
-    scrollFrame.Position = UDim2.new(0, 10, 0, 60)
+    scrollFrame.Size = UDim2.new(0.95, 0, 0.83, 0)
+    scrollFrame.Position = UDim2.new(0.03, 0, 0.13, 0)
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
-    scrollFrame.ScrollBarThickness = 8
+    scrollFrame.ScrollBarThickness = 6
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    scrollFrame.Parent = self.frame
+    scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scrollFrame.ZIndex = 101
+    scrollFrame.Parent = frame
 
-    -- Layout for effects
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, 10)
     layout.Parent = scrollFrame
 
-    -- Update canvas size when layout changes
-    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
-    end)
+    local pad = Instance.new("UIPadding")
+    pad.PaddingTop = UDim.new(0, 4)
+    pad.PaddingBottom = UDim.new(0, 4)
+    pad.PaddingRight = UDim.new(0, 4)
+    pad.Parent = scrollFrame
 
     self.scrollFrame = scrollFrame
 end
@@ -340,16 +415,16 @@ function EffectsPanel:_createSectionHeader(title, layoutOrder)
 end
 
 function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
-    local theme = uiConfig.helpers.get_theme(uiConfig)
     local skin = skinFor(effect)
     local DARK = Color3.fromRGB(22, 24, 31)
 
     local card = Instance.new("Frame")
     card.Name = tostring(effect.id or effect.name or "effect") .. "Display"
     card.Size = UDim2.new(1, 0, 0, 80)
-    card.BackgroundColor3 = theme.primary.card or Color3.fromRGB(38, 40, 48)
+    card.BackgroundColor3 = COLORS.row
     card.BorderSizePixel = 0
     card.LayoutOrder = layoutOrder
+    card.ZIndex = 102
     card.Parent = self.scrollFrame
     table.insert(self.effectDisplays, card)
 
@@ -366,30 +441,17 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     })
     grad.Parent = card
 
-    -- accent border in the event's colour
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = skin.accent
-    stroke.Thickness = 1.5
-    stroke.Transparency = 0.45
-    stroke.Parent = card
+    -- Game pill ring in the event's color (Mineral Monday's gem → emerald), same as Achievements
+    -- rows: bleed 2 (centered on the edge) + SliceScale 0.08. Hollow ring → content shows through.
+    pillBorder(card, skin.pillKey or "sapphire", 105, 2, 0.08)
 
-    -- accent stripe down the left edge
-    local stripe = Instance.new("Frame")
-    stripe.Size = UDim2.new(0, 5, 1, -20)
-    stripe.Position = UDim2.new(0, 8, 0, 10)
-    stripe.BackgroundColor3 = skin.accent
-    stripe.BorderSizePixel = 0
-    stripe.Parent = card
-    local stripeCorner = Instance.new("UICorner")
-    stripeCorner.CornerRadius = UDim.new(1, 0)
-    stripeCorner.Parent = stripe
-
-    -- icon disc (accent-tinted, ringed)
+    -- icon disc (accent-tinted, ringed). ZIndex 103 > card's 102 so it shows (Sibling behavior).
     local disc = Instance.new("Frame")
     disc.Size = UDim2.fromOffset(54, 54)
     disc.Position = UDim2.new(0, 24, 0.5, -27)
     disc.BackgroundColor3 = skin.accent:Lerp(DARK, 0.4)
     disc.BorderSizePixel = 0
+    disc.ZIndex = 103
     disc.Parent = card
     local discCorner = Instance.new("UICorner")
     discCorner.CornerRadius = UDim.new(1, 0)
@@ -405,6 +467,7 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     glyph.BackgroundTransparency = 1
     glyph.Text = skin.glyph
     glyph.TextSize = 28
+    glyph.ZIndex = 104
     glyph.Parent = disc
 
     -- title
@@ -413,10 +476,11 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     nameLabel.Position = UDim2.new(0, 92, 0, 14)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = tostring(effect.name or effect.displayName or effect.id or "Event")
-    nameLabel.TextColor3 = theme.text.primary or Color3.fromRGB(245, 245, 250)
+    nameLabel.TextColor3 = COLORS.text
     nameLabel.TextSize = 19
     nameLabel.Font = Enum.Font.GothamBold
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.ZIndex = 103
     nameLabel.Parent = card
 
     -- effect / description line (what it does)
@@ -427,12 +491,13 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     descLabel.Text = (effect.description ~= nil and effect.description ~= "")
             and tostring(effect.description)
         or "Active event"
-    descLabel.TextColor3 = theme.text.secondary or Color3.fromRGB(178, 184, 196)
+    descLabel.TextColor3 = COLORS.subtext
     descLabel.TextSize = 13
     descLabel.Font = Enum.Font.Gotham
     descLabel.TextXAlignment = Enum.TextXAlignment.Left
     descLabel.TextYAlignment = Enum.TextYAlignment.Top
     descLabel.TextWrapped = true
+    descLabel.ZIndex = 103
     descLabel.Parent = card
 
     -- status pill (right): Permanent or a live countdown
@@ -447,6 +512,7 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     pill.TextColor3 = Color3.fromRGB(255, 255, 255)
     pill.TextSize = 12
     pill.Font = Enum.Font.GothamMedium
+    pill.ZIndex = 104
     pill.Parent = card
     local pillCorner = Instance.new("UICorner")
     pillCorner.CornerRadius = UDim.new(1, 0)
@@ -463,6 +529,7 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
             bgColor = Color3.fromRGB(55, 58, 68),
             fillColor = skin.accent,
             fraction = progress,
+            zIndex = 103, -- above the card (102) so it shows under Sibling z-order
         })
     end
 end
