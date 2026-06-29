@@ -12,8 +12,9 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-local CloseButton = require(script.Parent.Parent.Components.CloseButton)
 local FillBar = require(script.Parent.Parent.FillBar)
+-- THE shared panel exterior (window + outer pill + header + close X + area theming + pill helpers).
+local PanelChrome = require(script.Parent.Parent.Components.PanelChrome)
 
 local REMOTE_NAME = "GameAPICommand"
 
@@ -109,43 +110,26 @@ function QuestPanel:Destroy()
 end
 
 function QuestPanel:_createUI(parent)
-    local frame = Instance.new("Frame")
-    frame.Name = "QuestPanel"
-    frame.Size = UDim2.new(0.7, 0, 0.85, 0)
-    frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    frame.AnchorPoint = Vector2.new(0.5, 0.5)
-    frame.BackgroundColor3 = COLORS.panel
-    frame.BorderSizePixel = 0
-    frame.ZIndex = 100
-    frame.Parent = parent
-    self.frame = frame
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 20)
-    corner.Parent = frame
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = COLORS.header
-    stroke.Thickness = 3
-    stroke.Transparency = 0.3
-    stroke.Parent = frame
-
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, COLORS.panelGradientTop),
-        ColorSequenceKeypoint.new(1, COLORS.panel),
+    -- Shared window shell (outer area-themed pill + header + close X on top) — same code path as
+    -- AchievementsPanel (Jason: quests should be near-identical to achievements).
+    local shell = PanelChrome.build(parent, {
+        name = "QuestPanel",
+        title = "🎯 Quests",
+        onClose = function()
+            self:Hide()
+        end,
     })
-    gradient.Rotation = 45
-    gradient.Parent = frame
+    local frame = shell.frame
+    self.frame = frame
+    self._areaKey = shell.areaKey
 
-    self:_createHeader()
     self:_createTabBar()
 
-    -- Scrolling list of quest rows (sits below the header + branch tab bar).
+    -- Scrolling list of quest rows (below header + branch tab bar) — Achievements geometry.
     local list = Instance.new("ScrollingFrame")
     list.Name = "QuestList"
-    list.Size = UDim2.new(1, -24, 1, -144)
-    list.Position = UDim2.new(0, 12, 0, 136)
+    list.Size = UDim2.new(0.95, 0, 0.8, 0)
+    list.Position = UDim2.new(0.03, 0, 0.2, 0)
     list.BackgroundTransparency = 1
     list.BorderSizePixel = 0
     list.ScrollBarThickness = 6
@@ -169,53 +153,6 @@ function QuestPanel:_createUI(parent)
     self:_animateEntrance()
 end
 
-function QuestPanel:_createHeader()
-    local header = Instance.new("Frame")
-    header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 76)
-    header.BackgroundColor3 = COLORS.header
-    header.BorderSizePixel = 0
-    header.ZIndex = 101
-    header.Parent = self.frame
-
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 20)
-    headerCorner.Parent = header
-
-    local headerGradient = Instance.new("UIGradient")
-    headerGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, COLORS.header),
-        ColorSequenceKeypoint.new(1, COLORS.headerGradient),
-    })
-    headerGradient.Rotation = 90
-    headerGradient.Parent = header
-
-    local title = Instance.new("TextLabel")
-    title.Name = "Title"
-    title.Size = UDim2.new(1, -180, 1, 0)
-    title.Position = UDim2.new(0, 24, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "🎯 Quests"
-    title.TextColor3 = COLORS.text
-    title.TextScaled = true
-    title.Font = Enum.Font.GothamBold
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.ZIndex = 102
-    title.Parent = header
-
-    local titleConstraint = Instance.new("UITextSizeConstraint")
-    titleConstraint.MaxTextSize = 34
-    titleConstraint.Parent = title
-
-    -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham)
-    CloseButton.attach(header, {
-        zindex = 102,
-        onClick = function()
-            self:Hide()
-        end,
-    })
-end
-
 -- Sort rank for the cross-branch "All" view: claimable first, then in-progress, then done.
 local function claimRank(q)
     if q.claimable then
@@ -226,16 +163,13 @@ local function claimRank(q)
     return 2
 end
 
--- Horizontal, scrollable strip of branch tabs (sits between the header and the list). Tabs
--- themselves are filled in by _buildTabs once quest.list reveals which branches exist.
-local TAB_BAR_Y = 84
-local TAB_BAR_H = 44
-
+-- Horizontal branch-tab bar between the header and the list (Achievements geometry: relative, the
+-- tabs fill it 1/N). Tabs are filled in by _buildTabs once quest.list reveals which branches exist.
 function QuestPanel:_createTabBar()
     local bar = Instance.new("ScrollingFrame")
     bar.Name = "TabBar"
-    bar.Size = UDim2.new(1, -24, 0, TAB_BAR_H)
-    bar.Position = UDim2.new(0, 12, 0, TAB_BAR_Y)
+    bar.Size = UDim2.new(0.95, 0, 0.1, 0)
+    bar.Position = UDim2.new(0.03, 0, 0.1, 0)
     bar.BackgroundTransparency = 1
     bar.BorderSizePixel = 0
     bar.ScrollBarThickness = 4
@@ -250,55 +184,55 @@ function QuestPanel:_createTabBar()
     layout.FillDirection = Enum.FillDirection.Horizontal
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.VerticalAlignment = Enum.VerticalAlignment.Center
-    layout.Padding = UDim.new(0, 6)
+    layout.Padding = UDim.new(0, 8)
     layout.Parent = bar
 end
 
--- One tab button. `key` = "all" or a track id; `hasClaimable` adds a green dot so you can see
--- which branch has something waiting without opening it.
+-- One tab button, styled exactly like AchievementsPanel: 1/N width fills the bar, game pill chrome
+-- (citrine when viewed, area color when idle), label in a CHILD above the pills. `key` = "all" or a
+-- track id; the FOCUS (counting) track gets a ▶ prefix; `hasClaimable` adds a green dot.
 function QuestPanel:_makeTab(key, label, order, hasClaimable)
     local active = self.viewedTab == key
+    local focused = self.focusTrack ~= nil and key == self.focusTrack
     local btn = Instance.new("TextButton")
     btn.Name = "Tab_" .. key
-    btn.AutomaticSize = Enum.AutomaticSize.X
-    btn.Size = UDim2.new(0, 0, 1, -8)
-    local focused = self.focusTrack ~= nil and key == self.focusTrack
-    btn.Text = (focused and "▶ " or "") .. label
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 16
-    btn.TextColor3 = active and COLORS.text or COLORS.subtext
-    btn.BackgroundColor3 = active and COLORS.header or COLORS.row
-    btn.AutoButtonColor = true
+    local n = math.max(self._tabCount or 1, 1)
+    local gap = math.floor(8 * (n - 1) / n + 0.5)
+    btn.Size = UDim2.new(1 / n, -gap, 1, -6)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+    btn.AutoButtonColor = false
     btn.LayoutOrder = order
     btn.ZIndex = 102
     btn.Parent = self.tabBar
 
-    local pad = Instance.new("UIPadding")
-    pad.PaddingLeft = UDim.new(0, 16)
-    pad.PaddingRight = UDim.new(0, 16)
-    pad.Parent = btn
+    local pillKey = active and "citrine" or (self._areaKey or "sapphire")
+    PanelChrome.pillPanel(btn, pillKey, 100)
+    PanelChrome.pillBorder(btn, pillKey, 103, 0)
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = btn
-
-    -- Gold outline on the ACTIVE (focused) track so you can tell it apart from the one you're viewing.
-    if focused then
-        local fstroke = Instance.new("UIStroke")
-        fstroke.Color = COLORS.focus
-        fstroke.Thickness = 2
-        fstroke.Parent = btn
-    end
+    local labelText = Instance.new("TextLabel")
+    labelText.Name = "Label"
+    labelText.Size = UDim2.fromScale(1, 1)
+    labelText.BackgroundTransparency = 1
+    labelText.Text = (focused and "▶ " or "") .. label
+    labelText.TextColor3 = active and Color3.fromRGB(30, 25, 10) or COLORS.text
+    labelText.TextScaled = true
+    labelText.Font = Enum.Font.GothamBold
+    labelText.ZIndex = 110
+    labelText.Parent = btn
+    local cons = Instance.new("UITextSizeConstraint")
+    cons.MaxTextSize = 18
+    cons.Parent = labelText
 
     if hasClaimable then
         local dot = Instance.new("Frame")
         dot.Name = "ClaimDot"
-        dot.Size = UDim2.fromOffset(10, 10)
+        dot.Size = UDim2.fromOffset(12, 12)
         dot.AnchorPoint = Vector2.new(1, 0)
-        dot.Position = UDim2.new(1, -2, 0, 3)
+        dot.Position = UDim2.new(1, -6, 0, -2)
         dot.BackgroundColor3 = COLORS.claimable
         dot.BorderSizePixel = 0
-        dot.ZIndex = 103
+        dot.ZIndex = 111
         dot.Parent = btn
         local dc = Instance.new("UICorner")
         dc.CornerRadius = UDim.new(1, 0)
@@ -308,20 +242,11 @@ function QuestPanel:_makeTab(key, label, order, hasClaimable)
     btn.Activated:Connect(function()
         if self.viewedTab ~= key then
             self.viewedTab = key
-            self:_restyleTabs()
+            self:_buildTabs(self.quests) -- rebuild tabs (re-pill the active one) from cached data
             self:_renderRows()
         end
     end)
     self.tabButtons[key] = btn
-end
-
--- Recolor tabs to reflect the active branch (cheap; no rebuild).
-function QuestPanel:_restyleTabs()
-    for key, btn in pairs(self.tabButtons) do
-        local active = key == self.viewedTab
-        btn.BackgroundColor3 = active and COLORS.header or COLORS.row
-        btn.TextColor3 = active and COLORS.text or COLORS.subtext
-    end
 end
 
 -- (Re)build the tab strip from the branches present in the quest list. Keeps the current
@@ -364,6 +289,8 @@ function QuestPanel:_buildTabs(quests)
         self.viewedTab = "all"
     end
 
+    -- count tabs first so each gets 1/N of the bar width (fills it edge-to-edge): "All" + the tracks
+    self._tabCount = 1 + #tracks
     self:_makeTab("all", "All", 0, false)
     for i, t in ipairs(tracks) do
         self:_makeTab(t.key, t.title, i, claimableByTrack[t.key] == true)
@@ -447,6 +374,11 @@ function QuestPanel:_activationControl(track, hasGrind)
     corner.CornerRadius = UDim.new(0, 10)
     corner.Parent = row
 
+    -- Game pill ring on the banner too: emerald when this branch is the active/counting focus,
+    -- citrine when it CAN be activated, neutral for an always-tracked branch.
+    local bannerKey = isFocus and "emerald" or (hasGrind and "citrine" or "neutral")
+    PanelChrome.pillBorder(row, bannerKey, 105, 2, 0.08)
+
     if isFocus then
         local label = Instance.new("TextLabel")
         label.Size = UDim2.new(1, -24, 1, 0)
@@ -463,11 +395,6 @@ function QuestPanel:_activationControl(track, hasGrind)
         c.MaxTextSize = 18
         c.Parent = label
     elseif hasGrind then
-        local stroke = Instance.new("UIStroke")
-        stroke.Color = COLORS.focus
-        stroke.Thickness = 2
-        stroke.Parent = row
-
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1, 0, 1, 0)
         btn.BackgroundTransparency = 1
@@ -578,11 +505,15 @@ function QuestPanel:_createQuestRow(quest, order)
     corner.CornerRadius = UDim.new(0, 12)
     corner.Parent = row
 
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = quest.claimable and COLORS.claimable or COLORS.rowStroke
-    stroke.Thickness = quest.claimable and 2 or 1
-    stroke.Transparency = quest.claimable and 0.1 or 0.5
-    stroke.Parent = row
+    -- Game pill ring per row (Achievements style): emerald = claimable (pops like the green Claim
+    -- button), neutral = locked, area color = in progress.
+    local rowKey = self._areaKey or "sapphire"
+    if quest.claimable then
+        rowKey = "emerald"
+    elseif quest.locked then
+        rowKey = "neutral"
+    end
+    PanelChrome.pillBorder(row, rowKey, 105, 2, 0.08)
 
     -- Title
     local name = Instance.new("TextLabel")
