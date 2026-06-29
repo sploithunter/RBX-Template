@@ -82,6 +82,15 @@ local function layerFolderName(layerId)
     return layerId
 end
 
+-- Player-facing name for a portal label: "heaven_1" -> "Heaven 1".
+local function layerDisplayName(layerId)
+    local realm, n = tostring(layerId):match("^(%a+)_(%d+)$")
+    if realm then
+        return realm:sub(1, 1):upper() .. realm:sub(2) .. " " .. n
+    end
+    return tostring(layerId)
+end
+
 -- A layer is enterable only if its geometry exists, else the player falls into the void. The
 -- stacked worlds are authored incrementally, so most layers have no folder yet.
 function RealmPortalService:_layerHasGeometry(layerId)
@@ -172,7 +181,19 @@ function RealmPortalService:_ensureTouch(part, def)
         self:_addLockBadge(part) -- realm not built yet → "COMING SOON", no travel
         return
     end
-    self:_clearLockBadge(part) -- realm is live → open the gate (drop the badge)
+    -- OPEN portal (realm built): swap the lock for a "Heaven 1 · Lv 7" info label, so the destination
+    -- and its level gate read at a glance even before touching (Jason: "if they're unlocked we should
+    -- still have a label"). The touch path still enforces the level for a too-low player.
+    self:_clearLockBadge(part)
+    local access = self._layersConfig.access and self._layersConfig.access[def.layer]
+    local req = access and tonumber(access.requires_level)
+    local label = layerDisplayName(def.layer)
+    if req and req > 1 then
+        label = label .. "  ·  Lv " .. req
+    end
+    local tint = tostring(def.layer):match("^hell") and Color3.fromRGB(255, 150, 100)
+        or Color3.fromRGB(255, 235, 150)
+    self:_addLockBadge(part, label, false, tint)
 
     -- Bind Touched on every BasePart of the portal model so touching the surface anywhere offers
     -- travel. Server-side touch = no client trust; the per-player debounce keeps it from spamming.
@@ -314,9 +335,18 @@ function RealmPortalService:_clearLockBadge(part)
     end
 end
 
--- Wear the "COMING SOON" lock badge (realm not built yet). Front+back SurfaceGuis (the gates stand
--- back-to-back in Halo/Horn pairs, so a billboard bled through — surface rendering occludes cleanly).
-function RealmPortalService:_addLockBadge(part)
+-- Stamp a portal-face badge. Front+back SurfaceGuis (the gates stand back-to-back in Halo/Horn
+-- pairs, so a billboard bled through — surface rendering occludes cleanly).
+--   captionText  the label under the icon (default "COMING SOON")
+--   showLock     true → 🔒 over the caption (realm not built / hard-locked); false → caption only,
+--                centered + larger (an OPEN portal's "REALM · Lv N" info label, per Jason)
+--   tint         caption color (default gold)
+function RealmPortalService:_addLockBadge(part, captionText, showLock, tint)
+    captionText = captionText or "COMING SOON"
+    if showLock == nil then
+        showLock = true
+    end
+    tint = tint or Color3.fromRGB(255, 215, 0)
     local host, faceA, faceB = self:_badgeHostAndFaces(part)
     local function makeFace(face, name)
         if host:FindFirstChild(name) then
@@ -329,28 +359,31 @@ function RealmPortalService:_addLockBadge(part)
         gui.PixelsPerStud = 24
         gui.LightInfluence = 0
         gui.Parent = host
-        local lock = Instance.new("TextLabel")
-        lock.Size = UDim2.fromScale(0.62, 0.62)
-        lock.AnchorPoint = Vector2.new(0.5, 0.5)
-        lock.Position = UDim2.fromScale(0.5, 0.45)
-        lock.BackgroundTransparency = 1
-        lock.Text = "🔒"
-        lock.TextScaled = true
-        lock.Font = Enum.Font.GothamBlack
-        lock.TextColor3 = Color3.fromRGB(255, 255, 255)
-        lock.TextStrokeTransparency = 0.2
-        lock.Parent = gui
+        if showLock then
+            local lock = Instance.new("TextLabel")
+            lock.Size = UDim2.fromScale(0.62, 0.62)
+            lock.AnchorPoint = Vector2.new(0.5, 0.5)
+            lock.Position = UDim2.fromScale(0.5, 0.45)
+            lock.BackgroundTransparency = 1
+            lock.Text = "🔒"
+            lock.TextScaled = true
+            lock.Font = Enum.Font.GothamBlack
+            lock.TextColor3 = Color3.fromRGB(255, 255, 255)
+            lock.TextStrokeTransparency = 0.2
+            lock.Parent = gui
+        end
         local caption = Instance.new("TextLabel")
         -- narrow + high enough to fit INSIDE the visible oval (the glow plane runs
-        -- behind the dark frame, which cropped a 0.9-wide caption to "OMING SOO")
-        caption.Size = UDim2.fromScale(0.52, 0.1)
-        caption.AnchorPoint = Vector2.new(0.5, 0)
-        caption.Position = UDim2.fromScale(0.5, 0.66)
+        -- behind the dark frame, which cropped a 0.9-wide caption to "OMING SOO"). With no lock the
+        -- caption owns the whole face, so center it and let it run taller.
+        caption.Size = showLock and UDim2.fromScale(0.52, 0.1) or UDim2.fromScale(0.62, 0.34)
+        caption.AnchorPoint = showLock and Vector2.new(0.5, 0) or Vector2.new(0.5, 0.5)
+        caption.Position = showLock and UDim2.fromScale(0.5, 0.66) or UDim2.fromScale(0.5, 0.5)
         caption.BackgroundTransparency = 1
-        caption.Text = "COMING SOON"
+        caption.Text = captionText
         caption.TextScaled = true
         caption.Font = Enum.Font.GothamBlack
-        caption.TextColor3 = Color3.fromRGB(255, 215, 0)
+        caption.TextColor3 = tint
         caption.TextStrokeTransparency = 0.1
         caption.Parent = gui
     end
