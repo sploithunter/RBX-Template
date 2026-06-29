@@ -1061,28 +1061,57 @@ function HotbarBar.start()
                 Signals.Hotbar_Rebind:FireServer({ slot = slot, bind = bind })
                 closePicker()
             end)
+            return e
         end
 
         header("Powers")
-        for _, id in ipairs(available.powers or {}) do
-            entry((tostring(id):gsub("_", " ")), TYPE_COLOR.power, { type = "power", target = id })
-        end
-        header("Summon pet")
-        local pf = Workspace:FindFirstChild("PlayerPets")
-            and Workspace.PlayerPets:FindFirstChild(localPlayer.Name)
-        if pf then
-            for _, pet in ipairs(pf:GetChildren()) do
-                local pn = pet:FindFirstChild("PositionNumber")
-                if pet:IsA("Model") and pn then
-                    local nm = tostring(pet:GetAttribute("PetType") or pet.Name)
-                    entry(
-                        "Summon " .. nm .. " (#" .. pn.Value .. ")",
-                        TYPE_COLOR.pet,
-                        { type = "pet", target = tostring(pn.Value) }
-                    )
+        -- A fresh player (no power bound yet) gets a blinking gold arrow + stroke on Resonance so it
+        -- stands out among the tactical choices (Jason). Clears when the picker closes.
+        local anyPowerBound = false
+        if lastHotbarState and type(lastHotbarState.hotbar) == "table" then
+            for _, b in pairs(lastHotbarState.hotbar) do
+                if type(b) == "table" and b.type == "power" then
+                    anyPowerBound = true
+                    break
                 end
             end
         end
+        for _, id in ipairs(available.powers or {}) do
+            local row = entry(
+                (tostring(id):gsub("_", " ")),
+                TYPE_COLOR.power,
+                { type = "power", target = id }
+            )
+            if id == "resonance" and not anyPowerBound and row then
+                local arrow = Instance.new("TextLabel")
+                arrow.BackgroundTransparency = 1
+                arrow.AnchorPoint = Vector2.new(1, 0.5)
+                arrow.Position = UDim2.new(1, -6, 0.5, 0)
+                arrow.Size = UDim2.fromOffset(22, 22)
+                arrow.Font = Enum.Font.GothamBlack
+                arrow.TextSize = 18
+                arrow.Text = "⬅"
+                arrow.TextColor3 = Color3.fromRGB(255, 220, 90)
+                arrow.ZIndex = 5
+                arrow.Parent = row
+                local st = Instance.new("UIStroke")
+                st.Color = Color3.fromRGB(255, 220, 90)
+                st.Thickness = 2
+                st.Parent = row
+                task.spawn(function()
+                    local t = 0
+                    while row.Parent do
+                        t += 0.05
+                        local a = (math.sin(t * 5) + 1) / 2
+                        arrow.TextTransparency = 0.05 + 0.5 * a
+                        st.Transparency = 0.2 + 0.6 * a
+                        task.wait(0.05)
+                    end
+                end)
+            end
+        end
+        -- Pet summons are intentionally OMITTED from the bar picker — summoning pets moves to the Teams
+        -- feature (Jason). The squad is managed in the inventory deploy flow, not bound per hotbar slot.
         header("Tactical")
         for _, cmd in ipairs(available.tacticals or {}) do
             entry(
