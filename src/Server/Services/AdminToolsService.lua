@@ -682,6 +682,12 @@ function AdminToolsService:_handleResetToBeginning(adminPlayer, data)
         end
     end)
     playerData.QuestClaims = {}
+    -- Grind quests (condition.since_start) measure FORWARD progress = banked + (counter - baseline).
+    -- Wiping QuestClaims + the counter isn't enough: stale QuestBaselines/QuestBanked windows make the
+    -- bar read full, so "Hatch 500 Eggs" was instantly claimable after a reset (Jason). Clear the
+    -- windows too — each quest re-baselines to the now-zero counter when it next activates.
+    playerData.QuestBaselines = {}
+    playerData.QuestBanked = {}
     -- MetCreators is deliberately KEPT (like PetIndex): the once-ever Meet-The-Creator
     -- must NOT re-fire on every playtest reset (Jason: "don't reset the flag when I
     -- reset — that way I don't have a whole inventory full of them"). The exclusives
