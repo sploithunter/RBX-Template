@@ -295,10 +295,7 @@ function AchievementsPanel:_makeTab(catId, meta, hasClaimable)
     btn.Name = "Tab_" .. catId
     btn.Size = UDim2.new(0, 132, 1, -6)
     btn.BackgroundTransparency = 1 -- the pill panel is the background now
-    btn.Text = (meta.icon and (meta.icon .. " ") or "") .. (meta.title or catId)
-    btn.TextColor3 = active and Color3.fromRGB(30, 25, 10) or COLORS.text
-    btn.TextScaled = true
-    btn.Font = Enum.Font.GothamBold
+    btn.Text = "" -- label lives in a CHILD (below) so the pill children can't cover it
     btn.AutoButtonColor = false
     btn.LayoutOrder = tonumber(meta.order) or 99
     btn.ZIndex = 102
@@ -307,16 +304,30 @@ function AchievementsPanel:_makeTab(catId, meta, hasClaimable)
     local key = active and "citrine" or (self._areaKey or "sapphire")
     pillPanel(btn, key, 100)
     pillBorder(btn, key, 103, 0)
+    -- LABEL as a TOP child (ZIndex above the pills). The real MenuOverlay uses Sibling ZIndexBehavior,
+    -- where child images render ABOVE the button's own text — so the solid pill fill hid the label
+    -- ("text-less tabs" in the real panel, which my isolated preview's behavior hid from me). A child
+    -- label above the pills fixes it under any ZIndexBehavior.
+    local label = Instance.new("TextLabel")
+    label.Name = "Label"
+    label.Size = UDim2.fromScale(1, 1)
+    label.BackgroundTransparency = 1
+    label.Text = (meta.icon and (meta.icon .. " ") or "") .. (meta.title or catId)
+    label.TextColor3 = active and Color3.fromRGB(30, 25, 10) or COLORS.text
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBold
+    label.ZIndex = 110
+    label.Parent = btn
     local cons = Instance.new("UITextSizeConstraint")
     cons.MaxTextSize = 18
-    cons.Parent = btn
+    cons.Parent = label
     if hasClaimable then
         local dot = Instance.new("Frame")
         dot.Size = UDim2.fromOffset(12, 12)
         dot.Position = UDim2.new(1, -6, 0, -2)
         dot.AnchorPoint = Vector2.new(1, 0)
         dot.BackgroundColor3 = COLORS.claimable
-        dot.ZIndex = 103
+        dot.ZIndex = 111
         dot.Parent = btn
         local dc = Instance.new("UICorner")
         dc.CornerRadius = UDim.new(1, 0)
@@ -351,7 +362,7 @@ function AchievementsPanel:_makeRow(entry, order)
     elseif entry.value >= tier.goal then
         rowKey = "emerald"
     end
-    pillBorder(row, rowKey, 105, -10) -- INSET (negative bleed) so it stays inside the row, no overlap
+    pillBorder(row, rowKey, 105, 2) -- centered on the edge (small bleed) so the pill overlaps it (Jason)
 
     local name = Instance.new("TextLabel")
     name.Size = UDim2.new(1, -150, 0, 26)
