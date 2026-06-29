@@ -96,6 +96,19 @@ return function()
             expect(rows[2].id).to.equal("zeta")
         end)
 
+        it("pins INNATE powers to the top regardless of pickLevel / alphabetical tie", function()
+            -- innate "zeta" must beat the L1 "alpha" and the alphabetically-earlier "beta"
+            local withInnate = {
+                alpha = { unlock_level = 1 },
+                beta = { unlock_level = 1 },
+                zeta = { unlock_level = 2, innate = true },
+            }
+            local rows = PowerSelection.menuRows({ "alpha", "beta", "zeta" }, withInnate, 10, {})
+            expect(rows[1].id).to.equal("zeta") -- innate first, above lower unlock + alpha tiebreak
+            expect(rows[1].innate).to.equal(true)
+            expect(rows[2].id).to.equal("alpha")
+        end)
+
         it("gates each row by unlock_level vs level (sorted gamma,alpha,beta)", function()
             local rows = PowerSelection.menuRows(pool, powers, 4, {})
             expect(rows[1].state).to.equal("available") -- gamma unlock 1 <= 4

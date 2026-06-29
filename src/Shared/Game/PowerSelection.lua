@@ -105,9 +105,21 @@ function PowerSelection.menuRows(pool, powers, level, ownedSet, selectionLevels)
         else
             state = "locked"
         end
-        rows[#rows + 1] = { id = id, unlockLevel = unlock, pickLevel = pick, state = state }
+        rows[#rows + 1] = {
+            id = id,
+            unlockLevel = unlock,
+            pickLevel = pick,
+            state = state,
+            innate = (def and def.innate) == true,
+        }
     end
     table.sort(rows, function(a, b)
+        -- INNATE powers (owned-free, e.g. Resonance) pin to the TOP — "your first power". Their
+        -- pickLevel collapses to the first selection level (same as L2 picks), so without this they'd
+        -- lose the alphabetical tiebreak; an explicit innate-first key keeps them at the head.
+        if a.innate ~= b.innate then
+            return a.innate
+        end
         if a.pickLevel ~= b.pickLevel then
             return a.pickLevel < b.pickLevel
         end
