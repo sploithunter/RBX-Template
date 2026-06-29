@@ -131,8 +131,24 @@ end)
 
 if configSuccess and configResult then
     uiConfig = configResult
-else
-    warn("[BaseUI] Failed to load UI config, using enhanced fallback")
+end
+
+-- FALLBACK DRIVEN BY THE SAME CONFIG (Jason): if the loader wasn't ready, read configs/ui.lua
+-- DIRECTLY so the tray/panes still come from the ONE definition — never a divergent hardcoded copy.
+-- The big inline block below is now only a last-ditch emergency (loader AND direct require both fail).
+if not uiConfig then
+    local okDirect, direct = pcall(function()
+        return require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("ui"))
+    end)
+    if okDirect and type(direct) == "table" then
+        uiConfig = direct
+    end
+end
+
+if not uiConfig then
+    warn(
+        "[BaseUI] UI config unavailable from loader AND direct require — minimal emergency fallback"
+    )
     -- Enhanced fallback config with professional styling
     uiConfig = {
         active_theme = "dark",
