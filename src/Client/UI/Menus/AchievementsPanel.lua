@@ -10,12 +10,26 @@
         menuManager:RegisterPanel("Achievements", AchievementsPanel.new())
 ]]
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local CloseButton = require(script.Parent.Parent.Components.CloseButton)
 local PILL = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
+local UITheme = require(script.Parent.Parent.UITheme)
 
 local REMOTE_NAME = "GameAPICommand"
+
+-- Resolve the player's HOME-AREA/origin palette to a valid pill key (fire=ruby red, ice=sapphire,
+-- etc.), falling back to sapphire — same rule MenuTrayStyle/HotbarBar use, so the panel re-tints to
+-- match the rest of the HUD when the player picks their origin (Jason: brown was hardcoded).
+local function areaPill()
+    local pal = UITheme.palette(Players.LocalPlayer)
+    local key = pal.color
+    if key == nil or key == "neutral" or not PILL.panels[key] then
+        key = "sapphire"
+    end
+    return key, pal.primary
+end
 
 -- Game-standard pill BORDER (neon hollow ring) on a wide element. 9-sliced like HotbarBar so the
 -- corners stay crisp at any width (SliceCenter from the pill art). Sits over the element edge.
@@ -48,7 +62,11 @@ local function pillPanel(parent, key, zindex)
     img.ScaleType = Enum.ScaleType.Slice
     img.SliceCenter = Rect.new(180, 180, 330, 330)
     img.SliceScale = 0.18
-    img.Size = UDim2.fromScale(1, 1)
+    img.AnchorPoint = Vector2.new(0.5, 0.5)
+    img.Position = UDim2.fromScale(0.5, 0.5)
+    -- INSET vs the frame: the fill sits INSIDE the pill ring so the pill is always the outer edge
+    -- (matches MenuTrayStyle's panel<frame nesting; Jason: nothing expands beyond the pill).
+    img.Size = UDim2.new(1, -10, 1, -10)
     img.ZIndex = zindex or 100
     img.Parent = parent
     return img
@@ -136,6 +154,13 @@ function AchievementsPanel:Destroy()
 end
 
 function AchievementsPanel:_createUI(parent)
+    -- AREA/ORIGIN THEME: panel chrome takes the player's home-area pill color (fire=ruby red,
+    -- ice=sapphire, …) like the rest of the HUD, instead of a hardcoded brown (Jason). Re-reads on
+    -- each open, so picking your origin at L5 re-tints it next time the panel is shown.
+    self._areaKey = areaPill()
+    local _, areaColor = areaPill()
+    local headerColor = areaColor or COLORS.header
+    local headerDim = headerColor:Lerp(Color3.fromRGB(0, 0, 0), 0.35)
     local frame = Instance.new("Frame")
     frame.Name = "AchievementsPanel"
     frame.Size = UDim2.new(0.7, 0, 0.85, 0)
@@ -151,8 +176,8 @@ function AchievementsPanel:_createUI(parent)
     corner.CornerRadius = UDim.new(0, 20)
     corner.Parent = frame
 
-    -- Game-standard pill frame around the whole panel (sapphire, matching the HUD/tray chrome).
-    pillBorder(frame, "sapphire", 130)
+    -- Game-standard pill frame around the whole panel, area-themed (matches the HUD/tray chrome).
+    pillBorder(frame, self._areaKey, 130)
 
     local gradient = Instance.new("UIGradient")
     gradient.Color = ColorSequence.new({
@@ -166,7 +191,7 @@ function AchievementsPanel:_createUI(parent)
     local header = Instance.new("Frame")
     header.Name = "Header"
     header.Size = UDim2.new(1, 0, 0, 76)
-    header.BackgroundColor3 = COLORS.header
+    header.BackgroundColor3 = headerColor
     header.BorderSizePixel = 0
     header.ZIndex = 101
     header.Parent = frame
@@ -175,8 +200,8 @@ function AchievementsPanel:_createUI(parent)
     hc.Parent = header
     local hg = Instance.new("UIGradient")
     hg.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, COLORS.header),
-        ColorSequenceKeypoint.new(1, COLORS.headerGradient),
+        ColorSequenceKeypoint.new(0, headerColor),
+        ColorSequenceKeypoint.new(1, headerDim),
     })
     hg.Rotation = 90
     hg.Parent = header
@@ -279,7 +304,7 @@ function AchievementsPanel:_makeTab(catId, meta, hasClaimable)
     btn.ZIndex = 102
     btn.Parent = self.tabBar
     -- Game pill chrome: citrine (gold) panel+frame when active, sapphire when idle.
-    local key = active and "citrine" or "sapphire"
+    local key = active and "citrine" or (self._areaKey or "sapphire")
     pillPanel(btn, key, 100)
     pillBorder(btn, key, 103, 0)
     local cons = Instance.new("UITextSizeConstraint")
@@ -320,7 +345,7 @@ function AchievementsPanel:_makeRow(entry, order)
     c.Parent = row
     -- Pill-frame border per row: emerald = claimable (pops like the green Claim button), neutral =
     -- maxed/done, sapphire = in progress (matches the game's pill chrome).
-    local rowKey = "sapphire"
+    local rowKey = self._areaKey or "sapphire"
     if not tier then
         rowKey = "neutral"
     elseif entry.value >= tier.goal then
