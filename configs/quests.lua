@@ -236,9 +236,21 @@ return {
             },
             reward = { currencies = { gems = 5 } },
         },
-        first_blood = {
+        -- BRIDGE before the combat grinds: enemies only invade at Level 5 (they don't attack earlier),
+        -- so "Defeat 10 Enemies" as the next head was an unbeatable wall right after the tutorial
+        -- (Jason). This head holds the slot and tells the player WHY — combat unlocks at 5 — until they
+        -- get there; only then does first_blood become the active head.
+        to_battle = {
             track = "warpath",
             order = 2,
+            name = "Reach Level 5 — To Battle!",
+            description = "Enemies invade at Level 5. Keep leveling, then defend your realm.",
+            condition = { type = "level_at_least", value = 5 },
+            reward = { currencies = { gems = 5 } },
+        },
+        first_blood = {
+            track = "warpath",
+            order = 3,
             name = "Defeat 10 Enemies",
             description = "Your squad fights back — let your tank pull and pile on.",
             condition = {
@@ -251,7 +263,7 @@ return {
         },
         centurion = {
             track = "warpath",
-            order = 3,
+            order = 4,
             name = "Defeat 100 Enemies",
             description = "Hold the line — a hundred invaders sent back.",
             condition = {
@@ -264,7 +276,7 @@ return {
         },
         power_adept = {
             track = "warpath",
-            order = 4,
+            order = 5,
             name = "Cast 100 Powers",
             description = "Powers win fights — keep them on cooldown.",
             condition = {
@@ -277,7 +289,7 @@ return {
         },
         monster_hunter = {
             track = "warpath",
-            order = 5,
+            order = 6,
             name = "Defeat 250 Enemies",
             description = "Clear the patrols. The opposing realm keeps sending more.",
             condition = {
@@ -290,7 +302,7 @@ return {
         },
         slayer = {
             track = "warpath",
-            order = 6,
+            order = 7,
             name = "Defeat 2,500 Enemies",
             description = "A reputation built on fallen invaders.",
             condition = {
@@ -303,7 +315,7 @@ return {
         },
         warlord = {
             track = "warpath",
-            order = 7,
+            order = 8,
             name = "Defeat 10,000 Enemies",
             description = "The Warpath capstone — few survive the crossing.",
             condition = {
