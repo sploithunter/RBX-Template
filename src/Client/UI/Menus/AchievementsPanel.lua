@@ -220,8 +220,12 @@ function AchievementsPanel:_createUI(parent)
     local tc = Instance.new("UITextSizeConstraint")
     tc.MaxTextSize = 34
     tc.Parent = title
-    CloseButton.attach(header, {
-        zindex = 145, -- above the panel pill border (130) so the X stays clickable/on top
+    -- Attach to the PANEL frame (sibling of the pill border), NOT the header: under Sibling
+    -- ZIndexBehavior the whole header subtree renders at the header's ZIndex (101), so an X nested in
+    -- the header sits BELOW the 130 border regardless of its own ZIndex. As a sibling of the border at
+    -- 146 it's truly on top. Same top-right corner position. (Jason: close button must be on top.)
+    CloseButton.attach(frame, {
+        zindex = 146,
         onClick = function()
             self:Hide()
         end,
