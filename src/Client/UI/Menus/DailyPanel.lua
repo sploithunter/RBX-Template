@@ -10,9 +10,39 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-local CloseButton = require(script.Parent.Parent.Components.CloseButton)
+-- Shared panel exterior (window + outer pill + header + close X + the pill helpers the tray buttons
+-- use) + the currency-HUD capsule for the Claim button.
+local PanelChrome = require(script.Parent.Parent.Components.PanelChrome)
+local Pill = require(script.Parent.Parent.Pill)
 
 local REMOTE_NAME = "GameAPICommand"
+
+-- Claim-capsule colors + a re-tint helper mirroring Pill's gradient/stroke math (flip green/grey).
+local CLAIM_ON = Color3.fromRGB(46, 170, 90)
+local CLAIM_OFF = Color3.fromRGB(95, 100, 110)
+local function lighten(c, amt)
+    amt = amt / 255
+    return Color3.new(
+        math.clamp(c.R + amt, 0, 1),
+        math.clamp(c.G + amt, 0, 1),
+        math.clamp(c.B + amt, 0, 1)
+    )
+end
+local function retintPill(btn, color)
+    btn.BackgroundColor3 = color
+    local g = btn:FindFirstChildOfClass("UIGradient")
+    if g then
+        g.Color = ColorSequence.new(lighten(color, 60), color)
+    end
+    local s = btn:FindFirstChildOfClass("UIStroke")
+    if s then
+        s.Color = lighten(color, 80)
+    end
+end
+-- Dark text on a bright citrine tile (white was unreadable on yellow); white elsewhere.
+local function tileTextColor(key)
+    return (key == "citrine") and Color3.fromRGB(64, 46, 8) or Color3.fromRGB(255, 255, 255)
+end
 
 local COLORS = {
     panel = Color3.fromRGB(20, 20, 25),
@@ -88,42 +118,22 @@ function DailyPanel:Destroy()
 end
 
 function DailyPanel:_createUI(parent)
-    local frame = Instance.new("Frame")
-    frame.Name = "DailyPanel"
-    frame.Size = UDim2.new(0.62, 0, 0.6, 0)
-    frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    frame.AnchorPoint = Vector2.new(0.5, 0.5)
-    frame.BackgroundColor3 = COLORS.panel
-    frame.BorderSizePixel = 0
-    frame.ZIndex = 100
-    frame.Parent = parent
+    -- Shared window shell (outer area-themed pill + header + close X on top).
+    local shell = PanelChrome.build(parent, {
+        name = "DailyPanel",
+        title = "📅 Daily Rewards",
+        onClose = function()
+            self:Hide()
+        end,
+    })
+    local frame = shell.frame
     self.frame = frame
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 20)
-    corner.Parent = frame
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = COLORS.header
-    stroke.Thickness = 3
-    stroke.Transparency = 0.3
-    stroke.Parent = frame
-
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, COLORS.panelGradientTop),
-        ColorSequenceKeypoint.new(1, COLORS.panel),
-    })
-    gradient.Rotation = 45
-    gradient.Parent = frame
-
-    self:_createHeader()
-
-    -- Streak summary line.
+    -- Streak summary line (just under the header).
     self.streakLabel = Instance.new("TextLabel")
     self.streakLabel.Name = "StreakLabel"
-    self.streakLabel.Size = UDim2.new(1, -48, 0, 26)
-    self.streakLabel.Position = UDim2.new(0, 24, 0, 88)
+    self.streakLabel.Size = UDim2.new(1, -48, 0, 28)
+    self.streakLabel.Position = UDim2.new(0, 24, 0.16, 0)
     self.streakLabel.BackgroundTransparency = 1
     self.streakLabel.Text = "🔥 Streak: …"
     self.streakLabel.TextColor3 = COLORS.gold
@@ -136,11 +146,12 @@ function DailyPanel:_createUI(parent)
     streakConstraint.MaxTextSize = 22
     streakConstraint.Parent = self.streakLabel
 
-    -- Calendar row container.
+    -- Calendar row of square day tiles (centered).
     local cal = Instance.new("Frame")
     cal.Name = "Calendar"
-    cal.Size = UDim2.new(1, -48, 0, 130)
-    cal.Position = UDim2.new(0, 24, 0, 124)
+    cal.Size = UDim2.new(0.94, 0, 0, 132)
+    cal.Position = UDim2.new(0.5, 0, 0.5, 0)
+    cal.AnchorPoint = Vector2.new(0.5, 0.5)
     cal.BackgroundTransparency = 1
     cal.ZIndex = 101
     cal.Parent = frame
@@ -154,76 +165,23 @@ function DailyPanel:_createUI(parent)
     layout.Padding = UDim.new(0, 8)
     layout.Parent = cal
 
-    -- Claim button.
-    self.claimButton = Instance.new("TextButton")
+    -- Claim button — THE shared currency-HUD capsule (green claimable / grey disabled).
+    self.claimButton = Pill.button({
+        parent = frame,
+        color = CLAIM_OFF,
+        size = UDim2.fromOffset(220, 54),
+        position = UDim2.new(0.5, 0, 0.9, 0),
+        anchorPoint = Vector2.new(0.5, 0.5),
+        text = "…",
+        textSize = 20,
+        zIndex = 106,
+    })
     self.claimButton.Name = "ClaimButton"
-    self.claimButton.Size = UDim2.new(0, 220, 0, 54)
-    self.claimButton.Position = UDim2.new(0.5, 0, 1, -42)
-    self.claimButton.AnchorPoint = Vector2.new(0.5, 0.5)
-    self.claimButton.BackgroundColor3 = COLORS.disabled
-    self.claimButton.BorderSizePixel = 0
-    self.claimButton.Text = "…"
-    self.claimButton.TextColor3 = COLORS.text
-    self.claimButton.TextScaled = true
-    self.claimButton.Font = Enum.Font.GothamBold
-    self.claimButton.ZIndex = 102
-    self.claimButton.Parent = frame
-    local claimCorner = Instance.new("UICorner")
-    claimCorner.CornerRadius = UDim.new(0, 12)
-    claimCorner.Parent = self.claimButton
-    local claimConstraint = Instance.new("UITextSizeConstraint")
-    claimConstraint.MaxTextSize = 22
-    claimConstraint.Parent = self.claimButton
     self.claimButton.Activated:Connect(function()
         self:_claim()
     end)
 
     self:_animateEntrance()
-end
-
-function DailyPanel:_createHeader()
-    local header = Instance.new("Frame")
-    header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 72)
-    header.BackgroundColor3 = COLORS.header
-    header.BorderSizePixel = 0
-    header.ZIndex = 101
-    header.Parent = self.frame
-
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 20)
-    headerCorner.Parent = header
-
-    local headerGradient = Instance.new("UIGradient")
-    headerGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, COLORS.header),
-        ColorSequenceKeypoint.new(1, COLORS.headerGradient),
-    })
-    headerGradient.Rotation = 90
-    headerGradient.Parent = header
-
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -160, 1, 0)
-    title.Position = UDim2.new(0, 24, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "📅 Daily Rewards"
-    title.TextColor3 = COLORS.text
-    title.TextScaled = true
-    title.Font = Enum.Font.GothamBold
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.ZIndex = 102
-    title.Parent = header
-    local titleConstraint = Instance.new("UITextSizeConstraint")
-    titleConstraint.MaxTextSize = 30
-    titleConstraint.Parent = title
-
-    -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham)
-    CloseButton.attach(header, {
-        zindex = 102,
-        onClick = function()
-            self:Hide()
-        end,
-    })
 end
 
 local CURRENCY_LABELS = {
@@ -284,15 +242,15 @@ function DailyPanel:_refresh()
         )
     end
 
-    -- Claim button.
+    -- Claim button (capsule label + re-tint in place).
     if status.claimable then
-        self.claimButton.Text = "Claim Day " .. claimDay
-        self.claimButton.BackgroundColor3 = COLORS.claimable
+        self.claimButton.Label.Text = "Claim Day " .. claimDay
+        retintPill(self.claimButton, CLAIM_ON)
         self.claimButton.AutoButtonColor = true
         self.claimButton.Active = true
     else
-        self.claimButton.Text = "Come back tomorrow"
-        self.claimButton.BackgroundColor3 = COLORS.disabled
+        self.claimButton.Label.Text = "Come back tomorrow"
+        retintPill(self.claimButton, CLAIM_OFF)
         self.claimButton.AutoButtonColor = false
         self.claimButton.Active = false
     end
@@ -302,35 +260,29 @@ function DailyPanel:_createDayCard(day, bundle, claimDay, claimedThrough, claima
     local isToday = claimable and day == claimDay
     local isClaimed = day <= claimedThrough
 
+    -- Tray-button pill treatment, keyed by state: today = citrine (gold, claimable pops),
+    -- claimed = emerald, upcoming = neutral.
+    local key = isToday and "citrine" or (isClaimed and "emerald" or "neutral")
+
     local card = Instance.new("Frame")
     card.Name = "Day_" .. day
     card.Size = UDim2.new(0, 92, 1, 0)
-    card.BackgroundColor3 = isToday and COLORS.dayToday
-        or (isClaimed and COLORS.dayClaimed or COLORS.dayUpcoming)
-    card.BorderSizePixel = 0
+    card.BackgroundTransparency = 1
     card.LayoutOrder = day
     card.ZIndex = 102
     card.Parent = self.calendarFrame
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = card
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = isToday and COLORS.dayToday or COLORS.dayStroke
-    stroke.Thickness = isToday and 2 or 1
-    stroke.Transparency = isToday and 0 or 0.5
-    stroke.Parent = card
+    PanelChrome.pillPanel(card, key, 100) -- glossy fill (same as the lower-left tray buttons)
+    PanelChrome.pillBorder(card, key, 103, 0) -- neon ring
 
     local dayLabel = Instance.new("TextLabel")
     dayLabel.Size = UDim2.new(1, 0, 0, 22)
-    dayLabel.Position = UDim2.new(0, 0, 0, 6)
+    dayLabel.Position = UDim2.new(0, 0, 0, 8)
     dayLabel.BackgroundTransparency = 1
     dayLabel.Text = isClaimed and ("Day " .. day .. " ✓") or ("Day " .. day)
-    dayLabel.TextColor3 = COLORS.text
+    dayLabel.TextColor3 = tileTextColor(key)
     dayLabel.TextScaled = true
     dayLabel.Font = Enum.Font.GothamBold
-    dayLabel.ZIndex = 103
+    dayLabel.ZIndex = 110
     dayLabel.Parent = card
     local dayConstraint = Instance.new("UITextSizeConstraint")
     dayConstraint.MaxTextSize = 14
@@ -341,11 +293,11 @@ function DailyPanel:_createDayCard(day, bundle, claimDay, claimedThrough, claima
     reward.Position = UDim2.new(0, 4, 0, 30)
     reward.BackgroundTransparency = 1
     reward.Text = rewardLabel(bundle)
-    reward.TextColor3 = COLORS.subtext
+    reward.TextColor3 = tileTextColor(key)
     reward.TextWrapped = true
     reward.TextScaled = true
     reward.Font = Enum.Font.Gotham
-    reward.ZIndex = 103
+    reward.ZIndex = 110
     reward.Parent = card
     local rewardConstraint = Instance.new("UITextSizeConstraint")
     rewardConstraint.MaxTextSize = 12
@@ -353,7 +305,7 @@ function DailyPanel:_createDayCard(day, bundle, claimDay, claimedThrough, claima
 end
 
 function DailyPanel:_claim()
-    self.claimButton.Text = "…"
+    self.claimButton.Label.Text = "…"
     self.claimButton.Active = false
     self:_callBus("daily.claim", {})
     -- Refresh regardless: success advances the streak, failure (already claimed)
