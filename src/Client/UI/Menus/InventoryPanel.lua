@@ -4150,19 +4150,28 @@ function InventoryPanel:_updateItemsDisplay()
     -- Render the working DRAFT into the Equipped strip (one card per ref, in order). Clicking a draft
     -- card toggles it back out (the draft hijack). Nothing here touches the live field until Activate.
     if teamMode and draftRefs then
-        local byRef = {}
+        -- Resolve each draft ref to its inventory card the SAME way _seedDraftFromEquipped does: exact
+        -- ref first, then the area-insensitive "pet:enchant" prefix. A deployed ref can carry a drifted
+        -- or empty area segment (e.g. "stack|bunny:rainbow:") that never exactly equals the card's key —
+        -- without the prefix fallback the slot rendered EMPTY while the count still read the ref (the
+        -- "1/3 deployed but no card in the slot" bug). Render must match the seed or they disagree.
+        local byRef, byPrefix = {}, {}
         for _, item in ipairs(self.inventoryData) do
             if item.folder_source == "pets" then
                 local ref = self:_draftRefForItem(item)
                 if type(ref) == "string" and byRef[ref] == nil then
                     byRef[ref] = item
+                    local p = self:_stackPrefix(ref)
+                    if p and byPrefix[p] == nil then
+                        byPrefix[p] = item
+                    end
                 end
             end
         end
         -- Use eqIndex (not a local) so _renderEmptySlotRings(eqIndex - 1) below pads the RIGHT number
         -- of empty slots — otherwise it padded a full 10 on top of the draft cards and they piled up.
         for _, ref in ipairs(draftRefs) do
-            local item = byRef[ref]
+            local item = byRef[ref] or byPrefix[self:_stackPrefix(ref)]
             if item then
                 -- A draft SLOT is one pet, not the whole stack: clone + count 1 so the card shows a
                 -- single pet (no "x5" stack badge), like the live equipped ghost cards do.
