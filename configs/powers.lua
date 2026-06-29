@@ -341,7 +341,7 @@ return {
             innate = true,
             display_name = "Resonance",
             focus_cost = 20,
-            cooldown_seconds = 6,
+            cooldown_seconds = 10,
             effect = "resonance",
             unlock_level = 1, -- sorts to the TOP of NATURAL (above Magnet's L2) — your first power
             subtitle = "Innate · Farming",
