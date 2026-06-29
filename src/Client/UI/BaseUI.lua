@@ -2297,7 +2297,8 @@ function BaseUI:_bindQuestTracker()
                 self._questClaimBtn.Visible = false
             end
             if self._questDesc then
-                self._questDesc.Text = res.activeTrack and "Stay tuned for new adventures!"
+                self._questDesc.Text = res.activeTrack
+                        and "Check the Quests menu for new adventures!"
                     or "Open Quests → activate a branch to begin!"
             end
             if self._questText then
