@@ -26,6 +26,22 @@ local Workspace = game:GetService("Workspace")
 
 -- #179 down-lockout: pill ring assets (white = available, red = locked) for the equipped view.
 local PILL_UI = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
+-- Shared panel exterior (outer pill) + the currency-HUD capsule treatment for header/action buttons.
+local PanelChrome = require(script.Parent.Parent.Components.PanelChrome)
+local Pill = require(script.Parent.Parent.Pill)
+
+-- Capsule treatment on an existing button (full corner + gradient + stroke), keeping its intrinsic
+-- text so live `btn.Text = "…"` updates still work. Idempotent — re-call after a color change to
+-- re-tint the gradient/stroke. (Jason: pills around the inventory header + action buttons.)
+local function pillify(btn)
+    for _, c in ipairs(btn:GetChildren()) do
+        if c:IsA("UICorner") or c:IsA("UIGradient") or c:IsA("UIStroke") then
+            c:Destroy()
+        end
+    end
+    Pill.applyTo(btn, { color = btn.BackgroundColor3 })
+    return btn
+end
 
 -- Player-facing pet-card grid sizes (persisted setting; small = the dense default).
 -- Card internals are cardSize-derived (fromScale or math.floor(cardSize * k) pixel math),
@@ -979,6 +995,10 @@ function InventoryPanel:_createUI(parent)
     self.frame.Position = UDim2.new(0.5, 0, 0.5, 0)
     self.frame.AnchorPoint = Vector2.new(0.5, 0.5)
 
+    -- Standard area-themed game pill around the whole menu (Jason: "a pill around the menu as a
+    -- whole"), same style as the other panels.
+    PanelChrome.pillBorder(self.frame, PanelChrome.areaPill(), 130, 0, 0.10)
+
     -- Store references
     self.header = panelResult.header
     self.content = panelResult.content
@@ -1026,10 +1046,8 @@ function InventoryPanel:_createUI(parent)
             tradeBtn.TextScaled = true
             tradeBtn.Font = Enum.Font.GothamBold
             tradeBtn.ZIndex = 250
-            local tc = Instance.new("UICorner")
-            tc.CornerRadius = UDim.new(0, config.corner_radius or 8)
-            tc.Parent = tradeBtn
             tradeBtn.Parent = self.header
+            pillify(tradeBtn)
             tradeBtn.Activated:Connect(function()
                 local mm = _G.MenuManager
                 if mm and mm.OpenPanel then
@@ -1056,10 +1074,8 @@ function InventoryPanel:_createUI(parent)
             b.TextScaled = true
             b.Font = Enum.Font.GothamBold
             b.ZIndex = 250
-            local c = Instance.new("UICorner")
-            c.CornerRadius = UDim.new(0, config.corner_radius or 8)
-            c.Parent = b
             b.Parent = self.header
+            pillify(b) -- currency-pill capsule (Eggs / AUTO / Cards / Delete header pills)
             local tc2 = Instance.new("UITextSizeConstraint")
             tc2.MaxTextSize = 14
             tc2.Parent = b
@@ -1091,6 +1107,7 @@ function InventoryPanel:_createUI(parent)
                     autoBtn.Text = isAuto and "AUTO" or "Manual"
                     autoBtn.BackgroundColor3 = isAuto and Color3.fromRGB(220, 82, 95)
                         or Color3.fromRGB(90, 90, 110)
+                    pillify(autoBtn) -- re-tint the capsule to the new state color
                     countBtn.Text = ("Eggs: %d"):format(st.count)
                 end
                 local function flash(text)
@@ -1188,6 +1205,7 @@ function InventoryPanel:_createUI(parent)
             dcon.MaxTextSize = 18
             dcon.Parent = del
             del.Parent = self.frame
+            pillify(del)
             self._deleteActionButton = del
             del.Activated:Connect(function()
                 if not self._deleteMode or (self._deleteSelectionCount or 0) <= 0 then
@@ -1221,6 +1239,7 @@ function InventoryPanel:_createUI(parent)
             scon.MaxTextSize = 18
             scon.Parent = sell
             sell.Parent = self.frame
+            pillify(sell)
             self._enhancementSellButton = sell
             sell.Activated:Connect(function()
                 if _G.MenuManager then
@@ -1462,6 +1481,7 @@ function InventoryPanel:_createSearchSection()
     searchBG.BorderSizePixel = 0
     searchBG.ZIndex = 102
     searchBG.Parent = searchContainer
+    pillify(searchBG) -- the search bar reads as a pill capsule too
 
     local searchCorner = Instance.new("UICorner")
     searchCorner.CornerRadius = UDim.new(0, 10)
@@ -1518,9 +1538,7 @@ local function styleTeamButton(btn, baseColor)
     btn.TextScaled = true
     btn.TextColor3 = Color3.fromRGB(235, 238, 245)
     btn.ZIndex = 103
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = btn
+    pillify(btn) -- capsule treatment (Reset / Activate draft buttons)
     local sizeCap = Instance.new("UITextSizeConstraint")
     sizeCap.MaxTextSize = 15
     sizeCap.Parent = btn
@@ -6189,6 +6207,7 @@ function InventoryPanel:_restyleDeletePill()
         b.BackgroundColor3 = DELETE_PILL_IDLE
         b.Text = "🗑 Delete"
     end
+    pillify(b) -- re-tint the capsule (armed red ↔ idle) in place
 end
 
 -- Recount selection -> drives the floating button's label + enabled state + visibility.
