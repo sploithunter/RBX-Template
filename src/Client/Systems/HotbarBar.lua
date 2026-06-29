@@ -1122,7 +1122,47 @@ function HotbarBar.start()
     -- editing, the whole bar pill pulses orange and a banner floats above it.
     local editPulseThread
     local editBanner
+    -- "Pick a slot" cue: while editing, a blinking arrow hovers over slot 1 so a first-timer knows the
+    -- next move is to click a slot (the banner only says "press Done"). Cleared when editing ends.
+    local editHint
+    local function setEditHint(on)
+        if on then
+            local slot1 = root:FindFirstChild("Slot_1")
+            if not slot1 or editHint then
+                return
+            end
+            editHint = Instance.new("TextLabel")
+            editHint.Name = "EditSlotHint"
+            editHint.BackgroundTransparency = 1
+            editHint.AnchorPoint = Vector2.new(0.5, 1)
+            editHint.Size = UDim2.fromOffset(56, 26)
+            editHint.Font = Enum.Font.GothamBlack
+            editHint.TextSize = 24
+            editHint.TextColor3 = Color3.fromRGB(245, 205, 70)
+            editHint.TextStrokeColor3 = Color3.new(0, 0, 0)
+            editHint.TextStrokeTransparency = 0.3
+            editHint.Text = "⬇"
+            editHint.ZIndex = 13
+            editHint.Parent = root
+            local baseX = slot1.Position.X.Offset + slot1.Size.X.Offset / 2
+            local baseY = slot1.Position.Y.Offset - slot1.Size.Y.Offset - 2
+            task.spawn(function()
+                local t = 0
+                while editMode and editHint do
+                    t += 0.05
+                    local a = (math.sin(t * 5) + 1) / 2
+                    editHint.TextTransparency = 0.05 + 0.5 * a
+                    editHint.Position = UDim2.fromOffset(baseX, baseY - math.floor(5 * a))
+                    task.wait(0.05)
+                end
+            end)
+        elseif editHint then
+            editHint:Destroy()
+            editHint = nil
+        end
+    end
     local function setEditAttention(on)
+        setEditHint(on)
         if on then
             if not editBanner then
                 editBanner = Instance.new("TextLabel")
