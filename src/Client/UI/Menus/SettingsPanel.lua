@@ -22,6 +22,8 @@ local Locations = require(ReplicatedStorage.Shared.Locations)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
 local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
 local AudioPrefs = require(script.Parent.Parent.Parent.Systems.AudioPrefs)
+-- THE shared panel exterior + pill helpers (window shell, area theming, entry pills).
+local PanelChrome = require(script.Parent.Parent.Components.PanelChrome)
 
 -- Load Logger with wrapper (following the established pattern)
 local LoggerWrapper
@@ -213,7 +215,6 @@ end
 
 function SettingsPanel:_createUI(parent)
     -- Shared window shell (outer pill + area-themed header + close X) — one code path (Jason).
-    local PanelChrome = require(script.Parent.Parent.Components.PanelChrome)
     local shell = PanelChrome.build(parent, {
         name = "SettingsPanel",
         title = "⚙️ Settings",
@@ -245,16 +246,14 @@ function SettingsPanel:_createUI(parent)
     self:_createHatchSettings()
     self:_createCombatSettings()
 
-    -- Admin section (only for admin users)
-    if self.isAdmin then
-        self.logger:info("Creating admin settings - user is authorized admin")
-        self:_createAdminSettings()
-    else
-        self.logger:debug("Skipping admin settings - user is not authorized admin", {
-            userId = Players.LocalPlayer.UserId,
-            userName = Players.LocalPlayer.Name,
-        })
-    end
+    -- (Admin Tools section removed — the tray's dedicated Admin button + performance-monitor button
+    -- already cover this; no need to duplicate it inside Settings. Jason.)
+end
+
+-- Game pill ring around an entry row, area-themed (bleed 2 + SliceScale 0.08, same as the other
+-- panels' rows). Hollow ring → the row's controls show through. (Jason: pills around the entries.)
+function SettingsPanel:_pillRow(frame)
+    PanelChrome.pillBorder(frame, self._areaKey or "sapphire", 105, 2, 0.08)
 end
 
 function SettingsPanel:_createSectionHeader(title, layoutOrder)
@@ -304,6 +303,7 @@ function SettingsPanel:_createSliderSetting(
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = settingFrame
+    self:_pillRow(settingFrame)
 
     -- Label
     local label = Instance.new("TextLabel")
@@ -386,6 +386,7 @@ function SettingsPanel:_createToggleSetting(name, currentValue, layoutOrder, cal
 
         -- Set layout order for proper positioning
         toggleElement.container.LayoutOrder = layoutOrder
+        self:_pillRow(toggleElement.container)
 
         return toggleElement
     else
@@ -403,6 +404,7 @@ function SettingsPanel:_createToggleSetting(name, currentValue, layoutOrder, cal
         local corner = Instance.new("UICorner")
         corner.CornerRadius = UDim.new(0, 8)
         corner.Parent = settingFrame
+        self:_pillRow(settingFrame)
 
         -- Label
         local label = Instance.new("TextLabel")
@@ -462,6 +464,7 @@ function SettingsPanel:_createButtonSetting(name, buttonText, layoutOrder, callb
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = settingFrame
+    self:_pillRow(settingFrame)
 
     -- Label
     local label = Instance.new("TextLabel")
@@ -503,9 +506,14 @@ function SettingsPanel:_createDropdownSetting(title, currentValue, options, layo
     local container = Instance.new("Frame")
     container.Name = title:gsub(" ", "")
     container.Size = UDim2.new(1, 0, 0, 50)
-    container.BackgroundTransparency = 1
+    container.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    container.BorderSizePixel = 0
     container.LayoutOrder = layoutOrder
     container.Parent = self.scrollFrame
+    local ddCorner = Instance.new("UICorner")
+    ddCorner.CornerRadius = UDim.new(0, 8)
+    ddCorner.Parent = container
+    self:_pillRow(container)
 
     -- Title label
     local titleLabel = Instance.new("TextLabel")
@@ -951,24 +959,6 @@ function SettingsPanel:_createCombatSettings()
             Signals.Settings_SetEnemyLevelOffset:FireServer({ offset = tonumber(value) or 0 })
         end
     )
-end
-
-function SettingsPanel:_createAdminSettings()
-    self:_createSectionHeader("🛠️ Admin Tools", 35)
-
-    self:_createButtonSetting("Test Menu Access", "Open Admin Panel", 36, function()
-        self:_openAdminPanel()
-    end)
-
-    self:_createButtonSetting("Debug Mode", "Toggle Debug UI", 37, function()
-        -- Toggle debug overlays
-        self.logger:info("Debug mode toggled")
-    end)
-
-    self:_createButtonSetting("Performance Monitor", "Show Stats", 38, function()
-        -- Show performance statistics
-        self.logger:info("Performance monitor toggled")
-    end)
 end
 
 function SettingsPanel:_openAdminPanel()
