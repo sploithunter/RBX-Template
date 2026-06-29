@@ -204,38 +204,10 @@ function HotbarService:_ensureDefaults(data)
     end
     data.HotbarInitialized = true -- defaults are a one-time seed; never auto-repopulate again
 
-    -- INNATE backfill (Resonance): bind it ONCE per account, INCLUDING already-initialized players —
-    -- gated on its own InnateSeeded flag (not HotbarInitialized) so existing accounts get it too, not
-    -- just new ones. Prefer slot 1; if taken, the first free slot. After the one-time seed, clearing
-    -- it sticks like any other slot. See docs/INNATE_RESONANCE_POWER.md.
-    local innate = self._config.innate_slot1
-    if innate and not data.InnateSeeded then
-        local already = false
-        for _, bind in pairs(data.Hotbar) do
-            if type(bind) == "table" and bind.type == "power" and bind.target == innate then
-                already = true
-                break
-            end
-        end
-        if not already then
-            local slotCount = tonumber(self._config.slot_count) or 1
-            local target
-            if data.Hotbar["1"] == nil then
-                target = 1
-            else
-                for i = 1, slotCount do
-                    if data.Hotbar[tostring(i)] == nil then
-                        target = i
-                        break
-                    end
-                end
-            end
-            if target then
-                data.Hotbar[tostring(target)] = { type = "power", target = innate }
-            end
-        end
-        data.InnateSeeded = true
-    end
+    -- NOTE: Resonance (innate) is intentionally NOT auto-bound. The tutorial teaches the player to bind
+    -- it themselves (the hotbar Edit → pick → slot flow — a skill they'll reuse for every power), and a
+    -- player's binding choice is then theirs to keep. Owned innate powers are always castable from the
+    -- POWERS menu regardless, so a skipped tutorial never leaves Resonance unusable.
     return data.Hotbar
 end
 
