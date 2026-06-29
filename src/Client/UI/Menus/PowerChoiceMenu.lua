@@ -53,6 +53,8 @@ local PowerStats = require(ReplicatedStorage.Shared.Game.PowerStats)
 local PowerStatsDiff = require(ReplicatedStorage.Shared.Game.PowerStatsDiff)
 local FocusUpkeep = require(ReplicatedStorage.Shared.Game.FocusUpkeep)
 local CloseButton = require(script.Parent.Parent.Components.CloseButton)
+local PanelChrome = require(script.Parent.Parent.Components.PanelChrome)
+local Pill = require(script.Parent.Parent.Pill)
 -- The level a new player chooses their origin (NATURAL picks come before this; ORIGIN powers after).
 local ORIGIN_CHOICE_LEVEL = levelTrackCfg.origin_choice_level or 5
 
@@ -1681,8 +1683,17 @@ local function setChipEnabled(btn, on)
     end
     btn.Active = on
     btn.AutoButtonColor = on
-    btn.BackgroundTransparency = on and 0 or 0.6
-    btn.TextTransparency = on and 0 or 0.45
+    -- Dim the whole pill (fill + stroke + child label) when the action isn't available — the
+    -- semi-transparent "can't choose yet" state (Jason).
+    btn.BackgroundTransparency = on and 0 or 0.55
+    local label = btn:FindFirstChild("Label")
+    if label then
+        label.TextTransparency = on and 0 or 0.5
+    end
+    local stroke = btn:FindFirstChildOfClass("UIStroke")
+    if stroke then
+        stroke.Transparency = on and 0 or 0.55
+    end
 end
 
 function PowerChoiceMenu:_render()
@@ -1752,20 +1763,19 @@ local function makeColumnHolder(parent, xScale)
 end
 
 local function chip(parent, text, size, pos, color, order)
-    local b = Instance.new("TextButton")
+    -- THE shared currency-HUD capsule (Pill.button): rounded + gradient + stroke + child label.
+    local b, label = Pill.button({
+        parent = parent,
+        color = color,
+        size = size,
+        position = pos,
+        anchorPoint = Vector2.new(0.5, 0.5),
+        text = text,
+        textColor = Color3.fromRGB(20, 20, 28),
+        zIndex = 140, -- above the 130 panel pill border
+    })
     b.LayoutOrder = order or 0
-    b.Size = size
-    b.Position = pos
-    b.AnchorPoint = Vector2.new(0.5, 0.5)
-    b.BackgroundColor3 = color
-    b.Text = text
-    b.TextColor3 = Color3.fromRGB(20, 20, 28)
-    b.Font = Enum.Font.GothamBold
-    b.TextScaled = true
-    b.Parent = parent
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0.4, 0)
-    c.Parent = b
+    label.TextScaled = true
     return b
 end
 
@@ -1795,10 +1805,9 @@ function PowerChoiceMenu:Show(parent)
     local rc = Instance.new("UICorner")
     rc.CornerRadius = UDim.new(0.02, 0)
     rc.Parent = root
-    local rs = Instance.new("UIStroke")
-    rs.Color = Color3.fromRGB(70, 64, 96)
-    rs.Thickness = 2
-    rs.Parent = root
+    -- Standard game pill border (area-themed, same size/style as the other panels) — replaces the
+    -- thin gray stroke. Jason: "needs a pill in the same style as the other pills."
+    PanelChrome.pillBorder(root, PanelChrome.areaPill(), 130, 0, 0.10)
     self.frame = root
 
     local title = Instance.new("TextLabel")
@@ -1826,6 +1835,7 @@ function PowerChoiceMenu:Show(parent)
     -- close — THE standard X (shared component). This was Jason's "weird page button":
     -- a maroon circle whose "✕" glyph has no Gotham glyph, rendering as the tofu box.
     CloseButton.attach(root, {
+        zindex = 146, -- above the 130 panel pill border
         onClick = function()
             if _G.MenuManager then
                 _G.MenuManager:CloseCurrentPanel()
