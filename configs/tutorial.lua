@@ -80,14 +80,15 @@ return {
         {
             id = "slot_power",
             title = "Power up Resonance",
-            -- GRANT-ON-ENTER (TutorialService:_applyStepGrant): 3 natural Potency enhancements + an
-            -- inherent slot on Resonance so a level-1 player has somewhere to drop one. Potency boosts
-            -- Resonance's magnitude (the crystal-boost amount) — its first real upgrade. (Jason)
+            -- GRANT-ON-ENTER (TutorialService:_applyStepGrant): ONE level-3 natural Potency + an
+            -- inherent slot on Resonance so a level-1 player has somewhere to drop it. L3 is exactly
+            -- slottable at level 1 (window=2 → 3 ≤ 1+2) and stronger than L1 (per_level scaling). Potency
+            -- boosts Resonance's magnitude (the crystal-boost amount) — its first real upgrade. (Jason)
             grant = {
-                enhancements = { { type = "potency", origins = {}, level = 1, count = 3 } },
+                enhancements = { { type = "potency", origins = {}, level = 3, count = 1 } },
                 ensure_slot = "resonance",
             },
-            body = "You earned 3 Potency enhancements! Open POWERS, tap Resonance, and drop a Potency into a slot — every pulse will hit even harder.",
+            body = "You earned a Potency enhancement! Open POWERS, tap Resonance, and drop the Potency into a slot — every pulse will hit even harder.",
             target = { kind = "ui", name = "PowersButton" },
             complete_on = { event = "enhancement_slotted" },
         },
