@@ -595,6 +595,15 @@ function AdminToolsService:_handleResetToBeginning(adminPlayer, data)
     pets.items = keptKeys
     pets.used_slots = #kept
 
+    -- 1b) DEPLOYED SQUAD: a true new player has nothing deployed. Clear the equip projection so the
+    --     reset can't leave slots pointing at the just-deleted pets — those orphaned slots ("Bridge:
+    --     skipping orphaned equip slot ... stack|meerkat:rainbow|3") are a dev-only artifact that can
+    --     surface as phantom/empty-slot squad bugs. RebuildPetProjections re-replicates the now-empty
+    --     squad. (Jason: reset-to-beginning wasn't clearing equip slots.)
+    if type(playerData.Equipped) == "table" then
+        playerData.Equipped.pets = {}
+    end
+
     -- 2) Currencies: 100 grass_coins (the starter), 0 for every other defined currency.
     local okCur, currencies = pcall(function()
         return self._configLoader:LoadConfig("currencies")
