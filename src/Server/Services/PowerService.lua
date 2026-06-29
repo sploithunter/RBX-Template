@@ -1931,9 +1931,24 @@ function PowerService:GetState(player, levelOverride)
     local level = self:_level(player, levelOverride)
     local levels = self._powersConfig.selection_levels
     local available = ArchetypeLogic.availablePowers(data.Archetype, self._archetypesConfig)
+    -- Surface INNATE powers (Resonance) to the menu as OWNED so they render as slottable rows — WITHOUT
+    -- writing them to data.Powers. `pending` (the pick budget) stays on the raw #selected, so an innate
+    -- never steals a level-up pick; the menu reads this `powers` list as the owned set. (task Resonance)
+    local ownedForDisplay = {}
+    local seen = {}
+    for _, s in ipairs(selected) do
+        ownedForDisplay[#ownedForDisplay + 1] = s
+        seen[s] = true
+    end
+    for id, def in pairs(self._powersConfig.powers or {}) do
+        if def.innate and not seen[id] then
+            ownedForDisplay[#ownedForDisplay + 1] = id
+            seen[id] = true
+        end
+    end
     return {
         ok = true,
-        powers = selected,
+        powers = ownedForDisplay,
         pending = PowerSelection.pendingSelections(level, #selected, levels),
         available = available,
     }

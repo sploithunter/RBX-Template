@@ -22,6 +22,10 @@ return {
     -- disc (no element origin). ArchetypeLogic.availablePowers appends these to the archetype pool,
     -- so the player's pickable pool = origin powers + generic ≈ 20 (pick 10).
     generic_pool = {
+        -- Resonance is INNATE (owned by everyone from spawn, configs/powers.lua innate=true). It's in
+        -- the pool so it RENDERS in the NATURAL column as an owned, slottable row (unlock_level=1 sorts
+        -- it to the top, above Magnet) — but it's surfaced as already-owned, so it never costs a pick.
+        "resonance",
         "prospector",
         "windfall",
         "fortune",
