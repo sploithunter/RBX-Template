@@ -251,18 +251,23 @@ end
 -- picker sits at ZIndex 300, so its header children must be > 300).
 function TradePanel:_buildHeader(parent, titleText, onClose, baseZ)
     baseZ = baseZ or 101
+    -- Header takes the home-area color (gold on Sand) like the other menus — Jason: "should be a
+    -- gold-like gradient, not teal."
+    local _, areaColor = PanelChrome.areaPill()
+    areaColor = areaColor or COLORS.header
+    local areaDim = areaColor:Lerp(Color3.fromRGB(0, 0, 0), 0.35)
     local header = Instance.new("Frame")
     header.Name = "Header"
     header.Size = UDim2.new(1, 0, 0, 72)
-    header.BackgroundColor3 = COLORS.header
+    header.BackgroundColor3 = areaColor
     header.BorderSizePixel = 0
     header.ZIndex = baseZ
     header.Parent = parent
     corner(header, 20)
     local g = Instance.new("UIGradient")
     g.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, COLORS.header),
-        ColorSequenceKeypoint.new(1, COLORS.headerGradient),
+        ColorSequenceKeypoint.new(0, areaColor),
+        ColorSequenceKeypoint.new(1, areaDim),
     })
     g.Rotation = 90
     g.Parent = header

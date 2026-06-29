@@ -28,18 +28,25 @@ local Workspace = game:GetService("Workspace")
 local PILL_UI = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
 -- Shared panel exterior (outer pill) + the currency-HUD capsule treatment for header/action buttons.
 local PanelChrome = require(script.Parent.Parent.Components.PanelChrome)
-local Pill = require(script.Parent.Parent.Pill)
 
--- Capsule treatment on an existing button (full corner + gradient + stroke), keeping its intrinsic
--- text so live `btn.Text = "…"` updates still work. Idempotent — re-call after a color change to
--- re-tint the gradient/stroke. (Jason: pills around the inventory header + action buttons.)
+-- Capsule treatment on an existing button: full pill corner + the game pill BORDER (neon 9-slice
+-- ring, area-themed). The fill keeps its state color and the intrinsic text stays untinted — the
+-- earlier gradient was bleeding through the text. Idempotent (safe to re-call after a recolor).
 local function pillify(btn)
     for _, c in ipairs(btn:GetChildren()) do
-        if c:IsA("UICorner") or c:IsA("UIGradient") or c:IsA("UIStroke") then
+        if
+            c:IsA("UICorner")
+            or c:IsA("UIGradient")
+            or c:IsA("UIStroke")
+            or c.Name == "PillBorder"
+        then
             c:Destroy()
         end
     end
-    Pill.applyTo(btn, { color = btn.BackgroundColor3 })
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = btn
+    PanelChrome.pillBorder(btn, PanelChrome.areaPill(), (btn.ZIndex or 1) + 4, 0, 0.18)
     return btn
 end
 
@@ -1039,7 +1046,7 @@ function InventoryPanel:_createUI(parent)
             -- OVER the close button — Jason: "what is this weird trade button".
             tradeBtn.AnchorPoint = Vector2.new(1, 0)
             tradeBtn.Position =
-                UDim2.new(1, (config.offset.x or 10) - (config.size.width or 36) - 8, 0, 6)
+                UDim2.new(1, (config.offset.x or 10) - (config.size.width or 36) - 8, 0, 16)
             tradeBtn.BackgroundColor3 = Color3.fromRGB(70, 140, 90)
             tradeBtn.Text = "🤝 Trade"
             tradeBtn.TextColor3 = Color3.fromRGB(240, 255, 245)
@@ -1067,7 +1074,7 @@ function InventoryPanel:_createUI(parent)
             b.Size = UDim2.new(0, width, 0, config.size.height)
             b.AnchorPoint = Vector2.new(1, 0)
             b.Position =
-                UDim2.new(1, (config.offset.x or 10) - (config.size.width or 36) - offset, 0, 6)
+                UDim2.new(1, (config.offset.x or 10) - (config.size.width or 36) - offset, 0, 16)
             b.BackgroundColor3 = color
             b.TextColor3 = Color3.fromRGB(240, 248, 255)
             b.Text = text
@@ -1261,8 +1268,10 @@ function InventoryPanel:_createUI(parent)
         closeButton.BorderSizePixel = 0
         closeButton.Image = "rbxassetid://" .. config.icon
         closeButton.ScaleType = Enum.ScaleType.Fit
-        closeButton.ZIndex = 117
-        closeButton.Parent = self.header
+        -- Parent to the PANEL frame (sibling of the 130 pill border) at Z146 so the X sits ABOVE the
+        -- outer pill, not under it (Jason). Same top-right corner position.
+        closeButton.ZIndex = 146
+        closeButton.Parent = self.frame
 
         local closeCorner = Instance.new("UICorner")
         closeCorner.CornerRadius = UDim.new(0, config.corner_radius)
