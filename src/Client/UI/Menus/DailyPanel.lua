@@ -260,19 +260,30 @@ function DailyPanel:_createDayCard(day, bundle, claimDay, claimedThrough, claima
     local isToday = claimable and day == claimDay
     local isClaimed = day <= claimedThrough
 
-    -- Tray-button pill treatment, keyed by state: today = citrine (gold, claimable pops),
-    -- claimed = emerald, upcoming = neutral.
-    local key = isToday and "citrine" or (isClaimed and "emerald" or "neutral")
-
     local card = Instance.new("Frame")
     card.Name = "Day_" .. day
     card.Size = UDim2.new(0, 92, 1, 0)
-    card.BackgroundTransparency = 1
     card.LayoutOrder = day
     card.ZIndex = 102
     card.Parent = self.calendarFrame
-    PanelChrome.pillPanel(card, key, 100) -- glossy fill (same as the lower-left tray buttons)
-    PanelChrome.pillBorder(card, key, 103, 0) -- neon ring
+
+    -- ACTIVE states (today/claimed) get the full glossy tray-button pill so they POP; UPCOMING
+    -- days recede to a dark fill + subtle neutral ring (the light pill panel made them too loud).
+    local key
+    if isToday or isClaimed then
+        key = isToday and "citrine" or "emerald" -- gold = claimable, green = claimed
+        card.BackgroundTransparency = 1
+        PanelChrome.pillPanel(card, key, 100) -- glossy fill (same as the lower-left tray buttons)
+        PanelChrome.pillBorder(card, key, 103, 0) -- neon ring
+    else
+        key = "upcoming"
+        card.BackgroundColor3 = Color3.fromRGB(40, 42, 52)
+        card.BorderSizePixel = 0
+        local cc = Instance.new("UICorner")
+        cc.CornerRadius = UDim.new(0, 10)
+        cc.Parent = card
+        PanelChrome.pillBorder(card, "neutral", 103, 2, 0.08)
+    end
 
     local dayLabel = Instance.new("TextLabel")
     dayLabel.Size = UDim2.new(1, 0, 0, 22)
