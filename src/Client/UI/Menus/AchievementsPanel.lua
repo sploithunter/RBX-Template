@@ -300,7 +300,11 @@ function AchievementsPanel:_makeTab(catId, meta, hasClaimable)
     local active = self.viewedCategory == catId
     local btn = Instance.new("TextButton")
     btn.Name = "Tab_" .. catId
-    btn.Size = UDim2.new(0, 132, 1, -6)
+    -- Relative width = 1/N so the tabs fill the bar edge-to-edge (Jason). The -gap offset reclaims
+    -- the (N-1) inter-tab gaps from the 8px UIListLayout padding so the row sums to ~full width.
+    local n = math.max(self._tabCount or 1, 1)
+    local gap = math.floor(8 * (n - 1) / n + 0.5)
+    btn.Size = UDim2.new(1 / n, -gap, 1, -6)
     btn.BackgroundTransparency = 1 -- the pill panel is the background now
     btn.Text = "" -- label lives in a CHILD (below) so the pill children can't cover it
     btn.AutoButtonColor = false
@@ -516,11 +520,16 @@ function AchievementsPanel:_refresh()
         self.viewedCategory = best
     end
 
-    -- rebuild tabs
+    -- rebuild tabs — count first so each tab gets 1/N of the bar width (fills it edge-to-edge)
     for _, b in pairs(self.tabButtons) do
         b:Destroy()
     end
     self.tabButtons = {}
+    local tabCount = 0
+    for _ in pairs(categories) do
+        tabCount += 1
+    end
+    self._tabCount = tabCount
     for id, meta in pairs(categories) do
         self:_makeTab(id, meta, claimableByCat[id])
     end
