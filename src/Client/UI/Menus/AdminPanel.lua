@@ -25,7 +25,8 @@ local Locations = require(ReplicatedStorage.Shared.Locations)
 
 -- New Net Signals
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
-local CloseButton = require(script.Parent.Parent.Components.CloseButton)
+-- THE shared panel exterior (window + outer pill + header + close X + section/button pill helpers).
+local PanelChrome = require(script.Parent.Parent.Components.PanelChrome)
 
 -- Load Logger with wrapper (following the established pattern)
 local LoggerWrapper
@@ -409,98 +410,59 @@ function AdminPanel:Hide()
 end
 
 function AdminPanel:_createUI(parent)
-    local theme = uiConfig.helpers.get_theme(uiConfig)
-
-    -- Create main panel using template
-    self.frame = self.templateManager:CreatePanel("panel_scroll", {
+    -- Shared window shell (area-themed pill + header + close X on top).
+    local shell = PanelChrome.build(parent, {
+        name = "AdminPanel",
+        title = "🛠️ Admin Control Panel",
         size = UDim2.new(0.8, 0, 0.9, 0),
-        position = UDim2.new(0.5, 0, 0.5, 0),
-        anchor_point = Vector2.new(0.5, 0.5),
-        parent = parent,
+        onClose = function()
+            self:Hide()
+        end,
     })
+    self.frame = shell.frame
+    self._areaKey = shell.areaKey
 
-    if not self.frame then
-        -- Fallback frame creation
-        self.frame = Instance.new("Frame")
-        self.frame.Size = UDim2.new(0.8, 0, 0.9, 0)
-        self.frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-        self.frame.AnchorPoint = Vector2.new(0.5, 0.5)
-        self.frame.BackgroundColor3 = theme.primary.surface
-        self.frame.BorderSizePixel = 0
-        self.frame.Parent = parent
-
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 16)
-        corner.Parent = self.frame
-    end
-
-    self.frame.Name = "AdminPanel"
-
-    -- Warning header
+    -- Caution band (admin warning) just under the header.
     local warningLabel = Instance.new("TextLabel")
     warningLabel.Name = "Warning"
-    warningLabel.Size = UDim2.new(1, 0, 0, 30)
-    warningLabel.Position = UDim2.new(0, 0, 0, 0)
+    warningLabel.AnchorPoint = Vector2.new(0.5, 0)
+    warningLabel.Size = UDim2.new(0.96, 0, 0, 26)
+    warningLabel.Position = UDim2.new(0.5, 0, 0.12, 0)
     warningLabel.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
     warningLabel.BorderSizePixel = 0
     warningLabel.Text = "⚠️ ADMIN TOOLS - USE WITH CAUTION ⚠️"
     warningLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    warningLabel.TextSize = 16
+    warningLabel.TextSize = 15
     warningLabel.Font = Enum.Font.GothamBold
-    warningLabel.TextXAlignment = Enum.TextXAlignment.Center
+    warningLabel.ZIndex = 102
     warningLabel.Parent = self.frame
-
     local warningCorner = Instance.new("UICorner")
     warningCorner.CornerRadius = UDim.new(0, 8)
     warningCorner.Parent = warningLabel
 
-    -- Title
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Name = "Title"
-    titleLabel.Size = UDim2.new(1, 0, 0, 40)
-    titleLabel.Position = UDim2.new(0, 0, 0, 35)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = "🛠️ Admin Control Panel"
-    titleLabel.TextColor3 = theme.text.primary
-    titleLabel.TextSize = 24
-    titleLabel.Font = uiConfig.fonts and uiConfig.fonts.primary or Enum.Font.Gotham
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Center
-    titleLabel.Parent = self.frame
-
-    -- Close button
-    -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham)
-    CloseButton.attach(self.frame, {
-        onClick = function()
-            self:Hide()
-        end,
-    })
-
-    -- Player Selection Section (NEW)
+    -- Player selection + result display (positioned relatively below the warning band).
     self:_createPlayerSelector()
     self:_createResultDisplay()
 
-    -- Scroll frame for test categories (adjusted position to make room for player selector)
+    -- Scroll frame for test categories (bottom portion).
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Name = "AdminScroll"
-    scrollFrame.Size = UDim2.new(1, -20, 1, -210)
-    scrollFrame.Position = UDim2.new(0, 10, 0, 200)
+    scrollFrame.AnchorPoint = Vector2.new(0.5, 0)
+    scrollFrame.Size = UDim2.new(0.96, 0, 0.62, 0)
+    scrollFrame.Position = UDim2.new(0.5, 0, 0.36, 0)
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
     scrollFrame.ScrollBarThickness = 8
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scrollFrame.ZIndex = 101
     scrollFrame.Parent = self.frame
 
-    -- Layout for test categories
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 15)
+    layout.Padding = UDim.new(0, 12)
     layout.Parent = scrollFrame
-
-    -- Update canvas size when layout changes
-    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
-    end)
 
     self.scrollFrame = scrollFrame
 
@@ -529,29 +491,8 @@ function AdminPanel:_createCategorySection(title, categoryData, layoutOrder)
     local totalItems = #tests + (#customInputs * 2) -- Custom inputs take 2 rows each (label + input)
     local containerHeight = totalItems * 45 + 10
 
-    -- Category header
-    local header = Instance.new("Frame")
-    header.Name = title .. "Header"
-    header.Size = UDim2.new(1, 0, 0, 40)
-    header.BackgroundColor3 = theme.primary.accent or Color3.fromRGB(0, 120, 180)
-    header.BorderSizePixel = 0
-    header.LayoutOrder = layoutOrder
-    header.Parent = self.scrollFrame
-
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 8)
-    headerCorner.Parent = header
-
-    local headerLabel = Instance.new("TextLabel")
-    headerLabel.Size = UDim2.new(1, -20, 1, 0)
-    headerLabel.Position = UDim2.new(0, 10, 0, 0)
-    headerLabel.BackgroundTransparency = 1
-    headerLabel.Text = title
-    headerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    headerLabel.TextSize = 16
-    headerLabel.Font = Enum.Font.GothamBold
-    headerLabel.TextXAlignment = Enum.TextXAlignment.Left
-    headerLabel.Parent = header
+    -- Category header — shared area-themed section band.
+    PanelChrome.sectionHeader(self.scrollFrame, { title = title, layoutOrder = layoutOrder })
 
     -- Tests container
     local testsContainer = Instance.new("Frame")
@@ -1241,10 +1182,12 @@ function AdminPanel:_createPlayerSelector()
     -- Player selector container
     local selectorContainer = Instance.new("Frame")
     selectorContainer.Name = "PlayerSelector"
-    selectorContainer.Size = UDim2.new(1, -20, 0, 40)
-    selectorContainer.Position = UDim2.new(0, 10, 0, 80)
+    selectorContainer.AnchorPoint = Vector2.new(0.5, 0)
+    selectorContainer.Size = UDim2.new(0.96, 0, 0, 40)
+    selectorContainer.Position = UDim2.new(0.5, 0, 0.18, 0)
     selectorContainer.BackgroundColor3 = theme.primary.card or Color3.fromRGB(60, 60, 65)
     selectorContainer.BorderSizePixel = 0
+    selectorContainer.ZIndex = 102
     selectorContainer.Parent = self.frame
 
     local selectorCorner = Instance.new("UICorner")
@@ -1306,10 +1249,12 @@ function AdminPanel:_createResultDisplay()
 
     local resultContainer = Instance.new("Frame")
     resultContainer.Name = "AdminResult"
-    resultContainer.Size = UDim2.new(1, -20, 0, 65)
-    resultContainer.Position = UDim2.new(0, 10, 0, 125)
+    resultContainer.AnchorPoint = Vector2.new(0.5, 0)
+    resultContainer.Size = UDim2.new(0.96, 0, 0, 56)
+    resultContainer.Position = UDim2.new(0.5, 0, 0.26, 0)
     resultContainer.BackgroundColor3 = theme.primary.card or Color3.fromRGB(45, 45, 50)
     resultContainer.BorderSizePixel = 0
+    resultContainer.ZIndex = 102
     resultContainer.Parent = self.frame
 
     local corner = Instance.new("UICorner")
