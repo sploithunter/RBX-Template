@@ -223,6 +223,7 @@ function HotbarBar.start()
     local available = { powers = {}, tacticals = {}, potions = {} }
     local editMode = false
     local openPicker
+    local editHint -- the "pick a slot" arrow over slot 1; dismissed once a slot is clicked (openPicker)
 
     -- ===== Potions: live brew-meter state for any slot bound to a potion =====
     -- PotionService is the SSOT; it pushes PotionUpdate (charge + owned counts) and answers
@@ -979,6 +980,12 @@ function HotbarBar.start()
     -- (the player's equipped squad), tacticals, and Clear. Selecting one rebinds.
     openPicker = function(slot)
         closePicker()
+        -- The player clicked a slot — the "pick a slot" arrow has done its job; clear it so it doesn't
+        -- linger through the picker + after binding (Jason: "once I click it why is there still an arrow").
+        if editHint then
+            editHint:Destroy()
+            editHint = nil
+        end
         local p = Instance.new("Frame")
         p.Name = "Picker"
         p.AnchorPoint = Vector2.new(0.5, 1)
@@ -1123,8 +1130,7 @@ function HotbarBar.start()
     local editPulseThread
     local editBanner
     -- "Pick a slot" cue: while editing, a blinking arrow hovers over slot 1 so a first-timer knows the
-    -- next move is to click a slot (the banner only says "press Done"). Cleared when editing ends.
-    local editHint
+    -- next move is to click a slot. Cleared when a slot is clicked (openPicker) or editing ends.
     local function setEditHint(on)
         if on then
             local slot1 = root:FindFirstChild("Slot_1")

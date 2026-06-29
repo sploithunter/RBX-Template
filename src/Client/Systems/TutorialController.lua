@@ -385,7 +385,10 @@ local function showEggPath(token, finder)
     end)
 end
 
-local function showUiPulse(token, name)
+-- withArrow: add a blinking ⬇ above the target (PRIMARY ui targets only). A secondary ui pulse (the
+-- farm step's Farm-Near cue alongside the crystal beacon) gets just the stroke — an arrow there reads
+-- as a second "do this" when the real target is the crystal (Jason: "you put an arrow at farm near").
+local function showUiPulse(token, name, withArrow)
     task.spawn(function()
         local pg = Players.LocalPlayer:WaitForChild("PlayerGui")
         -- the target may not exist yet (LevelUpButton appears with pending levels) — poll politely
@@ -403,6 +406,17 @@ local function showUiPulse(token, name)
         pulseStroke.Color = GOLD
         pulseStroke.Thickness = 3
         pulseStroke.Parent = target
+
+        if not withArrow then
+            -- stroke-only cue; blink it and bail (no arrow for secondary targets)
+            local t0 = os.clock()
+            while token == stepToken and pulseStroke do
+                pulseStroke.Transparency = 0.25
+                    + 0.55 * (0.5 + 0.5 * math.sin((os.clock() - t0) * 4))
+                RunService.RenderStepped:Wait()
+            end
+            return
+        end
 
         -- A blinking arrow floating just above the target. The breathing stroke alone is easy to miss on
         -- a small button (e.g. the power bar's Edit), so this points right at it. Parented to the target
@@ -486,10 +500,10 @@ local function apply(state)
         showEggBeacon(stepToken, nearestSmallCrystal, "⬇ MINE")
         showEggPath(stepToken, nearestSmallCrystal)
     elseif target.kind == "ui" and type(target.name) == "string" then
-        showUiPulse(stepToken, target.name)
+        showUiPulse(stepToken, target.name, true) -- primary ui target → arrow
     end
     if target.ui and type(target.ui) == "string" then
-        showUiPulse(stepToken, target.ui) -- secondary UI pulse alongside a world target
+        showUiPulse(stepToken, target.ui) -- secondary UI pulse alongside a world target — stroke only
     end
 end
 
