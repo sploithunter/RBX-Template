@@ -1011,6 +1011,17 @@ function InventoryPanel:_createUI(parent)
     self.content = panelResult.content
     self.baseUI = baseUI
 
+    -- Shift the header bag icon INSIDE the header (it was poking out top-left over the pill border)
+    -- and round the panel corner so no square fill peeks past the rounded gold ring (Jason).
+    local bagIcon = self.header and self.header:FindFirstChild("HeaderIcon")
+    if bagIcon then
+        bagIcon.Position = UDim2.new(0, 16, 0.5, 0)
+        bagIcon.AnchorPoint = Vector2.new(0, 0.5)
+    end
+    local fcorner = self.frame:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
+    fcorner.CornerRadius = UDim.new(0, 22)
+    fcorner.Parent = self.frame
+
     -- Add close button to header if it exists (same as Settings panel)
     if self.header then
         -- Get close button config from global defaults with safety checks
@@ -1391,8 +1402,12 @@ function InventoryPanel:_createCategoryTab(category, parent, layoutOrder)
     tab.Parent = parent
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
+    corner.CornerRadius = UDim.new(1, 0) -- full capsule to match the pill ring
     corner.Parent = tab
+
+    -- The game pill BORDER ring (area-themed) so the tabs read as pills like the other panels — the
+    -- fill color still conveys selection (blue selected / dark idle). (Jason: "they're not pilled".)
+    PanelChrome.pillBorder(tab, PanelChrome.areaPill(), 102, 0, 0.18)
 
     -- Tab content
     local content = Instance.new("Frame")
