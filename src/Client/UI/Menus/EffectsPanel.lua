@@ -203,8 +203,13 @@ function EffectsPanel:_createUI(parent)
     self.frame = shell.frame
     self._areaKey = shell.areaKey
 
-    -- Standard list pane: full width, bottom 70% of the panel (Jason's spec).
-    self.scrollFrame = PanelChrome.scrollPane(shell.frame, { name = "EffectsScroll" })
+    -- List pane: full width, bottom 80% of the panel. Events has NO tab bar (unlike Achievements),
+    -- so the list starts right under the header at y=0.2 instead of the default bottom-70% (Jason).
+    self.scrollFrame = PanelChrome.scrollPane(shell.frame, {
+        name = "EffectsScroll",
+        position = UDim2.new(0.5, 0, 0.2, 0),
+        size = UDim2.new(1, 0, 0.8, 0),
+    })
 end
 
 function EffectsPanel:_loadEffectsData()
