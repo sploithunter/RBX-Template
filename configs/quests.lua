@@ -1,98 +1,168 @@
 --[[
-    Quests — Halo & Horns MISSIONS.
+    Quests — Halo & Horns MISSIONS (ACTIVE TASKS ONLY).
 
-    PARALLEL THEMED TRACKS (Jason 2026-06-21: "expand it quite extensively" — a L14 character
-    had no new quest since ~L8). The old design was ONE strictly-linear chain: a single quest
-    active at a time, the next locked until the current was CLAIMED. After the early steps that
-    left the player on one big grind for many levels, so the system felt empty.
+    MODEL (Jason 2026-06-29, SSOT docs/QUESTS_VS_ACHIEVEMENTS.md): a quest is an ACTIVE TASK you are
+    doing right now. Every quest counts FROM ACTIVATION (since_start) — re-doable, "Hatch 100 eggs"
+    means 100 NEW eggs from now, never a lifetime total. NOTHING PASSIVE lives in quests: no
+    "reach level N", no lifetime milestones — those are ACHIEVEMENTS (configs/achievements.lua,
+    claimable, background). The ONE exception: a level may UNLOCK a track (the gate), never be a goal.
 
-    Now quests are grouped into independent TRACKS (Hatchery / Mining / Warpath / Collector /
-    Ascension / Trailblazer). Each track is its own ordered chain, but tracks run IN PARALLEL —
-    so several quests are active at once (one head per track) and leveling/playing always has
-    something in progress. QuestService gates per-track via Shared/Game/QuestChain.
+    TRACKS are LEVEL-GATED and HIDDEN until their `unlock_level` (QuestService filters them out of the
+    list below that level). Crossing the level fires "New quests available!" — a sound + the Quests
+    button pulses (track_unlocked). First Steps `unlock_level = 1` and AUTO-ACTIVATES as the single
+    focus right after the tutorial; it carries the player to Level 2.
 
-    This stays distinct from achievements (configs/achievements.lua = long-lived tiered totals);
-    quests are the guided "do this next" missions and reach into the endgame (L30+, rebirths,
-    1M coins, 25k eggs).
+    Each track is its own ordered chain (QuestChain): one active head, the next unlocks when the head
+    is claimed. Tracks run in parallel once unlocked. since_start baselines per-mission at activation.
 
-    Conditions ride the same stat counters the rest of the game increments (configs/stats.lua);
-    rewards go through the reward spine (Condition + ClaimLogic + RewardService). Claim-once
-    unless `repeatable`.
-
-    since_start = true: the mission measures FORWARD progress from the moment it becomes its
-    track's active head (QuestService stamps a per-mission baseline). Milestones that read a
-    TOTAL (reach Level N, unlock N areas, own N distinct pets, rebirth N times) stay ABSOLUTE —
-    no since_start — so an existing high-level character can immediately claim the ones it has
-    already passed (catch-up), then keep the deeper since_start grinds as long-term goals.
-
-    NOTE: existing quest ids are preserved (live characters' QuestClaims/QuestBaselines key off
-    them) — they were only assigned a track + intra-track order; new ids extend each track.
+    Goals are MODEST + re-doable (a session's worth), NOT lifetime grinds — those are achievements.
 ]]
 
 return {
-    -- Track metadata: id -> { title, order } (order = display priority of the track).
-    -- QuestService surfaces trackTitle to the panel; gating is per-track.
+    -- Track metadata: id -> { title, order, unlock_level }. order = display priority; unlock_level =
+    -- the earned Level at which the track appears (hidden below it). first_steps auto-activates.
     tracks = {
-        first_steps = { title = "First Steps", order = 0 }, -- post-tutorial onramp → guarantees Level 2
-        hatchery = { title = "The Hatchery", order = 1 },
-        mining = { title = "Deep Mining", order = 2 },
-        warpath = { title = "The Warpath", order = 3 },
-        collector = { title = "The Collector", order = 4 },
-        ascension = { title = "Ascension", order = 5 },
-        crossing = { title = "The Crossing", order = 6 },
-        trailblazer = { title = "Trailblazer", order = 7 },
+        first_steps = { title = "First Steps", order = 0, unlock_level = 1 },
+        mining = { title = "Deep Mining", order = 1, unlock_level = 2 },
+        hatchery = { title = "The Hatchery", order = 2, unlock_level = 3 },
+        collector = { title = "The Collector", order = 3, unlock_level = 4 },
+        warpath = { title = "The Warpath", order = 4, unlock_level = 5 },
+        trailblazer = { title = "Trailblazer", order = 5, unlock_level = 8 },
+        crossing = { title = "The Crossing", order = 6, unlock_level = 12 },
     },
 
     defs = {
-        -- ===================== FIRST STEPS (post-tutorial onramp) =====================
-        -- A short guided chain that picks up where the tutorial ends and carries the player to Level 2.
-        -- Absolute counters (no since_start) so a fresh/reset player accrues from zero regardless of
-        -- which track is the active focus; a veteran simply catch-up-claims them. (Jason)
+        -- ===================== FIRST STEPS (auto-activated onramp → Level 2) =====================
+        -- Picks up where the tutorial ends. since_start so tutorial casts/breaks can't pre-complete it
+        -- (Jason hit "Boost the Patch" 5/3 from tutorial casts). Teaches the core loop: power → mine →
+        -- hatch → earn, capstone grants the full L2 bar.
         fs_boost = {
             track = "first_steps",
             order = 1,
             name = "Boost the Patch",
             description = "Pulse Resonance near crystals — your pets mine the whole patch harder.",
-            condition = { type = "counter_at_least", counter = "powers_cast", value = 3 },
+            condition = {
+                type = "counter_at_least",
+                counter = "powers_cast",
+                value = 3,
+                since_start = true,
+            },
             reward = { currencies = { gems = 5 } },
+        },
+        fs_mine = {
+            track = "first_steps",
+            order = 2,
+            name = "Work the Vein",
+            description = "Smash 30 crystals — coins fund everything you'll do here.",
+            condition = {
+                type = "counter_at_least",
+                counter = "breakables_broken",
+                value = 30,
+                since_start = true,
+            },
+            reward = { currencies = { gems = 10 } },
         },
         fs_grow = {
             track = "first_steps",
-            order = 2,
-            name = "Grow Your Collection",
-            description = "Spend your coins on eggs — a bigger squad mines faster.",
-            condition = { type = "counter_at_least", counter = "eggs_hatched", value = 25 },
-            reward = { currencies = { gems = 10 } },
-        },
-        fs_welcome = {
-            track = "first_steps",
             order = 3,
-            name = "Welcome to the Realm",
-            description = "Smash 25 crystals to fund your first area unlock — then claim your reward.",
-            condition = { type = "counter_at_least", counter = "breakables_broken", value = 25 },
-            -- The onramp capstone: a guaranteed jump to Level 2 (700 XP = the full L2 bar) + a head start
-            -- on the first area gate (Meadow = 2000 grass_coins; this leaves a short mine) + gems.
-            reward = {
-                experience = 700,
-                currencies = { gems = 15, area_coins = 1500 },
-            },
-        },
-
-        -- ===================== HATCHERY (eggs + the collection) =====================
-        egg_collector = {
-            track = "hatchery",
-            order = 1,
-            name = "Hatch 10 Eggs",
-            description = "Spend your crystals on eggs and grow the collection.",
+            name = "Grow Your Collection",
+            description = "Spend your coins on 10 eggs — a bigger squad mines faster.",
             condition = {
                 type = "counter_at_least",
                 counter = "eggs_hatched",
                 value = 10,
                 since_start = true,
             },
-            reward = { currencies = { gems = 3 } },
+            reward = { currencies = { gems = 10 } },
         },
-        egg_hoarder = {
+        fs_coffers = {
+            track = "first_steps",
+            order = 4,
+            name = "Fill Your Coffers",
+            description = "Earn 1,500 crystals from your hauls — you'll need them for the next area.",
+            condition = {
+                type = "counter_at_least",
+                counter = "coins_earned_lifetime",
+                value = 1500,
+                since_start = true,
+            },
+            reward = { currencies = { gems = 10 } },
+        },
+        fs_welcome = {
+            track = "first_steps",
+            order = 5,
+            name = "Welcome to the Realm",
+            description = "Smash 50 more crystals to graduate — then claim your reward.",
+            condition = {
+                type = "counter_at_least",
+                counter = "breakables_broken",
+                value = 50,
+                since_start = true,
+            },
+            -- Onramp capstone: a guaranteed jump to Level 2 (700 XP = the full L2 bar) + a head start on
+            -- the first area gate (Meadow = 2000 grass_coins) + gems.
+            reward = {
+                experience = 700,
+                currencies = { gems = 15, area_coins = 1500 },
+            },
+        },
+
+        -- ===================== DEEP MINING (unlocks L2) =====================
+        mine_break_100 = {
+            track = "mining",
+            order = 1,
+            name = "Break 100 Crystals",
+            description = "Run the mining train — smash 100 crystal nodes.",
+            condition = {
+                type = "counter_at_least",
+                counter = "breakables_broken",
+                value = 100,
+                since_start = true,
+            },
+            reward = { currencies = { gems = 10 } },
+        },
+        mine_earn_3k = {
+            track = "mining",
+            order = 2,
+            name = "Earn 3,000 Crystals",
+            description = "Mining pays — bank 3,000 crystals from your hauls.",
+            condition = {
+                type = "counter_at_least",
+                counter = "coins_earned_lifetime",
+                value = 3000,
+                since_start = true,
+            },
+            reward = { currencies = { gems = 15 } },
+        },
+        mine_break_500 = {
+            track = "mining",
+            order = 3,
+            name = "Break 500 Crystals",
+            description = "Bigger crystals pay bigger. Yield buffs stack with everything.",
+            condition = {
+                type = "counter_at_least",
+                counter = "breakables_broken",
+                value = 500,
+                since_start = true,
+            },
+            reward = { currencies = { area_coins = 5000 } },
+        },
+
+        -- ===================== THE HATCHERY (unlocks L3) =====================
+        hatch_25 = {
+            track = "hatchery",
+            order = 1,
+            name = "Hatch 25 Eggs",
+            description = "Spend your crystals on eggs and grow the collection.",
+            condition = {
+                type = "counter_at_least",
+                counter = "eggs_hatched",
+                value = 25,
+                since_start = true,
+            },
+            reward = { currencies = { gems = 10 } },
+        },
+        hatch_100 = {
             track = "hatchery",
             order = 2,
             name = "Hatch 100 Eggs",
@@ -103,269 +173,23 @@ return {
                 value = 100,
                 since_start = true,
             },
-            reward = { currencies = { gems = 10 } },
+            reward = { currencies = { gems = 20 } },
         },
-        egg_baron = {
+        hatch_250 = {
             track = "hatchery",
             order = 3,
-            name = "Hatch 500 Eggs",
-            description = "The collection grows. Luck powers make every egg count.",
+            name = "Hatch 250 Eggs",
+            description = "A real hatchery now. Luck powers make every egg count.",
             condition = {
                 type = "counter_at_least",
                 counter = "eggs_hatched",
-                value = 500,
-                since_start = true,
-            },
-            reward = { currencies = { gems = 25 } },
-        },
-        egg_legend = {
-            track = "hatchery",
-            order = 4,
-            name = "Hatch 1,000 Eggs",
-            description = "Legends are hatched, not born.",
-            condition = {
-                type = "counter_at_least",
-                counter = "eggs_hatched",
-                value = 1000,
-                since_start = true,
-            },
-            reward = { currencies = { gems = 100 } },
-        },
-        egg_emperor = {
-            track = "hatchery",
-            order = 5,
-            name = "Hatch 5,000 Eggs",
-            description = "An industrial-scale hatchery. The rares are inevitable now.",
-            condition = {
-                type = "counter_at_least",
-                counter = "eggs_hatched",
-                value = 5000,
-                since_start = true,
-            },
-            reward = { currencies = { gems = 200, area_coins = 10000 } },
-        },
-        egg_titan = {
-            track = "hatchery",
-            order = 6,
-            name = "Hatch 10,000 Eggs",
-            description = "Five figures of eggs. The dynasty is well underway.",
-            condition = {
-                type = "counter_at_least",
-                counter = "eggs_hatched",
-                value = 10000,
-                since_start = true,
-            },
-            reward = { currencies = { gems = 300, area_coins = 25000 } },
-        },
-        egg_eternal = {
-            track = "hatchery",
-            order = 7,
-            name = "Hatch 25,000 Eggs",
-            description = "The Hatchery capstone — a true egg dynasty.",
-            condition = {
-                type = "counter_at_least",
-                counter = "eggs_hatched",
-                value = 25000,
-                since_start = true,
-            },
-            reward = {
-                currencies = { gems = 500 },
-                pets = { { id = "bear", variant = "rainbow" } },
-            },
-        },
-
-        -- ===================== MINING (crystals + coins) =====================
-        -- crystal_crusher is the track HEAD (always unlocked) and ABSOLUTE — the studio
-        -- AutomationSuite drives this quest directly on a fresh player.
-        crystal_crusher = {
-            track = "mining",
-            order = 1,
-            name = "Break 50 Crystals",
-            description = "Start the mining train — smash crystal nodes for crystals and XP.",
-            condition = { type = "counter_at_least", counter = "breakables_broken", value = 50 },
-            reward = { currencies = { gems = 8 } },
-        },
-        coin_miner = {
-            track = "mining",
-            order = 2,
-            name = "Mine 8,000 Crystals",
-            description = "Mining earns XP too — this pace lands you at Level 2.",
-            condition = {
-                type = "counter_at_least",
-                counter = "coins_earned_lifetime",
-                value = 8000,
-                since_start = true,
-            },
-            reward = { currencies = { gems = 15 } },
-        },
-        crystal_harvester = {
-            track = "mining",
-            order = 3,
-            name = "Break 2,500 Crystals",
-            description = "Bigger crystals pay bigger. Yield buffs stack with everything.",
-            condition = {
-                type = "counter_at_least",
-                counter = "breakables_broken",
-                value = 2500,
-                since_start = true,
-            },
-            reward = { currencies = { area_coins = 50000 } },
-        },
-        deep_miner = {
-            track = "mining",
-            order = 4,
-            name = "Mine 50,000 Crystals",
-            description = "Deeper veins, deeper pockets.",
-            condition = {
-                type = "counter_at_least",
-                counter = "coins_earned_lifetime",
-                value = 50000,
-                since_start = true,
-            },
-            reward = { currencies = { gems = 30 } },
-        },
-        crystal_magnate = {
-            track = "mining",
-            order = 5,
-            -- Tracks coins_earned_lifetime: the BIOME-coin total (grass/lava/ice/desert all roll up)
-            -- that mining actually pays — the abundant currency, NOT the dead `crystals` currency
-            -- (capped at 50k, not in the HUD). Jason: the mined biome currency IS "crystals".
-            name = "Earn 500,000 Crystals",
-            description = "Bank half a million crystals from your mining hauls.",
-            condition = {
-                type = "counter_at_least",
-                counter = "coins_earned_lifetime",
-                value = 500000,
-                since_start = true,
-            },
-            reward = { currencies = { gems = 150 } },
-        },
-        coin_tycoon = {
-            track = "mining",
-            order = 6,
-            name = "Mine 1,000,000 Crystals",
-            description = "The Mining capstone — a seven-figure fortune.",
-            condition = {
-                type = "counter_at_least",
-                counter = "coins_earned_lifetime",
-                value = 1000000,
-                since_start = true,
-            },
-            reward = {
-                currencies = { gems = 300 },
-                pets = { { id = "bear", variant = "rainbow" } },
-            },
-        },
-
-        -- ===================== WARPATH (combat) =====================
-        empowered = {
-            track = "warpath",
-            order = 1,
-            name = "Cast 5 Powers",
-            description = "Use your hotbar powers — number keys or tap.",
-            condition = {
-                type = "counter_at_least",
-                counter = "powers_cast",
-                value = 5,
-                since_start = true,
-            },
-            reward = { currencies = { gems = 5 } },
-        },
-        -- BRIDGE before the combat grinds: enemies only invade at Level 5 (they don't attack earlier),
-        -- so "Defeat 10 Enemies" as the next head was an unbeatable wall right after the tutorial
-        -- (Jason). This head holds the slot and tells the player WHY — combat unlocks at 5 — until they
-        -- get there; only then does first_blood become the active head.
-        to_battle = {
-            track = "warpath",
-            order = 2,
-            name = "Reach Level 5 — To Battle!",
-            description = "Enemies invade at Level 5. Keep leveling, then defend your realm.",
-            condition = { type = "level_at_least", value = 5 },
-            reward = { currencies = { gems = 5 } },
-        },
-        first_blood = {
-            track = "warpath",
-            order = 3,
-            name = "Defeat 10 Enemies",
-            description = "Your squad fights back — let your tank pull and pile on.",
-            condition = {
-                type = "counter_at_least",
-                counter = "enemies_defeated",
-                value = 10,
-                since_start = true,
-            },
-            reward = { currencies = { gems = 10 } },
-        },
-        centurion = {
-            track = "warpath",
-            order = 4,
-            name = "Defeat 100 Enemies",
-            description = "Hold the line — a hundred invaders sent back.",
-            condition = {
-                type = "counter_at_least",
-                counter = "enemies_defeated",
-                value = 100,
-                since_start = true,
-            },
-            reward = { currencies = { gems = 25 } },
-        },
-        power_adept = {
-            track = "warpath",
-            order = 5,
-            name = "Cast 100 Powers",
-            description = "Powers win fights — keep them on cooldown.",
-            condition = {
-                type = "counter_at_least",
-                counter = "powers_cast",
-                value = 100,
-                since_start = true,
-            },
-            reward = { currencies = { gems = 25 }, items = { { id = "health_potion", qty = 3 } } },
-        },
-        monster_hunter = {
-            track = "warpath",
-            order = 6,
-            name = "Defeat 250 Enemies",
-            description = "Clear the patrols. The opposing realm keeps sending more.",
-            condition = {
-                type = "counter_at_least",
-                counter = "enemies_defeated",
                 value = 250,
                 since_start = true,
             },
-            reward = { currencies = { gems = 50 } },
-        },
-        slayer = {
-            track = "warpath",
-            order = 7,
-            name = "Defeat 2,500 Enemies",
-            description = "A reputation built on fallen invaders.",
-            condition = {
-                type = "counter_at_least",
-                counter = "enemies_defeated",
-                value = 2500,
-                since_start = true,
-            },
-            reward = { currencies = { gems = 120 } },
-        },
-        warlord = {
-            track = "warpath",
-            order = 8,
-            name = "Defeat 10,000 Enemies",
-            description = "The Warpath capstone — few survive the crossing.",
-            condition = {
-                type = "counter_at_least",
-                counter = "enemies_defeated",
-                value = 10000,
-                since_start = true,
-            },
-            reward = {
-                currencies = { gems = 300 },
-                pets = { { id = "bear", variant = "rainbow" } },
-            },
+            reward = { currencies = { gems = 40 } },
         },
 
-        -- ===================== COLLECTOR (gear + distinct pets) =====================
+        -- ===================== THE COLLECTOR (unlocks L4) =====================
         gear_hunter = {
             track = "collector",
             order = 1,
@@ -390,7 +214,7 @@ return {
                 value = 1,
                 since_start = true,
             },
-            reward = { currencies = { gems = 8 }, items = { { id = "health_potion", qty = 2 } } },
+            reward = { currencies = { gems = 8 } },
         },
         gear_collector = {
             track = "collector",
@@ -405,102 +229,103 @@ return {
             },
             reward = { currencies = { gems = 25 } },
         },
-        menagerie = {
-            track = "collector",
-            order = 4,
-            name = "Own 25 Distinct Pets",
-            description = "Variety is power — collect 25 different species.",
-            condition = { type = "counter_at_least", counter = "distinct_pets", value = 25 },
-            reward = { currencies = { area_coins = 25000 } },
-        },
-        gear_master = {
-            track = "collector",
-            order = 5,
-            name = "Find 50 Enhancements",
-            description = "A full toolbox of cogs to tune every power.",
+
+        -- ===================== THE WARPATH (unlocks L5 — combat) =====================
+        -- No "Reach Level 5" quest: Level 5 is the track's unlock GATE, not a goal. Enemies invade at 5,
+        -- so these become available exactly when they're beatable.
+        war_cast_20 = {
+            track = "warpath",
+            order = 1,
+            name = "Cast 20 Powers",
+            description = "Powers win fights — keep them on cooldown.",
             condition = {
                 type = "counter_at_least",
-                counter = "enhancements_found",
-                value = 50,
+                counter = "powers_cast",
+                value = 20,
                 since_start = true,
             },
-            reward = { currencies = { gems = 80 } },
+            reward = { currencies = { gems = 10 } },
         },
-        pet_archivist = {
-            track = "collector",
-            order = 6,
-            name = "Own 75 Distinct Pets",
-            description = "The Collector capstone — a living encyclopedia.",
-            condition = { type = "counter_at_least", counter = "distinct_pets", value = 75 },
-            reward = {
-                currencies = { gems = 200 },
-                pets = { { id = "bear", variant = "rainbow" } },
+        war_defeat_25 = {
+            track = "warpath",
+            order = 2,
+            name = "Defeat 25 Enemies",
+            description = "Your squad fights back — let your tank pull and pile on.",
+            condition = {
+                type = "counter_at_least",
+                counter = "enemies_defeated",
+                value = 25,
+                since_start = true,
             },
+            reward = { currencies = { gems = 15 } },
+        },
+        war_defeat_100 = {
+            track = "warpath",
+            order = 3,
+            name = "Defeat 100 Enemies",
+            description = "Hold the line — a hundred invaders sent back.",
+            condition = {
+                type = "counter_at_least",
+                counter = "enemies_defeated",
+                value = 100,
+                since_start = true,
+            },
+            reward = { currencies = { gems = 25 }, items = { { id = "health_potion", qty = 3 } } },
         },
 
-        -- ===================== ASCENSION (level + the origin choice) =====================
-        chosen_one = {
-            track = "ascension",
+        -- ===================== TRAILBLAZER (unlocks L8 — explore) =====================
+        path_next_area = {
+            track = "trailblazer",
             order = 1,
-            name = "Reach Level 5 — Choose Your Origin",
-            description = "Claim levels at the Ascend altar. Level 5 unlocks your Origin!",
-            condition = { type = "counter_at_least", counter = "levels_gained", value = 4 },
-            reward = { currencies = { gems = 20 } },
+            name = "Unlock the Next Area",
+            description = "Spread out — each area opens new pets and richer ore.",
+            condition = {
+                type = "counter_at_least",
+                counter = "areas_unlocked",
+                value = 1,
+                since_start = true,
+            },
+            reward = { currencies = { gems = 15 } },
         },
-        ascendant_10 = {
-            track = "ascension",
+        path_3_areas = {
+            track = "trailblazer",
             order = 2,
-            name = "Reach Level 10",
-            description = "Keep claiming levels — power and reach scale with you.",
-            condition = { type = "level_at_least", value = 10 },
+            name = "Unlock 3 Areas",
+            description = "Open the gates — biome coins compound as you expand.",
+            condition = {
+                type = "counter_at_least",
+                counter = "areas_unlocked",
+                value = 3,
+                since_start = true,
+            },
             reward = { currencies = { gems = 30 } },
         },
-        ascendant_15 = {
-            track = "ascension",
+        path_creators = {
+            track = "trailblazer",
             order = 3,
-            name = "Reach Level 15",
-            description = "The midgame opens up. Push your squad's level.",
-            condition = { type = "level_at_least", value = 15 },
-            reward = { currencies = { gems = 50 } },
-        },
-        ascendant_20 = {
-            track = "ascension",
-            order = 4,
-            name = "Reach Level 20",
-            description = "Veteran territory — the deeper realms await.",
-            condition = { type = "level_at_least", value = 20 },
-            reward = { currencies = { gems = 75 } },
-        },
-        ascendant_25 = {
-            track = "ascension",
-            order = 5,
-            name = "Reach Level 25",
-            description = "Few climb this high. The endgame is in sight.",
-            condition = { type = "level_at_least", value = 25 },
-            reward = { currencies = { gems = 100 } },
-        },
-        ascendant_30 = {
-            track = "ascension",
-            order = 6,
-            name = "Reach Level 30",
-            description = "The Ascension capstone — a true paragon.",
-            condition = { type = "level_at_least", value = 30 },
-            reward = {
-                currencies = { gems = 200 },
-                pets = { { id = "bear", variant = "rainbow" } },
+            name = "Meet 3 Creators",
+            description = "Track down the Creators scattered across the realms.",
+            condition = {
+                type = "counter_at_least",
+                counter = "creators_met",
+                value = 3,
+                since_start = true,
             },
+            reward = { currencies = { gems = 25 } },
         },
 
-        -- ===================== THE CROSSING (heaven / hell journey) =====================
-        -- Visits fire on realm ENTRY (ZoneTrackerService); unlocks fire when a Heaven_*/Hell_*
-        -- zone is purchased (ZoneService) — both via the event-counter bridge. (No secret-pet
-        -- quest here on purpose, Jason: secret pets are too rare to gate progress on — a blocker.)
+        -- ===================== THE CROSSING (unlocks L12 — heaven/hell) =====================
         go_heaven = {
             track = "crossing",
             order = 1,
             name = "Journey to Heaven",
             description = "Climb past the Desert gate and set foot in a Heaven realm.",
-            condition = { type = "counter_at_least", counter = "heaven_visits", value = 1 },
+            condition = {
+                type = "counter_at_least",
+                counter = "heaven_visits",
+                value = 1,
+                since_start = true,
+            },
             reward = { currencies = { gems = 20 } },
         },
         go_hell = {
@@ -508,80 +333,26 @@ return {
             order = 2,
             name = "Descend into Hell",
             description = "Brave the depths below — reach a Hell realm.",
-            condition = { type = "counter_at_least", counter = "hell_visits", value = 1 },
+            condition = {
+                type = "counter_at_least",
+                counter = "hell_visits",
+                value = 1,
+                since_start = true,
+            },
             reward = { currencies = { gems = 20 } },
         },
-        heaven_settler = {
+        realm_settler = {
             track = "crossing",
             order = 3,
-            name = "Unlock an Area in Heaven",
-            description = "Claim a stake in the heavens — unlock any Heaven zone.",
-            condition = { type = "counter_at_least", counter = "heaven_areas_unlocked", value = 1 },
+            name = "Unlock a Realm Area",
+            description = "Stake your claim above or below — unlock any Heaven or Hell zone.",
+            condition = {
+                type = "counter_at_least",
+                counter = "heaven_areas_unlocked",
+                value = 1,
+                since_start = true,
+            },
             reward = { currencies = { gems = 60 } },
-        },
-        hell_settler = {
-            track = "crossing",
-            order = 4,
-            name = "Unlock an Area in Hell",
-            description = "Stake your claim below — unlock any Hell zone.",
-            condition = { type = "counter_at_least", counter = "hell_areas_unlocked", value = 1 },
-            reward = {
-                currencies = { gems = 100 },
-                pets = { { id = "bear", variant = "rainbow" } },
-            },
-        },
-
-        -- ===================== TRAILBLAZER (explore + rebirth) =====================
-        pathfinder = {
-            track = "trailblazer",
-            order = 1,
-            name = "Unlock 3 Areas",
-            description = "Spread out — each area opens new pets and richer ore.",
-            condition = { type = "counter_at_least", counter = "areas_unlocked", value = 3 },
-            reward = { currencies = { gems = 15 } },
-        },
-        socialite = {
-            track = "trailblazer",
-            order = 2,
-            name = "Meet 5 Creators",
-            description = "Track down the Creators scattered across the realms.",
-            condition = { type = "counter_at_least", counter = "creators_met", value = 5 },
-            reward = { currencies = { gems = 25 } },
-        },
-        world_walker = {
-            track = "trailblazer",
-            order = 3,
-            name = "Unlock 6 Areas",
-            description = "Open the gates to the far realms.",
-            condition = { type = "counter_at_least", counter = "areas_unlocked", value = 6 },
-            reward = { currencies = { gems = 40 } },
-        },
-        secret_seeker = {
-            track = "trailblazer",
-            order = 4,
-            name = "Find 5 Secrets",
-            description = "The realms are full of hidden things for the curious.",
-            condition = { type = "counter_at_least", counter = "secrets_found", value = 5 },
-            reward = { currencies = { area_coins = 20000 } },
-        },
-        reborn = {
-            track = "trailblazer",
-            order = 5,
-            name = "Rebirth Once",
-            description = "Trade your progress for permanent power. Begin again, stronger.",
-            condition = { type = "counter_at_least", counter = "rebirths", value = 1 },
-            reward = { currencies = { gems = 100 } },
-        },
-        ascended_soul = {
-            track = "trailblazer",
-            order = 6,
-            name = "Rebirth 3 Times",
-            description = "The Trailblazer capstone — mastery through renewal.",
-            condition = { type = "counter_at_least", counter = "rebirths", value = 3 },
-            reward = {
-                currencies = { gems = 350 },
-                pets = { { id = "bear", variant = "rainbow" } },
-            },
         },
     },
 }

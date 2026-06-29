@@ -688,6 +688,10 @@ function AdminToolsService:_handleResetToBeginning(adminPlayer, data)
     -- windows too — each quest re-baselines to the now-zero counter when it next activates.
     playerData.QuestBaselines = {}
     playerData.QuestBanked = {}
+    -- Clear the active focus + the "tracks seen" set so a reset player falls cleanly back into the
+    -- First Steps onramp (not a stale Warpath focus) and re-announces tracks as they re-cross levels.
+    playerData.QuestActiveTrack = nil
+    playerData.QuestTracksSeen = nil
     -- MetCreators is deliberately KEPT (like PetIndex): the once-ever Meet-The-Creator
     -- must NOT re-fire on every playtest reset (Jason: "don't reset the flag when I
     -- reset — that way I don't have a whole inventory full of them"). The exclusives

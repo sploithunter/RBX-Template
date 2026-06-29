@@ -195,6 +195,62 @@ function QuestService:SetActiveTrack(player, trackId)
     return { ok = true, activeTrack = trackId }
 end
 
+-- First Steps is complete once every one of its quests has been claimed at least once.
+function QuestService:_firstStepsIncomplete(data)
+    local ledger = claims(data)
+    for id, def in pairs(self._config.defs or {}) do
+        if def.track == "first_steps" and (ledger[id] or 0) == 0 then
+            return true
+        end
+    end
+    return false
+end
+
+-- ACTIVE-FOCUS invariant (Jason): a quest is the single ACTIVE task. Keep the focus right:
+--   • First Steps AUTO-ACTIVATES as the focus until it's done — but only AFTER the tutorial (so its
+--     since_start windows baseline post-tutorial; otherwise tutorial casts pre-complete "Boost the
+--     Patch"). It OVERRIDES any stale focus (e.g. a reset player still pointed at Warpath).
+--   • A focus on a track that's now hidden (below unlock_level) or gone is dropped to nil.
+-- Persists via SetActiveTrack (opens/banks the since_start windows). Only writes on an actual change.
+function QuestService:_ensureFocus(player, data, level)
+    -- Mid-tutorial: leave the focus alone (don't baseline First Steps on tutorial actions). A veteran
+    -- with no tutorial state, or a player past it (Tutorial.done), is eligible.
+    local tutorialDone = type(data.Tutorial) ~= "table" or data.Tutorial.done == true
+    local desired = data.QuestActiveTrack
+    local meta = desired and self._config.tracks and self._config.tracks[desired]
+    if desired and (not meta or (tonumber(meta.unlock_level) or 1) > level) then
+        desired = nil -- stale / hidden focus → clear
+    end
+    if tutorialDone and self:_firstStepsIncomplete(data) then
+        desired = "first_steps" -- onramp owns the focus until complete
+    end
+    if desired ~= data.QuestActiveTrack then
+        self:SetActiveTrack(player, desired)
+    end
+end
+
+-- "New quests available!" — fire track_unlocked once for each track the player crosses the unlock
+-- level for. data.QuestTracksSeen is seeded silently on first eval (so existing high-level players
+-- don't get a burst of announces); only LATER crossings (a real level-up) announce.
+function QuestService:_announceUnlocks(player, data, level)
+    local seen = data.QuestTracksSeen
+    local firstEval = seen == nil
+    seen = seen or {}
+    for trackId, meta in pairs(self._config.tracks or {}) do
+        local unlockLevel = tonumber(meta.unlock_level) or 1
+        if unlockLevel <= level and not seen[trackId] then
+            seen[trackId] = true
+            if not firstEval and unlockLevel > 1 then
+                fireGameEvent(player, "track_unlocked", {
+                    track = trackId,
+                    title = meta.title or trackId,
+                })
+            end
+        end
+    end
+    data.QuestTracksSeen = seen
+end
+
 function QuestService:List(player)
     self:_reconcile(player) -- keep the single open window honest before reading
     local snapshot = self:_snapshot(player)
@@ -204,6 +260,14 @@ function QuestService:List(player)
         -- report no quests rather than nil-indexing (the panel just shows an empty list briefly).
         return { ok = true, quests = {}, activeTrack = nil }
     end
+    -- LEVEL-GATED FOCUS (Jason): a quest is an ACTIVE task. Before reading, make sure the single focus
+    -- is correct — auto-activate First Steps once the tutorial's done (so its since_start windows
+    -- baseline AFTER the tutorial, not pre-completed by tutorial casts) and drop a stale/hidden focus —
+    -- then announce any track the player has newly crossed the unlock level for ("New quests
+    -- available!"). These persist via SetActiveTrack, so read ledger/bases AFTER them.
+    local level = tonumber(player:GetAttribute("Level")) or 1
+    self:_ensureFocus(player, data, level)
+    self:_announceUnlocks(player, data, level)
     local ledger = claims(data)
     local bases = baselines(data)
     local bank = banked(data)
@@ -211,35 +275,30 @@ function QuestService:List(player)
     local tracks = self._config.tracks or {}
     local out = {}
     for id, def in pairs(self._config.defs or {}) do
-        local count = ledger[id] or 0
         local track = def.track or "origin"
         local meta = tracks[track]
-        table.insert(out, {
-            id = id,
-            def = def,
-            track = track,
-            trackTitle = (meta and meta.title) or track,
-            trackOrder = (meta and tonumber(meta.order)) or math.huge,
-            order = tonumber(def.order) or math.huge,
-            name = def.name,
-            description = def.description,
-            reward = def.reward, -- so the panel can summarize the prize (read-only)
-            claimedCount = count,
-            repeatable = def.repeatable == true,
-        })
+        -- HIDDEN UNTIL UNLOCK: a track below its unlock_level doesn't appear at all (Jason: "it's not
+        -- even available"). Crossing the level surfaces it + fires the announce above.
+        local unlockLevel = (meta and tonumber(meta.unlock_level)) or 1
+        if not meta or unlockLevel <= level then
+            table.insert(out, {
+                id = id,
+                def = def,
+                track = track,
+                trackTitle = (meta and meta.title) or track,
+                trackOrder = (meta and tonumber(meta.order)) or math.huge,
+                order = tonumber(def.order) or math.huge,
+                name = def.name,
+                description = def.description,
+                reward = def.reward, -- so the panel can summarize the prize (read-only)
+                claimedCount = ledger[id] or 0,
+                repeatable = def.repeatable == true,
+            })
+        end
     end
     -- PARALLEL TRACKS, SINGLE FOCUS (Jason): QuestChain locks a mission until every lower-order one
-    -- IN ITS TRACK is claimed. Grind quests only accrue while their track is the ACTIVE focus
-    -- (activation-gated, forward-from-activation); milestones always read the lifetime total.
-    local _, heads = QuestChain.annotate(out)
-    -- ONRAMP DEFAULT (Jason): a player with no chosen focus FALLS INTO "First Steps" — the guided
-    -- post-tutorial routine — until it's done, instead of landing on nothing (or a stale Warpath
-    -- focus). heads[track] exists only while that track has an unclaimed head, so this clears itself
-    -- once the onramp is complete; the player then picks their own branch. Display-only (its quests are
-    -- absolute so they accrue regardless); a real SetActiveTrack still overrides it.
-    if not activeTrack and heads and heads["first_steps"] then
-        activeTrack = "first_steps"
-    end
+    -- IN ITS TRACK is claimed. since_start quests only accrue while their track is the ACTIVE focus.
+    QuestChain.annotate(out)
     table.sort(out, function(a, b)
         if a.trackOrder ~= b.trackOrder then
             return a.trackOrder < b.trackOrder

@@ -886,22 +886,24 @@ function AutomationSuite.run(opts)
         "grant ledger empty"
     )
 
-    -- Quests: condition gate + claim-once anti-replay.
-    api:Execute(player, "test.setCounter", { counter = "breakables_broken", value = 0 })
+    -- Quests: condition gate + claim-once anti-replay. fs_boost is the First Steps head (auto-active);
+    -- since_start so it baselines at activation — drive its counter forward to cross the threshold.
+    api:Execute(player, "quest.setActiveTrack", { track = "first_steps" })
+    api:Execute(player, "test.setCounter", { counter = "powers_cast", value = 0 })
     report:expectEqual(
         "quest not claimable below its threshold",
-        api:Execute(player, "quest.claim", { questId = "crystal_crusher" }).result.reason,
+        api:Execute(player, "quest.claim", { questId = "fs_boost" }).result.reason,
         "not_met"
     )
-    api:Execute(player, "test.setCounter", { counter = "breakables_broken", value = 50 })
+    api:Execute(player, "test.setCounter", { counter = "powers_cast", value = 3 })
     report:expect(
-        "quest claimable once the counter hits 50",
-        domainOk(api:Execute(player, "quest.claim", { questId = "crystal_crusher" })),
+        "quest claimable once the counter hits its goal",
+        domainOk(api:Execute(player, "quest.claim", { questId = "fs_boost" })),
         "quest claim failed at threshold"
     )
     report:expectEqual(
         "re-claiming the quest is rejected (already_claimed)",
-        api:Execute(player, "quest.claim", { questId = "crystal_crusher" }).result.reason,
+        api:Execute(player, "quest.claim", { questId = "fs_boost" }).result.reason,
         "already_claimed"
     )
 
