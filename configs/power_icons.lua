@@ -154,6 +154,7 @@ local M = {
         coin_yield = { symbol = "coins_up", target = "self" }, -- Prospector
         windfall = { symbol = "gift_up", target = "self" }, -- Windfall
         magnet = { symbol = "magnet", target = "self" }, -- Magnet (drop pull)
+        resonance = { symbol = "chevrons_up", target = "self" }, -- Resonance (innate AoE crystal-boost)
         luck = { symbol = "clover_lucky", target = "self" }, -- Fortune
         luck_huge = { symbol = "clover_huge", target = "self" }, -- Huge Fortune
         move_speed = { symbol = "arrow_right", target = "self" }, -- Swift

@@ -60,6 +60,9 @@ return {
     cataclysm = "Capstone: a squad-scaled meteor burst.",
     inferno_brand = "Signature: a ramping burning brand.",
 
+    -- Innate (every player owns it from spawn) — the early-game farming cast
+    resonance = "Pulse a boost over nearby crystals so your pets mine the whole patch harder.",
+
     -- Generic (white) — farming / luck / utility, any archetype
     prospector = "+crystal yield for a duration.",
     windfall = "A burst of bonus crystals / doubled pickups.",

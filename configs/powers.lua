@@ -184,7 +184,7 @@ return {
         -- max — reusing the configs/breakables.lua M.boost SSOT + its pet-damage amplification (no new
         -- effect). `farm_boost` is a bespoke family handled directly in PowerService:_applyEffect.
         -- magnitude = Boost added per cast; radius = AoE (range-enhanceable via radiusBase).
-        resonance = { family = "farm_boost", magnitude = 100, radius = 25 },
+        resonance = { family = "farm_boost", magnitude = 100, radius = 25, target = "targeted_aoe" },
 
         -- ===== Attack-fill (origin-coloured) — reuse the enemy-debuff families (firewall-safe:
         -- player powers don't deal direct damage; they make pets hit harder / lock enemies). =====

@@ -101,6 +101,7 @@ return {
                 amplified_burst = true,
                 team_cleave = true,
                 burn_spread = true,
+                farm_boost = true, -- Resonance: widen the crystal-boost AoE (real `radius` base)
             },
             requires_aoe = true, -- still blocked on melee / single-target powers
         },
@@ -140,6 +141,7 @@ return {
                 buff = true,
                 coin_yield = true,
                 crit = true,
+                farm_boost = true, -- Resonance: pump the Boost added per cast (magnitude)
                 drop_rate = true, -- Windfall: boost the +drop-chance magnitude (it has magnitude=2.0)
                 evade = true, -- Mirage Step: raise the avoidance chance (clamped <100% at roll time)
                 blind = true, -- Sandstorm: deepen the accuracy cut (clamped <0.95 at roll time)
