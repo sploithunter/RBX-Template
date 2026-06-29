@@ -1436,6 +1436,33 @@ function GameAPIService:_registerCommands()
             return s:SetActiveTrack(context.player, args.track)
         end,
     })
+    bus:register("achievement.list", {
+        description = "List achievements with lifetime value, tiers, claimed state, and categories.",
+        handler = function(context)
+            local s = self:_service("AchievementsService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return {
+                ok = true,
+                achievements = s:GetAchievements(context.player),
+                categories = s:Categories(),
+            }
+        end,
+    })
+    bus:register("achievement.claim", {
+        description = "Claim a reached achievement tier's reward (once).",
+        validate = function(args)
+            return Validators.fields(args, { achievementId = "string", tierId = "string" })
+        end,
+        handler = function(context, args)
+            local s = self:_service("AchievementsService")
+            if not s then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            return s:Claim(context.player, args.achievementId, args.tierId)
+        end,
+    })
     bus:register("daily.status", {
         description = "Daily login streak status (claimable today? current/next streak).",
         validate = function(args)

@@ -32,6 +32,7 @@ local TRAY_BUTTONS = {
     "ShopButton",
     "EffectsButton",
     "SettingsButton",
+    "AchievementsButton",
 }
 
 local function pillKey(theme)

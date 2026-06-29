@@ -1,4 +1,3 @@
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Signal = require(ReplicatedStorage.Shared.Libraries.Signal)
@@ -18,13 +17,10 @@ function AchievementsService:Init()
     self._config = self._configLoader:LoadConfig("achievements")
     self.Completed = Signal.new()
 
-    if self._statsService and self._statsService.CounterChanged then
-        self._statsConnection = self._statsService.CounterChanged:Connect(
-            function(player, counterId, newValue)
-                self:_onCounterChanged(player, counterId, newValue)
-            end
-        )
-    end
+    -- CLAIMABLE model (Jason 2026-06-29): achievements are NO LONGER auto-granted when a tier is
+    -- reached — the player CLAIMS them in the Achievements panel (Claim → _grantTier). So the
+    -- CounterChanged auto-grant connection and the on-join EvaluateAll are gone; reaching a goal only
+    -- makes its tier *claimable*. EvaluateAll/_grantTier remain for the Studio smoke test.
 
     self._logger:Info("AchievementsService initialized", {
         context = "AchievementsService",
@@ -33,28 +29,8 @@ function AchievementsService:Init()
 end
 
 function AchievementsService:Start()
-    Players.PlayerAdded:Connect(function(player)
-        task.spawn(function()
-            self:_waitForDataAndEvaluate(player)
-        end)
-    end)
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        task.spawn(function()
-            self:_waitForDataAndEvaluate(player)
-        end)
-    end
-end
-
-function AchievementsService:_waitForDataAndEvaluate(player)
-    local deadline = os.clock() + 15
-    while player.Parent and not self._dataService:IsDataLoaded(player) and os.clock() < deadline do
-        task.wait(0.2)
-    end
-
-    if player.Parent and self._dataService:IsDataLoaded(player) then
-        self:EvaluateAll(player)
-    end
+    -- No-op: achievements are claim-driven now (the player claims reached tiers in the panel), so
+    -- there's nothing to auto-grant on join. Kept so boot's Start() call stays valid.
 end
 
 function AchievementsService:_countAchievements()
@@ -209,14 +185,8 @@ function AchievementsService:_evaluateAchievement(player, achievement, value)
     return granted
 end
 
-function AchievementsService:_onCounterChanged(player, counterId, newValue)
-    for _, achievement in pairs(self._config.achievements or {}) do
-        if achievement.stat == counterId then
-            self:_evaluateAchievement(player, achievement, newValue)
-        end
-    end
-end
-
+-- EvaluateAll grants every reached tier at once — NO LONGER wired to gameplay (achievements are
+-- claim-driven). Retained only for the Studio smoke test, which drives it explicitly.
 function AchievementsService:EvaluateAll(player)
     local result = {}
     for achievementId, achievement in pairs(self._config.achievements or {}) do
@@ -235,15 +205,56 @@ function AchievementsService:GetAchievements(player)
         local value = self._statsService:Get(player, achievement.stat)
         result[achievementId] = {
             id = achievement.id,
+            category = achievement.category, -- panel grouping
             display_name = achievement.display_name,
             stat = achievement.stat,
             value = value,
             tiers = achievement.tiers,
-            completed = state.Completed[achievement.id] or {},
+            completed = state.Completed[achievement.id] or {}, -- now means CLAIMED
         }
     end
 
     return result
+end
+
+-- Category metadata (title/order/icon) for the panel's grouped layout.
+function AchievementsService:Categories()
+    return self._config.categories or {}
+end
+
+-- CLAIM a reached-but-unclaimed achievement tier (Jason: claim button on reached, progress bar
+-- otherwise). Grants exactly that tier's reward once; _grantTier fires the fanfare + persists.
+function AchievementsService:Claim(player, achievementId, tierId)
+    local achievement = self._config.achievements and self._config.achievements[achievementId]
+    if not achievement then
+        return { ok = false, reason = "unknown_achievement" }
+    end
+    local tier
+    for _, t in ipairs(achievement.tiers or {}) do
+        if t.id == tierId then
+            tier = t
+            break
+        end
+    end
+    if not tier then
+        return { ok = false, reason = "unknown_tier" }
+    end
+    local data = self._dataService:GetData(player)
+    if type(data) ~= "table" then
+        return { ok = false, reason = "no_data" }
+    end
+    local state = self:_ensureAchievements(data)
+    if state.Completed[achievementId] and state.Completed[achievementId][tierId] then
+        return { ok = false, reason = "already_claimed" }
+    end
+    local value = self._statsService:Get(player, achievement.stat) or 0
+    if value < tier.goal then
+        return { ok = false, reason = "not_reached" }
+    end
+    if not self:_grantTier(player, achievement, tier, value) then
+        return { ok = false, reason = "grant_failed" }
+    end
+    return { ok = true, achievementId = achievementId, tierId = tierId, reward = tier.reward }
 end
 
 return AchievementsService

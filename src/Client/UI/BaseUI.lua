@@ -347,6 +347,15 @@ else
                             color = Color3.fromRGB(241, 196, 15),
                         },
                     },
+                    {
+                        type = "menu_button",
+                        config = {
+                            name = "Achievements",
+                            icon = "🏆",
+                            text = "Awards",
+                            color = Color3.fromRGB(180, 140, 50),
+                        },
+                    },
                 },
             },
             pets_button_pane = {
