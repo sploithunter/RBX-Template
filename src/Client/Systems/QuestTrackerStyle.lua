@@ -11,6 +11,22 @@ local Players = game:GetService("Players")
 
 local QuestTrackerStyle = {}
 local started = false
+QuestTrackerStyle._pane = nil
+QuestTrackerStyle._dismissed = false
+
+-- The tracker's visibility is a pure function of the dismissed flag — set by the X, cleared when the
+-- Quest menu opens or a quest becomes claimable (Jason: it's in the way when idle, esp. on mobile).
+local function applyVisibility()
+    if QuestTrackerStyle._pane then
+        QuestTrackerStyle._pane.Visible = not QuestTrackerStyle._dismissed
+    end
+end
+
+-- Re-show the tracker. Public so BaseUI (new claimable) + QuestPanel (menu opened) can un-dismiss it.
+function QuestTrackerStyle.show()
+    QuestTrackerStyle._dismissed = false
+    applyVisibility()
+end
 
 local function corner(p, r)
     local c = Instance.new("UICorner")
@@ -97,7 +113,7 @@ function QuestTrackerStyle.start()
         if pbg then
             pbg.AnchorPoint = Vector2.new(0.5, 0)
             pbg.Position = UDim2.new(0.5, 0, 0, 5)
-            pbg.Size = UDim2.fromOffset(330, 10) -- thin strip, a touch under the Focus bar
+            pbg.Size = UDim2.fromOffset(300, 10) -- thin strip, a touch under the Focus bar (leaves a left gutter for the dismiss X)
             pbg.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
             pbg.ZIndex = 2
             stroke(pbg, Color3.fromRGB(70, 110, 180), 1.5)
@@ -120,6 +136,32 @@ function QuestTrackerStyle.start()
             ptext.ZIndex = 4
             outline(ptext)
         end
+
+        -- Dismiss X — top-left gutter (clear of the top-right CLAIM chip). Hides the tracker until
+        -- the Quest menu is opened or a quest becomes claimable.
+        if not pane:FindFirstChild("DismissX") then
+            local x = Instance.new("TextButton")
+            x.Name = "DismissX"
+            x.AnchorPoint = Vector2.new(0, 0)
+            x.Position = UDim2.new(0, 3, 0, 2)
+            x.Size = UDim2.fromOffset(16, 16)
+            x.BackgroundColor3 = Color3.fromRGB(70, 72, 80)
+            x.Text = "✕"
+            x.TextColor3 = Color3.fromRGB(235, 238, 245)
+            x.TextScaled = true
+            x.Font = Enum.Font.GothamBold
+            x.ZIndex = 6
+            x.Parent = pane
+            corner(x, 8)
+            stroke(x, Color3.fromRGB(28, 30, 36), 1)
+            x.Activated:Connect(function()
+                QuestTrackerStyle._dismissed = true
+                applyVisibility()
+            end)
+        end
+
+        QuestTrackerStyle._pane = pane
+        applyVisibility()
     end)
 end
 

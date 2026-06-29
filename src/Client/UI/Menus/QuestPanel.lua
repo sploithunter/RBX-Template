@@ -82,6 +82,10 @@ function QuestPanel:Show(parent)
     self:_createUI(parent)
     self.isVisible = true
     self:_refresh()
+    -- Opening the Quests menu un-dismisses the HUD tracker (it stays after the menu closes).
+    pcall(function()
+        require(script.Parent.Parent.Parent.Systems.QuestTrackerStyle).show()
+    end)
 end
 
 function QuestPanel:Hide()

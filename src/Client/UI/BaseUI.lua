@@ -2262,6 +2262,16 @@ function BaseUI:_bindQuestTracker()
         end
         self:_setRewardsBadge(claimables)
 
+        -- A newly-claimable quest un-dismisses the HUD tracker (rising edge only, so a manual dismiss
+        -- sticks until there's something new to claim). Jason: re-show "if you finished an aspect and
+        -- need to claim it."
+        if claimables > (self._prevQuestClaimables or 0) then
+            pcall(function()
+                require(script.Parent.Parent.Systems.QuestTrackerStyle).show()
+            end)
+        end
+        self._prevQuestClaimables = claimables
+
         local q = pick(res.quests, res.activeTrack)
         if not q then
             -- nothing claimable and no active focus -> nudge the player to pick a branch (or all
