@@ -188,10 +188,12 @@ function AchievementsPanel:_createUI(parent)
     gradient.Rotation = 45
     gradient.Parent = frame
 
-    -- Header
+    -- Header — RELATIVE size so it scales with the panel (Jason live-tuned: was a fixed 76px height).
     local header = Instance.new("Frame")
     header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 76)
+    header.Size = UDim2.new(0.99, 0, 0.1, 0)
+    header.Position = UDim2.new(0.5, 0, 0, 0)
+    header.AnchorPoint = Vector2.new(0.5, 0)
     header.BackgroundColor3 = headerColor
     header.BorderSizePixel = 0
     header.ZIndex = 101
@@ -234,8 +236,8 @@ function AchievementsPanel:_createUI(parent)
     -- Category tab bar
     local bar = Instance.new("ScrollingFrame")
     bar.Name = "TabBar"
-    bar.Size = UDim2.new(1, -24, 0, 44)
-    bar.Position = UDim2.new(0, 12, 0, 84)
+    bar.Size = UDim2.new(0.95, 0, 0.1, 0) -- RELATIVE (Jason live-tuned: scales with the panel)
+    bar.Position = UDim2.new(0.03, 0, 0.1, 0)
     bar.BackgroundTransparency = 1
     bar.BorderSizePixel = 0
     bar.ScrollBarThickness = 4
@@ -255,8 +257,8 @@ function AchievementsPanel:_createUI(parent)
     -- Scrolling list of achievement rows
     local list = Instance.new("ScrollingFrame")
     list.Name = "AchievementList"
-    list.Size = UDim2.new(1, -24, 1, -144)
-    list.Position = UDim2.new(0, 12, 0, 136)
+    list.Size = UDim2.new(0.95, 0, 0.8, 0) -- RELATIVE (Jason live-tuned: scales with the panel)
+    list.Position = UDim2.new(0.03, 0, 0.2, 0)
     list.BackgroundTransparency = 1
     list.BorderSizePixel = 0
     list.ScrollBarThickness = 6
@@ -367,7 +369,7 @@ function AchievementsPanel:_makeRow(entry, order)
     elseif entry.value >= tier.goal then
         rowKey = "emerald"
     end
-    pillBorder(row, rowKey, 105, 2) -- centered on the edge (small bleed) so the pill overlaps it (Jason)
+    pillBorder(row, rowKey, 105, 2, 0.08) -- SliceScale 0.08 for list rows (Jason); centered on edge
 
     local name = Instance.new("TextLabel")
     name.Size = UDim2.new(1, -150, 0, 26)
