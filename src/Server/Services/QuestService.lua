@@ -244,6 +244,7 @@ function QuestService:_announceUnlocks(player, data, level)
                 fireGameEvent(player, "track_unlocked", {
                     track = trackId,
                     title = meta.title or trackId,
+                    name = "🆕 New Quests: " .. (meta.title or trackId) .. "!", -- banner text
                 })
             end
         end

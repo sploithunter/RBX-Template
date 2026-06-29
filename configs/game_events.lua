@@ -124,6 +124,15 @@ return {
         vfx = { kind = "burst", color = { 90, 180, 255 } }, -- sky blue
     },
 
+    -- A whole quest TRACK just unlocked (server: QuestService:_announceUnlocks when the player crosses
+    -- its unlock_level). "New quests available!" — sound + a lingering banner (ctx.name carries the
+    -- "🆕 New Quests: <Track>!" text). Jason: nothing passive — the level-cross is an EVENT.
+    track_unlocked = {
+        sound = "celebratory_jingle",
+        vfx = { kind = "burst", color = { 120, 200, 255 } }, -- bright blue
+        banner = { seconds = 5, color = { 120, 200, 255 } },
+    },
+
     -- The daily streak reward was claimed (server: DailyService:Claim success).
     daily_claim = {
         sound = "celebratory_jingle",
