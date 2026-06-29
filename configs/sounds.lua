@@ -23,6 +23,15 @@ return {
         playback_speed = 0.85,
     },
 
+    -- Slotting an enhancement into a power slot — ELECZap "Anime-style lightning" (ElevenLabs),
+    -- group-uploaded via scripts/upload_audio.js. Wired to the enhancement_slotted event.
+    enhancement_slot_zap = {
+        id = "rbxassetid://112202092041303",
+        volume = 0.3, -- ElevenLabs zaps run hot; lowered (Jason). Tune here.
+        playback_speed = 1.0,
+        bus = "effects", -- rides the SFX slider (the "ui" bus is a binary on/off that ignores it)
+    },
+
     -- Add more named sounds here as needed
 
     -- Short celebratory stinger (non-looping) — level-up / ascend. Uploaded via scripts/upload_audio.js.
