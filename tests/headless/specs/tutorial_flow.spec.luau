@@ -66,7 +66,8 @@ return function()
                 { "coin_payout", { amount = 60 } }, -- farm_crystals (100 coins)
                 "egg_hatch", -- hatch_another
                 "power_bound", -- bind_power (Resonance onto the bar)
-                "power_cast", -- cast_power → done
+                "power_cast", -- cast_power
+                "enhancement_slotted", -- slot_power → done
             })
             expect(p.done).to.equal(true)
             expect(TutorialFlow.current(cfg, p)).to.equal(nil)

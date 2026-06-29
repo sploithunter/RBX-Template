@@ -101,6 +101,7 @@ function TutorialService:_onEvent(player, name, ctx)
     data.Tutorial = progress
     self._dataService:RequestSave(player, "tutorial_step")
     self:_push(player)
+    self:_applyStepGrant(player, data) -- reward on ENTER (e.g. slot step grants potency + a slot)
     if progress.done then
         -- finishing the LAST step is its own moment: stinger + burst (configs/game_events)
         fireGameEvent(player, "tutorial_complete", {})
@@ -112,6 +113,57 @@ function TutorialService:_onEvent(player, name, ctx)
             done = progress.done,
         })
     end
+end
+
+-- On ENTERING a step that carries a `grant`, apply it ONCE (idempotent via data.Tutorial.granted).
+-- The slot step uses it: 3 natural Potency enhancements + an inherent slot on Resonance so a level-1
+-- player has somewhere to drop one. Config-driven so future steps can reward without code.
+function TutorialService:_applyStepGrant(player, data)
+    if not (data and data.Tutorial) or data.Tutorial.done then
+        return
+    end
+    local step = self._config.steps and self._config.steps[data.Tutorial.step]
+    local grant = step and step.grant
+    if type(grant) ~= "table" then
+        return
+    end
+    local id = step.id or tostring(data.Tutorial.step)
+    data.Tutorial.granted = data.Tutorial.granted or {}
+    if data.Tutorial.granted[id] then
+        return -- already rewarded this step (rejoin / repeated event)
+    end
+    data.Tutorial.granted[id] = true
+
+    local locator = _G.RBXTemplateServices
+    if type(grant.enhancements) == "table" and locator then
+        local enh = locator:Get("EnhancementService")
+        if enh and enh.Grant then
+            for _, e in ipairs(grant.enhancements) do
+                for _ = 1, math.max(1, math.floor(tonumber(e.count) or 1)) do
+                    pcall(function()
+                        enh:Grant(player, {
+                            type = e.type,
+                            origins = e.origins or {},
+                            level = e.level or 1,
+                        })
+                    end)
+                end
+            end
+        end
+    end
+
+    -- Ensure the target power has at least one (inherent, free) slot so the granted enhancement has
+    -- somewhere to go — innate powers don't get a pick-time inherent slot, and a level-1 player has no
+    -- granted augmentation slots yet. Inherent slots don't draw from the granted pool.
+    if type(grant.ensure_slot) == "string" then
+        data.Slots = type(data.Slots) == "table" and data.Slots or {}
+        local cur = data.Slots[grant.ensure_slot]
+        if type(cur) ~= "table" or #cur == 0 then
+            data.Slots[grant.ensure_slot] = { { inherent = true } }
+        end
+    end
+
+    self._dataService:RequestSave(player, "tutorial_grant", { critical = true })
 end
 
 function TutorialService:_push(player)

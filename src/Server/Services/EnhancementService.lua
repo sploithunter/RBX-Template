@@ -176,7 +176,12 @@ function EnhancementService:_migrateLegacy(player, data)
     self._dataService:RequestSave(player, "enhancement_migrate", { critical = true })
 end
 
-local function ownsPower(data, powerId)
+local function ownsPower(data, powerId, powersConfig)
+    -- INNATE powers (Resonance) are owned-free and NOT in data.Powers, but they're slottable.
+    local def = powersConfig and powersConfig.powers and powersConfig.powers[tostring(powerId)]
+    if def and def.innate then
+        return true
+    end
     for _, id in ipairs(data.Powers or {}) do
         if id == powerId then
             return true
@@ -295,7 +300,7 @@ function EnhancementService:Slot(player, powerId, slotIndex, uid)
     if not rec then
         return { ok = false, reason = "not_in_inventory" }
     end
-    if not ownsPower(data, powerId) then
+    if not ownsPower(data, powerId, self._powersConfig) then
         return { ok = false, reason = "power_not_owned" }
     end
     local slots = type(data.Slots) == "table" and data.Slots[powerId]
