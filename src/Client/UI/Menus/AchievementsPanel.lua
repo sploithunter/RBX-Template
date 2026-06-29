@@ -33,7 +33,7 @@ end
 
 -- Game-standard pill BORDER (neon hollow ring) on a wide element. 9-sliced like HotbarBar so the
 -- corners stay crisp at any width (SliceCenter from the pill art). Sits over the element edge.
-local function pillBorder(parent, key, zindex, bleed)
+local function pillBorder(parent, key, zindex, bleed, sliceScale)
     bleed = bleed or 8 -- px to extend (panel) or inset (rows, negative) the ring vs the element edge
     local img = Instance.new("ImageLabel")
     img.Name = "PillBorder"
@@ -41,9 +41,9 @@ local function pillBorder(parent, key, zindex, bleed)
     img.Image = PILL.frames[key] or PILL.frames.sapphire
     img.ScaleType = Enum.ScaleType.Slice
     img.SliceCenter = Rect.new(180, 180, 330, 330)
-    -- SliceScale shrinks the 9-slice corners (~180px native) to a thin, PROPORTIONAL border. Without
-    -- it the corners render full-size and the big panel becomes a giant rounded blob (live-verified).
-    img.SliceScale = 0.18
+    -- SliceScale shrinks the 9-slice corners (~180px native) to a thin, PROPORTIONAL border (lower =
+    -- thinner + pushed outward). Live-tuned with Jason: 0.10 on the big panel, 0.18 on tabs/rows.
+    img.SliceScale = sliceScale or 0.18
     img.AnchorPoint = Vector2.new(0.5, 0.5)
     img.Position = UDim2.fromScale(0.5, 0.5)
     img.Size = UDim2.new(1, bleed, 1, bleed)
@@ -177,7 +177,8 @@ function AchievementsPanel:_createUI(parent)
     corner.Parent = frame
 
     -- Game-standard pill frame around the whole panel, area-themed (matches the HUD/tray chrome).
-    pillBorder(frame, self._areaKey, 130)
+    -- Live-tuned with Jason: bleed 0 + SliceScale 0.10 (thinner ring, pushed to the very edge).
+    pillBorder(frame, self._areaKey, 130, 0, 0.10)
 
     local gradient = Instance.new("UIGradient")
     gradient.Color = ColorSequence.new({
