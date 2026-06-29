@@ -26,6 +26,9 @@ local function pillBorder(parent, key, zindex)
     img.Image = PILL.frames[key] or PILL.frames.sapphire
     img.ScaleType = Enum.ScaleType.Slice
     img.SliceCenter = Rect.new(180, 180, 330, 330)
+    -- SliceScale shrinks the 9-slice corners (~180px native) to a thin, PROPORTIONAL border. Without
+    -- it the corners render full-size and the big panel becomes a giant rounded blob (live-verified).
+    img.SliceScale = 0.18
     img.AnchorPoint = Vector2.new(0.5, 0.5)
     img.Position = UDim2.fromScale(0.5, 0.5)
     img.Size = UDim2.new(1, 8, 1, 8) -- slight bleed so the ring frames the edge cleanly
