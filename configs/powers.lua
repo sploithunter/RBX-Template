@@ -186,7 +186,7 @@ return {
         -- magnitude = Boost added per cast; radius = AoE (range-enhanceable via radiusBase).
         -- 50 base → ×1.99 with 3 SO potencies (single=0.33 ea) ≈ 99.5 ≈ full slam (MaxBoost 100);
         -- unslotted +50/cast ≈ 2 casts to full against the −1/sec decay. (Jason-tuned balance.)
-        resonance = { family = "farm_boost", magnitude = 50, radius = 25, target = "targeted_aoe" },
+        resonance = { family = "farm_boost", magnitude = 50, radius = 30, target = "targeted_aoe" },
 
         -- ===== Attack-fill (origin-coloured) — reuse the enemy-debuff families (firewall-safe:
         -- player powers don't deal direct damage; they make pets hit harder / lock enemies). =====
