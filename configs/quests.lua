@@ -33,6 +33,7 @@ return {
     -- Track metadata: id -> { title, order } (order = display priority of the track).
     -- QuestService surfaces trackTitle to the panel; gating is per-track.
     tracks = {
+        first_steps = { title = "First Steps", order = 0 }, -- post-tutorial onramp → guarantees Level 2
         hatchery = { title = "The Hatchery", order = 1 },
         mining = { title = "Deep Mining", order = 2 },
         warpath = { title = "The Warpath", order = 3 },
@@ -43,6 +44,40 @@ return {
     },
 
     defs = {
+        -- ===================== FIRST STEPS (post-tutorial onramp) =====================
+        -- A short guided chain that picks up where the tutorial ends and carries the player to Level 2.
+        -- Absolute counters (no since_start) so a fresh/reset player accrues from zero regardless of
+        -- which track is the active focus; a veteran simply catch-up-claims them. (Jason)
+        fs_boost = {
+            track = "first_steps",
+            order = 1,
+            name = "Boost the Patch",
+            description = "Pulse Resonance near crystals — your pets mine the whole patch harder.",
+            condition = { type = "counter_at_least", counter = "powers_cast", value = 3 },
+            reward = { currencies = { gems = 5 } },
+        },
+        fs_grow = {
+            track = "first_steps",
+            order = 2,
+            name = "Grow Your Collection",
+            description = "Spend your coins on eggs — a bigger squad mines faster.",
+            condition = { type = "counter_at_least", counter = "eggs_hatched", value = 25 },
+            reward = { currencies = { gems = 10 } },
+        },
+        fs_welcome = {
+            track = "first_steps",
+            order = 3,
+            name = "Welcome to the Realm",
+            description = "Smash 100 crystals to fund your first area unlock — then claim your reward.",
+            condition = { type = "counter_at_least", counter = "breakables_broken", value = 100 },
+            -- The onramp capstone: a guaranteed jump to Level 2 (700 XP = the full L2 bar) + a head start
+            -- on the first area gate (Meadow = 2000 grass_coins; this leaves a short mine) + gems.
+            reward = {
+                experience = 700,
+                currencies = { gems = 15, area_coins = 1500 },
+            },
+        },
+
         -- ===================== HATCHERY (eggs + the collection) =====================
         egg_collector = {
             track = "hatchery",
