@@ -1601,6 +1601,31 @@ function InventoryPanel:_stackPrefix(ref)
     return nil
 end
 
+-- Cached display data for a deployed stack ref, EVEN at quantity 0. A fully-deployed stack (every copy
+-- equipped → 0 un-equipped remaining) has NO draftable inventory card, so byRef/byPrefix (built from
+-- inventoryData, which excludes qty-0 stacks) can't resolve it — the deployed pet would vanish from
+-- the squad strip and the count would read short. _stackDataByKey is cached for every stack regardless
+-- of quantity (see the stack-build pass), so it's the fallback. Exact key first, then pet:enchant
+-- prefix (area drift). nil for uid/non-stack refs or genuinely-unknown stacks (traded/gone).
+function InventoryPanel:_stackDataForRef(ref)
+    if type(ref) ~= "string" or string.sub(ref, 1, 6) ~= "stack|" or not self._stackDataByKey then
+        return nil
+    end
+    local hit = self._stackDataByKey[string.sub(ref, 7)]
+    if hit then
+        return hit
+    end
+    local pref = self:_stackPrefix(ref)
+    if pref then
+        for k, data in pairs(self._stackDataByKey) do
+            if self:_stackPrefix("stack|" .. k) == pref then
+                return data
+            end
+        end
+    end
+    return nil
+end
+
 function InventoryPanel:_seedDraftFromEquipped()
     local refs = {}
     local player = self.player or Players.LocalPlayer
@@ -1644,8 +1669,12 @@ function InventoryPanel:_seedDraftFromEquipped()
             local resolved = e.ref and (byExact[e.ref] or byPrefix[self:_stackPrefix(e.ref)])
             if resolved then
                 table.insert(refs, resolved)
-            elseif e.ref and not haveInventory then
-                table.insert(refs, e.ref) -- inventory not loaded yet; don't lose the squad
+            elseif e.ref and (not haveInventory or self:_stackDataForRef(e.ref)) then
+                -- Keep the deployed ref when it has no draftable card but is still REAL: either inventory
+                -- hasn't loaded yet (don't lose the squad), OR the stack is fully equipped (0 un-equipped
+                -- → no card, but cached in _stackDataByKey; the render draws it from that stack data).
+                -- Only a ref with no card AND no stack data (truly traded/gone) is dropped.
+                table.insert(refs, e.ref)
             end
         end
     end
@@ -4171,7 +4200,10 @@ function InventoryPanel:_updateItemsDisplay()
         -- Use eqIndex (not a local) so _renderEmptySlotRings(eqIndex - 1) below pads the RIGHT number
         -- of empty slots — otherwise it padded a full 10 on top of the draft cards and they piled up.
         for _, ref in ipairs(draftRefs) do
-            local item = byRef[ref] or byPrefix[self:_stackPrefix(ref)]
+            -- exact → prefix (un-equipped card) → cached stack data (fully-deployed stack, no card)
+            local item = byRef[ref]
+                or byPrefix[self:_stackPrefix(ref)]
+                or self:_stackDataForRef(ref)
             if item then
                 -- A draft SLOT is one pet, not the whole stack: clone + count 1 so the card shows a
                 -- single pet (no "x5" stack badge), like the live equipped ghost cards do.
