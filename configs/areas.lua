@@ -64,7 +64,10 @@ return {
             unlock = {
                 required_zone = "Spawn",
                 unlocked_by_default = false,
-                currency = "crystals",
+                -- grass_coins ("Grass Crystals", 🌿) — the mined coin, like every other home-world gate.
+                -- Was "crystals" (the rare "Relics" currency, default 0, NOT mined) → Meadow was
+                -- effectively unpurchasable. Stale legacy id from before the per-biome currency split.
+                currency = "grass_coins",
                 -- Meadow grants a PERMANENT +10% coins boost, so it must not be near-free.
                 -- ~3 min of grass mining at the fresh-squad rate.
                 cost = 2000,
