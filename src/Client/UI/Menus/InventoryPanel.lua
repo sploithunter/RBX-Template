@@ -1033,8 +1033,11 @@ function InventoryPanel:_createUI(parent)
             tradeBtn.Activated:Connect(function()
                 local mm = _G.MenuManager
                 if mm and mm.OpenPanel then
-                    self:Hide()
-                    mm:OpenPanel("Trade", "slide_in_right")
+                    -- guard an un-deployed draft before leaving for the Trade panel
+                    self:_requestClose(function()
+                        self:Hide()
+                        mm:OpenPanel("Trade", "slide_in_right")
+                    end)
                 end
             end)
         end
@@ -1255,9 +1258,9 @@ function InventoryPanel:_createUI(parent)
             closeButton.BackgroundColor3 = config.background_color
         end)
 
-        -- Connect close functionality
+        -- Connect close functionality (guards an un-deployed squad draft before closing)
         closeButton.MouseButton1Click:Connect(function()
-            self:Hide()
+            self:_requestClose()
         end)
     end
 
@@ -1792,6 +1795,130 @@ function InventoryPanel:_commitDraft()
     -- The draft now matches what's being deployed — flip the label to "deployed/live".
     self._draftDirty = false
     self:_updateItemsDisplay()
+end
+
+-- Close request from a user-facing close control. If the squad draft has un-deployed edits, confirm
+-- first (clicking a pet only STAGES it — Activate commits); otherwise close immediately. `after` does
+-- the actual close (Hide, or Hide + open another panel). (Jason: remind before losing a staged squad.)
+function InventoryPanel:_requestClose(after)
+    after = after or function()
+        self:Hide()
+    end
+    if self._draftDirty then
+        self:_showDeployGuard(after)
+    else
+        after()
+    end
+end
+
+-- Modal shown when closing with an un-deployed draft. Three outcomes: Activate-and-close (commit then
+-- close — the good path), close without deploying (discard the edits; the draft re-seeds from the live
+-- squad next open), or keep editing. Reuses the in-file confirm shape (no shared confirm component).
+function InventoryPanel:_showDeployGuard(after)
+    if self._deployGuard then
+        return
+    end
+    local frame = Instance.new("Frame")
+    frame.Name = "DeployGuard"
+    frame.Size = UDim2.new(0, 320, 0, 226)
+    frame.Position = UDim2.new(0.5, -160, 0.5, -113)
+    frame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    frame.BorderSizePixel = 0
+    frame.ZIndex = 300
+    frame.Parent = self.frame
+    self._deployGuard = frame
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(120, 235, 150) -- the Activate green
+    stroke.Thickness = 2
+    stroke.Parent = frame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -20, 0, 28)
+    title.Position = UDim2.new(0, 10, 0, 12)
+    title.BackgroundTransparency = 1
+    title.Text = "Deploy your squad?"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 18
+    title.Font = Enum.Font.GothamBold
+    title.ZIndex = 301
+    title.Parent = frame
+
+    local msg = Instance.new("TextLabel")
+    msg.Size = UDim2.new(1, -24, 0, 36)
+    msg.Position = UDim2.new(0, 12, 0, 44)
+    msg.BackgroundTransparency = 1
+    msg.Text = "Your squad changes aren't live yet — Activate to send them out."
+    msg.TextColor3 = Color3.fromRGB(200, 200, 200)
+    msg.TextSize = 14
+    msg.Font = Enum.Font.Gotham
+    msg.TextWrapped = true
+    msg.ZIndex = 301
+    msg.Parent = frame
+
+    local btns = Instance.new("Frame")
+    btns.Size = UDim2.new(1, -24, 0, 118)
+    btns.Position = UDim2.new(0, 12, 0, 96)
+    btns.BackgroundTransparency = 1
+    btns.ZIndex = 301
+    btns.Parent = frame
+
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Vertical
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 8)
+    layout.Parent = btns
+
+    local function dismiss()
+        if self._deployGuard then
+            self._deployGuard:Destroy()
+            self._deployGuard = nil
+        end
+    end
+
+    local function mkBtn(text, color, order)
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.new(1, 0, 0, 34)
+        b.BackgroundColor3 = color
+        b.BorderSizePixel = 0
+        b.Text = text
+        b.TextColor3 = Color3.fromRGB(255, 255, 255)
+        b.TextSize = 14
+        b.Font = Enum.Font.GothamBold
+        b.LayoutOrder = order
+        b.ZIndex = 302
+        b.Parent = btns
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(0, 6)
+        c.Parent = b
+        return b
+    end
+
+    local activateBtn = mkBtn("✓ Activate & Close", Color3.fromRGB(46, 160, 87), 1)
+    local closeBtn = mkBtn("Close without deploying", Color3.fromRGB(120, 70, 70), 2)
+    local keepBtn = mkBtn("Keep editing", Color3.fromRGB(70, 70, 80), 3)
+
+    activateBtn.Activated:Connect(function()
+        dismiss()
+        self:_commitDraft()
+        if after then
+            after()
+        end
+    end)
+    closeBtn.Activated:Connect(function()
+        dismiss()
+        if after then
+            after()
+        end
+    end)
+    keepBtn.Activated:Connect(function()
+        dismiss()
+    end)
 end
 
 function InventoryPanel:_createItemsGrid()
