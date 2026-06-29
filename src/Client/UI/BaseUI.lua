@@ -299,55 +299,13 @@ else
                     spacing = 5,
                     padding = { top = 5, bottom = 5, left = 5, right = 5 },
                 },
-                contents = {
-                    -- Shop + Effects pulled from the tray (Jason, playtest audit): the
-                    -- shop catalog is Phase-7 placeholder priced in dead legacy coins,
-                    -- and the Effects panel's only content source WAS that shop's speed
-                    -- boost (the buff-readout HUD covers live multipliers). Panels stay
-                    -- registered — re-add the buttons when real content lands.
-                    {
-                        type = "menu_button",
-                        config = {
-                            name = "Inventory",
-                            icon = "🎒",
-                            text = "Items",
-                            color = Color3.fromRGB(52, 152, 219),
-                        },
-                    },
-                    {
-                        type = "menu_button",
-                        config = {
-                            name = "Settings",
-                            icon = "⚙️",
-                            text = "Settings",
-                            color = Color3.fromRGB(149, 165, 166),
-                        },
-                    },
-                    {
-                        type = "menu_button",
-                        config = {
-                            name = "Admin",
-                            icon = "👑",
-                            text = "Admin",
-                            color = Color3.fromRGB(231, 76, 60),
-                            admin_only = true,
-                        },
-                    },
-                    -- Events: opens the Effects panel (global events list). Re-added now that real
-                    -- content (scheduled events) lands. MenuTrayStyle auto-skins "EffectsButton"
-                    -- (already in its TRAY_BUTTONS), so it matches Settings/Daily/Quest. The label +
-                    -- a glow are driven live by EventLiveLabel from Signals.ActiveEffects.
-                    {
-                        type = "menu_button",
-                        config = {
-                            name = "Effects",
-                            icon = "📅",
-                            text = "Events",
-                            text_top = "", -- stacked layout: "<top> / 📅 / <bottom>" (EventLiveLabel fills it)
-                            color = Color3.fromRGB(241, 196, 15),
-                        },
-                    },
-                },
+                -- SINGLE SOURCE OF TRUTH for the tray buttons = configs/ui.lua's menu_buttons_pane
+                -- (Settings/Daily/Quest/Effects/Achievements/Admin). This whole inline block is the
+                -- FALLBACK that only runs if Locations.getConfig("ui") FAILS to load — so its button
+                -- list is intentionally EMPTY (it used to carry a divergent duplicate set that drifted
+                -- out of sync; Jason: one config path). A config-load failure degrades to a buttonless
+                -- (but non-crashing) tray. Edit buttons in configs/ui.lua, never here.
+                contents = {},
             },
             pets_button_pane = {
                 position = "bottom-center",
