@@ -22,6 +22,7 @@ function HotbarService:Init()
     self._dataService = self._modules and self._modules.DataService
     self._config = self._configLoader:LoadConfig("hotbar")
     self._archetypesConfig = self._configLoader:LoadConfig("archetypes")
+    self._powersConfig = self._configLoader:LoadConfig("powers") -- innate powers are bindable but not in data.Powers
 
     -- Client fires a slot (1-20); we resolve the bind authoritatively + execute.
     Signals.Hotbar_Activate.OnServerEvent:Connect(function(player, payload)
@@ -127,8 +128,18 @@ end
 function HotbarService:_assignablePalette(player)
     local data = self._dataService:GetData(player)
     local powers = {}
+    local seen = {}
     for _, id in ipairs((data and data.Powers) or {}) do
         powers[#powers + 1] = id -- owned powers only — you can't bind what you haven't picked
+        seen[id] = true
+    end
+    -- INNATE powers (Resonance) are owned-free and NOT written to data.Powers, but they're castable and
+    -- MUST be bindable from the Edit picker (the tutorial teaches binding Resonance there). Surface them.
+    for id, def in pairs((self._powersConfig and self._powersConfig.powers) or {}) do
+        if def.innate and not seen[id] then
+            powers[#powers + 1] = id
+            seen[id] = true
+        end
     end
     -- Potions the player OWNS (drinkable consumables you can bind to a slot like a power).
     -- PotionService is the SSOT for owned counts; an empty list if it's not up yet.

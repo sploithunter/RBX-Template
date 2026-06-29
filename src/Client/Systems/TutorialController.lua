@@ -34,6 +34,7 @@ local gui -- ScreenGui (capsule lives here)
 local capsule, stepLabel, titleLabel, bodyLabel
 local beacon -- BillboardGui (parented to the current nearest egg)
 local pulseStroke -- UIStroke on the current ui target
+local pulseArrow -- blinking arrow floating above the current ui target (small buttons need a louder cue)
 local stepToken = 0 -- bumps every state push; loops check it to die
 
 local questPane -- quest_tracker_pane (hidden while the tutorial runs)
@@ -142,6 +143,10 @@ local function clearGuidance()
     if pulseStroke then
         pulseStroke:Destroy()
         pulseStroke = nil
+    end
+    if pulseArrow then
+        pulseArrow:Destroy()
+        pulseArrow = nil
     end
     if pathFolder then
         pathFolder:Destroy()
@@ -398,9 +403,33 @@ local function showUiPulse(token, name)
         pulseStroke.Color = GOLD
         pulseStroke.Thickness = 3
         pulseStroke.Parent = target
+
+        -- A blinking arrow floating just above the target. The breathing stroke alone is easy to miss on
+        -- a small button (e.g. the power bar's Edit), so this points right at it. Parented to the target
+        -- so it tracks the button; bobs + blinks via the loop below.
+        pulseArrow = Instance.new("TextLabel")
+        pulseArrow.Name = "TutorialArrow"
+        pulseArrow.BackgroundTransparency = 1
+        pulseArrow.AnchorPoint = Vector2.new(0.5, 1)
+        pulseArrow.Position = UDim2.new(0.5, 0, 0, -4) -- centered just above the target
+        pulseArrow.Size = UDim2.fromOffset(48, 30)
+        pulseArrow.Font = Enum.Font.GothamBlack
+        pulseArrow.TextSize = 26
+        pulseArrow.TextColor3 = GOLD
+        pulseArrow.TextStrokeColor3 = Color3.new(0, 0, 0)
+        pulseArrow.TextStrokeTransparency = 0.3
+        pulseArrow.Text = "⬇"
+        pulseArrow.ZIndex = 50
+        pulseArrow.Parent = target
+
         local t0 = os.clock()
         while token == stepToken and pulseStroke do
-            pulseStroke.Transparency = 0.25 + 0.55 * (0.5 + 0.5 * math.sin((os.clock() - t0) * 4))
+            local s = 0.5 + 0.5 * math.sin((os.clock() - t0) * 4)
+            pulseStroke.Transparency = 0.25 + 0.55 * s
+            if pulseArrow then
+                pulseArrow.TextTransparency = 0.05 + 0.55 * s -- blink
+                pulseArrow.Position = UDim2.new(0.5, 0, 0, -4 - math.floor(6 * s)) -- bob
+            end
             RunService.RenderStepped:Wait()
         end
     end)

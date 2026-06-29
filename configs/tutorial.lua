@@ -66,8 +66,8 @@ return {
         {
             id = "bind_power",
             title = "Set your power",
-            body = "You were born with a power — Resonance! Open POWERS, hit Edit on your bar, and drop Resonance onto a slot. You'll do this for every power you unlock.",
-            target = { kind = "ui", name = "PowersButton" },
+            body = "You were born with a power — Resonance! Hit Edit on your power bar, then drop Resonance onto a slot. You'll do this for every power you unlock.",
+            target = { kind = "ui", name = "Edit" }, -- the power-bar Edit button (HotbarBar) — blinking arrow points at it
             complete_on = { event = "power_bound" },
         },
         {
