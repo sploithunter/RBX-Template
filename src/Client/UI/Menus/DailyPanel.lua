@@ -39,9 +39,15 @@ local function retintPill(btn, color)
         s.Color = lighten(color, 80)
     end
 end
--- Dark text on a bright citrine tile (white was unreadable on yellow); white elsewhere.
+-- Dark text on the BRIGHT glossy tiles (citrine gold, emerald green) where white was unreadable;
+-- white only on the dark upcoming tiles.
 local function tileTextColor(key)
-    return (key == "citrine") and Color3.fromRGB(64, 46, 8) or Color3.fromRGB(255, 255, 255)
+    if key == "citrine" then
+        return Color3.fromRGB(64, 46, 8) -- dark amber on gold
+    elseif key == "emerald" then
+        return Color3.fromRGB(14, 46, 28) -- dark green on bright green
+    end
+    return Color3.fromRGB(255, 255, 255)
 end
 
 local COLORS = {
