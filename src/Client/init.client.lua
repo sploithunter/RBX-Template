@@ -305,6 +305,17 @@ do
     end
 end
 
+-- Realm portals: per-player 🔒 on open portals the local player is too low-level to enter (drops on
+-- level-up). The server label/touch-gate is shared; the lock is per-player so it must live here.
+do
+    local ok, err = pcall(function()
+        require(script.Systems.RealmPortalLock).start()
+    end)
+    if not ok then
+        Logger:Warn("Failed to start RealmPortalLock", { error = tostring(err) })
+    end
+end
+
 -- Level-up sequence: "LEVEL UP!" button on PendingLevels, claim -> reveal + power pick / slotting.
 do
     local ok, err = pcall(function()
