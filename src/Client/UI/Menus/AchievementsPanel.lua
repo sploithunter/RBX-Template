@@ -19,7 +19,8 @@ local REMOTE_NAME = "GameAPICommand"
 
 -- Game-standard pill BORDER (neon hollow ring) on a wide element. 9-sliced like HotbarBar so the
 -- corners stay crisp at any width (SliceCenter from the pill art). Sits over the element edge.
-local function pillBorder(parent, key, zindex)
+local function pillBorder(parent, key, zindex, bleed)
+    bleed = bleed or 8 -- px to extend (panel) or inset (rows, negative) the ring vs the element edge
     local img = Instance.new("ImageLabel")
     img.Name = "PillBorder"
     img.BackgroundTransparency = 1
@@ -31,8 +32,24 @@ local function pillBorder(parent, key, zindex)
     img.SliceScale = 0.18
     img.AnchorPoint = Vector2.new(0.5, 0.5)
     img.Position = UDim2.fromScale(0.5, 0.5)
-    img.Size = UDim2.new(1, 8, 1, 8) -- slight bleed so the ring frames the edge cleanly
+    img.Size = UDim2.new(1, bleed, 1, bleed)
     img.ZIndex = zindex or 105
+    img.Parent = parent
+    return img
+end
+
+-- Filled pill PANEL (rounded gloss fill) for tab/button backgrounds — same game pill art, 9-sliced
+-- thin so small buttons keep proper rounded corners. Sits BELOW the label.
+local function pillPanel(parent, key, zindex)
+    local img = Instance.new("ImageLabel")
+    img.Name = "PillPanel"
+    img.BackgroundTransparency = 1
+    img.Image = PILL.panels[key] or PILL.panels.sapphire
+    img.ScaleType = Enum.ScaleType.Slice
+    img.SliceCenter = Rect.new(180, 180, 330, 330)
+    img.SliceScale = 0.18
+    img.Size = UDim2.fromScale(1, 1)
+    img.ZIndex = zindex or 100
     img.Parent = parent
     return img
 end
@@ -178,7 +195,7 @@ function AchievementsPanel:_createUI(parent)
     tc.MaxTextSize = 34
     tc.Parent = title
     CloseButton.attach(header, {
-        zindex = 102,
+        zindex = 145, -- above the panel pill border (130) so the X stays clickable/on top
         onClick = function()
             self:Hide()
         end,
@@ -248,21 +265,23 @@ local function currentTier(entry)
 end
 
 function AchievementsPanel:_makeTab(catId, meta, hasClaimable)
+    local active = self.viewedCategory == catId
     local btn = Instance.new("TextButton")
     btn.Name = "Tab_" .. catId
     btn.Size = UDim2.new(0, 132, 1, -6)
-    btn.BackgroundColor3 = (self.viewedCategory == catId) and COLORS.tabActive or COLORS.tabIdle
+    btn.BackgroundTransparency = 1 -- the pill panel is the background now
     btn.Text = (meta.icon and (meta.icon .. " ") or "") .. (meta.title or catId)
-    btn.TextColor3 = (self.viewedCategory == catId) and Color3.fromRGB(20, 20, 25) or COLORS.text
+    btn.TextColor3 = active and Color3.fromRGB(30, 25, 10) or COLORS.text
     btn.TextScaled = true
     btn.Font = Enum.Font.GothamBold
-    btn.AutoButtonColor = true
+    btn.AutoButtonColor = false
     btn.LayoutOrder = tonumber(meta.order) or 99
     btn.ZIndex = 102
     btn.Parent = self.tabBar
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 10)
-    c.Parent = btn
+    -- Game pill chrome: citrine (gold) panel+frame when active, sapphire when idle.
+    local key = active and "citrine" or "sapphire"
+    pillPanel(btn, key, 100)
+    pillBorder(btn, key, 103, 0)
     local cons = Instance.new("UITextSizeConstraint")
     cons.MaxTextSize = 18
     cons.Parent = btn
@@ -307,7 +326,7 @@ function AchievementsPanel:_makeRow(entry, order)
     elseif entry.value >= tier.goal then
         rowKey = "emerald"
     end
-    pillBorder(row, rowKey, 105)
+    pillBorder(row, rowKey, 105, -10) -- INSET (negative bleed) so it stays inside the row, no overlap
 
     local name = Instance.new("TextLabel")
     name.Size = UDim2.new(1, -150, 0, 26)
