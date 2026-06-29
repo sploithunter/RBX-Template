@@ -14,50 +14,16 @@
     MenuManager:RegisterPanel("Effects", effects)
 ]]
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Get shared modules
 local Locations = require(ReplicatedStorage.Shared.Locations)
-local CloseButton = require(script.Parent.Parent.Components.CloseButton)
 local FillBar = require(script.Parent.Parent.FillBar)
-local PILL = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
-local UITheme = require(script.Parent.Parent.UITheme)
+-- THE shared panel exterior (window + outer pill + header + close X + area theming + scroll pane).
+local PanelChrome = require(script.Parent.Parent.Components.PanelChrome)
 
--- Game-standard panel chrome, patterned 1:1 on AchievementsPanel (Jason: panels share one styling
--- path — area-themed pill border, relative scaling, close-X on top). See AchievementsPanel for the
--- canonical version; TODO extract a shared PanelChrome module to dedupe these three helpers.
-local function areaPill()
-    local pal = UITheme.palette(Players.LocalPlayer)
-    local key = pal.color
-    if key == nil or key == "neutral" or not PILL.panels[key] then
-        key = "sapphire"
-    end
-    return key, pal.primary
-end
-
--- Neon hollow pill ring (9-sliced) over an element edge. bleed = px to extend (panel) or inset
--- (rows, +small) the ring; sliceScale lower = thinner + pushed outward (0.10 panel, 0.18 rows).
-local function pillBorder(parent, key, zindex, bleed, sliceScale)
-    bleed = bleed or 8
-    local img = Instance.new("ImageLabel")
-    img.Name = "PillBorder"
-    img.BackgroundTransparency = 1
-    img.Image = PILL.frames[key] or PILL.frames.sapphire
-    img.ScaleType = Enum.ScaleType.Slice
-    img.SliceCenter = Rect.new(180, 180, 330, 330)
-    img.SliceScale = sliceScale or 0.18
-    img.AnchorPoint = Vector2.new(0.5, 0.5)
-    img.Position = UDim2.fromScale(0.5, 0.5)
-    img.Size = UDim2.new(1, bleed, 1, bleed)
-    img.ZIndex = zindex or 105
-    img.Parent = parent
-    return img
-end
-
-local COLORS = {
-    panel = Color3.fromRGB(20, 20, 25),
-    panelGradientTop = Color3.fromRGB(30, 30, 40),
+-- Row-only colors (the shell colors live in PanelChrome.COLORS).
+local ROW = {
     row = Color3.fromRGB(40, 42, 52),
     text = Color3.fromRGB(255, 255, 255),
     subtext = Color3.fromRGB(200, 205, 215),
@@ -226,108 +192,19 @@ function EffectsPanel:Hide()
 end
 
 function EffectsPanel:_createUI(parent)
-    -- AREA/ORIGIN-THEMED panel chrome, patterned on AchievementsPanel: pill border + header take the
-    -- player's home-area color; relative sizing scales with the panel; close-X on top.
-    self._areaKey = areaPill()
-    local _, areaColor = areaPill()
-    local headerColor = areaColor or Color3.fromRGB(90, 160, 220)
-    local headerDim = headerColor:Lerp(Color3.fromRGB(0, 0, 0), 0.35)
-
-    local frame = Instance.new("Frame")
-    frame.Name = "EffectsPanel"
-    frame.Size = UDim2.new(0.7, 0, 0.85, 0)
-    frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    frame.AnchorPoint = Vector2.new(0.5, 0.5)
-    frame.BackgroundColor3 = COLORS.panel
-    frame.BorderSizePixel = 0
-    frame.ZIndex = 100
-    frame.Parent = parent
-    self.frame = frame
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 20)
-    corner.Parent = frame
-
-    -- Game-standard pill ring around the whole panel (bleed 0 + SliceScale 0.10 — Jason's tune).
-    pillBorder(frame, self._areaKey, 130, 0, 0.10)
-
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, COLORS.panelGradientTop),
-        ColorSequenceKeypoint.new(1, COLORS.panel),
-    })
-    gradient.Rotation = 45
-    gradient.Parent = frame
-
-    -- Header (relative height, area-themed gradient)
-    local header = Instance.new("Frame")
-    header.Name = "Header"
-    header.Size = UDim2.new(0.99, 0, 0.1, 0)
-    header.Position = UDim2.new(0.5, 0, 0, 0)
-    header.AnchorPoint = Vector2.new(0.5, 0)
-    header.BackgroundColor3 = headerColor
-    header.BorderSizePixel = 0
-    header.ZIndex = 101
-    header.Parent = frame
-    local hc = Instance.new("UICorner")
-    hc.CornerRadius = UDim.new(0, 20)
-    hc.Parent = header
-    local hg = Instance.new("UIGradient")
-    hg.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, headerColor),
-        ColorSequenceKeypoint.new(1, headerDim),
-    })
-    hg.Rotation = 90
-    hg.Parent = header
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -180, 1, 0)
-    title.Position = UDim2.new(0, 24, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "⚡ Events"
-    title.TextColor3 = COLORS.text
-    title.TextScaled = true
-    title.Font = Enum.Font.GothamBold
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.ZIndex = 102
-    title.Parent = header
-    local tc = Instance.new("UITextSizeConstraint")
-    tc.MaxTextSize = 34
-    tc.Parent = title
-
-    -- Close X — sibling of the pill border at Z146 so it's on top (see AchievementsPanel note).
-    CloseButton.attach(frame, {
-        zindex = 146,
-        onClick = function()
+    -- Shared window shell (outer pill + area-themed header + close X) — one code path for every panel.
+    local shell = PanelChrome.build(parent, {
+        name = "EffectsPanel",
+        title = "⚡ Events",
+        onClose = function()
             self:Hide()
         end,
     })
+    self.frame = shell.frame
+    self._areaKey = shell.areaKey
 
-    -- Scrolling list of event rows (relative — scales with the panel)
-    local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Name = "EffectsScroll"
-    scrollFrame.Size = UDim2.new(0.95, 0, 0.83, 0)
-    scrollFrame.Position = UDim2.new(0.03, 0, 0.13, 0)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.BorderSizePixel = 0
-    scrollFrame.ScrollBarThickness = 6
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    scrollFrame.ZIndex = 101
-    scrollFrame.Parent = frame
-
-    local layout = Instance.new("UIListLayout")
-    layout.FillDirection = Enum.FillDirection.Vertical
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 10)
-    layout.Parent = scrollFrame
-
-    local pad = Instance.new("UIPadding")
-    pad.PaddingTop = UDim.new(0, 4)
-    pad.PaddingBottom = UDim.new(0, 4)
-    pad.PaddingRight = UDim.new(0, 4)
-    pad.Parent = scrollFrame
-
-    self.scrollFrame = scrollFrame
+    -- Standard list pane: full width, bottom 70% of the panel (Jason's spec).
+    self.scrollFrame = PanelChrome.scrollPane(shell.frame, { name = "EffectsScroll" })
 end
 
 function EffectsPanel:_loadEffectsData()
@@ -421,7 +298,7 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     local card = Instance.new("Frame")
     card.Name = tostring(effect.id or effect.name or "effect") .. "Display"
     card.Size = UDim2.new(1, 0, 0, 80)
-    card.BackgroundColor3 = COLORS.row
+    card.BackgroundColor3 = ROW.row
     card.BorderSizePixel = 0
     card.LayoutOrder = layoutOrder
     card.ZIndex = 102
@@ -443,7 +320,7 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
 
     -- Game pill ring in the event's color (Mineral Monday's gem → emerald), same as Achievements
     -- rows: bleed 2 (centered on the edge) + SliceScale 0.08. Hollow ring → content shows through.
-    pillBorder(card, skin.pillKey or "sapphire", 105, 2, 0.08)
+    PanelChrome.pillBorder(card, skin.pillKey or "sapphire", 105, 2, 0.08)
 
     -- icon disc (accent-tinted, ringed). ZIndex 103 > card's 102 so it shows (Sibling behavior).
     local disc = Instance.new("Frame")
@@ -476,7 +353,7 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     nameLabel.Position = UDim2.new(0, 92, 0, 14)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = tostring(effect.name or effect.displayName or effect.id or "Event")
-    nameLabel.TextColor3 = COLORS.text
+    nameLabel.TextColor3 = ROW.text
     nameLabel.TextSize = 19
     nameLabel.Font = Enum.Font.GothamBold
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -491,7 +368,7 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     descLabel.Text = (effect.description ~= nil and effect.description ~= "")
             and tostring(effect.description)
         or "Active event"
-    descLabel.TextColor3 = COLORS.subtext
+    descLabel.TextColor3 = ROW.subtext
     descLabel.TextSize = 13
     descLabel.Font = Enum.Font.Gotham
     descLabel.TextXAlignment = Enum.TextXAlignment.Left
