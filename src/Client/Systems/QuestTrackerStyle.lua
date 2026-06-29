@@ -40,13 +40,6 @@ local function outline(label)
         s.Parent = label
     end
 end
-local function lighten(c, amt)
-    return Color3.fromRGB(
-        math.clamp(c.R * 255 + amt, 0, 255),
-        math.clamp(c.G * 255 + amt, 0, 255),
-        math.clamp(c.B * 255 + amt, 0, 255)
-    )
-end
 
 function QuestTrackerStyle.start()
     if started then
@@ -78,37 +71,44 @@ function QuestTrackerStyle.start()
         -- dock TIGHT below the player bar (Jason: as close as possible) — compact pane.
         pane.AnchorPoint = Vector2.new(0.5, 0)
         pane.Position = UDim2.new(0.5, 0, 0, 68)
-        pane.Size = UDim2.fromOffset(380, 48)
-        pane.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
+        pane.Size = UDim2.fromOffset(360, 40) -- compact strip (Jason: shrink it down)
+        -- The PANE (the pill the bar sits in) is the neutral player-bar capsule gray — Jason: the
+        -- BLACK pill should go gray, not the (green) bar fill.
+        pane.BackgroundColor3 = Color3.fromRGB(120, 124, 132)
         pane.BackgroundTransparency = 0
         corner(pane, 16)
-        grad(pane, Color3.fromRGB(58, 60, 70), Color3.fromRGB(28, 30, 38))
-        stroke(pane, Color3.fromRGB(20, 22, 28), 2)
+        grad(pane, Color3.fromRGB(150, 154, 162), Color3.fromRGB(78, 82, 90))
+        stroke(pane, Color3.fromRGB(28, 30, 36), 2)
+        -- Scale in lockstep with the player bar (which is UIViewportScale'd) so the quest bar renders
+        -- the SAME size as the Focus bar on every viewport — without this it stays full-size and reads
+        -- bigger than the (scaled-down) Focus bar. (Jason: shrink it to match.)
+        if not pane:FindFirstChildOfClass("UIScale") then
+            require(script.Parent.Parent.UI.UIViewportScale).attach(pane)
+        end
 
         local title = pane:FindFirstChild("QuestTitle")
         if title then
             title.Visible = false -- reference drops the "Current Quest" header
         end
 
-        -- progress bar on TOP
+        -- progress bar on TOP (the bar fill is left AS-IS — Jason: the bar color shouldn't change)
         local pbg = pane:FindFirstChild("ProgressBackground")
-        local fill = pbg and pbg:FindFirstChild("Fill") -- FillBar names its fill child "Fill"
         local ptext = pbg and pbg:FindFirstChild("ProgressText")
         if pbg then
             pbg.AnchorPoint = Vector2.new(0.5, 0)
-            pbg.Position = UDim2.new(0.5, 0, 0, 6)
-            pbg.Size = UDim2.fromOffset(346, 13) -- match the player bar's Focus/XP bar height
-            pbg.BackgroundColor3 = Color3.fromRGB(30, 32, 38) -- player-bar track gray
+            pbg.Position = UDim2.new(0.5, 0, 0, 5)
+            pbg.Size = UDim2.fromOffset(330, 10) -- thin strip, a touch under the Focus bar
+            pbg.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
             pbg.ZIndex = 2
-            stroke(pbg, Color3.fromRGB(90, 94, 102), 1.5)
+            stroke(pbg, Color3.fromRGB(70, 110, 180), 1.5)
         end
 
         -- quest name on the BOTTOM
         local desc = pane:FindFirstChild("QuestDescription")
         if desc then
             desc.AnchorPoint = Vector2.new(0.5, 1)
-            desc.Position = UDim2.new(0.5, 0, 1, -5)
-            desc.Size = UDim2.new(1, -20, 0, 22)
+            desc.Position = UDim2.new(0.5, 0, 1, -4)
+            desc.Size = UDim2.new(1, -20, 0, 18)
             desc.Font = Enum.Font.GothamBlack
             desc.TextScaled = true
             desc.TextColor3 = Color3.fromRGB(245, 248, 255)
@@ -119,19 +119,6 @@ function QuestTrackerStyle.start()
             ptext.TextColor3 = Color3.fromRGB(245, 248, 255)
             ptext.ZIndex = 4
             outline(ptext)
-        end
-
-        -- The quest bar is a NEUTRAL gray matching the player-bar capsule (Jason — it shouldn't read
-        -- as a loud green/area bar tucked under the player bar). Not area-themed.
-        local QUEST_GRAY = Color3.fromRGB(120, 124, 132)
-        if fill then
-            fill.BackgroundColor3 = QUEST_GRAY
-            local g = fill:FindFirstChildOfClass("UIGradient")
-            if not g then
-                grad(fill, lighten(QUEST_GRAY, 30), QUEST_GRAY)
-            else
-                g.Color = ColorSequence.new(lighten(QUEST_GRAY, 30), QUEST_GRAY)
-            end
         end
     end)
 end
