@@ -16,6 +16,8 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CloseButton = require(script.Parent.Parent.Components.CloseButton)
+local PanelChrome = require(script.Parent.Parent.Components.PanelChrome)
+local Pill = require(script.Parent.Parent.Pill)
 -- shared amount-picker popover (offer N copies of a stack with a slider, vs N clicks)
 local QuantitySelector = require(script.Parent.Parent.Components.QuantitySelector)
 
@@ -110,6 +112,19 @@ local function corner(inst, r)
     return inst
 end
 
+-- Capsule treatment on an EXISTING button (currency-HUD pill look: full corner + gradient + stroke),
+-- keeping the button's intrinsic text so live `btn.Text = "…"` updates still work. (Jason: pills on
+-- the buttons, same treatment as the powers menu.)
+local function pillify(btn)
+    for _, c in ipairs(btn:GetChildren()) do
+        if c:IsA("UICorner") or c:IsA("UIGradient") or c:IsA("UIStroke") then
+            c:Destroy()
+        end
+    end
+    Pill.applyTo(btn, { color = btn.BackgroundColor3 })
+    return btn
+end
+
 local function label(parent, text, size, pos, color, font, scaled)
     local l = Instance.new("TextLabel")
     l.Size = size
@@ -148,11 +163,9 @@ function TradePanel:Show(parent)
     frame.ZIndex = 100
     frame.Parent = parent
     corner(frame, 20)
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = COLORS.header
-    stroke.Thickness = 3
-    stroke.Transparency = 0.3
-    stroke.Parent = frame
+    -- Standard game pill border (area-themed, same style as the other panels) — Jason: "pills on
+    -- the outside." Replaces the thin header-colored stroke.
+    PanelChrome.pillBorder(frame, PanelChrome.areaPill(), 130, 0, 0.10)
     self.frame = frame
 
     self:_buildHeader(frame, "🤝 Trade", function()
@@ -198,7 +211,7 @@ function TradePanel:Show(parent)
     refresh.Font = Enum.Font.GothamBold
     refresh.ZIndex = 102
     refresh.Parent = frame
-    corner(refresh, 10)
+    pillify(refresh)
     local rc = Instance.new("UITextSizeConstraint")
     rc.MaxTextSize = 18
     rc.Parent = refresh
@@ -266,9 +279,10 @@ function TradePanel:_buildHeader(parent, titleText, onClose, baseZ)
     local tc = Instance.new("UITextSizeConstraint")
     tc.MaxTextSize = 30
     tc.Parent = title
-    -- THE standard close X (shared component; the old "✕" glyph tofu-boxed in Gotham)
-    CloseButton.attach(header, {
-        zindex = baseZ + 2,
+    -- THE standard close X — attach to the PANEL (sibling of the pill border) so it sits ABOVE the
+    -- 130 border on the main panel; popups (high baseZ) keep their own layering.
+    CloseButton.attach(parent, {
+        zindex = math.max(baseZ + 2, 146),
         onClick = onClose,
     })
 end
@@ -344,7 +358,7 @@ function TradePanel:_playerRow(p, order)
     btn.AutoButtonColor = not p.busy
     btn.ZIndex = 103
     btn.Parent = row
-    corner(btn, 8)
+    pillify(btn)
     local bc = Instance.new("UITextSizeConstraint")
     bc.MaxTextSize = 16
     bc.Parent = btn
@@ -440,7 +454,7 @@ function TradePanel:_showRequestPopup(fromUserId, fromName)
         b.Font = Enum.Font.GothamBold
         b.ZIndex = 201
         b.Parent = pop
-        corner(b, 10)
+        pillify(b)
         local c = Instance.new("UITextSizeConstraint")
         c.MaxTextSize = 18
         c.Parent = b
@@ -720,7 +734,7 @@ function TradePanel:_renderWindow(state)
     confirm.Active = not state.you.confirmed
     confirm.ZIndex = 103
     confirm.Parent = win
-    corner(confirm, 10)
+    pillify(confirm)
     local cc = Instance.new("UITextSizeConstraint")
     cc.MaxTextSize = 16
     cc.Parent = confirm
@@ -739,7 +753,7 @@ function TradePanel:_renderWindow(state)
     cancel.Font = Enum.Font.GothamBold
     cancel.ZIndex = 103
     cancel.Parent = win
-    corner(cancel, 10)
+    pillify(cancel)
     local cancc = Instance.new("UITextSizeConstraint")
     cancc.MaxTextSize = 16
     cancc.Parent = cancel
