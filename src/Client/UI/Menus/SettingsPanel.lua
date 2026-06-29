@@ -24,6 +24,32 @@ local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
 local AudioPrefs = require(script.Parent.Parent.Parent.Systems.AudioPrefs)
 -- THE shared panel exterior + pill helpers (window shell, area theming, entry pills).
 local PanelChrome = require(script.Parent.Parent.Components.PanelChrome)
+-- THE capsule widget used by the currency HUD + ADMIN button (Jason: ON/OFF toggles use this exact pill).
+local Pill = require(script.Parent.Parent.Pill)
+
+-- ON/OFF capsule colors + a re-tint helper that mirrors Pill's own gradient/stroke math so a toggle
+-- can flip its fill, gradient, and stroke in place.
+local TOGGLE_ON = Color3.fromRGB(46, 170, 90)
+local TOGGLE_OFF = Color3.fromRGB(95, 100, 110)
+local function lighten(c, amt)
+    amt = amt / 255
+    return Color3.new(
+        math.clamp(c.R + amt, 0, 1),
+        math.clamp(c.G + amt, 0, 1),
+        math.clamp(c.B + amt, 0, 1)
+    )
+end
+local function retintPill(btn, color)
+    btn.BackgroundColor3 = color
+    local grad = btn:FindFirstChildOfClass("UIGradient")
+    if grad then
+        grad.Color = ColorSequence.new(lighten(color, 60), color)
+    end
+    local stroke = btn:FindFirstChildOfClass("UIStroke")
+    if stroke then
+        stroke.Color = lighten(color, 80)
+    end
+end
 
 -- Load Logger with wrapper (following the established pattern)
 local LoggerWrapper
@@ -226,10 +252,6 @@ function SettingsPanel:_createUI(parent)
     self._areaKey = shell.areaKey
     self._areaColor = shell.areaColor
 
-    -- BaseUI instance kept ONLY for its image control helpers (toggles), not the panel shell.
-    local BaseUI = require(script.Parent.Parent.BaseUI)
-    self.baseUI = BaseUI.new()
-
     -- Settings list: full width, starts just under the header (content-heavy → tall pane).
     self.scrollFrame = PanelChrome.scrollPane(shell.frame, {
         name = "SettingsScroll",
@@ -379,75 +401,56 @@ function SettingsPanel:_createSliderSetting(
 end
 
 function SettingsPanel:_createToggleSetting(name, currentValue, layoutOrder, callback)
-    -- Create image-based toggle using BaseUI system
-    if self.baseUI then
-        local toggleElement =
-            self.baseUI:CreateImageToggle(name, currentValue, nil, self.scrollFrame, callback)
+    local theme = uiConfig.helpers.get_theme(uiConfig)
 
-        -- Set layout order for proper positioning
-        toggleElement.container.LayoutOrder = layoutOrder
-        self:_pillRow(toggleElement.container)
+    local settingFrame = Instance.new("Frame")
+    settingFrame.Name = name .. "Setting"
+    settingFrame.Size = UDim2.new(1, 0, 0, 50)
+    settingFrame.BackgroundColor3 = theme.primary.card or Color3.fromRGB(50, 50, 55)
+    settingFrame.BorderSizePixel = 0
+    settingFrame.LayoutOrder = layoutOrder
+    settingFrame.Parent = self.scrollFrame
 
-        return toggleElement
-    else
-        -- Fallback to old system if BaseUI not available
-        local theme = uiConfig.helpers.get_theme(uiConfig)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = settingFrame
+    self:_pillRow(settingFrame)
 
-        local settingFrame = Instance.new("Frame")
-        settingFrame.Name = name .. "Setting"
-        settingFrame.Size = UDim2.new(1, 0, 0, 40)
-        settingFrame.BackgroundColor3 = theme.primary.card or Color3.fromRGB(50, 50, 55)
-        settingFrame.BorderSizePixel = 0
-        settingFrame.LayoutOrder = layoutOrder
-        settingFrame.Parent = self.scrollFrame
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.7, 0, 1, 0)
+    label.Position = UDim2.new(0, 15, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = name
+    label.TextColor3 = theme.text.primary or Color3.fromRGB(245, 245, 250)
+    label.TextSize = 14
+    label.Font = Enum.Font.Gotham
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 2
+    label.Parent = settingFrame
 
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 8)
-        corner.Parent = settingFrame
-        self:_pillRow(settingFrame)
+    -- ON/OFF as THE shared currency-HUD pill (Pill.button: rounded capsule + gradient + stroke +
+    -- child white label). Re-tints green/grey in place on toggle. (Jason: same pill as the currency HUD.)
+    local state = currentValue and true or false
+    local toggle = Pill.button({
+        parent = settingFrame,
+        color = state and TOGGLE_ON or TOGGLE_OFF,
+        size = UDim2.fromOffset(74, 30),
+        position = UDim2.new(1, -88, 0.5, 0),
+        anchorPoint = Vector2.new(0, 0.5),
+        text = state and "ON" or "OFF",
+        textSize = 13,
+        zIndex = 106, -- above the entry pill ring (105)
+    })
+    toggle.Activated:Connect(function()
+        state = not state
+        retintPill(toggle, state and TOGGLE_ON or TOGGLE_OFF)
+        toggle.Label.Text = state and "ON" or "OFF"
+        if callback then
+            callback(state)
+        end
+    end)
 
-        -- Label
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(0.7, 0, 1, 0)
-        label.Position = UDim2.new(0, 15, 0, 0)
-        label.BackgroundTransparency = 1
-        label.Text = name
-        label.TextColor3 = theme.text.primary
-        label.TextSize = 14
-        label.Font = Enum.Font.Gotham
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Parent = settingFrame
-
-        -- Toggle button
-        local toggleButton = Instance.new("TextButton")
-        toggleButton.Size = UDim2.new(0, 60, 0, 25)
-        toggleButton.Position = UDim2.new(1, -75, 0.5, -12.5)
-        toggleButton.BackgroundColor3 = currentValue and Color3.fromRGB(0, 180, 0)
-            or Color3.fromRGB(120, 120, 120)
-        toggleButton.BorderSizePixel = 0
-        toggleButton.Text = currentValue and "ON" or "OFF"
-        toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        toggleButton.TextSize = 12
-        toggleButton.Font = Enum.Font.GothamBold
-        toggleButton.Parent = settingFrame
-
-        local toggleCorner = Instance.new("UICorner")
-        toggleCorner.CornerRadius = UDim.new(0, 12)
-        toggleCorner.Parent = toggleButton
-
-        toggleButton.Activated:Connect(function()
-            currentValue = not currentValue
-            toggleButton.BackgroundColor3 = currentValue and Color3.fromRGB(0, 180, 0)
-                or Color3.fromRGB(120, 120, 120)
-            toggleButton.Text = currentValue and "ON" or "OFF"
-
-            if callback then
-                callback(currentValue)
-            end
-        end)
-
-        return { container = settingFrame, toggle = toggleButton }
-    end
+    return { container = settingFrame, toggle = toggle }
 end
 
 function SettingsPanel:_createButtonSetting(name, buttonText, layoutOrder, callback)
@@ -515,17 +518,20 @@ function SettingsPanel:_createDropdownSetting(title, currentValue, options, layo
     ddCorner.Parent = container
     self:_pillRow(container)
 
-    -- Title label
+    -- Title label — left padding 15 + size 14 to match the slider/toggle/button rows (Jason: the
+    -- dropdown rows weren't aligned with the others). Vertically centered.
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "Title"
-    titleLabel.Size = UDim2.new(0.5, -10, 1, 0)
-    titleLabel.Position = UDim2.new(0, 0, 0, 0)
+    titleLabel.Size = UDim2.new(0.5, -25, 1, 0)
+    titleLabel.Position = UDim2.new(0, 15, 0, 0)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = title
     titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleLabel.TextSize = 16
+    titleLabel.TextSize = 14
     titleLabel.Font = Enum.Font.Gotham
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.TextYAlignment = Enum.TextYAlignment.Center
+    titleLabel.ZIndex = 2
     titleLabel.Parent = container
 
     -- Dropdown button (changed from Frame to TextButton to support clicking)
@@ -536,6 +542,7 @@ function SettingsPanel:_createDropdownSetting(title, currentValue, options, layo
     dropdownFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
     dropdownFrame.BorderSizePixel = 0
     dropdownFrame.Text = "" -- No text on the button itself
+    dropdownFrame.ZIndex = 106 -- whole dropdown subtree above the entry pill ring (105)
     dropdownFrame.Parent = container
 
     local dropdownCorner = Instance.new("UICorner")
