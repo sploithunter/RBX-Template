@@ -1922,6 +1922,21 @@ local function powersList(data)
     return data.Powers
 end
 
+-- Count of owned powers that consume a level-up PICK. INNATE powers (granted free for everyone —
+-- Resonance and any future innate) are NEVER counted against the selection budget, so they can't
+-- steal a pick even if one somehow ends up in data.Powers. (Jason: build it general for any innate.)
+local function pickedCount(selected, powersConfig)
+    local powers = (powersConfig and powersConfig.powers) or {}
+    local n = 0
+    for _, id in ipairs(selected or {}) do
+        local def = powers[tostring(id)]
+        if not (def and def.innate) then
+            n += 1
+        end
+    end
+    return n
+end
+
 function PowerService:GetState(player, levelOverride)
     local data = self._dataService:GetData(player)
     if not data then
@@ -1949,7 +1964,11 @@ function PowerService:GetState(player, levelOverride)
     return {
         ok = true,
         powers = ownedForDisplay,
-        pending = PowerSelection.pendingSelections(level, #selected, levels),
+        pending = PowerSelection.pendingSelections(
+            level,
+            pickedCount(selected, self._powersConfig),
+            levels
+        ),
         available = available,
     }
 end
@@ -1961,6 +1980,13 @@ function PowerService:CanSelectAtLevel(player, powerId, level)
     local data = self._dataService:GetData(player)
     if not data then
         return false, "data_not_loaded"
+    end
+    -- INNATE powers (Resonance, any future innate) are owned-free and live in the pool only so they
+    -- render as slottable rows — they are NEVER pickable (picking would add them to data.Powers and
+    -- steal a level-up pick). Reject here so the atomic commit can't grant one.
+    local idef = self._powersConfig.powers and self._powersConfig.powers[tostring(powerId)]
+    if idef and idef.innate then
+        return false, "innate_not_selectable"
     end
     local available = ArchetypeLogic.availablePowers(data.Archetype, self._archetypesConfig)
     local decision = PowerSelection.canSelect(
@@ -1981,6 +2007,12 @@ function PowerService:Select(player, powerId, levelOverride)
     -- NOTE: no early no_archetype gate — NATURAL/generic powers are pickable BEFORE the L5 origin
     -- choice. availablePowers(nil) returns just the generic pool, so canSelect accepts generic and
     -- still rejects origin powers (not_in_archetype_pool) until an origin is chosen.
+    -- INNATE powers are owned-free + unpickable (see CanSelectAtLevel) — reject so an innate can't be
+    -- added to data.Powers (which would count against the pick budget).
+    local idef = self._powersConfig.powers and self._powersConfig.powers[tostring(powerId)]
+    if idef and idef.innate then
+        return { ok = false, reason = "innate_not_selectable" }
+    end
     local selected = powersList(data)
     local level = self:_level(player, levelOverride)
     local available = ArchetypeLogic.availablePowers(data.Archetype, self._archetypesConfig)
