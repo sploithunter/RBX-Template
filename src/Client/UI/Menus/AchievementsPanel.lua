@@ -202,7 +202,8 @@ function AchievementsPanel:_makeTab(catId, meta, hasClaimable)
     label.Size = UDim2.fromScale(1, 1)
     label.BackgroundTransparency = 1
     label.Text = (meta.icon and (meta.icon .. " ") or "") .. (meta.title or catId)
-    label.TextColor3 = active and Color3.fromRGB(30, 25, 10) or COLORS.text
+    -- Dark text on a bright citrine (yellow) pill — white was unreadable on the gold; white elsewhere.
+    label.TextColor3 = (key == "citrine") and Color3.fromRGB(64, 46, 8) or COLORS.text
     label.TextScaled = true
     label.Font = Enum.Font.GothamBold
     label.ZIndex = 110

@@ -215,7 +215,8 @@ function QuestPanel:_makeTab(key, label, order, hasClaimable)
     labelText.Size = UDim2.fromScale(1, 1)
     labelText.BackgroundTransparency = 1
     labelText.Text = (focused and "▶ " or "") .. label
-    labelText.TextColor3 = active and Color3.fromRGB(30, 25, 10) or COLORS.text
+    -- Dark text on a bright citrine (yellow) pill — white was unreadable on the gold; white elsewhere.
+    labelText.TextColor3 = (pillKey == "citrine") and Color3.fromRGB(64, 46, 8) or COLORS.text
     labelText.TextScaled = true
     labelText.Font = Enum.Font.GothamBold
     labelText.ZIndex = 110
