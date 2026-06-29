@@ -249,6 +249,8 @@ return {
     --                   this one exists for server consumers — the tutorial taps it)
     --   power_selected — a power pick committed {power} (PowerService:Select)
     --   power_cast    — a power cast succeeded {power} (PowerService:Cast; frequent — keep silent)
+    --   power_bound   — a POWER was bound to a hotbar slot {power, slot} (HotbarService:Rebind; the
+    --                   tutorial taps it for the "set your power" step, and a bind sound can hook here)
     --   pet_equipped  — a pet equip TOGGLED {action} (InventoryService; tutorial equip step)
     --   new_enhancement — first-ever discovery of an enhancement identity {key,name}
     --                     (EnhancementService Grant; the Enhancement Index grew)

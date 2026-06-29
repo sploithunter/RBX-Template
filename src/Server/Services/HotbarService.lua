@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HotbarLogic = require(ReplicatedStorage.Shared.Game.HotbarLogic)
 local ArchetypeLogic = require(ReplicatedStorage.Shared.Game.ArchetypeLogic)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 
 local HotbarService = {}
 HotbarService.__index = HotbarService
@@ -232,6 +233,12 @@ function HotbarService:Rebind(player, index, bind)
     local hotbar = self:_ensureDefaults(data)
     hotbar[tostring(index)] = bind -- nil clears
     self._dataService:RequestSave(player, "hotbar_rebind", { critical = false })
+    -- Bus source: a POWER landed on a slot. The tutorial's "set your power" step completes on this,
+    -- and a bind sound/FX can hook it config-only (docs/GAME_EVENTS.md). Only powers fire it (not
+    -- clears or pet/tactical/potion binds) so the cue means "you bound a castable power".
+    if type(bind) == "table" and bind.type == "power" and bind.target then
+        fireGameEvent(player, "power_bound", { power = bind.target, slot = index })
+    end
     return { ok = true, hotbar = hotbar }
 end
 
