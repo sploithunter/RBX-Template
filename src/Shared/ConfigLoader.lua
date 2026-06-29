@@ -3283,8 +3283,50 @@ function ConfigLoader:_validateReward(configName, reward, path)
         return ok, err
     end
 
+    -- BUNDLE shape ({ bundle = { currencies = {...}, pets = {...}, items = {...} } }) — routed through
+    -- the reward spine (RewardService:Grant), so achievements can award PETS (capstones), not just
+    -- currency. Validate the currencies map + that pets/items are tables; the spine handles the rest.
+    if type(reward.bundle) == "table" then
+        local b = reward.bundle
+        if b.currencies ~= nil then
+            ok, err =
+                self:_requireType(configName, b.currencies, "table", path .. ".bundle.currencies")
+            if not ok then
+                return ok, err
+            end
+            for cur, amt in pairs(b.currencies) do
+                if not self:_currencyExists(cur) then
+                    return self:_configError(
+                        configName,
+                        path .. ".bundle.currencies." .. tostring(cur),
+                        "must reference configs/currencies.lua"
+                    )
+                end
+                ok, err = self:_requirePositiveNumber(
+                    configName,
+                    amt,
+                    path .. ".bundle.currencies." .. tostring(cur)
+                )
+                if not ok then
+                    return ok, err
+                end
+            end
+        end
+        if b.pets ~= nil then
+            ok, err = self:_requireType(configName, b.pets, "table", path .. ".bundle.pets")
+            if not ok then
+                return ok, err
+            end
+        end
+        return true
+    end
+
     if reward.type ~= "currency" then
-        return self:_configError(configName, path .. ".type", "currently only supports currency")
+        return self:_configError(
+            configName,
+            path .. ".type",
+            "must be 'currency' or provide a bundle"
+        )
     end
 
     if type(reward.currency) ~= "string" or reward.currency == "" then

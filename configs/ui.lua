@@ -1135,6 +1135,17 @@ local uiConfig = {
                     },
                 },
 
+                -- AWARDS: opens the Achievements panel by name (no action = open same-named panel, like
+                -- Effects). The passive-milestone counterpart to the Quest button (Jason).
+                {
+                    type = "menu_button",
+                    config = {
+                        name = "Achievements",
+                        icon = "🏆",
+                        text = "Awards",
+                    },
+                },
+
                 -- ADMIN is LAST in the grid (Jason): the grid fills bottom-to-top / left-to-right, so
                 -- the highest LayoutOrder lands in the final cell — no floating/docking needed (that
                 -- overlapped the new Events button). admin_only hides it for non-admins, leaving the

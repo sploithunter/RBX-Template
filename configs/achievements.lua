@@ -58,7 +58,12 @@ return {
                 {
                     id = "eggs_25k",
                     goal = 25000,
-                    reward = { type = "currency", currency = "gems", amount = 500 },
+                    reward = {
+                        bundle = {
+                            currencies = { gems = 500 },
+                            pets = { { id = "bear", variant = "rainbow" } },
+                        },
+                    },
                 },
             },
         },
@@ -116,7 +121,12 @@ return {
                 {
                     id = "coins_1m",
                     goal = 1000000,
-                    reward = { type = "currency", currency = "gems", amount = 300 },
+                    reward = {
+                        bundle = {
+                            currencies = { gems = 300 },
+                            pets = { { id = "bear", variant = "rainbow" } },
+                        },
+                    },
                 },
             },
         },
@@ -146,7 +156,12 @@ return {
                 {
                     id = "enemies_10k",
                     goal = 10000,
-                    reward = { type = "currency", currency = "gems", amount = 300 },
+                    reward = {
+                        bundle = {
+                            currencies = { gems = 300 },
+                            pets = { { id = "bear", variant = "rainbow" } },
+                        },
+                    },
                 },
             },
         },
@@ -184,7 +199,12 @@ return {
                 {
                     id = "distinct_75",
                     goal = 75,
-                    reward = { type = "currency", currency = "gems", amount = 200 },
+                    reward = {
+                        bundle = {
+                            currencies = { gems = 200 },
+                            pets = { { id = "bear", variant = "rainbow" } },
+                        },
+                    },
                 },
             },
         },
@@ -243,7 +263,12 @@ return {
                 {
                     id = "level_50",
                     goal = 49,
-                    reward = { type = "currency", currency = "gems", amount = 500 },
+                    reward = {
+                        bundle = {
+                            currencies = { gems = 500 },
+                            pets = { { id = "bear", variant = "rainbow" } },
+                        },
+                    },
                 },
             },
         },
@@ -281,7 +306,12 @@ return {
                 {
                     id = "areas_6",
                     goal = 6,
-                    reward = { type = "currency", currency = "gems", amount = 40 },
+                    reward = {
+                        bundle = {
+                            currencies = { gems = 40 },
+                            pets = { { id = "bear", variant = "rainbow" } },
+                        },
+                    },
                 },
             },
         },
