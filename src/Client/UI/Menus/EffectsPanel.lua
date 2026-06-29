@@ -300,19 +300,15 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
     local skin = skinFor(effect)
     local DARK = Color3.fromRGB(22, 24, 31)
 
-    local card = Instance.new("Frame")
-    card.Name = tostring(effect.id or effect.name or "effect") .. "Display"
-    card.Size = UDim2.new(1, 0, 0, 80)
-    card.BackgroundColor3 = ROW.row
-    card.BorderSizePixel = 0
-    card.LayoutOrder = layoutOrder
-    card.ZIndex = 102
-    card.Parent = self.scrollFrame
+    -- Shared pill-bordered entry row in the event's color (Mineral Monday's gem → emerald).
+    local card = PanelChrome.entryRow(self.scrollFrame, {
+        name = tostring(effect.id or effect.name or "effect") .. "Display",
+        height = 80,
+        bg = ROW.row,
+        key = skin.pillKey or "sapphire",
+        layoutOrder = layoutOrder,
+    })
     table.insert(self.effectDisplays, card)
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = card
 
     -- subtle top->bottom sheen for depth
     local grad = Instance.new("UIGradient")
@@ -322,10 +318,6 @@ function EffectsPanel:_createEffectDisplay(effect, _effectType, layoutOrder)
         NumberSequenceKeypoint.new(1, 1),
     })
     grad.Parent = card
-
-    -- Game pill ring in the event's color (Mineral Monday's gem → emerald), same as Achievements
-    -- rows: bleed 2 (centered on the edge) + SliceScale 0.08. Hollow ring → content shows through.
-    PanelChrome.pillBorder(card, skin.pillKey or "sapphire", 105, 2, 0.08)
 
     -- icon disc (accent-tinted, ringed). ZIndex 103 > card's 102 so it shows (Sibling behavior).
     local disc = Instance.new("Frame")

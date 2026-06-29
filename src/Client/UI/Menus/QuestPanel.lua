@@ -361,24 +361,18 @@ end
 function QuestPanel:_activationControl(track, hasGrind)
     local isFocus = self.focusTrack ~= nil and track == self.focusTrack
 
-    local row = Instance.new("Frame")
-    row.Name = "ActivationBanner"
-    row.Size = UDim2.new(1, 0, 0, 44)
-    row.BackgroundColor3 = isFocus and COLORS.fill or (hasGrind and COLORS.row or COLORS.track)
-    row.BackgroundTransparency = isFocus and 0.15 or 0
-    row.BorderSizePixel = 0
-    row.LayoutOrder = 0 -- always first
-    row.ZIndex = 102
-    row.Parent = self.listFrame
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = row
-
     -- Game pill ring on the banner too: emerald when this branch is the active/counting focus,
     -- citrine when it CAN be activated, neutral for an always-tracked branch.
     local bannerKey = isFocus and "emerald" or (hasGrind and "citrine" or "neutral")
-    PanelChrome.pillBorder(row, bannerKey, 105, 2, 0.08)
+    local row = PanelChrome.entryRow(self.listFrame, {
+        name = "ActivationBanner",
+        height = 44,
+        corner = 10,
+        bg = isFocus and COLORS.fill or (hasGrind and COLORS.row or COLORS.track),
+        bgTransparency = isFocus and 0.15 or 0,
+        key = bannerKey,
+        layoutOrder = 0,
+    })
 
     if isFocus then
         local label = Instance.new("TextLabel")
@@ -493,19 +487,6 @@ end
 function QuestPanel:_createQuestRow(quest, order)
     local progress = quest.progress or { current = 0, target = 1, fraction = 0, met = false }
 
-    local row = Instance.new("Frame")
-    row.Name = "Quest_" .. tostring(quest.id)
-    row.Size = UDim2.new(1, 0, 0, 96)
-    row.BackgroundColor3 = COLORS.row
-    row.BorderSizePixel = 0
-    row.LayoutOrder = order
-    row.ZIndex = 102
-    row.Parent = self.listFrame
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = row
-
     -- Game pill ring per row (Achievements style): emerald = claimable (pops like the green Claim
     -- button), neutral = locked, area color = in progress.
     local rowKey = self._areaKey or "sapphire"
@@ -514,7 +495,13 @@ function QuestPanel:_createQuestRow(quest, order)
     elseif quest.locked then
         rowKey = "neutral"
     end
-    PanelChrome.pillBorder(row, rowKey, 105, 2, 0.08)
+    local row = PanelChrome.entryRow(self.listFrame, {
+        name = "Quest_" .. tostring(quest.id),
+        height = 96,
+        bg = COLORS.row,
+        key = rowKey,
+        layoutOrder = order,
+    })
 
     -- Title
     local name = Instance.new("TextLabel")

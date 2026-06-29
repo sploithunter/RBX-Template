@@ -272,36 +272,13 @@ function SettingsPanel:_createUI(parent)
     -- already cover this; no need to duplicate it inside Settings. Jason.)
 end
 
--- Game pill ring around an entry row, area-themed (bleed 2 + SliceScale 0.08, same as the other
--- panels' rows). Hollow ring → the row's controls show through. (Jason: pills around the entries.)
-function SettingsPanel:_pillRow(frame)
-    PanelChrome.pillBorder(frame, self._areaKey or "sapphire", 105, 2, 0.08)
-end
-
 function SettingsPanel:_createSectionHeader(title, layoutOrder)
-    local header = Instance.new("Frame")
-    header.Name = title .. "Header"
-    header.Size = UDim2.new(1, 0, 0, 40)
-    -- Area/origin-themed section bands (match the shell) instead of a hardcoded blue.
-    header.BackgroundColor3 = self._areaColor or Color3.fromRGB(0, 120, 180)
-    header.BorderSizePixel = 0
-    header.LayoutOrder = layoutOrder
-    header.Parent = self.scrollFrame
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = header
-
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -20, 1, 0)
-    label.Position = UDim2.new(0, 10, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = title
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextSize = 16
-    label.Font = Enum.Font.GothamBold
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = header
+    -- Shared area-themed section band (PanelChrome.sectionHeader).
+    PanelChrome.sectionHeader(self.scrollFrame, {
+        title = title,
+        color = self._areaColor,
+        layoutOrder = layoutOrder,
+    })
 end
 
 function SettingsPanel:_createSliderSetting(
@@ -314,18 +291,13 @@ function SettingsPanel:_createSliderSetting(
 )
     local theme = uiConfig.helpers.get_theme(uiConfig)
 
-    local settingFrame = Instance.new("Frame")
-    settingFrame.Name = name .. "Setting"
-    settingFrame.Size = UDim2.new(1, 0, 0, 50)
-    settingFrame.BackgroundColor3 = theme.primary.card or Color3.fromRGB(50, 50, 55)
-    settingFrame.BorderSizePixel = 0
-    settingFrame.LayoutOrder = layoutOrder
-    settingFrame.Parent = self.scrollFrame
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = settingFrame
-    self:_pillRow(settingFrame)
+    local settingFrame = PanelChrome.entryRow(self.scrollFrame, {
+        name = name .. "Setting",
+        height = 50,
+        corner = 8,
+        bg = theme.primary.card or Color3.fromRGB(50, 50, 55),
+        layoutOrder = layoutOrder,
+    })
 
     -- Label
     local label = Instance.new("TextLabel")
@@ -403,18 +375,13 @@ end
 function SettingsPanel:_createToggleSetting(name, currentValue, layoutOrder, callback)
     local theme = uiConfig.helpers.get_theme(uiConfig)
 
-    local settingFrame = Instance.new("Frame")
-    settingFrame.Name = name .. "Setting"
-    settingFrame.Size = UDim2.new(1, 0, 0, 50)
-    settingFrame.BackgroundColor3 = theme.primary.card or Color3.fromRGB(50, 50, 55)
-    settingFrame.BorderSizePixel = 0
-    settingFrame.LayoutOrder = layoutOrder
-    settingFrame.Parent = self.scrollFrame
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = settingFrame
-    self:_pillRow(settingFrame)
+    local settingFrame = PanelChrome.entryRow(self.scrollFrame, {
+        name = name .. "Setting",
+        height = 50,
+        corner = 8,
+        bg = theme.primary.card or Color3.fromRGB(50, 50, 55),
+        layoutOrder = layoutOrder,
+    })
 
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(0.7, 0, 1, 0)
@@ -456,18 +423,13 @@ end
 function SettingsPanel:_createButtonSetting(name, buttonText, layoutOrder, callback)
     local theme = uiConfig.helpers.get_theme(uiConfig)
 
-    local settingFrame = Instance.new("Frame")
-    settingFrame.Name = name .. "Setting"
-    settingFrame.Size = UDim2.new(1, 0, 0, 40)
-    settingFrame.BackgroundColor3 = theme.primary.card or Color3.fromRGB(50, 50, 55)
-    settingFrame.BorderSizePixel = 0
-    settingFrame.LayoutOrder = layoutOrder
-    settingFrame.Parent = self.scrollFrame
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = settingFrame
-    self:_pillRow(settingFrame)
+    local settingFrame = PanelChrome.entryRow(self.scrollFrame, {
+        name = name .. "Setting",
+        height = 40,
+        corner = 8,
+        bg = theme.primary.card or Color3.fromRGB(50, 50, 55),
+        layoutOrder = layoutOrder,
+    })
 
     -- Label
     local label = Instance.new("TextLabel")
@@ -506,17 +468,13 @@ function SettingsPanel:_createButtonSetting(name, buttonText, layoutOrder, callb
 end
 
 function SettingsPanel:_createDropdownSetting(title, currentValue, options, layoutOrder, callback)
-    local container = Instance.new("Frame")
-    container.Name = title:gsub(" ", "")
-    container.Size = UDim2.new(1, 0, 0, 50)
-    container.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-    container.BorderSizePixel = 0
-    container.LayoutOrder = layoutOrder
-    container.Parent = self.scrollFrame
-    local ddCorner = Instance.new("UICorner")
-    ddCorner.CornerRadius = UDim.new(0, 8)
-    ddCorner.Parent = container
-    self:_pillRow(container)
+    local container = PanelChrome.entryRow(self.scrollFrame, {
+        name = title:gsub(" ", ""),
+        height = 50,
+        corner = 8,
+        bg = Color3.fromRGB(50, 50, 55),
+        layoutOrder = layoutOrder,
+    })
 
     -- Title label — left padding 15 + size 14 to match the slider/toggle/button rows (Jason: the
     -- dropdown rows weren't aligned with the others). Vertically centered.

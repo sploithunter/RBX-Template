@@ -199,4 +199,70 @@ function PanelChrome.scrollPane(frame, opts)
     return scroll, layout
 end
 
+-- A list ENTRY ROW shell: a pill-bordered card the caller fills with its own content. Collapses the
+-- "Frame + corner + area/status pill ring" boilerplate every panel's rows repeat. Returns the Frame.
+-- opts: { name, height=84, layoutOrder, key=areaPill, bg, corner=12, bleed=2, sliceScale=0.08, zindex=102 }
+function PanelChrome.entryRow(parent, opts)
+    opts = opts or {}
+    local row = Instance.new("Frame")
+    row.Name = opts.name or "Row"
+    row.Size = UDim2.new(1, 0, 0, opts.height or 84)
+    row.BackgroundColor3 = opts.bg or Color3.fromRGB(40, 42, 52)
+    row.BackgroundTransparency = opts.bgTransparency or 0
+    row.BorderSizePixel = 0
+    if opts.layoutOrder ~= nil then
+        row.LayoutOrder = opts.layoutOrder
+    end
+    row.ZIndex = opts.zindex or 102
+    row.Parent = parent
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, opts.corner or 12)
+    corner.Parent = row
+    local key = opts.key
+    if key == nil then
+        key = PanelChrome.areaPill()
+    end
+    PanelChrome.pillBorder(row, key, 105, opts.bleed or 2, opts.sliceScale or 0.08)
+    return row
+end
+
+-- A SECTION HEADER band: a solid area-colored divider with a left-aligned title (the in-list section
+-- separator used by Settings/Events). Returns the Frame. opts: { title, color=area, layoutOrder,
+-- height=40, textSize=16, zindex=102 }
+function PanelChrome.sectionHeader(parent, opts)
+    opts = opts or {}
+    local color = opts.color
+    if color == nil then
+        local _, c = PanelChrome.areaPill()
+        color = c or Color3.fromRGB(56, 120, 160)
+    end
+    local z = opts.zindex or 102
+    local header = Instance.new("Frame")
+    header.Name = (opts.title or "Section") .. "Header"
+    header.Size = UDim2.new(1, 0, 0, opts.height or 40)
+    header.BackgroundColor3 = color
+    header.BorderSizePixel = 0
+    if opts.layoutOrder ~= nil then
+        header.LayoutOrder = opts.layoutOrder
+    end
+    header.ZIndex = z
+    header.Parent = parent
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = header
+    local label = Instance.new("TextLabel")
+    label.Name = "Label"
+    label.Size = UDim2.new(1, -24, 1, 0)
+    label.Position = UDim2.new(0, 14, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = opts.title or ""
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextSize = opts.textSize or 16
+    label.Font = Enum.Font.GothamBold
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = z + 1
+    label.Parent = header
+    return header
+end
+
 return PanelChrome

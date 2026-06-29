@@ -233,26 +233,21 @@ end
 
 function AchievementsPanel:_makeRow(entry, order)
     local tier = currentTier(entry)
-    local row = Instance.new("Frame")
-    row.Name = "Ach_" .. tostring(entry.id)
-    row.Size = UDim2.new(1, 0, 0, 84)
-    row.BackgroundColor3 = COLORS.row
-    row.BorderSizePixel = 0
-    row.LayoutOrder = order
-    row.ZIndex = 102
-    row.Parent = self.listFrame
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 12)
-    c.Parent = row
     -- Pill-frame border per row: emerald = claimable (pops like the green Claim button), neutral =
-    -- maxed/done, sapphire = in progress (matches the game's pill chrome).
+    -- maxed/done, area color = in progress (matches the game's pill chrome).
     local rowKey = self._areaKey or "sapphire"
     if not tier then
         rowKey = "neutral"
     elseif entry.value >= tier.goal then
         rowKey = "emerald"
     end
-    PanelChrome.pillBorder(row, rowKey, 105, 2, 0.08) -- SliceScale 0.08 for list rows (Jason)
+    local row = PanelChrome.entryRow(self.listFrame, {
+        name = "Ach_" .. tostring(entry.id),
+        height = 84,
+        bg = COLORS.row,
+        key = rowKey,
+        layoutOrder = order,
+    })
 
     local name = Instance.new("TextLabel")
     name.Size = UDim2.new(1, -150, 0, 26)
