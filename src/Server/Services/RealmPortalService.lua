@@ -187,9 +187,10 @@ function RealmPortalService:_ensureTouch(part, def)
     self:_clearLockBadge(part)
     local access = self._layersConfig.access and self._layersConfig.access[def.layer]
     local req = access and tonumber(access.requires_level)
+    -- "Heaven 1\nLv 7" — level on its OWN line under the name so it never wraps mid-word (Jason).
     local label = layerDisplayName(def.layer)
     if req and req > 1 then
-        label = label .. "  ·  Lv " .. req
+        label = label .. "\nLv " .. req
     end
     local tint = tostring(def.layer):match("^hell") and Color3.fromRGB(255, 150, 100)
         or Color3.fromRGB(255, 235, 150)
