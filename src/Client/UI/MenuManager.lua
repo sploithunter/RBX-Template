@@ -168,17 +168,13 @@ function MenuManager:_createOverlay()
     -- doesn't fight the player bar / currency bleeding through (Jason).
     overlayGui.DisplayOrder = 120
 
-    -- Create overlay frame
-    self.overlayFrame = Instance.new("Frame")
-    self.overlayFrame.Name = "PanelOverlay"
-    self.overlayFrame.Size = UDim2.new(1, 0, 1, 0)
-    self.overlayFrame.BackgroundTransparency = 1
-    self.overlayFrame.Visible = false
-    self.overlayFrame.Parent = overlayGui
+    -- Panels parent DIRECTLY to the MenuOverlay ScreenGui — no wrapper Frame layer (Jason: cleaner).
+    -- Show/hide is driven by the scrim's visibility; panels create/destroy their own frame on Show/Hide.
+    self.overlayFrame = overlayGui
 
     -- Dim scrim behind every panel — darkens the HUD so the menu reads as a modal ("blink out the
-    -- screen like egg hatches"). It's a TextButton so it absorbs clicks (HUD buttons behind aren't hit
-    -- by accident); ZIndex 1 keeps it under the panels (ZIndex 100+).
+    -- screen like egg hatches"). TextButton so it absorbs clicks (HUD buttons behind aren't hit by
+    -- accident); ZIndex 1 keeps it under the panels (ZIndex 100+). Hidden until a panel opens.
     local scrim = Instance.new("TextButton")
     scrim.Name = "Scrim"
     scrim.Text = ""
@@ -188,7 +184,9 @@ function MenuManager:_createOverlay()
     scrim.BackgroundTransparency = 0.4
     scrim.BorderSizePixel = 0
     scrim.ZIndex = 1
-    scrim.Parent = self.overlayFrame
+    scrim.Visible = false
+    scrim.Parent = overlayGui
+    self._scrim = scrim
 
     self.logger:debug("Overlay frame created")
 end
@@ -244,10 +242,10 @@ function MenuManager:OpenPanel(panelName, transitionEffect)
 
     self.isTransitioning = true
 
-    -- Show overlay
-    self.overlayFrame.Visible = true
-
-    -- Show the panel
+    -- Show the dim scrim, then the panel (both parent to the MenuOverlay ScreenGui).
+    if self._scrim then
+        self._scrim.Visible = true
+    end
     panel:Show(self.overlayFrame)
 
     -- Get panel frame and animate entrance
@@ -299,8 +297,10 @@ function MenuManager:CloseCurrentPanel(transitionEffect)
         -- Hide the panel
         panelToClose:Hide()
 
-        -- Hide overlay
-        self.overlayFrame.Visible = false
+        -- Hide the dim scrim (the panel destroyed its own frame in :Hide()).
+        if self._scrim then
+            self._scrim.Visible = false
+        end
 
         self.isTransitioning = false
         self.logger:info("Closed panel:", panelName)

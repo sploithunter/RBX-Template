@@ -1252,7 +1252,7 @@ function InventoryPanel:_createUI(parent)
         do
             local del = Instance.new("TextButton")
             del.Name = "DeleteActionButton"
-            del.Size = UDim2.new(0, 200, 0, 44)
+            del.Size = UDim2.new(0.4, 0, 0.09, 0) -- relative (Jason)
             del.AnchorPoint = Vector2.new(0.5, 1)
             del.Position = UDim2.new(0.5, 0, 1, -14)
             del.BackgroundColor3 = DELETE_PILL_IDLE
@@ -1286,7 +1286,7 @@ function InventoryPanel:_createUI(parent)
         do
             local sell = Instance.new("TextButton")
             sell.Name = "EnhancementSellButton"
-            sell.Size = UDim2.new(0, 200, 0, 44)
+            sell.Size = UDim2.new(0.4, 0, 0.09, 0) -- relative (Jason)
             sell.AnchorPoint = Vector2.new(0.5, 1)
             sell.Position = UDim2.new(0.5, 0, 1, -14)
             sell.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
