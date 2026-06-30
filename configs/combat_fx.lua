@@ -301,6 +301,15 @@ return {
                         color = { 255, 170, 80 },
                     },
                     ground = { rate = 0.5, size = 0.6, transparency = 0.2 },
+                    -- ONE-SHOT burst extras (targeted fire AoE only — read by spawnAuraField's burst
+                    -- block): a real Roblox Explosion flash + a rapid expanding neon sphere. The
+                    -- persistent aura ignores these (it never sets burst).
+                    burst = {
+                        explosion = true, -- classic Roblox Explosion ball (visual only, no physics)
+                        sphere_color = { 255, 130, 40 }, -- expanding fireball tint
+                        sphere_frac = 1.15, -- final diameter = radius*2 * this
+                        sphere_time = 0.26, -- swell-out duration (sec)
+                    },
                 },
             },
             grass = {

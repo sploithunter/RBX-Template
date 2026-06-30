@@ -584,6 +584,44 @@ local function spawnAuraField(theme, radius, opts)
             discImg.ImageTransparency = 1
             TweenService:Create(discImg, TweenInfo.new(0.1), { ImageTransparency = tgt }):Play()
         end
+        -- DETONATION core: a rapid expanding NEON SPHERE (a swelling fireball that fades) and, when the
+        -- theme opts in, a real Roblox Explosion flash. Sized to the field radius so the pop reads as an
+        -- instant hit of the whole area. theme.burst = { explosion, sphere_color, sphere_frac,
+        -- sphere_time }. Both are point-anchored cosmetics (no physics) parented to the FX folder.
+        local bopt = theme.burst or {}
+        local center = originPos() + Vector3.new(0, math.max(2, radius * 0.4), 0)
+        do -- rapid expanding sphere (the "really quick" expansion Jason wanted)
+            local sphere = Instance.new("Part")
+            sphere.Shape = Enum.PartType.Ball
+            sphere.Material = Enum.Material.Neon
+            sphere.Color = toColor(bopt.sphere_color, c1)
+            sphere.Transparency = 0.2
+            sphere.Anchored = true
+            sphere.CanCollide = false
+            sphere.CanQuery = false
+            sphere.CastShadow = false
+            sphere.Massless = true
+            sphere.Size = Vector3.new(2, 2, 2)
+            sphere.CFrame = CFrame.new(center)
+            sphere.Parent = fieldFolder()
+            local full = (radius * 2) * (tonumber(bopt.sphere_frac) or 1.1)
+            local t = tonumber(bopt.sphere_time) or 0.28
+            TweenService:Create(
+                sphere,
+                TweenInfo.new(t, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                { Size = Vector3.new(full, full, full), Transparency = 1 }
+            ):Play()
+            Debris:AddItem(sphere, t + 0.15)
+        end
+        if bopt.explosion then -- classic Roblox Explosion flash — visual only (no fling, no joint break)
+            local ex = Instance.new("Explosion")
+            ex.Position = center
+            ex.BlastRadius = math.max(4, radius)
+            ex.BlastPressure = 0
+            ex.DestroyJointRadiusPercent = 0
+            ex.Visible = true
+            ex.Parent = Workspace
+        end
     end
 
     local stopped = false
