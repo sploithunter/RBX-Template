@@ -706,6 +706,12 @@ function PowerService:_spawnGroundRune(center, radius, color, opts)
     local fadeOut = tonumber(opts.fade_out) or 0.6
     local bright = tonumber(opts.bright) or 0.05
     local lifetime = fadeIn + hold + fadeOut
+    -- The MagicCircle texture's visible ring sits at ~RING_FRAC of the image (the art has margin), so
+    -- the slab is upsized by 1/RING_FRAC → the VISIBLE gold ring lands exactly at `radius`. Pass the
+    -- power's EFFECTIVE (post-enhancement) AoE radius and the circle reads as the true area. The sand
+    -- fill defaults to RING_FRAC so it matches the gold ring (= radius) too.
+    local RING_FRAC = 0.88
+    local slabRadius = radius / RING_FRAC
     -- Sit the rune on the REAL floor under the centre (raycast down), like the pet aura fields — so it
     -- doesn't float or clip into uneven ground. Exclude pets / enemies / players / FX so the ray finds
     -- the map terrain.
@@ -748,7 +754,7 @@ function PowerService:_spawnGroundRune(center, radius, color, opts)
     marker.CanQuery = false
     marker.CastShadow = false
     marker.Transparency = 1 -- invisible slab; the SurfaceGui image IS the rune
-    marker.Size = Vector3.new(radius * 2, 0.1, radius * 2)
+    marker.Size = Vector3.new(slabRadius * 2, 0.1, slabRadius * 2)
     marker.CFrame = CFrame.new(center.X, floorY + 0.1, center.Z)
     marker.Parent = Workspace
     local gui = Instance.new("SurfaceGui")
@@ -766,7 +772,7 @@ function PowerService:_spawnGroundRune(center, radius, color, opts)
         local fill = Instance.new("ImageLabel")
         -- centered + scaled to match the magic-circle's VISIBLE diameter (the rune texture has margin,
         -- so a full-slab fill reads bigger than the circle). fill_scale tunes the match.
-        local fscale = tonumber(opts.fill_scale) or 1
+        local fscale = tonumber(opts.fill_scale) or RING_FRAC
         fill.AnchorPoint = Vector2.new(0.5, 0.5)
         fill.Position = UDim2.fromScale(0.5, 0.5)
         fill.Size = UDim2.fromScale(fscale, fscale)
@@ -1393,7 +1399,7 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                     fill_texture = "78509147193799", -- sandfloor_tile (alpha), tiled under the rune
                     fill_color = Color3.fromRGB(235, 205, 120),
                     fill_bright = 0.4,
-                    fill_scale = 0.88, -- sand disc matches the magic-circle's visible ring (live-tuned)
+                    -- fill_scale defaults to the rune's RING_FRAC, so the sand matches the gold ring (= radius)
                 }
             )
         end
