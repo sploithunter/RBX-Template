@@ -990,8 +990,9 @@ function InventoryPanel:_createUI(parent)
     local baseUI = BaseUI.new()
 
     -- Create professional image-based inventory panel
-    -- Near-fullscreen (Jason): on mobile the 0.8×0.85 panel left the fixed-px internals cramped; a
-    -- near-fullscreen modal (with the MenuManager dim scrim behind) gives them room on every device.
+    -- Near-fullscreen, centered (Jason tuned live): 0.94 wide, full height minus 56px. The MenuOverlay
+    -- uses the full viewport (IgnoreGuiInset) + a dim scrim, so this reads as a modal. Header/content
+    -- below are RELATIVE to this frame, so they scale on every device.
     local panelResult = baseUI:CreateImagePanel("inventory_panel", {
         size = UDim2.new(0.94, 0, 0.92, 0),
         position = UDim2.new(0.5, 0, 0.5, 0),
@@ -1013,12 +1014,45 @@ function InventoryPanel:_createUI(parent)
     self.content = panelResult.content
     self.baseUI = baseUI
 
-    -- Shift the header bag icon INSIDE the header (it was poking out top-left over the pill border)
-    -- and round the panel corner so no square fill peeks past the rounded gold ring (Jason).
-    local bagIcon = self.header and self.header:FindFirstChild("HeaderIcon")
-    if bagIcon then
-        bagIcon.Position = UDim2.new(0, 16, 0.5, 0)
-        bagIcon.AnchorPoint = Vector2.new(0, 0.5)
+    -- RELATIVE header + content (Jason, tuned live): header = top 15%, content = bottom 85% docked
+    -- right under it. This makes everything scale on mobile AND closes the dead "blue bar" gap the
+    -- fixed-px header used to leave between itself and the content.
+    if self.header then
+        self.header.Size = UDim2.new(1, 0, 0.15, 0)
+        self.header.Position = UDim2.new(0, 0, 0, 0)
+        self.header.AnchorPoint = Vector2.new(0, 0)
+    end
+    if self.content then
+        self.content.Size = UDim2.new(1, 0, 0.85, 0)
+        self.content.Position = UDim2.new(0.5, 0, 0.15, 0)
+        self.content.AnchorPoint = Vector2.new(0.5, 0)
+    end
+
+    -- Header LEFT sub-container (Jason): 30% width, full height, upper-left — holds the bag icon +
+    -- "Inventory" title. Relative so it scales; the action buttons get a 70% RIGHT container below.
+    if self.header then
+        local leftBox = Instance.new("Frame")
+        leftBox.Name = "HeaderLeft"
+        leftBox.AnchorPoint = Vector2.new(0, 0)
+        leftBox.Position = UDim2.new(0, 0, 0, 0)
+        leftBox.Size = UDim2.new(0.3, 0, 1, 0)
+        leftBox.BackgroundTransparency = 1
+        leftBox.ZIndex = 16
+        leftBox.Parent = self.header
+        local bagIcon = self.header:FindFirstChild("HeaderIcon")
+        if bagIcon then
+            bagIcon.AnchorPoint = Vector2.new(0, 0.5)
+            bagIcon.Position = UDim2.new(0, 6, 0.5, 0)
+            bagIcon.Parent = leftBox
+        end
+        local titleLbl = self.header:FindFirstChild("HeaderTitle")
+        if titleLbl then
+            titleLbl.AnchorPoint = Vector2.new(1, 0.5)
+            titleLbl.Position = UDim2.new(1, -4, 0.5, 0)
+            titleLbl.Size = UDim2.new(0.66, 0, 0.9, 0)
+            titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+            titleLbl.Parent = leftBox
+        end
     end
     local fcorner = self.frame:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
     fcorner.CornerRadius = UDim.new(0, 22)
@@ -1049,24 +1083,38 @@ function InventoryPanel:_createUI(parent)
             self.logger:warn("Close button config not found, using fallback")
         end
 
-        -- Trade lives INSIDE the inventory now (tray consolidation): header button, left of close.
+        -- Header RIGHT sub-container (Jason): ~70% width, full height, upper-right — a flex row of the
+        -- FIVE action buttons, each 1/5 width (RELATIVE, no fixed pixels). Small px gap on the right
+        -- for the close-X (which hangs outside the header). LayoutOrder L→R: Delete,Cards,Auto,Eggs,Trade.
+        local btnRow = Instance.new("Frame")
+        btnRow.Name = "HeaderButtons"
+        btnRow.AnchorPoint = Vector2.new(1, 0)
+        btnRow.Position = UDim2.new(1, -28, 0, 0)
+        btnRow.Size = UDim2.new(0.7, 0, 1, 0)
+        btnRow.BackgroundTransparency = 1
+        btnRow.ZIndex = 250
+        btnRow.Parent = self.header
+        local btnLayout = Instance.new("UIListLayout")
+        btnLayout.FillDirection = Enum.FillDirection.Horizontal
+        btnLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+        btnLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+        btnLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        btnLayout.Padding = UDim.new(0, 4)
+        btnLayout.Parent = btnRow
+
+        -- Trade lives INSIDE the inventory now (tray consolidation): rightmost button in the row.
         do
             local tradeBtn = Instance.new("TextButton")
             tradeBtn.Name = "TradeButton"
-            tradeBtn.Size = UDim2.new(0, 86, 0, config.size.height)
-            -- dock INSIDE the header, 8px left of the close X (which anchors top-right and
-            -- hangs outside by config.offset). Without the (1,0) anchor this pill drifted
-            -- OVER the close button — Jason: "what is this weird trade button".
-            tradeBtn.AnchorPoint = Vector2.new(1, 0)
-            tradeBtn.Position =
-                UDim2.new(1, (config.offset.x or 10) - (config.size.width or 36) - 8, 0, 16)
+            tradeBtn.Size = UDim2.new(1 / 5, -4, 0.74, 0) -- relative 1/5 of the button row
+            tradeBtn.LayoutOrder = 5
             tradeBtn.BackgroundColor3 = Color3.fromRGB(70, 140, 90)
             tradeBtn.Text = "🤝 Trade"
             tradeBtn.TextColor3 = Color3.fromRGB(240, 255, 245)
             tradeBtn.TextScaled = true
             tradeBtn.Font = Enum.Font.GothamBold
             tradeBtn.ZIndex = 250
-            tradeBtn.Parent = self.header
+            tradeBtn.Parent = btnRow
             pillify(tradeBtn)
             tradeBtn.Activated:Connect(function()
                 local mm = _G.MenuManager
@@ -1082,19 +1130,17 @@ function InventoryPanel:_createUI(parent)
 
         -- Shared header-pill builder (hatch settings + card-size settings below).
         -- offset = distance from the close-X slot to the pill's RIGHT edge (right-to-left chain).
-        local function pill(text, width, offset, color)
+        local function pill(text, layoutOrder, color)
             local b = Instance.new("TextButton")
-            b.Size = UDim2.new(0, width, 0, config.size.height)
-            b.AnchorPoint = Vector2.new(1, 0)
-            b.Position =
-                UDim2.new(1, (config.offset.x or 10) - (config.size.width or 36) - offset, 0, 16)
+            b.Size = UDim2.new(1 / 5, -4, 0.74, 0) -- relative 1/5 of the button row
+            b.LayoutOrder = layoutOrder
             b.BackgroundColor3 = color
             b.TextColor3 = Color3.fromRGB(240, 248, 255)
             b.Text = text
             b.TextScaled = true
             b.Font = Enum.Font.GothamBold
             b.ZIndex = 250
-            b.Parent = self.header
+            b.Parent = btnRow
             pillify(b) -- currency-pill capsule (Eggs / AUTO / Cards / Delete header pills)
             local tc2 = Instance.new("UITextSizeConstraint")
             tc2.MaxTextSize = 14
@@ -1114,8 +1160,8 @@ function InventoryPanel:_createUI(parent)
                 -- right-to-left after Trade: TWO settings pills only (Jason: "not sure
                 -- why we have a hatch button" — hatching happens AT the egg; these
                 -- configure how the E-key/auto hatch behaves)
-                local countBtn = pill("Eggs: 1", 86, 8 + 86 + 8, Color3.fromRGB(70, 100, 160))
-                local autoBtn = pill("Manual", 80, 8 + 86 + 8 + 86 + 8, Color3.fromRGB(90, 90, 110))
+                local countBtn = pill("Eggs: 1", 4, Color3.fromRGB(70, 100, 160))
+                local autoBtn = pill("Manual", 3, Color3.fromRGB(90, 90, 110))
 
                 local countMode = "one" -- one | half | max (display follows the service truth)
                 local function refresh()
@@ -1169,8 +1215,7 @@ function InventoryPanel:_createUI(parent)
         do
             local scaleBtn = pill(
                 CARD_SCALE_LABEL[self._cardScale or "small"],
-                80,
-                8 + 86 + 8 + 86 + 8 + 80 + 8, -- left of the Auto/Manual pill
+                2, -- Cards pill (left of Auto)
                 Color3.fromRGB(90, 90, 110)
             )
             self._cardScaleButton = scaleBtn
@@ -1192,8 +1237,7 @@ function InventoryPanel:_createUI(parent)
         do
             local delPill = pill(
                 "🗑 Delete",
-                90,
-                8 + 86 + 8 + 86 + 8 + 80 + 8 + 80 + 8, -- left of the card-size pill
+                1, -- Delete pill (leftmost of the button row)
                 DELETE_PILL_IDLE
             )
             self._deletePill = delPill
@@ -1324,7 +1368,7 @@ function InventoryPanel:_createCategoryTabs()
     -- Category container
     local categoryContainer = Instance.new("Frame")
     categoryContainer.Name = "CategoryContainer"
-    categoryContainer.Size = UDim2.new(0.95, 0, 0.08, 0) -- 95% width, 8% height (scales with screen)
+    categoryContainer.Size = UDim2.new(0.95, 0, 0.1, 0) -- 95% width, 10% height (relative — Jason)
     categoryContainer.Position = UDim2.new(0.025, 0, 0.02, 0) -- 2.5% from left, 2% from top (scales with screen)
     categoryContainer.BackgroundTransparency = 1
     categoryContainer.ZIndex = 101
@@ -1334,7 +1378,7 @@ function InventoryPanel:_createCategoryTabs()
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Horizontal
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 10)
+    layout.Padding = UDim.new(0, 3) -- small gap so the 1/6-width tabs fit across the row
     layout.VerticalAlignment = Enum.VerticalAlignment.Center
     layout.Parent = categoryContainer
 
@@ -1392,10 +1436,11 @@ end
 function InventoryPanel:_createCategoryTab(category, parent, layoutOrder)
     local isSelected = (category.name == self.selectedCategory)
 
-    -- Tab button
+    -- Tab button — RELATIVE width 1/7 (Jason: seven tabs); the fixed 120px broke the layout on narrow
+    -- screens. Small px gap (layout Padding 3) eats a hair, so subtract it back here.
     local tab = Instance.new("TextButton")
     tab.Name = category.name .. "Tab"
-    tab.Size = UDim2.new(0, 120, 1, 0)
+    tab.Size = UDim2.new(1 / 7, -3, 1, 0)
     tab.BackgroundColor3 = isSelected and Color3.fromRGB(52, 152, 219) or Color3.fromRGB(40, 40, 50)
     tab.BorderSizePixel = 0
     tab.Text = ""
@@ -1493,7 +1538,7 @@ function InventoryPanel:_createSearchSection()
     -- Search container
     local searchContainer = Instance.new("Frame")
     searchContainer.Name = "SearchContainer"
-    searchContainer.Size = UDim2.new(0.95, 0, 0.08, 0) -- 95% width, 8% height (scales with screen)
+    searchContainer.Size = UDim2.new(0.95, 0, 0.1, 0) -- 95% width, 10% height (relative — Jason)
     searchContainer.Position = UDim2.new(0.025, 0, 0.11, 0) -- 2.5% from left, 11% from top (scales with screen)
     searchContainer.BackgroundTransparency = 1
     searchContainer.ZIndex = 101
