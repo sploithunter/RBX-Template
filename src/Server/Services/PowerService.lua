@@ -694,6 +694,57 @@ function PowerService:_healPet(player, pet, amount, now)
     end
 end
 
+-- Shared GROUND RUNE for player AoE powers: the uploaded MagicCircle symbol on a flat shared-world
+-- slab, tinted to the ACTION's color (color carries meaning — green heal, yellow farm-boost, …).
+-- Timing via opts: fade_in / hold / fade_out (sec), `bright` = peak opacity (0 = fully bright), `spin`
+-- = slow rotation over its life. Used by both the persistent Healing Field (long hold) and momentary
+-- casts like Resonance (bright flash → fade). Returns the marker part.
+function PowerService:_spawnGroundRune(center, radius, color, opts)
+    opts = opts or {}
+    local fadeIn = tonumber(opts.fade_in) or 0.35
+    local hold = math.max(0, tonumber(opts.hold) or 0)
+    local fadeOut = tonumber(opts.fade_out) or 0.6
+    local bright = tonumber(opts.bright) or 0.05
+    local lifetime = fadeIn + hold + fadeOut
+    local marker = Instance.new("Part")
+    marker.Name = opts.name or "PowerRune"
+    marker.Anchored = true
+    marker.CanCollide = false
+    marker.CanQuery = false
+    marker.CastShadow = false
+    marker.Transparency = 1 -- invisible slab; the SurfaceGui image IS the rune
+    marker.Size = Vector3.new(radius * 2, 0.1, radius * 2)
+    marker.CFrame = CFrame.new(center.X, center.Y - 2.4, center.Z)
+    marker.Parent = Workspace
+    local gui = Instance.new("SurfaceGui")
+    gui.Face = Enum.NormalId.Top
+    gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    gui.PixelsPerStud = 10
+    gui.Parent = marker
+    local rune = Instance.new("ImageLabel")
+    rune.Size = UDim2.fromScale(1, 1)
+    rune.BackgroundTransparency = 1
+    rune.Image = "rbxassetid://136557266765344" -- MagicCircle (uploaded)
+    rune.ImageColor3 = color
+    rune.ImageTransparency = 1
+    rune.Parent = gui
+    TweenService:Create(rune, TweenInfo.new(fadeIn), { ImageTransparency = bright }):Play()
+    if opts.spin then
+        TweenService
+            :Create(marker, TweenInfo.new(lifetime, Enum.EasingStyle.Linear), {
+                CFrame = marker.CFrame * CFrame.Angles(0, math.rad(opts.spin_deg or 60), 0),
+            })
+            :Play()
+    end
+    task.delay(fadeIn + hold, function()
+        if rune and rune.Parent then
+            TweenService:Create(rune, TweenInfo.new(fadeOut), { ImageTransparency = 1 }):Play()
+        end
+    end)
+    Debris:AddItem(marker, lifetime + 0.3)
+    return marker
+end
+
 -- Heal-over-time: heal the WHOLE squad `perTick` every `tickSeconds` for `totalSeconds`. Re-resolves
 -- the squad each tick so it heals whoever is alive (Living Mountain's standing aura, Oasis's tail).
 -- Healing Field — a STATIONARY heal zone dropped at the player's feet (kind.field). Unlike the
@@ -718,39 +769,14 @@ function PowerService:_healZone(player, kind, perTick, totalSeconds, powerId)
         return
     end
 
-    -- Ground RUNE CIRCLE: the MagicCircle symbol on the floor, bright heal-green, marking the zone for
-    -- its WHOLE life (shared-world — server-spawned, so every client sees it). Replaces the old flat
-    -- translucent neon disc with a designed magic symbol. A SurfaceGui Top-face on a thin invisible
-    -- slab; the tinted ImageLabel IS the visual. Fades in, holds for the field, fades out at the end.
-    local marker = Instance.new("Part")
-    marker.Name = "HealZone"
-    marker.Anchored = true
-    marker.CanCollide = false
-    marker.CanQuery = false
-    marker.CastShadow = false
-    marker.Transparency = 1
-    marker.Size = Vector3.new(radius * 2, 0.1, radius * 2)
-    marker.CFrame = CFrame.new(center.X, center.Y - 2.4, center.Z)
-    marker.Parent = Workspace
-    local gui = Instance.new("SurfaceGui")
-    gui.Face = Enum.NormalId.Top
-    gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-    gui.PixelsPerStud = 10
-    gui.Parent = marker
-    local rune = Instance.new("ImageLabel")
-    rune.Size = UDim2.fromScale(1, 1)
-    rune.BackgroundTransparency = 1
-    rune.Image = "rbxassetid://136557266765344" -- MagicCircle (uploaded)
-    rune.ImageColor3 = Color3.fromRGB(85, 255, 130) -- bright heal green
-    rune.ImageTransparency = 1
-    rune.Parent = gui
-    TweenService:Create(rune, TweenInfo.new(0.35), { ImageTransparency = 0.05 }):Play() -- fade in
-    task.delay(math.max(0.1, totalSeconds - 0.6), function()
-        if rune and rune.Parent then
-            TweenService:Create(rune, TweenInfo.new(0.6), { ImageTransparency = 1 }):Play()
-        end
-    end)
-    Debris:AddItem(marker, totalSeconds)
+    -- Ground RUNE CIRCLE marking the heal zone for its WHOLE life (shared-world): a bright heal-green
+    -- MagicCircle that fades in, holds the field's duration, then fades out. Replaces the old neon disc.
+    self:_spawnGroundRune(center, radius, Color3.fromRGB(85, 255, 130), {
+        name = "HealZone",
+        fade_in = 0.35,
+        hold = math.max(0.1, totalSeconds - 0.95),
+        fade_out = 0.6,
+    })
 
     task.spawn(function()
         local pfs = self._moduleLoader and self._moduleLoader:Get("PetFollowService")
@@ -1400,6 +1426,17 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                     crystal:SetAttribute("Boost", math.min(maxBoost, cur + mag))
                 end
             end
+            -- Cast tell: a momentary YELLOW rune (matches the crystals' yellow boost bars) that flashes
+            -- in BRIGHT and fades away over ~1.3s — long enough to read, gone before the next cast.
+            self:_spawnGroundRune(center, radius, Color3.fromRGB(255, 215, 55), {
+                name = "ResonanceRune",
+                fade_in = 0.12,
+                hold = 0.1,
+                fade_out = 1.15,
+                bright = 0, -- start fully bright
+                spin = true,
+                spin_deg = 90,
+            })
         end
     end
 end
