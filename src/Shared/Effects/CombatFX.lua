@@ -823,8 +823,9 @@ function CombatFX.enemyBurn(host, element, sizeHint)
     local burnCfg = (config.attached and config.attached.burn) or {}
     local t = burnCfg[element] or burnCfg.lava or {}
     -- small motes; DENSITY (rate) reads as a burn, not a few giant leaves. Lightly size-scaled +
-    -- capped low so a big enemy doesn't get absurd leaves.
-    local sz = math.clamp((tonumber(sizeHint) or 5) * 0.32, 1.4, 3.5)
+    -- capped low so a big enemy doesn't get absurd motes (halved from the first pass — leaves AND
+    -- snowflakes read better small).
+    local sz = math.clamp((tonumber(sizeHint) or 5) * 0.16, 0.7, 1.9)
     local e = Instance.new("ParticleEmitter")
     e.Color = ColorSequence.new(
         toColor(t.color, Color3.fromRGB(255, 120, 30)),
