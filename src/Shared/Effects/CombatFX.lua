@@ -260,8 +260,15 @@ local function spawnAuraField(theme, radius, opts)
         e.Rate = o.rate
         e.Speed = NumberRange.new(o.speed_min, o.speed_max)
         e.SpreadAngle = Vector2.new(o.spread or 25, o.spread or 25)
-        e.Rotation = NumberRange.new(0, 360)
-        e.RotSpeed = NumberRange.new(-60, 60)
+        -- DIRECTIONAL textures (e.g. up-pointing flames) must NOT tumble — keep them upright. Radially
+        -- symmetric motes (leaves, snowflakes, crystals) spin for life. theme.upright = no spin.
+        if o.upright or theme.upright then
+            e.Rotation = NumberRange.new(0, 0)
+            e.RotSpeed = NumberRange.new(0, 0)
+        else
+            e.Rotation = NumberRange.new(0, 360)
+            e.RotSpeed = NumberRange.new(-60, 60)
+        end
         e.Acceleration = Vector3.new(0, o.accel_y or 0, 0)
         e.EmissionDirection = Enum.NormalId.Top
         e.Drag = o.drag or 1.5

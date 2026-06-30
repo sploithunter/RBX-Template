@@ -249,6 +249,59 @@ return {
                     size = 0.7,
                     light_emission = 0.5,
                 },
+                -- AURA FIELD (lava): rising flame motes (UPRIGHT — directional art, no spin) + a
+                -- cranked Roblox Fire ring (fire is dynamic), molten-tinted ground. Same renderer.
+                aurafield = {
+                    colors = { { 255, 110, 30 }, { 255, 210, 120 } },
+                    radius = 12,
+                    rate = 1.0,
+                    rise = true,
+                    size = 1.6,
+                    upright = true, -- flame textures point up; never tumble them
+                    light_emission = 1,
+                    transparency = 0.1,
+                    texture = "92085149955316", -- "Fire_up" rising flame mote
+                    accent = {
+                        texture = "133296876434530",
+                        light_emission = 1,
+                        rate = 0.3,
+                        size = 1.3,
+                    }, -- Flame_up
+                    ground_texture = "103350191895581", -- WaterTurbulence, molten tint
+                    ground_color = { 255, 120, 40 },
+                    ground_transparency = 0.4,
+                    ground_spin = 18,
+                    fire = {
+                        count = 8,
+                        ring_frac = 0.82,
+                        size = 5,
+                        heat = 8,
+                        spin = 0.4,
+                        color = { 255, 110, 30 },
+                        secondary = { 255, 200, 90 },
+                    },
+                    orbit = {
+                        count = 3,
+                        radius_frac = 0.7,
+                        speed = 1.6,
+                        height = 1.5,
+                        orb_size = 0.6,
+                        width = 1.4,
+                        life = 0.6,
+                        color = { 255, 180, 90 },
+                    },
+                    rim = {
+                        shape = "Cylinder",
+                        thickness = 0.001,
+                        radius_frac = 1.0,
+                        rate = 1000,
+                        size = 0.8,
+                        speed_min = 0,
+                        speed_max = 0.6,
+                        color = { 255, 170, 80 },
+                    },
+                    ground = { rate = 0.5, size = 0.6, transparency = 0.2 },
+                },
             },
             grass = {
                 -- nature growth — rising leafy green motes
@@ -402,6 +455,49 @@ return {
                     size = 0.7,
                     light_emission = 0.5,
                 },
+                -- AURA FIELD (ice): drifting snowflake motes (symmetric — they CAN spin) + a frost-
+                -- tinted ground; no Roblox Fire (ice doesn't flame). Same renderer.
+                aurafield = {
+                    colors = { { 150, 220, 255 }, { 235, 250, 255 } },
+                    radius = 12,
+                    rate = 1.0,
+                    rise = true,
+                    size = 1.4,
+                    light_emission = 0.5,
+                    transparency = 0.15,
+                    texture = "105999264891352", -- "Snowflake1"
+                    accent = {
+                        texture = "82240057547918",
+                        light_emission = 1,
+                        rate = 0.3,
+                        size = 1.2,
+                    }, -- Snowflake2
+                    ground_texture = "103350191895581", -- WaterTurbulence, frost tint
+                    ground_color = { 170, 220, 255 },
+                    ground_transparency = 0.4,
+                    ground_spin = 12,
+                    orbit = {
+                        count = 3,
+                        radius_frac = 0.7,
+                        speed = 1.4,
+                        height = 1.5,
+                        orb_size = 0.6,
+                        width = 1.4,
+                        life = 0.6,
+                        color = { 200, 240, 255 },
+                    },
+                    rim = {
+                        shape = "Cylinder",
+                        thickness = 0.001,
+                        radius_frac = 1.0,
+                        rate = 1000,
+                        size = 0.8,
+                        speed_min = 0,
+                        speed_max = 0.6,
+                        color = { 210, 245, 255 },
+                    },
+                    ground = { rate = 0.5, size = 0.6, transparency = 0.2 },
+                },
             },
             desert = {
                 -- sand uplift — rising tan grains (earthy, low glow)
@@ -438,6 +534,49 @@ return {
                     rise = true,
                     size = 0.7,
                     light_emission = 0.4,
+                },
+                -- AURA FIELD (desert): drifting crystals (Jason's pick) + a sun/spore accent + a sand-
+                -- swirl ground; no Roblox Fire. Same renderer.
+                aurafield = {
+                    colors = { { 210, 180, 120 }, { 240, 225, 170 } },
+                    radius = 12,
+                    rate = 0.9,
+                    rise = true,
+                    size = 1.4,
+                    light_emission = 0.45,
+                    transparency = 0.15,
+                    texture = "126500281076018", -- "Crystal1"
+                    accent = {
+                        texture = "95384385791305",
+                        light_emission = 1,
+                        rate = 0.25,
+                        size = 1.3,
+                    }, -- Sun/spore
+                    ground_texture = "103350191895581", -- WaterTurbulence, sand tint
+                    ground_color = { 220, 190, 130 },
+                    ground_transparency = 0.4,
+                    ground_spin = 10,
+                    orbit = {
+                        count = 3,
+                        radius_frac = 0.7,
+                        speed = 1.4,
+                        height = 1.5,
+                        orb_size = 0.6,
+                        width = 1.4,
+                        life = 0.6,
+                        color = { 240, 215, 150 },
+                    },
+                    rim = {
+                        shape = "Cylinder",
+                        thickness = 0.001,
+                        radius_frac = 1.0,
+                        rate = 1000,
+                        size = 0.8,
+                        speed_min = 0,
+                        speed_max = 0.6,
+                        color = { 245, 220, 160 },
+                    },
+                    ground = { rate = 0.5, size = 0.6, transparency = 0.2 },
                 },
             },
         },
