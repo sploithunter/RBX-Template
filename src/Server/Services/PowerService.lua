@@ -1390,9 +1390,9 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                 Color3.fromRGB(255, 215, 55),
                 {
                     name = "SandstormRune",
-                    fade_in = 0.12,
-                    hold = 0.1,
-                    fade_out = 1.15,
+                    fade_in = 0.15,
+                    hold = 0.25,
+                    fade_out = 1.6, -- ~2s total (Jason): bright flash, lingers a bit longer than Resonance
                     bright = 0,
                     spin = true,
                     spin_deg = 90,
