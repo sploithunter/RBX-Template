@@ -706,6 +706,41 @@ function PowerService:_spawnGroundRune(center, radius, color, opts)
     local fadeOut = tonumber(opts.fade_out) or 0.6
     local bright = tonumber(opts.bright) or 0.05
     local lifetime = fadeIn + hold + fadeOut
+    -- Sit the rune on the REAL floor under the centre (raycast down), like the pet aura fields — so it
+    -- doesn't float or clip into uneven ground. Exclude pets / enemies / players / FX so the ray finds
+    -- the map terrain.
+    local floorY = center.Y - 2.4
+    do
+        local rp = RaycastParams.new()
+        rp.FilterType = Enum.RaycastFilterType.Exclude
+        rp.IgnoreWater = true
+        local excl = {}
+        local pets = Workspace:FindFirstChild("PlayerPets")
+        if pets then
+            excl[#excl + 1] = pets
+        end
+        local gameF = Workspace:FindFirstChild("Game")
+        local enemies = gameF and gameF:FindFirstChild("Enemies")
+        if enemies then
+            excl[#excl + 1] = enemies
+        end
+        for _, fn in ipairs({ "CombatFXFields", "Effects" }) do
+            local f = Workspace:FindFirstChild(fn)
+            if f then
+                excl[#excl + 1] = f
+            end
+        end
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Character then
+                excl[#excl + 1] = p.Character
+            end
+        end
+        rp.FilterDescendantsInstances = excl
+        local hit = Workspace:Raycast(center + Vector3.new(0, 6, 0), Vector3.new(0, -200, 0), rp)
+        if hit then
+            floorY = hit.Position.Y
+        end
+    end
     local marker = Instance.new("Part")
     marker.Name = opts.name or "PowerRune"
     marker.Anchored = true
@@ -714,7 +749,7 @@ function PowerService:_spawnGroundRune(center, radius, color, opts)
     marker.CastShadow = false
     marker.Transparency = 1 -- invisible slab; the SurfaceGui image IS the rune
     marker.Size = Vector3.new(radius * 2, 0.1, radius * 2)
-    marker.CFrame = CFrame.new(center.X, center.Y - 2.4, center.Z)
+    marker.CFrame = CFrame.new(center.X, floorY + 0.1, center.Z)
     marker.Parent = Workspace
     local gui = Instance.new("SurfaceGui")
     gui.Face = Enum.NormalId.Top
@@ -729,7 +764,12 @@ function PowerService:_spawnGroundRune(center, radius, color, opts)
     -- fill_bright (peak opacity) / fill_tiles (tiles across the disc).
     if opts.fill_texture then
         local fill = Instance.new("ImageLabel")
-        fill.Size = UDim2.fromScale(1, 1)
+        -- centered + scaled to match the magic-circle's VISIBLE diameter (the rune texture has margin,
+        -- so a full-slab fill reads bigger than the circle). fill_scale tunes the match.
+        local fscale = tonumber(opts.fill_scale) or 1
+        fill.AnchorPoint = Vector2.new(0.5, 0.5)
+        fill.Position = UDim2.fromScale(0.5, 0.5)
+        fill.Size = UDim2.fromScale(fscale, fscale)
         fill.BackgroundTransparency = 1
         fill.ScaleType = Enum.ScaleType.Tile
         local tiles = tonumber(opts.fill_tiles) or 4
@@ -1353,6 +1393,7 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                     fill_texture = "78509147193799", -- sandfloor_tile (alpha), tiled under the rune
                     fill_color = Color3.fromRGB(235, 205, 120),
                     fill_bright = 0.4,
+                    fill_scale = 0.88, -- sand disc matches the magic-circle's visible ring (live-tuned)
                 }
             )
         end
