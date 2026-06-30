@@ -326,6 +326,28 @@ return {
                         speed_max = 2,
                         transparency = 0.2,
                     },
+                    -- green spirit-FIRE wisps slowly circling the rim (Roblox Fire). Remove this block
+                    -- to drop the layer. color/secondary tint the flame.
+                    fire = {
+                        count = 6,
+                        ring_frac = 0.82, -- placed at radius * this
+                        size = 4,
+                        heat = 6,
+                        spin = 0.4, -- radians/sec the fire ring rotates
+                        color = { 70, 230, 90 },
+                        secondary = { 200, 255, 150 },
+                    },
+                    -- orbiting TRAIL-orbs: glowing motes circling the pet, leaving light-ribbons.
+                    orbit = {
+                        count = 3,
+                        radius_frac = 0.7,
+                        speed = 1.6, -- radians/sec
+                        height = 1.5, -- studs above the floor
+                        orb_size = 0.6,
+                        width = 1.4, -- trail width
+                        life = 0.6, -- trail lifetime (sec)
+                        color = { 160, 255, 130 },
+                    },
                 },
             },
             ice = {

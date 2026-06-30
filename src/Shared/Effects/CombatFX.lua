@@ -329,6 +329,73 @@ local function spawnAuraField(pp, theme, duration, radius)
         discImg.Parent = sg
     end
 
+    -- (4) green spirit-FIRE wisps around the rim (Roblox Fire = dynamic flicker no particle can fake).
+    -- Each is an invisible part with a tinted Fire; positioned on the floor ring each frame below.
+    local fireParts = {}
+    local fc = theme.fire
+    if type(fc) == "table" then
+        for _ = 1, math.floor(fc.count or 6) do
+            local p = Instance.new("Part")
+            p.Name = "AuraFireWisp"
+            p.Anchored = true
+            p.CanCollide = false
+            p.CanQuery = false
+            p.CastShadow = false
+            p.Transparency = 1
+            p.Size = Vector3.new(0.4, 0.4, 0.4)
+            p.Parent = model
+            local f = Instance.new("Fire")
+            f.Color = toColor(fc.color or (theme.colors and theme.colors[1]))
+            f.SecondaryColor = toColor(fc.secondary or (theme.colors and theme.colors[2]))
+            f.Size = fc.size or 4
+            f.Heat = fc.heat or 6
+            f.Parent = p
+            fireParts[#fireParts + 1] = p
+        end
+    end
+
+    -- (5) orbiting TRAIL-orbs: glowing motes circling the pet, each leaving a light-ribbon (Trail) —
+    -- the only layer with real motion. Positioned in a ring each frame below.
+    local orbitOrbs = {}
+    local oc = theme.orbit
+    if type(oc) == "table" then
+        for _ = 1, math.floor(oc.count or 3) do
+            local orb = Instance.new("Part")
+            orb.Name = "AuraOrbitOrb"
+            orb.Shape = Enum.PartType.Ball
+            orb.Material = Enum.Material.Neon
+            orb.Color = toColor(oc.color or (theme.colors and theme.colors[2]))
+            orb.Anchored = true
+            orb.CanCollide = false
+            orb.CanQuery = false
+            orb.CastShadow = false
+            orb.Size = Vector3.new(oc.orb_size or 0.6, oc.orb_size or 0.6, oc.orb_size or 0.6)
+            orb.Parent = model
+            local a0 = Instance.new("Attachment")
+            a0.Position = Vector3.new(0, 0.3, 0)
+            a0.Parent = orb
+            local a1 = Instance.new("Attachment")
+            a1.Position = Vector3.new(0, -0.3, 0)
+            a1.Parent = orb
+            local tr = Instance.new("Trail")
+            tr.Attachment0, tr.Attachment1 = a0, a1
+            tr.Color = ColorSequence.new(toColor(oc.color or (theme.colors and theme.colors[2])))
+            tr.Lifetime = oc.life or 0.6
+            tr.LightEmission = 1
+            tr.FaceCamera = true
+            tr.WidthScale = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, oc.width or 1.2),
+                NumberSequenceKeypoint.new(1, 0),
+            })
+            tr.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.1),
+                NumberSequenceKeypoint.new(1, 1),
+            })
+            tr.Parent = orb
+            orbitOrbs[#orbitOrbs + 1] = orb
+        end
+    end
+
     -- Keep the field ON THE FLOOR under the pet. Pets HOVER, so a welded field floats with them; we
     -- raycast straight down each frame and sit the emission slab + disc on the real ground beneath
     -- the pet (and spin the disc). Excludes the pet, other pets, and enemies so the ray finds terrain.
@@ -349,6 +416,7 @@ local function spawnAuraField(pp, theme, duration, radius)
         rayParams.FilterDescendantsInstances = excl
     end
     local spin = tonumber(theme.ground_spin) or 0
+    local fireAng, orbitAng = 0, 0 -- slow rotation phases for the fire ring + orbit
     local groundConn
     groundConn = RunService.Heartbeat:Connect(function(dt)
         if not pp.Parent then
@@ -364,6 +432,28 @@ local function spawnAuraField(pp, theme, duration, radius)
             disc.CFrame = CFrame.new(origin.X, floorY + 0.08, origin.Z) -- disc lies on the floor
             if discImg and spin ~= 0 then
                 discImg.Rotation = (discImg.Rotation + spin * dt) % 360
+            end
+        end
+        if #fireParts > 0 then
+            fireAng = fireAng + (fc.spin or 0.4) * dt
+            local rf = (fc.ring_frac or 0.8) * radius
+            for i, p in ipairs(fireParts) do
+                local a = fireAng + (i / #fireParts) * math.pi * 2
+                p.CFrame = CFrame.new(
+                    origin.X + math.cos(a) * rf,
+                    floorY + 0.5,
+                    origin.Z + math.sin(a) * rf
+                )
+            end
+        end
+        if #orbitOrbs > 0 then
+            orbitAng = orbitAng + (oc.speed or 1.6) * dt
+            local rr = (oc.radius_frac or 0.75) * radius
+            local h = oc.height or 1.5
+            for i, orb in ipairs(orbitOrbs) do
+                local a = orbitAng + (i / #orbitOrbs) * math.pi * 2
+                orb.CFrame =
+                    CFrame.new(origin.X + math.cos(a) * rr, floorY + h, origin.Z + math.sin(a) * rr)
             end
         end
     end)
@@ -384,6 +474,20 @@ local function spawnAuraField(pp, theme, duration, radius)
                 TweenService:Create(discImg, TweenInfo.new(0.4), { ImageTransparency = 1 }):Play()
             end
             Debris:AddItem(disc, 0.5)
+        end
+        for _, p in ipairs(fireParts) do
+            local f = p:FindFirstChildOfClass("Fire")
+            if f then
+                TweenService:Create(f, TweenInfo.new(0.35), { Size = 0 }):Play()
+            end
+            Debris:AddItem(p, 0.6)
+        end
+        for _, orb in ipairs(orbitOrbs) do
+            local tr = orb:FindFirstChildOfClass("Trail")
+            if tr then
+                tr.Enabled = false
+            end
+            Debris:AddItem(orb, (oc and oc.life or 0.6) + 0.2)
         end
         Debris:AddItem(holder, (theme.life_max or 1.6) + 0.3) -- let in-flight particles finish
     end
