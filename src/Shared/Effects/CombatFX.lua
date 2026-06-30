@@ -209,6 +209,10 @@ local function spawnAuraField(pp, theme, duration, radius)
 
     local function mkEmitter(o)
         local e = Instance.new("ParticleEmitter")
+        -- emit from a CYLINDER volume (axis = the holder's local up) so particles fill the round
+        -- field, not the square box's corners (Jason). EmissionDirection.Top still sends them up.
+        e.Shape = Enum.ParticleEmitterShape.Cylinder
+        e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
         e.Color = ColorSequence.new(c1, c2)
         e.LightEmission = o.light_emission or theme.light_emission or 0.3
         e.LightInfluence = 0 -- keep the green constant under the area's (lava-red) lighting
