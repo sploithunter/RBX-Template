@@ -87,11 +87,15 @@ function PowerFXRender.play(opts)
         tbd(pos, "(effect TBD)")
     end
 
-    -- sound (independent of the effect): an explicit soundPhase wins (buff/shield), else cast/impact
-    local phase = (prim and prim.soundPhase) or (opts.kind == "target" and "impact") or "cast"
-    local played = PowerSound.play(phase, element, pos)
-    if not played then
-        tbd(pos, "(sound TBD)")
+    -- sound (independent of the effect): an explicit soundPhase wins (buff/shield), else cast/impact.
+    -- `prim.mute` powers (e.g. Resonance, whose visual+audio are fully server-side) skip the sound
+    -- entirely — no play, no "(sound TBD)" placeholder.
+    if not (prim and prim.mute) then
+        local phase = (prim and prim.soundPhase) or (opts.kind == "target" and "impact") or "cast"
+        local played = PowerSound.play(phase, element, pos)
+        if not played then
+            tbd(pos, "(sound TBD)")
+        end
     end
 end
 

@@ -24,6 +24,7 @@ return {
             pattern = "none",
             color = "origin",
             sound = nil,
+            mute = true, -- skip the cast-sound placeholder too (no "(sound TBD)")
         },
 
         -- caster-anchored burst CENTRED on the player: dome + rising motes / ember poof, but NO
