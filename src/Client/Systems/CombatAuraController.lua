@@ -350,13 +350,17 @@ end
 -- live stamp and kept running (no per-tick re-attach churn), then stopped by a watchdog once the
 -- keep-alive lapses (combat ended). The radius (AuraFieldRadius) sizes the field; element from PetType.
 local fieldStopToken = setmetatable({}, { __mode = "k" }) -- pet -> latest watchdog token
+-- DEBUG: force EVERY aura pet's field to this element so we can preview lava/ice/desert on the (grass)
+-- bear without needing element-specific pets. Set back to nil to ship — the field uses the pet's real
+-- element. (Reboot to apply; change the value + reboot to cycle elements.)
+local DEBUG_FIELD_ELEMENT = "ice"
 local function refreshAuraField(pet)
     local secs = remaining(pet, "AuraFieldUntil")
     if secs > 0.05 then
         if not (handles[pet] and handles[pet].aurafield) then
             setSlot(pet, "aurafield", {
                 category = "aurafield",
-                element = elementForPet(pet),
+                element = DEBUG_FIELD_ELEMENT or elementForPet(pet),
                 duration = 0, -- persistent; the keep-alive watchdog ends it
                 radius = pet:GetAttribute("AuraFieldRadius"),
             })
