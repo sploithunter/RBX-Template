@@ -404,6 +404,7 @@ local function spawnAuraField(pp, theme, duration, radius)
     if type(rc) == "table" then
         rimPart = Instance.new("Part")
         rimPart.Name = "AuraFieldRim"
+        rimPart.Shape = Enum.PartType.Cylinder -- invisible host; the ring is the emitter's Disc shape
         rimPart.Anchored = true
         rimPart.CanCollide = false
         rimPart.CanQuery = false
