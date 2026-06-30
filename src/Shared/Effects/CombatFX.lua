@@ -503,9 +503,9 @@ local function spawnAuraField(pp, theme, duration, radius)
                     CFrame.new(origin.X + math.cos(a) * rr, floorY + h, origin.Z + math.sin(a) * rr)
             end
         end
-        if rimPart then -- disc-flat (front = up) so the rim ring lies on the ground
+        if rimPart then -- cylinder vertical (long axis up) — Jason's hunch on the rim edge
             rimPart.CFrame = CFrame.new(origin.X, floorY + 0.3, origin.Z)
-                * CFrame.Angles(math.rad(-90), 0, 0)
+                * CFrame.Angles(0, 0, math.rad(90))
         end
     end)
 
