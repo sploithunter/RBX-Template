@@ -179,6 +179,7 @@ local function showDebuffIcon(target, secs)
             return
         end
         local left = math.max(
+            (target:GetAttribute("DebuffUntil") or 0) - os.time(),
             (target:GetAttribute("VulnerableUntil") or 0) - os.time(),
             (target:GetAttribute("RootedUntil") or 0) - os.time()
         )
@@ -502,8 +503,14 @@ end
 
 -- ===== Enemies =====
 local function refreshEnemyDebuff(enemy)
-    -- show a debuff aura while either vulnerable or rooted; duration = the longer remaining.
-    local secs = math.max(remaining(enemy, "VulnerableUntil"), remaining(enemy, "RootedUntil"))
+    -- show a debuff aura + badge while ANY debuff is active. DebuffUntil is the GENERIC timer the
+    -- server stamps alongside DebuffPowerId for every debuff family (vulnerable/root/blind/…), so read
+    -- it as the SSOT — Vulnerable/Rooted alone missed blind (Sandstorm) and any new family.
+    local secs = math.max(
+        remaining(enemy, "DebuffUntil"),
+        remaining(enemy, "VulnerableUntil"),
+        remaining(enemy, "RootedUntil")
+    )
     if secs > 0.05 then
         setSlot(
             enemy,
@@ -577,6 +584,11 @@ local function hookEnemy(enemy)
     end)
     -- DebuffPowerId can replicate a frame AFTER VulnerableUntil; re-run so the badge picks it up.
     list[#list + 1] = enemy:GetAttributeChangedSignal("DebuffPowerId"):Connect(function()
+        refreshEnemyDebuff(enemy)
+    end)
+    -- DebuffUntil is the generic debuff timer (e.g. blind, which sets no Vulnerable/Rooted) — hook it
+    -- so the badge appears whichever of (DebuffPowerId, DebuffUntil) replicates last.
+    list[#list + 1] = enemy:GetAttributeChangedSignal("DebuffUntil"):Connect(function()
         refreshEnemyDebuff(enemy)
     end)
     refreshEnemyDebuff(enemy)
