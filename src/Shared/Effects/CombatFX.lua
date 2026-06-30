@@ -410,20 +410,24 @@ local function spawnAuraField(pp, theme, duration, radius)
         rimPart.CanQuery = false
         rimPart.CastShadow = false
         rimPart.Transparency = 1
-        -- size the Disc emission to the MASKED circle's edge (the SurfaceGui round clip), not the
-        -- square texture extent — radius_frac matches the visible green rim (Jason, live-tuned 0.78).
-        local rfrac = tonumber(rc.radius_frac) or 0.78
-        rimPart.Size = Vector3.new(radius * 2 * rfrac, radius * 2 * rfrac, 0.2)
+        -- Jason's live tune: a thin CYLINDER emission shape (not Disc — Disc left a flat-chord edge).
+        -- The host is a tall-`thickness` disc sized to the field; oriented vertical (rz=90 below) it
+        -- emits a clean dense ring from its curved surface. radius_frac scales the ring to the field.
+        local rfrac = tonumber(rc.radius_frac) or 1.0
+        rimPart.Size = Vector3.new(rc.thickness or 1, radius * 2 * rfrac, radius * 2 * rfrac)
         rimPart.Parent = model
         local e = Instance.new("ParticleEmitter")
-        e.Shape = Enum.ParticleEmitterShape.Disc
-        e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface -- emit from the disc's rim
+        local okShape, shp = pcall(function()
+            return Enum.ParticleEmitterShape[rc.shape or "Cylinder"]
+        end)
+        e.Shape = (okShape and shp) or Enum.ParticleEmitterShape.Cylinder
+        e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface -- emit from the curved surface = a ring
         e.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
         e.Color = ColorSequence.new(toColor(rc.color or (theme.colors and theme.colors[2])))
         e.LightEmission = 1
         e.LightInfluence = 0
         e.Lifetime = NumberRange.new(rc.life_min or 0.4, rc.life_max or 0.8)
-        e.Rate = math.min(200, rc.rate or 80)
+        e.Rate = math.min(12000, tonumber(rc.rate) or 2000)
         e.Speed = NumberRange.new(rc.speed_min or 0.5, rc.speed_max or 2)
         e.SpreadAngle = Vector2.new(rc.spread or 8, rc.spread or 8)
         e.Acceleration = Vector3.new(0, rc.accel_y or 1, 0)

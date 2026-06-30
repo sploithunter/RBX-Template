@@ -348,13 +348,16 @@ return {
                         life = 0.6, -- trail lifetime (sec)
                         color = { 160, 255, 130 },
                     },
-                    -- RIM feather: a flat ring of sparkles at the disc edge so the circle dissolves
-                    -- instead of cutting hard. radius_frac aligns it to the MASKED circle (not the
-                    -- square texture extent); near-zero speed keeps it on the rim. Remove to drop it.
+                    -- RIM ring at the field edge so the circle dissolves instead of cutting hard.
+                    -- Jason live-tuned: a thin CYLINDER emission (clean ring, no flat-chord edge) at a
+                    -- high rate for a dense glow. NOTE: rate is heavy — this runs on every bear aura;
+                    -- dial it down if perf bites. Remove the block to drop the layer.
                     rim = {
-                        rate = 90,
+                        shape = "Cylinder", -- emission shape; "Disc" left a flat edge
+                        thickness = 1, -- ring height (the host's thin axis)
+                        radius_frac = 1.0, -- ring radius as a fraction of the field radius
+                        rate = 10000, -- dense ring (Jason's crank; lower for perf)
                         size = 0.8,
-                        radius_frac = 0.78, -- fraction of the field radius (matches the green circle)
                         life_min = 0.4,
                         life_max = 0.8,
                         speed_min = 0,
