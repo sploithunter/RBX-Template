@@ -252,6 +252,16 @@ function SettingsPanel:_createUI(parent)
     self._areaKey = shell.areaKey
     self._areaColor = shell.areaColor
 
+    -- Jason's Settings tuning: thinner outer-pill ring + header nudged down 0.01 (Settings-specific
+    -- overrides on the shared PanelChrome shell).
+    local pill = shell.frame:FindFirstChild("PillBorder")
+    if pill then
+        pill.SliceScale = 0.07
+    end
+    if shell.header then
+        shell.header.Position = UDim2.new(0.5, 0, 0.01, 0)
+    end
+
     -- Settings list: full width, starts just under the header (content-heavy → tall pane).
     self.scrollFrame = PanelChrome.scrollPane(shell.frame, {
         name = "SettingsScroll",
