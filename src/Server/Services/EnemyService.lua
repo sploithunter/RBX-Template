@@ -3180,7 +3180,10 @@ function EnemyService:_auraDamagePass(now)
     local radius = tonumber(cfg.radius) or 12
     local fraction = tonumber(cfg.fraction) or 0.5
     local interval = math.max(0.1, tonumber(cfg.interval) or 1)
-    local soundVolume = tonumber(cfg.sound_volume) or 1 -- aura repeats each tick: scale its clips down
+    -- Keep-alive grace for the client aura FIELD: each engaged tick stamps AuraFieldUntil this far
+    -- ahead, so the field stays lit through combat and fades ~grace seconds after the last enemy
+    -- leaves range — no explicit stop event needed (CombatAuraController renders it).
+    local fieldGrace = math.max(2, math.ceil(interval) + 1)
     local playerPets = Workspace:FindFirstChild("PlayerPets")
     if not playerPets then
         return
@@ -3202,12 +3205,14 @@ function EnemyService:_auraDamagePass(now)
                     local pos = self:_petPosition(pet, pfs)
                     local dmg = math.floor(self:_petCombatPower(pet) * fraction + 0.5)
                     if pos and dmg > 0 then
+                        local engaged = false -- did the field actually catch an enemy this tick?
                         for _, entry in pairs(self._enemies) do
                             local model = entry.model
                             if model and model.Parent and (model:GetAttribute("HP") or 0) > 0 then
                                 local ep = model.PrimaryPart
                                     or model:FindFirstChildWhichIsA("BasePart")
                                 if ep and (ep.Position - pos).Magnitude <= radius then
+                                    engaged = true
                                     local hp = tonumber(model:GetAttribute("HP")) or 0
                                     local newHp = math.max(0, hp - dmg)
                                     local dealt = hp - newHp
@@ -3274,19 +3279,15 @@ function EnemyService:_auraDamagePass(now)
                                 end
                             end
                         end
-                        if owner then -- the field VFX: centred on the pet, sized to the aura, themed
-                            -- to the pet's ELEMENT (grass bear -> Bloom nova, lava -> fire ring) so
-                            -- it doesn't always read as fire. pettype_element returns the AreaFX
-                            -- theme key (grass/lava/ice/desert); nil -> client default.
-                            local petEl = self._originConfig.pettype_element
-                                and self._originConfig.pettype_element[pet:GetAttribute("PetType")]
-                            Signals.Power_AreaFx:FireClient(owner, {
-                                center = pos,
-                                variant = "self",
-                                radius = radius,
-                                element = petEl,
-                                volume = soundVolume,
-                            })
+                        -- The aura FIELD is a persistent, pet-following ground effect rendered by the
+                        -- client from these attributes (SSOT) — not a per-tick burst. While the field
+                        -- catches enemies, refresh the keep-alive stamp + radius so it stays lit; it
+                        -- fades ~grace seconds after the last enemy leaves range (no stop event).
+                        -- Replicated on the pet, so it's authoritative + survives the pet moving.
+                        -- (Element is derived client-side from PetType.)
+                        if engaged then
+                            pet:SetAttribute("AuraFieldRadius", radius)
+                            pet:SetAttribute("AuraFieldUntil", os.time() + fieldGrace)
                         end
                     end
                 end

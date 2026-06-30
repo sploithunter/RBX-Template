@@ -345,6 +345,35 @@ local function refreshTimedAura(pet, attr, slot, category, element)
     end
 end
 
+-- AURA FIELD (bear's ground AoE): the server stamps AuraFieldUntil each engaged tick (a ~2s
+-- keep-alive). Unlike the timed auras above, the field is PERSISTENT — attached ONCE on the first
+-- live stamp and kept running (no per-tick re-attach churn), then stopped by a watchdog once the
+-- keep-alive lapses (combat ended). The radius (AuraFieldRadius) sizes the field; element from PetType.
+local fieldStopToken = setmetatable({}, { __mode = "k" }) -- pet -> latest watchdog token
+local function refreshAuraField(pet)
+    local secs = remaining(pet, "AuraFieldUntil")
+    if secs > 0.05 then
+        if not (handles[pet] and handles[pet].aurafield) then
+            setSlot(pet, "aurafield", {
+                category = "aurafield",
+                element = elementForPet(pet),
+                duration = 0, -- persistent; the keep-alive watchdog ends it
+                radius = pet:GetAttribute("AuraFieldRadius"),
+            })
+        end
+        -- (re)arm a single watchdog; only the latest token may stop, so refreshes don't cut it early
+        local token = {}
+        fieldStopToken[pet] = token
+        task.delay(secs + 0.2, function()
+            if fieldStopToken[pet] == token and remaining(pet, "AuraFieldUntil") <= 0.05 then
+                stopSlot(pet, "aurafield")
+            end
+        end)
+    else
+        stopSlot(pet, "aurafield")
+    end
+end
+
 -- Floating "Dodge!" that rises + fades over a pet that just evaded a hit (Mirage Step). Server
 -- bumps DodgeTick per turned-aside blow; we pop one of these per bump.
 local function popDodge(pet)
@@ -418,9 +447,14 @@ local function hookPet(pet)
     list[#list + 1] = pet:GetAttributeChangedSignal("DodgeTick"):Connect(function()
         popDodge(pet)
     end)
+    -- Aura field (bear's ground AoE): the server bumps AuraFieldUntil each engaged tick.
+    list[#list + 1] = pet:GetAttributeChangedSignal("AuraFieldUntil"):Connect(function()
+        refreshAuraField(pet)
+    end)
     -- catch any already-active state at hook time
     refreshArmor(pet)
     refreshTimedAura(pet, "HealFxUntil", "heal", "heal")
+    refreshAuraField(pet)
 end
 
 local function unhook(entity)

@@ -282,6 +282,32 @@ return {
                     size = 0.7,
                     light_emission = 0.5,
                 },
+                -- AURA FIELD (bear's ground AoE): a persistent, ground-hugging green field that
+                -- follows the pet. `rate` is particles/sec PER STUD of radius (scaled by the real
+                -- aura radius). `ground` = the low edge-flecks layer. `texture` = leaf particle art
+                -- (default "" = soft built-in circle; drop a real leaf image id here to upgrade).
+                aurafield = {
+                    colors = { { 120, 230, 90 }, { 185, 250, 140 } },
+                    radius = 12, -- fallback if the server doesn't pass AuraFieldRadius
+                    rate = 2.2, -- rising motes per stud of radius per second
+                    rise = true,
+                    size = 1.0,
+                    life_min = 0.8,
+                    life_max = 1.6,
+                    speed_min = 1.5,
+                    speed_max = 4,
+                    light_emission = 0.3,
+                    texture = "", -- leaf particle texture id (upload later)
+                    ground = { -- low flecks hugging the floor (the field footprint)
+                        rate = 1.4,
+                        size = 0.5,
+                        life_min = 0.4,
+                        life_max = 0.9,
+                        speed_min = 0.5,
+                        speed_max = 2,
+                        transparency = 0.35,
+                    },
+                },
             },
             ice = {
                 -- frost — rising pale crystals

@@ -59,11 +59,9 @@ return {
         radius = 12,
         fraction = 0.5,
         interval = 1.0,
-        -- The aura re-fires its fire-ring VFX + sound every `interval`s while enemies are in range,
-        -- so the shared cast/slam clips repeat constantly and read much louder than a one-off power
-        -- cast. Scale just the aura's playback down (0.5 = half) without touching the shared registry
-        -- volumes other powers use (Jason, playtest). 1 = registry default.
-        sound_volume = 0.5,
+        -- The aura's VISUAL is a persistent, pet-following ground FIELD (CombatFX aurafield, themed in
+        -- combat_fx.lua), not a per-tick burst — so there's no repeating cast/slam sound to dampen.
+        -- The server stamps AuraFieldUntil each engaged tick; the client renders the field while live.
     },
 
     -- CONTAGION pets (PetTargeting attack_targeting = "contagion"): the burn SPREADS. Their hit

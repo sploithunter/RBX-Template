@@ -168,6 +168,116 @@ local function spawnShield(pp, theme, duration)
     return { stop = stop }
 end
 
+-- ===== Attached pattern: AURA FIELD (ground AoE) =====
+-- A persistent, ground-hugging field that FOLLOWS the pet — the bear's "get close and everything
+-- burns" aura. Built the layered-VFX way (two ParticleEmitters on a flat invisible holder welded to
+-- the pet's base) instead of one tweened Neon dome that read as a plastic blob:
+--   (1) leafy motes rising across the whole field area  — the body
+--   (2) low flecks hugging the ground                   — the edge / footprint
+-- Particles emit from the holder's flat box volume (no Disc-shape orientation fuss). Textures default
+-- to the soft built-in particle; drop real leaf art in via the config `texture` knob later.
+local function spawnAuraField(pp, theme, duration, radius)
+    radius = tonumber(radius) or tonumber(theme.radius) or 10
+    local model = pp.Parent
+    local yoff = 2
+    local okE, sz = pcall(function()
+        return model and model:IsA("Model") and model:GetExtentsSize()
+    end)
+    if okE and sz then
+        yoff = sz.Y * 0.5 -- drop the holder to the pet's feet
+    end
+    local c1 = toColor(theme.colors and theme.colors[1])
+    local c2 = toColor(theme.colors and theme.colors[2], c1)
+
+    -- flat, invisible emission holder at the pet's feet, welded so the field follows the pet
+    local holder = Instance.new("Part")
+    holder.Name = "AuraField"
+    holder.Anchored = false
+    holder.CanCollide = false
+    holder.CanQuery = false
+    holder.CastShadow = false
+    holder.Massless = true
+    holder.Transparency = 1
+    holder.Size = Vector3.new(radius * 2, 0.3, radius * 2) -- flat disc-ish emission area
+    holder.CFrame = pp.CFrame * CFrame.new(0, -yoff, 0)
+    holder.Parent = model
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = pp
+    weld.Part1 = holder
+    weld.Parent = holder
+
+    local function mkEmitter(o)
+        local e = Instance.new("ParticleEmitter")
+        e.Color = ColorSequence.new(c1, c2)
+        e.LightEmission = theme.light_emission or 0.3
+        e.LightInfluence = 0 -- keep the green constant under the area's (lava-red) lighting
+        e.Texture = o.texture or theme.texture or ""
+        e.Lifetime = NumberRange.new(o.life_min, o.life_max)
+        e.Rate = o.rate
+        e.Speed = NumberRange.new(o.speed_min, o.speed_max)
+        e.SpreadAngle = Vector2.new(o.spread or 25, o.spread or 25)
+        e.Rotation = NumberRange.new(0, 360)
+        e.RotSpeed = NumberRange.new(-60, 60)
+        e.Acceleration = Vector3.new(0, o.accel_y or 0, 0)
+        e.EmissionDirection = Enum.NormalId.Top
+        e.Drag = o.drag or 1.5
+        -- grow in, shrink out (never pop); fade both ends (research: 80% of the look is these curves)
+        e.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0),
+            NumberSequenceKeypoint.new(0.25, o.size),
+            NumberSequenceKeypoint.new(1, 0),
+        })
+        e.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1),
+            NumberSequenceKeypoint.new(0.2, o.transparency or 0.25),
+            NumberSequenceKeypoint.new(0.85, o.transparency or 0.25),
+            NumberSequenceKeypoint.new(1, 1),
+        })
+        e.Parent = holder
+        return e
+    end
+
+    -- (1) body: leafy motes rising across the whole field
+    local rises = mkEmitter({
+        rate = math.max(6, radius * (theme.rate or 2.2)),
+        size = theme.size or 1.0,
+        life_min = theme.life_min or 0.8,
+        life_max = theme.life_max or 1.6,
+        speed_min = theme.speed_min or 1.5,
+        speed_max = theme.speed_max or 4,
+        accel_y = (theme.rise ~= false) and 2 or -2,
+        spread = 22,
+    })
+    -- (2) edge: low flecks hugging the ground for the footprint
+    local g = theme.ground or {}
+    local floor = mkEmitter({
+        rate = math.max(4, radius * (g.rate or 1.4)),
+        size = g.size or 0.5,
+        life_min = g.life_min or 0.4,
+        life_max = g.life_max or 0.9,
+        speed_min = g.speed_min or 0.5,
+        speed_max = g.speed_max or 2,
+        accel_y = -1,
+        spread = 60,
+        transparency = g.transparency or 0.35,
+    })
+
+    local stopped = false
+    local function stop()
+        if stopped then
+            return
+        end
+        stopped = true
+        rises.Enabled = false
+        floor.Enabled = false
+        Debris:AddItem(holder, (theme.life_max or 1.6) + 0.3) -- let in-flight particles finish
+    end
+    if duration and duration > 0 then
+        task.delay(duration, stop)
+    end
+    return { stop = stop }
+end
+
 -- Attach a continual effect to an entity for a duration. Returns { stop() } or nil.
 local function materialEnum(name)
     local ok, m = pcall(function()
@@ -245,8 +355,13 @@ function CombatFX.attach(entity, spec)
     local reskinStop = reskinCfg and reskinEntity(pp.Parent, reskinCfg) or nil
     local handle
     if theme then
-        handle = (spec.category == "shield") and spawnShield(pp, theme, duration)
-            or spawnAura(pp, theme, duration)
+        if spec.category == "shield" then
+            handle = spawnShield(pp, theme, duration)
+        elseif spec.category == "aurafield" then
+            handle = spawnAuraField(pp, theme, duration, spec.radius)
+        else
+            handle = spawnAura(pp, theme, duration)
+        end
     end
 
     if not reskinStop then
