@@ -31,6 +31,7 @@ local CombatFX = require(ReplicatedStorage.Shared.Effects.CombatFX)
 local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local PowerIcons = require(ReplicatedStorage.Configs:WaitForChild("power_icons"))
 local PetBadge = require(script.Parent.Parent.UI.PetBadge)
+local PowerBadges = require(script.Parent.Parent.UI.PowerBadges) -- the badge SSOT reader (one path)
 
 local CombatAuraController = {}
 
@@ -295,9 +296,9 @@ local function refreshArmor(pet)
     -- the pool). The over-pet identity BADGE follows this so dodge shows a badge; the bubble still keys
     -- off the pool above so a dodge doesn't bubble.
     local shieldBadgeOn = remaining(pet, "CombatShieldUntil") > 0.05
-    local shieldVfx, shieldLook
+    local shieldLook
     if shieldBadgeOn then
-        shieldVfx, shieldLook = vfxForPower(pet:GetAttribute("CombatShieldPowerId"))
+        shieldLook = select(2, vfxForPower(pet:GetAttribute("CombatShieldPowerId")))
         shieldLook = shieldLook or "bubble" -- absorb pool with no tagged power -> default bubble
     end
     local bubble = handles[pet] and handles[pet].shieldBubble
@@ -331,15 +332,24 @@ local function refreshArmor(pet)
 
     -- Floating identity badge while ANY defensive effect is active (shield, dodge, OR armor) so you
     -- can tell the buff is up — unless the power opts out via combat_vfx.badge = false.
-    local showBadge = (shieldBadgeOn and not (shieldVfx and shieldVfx.badge == false))
-        or hasArmor(pet)
+    -- ONE read path: PowerBadges (the SSOT) reports EVERY live power on this pet (generic Power_* set +
+    -- the shield/dodge/defense channels), so the badge can't be missed for a new family. shieldBadgeOn
+    -- above is now only used for the BUBBLE look. A power can opt out of the overhead badge via
+    -- combat_vfx.badge=false.
+    local showBadge = false
+    for _, p in ipairs(PowerBadges.active(pet)) do
+        local vfx = vfxForPower(p.powerId)
+        if not (vfx and vfx.badge == false) then
+            showBadge = true
+            break
+        end
+    end
     if showBadge then
         showArmorIcon(pet)
         -- self-expire: a timed buff channel (dodge's CombatShieldUntil) fires no event at natural
         -- expiry, so schedule a re-check to drop the badge when the buff lapses (token-guarded so a
         -- re-cast supersedes the stale timer).
-        local left =
-            math.max(remaining(pet, "CombatShieldUntil"), remaining(pet, "DefenseBuffUntil"))
+        local left = PowerBadges.maxUntil(pet) - os.time()
         if left > 0 then
             armorTok += 1
             local myTok = armorTok
@@ -530,14 +540,10 @@ end
 
 -- ===== Enemies =====
 local function refreshEnemyDebuff(enemy)
-    -- show a debuff aura + badge while ANY debuff is active. DebuffUntil is the GENERIC timer the
-    -- server stamps alongside DebuffPowerId for every debuff family (vulnerable/root/blind/…), so read
-    -- it as the SSOT — Vulnerable/Rooted alone missed blind (Sandstorm) and any new family.
-    local secs = math.max(
-        remaining(enemy, "DebuffUntil"),
-        remaining(enemy, "VulnerableUntil"),
-        remaining(enemy, "RootedUntil")
-    )
+    -- ONE read path: PowerBadges (the SSOT) reports every live power on this enemy (generic Power_*
+    -- set + the DebuffPowerId/Until channel), so the badge can't be missed for a new debuff family.
+    -- The debuff AURA shows while anything is active; the badge itself is rendered by showDebuffIcon.
+    local secs = PowerBadges.maxUntil(enemy) - os.time()
     if secs > 0.05 then
         setSlot(
             enemy,

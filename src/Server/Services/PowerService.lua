@@ -1159,6 +1159,20 @@ function PowerService:_enemiesInRange(player, radius)
     return out
 end
 
+-- BADGE SSOT: stamp a generic per-power marker so EVERY badge surface (world billboards, HUD card,
+-- enemy nameplate) renders from one place. Keyed by power id with an absolute expiry: a power's badge
+-- is "active" iff Power_<id>_Until is in the future. One read path = a power can't show on one surface
+-- and be missed on another. Only stamps when untilTime is in the future (instant effects don't badge).
+function PowerService:_stampPowerBadge(entity, powerId, untilTime)
+    if not (entity and powerId) then
+        return
+    end
+    local t = tonumber(untilTime)
+    if t and t > os.time() then
+        entity:SetAttribute("Power_" .. tostring(powerId) .. "_Until", t)
+    end
+end
+
 function PowerService:_applyEffect(player, kind, now, powerId)
     local family = kind.family
     local mag = kind.magnitude or 0
@@ -1251,6 +1265,7 @@ function PowerService:_applyEffect(player, kind, now, powerId)
             -- "Dodge!" is also config-driven from combat_vfx.on_hit, read server-side in EnemyService.)
             pet:SetAttribute("CombatShieldPowerId", powerId)
             pet:SetAttribute("CombatShield", (pet:GetAttribute("CombatShield") or 0) + mag)
+            self:_stampPowerBadge(pet, powerId, now + dur)
             if dur and dur > 0 then
                 pet:SetAttribute("CombatShieldUntil", now + dur)
                 -- Mirage Veil: while the veil is up, each blow it turns aside also heals the pet a
@@ -1278,6 +1293,7 @@ function PowerService:_applyEffect(player, kind, now, powerId)
             pet:SetAttribute("EvadeChance", mag)
             pet:SetAttribute("EvadeUntil", now + dur)
             pet:SetAttribute("CombatShieldUntil", now + dur) -- card badge timing only (no pool)
+            self:_stampPowerBadge(pet, powerId, now + dur)
             task.delay(dur, function()
                 if pet.Parent and (pet:GetAttribute("EvadeUntil") or 0) <= os.time() then
                     pet:SetAttribute("EvadeChance", 0)
@@ -1292,6 +1308,7 @@ function PowerService:_applyEffect(player, kind, now, powerId)
             pet:SetAttribute("DefenseBuff", mag)
             pet:SetAttribute("DefenseBuffUntil", now + dur)
             pet:SetAttribute("DefenseBuffPowerId", powerId)
+            self:_stampPowerBadge(pet, powerId, now + dur)
         end
     elseif family == "coin_yield" then
         self:_setAxisBuff(player, "CoinYieldPower", mag, now, dur, powerId)
@@ -1463,6 +1480,7 @@ function PowerService:_applyEffect(player, kind, now, powerId)
             pet:SetAttribute("DefenseBuff", mag)
             pet:SetAttribute("DefenseBuffUntil", now + dur)
             pet:SetAttribute("DefenseBuffPowerId", powerId)
+            self:_stampPowerBadge(pet, powerId, now + dur)
         end
     elseif family == "fortify" then
         -- Living Mountain (geomancer signature): big squad +Defense + a heal-over-time. `magnitude`=
