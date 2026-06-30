@@ -1645,12 +1645,12 @@ function InventoryPanel:_createTeamBar(searchContainer)
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
     layout.VerticalAlignment = Enum.VerticalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 8)
+    layout.Padding = UDim.new(0.002, 0) -- relative gap (Jason)
     layout.Parent = bar
 
     local reset = Instance.new("TextButton")
     reset.Name = "ResetDraft"
-    reset.Size = UDim2.new(0.46, 0, 1, -2) -- relative (half the draft bar) so it scales
+    reset.Size = UDim2.new(0.498, 0, 1, -2) -- relative half of the draft bar (Jason)
     reset.LayoutOrder = 1
     reset.Text = "↺ Reset"
     styleTeamButton(reset, Color3.fromRGB(56, 56, 68))
@@ -1662,7 +1662,7 @@ function InventoryPanel:_createTeamBar(searchContainer)
 
     local activate = Instance.new("TextButton")
     activate.Name = "ActivateDraft"
-    activate.Size = UDim2.new(0.52, 0, 1, -2) -- relative (other half of the draft bar)
+    activate.Size = UDim2.new(0.498, 0, 1, -2) -- relative half of the draft bar (Jason)
     activate.LayoutOrder = 2
     activate.Text = "✓ Activate"
     styleTeamButton(activate, Color3.fromRGB(46, 160, 87))
