@@ -426,6 +426,15 @@ return {
                         speed_max = 0.6,
                         color = { 150, 255, 120 },
                     },
+                    -- ONE-SHOT burst extras (earth targeted AoE). NO `explosion` key — the Roblox
+                    -- Explosion is always orange (fire-only); earth uses just the tinted expanding
+                    -- sphere. NO damage-over-time here either: the burn is a SEPARATE config-gated
+                    -- layer (power kind.dot / burn_spread), so a non-contagion earth AoE never ignites.
+                    burst = {
+                        sphere_color = { 120, 240, 80 }, -- expanding green energy ball
+                        sphere_frac = 1.1,
+                        sphere_time = 0.3,
+                    },
                 },
             },
             ice = {
