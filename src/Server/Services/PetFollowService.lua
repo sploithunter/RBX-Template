@@ -379,7 +379,7 @@ end
 -- contagion arms ONCE (re-arming every swing pushed the spread timer back so it never fired). The
 -- spread params (radius/interval/max) are carried onto the enemy as Contagion* so the spread pass —
 -- and every subsequent hop — propagates with the originating pet's tuning, not a global default.
-local function stampBurn(enemy, perTick, interval, duration, sourceUserId, spread, clk)
+local function stampBurn(enemy, perTick, interval, duration, sourceUserId, spread, clk, element)
     if perTick <= 0 or duration <= 0 then
         return
     end
@@ -393,6 +393,9 @@ local function stampBurn(enemy, perTick, interval, duration, sourceUserId, sprea
     enemy:SetAttribute("DotDuration", duration) -- window length, so contagion can re-arm the hop
     enemy:SetAttribute("DotSourceUserId", sourceUserId)
     enemy:SetAttribute("BurnFxUntil", os.time() + math.ceil(duration)) -- enemy "on fire" tell
+    if element then
+        enemy:SetAttribute("BurnElement", element) -- themes the client burn fx (frost = blue, etc.)
+    end
     if
         spread
         and (spread.max or 0) > 0
@@ -746,6 +749,8 @@ function PetFollowService:_mine(player, pet, breakable)
     local burn = burnProfile(pet, self._combatConfig.pet_contagion)
     if breakable:GetAttribute("EnemyId") and dmg > 0 and burn then
         local perTick = DamageOverTime.perTick(dmg, burn.fraction)
+        self:_ensureResonanceConfigs()
+        local burnEl = self._petElementMap and self._petElementMap[pet:GetAttribute("PetType")]
         stampBurn(
             breakable,
             perTick,
@@ -753,7 +758,8 @@ function PetFollowService:_mine(player, pet, breakable)
             burn.duration,
             player.UserId,
             burn.spread,
-            os.clock()
+            os.clock(),
+            burnEl
         )
     end
     -- On-hit control/shred (orthogonal to the burn) on the primary target.
@@ -845,7 +851,8 @@ function PetFollowService:_mine(player, pet, breakable)
                                     burn.duration,
                                     player.UserId,
                                     burn.spread,
-                                    os.clock()
+                                    os.clock(),
+                                    element -- pet element (resolved for the AoE burst above)
                                 )
                             end
                             -- on-hit control/shred hits the whole splash cluster too (AoE control /

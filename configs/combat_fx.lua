@@ -210,6 +210,33 @@ return {
     attached = {
         duration = 5, -- default seconds an attached effect lasts (spec.duration overrides)
 
+        -- DoT BURN tell: a small element-themed rising-flame ParticleEmitter pinned on an enemy while
+        -- it carries a live burn (BurnUntil/BurnFxUntil + BurnElement). Replaces the old hardcoded
+        -- orange Roblox Fire so a frost burn reads blue, a wither burn green, etc. — reusing the same
+        -- alpha mote textures as the aura fields. CombatFX.enemyBurn reads this; lava is the fallback.
+        burn = {
+            lava = {
+                color = { 255, 120, 30 },
+                secondary = { 255, 210, 120 },
+                texture = "83142936306716",
+            }, -- fire_up_alpha
+            ice = {
+                color = { 120, 210, 255 },
+                secondary = { 235, 250, 255 },
+                texture = "72374879557879",
+            }, -- snowflake1_alpha
+            grass = {
+                color = { 120, 240, 80 },
+                secondary = { 210, 255, 150 },
+                texture = "107757365168186",
+            }, -- leaf_alpha
+            desert = {
+                color = { 255, 210, 110 },
+                secondary = { 255, 240, 180 },
+                texture = "123216505778060",
+            }, -- sun_alpha
+        },
+
         -- Per-element, per-category skins. colors = { core, accent }. rate = particles/sec;
         -- rise = float up (buff/heal) vs sink (debuff); size = particle studs. shield uses a
         -- ForceField bubble (transparency/colors). Add grass/ice/desert blocks the same way.

@@ -530,16 +530,16 @@ local function refreshEnemyBurn(enemy)
             if not pp then
                 return
             end
-            fire = Instance.new("Fire")
             local okE, ext = pcall(function()
                 return enemy:GetExtentsSize()
             end)
-            fire.Size = (okE and ext) and math.clamp(math.max(ext.X, ext.Y, ext.Z) * 1.4, 4, 16)
-                or 6
-            fire.Heat = 12
-            fire.Color = Color3.fromRGB(255, 140, 50)
-            fire.SecondaryColor = Color3.fromRGB(255, 210, 120)
-            fire.Parent = pp
+            local szHint = (okE and ext) and math.max(ext.X, ext.Y, ext.Z) or 5
+            -- Element-themed burn (BurnElement is stamped alongside BurnUntil) — frost reads blue, a
+            -- wither burn green, etc. Falls back to lava inside enemyBurn.
+            fire = CombatFX.enemyBurn(pp, enemy:GetAttribute("BurnElement"), szHint)
+            if not fire then
+                return
+            end
             burnFx[enemy] = fire
         end
         task.delay(secs + 0.25, function()

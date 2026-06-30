@@ -12,24 +12,26 @@
 
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local CombatFX = require(ReplicatedStorage.Shared.Effects.CombatFX)
 
 local EnemyBurnFx = {}
 
-local fires = {} -- [enemyModel] = Fire instance (client-local)
+local fires = {} -- [enemyModel] = ParticleEmitter (client-local)
 
 local function enemiesFolder()
     local g = Workspace:FindFirstChild("Game")
     return g and g:FindFirstChild("Enemies")
 end
 
-local function attach(part)
-    local fire = Instance.new("Fire")
-    fire.Heat = 14
-    fire.Size = 8
-    fire.Color = Color3.fromRGB(255, 140, 45)
-    fire.SecondaryColor = Color3.fromRGB(255, 70, 20)
-    fire.Parent = part
-    return fire
+-- Element-themed burn emitter (BurnElement stamped server-side; lava fallback inside enemyBurn).
+local function attach(part, enemy)
+    local okE, ext = pcall(function()
+        return enemy:GetExtentsSize()
+    end)
+    local szHint = (okE and ext) and math.max(ext.X, ext.Y, ext.Z) or 6
+    return CombatFX.enemyBurn(part, enemy:GetAttribute("BurnElement"), szHint)
 end
 
 function EnemyBurnFx.start()
@@ -53,7 +55,7 @@ function EnemyBurnFx.start()
                             if fire then
                                 fire:Destroy()
                             end
-                            fires[e] = attach(part)
+                            fires[e] = attach(part, e)
                         end
                     elseif fire then
                         fire:Destroy()

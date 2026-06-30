@@ -3360,6 +3360,7 @@ function EnemyService:_contagionPass(now)
                     best:SetAttribute("DotDuration", duration)
                     best:SetAttribute("DotSourceUserId", src:GetAttribute("DotSourceUserId"))
                     best:SetAttribute("BurnFxUntil", os.time() + math.ceil(duration))
+                    best:SetAttribute("BurnElement", src:GetAttribute("BurnElement")) -- carry the theme as it hops
                     local nextLeft = left - 1
                     best:SetAttribute("ContagionLeft", nextLeft)
                     best:SetAttribute(

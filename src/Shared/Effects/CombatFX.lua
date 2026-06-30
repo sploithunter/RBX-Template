@@ -611,6 +611,14 @@ local function spawnAuraField(theme, radius, opts)
                 TweenInfo.new(t, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                 { Size = Vector3.new(full, full, full), Transparency = 1 }
             ):Play()
+            -- a colored light PULSE inside the sphere — the "flash" punch, element-tinted (the built-in
+            -- Roblox Explosion is orange-only; this gives every element its own colored flash).
+            local light = Instance.new("PointLight")
+            light.Color = sphere.Color
+            light.Brightness = 8
+            light.Range = math.clamp(radius * 1.5, 8, 60)
+            light.Parent = sphere
+            TweenService:Create(light, TweenInfo.new(t), { Brightness = 0 }):Play()
             Debris:AddItem(sphere, t + 0.15)
         end
         if bopt.explosion then -- classic Roblox Explosion flash — visual only (no fling, no joint break)
@@ -801,6 +809,52 @@ function CombatFX.groundField(spec)
         opts.follow = partOf(a)
     end
     return spawnAuraField(theme, radius, opts)
+end
+
+-- Element-themed DoT BURN tell: a small rising-flame ParticleEmitter pinned on a burning enemy, from
+-- configs/combat_fx.lua attached.burn[element] (colors + alpha texture). Replaces the old hardcoded
+-- orange Roblox Fire so a frost burn reads blue, a wither burn green, etc. `host` = the BasePart to
+-- pin to; `sizeHint` scales the flame (≈ enemy extent). Falls back to lava. Returns the emitter so
+-- the caller manages its lifetime (Destroy when the burn lapses). nil if no host.
+function CombatFX.enemyBurn(host, element, sizeHint)
+    if not host then
+        return nil
+    end
+    local burnCfg = (config.attached and config.attached.burn) or {}
+    local t = burnCfg[element] or burnCfg.lava or {}
+    local sz = math.clamp((tonumber(sizeHint) or 5) * 0.45, 1.5, 7)
+    local e = Instance.new("ParticleEmitter")
+    e.Color = ColorSequence.new(
+        toColor(t.color, Color3.fromRGB(255, 120, 30)),
+        toColor(t.secondary, Color3.fromRGB(255, 210, 120))
+    )
+    e.LightEmission = 0.8
+    e.LightInfluence = 0
+    local tex = t.texture
+    if tex and tex ~= "" and not tostring(tex):match("^rbxassetid://") then
+        tex = "rbxassetid://" .. tex
+    end
+    e.Texture = tex or ""
+    e.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, sz * 0.6),
+        NumberSequenceKeypoint.new(0.3, sz),
+        NumberSequenceKeypoint.new(1, 0),
+    })
+    e.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(0.2, 0.1),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    e.Lifetime = NumberRange.new(0.4, 0.8)
+    e.Rate = 14
+    e.Speed = NumberRange.new(2, 4)
+    e.SpreadAngle = Vector2.new(18, 18)
+    e.Acceleration = Vector3.new(0, 6, 0) -- flames lick upward regardless of enemy facing
+    e.Rotation = NumberRange.new(0, 0)
+    e.RotSpeed = NumberRange.new(0, 0)
+    e.EmissionDirection = Enum.NormalId.Top
+    e.Parent = host
+    return e
 end
 
 -- Resolve the RangedFX kind for a single-target attack spec.
