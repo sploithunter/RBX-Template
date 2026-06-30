@@ -354,9 +354,9 @@ return {
                     -- dial it down if perf bites. Remove the block to drop the layer.
                     rim = {
                         shape = "Cylinder", -- emission shape; "Disc" left a flat edge
-                        thickness = 1, -- ring height (the host's thin axis)
+                        thickness = 0.001, -- ultra-thin host = a crisp line ring (Jason: more surface)
                         radius_frac = 1.0, -- ring radius as a fraction of the field radius
-                        rate = 10000, -- dense ring (Jason's crank; lower for perf)
+                        rate = 1000, -- dense enough; 10k was imperceptibly heavier (Jason)
                         size = 0.8,
                         life_min = 0.4,
                         life_max = 0.8,
