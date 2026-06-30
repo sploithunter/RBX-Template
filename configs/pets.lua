@@ -2697,6 +2697,16 @@ local petConfig = {
             base_power = 46, -- reconciled to the secret-dragon tier (Empyrean 45 / Aurora 46); was 25
             base_health = 240,
             -- eternal via the SECRET rarity default (eternal.default_percent_by_rarity)
+            -- TEST VEHICLE (grass burst + contagion DoT): targeted_aoe so its swing bursts a cluster,
+            -- attack_dot.spread makes the (grass-themed) burn contagious. Toggle off the spread to test
+            -- targeted-AoE-only. Remove this whole block once the VFX is signed off.
+            attack_targeting = "targeted_aoe",
+            attack_dot = {
+                fraction = 0.25,
+                tick = 1.0,
+                duration = 4,
+                spread = { radius = 18, interval = 0.8, max = 3 },
+            },
 
             -- Camera configuration for image generation
             camera = {

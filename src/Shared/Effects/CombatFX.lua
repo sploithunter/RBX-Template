@@ -822,7 +822,7 @@ function CombatFX.enemyBurn(host, element, sizeHint)
     end
     local burnCfg = (config.attached and config.attached.burn) or {}
     local t = burnCfg[element] or burnCfg.lava or {}
-    local sz = math.clamp((tonumber(sizeHint) or 5) * 0.45, 1.5, 7)
+    local sz = math.clamp((tonumber(sizeHint) or 5) * 0.6, 2.5, 9)
     local e = Instance.new("ParticleEmitter")
     e.Color = ColorSequence.new(
         toColor(t.color, Color3.fromRGB(255, 120, 30)),
@@ -845,11 +845,11 @@ function CombatFX.enemyBurn(host, element, sizeHint)
         NumberSequenceKeypoint.new(0.2, 0.1),
         NumberSequenceKeypoint.new(1, 1),
     })
-    e.Lifetime = NumberRange.new(0.4, 0.8)
-    e.Rate = 14
-    e.Speed = NumberRange.new(2, 4)
-    e.SpreadAngle = Vector2.new(18, 18)
-    e.Acceleration = Vector3.new(0, 6, 0) -- flames lick upward regardless of enemy facing
+    e.Lifetime = NumberRange.new(0.5, 1.0)
+    e.Rate = 24 -- dense enough to read as a clear burning column (was faint at 14)
+    e.Speed = NumberRange.new(3, 6)
+    e.SpreadAngle = Vector2.new(22, 22)
+    e.Acceleration = Vector3.new(0, 10, 0) -- flames lick well upward, clearing the enemy body
     e.Rotation = NumberRange.new(0, 0)
     e.RotSpeed = NumberRange.new(0, 0)
     e.EmissionDirection = Enum.NormalId.Top

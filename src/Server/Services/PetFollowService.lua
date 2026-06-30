@@ -98,7 +98,6 @@ function PetFollowService:_preloadFxAssets()
         folder.Name = "RangedFXAssets"
         folder.Parent = ReplicatedStorage
     end
-    local InsertService = game:GetService("InsertService")
 
     local AssetFetch = require(ReplicatedStorage.Shared.Utils.AssetFetch)
     for id in pairs(ids) do

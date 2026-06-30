@@ -115,7 +115,7 @@ return {
             doggy = "grass",
             bear = "grass",
             kitty = "ice",
-            dragon = "lava",
+            dragon = "grass", -- home dragon's origin SSOT (pets.lua) is grass; align the VFX element
             colorado = "lava",
             colorado_creator = "lava", -- the Creator apex is a FIRE blaster (bolt + AoE fire-ring)
             -- Ember family = lava origin (RPS / element stats / VFX).
