@@ -198,6 +198,7 @@ local function spawnAuraField(pp, theme, duration, radius)
     -- on the real ground under the pet.
     local holder = Instance.new("Part")
     holder.Name = "AuraField"
+    holder.Shape = Enum.PartType.Cylinder -- cosmetic (invisible); emission is the emitter's Cylinder shape
     holder.Anchored = true
     holder.CanCollide = false
     holder.CanQuery = false
