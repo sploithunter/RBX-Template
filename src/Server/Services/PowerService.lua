@@ -718,21 +718,38 @@ function PowerService:_healZone(player, kind, perTick, totalSeconds, powerId)
         return
     end
 
-    -- Ground disc (flat cylinder): circular faces sit on the part's X axis, so rotate X to vertical.
+    -- Ground RUNE CIRCLE: the MagicCircle symbol on the floor, bright heal-green, marking the zone for
+    -- its WHOLE life (shared-world — server-spawned, so every client sees it). Replaces the old flat
+    -- translucent neon disc with a designed magic symbol. A SurfaceGui Top-face on a thin invisible
+    -- slab; the tinted ImageLabel IS the visual. Fades in, holds for the field, fades out at the end.
     local marker = Instance.new("Part")
     marker.Name = "HealZone"
     marker.Anchored = true
     marker.CanCollide = false
     marker.CanQuery = false
     marker.CastShadow = false
-    marker.Shape = Enum.PartType.Cylinder
-    marker.Size = Vector3.new(1.5, radius * 2, radius * 2)
+    marker.Transparency = 1
+    marker.Size = Vector3.new(radius * 2, 0.1, radius * 2)
     marker.CFrame = CFrame.new(center.X, center.Y - 2.4, center.Z)
-        * CFrame.Angles(0, 0, math.rad(90))
-    marker.Material = Enum.Material.Neon
-    marker.Color = Color3.fromRGB(120, 230, 140) -- heal green
-    marker.Transparency = 0.72
     marker.Parent = Workspace
+    local gui = Instance.new("SurfaceGui")
+    gui.Face = Enum.NormalId.Top
+    gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    gui.PixelsPerStud = 10
+    gui.Parent = marker
+    local rune = Instance.new("ImageLabel")
+    rune.Size = UDim2.fromScale(1, 1)
+    rune.BackgroundTransparency = 1
+    rune.Image = "rbxassetid://136557266765344" -- MagicCircle (uploaded)
+    rune.ImageColor3 = Color3.fromRGB(85, 255, 130) -- bright heal green
+    rune.ImageTransparency = 1
+    rune.Parent = gui
+    TweenService:Create(rune, TweenInfo.new(0.35), { ImageTransparency = 0.05 }):Play() -- fade in
+    task.delay(math.max(0.1, totalSeconds - 0.6), function()
+        if rune and rune.Parent then
+            TweenService:Create(rune, TweenInfo.new(0.6), { ImageTransparency = 1 }):Play()
+        end
+    end)
     Debris:AddItem(marker, totalSeconds)
 
     task.spawn(function()
