@@ -379,13 +379,13 @@ return {
                 aurafield = {
                     colors = { { 110, 235, 70 }, { 225, 255, 150 } }, -- vivid green core + bright tip
                     radius = 12, -- fallback if the server doesn't pass AuraFieldRadius
-                    rate = 1.0, -- rising motes per square stud of area per second
+                    rate = 2.2, -- rising motes per square stud — denser (MORE leaves, not bigger ones)
                     rise = true,
-                    size = 1.4,
-                    life_min = 0.8,
-                    life_max = 1.6,
-                    speed_min = 1.5,
-                    speed_max = 4,
+                    size = 0.85, -- smaller leaves; density (rate) carries the look, not size
+                    life_min = 0.9,
+                    life_max = 2.0, -- live longer so they fly HIGHER before fading
+                    speed_min = 3,
+                    speed_max = 7, -- launch faster => higher column
                     light_emission = 0.3, -- main motes = drifting LEAVES, read solid green (not glow)
                     transparency = 0.15,
                     texture = "117110051645662", -- "Leaf" (alpha, Jason's pick); inverted/lighter: 112670614273744
@@ -393,8 +393,8 @@ return {
                     accent = {
                         texture = "121221014966173", -- "Flower" (alpha)
                         light_emission = 1, -- additive glow (petals shine, black bg vanishes)
-                        rate = 0.3, -- per square stud of area (sparser than the leaves)
-                        size = 1.2,
+                        rate = 0.6, -- per square stud of area (sparser than the leaves)
+                        size = 0.7,
                     },
                     -- Ground disc: a flat CIRCLE on the floor (SurfaceGui image clipped round), tinted
                     -- to the element + slowly spinning. THE contrast layer (reads where motes don't).
