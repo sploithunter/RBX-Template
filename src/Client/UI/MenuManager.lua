@@ -188,6 +188,23 @@ function MenuManager:_createOverlay()
     scrim.Parent = overlayGui
     self._scrim = scrim
 
+    -- The scrim MUST hide whenever no panel is showing. Panels can self-close (their own X /
+    -- _requestClose / ESC) without routing through CloseCurrentPanel, and a stale click-absorbing
+    -- scrim would lock the whole screen (Jason). So derive its visibility reactively from panel
+    -- presence — robust to every close path.
+    local function updateScrim()
+        local hasPanel = false
+        for _, c in ipairs(overlayGui:GetChildren()) do
+            if c ~= scrim and c:IsA("GuiObject") then
+                hasPanel = true
+                break
+            end
+        end
+        scrim.Visible = hasPanel
+    end
+    overlayGui.ChildAdded:Connect(updateScrim)
+    overlayGui.ChildRemoved:Connect(updateScrim)
+
     self.logger:debug("Overlay frame created")
 end
 
