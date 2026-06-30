@@ -297,10 +297,16 @@ return {
                     life_max = 1.6,
                     speed_min = 1.5,
                     speed_max = 4,
-                    light_emission = 1, -- additive glow on the (alpha) flower petals; lower toward 0.3
-                    -- if you'd rather the motes read as solid green than a bright glow.
+                    light_emission = 0.3, -- main motes = drifting LEAVES, read solid green (not glow)
                     transparency = 0.15,
-                    texture = "121221014966173", -- EffectTextureMaker "Flower" (alpha, group image)
+                    texture = "117110051645662", -- EffectTextureMaker "Leaf" (alpha) = the main mote
+                    -- accent: sparser GLOWING flower sparkles mixed over the leaves (variety layer)
+                    accent = {
+                        texture = "121221014966173", -- "Flower" (alpha)
+                        light_emission = 1, -- additive glow (petals shine, black bg vanishes)
+                        rate = 0.3, -- per square stud of area (sparser than the leaves)
+                        size = 1.2,
+                    },
                     -- Ground disc: a flat CIRCLE on the floor (SurfaceGui image clipped round), tinted
                     -- to the element + slowly spinning. THE contrast layer (reads where motes don't).
                     -- NON-alpha WaterTurbulence (Jason's pick): the full pattern fills the circle —

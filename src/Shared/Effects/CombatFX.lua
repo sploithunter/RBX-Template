@@ -210,9 +210,13 @@ local function spawnAuraField(pp, theme, duration, radius)
     local function mkEmitter(o)
         local e = Instance.new("ParticleEmitter")
         e.Color = ColorSequence.new(c1, c2)
-        e.LightEmission = theme.light_emission or 0.3
+        e.LightEmission = o.light_emission or theme.light_emission or 0.3
         e.LightInfluence = 0 -- keep the green constant under the area's (lava-red) lighting
-        e.Texture = o.texture or theme.texture or ""
+        local tex = o.texture or theme.texture
+        if tex and tex ~= "" and not tostring(tex):match("^rbxassetid://") then
+            tex = "rbxassetid://" .. tex -- config stores bare ids; ParticleEmitter needs the prefix
+        end
+        e.Texture = tex or ""
         e.Lifetime = NumberRange.new(o.life_min, o.life_max)
         e.Rate = o.rate
         e.Speed = NumberRange.new(o.speed_min, o.speed_max)
@@ -266,6 +270,24 @@ local function spawnAuraField(pp, theme, duration, radius)
         spread = 60,
         transparency = g.transparency or 0.2,
     })
+    -- (2b) accent: a SPARSER second mote (e.g. glowing flower sparkles over the drifting leaves) —
+    -- variety so the field doesn't read as one repeated shape. Own texture + glow. Optional.
+    local acc = theme.accent
+    if type(acc) == "table" and acc.texture and acc.texture ~= "" then
+        mkEmitter({
+            texture = acc.texture,
+            light_emission = acc.light_emission, -- nil => theme default
+            rate = math.min(120, area * (acc.rate or 0.3)),
+            size = acc.size or 1.0,
+            life_min = acc.life_min or 0.7,
+            life_max = acc.life_max or 1.4,
+            speed_min = acc.speed_min or 1.5,
+            speed_max = acc.speed_max or 4,
+            accel_y = (theme.rise ~= false) and 2 or -2,
+            spread = 22,
+            transparency = acc.transparency or 0.15,
+        })
+    end
 
     -- (3) ground disc: a flat CIRCLE on the floor (EffectTextureMaker WaterTurbulence / Squiggles),
     -- tinted to the element + slowly spinning. This is the contrast layer — a textured footprint
