@@ -1349,7 +1349,7 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                 {
                     name = "SandstormRune",
                     fade_in = 0.12,
-                    hold = 0.1,
+                    hold = 300, -- DEBUG: 5-min hold to inspect the square-texture artifact (ship: 0.1)
                     fade_out = 1.15,
                     bright = 0,
                     spin = true,
