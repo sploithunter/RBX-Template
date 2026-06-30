@@ -1018,8 +1018,8 @@ function InventoryPanel:_createUI(parent)
     -- right under it. This makes everything scale on mobile AND closes the dead "blue bar" gap the
     -- fixed-px header used to leave between itself and the content.
     if self.header then
-        self.header.Size = UDim2.new(1, 0, 0.15, 0)
-        self.header.Position = UDim2.new(0, 0, 0, 0)
+        self.header.Size = UDim2.new(1, 0, 0.12, 0)
+        self.header.Position = UDim2.new(0, 0, 0.03, 0)
         self.header.AnchorPoint = Vector2.new(0, 0)
     end
     if self.content then
@@ -1368,7 +1368,7 @@ function InventoryPanel:_createCategoryTabs()
     -- Category container
     local categoryContainer = Instance.new("Frame")
     categoryContainer.Name = "CategoryContainer"
-    categoryContainer.Size = UDim2.new(0.95, 0, 0.1, 0) -- 95% width, 10% height (relative — Jason)
+    categoryContainer.Size = UDim2.new(0.96, 0, 0.1, 0) -- 96% width, 10% height (relative — Jason)
     categoryContainer.Position = UDim2.new(0.025, 0, 0.02, 0) -- 2.5% from left, 2% from top (scales with screen)
     categoryContainer.BackgroundTransparency = 1
     categoryContainer.ZIndex = 101
@@ -1544,10 +1544,9 @@ function InventoryPanel:_createSearchSection()
     searchContainer.ZIndex = 101
     searchContainer.Parent = self.content
 
-    -- Search box background — FLEXES to fill the row minus the right-aligned Reset/Activate block, so
-    -- both the search and the buttons stay on-screen at any width (mobile was overflowing them off).
+    -- Search box background — RELATIVE 70% width (Jason); the Reset/Activate block takes the right 30%.
     local searchBG = Instance.new("Frame")
-    searchBG.Size = UDim2.new(1, -244, 1, -10)
+    searchBG.Size = UDim2.new(0.7, 0, 1, 0)
     searchBG.Position = UDim2.new(0, 0, 0, 5)
     searchBG.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
     searchBG.BorderSizePixel = 0
@@ -1573,8 +1572,9 @@ function InventoryPanel:_createSearchSection()
     -- Search text box
     self.searchBox = Instance.new("TextBox")
     self.searchBox.Name = "SearchBox"
-    self.searchBox.Size = UDim2.new(1, -50, 1, -10)
-    self.searchBox.Position = UDim2.new(0, 45, 0, 5)
+    self.searchBox.Size = UDim2.new(0.9, 0, 1, 0)
+    self.searchBox.Position = UDim2.new(0.1, 0, 0.5, 0)
+    self.searchBox.AnchorPoint = Vector2.new(0, 0.5)
     self.searchBox.BackgroundTransparency = 1
     self.searchBox.Text = ""
     self.searchBox.PlaceholderText = "Search items..."
@@ -1623,9 +1623,9 @@ end
 function InventoryPanel:_createTeamBar(searchContainer)
     local bar = Instance.new("Frame")
     bar.Name = "DraftBar"
-    -- Fixed-width button block, RIGHT-anchored so Reset/Activate never fall off a narrow (mobile)
-    -- panel — the search box flexes to fill whatever is left.
-    bar.Size = UDim2.new(0, 236, 1, -10)
+    -- RELATIVE 30% width, right-anchored (Jason); search box takes the left 70%. Reset/Activate inside
+    -- are relative too, so the whole row scales.
+    bar.Size = UDim2.new(0.3, 0, 1, 0)
     bar.Position = UDim2.new(1, 0, 0, 5)
     bar.AnchorPoint = Vector2.new(1, 0)
     bar.BackgroundTransparency = 1
@@ -1642,7 +1642,7 @@ function InventoryPanel:_createTeamBar(searchContainer)
 
     local reset = Instance.new("TextButton")
     reset.Name = "ResetDraft"
-    reset.Size = UDim2.new(0, 92, 1, -2)
+    reset.Size = UDim2.new(0.46, 0, 1, -2) -- relative (half the draft bar) so it scales
     reset.LayoutOrder = 1
     reset.Text = "↺ Reset"
     styleTeamButton(reset, Color3.fromRGB(56, 56, 68))
@@ -1654,7 +1654,7 @@ function InventoryPanel:_createTeamBar(searchContainer)
 
     local activate = Instance.new("TextButton")
     activate.Name = "ActivateDraft"
-    activate.Size = UDim2.new(0, 120, 1, -2)
+    activate.Size = UDim2.new(0.52, 0, 1, -2) -- relative (other half of the draft bar)
     activate.LayoutOrder = 2
     activate.Text = "✓ Activate"
     styleTeamButton(activate, Color3.fromRGB(46, 160, 87))
@@ -2050,7 +2050,7 @@ function InventoryPanel:_createItemsGrid()
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Name = "ItemsScroll"
     scrollFrame.Size = UDim2.new(0.95, 0, 0.75, 0) -- 95% width, 75% height (accounts for later start position)
-    scrollFrame.Position = UDim2.new(0.025, 0, 0.21, 0) -- 2.5% from left, 21% from top (after search box)
+    scrollFrame.Position = UDim2.new(0.025, 0, 0.25, 0) -- 2.5% from left, 25% from top (after search row — Jason)
     scrollFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     scrollFrame.BorderSizePixel = 0
     scrollFrame.ScrollBarThickness = 8
