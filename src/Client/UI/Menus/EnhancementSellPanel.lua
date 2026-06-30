@@ -206,7 +206,7 @@ function EnhancementSellPanel:_createUI(parent)
 
     -- Standard area-themed game pill around the whole menu, same as the inventory/pets shell
     -- (Jason: "same treatment as the pets menu outside border").
-    PanelChrome.pillBorder(frame, PanelChrome.areaPill(), 130, 0, 0.10)
+    PanelChrome.pillBorder(frame, PanelChrome.areaPill(), 130, 0, 0.07) -- match the shared shell
 
     local gradient = Instance.new("UIGradient")
     gradient.Color = ColorSequence.new({

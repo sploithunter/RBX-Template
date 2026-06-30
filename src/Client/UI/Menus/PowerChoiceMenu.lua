@@ -1807,7 +1807,7 @@ function PowerChoiceMenu:Show(parent)
     rc.Parent = root
     -- Standard game pill border (area-themed, same size/style as the other panels) — replaces the
     -- thin gray stroke. Jason: "needs a pill in the same style as the other pills."
-    PanelChrome.pillBorder(root, PanelChrome.areaPill(), 130, 0, 0.10)
+    PanelChrome.pillBorder(root, PanelChrome.areaPill(), 130, 0, 0.07) -- match the shared shell
     self.frame = root
 
     local title = Instance.new("TextLabel")

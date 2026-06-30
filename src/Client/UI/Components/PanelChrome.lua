@@ -107,8 +107,9 @@ function PanelChrome.build(parent, opts)
     corner.CornerRadius = UDim.new(0, 20)
     corner.Parent = frame
 
-    -- Outer pill ring: area-themed, the very edge (bleed 0 + SliceScale 0.10 — Jason's tune).
-    PanelChrome.pillBorder(frame, areaKey, 130, 0, 0.10)
+    -- Outer pill ring: area-themed, the very edge (bleed 0 + SliceScale 0.07 — Jason's tune, a thinner
+    -- ring than the original 0.10).
+    PanelChrome.pillBorder(frame, areaKey, 130, 0, 0.07)
 
     local gradient = Instance.new("UIGradient")
     gradient.Color = ColorSequence.new({
@@ -122,7 +123,7 @@ function PanelChrome.build(parent, opts)
     local header = Instance.new("Frame")
     header.Name = "Header"
     header.Size = UDim2.new(0.99, 0, 0.1, 0)
-    header.Position = UDim2.new(0.5, 0, 0, 0)
+    header.Position = UDim2.new(0.5, 0, 0.01, 0) -- nudged down 0.01 so it sits inside the pill (Jason)
     header.AnchorPoint = Vector2.new(0.5, 0)
     header.BackgroundColor3 = headerColor
     header.BorderSizePixel = 0

@@ -165,7 +165,7 @@ function TradePanel:Show(parent)
     corner(frame, 20)
     -- Standard game pill border (area-themed, same style as the other panels) — Jason: "pills on
     -- the outside." Replaces the thin header-colored stroke.
-    PanelChrome.pillBorder(frame, PanelChrome.areaPill(), 130, 0, 0.10)
+    PanelChrome.pillBorder(frame, PanelChrome.areaPill(), 130, 0, 0.07) -- match the shared shell
     self.frame = frame
 
     self:_buildHeader(frame, "🤝 Trade", function()

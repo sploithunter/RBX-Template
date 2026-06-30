@@ -1007,7 +1007,7 @@ function InventoryPanel:_createUI(parent)
 
     -- Standard area-themed game pill around the whole menu (Jason: "a pill around the menu as a
     -- whole"), same style as the other panels.
-    PanelChrome.pillBorder(self.frame, PanelChrome.areaPill(), 130, 0, 0.10)
+    PanelChrome.pillBorder(self.frame, PanelChrome.areaPill(), 130, 0, 0.07) -- match the shared shell
 
     -- Store references
     self.header = panelResult.header
