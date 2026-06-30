@@ -267,10 +267,10 @@ return {
                         rate = 0.3,
                         size = 1.3,
                     }, -- Flame_up
-                    ground_texture = "103350191895581", -- WaterTurbulence, molten tint
-                    ground_color = { 255, 120, 40 },
-                    ground_transparency = 0.4,
-                    ground_spin = 18,
+                    ground_texture = "95384385791305", -- "Sun/spore": circular + bright rim = lava floor (Jason)
+                    ground_color = { 255, 70, 25 }, -- red tint => molten
+                    ground_transparency = 0.3,
+                    ground_spin = 14,
                     fire = {
                         count = 8,
                         ring_frac = 0.82,
