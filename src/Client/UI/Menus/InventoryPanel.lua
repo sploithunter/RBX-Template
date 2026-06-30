@@ -1043,13 +1043,15 @@ function InventoryPanel:_createUI(parent)
         if bagIcon then
             bagIcon.AnchorPoint = Vector2.new(0, 0.5)
             bagIcon.Position = UDim2.new(0, 6, 0.5, 0)
+            bagIcon.Size = UDim2.new(1, 0, 1, 0) -- full height; aspect constraint keeps it square (Jason)
             bagIcon.Parent = leftBox
         end
         local titleLbl = self.header:FindFirstChild("HeaderTitle")
         if titleLbl then
-            titleLbl.AnchorPoint = Vector2.new(1, 0.5)
-            titleLbl.Position = UDim2.new(1, -4, 0.5, 0)
-            titleLbl.Size = UDim2.new(0.66, 0, 0.9, 0)
+            titleLbl.AnchorPoint = Vector2.new(0, 0.5)
+            titleLbl.Position = UDim2.new(0.25, 0, 0.5, 0)
+            titleLbl.Size = UDim2.new(0.5, 0, 0.9, 0)
+            titleLbl.TextScaled = true
             titleLbl.TextXAlignment = Enum.TextXAlignment.Left
             titleLbl.Parent = leftBox
         end
@@ -1089,7 +1091,7 @@ function InventoryPanel:_createUI(parent)
         local btnRow = Instance.new("Frame")
         btnRow.Name = "HeaderButtons"
         btnRow.AnchorPoint = Vector2.new(1, 0)
-        btnRow.Position = UDim2.new(1, -28, 0, 0)
+        btnRow.Position = UDim2.new(0.97, 0, 0, 0) -- relative gap on the right for the close-X (Jason)
         btnRow.Size = UDim2.new(0.7, 0, 1, 0)
         btnRow.BackgroundTransparency = 1
         btnRow.ZIndex = 250
@@ -1371,7 +1373,7 @@ function InventoryPanel:_createCategoryTabs()
     -- Category container
     local categoryContainer = Instance.new("Frame")
     categoryContainer.Name = "CategoryContainer"
-    categoryContainer.Size = UDim2.new(0.96, 0, 0.1, 0) -- 96% width, 10% height (relative — Jason)
+    categoryContainer.Size = UDim2.new(0.95, 0, 0.1, 0) -- 95% width, 10% height (relative — Jason)
     categoryContainer.Position = UDim2.new(0.025, 0, 0.02, 0) -- 2.5% from left, 2% from top (scales with screen)
     categoryContainer.BackgroundTransparency = 1
     categoryContainer.ZIndex = 101
