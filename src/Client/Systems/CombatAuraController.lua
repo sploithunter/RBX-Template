@@ -353,7 +353,7 @@ local fieldStopToken = setmetatable({}, { __mode = "k" }) -- pet -> latest watch
 -- DEBUG: force EVERY aura pet's field to this element so we can preview lava/ice/desert on the (grass)
 -- bear without needing element-specific pets. Set back to nil to ship — the field uses the pet's real
 -- element. (Reboot to apply; change the value + reboot to cycle elements.)
-local DEBUG_FIELD_ELEMENT = "desert"
+local DEBUG_FIELD_ELEMENT = nil
 local function refreshAuraField(pet)
     local secs = remaining(pet, "AuraFieldUntil")
     if secs > 0.05 then
