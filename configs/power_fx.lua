@@ -17,6 +17,15 @@
 
 return {
     primitives = {
+        -- a NO-OP client FX: a defined primitive with an unhandled pattern, so PowerFXRender treats the
+        -- power as "has FX" (no "(effect TBD)" placeholder) while CombatFX renders nothing. For powers
+        -- whose entire visual is server-side / shared-world (e.g. Resonance's ground rune).
+        silent = {
+            pattern = "none",
+            color = "origin",
+            sound = nil,
+        },
+
         -- caster-anchored burst CENTRED on the player: dome + rising motes / ember poof, but NO
         -- encircling ground/fire ring (no_ring) — the on-player part of the self burst reads as a
         -- punchy cast without the AoE ring that felt inappropriate as a cast tell.
