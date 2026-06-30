@@ -69,6 +69,17 @@ local function partOf(inst)
     return nil
 end
 
+-- Parent for point-anchored ground fields (momentary AoEs that don't follow a pet).
+local function fieldFolder()
+    local f = Workspace:FindFirstChild("CombatFXFields")
+    if not f then
+        f = Instance.new("Folder")
+        f.Name = "CombatFXFields"
+        f.Parent = Workspace
+    end
+    return f
+end
+
 -- ===== Attached pattern: aura (buff/debuff/damage/heal) =====
 -- A ParticleEmitter parented to the entity's body part, so it follows the model automatically.
 -- rise = float up (buff/heal) or sink (debuff). Runs for `duration`, then stops + GCs.
@@ -178,17 +189,36 @@ end
 --   (2) low flecks hugging the ground                   — the edge / footprint
 -- Particles emit from the holder's flat box volume (no Disc-shape orientation fuss). Textures default
 -- to the soft built-in particle; drop real leaf art in via the config `texture` knob later.
-local function spawnAuraField(pp, theme, duration, radius)
+-- Reusable ground-field engine. opts:
+--   follow   = a BasePart to track every frame (the pet's root) — a persistent aura, OR
+--   point    = a fixed Vector3 — a momentary AoE anchored at a spot
+--   duration = seconds, then auto-stop (0/nil = persistent; caller stops)
+--   burst    = one-shot: motes Emit() at once + the rim ring EXPANDS out + the disc flashes, for a
+--              mechanically-instant AoE that still reads. The theme (element look) is unchanged.
+-- radius sizes EVERYTHING (so the visual always matches the real AoE radius). Returns { stop() }.
+local function spawnAuraField(theme, radius, opts)
+    opts = opts or {}
     radius = tonumber(radius) or tonumber(theme.radius) or 10
-    local model = pp.Parent
-    local yoff = 2
-    local okE, sz = pcall(function()
-        return model and model:IsA("Model") and model:GetExtentsSize()
-    end)
-    if okE and sz then
-        -- sit the emission slab just ABOVE the pet's feet (not at the body centre). Lifting it ~0.5
-        -- stud clear of the floor keeps particles from spawning underground + getting occluded.
-        yoff = (sz.Y * 0.5) - 0.5
+    local follow = opts.follow -- BasePart to track (pet root), or nil
+    local point = opts.point -- fixed Vector3 (momentary), or nil
+    local duration = opts.duration
+    local burst = opts.burst == true
+    -- parent the (anchored) parts to the pet model when following — so they GC with it — else to a
+    -- dedicated Workspace folder for point-anchored bursts.
+    local model = (follow and follow.Parent) or fieldFolder()
+    local yoff = 0 -- a fixed point sits at ground level already
+    if follow then
+        local okE, sz = pcall(function()
+            local m = follow.Parent
+            return m and m:IsA("Model") and m:GetExtentsSize()
+        end)
+        if okE and sz then
+            -- sit the emission slab just above the pet's feet (lifting ~0.5 keeps motes off the floor)
+            yoff = (sz.Y * 0.5) - 0.5
+        end
+    end
+    local function originPos()
+        return (follow and follow.Parent and follow.Position) or point or Vector3.new()
     end
     local c1 = toColor(theme.colors and theme.colors[1])
     local c2 = toColor(theme.colors and theme.colors[2], c1)
@@ -207,9 +237,10 @@ local function spawnAuraField(pp, theme, duration, radius)
     -- Same recipe as AuraFieldRim: a Cylinder sized (thin X, 2r, 2r), oriented rz=90 below so the
     -- round face lies FLAT — the emitter's Cylinder volume then fills the circle (no square corners).
     holder.Size = Vector3.new(0.3, radius * 2, radius * 2)
-    holder.CFrame = pp.CFrame * CFrame.new(0, -yoff, 0) * CFrame.Angles(0, 0, math.rad(90))
+    holder.CFrame = CFrame.new(originPos()) * CFrame.Angles(0, 0, math.rad(90))
     holder.Parent = model
 
+    local emitters = {} -- the field-mote emitters (for the burst pop); the rim is handled separately
     local function mkEmitter(o)
         local e = Instance.new("ParticleEmitter")
         -- emit from a CYLINDER volume on the rz=90 flat-cylinder host so particles fill the round
@@ -247,6 +278,7 @@ local function spawnAuraField(pp, theme, duration, radius)
             NumberSequenceKeypoint.new(1, 1),
         })
         e.Parent = holder
+        emitters[#emitters + 1] = e
         return e
     end
 
@@ -318,7 +350,7 @@ local function spawnAuraField(pp, theme, duration, radius)
         disc.CastShadow = false
         disc.Transparency = 1 -- invisible host; only the SurfaceGui image shows
         disc.Size = Vector3.new(radius * 2, 0.05, radius * 2)
-        disc.CFrame = pp.CFrame * CFrame.new(0, -(yoff + 0.4), 0)
+        disc.CFrame = CFrame.new(originPos())
         disc.Parent = model
         local sg = Instance.new("SurfaceGui")
         sg.Face = Enum.NormalId.Top
@@ -478,11 +510,11 @@ local function spawnAuraField(pp, theme, duration, radius)
     local fireAng, orbitAng = 0, 0 -- slow rotation phases for the fire ring + orbit
     local groundConn
     groundConn = RunService.Heartbeat:Connect(function(dt)
-        if not pp.Parent then
+        if follow and not follow.Parent then -- the pet went away; stop following
             groundConn:Disconnect()
             return
         end
-        local origin = pp.Position
+        local origin = originPos()
         local hit =
             Workspace:Raycast(origin + Vector3.new(0, 4, 0), Vector3.new(0, -120, 0), rayParams)
         local floorY = (hit and hit.Position.Y) or (origin.Y - yoff)
@@ -522,6 +554,30 @@ local function spawnAuraField(pp, theme, duration, radius)
                 * CFrame.Angles(0, 0, math.rad(90))
         end
     end)
+
+    -- BURST (momentary AoE): one-shot instead of a steady field. The motes pop once, the rim ring
+    -- EXPANDS 0->full (a shockwave) while still emitting, and the disc flashes in. Then `duration`
+    -- (default 0.6s) stops it. Sized to the same radius, so it reads as an instant hit of that area.
+    if burst then
+        duration = tonumber(duration) or 0.6
+        for _, e in ipairs(emitters) do
+            local r = e.Rate
+            e.Rate = 0 -- no continuous stream; the Emit() IS the burst
+            pcall(function()
+                e:Emit(math.max(8, math.floor(r * 0.4)))
+            end)
+        end
+        if rimPart then -- keep emitting while it grows => an expanding ring
+            local full = rimPart.Size
+            rimPart.Size = Vector3.new(full.X, full.Y * 0.1, full.Z * 0.1)
+            TweenService:Create(rimPart, TweenInfo.new(duration * 0.6), { Size = full }):Play()
+        end
+        if discImg then -- flash the footprint in
+            local tgt = theme.ground_transparency or 0.35
+            discImg.ImageTransparency = 1
+            TweenService:Create(discImg, TweenInfo.new(0.1), { ImageTransparency = tgt }):Play()
+        end
+    end
 
     local stopped = false
     local function stop()
@@ -649,7 +705,7 @@ function CombatFX.attach(entity, spec)
         if spec.category == "shield" then
             handle = spawnShield(pp, theme, duration)
         elseif spec.category == "aurafield" then
-            handle = spawnAuraField(pp, theme, duration, spec.radius)
+            handle = spawnAuraField(theme, spec.radius, { follow = pp, duration = duration })
         else
             handle = spawnAura(pp, theme, duration)
         end
@@ -669,6 +725,37 @@ function CombatFX.attach(entity, spec)
             reskinStop()
         end,
     }
+end
+
+-- Public, reusable ground-AoE field. One entry point for both the persistent pet aura AND momentary
+-- targeted AoEs, themed per element and sized to the REAL AoE radius.
+--   spec = {
+--     element  = "grass" | "lava" | "ice" | "desert",  -- picks themes[element].field (aurafield)
+--     radius   = number,                                -- the actual AoE radius (sizes everything)
+--     anchor   = <pet/part to FOLLOW>  OR  <Vector3 point to sit at>,
+--     duration = seconds (0/nil = persistent; caller stops),
+--     burst    = bool (one-shot: pop + expanding ring + disc flash — a mechanically-instant AoE),
+--   }
+-- Returns { stop() } (or nil if the element has no field theme).
+function CombatFX.groundField(spec)
+    spec = spec or {}
+    local element = spec.element or "grass"
+    local cfg = config.attached or {}
+    local theme = cfg.themes
+        and cfg.themes[element]
+        and (cfg.themes[element].field or cfg.themes[element].aurafield)
+    if not theme then
+        return nil
+    end
+    local radius = tonumber(spec.radius) or tonumber(theme.radius) or 10
+    local opts = { duration = spec.duration, burst = spec.burst }
+    local a = spec.anchor
+    if typeof(a) == "Vector3" then
+        opts.point = a
+    elseif a then
+        opts.follow = partOf(a)
+    end
+    return spawnAuraField(theme, radius, opts)
 end
 
 -- Resolve the RangedFX kind for a single-target attack spec.
