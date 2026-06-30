@@ -728,15 +728,6 @@ function PowerService:_spawnGroundRune(center, radius, color, opts)
     -- to give the disc a "modeled" ground look behind the symbol. opts.fill_texture / fill_color /
     -- fill_bright (peak opacity) / fill_tiles (tiles across the disc).
     if opts.fill_texture then
-        local clip = Instance.new("Frame")
-        clip.Size = UDim2.fromScale(1, 1)
-        clip.BackgroundTransparency = 1
-        clip.ClipsDescendants = true
-        clip.ZIndex = 1
-        clip.Parent = gui
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0.5, 0) -- clip the square tile to a circle
-        corner.Parent = clip
         local fill = Instance.new("ImageLabel")
         fill.Size = UDim2.fromScale(1, 1)
         fill.BackgroundTransparency = 1
@@ -751,7 +742,12 @@ function PowerService:_spawnGroundRune(center, radius, color, opts)
         fill.ImageColor3 = opts.fill_color or color
         fill.ImageTransparency = 1
         fill.ZIndex = 1
-        fill.Parent = clip
+        fill.Parent = gui
+        -- UICorner ON THE IMAGE clips the tiled fill to a CIRCLE. (A parent Frame's ClipsDescendants
+        -- only clips to the RECTANGLE, which left the square sand patch — confirmed + fixed live.)
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0.5, 0)
+        corner.Parent = fill
         fades[#fades + 1] = { fill, tonumber(opts.fill_bright) or 0.45 }
     end
 
@@ -1349,7 +1345,7 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                 {
                     name = "SandstormRune",
                     fade_in = 0.12,
-                    hold = 300, -- DEBUG: 5-min hold to inspect the square-texture artifact (ship: 0.1)
+                    hold = 0.1,
                     fade_out = 1.15,
                     bright = 0,
                     spin = true,
