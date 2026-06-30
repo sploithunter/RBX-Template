@@ -349,14 +349,16 @@ return {
                         color = { 160, 255, 130 },
                     },
                     -- RIM feather: a flat ring of sparkles at the disc edge so the circle dissolves
-                    -- instead of cutting hard. Remove this block to drop it.
+                    -- instead of cutting hard. radius_frac aligns it to the MASKED circle (not the
+                    -- square texture extent); near-zero speed keeps it on the rim. Remove to drop it.
                     rim = {
                         rate = 90,
                         size = 0.8,
+                        radius_frac = 0.78, -- fraction of the field radius (matches the green circle)
                         life_min = 0.4,
                         life_max = 0.8,
-                        speed_min = 0.5,
-                        speed_max = 2,
+                        speed_min = 0,
+                        speed_max = 0.6,
                         color = { 150, 255, 120 },
                     },
                 },

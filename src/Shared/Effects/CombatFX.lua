@@ -409,7 +409,10 @@ local function spawnAuraField(pp, theme, duration, radius)
         rimPart.CanQuery = false
         rimPart.CastShadow = false
         rimPart.Transparency = 1
-        rimPart.Size = Vector3.new(radius * 2, radius * 2, 0.2)
+        -- size the Disc emission to the MASKED circle's edge (the SurfaceGui round clip), not the
+        -- square texture extent — radius_frac matches the visible green rim (Jason, live-tuned 0.78).
+        local rfrac = tonumber(rc.radius_frac) or 0.78
+        rimPart.Size = Vector3.new(radius * 2 * rfrac, radius * 2 * rfrac, 0.2)
         rimPart.Parent = model
         local e = Instance.new("ParticleEmitter")
         e.Shape = Enum.ParticleEmitterShape.Disc
