@@ -718,17 +718,56 @@ function PowerService:_spawnGroundRune(center, radius, color, opts)
     marker.Parent = Workspace
     local gui = Instance.new("SurfaceGui")
     gui.Face = Enum.NormalId.Top
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
     gui.PixelsPerStud = 10
     gui.Parent = marker
+    local fades = {} -- { {imageLabel, peakTransparency}, … } — all fade together
+
+    -- Optional textured FILL UNDER the rune: a circular-clipped, tiled texture (e.g. a sand tile) tinted
+    -- to give the disc a "modeled" ground look behind the symbol. opts.fill_texture / fill_color /
+    -- fill_bright (peak opacity) / fill_tiles (tiles across the disc).
+    if opts.fill_texture then
+        local clip = Instance.new("Frame")
+        clip.Size = UDim2.fromScale(1, 1)
+        clip.BackgroundTransparency = 1
+        clip.ClipsDescendants = true
+        clip.ZIndex = 1
+        clip.Parent = gui
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0.5, 0) -- clip the square tile to a circle
+        corner.Parent = clip
+        local fill = Instance.new("ImageLabel")
+        fill.Size = UDim2.fromScale(1, 1)
+        fill.BackgroundTransparency = 1
+        fill.ScaleType = Enum.ScaleType.Tile
+        local tiles = tonumber(opts.fill_tiles) or 4
+        fill.TileSize = UDim2.fromScale(1 / tiles, 1 / tiles)
+        local ftex = tostring(opts.fill_texture)
+        if not ftex:match("^rbxassetid://") then
+            ftex = "rbxassetid://" .. ftex
+        end
+        fill.Image = ftex
+        fill.ImageColor3 = opts.fill_color or color
+        fill.ImageTransparency = 1
+        fill.ZIndex = 1
+        fill.Parent = clip
+        fades[#fades + 1] = { fill, tonumber(opts.fill_bright) or 0.45 }
+    end
+
     local rune = Instance.new("ImageLabel")
     rune.Size = UDim2.fromScale(1, 1)
     rune.BackgroundTransparency = 1
     rune.Image = "rbxassetid://136557266765344" -- MagicCircle (uploaded)
     rune.ImageColor3 = color
     rune.ImageTransparency = 1
+    rune.ZIndex = 2 -- the symbol sits ON TOP of the fill
     rune.Parent = gui
-    TweenService:Create(rune, TweenInfo.new(fadeIn), { ImageTransparency = bright }):Play()
+    fades[#fades + 1] = { rune, bright }
+
+    for _, f in ipairs(fades) do
+        TweenService:Create(f[1], TweenInfo.new(fadeIn), { ImageTransparency = f[2] }):Play()
+    end
     if opts.spin then
         TweenService
             :Create(marker, TweenInfo.new(lifetime, Enum.EasingStyle.Linear), {
@@ -737,8 +776,10 @@ function PowerService:_spawnGroundRune(center, radius, color, opts)
             :Play()
     end
     task.delay(fadeIn + hold, function()
-        if rune and rune.Parent then
-            TweenService:Create(rune, TweenInfo.new(fadeOut), { ImageTransparency = 1 }):Play()
+        for _, f in ipairs(fades) do
+            if f[1] and f[1].Parent then
+                TweenService:Create(f[1], TweenInfo.new(fadeOut), { ImageTransparency = 1 }):Play()
+            end
         end
     end)
     Debris:AddItem(marker, lifetime + 0.3)
@@ -1292,6 +1333,32 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                 enemy:SetAttribute("DebuffPowerId", powerId)
                 enemy:SetAttribute("DebuffUntil", now + dur)
             end
+        end
+        -- Sandstorm cast tell: an INDIRECT targeted AoE — a momentary YELLOW rune over a tiled-SAND
+        -- disc, centered on the enemy the squad's pet is fighting (its target), not the player. Flashes
+        -- in bright and fades over ~1.3s, like Resonance. Falls back to the squad centre if nothing's
+        -- engaged so the cast still reads while testing.
+        local foe = self:_engagedEnemy(player)
+        local fp = foe and (foe.PrimaryPart or foe:FindFirstChildWhichIsA("BasePart"))
+        local center = (fp and fp.Position) or self:_squadCenter(player)
+        if center then
+            self:_spawnGroundRune(
+                center,
+                tonumber(kind.radius) or 18,
+                Color3.fromRGB(255, 215, 55),
+                {
+                    name = "SandstormRune",
+                    fade_in = 0.12,
+                    hold = 0.1,
+                    fade_out = 1.15,
+                    bright = 0,
+                    spin = true,
+                    spin_deg = 90,
+                    fill_texture = "78509147193799", -- sandfloor_tile (alpha), tiled under the rune
+                    fill_color = Color3.fromRGB(235, 205, 120),
+                    fill_bright = 0.4,
+                }
+            )
         end
     elseif family == "vulnerable" then
         -- Shatter: x`frozen_bonus` again on FROZEN (rooted) targets — the freeze->shatter payoff.
