@@ -1021,6 +1021,14 @@ function InventoryPanel:_createUI(parent)
         self.header.Size = UDim2.new(1, 0, 0.12, 0)
         self.header.Position = UDim2.new(0, 0, 0.03, 0)
         self.header.AnchorPoint = Vector2.new(0, 0)
+        -- The panel background is an opaque ImageLabel whose source art has a blue band at the very
+        -- top. The header sits 0.03 down (it can't go higher — the pill ring covers it when the panel
+        -- scales down), so that blue band peeks through as a thin strip above the header. The header
+        -- and content cover the rest of the image, so tinting the whole image to the header colour
+        -- (the SSOT) recolours ONLY that exposed strip to match — no extra fill element needed.
+        if self.header:IsA("Frame") then
+            self.frame.ImageColor3 = self.header.BackgroundColor3
+        end
     end
     if self.content then
         self.content.Size = UDim2.new(1, 0, 0.85, 0)
