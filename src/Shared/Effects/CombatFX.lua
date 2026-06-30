@@ -31,6 +31,7 @@ local Debris = game:GetService("Debris")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local RangedFX = require(ReplicatedStorage.Shared.Effects.RangedFX)
 local AreaFX = require(ReplicatedStorage.Shared.Effects.AreaFX)
@@ -192,22 +193,19 @@ local function spawnAuraField(pp, theme, duration, radius)
     local c1 = toColor(theme.colors and theme.colors[1])
     local c2 = toColor(theme.colors and theme.colors[2], c1)
 
-    -- flat, invisible emission holder at the pet's feet, welded so the field follows the pet
+    -- flat, invisible emission holder. ANCHORED (not welded): pets HOVER, so a welded field floats
+    -- above the ground with the pet — instead we raycast to the floor each frame (below) and sit it
+    -- on the real ground under the pet.
     local holder = Instance.new("Part")
     holder.Name = "AuraField"
-    holder.Anchored = false
+    holder.Anchored = true
     holder.CanCollide = false
     holder.CanQuery = false
     holder.CastShadow = false
-    holder.Massless = true
     holder.Transparency = 1
     holder.Size = Vector3.new(radius * 2, 0.3, radius * 2) -- flat disc-ish emission area
     holder.CFrame = pp.CFrame * CFrame.new(0, -yoff, 0)
     holder.Parent = model
-    local weld = Instance.new("WeldConstraint")
-    weld.Part0 = pp
-    weld.Part1 = holder
-    weld.Parent = holder
 
     local function mkEmitter(o)
         local e = Instance.new("ParticleEmitter")
@@ -275,7 +273,7 @@ local function spawnAuraField(pp, theme, duration, radius)
     -- to a circle (UICorner 0.5) gives the round footprint; GUI colour also ignores world lighting,
     -- so the green stays constant. Only built when a texture id is set; the grayscale art tints to
     -- the theme colour. NOTE: the texture needs a transparent alpha or its black fill shows.
-    local disc, scrollConn
+    local disc, discImg
     local groundTex = theme.ground_texture
     if type(groundTex) == "string" and groundTex ~= "" then
         if not groundTex:match("^rbxassetid://") then
@@ -284,44 +282,69 @@ local function spawnAuraField(pp, theme, duration, radius)
         disc = Instance.new("Part")
         disc.Name = "AuraFieldDisc"
         disc.Shape = Enum.PartType.Block
-        disc.Anchored = false
+        disc.Anchored = true -- positioned on the floor each frame (below), not welded to the pet
         disc.CanCollide = false
         disc.CanQuery = false
         disc.CastShadow = false
-        disc.Massless = true
         disc.Transparency = 1 -- invisible host; only the SurfaceGui image shows
         disc.Size = Vector3.new(radius * 2, 0.05, radius * 2)
-        disc.CFrame = pp.CFrame * CFrame.new(0, -(yoff + 0.4), 0) -- lie on the floor, under the motes
+        disc.CFrame = pp.CFrame * CFrame.new(0, -(yoff + 0.4), 0)
         disc.Parent = model
-        local dweld = Instance.new("WeldConstraint")
-        dweld.Part0 = pp
-        dweld.Part1 = disc
-        dweld.Parent = disc
         local sg = Instance.new("SurfaceGui")
         sg.Face = Enum.NormalId.Top
         sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
         sg.PixelsPerStud = 12
         sg.Parent = disc
-        local img = Instance.new("ImageLabel")
-        img.Size = UDim2.fromScale(1, 1)
-        img.BackgroundTransparency = 1
-        img.Image = groundTex
-        img.ImageColor3 = toColor(theme.ground_color or (theme.colors and theme.colors[1]))
-        img.ImageTransparency = theme.ground_transparency or 0.35
+        discImg = Instance.new("ImageLabel")
+        discImg.Size = UDim2.fromScale(1, 1)
+        discImg.BackgroundTransparency = 1
+        discImg.Image = groundTex
+        discImg.ImageColor3 = toColor(theme.ground_color or (theme.colors and theme.colors[1]))
+        discImg.ImageTransparency = theme.ground_transparency or 0.35
         local corner = Instance.new("UICorner")
         corner.CornerRadius = UDim.new(0.5, 0) -- full round => circular footprint
-        corner.Parent = img
-        img.Parent = sg
-        local spin = tonumber(theme.ground_spin) or 0
-        if spin ~= 0 then
-            scrollConn = RunService.Heartbeat:Connect(function(dt)
-                if not img.Parent then
-                    return
-                end
-                img.Rotation = (img.Rotation + spin * dt) % 360
-            end)
-        end
+        corner.Parent = discImg
+        discImg.Parent = sg
     end
+
+    -- Keep the field ON THE FLOOR under the pet. Pets HOVER, so a welded field floats with them; we
+    -- raycast straight down each frame and sit the emission slab + disc on the real ground beneath
+    -- the pet (and spin the disc). Excludes the pet, other pets, and enemies so the ray finds terrain.
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    rayParams.IgnoreWater = true
+    do
+        local excl = { model }
+        local pets = Workspace:FindFirstChild("PlayerPets")
+        if pets then
+            excl[#excl + 1] = pets
+        end
+        local gameF = Workspace:FindFirstChild("Game")
+        local enemies = gameF and gameF:FindFirstChild("Enemies")
+        if enemies then
+            excl[#excl + 1] = enemies
+        end
+        rayParams.FilterDescendantsInstances = excl
+    end
+    local spin = tonumber(theme.ground_spin) or 0
+    local groundConn
+    groundConn = RunService.Heartbeat:Connect(function(dt)
+        if not pp.Parent then
+            groundConn:Disconnect()
+            return
+        end
+        local origin = pp.Position
+        local hit =
+            Workspace:Raycast(origin + Vector3.new(0, 4, 0), Vector3.new(0, -120, 0), rayParams)
+        local floorY = (hit and hit.Position.Y) or (origin.Y - yoff)
+        holder.CFrame = CFrame.new(origin.X, floorY + 0.6, origin.Z) -- motes rise from just off the floor
+        if disc then
+            disc.CFrame = CFrame.new(origin.X, floorY + 0.08, origin.Z) -- disc lies on the floor
+            if discImg and spin ~= 0 then
+                discImg.Rotation = (discImg.Rotation + spin * dt) % 360
+            end
+        end
+    end)
 
     local stopped = false
     local function stop()
@@ -331,13 +354,12 @@ local function spawnAuraField(pp, theme, duration, radius)
         stopped = true
         rises.Enabled = false
         floor.Enabled = false
-        if scrollConn then
-            scrollConn:Disconnect()
+        if groundConn then
+            groundConn:Disconnect()
         end
         if disc then
-            local img = disc:FindFirstChildWhichIsA("ImageLabel", true)
-            if img then
-                TweenService:Create(img, TweenInfo.new(0.4), { ImageTransparency = 1 }):Play()
+            if discImg then
+                TweenService:Create(discImg, TweenInfo.new(0.4), { ImageTransparency = 1 }):Play()
             end
             Debris:AddItem(disc, 0.5)
         end
