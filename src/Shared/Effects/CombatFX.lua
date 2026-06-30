@@ -30,6 +30,7 @@
 local Debris = game:GetService("Debris")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local RangedFX = require(ReplicatedStorage.Shared.Effects.RangedFX)
 local AreaFX = require(ReplicatedStorage.Shared.Effects.AreaFX)
@@ -268,6 +269,48 @@ local function spawnAuraField(pp, theme, duration, radius)
         transparency = g.transparency or 0.2,
     })
 
+    -- (3) ground disc: a flat textured slab on the floor (EffectTextureMaker WaterTurbulence /
+    -- Squiggles), tinted to the element + slowly scrolling so it flows. This is the contrast layer —
+    -- a textured footprint reads on ANY ground colour (green motes vanish on green grass). Only built
+    -- when a texture id is configured; the grayscale texture tints to the theme colour.
+    local disc, scrollConn
+    local groundTex = theme.ground_texture
+    if type(groundTex) == "string" and groundTex ~= "" then
+        if not groundTex:match("^rbxassetid://") then
+            groundTex = "rbxassetid://" .. groundTex
+        end
+        disc = Instance.new("Part")
+        disc.Name = "AuraFieldDisc"
+        disc.Shape = Enum.PartType.Block
+        disc.Anchored = false
+        disc.CanCollide = false
+        disc.CanQuery = false
+        disc.CastShadow = false
+        disc.Massless = true
+        disc.Transparency = 1 -- the part is invisible; only the top-face Texture shows
+        disc.Size = Vector3.new(radius * 2, 0.1, radius * 2)
+        disc.CFrame = pp.CFrame * CFrame.new(0, -(yoff + 0.4), 0) -- lie on the floor, under the motes
+        disc.Parent = model
+        local dweld = Instance.new("WeldConstraint")
+        dweld.Part0 = pp
+        dweld.Part1 = disc
+        dweld.Parent = disc
+        local tex = Instance.new("Texture")
+        tex.Face = Enum.NormalId.Top
+        tex.Texture = groundTex
+        tex.Color3 = toColor(theme.ground_color or (theme.colors and theme.colors[1]))
+        tex.Transparency = theme.ground_transparency or 0.35
+        tex.StudsPerTileU = radius * 2 -- one tile spans the whole field (set < that to repeat)
+        tex.StudsPerTileV = radius * 2
+        tex.Parent = disc
+        local scroll = tonumber(theme.ground_scroll) or 0
+        if scroll ~= 0 then
+            scrollConn = RunService.Heartbeat:Connect(function(dt)
+                tex.OffsetStudsV = tex.OffsetStudsV + scroll * dt
+            end)
+        end
+    end
+
     local stopped = false
     local function stop()
         if stopped then
@@ -276,6 +319,16 @@ local function spawnAuraField(pp, theme, duration, radius)
         stopped = true
         rises.Enabled = false
         floor.Enabled = false
+        if scrollConn then
+            scrollConn:Disconnect()
+        end
+        if disc then
+            local t = disc:FindFirstChildOfClass("Texture")
+            if t then
+                TweenService:Create(t, TweenInfo.new(0.4), { Transparency = 1 }):Play()
+            end
+            Debris:AddItem(disc, 0.5)
+        end
         Debris:AddItem(holder, (theme.life_max or 1.6) + 0.3) -- let in-flight particles finish
     end
     if duration and duration > 0 then
