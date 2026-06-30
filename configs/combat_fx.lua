@@ -299,11 +299,11 @@ return {
                     speed_max = 4,
                     light_emission = 0.6, -- glow so it reads against bright grass
                     transparency = 0.15,
-                    texture = "", -- leaf/flower particle texture id (EffectTextureMaker; upload later)
+                    texture = "124915807592024", -- EffectTextureMaker "Flower" (group-owned image)
                     -- Ground disc: a flat textured slab on the floor (EffectTextureMaker
                     -- WaterTurbulence / Squiggles), tinted to the element + scrolling. THE contrast
-                    -- layer (reads on green grass where motes don't). "" = no disc until art exists.
-                    ground_texture = "", -- rbxassetid of the grayscale ground texture
+                    -- layer (reads on green grass where motes don't). "" = no disc.
+                    ground_texture = "103350191895581", -- "WaterTurbulence" (alt Squiggles: 109719802384654)
                     ground_color = { 90, 240, 70 }, -- tint applied to the grayscale texture
                     ground_transparency = 0.4,
                     ground_scroll = 0.6, -- studs/sec the texture flows (0 = static)
