@@ -139,22 +139,6 @@ end
 
 -- ===== Distinct motif primitives =====
 
--- Vertical bars that grow up from the ground in a ring (grass blades / flame columns).
-local function pillarsRing(pos, color, mat, count, radius, height, width, life)
-    for i = 1, count do
-        local ang = (i / count) * math.pi * 2
-        local base = pos + Vector3.new(math.cos(ang) * radius, 0, math.sin(ang) * radius)
-        local p = newPart(Enum.PartType.Block, mat, color, 0.1)
-        p.Size = Vector3.new(width, 0.4, width)
-        p.CFrame = CFrame.new(base + Vector3.new(0, 0.2, 0))
-        tween(p, life, {
-            Size = Vector3.new(width * 0.4, height, width * 0.4),
-            CFrame = CFrame.new(base + Vector3.new(0, height * 0.5, 0)),
-            Transparency = 1,
-        })
-    end
-end
-
 -- Elongated spikes pointing outward+up in a ring (ice crystals / thorns).
 local function radialSpikes(pos, color, mat, count, radius, len, life, tiltDeg)
     for i = 1, count do
@@ -632,6 +616,78 @@ local function rubbleEffect(pos, c1, c2, mat, radius)
     ricochet(pos, c1, c2, mat, 11, radius)
 end
 
+-- Variation knobs for the organic grass bloom — scattered clumps of blades, randomized every call
+-- so the bear's AURA (which re-fires this each tick) never looks like the same stamped ring twice.
+-- PURELY VISUAL.
+local GRASS_BLOOM_VAR = {
+    tufts = 11, -- clumps of blades scattered across the disc
+    tuft_jitter = 4, -- ± clumps per call (uneven density run-to-run)
+    blades_min = 2, -- blades per clump
+    blades_max = 4,
+    blade_height = 0.3, -- blade length as a fraction of radius
+    height_jitter = 0.5, -- ± fraction of that per blade (uneven, not mown)
+    lean_deg = 30, -- max random lean from vertical (blades flop, not soldier-straight)
+    clump_spread = 0.1, -- blade scatter within a clump, as a fraction of radius
+    mote_frac = 1.0, -- leafy motes ≈ radius * this
+}
+
+-- Organic grass bloom: clumps of thin green blades sprout at random points across the disc — each
+-- blade a fresh height / shade / lean — plus a drift of leafy motes. Replaces the old rigid Neon
+-- ring + dome (which read as a flat plastic blob). Blades use the textured Grass material (not Neon)
+-- and grow from the ground up. Everything re-randomizes per call so a re-firing aura looks alive.
+local function grassBloom(pos, c1, c2, radius, life)
+    local v = GRASS_BLOOM_VAR
+    local gmat = materialOf("Grass")
+    local tufts = math.max(4, v.tufts + math.random(-v.tuft_jitter, v.tuft_jitter))
+    for _ = 1, tufts do
+        -- even area distribution (sqrt) so clumps fill the disc instead of piling at the centre
+        local rr = radius * math.sqrt(math.random())
+        local ca = math.random() * math.pi * 2
+        local base = pos + Vector3.new(math.cos(ca) * rr, 0, math.sin(ca) * rr)
+        local n = math.random(v.blades_min, v.blades_max)
+        for _ = 1, n do
+            local shade = c1:Lerp(c2, math.random()) -- a fresh green per blade
+            local h = radius * v.blade_height * (1 + (math.random() - 0.5) * 2 * v.height_jitter)
+            local w = math.max(0.1, radius * 0.035)
+            local leanDir = math.random() * math.pi * 2
+            local lean = math.rad((math.random() - 0.5) * 2 * v.lean_deg)
+            local off = Vector3.new(
+                (math.random() - 0.5) * radius * v.clump_spread,
+                0.1,
+                (math.random() - 0.5) * radius * v.clump_spread
+            )
+            local startCF = CFrame.new(base + off)
+                * CFrame.Angles(0, leanDir, 0)
+                * CFrame.Angles(lean, 0, 0)
+            local blade = newPart(Enum.PartType.Block, gmat, shade, 0.05)
+            blade.Size = Vector3.new(w, 0.2, w)
+            blade.CFrame = startCF
+            -- grow along the blade's OWN up-axis (startCF carries the lean) so the base stays
+            -- planted as it shoots up — not sliding straight up out of the ground.
+            tween(blade, life + 0.15, {
+                Size = Vector3.new(w * 0.6, h, w * 0.6),
+                CFrame = startCF * CFrame.new(0, h * 0.5, 0),
+                Transparency = 1,
+            })
+        end
+    end
+    -- a soft drift of leafy motes/pollen — gentle rise then settle (drifting leaves, not a launch)
+    particleBurst(pos + Vector3.new(0, 0.6, 0), {
+        color1 = c1,
+        color2 = c2,
+        count = math.max(6, math.floor(radius * v.mote_frac)),
+        speed_min = 2,
+        speed_max = 6,
+        accel_y = -3,
+        size = math.max(0.5, radius * 0.1),
+        life_min = 0.7,
+        life_max = 1.5,
+        spread = 80,
+        drag = 3,
+        light_emission = 0.25,
+    })
+end
+
 -- ===== The eight effects =====
 
 local EFFECTS = {
@@ -643,14 +699,11 @@ local EFFECTS = {
     lava_rubble = rubbleEffect,
     ice_rubble = rubbleEffect,
     desert_rubble = rubbleEffect,
-    -- GRASS self: Bloom — green blades sprout up in a ring + a soft growth dome.
-    grass_self = function(pos, c1, c2, mat, radius, life, opts)
-        if not (opts and opts.no_ring) then
-            groundRing(pos, c1, mat, radius * 2, life)
-            pillarsRing(pos, c1, mat, 12, radius * 0.85, radius * 0.5, 0.5, life)
-        end
-        dome(pos, c1, mat, radius * 0.6, life, 0.7)
-        swirlMotes(pos, c2, mat, 8, radius, radius * 0.6, life + 0.1)
+    -- GRASS self: Bloom — clumps of grass blades sprout at random across the field + leafy motes
+    -- drift up. Organic (no flat Neon dome / rigid ring); re-randomizes every call so the bear's
+    -- per-tick aura reads as ground continuously sprouting, not a stamped green blob (Jason).
+    grass_self = function(pos, c1, c2, _mat, radius, life)
+        grassBloom(pos, c1, c2, radius, life)
     end,
     -- GRASS targeted: Thornfield — angled thorns erupt outward from the point.
     grass_targeted = function(pos, c1, c2, mat, radius, life)
