@@ -536,27 +536,41 @@ return {
                     size = 0.7,
                     light_emission = 0.4,
                 },
-                -- AURA FIELD (desert): drifting crystals (Jason's pick) + a sun/spore accent + a sand-
-                -- swirl ground; no Roblox Fire. Same renderer.
+                -- AURA FIELD (desert): an Egyptian-style MANDALA ground (alpha "magic circle") + rising
+                -- golden SUN motes + yellow spirit-fire (mirrors grass's green fire). Crystals didn't
+                -- read so they're dropped; suns + the rune circle carry the Egyptian theme. Same renderer.
                 aurafield = {
-                    colors = { { 210, 180, 120 }, { 240, 225, 170 } },
+                    colors = { { 255, 210, 110 }, { 255, 240, 180 } },
                     radius = 12,
-                    rate = 0.9,
+                    rate = 0.7,
                     rise = true,
-                    size = 1.4,
-                    light_emission = 0.45,
+                    size = 1.3,
+                    light_emission = 0.7, -- suns glow
                     transparency = 0.15,
-                    texture = "126500281076018", -- "Crystal1"
+                    texture = "123216505778060", -- "Sun" (alpha) — golden suns rising
                     accent = {
-                        texture = "95384385791305",
+                        texture = "135525038297036", -- fine gold speckles (alpha, glowing)
                         light_emission = 1,
-                        rate = 0.25,
-                        size = 1.3,
-                    }, -- Sun/spore
-                    ground_texture = "103350191895581", -- WaterTurbulence, sand tint
-                    ground_color = { 220, 190, 130 },
-                    ground_transparency = 0.4,
-                    ground_spin = 10,
+                        rate = 0.3,
+                        size = 0.7,
+                    },
+                    -- Egyptian MANDALA ground (alpha "magic circle"): reads as a glowing rune circle on
+                    -- the sand instead of the murky water swirl. Slow majestic spin. Alt: MagicCircle
+                    -- 136557266765344. Sand tiles: sandfloor 78509147193799 / organic 77128025956446.
+                    ground_texture = "129307746768270", -- "Mandara" (alpha mandala)
+                    ground_color = { 245, 205, 110 },
+                    ground_transparency = 0.15,
+                    ground_spin = 6,
+                    -- yellow spirit-FIRE wisps circling the rim (Roblox Fire), like grass's green fire.
+                    fire = {
+                        count = 6,
+                        ring_frac = 0.82,
+                        size = 4,
+                        heat = 6,
+                        spin = 0.4,
+                        color = { 255, 200, 60 },
+                        secondary = { 255, 240, 150 },
+                    },
                     orbit = {
                         count = 3,
                         radius_frac = 0.7,
@@ -565,7 +579,7 @@ return {
                         orb_size = 0.6,
                         width = 1.4,
                         life = 0.6,
-                        color = { 240, 215, 150 },
+                        color = { 255, 220, 120 },
                     },
                     rim = {
                         shape = "Cylinder",
@@ -575,7 +589,7 @@ return {
                         size = 0.8,
                         speed_min = 0,
                         speed_max = 0.6,
-                        color = { 245, 220, 160 },
+                        color = { 255, 225, 140 },
                     },
                     ground = { rate = 0.5, size = 0.6, transparency = 0.2 },
                 },
