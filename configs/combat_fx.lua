@@ -303,9 +303,11 @@ return {
                     texture = "121221014966173", -- EffectTextureMaker "Flower" (alpha, group image)
                     -- Ground disc: a flat CIRCLE on the floor (SurfaceGui image clipped round), tinted
                     -- to the element + slowly spinning. THE contrast layer (reads where motes don't).
-                    -- The ground texture has a transparent alpha so only the bright energy shows.
-                    ground_texture = "90880959780230", -- "WaterTurbulence" (alpha). Alt Squiggles:
-                    -- dark=87434912029157, light=102230380007272
+                    -- NON-alpha WaterTurbulence (Jason's pick): the full pattern fills the circle —
+                    -- dark areas read as translucent shadow through ground_transparency, bright bits as
+                    -- green energy. (alpha version 90880959780230 looked too sparse.)
+                    ground_texture = "103350191895581", -- "WaterTurbulence" (non-alpha). Alt Squiggles
+                    -- (alpha): dark=87434912029157, light=102230380007272
                     ground_color = { 90, 240, 70 }, -- tint applied to the grayscale texture
                     ground_transparency = 0.4,
                     ground_spin = 18, -- degrees/sec the circle rotates (0 = static)
