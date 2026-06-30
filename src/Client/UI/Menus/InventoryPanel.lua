@@ -1559,16 +1559,21 @@ function InventoryPanel:_createSearchSection()
     searchCorner.CornerRadius = UDim.new(0, 10)
     searchCorner.Parent = searchBG
 
-    -- Search icon
+    -- Search icon — RELATIVE (Jason): ~10% width, full height, kept square via an aspect-ratio
+    -- constraint so it scales cleanly with the search bar.
     local searchIcon = Instance.new("TextLabel")
-    searchIcon.Size = UDim2.new(0, 30, 0, 30)
-    searchIcon.Position = UDim2.new(0, 10, 0.5, -15)
+    searchIcon.Size = UDim2.new(0.1, 0, 1, 0)
+    searchIcon.Position = UDim2.new(0, 0, 0.5, 0)
+    searchIcon.AnchorPoint = Vector2.new(0, 0.5)
     searchIcon.BackgroundTransparency = 1
     searchIcon.Text = "🔍"
     searchIcon.TextScaled = true
     searchIcon.Font = Enum.Font.GothamBold
     searchIcon.ZIndex = 104
     searchIcon.Parent = searchBG
+    local iconAspect = Instance.new("UIAspectRatioConstraint")
+    iconAspect.AspectRatio = 1
+    iconAspect.Parent = searchIcon
 
     -- Search text box
     self.searchBox = Instance.new("TextBox")
