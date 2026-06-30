@@ -204,14 +204,17 @@ local function spawnAuraField(pp, theme, duration, radius)
     holder.CanQuery = false
     holder.CastShadow = false
     holder.Transparency = 1
-    holder.Size = Vector3.new(radius * 2, 0.3, radius * 2) -- flat disc-ish emission area
-    holder.CFrame = pp.CFrame * CFrame.new(0, -yoff, 0)
+    -- Same recipe as AuraFieldRim: a Cylinder sized (thin X, 2r, 2r), oriented rz=90 below so the
+    -- round face lies FLAT — the emitter's Cylinder volume then fills the circle (no square corners).
+    holder.Size = Vector3.new(0.3, radius * 2, radius * 2)
+    holder.CFrame = pp.CFrame * CFrame.new(0, -yoff, 0) * CFrame.Angles(0, 0, math.rad(90))
     holder.Parent = model
 
     local function mkEmitter(o)
         local e = Instance.new("ParticleEmitter")
-        -- emit from a CYLINDER volume (axis = the holder's local up) so particles fill the round
-        -- field, not the square box's corners (Jason). EmissionDirection.Top still sends them up.
+        -- emit from a CYLINDER volume on the rz=90 flat-cylinder host so particles fill the round
+        -- field, not the square box's corners (Jason: "the part actually matters"). The Acceleration
+        -- (world up) carries them upward regardless of the rotated EmissionDirection.
         e.Shape = Enum.ParticleEmitterShape.Cylinder
         e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
         e.Color = ColorSequence.new(c1, c2)
@@ -483,7 +486,9 @@ local function spawnAuraField(pp, theme, duration, radius)
         local hit =
             Workspace:Raycast(origin + Vector3.new(0, 4, 0), Vector3.new(0, -120, 0), rayParams)
         local floorY = (hit and hit.Position.Y) or (origin.Y - yoff)
-        holder.CFrame = CFrame.new(origin.X, floorY + 0.6, origin.Z) -- motes rise from just off the floor
+        -- rz=90 keeps the cylinder's round face FLAT (same as the rim) so the emitters fill the circle
+        holder.CFrame = CFrame.new(origin.X, floorY + 0.6, origin.Z)
+            * CFrame.Angles(0, 0, math.rad(90))
         if disc then
             disc.CFrame = CFrame.new(origin.X, floorY + 0.08, origin.Z) -- disc lies on the floor
             if discImg and spin ~= 0 then
