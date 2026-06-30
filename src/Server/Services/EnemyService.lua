@@ -3180,6 +3180,7 @@ function EnemyService:_auraDamagePass(now)
     local radius = tonumber(cfg.radius) or 12
     local fraction = tonumber(cfg.fraction) or 0.5
     local interval = math.max(0.1, tonumber(cfg.interval) or 1)
+    local soundVolume = tonumber(cfg.sound_volume) or 1 -- aura repeats each tick: scale its clips down
     local playerPets = Workspace:FindFirstChild("PlayerPets")
     if not playerPets then
         return
@@ -3279,10 +3280,13 @@ function EnemyService:_auraDamagePass(now)
                             -- theme key (grass/lava/ice/desert); nil -> client default.
                             local petEl = self._originConfig.pettype_element
                                 and self._originConfig.pettype_element[pet:GetAttribute("PetType")]
-                            Signals.Power_AreaFx:FireClient(
-                                owner,
-                                { center = pos, variant = "self", radius = radius, element = petEl }
-                            )
+                            Signals.Power_AreaFx:FireClient(owner, {
+                                center = pos,
+                                variant = "self",
+                                radius = radius,
+                                element = petEl,
+                                volume = soundVolume,
+                            })
                         end
                     end
                 end

@@ -299,9 +299,12 @@ function PetFollowController.start()
             -- element SFX from the power_fx registry: self burst ⇒ cast clip, else ⇒ impact clip
             -- (silent if none authored for this element/phase).
             local phase = (data.variant == "self") and "cast" or "impact"
-            pcall(PowerSound.play, phase, element, center)
+            -- Optional per-fire volume scale (the bear aura passes 0.5 because it re-fires each tick;
+            -- nil ⇒ registry default). Applies to both the phase clip and the slam boom.
+            local vol = tonumber(data.volume)
+            pcall(PowerSound.play, phase, element, center, vol)
             -- the heavy "lands hard" boom under every AoE (slam.neutral ⇒ all elements get it).
-            pcall(PowerSound.play, "slam", element, center)
+            pcall(PowerSound.play, "slam", element, center, vol)
         end
         for _, h in ipairs(data.hits or {}) do
             if type(h) == "table" and typeof(h.pos) == "Vector3" and h.amount then

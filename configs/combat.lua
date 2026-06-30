@@ -59,6 +59,11 @@ return {
         radius = 12,
         fraction = 0.5,
         interval = 1.0,
+        -- The aura re-fires its fire-ring VFX + sound every `interval`s while enemies are in range,
+        -- so the shared cast/slam clips repeat constantly and read much louder than a one-off power
+        -- cast. Scale just the aura's playback down (0.5 = half) without touching the shared registry
+        -- volumes other powers use (Jason, playtest). 1 = registry default.
+        sound_volume = 0.5,
     },
 
     -- CONTAGION pets (PetTargeting attack_targeting = "contagion"): the burn SPREADS. Their hit

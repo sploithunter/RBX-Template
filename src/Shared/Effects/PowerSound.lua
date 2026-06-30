@@ -43,7 +43,7 @@ function PowerSound.entryFor(phase, element)
     return list[math.random(1, #list)]
 end
 
-function PowerSound.play(phase, element, position)
+function PowerSound.play(phase, element, position, volumeScale)
     local entry = PowerSound.entryFor(phase, element)
     if not entry or not entry.id then
         return nil
@@ -60,7 +60,9 @@ function PowerSound.play(phase, element, position)
 
     local sound = Instance.new("Sound")
     sound.SoundId = entry.id
-    sound.Volume = tonumber(entry.volume) or 0.5 -- per-sound base level (registry knob)
+    -- per-sound base level (registry knob) × an optional per-call scale (e.g. the bear aura passes
+    -- 0.5 because it re-fires every tick). Default scale 1 = registry volume unchanged.
+    sound.Volume = (tonumber(entry.volume) or 0.5) * (tonumber(volumeScale) or 1)
     sound.RollOffMaxDistance = 140
     sound.RollOffMinDistance = 8
     -- the SFX slider governs power casts too (Jason: "Mirage Step... was loud" —
