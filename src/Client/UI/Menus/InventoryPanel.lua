@@ -1116,6 +1116,9 @@ function InventoryPanel:_createUI(parent)
             tradeBtn.ZIndex = 250
             tradeBtn.Parent = btnRow
             pillify(tradeBtn)
+            local tradeTc = Instance.new("UITextSizeConstraint")
+            tradeTc.MaxTextSize = 28 -- Jason: match the other header pills
+            tradeTc.Parent = tradeBtn
             tradeBtn.Activated:Connect(function()
                 local mm = _G.MenuManager
                 if mm and mm.OpenPanel then
@@ -1143,7 +1146,7 @@ function InventoryPanel:_createUI(parent)
             b.Parent = btnRow
             pillify(b) -- currency-pill capsule (Eggs / AUTO / Cards / Delete header pills)
             local tc2 = Instance.new("UITextSizeConstraint")
-            tc2.MaxTextSize = 14
+            tc2.MaxTextSize = 28 -- Jason
             tc2.Parent = b
             return b
         end
@@ -1417,12 +1420,9 @@ function InventoryPanel:_refreshCategoryTabs()
             end
 
             if content then
-                -- Find the count label (it's positioned at Y=20)
-                for _, child in pairs(content:GetChildren()) do
-                    if child:IsA("TextLabel") and child.Position.Y.Offset == 20 then
-                        child.Text = category.count .. " items"
-                        break
-                    end
+                local countLabel = content:FindFirstChild("CountLabel")
+                if countLabel then
+                    countLabel.Text = category.count .. " items"
                 end
             end
         end
@@ -1464,10 +1464,10 @@ function InventoryPanel:_createCategoryTab(category, parent, layoutOrder)
     content.ZIndex = 103
     content.Parent = tab
 
-    -- Icon
+    -- Icon — RELATIVE (Jason: all tab internals relative like the All tab): 15% width, full height.
     local icon = Instance.new("TextLabel")
-    icon.Size = UDim2.new(0, 20, 0, 20)
-    icon.Position = UDim2.new(0, 0, 0, 2)
+    icon.Size = UDim2.new(0.15, 0, 1, 0)
+    icon.Position = UDim2.new(0, 0, 0, 0)
     icon.BackgroundTransparency = 1
     icon.Text = category.icon
     icon.TextScaled = true
@@ -1475,10 +1475,10 @@ function InventoryPanel:_createCategoryTab(category, parent, layoutOrder)
     icon.ZIndex = 104
     icon.Parent = content
 
-    -- Name
+    -- Name — RELATIVE: right of the icon, top half.
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1, -25, 0, 18)
-    nameLabel.Position = UDim2.new(0, 25, 0, 0)
+    nameLabel.Size = UDim2.new(0.75, 0, 0.5, 0)
+    nameLabel.Position = UDim2.new(0.15, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = category.name
     nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1488,10 +1488,11 @@ function InventoryPanel:_createCategoryTab(category, parent, layoutOrder)
     nameLabel.ZIndex = 104
     nameLabel.Parent = content
 
-    -- Count
+    -- Count — RELATIVE: right of the icon, bottom half.
     local countLabel = Instance.new("TextLabel")
-    countLabel.Size = UDim2.new(1, -25, 0, 15)
-    countLabel.Position = UDim2.new(0, 25, 0, 20)
+    countLabel.Name = "CountLabel"
+    countLabel.Size = UDim2.new(0.75, 0, 0.5, 0)
+    countLabel.Position = UDim2.new(0.15, 0, 0.5, 0)
     countLabel.BackgroundTransparency = 1
     countLabel.Text = category.count .. " items"
     countLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
@@ -1612,7 +1613,7 @@ local function styleTeamButton(btn, baseColor)
     btn.ZIndex = 103
     pillify(btn) -- capsule treatment (Reset / Activate draft buttons)
     local sizeCap = Instance.new("UITextSizeConstraint")
-    sizeCap.MaxTextSize = 15
+    sizeCap.MaxTextSize = 28 -- Jason (draft bar Reset/Activate)
     sizeCap.Parent = btn
     return btn
 end
