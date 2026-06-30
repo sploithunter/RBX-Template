@@ -1497,9 +1497,10 @@ function InventoryPanel:_createSearchSection()
     searchContainer.ZIndex = 101
     searchContainer.Parent = self.content
 
-    -- Search box background
+    -- Search box background — FLEXES to fill the row minus the right-aligned Reset/Activate block, so
+    -- both the search and the buttons stay on-screen at any width (mobile was overflowing them off).
     local searchBG = Instance.new("Frame")
-    searchBG.Size = UDim2.new(0, 300, 1, -10)
+    searchBG.Size = UDim2.new(1, -244, 1, -10)
     searchBG.Position = UDim2.new(0, 0, 0, 5)
     searchBG.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
     searchBG.BorderSizePixel = 0
@@ -1575,8 +1576,11 @@ end
 function InventoryPanel:_createTeamBar(searchContainer)
     local bar = Instance.new("Frame")
     bar.Name = "DraftBar"
-    bar.Size = UDim2.new(1, -320, 1, -10)
-    bar.Position = UDim2.new(0, 315, 0, 5)
+    -- Fixed-width button block, RIGHT-anchored so Reset/Activate never fall off a narrow (mobile)
+    -- panel — the search box flexes to fill whatever is left.
+    bar.Size = UDim2.new(0, 236, 1, -10)
+    bar.Position = UDim2.new(1, 0, 0, 5)
+    bar.AnchorPoint = Vector2.new(1, 0)
     bar.BackgroundTransparency = 1
     bar.ZIndex = 102
     bar.Parent = searchContainer
