@@ -297,15 +297,15 @@ return {
                     life_max = 1.6,
                     speed_min = 1.5,
                     speed_max = 4,
-                    light_emission = 1, -- additive: a non-alpha texture's black background vanishes +
-                    -- the petals glow. (With a proper alpha texture this just reads as a soft glow.)
+                    light_emission = 1, -- additive glow on the (alpha) flower petals; lower toward 0.3
+                    -- if you'd rather the motes read as solid green than a bright glow.
                     transparency = 0.15,
-                    texture = "124915807592024", -- EffectTextureMaker "Flower" (group-owned image)
+                    texture = "121221014966173", -- EffectTextureMaker "Flower" (alpha, group image)
                     -- Ground disc: a flat CIRCLE on the floor (SurfaceGui image clipped round), tinted
                     -- to the element + slowly spinning. THE contrast layer (reads where motes don't).
-                    -- "" = no disc. NOTE: the ground texture MUST have a transparent alpha or its black
-                    -- background fills the circle (SurfaceGui images can't blend additively).
-                    ground_texture = "103350191895581", -- "WaterTurbulence" (alt Squiggles: 109719802384654)
+                    -- The ground texture has a transparent alpha so only the bright energy shows.
+                    ground_texture = "90880959780230", -- "WaterTurbulence" (alpha). Alt Squiggles:
+                    -- dark=87434912029157, light=102230380007272
                     ground_color = { 90, 240, 70 }, -- tint applied to the grayscale texture
                     ground_transparency = 0.4,
                     ground_spin = 18, -- degrees/sec the circle rotates (0 = static)
