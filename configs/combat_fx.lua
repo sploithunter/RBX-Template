@@ -472,9 +472,10 @@ return {
                         rate = 0.3,
                         size = 1.2,
                     }, -- Snowflake2
-                    ground_texture = "103350191895581", -- WaterTurbulence, frost tint
+                    ground_texture = "101205975129531", -- Water (alpha/"inverted") — frost wisps on a
+                    -- clear disc instead of the murky non-alpha fill; reads icy once tinted.
                     ground_color = { 170, 220, 255 },
-                    ground_transparency = 0.4,
+                    ground_transparency = 0.2,
                     ground_spin = 12,
                     orbit = {
                         count = 3,
