@@ -299,7 +299,7 @@ return {
                     speed_max = 4,
                     light_emission = 0.3, -- main motes = drifting LEAVES, read solid green (not glow)
                     transparency = 0.15,
-                    texture = "117110051645662", -- EffectTextureMaker "Leaf" (alpha) = the main mote
+                    texture = "112670614273744", -- "Leaf" (alpha, INVERTED = lighter); normal: 117110051645662
                     -- accent: sparser GLOWING flower sparkles mixed over the leaves (variety layer)
                     accent = {
                         texture = "121221014966173", -- "Flower" (alpha)
