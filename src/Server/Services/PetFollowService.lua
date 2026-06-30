@@ -783,19 +783,27 @@ function PetFollowService:_mine(player, pet, breakable)
         local container = breakable.Parent
         local origin = (breakable.PrimaryPart and breakable.PrimaryPart.Position)
             or breakable:GetPivot().Position
-        -- AoE ATTACK VISUAL: a fire-ring eruption at the cluster — reuses the power AreaFX channel
-        -- (Power_AreaFx → AreaFX.Play lava_self = a ring of real Roblox fire + ember burst, "fire
-        -- burning everywhere"). Element defaults to lava/fire on the client (the dragon breathes
-        -- fire); a non-fire AoE pet would pass its element. Shared to the owner + nearby spectators.
+        -- AoE ATTACK VISUAL: an element-themed eruption at the cluster — reuses the power AreaFX
+        -- channel (Power_AreaFx → AreaFX.Play + CombatFX.groundField burst). Pass the PET'S element so
+        -- a grass/ice/desert AoE pet shows ITS burst (earth = green sphere, no orange explosion, no
+        -- DoT), not the borrowed fire look. Falls back to lava only when a pet has no mapped element
+        -- (the dragon breathes fire). The DoT burn is a SEPARATE layer (contagion arming below), so a
+        -- non-fire AoE never ignites. Shared to the owner + nearby spectators.
+        self:_ensureResonanceConfigs()
+        local element = (self._petElementMap and self._petElementMap[pet:GetAttribute("PetType")])
+            or "lava"
         Signals.Power_AreaFx:FireClient(
             player,
-            { center = origin, variant = "self", radius = radius }
+            { center = origin, variant = "self", radius = radius, element = element }
         )
         for _, sp in ipairs(Players:GetPlayers()) do
             if sp ~= player then
                 local shrp = sp.Character and sp.Character:FindFirstChild("HumanoidRootPart")
                 if shrp and (shrp.Position - origin).Magnitude <= 80 then
-                    Signals.Power_AreaFx:FireClient(sp, { center = origin, variant = "self" })
+                    Signals.Power_AreaFx:FireClient(
+                        sp,
+                        { center = origin, variant = "self", radius = radius, element = element }
+                    )
                 end
             end
         end
