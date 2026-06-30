@@ -41,6 +41,8 @@ local started = false
 local handles = setmetatable({}, { __mode = "k" })
 local conns = setmetatable({}, { __mode = "k" })
 local armorIcons = setmetatable({}, { __mode = "k" }) -- pet -> BillboardGui (shield icon while armored)
+local armorTokens = setmetatable({}, { __mode = "k" }) -- pet -> token, for the badge self-expire
+local armorTok = 0
 
 -- A gold shield badge that floats over an armored pet, so "this pet has armor" reads at a glance.
 local function showArmorIcon(pet)
@@ -288,9 +290,13 @@ end
 local function refreshArmor(pet)
     -- SHIELD / DODGE: the absorb pool. Its LOOK comes from the cast power's config (vfxForPower) — a
     -- real shield bubbles, a dodge does not. No per-power code; new absorb powers obey their config.
-    local shieldOn = (pet:GetAttribute("CombatShield") or 0) > 0
+    local shieldOn = (pet:GetAttribute("CombatShield") or 0) > 0 -- absorb POOL (drives the bubble)
+    -- badge CHANNEL: CombatShieldUntil is set by real shields AND by dodge (Mirage Step sets it without
+    -- the pool). The over-pet identity BADGE follows this so dodge shows a badge; the bubble still keys
+    -- off the pool above so a dodge doesn't bubble.
+    local shieldBadgeOn = remaining(pet, "CombatShieldUntil") > 0.05
     local shieldVfx, shieldLook
-    if shieldOn then
+    if shieldBadgeOn then
         shieldVfx, shieldLook = vfxForPower(pet:GetAttribute("CombatShieldPowerId"))
         shieldLook = shieldLook or "bubble" -- absorb pool with no tagged power -> default bubble
     end
@@ -325,9 +331,25 @@ local function refreshArmor(pet)
 
     -- Floating identity badge while ANY defensive effect is active (shield, dodge, OR armor) so you
     -- can tell the buff is up — unless the power opts out via combat_vfx.badge = false.
-    local showBadge = (shieldOn and not (shieldVfx and shieldVfx.badge == false)) or hasArmor(pet)
+    local showBadge = (shieldBadgeOn and not (shieldVfx and shieldVfx.badge == false))
+        or hasArmor(pet)
     if showBadge then
         showArmorIcon(pet)
+        -- self-expire: a timed buff channel (dodge's CombatShieldUntil) fires no event at natural
+        -- expiry, so schedule a re-check to drop the badge when the buff lapses (token-guarded so a
+        -- re-cast supersedes the stale timer).
+        local left =
+            math.max(remaining(pet, "CombatShieldUntil"), remaining(pet, "DefenseBuffUntil"))
+        if left > 0 then
+            armorTok += 1
+            local myTok = armorTok
+            armorTokens[pet] = myTok
+            task.delay(left + 0.2, function()
+                if armorTokens[pet] == myTok then
+                    refreshArmor(pet)
+                end
+            end)
+        end
     else
         hideArmorIcon(pet)
     end
@@ -446,6 +468,11 @@ local function hookPet(pet)
     -- The tagging power decides the look (bubble vs dodge vs ...): re-resolve if it changes or lands
     -- a frame after CombatShield.
     list[#list + 1] = pet:GetAttributeChangedSignal("CombatShieldPowerId"):Connect(function()
+        refreshArmor(pet)
+    end)
+    -- CombatShieldUntil is the badge channel (set by dodge without the absorb pool) — hook it so the
+    -- badge appears whichever of (CombatShieldPowerId, CombatShieldUntil) replicates last.
+    list[#list + 1] = pet:GetAttributeChangedSignal("CombatShieldUntil"):Connect(function()
         refreshArmor(pet)
     end)
     -- Evasion: each turned-aside blow bumps DodgeTick -> pop a floating "Dodge!".
