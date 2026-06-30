@@ -990,15 +990,17 @@ function InventoryPanel:_createUI(parent)
     local baseUI = BaseUI.new()
 
     -- Create professional image-based inventory panel
+    -- Near-fullscreen (Jason): on mobile the 0.8×0.85 panel left the fixed-px internals cramped; a
+    -- near-fullscreen modal (with the MenuManager dim scrim behind) gives them room on every device.
     local panelResult = baseUI:CreateImagePanel("inventory_panel", {
-        size = UDim2.new(0.8, 0, 0.85, 0),
+        size = UDim2.new(0.94, 0, 0.92, 0),
         position = UDim2.new(0.5, 0, 0.5, 0),
         anchor_point = Vector2.new(0.5, 0.5),
     }, parent)
 
     self.frame = panelResult.panel
     self.frame.Name = "InventoryPanel"
-    self.frame.Size = UDim2.new(0.8, 0, 0.85, 0)
+    self.frame.Size = UDim2.new(0.94, 0, 0.92, 0)
     self.frame.Position = UDim2.new(0.5, 0, 0.5, 0)
     self.frame.AnchorPoint = Vector2.new(0.5, 0.5)
 

@@ -164,6 +164,9 @@ function MenuManager:_createOverlay()
         overlayGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
         overlayGui.Parent = playerGui
     end
+    -- Menus sit ABOVE the HUD + quest tracker (PlayerBar=80, BuffStats=100) so a near-fullscreen menu
+    -- doesn't fight the player bar / currency bleeding through (Jason).
+    overlayGui.DisplayOrder = 120
 
     -- Create overlay frame
     self.overlayFrame = Instance.new("Frame")
@@ -172,6 +175,20 @@ function MenuManager:_createOverlay()
     self.overlayFrame.BackgroundTransparency = 1
     self.overlayFrame.Visible = false
     self.overlayFrame.Parent = overlayGui
+
+    -- Dim scrim behind every panel — darkens the HUD so the menu reads as a modal ("blink out the
+    -- screen like egg hatches"). It's a TextButton so it absorbs clicks (HUD buttons behind aren't hit
+    -- by accident); ZIndex 1 keeps it under the panels (ZIndex 100+).
+    local scrim = Instance.new("TextButton")
+    scrim.Name = "Scrim"
+    scrim.Text = ""
+    scrim.AutoButtonColor = false
+    scrim.Size = UDim2.new(1, 0, 1, 0)
+    scrim.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    scrim.BackgroundTransparency = 0.4
+    scrim.BorderSizePixel = 0
+    scrim.ZIndex = 1
+    scrim.Parent = self.overlayFrame
 
     self.logger:debug("Overlay frame created")
 end
