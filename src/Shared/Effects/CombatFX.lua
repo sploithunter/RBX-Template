@@ -184,7 +184,9 @@ local function spawnAuraField(pp, theme, duration, radius)
         return model and model:IsA("Model") and model:GetExtentsSize()
     end)
     if okE and sz then
-        yoff = sz.Y * 0.5 -- drop the holder to the pet's feet
+        -- sit the emission slab just ABOVE the pet's feet (not at the body centre). Lifting it ~0.5
+        -- stud clear of the floor keeps particles from spawning underground + getting occluded.
+        yoff = (sz.Y * 0.5) - 0.5
     end
     local c1 = toColor(theme.colors and theme.colors[1])
     local c2 = toColor(theme.colors and theme.colors[2], c1)
@@ -237,29 +239,33 @@ local function spawnAuraField(pp, theme, duration, radius)
         return e
     end
 
+    -- Density scales with the field's AREA (≈ radius²), not its radius — a wide field needs far more
+    -- particles to read. Capped so a huge-radius aura can't blow the particle budget.
+    local area = radius * radius
     -- (1) body: leafy motes rising across the whole field
     local rises = mkEmitter({
-        rate = math.max(6, radius * (theme.rate or 2.2)),
-        size = theme.size or 1.0,
+        rate = math.min(280, area * (theme.rate or 1.0)),
+        size = theme.size or 1.4,
         life_min = theme.life_min or 0.8,
         life_max = theme.life_max or 1.6,
         speed_min = theme.speed_min or 1.5,
         speed_max = theme.speed_max or 4,
         accel_y = (theme.rise ~= false) and 2 or -2,
         spread = 22,
+        transparency = theme.transparency or 0.15,
     })
     -- (2) edge: low flecks hugging the ground for the footprint
     local g = theme.ground or {}
     local floor = mkEmitter({
-        rate = math.max(4, radius * (g.rate or 1.4)),
-        size = g.size or 0.5,
+        rate = math.min(150, area * (g.rate or 0.5)),
+        size = g.size or 0.6,
         life_min = g.life_min or 0.4,
         life_max = g.life_max or 0.9,
         speed_min = g.speed_min or 0.5,
         speed_max = g.speed_max or 2,
         accel_y = -1,
         spread = 60,
-        transparency = g.transparency or 0.35,
+        transparency = g.transparency or 0.2,
     })
 
     local stopped = false
