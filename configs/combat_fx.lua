@@ -115,7 +115,8 @@ return {
             doggy = "grass",
             bear = "grass",
             kitty = "ice",
-            dragon = "grass", -- home dragon's origin SSOT (pets.lua) is grass; align the VFX element
+            dragon = "ice", -- TEMP VFX test override (real origin = grass): cycling the test dragon
+            -- through elements to polish each burst+burn. Restore to "grass" once VFX is signed off.
             colorado = "lava",
             colorado_creator = "lava", -- the Creator apex is a FIRE blaster (bolt + AoE fire-ring)
             -- Ember family = lava origin (RPS / element stats / VFX).
