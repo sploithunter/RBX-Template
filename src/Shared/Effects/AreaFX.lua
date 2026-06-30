@@ -86,6 +86,48 @@ local function groundRing(pos, color, mat, diameter, life, startTransparency)
     tween(ring, life, { Size = Vector3.new(0.2, diameter, diameter), Transparency = 1 })
 end
 
+-- A textured RUNE CIRCLE on the ground — the MagicCircle alpha texture tinted to the action's
+-- color, drawn on a flat disc that fades in, holds, and fades out with a gentle grow + spin. Replaces
+-- the plain neon groundRing for player AoE casts so the floor telegraph reads as designed magic, not a
+-- flat ring. The COLOR carries the action meaning (green = heal, etc.) — pass the action's tint.
+local MAGIC_CIRCLE_TEX = "rbxassetid://136557266765344"
+local function magicCircle(pos, color, diameter, life)
+    local p = Instance.new("Part")
+    p.Anchored = true
+    p.CanCollide = false
+    p.CanQuery = false
+    p.CastShadow = false
+    p.Transparency = 1 -- the part is invisible; the SurfaceGui image is the visual
+    p.Size = Vector3.new(diameter, 0.05, diameter)
+    p.CFrame = CFrame.new(pos + Vector3.new(0, 0.12, 0))
+    p.Parent = fxFolder()
+    local gui = Instance.new("SurfaceGui")
+    gui.Face = Enum.NormalId.Top
+    gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    gui.PixelsPerStud = 12
+    gui.Parent = p
+    local img = Instance.new("ImageLabel")
+    img.Size = UDim2.fromScale(1, 1)
+    img.BackgroundTransparency = 1
+    img.Image = MAGIC_CIRCLE_TEX
+    img.ImageColor3 = toColor(color)
+    img.ImageTransparency = 1
+    img.Parent = gui
+    local full = p.Size
+    p.Size = full * 0.7
+    -- grow in + slow spin over the whole life
+    TweenService:Create(p, ti(life), {
+        Size = full,
+        CFrame = p.CFrame * CFrame.Angles(0, math.rad(45), 0),
+    }):Play()
+    -- fade IN quickly, then OUT over the back half
+    TweenService:Create(img, ti(life * 0.18), { ImageTransparency = 0.05 }):Play()
+    task.delay(life * 0.55, function()
+        TweenService:Create(img, ti(life * 0.45), { ImageTransparency = 1 }):Play()
+    end)
+    Debris:AddItem(p, life + 0.4)
+end
+
 -- Translucent dome that swells over the point + fades.
 local function dome(pos, color, mat, radius, life, startTransparency)
     local d = newPart(Enum.PartType.Ball, mat, color, startTransparency or 0.6)
@@ -741,18 +783,19 @@ local EFFECTS = {
         groundRing(pos, c2, mat, radius * 2, life)
         debris(pos, c1, c2, mat, 10, radius, life)
     end,
-    -- HEAL self: a gentle nova — soft dome + ring + rising sparkles (restorative, not explosive).
+    -- HEAL self: a gentle nova — soft dome + a GREEN rune circle on the floor + rising sparkles
+    -- (restorative, not explosive). The flat neon ring became a designed MagicCircle, tinted by c2.
     heal_self = function(pos, c1, c2, mat, radius, life, opts)
         if not (opts and opts.no_ring) then
-            groundRing(pos, c2, mat, radius * 1.9, life)
+            magicCircle(pos, c2, radius * 2.1, life + 0.3)
         end
         dome(pos, c1, mat, radius * 0.65, life, 0.72)
         swirlMotes(pos, c1, mat, 18, radius, radius * 0.9, life + 0.1)
     end,
-    -- HEAL targeted: a soft uplift at the point — rising column + ring + sparkles (cast tell handled).
+    -- HEAL targeted: a soft uplift at the point — rising column + rune circle + sparkles.
     heal_targeted = function(pos, c1, c2, mat, radius, life)
         column(pos, c1, mat, radius * 1.2, life * 0.7)
-        groundRing(pos, c2, mat, radius * 2, life)
+        magicCircle(pos, c2, radius * 2.2, life + 0.3)
         swirlMotes(pos, c1, mat, 14, radius, radius * 0.9, life)
     end,
     -- LAVA self: Fire ring — a circle of REAL fire around the caster + an ember particle poof.
