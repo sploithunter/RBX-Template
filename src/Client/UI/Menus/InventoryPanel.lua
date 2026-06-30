@@ -1026,8 +1026,12 @@ function InventoryPanel:_createUI(parent)
         -- scales down), so that blue band peeks through as a thin strip above the header. The header
         -- and content cover the rest of the image, so tinting the whole image to the header colour
         -- (the SSOT) recolours ONLY that exposed strip to match — no extra fill element needed.
+        -- BackgroundColor3 must match too: the UICorner below rounds the frame by revealing the
+        -- background at the corners, so a light background would show as gray corner wedges (Jason).
         if self.header:IsA("Frame") then
             self.frame.ImageColor3 = self.header.BackgroundColor3
+            self.frame.BackgroundColor3 = self.header.BackgroundColor3
+            self.frame.BackgroundTransparency = 0
         end
     end
     if self.content then
