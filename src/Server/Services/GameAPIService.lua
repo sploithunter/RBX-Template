@@ -823,6 +823,30 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    bus:register("admin.grantCurrency", {
+        description = "[admin] Grant currency to yourself (e.g. gems, coins). Admin/Studio only.",
+        validate = function(args)
+            return Validators.fields(args, {
+                currency = { type = "string" },
+                amount = { type = "number" },
+            })
+        end,
+        handler = function(context, args)
+            local isAdmin = context.isTest
+                or (context.player and context.player:GetAttribute("IsAdmin") == true)
+            if not isAdmin then
+                return { ok = false, reason = "not_admin" }
+            end
+            local data = self:_service("DataService")
+            if not data then
+                return { ok = false, reason = "service_unavailable" }
+            end
+            local amt = math.floor(tonumber(args.amount) or 0)
+            data:AddCurrency(context.player, args.currency, amt, "admin_grant")
+            return { ok = true, currency = args.currency, amount = amt }
+        end,
+    })
+
     bus:register("egg_item.hatch", {
         description = "Hatch one held egg ITEM from the eggs inventory bucket (e.g. a Meet-The-Creator egg).",
         validate = function(args)
