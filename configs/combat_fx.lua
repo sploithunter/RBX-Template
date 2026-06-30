@@ -297,16 +297,18 @@ return {
                     life_max = 1.6,
                     speed_min = 1.5,
                     speed_max = 4,
-                    light_emission = 0.6, -- glow so it reads against bright grass
+                    light_emission = 1, -- additive: a non-alpha texture's black background vanishes +
+                    -- the petals glow. (With a proper alpha texture this just reads as a soft glow.)
                     transparency = 0.15,
                     texture = "124915807592024", -- EffectTextureMaker "Flower" (group-owned image)
-                    -- Ground disc: a flat textured slab on the floor (EffectTextureMaker
-                    -- WaterTurbulence / Squiggles), tinted to the element + scrolling. THE contrast
-                    -- layer (reads on green grass where motes don't). "" = no disc.
+                    -- Ground disc: a flat CIRCLE on the floor (SurfaceGui image clipped round), tinted
+                    -- to the element + slowly spinning. THE contrast layer (reads where motes don't).
+                    -- "" = no disc. NOTE: the ground texture MUST have a transparent alpha or its black
+                    -- background fills the circle (SurfaceGui images can't blend additively).
                     ground_texture = "103350191895581", -- "WaterTurbulence" (alt Squiggles: 109719802384654)
                     ground_color = { 90, 240, 70 }, -- tint applied to the grayscale texture
                     ground_transparency = 0.4,
-                    ground_scroll = 0.6, -- studs/sec the texture flows (0 = static)
+                    ground_spin = 18, -- degrees/sec the circle rotates (0 = static)
                     ground = { -- low flecks hugging the floor (the field footprint)
                         rate = 0.5,
                         size = 0.6,

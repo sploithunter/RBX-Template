@@ -269,10 +269,12 @@ local function spawnAuraField(pp, theme, duration, radius)
         transparency = g.transparency or 0.2,
     })
 
-    -- (3) ground disc: a flat textured slab on the floor (EffectTextureMaker WaterTurbulence /
-    -- Squiggles), tinted to the element + slowly scrolling so it flows. This is the contrast layer —
-    -- a textured footprint reads on ANY ground colour (green motes vanish on green grass). Only built
-    -- when a texture id is configured; the grayscale texture tints to the theme colour.
+    -- (3) ground disc: a flat CIRCLE on the floor (EffectTextureMaker WaterTurbulence / Squiggles),
+    -- tinted to the element + slowly spinning. This is the contrast layer — a textured footprint
+    -- reads on ANY ground colour (green motes vanish on green grass). A SurfaceGui ImageLabel clipped
+    -- to a circle (UICorner 0.5) gives the round footprint; GUI colour also ignores world lighting,
+    -- so the green stays constant. Only built when a texture id is set; the grayscale art tints to
+    -- the theme colour. NOTE: the texture needs a transparent alpha or its black fill shows.
     local disc, scrollConn
     local groundTex = theme.ground_texture
     if type(groundTex) == "string" and groundTex ~= "" then
@@ -287,26 +289,36 @@ local function spawnAuraField(pp, theme, duration, radius)
         disc.CanQuery = false
         disc.CastShadow = false
         disc.Massless = true
-        disc.Transparency = 1 -- the part is invisible; only the top-face Texture shows
-        disc.Size = Vector3.new(radius * 2, 0.1, radius * 2)
+        disc.Transparency = 1 -- invisible host; only the SurfaceGui image shows
+        disc.Size = Vector3.new(radius * 2, 0.05, radius * 2)
         disc.CFrame = pp.CFrame * CFrame.new(0, -(yoff + 0.4), 0) -- lie on the floor, under the motes
         disc.Parent = model
         local dweld = Instance.new("WeldConstraint")
         dweld.Part0 = pp
         dweld.Part1 = disc
         dweld.Parent = disc
-        local tex = Instance.new("Texture")
-        tex.Face = Enum.NormalId.Top
-        tex.Texture = groundTex
-        tex.Color3 = toColor(theme.ground_color or (theme.colors and theme.colors[1]))
-        tex.Transparency = theme.ground_transparency or 0.35
-        tex.StudsPerTileU = radius * 2 -- one tile spans the whole field (set < that to repeat)
-        tex.StudsPerTileV = radius * 2
-        tex.Parent = disc
-        local scroll = tonumber(theme.ground_scroll) or 0
-        if scroll ~= 0 then
+        local sg = Instance.new("SurfaceGui")
+        sg.Face = Enum.NormalId.Top
+        sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+        sg.PixelsPerStud = 12
+        sg.Parent = disc
+        local img = Instance.new("ImageLabel")
+        img.Size = UDim2.fromScale(1, 1)
+        img.BackgroundTransparency = 1
+        img.Image = groundTex
+        img.ImageColor3 = toColor(theme.ground_color or (theme.colors and theme.colors[1]))
+        img.ImageTransparency = theme.ground_transparency or 0.35
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0.5, 0) -- full round => circular footprint
+        corner.Parent = img
+        img.Parent = sg
+        local spin = tonumber(theme.ground_spin) or 0
+        if spin ~= 0 then
             scrollConn = RunService.Heartbeat:Connect(function(dt)
-                tex.OffsetStudsV = tex.OffsetStudsV + scroll * dt
+                if not img.Parent then
+                    return
+                end
+                img.Rotation = (img.Rotation + spin * dt) % 360
             end)
         end
     end
@@ -323,9 +335,9 @@ local function spawnAuraField(pp, theme, duration, radius)
             scrollConn:Disconnect()
         end
         if disc then
-            local t = disc:FindFirstChildOfClass("Texture")
-            if t then
-                TweenService:Create(t, TweenInfo.new(0.4), { Transparency = 1 }):Play()
+            local img = disc:FindFirstChildWhichIsA("ImageLabel", true)
+            if img then
+                TweenService:Create(img, TweenInfo.new(0.4), { ImageTransparency = 1 }):Play()
             end
             Debris:AddItem(disc, 0.5)
         end
