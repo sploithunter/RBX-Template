@@ -396,6 +396,49 @@ local function spawnAuraField(pp, theme, duration, radius)
         end
     end
 
+    -- (6) RIM feather: a flat ring of sparkles emitted from the disc's edge (Disc emission shape,
+    -- Surface + Outward) so the hard circular boundary dissolves instead of cutting. On its own part
+    -- oriented disc-flat (front = up), grounded each frame below.
+    local rimPart
+    local rc = theme.rim
+    if type(rc) == "table" then
+        rimPart = Instance.new("Part")
+        rimPart.Name = "AuraFieldRim"
+        rimPart.Anchored = true
+        rimPart.CanCollide = false
+        rimPart.CanQuery = false
+        rimPart.CastShadow = false
+        rimPart.Transparency = 1
+        rimPart.Size = Vector3.new(radius * 2, radius * 2, 0.2)
+        rimPart.Parent = model
+        local e = Instance.new("ParticleEmitter")
+        e.Shape = Enum.ParticleEmitterShape.Disc
+        e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface -- emit from the disc's rim
+        e.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+        e.Color = ColorSequence.new(toColor(rc.color or (theme.colors and theme.colors[2])))
+        e.LightEmission = 1
+        e.LightInfluence = 0
+        e.Lifetime = NumberRange.new(rc.life_min or 0.4, rc.life_max or 0.8)
+        e.Rate = math.min(200, rc.rate or 80)
+        e.Speed = NumberRange.new(rc.speed_min or 0.5, rc.speed_max or 2)
+        e.SpreadAngle = Vector2.new(rc.spread or 8, rc.spread or 8)
+        e.Acceleration = Vector3.new(0, rc.accel_y or 1, 0)
+        e.Drag = 2
+        local rsz = rc.size or 0.8
+        e.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0),
+            NumberSequenceKeypoint.new(0.3, rsz),
+            NumberSequenceKeypoint.new(1, 0),
+        })
+        e.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1),
+            NumberSequenceKeypoint.new(0.2, rc.transparency or 0.2),
+            NumberSequenceKeypoint.new(0.85, rc.transparency or 0.2),
+            NumberSequenceKeypoint.new(1, 1),
+        })
+        e.Parent = rimPart
+    end
+
     -- Keep the field ON THE FLOOR under the pet. Pets HOVER, so a welded field floats with them; we
     -- raycast straight down each frame and sit the emission slab + disc on the real ground beneath
     -- the pet (and spin the disc). Excludes the pet, other pets, and enemies so the ray finds terrain.
@@ -456,6 +499,10 @@ local function spawnAuraField(pp, theme, duration, radius)
                     CFrame.new(origin.X + math.cos(a) * rr, floorY + h, origin.Z + math.sin(a) * rr)
             end
         end
+        if rimPart then -- disc-flat (front = up) so the rim ring lies on the ground
+            rimPart.CFrame = CFrame.new(origin.X, floorY + 0.3, origin.Z)
+                * CFrame.Angles(math.rad(-90), 0, 0)
+        end
     end)
 
     local stopped = false
@@ -488,6 +535,13 @@ local function spawnAuraField(pp, theme, duration, radius)
                 tr.Enabled = false
             end
             Debris:AddItem(orb, (oc and oc.life or 0.6) + 0.2)
+        end
+        if rimPart then
+            local e = rimPart:FindFirstChildOfClass("ParticleEmitter")
+            if e then
+                e.Enabled = false
+            end
+            Debris:AddItem(rimPart, (rc and rc.life_max or 0.8) + 0.3)
         end
         Debris:AddItem(holder, (theme.life_max or 1.6) + 0.3) -- let in-flight particles finish
     end

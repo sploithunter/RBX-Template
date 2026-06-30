@@ -348,6 +348,17 @@ return {
                         life = 0.6, -- trail lifetime (sec)
                         color = { 160, 255, 130 },
                     },
+                    -- RIM feather: a flat ring of sparkles at the disc edge so the circle dissolves
+                    -- instead of cutting hard. Remove this block to drop it.
+                    rim = {
+                        rate = 90,
+                        size = 0.8,
+                        life_min = 0.4,
+                        life_max = 0.8,
+                        speed_min = 0.5,
+                        speed_max = 2,
+                        color = { 150, 255, 120 },
+                    },
                 },
             },
             ice = {
