@@ -24,7 +24,8 @@ return {
             pattern = "none",
             color = "origin",
             sound = nil,
-            mute = true, -- skip the cast-sound placeholder too (no "(sound TBD)")
+            -- NOTE: no `mute` — the "(sound TBD)" placeholder SHOULD still show until a real Resonance
+            -- cast sound is authored (it's the reminder). Only the effect-TBD is suppressed.
         },
 
         -- caster-anchored burst CENTRED on the player: dome + rising motes / ember poof, but NO
