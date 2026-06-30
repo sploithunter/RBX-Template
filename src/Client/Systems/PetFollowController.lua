@@ -29,6 +29,7 @@ local CombatOrigin = require(ReplicatedStorage.Shared.Game.CombatOrigin)
 local RangedFX = require(ReplicatedStorage.Shared.Effects.RangedFX)
 local CombatHitFX = require(ReplicatedStorage.Shared.Effects.CombatHitFX)
 local AreaFX = require(ReplicatedStorage.Shared.Effects.AreaFX)
+local CombatFX = require(ReplicatedStorage.Shared.Effects.CombatFX)
 local FloatingText = require(ReplicatedStorage.Shared.Effects.FloatingText)
 local PowerSound = require(ReplicatedStorage.Shared.Effects.PowerSound)
 local PowerFXRender = require(ReplicatedStorage.Shared.Effects.PowerFXRender)
@@ -293,9 +294,19 @@ function PetFollowController.start()
                 nil,
                 { radius = data.radius }
             )
-            if data.pit then
-                pcall(AreaFX.Play, areaCfg, element, "pit", center)
-            end
+            -- Reusable element-themed ground bloom at the strike (replaces the old lingering tar "pit"):
+            -- a mechanically-instant BURST — motes pop, the rim ring expands, the disc flashes — sized
+            -- to the real AoE radius. Drives BOTH pet-cast AoEs (variant "self") and targeted AoEs
+            -- (Cataclysm/Colorado, variant "targeted"). The upfront eruption above stays as the strike.
+            pcall(function()
+                CombatFX.groundField({
+                    element = element,
+                    radius = tonumber(data.radius) or 12,
+                    anchor = center,
+                    duration = 0.9,
+                    burst = true,
+                })
+            end)
             -- element SFX from the power_fx registry: self burst ⇒ cast clip, else ⇒ impact clip
             -- (silent if none authored for this element/phase).
             local phase = (data.variant == "self") and "cast" or "impact"
