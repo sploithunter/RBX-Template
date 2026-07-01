@@ -24,6 +24,11 @@ local POWER_ICONS = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChi
 local PILL = require(ReplicatedStorage.Configs:WaitForChild("pill_ui"))
 local POWERS = require(ReplicatedStorage.Configs:WaitForChild("powers"))
 local POWER_DESC = require(ReplicatedStorage.Configs:WaitForChild("power_descriptions"))
+-- Derived-description SSOT (the same source the powers menu uses). The hotbar tooltip used to read
+-- the hardcoded POWER_DESC table, which only covered some powers — new ones (Taunt etc.) fell to
+-- "(no description)" even though the menu showed a full one. PowerDescribe builds from the live
+-- config so every power reads.
+local PowerDescribe = require(ReplicatedStorage.Shared.Game.PowerDescribe)
 local PetBadge = require(script.Parent.Parent.UI.PetBadge)
 local UITheme = require(script.Parent.Parent.UI.UITheme)
 local CloseButton = require(script.Parent.Parent.UI.Components.CloseButton)
@@ -470,13 +475,18 @@ function HotbarBar.start()
         local badge = PetBadge.forPower(id)
         tipName.TextColor3 = (badge and POWER_ICONS.elementColor3(badge.element, "bright"))
             or Color3.fromRGB(245, 245, 255)
-        -- entry is a string (just a description) or a table { type = "...", desc = "..." }
+        -- Description from the DERIVED SSOT (PowerDescribe) — the exact source the powers menu
+        -- uses, so the hotbar can never disagree or fall to "(no description)" for a newer power.
+        -- POWER_DESC is kept only for an optional `type` override on the type line.
         local entry = POWER_DESC[id]
-        local descText, typeOverride
-        if type(entry) == "table" then
-            descText, typeOverride = entry.desc, entry.type
-        else
-            descText = entry
+        local typeOverride = (type(entry) == "table") and entry.type or nil
+        local descText
+        local d = PowerDescribe.describe(POWERS, id)
+        if d then
+            descText = d.summary
+            if d.lines and #d.lines > 0 then
+                descText = descText .. "\n" .. table.concat(d.lines, "  ·  ")
+            end
         end
         tipType.Text = typeOverride or deriveType(id)
         tipType.Visible = tipType.Text ~= ""
