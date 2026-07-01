@@ -847,6 +847,42 @@ function GameAPIService:_registerCommands()
         end,
     })
 
+    -- [admin] Force the NEXT egg hatch to be a HUGE — a dev tool to see/verify the huge reveal +
+    -- tiered fireworks without waiting for the (incredibly rare) natural roll. Sets ForceHuge +
+    -- ForceVariant so EggService:GetForcedHatchOutcome forces the egg's first pet as a huge basic.
+    -- Toggle: pass {enabled=false} (or call again) to clear. Stays on until cleared, so hatch ONE
+    -- egg then turn it off. Admin/Studio only.
+    bus:register("admin.forceNextHuge", {
+        description = '[admin] Toggle: force the next egg hatch to roll HUGE (dev/verify). Optional {variant="basic"|"golden"|"rainbow"}. {enabled=false} clears.',
+        validate = function(args)
+            return Validators.fields(args, {
+                enabled = { type = "boolean", optional = true },
+                variant = { type = "string", optional = true },
+            })
+        end,
+        handler = function(context, args)
+            local isAdmin = context.isTest
+                or (context.player and context.player:GetAttribute("IsAdmin") == true)
+            if not isAdmin then
+                return { ok = false, reason = "not_admin" }
+            end
+            local on = args.enabled ~= false -- default true
+            if on then
+                -- variant drives the huge's visuals + eternal scale (golden 1.25x, rainbow 1.5x).
+                local variant = args.variant or "basic"
+                context.player:SetAttribute("ForceHuge", true)
+                -- GetForcedHatchOutcome only triggers when ForcePet/ForceVariant is set; ForceVariant
+                -- alone makes it force the EGG'S FIRST pet as a huge — works on any egg, no pet id.
+                context.player:SetAttribute("ForceVariant", variant)
+                return { ok = true, forceHuge = true, variant = variant }
+            end
+            context.player:SetAttribute("ForceHuge", nil)
+            context.player:SetAttribute("ForceVariant", nil)
+            context.player:SetAttribute("ForcePet", nil)
+            return { ok = true, forceHuge = false }
+        end,
+    })
+
     bus:register("egg_item.hatch", {
         description = "Hatch one held egg ITEM from the eggs inventory bucket (e.g. a Meet-The-Creator egg).",
         validate = function(args)

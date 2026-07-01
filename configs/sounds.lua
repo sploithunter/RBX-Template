@@ -87,11 +87,22 @@ return {
         bus = "effects",
     },
 
-    -- Fireworks for a SECRET-and-above hatch (Jason) — the unique tiers (secret/exclusive/huge/
-    -- creator). Personal (hatching stays owner-only). NOTE: ~15s track; trim if it feels long.
+    -- Fireworks for a SECRET / EXCLUSIVE hatch (Jason: "keep it, it's fun"). Personal (hatching
+    -- stays owner-only). NOTE: ~15s track; trim if it feels long.
     hatch_fireworks = {
         id = "rbxassetid://135447759304480",
         volume = 0.5,
+        playback_speed = 1.0,
+        bus = "effects",
+    },
+
+    -- HUGE hatch — the showstopper (Jason: first huge in the game was ~100 hrs across 4 accounts,
+    -- "should be celebratory like a lot"). Its OWN, bigger fireworks track; louder than the secret
+    -- fireworks so a huge is unmistakably rarer. Group-owned upload (scripts/audio_ids.json).
+    -- New audio → moderation; plays once approved.
+    huge_fireworks = {
+        id = "rbxassetid://139307085793979",
+        volume = 0.7,
         playback_speed = 1.0,
         bus = "effects",
     },

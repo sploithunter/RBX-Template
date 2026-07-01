@@ -29,6 +29,25 @@ do
         SECRET_RARITIES[r] = true
     end
 end
+-- A huge pet's EFFECTIVE rarity is the HUGE tier, not its species rarity — so the reveal box, the
+-- rarity label, and the celebration all treat it as "huge" (huge ∈ special_rarities). Without this
+-- a huge Lightleaf Hare reveals as its species (uncommon → green box, no fireworks). Creator (the
+-- apex) also resolves to "huge" for celebration purposes. Non-huge pets keep their species rarity.
+-- (Titanic/colossal will slot in here via a huge_class field once such pets exist.)
+local function effectiveRarityIds(hatchResult)
+    local rid
+    if hatchResult and (hatchResult.huge == true or hatchResult.creator == true) then
+        rid = "huge"
+    elseif hatchResult and hatchResult.petData then
+        rid = hatchResult.petData.rarity_id
+    end
+    local rname = rid
+    local rdef = petConfig and petConfig.rarities and rid and petConfig.rarities[rid]
+    if rdef and rdef.name then
+        rname = rdef.name
+    end
+    return rid, rname
+end
 local EggWorldQuery = require(ReplicatedStorage.Shared.Services.EggWorldQuery)
 local fireGameEvent = require(ReplicatedStorage.Shared.Network.FireGameEvent)
 local PetInventoryView = require(ReplicatedStorage.Shared.Inventory.PetInventoryView)
@@ -208,7 +227,11 @@ function EggService:SummarizeHatchResults(resultEntries)
     local summary = {}
     local autoDeletedCount = 0
     local specialCount = 0
-    local secretCount = 0 -- pets of a UNIQUE rarity (secret+); drives the fireworks celebration
+    -- Per-TIER unique counts drive the tiered celebration (Jason: a huge should out-party a secret).
+    -- RarityId here is already the EFFECTIVE rarity (a huge reads "huge", not its species).
+    local secretCount = 0 -- SECRET tier → secret fireworks (kept, "it's fun")
+    local exclusiveCount = 0 -- EXCLUSIVE tier → a bigger cyan burst
+    local hugeCount = 0 -- HUGE tier (huge + creator apex) → the grandest fireworks + huge sound
     local sampleLimit = self:GetHatchHistoryResultSampleLimit()
 
     for index, entry in ipairs(resultEntries or {}) do
@@ -219,8 +242,12 @@ function EggService:SummarizeHatchResults(resultEntries)
             specialCount += 1
         end
         local rid = entry.RarityId or entry.rarityId
-        if type(rid) == "string" and SECRET_RARITIES[rid] then
-            secretCount += 1
+        if rid == "huge" or rid == "creator" then
+            hugeCount += 1
+        elseif rid == "exclusive" then
+            exclusiveCount += 1
+        elseif type(rid) == "string" and SECRET_RARITIES[rid] then
+            secretCount += 1 -- remaining unique tier = secret
         end
         if index <= sampleLimit then
             table.insert(summary, {
@@ -235,7 +262,7 @@ function EggService:SummarizeHatchResults(resultEntries)
         end
     end
 
-    return summary, autoDeletedCount, specialCount, secretCount
+    return summary, autoDeletedCount, specialCount, secretCount, exclusiveCount, hugeCount
 end
 
 function EggService:RecordHatchHistory(player, entry)
@@ -290,7 +317,7 @@ function EggService:ReturnHatchError(player, request, message, code, details)
 end
 
 function EggService:RecordHatchSuccess(player, request, response)
-    local results, autoDeletedCount, specialCount, secretCount =
+    local results, autoDeletedCount, specialCount, secretCount, exclusiveCount, hugeCount =
         self:SummarizeHatchResults(response.results)
     fireGameEvent(player, "egg_hatch", { count = response.hatchCount }) -- reactions config-optional
     -- XP per egg (configs/egg_system.lua xp_per_hatch; Jason: 1/egg) — per batch
@@ -307,9 +334,17 @@ function EggService:RecordHatchSuccess(player, request, response)
         -- ONE rare-hatch celebration per batch (not per pet) — golden/rainbow/special reveals.
         fireGameEvent(player, "egg_hatch_rare", { count = specialCount })
     end
+    -- TIERED unique-hatch celebration (Jason: a huge should out-party a secret). Each tier fires
+    -- once per batch with its own fireworks + sound; a mixed batch can fire more than one.
     if secretCount > 0 then
-        -- SECRET-and-above (unique-tier) hatch -> fireworks (egg_hatch_secret). Once per batch.
         fireGameEvent(player, "egg_hatch_secret", { count = secretCount })
+    end
+    if exclusiveCount > 0 then
+        fireGameEvent(player, "egg_hatch_exclusive", { count = exclusiveCount })
+    end
+    if hugeCount > 0 then
+        -- The apex: grandest fireworks + the dedicated huge_fireworks sound. Once per batch.
+        fireGameEvent(player, "egg_hatch_huge", { count = hugeCount })
     end
     return self:RecordHatchHistory(player, {
         ok = true,
@@ -439,11 +474,9 @@ function EggService:SimulateHatchBatch(player, rawRequest)
             self:AddSimulationCount(counts.autoDeleteReasons, autoDeleteReason or "matched", 1)
         end
 
-        local rarityId = hatchResult.petData and hatchResult.petData.rarity_id or nil
-        local rarityName = hatchResult.petData
-                and hatchResult.petData.rarity
-                and hatchResult.petData.rarity.name
-            or rarityId
+        -- EFFECTIVE rarity: a huge resolves to the "huge" tier (not its species) so the reveal +
+        -- celebration treat it correctly. Non-huge keeps its species rarity.
+        local rarityId, rarityName = effectiveRarityIds(hatchResult)
         local specialHatch = self:IsSpecialRevealOutcome(hatchResult)
         if specialHatch then
             specialHatchCount += 1
@@ -1400,11 +1433,9 @@ function EggService:HandleEggPurchase(player, eggType, purchaseType)
         end
 
         processedCount += 1
-        local rarityId = hatchResult.petData and hatchResult.petData.rarity_id or nil
-        local rarityName = hatchResult.petData
-                and hatchResult.petData.rarity
-                and hatchResult.petData.rarity.name
-            or rarityId
+        -- EFFECTIVE rarity: a huge resolves to the "huge" tier (not its species) so the reveal box
+        -- is pink + labeled HUGE and the celebration fires the huge tier. Non-huge keeps its species.
+        local rarityId, rarityName = effectiveRarityIds(hatchResult)
         local specialHatch = self:IsSpecialRevealOutcome(hatchResult)
         if specialHatch then
             specialRevealCount += 1

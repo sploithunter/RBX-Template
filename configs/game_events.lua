@@ -192,13 +192,28 @@ return {
         vfx = { kind = "burst", color = { 255, 120, 255 }, count = 24 }, -- big rainbow-pink
     },
 
-    -- SECRET-and-above hatch (Jason): a batch contained a UNIQUE-tier pet — secret/exclusive/huge/
-    -- creator (inventory.buckets.pets.special_rarities; mythic is stackable, NOT counted). Fired once
-    -- per batch from EggService when secretCount > 0. Fireworks + a big gold burst. Personal sound
-    -- (hatching stays owner-only).
+    -- SECRET hatch (Jason: "keep the secret fireworks, it's fun"): a batch contained a SECRET-tier
+    -- pet. Fired once per batch from EggService when secretCount > 0. Gold firework burst. Personal
+    -- sound (hatching stays owner-only). Exclusive + Huge escalate above this (own events below).
     egg_hatch_secret = {
         sound = "hatch_fireworks",
-        vfx = { kind = "burst", color = { 255, 215, 120 }, count = 40 }, -- huge golden firework burst
+        vfx = { kind = "burst", color = { 255, 215, 120 }, count = 40 }, -- gold firework burst
+    },
+
+    -- EXCLUSIVE hatch — a rung above secret (exclusive outranks secret: "meet a creator or buy an
+    -- egg"). Same fun fireworks sound, a bigger cyan burst so it reads as more than a secret.
+    egg_hatch_exclusive = {
+        sound = "hatch_fireworks",
+        vfx = { kind = "burst", color = { 120, 255, 255 }, count = 56 }, -- cyan, bigger than secret
+    },
+
+    -- HUGE hatch — the apex celebration (Jason: the first huge in the game was ~100 hrs across 4
+    -- accounts; "should be celebratory like a lot"). Its OWN, louder fireworks track + the biggest,
+    -- huge-pink burst so nothing else in the game looks like it. Fired once per batch when a huge is
+    -- in the results. (Titanic/colossal, when pets exist, escalate above this.)
+    egg_hatch_huge = {
+        sound = "huge_fireworks",
+        vfx = { kind = "burst", color = { 255, 90, 210 }, count = 90 }, -- huge-pink, grandest burst
     },
 
     -- ===== Batch 3: economy / enchant / pet-down (existing toasts stay; the bus adds the juice) =====

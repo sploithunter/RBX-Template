@@ -134,6 +134,26 @@ local function petFootprint(pet, config)
     return f
 end
 
+-- Vertical float touch-up (studs): huge models scale up but keep the flat formation.height, so
+-- most float and a few tall tanks sink. config.float_offsets (pet_follow.lua) is EXTENSIBLE +
+-- OPTIONAL — everything defaults to 0. Resolution: by_type[petType].{huge|normal} overrides the
+-- class default (huge/normal). Added to the follow target Y (below the bob, so the bob rides it).
+local function floatTouchup(pet, config)
+    local fo = config.float_offsets
+    if not fo then
+        return 0
+    end
+    local isHuge = pet:GetAttribute("Huge") == true
+    local byType = fo.by_type and fo.by_type[pet:GetAttribute("PetType")]
+    if byType then
+        local v = isHuge and byType.huge or byType.normal
+        if v ~= nil then
+            return v
+        end
+    end
+    return (isHuge and fo.huge or fo.normal) or 0
+end
+
 -- Stable per-pet ordering key (the equip slot). Distinct + stable per equipped pet, so sorts
 -- that tie on size (identical pets) stay deterministic instead of swapping frame to frame.
 local function petSlot(pet)
@@ -820,16 +840,28 @@ function PetFollowController.start()
                 local t = PetFormation.toWorld(frame, e.offset)
                 local bob = PetFormation.floatOffset(phase + slot, config.float)
                 local mx, mz = meanderOffset(model, kiterFace[model] == nil)
-                followPlace[#followPlace + 1] =
-                    { model = model, target = Vector3.new(t.x + mx, t.y + bob, t.z + mz) }
+                followPlace[#followPlace + 1] = {
+                    model = model,
+                    target = Vector3.new(
+                        t.x + mx,
+                        t.y + bob + floatTouchup(model, config),
+                        t.z + mz
+                    ),
+                }
             end
         else
             for _, f in ipairs(followers) do
                 local t = PetFormation.targetPosition(frame, f.index, count, config.formation)
                 local bob = PetFormation.floatOffset(phase + f.index, config.float)
                 local mx, mz = meanderOffset(f.pet, kiterFace[f.pet] == nil)
-                followPlace[#followPlace + 1] =
-                    { model = f.pet, target = Vector3.new(t.x + mx, t.y + bob, t.z + mz) }
+                followPlace[#followPlace + 1] = {
+                    model = f.pet,
+                    target = Vector3.new(
+                        t.x + mx,
+                        t.y + bob + floatTouchup(f.pet, config),
+                        t.z + mz
+                    ),
+                }
             end
         end
 

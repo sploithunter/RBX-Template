@@ -4758,6 +4758,16 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
     powerLabel.Font = powerFont
     powerLabel.ZIndex = 103
     powerLabel.Parent = itemFrame
+    -- Thin dark outline: the number is painted in the rarity color, so on a same-colored card
+    -- (purple-on-purple is the worst) or on white pet art it blends out. A very thin black stroke
+    -- gives every glyph a luminance edge without fattening the small text (Jason: keep it very thin).
+    local powerStroke = Instance.new("UIStroke")
+    powerStroke.Name = "PowerOutline"
+    powerStroke.Color = Color3.fromRGB(0, 0, 0)
+    powerStroke.Thickness = 1
+    powerStroke.Transparency = 0.1
+    powerStroke.LineJoinMode = Enum.LineJoinMode.Round
+    powerStroke.Parent = powerLabel
 
     -- Archetype chip (top-left): identifies the pet's role at a glance — Tank / Melee /
     -- Blaster / Buffer / Control — so buffers (the per-zone support pets) are easy to spot.
@@ -5603,7 +5613,12 @@ function InventoryPanel:_showItemTooltip(item, sourceFrame)
             end
         end
         -- Damage (⚔ zone-calculated attack) + Endurance (❤ toughness) — the two stats the card shows.
-        local basePower = item.power or item.basePower
+        -- Use item.effectivePower FIRST: for eternal pets (huge/secret/exclusive) the eternal pin is
+        -- the pet's real power, but _refreshPetTooltipFromReplicatedState overwrites item.power with
+        -- the raw config-leveled power (e.g. a huge hare's base 16). Reading effectivePower keeps the
+        -- tooltip's ⚔/❤ equal to the card's (which uses the pinned power). Non-eternal pets set
+        -- effectivePower == power, so nothing changes for them.
+        local basePower = item.effectivePower or item.power or item.basePower
         if PetPowerView and basePower then
             local profile = resolvePetProfile(basePower, item.petType, item.variant, item.creator)
             if profile then

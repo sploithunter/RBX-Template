@@ -71,6 +71,22 @@ return {
         period = 2,
     },
 
+    -- Vertical float touch-up (studs, +up / -down), layered on top of formation.height + the bob.
+    -- A huge pet scales its MODEL up but keeps the flat `height`, so most huges end up floating
+    -- above the ground; a few (tall tanks like the ents) sink as they bob. EXTENSIBLE + OPTIONAL —
+    -- every value defaults to 0, so pets you don't tune are unaffected. Per-pet resolution order:
+    -- by_type[petType].{huge|normal} (if set) OVERRIDES the class default below. Applied in
+    -- PetFollowController. Jason: "config for huges + normals, not required, add as needed."
+    float_offsets = {
+        normal = 0, -- class default for NON-huge pets
+        huge = -1.5, -- class default for HUGE pets (most float; -1.5 grounds hare/cherub/lion)
+        by_type = {
+            -- Per-pet overrides (replace the class default for that pet). Add entries as needed.
+            -- The Worldroot Ent is a tall tank whose feet SINK as it bobs → lift instead of drop.
+            worldroot_ent = { huge = 2 },
+        },
+    },
+
     -- Idle meander (Jason: "pets should meander near their group location so they
     -- don't just stand there — frozen statues unless they're in combat"). Once the
     -- PLAYER has stood still for player_still_seconds, each untargeted follower

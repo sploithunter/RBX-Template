@@ -948,7 +948,9 @@ local petConfig = {
             viewport_zoom = 1.6,
             asset_transform = {
                 scale = 2.4,
-                huge_scale = 4.5,
+                -- huge tank: matched to the Worldroot Ent (2.4 × 3 = 7.2). Was 4.5 (double-scaled).
+                -- Dial toward 2.5 for more headroom vs future titanic/colossal tiers.
+                huge_scale = 3.0,
                 orientation = { x = 0, y = 0, z = 0 },
             },
             camera = {
@@ -1725,7 +1727,9 @@ local petConfig = {
             viewport_zoom = 1.6,
             asset_transform = {
                 scale = 2.4,
-                huge_scale = 4.5,
+                -- huge tank: matched to the Worldroot Ent (2.4 × 3 = 7.2). Was 4.5 (double-scaled).
+                -- Dial toward 2.5 for more headroom vs future titanic/colossal tiers.
+                huge_scale = 3.0,
                 orientation = { x = 0, y = 0, z = 0 },
             },
             camera = {
@@ -3449,9 +3453,13 @@ local petConfig = {
             base_power = 42,
             base_health = 220,
             viewport_zoom = 1.5,
+            -- The ent is a tank sized up in its NORMAL form (scale 2.4 vs the usual 1.6). Its huge
+            -- multiplier was ALSO inflated (4.5), so huge = 2.4 × 4.5 = 10.8 — double-scaled, way
+            -- bigger than a normal huge (1.6 × 3 = 4.8). Dropped huge_scale to the standard 3.0 →
+            -- 2.4 × 3 = 7.2 (~33% smaller), keeping the tank's big base without the double-up.
             asset_transform = {
                 scale = 2.4,
-                huge_scale = 4.5,
+                huge_scale = 3.0,
                 orientation = { x = 0, y = 0, z = 0 },
             },
             camera = {
@@ -4412,7 +4420,9 @@ local petConfig = {
             viewport_zoom = 1.5,
             asset_transform = {
                 scale = 2.4,
-                huge_scale = 4.5,
+                -- huge tank: matched to the Worldroot Ent (2.4 × 3 = 7.2). Was 4.5 (double-scaled).
+                -- Dial toward 2.5 for more headroom vs future titanic/colossal tiers.
+                huge_scale = 3.0,
                 orientation = { x = 0, y = 0, z = 0 },
             },
             camera = {
