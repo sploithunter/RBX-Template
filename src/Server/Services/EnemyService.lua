@@ -4043,10 +4043,39 @@ function EnemyService:_patrolTick(now, dt)
     end
 end
 
+-- Timed defensive buffs END on a schedule, and an ENDING is an EVENT — not a per-cast task.delay
+-- closure (those get orphaned when the pet re-deploys, leaving a stale pool/buff that never fires
+-- its "ended" state → the shield bubble hangs forever + soaks damage). The combat tick is the ONE
+-- authority: when a buff's *Until has lapsed, zero its magnitude HERE. That attribute write IS the
+-- end event — Roblox replicates it and the client's CombatShield / DefenseBuff hooks react (the
+-- bubble/armor drops), and the server absorb path reads 0. Cheap: writes fire only on the single
+-- tick a live buff actually lapses. Re-casts push *Until forward, so a fresh buff is never swept.
+function EnemyService:_buffExpiryPass(nowTime)
+    local playerPets = Workspace:FindFirstChild("PlayerPets")
+    if not playerPets then
+        return
+    end
+    for _, folder in ipairs(playerPets:GetChildren()) do
+        for _, pet in ipairs(folder:GetChildren()) do
+            if pet:IsA("Model") then
+                local su = tonumber(pet:GetAttribute("CombatShieldUntil")) or 0
+                if su > 0 and su <= nowTime and (pet:GetAttribute("CombatShield") or 0) > 0 then
+                    pet:SetAttribute("CombatShield", 0) -- shield ended → the end event
+                end
+                local du = tonumber(pet:GetAttribute("DefenseBuffUntil")) or 0
+                if du > 0 and du <= nowTime and (pet:GetAttribute("DefenseBuff") or 0) > 0 then
+                    pet:SetAttribute("DefenseBuff", 0) -- armor ended → the end event
+                end
+            end
+        end
+    end
+end
+
 function EnemyService:_combatTick(dt)
     local eng = self._combatConfig.engagement or {}
     local now = os.clock()
     local nowTime = os.time()
+    self:_buffExpiryPass(nowTime) -- retire lapsed timed buffs FIRST → fires their "ended" events
     self:_regenPass(now, dt, eng)
     self:_enemyRegenPass(now, dt, eng)
     self:_supportPass(now)
