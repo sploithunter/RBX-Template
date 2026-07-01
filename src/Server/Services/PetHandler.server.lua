@@ -1393,6 +1393,24 @@ function loadEquipped(Player)
                                 local isHuge = isHugePetFolder(petFolder)
                                 if isHuge then
                                     applyHugePetScale(PetModel)
+                                    -- HUGE-ONLY attack scope: a pet may gain a stronger attack
+                                    -- targeting only in its huge form (the huge bear tank's earth
+                                    -- AURA field — normal bears stay single-target). Config-driven
+                                    -- (pets.lua huge_attack_targeting); overrides the AttackTargeting
+                                    -- the clone carried from the prototype so the aura pass
+                                    -- (EnemyService) + squad-HUD ring read one huge-aware value.
+                                    -- Read the RAW pets entry, NOT getPet() — getPet curates fields
+                                    -- and drops attack_targeting/huge_attack_targeting (the same
+                                    -- reason AssetPreloadService reads petData.attack_targeting
+                                    -- straight off the entry). getPet only surfaced huge_base_power.
+                                    local rawEntry = petsConfig
+                                        and petsConfig.pets
+                                        and petsConfig.pets[petIdName]
+                                    local hugeTargeting = rawEntry
+                                        and rawEntry.huge_attack_targeting
+                                    if hugeTargeting then
+                                        PetModel:SetAttribute("AttackTargeting", hugeTargeting)
+                                    end
                                 end
                                 -- #179 down-lockout identity: SPECIAL pets (huges) lock by their UID
                                 -- (petFolder.Name is the stable uid); STACKED pets lock by id:variant

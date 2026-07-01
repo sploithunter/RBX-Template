@@ -1956,11 +1956,15 @@ local petConfig = {
             rarity = "common",
             base_power = 10,
             base_health = 150,
-            -- AURA (Jason): the huge bear tank is a "get close and everything burns" bruiser — a
-            -- damage FIELD around itself (PetTargeting aura → _auraDamagePass + a grass Bloom-nova
-            -- ring, since bear = grass element). The canonical aura use: a tank that punishes
-            -- proximity. Tuned in combat.lua pet_aura. Set to "single" to revert.
-            attack_targeting = "aura",
+            -- AURA (Jason): the HUGE bear tank is a "get close and everything burns" bruiser — an
+            -- earth damage FIELD around itself (PetTargeting aura → _auraDamagePass + a grass
+            -- Bloom-nova ring, since bear = grass element). This is HUGE-EXCLUSIVE: a normal common
+            -- bear stays single-target (`attack_targeting`), and only the huge bear gains the aura,
+            -- via `huge_attack_targeting` below — the spawn path (PetHandler applyHugePetScale site)
+            -- swaps the live AttackTargeting attribute when the pet carries the huge trait. Tuned in
+            -- combat.lua pet_aura.
+            attack_targeting = "single",
+            huge_attack_targeting = "aura",
 
             -- Huge bears: a much higher base power (used only when the pet carries
             -- the huge trait — normal bears stay at base_power 10). Combined with

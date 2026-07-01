@@ -4791,8 +4791,15 @@ function InventoryPanel:_createItemFrameInto(item, layoutOrder, parentContainer)
                 -- the inventory card and the squad badge always agree. NOT item.attack_targeting
                 -- (unpopulated → wrongly fell back to single, diverging from the HUD — Jason's catch).
                 local petDef = PETS_CONFIG and PETS_CONFIG.pets and PETS_CONFIG.pets[item.petType]
-                local atkScope =
-                    PetTargeting.attackScope(petDef and petDef.attack_targeting, role.id, PET_ROLES)
+                -- Huge-only scope override (pets.lua huge_attack_targeting): the huge bear's earth
+                -- AURA is huge-exclusive, so a HUGE card shows the aura ring while a normal bear
+                -- shows single — mirrors the huge-aware AttackTargeting the spawn path stamps, so
+                -- card ↔ squad HUD stay in agreement.
+                local cfgTargeting = petDef and petDef.attack_targeting
+                if item.huge == true and petDef and petDef.huge_attack_targeting then
+                    cfgTargeting = petDef.huge_attack_targeting
+                end
+                local atkScope = PetTargeting.attackScope(cfgTargeting, role.id, PET_ROLES)
                 local b = PetBadge.create(holder, {
                     element = element,
                     role = role.id,
@@ -5204,9 +5211,21 @@ function InventoryPanel:_hideItemTooltip()
         self._tooltipHoverGuard:Disconnect()
         self._tooltipHoverGuard = nil
     end
-    if self.itemTooltip then
-        self.itemTooltip:Destroy()
-        self.itemTooltip = nil
+    -- SINGLE-INSTANCE INVARIANT: sweep EVERY ItemTooltip under the panel, not just the tracked
+    -- self.itemTooltip ref. Multiple re-entrant paths build a tooltip — the two per-card hover
+    -- handlers (leftClickDetection + itemFrame MouseEnter) AND the async "Hatched By" re-render
+    -- (task.spawn'd, huge/special-only) — and the single ref only remembers the LAST frame, so an
+    -- earlier one gets orphaned with no hide ever destroying it. That was the "huge card sticks,
+    -- only ever a Huge" bug (huge/special pets are the only ones with hatcher_user_id → the only
+    -- ones that hit the async re-entry). Sweeping the whole class makes a leaked second frame
+    -- impossible. See the matching sweep in _renderItemTooltip.
+    self.itemTooltip = nil
+    if self.frame then
+        for _, child in ipairs(self.frame:GetChildren()) do
+            if child.Name == "ItemTooltip" then
+                child:Destroy()
+            end
+        end
     end
     self._tooltipItem = nil -- stop any pending hatcher-name re-render from firing
     self._tooltipSourceFrame = nil
@@ -5766,6 +5785,19 @@ end
 
 -- Shared tooltip frame renderer (pet + enhancement paths both feed it their lines).
 function InventoryPanel:_renderItemTooltip(item, lines)
+    -- SINGLE-INSTANCE INVARIANT (see _hideItemTooltip): destroy any stray ItemTooltip before
+    -- building the new one, so a re-entrant caller (the async "Hatched By" re-render, or the two
+    -- per-card hover handlers firing together) can never leave two frames stacked. This is what
+    -- fixed the "huge pet card sticks open" bug.
+    if self.frame then
+        for _, child in ipairs(self.frame:GetChildren()) do
+            if child.Name == "ItemTooltip" then
+                child:Destroy()
+            end
+        end
+    end
+    self.itemTooltip = nil
+
     local tooltip = Instance.new("Frame")
     tooltip.Name = "ItemTooltip"
     local tooltipHeight = 52 + (#lines * 22)
