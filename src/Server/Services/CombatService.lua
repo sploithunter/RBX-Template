@@ -48,6 +48,9 @@ function CombatService:Init()
     end)
     self._xpRewards = (okLvl and type(lvlCfg) == "table" and lvlCfg.xp_rewards) or {}
     self._xpLevelScale = okLvl and type(lvlCfg) == "table" and lvlCfg.xp_level_scale or nil
+    -- LEVEL-based combat XP (not loot-based): scale off the enemy's effective level + rank.
+    self._combatXp = (okLvl and type(lvlCfg) == "table" and lvlCfg.combat_xp) or {}
+    self._combatCoins = (okLvl and type(lvlCfg) == "table" and lvlCfg.combat_coins) or {}
     self._deps = { Targeting = Targeting, CombatMath = CombatMath, FocusMath = FocusMath }
 end
 
@@ -135,20 +138,70 @@ end
 
 -- Credit a defeated enemy's deterministic drops to the player (Feature 10:
 -- "loot includes biome currency + Shadow Tokens in Hell").
-function CombatService:AwardLoot(player, enemyId, enemyLevel)
+function CombatService:AwardLoot(player, enemyId, enemyLevel, enemyTier)
+    -- Pet-INVADER enemies (petinv_*, synthesized at spawn from the opposing realm's pets) have NO
+    -- entry in the static enemies config — and the REALMS are populated almost entirely by them. Their
+    -- Level AND elite Tier are stamped on the model and passed in here, so a def-less invader is still
+    -- fully resolvable: rank-scaled XP + coins. `tier` below = static def.tier → the stamped model tier
+    -- → trash_mob, so a boss invader finally pays boss rates (was flat trash — the fix we skipped).
     local def = self:_enemyDef(enemyId)
     if not def then
-        return { ok = false, reason = "unknown_enemy" }
+        -- No STATIC def. Pet-invaders are def-less BY DESIGN and carry a stamped tier, so they're
+        -- handled. Only warn when we have NEITHER a def NOR a passed tier — a GENUINELY unknown enemy
+        -- (a real config gap, Jason: those should always warn), once per id so it never floods.
+        if not enemyTier then
+            self._unknownEnemyWarned = self._unknownEnemyWarned or {}
+            if not self._unknownEnemyWarned[enemyId] then
+                self._unknownEnemyWarned[enemyId] = true
+                warn(
+                    string.format(
+                        "[CombatService] AwardLoot: unknown enemy '%s' (no static def, no stamped tier) — level-only fallback. Wire a def/drop_table if it needs bespoke loot.",
+                        tostring(enemyId)
+                    )
+                )
+            end
+        end
+        def = {}
     end
-    local loot = CombatMath.resolveLoot(def.drop_table)
-    local lootTotal = 0
+    -- Resolved elite tier: static def wins, else the model-stamped tier (pet-invaders), else trash_mob.
+    local tier = def.tier or enemyTier or "trash_mob"
+    local loot = CombatMath.resolveLoot(def.drop_table or {})
     for currency, amount in pairs(loot) do
-        self._dataService:AddCurrency(player, currency, amount, "combat_loot")
-        lootTotal += tonumber(amount) or 0
+        self._dataService:AddCurrency(player, currency, amount, "combat_loot") -- coins unchanged
     end
-    -- Combat grants XP too: scale off the enemy's loot total so tougher drops = more XP.
-    -- AddExperience publishes the XP attribute -> the HUD level bar ticks live.
-    local xp = XpReward.fromValue(lootTotal, self._xpRewards and self._xpRewards.combat)
+    -- COIN FALLBACK for def-less kills (Jason: "you should drill coins also"). A pet-invader
+    -- (petinv_*, the realm population) has no drop_table, so the loop above paid nothing. Pay a
+    -- level-scaled coin in the player's CURRENT-AREA coin so realm combat earns like farming there.
+    -- Only fires when the drop_table produced NOTHING — static enemies with a real table are
+    -- untouched (no double-pay). effLevel is computed just below; resolve it here for the coin too.
+    if next(loot) == nil then
+        local cc = self._combatCoins or {}
+        local perLevel = tonumber(cc.coins_per_level) or 0
+        if perLevel > 0 then
+            local coinLevel = tonumber(enemyLevel) or tonumber(def.level) or 1
+            local coinRank = (cc.rank_coin_mult and cc.rank_coin_mult[tier]) or 1
+            local coins = math.max(1, math.floor(coinLevel * perLevel * coinRank))
+            -- Which coin? The player's current-area mining coin (the SSOT RewardService uses for
+            -- "area_coins"). Falls back to grass_coins if the area is unknown.
+            local rewardService = self:_service("RewardService")
+            local currency = (
+                rewardService
+                and rewardService._resolveAreaCoin
+                and rewardService:_resolveAreaCoin(player)
+            ) or "grass_coins"
+            self._dataService:AddCurrency(player, currency, coins, "combat_loot_realm")
+            loot[currency] = (loot[currency] or 0) + coins
+        end
+    end
+    -- Combat XP scales off the enemy's effective LEVEL + rank (NOT its coin drop), so reward tracks
+    -- CHALLENGE and pays a premium over farming (configs/leveling.lua combat_xp). enemyLevel = the
+    -- model's Level attribute — base + elite rank offset + the player's ±difficulty offset already
+    -- baked in. rank_xp_mult adds a lieutenant/boss premium on top of their level. Floor 1 so any kill
+    -- ticks the bar. AddExperience publishes the XP attribute -> the HUD level bar ticks live.
+    local cx = self._combatXp or {}
+    local effLevel = tonumber(enemyLevel) or tonumber(def.level) or 1
+    local rankMult = (cx.rank_xp_mult and cx.rank_xp_mult[tier]) or 1
+    local xp = XpReward.fromEnemyLevel(effLevel, cx.xp_per_level, rankMult)
     -- DIMINISHING XP vs out-leveled enemies (Jason: no overnight farm-leveling; same
     -- gate as mining). enemyLevel = the model's Level attribute (rank already baked).
     -- REALM RESCALE: the player's realm depth lifts the target level (layers.level_offsets) so
@@ -159,14 +212,31 @@ function CombatService:AwardLoot(player, enemyId, enemyLevel)
         and layerService.GetLevelOffset
         and layerService:GetLevelOffset(player)
     ) or 0
-    xp = math.floor(
-        xp
-            * LevelDiffYield.xp(
-                player:GetAttribute("Level"),
-                (enemyLevel or def.level or 1) + realmLevelOffset,
-                self._xpLevelScale
-            )
+    local baseXp = xp
+    local diminish = LevelDiffYield.xp(
+        player:GetAttribute("Level"),
+        (enemyLevel or def.level or 1) + realmLevelOffset,
+        self._xpLevelScale
     )
+    xp = math.floor(xp * diminish)
+    -- [CombatXP] trace (Jason balance pass): why did a kill pay what it paid? base = level×rate×rank
+    -- before diminish; diminish = LevelDiffYield vs (enemy effLevel + realm offset). Gated on
+    -- combat.combat_trace (leave in, flip the flag for a balancing pass).
+    if self._combatConfig and self._combatConfig.combat_trace then
+        print(
+            string.format(
+                "[CombatXP] %s tier=%s effLevel=%d base=%d playerLvl=%s realmOff=%s diminish=%.2f -> %d XP",
+                tostring(enemyId),
+                tostring(tier),
+                effLevel,
+                baseXp,
+                tostring(player:GetAttribute("Level")),
+                tostring(realmLevelOffset),
+                diminish,
+                xp
+            )
+        )
+    end
     if xp > 0 then
         local progression = self:_service("PlayerProgressionService")
         if progression and progression.AddExperience then

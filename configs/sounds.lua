@@ -96,6 +96,25 @@ return {
         bus = "effects",
     },
 
+    -- POWER DOWN — the CoH "detoggle": you ran out of endurance (focus) so your always-on toggles
+    -- drop. Played on the toggle_crash game event (PowerService:_detoggleAll). Group-owned upload.
+    power_down = {
+        id = "rbxassetid://95513836690825",
+        volume = 0.8,
+        playback_speed = 1.0,
+        bus = "effects",
+    },
+
+    -- FLUB — the generic "that cast just didn't work" buzzer. NOT a cast cue: it plays ONLY when a
+    -- power genuinely can't fire (e.g. Taunt with no tank deployed and no pet selected). Reusable
+    -- anywhere a cast is impossible. Source file was quiet, so volume is cranked. Group-owned upload.
+    flub = {
+        id = "rbxassetid://118307585251245",
+        volume = 3.0,
+        playback_speed = 1.0,
+        bus = "effects",
+    },
+
     -- HUGE hatch — the showstopper (Jason: first huge in the game was ~100 hrs across 4 accounts,
     -- "should be celebratory like a lot"). Its OWN, bigger fireworks track; louder than the secret
     -- fireworks so a huge is unmistakably rarer. Group-owned upload (scripts/audio_ids.json).

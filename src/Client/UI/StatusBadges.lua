@@ -283,8 +283,15 @@ function StatusBadges.update(card, effects, blinkLead)
         if prev then
             rightX = rightX + ((prev.eff.key == eff.key) and OVERLAP or (BADGE_PX + BADGE_GAP))
         end
-        b.frame.AnchorPoint = Vector2.new(1, 0.5)
-        b.frame.Position = UDim2.new(1, -rightX, 0.5, 0)
+        -- Grow toward screen centre: default right-rail cards anchor at their right edge and step
+        -- LEFT; left-rail cards (card.badgeSide=="right") anchor at their left edge and step RIGHT.
+        if card.badgeSide == "right" then
+            b.frame.AnchorPoint = Vector2.new(0, 0.5)
+            b.frame.Position = UDim2.new(0, rightX, 0.5, 0)
+        else
+            b.frame.AnchorPoint = Vector2.new(1, 0.5)
+            b.frame.Position = UDim2.new(1, -rightX, 0.5, 0)
+        end
         b.frame.ZIndex = 2 + i -- later = more urgent (leftmost) = on top, so its blink shows
     end
     card.status.Size = UDim2.fromOffset(rightX + BADGE_PX, BADGE_PX)

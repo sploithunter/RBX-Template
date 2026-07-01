@@ -27,6 +27,7 @@ local PetCombat = require(ReplicatedStorage.Shared.Game.PetCombat)
 local AdminPowerPalette = require(ReplicatedStorage.Shared.Game.AdminPowerPalette)
 local FocusUpkeep = require(ReplicatedStorage.Shared.Game.FocusUpkeep)
 local Signals = require(ReplicatedStorage.Shared.Network.Signals)
+local PET_ROLES = require(ReplicatedStorage.Configs:WaitForChild("pet_roles"))
 local RunService = game:GetService("RunService")
 
 -- Admin gate for the power-bar test remotes: the server-set IsAdmin attribute, or Studio.
@@ -602,6 +603,8 @@ end
 -- Which of the player's pets a buff applies to. Squad-wide by default; a power whose def carries
 -- target="single_pet" applies to ONE pet — the player's selected squad card (CombatBuffTarget = a
 -- PositionNumber), falling back to the first non-downed pet when nothing is selected (quick test).
+-- CombatBuffTarget == -1 is the TEAM sentinel (the player picked the squad-strip TEAM header card):
+-- a single_pet power then applies to the WHOLE squad, so you can shield/heal/buff everyone on demand.
 function PowerService:_targetPets(player, powerId)
     local folder = Workspace:FindFirstChild("PlayerPets")
         and Workspace.PlayerPets:FindFirstChild(player.Name)
@@ -619,6 +622,9 @@ function PowerService:_targetPets(player, powerId)
         return live -- squad-wide
     end
     local sel = player:GetAttribute("CombatBuffTarget")
+    if sel == -1 then
+        return live -- TEAM scope: a single_pet power cast on the whole squad (team header selected)
+    end
     if sel and sel ~= 0 then
         for _, pet in ipairs(live) do
             local pn = pet:FindFirstChild("PositionNumber")
@@ -628,6 +634,66 @@ function PowerService:_targetPets(player, powerId)
         end
     end
     return live[1] and { live[1] } or {} -- fallback: first non-downed pet
+end
+
+-- Who soaks the aggro a TAUNT pulls. Player intent first: an explicitly SELECTED squad card
+-- (CombatBuffTarget) takes it, ANY role — the player's call. Otherwise it auto-routes to the
+-- deployed TANK(s), weighted by their role Defense so a sturdier tank holds proportionally more of
+-- the pull. No selection AND no tank => empty => Cast refuses (never burns focus for nothing).
+-- Returns { { pet = <model>, weight = <number> }, … }.
+function PowerService:_tauntHolders(player)
+    local folder = Workspace:FindFirstChild("PlayerPets")
+        and Workspace.PlayerPets:FindFirstChild(player.Name)
+    if not folder then
+        return {}
+    end
+    local live = {}
+    for _, pet in ipairs(folder:GetChildren()) do
+        if pet:IsA("Model") and not pet:GetAttribute("CombatDowned") then
+            live[#live + 1] = pet
+        end
+    end
+    -- explicit SINGLE-pet selection wins — the taunt goes exactly where the player pointed it.
+    -- The TEAM sentinel (-1) is NOT a single pet: it falls through to the tank auto-route below, so
+    -- "team selected" taunt = all your tanks hold aggro (the sensible whole-team read for a taunt).
+    local sel = player:GetAttribute("CombatBuffTarget")
+    if sel and sel ~= 0 and sel ~= -1 then
+        for _, pet in ipairs(live) do
+            local pn = pet:FindFirstChild("PositionNumber")
+            if pn and pn.Value == sel then
+                return { { pet = pet, weight = 1 } }
+            end
+        end
+    end
+    -- else the tanks (implicit_taunt role), weighted by their role Defense
+    local roles = PET_ROLES.roles or {}
+    local byType = PET_ROLES.by_type or {}
+    local holders = {}
+    for _, pet in ipairs(live) do
+        local roleId = pet:GetAttribute("PetRole")
+            or byType[pet:GetAttribute("PetType")]
+            or PET_ROLES.default
+        local def = roles[roleId]
+        if def and def.implicit_taunt == true then
+            holders[#holders + 1] = { pet = pet, weight = math.max(1, tonumber(def.defense) or 1) }
+        end
+    end
+    return holders
+end
+
+-- A cast that COULDN'T fire (no target / no tank / not enough focus). Fires the shared
+-- "power_cast_failed" game event so the client plays the flub buzzer + a small red puff (the generic
+-- "that didn't work" feedback, reusable from any un-castable path — Jason), then returns the refusal
+-- envelope. Extra fields (e.g. remaining focus) merge into the returned table.
+function PowerService:_flub(player, reason, extra)
+    fireGameEvent(player, "power_cast_failed", { reason = reason })
+    local out = { ok = false, reason = reason }
+    if type(extra) == "table" then
+        for k, v in pairs(extra) do
+            out[k] = v
+        end
+    end
+    return out
 end
 
 -- A player-wide AXIS buff (coin_yield / mining / luck / move_speed / recharge / xp). Stored as a
@@ -1420,6 +1486,148 @@ function PowerService:_applyEffect(player, kind, now, powerId)
                 }
             )
         end
+    elseif family == "taunt" then
+        -- TAUNT is a PET-CENTERED AoE (Jason): each HOLDER pet (the selected pet, else the deployed
+        -- tanks) casts its OWN rune at its feet and taunts whatever enemies are within `radius` of
+        -- THAT pet — with a per-enemy accuracy roll, so a taunt can miss. It needs no engaged enemy:
+        -- an opener with nothing in range simply grabs nobody. Each grabbed enemy's target is FORCED
+        -- to that pet for the duration (a hard lock over the threat table) via EnemyService:ApplyTaunt.
+        -- The no-holder case is refused in Cast before focus is charged; guard here too.
+        local holders = self:_tauntHolders(player)
+        local enemyService = self._moduleLoader and self._moduleLoader:Get("EnemyService")
+        local pfs = self._moduleLoader and self._moduleLoader:Get("PetFollowService")
+        local radius = tonumber(kind.radius) or 18
+        local r2 = radius * radius
+        local candidates = enemiesAlive() -- caster-bounded (this player's fight / near the caster)
+        local grabbed = 0
+        -- VISUAL PASS: each HOLDER pet plants its OWN green earth rune at its feet + wears the taunt
+        -- badge (Jason: focus the ring on the casting pets, not the player; show it on the pet HUD).
+        -- Capture each holder's LIVE center for the grab pass below (same space we measure enemies in).
+        local centers = {}
+        for i, h in ipairs(holders) do
+            -- pet position: pets are ANCHORED + client-interpolated, so the server pivot reads stale —
+            -- use the replicated report the aggro system trusts (a CFrame), falling back to the pivot.
+            local reported = pfs and pfs.GetReportedPosition and pfs:GetReportedPosition(h.pet)
+            local center = (reported and reported.Position) or h.pet:GetPivot().Position
+            centers[i] = center
+            self:_spawnGroundRune(center, radius, Color3.fromRGB(120, 235, 130), {
+                name = "TauntRune",
+                fade_in = 0.12,
+                hold = math.max(0.2, dur - 1.2), -- hold roughly the taunt's life so the rune reads as its duration
+                fade_out = 1.1,
+                bright = 0,
+                spin = true,
+                spin_deg = 120,
+            })
+            h.pet:SetAttribute("TauntingPowerId", powerId)
+            h.pet:SetAttribute("TauntingUntil", now + dur)
+            self:_stampPowerBadge(h.pet, powerId, now + dur) -- world-billboard SSOT too
+        end
+        -- GRAB PASS: per-pet radius check — but against the enemy's LIVE position, NOT its model pivot.
+        -- Enemies are ANCHORED and client-interpolated toward their MoveTarget attribute (a Vector3);
+        -- the PrimaryPart sits at the SPAWN CFrame server-side, so a PrimaryPart distance check reads
+        -- garbage. THAT was the "grabbed=0 on every cast" bug: the pet center was live-reported but the
+        -- enemy was measured at its stale spawn pivot — two different coordinate truths. MoveTarget is
+        -- the SAME live source the mining-distance gate + combat math (entry.pos) trust. Each enemy is
+        -- pulled by the NEAREST holder whose rune (radius) actually covers it; radius is now a real knob.
+        if enemyService and enemyService.ApplyTaunt and #holders > 0 then
+            for _, enemy in ipairs(candidates) do
+                local mt = enemy:GetAttribute("MoveTarget")
+                local epos
+                if typeof(mt) == "Vector3" then
+                    epos = mt
+                else
+                    local pp = enemy.PrimaryPart or enemy:FindFirstChildWhichIsA("BasePart")
+                    epos = pp and pp.Position
+                end
+                if epos then
+                    local bestPet, bestD2
+                    for i = 1, #centers do
+                        local c = centers[i]
+                        local dx, dz = epos.X - c.X, epos.Z - c.Z
+                        local d2 = dx * dx + dz * dz
+                        if d2 <= r2 and (not bestD2 or d2 < bestD2) then
+                            bestPet, bestD2 = holders[i].pet, d2
+                        end
+                    end
+                    if bestPet and self:_accuracyHit(player, enemy, kind) then -- P4: the taunt can miss
+                        enemyService:ApplyTaunt(enemy, bestPet, now + dur)
+                        -- BADGE: the taunt disc over the pulled enemy — the SAME channel root/vulnerable
+                        -- use (EnemyHud "hex" entry resolves it via PetBadge), so "which enemies got
+                        -- taunted" reads at a glance (Jason).
+                        enemy:SetAttribute("DebuffPowerId", powerId)
+                        enemy:SetAttribute("DebuffUntil", now + dur)
+                        self:_stampPowerBadge(enemy, powerId, now + dur)
+                        grabbed += 1
+                    end
+                end
+            end
+        end
+        -- INSTRUMENTATION ([PowerCast]): how many enemies the taunt actually locked (across all
+        -- holders). 0 with candidates>0 = all out of the per-pet radius or accuracy-missed. Balance
+        -- trace (combat.combat_trace).
+        if self._combatConfig and self._combatConfig.combat_trace then
+            print(
+                string.format(
+                    "[PowerCast] taunt holders=%d candidates=%d grabbed=%d",
+                    #holders,
+                    #candidates,
+                    grabbed
+                )
+            )
+        end
+    elseif family == "rage" then
+        -- RAGE (tank self-buff, Jason): a flat `base` pet-damage bonus PLUS a "critical" bonus that
+        -- GROWS as the pet's HP drops below `enrage_below` — harder the lower it gets, with NO ceiling
+        -- (Jason: no hidden caps; it's bounded naturally by the pet reaching its down threshold). Applies
+        -- to the SAME holder set as taunt — the selected pet, else all tanks. TIMED (not a toggle): we
+        -- stamp a window + the curve knobs on each holder, and PetFollowService computes the LIVE bonus
+        -- per swing (SupportAura.rageRampFraction) on its own additive pet_damage channel, so it stacks
+        -- with the bear's passive rage. mag (resolved, enhancement-scaled) = the critical GROWTH RATE,
+        -- NOT a max — it's slotted to grow; base + enrage_below are raw config (survive _effectiveKind).
+        -- NOTE(future): a post-rage weakness debuff could follow the window (CoH-style crash); left OUT
+        -- for v1 — no downside yet, per Jason.
+        local holders = self:_tauntHolders(player)
+        local base = tonumber(kind.base) or 0
+        local below = tonumber(kind.enrage_below) or 0.5
+        local pfs = self._moduleLoader and self._moduleLoader:Get("PetFollowService")
+        for _, h in ipairs(holders) do
+            local pet = h.pet
+            pet:SetAttribute("RagePowerUntil", now + dur)
+            pet:SetAttribute("RagePowerBase", base)
+            pet:SetAttribute("RagePowerRate", mag) -- resolved critical GROWTH rate (enh-scaled; no cap)
+            pet:SetAttribute("RagePowerBelow", below)
+            pet:SetAttribute("RagePowerPowerId", powerId)
+            -- BADGE: reuse the bear's RageFxUntil channel — SquadHud's "rage" entry lights the fire/rage
+            -- disc for the window (same visual meaning). Plus the generic PowerBadge SSOT for billboards.
+            pet:SetAttribute("RageFxUntil", now + dur)
+            self:_stampPowerBadge(pet, powerId, now + dur)
+            -- a small RED rune at the raging pet's feet — the visual tell, mirroring taunt's green rune.
+            local reported = pfs and pfs.GetReportedPosition and pfs:GetReportedPosition(pet)
+            local center = (reported and reported.Position) or pet:GetPivot().Position
+            self:_spawnGroundRune(center, 6, Color3.fromRGB(235, 80, 60), {
+                name = "RageRune",
+                fade_in = 0.1,
+                hold = math.max(0.2, dur - 1.0),
+                fade_out = 0.8,
+                bright = 0,
+                spin = true,
+                spin_deg = 90,
+            })
+        end
+        -- INSTRUMENTATION ([PowerCast]): who's raging + the curve. Balance trace (combat.combat_trace).
+        if self._combatConfig and self._combatConfig.combat_trace then
+            print(
+                string.format(
+                    "[PowerCast] rage holders=%d base=%.2f rate=%.2f below=%.2f dur=%.1f",
+                    #holders,
+                    base,
+                    mag,
+                    below,
+                    dur
+                )
+            )
+        end
     elseif family == "vulnerable" then
         -- Shatter: x`frozen_bonus` again on FROZEN (rooted) targets — the freeze->shatter payoff.
         local frozenBonus = tonumber(kind.frozen_bonus)
@@ -1971,8 +2179,18 @@ function PowerService:Cast(player, powerId, opts)
         local farmTargeted = self._powersConfig.farm_targeted_families
             and self._powersConfig.farm_targeted_families[kind.family]
         if not (farmTargeted and self:_hasEngagedFarmTarget(player)) then
-            return { ok = false, reason = "no_target" }
+            return self:_flub(player, "no_target")
         end
+    end
+
+    -- TAUNT needs a HOLDER — the selected pet, else a deployed tank. With neither the AoE lands on
+    -- nobody, so refuse BEFORE the focus charge below: a power that eats focus and does nothing is
+    -- worse than no power (Jason). This is taunt's ONLY refusal — it needs no engaged enemy (a
+    -- pet-centred AoE fires whether or not anything's in range).
+    -- RAGE shares taunt's holder rule (selected pet, else tanks), so it flubs the same way when
+    -- there's nothing to rage — no pet selected AND no tanks deployed.
+    if (kind.family == "taunt" or kind.family == "rage") and #self:_tauntHolders(player) == 0 then
+        return self:_flub(player, "no_tank")
     end
 
     -- FOCUS COST: the cast COMMITS here — every refusal gate above (cooldown / no_target) has passed,
@@ -1991,7 +2209,7 @@ function PowerService:Cast(player, powerId, opts)
         if focusSvc and focusSvc.Cast then
             local fres = focusSvc:Cast(player, focusCost)
             if not (fres and fres.ok) then
-                return { ok = false, reason = "not_enough_focus", focus = fres and fres.focus }
+                return self:_flub(player, "not_enough_focus", { focus = fres and fres.focus })
             end
         end
     end
@@ -2008,7 +2226,9 @@ function PowerService:Cast(player, powerId, opts)
     -- renders via PowerFXRender (element-coloured), with floating "(effect TBD)"/"(sound TBD)" where a
     -- mapping or sound is missing. This is what makes a shield read as a shield, a buff as a buff, etc.
     local family = kind.family
-    if family ~= "amplified_burst" and family ~= "team_cleave" then
+    -- taunt owns ALL its own VFX (a rune per casting PET, spawned in _applyEffect) — skip the generic
+    -- caster/target burst so no player-centred ring appears (Jason: focus the ring on the pets).
+    if family ~= "amplified_burst" and family ~= "team_cleave" and family ~= "taunt" then
         local element = (def.archetype and ARCHETYPE_ELEMENT[def.archetype]) or "neutral"
         local generic = def.archetype == nil
         local fx = self._powersConfig.family_fx and self._powersConfig.family_fx[family]

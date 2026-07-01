@@ -167,10 +167,8 @@ local FAMILY_TEXT = {
     taunt = function(_, target)
         return ("Forces %s to attack the taunting pet."):format(target)
     end,
-    rage = function(kind)
-        return ("The lower a pet's endurance, the harder it hits (up to +%s)."):format(
-            pct(kind.magnitude)
-        )
+    rage = function(_)
+        return "The lower a pet's endurance, the harder it hits — the bonus keeps growing as it drops."
     end,
     fear = function(_, target)
         return ("Sends %s fleeing in terror."):format(target)

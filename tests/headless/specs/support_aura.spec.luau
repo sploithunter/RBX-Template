@@ -84,6 +84,41 @@ return function()
         end)
     end)
 
+    describe(
+        "SupportAura.rageRampFraction (cast Rage power: base + GROWING critical, no cap)",
+        function()
+            -- base 0.15, rate 0.5, threshold 50%: bonus = base + rate*((below-hp)/hp) below the threshold.
+            it("returns only the base at or above the enrage threshold", function()
+                expect(SupportAura.rageRampFraction(0.15, 0.5, 0.5, 1.0)).to.equal(0.15) -- full HP
+                expect(SupportAura.rageRampFraction(0.15, 0.5, 0.5, 0.5)).to.equal(0.15) -- exactly at threshold
+                expect(SupportAura.rageRampFraction(0.15, 0.5, 0.5, 0.75)).to.equal(0.15) -- above
+            end)
+
+            it("GROWS as HP drops, with no ceiling (accelerating toward 0)", function()
+                -- hp=0.25: 0.15 + 0.5*((0.5-0.25)/0.25) = 0.15 + 0.5*1 = 0.65
+                expect(SupportAura.rageRampFraction(0.15, 0.5, 0.5, 0.25)).to.equal(0.65)
+                -- hp=0.10: 0.15 + 0.5*((0.4)/0.10) = 0.15 + 0.5*4 = 2.15 (well past any old cap)
+                expect(SupportAura.rageRampFraction(0.15, 0.5, 0.5, 0.10)).to.equal(2.15)
+                -- hp=0.05: 0.15 + 0.5*((0.45)/0.05) = 0.15 + 0.5*9 = 4.65
+                expect(SupportAura.rageRampFraction(0.15, 0.5, 0.5, 0.05)).to.equal(4.65)
+            end)
+
+            it(
+                "clamps HP fraction to [0,1]; hp==0 falls back to base (pet is down, not attacking)",
+                function()
+                    expect(SupportAura.rageRampFraction(0.15, 0.5, 0.5, 0)).to.equal(0.15) -- exactly 0 → base only
+                    expect(SupportAura.rageRampFraction(0.15, 0.5, 0.5, -3)).to.equal(0.15) -- <0 clamps to 0
+                    expect(SupportAura.rageRampFraction(0.15, 0.5, 0.5, 9)).to.equal(0.15) -- >1 clamps to 1
+                end
+            )
+
+            it("defaults/guards garbage args to 0 base + 0 crit", function()
+                expect(SupportAura.rageRampFraction(nil, nil, nil, nil)).to.equal(0)
+                expect(SupportAura.rageRampFraction(-1, -1, 0.5, 0)).to.equal(0) -- negatives floored
+            end)
+        end
+    )
+
     describe("SupportAura.rankTargets (single-target empower selection)", function()
         it("ranks highest_power first (the default carry rule)", function()
             local ranked = SupportAura.rankTargets({

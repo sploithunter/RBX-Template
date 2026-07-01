@@ -36,6 +36,10 @@ return {
         amplified_burst = true,
         burn_spread = true,
         team_cleave = true,
+        -- NOTE: taunt is deliberately NOT here. It's a PET-CENTERED AoE (Jason): each holding pet
+        -- casts its own rune and taunts whatever enemies are in range of THAT pet — it needs no
+        -- engaged enemy to fire (an opener with nothing in range simply taunts nobody). Its only
+        -- refusal is "no holder" (no tank deployed + no pet selected), gated separately in Cast.
     },
     -- #174: families whose target-STRENGTH debuff also applies to FARMING (crystals), not just
     -- enemies. Vulnerability speeds mining the same way it speeds combat, so a pet mining a node
@@ -208,8 +212,15 @@ return {
         -- ===== NEW origin-core effects — placeholder families so the powers resolve + show in menus;
         -- the real mechanics (Rage HP-curve, Fear flee, true Disarm/Hold, heals, player_field) are
         -- separate build slices. Firewall-safe. See docs/PET_REALM_ORIGIN_POWERSETS.md. =====
-        taunt = { family = "taunt", magnitude = 0, duration = 8 }, -- TBD: aggro pull (threat)
-        rage = { family = "rage", magnitude = 0.5, toggle = true }, -- TBD: lower HP -> higher damage
+        taunt = { family = "taunt", magnitude = 0, duration = 8, radius = 18 }, -- AoE aggro pull onto the tank
+        -- RAGE (tank self-buff): the holder pets (selected pet, else all tanks — same set as taunt)
+        -- get a flat `base` pet-damage bonus PLUS a "critical" bonus that GROWS the lower the pet's HP
+        -- falls below `enrage_below` (harder the lower it gets — SupportAura.rageRampFraction). NO cap:
+        -- `magnitude` is the critical GROWTH RATE (enhancement-scaled, slotted to grow), not a ceiling;
+        -- the bonus is bounded naturally by the pet's own max endurance / going down. TIMED (not a
+        -- toggle): `duration`s of rage, `cooldown_seconds` on the power def (30s → ~1/3 uptime). No
+        -- crash/downside yet — a post-rage weakness debuff could follow the window later.
+        rage = { family = "rage", base = 0.15, magnitude = 0.5, duration = 10, enrage_below = 0.5 },
         armor_field = { family = "armor", magnitude = 0.25, duration = 12 }, -- player_field team armor
         -- 10x-world heal values (were 3 / 1.5 placeholder stubs — negligible vs ~hundreds-deep
         -- pools). restoring_sands = a strong FOCUSED single-pet mend (target=single_pet -> the

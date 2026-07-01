@@ -200,12 +200,20 @@ function HudCard.createCard(parent, opts)
     noteLbl.ZIndex = 3
     noteLbl.Parent = barBg
 
-    -- Status-badge row: anchored at the card's inner edge, growing toward screen centre as
-    -- buffs/debuffs stack. The owning strip positions badges into it (updateBadges).
+    -- Status-badge row: anchored at the card's INNER edge, growing toward screen centre as
+    -- buffs/debuffs stack. Default (right-rail cards) hangs off the LEFT edge and grows left; pass
+    -- opts.badgeSide="right" (LEFT-rail cards, e.g. enemies on the left) to hang off the RIGHT edge
+    -- and grow right — so the badges still point toward screen centre, not off-screen (Jason).
+    local badgeSide = opts.badgeSide == "right" and "right" or "left"
     local status = Instance.new("Frame")
     status.Name = "Status"
-    status.AnchorPoint = Vector2.new(1, 0.5)
-    status.Position = UDim2.new(0, -20, 0.5, 0)
+    if badgeSide == "right" then
+        status.AnchorPoint = Vector2.new(0, 0.5)
+        status.Position = UDim2.new(1, 20, 0.5, 0)
+    else
+        status.AnchorPoint = Vector2.new(1, 0.5)
+        status.Position = UDim2.new(0, -20, 0.5, 0)
+    end
     status.Size = UDim2.fromOffset(0, 30)
     status.AutomaticSize = Enum.AutomaticSize.None
     status.BackgroundTransparency = 1
@@ -223,6 +231,7 @@ function HudCard.createCard(parent, opts)
         name = nameLbl,
         note = noteLbl,
         status = status,
+        badgeSide = badgeSide, -- StatusBadges.update reads this to grow the row the right way
     }
 end
 

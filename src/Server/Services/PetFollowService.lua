@@ -33,6 +33,8 @@ local Accuracy = require(ReplicatedStorage.Shared.Game.Accuracy)
 local LevelScale = require(ReplicatedStorage.Shared.Game.LevelScale)
 local PetPowerView = require(ReplicatedStorage.Shared.Game.PetPowerView)
 local BuffStack = require(ReplicatedStorage.Shared.Game.BuffStack)
+local SupportAura = require(ReplicatedStorage.Shared.Game.SupportAura) -- cast-Rage HP-inverse math (SSOT)
+local PetEndurance = require(ReplicatedStorage.Shared.Game.PetEndurance) -- live pet HP fraction for Rage
 local DamageOverTime = require(ReplicatedStorage.Shared.Game.DamageOverTime)
 local OnHitEffects = require(ReplicatedStorage.Shared.Game.OnHitEffects)
 local SquadDiversity = require(ReplicatedStorage.Shared.Game.SquadDiversity)
@@ -490,6 +492,33 @@ local function applyOnHit(enemy, pet, nowT)
     end
 end
 
+-- CAST RAGE (the active Rage power, Jason): the LIVE additive pet_damage fraction for this pet while
+-- its rage window is open (RagePowerUntil, stamped on the holders by PowerService). Computed per swing
+-- from the pet's CURRENT HP — flat base + a "critical" bonus that ramps as HP drops below the
+-- threshold (SupportAura.rageRampFraction, the one rage-math SSOT). 0 when not raging (the BuffStack
+-- expiry gate also drops it, but returning 0 keeps the source cheap/inert).
+function PetFollowService:_ragePowerFraction(pet)
+    if (pet:GetAttribute("RagePowerUntil") or 0) <= os.time() then
+        return 0
+    end
+    local powerNV = pet:FindFirstChild("Power")
+    local power = (powerNV and tonumber(powerNV.Value)) or 0
+    local factor = (self._combatConfig and self._combatConfig.pet_down_threshold_factor) or 1
+    -- INTEGER endurance, floored at 1 point (Jason: "the lowest HP you can have in a fight is 1 —
+    -- that's not a cap"). Endurance is discrete; a live pet always has >= 1 point, so the rage curve's
+    -- divide-by-remaining is always finite (no infinite power, no divide-by-0) and its ceiling scales
+    -- with the pet's OWN max endurance (a bigger tank rages harder) — bounded naturally, not clamped.
+    local maxEnd = PetEndurance.maxEndurance(power, factor)
+    local remaining = math.max(1, math.floor(maxEnd - (pet:GetAttribute("CombatDamageTaken") or 0)))
+    local hpFrac = (maxEnd > 0) and (remaining / maxEnd) or 1
+    return SupportAura.rageRampFraction(
+        pet:GetAttribute("RagePowerBase"),
+        pet:GetAttribute("RagePowerRate"),
+        pet:GetAttribute("RagePowerBelow"),
+        hpFrac
+    )
+end
+
 function PetFollowService:_mine(player, pet, breakable)
     if pet:GetAttribute("CombatDowned") then
         return -- downed pets are out healing; they neither mine nor fight
@@ -619,6 +648,13 @@ function PetFollowService:_mine(player, pet, breakable)
             expiry = pet:GetAttribute("RageDamageBuffUntil") or 0,
         },
         {
+            -- RAGE POWER (the active Rage cast — tank self-buff): flat base + HP-inverse "critical",
+            -- computed LIVE per swing from THIS pet's current HP (harder as it drops). Its OWN channel
+            -- so it ADDS to the bear's passive rage above under the pet_damage cap, never compounds.
+            fraction = self:_ragePowerFraction(pet),
+            expiry = pet:GetAttribute("RagePowerUntil") or 0,
+        },
+        {
             -- WAR-CRY single/targeted_aoe (offense aura with targeting != "aura"): a per-PET damage
             -- buff stamped on the chosen carry(ies) by _auraScopedBuff. Same additive axis as the
             -- team War-Cry (PetTeamDamageBuff) — so a single-target War-Cry and a team one add, never
@@ -705,6 +741,37 @@ function PetFollowService:_mine(player, pet, breakable)
     end
 
     dmg = math.floor(dmg + 0.5)
+
+    -- [RageTrace] (Jason balance pass): while a pet is RAGING and hitting an ENEMY, log its endurance
+    -- + this hit's damage, so we can watch the "critical" bonus climb as the pet drops. Gated on
+    -- combat.combat_trace + RagePowerUntil + EnemyId so it never floods a normal run.
+    if
+        self._combatConfig
+        and self._combatConfig.combat_trace
+        and (pet:GetAttribute("RagePowerUntil") or 0) > nowT
+        and breakable:GetAttribute("EnemyId")
+    then
+        local ragePowerNV = pet:FindFirstChild("Power")
+        local ragePow = (ragePowerNV and tonumber(ragePowerNV.Value)) or 0
+        local rageFactor = (self._combatConfig and self._combatConfig.pet_down_threshold_factor)
+            or 1
+        local rageTaken = pet:GetAttribute("CombatDamageTaken") or 0
+        local rageMaxEnd = PetEndurance.maxEndurance(ragePow, rageFactor)
+        local rageFrac = PetEndurance.healthFraction(rageTaken, ragePow, rageFactor)
+        print(
+            string.format(
+                "[RageTrace] %s endurance=%d/%d (%.0f%%) rageBonus=+%.0f%% hit=%d%s",
+                tostring(pet:GetAttribute("PetType") or pet.Name),
+                math.floor(rageMaxEnd * rageFrac + 0.5),
+                math.floor(rageMaxEnd + 0.5),
+                rageFrac * 100,
+                self:_ragePowerFraction(pet) * 100,
+                dmg,
+                roll.crit and " CRIT" or ""
+            )
+        )
+    end
+
     local applied = PetCombat.applyDamage(hp, dmg)
     breakable:SetAttribute("HP", applied.hp)
 

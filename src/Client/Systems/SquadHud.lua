@@ -375,6 +375,18 @@ local PET_EFFECTS = {
         label = "ARM",
         icon = POWER_ICONS.status.shield,
     },
+    -- TAUNT: while a pet is actively taunting (the active Taunt power lands on it), its card wears
+    -- the taunt disc for the duration — the pet HUD read that "this tank is holding aggro" (Jason).
+    -- powerIdAttr resolves the real taunt disc via PetBadge (same as the hotbar + enemy nameplate).
+    {
+        key = "taunt",
+        source = "pet",
+        untilAttr = "TauntingUntil",
+        powerIdAttr = "TauntingPowerId",
+        color = Color3.fromRGB(120, 235, 130),
+        label = "TAUNT",
+        icon = POWER_ICONS.discFor("earth", "taunt"),
+    },
 }
 
 -- (badge engine extracted to src/Client/UI/StatusBadges.lua — shared with EnemyHud). Pet effects
@@ -420,6 +432,17 @@ function SquadHud.start()
     layout.Parent = root
 
     local selectedSlot = nil
+    -- TEAM scope sentinel: selecting the top-of-strip TEAM header sets selectedSlot to this and tells
+    -- the server CombatBuffTarget = -1, so a single_pet power (shield/heal/buff) lands on the WHOLE
+    -- squad. Matches PowerService._targetPets/_tauntHolders' -1 handling. (Forward-declared so
+    -- setSelected — defined above the header build — can refresh the header's highlight.)
+    local TEAM_SEL = -1
+    local teamCard -- { frame, stroke }; the header card, built below
+    local function refreshTeamHighlight()
+        if teamCard then
+            HudCard.applyHighlight(teamCard, (selectedSlot == TEAM_SEL) and "select" or nil)
+        end
+    end
     local assistTargetBid = nil -- the enemy BreakableID the squad is directed to focus (Z / click)
     local cards = {} -- slot -> { frame, refs... }
     local worldHighlight = Instance.new("Highlight")
@@ -459,6 +482,8 @@ function SquadHud.start()
                 end
             end
         end
+        -- keep the TEAM header lit only while team scope is the active pick (else a single pet is)
+        refreshTeamHighlight()
     end
 
     -- Keep the target highlight on whatever the SELECTED pet is currently attacking/mining. Polled
@@ -599,6 +624,80 @@ function SquadHud.start()
         }
     end
 
+    -- TEAM HEADER (Jason): a player-icon card pinned to the TOP of the squad strip. Selecting it puts
+    -- power targeting in TEAM scope — a single_pet buff/shield/heal then lands on the WHOLE squad, and
+    -- it clears any single-pet pick (the reachable "select everyone" state we were missing). This is
+    -- the seed of the future multiplayer roster: each teamed player becomes a header like this with
+    -- their pets grouped beneath. Styled to match HudCard chrome (same bg / corner / stroke).
+    do
+        local frame = Instance.new("TextButton")
+        frame.Name = "TeamHeader"
+        frame.AutoButtonColor = false
+        frame.Text = ""
+        frame.Size = UDim2.fromOffset(186, 34)
+        frame.BackgroundColor3 = Color3.fromRGB(28, 30, 40)
+        frame.BackgroundTransparency = 0.1
+        frame.BorderSizePixel = 0
+        frame.LayoutOrder = -1 -- above every pet card (pet slots are >= 1)
+        frame.Parent = root
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = frame
+        local stroke = Instance.new("UIStroke")
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        stroke.Color = HudCard.STROKE_IDLE
+        stroke.Thickness = 1.5
+        stroke.Transparency = 0.4
+        stroke.Parent = frame
+        -- circular player HEADSHOT on the inner edge, poking off like the pet role chip. rbxthumb is a
+        -- lazily-resolved content URL — no async thumbnail call.
+        local avatarChip = Instance.new("Frame")
+        avatarChip.Name = "Avatar"
+        avatarChip.AnchorPoint = Vector2.new(HudCard.BADGE_OVERHANG, 0.5)
+        avatarChip.Position = UDim2.new(0, 0, 0.5, 0)
+        avatarChip.Size = UDim2.new(1, 0, 1, 0)
+        avatarChip.BackgroundColor3 = Color3.fromRGB(55, 110, 190)
+        avatarChip.BorderSizePixel = 0
+        avatarChip.Parent = frame
+        local avAspect = Instance.new("UIAspectRatioConstraint")
+        avAspect.AspectRatio = 1
+        avAspect.AspectType = Enum.AspectType.FitWithinMaxSize
+        avAspect.Parent = avatarChip
+        local avCorner = Instance.new("UICorner")
+        avCorner.CornerRadius = UDim.new(1, 0) -- circle
+        avCorner.Parent = avatarChip
+        local headshot = Instance.new("ImageLabel")
+        headshot.Name = "Headshot"
+        headshot.BackgroundTransparency = 1
+        headshot.AnchorPoint = Vector2.new(0.5, 0.5)
+        headshot.Position = UDim2.fromScale(0.5, 0.5)
+        headshot.Size = UDim2.fromScale(1, 1)
+        headshot.Image = "rbxthumb://type=AvatarHeadShot&id="
+            .. tostring(localPlayer.UserId)
+            .. "&w=150&h=150"
+        headshot.Parent = avatarChip
+        local hsCorner = Instance.new("UICorner")
+        hsCorner.CornerRadius = UDim.new(1, 0)
+        hsCorner.Parent = headshot
+        local lbl = Instance.new("TextLabel")
+        lbl.Name = "Label"
+        lbl.BackgroundTransparency = 1
+        lbl.Position = UDim2.fromOffset(40, 0)
+        lbl.Size = UDim2.new(1, -48, 1, 0)
+        lbl.Font = Enum.Font.GothamBold
+        lbl.TextSize = 14
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.TextColor3 = Color3.fromRGB(235, 240, 255)
+        lbl.Text = "MY TEAM"
+        lbl.Parent = frame
+        teamCard = { frame = frame, stroke = stroke }
+        frame.MouseButton1Click:Connect(function()
+            -- toggle: pick TEAM scope, or if it's already the pick, clear back to no selection
+            setSelected(selectedSlot == TEAM_SEL and nil or TEAM_SEL)
+        end)
+        refreshTeamHighlight()
+    end
+
     -- (Removed the per-slot Recall/Summon/Heal/Buff action row — squad control now
     -- lives on the bottom hotbar. Card selection still drives assist-target + cycle.)
 
@@ -654,9 +753,9 @@ function SquadHud.start()
 
     local function cycle(dir)
         local slots = orderedSlots()
-        if #slots == 0 then
-            return
-        end
+        -- fold the TEAM header in as the last cycle stop (Jason): pet1 → … → petN → TEAM → pet1, so
+        -- Tab reaches team scope on desktop too. (Even with no pets, TEAM is a reachable stop.)
+        slots[#slots + 1] = TEAM_SEL
         local idx
         for i, s in ipairs(slots) do
             if s == selectedSlot then

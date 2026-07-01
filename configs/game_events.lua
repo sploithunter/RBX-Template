@@ -27,11 +27,20 @@
 
 return {
     -- TOGGLE CRASH: a player's always-on toggles dropped because Focus couldn't pay their upkeep
-    -- (the CoH "detoggle"). Fired server-side from PowerService:_detoggleAll. A dim power-down burst
-    -- for now; drop a `sound` (personal) or `world_sound` key in here once the SFX is picked — the
-    -- event already fires, so it's a config-only add.
+    -- (the CoH "detoggle"). Fired server-side from PowerService:_detoggleAll. The power_down SFX +
+    -- a dim slate burst = the "everything winds down" moment. Personal (your own toggles crashing).
     toggle_crash = {
+        sound = "power_down",
         vfx = { kind = "burst", color = { 130, 130, 160 } }, -- dim slate "power down" at the player
+    },
+
+    -- CAST FIZZLE: a power the player tried to fire just couldn't (no valid target / no tank to
+    -- taunt onto / not enough focus). The generic "that didn't work" feedback — the flub buzzer +
+    -- a small muted-red puff at the player. Personal (UI feedback, not a shared-world moment).
+    -- Reusable: fire "power_cast_failed" from ANY path that can't cast (Jason).
+    power_cast_failed = {
+        sound = "flub",
+        vfx = { kind = "burst", color = { 200, 70, 70 }, count = 6 }, -- small red "nope" puff
     },
 
     -- level_up (client-fired) keeps the VISUAL juice; the SOUND moved to the

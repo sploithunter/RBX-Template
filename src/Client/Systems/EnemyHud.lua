@@ -87,12 +87,16 @@ local ENEMY_EFFECTS = {
 -- Expiry-blink cadence (matches SquadHud's defaults; a near-expiry timed badge flashes).
 local BLINK_LEAD = 5
 local BLINK_PERIOD = 0.5
--- Don't paper the screen in a big pull: show the nearest N foes (the ones you can act on).
-local MAX_CARDS = 8
--- Big-pull compaction: cards render full size up to DENSITY_FULL, then the whole strip scales
--- down (uniformly) so a large fight stays bounded — it never grows past ~DENSITY_FULL cards'
--- height into the squad strip below. The floor keeps even a capped stack legible.
-local DENSITY_FULL = 5
+-- Cap is a high BACKSTOP for absurd pulls, not a normal limit — every card the cap hid was a foe
+-- actively hurting you (Jason: "you don't know the enemies that are hurting you"; 15 hitting him at
+-- layer 2). The strip is already filtered to enemies ENGAGED with your squad, so we show them all
+-- and let the layout (grow-down + money/menu collapse) make room; the cap only stops a runaway.
+local MAX_CARDS = 20
+-- Big-pull compaction: cards render full size up to DENSITY_FULL, then the whole strip scales down
+-- (uniformly) so even a huge pull stays legible. Raised so the list stays FULL-SIZE longer and grows
+-- DOWN into money's space (which collapses) instead of shrinking early — the density floor is the
+-- last resort past that.
+local DENSITY_FULL = 10
 local DENSITY_MIN = 0.5
 
 local function enemiesFolder()
@@ -217,39 +221,53 @@ function EnemyHud.start()
     gui.Name = "EnemyHud"
     gui.ResetOnSpawn = false
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    gui.IgnoreGuiInset = true
+    gui.IgnoreGuiInset = false -- respect the topbar inset so a top-left anchor sits under the ☰/chat row
     gui.Parent = localPlayer:WaitForChild("PlayerGui")
 
-    -- Top-right container, growing downward — enemies up top, the squad strip below (both right-
-    -- edge). Left-centre collided with the currency stack, so the cards hid behind the coin pills.
+    -- LEFT rail — enemies own the TOP-LEFT and grow DOWNWARD (Jason's endgame HUD layout): the foes
+    -- you CLICK live on the left (below the ☰/chat corner via IgnoreGuiInset=false), your team/
+    -- teammate strips own the RIGHT rail. Money sits at the BOTTOM-left (above the menu buttons) and
+    -- collapses when the growing enemy list reaches it — so enemies never depend on money's position.
+    -- root = UNSCALED POSITIONER: a UIViewportScale on the positioning frame scales its position too,
+    -- so the viewport scale lives on the inner `scaler` (composed with the density UIScale on the
+    -- list — Roblox honours one UIScale per object, so they sit on separate frames).
     local root = Instance.new("Frame")
     root.Name = "Strip"
-    root.AnchorPoint = Vector2.new(1, 0)
-    root.Position = UDim2.new(1, -8, 0, 8)
+    root.AnchorPoint = Vector2.new(0, 0)
+    root.Position = UDim2.new(0, 8, 0, 8) -- top-left, just under the topbar (inset respected)
     root.Size = UDim2.fromOffset(186, 10)
     root.AutomaticSize = Enum.AutomaticSize.Y
     root.BackgroundTransparency = 1
     root.Parent = gui
-    require(script.Parent.Parent.UI.UIViewportScale).attach(root)
+
+    local scaler = Instance.new("Frame")
+    scaler.Name = "Scaler"
+    scaler.AnchorPoint = Vector2.new(0, 0)
+    scaler.Position = UDim2.fromScale(0, 0)
+    scaler.Size = UDim2.fromOffset(186, 10)
+    scaler.AutomaticSize = Enum.AutomaticSize.Y
+    scaler.BackgroundTransparency = 1
+    scaler.Parent = root
+    require(script.Parent.Parent.UI.UIViewportScale).attach(scaler)
 
     -- Inner frame carries its OWN UIScale (DensityScale) so a big pull can shrink the cards
     -- independently of the viewport scaler on root — Roblox honours only one UIScale per object,
     -- so the two live on separate frames and compose (viewport × density).
     local listFrame = Instance.new("Frame")
     listFrame.Name = "List"
-    listFrame.AnchorPoint = Vector2.new(1, 0)
-    listFrame.Position = UDim2.fromScale(1, 0)
+    listFrame.AnchorPoint = Vector2.new(0, 0)
+    listFrame.Position = UDim2.fromScale(0, 0)
     listFrame.Size = UDim2.fromOffset(186, 10)
     listFrame.AutomaticSize = Enum.AutomaticSize.Y
     listFrame.BackgroundTransparency = 1
-    listFrame.Parent = root
+    listFrame.Parent = scaler
     local densityScale = Instance.new("UIScale")
     densityScale.Name = "DensityScale"
     densityScale.Parent = listFrame
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
     layout.Padding = UDim.new(0, 4)
     layout.Parent = listFrame
 
@@ -291,7 +309,9 @@ function EnemyHud.start()
     end
 
     local function makeCard(bid)
-        local card = HudCard.createCard(listFrame, { name = "Enemy_" .. bid })
+        -- badgeSide="right": enemies live on the LEFT rail, so their debuff badges grow RIGHT toward
+        -- screen centre instead of off-screen-left (Jason: the taunt badge went the wrong way).
+        local card = HudCard.createCard(listFrame, { name = "Enemy_" .. bid, badgeSide = "right" })
         -- Enemy ARCHETYPE chip — the SAME PetBadge ringed disc the pet cards use (role symbol on a
         -- neutral disc + element ring), so foes read tank/melee/ranged/support at a glance just like
         -- pets. Standardized: no more ringless flat badge. Level moves into the name (threat-coloured).
@@ -302,6 +322,43 @@ function EnemyHud.start()
             Signals.Combat_SetAssist:FireServer({ targetId = bid })
         end)
         return card
+    end
+
+    -- COLLAPSE (Jason): as the enemy list grows DOWN into the bottom-left, money disappears first,
+    -- then the menu buttons — freeing their space for the fight; both come back as the list shrinks up.
+    -- It's SPATIAL (not an "in combat" flag): a lone off-screen support enemy = short list = money
+    -- stays visible; a 20-enemy pull = list reaches the bottom = money + menus yield. A hysteresis
+    -- margin stops flicker at the boundary. Refs resolved lazily (they persist once found).
+    local moneyStack, menuPane
+    local function collapseForList()
+        if not (moneyStack and moneyStack.Parent) then
+            for _, sg in ipairs(localPlayer.PlayerGui:GetChildren()) do
+                local f = sg:FindFirstChild("CurrencyStack", true)
+                if f then
+                    moneyStack = f
+                    break
+                end
+            end
+        end
+        if not (menuPane and menuPane.Parent) then
+            local base = localPlayer.PlayerGui:FindFirstChild("ProfessionalBaseUI")
+            local mc = base and base:FindFirstChild("MainContainer")
+            menuPane = mc and mc:FindFirstChild("menu_buttons_pane")
+        end
+        local listBottom = root.AbsolutePosition.Y + root.AbsoluteSize.Y
+        local function toggle(obj)
+            if not obj then
+                return
+            end
+            local top = obj.AbsolutePosition.Y
+            if obj.Visible and listBottom > top then
+                obj.Visible = false -- the list reached it → yield the space
+            elseif (not obj.Visible) and listBottom < top - 24 then
+                obj.Visible = true -- list shrank back (with margin so it doesn't flicker)
+            end
+        end
+        toggle(moneyStack) -- money first (it's higher / bottom-left, above the menu buttons)
+        toggle(menuPane) -- then the menu buttons if the list keeps growing
     end
 
     local accum = 0
@@ -388,6 +445,7 @@ function EnemyHud.start()
         assistHighlight.Enabled = assistModel ~= nil
         -- Shrink the strip uniformly once the pull exceeds DENSITY_FULL, so it stays bounded.
         densityScale.Scale = math.clamp(DENSITY_FULL / math.max(1, shown), DENSITY_MIN, 1)
+        collapseForList() -- money → menus yield space as the list grows down into them (restore on shrink)
         for bid, card in pairs(cards) do
             if not present[bid] then
                 card.frame:Destroy()

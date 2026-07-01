@@ -101,6 +101,33 @@ function SupportAura.rageFraction(auras, healthFraction, variantMult)
     return f
 end
 
+-- ── CAST RAGE (the player-activated Rage power, Jason) ────────────────────────
+-- Distinct from the bear's PASSIVE enrage above (rageFraction, a FLAT bonus while below the
+-- threshold). The cast power is "base + critical": a flat `base` fraction always, PLUS a critical
+-- bonus that GROWS as the pet drops below `enrageBelow` — "more and more as the pet gets really low."
+-- There is NO ceiling (Jason: no hidden caps — a well-balanced game bounds itself). `rate` is a GROWTH
+-- RATE, not a max: the bonus = rate × (missingBelowFrac / hp), so it ACCELERATES toward 0 HP and is
+-- bounded NATURALLY by the pet reaching its down threshold (it stops attacking), not by a clamp. Tune
+-- balance via `rate` (and it's enhancement-slotted to grow). Kept here so ALL rage math lives in one
+-- module. Pure; PetFollowService calls it live per swing off the holder pet's current HP fraction.
+--   base       = flat bonus at any HP (>= 0)
+--   rate       = critical GROWTH rate (>= 0); scales how fast the bonus climbs as HP falls (no cap)
+--   enrageBelow= HP fraction under which the critical growth begins (0..1)
+--   healthFraction = the pet's current remaining-HP fraction (0..1)
+function SupportAura.rageRampFraction(base, rate, enrageBelow, healthFraction)
+    base = math.max(0, tonumber(base) or 0)
+    rate = math.max(0, tonumber(rate) or 0)
+    local below = math.clamp(tonumber(enrageBelow) or 0.5, 0, 1)
+    local hp = math.clamp(tonumber(healthFraction) or 1, 0, 1)
+    local crit = 0
+    if hp < below and hp > 0 then
+        -- UNBOUNDED growth: 0 at hp==below, accelerating as hp→0 (missing-below over current HP).
+        -- Naturally bounded by pet-down (hp never reaches 0 in play), so no artificial ceiling.
+        crit = rate * ((below - hp) / hp)
+    end
+    return base + crit
+end
+
 -- ── SINGLE-TARGET selection (kind = "empower" and any future single-target aura) ──
 -- Rank candidate allies for a single-target aura so the caller can lift the top-N. Pure +
 -- deterministic (no randomness — ties break by insertion order, so the same squad picks the same

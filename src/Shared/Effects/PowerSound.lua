@@ -18,13 +18,32 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Debris = game:GetService("Debris")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local SoundGroups = require(ReplicatedStorage.Shared.Effects.SoundGroups)
 
 local FX = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("power_fx"))
 
 local PowerSound = {}
+
+-- Pocket the transient sound-anchor Parts in ONE folder instead of loose in Workspace root. A busy
+-- fight (many casts + per-tick auras) churns dozens of anchors through Workspace at once, which made
+-- the Explorer tree jump around so you couldn't click anything (Jason). The folder stays put +
+-- collapsed; only its children come and go. Cached ref, re-created if ever destroyed. (No yield
+-- between the find and the create, so it's single-instance without a lock.)
+local anchorFolder
+local function getAnchorFolder()
+    if anchorFolder and anchorFolder.Parent then
+        return anchorFolder
+    end
+    local f = Workspace:FindFirstChild("PowerSoundAnchors")
+    if not f then
+        f = Instance.new("Folder")
+        f.Name = "PowerSoundAnchors"
+        f.Parent = Workspace
+    end
+    anchorFolder = f
+    return f
+end
 
 function PowerSound.entryFor(phase, element)
     local byPhase = FX.sounds and FX.sounds[phase]
@@ -56,7 +75,7 @@ function PowerSound.play(phase, element, position, volumeScale)
     part.Transparency = 1
     part.Size = Vector3.new(1, 1, 1)
     part.CFrame = CFrame.new(position or Vector3.new())
-    part.Parent = Workspace
+    part.Parent = getAnchorFolder()
 
     local sound = Instance.new("Sound")
     sound.SoundId = entry.id

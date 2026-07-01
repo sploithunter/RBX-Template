@@ -17,6 +17,11 @@
 return {
     auto_target = "nearest",
 
+    -- COMBAT BALANCE TRACING: gates the server balance logs ([RageTrace], [CombatXP], [Defeat],
+    -- [PowerCast] taunt/rage) that we read while tuning combat. Left in the code (Jason: "we need them
+    -- for combat") but flag-gated so they don't spam a normal run — flip to true for a balancing pass.
+    combat_trace = true,
+
     group_scaling = {
         per_extra_player = 0.5,
     },

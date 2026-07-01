@@ -27,4 +27,26 @@ return function()
             expect(XpReward.fromValue(100, nil)).to.equal(0)
         end)
     end)
+
+    describe("XpReward.fromEnemyLevel (combat)", function()
+        it("scales XP by effective level × per_level (floored)", function()
+            -- shipped calibration: 2.0/level, trash rank ×1 -> level-21 kill = 42 XP
+            expect(XpReward.fromEnemyLevel(21, 2.0, 1.0)).to.equal(42)
+            expect(XpReward.fromEnemyLevel(5, 2.0, 1.0)).to.equal(10)
+        end)
+
+        it("applies the rank multiplier (lieutenant / boss premium)", function()
+            expect(XpReward.fromEnemyLevel(20, 2.0, 1.6)).to.equal(64) -- lieutenant: floor(2*20*1.6)
+            expect(XpReward.fromEnemyLevel(22, 2.0, 3.0)).to.equal(132) -- boss: floor(2*22*3)
+        end)
+
+        it("floors at 1 so any kill ticks the bar", function()
+            expect(XpReward.fromEnemyLevel(1, 0, 1)).to.equal(1) -- zero rate still grants 1
+            expect(XpReward.fromEnemyLevel(0, 2.0, 1)).to.equal(1)
+        end)
+
+        it("defaults safely with missing args", function()
+            expect(XpReward.fromEnemyLevel(nil, nil, nil)).to.equal(1) -- 1 × 0 × 1 -> floor 0 -> min 1
+        end)
+    end)
 end

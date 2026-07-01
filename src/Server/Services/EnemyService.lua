@@ -968,13 +968,31 @@ function EnemyService:_onDefeated(targetId)
     -- Award loot to every contributor (the pet damage tick records UserId -> amount in Contrib).
     local combat = self:_combatService()
     local contrib = model:FindFirstChild("Contrib")
+    -- [Defeat] trace (Jason balance pass): does the kill reach the award? combat/contrib nil =
+    -- no XP; contribKids=0 = nobody credited (no Contrib entries). Gated on combat.combat_trace.
+    if self._combatConfig and self._combatConfig.combat_trace then
+        print(
+            string.format(
+                "[Defeat] %s combat=%s contrib=%s contribKids=%d",
+                tostring(entry.enemyId),
+                tostring(combat ~= nil),
+                tostring(contrib ~= nil),
+                (contrib and #contrib:GetChildren()) or 0
+            )
+        )
+    end
     if combat and contrib then
         for _, nv in ipairs(contrib:GetChildren()) do
             local userId = tonumber(nv.Name)
             local player = userId and Players:GetPlayerByUserId(userId)
             if player then
                 pcall(function()
-                    combat:AwardLoot(player, entry.enemyId, model:GetAttribute("Level"))
+                    combat:AwardLoot(
+                        player,
+                        entry.enemyId,
+                        model:GetAttribute("Level"),
+                        model:GetAttribute("EnemyTier")
+                    )
                 end)
                 fireGameEvent(player, "enemy_defeated", { enemy = entry.enemyId })
                 pcall(function() -- mission counter (Origin Story combat beats)
@@ -1504,6 +1522,27 @@ function EnemyService:_isTaunt(pet)
     return def ~= nil and def.implicit_taunt == true
 end
 
+-- Active TAUNT power: FORCE `enemyModel`'s target to `pet` until `untilTime` (os.time), overriding
+-- the threat table (see the taunt-lock check in the target pick). Stored on the enemy's server
+-- entry (it holds the model ref an attribute can't). Also seeds the threat table so if the lock
+-- lapses mid-fight the tank still leads briefly. Called by PowerService's taunt family; expired
+-- state-based (os.time), never a task.delay.
+function EnemyService:ApplyTaunt(enemyModel, pet, untilTime)
+    if not (enemyModel and pet) then
+        return false
+    end
+    for _, entry in pairs(self._enemies) do
+        if entry.model == enemyModel then
+            entry.taunt = { pet = pet, until_ = tonumber(untilTime) or 0 }
+            if entry.aggro then
+                AggroTable.reinforce(entry.aggro, pet, 1)
+            end
+            return true
+        end
+    end
+    return false
+end
+
 -- Idle LOITER (#217, Jason: enemies were "frozen statues" too): an unaware enemy
 -- drifts around its HOME (where it stood when it last went idle) using the SAME
 -- pure PetMeander state machine the idle pets use - server-side here, writing
@@ -1811,7 +1850,26 @@ function EnemyService:_engageEnemy(entry, targetId, now, eng, dt)
     local validTop = function(k)
         return valid[k] == true
     end
-    local targetPet = AggroTable.top(entry.aggro, aggroCfg.disengage_threshold or 0.5, validTop)
+    -- TAUNT LOCK (the active Taunt power): while live, FORCE the target to the taunting pet,
+    -- OVERRIDING the threat table (AggroLeash's design: "taunt overrides table top"). Held until it
+    -- lapses (state-based os.time, NOT a task.delay) or the pet dies/leaves; then fall back to top
+    -- threat. Set by EnemyService:ApplyTaunt from PowerService's taunt family.
+    local targetPet
+    local tl = entry.taunt
+    if
+        tl
+        and (tonumber(tl.until_) or 0) > os.time()
+        and tl.pet
+        and tl.pet.Parent
+        and not tl.pet:GetAttribute("CombatDowned")
+    then
+        targetPet = tl.pet
+    else
+        if tl then
+            entry.taunt = nil -- lapsed / pet gone → clear, fall back to the threat table
+        end
+        targetPet = AggroTable.top(entry.aggro, aggroCfg.disengage_threshold or 0.5, validTop)
+    end
 
     -- TRACE: throttled snapshot of the leash state so you can watch threat bleed toward the
     -- disengage threshold in real time (the usual cause of a mid-fight retreat). topThreat is
@@ -3683,12 +3741,16 @@ function EnemyService:_petEnemyDef(petId, petDef)
     local hpMult = tonumber(cfg.pet_enemy_hp_mult) or 10
     local hp = math.max(1, math.floor((tonumber(petDef.base_health) or 100) * hpMult))
     local dmg = math.max(1, math.floor(tonumber(petDef.base_power) or 10))
+    -- CANONICAL tier key is "mid_tier" (what static enemies.lua + every leveling rank_* table use);
+    -- "lieutenant" is only the display name. Emitting "lieutenant" here meant rank_xp_mult /
+    -- rank_coin_mult / rank_offset all missed the key → epic/legendary invaders paid TRASH rate and
+    -- got no rank level-up. Use the config key so the 1.6× premium + the +1 level offset apply.
     local tierByRarity = {
         common = "trash_mob",
         uncommon = "trash_mob",
         rare = "trash_mob",
-        epic = "lieutenant",
-        legendary = "lieutenant",
+        epic = "mid_tier",
+        legendary = "mid_tier",
         mythic = "boss",
         secret = "boss",
         exclusive = "boss",
@@ -4278,6 +4340,13 @@ function EnemyService:SpawnEnemy(player, enemyId, opts)
     local lvlOffset = math.clamp(tonumber(player:GetAttribute("EnemyLevelOffset")) or 0, -3, 3)
     local baseLevel = math.max(1, (def.level or playerLevel) + lvlOffset)
     model:SetAttribute("Level", LevelScale.effectiveLevel(baseLevel, rankOff))
+    -- Stamp the elite TIER so the loot award can resolve the rank multiplier for enemies with no
+    -- STATIC def — the realms are pet-invaders (petinv_*, synthesized defs) whose tier lived only in
+    -- the transient def, so bosses/lieutenants were paying trash-mob XP+coins (and warning). Now the
+    -- model carries it (Jason: the fix we skipped). Static enemies stamp their own tier here too.
+    if def.tier then
+        model:SetAttribute("EnemyTier", def.tier)
+    end
 
     -- Watch HP -> death; also drive the HP bar.
     model:GetAttributeChangedSignal("HP"):Connect(function()

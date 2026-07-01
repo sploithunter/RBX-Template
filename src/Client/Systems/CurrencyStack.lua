@@ -43,23 +43,40 @@ function CurrencyStack.start()
             return
         end
 
+        -- BOTTOM-LEFT (Jason's endgame HUD layout): money slides down to just above the lower-left
+        -- menu buttons, out of the way — display-only, so it's safe there. Enemies own the TOP-left and
+        -- grow DOWN into money's space (money collapses when they reach it). `stack` is the UNSCALED
+        -- positioner (anchor bottom-left); the viewport scale lives on the inner `scaler` (a UIScale on
+        -- the positioning frame would scale its position too). The scaler is TOP-anchored + AutomaticSize
+        -- so it grows cleanly (a bottom-anchored auto-size frame nested in another reads height 0).
+        -- `reflowAboveButtons` drops the stack's bottom just over the menu buttons — measured, so it's
+        -- correct at any viewport / inset.
         local stack = Instance.new("Frame")
         stack.Name = "CurrencyStack"
-        stack.AnchorPoint = Vector2.new(0, 0.5)
-        stack.Position = UDim2.new(0, 15, 0.5, 0)
+        stack.AnchorPoint = Vector2.new(0, 1) -- bottom-left corner is the anchor; pills grow UP from it
+        stack.Position = UDim2.new(0, 12, 0.62, 0) -- fallback; reflowed above the menu buttons below
         stack.Size = UDim2.fromOffset(140, 0)
         stack.AutomaticSize = Enum.AutomaticSize.Y
         stack.BackgroundTransparency = 1
         stack.ZIndex = 12
+        stack.Parent = mc
+
+        local scaler = Instance.new("Frame")
+        scaler.Name = "Scaler"
+        scaler.AnchorPoint = Vector2.new(0, 0) -- TOP-anchored: auto-sizes top-down without collapsing
+        scaler.Position = UDim2.fromScale(0, 0)
+        scaler.Size = UDim2.fromOffset(140, 0)
+        scaler.AutomaticSize = Enum.AutomaticSize.Y
+        scaler.BackgroundTransparency = 1
+        scaler.Parent = stack
         local layout = Instance.new("UIListLayout")
         layout.FillDirection = Enum.FillDirection.Vertical
         layout.SortOrder = Enum.SortOrder.LayoutOrder
         layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
         layout.Padding = UDim.new(0, 5)
-        layout.Parent = stack
-        stack.Parent = mc
-        -- ONE scale for the whole stack: pills + gaps shrink together (tight at any size)
-        require(script.Parent.Parent.UI.UIViewportScale).attach(stack)
+        layout.Parent = scaler
+        -- ONE scale for the pills: pills + gaps shrink together (tight at any size)
+        require(script.Parent.Parent.UI.UIViewportScale).attach(scaler)
 
         for order, name in ipairs(PANES) do
             task.spawn(function()
@@ -73,7 +90,26 @@ function CurrencyStack.start()
                     own:Destroy()
                 end
                 pane.LayoutOrder = order
-                pane.Parent = stack
+                pane.Parent = scaler
+            end)
+        end
+
+        -- Sit money's bottom just ABOVE the lower-left menu buttons. `stack` is unscaled and lives in
+        -- MainContainer (which spans the whole screen, only inset-shifted), so a measured pixel offset
+        -- lands device-correctly. Falls back to 63% of MainContainer when the buttons aren't found yet.
+        local function reflowAboveButtons()
+            local menu = mc:FindFirstChild("menu_buttons_pane")
+                or mc:FindFirstChild("SettingsButton", true)
+            local buttonsTop = menu and menu.AbsoluteSize.Y > 0 and menu.AbsolutePosition.Y
+                or (mc.AbsolutePosition.Y + mc.AbsoluteSize.Y * 0.63)
+            local posY = (buttonsTop - 8) - mc.AbsolutePosition.Y -- MainContainer maps 1:1 (only shifted)
+            stack.Position = UDim2.new(0, 12, 0, math.floor(posY))
+        end
+        task.defer(reflowAboveButtons)
+        local cam = workspace.CurrentCamera
+        if cam then
+            cam:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+                task.defer(reflowAboveButtons)
             end)
         end
     end)
