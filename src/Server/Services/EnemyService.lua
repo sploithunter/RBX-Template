@@ -1390,8 +1390,18 @@ function EnemyService:_hitPet(pet, def, now, eng, enemyLevel, petLevel, enemyMod
     -- of the outgoing attack_mult (configs/combat_fx.lua origin.element_stats).
     dmg = dmg * self:_originTakenMult(pet)
     -- Absorption shield (Stone Skin etc.) soaks mitigated damage before any reaches
-    -- endurance; it depletes as it absorbs.
-    local shield = pet:GetAttribute("CombatShield") or 0
+    -- endurance; it depletes as it absorbs. SSOT: a TIMED shield's DURATION is authoritative — the
+    -- pool is dead once CombatShieldUntil passes, NOT reliant on the one-shot task.delay clear (that
+    -- clear can be lost on pet re-deploy, leaving a stale pool that would soak forever = a permanent
+    -- free shield). A duration-0 shield (CombatShieldUntil unset/0) persists until depleted, so only
+    -- kill on a timer that was SET and has lapsed. "When a shield runs out it runs out" (Jason): an
+    -- expired pool absorbs nothing, and we zero it on read so its bubble/strength drops too.
+    local shieldUntil = tonumber(pet:GetAttribute("CombatShieldUntil")) or 0
+    local shieldExpired = shieldUntil > 0 and shieldUntil <= os.time()
+    local shield = (not shieldExpired) and (pet:GetAttribute("CombatShield") or 0) or 0
+    if shieldExpired and (pet:GetAttribute("CombatShield") or 0) > 0 then
+        pet:SetAttribute("CombatShield", 0) -- stale pool from a lost timer → clear it
+    end
     if shield > 0 and dmg > 0 then
         local absorbed = math.min(shield, dmg)
         pet:SetAttribute("CombatShield", shield - absorbed)

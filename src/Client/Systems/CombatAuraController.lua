@@ -291,7 +291,14 @@ end
 local function refreshArmor(pet)
     -- SHIELD / DODGE: the absorb pool. Its LOOK comes from the cast power's config (vfxForPower) — a
     -- real shield bubbles, a dodge does not. No per-power code; new absorb powers obey their config.
-    local shieldOn = (pet:GetAttribute("CombatShield") or 0) > 0 -- absorb POOL (drives the bubble)
+    -- SSOT: the bubble is the POOL, but a TIMED shield is dead once CombatShieldUntil lapses — a
+    -- stale pool (server one-shot clear lost on re-deploy) must NOT keep the bubble/strength up
+    -- forever ("when a shield runs out it runs out" — Jason). A duration-0 shield (until unset/0)
+    -- persists until depleted, so only suppress on a timer that was SET and has passed. (Dodge sets
+    -- CombatShieldUntil with NO pool → pool is 0 → doesn't bubble, only badges, as before.)
+    local shieldUntil = tonumber(pet:GetAttribute("CombatShieldUntil")) or 0
+    local shieldExpired = shieldUntil > 0 and shieldUntil <= os.time()
+    local shieldOn = (pet:GetAttribute("CombatShield") or 0) > 0 and not shieldExpired -- absorb POOL (drives the bubble)
     -- badge CHANNEL: CombatShieldUntil is set by real shields AND by dodge (Mirage Step sets it without
     -- the pool). The over-pet identity BADGE follows this so dodge shows a badge; the bubble still keys
     -- off the pool above so a dodge doesn't bubble.
